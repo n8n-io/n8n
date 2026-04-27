@@ -110,6 +110,11 @@ function getModalCallbacks() {
 	return data;
 }
 
+// First mount eats the SFC transform cost for AgentPublishButton + deps,
+// which has crept above the default 5 s budget on slower CI workers. Give
+// the suite headroom; subsequent tests hit the cached module and finish fast.
+vi.setConfig({ testTimeout: 30_000 });
+
 describe('AgentPublishButton', () => {
 	async function renderComponent(props: RenderProps = {}) {
 		const { default: AgentPublishButton } = await import('../components/AgentPublishButton.vue');

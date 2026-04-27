@@ -8,6 +8,7 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, replace: vi.fn() }),
 	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: {} }),
 	onBeforeRouteLeave: vi.fn(),
+	onBeforeRouteUpdate: vi.fn(),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
@@ -111,7 +112,11 @@ vi.mock('../composables/useAgentConfig', () => ({
 vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
 		threads: [],
+		loading: false,
 		fetchThreads: vi.fn().mockResolvedValue(undefined),
+		startAutoRefresh: vi.fn(),
+		stopAutoRefresh: vi.fn(),
+		reset: vi.fn(),
 	}),
 }));
 
@@ -210,6 +215,48 @@ const commonStubs = {
 			'switch-agent',
 		],
 	},
+	// Stub each panel that the editor column dispatches to. These panels pull
+	// in stores / composables (users, chatHub, credentials, sessions list)
+	// that the view-level test isn't trying to exercise — leaving them real
+	// would require mocking the full surrounding ecosystem just to mount.
+	AgentInfoPanel: {
+		name: 'AgentInfoPanel',
+		template: '<div data-testid="stub-agent-info-panel" />',
+		props: ['config', 'disabled'],
+		emits: ['update:config'],
+	},
+	AgentAdvancedPanel: {
+		name: 'AgentAdvancedPanel',
+		template: '<div data-testid="stub-agent-advanced-panel" />',
+		props: ['config', 'disabled'],
+		emits: ['update:config'],
+	},
+	AgentMemoryPanel: {
+		name: 'AgentMemoryPanel',
+		template: '<div data-testid="stub-agent-memory-panel" />',
+		props: ['config', 'disabled'],
+		emits: ['update:config'],
+	},
+	AgentEvalsPanel: {
+		name: 'AgentEvalsPanel',
+		template: '<div data-testid="stub-agent-evals-panel" />',
+	},
+	AgentToolsListPanel: {
+		name: 'AgentToolsListPanel',
+		template: '<div data-testid="stub-agent-tools-list-panel" />',
+		props: ['tools', 'config', 'disabled'],
+		emits: ['open-tool', 'add-tool', 'remove-tool', 'update:config'],
+	},
+	AgentIntegrationsPanel: {
+		name: 'AgentIntegrationsPanel',
+		template: '<div data-testid="stub-agent-integrations-panel" />',
+		props: ['projectId', 'agentId', 'agentName', 'focusType', 'onlyConnected'],
+		emits: ['update:connected-triggers', 'trigger-added'],
+	},
+	AgentSessionsListView: {
+		name: 'AgentSessionsListView',
+		template: '<div data-testid="stub-agent-sessions-list-view" />',
+	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 	N8nActionDropdown: { template: '<div />' },
@@ -229,50 +276,45 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
-	it('renders the chat mode toggle with Test selected by default', async () => {
+	it('renders the chat mode toggle with Build selected by default', async () => {
+		// Built agents default to Build unless the URL pins a session id; see
+		// AgentBuilderView.initialize() for the canonical decision.
 		const wrapper = await renderView();
 
 		const toggle = wrapper.find('[data-testid="agent-chat-mode-toggle"]');
 		expect(toggle.exists()).toBe(true);
 		const vm = wrapper.vm as unknown as { chatMode: string };
-		expect(vm.chatMode).toBe('test');
+		expect(vm.chatMode).toBe('build');
 	});
 
 	it('lazy-mounts each chat panel on first activation and toggles visibility via v-show afterwards', async () => {
-		// Entering chat mode with the default `test` tab should only mount the
-		// test panel — the build panel stays unmounted until the user clicks
-		// Build, so we don't fire a second loadHistory() for a tab the user
-		// may never open.
+		// Default mount is Build (see prior test). Switching to Test mounts the
+		// test panel for the first time; flipping back to Build keeps both
+		// mounted so neither panel re-runs loadHistory() on toggle.
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as {
-			activeChatSessionId: string | null;
-		};
-		// Test requires an active session (a real user would reach this by
-		// sending a message from the home input, which mints one). Seed it
-		// directly so we can exercise the lazy-mount/v-show behavior.
+		const vm = wrapper.vm as unknown as { activeChatSessionId: string | null };
+
+		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
+		expect(buildPanel.exists()).toBe(true);
+		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]').exists()).toBe(
+			false,
+		);
+		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+
+		// Test requires an active session (a real user reaches this by sending
+		// a message from the home input). Seed it so the chat panel binds.
 		vm.activeChatSessionId = 'test-session-1';
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
 		await nextTick();
 
 		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
 		expect(testPanel.exists()).toBe(true);
-		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
-			false,
-		);
+		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
 		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
 
-		// Clicking Build mounts the build panel for the first time; test is now
-		// hidden via v-show but still mounted so its state is preserved.
+		// Switching back to Build should not unmount Test — both panels stay
+		// mounted once opened.
 		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('build');
-		await nextTick();
-
-		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
-		expect(buildPanel.exists()).toBe(true);
-		expect((testPanel.element as HTMLElement).style.display).toBe('none');
-		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
-
-		// Switching back to Test should not unmount Build — both panels stay
-		// mounted once opened so neither re-runs loadHistory on toggle.
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
 		await nextTick();
 
 		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]').exists()).toBe(
@@ -281,8 +323,8 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
 			true,
 		);
-		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
-		expect((buildPanel.element as HTMLElement).style.display).toBe('none');
+		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+		expect((testPanel.element as HTMLElement).style.display).toBe('none');
 	});
 
 	it('drops unbuilt agents straight into the build chat on load', async () => {
@@ -301,13 +343,14 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(vm.chatMode).toBe('build');
 	});
 
-	it('initialises built agents with the test tab selected', async () => {
+	it('initialises built agents with the build tab selected', async () => {
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as { chatMode: string };
 
 		// The view no longer has a `mode: 'home' | 'chat'` field — the three-column
-		// shell is always visible. Built agents start with Test selected.
-		expect(vm.chatMode).toBe('test');
+		// shell is always visible. Built agents default to Build unless the URL
+		// pins a session id (see initialize() in AgentBuilderView).
+		expect(vm.chatMode).toBe('build');
 	});
 
 	it('locks the Test tab when the agent has no instructions', async () => {
@@ -328,22 +371,27 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect(vm.chatMode).toBe('build');
 	});
 
-	it('transitions to build chat when a toggle segment is clicked', async () => {
-		// The view no longer has a `mode: 'home' | 'chat'` field — the three-column
-		// shell is always visible. Clicking Build should switch chatMode and mount the panel.
+	it('transitions to test chat when a toggle segment is clicked', async () => {
+		// The view defaults to Build for built agents; clicking Test must
+		// switch chatMode and mount the test panel.
 		const wrapper = await renderView();
-		const vm = wrapper.vm as unknown as { chatMode: string };
+		const vm = wrapper.vm as unknown as {
+			chatMode: string;
+			activeChatSessionId: string | null;
+		};
+
+		expect(vm.chatMode).toBe('build');
+		// Test mode requires an active session for the panel to bind.
+		vm.activeChatSessionId = 'test-session-1';
+
+		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('test');
+		await nextTick();
 
 		expect(vm.chatMode).toBe('test');
 
-		(wrapper.vm as unknown as { setChatMode: (m: string) => void }).setChatMode('build');
-		await nextTick();
-
-		expect(vm.chatMode).toBe('build');
-
-		const buildPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
-		expect(buildPanel.exists()).toBe(true);
-		expect((buildPanel.element as HTMLElement).style.display).not.toBe('none');
+		const testPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="chat"]');
+		expect(testPanel.exists()).toBe(true);
+		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
 	});
 
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
@@ -352,7 +400,6 @@ describe('AgentBuilderView — chat mode toggle', () => {
 
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as {
-			mode: string;
 			chatMode: string;
 			startChat: (msg: string) => void;
 			isBuilt: boolean;
@@ -364,8 +411,8 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		vm.startChat('Build me a Slack triage agent');
 		await nextTick();
 
-		// Should go directly into build chat — no 'building' mode.
-		expect(vm.mode).toBe('chat');
+		// The three-column shell is always visible (no separate `mode`
+		// state machine); startChat just selects the build chat tab.
 		expect(vm.chatMode).toBe('build');
 
 		// No progress screen rendered
