@@ -65,6 +65,19 @@ export class DataTableService {
 	async start() {}
 	async shutdown() {}
 
+	async getProjectIdForDataTable(dataTableId: string): Promise<string> {
+		const dataTable = await this.dataTableRepository.findOne({
+			select: ['projectId'],
+			where: { id: dataTableId },
+		});
+
+		if (!dataTable) {
+			throw new DataTableNotFoundError(dataTableId);
+		}
+
+		return dataTable.projectId;
+	}
+
 	async createDataTable(projectId: string, dto: CreateDataTableDto) {
 		if (dto.fileId && dto.columns.length === 0) {
 			throw new DataTableValidationError(
