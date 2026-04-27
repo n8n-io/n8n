@@ -22,7 +22,7 @@ jobs:
       test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:container:sqlite
       coverage: true
-      workers: '2'
+      workers: '1'
       runner: blacksmith-4vcpu-ubuntu-2204
       timeout-minutes: 45
       pre-generated-matrix: '[{"shard":1},{"shard":2},{"shard":3},{"shard":4}]'
