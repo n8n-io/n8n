@@ -109,11 +109,6 @@ jobs:
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           N8N_TEST_ENV: ${{ inputs.n8n-env }}
 
-      # Always-on upload bundles failure debugging artifacts and any coverage
-      # output (.nyc_output) into a single short-lived artifact per shard.
-      # Aggregate jobs (e.g. coverage) cherry-pick what they need; humans
-      # download it for failure triage. Empty/missing dirs are skipped via
-      # if-no-files-found: ignore.
       - name: Upload Shard Artifacts
         if: always()
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
