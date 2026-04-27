@@ -19,7 +19,12 @@ import type {
 interface DataTableWriteNode {
 	nodeName: string;
 	dataTableId: string;
-	/** Only `insert` and `upsert` may create new rows; `update` is tracked but never cleaned up. */
+	/**
+	 * Only `insert` is cleaned up post-verify. `upsert` is tracked but never
+	 * cleaned up because its node output cannot distinguish a newly-created
+	 * row from a match on an existing row (see cleanupInsertedRowsByNodeOutput).
+	 * `update` never creates rows so cleanup is moot.
+	 */
 	operation: 'insert' | 'upsert' | 'update';
 }
 
@@ -93,9 +98,10 @@ function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
 /**
  * Per-table pre-verify snapshot. A `Set` is a complete list of row IDs that
  * existed before the run. `null` means the snapshot could not be built (empty
- * table, read error, or pagination cap hit) — cleanup MUST skip any table with
- * a null snapshot, otherwise upsert-matched existing rows would be misclassified
- * as new inserts and deleted.
+ * table, read error, or pagination cap hit) — cleanup skips any table with a
+ * null snapshot. The snapshot guards insert-node cleanup against pathological
+ * outputs (e.g. an insert node returning an existing row ID); upsert outputs
+ * are not eligible for cleanup at all.
  */
 type PreIdsMap = Map<string, Set<number> | null>;
 
@@ -110,15 +116,20 @@ const SNAPSHOT_MAX_ROWS = 100_000;
 
 /**
  * Delete rows this verify execution inserted, identified by the node outputs of
- * the dataTable insert/upsert nodes the workflow contains. Rows that appear in a
- * node's output but were present pre-verify are treated as updates (upsert hits
- * on an existing row) and NOT deleted. Rows inserted by concurrent writers never
- * appear in any node's output and are therefore safe from this cleanup.
+ * the dataTable insert nodes the workflow contains. Rows inserted by concurrent
+ * writers never appear in an insert node's output and are therefore safe.
+ *
+ * Upsert nodes are deliberately skipped: their node output cannot distinguish
+ * a newly-created row from a match on an existing one. A concurrent writer
+ * inserting a row between the snapshot and the upsert call could yield an ID
+ * that looks "new" to the ID-diff check while actually belonging to the
+ * concurrent writer — deleting it would destroy production data. Until the
+ * upsert path exposes a `wasCreated` flag in the row return, we trade leaking
+ * a few verify-created rows for guaranteed safety.
  *
  * When `preIdsByTable.get(dataTableId)` is `null` the snapshot could not be
- * built and cleanup is skipped for that table: without a reliable pre-existing
- * set we cannot distinguish a new insert from an upsert hit, so deleting any
- * ID could destroy production data.
+ * built and cleanup is skipped for that table; without a reliable pre-existing
+ * set we cannot distinguish a new insert from a row that pre-existed.
  */
 async function cleanupInsertedRowsByNodeOutput(
 	dataTableService: InstanceAiDataTableService,
@@ -128,10 +139,10 @@ async function cleanupInsertedRowsByNodeOutput(
 	logger: Logger,
 ): Promise<number> {
 	if (!resultData) return 0;
-	/** per-table set of row IDs the workflow's own insert/upsert nodes produced */
+	/** per-table set of row IDs the workflow's own insert nodes produced */
 	const createdIdsByTable = new Map<string, Set<number>>();
 	for (const { nodeName, dataTableId, operation } of writeNodes) {
-		if (operation === 'update') continue;
+		if (operation !== 'insert') continue;
 		const output = resultData[nodeName];
 		if (!output) continue;
 		const ids = extractRowIdsFromNodeOutput(output);
@@ -174,15 +185,16 @@ async function cleanupInsertedRowsByNodeOutput(
 }
 
 /**
- * Pre-verify snapshot of current row IDs per tracked table. Used only to
- * distinguish insert from upsert-of-existing on the cleanup side — NOT to build
- * the delete set. This keeps cleanup safe against concurrent writers.
+ * Pre-verify snapshot of current row IDs per tracked table. Used as a defensive
+ * filter for insert-node cleanup — any output ID present in the pre-snapshot
+ * is left alone, never deleted. The delete set is still driven by node output,
+ * not by a post-verify table-wide diff, so concurrent writers stay safe.
  *
  * The snapshot pages through the full table because the cap on `queryRows`
- * would otherwise cause cleanup to delete existing rows whose IDs happen to
- * fall outside the first page. If pagination fails mid-way or the table is
- * bigger than `SNAPSHOT_MAX_ROWS`, the entry is set to `null` so
- * `cleanupInsertedRowsByNodeOutput` will skip that table rather than guess.
+ * would otherwise leave existing rows past the first page unprotected. If
+ * pagination fails mid-way or the table is bigger than `SNAPSHOT_MAX_ROWS`,
+ * the entry is set to `null` so `cleanupInsertedRowsByNodeOutput` skips that
+ * table rather than guess.
  */
 async function snapshotRowIdsPerTable(
 	dataTableService: InstanceAiDataTableService,
@@ -286,11 +298,12 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 
 			// Pre-verify: enumerate the dataTable write nodes in the workflow and
-			// snapshot current row IDs for each referenced table. The snapshot is
-			// NOT used to compute the delete set — it only disambiguates inserts
-			// from upsert-matched-existing rows. The delete set comes from each
-			// insert/upsert node's own output after verify, so concurrent writers
-			// (whose rows never appear in the workflow's node outputs) are safe.
+			// snapshot current row IDs for each insert-touched table. The delete
+			// set comes from each insert node's own output after verify (so
+			// concurrent writers stay invisible to cleanup); the snapshot is a
+			// defensive filter so any ID that pre-existed cannot be deleted.
+			// Upsert outputs are deliberately never cleaned — see
+			// `cleanupInsertedRowsByNodeOutput` for the rationale.
 			const writeNodes = await extractDataTableWriteNodes(
 				context.domainContext.workflowService,
 				input.workflowId,

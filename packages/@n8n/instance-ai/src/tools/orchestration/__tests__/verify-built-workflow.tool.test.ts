@@ -296,15 +296,22 @@ describe('verify-built-workflow tool', () => {
 		});
 	});
 
-	it('does not delete a row produced by an upsert node when it already existed pre-verify', async () => {
+	it('never deletes rows produced by an upsert node, even when the ID looks new', async () => {
+		// Upsert outputs cannot distinguish a freshly-created row from a match on
+		// an existing row. A concurrent writer inserting between snapshot and
+		// upsert would yield an ID that looks "new" to ID-diff but actually
+		// belongs to that writer — deleting it would destroy production data.
+		// We therefore skip cleanup for upsert nodes entirely.
 		const { ctx, deleteRows } = makeContext(
 			makeBuildOutcome(),
 			{
 				executionId: 'exec-upsert',
 				status: 'success',
 				data: {
-					// Upsert matched existing row id=2 — no new row was created.
-					'Upsert Lead': [{ id: 2, name: 'Existing', stage: 'qualified' }],
+					// id=99 is not in the pre-verify snapshot — under the old
+					// ID-diff logic this would be deleted. The new contract leaves
+					// it alone because we cannot prove it was created by verify.
+					'Upsert Lead': [{ id: 99, name: 'Could be a concurrent writer' }],
 				},
 			},
 			{
@@ -402,30 +409,31 @@ describe('verify-built-workflow tool', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('paginates the pre-verify snapshot so upsert-matched rows past the first page are not deleted', async () => {
+	it('paginates the pre-verify snapshot so a pathological insert output cannot delete a pre-existing row past the first page', async () => {
 		// Build a table with 1500 rows — past the snapshot page size.
-		// If pagination is broken, the snapshot would only contain ids 1..1000,
-		// and the upsert node's output at id=1234 would be misclassified as a
-		// new insert and deleted.
+		// The insert node's output is `id=1234` (a row that already existed). If
+		// pagination is broken the snapshot only contains ids 1..1000, and the
+		// snapshot's defensive filter wouldn't protect id=1234 — the cleanup
+		// would delete a pre-existing row.
 		const bigTable: Array<Record<string, unknown>> = Array.from({ length: 1500 }, (_v, i) => ({
 			id: i + 1,
 		}));
 		const { ctx, deleteRows, queryRows } = makeContext(
 			makeBuildOutcome(),
 			{
-				executionId: 'exec-upsert-past-page',
+				executionId: 'exec-insert-past-page',
 				status: 'success',
 				data: {
-					// Upsert matched existing id=1234 — beyond the single-page cap.
-					'Upsert Lead': [{ id: 1234, name: 'Existing', stage: 'qualified' }],
+					// Insert node's output references id=1234 — beyond the single-page cap.
+					'Insert Lead': [{ id: 1234, name: 'Existing', stage: 'qualified' }],
 				},
 			},
 			{
 				workflowNodes: [
 					{
-						name: 'Upsert Lead',
+						name: 'Insert Lead',
 						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'upsert', dataTableId: 'tbl-leads' },
+						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
 					},
 				],
 				tableRows: { 'tbl-leads': bigTable },
@@ -444,25 +452,22 @@ describe('verify-built-workflow tool', () => {
 		expect(deleteRows).not.toHaveBeenCalled();
 	});
 
-	it('skips cleanup for a table when the pre-verify snapshot read fails', async () => {
-		// If queryRows throws, we cannot distinguish insert from upsert-of-existing,
-		// so cleanup must SKIP this table rather than delete everything the insert
-		// node emitted (which could include upsert-matched existing rows).
+	it('skips insert cleanup for a table when the pre-verify snapshot read fails', async () => {
 		const { ctx, deleteRows } = makeContext(
 			makeBuildOutcome(),
 			{
 				executionId: 'exec-snapshot-fail',
 				status: 'success',
 				data: {
-					'Upsert Lead': [{ id: 42, name: 'Existing', stage: 'qualified' }],
+					'Insert Lead': [{ id: 42, name: 'Existing', stage: 'qualified' }],
 				},
 			},
 			{
 				workflowNodes: [
 					{
-						name: 'Upsert Lead',
+						name: 'Insert Lead',
 						type: 'n8n-nodes-base.dataTable',
-						parameters: { operation: 'upsert', dataTableId: 'tbl-leads' },
+						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
 					},
 				],
 				tableRows: { 'tbl-leads': [{ id: 42 }] },
