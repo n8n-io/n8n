@@ -39,7 +39,7 @@ export async function strapiApiRequest(
 			method,
 			body,
 			qs,
-			uri: uri || credentials.apiVersion === 'v4' ? `${url}/api${resource}` : `${url}${resource}`,
+			uri: uri || (credentials.apiVersion === 'v4' ? `${url}/api${resource}` : `${url}${resource}`),
 			json: true,
 			qsStringifyOptions: {
 				arrayFormat: 'indices',
