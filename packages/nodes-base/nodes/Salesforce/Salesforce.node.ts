@@ -46,8 +46,7 @@ export class Salesforce implements INodeType {
 		name: 'salesforce',
 		icon: 'file:salesforce.svg',
 		group: ['output'],
-		version: [1, 1.1],
-		defaultVersion: 1.1,
+		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Salesforce API',
 		defaults: {
@@ -1050,7 +1049,6 @@ export class Salesforce implements INodeType {
 		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0);
 		const operation = this.getNodeParameter('operation', 0);
-		const nodeVersion = this.getNode().typeVersion;
 
 		this.logger.debug(
 			`Running "Salesforce" node named "${this.getNode.name}" resource "${resource}" operation "${operation}"`,
@@ -1291,7 +1289,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Lead', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'Lead', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1302,7 +1300,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Lead', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'Lead', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1635,7 +1633,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Contact', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'Contact', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1646,7 +1644,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Contact', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'Contact', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1787,7 +1785,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, customObject, returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, customObject, returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1798,7 +1796,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, customObject, returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, customObject, returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2021,7 +2019,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Opportunity', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'Opportunity', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2032,7 +2030,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Opportunity', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'Opportunity', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2309,7 +2307,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Account', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'Account', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2320,7 +2318,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Account', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'Account', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2524,7 +2522,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Case', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'Case', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2535,7 +2533,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Case', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'Case', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2787,7 +2785,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Task', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'Task', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2798,7 +2796,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Task', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'Task', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2919,7 +2917,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Attachment', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'Attachment', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2930,7 +2928,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'Attachment', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'Attachment', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2974,7 +2972,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'User', returnAll, 0, nodeVersion);
+								qs.q = getQuery(options, 'User', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2985,7 +2983,7 @@ export class Salesforce implements INodeType {
 								);
 							} else {
 								const limit = this.getNodeParameter('limit', i);
-								qs.q = getQuery(options, 'User', returnAll, limit, nodeVersion);
+								qs.q = getQuery(options, 'User', returnAll, limit);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',

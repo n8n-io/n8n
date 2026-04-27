@@ -56,7 +56,7 @@ describe('Salesforce -> GenericFunctions', () => {
 		it('should return date string as is', () => {
 			const value = '2025-01-01T00:00:00Z';
 
-			const result = getValue(value, 1) as string;
+			const result = getValue(value) as string;
 
 			expect(result).toBe(value);
 		});
@@ -64,27 +64,27 @@ describe('Salesforce -> GenericFunctions', () => {
 		it('should return string in single quotes', () => {
 			const value = 'foo bar baz';
 
-			const result = getValue(value, 1) as string;
+			const result = getValue(value) as string;
 
 			expect(result).toBe("'foo bar baz'");
 		});
 
 		it('should trim whitespace from string values', () => {
-			expect(getValue('  foo bar  ', 1)).toBe("'foo bar'");
+			expect(getValue('  foo bar  ')).toBe("'foo bar'");
 		});
 
 		it('should trim whitespace from date literal values', () => {
-			expect(getValue('  TODAY  ', 1)).toBe('TODAY');
+			expect(getValue('  TODAY  ')).toBe('TODAY');
 		});
 
 		it('should trim whitespace from date string values', () => {
-			expect(getValue('  2025-01-01  ', 1)).toBe('2025-01-01');
+			expect(getValue('  2025-01-01  ')).toBe('2025-01-01');
 		});
 
 		it('should return number as is', () => {
 			const value = 123;
 
-			const result = getValue(value, 1) as number;
+			const result = getValue(value) as number;
 
 			expect(result).toBe(value);
 		});
@@ -92,7 +92,7 @@ describe('Salesforce -> GenericFunctions', () => {
 		it('should return boolean as is', () => {
 			const value = false;
 
-			const result = getValue(value, 1) as boolean;
+			const result = getValue(value) as boolean;
 
 			expect(result).toBe(value);
 		});
@@ -143,7 +143,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				},
 			};
 
-			const result = getConditions(options, 1);
+			const result = getConditions(options);
 
 			expect(result).toBe('WHERE field_1 = 123');
 		});
@@ -160,7 +160,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				},
 			};
 
-			const result = getConditions(options, 1);
+			const result = getConditions(options);
 
 			expect(result).toBe(
 				'WHERE field_1 > 123 AND field_2 < 456 AND field_3 >= 789 AND field_4 <= 0',
@@ -174,7 +174,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				},
 			};
 
-			const result = getConditions(options, 1);
+			const result = getConditions(options);
 
 			expect(result).toBeUndefined();
 		});
@@ -186,7 +186,7 @@ describe('Salesforce -> GenericFunctions', () => {
 				},
 			};
 
-			const result = getConditions(options, 1);
+			const result = getConditions(options);
 
 			expect(result).toBeUndefined();
 		});
@@ -1285,154 +1285,142 @@ describe('Salesforce -> GenericFunctions', () => {
 			describe('getValue', () => {
 				it('should escape single quotes in non-numeric string values', () => {
 					const value = "Bob's Account";
-					const result = getValue(value, 1) as string;
+					const result = getValue(value) as string;
 					expect(result).toBe("'Bob\\'s Account'");
 				});
 
 				it('should escape single quotes in numeric string values', () => {
 					const maliciousValue = "Bob' OR '1'='1";
-					const result = getValue(maliciousValue, 1) as string;
+					const result = getValue(maliciousValue) as string;
 					expect(result).toBe("'Bob\\' OR \\'1\\'=\\'1'");
 				});
 
-				it('should treat numeric strings as quoted strings in v1 to preserve data integrity', () => {
-					const value = '123';
-					const result = getValue(value, 1);
-					expect(result).toBe("'123'");
+				it('should return numeric strings as numbers', () => {
+					expect(getValue('0')).toBe(0);
+					expect(getValue('123')).toBe(123);
+					expect(getValue('123.45')).toBe(123.45);
+					expect(getValue('-5')).toBe(-5);
 				});
 
-				it('should preserve leading zeros in string values in v1', () => {
-					const value = '00123';
-					const result = getValue(value, 1);
-					expect(result).toBe("'00123'");
-				});
-
-				it('should return numeric string as number in v1.1', () => {
-					expect(getValue('0', 1.1)).toBe(0);
-					expect(getValue('123', 1.1)).toBe(123);
-					expect(getValue('123.45', 1.1)).toBe(123.45);
-					expect(getValue('-5', 1.1)).toBe(-5);
-				});
-
-				it('should still quote strings with leading zeros in v1.1', () => {
-					expect(getValue('00123', 1.1)).toBe("'00123'");
+				it('should preserve leading zeros as quoted strings', () => {
+					expect(getValue('00123')).toBe("'00123'");
 				});
 
 				it('should return ISO datetime strings as-is', () => {
 					const value = '2025-01-01T00:00:00Z';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe(value);
 				});
 
 				it('should return ISO datetime with timezone as-is', () => {
 					const value = '2025-01-01T12:30:00+05:30';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe(value);
 				});
 
 				it('should return ISO datetime with milliseconds as-is', () => {
 					const value = '2025-01-01T12:30:00.123Z';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe(value);
 				});
 
 				it('should return date strings as-is', () => {
 					const value = '2025-01-01';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe(value);
 				});
 
 				it('should handle Salesforce date literal TODAY', () => {
 					const value = 'TODAY';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('TODAY');
 				});
 
 				it('should handle Salesforce date literal YESTERDAY', () => {
 					const value = 'YESTERDAY';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('YESTERDAY');
 				});
 
 				it('should handle Salesforce date literal LAST_N_DAYS', () => {
 					const value = 'LAST_N_DAYS:7';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('LAST_N_DAYS:7');
 				});
 
 				it('should handle Salesforce date literal NEXT_N_WEEKS', () => {
 					const value = 'NEXT_N_WEEKS:4';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('NEXT_N_WEEKS:4');
 				});
 
 				it('should handle Salesforce date literal THIS_QUARTER', () => {
 					const value = 'THIS_QUARTER';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('THIS_QUARTER');
 				});
 
 				it('should be case-insensitive for date literals', () => {
 					const value = 'today';
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('TODAY');
 				});
 
 				it('should handle null values', () => {
 					const value = null;
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('null');
 				});
 
 				it('should handle undefined values', () => {
 					const value = undefined;
-					const result = getValue(value, 1);
+					const result = getValue(value);
 					expect(result).toBe('null');
 				});
 
 				it('should throw error for non-finite numbers', () => {
-					expect(() => getValue(Infinity, 1)).toThrow(
+					expect(() => getValue(Infinity)).toThrow(
 						'Invalid numeric value: must be a finite number',
 					);
-					expect(() => getValue(-Infinity, 1)).toThrow(
+					expect(() => getValue(-Infinity)).toThrow(
 						'Invalid numeric value: must be a finite number',
 					);
-					expect(() => getValue(NaN, 1)).toThrow('Invalid numeric value: must be a finite number');
+					expect(() => getValue(NaN)).toThrow('Invalid numeric value: must be a finite number');
 				});
 
 				it('should handle arrays with string values safely', () => {
 					const values = ['Value1', "Value's2", 'Value3'];
-					const result = getValue(values, 1) as string;
+					const result = getValue(values) as string;
 					expect(result).toBe("('Value1','Value\\'s2','Value3')");
 				});
 
 				it('should prevent SOQL injection in array values', () => {
 					const maliciousArray = ["Bob' OR '1'='1", 'Normal'];
-					const result = getValue(maliciousArray, 1) as string;
+					const result = getValue(maliciousArray) as string;
 					expect(result).toBe("('Bob\\' OR \\'1\\'=\\'1','Normal')");
 				});
 
 				it('should handle arrays with numbers safely', () => {
 					const values = [1, 2, 3];
-					const result = getValue(values, 1) as string;
+					const result = getValue(values) as string;
 					expect(result).toBe('(1,2,3)');
 				});
 
 				it('should handle arrays with booleans safely', () => {
 					const values = [true, false];
-					const result = getValue(values, 1) as string;
+					const result = getValue(values) as string;
 					expect(result).toBe('(true,false)');
 				});
 
 				it('should handle mixed type arrays safely', () => {
 					const values = [123, "Bob's", true];
-					const result = getValue(values, 1) as string;
+					const result = getValue(values) as string;
 					expect(result).toBe("(123,'Bob\\'s',true)");
 				});
 
 				it('should handle empty array', () => {
 					const values: any[] = [];
-					const result = getValue(values, 1) as string;
+					const result = getValue(values) as string;
 					expect(result).toBe('()');
 				});
 			});
@@ -1445,9 +1433,7 @@ describe('Salesforce -> GenericFunctions', () => {
 						},
 					};
 
-					expect(() => getConditions(options, 1)).toThrow(
-						"Invalid SOQL field name: Name' OR '1'='1",
-					);
+					expect(() => getConditions(options)).toThrow("Invalid SOQL field name: Name' OR '1'='1");
 				});
 
 				it('should validate operators in conditions', () => {
@@ -1457,7 +1443,7 @@ describe('Salesforce -> GenericFunctions', () => {
 						},
 					};
 
-					expect(() => getConditions(options, 1)).toThrow("Invalid SOQL operator: = '1' OR '1'='1");
+					expect(() => getConditions(options)).toThrow("Invalid SOQL operator: = '1' OR '1'='1");
 				});
 
 				it('should escape string values in conditions', () => {
@@ -1467,7 +1453,7 @@ describe('Salesforce -> GenericFunctions', () => {
 						},
 					};
 
-					const result = getConditions(options, 1);
+					const result = getConditions(options);
 					expect(result).toBe("WHERE Name = 'Bob\\'s Account'");
 				});
 
@@ -1478,7 +1464,7 @@ describe('Salesforce -> GenericFunctions', () => {
 						},
 					};
 
-					const result = getConditions(options, 1);
+					const result = getConditions(options);
 					expect(result).toBe("WHERE Name = 'Bob\\' OR \\'1\\'=\\'1'");
 				});
 
@@ -1492,29 +1478,29 @@ describe('Salesforce -> GenericFunctions', () => {
 						},
 					};
 
-					const result = getConditions(options, 1);
+					const result = getConditions(options);
 					expect(result).toBe("WHERE Name = 'Bob\\'s' AND Email LIKE '%test%'");
 				});
 
-				it('should return numeric string values unquoted in v1.1', () => {
+				it('should return numeric string values unquoted', () => {
 					const options: IDataObject = {
 						conditionsUi: {
 							conditionValues: [{ field: 'AnnualRevenue', operation: '>', value: '0' }],
 						},
 					};
 
-					const result = getConditions(options, 1.1);
+					const result = getConditions(options);
 					expect(result).toBe('WHERE AnnualRevenue > 0');
 				});
 
-				it('should still quote non-numeric strings in v1.1', () => {
+				it('should still quote non-numeric strings', () => {
 					const options: IDataObject = {
 						conditionsUi: {
 							conditionValues: [{ field: 'Name', operation: '=', value: 'Acme' }],
 						},
 					};
 
-					const result = getConditions(options, 1.1);
+					const result = getConditions(options);
 					expect(result).toBe("WHERE Name = 'Acme'");
 				});
 			});
