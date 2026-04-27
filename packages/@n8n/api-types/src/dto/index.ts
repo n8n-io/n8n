@@ -21,6 +21,7 @@ export type {
 export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
 export type {
 	AiGatewayUsageEntry,
+	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
