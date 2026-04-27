@@ -110,13 +110,12 @@ export class CiscoWebex implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const timezone = this.getTimezone();
-		const resource = this.getNodeParameter('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-
 		let responseData;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
+				const resource = this.getNodeParameter('resource', i);
+				const operation = this.getNodeParameter('operation', i);
 				if (resource === 'message') {
 					// **********************************************************************
 					//                                message
