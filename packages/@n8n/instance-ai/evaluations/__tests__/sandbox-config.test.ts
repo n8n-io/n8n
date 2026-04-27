@@ -33,6 +33,7 @@ describe('resolveSandboxConfig', () => {
 				daytonaApiUrl: 'https://app.daytona.io/api',
 				daytonaApiKey: 'dtn_xxx',
 				timeout: 300_000,
+				createTimeoutSeconds: 900,
 			});
 		});
 
@@ -47,6 +48,29 @@ describe('resolveSandboxConfig', () => {
 			if (!config.enabled || config.provider !== 'daytona') throw new Error('expected daytona');
 			expect(config.image).toBe('custom/image:1.0');
 			expect(config.timeout).toBe(600_000);
+			expect(config.createTimeoutSeconds).toBe(900);
+		});
+
+		it('honors a custom createTimeoutSeconds env override', () => {
+			const env = baseEnv({
+				DAYTONA_API_URL: 'https://app.daytona.io/api',
+				DAYTONA_API_KEY: 'dtn_xxx',
+				N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS: '1800',
+			});
+			const config = resolveSandboxConfig(env, { sandbox: true });
+			if (!config.enabled || config.provider !== 'daytona') throw new Error('expected daytona');
+			expect(config.createTimeoutSeconds).toBe(1800);
+		});
+
+		it('rejects a non-integer createTimeoutSeconds', () => {
+			const env = baseEnv({
+				DAYTONA_API_URL: 'https://app.daytona.io/api',
+				DAYTONA_API_KEY: 'dtn_xxx',
+				N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS: 'not-a-number',
+			});
+			expect(() => resolveSandboxConfig(env, { sandbox: true })).toThrow(
+				/N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS/,
+			);
 		});
 
 		it('throws a clear error when DAYTONA_API_KEY is missing', () => {

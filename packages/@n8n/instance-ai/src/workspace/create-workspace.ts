@@ -22,6 +22,13 @@ interface DaytonaSandboxConfig extends SandboxConfigBase {
 	daytonaApiUrl?: string;
 	daytonaApiKey?: string;
 	image?: string;
+	/**
+	 * Seconds to wait for `daytona.create()` (image build + container boot).
+	 * Cold image builds can exceed the SDK default; bump this in environments
+	 * where the image has not been pre-warmed. Defaults to 300 in the factory
+	 * to preserve existing behavior when unset.
+	 */
+	createTimeoutSeconds?: number;
 	/** When provided, called before each Daytona interaction to get a fresh auth token (e.g. a short-lived JWT for proxy mode). */
 	getAuthToken?: () => Promise<string>;
 }

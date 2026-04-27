@@ -164,6 +164,7 @@ export class BuilderSandboxFactory {
 		const image = this.imageManager.ensureImage();
 
 		// Start sandbox creation AND catalog generation in parallel
+		const createTimeoutSeconds = config.createTimeoutSeconds ?? 300;
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
 			return await daytona.create(
@@ -173,7 +174,7 @@ export class BuilderSandboxFactory {
 					ephemeral: true,
 					labels: { 'n8n-builder': builderId },
 				},
-				{ timeout: 300 },
+				{ timeout: createTimeoutSeconds },
 			);
 		};
 

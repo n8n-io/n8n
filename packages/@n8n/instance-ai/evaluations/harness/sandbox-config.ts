@@ -13,6 +13,12 @@
 import type { SandboxConfig, SandboxProvider } from '../../src/workspace/create-workspace';
 
 const DEFAULT_TIMEOUT_MS = 300_000;
+/**
+ * Default cold-build window for Daytona's first sandbox provisioning. The
+ * image runs `npm install @n8n/workflow-sdk` which routinely takes longer
+ * than the SDK's 300s default; 900s avoids spurious eval-run failures.
+ */
+const DEFAULT_DAYTONA_CREATE_TIMEOUT_SECONDS = 900;
 const VALID_PROVIDERS: SandboxProvider[] = ['daytona', 'local', 'n8n-sandbox'];
 
 export interface ResolveSandboxOptions {
@@ -51,12 +57,18 @@ export function resolveSandboxConfig(
 			);
 		}
 		const image = env.N8N_INSTANCE_AI_SANDBOX_IMAGE;
+		const createTimeoutSeconds =
+			parsePositiveInt(
+				env.N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS,
+				'N8N_INSTANCE_AI_SANDBOX_CREATE_TIMEOUT_SECONDS',
+			) ?? DEFAULT_DAYTONA_CREATE_TIMEOUT_SECONDS;
 		return {
 			enabled: true,
 			provider: 'daytona',
 			daytonaApiUrl,
 			daytonaApiKey,
 			timeout,
+			createTimeoutSeconds,
 			...(image ? { image } : {}),
 		};
 	}
@@ -88,6 +100,15 @@ function parseTimeout(raw: string | undefined): number | undefined {
 		throw new Error(
 			`N8N_INSTANCE_AI_SANDBOX_TIMEOUT must be a positive number of ms, got "${raw}".`,
 		);
+	}
+	return n;
+}
+
+function parsePositiveInt(raw: string | undefined, varName: string): number | undefined {
+	if (raw === undefined || raw === '') return undefined;
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+		throw new Error(`${varName} must be a positive integer, got "${raw}".`);
 	}
 	return n;
 }
