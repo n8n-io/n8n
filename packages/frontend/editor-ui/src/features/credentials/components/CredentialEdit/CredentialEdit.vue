@@ -637,6 +637,13 @@ function getCredentialProperties(name: string): INodeProperties[] {
 	// The properties defined on the parent credentials take precedence
 	NodeHelpers.mergeNodeProperties(combineProperties, credentialTypeData.properties);
 
+	if (credentialTypeData.__skipHttpRequestDomainRestrictions === true) {
+		return combineProperties.filter(
+			(property) =>
+				property.name !== 'allowedHttpRequestDomains' && property.name !== 'allowedDomains',
+		);
+	}
+
 	return combineProperties;
 }
 

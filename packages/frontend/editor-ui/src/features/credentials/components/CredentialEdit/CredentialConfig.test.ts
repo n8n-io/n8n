@@ -523,6 +523,39 @@ describe('CredentialConfig', () => {
 			expect(screen.queryByTestId('copy-input')).not.toBeInTheDocument();
 		});
 
+		it('should not show redirect URL when the credential hides the OAuth callback URL', () => {
+			renderComponent({
+				pinia: createTestingPinia({
+					initialState: {
+						[STORES.SETTINGS]: {
+							settings: { enterprise: { sharing: false, externalSecrets: false } },
+						},
+						[STORES.ROOT]: {
+							oauthCallbackUrls: { oauth2: 'https://example.com/callback' },
+						},
+					},
+				}),
+				props: {
+					isManaged: false,
+					mode: 'new',
+					credentialType: {
+						...mockCredentialType,
+						name: 'openAiOAuth2Api',
+						extends: ['oAuth2Api'],
+						__hideOAuthRedirectUrl: true,
+					},
+					credentialProperties: [],
+					credentialData: {} as ICredentialDataDecryptedObject,
+					isOAuthType: true,
+					managedOauthAvailable: false,
+					useCustomOauth: false,
+					credentialPermissions: writePermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('copy-input')).not.toBeInTheDocument();
+		});
+
 		it('should not show redirect URL for non-OAuth credentials', () => {
 			renderComponent({
 				props: {

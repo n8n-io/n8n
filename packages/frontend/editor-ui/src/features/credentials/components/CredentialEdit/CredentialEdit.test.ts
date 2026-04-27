@@ -284,6 +284,94 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByTestId('credential-save-button')).toBeInTheDocument());
 	});
 
+	test('does not inherit HTTP Request domain restriction fields when credential skips them', async () => {
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalsById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: {
+							sharing: true,
+							externalSecrets: false,
+						},
+						templates: {
+							host: '',
+						},
+					},
+				},
+				[STORES.PROJECTS]: {
+					personalProject: {
+						id: 'personal-project',
+						type: 'personal',
+						scopes: ['credential:create', 'credential:read'],
+					},
+				},
+			},
+		});
+
+		const credStore = useCredentialsStore(pinia);
+		credStore.state.credentialTypes = {
+			oAuth2Api: {
+				...oAuth2Api,
+				properties: [
+					...oAuth2Api.properties,
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'options',
+						options: [
+							{ name: 'All', value: 'all' },
+							{ name: 'Specific Domains', value: 'domains' },
+						],
+						default: 'all',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'string',
+						default: '',
+					},
+				],
+			},
+			openAiOAuth2Api: {
+				name: 'openAiOAuth2Api',
+				extends: ['oAuth2Api'],
+				displayName: 'OpenAI Account (ChatGPT)',
+				__skipHttpRequestDomainRestrictions: true,
+				properties: [
+					{
+						displayName:
+							'Use this credential to connect your ChatGPT/OpenAI account with device-code login. n8n will save the OAuth token automatically.',
+						name: 'notice',
+						type: 'notice',
+						default: '',
+					},
+				],
+			},
+		};
+
+		const { queryByText } = renderComponent({
+			props: {
+				activeId: 'openAiOAuth2Api',
+				modalName: CREDENTIAL_EDIT_MODAL_KEY,
+				mode: 'new',
+			},
+			pinia,
+		});
+
+		await retry(() =>
+			expect(
+				queryByText('Use this credential to connect your ChatGPT/OpenAI account', { exact: false }),
+			).toBeInTheDocument(),
+		);
+		expect(queryByText('Allowed HTTP Request Domains')).not.toBeInTheDocument();
+		expect(queryByText('Allowed Domains')).not.toBeInTheDocument();
+	});
+
 	test('hides the save button when credentialId exists and there are no unsaved changes', async () => {
 		const { queryByTestId } = renderComponent({
 			props: {
