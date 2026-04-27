@@ -211,7 +211,10 @@ export class AiGatewayService {
 		context: { executionId?: string; workflowId?: string },
 	): string {
 		if (context.executionId && context.workflowId) {
-			const providerSuffix = gatewayPath.replace(AiGatewayService.GATEWAY_PATH_PREFIX, '');
+			if (!gatewayPath.startsWith(AiGatewayService.GATEWAY_PATH_PREFIX)) {
+				return `${baseUrl}${gatewayPath}`;
+			}
+			const providerSuffix = gatewayPath.slice(AiGatewayService.GATEWAY_PATH_PREFIX.length);
 			return `${baseUrl}${AiGatewayService.GATEWAY_PATH_PREFIX}/exec/${encodeURIComponent(context.executionId)}/${encodeURIComponent(context.workflowId)}${providerSuffix}`;
 		}
 		return `${baseUrl}${gatewayPath}`;

@@ -110,13 +110,15 @@ function rowId(row: AiGatewayUsageEntry, index: number): string {
 }
 
 function rowExecutionId(row: AiGatewayUsageEntry): string | undefined {
-	const value = row.metadata?.executionId;
-	return typeof value === 'string' ? value : undefined;
+	return row.metadata?.executionId;
 }
 
 function rowWorkflowId(row: AiGatewayUsageEntry): string | undefined {
-	const value = row.metadata?.workflowId;
-	return typeof value === 'string' ? value : undefined;
+	return row.metadata?.workflowId;
+}
+
+function isRowClickable(row: AiGatewayUsageEntry): boolean {
+	return Boolean(rowExecutionId(row) && rowWorkflowId(row));
 }
 
 function onRowClick(row: AiGatewayUsageEntry): void {
@@ -229,15 +231,12 @@ onMounted(async () => {
 					:items-length="entries.length"
 					:loading="isLoading && isAppending"
 					:item-value="rowId"
-					:row-props="
-						(row) =>
-							rowExecutionId(row) && rowWorkflowId(row) ? { class: $style.clickableRow } : {}
-					"
+					:row-props="(row) => (isRowClickable(row) ? { class: $style.clickableRow } : {})"
 					@click:row="(_, { item }) => onRowClick(item)"
 				>
 					<template #[`item.timestamp`]="{ item }">
 						<N8nTooltip
-							v-if="rowExecutionId(item)"
+							v-if="isRowClickable(item)"
 							:content="i18n.baseText('settings.n8nConnect.usage.openExecution')"
 						>
 							<span>{{ formatDate(item.timestamp) }}</span>
