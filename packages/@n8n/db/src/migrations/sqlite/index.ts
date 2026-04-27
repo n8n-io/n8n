@@ -158,6 +158,8 @@ import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-Cre
 import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
 import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
 import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
+import { AddSettingsToWorkflowHistory1777300000000 } from '../common/1777300000000-AddSettingsToWorkflowHistory';
+import { MakeExecutionDataWorkflowDataNullable1777400000000 } from '../common/1777400000000-MakeExecutionDataWorkflowDataNullable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -321,6 +323,8 @@ const sqliteMigrations: Migration[] = [
 	CreateDeploymentKeyTable1777000000000,
 	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
 	MoveWorkflowVersionIdToExecutionEntity1777200000000,
+	AddSettingsToWorkflowHistory1777300000000,
+	MakeExecutionDataWorkflowDataNullable1777400000000,
 ];
 
 export { sqliteMigrations };

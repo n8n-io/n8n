@@ -108,6 +108,7 @@ export class WorkflowHistoryService {
 			versionId: string;
 			nodes: IWorkflowBase['nodes'];
 			connections: IWorkflowBase['connections'];
+			settings?: IWorkflowBase['settings'];
 		},
 		workflowId: string,
 		autosaved = false,
@@ -130,6 +131,7 @@ export class WorkflowHistoryService {
 				authors,
 				connections: workflow.connections,
 				nodes: workflow.nodes,
+				settings: workflow.settings,
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved,

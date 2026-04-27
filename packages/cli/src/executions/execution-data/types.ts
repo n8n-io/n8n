@@ -16,7 +16,7 @@ export type WorkflowSnapshot = Pick<
 
 export type ExecutionDataPayload = {
 	data: string;
-	workflowData: WorkflowSnapshot;
+	workflowData: WorkflowSnapshot | null;
 };
 
 export type ExecutionDataBundle = ExecutionDataPayload & {

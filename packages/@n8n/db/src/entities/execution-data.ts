@@ -16,13 +16,17 @@ export class ExecutionData {
 	// This is because manual executions of unsaved workflows have no workflow id
 	// and IWorkflowDb has it as a mandatory field. IWorkflowBase reflects the correct
 	// data structure for this entity.
+	//
+	// Nullable because executions of saved workflows now reference workflow_history via
+	// ExecutionEntity.workflowVersionId. Only unsaved-workflow runs and pre-cutover rows
+	// carry the snapshot.
 	/**
 	 * Workaround: Pindata causes TS errors from excessively deep type instantiation
 	 * due to `INodeExecutionData`, so we use a simplified version so `QueryDeepPartialEntity`
 	 * can resolve and calls to `update`, `insert`, and `insert` pass typechecking.
 	 */
-	@JsonColumn()
-	workflowData: Omit<IWorkflowBase, 'pinData'> & { pinData?: ISimplifiedPinData };
+	@JsonColumn({ nullable: true })
+	workflowData: (Omit<IWorkflowBase, 'pinData'> & { pinData?: ISimplifiedPinData }) | null;
 
 	@PrimaryColumn({ transformer: idStringifier })
 	executionId: string;

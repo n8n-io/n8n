@@ -447,7 +447,10 @@ export class WorkflowService {
 		if (saveNewVersion) {
 			await this.workflowHistoryService.saveVersion(
 				user,
-				workflowUpdateData,
+				{
+					...workflowUpdateData,
+					settings: workflowUpdateData.settings ?? workflow.settings,
+				},
 				workflowId,
 				autosaved,
 			);

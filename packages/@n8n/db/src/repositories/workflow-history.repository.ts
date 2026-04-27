@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
 import { DiffMetaData, DiffRule, groupWorkflows, SKIP_RULES } from 'n8n-workflow';
 
-import { WorkflowHistory, WorkflowEntity } from '../entities';
+import { ExecutionEntity, WorkflowHistory, WorkflowEntity } from '../entities';
 import { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 
 @Service()
@@ -39,13 +39,22 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 			.where('w.activeVersionId IS NOT NULL')
 			.getQuery();
 
+		const referencedVersionIdsSubquery = this.manager
+			.createQueryBuilder()
+			.subQuery()
+			.select('e.workflowVersionId')
+			.from(ExecutionEntity, 'e')
+			.where('e.workflowVersionId IS NOT NULL')
+			.getQuery();
+
 		const query = this.manager
 			.createQueryBuilder()
 			.delete()
 			.from(WorkflowHistory)
 			.where('createdAt < :date', { date })
 			.andWhere(`versionId NOT IN (${currentVersionIdsSubquery})`)
-			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`);
+			.andWhere(`versionId NOT IN (${activeVersionIdsSubquery})`)
+			.andWhere(`versionId NOT IN (${referencedVersionIdsSubquery})`);
 
 		if (preserveNamedVersions) {
 			query.andWhere('name IS NULL');
@@ -57,6 +66,21 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 	private makeSkipActiveAndNamedVersionsRule(activeVersions: Set<string>) {
 		return (prev: WorkflowHistory, _next: WorkflowHistory): boolean =>
 			prev.name !== null || prev.description !== null || activeVersions.has(prev.versionId);
+	}
+
+	private makeSkipReferencedByExecutionsRule(referencedVersions: Set<string>) {
+		return (prev: WorkflowHistory, _next: WorkflowHistory): boolean =>
+			referencedVersions.has(prev.versionId);
+	}
+
+	private async getVersionIdsReferencedByExecutions(workflowId: string): Promise<Set<string>> {
+		const rows = await this.manager
+			.createQueryBuilder(ExecutionEntity, 'e')
+			.select('DISTINCT e.workflowVersionId', 'workflowVersionId')
+			.where('e.workflowId = :workflowId', { workflowId })
+			.andWhere('e.workflowVersionId IS NOT NULL')
+			.getRawMany<{ workflowVersionId: string }>();
+		return new Set(rows.map((r) => r.workflowVersionId));
 	}
 
 	async getWorkflowIdsInRange(startDate: Date, endDate: Date) {
@@ -102,6 +126,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 		// Group by workflowId
 		const publishedVersions =
 			await this.workflowPublishHistoryRepository.getPublishedVersions(workflowId);
+		const referencedVersions = await this.getVersionIdsReferencedByExecutions(workflowId);
 		const grouped = groupWorkflows<WorkflowHistory>(
 			workflows,
 			rules,
@@ -109,6 +134,7 @@ export class WorkflowHistoryRepository extends Repository<WorkflowHistory> {
 				this.makeSkipActiveAndNamedVersionsRule(
 					new Set(publishedVersions.map((x) => x.versionId).filter((x) => x !== null)),
 				),
+				this.makeSkipReferencedByExecutionsRule(referencedVersions),
 				SKIP_RULES.skipDifferentUsers,
 				...skipRules,
 			],

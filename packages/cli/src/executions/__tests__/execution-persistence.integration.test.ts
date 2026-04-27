@@ -18,7 +18,7 @@ describe('ExecutionPersistence', () => {
 	});
 
 	describe('create', () => {
-		it('should save execution and execution data to database', async () => {
+		it('should record versionId on the execution and skip the workflowData snapshot for saved workflows', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
 			const executionPersistence = Container.get(ExecutionPersistence);
 			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
@@ -47,14 +47,42 @@ describe('ExecutionPersistence', () => {
 
 			const executionDataRepository = Container.get(ExecutionDataRepository);
 			const executionData = await executionDataRepository.findOneBy({ executionId });
-			expect(executionData?.workflowData).toEqual({
-				id: workflow.id,
-				connections: workflow.connections,
-				nodes: workflow.nodes,
-				name: workflow.name,
-				settings: workflow.settings,
-			});
+			expect(executionData?.workflowData).toBeNull();
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
+		});
+
+		it('should write the snapshot when the executed workflow has no versionId', async () => {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+
+			// Simulate a code path where workflowData carries no versionId (e.g. an
+			// in-memory representation that hasn't been hydrated from the DB).
+			const workflowDataWithoutVersionId = { ...workflow, versionId: undefined };
+
+			const executionId = await executionPersistence.create({
+				workflowId: workflow.id,
+				data: {
+					// @ts-expect-error Partial data for test
+					resultData: {},
+				},
+				workflowData: workflowDataWithoutVersionId as typeof workflow,
+				mode: 'manual',
+				startedAt: new Date(),
+				status: 'new',
+				finished: false,
+			});
+
+			const executionEntity = await Container.get(ExecutionRepository).findOneBy({
+				id: executionId,
+			});
+			expect(executionEntity?.workflowVersionId).toBeNull();
+
+			const executionData = await Container.get(ExecutionDataRepository).findOneBy({
+				executionId,
+			});
+			expect(executionData?.workflowData).toEqual(
+				expect.objectContaining({ id: workflow.id, nodes: workflow.nodes }),
+			);
 		});
 	});
 });

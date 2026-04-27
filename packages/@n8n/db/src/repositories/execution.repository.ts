@@ -175,32 +175,48 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 */
 	private async fetchWorkflowHistoryByVersionIds(
 		versionIds: string[],
-	): Promise<Map<string, Pick<WorkflowHistory, 'nodes' | 'connections' | 'name'>>> {
+	): Promise<Map<string, Pick<WorkflowHistory, 'nodes' | 'connections' | 'name' | 'settings'>>> {
 		const uniqueIds = Array.from(new Set(versionIds));
 		if (uniqueIds.length === 0) return new Map();
 
 		const rows = await this.workflowHistoryRepository.find({
 			where: { versionId: In(uniqueIds) },
-			select: ['versionId', 'nodes', 'connections', 'name'],
+			select: ['versionId', 'nodes', 'connections', 'name', 'settings'],
 		});
 
 		return new Map(
 			rows.map((row) => [
 				row.versionId,
-				{ nodes: row.nodes, connections: row.connections, name: row.name },
+				{
+					nodes: row.nodes,
+					connections: row.connections,
+					name: row.name,
+					settings: row.settings,
+				},
 			]),
 		);
 	}
 
-	private applyWorkflowHistoryHydration<T>(
-		snapshot: T,
-		historyRow: Pick<WorkflowHistory, 'nodes' | 'connections' | 'name'>,
-	): T {
+	private applyWorkflowHistoryHydration(
+		snapshot: ExecutionData['workflowData'],
+		historyRow: Pick<WorkflowHistory, 'nodes' | 'connections' | 'name' | 'settings'>,
+		workflowId: string | null,
+	): NonNullable<ExecutionData['workflowData']> {
+		const fallback = {
+			id: workflowId ?? '',
+			name: '',
+			nodes: [],
+			connections: {},
+			active: false,
+			isArchived: false,
+		} as unknown as NonNullable<ExecutionData['workflowData']>;
+		const base = snapshot ?? fallback;
 		return {
-			...snapshot,
+			...base,
 			nodes: historyRow.nodes,
 			connections: historyRow.connections,
 			...(historyRow.name !== null ? { name: historyRow.name } : {}),
+			...(historyRow.settings !== undefined ? { settings: historyRow.settings } : {}),
 		};
 	}
 
@@ -268,7 +284,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 					? historyByVersion.get(execution.workflowVersionId)
 					: undefined;
 				const workflowData = historyRow
-					? this.applyWorkflowHistoryHydration(executionData.workflowData, historyRow)
+					? this.applyWorkflowHistoryHydration(
+							executionData.workflowData,
+							historyRow,
+							execution.workflowId,
+						)
 					: executionData.workflowData;
 				return {
 					...rest,
@@ -371,7 +391,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			this.errorReporter.error('Found successful execution where data is empty stringified array', {
 				extra: {
 					executionId: execution.id,
-					workflowId: executionData?.workflowData.id,
+					workflowId: executionData?.workflowData?.id,
 				},
 			});
 		}
@@ -395,7 +415,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			? historyByVersion?.get(execution.workflowVersionId)
 			: undefined;
 		const workflowData = historyRow
-			? this.applyWorkflowHistoryHydration(executionData.workflowData, historyRow)
+			? this.applyWorkflowHistoryHydration(
+					executionData.workflowData,
+					historyRow,
+					execution.workflowId,
+				)
 			: executionData.workflowData;
 		return {
 			...rest,

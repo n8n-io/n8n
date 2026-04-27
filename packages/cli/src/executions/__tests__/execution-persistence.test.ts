@@ -76,7 +76,7 @@ describe('ExecutionPersistence', () => {
 		describe('database mode', () => {
 			const executionPersistence = createPersistenceService('db');
 
-			it('should create execution with `storedAt: db` and insert data via transaction', async () => {
+			it('should write null workflowData for versioned executions and let workflow_history serve as the source', async () => {
 				const mockTx = createMockTransaction();
 				executionRepository.manager.transaction = createMockTx(mockTx);
 
@@ -99,17 +99,47 @@ describe('ExecutionPersistence', () => {
 					ExecutionData,
 					expect.objectContaining({
 						executionId: 'exec-1',
+						workflowData: null,
 					}),
 				);
 				expect(mockTx.insert).toHaveBeenCalledTimes(2);
 				expect(fsStore.write).not.toHaveBeenCalled();
+			});
+
+			it('should write the snapshot for unsaved workflows (no versionId)', async () => {
+				const mockTx = createMockTransaction();
+				executionRepository.manager.transaction = createMockTx(mockTx);
+
+				const unsavedWorkflowData = mock<IWorkflowBase>({
+					id: 'workflow-unsaved',
+					name: 'Unsaved Workflow',
+					nodes: [],
+					connections: {},
+					versionId: undefined,
+				});
+
+				await executionPersistence.create({
+					...createPayload,
+					workflowData: unsavedWorkflowData,
+				});
+
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionEntity,
+					expect.objectContaining({ workflowVersionId: null }),
+				);
+				expect(mockTx.insert).toHaveBeenCalledWith(
+					ExecutionData,
+					expect.objectContaining({
+						workflowData: expect.objectContaining({ id: 'workflow-unsaved' }),
+					}),
+				);
 			});
 		});
 
 		describe('filesystem mode', () => {
 			const executionPersistence = createPersistenceService('fs');
 
-			it('should create execution with `storedAt: fs` and write data to filesystem', async () => {
+			it('should write null workflowData to fs bundle for versioned executions', async () => {
 				const mockTx = mock<EntityManager>();
 				mockTx.insert.mockResolvedValue({
 					identifiers: [{ id: 'exec-2' }],
@@ -129,17 +159,10 @@ describe('ExecutionPersistence', () => {
 					}),
 				);
 				expect(mockTx.insert).toHaveBeenCalledTimes(1);
-				const expectedWorkflowSnapshot = {
-					id: workflowData.id,
-					name: workflowData.name,
-					nodes: workflowData.nodes,
-					connections: workflowData.connections,
-					settings: workflowData.settings,
-				};
 				expect(fsStore.write).toHaveBeenCalledWith(
 					{ workflowId: 'workflow-123', executionId: 'exec-2' },
 					expect.objectContaining({
-						workflowData: expectedWorkflowSnapshot,
+						workflowData: null,
 					}),
 				);
 			});

@@ -5,7 +5,7 @@ import {
 	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
@@ -29,7 +29,12 @@ describe('Workflow History Manager', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
+		await testDb.truncate([
+			'ExecutionEntity',
+			'WorkflowEntity',
+			'WorkflowHistory',
+			'WorkflowPublishHistory',
+		]);
 		jest.clearAllMocks();
 
 		globalConfig.workflowHistory.pruneTime = -1;
@@ -163,6 +168,32 @@ describe('Workflow History Manager', () => {
 		// Other old versions should be deleted
 		const otherVersionIds = workflowVersions.slice(2).map((i) => i.versionId);
 		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
+	});
+
+	test('should not prune versions referenced by an execution', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+
+		const workflow = await createWorkflow();
+		const oldDate = DateTime.now().minus({ days: 2 }).toJSDate();
+		const versions = await createManyWorkflowHistoryItems(workflow.id, 3, oldDate);
+
+		// Reference one of the old versions from an execution row.
+		const referencedVersion = versions[1];
+		await Container.get(ExecutionRepository).insert({
+			workflowId: workflow.id,
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+			finished: true,
+			createdAt: new Date(),
+			workflowVersionId: referencedVersion.versionId,
+		});
+
+		await manager.prune();
+
+		expect(await repo.count({ where: { versionId: referencedVersion.versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: versions[0].versionId } })).toBe(0);
+		expect(await repo.count({ where: { versionId: versions[2].versionId } })).toBe(0);
 	});
 
 	test('should not prune named versions when license feature is enabled', async () => {

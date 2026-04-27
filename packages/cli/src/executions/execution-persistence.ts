@@ -37,11 +37,17 @@ export class ExecutionPersistence {
 	async create(payload: CreateExecutionPayload) {
 		const { data: rawData, workflowData, ...rest } = payload;
 		const { connections, nodes, name, settings, id } = workflowData;
-		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
 		const storedAt = this.storageConfig.modeTag;
 		const workflowVersionId = workflowData.versionId ?? null;
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 		const data = stringify(rawData);
+
+		// Versioned executions resolve their workflowData from `workflow_history` at read
+		// time, so we no longer persist a snapshot for them. Unsaved-workflow runs (no
+		// versionId) still need the snapshot since there is no history row to fall back to.
+		const workflowSnapshot: WorkflowSnapshot | null = workflowVersionId
+			? null
+			: { connections, nodes, name, settings, id };
 
 		return await this.executionRepository.manager.transaction(async (tx) => {
 			const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
