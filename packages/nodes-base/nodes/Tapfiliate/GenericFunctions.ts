@@ -66,7 +66,7 @@ export async function tapfiliateApiRequestAllItems(
 		});
 		returnData.push.apply(returnData, responseData.body as IDataObject[]);
 		query.page++;
-	} while (responseData.headers.link.includes('next'));
+	} while (responseData.headers.link?.includes('next'));
 
 	return returnData;
 }
