@@ -3,7 +3,7 @@ import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
-import { getToolIcon, useToolLabel } from '../toolLabels';
+import { useToolLabel } from '../toolLabels';
 import DataSection from './DataSection.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
 import ToolResultJson from './ToolResultJson.vue';
