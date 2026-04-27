@@ -163,6 +163,7 @@ describe('GlobalConfig', () => {
 				logBaseName: 'n8nEventLog',
 				maxFileSizeInKB: 10240,
 				maxMessagesPerParse: 10_000,
+				maxTotalMessagesPerFile: 500_000,
 			},
 		},
 		externalHooks: {
@@ -254,6 +255,9 @@ describe('GlobalConfig', () => {
 				prefix: 'cache',
 				ttl: 3600000,
 			},
+		},
+		chatTrigger: {
+			disablePublicChat: false,
 		},
 		chatHub: {
 			executionContextTtl: 3600,
@@ -473,6 +477,10 @@ describe('GlobalConfig', () => {
 			allowedHostnames: [],
 			dnsCacheMaxSize: 1024 * 1024,
 		},
+		httpRequest: {
+			enforceGlobalUserAgent: false,
+			globalUserAgentValue: '',
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -498,6 +506,10 @@ describe('GlobalConfig', () => {
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
 			bridgeMemoryLimit: 128,
+			observabilityEnabled: true,
+			tracesEnabled: true,
+			slowEvaluationThresholdMs: 50,
+			tracesSampleRate: 0.0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -520,6 +532,8 @@ describe('GlobalConfig', () => {
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
+			logStreamingManagedByEnv: false,
+			logStreamingDestinations: '',
 		},
 	} satisfies GlobalConfigShape;
 
@@ -547,6 +561,8 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 			N8N_PASSWORD_MIN_LENGTH: '12',
+			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
+			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -589,6 +605,10 @@ describe('GlobalConfig', () => {
 				password: {
 					minLength: 12,
 				},
+			},
+			httpRequest: {
+				enforceGlobalUserAgent: true,
+				globalUserAgentValue: 'AcmeCorp/1.0',
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();

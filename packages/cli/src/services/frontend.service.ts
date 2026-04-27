@@ -270,6 +270,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			logStreaming: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.logStreamingManagedByEnv,
+			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
@@ -378,6 +381,9 @@ export class FrontendService {
 			},
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
+			},
+			chatTrigger: {
+				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
 			},
 			easyAIWorkflowOnboarded: false,
 			folders: {

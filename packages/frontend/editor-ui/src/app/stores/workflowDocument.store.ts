@@ -32,9 +32,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import type { IWorkflowDb } from '@/Interface';
+import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
-import type { IPinData } from 'n8n-workflow';
+import type { IWorkflowDb } from '@/Interface';
+import type { INode, IPinData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 
 export {
 	getPinDataSize,
@@ -195,6 +198,36 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentPinData.setPinData({});
 		}
 
+		function serialize(): WorkflowData {
+			const nodes: INode[] = workflowDocumentNodes.allNodes.value.map((node) =>
+				serializeNode(nodeTypesStore, node),
+			);
+
+			// Deep-copy connections to create an in-time snapshot consistent with nodes.
+			// Without this, connections is a reference to the reactive store object, so
+			// mutations between now and request serialization can include connections to
+			// nodes not present in the nodes snapshot, violating a BE invariant.
+			const connections = deepCopy(workflowDocumentConnections.connectionsBySourceNode.value);
+
+			const data: WorkflowData = {
+				name: workflowDocumentName.name.value,
+				nodes,
+				pinData: workflowDocumentPinData.getPinDataSnapshot() as IPinData,
+				connections,
+				active: workflowDocumentActive.active.value,
+				settings: workflowDocumentSettings.settings.value,
+				tags: [...workflowDocumentTags.tags.value],
+				versionId: workflowDocumentVersionData.versionId.value,
+				meta: workflowDocumentMeta.meta.value,
+			};
+
+			if (workflowId) {
+				data.id = workflowId;
+			}
+
+			return data;
+		}
+
 		function hydrate(workflow: IWorkflowDb) {
 			if (workflow.id !== workflowId) {
 				throw new Error(
@@ -326,6 +359,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			hydrate,
 			reset,
 			getSnapshot,
+			serialize,
 		};
 	})();
 }
