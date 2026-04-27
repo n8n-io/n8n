@@ -9,7 +9,7 @@ import Modal from '@/app/components/Modal.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { APP_REGISTRY, type AppDefinition } from '@n8n/agents';
+import { APP_REGISTRY, type AppDefinition } from '@n8n/agents/toolsets';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { AgentJsonAppRef } from '../types';

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
-import { APP_REGISTRY } from '@n8n/agents';
+import { APP_REGISTRY } from '@n8n/agents/toolsets';
 import type { ToolCall } from '../composables/agentChatMessages';
 
 defineProps<{

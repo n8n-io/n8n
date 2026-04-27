@@ -6,6 +6,7 @@ import type {
 	ToolDescriptor,
 } from '@n8n/agents';
 import * as agents from '@n8n/agents';
+import { findAppDefinition } from '@n8n/agents/toolsets';
 import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
@@ -505,7 +506,7 @@ export class AgentsService {
 	): void {
 		if (!apps || apps.length === 0) return;
 		for (const app of apps) {
-			const appDef = agents.findAppDefinition(app.kind);
+			const appDef = findAppDefinition(app.kind);
 			if (!appDef) {
 				this.logger.warn('Skipping unknown app on agent', { kind: app.kind });
 				continue;

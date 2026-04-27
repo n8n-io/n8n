@@ -11,7 +11,7 @@ import {
 	type AppDefinition,
 	type AppOperationStatus,
 	type OperationEntry,
-} from '@n8n/agents';
+} from '@n8n/agents/toolsets';
 import type { AgentJsonAppRef } from '../types';
 import { useCredentialScopes } from '../composables/useCredentialScopes';
 

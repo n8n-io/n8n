@@ -1,11 +1,10 @@
+import { Tool, type BuiltTool } from '@n8n/agents';
 import {
-	Tool,
-	type BuiltTool,
 	buildManifest,
 	buildOperationsFromDescription,
 	type AppDefinition,
 	type OperationEntry,
-} from '@n8n/agents';
+} from '@n8n/agents/toolsets';
 import {
 	generateZodSchema,
 	type FromAIArgument,
