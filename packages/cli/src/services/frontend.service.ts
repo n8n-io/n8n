@@ -379,6 +379,9 @@ export class FrontendService {
 			security: {
 				blockFileAccessToN8nFiles: this.securityConfig.blockFileAccessToN8nFiles,
 			},
+			chatTrigger: {
+				disablePublicChat: this.globalConfig.chatTrigger.disablePublicChat,
+			},
 			easyAIWorkflowOnboarded: false,
 			folders: {
 				enabled: false,
