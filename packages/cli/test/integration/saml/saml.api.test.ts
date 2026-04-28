@@ -783,7 +783,6 @@ describe('SAML SSO provisioning', () => {
 	let roleMappingRuleRepository: RoleMappingRuleRepository;
 	let roleRepository: RoleRepository;
 	let userRepository: UserRepository;
-	let originalEnvFlag: string | undefined;
 	let savedProvisioningConfig: unknown;
 
 	beforeAll(async () => {
@@ -795,9 +794,6 @@ describe('SAML SSO provisioning', () => {
 	});
 
 	beforeEach(() => {
-		originalEnvFlag = process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
-		process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = 'true';
-
 		const provisioningService = Container.get(ProvisioningService);
 		// @ts-expect-error - provisioningConfig is private
 		savedProvisioningConfig = { ...provisioningService.provisioningConfig };
@@ -806,12 +802,6 @@ describe('SAML SSO provisioning', () => {
 	});
 
 	afterEach(async () => {
-		if (originalEnvFlag === undefined) {
-			delete process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
-		} else {
-			process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = originalEnvFlag;
-		}
-
 		const provisioningService = Container.get(ProvisioningService);
 		// @ts-expect-error - provisioningConfig is private
 		provisioningService.provisioningConfig = { ...savedProvisioningConfig };

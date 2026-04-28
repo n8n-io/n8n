@@ -3,7 +3,6 @@ import { logger, printModuleStatus } from './logger';
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
-	port: 7655,
 	allowedOrigins: [],
 	filesystem: { dir: '/test' },
 	computer: { shell: { timeout: 30_000 } },
