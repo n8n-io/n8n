@@ -327,7 +327,6 @@ describe('buildSetupRequests', () => {
 
 		expect(result[0].isAutoApplied).toBe(true);
 		expect(result[0].existingCredentials?.[0].id).toBe('cred-2');
-		expect(result[0].needsAction).toBe(false);
 	});
 
 	it('sets isAutoApplied=false when node already has credential', async () => {
@@ -583,6 +582,7 @@ describe('analyzeWorkflow', () => {
 		const result = await analyzeWorkflow(context, 'wf-1');
 
 		expect(result).toHaveLength(1);
+		expect(result[0].needsAction).toBe(true);
 	});
 
 	it('keeps testable trigger requests even when their credential is already valid', async () => {
