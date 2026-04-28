@@ -1062,6 +1062,7 @@ const hasWebhookTriggerNode = computed(() =>
 const frontendBuilderButtonVisible = computed(
 	() => settingsStore.isModuleActive('frontend-builder') && hasWebhookTriggerNode.value,
 );
+const isWorkflowDocumentActive = computed(() => workflowDocumentStore?.value?.active ?? false);
 
 async function onRunWorkflowToNode(id: string) {
 	const node = workflowDocumentStore?.value?.getNodeById(id);
@@ -1899,6 +1900,8 @@ onBeforeUnmount(() => {
 				/>
 				<CanvasCreateFrontendButton
 					v-if="frontendBuilderButtonVisible"
+					:disabled="!isWorkflowDocumentActive"
+					disabled-reason="Publish the workflow so the generated frontend can call its webhooks."
 					@click="frontendBuilderOpen = true"
 				/>
 			</div>

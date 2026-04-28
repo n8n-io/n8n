@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
-
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { watch } from 'vue';
 
 import { useFrontendBuilder } from '../composables/useFrontendBuilder';
 import FrontendBuilderIframe from './FrontendBuilderIframe.vue';
@@ -20,9 +18,6 @@ async function onClear() {
 	if (!confirmed) return;
 	await clear();
 }
-const workflowDocumentStore = injectWorkflowDocumentStore();
-
-const showActivationWarning = computed(() => workflowDocumentStore?.value?.active === false);
 
 watch(
 	() => props.open,
@@ -51,10 +46,6 @@ watch(
 			</div>
 		</header>
 		<section :class="$style.body">
-			<p v-if="showActivationWarning" :class="$style.warning">
-				This workflow doesn't appear to be published. The generated frontend may not be able to
-				reach your webhooks. Publish the workflow if it isn't already.
-			</p>
 			<FrontendBuilderMessageList :messages="messages" />
 			<p v-if="error" :class="$style.error">{{ error }}</p>
 			<FrontendBuilderIframe :demo-url="demoUrl" :has-messages="messages.length > 0" />
@@ -122,12 +113,5 @@ watch(
 	color: var(--color--danger);
 	padding: 0 var(--spacing--sm);
 	margin: 0 0 var(--spacing--xs);
-}
-.warning {
-	color: var(--color--warning--shade-1);
-	background: var(--color--warning--tint-2);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	margin: 0;
-	font-size: var(--font-size--xs);
 }
 </style>
