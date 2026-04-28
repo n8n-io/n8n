@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { validateWorkflow, ValidationError } from '.';
 import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
 import type { NodeInstance } from '../types/base';
@@ -2608,6 +2611,310 @@ describe('Validation', () => {
 			expect(invalidParamWarnings.some((w) => w.message.includes('This node only accepts'))).toBe(
 				false,
 			);
+		});
+	});
+
+	describe('INVALID_OUTPUT_FOR_MODE validation', () => {
+		// Mock parent provider — agent declares ai_vectorStore as a valid input.
+		// Vector store declares mode-conditional outputs via builderHint.outputs.
+		const vectorStoreInMemoryDescription = {
+			inputs: ['main'],
+			outputs: ['main'],
+			builderHint: {
+				inputs: {
+					ai_embedding: { required: true },
+				},
+				outputs: {
+					main: { displayOptions: { show: { mode: ['insert', 'load', 'update'] } } },
+					ai_vectorStore: { displayOptions: { show: { mode: ['retrieve'] } } },
+					ai_tool: { displayOptions: { show: { mode: ['retrieve-as-tool'] } } },
+				},
+			},
+		};
+
+		const mockNodeTypesProviderWithOutputs = {
+			getByNameAndVersion: (type: string, _version?: number) => {
+				if (type === '@n8n/n8n-nodes-langchain.vectorStoreInMemory') {
+					return { description: vectorStoreInMemoryDescription };
+				}
+				if (type === '@n8n/n8n-nodes-langchain.agent') {
+					return { description: { inputs: ['main'], outputs: ['main'] } };
+				}
+				return { description: { inputs: ['main'], outputs: ['main'] } };
+			},
+			getByName: (type: string) => mockNodeTypesProviderWithOutputs.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		const baseNodes = [
+			{
+				id: 'trigger-1',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			},
+		];
+
+		it('warns when a vector store in retrieve mode emits a main connection', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Retrieve Relevant Regulations',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve', topK: 8 },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format Retrieved Regulations',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Retrieve Relevant Regulations', type: 'main', index: 0 }]],
+					},
+					'Retrieve Relevant Regulations': {
+						main: [[{ node: 'Format Retrieved Regulations', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Retrieve Relevant Regulations');
+			expect(warnings[0].message).toContain('main');
+			expect(warnings[0].message).toContain('retrieve');
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when a vector store in retrieve mode emits ai_vectorStore', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.7,
+						position: [400, 0] as [number, number],
+						parameters: { text: 'hi' },
+					},
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						ai_vectorStore: [[{ node: 'AI Agent', type: 'ai_vectorStore', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('warns when a vector store in retrieve-as-tool mode emits a main connection', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve-as-tool' },
+					},
+					{
+						id: 'next-1',
+						name: 'Next Step',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Vector Store', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						main: [[{ node: 'Next Step', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Vector Store');
+			expect(warnings[0].message).toContain('retrieve-as-tool');
+		});
+
+		it('does not warn for load mode with main connections', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'load' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Vector Store', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('skips validation when no nodeTypesProvider is given', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson);
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('flags the real eval workflow that triggered this validator', () => {
+			// Regression fixture: a real builder-agent output where `Retrieve Relevant Regulations`
+			// (vectorStoreInMemory mode='retrieve') was wired via `main` despite that mode exposing
+			// only `ai_vectorStore`. See packages/@n8n/instance-ai/.output/pairwise eval results.
+			const fixturePath = join(__dirname, '__fixtures__', 'vector-store-retrieve-with-main.json');
+			const workflowJson = JSON.parse(readFileSync(fixturePath, 'utf-8'));
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			const offending = warnings.find((w) => w.nodeName === 'Retrieve Relevant Regulations');
+			expect(offending).toBeDefined();
+			expect(offending?.message).toContain('main');
+			expect(offending?.violationLevel).toBe('major');
+		});
+
+		it('does not warn when mode parameter is an expression that cannot be evaluated', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: '={{ $json.mode }}' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
 		});
 	});
 });
