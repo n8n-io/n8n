@@ -65,27 +65,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return updated;
 	}
 
-	/**
-	 * Patches the local workflow stores (list + active document) so the UI
-	 * reflects the new `availableInMCP` value without waiting for a full list
-	 * re-fetch. Called only after the backend confirms the workflow is in the
-	 * requested state — the bulk endpoint does not return per-workflow
-	 * settings, so the merge happens purely on the client.
-	 *
-	 * Some list entries arrive with `settings: undefined` (legacy workflows
-	 * or sparse API responses). We create a minimal settings object in that
-	 * case so the UI flips instead of silently ignoring the change.
-	 */
 	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
 		const existing = workflowsListStore.workflowsById[workflowId];
 		if (existing) {
 			if (existing.settings) {
 				existing.settings.availableInMCP = availableInMCP;
 			} else {
-				// The DB may store workflows without a full `IWorkflowSettings`
-				// object. `availableInMCP` is the only field we control here, so
-				// we cast — any missing required fields will be filled in on
-				// the next list fetch.
 				existing.settings = { availableInMCP } as IWorkflowSettings;
 			}
 		}
@@ -96,16 +81,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		}
 	}
 
-	/**
-	 * Backwards-compatible single-workflow toggle. Internally hits the bulk
-	 * endpoint with a one-element id list.
-	 *
-	 * The bulk backend may skip workflows (unauthorized, archived, not found)
-	 * — those are legitimate failures. No-op toggles (already in the
-	 * requested state) are reported as updated for idempotency, so we throw
-	 * only when the target id isn't in `updatedIds`. Existing `try/catch`
-	 * blocks in callers then surface a toast.
-	 */
+	// Toggle MCP access for a single workflow
 	async function toggleWorkflowMcpAccess(
 		workflowId: string,
 		availableInMCP: boolean,
@@ -130,10 +106,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	}
 
 	/**
-	 * Bulk-toggle MCP availability, scoped by an id list, a project, or a
-	 * folder (+ descendants). Local stores are patched only for workflows
-	 * that the backend confirmed were updated.
-	 * For project/folder-scoped calls the backend omits `updatedIds`
+	 * Bulk-toggle MCP availability, scoped by an id list, a project,
+	 * or a folder (+ descendants)
 	 */
 	async function toggleWorkflowsMcpAccess(
 		target: ToggleWorkflowsMcpAccessTarget,
