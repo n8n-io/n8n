@@ -37,7 +37,8 @@
 		"eslint.config.mjs",
 		"tsup.config.ts",
 		"jest.config.js",
-		"vitest.config.ts"
+		"vitest.config.ts",
+		"**/*.test.ts"
 	],
 	"rules": {
 		"constructor-super": "error",
@@ -294,7 +295,8 @@
 		{
 			"files": ["**/*.vue"],
 			"rules": {
-				"vue/define-emits-declaration": ["error", "type-literal"]
+				"vue/define-emits-declaration": ["error", "type-literal"],
+				"unused-imports/no-unused-imports": "off"
 			},
 			"globals": {
 				"NodeJS": "writable",
