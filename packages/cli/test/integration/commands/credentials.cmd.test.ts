@@ -101,6 +101,46 @@ test('import:credentials should import a credential from separated files', async
 	});
 });
 
+test('import:credentials should normalize Windows paths', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+	const originalPlatform = process.platform;
+
+	Object.defineProperty(process, 'platform', { value: 'win32' });
+
+	try {
+		await command.run([
+			'--input=.\\test\\integration\\commands\\import-credentials\\credentials.json',
+		]);
+	} finally {
+		Object.defineProperty(process, 'platform', { value: originalPlatform });
+	}
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+});
+
+test('import:credentials should fail when input file does not contain an array', async () => {
+	await expect(
+		command.run(['--input=./test/integration/commands/import-credentials/credentials-object.json']),
+	).rejects.toThrowError(
+		'File does not seem to contain credentials. Make sure the credentials are contained in an array.',
+	);
+});
+
 test('import:credentials should include only selected credential properties', async () => {
 	const owner = await createOwner();
 	const ownerProject = await getPersonalProject(owner);
