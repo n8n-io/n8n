@@ -46,7 +46,6 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 import { EventService } from './events/event.service';
-
 /** Interval between keepalive writes on streaming responses to prevent proxy timeouts */
 const STREAMING_HEARTBEAT_INTERVAL_MS = 30_000;
 

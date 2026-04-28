@@ -22,6 +22,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
+import { ChatTriggerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
@@ -29,6 +31,8 @@ import { createPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
 
 const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
+
+const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
 	displayName: 'Allow File Uploads',
 	name: 'allowFileUploads',
@@ -137,7 +141,10 @@ const commonOptionsFields: INodeProperties[] = [
 		],
 		default: 'notSupported',
 		description: 'If loading messages of a previous session should be enabled',
-		builderHint: { message: "Set to 'memory' to persist conversation history across sessions" },
+		builderHint: {
+			message:
+				"This ONLY rehydrates the chat widget UI when the user reopens it — it does NOT give the Agent memory. The Agent gets memory from its own memory subnode regardless of this setting. Only set to 'memory' if the user wants the widget to restore visible history on reload; if so, you MUST also attach a memory subnode to this trigger (use the same memory node as the Agent so widget history matches what the Agent remembers). Otherwise leave as 'notSupported'.",
+		},
 	},
 	{
 		displayName: 'Require Button Click to Start Chat',
@@ -298,11 +305,13 @@ export class ChatTrigger extends Node {
 					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
 				path: CHAT_TRIGGER_PATH_IDENTIFIER,
 				ndvHideMethod: true,
-				ndvHideUrl: '={{ !$parameter.public }}',
+				ndvHideUrl: isPublicChatTriggerDisabled() ? true : '={{ !$parameter.public }}',
 			},
 		],
 		eventTriggerDescription: 'Waiting for you to submit the chat',
-		activationMessage: 'You can now make calls to your production chat URL.',
+		activationMessage: isPublicChatTriggerDisabled()
+			? 'Public chat is disabled by instance policy.'
+			: 'You can now make calls to your production chat URL.',
 		triggerPanel: false,
 		properties: [
 			/**
@@ -769,7 +778,7 @@ export class ChatTrigger extends Node {
 	async webhook(ctx: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const res = ctx.getResponseObject();
 
-		const isPublic = ctx.getNodeParameter('public', false);
+		const isPublic = isPublicChatTriggerDisabled() ? false : ctx.getNodeParameter('public', false);
 		assertParamIsBoolean('public', isPublic, ctx.getNode());
 
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');

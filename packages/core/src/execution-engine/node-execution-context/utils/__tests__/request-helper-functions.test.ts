@@ -377,11 +377,35 @@ describe('Request Helper Functions', () => {
 				expect.objectContaining({
 					url: 'https://example.com',
 					method: 'POST',
-					headers: { accept: '*/*', 'content-type': 'application/json' },
+					headers: {
+						accept: '*/*',
+						'content-type': 'application/json',
+						'User-Agent': 'n8n',
+					},
 					data: { key: 'value' },
 					maxRedirects: 0,
 				}),
 			);
+		});
+
+		test('should set default User-Agent when none provided', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'n8n' });
+		});
+
+		test('should preserve a caller-supplied User-Agent header', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+				headers: { 'User-Agent': 'MyCustomNode/1.0' },
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'MyCustomNode/1.0' });
+			expect(axiosOptions.headers).not.toMatchObject({ 'User-Agent': 'n8n' });
 		});
 
 		test('should set correct headers for FormData', async () => {

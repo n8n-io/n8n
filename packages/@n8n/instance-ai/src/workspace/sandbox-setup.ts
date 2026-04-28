@@ -26,6 +26,7 @@ import type { Workspace } from '@mastra/core/workspace';
 import { createRequire } from 'node:module';
 
 import type { InstanceAiContext, SearchableNodeDescription } from '../types';
+import { isLinkWorkspaceSdkEnabled } from './pack-workspace-sdk';
 import { runInSandbox, readFileViaSandbox, escapeSingleQuotes } from './sandbox-fs';
 
 const hostRequire = createRequire(__filename);
@@ -77,15 +78,19 @@ const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
  */
 const SANDBOX_TYPES_NODE_VERSION = '24.10.1';
 
-function buildPackageJson(sdkSpecifier: string): string {
+function buildPackageJson(sdkSpecifier: string | null): string {
+	const dependencies: Record<string, string> = {
+		tsx: SANDBOX_TSX_VERSION,
+	};
+	if (sdkSpecifier) {
+		dependencies['@n8n/workflow-sdk'] = sdkSpecifier;
+	}
+
 	return JSON.stringify(
 		{
 			name: 'sandbox-workspace',
 			private: true,
-			dependencies: {
-				'@n8n/workflow-sdk': sdkSpecifier,
-				tsx: SANDBOX_TSX_VERSION,
-			},
+			dependencies,
 			devDependencies: {
 				'@types/node': SANDBOX_TYPES_NODE_VERSION,
 			},
@@ -96,10 +101,18 @@ function buildPackageJson(sdkSpecifier: string): string {
 }
 
 /**
- * Registry-pinned PACKAGE_JSON used for Dockerfile-baked images
- * (Daytona / n8n-sandbox). See `resolveHostDepVersion` for why pinning matters.
+ * PACKAGE_JSON used for Dockerfile-baked images (Daytona / n8n-sandbox).
+ *
+ * Normal mode pins to the host SDK version. See `resolveHostDepVersion` for
+ * why pinning matters.
+ *
+ * Linked-SDK mode intentionally omits @n8n/workflow-sdk from the baked image:
+ * the host SDK may be ahead of npm on master, and the packed workspace tarball
+ * is installed after sandbox creation.
  */
-export const PACKAGE_JSON = buildPackageJson(SANDBOX_SDK_VERSION);
+export const PACKAGE_JSON = buildPackageJson(
+	isLinkWorkspaceSdkEnabled() ? null : SANDBOX_SDK_VERSION,
+);
 
 /**
  * Return the absolute on-disk path of a host-installed package, or `null`

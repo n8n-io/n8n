@@ -59,7 +59,7 @@ describe('useFavoriteNavItems', () => {
 				id: 'favorite-workflow-wf-1',
 				label: 'Workflow 1',
 				icon: 'log-in',
-				route: { to: { name: VIEWS.WORKFLOW, params: { name: 'wf-1' } } },
+				route: { to: { name: VIEWS.WORKFLOW, params: { workflowId: 'wf-1' } } },
 			});
 		});
 
