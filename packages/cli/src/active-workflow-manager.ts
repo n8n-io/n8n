@@ -382,11 +382,13 @@ export class ActiveWorkflowManager {
 					)
 					.catch((error: unknown) => {
 						if (error instanceof DuplicateExecutionError) {
-							this.logger.warn('Scheduled execution skipped: duplicate deduplication key', {
+							const context = {
 								workflowId: workflowData.id,
 								nodeId: node.id,
 								deduplicationKey: error.deduplicationKey,
-							});
+							};
+							this.logger.warn('Scheduled execution skipped: duplicate deduplication key', context);
+							this.errorReporter.warn(error, { extra: context });
 							return undefined;
 						}
 						throw error;
