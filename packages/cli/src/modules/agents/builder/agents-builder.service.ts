@@ -169,6 +169,7 @@ export class AgentsBuilderService {
 
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 
+		// Be careful with provider specific options, since user can change model to openai, grok, etc.
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
