@@ -305,15 +305,16 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	): Promise<T> {
 		const { workflow, node, additionalData, mode, runExecutionData, runIndex } = this;
 
-		// Eval-mode bypass: when executing with LLM mock handler and node has no credentials
-		// configured, return mock credentials built from the credential type's property definitions.
-		// This allows the node to execute (build requests, parse responses) without real credentials.
-		// Triple-gated: evaluation mode + mock handler present + credentials actually missing.
+		// Eval-mode bypass: only mock when the node is fully unconfigured, so
+		// nodes that probe multiple auth types still get production's throw.
 		if (mode === 'evaluation' && additionalData.evalLlmMockHandler && !node.credentials?.[type]) {
-			const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
-			return buildEvalMockCredentials(
-				additionalData.credentialsHelper.getCredentialsProperties(type),
-			) as T;
+			const hasOtherCreds = !!node.credentials && Object.keys(node.credentials).length > 0;
+			if (!hasOtherCreds) {
+				const { buildEvalMockCredentials } = await import('../eval-mock-helpers');
+				return buildEvalMockCredentials(
+					additionalData.credentialsHelper.getCredentialsProperties(type),
+				) as T;
+			}
 		}
 
 		// Get the NodeType as it has the information if the credentials are required

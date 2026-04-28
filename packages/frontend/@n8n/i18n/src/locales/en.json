@@ -1619,6 +1619,7 @@
 	"mainSidebar.showMessage.handleSelect2.title": "Workflow created",
 	"mainSidebar.showMessage.handleSelect3.title": "Workflow created",
 	"mainSidebar.showMessage.handleArchive.title": "Workflow '{workflowName}' archived",
+	"mainSidebar.showMessage.handleArchive.message": "Delete permanently",
 	"mainSidebar.showMessage.handleUnarchive.title": "Workflow '{workflowName}' unarchived",
 	"mainSidebar.showMessage.stopExecution.title": "Execution stopped",
 	"mainSidebar.workflows": "Workflows",

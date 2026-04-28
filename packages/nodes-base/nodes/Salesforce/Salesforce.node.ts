@@ -1468,6 +1468,21 @@ export class Salesforce implements INodeType {
 						if (additionalFields.emailBouncedReason !== undefined) {
 							body.EmailBouncedReason = additionalFields.emailBouncedReason as string;
 						}
+						if (additionalFields.middleName !== undefined) {
+							body.MiddleName = additionalFields.middleName as string;
+						}
+						if (additionalFields.suffix !== undefined) {
+							body.Suffix = additionalFields.suffix as string;
+						}
+						if (additionalFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = additionalFields.hasOptedOutOfEmail as boolean;
+						}
+						if (additionalFields.pronouns !== undefined) {
+							body.Pronouns = additionalFields.pronouns as string;
+						}
+						if (additionalFields.genderIdentity !== undefined) {
+							body.GenderIdentity = additionalFields.genderIdentity as string;
+						}
 						if (additionalFields.customFieldsUi) {
 							const customFields = (additionalFields.customFieldsUi as IDataObject)
 								.customFieldsValues as IDataObject[];
@@ -1597,6 +1612,21 @@ export class Salesforce implements INodeType {
 						}
 						if (updateFields.emailBouncedReason !== undefined) {
 							body.EmailBouncedReason = updateFields.emailBouncedReason as string;
+						}
+						if (updateFields.middleName !== undefined) {
+							body.MiddleName = updateFields.middleName as string;
+						}
+						if (updateFields.suffix !== undefined) {
+							body.Suffix = updateFields.suffix as string;
+						}
+						if (updateFields.hasOptedOutOfEmail !== undefined) {
+							body.HasOptedOutOfEmail = updateFields.hasOptedOutOfEmail as boolean;
+						}
+						if (updateFields.pronouns !== undefined) {
+							body.Pronouns = updateFields.pronouns as string;
+						}
+						if (updateFields.genderIdentity !== undefined) {
+							body.GenderIdentity = updateFields.genderIdentity as string;
 						}
 						if (updateFields.customFieldsUi) {
 							const customFields = (updateFields.customFieldsUi as IDataObject)
