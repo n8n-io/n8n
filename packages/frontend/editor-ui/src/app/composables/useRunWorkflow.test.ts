@@ -85,7 +85,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
 		activeExecutionId: string | null | undefined;
 	} = {
-		allNodes: [],
 		runWorkflow: vi.fn(),
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
