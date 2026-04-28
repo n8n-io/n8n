@@ -4,10 +4,12 @@ import { computed, ref, watch } from 'vue';
 
 import RunsSection from '../components/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '../evaluation.store';
+import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nInputNumber, N8nTooltip } from '@n8n/design-system';
+
 const props = defineProps<{
 	name: string;
 }>();
@@ -16,15 +18,33 @@ const locale = useI18n();
 const toast = useToast();
 
 const evaluationStore = useEvaluationStore();
+const parallelEvalStore = useParallelEvalStore();
 
 const selectedMetric = ref<string>('');
 const cancellingTestRun = ref<boolean>(false);
 
 const runningTestRun = computed(() => runs.value.find((run) => run.status === 'running'));
 
+const parallelEnabledModel = computed({
+	get: () => parallelEvalStore.isParallel(props.name),
+	set: (value: boolean) => parallelEvalStore.setParallel(props.name, value),
+});
+
+const concurrencyModel = computed({
+	get: () => parallelEvalStore.concurrencyValue(props.name),
+	set: (value: number) => parallelEvalStore.setConcurrencyValue(props.name, value),
+});
+
 async function runTest() {
 	try {
-		await evaluationStore.startTestRun(props.name);
+		// When the rollout flag is off, omit `concurrency` entirely so the BE
+		// safety net is a no-op and behaviour matches the legacy sequential
+		// path. Flag-on cohort sends an explicit value derived from the per-
+		// workflow checkbox + input state.
+		const options = parallelEvalStore.isFeatureEnabled
+			? { concurrency: parallelEvalStore.effectiveConcurrency(props.name) }
+			: undefined;
+		await evaluationStore.startTestRun(props.name, options);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
@@ -74,6 +94,36 @@ watch(runningTestRun, (run) => {
 <template>
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
+			<div
+				v-if="parallelEvalStore.isFeatureEnabled && !runningTestRun"
+				:class="$style.parallelControls"
+				data-test-id="parallel-eval-controls"
+			>
+				<N8nCheckbox
+					v-model="parallelEnabledModel"
+					:label="locale.baseText('evaluation.runInParallel.label')"
+					data-test-id="run-in-parallel-checkbox"
+				/>
+				<N8nTooltip placement="top" :content="locale.baseText('evaluation.runInParallel.tooltip')">
+					<N8nIcon
+						icon="circle-help"
+						size="small"
+						:class="$style.tooltipIcon"
+						data-test-id="run-in-parallel-tooltip-icon"
+					/>
+				</N8nTooltip>
+				<span :class="$style.concurrencyLabel">
+					{{ locale.baseText('evaluation.runInParallel.concurrency.label') }}
+				</span>
+				<N8nInputNumber
+					v-model="concurrencyModel"
+					:min="1"
+					:max="10"
+					:disabled="!parallelEnabledModel"
+					size="small"
+					data-test-id="run-in-parallel-concurrency"
+				/>
+			</div>
 			<N8nButton
 				variant="subtle"
 				v-if="runningTestRun"
@@ -140,6 +190,23 @@ watch(runningTestRun, (run) => {
 
 .runOrStopTestButton {
 	white-space: nowrap;
+}
+
+.parallelControls {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-right: var(--spacing--md);
+}
+
+.tooltipIcon {
+	color: var(--color--text--tint-1);
+	cursor: help;
+}
+
+.concurrencyLabel {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
 }
 
 .runs {

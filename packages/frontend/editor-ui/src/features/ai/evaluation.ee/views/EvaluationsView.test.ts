@@ -92,7 +92,15 @@ describe('EvaluationsView', () => {
 
 			await userEvent.click(getByTestId('run-test-button'));
 
-			expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id');
+			// Assert only the workflow id (first arg). The second arg is the
+			// parallel-execution options payload — `undefined` when the
+			// rollout flag is off, an object when it's on — and isn't
+			// what this test is checking.
+			expect(evaluationStore.startTestRun).toHaveBeenCalled();
+			const [firstCallWorkflowId] = (
+				evaluationStore.startTestRun as unknown as ReturnType<typeof vi.fn>
+			).mock.calls[0];
+			expect(firstCallWorkflowId).toBe('workflow-id');
 			expect(evaluationStore.fetchTestRuns).toHaveBeenCalledWith('workflow-id');
 		});
 
