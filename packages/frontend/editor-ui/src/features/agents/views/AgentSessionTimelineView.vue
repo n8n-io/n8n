@@ -222,13 +222,14 @@ function continueChat() {
 				<SessionTimelineTable
 					v-else
 					:items="items"
+					:idle-ranges="idleRanges"
 					:selected-index="selectedIndex"
 					:visible-kinds="selectedFilters"
 					:search-query="searchQuery"
 					@select="(idx) => (selectedIndex = idx)"
 				/>
 			</div>
-			<div :class="$style.detailPanel">
+			<div v-if="selectedItem" :class="$style.detailPanel">
 				<SessionDetailPanel
 					:item="selectedItem"
 					:agent-name="thread?.agentName"
@@ -344,11 +345,13 @@ function continueChat() {
 	flex: 6;
 	overflow-y: auto;
 	padding: var(--spacing--sm) 0;
-	border-right: var(--border);
 }
 .detailPanel {
 	flex: 4;
 	overflow-y: auto;
+	/* Border on the panel boundary when present; if the panel is hidden
+	   (no selection) the table fills the full width without any divider. */
+	border-left: var(--border);
 }
 .loading {
 	padding: var(--spacing--sm);

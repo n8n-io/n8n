@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
+import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import type { FilterOption } from '../session-timeline.types';
@@ -14,6 +15,11 @@ const emit = defineEmits<{ update: [next: Set<string>] }>();
 const i18n = useI18n();
 
 const open = ref(false);
+const rootRef = useTemplateRef<HTMLElement>('rootRef');
+
+onClickOutside(rootRef, () => {
+	open.value = false;
+});
 
 function toggle(key: string, checked: boolean): void {
 	const next = new Set(props.selected);
@@ -28,7 +34,7 @@ function clearAll(): void {
 </script>
 
 <template>
-	<div :class="$style.root">
+	<div ref="rootRef" :class="$style.root">
 		<button
 			type="button"
 			data-test-id="filter-trigger"

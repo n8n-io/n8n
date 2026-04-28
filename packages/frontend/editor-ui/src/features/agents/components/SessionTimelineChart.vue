@@ -268,6 +268,9 @@ function onClick(index: number, item: TimelineItem): void {
 .selected {
 	outline: 2px solid var(--color--warning);
 	outline-offset: 1px;
+	/* Lift above neighbouring idle stripes so the highlight outline doesn't
+	   get covered by the adjacent .idle background. */
+	z-index: 2;
 }
 
 /*

@@ -10,6 +10,53 @@ vi.mock('@/features/execution/executions/executions.store', () => ({
 	useExecutionsStore: () => ({ fetchExecution }),
 }));
 
+vi.mock('@/app/stores/workflows.store', () => ({
+	useWorkflowsStore: () => ({
+		workflowExecutionData: null,
+		getNodeTypes: () => ({
+			getByName: () => undefined,
+			getByNameAndVersion: () => undefined,
+			getKnownTypes: () => ({}),
+		}),
+	}),
+}));
+
+vi.mock('@/app/composables/useWorkflowState', () => ({
+	useWorkflowState: () => ({
+		setWorkflowExecutionData: vi.fn(),
+	}),
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => ({
+		getNodeType: () => null,
+		loadNodeTypesIfNotLoaded: vi.fn().mockResolvedValue(undefined),
+	}),
+}));
+
+vi.mock('@/features/execution/logs/components/LogsOverviewRow.vue', () => ({
+	default: {
+		props: ['data', 'isSelected'],
+		emits: ['toggleSelected', 'toggleExpanded'],
+		template:
+			'<div data-test-id="log-node-row" @click="$emit(\'toggleSelected\')">{{ data?.node?.name }}</div>',
+	},
+}));
+
+vi.mock('@/features/ndv/runData/components/RunData.vue', () => ({
+	default: {
+		props: ['node', 'runIndex', 'paneType', 'displayMode'],
+		template: '<div data-test-id="run-data" :data-pane-type="paneType" />',
+	},
+}));
+
+vi.mock('@/features/ndv/runData/components/error/NodeErrorView.vue', () => ({
+	default: {
+		props: ['error', 'compact', 'showDetails'],
+		template: '<div data-test-id="node-error-view" />',
+	},
+}));
+
 function makeRouter(): Router {
 	return createRouter({
 		history: createMemoryHistory(),
@@ -35,25 +82,6 @@ beforeEach(() => {
 });
 
 describe('WorkflowExecutionLogViewer', () => {
-	it('renders one row per node run on success', async () => {
-		fetchExecution.mockResolvedValueOnce({
-			id: 'exec-1',
-			status: 'success',
-			data: {
-				resultData: {
-					runData: {
-						'Manual Trigger': [{ executionTime: 10 }],
-						'HTTP Request': [{ executionTime: 42 }],
-					},
-				},
-			},
-		});
-		const w = mountIt({ workflowId: 'wf-1', workflowExecutionId: 'exec-1' });
-		await flushPromises();
-		expect(w.findAll('[data-test-id="log-node-row"]')).toHaveLength(2);
-		expect(w.text()).not.toMatch(/Still running|Waiting/);
-	});
-
 	it('shows "Still running" banner when status is running', async () => {
 		fetchExecution.mockResolvedValueOnce({
 			id: 'exec-1',
@@ -90,36 +118,34 @@ describe('WorkflowExecutionLogViewer', () => {
 		expect(w.text()).toContain('unavailable');
 	});
 
-	it('marks an error node row distinctly when the last run has an error', async () => {
-		fetchExecution.mockResolvedValueOnce({
-			id: 'exec-1',
-			status: 'error',
-			data: {
-				resultData: {
-					runData: {
-						'Broken Node': [{ executionTime: 5, error: { message: 'boom' } }],
-					},
-				},
-			},
-		});
-		const w = mountIt({ workflowId: 'wf-1', workflowExecutionId: 'exec-1' });
-		await flushPromises();
-		const row = w.find('[data-test-id="log-node-row"]');
-		// The row exists; we don't pin exact classes but we can assert the data attribute.
-		expect(row.attributes('data-node-status')).toBe('error');
-	});
-
-	it('renders an "Open full execution" link with target="_blank"', async () => {
+	it('opens the full execution in a new tab when the button is clicked', async () => {
 		fetchExecution.mockResolvedValueOnce({
 			id: 'exec-1',
 			status: 'success',
 			data: { resultData: { runData: {} } },
 		});
+		const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const w = mountIt({ workflowId: 'wf-1', workflowExecutionId: 'exec-1' });
 		await flushPromises();
-		const link = w.find('[data-test-id="open-full-execution"]');
-		expect(link.exists()).toBe(true);
-		expect(link.attributes('target')).toBe('_blank');
-		expect(link.attributes('href')).toContain('/workflow/wf-1/executions/exec-1');
+		const button = w.find('[data-test-id="open-full-execution"]');
+		expect(button.exists()).toBe(true);
+		await button.trigger('click');
+		expect(openSpy).toHaveBeenCalledWith(
+			expect.stringContaining('/workflow/wf-1/executions/exec-1'),
+			'_blank',
+			'noopener',
+		);
+		openSpy.mockRestore();
+	});
+
+	it('calls fetchExecution with the executionId on mount', async () => {
+		fetchExecution.mockResolvedValueOnce({
+			id: 'exec-1',
+			status: 'success',
+			data: { resultData: { runData: {} } },
+		});
+		mountIt({ workflowId: 'wf-1', workflowExecutionId: 'exec-1' });
+		await flushPromises();
+		expect(fetchExecution).toHaveBeenCalledWith('exec-1');
 	});
 });

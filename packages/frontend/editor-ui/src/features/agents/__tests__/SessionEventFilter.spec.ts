@@ -14,11 +14,11 @@ const options: FilterOption[] = [
 ];
 
 describe('SessionEventFilter', () => {
-	it('renders a button labeled "Filter"', () => {
+	it('renders a button labeled "Events"', () => {
 		const w = mount(SessionEventFilter, {
 			props: { available: options, selected: new Set<string>() },
 		});
-		expect(w.find('[data-test-id="filter-trigger"]').text()).toContain('Filter');
+		expect(w.find('[data-test-id="filter-trigger"]').text()).toContain('Events');
 	});
 
 	it('shows a count badge when items are selected', () => {
