@@ -2,11 +2,34 @@ import { UnexpectedError } from 'n8n-workflow';
 import nock from 'nock';
 
 const mockAsyncExec = jest.fn();
+const mockAccess = jest.fn();
+
+const isWindowsAbsolutePath = (path: string): boolean => /^[a-zA-Z]:[\\/]/.test(path);
 
 jest.mock('node:child_process', () => ({
 	...jest.requireActual('node:child_process'),
 	execFile: jest.fn(),
 }));
+
+jest.mock('node:fs/promises', () => ({
+	...jest.requireActual('node:fs/promises'),
+	access: jest.fn((...args) => mockAccess(...args)),
+}));
+
+jest.mock('node:path', () => {
+	const actual = jest.requireActual('node:path');
+
+	return {
+		...actual,
+		isAbsolute: jest.fn((path: string) => {
+			if (process.platform === 'win32' && isWindowsAbsolutePath(path)) {
+				return true;
+			}
+
+			return actual.isAbsolute(path);
+		}),
+	};
+});
 
 jest.mock('node:util', () => {
 	const actual = jest.requireActual('node:util');
@@ -21,18 +44,50 @@ jest.mock('node:util', () => {
 	};
 });
 
+import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
+
 import {
 	executeNpmCommand,
 	verifyIntegrity,
 	checkIfVersionExistsOrThrow,
 	executeNpmRequest,
 } from '../npm-utils';
-import { NPM_COMMAND_TOKENS, RESPONSE_ERROR_MESSAGES } from '@/constants';
 
 describe('executeNpmCommand', () => {
+	const originalPlatform = process.platform;
+	const originalExecPath = process.execPath;
+
+	const setProcessPlatform = (value: string) => {
+		Object.defineProperty(process, 'platform', {
+			value,
+			configurable: true,
+		});
+	};
+
+	const setProcessExecPath = (value: string) => {
+		Object.defineProperty(process, 'execPath', {
+			value,
+			configurable: true,
+		});
+	};
+
+	const mockAccessForExistingPaths = (...existingPaths: string[]) => {
+		const existingPathsSet = new Set(existingPaths);
+		mockAccess.mockImplementation(async (path: string) => {
+			if (existingPathsSet.has(path)) {
+				return await Promise.resolve();
+			}
+
+			throw new Error('ENOENT');
+		});
+	};
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockAsyncExec.mockReset();
+		mockAccess.mockReset();
+		setProcessPlatform(originalPlatform);
+		setProcessExecPath(originalExecPath);
 	});
 
 	afterEach(() => {
@@ -386,6 +441,145 @@ describe('executeNpmCommand', () => {
 			const result = await executeNpmCommand(['prune']);
 
 			expect(result).toBe('');
+		});
+	});
+
+	describe('windows npm-cli resolution', () => {
+		const nodeExecPath = 'C:/Program Files/nodejs/node.exe';
+		const nodeDirectory = 'C:/Program Files/nodejs';
+
+		const importFreshModule = async () => {
+			jest.resetModules();
+			return await import('../npm-utils');
+		};
+
+		beforeEach(() => {
+			setProcessPlatform('win32');
+			setProcessExecPath(nodeExecPath);
+		});
+
+		afterEach(() => {
+			setProcessPlatform(originalPlatform);
+			setProcessExecPath(originalExecPath);
+		});
+
+		it('should execute via process.execPath and resolved npm-cli path on Windows', async () => {
+			const npmPrefixScriptPath = `${nodeDirectory}/node_modules/npm/bin/npm-prefix.js`;
+			const globalNpmCliPath = 'C:/Users/test/AppData/Roaming/npm/node_modules/npm/bin/npm-cli.js';
+			mockAccessForExistingPaths(npmPrefixScriptPath, globalNpmCliPath);
+			mockAsyncExec
+				.mockResolvedValueOnce({ stdout: 'C:/Users/test/AppData/Roaming/npm', stderr: '' })
+				.mockResolvedValueOnce({ stdout: 'ok', stderr: '' });
+
+			const { executeNpmCommand: executeNpmCommandFresh } = await importFreshModule();
+			const result = await executeNpmCommandFresh(['install', 'some-package']);
+
+			expect(result).toBe('ok');
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(1, nodeExecPath, [npmPrefixScriptPath]);
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(
+				2,
+				nodeExecPath,
+				[globalNpmCliPath, 'install', 'some-package'],
+				undefined,
+			);
+		});
+
+		it('should prefer prefix-based npm-cli path when both prefix and default are available', async () => {
+			const npmPrefixScriptPath = `${nodeDirectory}/node_modules/npm/bin/npm-prefix.js`;
+			const globalNpmCliPath = 'C:/Users/test/AppData/Roaming/npm/node_modules/npm/bin/npm-cli.js';
+			const defaultNpmCliPath = `${nodeDirectory}/node_modules/npm/bin/npm-cli.js`;
+			mockAccessForExistingPaths(npmPrefixScriptPath, globalNpmCliPath, defaultNpmCliPath);
+			mockAsyncExec
+				.mockResolvedValueOnce({ stdout: 'C:/Users/test/AppData/Roaming/npm', stderr: '' })
+				.mockResolvedValueOnce({ stdout: 'ok', stderr: '' });
+
+			const { executeNpmCommand: executeNpmCommandFresh } = await importFreshModule();
+			await executeNpmCommandFresh(['list']);
+
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(
+				2,
+				nodeExecPath,
+				[globalNpmCliPath, 'list'],
+				undefined,
+			);
+		});
+
+		it('should fall back to default path when prefix script is missing', async () => {
+			const defaultNpmCliPath = `${nodeDirectory}/node_modules/npm/bin/npm-cli.js`;
+			mockAccessForExistingPaths(defaultNpmCliPath);
+
+			mockAsyncExec.mockResolvedValueOnce({ stdout: 'ok', stderr: '' });
+
+			const { executeNpmCommand: executeNpmCommandFresh } = await importFreshModule();
+			await executeNpmCommandFresh(['prune']);
+
+			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
+			expect(mockAsyncExec).toHaveBeenCalledWith(
+				nodeExecPath,
+				[defaultNpmCliPath, 'prune'],
+				undefined,
+			);
+		});
+
+		it('should fall back to default path when prefix script execution fails', async () => {
+			const npmPrefixScriptPath = `${nodeDirectory}/node_modules/npm/bin/npm-prefix.js`;
+			const defaultNpmCliPath = `${nodeDirectory}/node_modules/npm/bin/npm-cli.js`;
+			mockAccessForExistingPaths(npmPrefixScriptPath, defaultNpmCliPath);
+			mockAsyncExec
+				.mockRejectedValueOnce(new Error('prefix failed'))
+				.mockResolvedValueOnce({ stdout: 'ok', stderr: '' });
+
+			const { executeNpmCommand: executeNpmCommandFresh } = await importFreshModule();
+			await executeNpmCommandFresh(['install', 'x']);
+
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(1, nodeExecPath, [npmPrefixScriptPath]);
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(
+				2,
+				nodeExecPath,
+				[defaultNpmCliPath, 'install', 'x'],
+				undefined,
+			);
+		});
+
+		it('should throw when npm-cli cannot be resolved on Windows', async () => {
+			mockAccess.mockRejectedValue(new Error('ENOENT'));
+
+			const { executeNpmCommand: executeNpmCommandFresh } = await importFreshModule();
+
+			await expect(async () => await executeNpmCommandFresh(['install', 'x'])).rejects.toThrow(
+				'Failed to execute npm command',
+			);
+		});
+
+		it('should reuse cached npm-cli path on repeated Windows calls', async () => {
+			const npmPrefixScriptPath = `${nodeDirectory}/node_modules/npm/bin/npm-prefix.js`;
+			const globalNpmCliPath = 'C:/Users/test/AppData/Roaming/npm/node_modules/npm/bin/npm-cli.js';
+			mockAccessForExistingPaths(npmPrefixScriptPath, globalNpmCliPath);
+			mockAsyncExec
+				.mockResolvedValueOnce({ stdout: 'C:/Users/test/AppData/Roaming/npm', stderr: '' })
+				.mockResolvedValueOnce({ stdout: 'first', stderr: '' })
+				.mockResolvedValueOnce({ stdout: 'second', stderr: '' });
+
+			const { executeNpmCommand: executeNpmCommandFresh } = await importFreshModule();
+
+			const first = await executeNpmCommandFresh(['install', 'a']);
+			const second = await executeNpmCommandFresh(['install', 'b']);
+			expect(first).toBe('first');
+			expect(second).toBe('second');
+			expect(mockAsyncExec).toHaveBeenCalledTimes(3);
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(1, nodeExecPath, [npmPrefixScriptPath]);
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(
+				2,
+				nodeExecPath,
+				[globalNpmCliPath, 'install', 'a'],
+				undefined,
+			);
+			expect(mockAsyncExec).toHaveBeenNthCalledWith(
+				3,
+				nodeExecPath,
+				[globalNpmCliPath, 'install', 'b'],
+				undefined,
+			);
 		});
 	});
 });

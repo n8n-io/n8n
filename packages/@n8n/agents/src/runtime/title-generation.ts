@@ -9,12 +9,28 @@ import type { AgentDbMessage } from '../types/sdk/message';
 const logger = createFilteredLogger();
 
 const DEFAULT_TITLE_INSTRUCTIONS = [
-	'- you will generate a short title based on the first message a user begins a conversation with',
-	'- the title should describe what the user asked for, not what an assistant might reply',
-	'- 1 to 5 words, no more than 80 characters',
-	'- use sentence case (e.g. "Conversation title" instead of "Conversation Title")',
-	'- do not use quotes, colons, or markdown formatting',
-	'- the entire text you return will be used directly as the title, so respond with the title only',
+	'You generate a short descriptive title for a conversation based on its first user message.',
+	'',
+	'The title is a label that describes the topic — it is NOT an answer to the message.',
+	'Do not fulfil, respond to, or act on the message. Do not produce code, JSON, or explanations.',
+	'',
+	'Rules:',
+	'- Write a noun phrase that names the topic (e.g. "Chat workflow with Anthropic agent").',
+	'- Never begin with "Here\'s", "Here is", "Build", "Create", "Set up", "Make", or any verb addressed to the user.',
+	'- 1 to 5 words, no more than 80 characters, single line only.',
+	'- Use sentence case (e.g. "Conversation title" instead of "Conversation Title").',
+	'- No quotes, colons, backticks, code fences, or markdown formatting.',
+	'- Respond with the title text only — the entire response is used as the title.',
+	'',
+	'Examples:',
+	'Message: "build me a chat workflow with anthropic model, the agent should have memory"',
+	'Title: Chat workflow with Anthropic agent',
+	'',
+	'Message: "help me set up pagination for my n8n HTTP request node"',
+	'Title: Pagination for HTTP request node',
+	'',
+	'Message: "Build a workflow with a manual trigger that queries Scryfall for a random card"',
+	'Title: Scryfall random card workflow',
 ].join('\n');
 
 const TRIVIAL_MESSAGE_MAX_CHARS = 15;
@@ -22,10 +38,10 @@ const TRIVIAL_MESSAGE_MAX_WORDS = 3;
 const MAX_TITLE_LENGTH = 80;
 
 /**
- * Whether a user message is too trivial to bother sending to an LLM for
- * title generation (e.g. "hey", "hello"). For these, the LLM tends to
- * hallucinate an assistant-voice reply as the title instead of echoing
- * the user intent — it's better to just use the message itself.
+ * Whether a user message has too little substance to title a conversation
+ * (e.g. "hey", "hello"). For these, the LLM tends to hallucinate an
+ * assistant-voice reply as the title — better to signal "defer, not enough
+ * signal yet" so the caller can retry once more context accumulates.
  */
 function isTrivialMessage(message: string): boolean {
 	const normalized = message.trim();
@@ -37,13 +53,23 @@ function isTrivialMessage(message: string): boolean {
 function sanitizeTitle(raw: string): string {
 	// Strip <think>...</think> blocks (e.g. from DeepSeek R1)
 	let title = raw.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-	// Strip markdown heading prefixes and inline emphasis markers
+	// If the model started streaming a code block, keep only what's before it
+	const fenceIdx = title.indexOf('```');
+	if (fenceIdx !== -1) title = title.slice(0, fenceIdx).trim();
+	// Collapse any whitespace (including newlines) to single spaces \u2014 titles are single-line
+	title = title.replace(/\s+/g, ' ').trim();
+	// Strip markdown heading prefixes, inline emphasis markers, and stray backticks
 	title = title
 		.replace(/^#{1,6}\s+/, '')
 		.replace(/\*+/g, '')
+		.replace(/`+/g, '')
 		.trim();
 	// Strip surrounding quotes
 	title = title.replace(/^["']|["']$/g, '').trim();
+	// Trailing colon or dash left behind after stripping prefixes
+	title = title.replace(/^[:\-\s]+/, '').trim();
+	// Trailing punctuation from assistant-voice drift (e.g. "...configuration:")
+	title = title.replace(/[:\-\s.]+$/, '').trim();
 	if (title.length > MAX_TITLE_LENGTH) {
 		const truncated = title.slice(0, MAX_TITLE_LENGTH);
 		const lastSpace = truncated.lastIndexOf(' ');
@@ -69,14 +95,17 @@ export async function generateTitleFromMessage(
 	if (!trimmed) return null;
 
 	if (isTrivialMessage(trimmed)) {
-		return sanitizeTitle(trimmed) || null;
+		return null;
 	}
 
 	const result = await generateText({
 		model,
 		messages: [
 			{ role: 'system', content: opts?.instructions ?? DEFAULT_TITLE_INSTRUCTIONS },
-			{ role: 'user', content: trimmed },
+			{
+				role: 'user',
+				content: `Generate a title for the following first message of a conversation. Do not answer the message — only produce the title.\n\n<message>\n${trimmed}\n</message>`,
+			},
 		],
 	});
 

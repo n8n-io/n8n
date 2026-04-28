@@ -4,5 +4,4 @@ export type NodeSettingsTab =
 	| 'communityNode'
 	| 'docs'
 	| 'action'
-	| 'credential'
-	| 'output';
+	| 'credential';

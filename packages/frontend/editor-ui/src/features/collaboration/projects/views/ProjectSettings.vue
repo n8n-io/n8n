@@ -104,6 +104,8 @@ const userSearchQuery = ref('');
 const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
+const shouldFetchAllUsers = computed(() => usersStore.isAdminOrOwner || canUpdateProject.value);
+
 const usersList = computed(() =>
 	userSearchResults.value.filter((user) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
@@ -499,13 +501,22 @@ const searchUsers = async (query: string) => {
 
 	isLoadingUsers.value = true;
 	try {
-		// If query is empty, load initial set of users, otherwise search
-		const filter = query.trim() ? { fullText: query } : undefined;
-		await usersStore.fetchUsers({
-			take: 50,
-			filter,
-		});
-		// Get the search results from the store
+		const projectId = projectsStore.currentProject?.id;
+		if (!projectId) {
+			userSearchResults.value = [];
+			return;
+		}
+
+		const filter: Record<string, string> = {};
+		if (query.trim()) {
+			filter.fullText = query;
+		}
+		if (!shouldFetchAllUsers.value) {
+			filter.projectId = projectId;
+		}
+
+		await usersStore.fetchUsers({ take: 50, filter });
+
 		if (query.trim()) {
 			userSearchResults.value = usersStore.allUsers.filter((user) => {
 				const searchLower = query.toLowerCase();
@@ -514,7 +525,6 @@ const searchUsers = async (query: string) => {
 				return fullName.includes(searchLower) || email.includes(searchLower);
 			});
 		} else {
-			// Show all loaded users when no search query
 			userSearchResults.value = usersStore.allUsers;
 		}
 	} catch (error) {

@@ -199,7 +199,10 @@ export class TestDiscoveryAnalyzer {
 
 	/**
 	 * Extract the title string from the first argument of a test/describe call.
-	 * Returns null for calls without a string title (e.g., test.fixme() with no args).
+	 * Returns null for calls without a title argument (e.g., test.fixme() with no args).
+	 * Dynamic titles (template literals with substitutions, concatenation, identifiers)
+	 * return the raw source text so the call still counts as a real test and tags inside
+	 * the static portions can be extracted.
 	 */
 	private extractTitle(call: CallExpression): string | null {
 		const args = call.getArguments();
@@ -207,14 +210,13 @@ export class TestDiscoveryAnalyzer {
 
 		const firstArg = args[0];
 
-		// Handle string literals: 'title', "title", `title`
 		const asString = firstArg.asKind(SyntaxKind.StringLiteral);
 		if (asString) return asString.getLiteralText();
 
 		const asTemplate = firstArg.asKind(SyntaxKind.NoSubstitutionTemplateLiteral);
 		if (asTemplate) return asTemplate.getLiteralText();
 
-		return null;
+		return firstArg.getText();
 	}
 
 	private parseTags(title: string): string[] {

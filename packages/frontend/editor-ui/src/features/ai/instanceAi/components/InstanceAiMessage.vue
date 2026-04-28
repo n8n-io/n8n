@@ -1,13 +1,12 @@
 <script lang="ts" setup>
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
-import { N8nCallout, N8nIcon, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
-import ButtonLike from './ButtonLike.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 
 const props = defineProps<{
@@ -59,15 +58,6 @@ const attachments = computed(() => props.message.attachments ?? []);
 const statusMessage = computed(() => {
 	if (!isStreaming.value || !props.message.agentTree) return '';
 	return props.message.agentTree.statusMessage ?? '';
-});
-
-/**
- * Background task indicator: shows when the orchestrator run has finished
- * but child agents (e.g., workflow builder) are still working in the background.
- */
-const hasActiveBackgroundTasks = computed(() => {
-	if (!props.message.agentTree || props.message.isStreaming) return false;
-	return props.message.agentTree.children.some((c) => c.status === 'active');
 });
 
 // --- Feedback ---
@@ -156,12 +146,6 @@ function formatJson(value: unknown): string {
 				:class="$style.blinkingCursor"
 			/>
 
-			<!-- Background task indicator (run finished but sub-agents still working) -->
-			<ButtonLike v-if="hasActiveBackgroundTasks">
-				<N8nIcon icon="spinner" color="primary" spin size="small" />
-				{{ i18n.baseText('instanceAi.backgroundTask.running') }}
-			</ButtonLike>
-
 			<!-- Response feedback -->
 			<N8nMessageRating
 				v-if="isRateable"
@@ -195,6 +179,7 @@ function formatJson(value: unknown): string {
 	align-self: flex-end;
 	display: flex;
 	justify-content: flex-end;
+	width: 100%;
 }
 
 .userAttachments {
@@ -210,6 +195,7 @@ function formatJson(value: unknown): string {
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;
 	word-break: break-word;
+	max-width: 90%;
 }
 
 .assistantWrapper {

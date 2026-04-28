@@ -44,12 +44,8 @@ const {
 		executionWaitingForWebhook: false,
 		workflowId: '123',
 		chatPartialExecutionDestinationNode: undefined as string | undefined,
-		checkIfNodeHasChatParent: vi.fn(),
 		getNodeByName: vi.fn(),
 		removeTestWebhook: vi.fn(),
-		workflowObject: {
-			getStartNode: vi.fn(),
-		},
 	},
 	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
@@ -75,6 +71,8 @@ const {
 	mockWorkflowDocumentStore: {
 		updateNodeProperties: vi.fn(),
 		getNodeByName: vi.fn(),
+		getStartNode: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn(),
 		pinData: {} as Record<string, unknown>,
 	},
 	mockNodeHelpers: {
@@ -203,10 +201,9 @@ describe('useNodeExecution', () => {
 		mockWorkflowsStore.executedNode = undefined;
 		mockWorkflowsStore.executionWaitingForWebhook = false;
 		mockWorkflowsStore.chatPartialExecutionDestinationNode = undefined;
-		mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(false);
+		mockWorkflowDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
 		mockWorkflowsStore.removeTestWebhook.mockReset();
 		mockWorkflowsStore.getNodeByName.mockReset();
-		mockWorkflowsStore.workflowObject.getStartNode.mockReset();
 
 		mockNodeHelpers.getNodeInputData.mockReset().mockReturnValue([]);
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
@@ -679,8 +676,8 @@ describe('useNodeExecution', () => {
 		});
 
 		it('should open chat for chat child nodes when chat trigger has no data', async () => {
-			mockWorkflowsStore.checkIfNodeHasChatParent.mockReturnValue(true);
-			mockWorkflowsStore.workflowObject.getStartNode.mockReturnValue({
+			mockWorkflowDocumentStore.checkIfNodeHasChatParent.mockReturnValue(true);
+			mockWorkflowDocumentStore.getStartNode.mockReturnValue({
 				name: 'Chat Trigger',
 				type: CHAT_TRIGGER_NODE_TYPE,
 			});

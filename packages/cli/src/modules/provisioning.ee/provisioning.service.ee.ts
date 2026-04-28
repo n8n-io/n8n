@@ -4,6 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	RoleRepository,
 	RoleMappingRuleRepository,
+	Settings,
 	SettingsRepository,
 	User,
 	UserRepository,
@@ -25,12 +26,9 @@ import { ProjectService } from '@/services/project.service.ee';
 import { UserService } from '@/services/user.service';
 
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
+import { RoleMappingRuleService } from './role-mapping-rule.service.ee';
 import type { RoleMappingConfig, ResolvedRoles, RoleResolverContext } from './role-resolver-types';
 import { RoleResolverService } from './role-resolver.service.ee';
-
-export function isExpressionMappingFlagEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_ROLE_MAPPING_STRATEGY === 'true';
-}
 
 @Service()
 export class ProvisioningService {
@@ -50,6 +48,7 @@ export class ProvisioningService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly roleMappingRuleRepository: RoleMappingRuleRepository,
 		private readonly roleResolverService: RoleResolverService,
+		private readonly roleMappingRuleService: RoleMappingRuleService,
 	) {}
 
 	async init() {
@@ -294,13 +293,15 @@ export class ProvisioningService {
 			'scopesUseExpressionMapping',
 		] as const;
 
+		const { deleteProjectRules: explicitDeleteProjectRules, ...configPatch } = patchConfig;
+
 		const updatedConfig: Record<string, unknown> = {
 			...currentConfig,
-			...patchConfig,
+			...configPatch,
 		};
 
 		for (const supportedPatchField of supportedPatchFields) {
-			if (patchConfig[supportedPatchField] === null) {
+			if (configPatch[supportedPatchField] === null) {
 				delete updatedConfig[supportedPatchField];
 			}
 		}
@@ -316,14 +317,38 @@ export class ProvisioningService {
 
 		ProvisioningConfigDto.parse(updatedConfig);
 
-		await this.settingsRepository.upsert(
-			{
-				key: PROVISIONING_PREFERENCES_DB_KEY,
-				value: JSON.stringify(updatedConfig),
-				loadOnStartup: true,
-			},
-			{ conflictPaths: ['key'] },
-		);
+		const previousProjectRoleManaged =
+			currentConfig.scopesProvisionProjectRoles || currentConfig.scopesUseExpressionMapping;
+		const newProjectRoleManaged =
+			(updatedConfig.scopesProvisionProjectRoles as boolean) ||
+			(updatedConfig.scopesUseExpressionMapping as boolean);
+		const shouldDeleteProjectRules =
+			explicitDeleteProjectRules === true || (previousProjectRoleManaged && !newProjectRoleManaged);
+
+		let deletedProjectRulesCount = 0;
+
+		await this.settingsRepository.manager.transaction(async (tx) => {
+			await tx.getRepository(Settings).upsert(
+				{
+					key: PROVISIONING_PREFERENCES_DB_KEY,
+					value: JSON.stringify(updatedConfig),
+					loadOnStartup: true,
+				},
+				{ conflictPaths: ['key'] },
+			);
+
+			if (shouldDeleteProjectRules) {
+				deletedProjectRulesCount = await this.roleMappingRuleService.deleteAllOfType('project', tx);
+			}
+		});
+
+		if (shouldDeleteProjectRules) {
+			this.eventService.emit('role-mapping-rules-bulk-deleted', {
+				ruleType: 'project',
+				count: deletedProjectRulesCount,
+				reason: 'strategy-switch',
+			});
+		}
 
 		this.provisioningConfig = await this.loadConfig();
 
@@ -408,7 +433,6 @@ export class ProvisioningService {
 	}
 
 	async isExpressionMappingEnabled(): Promise<boolean> {
-		if (!isExpressionMappingFlagEnabled()) return false;
 		const provisioningConfig = await this.getConfig();
 		return provisioningConfig.scopesUseExpressionMapping;
 	}

@@ -216,7 +216,7 @@ describe('useReadyToRunStore', () => {
 			);
 			expect(mockPush).toHaveBeenCalledWith({
 				name: 'NodeViewExisting',
-				params: { name: 'workflow-123' },
+				params: { workflowId: 'workflow-123' },
 			});
 		});
 
@@ -326,7 +326,7 @@ describe('useReadyToRunStore', () => {
 			expect(mockCreateNewWorkflow).toHaveBeenCalled();
 			expect(mockPush).toHaveBeenCalledWith({
 				name: 'NodeViewExisting',
-				params: { name: 'workflow-123' },
+				params: { workflowId: 'workflow-123' },
 			});
 		});
 
