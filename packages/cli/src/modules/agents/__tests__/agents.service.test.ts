@@ -580,6 +580,74 @@ describe('AgentsService', () => {
 		});
 	});
 
+	describe('validateAgentIsRunnable', () => {
+		const credentialProvider = mock<{ list: jest.Mock }>({
+			list: jest.fn().mockResolvedValue([]),
+		});
+
+		beforeEach(() => {
+			credentialProvider.list.mockResolvedValue([]);
+		});
+
+		it('flags config skill refs that have no stored body', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Do stuff',
+					skills: [
+						{ type: 'skill', id: 'present_skill' },
+						{ type: 'skill', id: 'missing_skill' },
+					],
+				} as unknown as AgentJsonConfig,
+				skills: {
+					present_skill: {
+						name: 'Present',
+						description: 'Use when present',
+						instructions: 'do',
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing).toContain('skill:missing_skill');
+			expect(result.missing).not.toContain('skill:present_skill');
+		});
+
+		it('does not flag skill refs when every id has a stored body', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Do stuff',
+					skills: [{ type: 'skill', id: 'present_skill' }],
+				} as unknown as AgentJsonConfig,
+				skills: {
+					present_skill: {
+						name: 'Present',
+						description: 'Use when present',
+						instructions: 'do',
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.validateAgentIsRunnable(
+				agentId,
+				projectId,
+				credentialProvider as unknown as Parameters<typeof service.validateAgentIsRunnable>[2],
+			);
+
+			expect(result.missing.filter((m) => m.startsWith('skill:'))).toEqual([]);
+		});
+	});
+
 	describe('delete — chat cleanup', () => {
 		beforeEach(() => {
 			Container.set(AgentScheduleService, scheduleService);

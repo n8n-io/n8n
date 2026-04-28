@@ -1,6 +1,6 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
-import { agentSkillSchema } from '@n8n/api-types';
+import { agentSkillSchema, skillNameToId } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
@@ -31,16 +31,6 @@ function rejectIfEmptyInstructions(
 		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
 	}
 	return null;
-}
-
-function skillNameToId(name: string): string {
-	const normalized = name
-		.trim()
-		.toLowerCase()
-		.replace(/[^a-z0-9_-]+/g, '_')
-		.replace(/^_+|_+$/g, '');
-
-	return normalized || 'skill';
 }
 
 export interface BuilderTools {

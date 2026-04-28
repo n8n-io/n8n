@@ -3,7 +3,10 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { StreamLanguage, type StringStream } from '@codemirror/language';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
-import { AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX } from '@n8n/api-types';
+import {
+	AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX,
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+} from '@n8n/api-types';
 import { N8nButton, N8nFormInput, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -58,7 +61,19 @@ const descriptionValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'MAX_LENGTH', config: { maximum: 512 } },
 ];
 
-const instructionsValid = computed(() => Boolean((props.skill.instructions ?? '').trim()));
+const instructionsError = computed(() => {
+	const value = props.skill.instructions ?? '';
+	if (!value.trim()) return '';
+	if (value.length > AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) {
+		return i18n.baseText('agents.builder.skills.validation.instructionsMaxLength', {
+			interpolate: { max: String(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH) },
+		});
+	}
+	return '';
+});
+const instructionsValid = computed(
+	() => Boolean((props.skill.instructions ?? '').trim()) && !instructionsError.value,
+);
 const formIsValid = computed(
 	() => formValidation.name && formValidation.description && instructionsValid.value,
 );
@@ -250,7 +265,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				:disabled="props.disabled"
 				:show-validation-warnings="props.showValidationWarnings"
 				:validation-rules="nameValidationRules"
-				data-test-id="agent-skill-name-input"
+				data-testid="agent-skill-name-input"
 				@update:model-value="onNameInput"
 				@validate="onFieldValidate('name', $event)"
 			/>
@@ -267,7 +282,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				:disabled="props.disabled"
 				:show-validation-warnings="props.showValidationWarnings"
 				:validation-rules="descriptionValidationRules"
-				data-test-id="agent-skill-description-input"
+				data-testid="agent-skill-description-input"
 				@update:model-value="onDescriptionInput"
 				@validate="onFieldValidate('description', $event)"
 			/>
@@ -302,6 +317,9 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 			</div>
 			<div ref="container" :class="$style.editor"></div>
 			<N8nText v-if="fileError" size="small" color="danger">{{ fileError }}</N8nText>
+			<N8nText v-if="instructionsError" size="small" color="danger">{{
+				instructionsError
+			}}</N8nText>
 			<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
 				props.errors.instructions
 			}}</N8nText>

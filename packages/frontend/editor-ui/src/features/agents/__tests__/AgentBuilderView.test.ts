@@ -57,6 +57,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 
 const updateAgentMock = vi.fn();
 const updateAgentSkillMock = vi.fn();
+const createAgentSkillMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
 const getAgentMock = vi.fn();
@@ -66,6 +67,7 @@ vi.mock('../composables/useAgentApi', () => ({
 	getAgent: getAgentMock,
 	updateAgent: updateAgentMock,
 	updateAgentSkill: updateAgentSkillMock,
+	createAgentSkill: createAgentSkillMock,
 	deleteAgent: vi.fn(),
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
@@ -662,6 +664,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		mockConfig.value = { ...intendedConfig };
 		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
+		createAgentSkillMock.mockResolvedValueOnce(skill);
 
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
@@ -686,6 +689,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			onConfirm: (payload: { id: string; skill: typeof skill }) => void;
 		};
 		modalData.onConfirm({ id: 'summarize_meetings', skill });
+		await flushPromises();
 		await nextTick();
 
 		const vm = wrapper.vm as unknown as {

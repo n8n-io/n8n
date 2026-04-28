@@ -26,7 +26,13 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
-import { getAgent, deleteAgent, publishAgent, updateAgentSkill } from '../composables/useAgentApi';
+import {
+	getAgent,
+	deleteAgent,
+	publishAgent,
+	updateAgentSkill,
+	createAgentSkill,
+} from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type { AgentResource, AgentJsonConfig, AgentJsonToolRef, AgentSkill } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
@@ -346,7 +352,6 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 			[snapshot.skillId]: updated,
 		},
 	};
-	await fetchAgent();
 }
 
 // Debounce shorter than the workflow canvas' 1500ms — the publish button's
@@ -710,20 +715,35 @@ function onOpenAddSkillModal() {
 			agentId: agentId.value,
 			existingSkillIds: [...existingSkillIds],
 			onConfirm: ({ id, skill }: { id: string; skill: AgentSkill }) => {
-				if (agent.value) {
+				const targetProjectId = projectId.value;
+				const targetAgentId = agentId.value;
+				void (async () => {
+					let created: AgentSkill;
+					try {
+						created = await createAgentSkill(
+							rootStore.restApiContext,
+							targetProjectId,
+							targetAgentId,
+							id,
+							skill,
+						);
+					} catch (error) {
+						showError(error, locale.baseText('agents.builder.skills.create.error'));
+						return;
+					}
+					if (agent.value?.id !== targetAgentId) return;
 					agent.value = {
 						...agent.value,
 						skills: {
 							...(agent.value.skills ?? {}),
-							[id]: skill,
+							[id]: created,
 						},
 					};
-				}
-
-				onConfigFieldUpdate({
-					skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
-				});
-				selectedSection.value = `skills.${id}`;
+					onConfigFieldUpdate({
+						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
+					});
+					selectedSection.value = `skills.${id}`;
+				})();
 			},
 		},
 	});

@@ -299,7 +299,7 @@ On error, the response includes a \`stage\` field: "parse" (invalid JSON), "patc
 export const WORKFLOW_SECTION = `\
 ## Workflow
 
-1. If the agent has no \`instructions\` and \`crededential\` yet (fresh agent), FIRST call ask_llm to let
+1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call ask_llm to let
    the user pick the model + credential, then write_config with the chosen
    \`model\` and \`credential\` plus a draft \`instructions\`.
 2. Use ask_question whenever you have a clarifying question with discrete

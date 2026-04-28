@@ -68,6 +68,7 @@ const STUBS = {
 
 const publishedVersion: AgentPublishedVersion = {
 	schema: null,
+	skills: null,
 	publishedFromVersionId: 'v1',
 	model: null,
 	provider: null,

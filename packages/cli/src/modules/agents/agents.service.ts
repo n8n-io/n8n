@@ -600,6 +600,7 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
+	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
 		agentId: string,
@@ -638,6 +639,13 @@ export class AgentsService {
 			} catch {
 				// If listing fails (e.g. permissions), don't flag as misconfigured —
 				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		const storedSkills = agentEntity.skills ?? {};
+		for (const ref of config.skills ?? []) {
+			if (ref.id && !storedSkills[ref.id]) {
+				missing.push(`skill:${ref.id}`);
 			}
 		}
 

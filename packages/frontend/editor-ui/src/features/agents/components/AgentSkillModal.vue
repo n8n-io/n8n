@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX } from '@n8n/api-types';
+import { AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX, skillNameToId } from '@n8n/api-types';
 import { N8nButton, N8nHeading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 
 import Modal from '@/app/components/Modal.vue';
-import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
-import { createAgentSkill } from '../composables/useAgentApi';
 import type { AgentSkill } from '../types';
 import AgentSkillViewer from './AgentSkillViewer.vue';
 
@@ -25,8 +22,6 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
-const rootStore = useRootStore();
-const toast = useToast();
 const uiStore = useUIStore();
 
 const skill = ref<AgentSkill>({
@@ -35,20 +30,9 @@ const skill = ref<AgentSkill>({
 	instructions: '',
 });
 const submitted = ref(false);
-const submitting = ref(false);
 const formIsValid = ref(false);
 
 const existingSkillIds = computed(() => new Set(props.data.existingSkillIds));
-
-function skillNameToId(name: string): string {
-	const normalized = name
-		.trim()
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, '_')
-		.replace(/^_+|_+$/g, '');
-
-	return normalized || 'skill';
-}
 
 function makeUniqueSkillId(name: string): string {
 	const base = skillNameToId(name);
@@ -101,33 +85,19 @@ function closeModal() {
 	uiStore.closeModal(props.modalName);
 }
 
-async function onSave() {
+function onSave() {
 	submitted.value = true;
-	if (!canSave.value || submitting.value) return;
+	if (!canSave.value) return;
 
-	submitting.value = true;
-	const skillToCreate: AgentSkill = {
+	const payload: AgentSkill = {
 		name: skill.value.name.trim(),
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
 	};
-	const skillId = makeUniqueSkillId(skillToCreate.name);
+	const skillId = makeUniqueSkillId(payload.name);
 
-	try {
-		const created = await createAgentSkill(
-			rootStore.restApiContext,
-			props.data.projectId,
-			props.data.agentId,
-			skillId,
-			skillToCreate,
-		);
-		props.data.onConfirm({ id: skillId, skill: created });
-		closeModal();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agents.builder.skills.create.error'));
-	} finally {
-		submitting.value = false;
-	}
+	props.data.onConfirm({ id: skillId, skill: payload });
+	closeModal();
 }
 </script>
 
@@ -136,7 +106,7 @@ async function onSave() {
 		:name="props.modalName"
 		width="860px"
 		:custom-class="$style.modal"
-		data-test-id="agent-skill-modal"
+		data-testid="agent-skill-modal"
 	>
 		<template #header>
 			<N8nHeading tag="h2" size="large">
@@ -148,7 +118,6 @@ async function onSave() {
 			<div :class="$style.content">
 				<AgentSkillViewer
 					:skill="skill"
-					:disabled="submitting"
 					:errors="visibleErrors"
 					:scrollable="false"
 					:show-validation-warnings="submitted"
@@ -160,14 +129,13 @@ async function onSave() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" :disabled="submitting" @click="closeModal">
+				<N8nButton variant="subtle" @click="closeModal">
 					{{ i18n.baseText('agents.builder.skills.create.cancel') }}
 				</N8nButton>
 				<N8nButton
 					variant="solid"
-					:disabled="!canSave || submitting"
-					:loading="submitting"
-					data-test-id="agent-skill-create-save"
+					:disabled="!canSave"
+					data-testid="agent-skill-create-save"
 					@click="onSave"
 				>
 					{{ i18n.baseText('agents.builder.skills.create.save') }}
