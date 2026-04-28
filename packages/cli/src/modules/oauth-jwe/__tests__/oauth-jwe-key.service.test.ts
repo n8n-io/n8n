@@ -43,7 +43,7 @@ describe('OAuthJweKeyService', () => {
 		const pair = await generateKeyPair(ALGORITHM, { extractable: true });
 		privateJwkFixture = {
 			...(await exportJWK(pair.privateKey)),
-			kid: 'fixture-kid',
+			kid: 'row-1',
 			alg: ALGORITHM,
 			use: 'enc',
 		};
@@ -109,6 +109,15 @@ describe('OAuthJweKeyService', () => {
 			);
 		});
 
+		it('throws when the persisted JWK kid does not match the row id', async () => {
+			repository.findOne.mockResolvedValue(makeRow({ id: 'different-id', value: 'enc-row' }));
+			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));
+
+			await expect(Container.get(OAuthJweKeyService).initialize()).rejects.toThrow(
+				`OAuth JWE private key for "${ALGORITHM}" has a kid that does not match its row id`,
+			);
+		});
+
 		it('throws when the post-generate re-read returns null', async () => {
 			repository.findOne.mockResolvedValue(null);
 			repository.insert.mockResolvedValue({ identifiers: [], generatedMaps: [], raw: [] });
@@ -167,7 +176,7 @@ describe('OAuthJweKeyService', () => {
 			const pair = await Container.get(OAuthJweKeyService).getKeyPair();
 
 			expect(pair.algorithm).toBe(ALGORITHM);
-			expect(pair.kid).toBe('fixture-kid');
+			expect(pair.kid).toBe('row-1');
 		});
 
 		it('throws for an unsupported algorithm', async () => {
@@ -188,7 +197,7 @@ describe('OAuthJweKeyService', () => {
 			expect(publicJwk).not.toHaveProperty('qi');
 			expect(publicJwk).toHaveProperty('n');
 			expect(publicJwk).toHaveProperty('e');
-			expect(publicJwk.kid).toBe('fixture-kid');
+			expect(publicJwk.kid).toBe('row-1');
 		});
 
 		it('getPublicJwk returns the same JWK as getKeyPair().publicJwk', async () => {
@@ -214,7 +223,7 @@ describe('OAuthJweKeyService', () => {
 				{
 					algorithm: ALGORITHM,
 					encryptedPrivateJwk: 'cached-row',
-					kid: 'fixture-kid',
+					kid: 'row-1',
 				},
 			]);
 			cipher.decryptWithInstanceKey.mockReturnValue(JSON.stringify(privateJwkFixture));

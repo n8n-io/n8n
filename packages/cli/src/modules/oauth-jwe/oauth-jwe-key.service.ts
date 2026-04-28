@@ -7,7 +7,8 @@ import type { CryptoKey, JWK } from 'jose';
 import { exportJWK, generateKeyPair, importJWK } from 'jose';
 import { Cipher } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import { randomUUID } from 'node:crypto';
+
+import { CacheService } from '@/services/cache/cache.service';
 
 import {
 	JWE_KEY_ALGORITHMS,
@@ -16,8 +17,6 @@ import {
 	JWE_PRIVATE_KEY_TYPE,
 	type JweKeyAlgorithm,
 } from './oauth-jwe.constants';
-
-import { CacheService } from '@/services/cache/cache.service';
 
 type OAuthJweKeyEntry = {
 	algorithm: JweKeyAlgorithm;
@@ -39,6 +38,10 @@ type OAuthJweKeyPair = {
  * enforced by a partial unique index on `(type, algorithm)`. Today the list
  * holds only `RSA-OAEP-256`; adding another algorithm is a constant-only
  * change and the next boot generates the missing key pair.
+ *
+ * The JWK `kid` and the `deployment_key.id` are the same nanoid, so a future
+ * kid-keyed lookup over decryption-only inactive rows can use the row's
+ * primary key directly.
  */
 @Service()
 export class OAuthJweKeyService {
@@ -171,20 +174,27 @@ export class OAuthJweKeyService {
 			throw new UnexpectedError(`OAuth JWE private key for "${algorithm}" is missing a kid`);
 		}
 
+		if (privateJwk.kid !== privateRow.id) {
+			throw new UnexpectedError(
+				`OAuth JWE private key for "${algorithm}" has a kid that does not match its row id`,
+			);
+		}
+
 		return {
 			algorithm,
 			encryptedPrivateJwk: privateRow.value,
-			kid: privateJwk.kid,
+			kid: privateRow.id,
 		};
 	}
 
 	private async generateAndPersist(algorithm: JweKeyAlgorithm): Promise<void> {
 		const { privateKey } = await generateKeyPair(algorithm, { extractable: true });
-		const kid = randomUUID();
+		// The JWK kid is the deployment_key row's primary key.
+		const id = generateNanoId();
 
 		const privateJwk: JWK = {
 			...(await exportJWK(privateKey)),
-			kid,
+			kid: id,
 			alg: algorithm,
 			use: JWE_KEY_USE,
 		};
@@ -193,14 +203,14 @@ export class OAuthJweKeyService {
 
 		try {
 			await this.deploymentKeyRepository.insert({
-				id: generateNanoId(),
+				id,
 				type: JWE_PRIVATE_KEY_TYPE,
 				value: encryptedPrivate,
 				algorithm,
 				status: 'active',
 			});
 
-			this.logger.info('Generated new instance OAuth JWE key pair', { algorithm, kid });
+			this.logger.info('Generated new instance OAuth JWE key pair', { algorithm, kid: id });
 		} catch (error) {
 			if (!isUniqueConstraintViolation(error)) throw error;
 
