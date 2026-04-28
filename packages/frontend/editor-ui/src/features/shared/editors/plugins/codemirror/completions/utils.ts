@@ -232,6 +232,10 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 };
 
 export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) => {
+	if (useNDVStore().activeNode?.name !== undefined) {
+		return true;
+	}
+
 	if (targetNodeParameterContext === undefined) {
 		return false;
 	}
@@ -241,10 +245,7 @@ export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterCo
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
 
-	return (
-		workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName) !== null ||
-		useNDVStore().activeNode?.name !== undefined
-	);
+	return workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName) !== null;
 };
 
 export const isSplitInBatchesAbsent = () =>
