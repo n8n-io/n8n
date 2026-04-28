@@ -65,6 +65,13 @@ export class TaskRunnersConfig {
 	heartbeatInterval: number = 30;
 
 	/**
+	 * How long (in seconds) a grant token is valid for runner authentication.
+	 * Increase on slow hardware where the runner needs more time to start.
+	 */
+	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL')
+	grantTokenTtl: number = 15;
+
+	/**
 	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**
 	 * Set to `true` for compatibility with modules that rely on insecure JS features.
 	 */
