@@ -18,6 +18,7 @@ import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
+import { NodeClassDescriptionNamingRule } from './node-class-description-naming.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
@@ -49,6 +50,7 @@ export const rules = {
 	'resource-operation-pattern': ResourceOperationPatternRule,
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
+	'node-class-description-naming': NodeClassDescriptionNamingRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
 	'cred-class-field-naming': CredClassFieldNamingRule,
 	'cred-class-naming': CredClassNamingRule,
