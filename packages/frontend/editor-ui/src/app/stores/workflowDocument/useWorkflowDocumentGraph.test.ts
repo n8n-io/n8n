@@ -76,12 +76,7 @@ describe('useWorkflowDocumentGraph', () => {
 		connections.setConnections(connectionMap);
 		workflowObj.syncWorkflowObjectNodes(workflowsStore.workflow.nodes);
 		workflowObj.syncWorkflowObjectConnections(workflowsStore.workflow.connections);
-		return useWorkflowDocumentGraph({
-			workflowObject: workflowObj.workflowObject,
-			allNodes: nodes.allNodes,
-			outgoingConnectionsByNodeName: connections.outgoingConnectionsByNodeName,
-			incomingConnectionsByNodeName: connections.incomingConnectionsByNodeName,
-		});
+		return useWorkflowDocumentGraph(workflowObj.workflowObject);
 	}
 
 	describe('graph traversal', () => {

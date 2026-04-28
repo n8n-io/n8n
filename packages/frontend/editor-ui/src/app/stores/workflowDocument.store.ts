@@ -179,12 +179,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				syncWorkflowObject: (connections) =>
 					workflowDocumentWorkflowObject.syncWorkflowObjectConnections(connections),
 			});
-		const workflowDocumentGraph = useWorkflowDocumentGraph({
-			workflowObject: workflowDocumentWorkflowObject.workflowObject,
-			allNodes: workflowDocumentNodes.allNodes,
-			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
-			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
-		});
+		const workflowDocumentGraph = useWorkflowDocumentGraph(
+			workflowDocumentWorkflowObject.workflowObject,
+		);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(
 			workflowDocumentWorkflowObject.workflowObject,
 		);

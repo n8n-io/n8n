@@ -5,24 +5,14 @@ import {
 	type IConnection,
 	type INode,
 	type INodeConnection,
-	type INodeConnections,
 	type NodeConnectionType,
 	type Workflow,
 } from 'n8n-workflow';
 import { type Ref } from 'vue';
-import type { INodeUi } from '@/Interface';
-
-export type WorkflowDocumentGraphDeps = {
-	workflowObject: Readonly<Ref<Workflow>>;
-	allNodes: Readonly<Ref<INodeUi[]>>;
-	outgoingConnectionsByNodeName: (nodeName: string) => INodeConnections;
-	incomingConnectionsByNodeName: (nodeName: string) => INodeConnections;
-};
 
 // --- Composable ---
 
-export function useWorkflowDocumentGraph(deps: WorkflowDocumentGraphDeps) {
-	const { workflowObject } = deps;
+export function useWorkflowDocumentGraph(workflowObject: Readonly<Ref<Workflow>>) {
 	// -----------------------------------------------------------------------
 	// Graph traversal
 	// -----------------------------------------------------------------------
