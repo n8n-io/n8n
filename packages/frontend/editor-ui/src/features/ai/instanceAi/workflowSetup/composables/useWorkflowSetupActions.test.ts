@@ -2,6 +2,7 @@ import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowSetupCard } from '../workflowSetup.types';
+import { makeWorkflowSetupCard } from '../__tests__/factories';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
 
 const telemetryTrack = vi.fn();
@@ -13,23 +14,6 @@ const rootStoreState = { instanceId: 'instance-1' };
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => rootStoreState,
 }));
-
-function makeCard(id: string, nodeName: string, credentialType: string): WorkflowSetupCard {
-	return {
-		id,
-		credentialType,
-		targetNodeName: nodeName,
-		node: {
-			id: nodeName,
-			name: nodeName,
-			type: 'n8n-nodes-base.httpRequest',
-			typeVersion: 4.2,
-			position: [0, 0],
-			parameters: {},
-		},
-		currentCredentialId: null,
-	};
-}
 
 interface Harness {
 	cardA: WorkflowSetupCard;
@@ -51,8 +35,16 @@ interface Harness {
 }
 
 function setupHarness(): Harness {
-	const cardA = makeCard('A:typeA', 'A', 'typeA');
-	const cardB = makeCard('B:typeB', 'B', 'typeB');
+	const cardA = makeWorkflowSetupCard({
+		id: 'A:typeA',
+		targetNodeName: 'A',
+		credentialType: 'typeA',
+	});
+	const cardB = makeWorkflowSetupCard({
+		id: 'B:typeB',
+		targetNodeName: 'B',
+		credentialType: 'typeB',
+	});
 	const cards = computed(() => [cardA, cardB]);
 	const currentStepIndex = ref(0);
 	const activeCard = computed<WorkflowSetupCard | undefined>(

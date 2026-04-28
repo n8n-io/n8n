@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowSetupWizard from '../workflowSetup/components/WorkflowSetupWizard.vue';
 import type { WorkflowSetupContext } from '../workflowSetup/composables/useWorkflowSetupContext';
+import { makeWorkflowSetupCard } from '../workflowSetup/__tests__/factories';
 import type { WorkflowSetupCard } from '../workflowSetup/workflowSetup.types';
 
 const workflowSetupContext = vi.hoisted(() => ({
@@ -51,33 +52,16 @@ const renderComponent = createComponentRenderer(WorkflowSetupWizard, {
 	},
 });
 
-const card: WorkflowSetupCard = {
-	id: 'HTTP Request:httpBasicAuth',
-	credentialType: 'httpBasicAuth',
-	targetNodeName: 'HTTP Request',
-	node: {
-		id: 'http-request',
-		name: 'HTTP Request',
-		type: 'n8n-nodes-base.httpRequest',
-		typeVersion: 4.2,
-		position: [0, 0],
-		parameters: {},
-	},
-	currentCredentialId: null,
-};
-
-const secondCard: WorkflowSetupCard = {
-	...card,
+const card = makeWorkflowSetupCard();
+const secondCard = makeWorkflowSetupCard({
 	id: 'Slack:slackApi',
 	credentialType: 'slackApi',
 	targetNodeName: 'Slack',
 	node: {
-		...card.node,
 		id: 'slack',
-		name: 'Slack',
 		type: 'n8n-nodes-base.slack',
 	},
-};
+});
 
 interface ContextOptions {
 	cards?: WorkflowSetupCard[];
