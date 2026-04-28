@@ -19,6 +19,7 @@ import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
 import { NodeClassDescriptionNamingRule } from './node-class-description-naming.js';
+import { NodeExecuteBlockRule } from './node-execute-block.js';
 import { NodeFileConventionsRule } from './node-file-conventions.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
@@ -57,6 +58,7 @@ export const rules = {
 	'cred-class-field-naming': CredClassFieldNamingRule,
 	'cred-class-naming': CredClassNamingRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
+	'node-execute-block': NodeExecuteBlockRule,
 	'missing-paired-item': MissingPairedItemRule,
 	'require-community-node-keyword': RequireCommunityNodeKeywordRule,
 	'require-continue-on-fail': RequireContinueOnFailRule,
