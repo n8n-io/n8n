@@ -1510,7 +1510,9 @@ export class WorkflowExecute {
 				// returns the active workflow span during log writes and node executions.
 				// eslint-disable-next-line complexity
 				const runExecutionLoop = async () => {
-				while (
+				// The executionLoop label is required so that `continue executionLoop` inside
+				// the inner retry for-loop can jump to the next node, not the next retry.
+				executionLoop: while (
 					this.runExecutionData.executionData!.nodeExecutionStack.length !== 0
 				) {
 					if (
@@ -1734,7 +1736,7 @@ export class WorkflowExecute {
 										runData: this.runExecutionData.resultData.runData,
 									});
 
-									continue;
+									continue executionLoop;
 								}
 
 								runNodeData = await convertBinaryData(
@@ -1803,7 +1805,7 @@ export class WorkflowExecute {
 								// If null gets returned it means that the node did succeed
 								// but did not have any data. So the branch should end
 								// (meaning the nodes afterwards should not be processed)
-								continue;
+								continue executionLoop;
 							}
 
 							break;

@@ -10,31 +10,35 @@ import type { SpanRegistry } from '../span-registry';
 export class WorkflowEndHandler implements SpanHandler<WorkflowExecuteAfterContext> {
 	handle(ctx: WorkflowExecuteAfterContext, spans: SpanRegistry) {
 		const span = spans.removeWorkflow(ctx.executionId);
-		if (!span) return;
 
-		const attributes: Record<string, string | boolean> = {
-			[ATTR.EXECUTION_MODE]: ctx.runData.mode,
-			[ATTR.EXECUTION_STATUS]: ctx.runData.status,
-			[ATTR.EXECUTION_IS_RETRY]: ctx.runData.mode === 'retry',
-		};
-		if (ctx.retryOf) {
-			attributes[ATTR.EXECUTION_RETRY_OF] = ctx.retryOf;
-		}
-		span.setAttributes(attributes);
-
-		if (['error', 'crashed'].includes(ctx.runData.status)) {
-			span.setStatus({ code: SpanStatusCode.ERROR });
-
-			const error = ctx.runData.data.resultData.error;
-			if (error) {
-				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, this.getErrorType(error));
+		if (span) {
+			const attributes: Record<string, string | boolean> = {
+				[ATTR.EXECUTION_MODE]: ctx.runData.mode,
+				[ATTR.EXECUTION_STATUS]: ctx.runData.status,
+				[ATTR.EXECUTION_IS_RETRY]: ctx.runData.mode === 'retry',
+			};
+			if (ctx.retryOf) {
+				attributes[ATTR.EXECUTION_RETRY_OF] = ctx.retryOf;
 			}
-		} else {
-			span.setStatus({ code: SpanStatusCode.OK });
+			span.setAttributes(attributes);
+
+			if (['error', 'crashed'].includes(ctx.runData.status)) {
+				span.setStatus({ code: SpanStatusCode.ERROR });
+
+				const error = ctx.runData.data.resultData.error;
+				if (error) {
+					span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, this.getErrorType(error));
+				}
+			} else {
+				span.setStatus({ code: SpanStatusCode.OK });
+			}
+
+			span.end();
+			this.endDanglingNodeSpans(ctx.executionId, spans);
 		}
 
-		span.end();
-		this.endDanglingNodeSpans(ctx.executionId, spans);
+		// Always clean up context and registry even when no span was found,
+		// to avoid stale state if the start handler ran but the span was lost.
 		spans.removeWorkflowContext(ctx.executionId);
 		spans.cleanup(ctx.executionId);
 	}
