@@ -197,10 +197,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		return workflowUtils.getNodeByName(nodesByName.value, name);
 	}
 
-	function getNodes(): INodeUi[] {
-		return workflowsStore.getNodes();
-	}
-
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
 		return workflowsStore.workflow.nodes.find((node) => node.id.startsWith(partialId));
 	}
@@ -391,7 +387,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		canvasNames,
 		getNodeById,
 		getNodeByName,
-		getNodes,
 		findNodeByPartialId,
 		getNodesByIds,
 

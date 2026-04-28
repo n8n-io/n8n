@@ -15,19 +15,10 @@
  *  - Delegation-style tests (expect(store.method).toHaveBeenCalled()) would
  *    need to be rewritten every time internals change; round-trips do not.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { useWorkflowDocumentExpression } from './useWorkflowDocumentExpression';
 import { useWorkflowDocumentWorkflowObject } from './useWorkflowDocumentWorkflowObject';
-import type { INodeTypes } from 'n8n-workflow';
-
-function createMockNodeTypes(): INodeTypes {
-	return {
-		getByName: vi.fn(),
-		getByNameAndVersion: vi.fn(),
-		getKnownTypes: vi.fn().mockReturnValue({}),
-	};
-}
 
 describe('useWorkflowDocumentExpression', () => {
 	let workflowObject: ReturnType<typeof useWorkflowDocumentWorkflowObject>['workflowObject'];
@@ -36,7 +27,6 @@ describe('useWorkflowDocumentExpression', () => {
 		setActivePinia(createPinia());
 		const wfObj = useWorkflowDocumentWorkflowObject({
 			workflowId: '',
-			getNodeTypes: () => createMockNodeTypes(),
 		});
 		workflowObject = wfObj.workflowObject;
 	});

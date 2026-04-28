@@ -16,7 +16,6 @@ import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type {
-	IConnections,
 	IDataObject,
 	ExecutionSummary,
 	INode,
@@ -31,7 +30,7 @@ import type {
 	INodeType,
 	ITaskStartedData,
 } from 'n8n-workflow';
-import { deepCopy, Workflow, TelemetryHelpers } from 'n8n-workflow';
+import { deepCopy, TelemetryHelpers } from 'n8n-workflow';
 import * as workflowUtils from 'n8n-workflow/common';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -157,9 +156,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return workflowExecutionData.value.data.resultData.runData;
 	});
-
-	/** @deprecated Use `workflowDocumentStore.allConnections` instead. */
-	const allConnections = computed(() => workflow.value.connections);
 
 	const isWorkflowRunning = computed(() => {
 		if (activeExecutionId.value === null) {
@@ -387,17 +383,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return nodeTypes;
 	}
 
-	/**
-	 * Returns a shallow copy of the nodes which means that all the data on the lower
-	 * levels still only gets referenced but the top level object is a different one.
-	 * This has the advantage that it is very fast and does not cause problems with vuex
-	 * when the workflow replaces the node-parameters.
-	 * @deprecated Use `workflowDocumentStore.getNodes()` instead.
-	 */
-	function getNodes(): INodeUi[] {
-		return workflow.value.nodes.map((node) => ({ ...node }));
-	}
-
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
 		const filteredCredentials = Object.keys(node.credentials ?? {}).reduce<INodeCredentials>(
 			(credentials, curr) => {
@@ -417,41 +402,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...node,
 			credentials: filteredCredentials,
 		};
-	}
-
-	function createWorkflowObject(
-		nodes: INodeUi[],
-		connections: IConnections,
-		copyData?: boolean,
-	): Workflow {
-		const nodeTypes = getNodeTypes();
-
-		let id: string | undefined = workflow.value.id;
-		// If workflow doesn't exist in store, treat as new (no ID)
-		if (id && !workflowsListStore.getWorkflowById(id)?.id) {
-			id = undefined;
-		}
-
-		const wfId = workflow.value.id;
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
-
-		return new Workflow({
-			id,
-			name: workflowDocumentStore.name,
-			nodes: copyData ? deepCopy(nodes) : nodes,
-			connections: copyData ? deepCopy(connections) : connections,
-			active: false,
-			nodeTypes,
-			settings: workflowDocumentStore.settings,
-			pinData: workflowDocumentStore.getPinDataSnapshot(),
-		});
-	}
-
-	function cloneWorkflowObject(): Workflow {
-		const nodes = getNodes();
-		const connections = allConnections.value;
-
-		return createWorkflowObject(nodes, connections);
 	}
 
 	async function getWorkflowFromUrl(url: string, projectId: string): Promise<IWorkflowDb> {
@@ -1236,7 +1186,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
-		allConnections,
 		connectionsBySourceNode,
 		connectionsByDestinationNode,
 		isWorkflowRunning,
@@ -1255,10 +1204,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		incomingConnectionsByNodeName,
 		getExecutionDataById,
 		getNodeTypes,
-		getNodes,
 		convertTemplateNodeToNodeUi,
-		createWorkflowObject,
-		cloneWorkflowObject,
 		getWorkflowFromUrl,
 		getActivationError,
 		setWorkflowId,

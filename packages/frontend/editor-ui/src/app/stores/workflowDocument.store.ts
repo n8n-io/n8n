@@ -30,7 +30,6 @@ import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflo
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
@@ -133,15 +132,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
-		const workflowsStore = useWorkflowsStore();
 		const nodeTypesStore = useNodeTypesStore();
 		const nodeHelpers = useNodeHelpers();
 
 		const { workflowObject, ...workflowDocumentWorkflowObject } = useWorkflowDocumentWorkflowObject(
-			{
-				workflowId,
-				getNodeTypes: () => workflowsStore.getNodeTypes(),
-			},
+			{ workflowId },
 		);
 
 		const workflowDocumentName = useWorkflowDocumentName({
@@ -360,6 +355,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			reset,
 			getSnapshot,
 			serialize,
+			cloneWorkflowObject: workflowDocumentWorkflowObject.cloneWorkflowObject,
+			createWorkflowObject: workflowDocumentWorkflowObject.createWorkflowObject,
 		};
 	})();
 }

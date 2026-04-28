@@ -1,6 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import type { INodeTypes } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import {
@@ -8,17 +7,11 @@ import {
 	type WorkflowDocumentWorkflowObjectDeps,
 } from './useWorkflowDocumentWorkflowObject';
 import { DEFAULT_SETTINGS } from './useWorkflowDocumentSettings';
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
 
 function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 	return createTestNode({ name: 'Test Node', ...overrides }) as INodeUi;
-}
-
-function createMockNodeTypes(): INodeTypes {
-	return {
-		nodeTypes: {},
-		init: vi.fn().mockResolvedValue(undefined),
-		getByNameAndVersion: vi.fn().mockReturnValue(undefined),
-	} as unknown as INodeTypes;
 }
 
 function createDeps(
@@ -26,12 +19,15 @@ function createDeps(
 ): WorkflowDocumentWorkflowObjectDeps {
 	return {
 		workflowId: 'wf-1',
-		getNodeTypes: () => createMockNodeTypes(),
 		...overrides,
 	};
 }
 
 describe('useWorkflowDocumentWorkflowObject', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
 	describe('initial state', () => {
 		it('creates a Workflow with empty defaults', () => {
 			const { workflowObject } = useWorkflowDocumentWorkflowObject(createDeps());
