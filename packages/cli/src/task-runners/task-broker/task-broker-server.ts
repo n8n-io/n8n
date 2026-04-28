@@ -1,5 +1,5 @@
 import { inTest, Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import compression from 'compression';
@@ -243,7 +243,10 @@ export class TaskBrokerServer {
 			);
 
 			if (!result.isValid) {
-				this.logger.warn(`Task runner connection attempt failed: ${result.reason}`, { runnerId });
+				this.logger.warn(
+					`Task runner connection attempt failed: ${result.reason}. If the runner startup exceeds grant token TTL ${this.globalConfig.taskRunners.grantTokenTtl}s, increase N8N_RUNNERS_GRANT_TOKEN_TTL`,
+					{ runnerId },
+				);
 				this.failUpgradeRequest(socket, result.statusCode);
 				return;
 			}
