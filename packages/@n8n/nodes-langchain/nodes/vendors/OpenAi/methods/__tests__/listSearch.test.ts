@@ -1,7 +1,7 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import * as transport from '../../transport';
-import { imageGenerateModelSearch, modelSearch } from '../listSearch';
+import { imageGenerateModelSearch, imageModelSearch, modelSearch } from '../listSearch';
 
 jest.mock('../../transport');
 
@@ -82,6 +82,65 @@ describe('modelSearch', () => {
 				{ name: 'WHISPER-1', value: 'whisper-1' },
 			]);
 		});
+	});
+});
+
+describe('imageModelSearch', () => {
+	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
+
+	beforeEach(() => {
+		mockContext = {} as unknown as jest.Mocked<ILoadOptionsFunctions>;
+		jest.clearAllMocks();
+	});
+
+	it('should return models that support image analysis', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValue({
+			data: [
+				{ id: 'gpt-5' },
+				{ id: 'gpt-4o' },
+				{ id: 'gpt-4.1' },
+				{ id: 'gpt-4-turbo' },
+				{ id: 'o1' },
+				{ id: 'o3' },
+				{ id: 'o4-mini' },
+				{ id: 'chatgpt-4o-latest' },
+				{ id: 'gpt-4o-mini-vision' },
+				{ id: 'dall-e-3' },
+				{ id: 'whisper-1' },
+				{ id: 'tts-1' },
+			],
+		});
+
+		const result = await imageModelSearch.call(mockContext);
+
+		expect(result.results).toEqual([
+			{ name: 'CHATGPT-4O-LATEST', value: 'chatgpt-4o-latest' },
+			{ name: 'GPT-4-TURBO', value: 'gpt-4-turbo' },
+			{ name: 'GPT-4.1', value: 'gpt-4.1' },
+			{ name: 'GPT-4O', value: 'gpt-4o' },
+			{ name: 'GPT-4O-MINI-VISION', value: 'gpt-4o-mini-vision' },
+			{ name: 'GPT-5', value: 'gpt-5' },
+			{ name: 'O1', value: 'o1' },
+			{ name: 'O3', value: 'o3' },
+			{ name: 'O4-MINI', value: 'o4-mini' },
+		]);
+	});
+
+	it('should exclude irrelevant model variants', async () => {
+		(transport.apiRequest as jest.Mock).mockResolvedValue({
+			data: [
+				{ id: 'gpt-4o' },
+				{ id: 'gpt-4o-transcribe' },
+				{ id: 'gpt-4o-mini-diarize' },
+				{ id: 'gpt-4o-search-preview' },
+				{ id: 'gpt-4o-audio-preview' },
+				{ id: 'gpt-4o-realtime-preview' },
+			],
+		});
+
+		const result = await imageModelSearch.call(mockContext);
+
+		expect(result.results).toEqual([{ name: 'GPT-4O', value: 'gpt-4o' }]);
 	});
 });
 

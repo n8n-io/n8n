@@ -494,6 +494,21 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(queryByTestId('workflow-open-publish-modal-button')).toBeDisabled();
 		});
 
+		it('should keep the version menu enabled when workflow is published with no changes', () => {
+			workflowsStore.workflowTriggerNodes = [triggerNode];
+			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			uiStore.markStateClean();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+			expect(getByTestId('version-menu-button')).not.toBeDisabled();
+		});
+
 		it('should show publish button enabled when workflow has never been published (no active version)', () => {
 			workflowsStore.workflowTriggerNodes = [triggerNode];
 			workflowsStore.workflow.versionId = 'version-1';
