@@ -441,6 +441,14 @@ export class GmailTrigger implements INodeType {
 
 			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
 
+			if (node.typeVersion > 1.3) {
+				if (qs.q) {
+					qs.q += ' -in:scheduled';
+				} else {
+					qs.q = '-in:scheduled';
+				}
+			}
+
 			const messagesResponse: MessageListResponse = await googleApiRequest.call(
 				this,
 				'GET',

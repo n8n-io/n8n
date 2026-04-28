@@ -27,6 +27,8 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			delete: jest.fn(),
 			publish: jest.fn(),
 			unpublish: jest.fn(),
+			clearAiTemporary: jest.fn(),
+			archiveIfAiTemporary: jest.fn(),
 		},
 		executionService: {
 			list: jest.fn(),

@@ -15,7 +15,7 @@ withDefaults(
 		hoverText?: string;
 		/** Enables pointer cursor and hover styles — use when the pill triggers an action. */
 		clickable?: boolean;
-		/** 'small' matches BetaTag/PreviewTag scale (for menus/lists); 'medium' is the default. */
+		/** 'small' matches PreviewTag scale (for menus/lists); 'medium' is the default. */
 		size?: 'small' | 'medium';
 		/** Visual variant. 'default' is green; 'danger' is red for depleted/error states. */
 		type?: 'default' | 'danger';

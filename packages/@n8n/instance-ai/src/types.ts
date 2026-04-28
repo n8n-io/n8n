@@ -153,7 +153,7 @@ export interface InstanceAiWorkflowService {
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string },
+		options?: { projectId?: string; markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
@@ -163,6 +163,18 @@ export interface InstanceAiWorkflowService {
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	delete(workflowId: string): Promise<void>;
+	/**
+	 * Clear the AI-builder temporary marker on a workflow — used to promote the
+	 * main deliverable so the run-finish reap leaves it alone.
+	 */
+	clearAiTemporary(workflowId: string): Promise<void>;
+	/**
+	 * Archive the workflow only if it still carries the AI-builder temporary
+	 * marker. Check-and-archive used by the run-finish reap so a main
+	 * workflow whose marker was cleared survives even if its id is still in
+	 * the orchestrator's in-memory created-set.
+	 */
+	archiveIfAiTemporary(workflowId: string): Promise<boolean>;
 	publish(
 		workflowId: string,
 		options?: { versionId?: string; name?: string; description?: string },
@@ -535,6 +547,17 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/**
+	 * IDs of workflows the agent created during the **currently active plan
+	 * cycle**. Populated by build-workflow and submit-workflow on every
+	 * successful create, and hydrated at run start from the persisted plan
+	 * graph when — and only when — the plan is still `active` or
+	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
+	 * the window closes as soon as the plan settles. Consumed by the delete
+	 * handler to skip the confirmation gate when the agent cleans up its own
+	 * in-flight artifacts. Lazily initialized on first create.
+	 */
+	aiCreatedWorkflowIds?: Set<string>;
 	/**
 	 * Attachments from the current user message. Runtime-only — not persisted.
 	 * Used to register `parse-file` and supply data to the parser.

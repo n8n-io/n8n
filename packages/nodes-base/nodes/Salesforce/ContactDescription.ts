@@ -246,6 +246,13 @@ export const contactFields: INodeProperties[] = [
 					'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
+				displayName: 'Email Opt Out',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the contact does not want to receive email from Salesforce',
+			},
+			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
@@ -258,6 +265,20 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'First name of the contact. Maximum size is 40 characters.',
+			},
+			{
+				displayName: 'Middle Name',
+				name: 'middleName',
+				type: 'string',
+				default: '',
+				description: 'Middle name of the contact. Maximum size is 40 characters.',
+			},
+			{
+				displayName: 'Suffix',
+				name: 'suffix',
+				type: 'string',
+				default: '',
+				description: 'Name suffix of the contact. Maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Home Phone',
@@ -397,6 +418,20 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				description:
 					'Honorific abbreviation, word, or phrase to be used in front of name in greetings, such as Dr. or Mrs.',
+			},
+			{
+				displayName: 'Pronouns',
+				name: 'pronouns',
+				type: 'string',
+				default: '',
+				description: "The contact's personal pronouns",
+			},
+			{
+				displayName: 'Gender Identity',
+				name: 'genderIdentity',
+				type: 'string',
+				default: '',
+				description: "The contact's gender identity",
 			},
 			{
 				displayName: 'Title',
@@ -546,6 +581,13 @@ export const contactFields: INodeProperties[] = [
 					'If bounce management is activated and an email sent to the contact bounces, the reason the bounce occurred',
 			},
 			{
+				displayName: 'Email Opt Out',
+				name: 'hasOptedOutOfEmail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether the contact does not want to receive email from Salesforce',
+			},
+			{
 				displayName: 'Fax',
 				name: 'fax',
 				type: 'string',
@@ -558,6 +600,20 @@ export const contactFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description: 'First name of the contact. Maximum size is 40 characters.',
+			},
+			{
+				displayName: 'Middle Name',
+				name: 'middleName',
+				type: 'string',
+				default: '',
+				description: 'Middle name of the contact. Maximum size is 40 characters.',
+			},
+			{
+				displayName: 'Suffix',
+				name: 'suffix',
+				type: 'string',
+				default: '',
+				description: 'Name suffix of the contact. Maximum size is 40 characters.',
 			},
 			{
 				displayName: 'Home Phone',
@@ -704,6 +760,20 @@ export const contactFields: INodeProperties[] = [
 				default: '',
 				description:
 					'Honorific abbreviation, word, or phrase to be used in front of name in greetings, such as Dr. or Mrs.',
+			},
+			{
+				displayName: 'Pronouns',
+				name: 'pronouns',
+				type: 'string',
+				default: '',
+				description: "The contact's personal pronouns",
+			},
+			{
+				displayName: 'Gender Identity',
+				name: 'genderIdentity',
+				type: 'string',
+				default: '',
+				description: "The contact's gender identity",
 			},
 			{
 				displayName: 'Title',
