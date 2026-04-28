@@ -3,7 +3,7 @@ import { computed, provide, onBeforeMount, onBeforeUnmount, onMounted } from 'vu
 import { useRoute, useRouter } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
-import { WorkflowStateKey } from '@/app/constants/injectionKeys';
+import { NDVStoreKey, WorkflowStateKey } from '@/app/constants/injectionKeys';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useWorkflowInitialization } from '@/app/composables/useWorkflowInitialization';
 import { usePostMessageHandler } from '@/app/composables/usePostMessageHandler';
@@ -28,13 +28,18 @@ provide(WorkflowStateKey, workflowState);
 
 const {
 	initializeData,
+	initializeWorkflow,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 	cleanup: cleanupInitialization,
 } = useWorkflowInitialization(workflowState);
+
+provide(NDVStoreKey, currentNDVStore);
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
+	currentNDVStore,
 });
 
 // Initialize push event handlers so relayed execution events (via postMessage
@@ -59,6 +64,7 @@ onBeforeMount(() => {
 
 onMounted(async () => {
 	await initializeData();
+	await initializeWorkflow();
 	pushConnection.initialize();
 
 	// When canExecute is enabled, establish a real WebSocket/SSE connection
@@ -80,7 +86,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView />
+		<RouterView v-if="currentNDVStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>
