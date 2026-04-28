@@ -280,7 +280,8 @@ export class Form extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Form',
 		name: 'form',
-		icon: 'file:form.svg',
+		icon: 'node:form-trigger',
+		iconColor: 'teal',
 		group: ['input'],
 		// since trigger and node are sharing descriptions and logic we need to sync the versions
 		// and keep them aligned in both nodes

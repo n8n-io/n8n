@@ -8,6 +8,8 @@ import { ensureError, FORM_TRIGGER_PATH_IDENTIFIER, NodeApiError } from 'n8n-wor
 import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
+import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
+import { serializeInternalRestError } from './errors/http-error-serializers';
 import { ResponseError } from './errors/response-errors/abstract/response.error';
 
 export function sendSuccessResponse(
@@ -43,44 +45,7 @@ export function sendSuccessResponse(
 	}
 }
 
-/**
- * Checks if the given error is a ResponseError. It can be either an
- * instance of ResponseError or an error which has the same properties.
- * The latter case is for external hooks.
- */
-function isResponseError(error: Error): error is ResponseError {
-	if (error instanceof ResponseError) {
-		return true;
-	}
-
-	if (error instanceof Error) {
-		return (
-			'httpStatusCode' in error &&
-			typeof error.httpStatusCode === 'number' &&
-			'errorCode' in error &&
-			typeof error.errorCode === 'number'
-		);
-	}
-
-	return false;
-}
-
-interface ErrorResponse {
-	code: number;
-	message: string;
-	hint?: string;
-	stacktrace?: string;
-	meta?: Record<string, unknown>;
-}
-
 export function sendErrorResponse(res: Response, error: Error) {
-	let httpStatusCode = 500;
-
-	const response: ErrorResponse = {
-		code: 0,
-		message: error.message ?? 'Unknown error',
-	};
-
 	if (isResponseError(error)) {
 		if (inDevelopment) {
 			Container.get(Logger).error(picocolors.red([error.httpStatusCode, error.message].join(' ')));
@@ -107,19 +72,10 @@ export function sendErrorResponse(res: Response, error: Error) {
 				message: error.message,
 			});
 		}
-
-		httpStatusCode = error.httpStatusCode;
-
-		if (error.errorCode) {
-			response.code = error.errorCode;
-		}
-		if (error.hint) {
-			response.hint = error.hint;
-		}
-		if (error.meta) {
-			response.meta = error.meta;
-		}
 	}
+
+	const descriptor = classifyHttpError(error);
+	const { status, body: response } = serializeInternalRestError(descriptor);
 
 	if (error instanceof NodeApiError) {
 		if (inDevelopment) {
@@ -133,7 +89,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 		response.stacktrace = error.stack;
 	}
 
-	res.status(httpStatusCode).json(response);
+	res.status(status).json(response);
 }
 
 export const isUniqueConstraintError = (error: Error) =>

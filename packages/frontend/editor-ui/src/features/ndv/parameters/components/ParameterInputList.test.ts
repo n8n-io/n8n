@@ -2,16 +2,25 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
-import {
-	createTestWorkflowObject,
-	createTestNode,
-	createMockNodeTypes,
-	mockLoadedNodeType,
-} from '@/__tests__/mocks';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
+import { shallowRef } from 'vue';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal()),
+	injectWorkflowDocumentStore: vi.fn(),
+	useWorkflowDocumentStore: vi.fn().mockReturnValue({
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+	}),
+}));
 
 // Mock i18n to return translation keys instead of translated strings
 vi.mock('@n8n/i18n', () => {
@@ -48,21 +57,11 @@ import {
 	TEST_NODE_WITH_ISSUES,
 	FIXED_COLLECTION_PARAMETERS,
 } from './ParameterInputList.test.constants';
-import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WAIT_NODE_TYPE } from '@/app/constants';
-import type { INodeTypeData } from 'n8n-workflow';
-
-// Create node types that include Form, FormTrigger, and Wait nodes
-const testNodeTypes: INodeTypeData = {
-	[FORM_TRIGGER_NODE_TYPE]: mockLoadedNodeType(FORM_TRIGGER_NODE_TYPE),
-	[FORM_NODE_TYPE]: mockLoadedNodeType(FORM_NODE_TYPE),
-	[WAIT_NODE_TYPE]: mockLoadedNodeType(WAIT_NODE_TYPE),
-};
-const formWorkflowNodeTypes = createMockNodeTypes(testNodeTypes);
 
 const mockConfirm = vi.fn();
 vi.mock('@/app/composables/useMessage', () => ({
@@ -93,7 +92,16 @@ vi.mock('vue-router', async () => {
 });
 
 let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
-let workflowStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+const workflowDocumentStoreMock = {
+	getChildNodes: vi.fn().mockReturnValue([]),
+	getParentNodes: vi.fn().mockReturnValue([]),
+	getParentNodesByDepth: vi.fn().mockReturnValue([]),
+	getNodeByName: vi.fn().mockReturnValue(undefined),
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+};
 
 const renderComponent = createComponentRenderer(ParameterInputList, {
 	props: {
@@ -113,7 +121,18 @@ describe('ParameterInputList', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		ndvStore = mockedStore(useNDVStore);
-		workflowStore = mockedStore(useWorkflowsStore);
+		workflowDocumentStoreMock.getChildNodes.mockReturnValue([]);
+		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
+		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
+		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
+			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
+				typeof injectWorkflowDocumentStore
+			>,
+		);
+		vi.mocked(useWorkflowDocumentStore).mockReturnValue(
+			workflowDocumentStoreMock as unknown as ReturnType<typeof useWorkflowDocumentStore>,
+		);
 	});
 
 	afterEach(async () => {
@@ -253,23 +272,12 @@ describe('ParameterInputList', () => {
 		it('should not show triggerNotice if Form Trigger is connected', () => {
 			ndvStore.activeNode = { name: 'Form', type: FORM_NODE_TYPE, parameters: {} } as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getParentNodes.mockReturnValue(['Form Trigger']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form Trigger') {
+					return { type: FORM_TRIGGER_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { queryByText } = renderComponent({
@@ -948,23 +956,12 @@ describe('ParameterInputList', () => {
 				parameters: {},
 			} as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getChildNodes.mockReturnValue(['Form']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form') {
+					return { type: FORM_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { findByText } = renderComponent({
@@ -986,23 +983,12 @@ describe('ParameterInputList', () => {
 				parameters: {},
 			} as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getChildNodes.mockReturnValue(['Form']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form') {
+					return { type: FORM_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { container, getAllByTestId } = renderComponent({
@@ -1025,17 +1011,6 @@ describe('ParameterInputList', () => {
 				type: FORM_TRIGGER_NODE_TYPE,
 				parameters: {},
 			} as INodeUi;
-
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode],
-				connections: {},
-				nodeTypes: formWorkflowNodeTypes,
-			});
 
 			const { container, getAllByTestId } = renderComponent({
 				props: {
@@ -1097,31 +1072,19 @@ describe('ParameterInputList', () => {
 				parameters: { resume: 'form' },
 			} as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const waitNode = createTestNode({
-				name: 'Wait',
-				type: WAIT_NODE_TYPE,
-				parameters: { resume: 'form' },
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, waitNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Wait', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-					Wait: {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getParentNodes.mockReturnValue(['Form Trigger']);
+			workflowDocumentStoreMock.getChildNodes.mockReturnValue(['Wait', 'Form']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form Trigger') {
+					return { type: FORM_TRIGGER_NODE_TYPE };
+				}
+				if (name === 'Form') {
+					return { type: FORM_NODE_TYPE };
+				}
+				if (name === 'Wait') {
+					return { type: WAIT_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { findByText, queryByText } = renderComponent({
@@ -1147,18 +1110,6 @@ describe('ParameterInputList', () => {
 				position: [100, 200],
 				parameters: { resume: 'form' },
 			} as INodeUi;
-
-			const waitNode = createTestNode({
-				name: 'Wait',
-				type: WAIT_NODE_TYPE,
-				parameters: { resume: 'form' },
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [waitNode],
-				connections: {},
-				nodeTypes: formWorkflowNodeTypes,
-			});
 
 			const { findByText } = renderComponent({
 				props: {

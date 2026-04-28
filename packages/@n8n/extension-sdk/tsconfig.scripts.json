@@ -1,0 +1,7 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.backend.json",
+	"compilerOptions": {
+		"noEmit": true
+	},
+	"include": ["scripts/**/*.ts"]
+}

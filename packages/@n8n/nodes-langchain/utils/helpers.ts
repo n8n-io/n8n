@@ -49,6 +49,35 @@ export function getPromptInputByType(options: {
 	return input;
 }
 
+// Minimum version at which a memory node scopes its session id
+// to the node's own name
+const SESSION_KEY_SCOPING_MIN_VERSION: Record<string, number> = {
+	'@n8n/n8n-nodes-langchain.memoryBufferWindow': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryPostgresChat': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryRedisChat': 1.6,
+	'@n8n/n8n-nodes-langchain.memoryMongoDbChat': 1.1,
+	'@n8n/n8n-nodes-langchain.memoryMotorhead': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryXata': 1.5,
+	'@n8n/n8n-nodes-langchain.memoryZep': 1.4,
+};
+
+function shouldScopeSessionKey(ctx: ISupplyDataFunctions | IWebhookFunctions): boolean {
+	const node = ctx.getNode();
+	if (!node) return false;
+	const minVersion = SESSION_KEY_SCOPING_MIN_VERSION[node.type];
+	// if the node is not in SESSION_KEY_SCOPING_MIN_VERSION, it should
+	// scope by default the session key with no retrocompatibility issues
+	if (minVersion === undefined) return true;
+	return (node.typeVersion ?? 0) >= minVersion;
+}
+
+// Some memory backends (Motorhead URL paths, Xata/Zep record IDs) reject
+// characters outside [A-Za-z0-9_-]. Node names in n8n allow spaces, emoji,
+// and punctuation, so sanitize before using the name as part of a session key.
+function sanitizeForSessionKey(name: string): string {
+	return name.replace(/[^A-Za-z0-9_-]/g, '_');
+}
+
 export function getSessionId(
 	ctx: ISupplyDataFunctions | IWebhookFunctions,
 	itemIndex: number,
@@ -99,6 +128,15 @@ export function getSessionId(
 				itemIndex,
 			});
 		}
+	}
+
+	// Scoping uses the memory node's own name, so connecting a single memory
+	// node to multiple callers (e.g. an agent and a sub-agent) will still
+	// produce the same session key for all of them and they will share the
+	// same memory bucket. To isolate memory per caller, duplicate the memory
+	// node instead of reusing one.
+	if (selectorType === autoSelect && shouldScopeSessionKey(ctx)) {
+		sessionId = `${sessionId}__${sanitizeForSessionKey(ctx.getNode().name)}`;
 	}
 
 	return sessionId;

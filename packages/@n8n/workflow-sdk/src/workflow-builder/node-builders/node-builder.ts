@@ -26,6 +26,7 @@ import {
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
+import { assertPlainObject } from '../validation-helpers';
 
 /**
  * Type guard to check if a value is an InputTarget
@@ -123,7 +124,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 		this.version = version;
 		this.config = { ...config };
 		this.id = id ?? uuid();
-		this.name = name ?? config.name ?? generateNodeName(type);
+		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
 
@@ -580,6 +581,27 @@ function extractNodesFromTarget(target: unknown): Array<NodeInstance<string, str
 		return nodes;
 	}
 
+	// Handle SplitInBatchesBuilder (fluent API) - the sibNode plus any recorded
+	// done/each branch targets. Recurses so nested builders inside either branch
+	// are collected too.
+	if (isSplitInBatchesBuilder(target)) {
+		const builder = extractSplitInBatchesBuilder(target);
+		const nodes: Array<NodeInstance<string, string, unknown>> = [builder.sibNode];
+		for (const doneTarget of builder._doneBatches) {
+			nodes.push(...extractNodesFromTarget(doneTarget));
+		}
+		for (const eachTarget of builder._eachBatches) {
+			nodes.push(...extractNodesFromTarget(eachTarget));
+		}
+		if (builder._doneTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._doneTarget));
+		}
+		if (builder._eachTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._eachTarget));
+		}
+		return nodes;
+	}
+
 	// Check if it's a node-like object with type, version, config
 	if (
 		target !== null &&
@@ -763,6 +785,11 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 export function node<TNode extends NodeInput>(
 	input: TNode,
 ): NodeInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'node',
+		"a configuration object { type, version, config }. Example: node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TNode['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -802,6 +829,7 @@ export interface IfElseFactoryConfig {
 export function ifElse<TOutput = unknown>(
 	input: IfElseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
+	assertPlainObject(input, 'ifElse', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.if',
 		version: input.version,
@@ -837,6 +865,7 @@ export interface MergeFactoryConfig {
 export function merge<TOutput = unknown>(
 	input: MergeFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.merge', string, TOutput> {
+	assertPlainObject(input, 'merge', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.merge',
 		version: input.version,
@@ -872,6 +901,7 @@ export interface SwitchCaseFactoryConfig {
 export function switchCase<TOutput = unknown>(
 	input: SwitchCaseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
+	assertPlainObject(input, 'switchCase', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.switch',
 		version: input.version,
@@ -897,6 +927,11 @@ export function switchCase<TOutput = unknown>(
 export function trigger<TTrigger extends TriggerInput>(
 	input: TTrigger,
 ): TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'trigger',
+		"a configuration object { type, version, config }. Example: trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TTrigger['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -1127,45 +1162,54 @@ export function placeholder(hint: string): PlaceholderValue {
 }
 
 /**
- * New credential implementation
- * Currently serializes to undefined (not yet implemented).
- * Will be implemented to create actual credentials later.
+ * New credential implementation.
+ * When `id` is provided, serializes to `{ id, name }` to link an existing credential.
+ * When `id` is omitted, serializes to undefined (placeholder for credential to be created).
  */
 class NewCredentialImpl implements NewCredentialValue {
 	readonly __newCredential = true as const;
 	readonly name: string;
+	readonly id?: string;
 
-	constructor(name: string) {
+	constructor(name: string, id?: string) {
 		this.name = name;
+		this.id = id;
 	}
 
-	toJSON(): undefined {
-		// TODO: Implement credential creation
+	toJSON(): { id: string; name: string } | undefined {
+		if (this.id !== undefined) {
+			return { id: this.id, name: this.name };
+		}
 		return undefined;
 	}
 }
 
 /**
- * Create a new credential marker for credentials that need to be created
+ * Create a credential marker.
  *
- * Use this when a workflow needs a credential that doesn't exist yet.
- * Currently serializes to undefined (not yet implemented).
+ * When called with just a name, creates a placeholder for a credential that needs
+ * to be created (serializes to undefined, omitted from JSON).
+ *
+ * When called with both name and id, links an existing credential
+ * (serializes to `{ id, name }` in JSON).
  *
  * @param name - Display name for the credential (e.g., 'My Slack Bot')
- * @returns A credential marker (currently serializes to undefined)
+ * @param id - Optional ID of an existing credential to link
+ * @returns A credential marker
  *
  * @example
  * ```typescript
- * const slackNode = node('n8n-nodes-base.slack', 'v2.2', {
- *   parameters: { channel: '#general' },
- *   credentials: { slackApi: newCredential('My Slack Bot') }
- * });
- * // Currently: credential is omitted from JSON output
- * // TODO: Will create actual credentials when implemented
+ * // Link existing credential
+ * credentials: { slackApi: newCredential('Slack Bot', 'cred-123') }
+ * // → { slackApi: { id: 'cred-123', name: 'Slack Bot' } }
+ *
+ * // Placeholder (credential to be created)
+ * credentials: { slackApi: newCredential('My Slack Bot') }
+ * // → {} (omitted from JSON)
  * ```
  */
-export function newCredential(name: string): NewCredentialValue {
-	return new NewCredentialImpl(name);
+export function newCredential(name: string, id?: string): NewCredentialValue {
+	return new NewCredentialImpl(name, id);
 }
 
 /**

@@ -16,6 +16,7 @@ import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import type { IWorkflowDb, INodeUi } from '@/Interface';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { shallowRef, type Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
@@ -26,14 +27,13 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
 }));
-vi.mock('@/app/composables/useTelemetry');
 vi.mock('@/app/composables/useWorkflowSaving');
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/features/workflows/canvas/canvas.eventBus');
 vi.mock('@/app/event-bus');
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
-		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.name}` })),
+		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.workflowId}` })),
 	}),
 	useRoute: () => ({}),
 	RouterLink: vi.fn(),
@@ -44,21 +44,21 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 		baseText: (key: string) => key,
 	}),
 }));
-vi.mock('file-saver', () => ({
-	saveAs: vi.fn(),
+const { saveAsMock, mockTelemetryTrack } = vi.hoisted(() => ({
+	saveAsMock: vi.fn(),
+	mockTelemetryTrack: vi.fn(),
 }));
-const mockTelemetryTrack = vi.fn();
+vi.mock('file-saver', () => ({
+	saveAs: saveAsMock,
+}));
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),
 }));
 
-const getWorkflowDataToSaveMock = vi.fn();
 vi.mock('@/app/composables/useWorkflowHelpers', () => ({
-	useWorkflowHelpers: () => ({
-		getWorkflowDataToSave: getWorkflowDataToSaveMock,
-	}),
+	useWorkflowHelpers: () => ({}),
 }));
 
 const saveCurrentWorkflowMock = vi.fn();
@@ -79,6 +79,7 @@ describe('useWorkflowCommands', () => {
 
 	beforeEach(() => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
+		vi.clearAllMocks();
 
 		mockWorkflow = ref(
 			createTestWorkflow({
@@ -98,7 +99,6 @@ describe('useWorkflowCommands', () => {
 		mockWorkflowsListStore = useWorkflowsListStore();
 		mockSourceControlStore = useSourceControlStore();
 
-		getWorkflowDataToSaveMock.mockResolvedValue(mockWorkflow.value);
 		saveCurrentWorkflowMock.mockResolvedValue(true);
 
 		mockWorkflowsStore.workflow = mockWorkflow.value;
@@ -109,6 +109,9 @@ describe('useWorkflowCommands', () => {
 			createWorkflowDocumentId(mockWorkflow.value.id),
 		);
 		mockWorkflowDocumentStore.setScopes(mockWorkflow.value.scopes ?? []);
+		vi.spyOn(mockWorkflowDocumentStore, 'serialize').mockReturnValue(
+			mockWorkflow.value as unknown as WorkflowData,
+		);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(mockWorkflowDocumentStore));
 
 		Object.defineProperty(mockUIStore, 'isActionActive', {
@@ -357,18 +360,16 @@ describe('useWorkflowCommands', () => {
 
 	describe('export commands', () => {
 		it('should handle download workflow', async () => {
-			const { saveAs } = await import('file-saver');
-
 			const { commands } = useWorkflowCommands();
 			const downloadCommand = commands.value.find((cmd) => cmd.id === 'download-workflow');
 
 			await downloadCommand?.handler?.();
 
-			expect(getWorkflowDataToSaveMock).toHaveBeenCalled();
+			expect(mockWorkflowDocumentStore.serialize).toHaveBeenCalled();
 			expect(mockTelemetryTrack).toHaveBeenCalledWith('User exported workflow', {
 				workflow_id: 'workflow-123',
 			});
-			expect(saveAs).toHaveBeenCalled();
+			expect(saveAsMock).toHaveBeenCalled();
 		});
 	});
 

@@ -75,5 +75,14 @@ export class LinearOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'body',
 		},
+		{
+			displayName: 'Signing Secret',
+			name: 'signingSecret',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			description:
+				'The signing secret is used to verify the authenticity of webhook requests sent by Linear.',
+		},
 	];
 }

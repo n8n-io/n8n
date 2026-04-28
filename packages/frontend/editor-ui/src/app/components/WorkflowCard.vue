@@ -32,6 +32,7 @@ import {
 } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 import {
 	N8nActionToggle,
@@ -61,6 +62,7 @@ const WORKFLOW_LIST_ITEM_ACTIONS = {
 	ENABLE_MCP_ACCESS: 'enableMCPAccess',
 	REMOVE_MCP_ACCESS: 'removeMCPAccess',
 	UNPUBLISH: 'unpublish',
+	TOGGLE_FAVORITE: 'toggleFavorite',
 };
 
 const props = withDefaults(
@@ -119,6 +121,7 @@ const workflowsListStore = useWorkflowsListStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
+const favoritesStore = useFavoritesStore();
 const workflowActivate = useWorkflowActivate();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
@@ -191,6 +194,13 @@ const actions = computed(() => {
 			value: WORKFLOW_LIST_ITEM_ACTIONS.SHARE,
 		});
 	}
+
+	items.push({
+		label: favoritesStore.isFavorite(props.data.id, 'workflow')
+			? locale.baseText('favorites.remove')
+			: locale.baseText('favorites.add'),
+		value: WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+	});
 
 	if (
 		workflowPermissions.value.read &&
@@ -313,7 +323,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
 		const route = router.resolve({
 			name: VIEWS.WORKFLOW,
-			params: { name: props.data.id },
+			params: { workflowId: props.data.id },
 		});
 		window.open(route.href, '_blank');
 
@@ -322,7 +332,7 @@ async function onClick(event?: KeyboardEvent | PointerEvent) {
 
 	await router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: props.data.id },
+		params: { workflowId: props.data.id },
 	});
 }
 
@@ -393,6 +403,9 @@ async function onAction(action: string) {
 		case WORKFLOW_LIST_ITEM_ACTIONS.UNPUBLISH:
 			await unpublishWorkflow();
 			break;
+		case WORKFLOW_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
+			await favoritesStore.toggleFavorite(props.data.id, 'workflow');
+			break;
 	}
 }
 
@@ -441,9 +454,13 @@ async function toggleMCPAccess(enabled: boolean) {
 }
 
 async function deleteWorkflow() {
+	await deleteWorkflowById(props.data.id, props.data.name);
+}
+
+async function deleteWorkflowById(id: WorkflowResource['id'], name: WorkflowResource['name']) {
 	const deleteConfirmed = await message.confirm(
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
 		{
@@ -462,7 +479,7 @@ async function deleteWorkflow() {
 	}
 
 	try {
-		await workflowsListStore.deleteWorkflow(props.data.id);
+		await workflowsListStore.deleteWorkflow(id);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
 		return;
@@ -471,7 +488,7 @@ async function deleteWorkflow() {
 	// Reset tab title since workflow is deleted.
 	toast.showMessage({
 		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: name },
 		}),
 		type: 'success',
 	});
@@ -501,17 +518,27 @@ async function archiveWorkflow() {
 		}
 	}
 
+	const archivedWorkflowId = props.data.id;
+	const archivedWorkflowName = props.data.name;
+
 	try {
-		await workflowsStore.archiveWorkflow(props.data.id);
+		await workflowsStore.archiveWorkflow(archivedWorkflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('generic.archiveWorkflowError'));
 		return;
 	}
 
-	toast.showMessage({
+	toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-			interpolate: { workflowName: props.data.name },
+			interpolate: { workflowName: archivedWorkflowName },
 		}),
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void deleteWorkflowById(archivedWorkflowId, archivedWorkflowName);
+			}
+		},
 		type: 'success',
 	});
 	emit('workflow:archived');

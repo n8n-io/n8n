@@ -55,7 +55,7 @@ export class Ssh implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'SSH',
 		name: 'ssh',
-		icon: 'fa:terminal',
+		icon: 'node:ssh',
 		iconColor: 'black',
 		group: ['input'],
 		version: 1,
@@ -63,7 +63,6 @@ export class Ssh implements INodeType {
 		description: 'Execute commands via SSH',
 		defaults: {
 			name: 'SSH',
-			color: '#000000',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

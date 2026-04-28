@@ -1,7 +1,18 @@
+// Global mocks in test/setup-mocks.ts replace `node:fs` with jest auto-mocks,
+// which breaks express view lookup in the SAML connection-test round-trip.
+// Restore the real fs so the ACS handler can render its handlebars template.
+jest.unmock('node:fs');
+
 import type { SamlPreferences } from '@n8n/api-types';
-import { randomEmail, randomName, randomValidPassword } from '@n8n/backend-test-utils';
+import {
+	createTeamProject,
+	getProjectRoleForUser,
+	randomEmail,
+	randomName,
+	randomValidPassword,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import { type User, UserRepository, RoleRepository, RoleMappingRuleRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
@@ -14,13 +25,16 @@ import {
 	RSA_TEST_PRIVATE_KEY,
 } from '@/modules/sso-saml/__tests__/saml-signing-test-fixtures';
 
+import { TEMPLATES_DIR } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { setSamlLoginEnabled } from '@/modules/sso-saml/saml-helpers';
 import { SamlService } from '@/modules/sso-saml/saml.service.ee';
 import {
 	getCurrentAuthenticationMethod,
 	setCurrentAuthenticationMethod,
 } from '@/sso.ee/sso-helpers';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
 
 import { sampleConfig } from './sample-metadata';
 import { createOwner, createUser } from '../shared/db/users';
@@ -299,6 +313,78 @@ describe('Check endpoint permissions', () => {
 	});
 });
 
+describe('POST /sso/saml/config/test round-trip', () => {
+	beforeAll(() => {
+		// ACS renders handlebars templates; configure the engine on the test app.
+		testServer.app.engine('handlebars', createHandlebarsEngine());
+		testServer.app.set('view engine', 'handlebars');
+		testServer.app.set('views', TEMPLATES_DIR);
+	});
+
+	beforeEach(async () => {
+		await enableSaml(false);
+		await Container.get(SamlService).reset();
+	});
+
+	test('embeds a test token in the RelayState when metadata is provided without saving', async () => {
+		const response = await authOwnerAgent
+			.post('/sso/saml/config/test')
+			.send({ metadata: sampleConfig.metadata, loginBinding: 'redirect' })
+			.expect(200);
+
+		// Body is the IdP redirect URL; its RelayState query param must point at the
+		// test return URL and include our opaque test token.
+		const redirectUrl = new URL(response.body.data as string);
+		const relayState = redirectUrl.searchParams.get('RelayState');
+		expect(relayState).toBeTruthy();
+
+		const relayStateUrl = new URL(relayState!);
+		expect(relayStateUrl.pathname).toBe('/config/test/return');
+		expect(relayStateUrl.searchParams.get('t')).toMatch(/^[0-9a-f]+$/);
+	});
+
+	test('ACS callback with the test token does not fail with "No IdP metadata configured"', async () => {
+		// Prime the test config without persisting SAML preferences.
+		const initResponse = await authOwnerAgent
+			.post('/sso/saml/config/test')
+			.send({ metadata: sampleConfig.metadata, loginBinding: 'redirect' })
+			.expect(200);
+		const relayState = new URL(initResponse.body.data as string).searchParams.get('RelayState')!;
+
+		const acsResponse = await testServer.authlessAgent
+			.post('/sso/saml/acs')
+			.type('form')
+			.send({ RelayState: relayState, SAMLResponse: 'invalid' })
+			.expect(200);
+
+		// The rendered failure template proves we handled this as a test-connection
+		// flow (not a login auth error). The distinctive pre-fix error message
+		// must not appear — cached metadata should have been consumed.
+		expect(acsResponse.text).toContain('SAML Connection Test failed');
+		expect(acsResponse.text).not.toContain('No IdP metadata configured');
+	});
+
+	test('ACS callback consumes the test token so a later lookup returns undefined', async () => {
+		const initResponse = await authOwnerAgent
+			.post('/sso/saml/config/test')
+			.send({ metadata: sampleConfig.metadata, loginBinding: 'redirect' })
+			.expect(200);
+		const relayState = new URL(initResponse.body.data as string).searchParams.get('RelayState')!;
+		const testId = new URL(relayState).searchParams.get('t')!;
+
+		await testServer.authlessAgent
+			.post('/sso/saml/acs')
+			.type('form')
+			.send({ RelayState: relayState, SAMLResponse: 'invalid' })
+			.expect(200);
+
+		// After the ACS callback, the cached metadata must be gone — confirming
+		// the token is single-use.
+		const consumed = await Container.get(SamlService).consumePendingTestConfig(testId);
+		expect(consumed).toBeUndefined();
+	});
+});
+
 describe('Signing key configuration via API', () => {
 	const originalEnv = process.env.N8N_ENV_FEAT_SIGNED_SAML_REQUESTS;
 
@@ -500,7 +586,7 @@ describe('Signing key configuration via API', () => {
 
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			const decryptedKey = await samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
 		});
 
@@ -518,7 +604,7 @@ describe('Signing key configuration via API', () => {
 
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			const decryptedKey = await samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(EC_TEST_PRIVATE_KEY);
 		});
 
@@ -538,7 +624,7 @@ describe('Signing key configuration via API', () => {
 			// Verify key is stored
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+			expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 
 			// Clear both fields
 			await authOwnerAgent
@@ -552,7 +638,7 @@ describe('Signing key configuration via API', () => {
 
 			// Key should be cleared
 			// @ts-expect-error -- accessing private method for testing
-			expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
 
 			// GET should not return signing fields
@@ -587,7 +673,7 @@ describe('Signing key configuration via API', () => {
 			// Key should still be decryptable to original value
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			const decryptedKey = await samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
 		});
 	});
@@ -604,11 +690,14 @@ describe('SAML email validation', () => {
 		test('should throw BadRequestError for invalid email format', async () => {
 			// Mock getAttributesFromLoginResponse to return invalid email
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: 'invalid-email-format',
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: 'invalid-email-format',
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			const mockRequest = {} as express.Request;
@@ -622,11 +711,14 @@ describe('SAML email validation', () => {
 			'should throw BadRequestError for invalid email <%s>',
 			async (invalidEmail) => {
 				jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-					email: invalidEmail,
-					firstName: 'John',
-					lastName: 'Doe',
-					userPrincipalName: 'john.doe',
-					n8nInstanceRole: 'n8n_instance_role',
+					mapped: {
+						email: invalidEmail,
+						firstName: 'John',
+						lastName: 'Doe',
+						userPrincipalName: 'john.doe',
+						n8nInstanceRole: 'n8n_instance_role',
+					},
+					raw: {},
 				});
 
 				const mockRequest = {} as express.Request;
@@ -646,11 +738,14 @@ describe('SAML email validation', () => {
 			const mockRequest = {} as express.Request;
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: validEmail,
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: validEmail,
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			// Should not throw an error for valid emails
@@ -663,11 +758,14 @@ describe('SAML email validation', () => {
 			const upperCaseEmail = 'USER@EXAMPLE.COM';
 
 			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
-				email: upperCaseEmail,
-				firstName: 'John',
-				lastName: 'Doe',
-				userPrincipalName: 'john.doe',
-				n8nInstanceRole: 'n8n_instance_role',
+				mapped: {
+					email: upperCaseEmail,
+					firstName: 'John',
+					lastName: 'Doe',
+					userPrincipalName: 'john.doe',
+					n8nInstanceRole: 'n8n_instance_role',
+				},
+				raw: {},
 			});
 
 			const mockRequest = {} as express.Request;
@@ -677,5 +775,103 @@ describe('SAML email validation', () => {
 			expect(result).toBeDefined();
 			expect(result.attributes.email).toBe(upperCaseEmail); // Original email should be preserved in attributes
 		});
+	});
+});
+
+describe('SAML SSO provisioning', () => {
+	let samlService: SamlService;
+	let roleMappingRuleRepository: RoleMappingRuleRepository;
+	let roleRepository: RoleRepository;
+	let userRepository: UserRepository;
+	let savedProvisioningConfig: unknown;
+
+	beforeAll(async () => {
+		samlService = Container.get(SamlService);
+		roleMappingRuleRepository = Container.get(RoleMappingRuleRepository);
+		roleRepository = Container.get(RoleRepository);
+		userRepository = Container.get(UserRepository);
+		await Container.get(ProvisioningService).init();
+	});
+
+	beforeEach(() => {
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		savedProvisioningConfig = { ...provisioningService.provisioningConfig };
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+	});
+
+	afterEach(async () => {
+		const provisioningService = Container.get(ProvisioningService);
+		// @ts-expect-error - provisioningConfig is private
+		provisioningService.provisioningConfig = { ...savedProvisioningConfig };
+
+		await roleMappingRuleRepository.delete({});
+	});
+
+	it('should provision instance role via expression mapping', async () => {
+		const adminRole = await roleRepository.findOneOrFail({ where: { slug: 'global:admin' } });
+		await roleMappingRuleRepository.save(
+			roleMappingRuleRepository.create({
+				expression: "{{ $claims.department === 'it' }}",
+				role: adminRole,
+				type: 'instance',
+				order: 0,
+			}),
+		);
+
+		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-expr-instance@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-expr-instance',
+			},
+			raw: { department: 'it', email: 'saml-expr-instance@example.com' },
+		});
+
+		const mockRequest = {} as express.Request;
+		const result = await samlService.handleSamlLogin(mockRequest, 'post');
+		expect(result).toBeDefined();
+
+		const userFromDB = await userRepository.findOne({
+			where: { email: 'saml-expr-instance@example.com' },
+			relations: ['role'],
+		});
+		expect(userFromDB!.role.slug).toEqual('global:admin');
+	});
+
+	it('should provision project role via expression mapping', async () => {
+		const project = await createTeamProject('saml-expr-project-role-test');
+
+		const editorRole = await roleRepository.findOneOrFail({ where: { slug: 'project:editor' } });
+		const rule = roleMappingRuleRepository.create({
+			expression: "{{ $claims.groups !== undefined && $claims.groups.includes('n8n-editors') }}",
+			role: editorRole,
+			type: 'project',
+			order: 0,
+		});
+		rule.projects = [project];
+		await roleMappingRuleRepository.save(rule);
+
+		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			mapped: {
+				email: 'saml-expr-project@example.com',
+				firstName: 'SAML',
+				lastName: 'User',
+				userPrincipalName: 'saml-expr-project',
+			},
+			raw: {
+				email: 'saml-expr-project@example.com',
+				groups: ['n8n-editors', 'devops'],
+			},
+		});
+
+		const mockRequest = {} as express.Request;
+		const result = await samlService.handleSamlLogin(mockRequest, 'post');
+		expect(result.authenticatedUser).toBeDefined();
+
+		const projectRole = await getProjectRoleForUser(project.id, result.authenticatedUser!.id);
+		expect(projectRole).toEqual('project:editor');
 	});
 });

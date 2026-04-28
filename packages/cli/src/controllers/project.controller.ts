@@ -27,8 +27,10 @@ import { In, Not } from '@n8n/typeorm';
 import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
 import {
 	ProjectService,
@@ -44,6 +46,7 @@ export class ProjectController {
 		private readonly projectRepository: ProjectRepository,
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
+		private readonly provisioningService: ProvisioningService,
 	) {}
 
 	@Get('/')
@@ -293,6 +296,12 @@ export class ProjectController {
 		@Param('userId') userId: string,
 		@Body body: ChangeUserRoleInProject,
 	) {
+		if (await this.provisioningService.isProjectRoleManaged()) {
+			throw new ForbiddenError(
+				'Project roles are managed automatically and cannot be changed manually',
+			);
+		}
+
 		try {
 			await this.projectsService.changeUserRoleInProject(projectId, userId, body.role);
 			const relations = await this.projectsService.getProjectRelations(projectId);

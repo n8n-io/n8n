@@ -12,6 +12,9 @@ import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
 import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@/app/constants';
+import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
+import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
@@ -20,16 +23,20 @@ import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
 import { useRootStore } from '@n8n/stores/useRootStore';
 import axios from 'axios';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useStyles } from '@/app/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const ndvStore = useNDVStore();
+const uiStore = useUIStore();
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
 	useFloatingUiOffsets();
@@ -49,6 +56,13 @@ const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
 const isDemoMode = computed(() => route.name === VIEWS.DEMO);
 const hasContentFooter = ref(false);
+const workflowId = useWorkflowId();
+const currentWorkflowDocumentStore = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
+	null,
+);
+
+provide(WorkflowIdKey, workflowId);
+provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 
@@ -69,6 +83,26 @@ watch(route, (r) => {
 		(matchedRoute) => matchedRoute.components?.footer !== undefined,
 	);
 });
+
+// Assistant AI opt-in modal: admins only, until dismissed
+watch(
+	() => {
+		const moduleLoaded = settingsStore.moduleSettings['instance-ai'] !== undefined;
+		return (
+			moduleLoaded &&
+			settingsStore.isModuleActive('instance-ai') &&
+			route.meta.layout !== 'auth' &&
+			!settingsStore.moduleSettings['instance-ai']?.optinModalDismissed &&
+			canManageInstanceAi()
+		);
+	},
+	(shouldShow) => {
+		if (shouldShow) {
+			uiStore.openModal(INSTANCE_AI_OPTIN_MODAL_KEY);
+		}
+	},
+	{ once: true },
+);
 
 watch(
 	defaultLocale,

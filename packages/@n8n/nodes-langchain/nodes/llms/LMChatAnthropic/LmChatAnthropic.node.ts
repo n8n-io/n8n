@@ -19,6 +19,11 @@ import {
 
 import { searchModels } from './methods/searchModels';
 
+const ANTHROPIC_MODEL_BUILDER_HINT = {
+	message:
+		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices.',
+};
+
 const modelField: INodeProperties = {
 	displayName: 'Model',
 	name: 'model',
@@ -69,6 +74,7 @@ const modelField: INodeProperties = {
 	description:
 		'The model which will generate the completion. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 	default: 'claude-2',
+	builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 };
 
 const MIN_THINKING_BUDGET = 1024;
@@ -86,8 +92,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4],
+		defaultVersion: 1.4,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -158,6 +164,7 @@ export class LmChatAnthropic implements INodeType {
 					value: 'claude-sonnet-4-5-20250929',
 					cachedResultName: 'Claude Sonnet 4.5',
 				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
 					{
@@ -181,7 +188,44 @@ export class LmChatAnthropic implements INodeType {
 					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.3 } }],
+						'@version': [1.3],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: 'claude-sonnet-4-6',
+					cachedResultName: 'Claude Sonnet 4.6',
+				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'Claude Sonnet',
+					},
+				],
+				description:
+					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
 					},
 				},
 			},

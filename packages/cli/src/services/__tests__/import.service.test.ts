@@ -54,7 +54,9 @@ describe('ImportService', () => {
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 
 		// Set up cipher mock
-		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		mockCipher.decryptV2 = jest.fn(async (data: string) =>
+			data.replace('encrypted:', ''),
+		) as Cipher['decryptV2'];
 
 		// Set up dataSource mocks
 		// @ts-expect-error Accessing private property for testing
@@ -348,8 +350,8 @@ describe('ImportService', () => {
 				{ id: 1, name: 'Test' },
 				{ id: 2, name: 'Test2' },
 			]);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}', undefined);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}', undefined);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('{"id":1,"name":"Test"}', undefined);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('{"id":2,"name":"Test2"}', undefined);
 		});
 
 		it('should handle empty lines in JSONL file', async () => {
@@ -511,7 +513,7 @@ describe('ImportService', () => {
 				'custom-encryption-key',
 			);
 
-			expect(mockCipher.decrypt).toHaveBeenCalledWith(
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(
 				'{"id":1,"name":"Test User"}',
 				'custom-encryption-key',
 			);
@@ -769,6 +771,175 @@ describe('ImportService', () => {
 			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
+		});
+	});
+
+	describe('normalizeEntityJsonColumns', () => {
+		const metadata = {
+			columns: [
+				{ databaseName: 'id', type: 'varchar' },
+				{ databaseName: 'nodes', type: 'simple-json' },
+				{ databaseName: 'meta', type: 'json' },
+				{ databaseName: 'name', type: 'text' },
+			],
+		} as any;
+
+		it('should parse and re-serialise a SQLite string JSON array value', () => {
+			const entity = { id: '1', nodes: '[{"id":"abc"}]', name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+		});
+
+		it('should parse and re-serialise a SQLite string JSON object value', () => {
+			const entity = { id: '1', meta: '{"key":"value"}', name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.meta).toBe(JSON.stringify({ key: 'value' }));
+		});
+
+		it('should serialise a Postgres parsed object value to a JSON string', () => {
+			const entity = { id: '1', nodes: [{ id: 'abc' }], name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+		});
+
+		it('should serialise a Postgres parsed array value to a JSON string', () => {
+			const entity = { id: '1', meta: [1, 2, 3], name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.meta).toBe(JSON.stringify([1, 2, 3]));
+		});
+
+		it('should leave null json column values unchanged', () => {
+			const entity = { id: '1', nodes: null, meta: null };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBeNull();
+			expect(result.meta).toBeNull();
+		});
+
+		it('should not modify non-json columns', () => {
+			const entity = { id: '1', name: 'should-not-change', nodes: '[]' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.id).toBe('1');
+			expect(result.name).toBe('should-not-change');
+		});
+
+		it('should leave an invalid JSON string unchanged', () => {
+			const entity = { id: '1', nodes: 'not-valid-json' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBe('not-valid-json');
+		});
+
+		it('should only normalise json columns in a mixed entity', () => {
+			const entity = {
+				id: '1',
+				name: 'workflow',
+				nodes: '[{"id":"abc"}]',
+				meta: { key: 'value' },
+			};
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.id).toBe('1');
+			expect(result.name).toBe('workflow');
+			expect(result.nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+			expect(result.meta).toBe(JSON.stringify({ key: 'value' }));
+		});
+	});
+
+	describe('importEntitiesFromFiles — JSON column normalisation', () => {
+		it('should normalise SQLite string json column values before inserting into Postgres', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'WorkflowEntity',
+					tableName: 'workflow_entity',
+					columns: [
+						{ databaseName: 'id', type: 'varchar' },
+						{ databaseName: 'nodes', type: 'simple-json' },
+					],
+				},
+			] as any;
+
+			// SQLite-origin: nodes is a serialised string, not an object
+			const sqliteEntity = { id: '1', nodes: '[{"id":"abc"}]' };
+			jest.mocked(readFile).mockResolvedValue(JSON.stringify(sqliteEntity));
+
+			const capturedParams: Array<Record<string, unknown>> = [];
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockImplementation((_query, params) => {
+					capturedParams.push(params as Record<string, unknown>);
+					return ['INSERT COMMAND', params];
+				});
+
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				['workflowentity'],
+				{ workflowentity: ['/test/input/workflowentity.jsonl'] },
+			);
+
+			expect(capturedParams).toHaveLength(1);
+			// nodes must be a serialised JSON string, not the raw SQLite text
+			expect(capturedParams[0].nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+		});
+
+		it('should normalise Postgres object json column values before inserting into SQLite', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'WorkflowEntity',
+					tableName: 'workflow_entity',
+					columns: [
+						{ databaseName: 'id', type: 'varchar' },
+						{ databaseName: 'nodes', type: 'json' },
+					],
+				},
+			] as any;
+
+			// Postgres-origin: nodes is a parsed object in the JSONL
+			const postgresEntity = { id: '1', nodes: [{ id: 'abc' }] };
+			jest.mocked(readFile).mockResolvedValue(JSON.stringify(postgresEntity));
+
+			const capturedParams: Array<Record<string, unknown>> = [];
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockImplementation((_query, params) => {
+					capturedParams.push(params as Record<string, unknown>);
+					return ['INSERT COMMAND', params];
+				});
+
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				['workflowentity'],
+				{ workflowentity: ['/test/input/workflowentity.jsonl'] },
+			);
+
+			expect(capturedParams).toHaveLength(1);
+			// nodes must be a JSON string, not the raw JS object
+			expect(capturedParams[0].nodes).toBe(JSON.stringify([{ id: 'abc' }]));
 		});
 	});
 

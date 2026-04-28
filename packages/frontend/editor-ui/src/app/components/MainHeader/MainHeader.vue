@@ -74,8 +74,10 @@ const hideMenuBar = computed(() =>
 const workflow = computed(() => workflowsStore.workflow);
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
+const workflowName = computed(() => workflowDocumentStore?.value?.name ?? '');
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
 const workflowIsArchived = computed(() => workflowDocumentStore?.value?.isArchived ?? false);
+const workflowDescription = computed(() => workflowDocumentStore?.value?.description ?? '');
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 
 const isEnterprise = computed(
@@ -143,13 +145,13 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	}
 
 	// Store the current workflow ID, but only if it's not a new workflow
-	if (typeof to.params.name === 'string') {
-		workflowToReturnTo.value = to.params.name;
+	if (typeof to.params.workflowId === 'string') {
+		workflowToReturnTo.value = to.params.workflowId;
 	}
 
 	if (
 		from?.name === VIEWS.EXECUTION_PREVIEW &&
-		to.params.name === from.params.name &&
+		to.params.workflowId === from.params.workflowId &&
 		typeof from.params.executionId === 'string'
 	) {
 		executionToReturnTo.value = from.params.executionId;
@@ -182,7 +184,7 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 	if (workflowToReturnTo.value && workflowToReturnTo.value !== '') {
 		routeToNavigateTo = {
 			name: VIEWS.WORKFLOW,
-			params: { name: workflowToReturnTo.value },
+			params: { workflowId: workflowToReturnTo.value },
 			query: route.query,
 		};
 	} else {
@@ -214,12 +216,12 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflowId.value, executionId: executionToReturnToValue },
+				params: { workflowId: workflowId.value, executionId: executionToReturnToValue },
 				query: route.query,
 			}
 		: {
 				name: VIEWS.EXECUTION_HOME,
-				params: { name: workflowId.value },
+				params: { workflowId: workflowId.value },
 				query: route.query,
 			};
 
@@ -237,7 +239,7 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 async function navigateToEvaluationsView(openInNewTab: boolean) {
 	const routeToNavigateTo: RouteLocationRaw = {
 		name: VIEWS.EVALUATION_EDIT,
-		params: { name: workflowId.value },
+		params: { workflowId: workflowId.value },
 		query: route.query,
 	};
 
@@ -264,7 +266,7 @@ async function onWorkflowDeactivated() {
 		try {
 			// Fetch the updated workflow to get the latest settings after backend processing
 			const updatedWorkflow = await workflowsListStore.fetchWorkflow(workflow.value.id);
-			workflowsStore.setWorkflow(updatedWorkflow);
+			workflowDocumentStore?.value?.hydrate(updatedWorkflow);
 			toast.showToast({
 				title: locale.baseText('mcp.workflowDeactivated.title'),
 				message: locale.baseText('mcp.workflowDeactivated.message'),
@@ -288,13 +290,13 @@ async function onWorkflowDeactivated() {
 		>
 			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
-					v-if="workflow?.name"
+					v-if="workflowName"
 					:id="workflow.id"
 					:tags="workflowTags"
-					:name="workflow.name"
+					:name="workflowName"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflowIsArchived"
-					:description="workflow.description"
+					:description="workflowDescription"
 					@workflow:deactivated="onWorkflowDeactivated"
 				/>
 				<div v-if="showGitHubButton" :class="[$style['github-button'], 'hidden-sm-and-down']">

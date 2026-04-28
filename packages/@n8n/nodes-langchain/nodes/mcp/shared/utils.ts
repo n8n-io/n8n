@@ -309,3 +309,9 @@ export async function tryRefreshOAuth2Token(
 		Authorization: `Bearer ${access_token}`,
 	};
 }
+
+export function isStructuredContent(value: unknown): value is Record<string, unknown> {
+	return (
+		value !== undefined && value !== null && typeof value === 'object' && !Array.isArray(value)
+	);
+}

@@ -10,10 +10,8 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
-import { toDbMessage } from '../sdk/message';
 import type { FinishReason } from '../types';
 import type {
-	AgentDbMessage,
 	AgentMessage,
 	ContentFile,
 	ContentReasoning,
@@ -263,7 +261,7 @@ export function toAiMessages(messages: Message[]): ModelMessage[] {
 }
 
 /** Convert a single AI SDK ModelMessage to an n8n AgentDbMessage (with a generated id). */
-export function fromAiMessage(msg: ModelMessage): AgentDbMessage {
+export function fromAiMessage(msg: ModelMessage): AgentMessage {
 	const rawContent = msg.content;
 	const content: MessageContent[] =
 		typeof rawContent === 'string'
@@ -273,11 +271,11 @@ export function fromAiMessage(msg: ModelMessage): AgentDbMessage {
 	if ('providerOptions' in msg && msg.providerOptions) {
 		message.providerOptions = msg.providerOptions;
 	}
-	return toDbMessage(message);
+	return message;
 }
 
 /** Convert AI SDK ModelMessages to n8n AgentDbMessages (each with a generated id). */
-export function fromAiMessages(messages: ModelMessage[]): AgentDbMessage[] {
+export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 	return messages.map(fromAiMessage);
 }
 

@@ -10,21 +10,9 @@ import type { Cluster, ClusterOptions, DNSLookupFunction, RedisOptions } from 'i
 import { InstanceSettings } from 'n8n-core';
 import { isAbsolute } from 'path';
 
-import type { RedisClientType } from '../scaling/redis/redis.types';
-
 import { TypedEmitter } from '@/typed-emitter';
 
-type RedisEventMap = {
-	['connection-lost']: number;
-	['connection-recovered']: never;
-};
-
-type RedisNode = Array<{
-	host: string;
-	port: number;
-}>;
-
-type CreateRedisClientArgs = { type: RedisClientType; extraOptions?: RedisOptions };
+import type { RedisClientType } from '../scaling/redis/redis.types';
 
 /**
  * Enable ioredis debug logging if QUEUE_BULL_REDIS_DEBUG is set to 'true'.
@@ -44,6 +32,25 @@ function enableRedisDebug() {
 		process.env['DEBUG'] = debuggers.join(',');
 	}
 }
+
+type RedisEventMap = {
+	['connection-lost']: number;
+	['connection-recovered']: never;
+};
+
+type RedisNode = Array<{
+	host: string;
+	port: number;
+}>;
+
+/** Function called by ioredis on each failed reconnect. Returns ms to wait before the next attempt. */
+type RetryStrategy = () => number;
+
+type RedisClientCreateOptions = {
+	type: RedisClientType;
+	extraOptions?: RedisOptions;
+};
+
 const RECONNECT_AND_RETRY = 2;
 const DO_NOT_RECONNECT = false;
 
@@ -81,12 +88,13 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		return !this.lostConnection;
 	}
 
-	createClient(arg: CreateRedisClientArgs) {
-		const options = this.getOptions(arg);
+	createClient(options: RedisClientCreateOptions) {
+		const { retryStrategy, resetRetryState } = this.makeRetryStrategy();
 		const isCluster = this.clusterNodes().length > 0;
+
 		const { client, nodes } = isCluster
-			? this.createClusterClient(options)
-			: this.createRegularClient(options);
+			? this.createClusterClient(options, retryStrategy)
+			: this.createRegularClient(options, retryStrategy);
 
 		client.on('error', (error: Error) => {
 			if ('code' in error && error.code === 'ECONNREFUSED') return; // handled by retryStrategy
@@ -94,6 +102,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		});
 
 		client.on('ready', () => {
+			resetRetryState();
 			if (this.lostConnection) {
 				this.emit('connection-recovered');
 				this.lostConnection = false;
@@ -102,7 +111,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		this.clients.add(client);
 
-		this.connect(client, isCluster, arg.type, nodes);
+		this.connect(client, isCluster, options.type, nodes);
 
 		return client;
 	}
@@ -124,7 +133,12 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	//            private
 	// ----------------------------------
 
-	private createRegularClient(options: RedisOptions) {
+	private createRegularClient(
+		{ type, extraOptions }: RedisClientCreateOptions,
+		retryStrategy: RetryStrategy,
+	) {
+		const options = this.getOptions({ extraOptions, retryStrategy });
+
 		const { host, port } = this.globalConfig.queue.bull.redis;
 
 		options.host = host;
@@ -132,22 +146,35 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		const client = new ioRedis(options);
 
+		this.logger.debug(`Started Redis client ${type}`, { type, host, port });
+
 		return { client, nodes: [{ host, port }] };
 	}
 
-	private createClusterClient(options: RedisOptions) {
+	private createClusterClient(
+		{ type, extraOptions }: RedisClientCreateOptions,
+		retryStrategy: RetryStrategy,
+	) {
+		const options = this.getOptions({ extraOptions, retryStrategy });
+
 		const nodes = this.clusterNodes();
 
-		const clusterNodes = this.clusterNodes();
+		const clusterOptions = this.getClusterOptions(options, retryStrategy);
 
-		const clusterOptions = this.getClusterOptions(options, this.retryStrategy());
+		const client = new ioRedis.Cluster(nodes, clusterOptions);
 
-		const client = new ioRedis.Cluster(clusterNodes, clusterOptions);
+		this.logger.debug(`Started Redis cluster client ${type}`, { type, nodes });
 
 		return { client, nodes };
 	}
 
-	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
+	private getOptions({
+		extraOptions,
+		retryStrategy,
+	}: {
+		extraOptions?: RedisOptions;
+		retryStrategy: RetryStrategy;
+	}) {
 		const {
 			username,
 			password,
@@ -196,8 +223,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			maxRetriesPerRequest: null,
 			enableAutoPipelining,
 			family: getHostnameResolutionIpAddressFamily(),
-			retryStrategy: this.retryStrategy(),
 			reconnectOnError: this.onReconnectError,
+			retryStrategy,
 			...extraOptions,
 		};
 
@@ -330,10 +357,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		process.exit(1);
 	}
 
-	private getClusterOptions(
-		options: RedisOptions,
-		retryStrategy: () => number | null,
-	): ClusterOptions {
+	private getClusterOptions(options: RedisOptions, retryStrategy: RetryStrategy): ClusterOptions {
 		const { slotsRefreshTimeout, slotsRefreshInterval, dnsResolveStrategy } =
 			this.globalConfig.queue.bull.redis;
 		const clusterOptions: ClusterOptions = {
@@ -353,17 +377,17 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	/**
-	 * Strategy to retry connecting to Redis on connection failure.
+	 * Builds a per-client retry strategy and reset hook.
 	 *
-	 * Try to reconnect every 500ms. On every failed attempt, increment a timeout
-	 * counter - if the cumulative timeout exceeds a limit, exit the process.
-	 * Reset the cumulative timeout if >30s between reconnection attempts.
+	 * On every failed attempt, increment a timeout counter - if the cumulative
+	 * timeout exceeds a limit, exit the process. Reset the cumulative timeout
+	 * on successful reconnect or if >30s between reconnection attempts.
 	 */
-	private retryStrategy() {
+	private makeRetryStrategy(): { retryStrategy: RetryStrategy; resetRetryState: () => void } {
 		let lastAttemptTs = 0;
 		let cumulativeTimeout = 0;
 
-		return () => {
+		const retryStrategy: RetryStrategy = () => {
 			const nowTs = Date.now();
 
 			if (nowTs - lastAttemptTs > this.config.resetLength) {
@@ -379,10 +403,18 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 				}
 			}
 
+			this.lostConnection = true;
 			this.emit('connection-lost', cumulativeTimeout);
 
 			return this.config.retryInterval;
 		};
+
+		const resetRetryState = () => {
+			lastAttemptTs = 0;
+			cumulativeTimeout = 0;
+		};
+
+		return { retryStrategy, resetRetryState };
 	}
 
 	private clusterNodes() {
@@ -415,8 +447,6 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 			const timeoutDetails = `${cumulativeTimeout}/${maxTimeout}`;
 
 			this.logger.warn(`Lost Redis connection. ${reconnectionMsg} (${timeoutDetails})`);
-
-			this.lostConnection = true;
 		});
 
 		this.on('connection-recovered', () => {

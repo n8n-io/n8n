@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowPublishHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { ExternalSecretsProxy } from 'n8n-core';
@@ -107,6 +107,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 	mockInstance(CredentialsPermissionChecker);
 	mockInstance(SubworkflowPolicyChecker);
 	mockInstance(WorkflowStatisticsService);
+	mockInstance(WorkflowPublishHistoryRepository);
 	mockInstance(DataTableProxyService);
 
 	const urlService = mockInstance(UrlService);
