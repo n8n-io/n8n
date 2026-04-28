@@ -23,6 +23,7 @@ import {
 	connectMcpClient,
 	getAllTools,
 	getAuthHeaders,
+	isStructuredContent,
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
@@ -480,6 +481,9 @@ export class McpClientTool implements INodeType {
 						returnData.push({
 							json: {
 								response: result.content as IDataObject,
+								...(isStructuredContent(result.structuredContent) && {
+									structuredContent: result.structuredContent,
+								}),
 							},
 							pairedItem: {
 								item: itemIndex,

@@ -97,7 +97,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: workflowDocumentStore.value.workflowId, executionId },
+					params: { workflowId: workflowDocumentStore.value.workflowId, executionId },
 				});
 				return;
 			}
@@ -129,6 +129,10 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 				}
 			}
 		});
+
+		if (pinnings > 0 || matchingPinnedNodeNames.length > 0) {
+			uiStore.markStateDirty();
+		}
 
 		toast.showToast({
 			title: i18n.baseText('nodeView.showMessage.debug.title'),

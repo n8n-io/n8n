@@ -1,6 +1,5 @@
 import moment from 'moment-timezone';
 import type { INode } from 'n8n-workflow';
-import * as n8nWorkflow from 'n8n-workflow';
 
 import {
 	intervalToRecurrence,
@@ -28,97 +27,146 @@ function mockMomentTz(values: {
 	(mockedMoment.tz as unknown as jest.Mock).mockReturnValue(tzObj);
 }
 
-describe('toCronExpression', () => {
-	Object.defineProperty(n8nWorkflow, 'randomInt', {
-		value: (min: number, max: number) => Math.floor((min + max) / 2),
-	});
+// Cron expressions are 6 fields: `<sec> <min> <hr> <dom> <mon> <dow>`.
+// Fields the user does not explicitly pin (e.g. `triggerAtMinute`) are
+// filled in by `stableInt(seed, label, ...)`; every other field comes
+// from the input interval.
+//
+// For `seed = 'test-key'`, `stableInt` produces:
+//   second=56, minute=19, hour=14, dayOfMonth=4
+const TEST_SEED = 'test-key';
 
+describe('toCronExpression', () => {
 	it('should return cron expression for cronExpression field', () => {
-		const result = toCronExpression({
-			field: 'cronExpression',
-			expression: '1 2 3 * * *',
-		});
+		// All fields are user-provided literally — no filler.
+		const result = toCronExpression(
+			{
+				field: 'cronExpression',
+				expression: '1 2 3 * * *',
+			},
+			TEST_SEED,
+		);
 		expect(result).toEqual('1 2 3 * * *');
 	});
 
 	it('should return cron expression for seconds interval', () => {
-		const result = toCronExpression({
-			field: 'seconds',
-			secondsInterval: 10,
-		});
+		// Sub-minute schedules use `*/N`; no filler needed.
+		const result = toCronExpression(
+			{
+				field: 'seconds',
+				secondsInterval: 10,
+			},
+			TEST_SEED,
+		);
 		expect(result).toEqual('*/10 * * * * *');
 	});
 
 	it('should return cron expression for minutes interval', () => {
-		const result = toCronExpression({
-			field: 'minutes',
-			minutesInterval: 30,
-		});
-		expect(result).toEqual('30 */30 * * * *');
+		// sec=56 is filler; */30 comes from `minutesInterval`.
+		const result = toCronExpression(
+			{
+				field: 'minutes',
+				minutesInterval: 30,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 */30 * * * *');
 	});
 
 	it('should return cron expression for hours interval', () => {
-		const result = toCronExpression({
-			field: 'hours',
-			hoursInterval: 3,
-			triggerAtMinute: 22,
-		});
-		expect(result).toEqual('30 22 */3 * * *');
+		// sec=56 is filler; min=22 from `triggerAtMinute`; */3 from `hoursInterval`.
+		const result = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 3,
+				triggerAtMinute: 22,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 22 */3 * * *');
 
-		const result1 = toCronExpression({
-			field: 'hours',
-			hoursInterval: 3,
-		});
-		expect(result1).toEqual('30 30 */3 * * *');
+		// No `triggerAtMinute`, so min=19 is also filler.
+		const result1 = toCronExpression(
+			{
+				field: 'hours',
+				hoursInterval: 3,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 */3 * * *');
 	});
 
 	it('should return cron expression for days interval', () => {
-		const result = toCronExpression({
-			field: 'days',
-			daysInterval: 4,
-			triggerAtMinute: 30,
-			triggerAtHour: 10,
-		});
-		expect(result).toEqual('30 30 10 * * *');
+		// sec=56 is filler; min=30 and hr=10 from `triggerAtMinute`/`triggerAtHour`.
+		const result = toCronExpression(
+			{
+				field: 'days',
+				daysInterval: 4,
+				triggerAtMinute: 30,
+				triggerAtHour: 10,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 30 10 * * *');
 
-		const result1 = toCronExpression({
-			field: 'days',
-			daysInterval: 4,
-		});
-		expect(result1).toEqual('30 30 12 * * *');
+		// Nothing pinned, so sec=56 / min=19 / hr=14 are all filler.
+		const result1 = toCronExpression(
+			{
+				field: 'days',
+				daysInterval: 4,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 * * *');
 	});
 
 	it('should return cron expression for weeks interval', () => {
-		const result = toCronExpression({
-			field: 'weeks',
-			weeksInterval: 2,
-			triggerAtMinute: 0,
-			triggerAtHour: 9,
-			triggerAtDay: [1, 3, 5],
-		});
-		expect(result).toEqual('30 0 9 * * 1,3,5');
-		const result1 = toCronExpression({
-			field: 'weeks',
-			weeksInterval: 2,
-			triggerAtDay: [1, 3, 5],
-		});
-		expect(result1).toEqual('30 30 12 * * 1,3,5');
+		// sec=56 is filler; the rest come from `triggerAtMinute`/`triggerAtHour`/`triggerAtDay`.
+		const result = toCronExpression(
+			{
+				field: 'weeks',
+				weeksInterval: 2,
+				triggerAtMinute: 0,
+				triggerAtHour: 9,
+				triggerAtDay: [1, 3, 5],
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 0 9 * * 1,3,5');
+		// Only `triggerAtDay` pinned, so sec=56 / min=19 / hr=14 are all filler.
+		const result1 = toCronExpression(
+			{
+				field: 'weeks',
+				weeksInterval: 2,
+				triggerAtDay: [1, 3, 5],
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 * * 1,3,5');
 	});
 
 	it('should return cron expression for months interval', () => {
-		const result = toCronExpression({
-			field: 'months',
-			monthsInterval: 3,
-			triggerAtMinute: 0,
-			triggerAtHour: 0,
-			triggerAtDayOfMonth: 1,
-		});
-		expect(result).toEqual('30 0 0 1 */3 *');
-		const result1 = toCronExpression({
-			field: 'months',
-			monthsInterval: 3,
-		});
-		expect(result1).toEqual('30 30 12 16 */3 *');
+		// sec=56 is filler; min/hr/dom come from triggerAt*.
+		const result = toCronExpression(
+			{
+				field: 'months',
+				monthsInterval: 3,
+				triggerAtMinute: 0,
+				triggerAtHour: 0,
+				triggerAtDayOfMonth: 1,
+			},
+			TEST_SEED,
+		);
+		expect(result).toEqual('56 0 0 1 */3 *');
+		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=4 are all filler.
+		const result1 = toCronExpression(
+			{
+				field: 'months',
+				monthsInterval: 3,
+			},
+			TEST_SEED,
+		);
+		expect(result1).toEqual('56 19 14 4 */3 *');
 	});
 });
 

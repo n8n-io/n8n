@@ -447,6 +447,10 @@ export type AuthenticatedRequest<
 	tokenGrant?: TokenGrant;
 };
 
+export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
+	return 'user' in req && req.user !== null;
+}
+
 /**
  * Simplified to prevent excessively deep type instantiation error from
  * `INodeExecutionData` in `IPinData` in a TypeORM entity field.

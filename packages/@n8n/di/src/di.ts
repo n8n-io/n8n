@@ -7,9 +7,9 @@ import 'reflect-metadata';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Constructable<T = unknown> = new (...args: any[]) => T;
 
-type AbstractConstructable<T = unknown> = abstract new (...args: unknown[]) => T;
+export type AbstractConstructable<T = unknown> = abstract new (...args: unknown[]) => T;
 
-type ServiceIdentifier<T = unknown> = Constructable<T> | AbstractConstructable<T>;
+export type ServiceIdentifier<T = unknown> = Constructable<T> | AbstractConstructable<T>;
 
 type Factory<T = unknown> = (...args: unknown[]) => T;
 

@@ -1,5 +1,4 @@
 import { Time } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
 import type { RateLimiterLimits, UserKeyedRateLimiterConfig } from '@n8n/decorators';
 import { BodyKeyedRateLimiterConfig } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -8,6 +7,7 @@ import { rateLimit as expressRateLimit } from 'express-rate-limit';
 import assert from 'node:assert';
 import type { ZodTypeAny } from 'zod';
 import type { ZodClass } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 
 const defaultLimits: Required<RateLimiterLimits> = {
 	limit: 5,
