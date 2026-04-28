@@ -23,10 +23,10 @@ export class ExecutionContextService {
 		private readonly cipher: Cipher,
 	) {}
 
-	decryptExecutionContext(context: IExecutionContext): PlaintextExecutionContext {
+	async decryptExecutionContext(context: IExecutionContext): Promise<PlaintextExecutionContext> {
 		let credentials = undefined;
 		if (context.credentials) {
-			const decrypted = this.cipher.decrypt(context.credentials);
+			const decrypted = await this.cipher.decryptV2(context.credentials);
 			credentials = toCredentialContext(decrypted);
 		}
 		return {
@@ -35,10 +35,10 @@ export class ExecutionContextService {
 		};
 	}
 
-	encryptExecutionContext(context: PlaintextExecutionContext): IExecutionContext {
+	async encryptExecutionContext(context: PlaintextExecutionContext): Promise<IExecutionContext> {
 		let credentials = undefined;
 		if (context.credentials) {
-			credentials = this.cipher.encrypt(context.credentials);
+			credentials = await this.cipher.encryptV2(context.credentials);
 		}
 		return {
 			...context,
@@ -96,7 +96,7 @@ export class ExecutionContextService {
 		const startNodeParameters = startNodeParametersResult.data;
 
 		// decrypt the context to work with plaintext data
-		let context = this.decryptExecutionContext(contextToAugment);
+		let context = await this.decryptExecutionContext(contextToAugment);
 
 		// based on startNodeParameters, startNodeType and currentTriggerItems we can now
 		// iterate over the different hooks to extract specific data for the runtime context
@@ -141,7 +141,7 @@ export class ExecutionContextService {
 		}
 
 		return {
-			context: this.encryptExecutionContext(context),
+			context: await this.encryptExecutionContext(context),
 			triggerItems: currentTriggerItems,
 		};
 	}

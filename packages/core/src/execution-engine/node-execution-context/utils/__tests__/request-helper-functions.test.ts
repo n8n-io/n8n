@@ -31,6 +31,8 @@ import {
 	requestOAuth2,
 } from '../request-helper-functions';
 
+const TEST_CA_CERT = '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----';
+
 describe('Request Helper Functions', () => {
 	describe('proxyRequestToAxios', () => {
 		const baseUrl = 'https://example.de';
@@ -375,11 +377,35 @@ describe('Request Helper Functions', () => {
 				expect.objectContaining({
 					url: 'https://example.com',
 					method: 'POST',
-					headers: { accept: '*/*', 'content-type': 'application/json' },
+					headers: {
+						accept: '*/*',
+						'content-type': 'application/json',
+						'User-Agent': 'n8n',
+					},
 					data: { key: 'value' },
 					maxRedirects: 0,
 				}),
 			);
+		});
+
+		test('should set default User-Agent when none provided', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'n8n' });
+		});
+
+		test('should preserve a caller-supplied User-Agent header', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+				headers: { 'User-Agent': 'MyCustomNode/1.0' },
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'MyCustomNode/1.0' });
+			expect(axiosOptions.headers).not.toMatchObject({ 'User-Agent': 'n8n' });
 		});
 
 		test('should set correct headers for FormData', async () => {
@@ -447,7 +473,7 @@ describe('Request Helper Functions', () => {
 
 		describe('should set SSL certificates', () => {
 			const agentOptions: SecureContextOptions = {
-				ca: '-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----',
+				ca: TEST_CA_CERT,
 			};
 			const requestObject: IRequestOptions = {
 				method: 'GET',
@@ -643,6 +669,36 @@ describe('Request Helper Functions', () => {
 			expect(axiosConfig.validateStatus).toBeDefined();
 			expect(axiosConfig.validateStatus!(401)).toBe(true);
 			expect(axiosConfig.validateStatus!(500)).toBe(true);
+		});
+
+		test('should pass agentOptions through to the https agent', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				agentOptions: {
+					ca: TEST_CA_CERT,
+				},
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect((axiosConfig.httpsAgent as HttpsAgent).options.ca).toBe(TEST_CA_CERT);
+		});
+
+		test('should merge agentOptions with skipSslCertificateValidation', () => {
+			const requestOptions: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://example.com',
+				skipSslCertificateValidation: true,
+				agentOptions: {
+					ca: TEST_CA_CERT,
+				},
+			};
+
+			const axiosConfig = convertN8nRequestToAxios(requestOptions);
+
+			expect((axiosConfig.httpsAgent as HttpsAgent).options.rejectUnauthorized).toBe(false);
+			expect((axiosConfig.httpsAgent as HttpsAgent).options.ca).toBe(TEST_CA_CERT);
 		});
 	});
 

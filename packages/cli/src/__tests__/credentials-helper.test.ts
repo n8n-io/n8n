@@ -7,7 +7,13 @@ import {
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import { type InstanceSettings, Cipher } from 'n8n-core';
+import {
+	type InstanceSettings,
+	Cipher,
+	CipherAes256GCM,
+	CipherAes256CBC,
+	EncryptionKeyProxy,
+} from 'n8n-core';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -41,7 +47,12 @@ describe('CredentialsHelper', () => {
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
 
 	// Setup cipher for testing
-	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }));
+	const cipher = new Cipher(
+		mock<InstanceSettings>({ encryptionKey: 'test_key_for_testing' }),
+		new CipherAes256GCM(),
+		new CipherAes256CBC(),
+		new EncryptionKeyProxy(),
+	);
 	Container.set(Cipher, cipher);
 
 	const credentialsHelper = new CredentialsHelper(
@@ -611,6 +622,7 @@ describe('CredentialsHelper', () => {
 				userId: undefined,
 				workflowId: 'workflow-123',
 				projectId: 'project-456',
+				executionId: undefined,
 			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
@@ -630,6 +642,7 @@ describe('CredentialsHelper', () => {
 				userId: undefined,
 				workflowId: 'workflow-123',
 				projectId: 'project-456',
+				executionId: undefined,
 			});
 			expect(result).toEqual(syntheticCred);
 		});
@@ -654,6 +667,7 @@ describe('CredentialsHelper', () => {
 				userId: 'user-123',
 				workflowId: undefined,
 				projectId: undefined,
+				executionId: undefined,
 			});
 			const nodeCredentials: INodeCredentialsDetails = {
 				id: null,
@@ -673,10 +687,59 @@ describe('CredentialsHelper', () => {
 				userId: 'user-123',
 				workflowId: undefined,
 				projectId: undefined,
+				executionId: undefined,
 			});
 			expect(result).toEqual(syntheticCred);
 			// Should NOT attempt to look up a DB credential
 			expect(credentialsRepository.findOneByOrFail).not.toHaveBeenCalled();
+		});
+
+		it('should forward executionId from additionalData to getSyntheticCredential', async () => {
+			const aiGatewayService = mock<AiGatewayService>();
+			const helperWithGateway = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				aiGatewayService,
+			);
+
+			const syntheticCred = {
+				apiKey: 'mock-jwt',
+				host: 'http://gateway/v1/gateway/exec/29021/R9JFXwkUCL1jZBuw/google',
+			};
+			aiGatewayService.getSyntheticCredential.mockResolvedValue(syntheticCred);
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			const nodeCredentials: INodeCredentialsDetails = {
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			};
+
+			const result = await helperWithGateway.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'googlePalmApi',
+				'manual',
+			);
+
+			expect(aiGatewayService.getSyntheticCredential).toHaveBeenCalledWith({
+				credentialType: 'googlePalmApi',
+				userId: 'user-123',
+				workflowId: 'R9JFXwkUCL1jZBuw',
+				projectId: undefined,
+				executionId: '29021',
+			});
+			expect(result).toEqual(syntheticCred);
 		});
 	});
 

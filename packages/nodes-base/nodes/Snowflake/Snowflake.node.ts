@@ -215,11 +215,9 @@ export class Snowflake implements INodeType {
 			const table = this.getNodeParameter('table', 0) as string;
 			const columnString = this.getNodeParameter('columns', 0) as string;
 			const columns = columnString.split(',').map((column) => column.trim());
-			const query = `INSERT INTO ${table}(${columns.join(',')}) VALUES (${columns
-				.map((_column) => '?')
-				.join(',')})`;
+			const query = `INSERT INTO IDENTIFIER(?)(${columns.map(() => 'IDENTIFIER(?)').join(',')}) VALUES (${columns.map(() => '?').join(',')})`;
 			const data = this.helpers.copyInputItems(items, columns);
-			const binds = data.map((element) => Object.values(element));
+			const binds = data.map((element) => [table, ...columns, ...Object.values(element)]);
 			await execute(connection, query, binds as unknown as snowflake.InsertBinds);
 			data.forEach((d, i) => {
 				const executionData = this.helpers.constructExecutionMetaData(
@@ -244,11 +242,17 @@ export class Snowflake implements INodeType {
 				columns.unshift(updateKey);
 			}
 
-			const query = `UPDATE ${table} SET ${columns
-				.map((column) => `${column} = ?`)
-				.join(',')} WHERE ${updateKey} = ?;`;
+			const query = `UPDATE IDENTIFIER(?) SET ${columns.map(() => 'IDENTIFIER(?) = ?').join(',')} WHERE IDENTIFIER(?) = ?;`;
 			const data = this.helpers.copyInputItems(items, columns);
-			const binds = data.map((element) => Object.values(element).concat(element[updateKey]));
+			const binds = data.map((element) => {
+				const values = Object.values(element);
+				const rowBinds: unknown[] = [table];
+				columns.forEach((col, idx) => {
+					rowBinds.push(col, values[idx]);
+				});
+				rowBinds.push(updateKey, element[updateKey]);
+				return rowBinds;
+			});
 			for (let i = 0; i < binds.length; i++) {
 				await execute(connection, query, binds[i] as unknown as snowflake.InsertBinds);
 			}

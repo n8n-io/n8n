@@ -12,6 +12,7 @@ import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimel
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -174,7 +175,12 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 	<div :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
 			<!-- Text segment -->
-			<N8nText v-if="entry.type === 'text'" size="large" :compact="props.compact">
+			<N8nText
+				v-if="entry.type === 'text'"
+				size="large"
+				:compact="props.compact"
+				:class="$style.timelineItem"
+			>
 				<InstanceAiMarkdown :content="entry.content" />
 			</N8nText>
 
@@ -238,8 +244,17 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				</ToolCallStep>
 			</template>
 
-			<!-- Child agent — flat section -->
-			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
+			<!-- Child agent — flat section. Running builder sub-agents are
+				 extracted and rendered at the bottom of the conversation by
+				 InstanceAiView; once a builder finishes it reappears here in its
+				 chronological slot. -->
+			<template
+				v-else-if="
+					entry.type === 'child' &&
+					childrenById[entry.agentId] &&
+					!isActiveBuilderAgent(childrenById[entry.agentId])
+				"
+			>
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
 				<!-- Planner child: render PlanReviewPanel below the agent section -->
@@ -274,6 +289,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						:name="resolveArtifactName(artifact)"
 						:resource-id="artifact.resourceId"
 						:project-id="artifact.projectId"
+						:archived="store.producedArtifacts.get(artifact.resourceId)?.archived"
 						:metadata="formatArtifactMetadata(artifact)"
 					/>
 				</template>
@@ -287,5 +303,9 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.timelineItem {
+	max-width: 90%;
 }
 </style>

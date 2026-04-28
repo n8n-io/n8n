@@ -32,6 +32,9 @@ function createNode(overrides: Partial<INodeUi> = {}): INodeUi {
 function createDeps(overrides: Partial<WorkflowDocumentNodesDeps> = {}): WorkflowDocumentNodesDeps {
 	return {
 		getNodeType: vi.fn().mockReturnValue(null),
+		assignNodeId: vi.fn().mockReturnValue(''),
+		syncWorkflowObject: vi.fn(),
+		unpinNodeData: vi.fn(),
 		nodeMetadata: useWorkflowDocumentNodeMetadata(),
 		...overrides,
 	};
@@ -546,6 +549,33 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
 
+		it('removeNode calls unpinNodeData', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.removeNode(node);
+
+			expect(deps.unpinNodeData).toHaveBeenCalledWith('Target');
+		});
+
+		it('removeNodeById calls unpinNodeData', () => {
+			const node = createNode({ name: 'Target' });
+
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.setNodes([node]);
+			workflowDocumentNodes.removeNodeById(node.id);
+
+			expect(deps.unpinNodeData).toHaveBeenCalledWith('Target');
+		});
+
+		it('removeNodeById does not call unpinNodeData when node not found', () => {
+			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+			workflowDocumentNodes.removeNodeById('nonexistent');
+
+			expect(deps.unpinNodeData).not.toHaveBeenCalled();
+		});
+
 		it('removeNodeById uses empty name when node not found', () => {
 			const hookSpy = vi.fn();
 
@@ -558,5 +588,27 @@ describe('useWorkflowDocumentNodes', () => {
 				payload: { name: '', id: 'nonexistent' },
 			});
 		});
+	});
+
+	describe('findNodeByPartialId', () => {
+		test.each([
+			[[], 'D', undefined],
+			[['A', 'B', 'C'], 'D', undefined],
+			[['A', 'B', 'C'], 'B', 1],
+			[['AA', 'BB', 'CC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'BC', 2],
+		] as Array<[string[], string, number | undefined]>)(
+			'with input %s , %s returns node with index %s',
+			(ids, id, expectedIndex) => {
+				const nodes = ids.map((x) => createNode({ id: x, name: x }));
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes(nodes);
+
+				expect(workflowDocumentNodes.findNodeByPartialId(id)?.id).toBe(
+					nodes[expectedIndex ?? -1]?.id,
+				);
+			},
+		);
 	});
 });

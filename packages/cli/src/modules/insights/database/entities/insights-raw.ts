@@ -25,13 +25,14 @@ export class InsightsRaw extends BaseEntity {
 	private type_: number;
 
 	get type() {
-		if (!isValidTypeNumber(this.type_)) {
+		const typeValue = this.type_;
+		if (!isValidTypeNumber(typeValue)) {
 			throw new UnexpectedError(
-				`Type '${this.type_}' is not a valid type for 'InsightsByPeriod.type'`,
+				`Type '${typeValue}' is not a valid type for 'InsightsByPeriod.type'`,
 			);
 		}
 
-		return NumberToType[this.type_];
+		return NumberToType[typeValue];
 	}
 
 	set type(value: keyof typeof TypeToNumber) {

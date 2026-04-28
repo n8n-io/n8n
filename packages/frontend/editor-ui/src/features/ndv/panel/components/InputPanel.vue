@@ -127,7 +127,7 @@ const activeNode = computed(
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+	return workflowDocumentStore?.value?.findRootWithMainConnection(activeNode.value.name) ?? null;
 });
 
 const hasRootNodeRun = computed(() => {

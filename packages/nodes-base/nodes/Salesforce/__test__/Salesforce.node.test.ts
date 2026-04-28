@@ -1950,6 +1950,8 @@ describe('Salesforce', () => {
 							acconuntId: 'acc123', // Note: This is a typo in the original code
 							birthdate: '1990-01-01',
 							firstName: 'Jane',
+							middleName: 'Anne',
+							suffix: 'Jr.',
 							homePhone: '+1987654321',
 							otherCity: 'Other City',
 							department: 'Sales',
@@ -1957,6 +1959,8 @@ describe('Salesforce', () => {
 							otherPhone: '+1555555555',
 							otherState: 'TX',
 							salutation: 'Mrs.',
+							pronouns: 'She/Her',
+							genderIdentity: 'Woman',
 							description: 'Contact description',
 							mailingCity: 'Mailing City',
 							mobilePhone: '+1777777777',
@@ -1971,6 +1975,7 @@ describe('Salesforce', () => {
 							emailBouncedDate: '2023-01-01',
 							mailingPostalCode: '12345',
 							emailBouncedReason: 'Mailbox full',
+							hasOptedOutOfEmail: true,
 							customFieldsUi: {
 								customFieldsValues: [
 									{ fieldId: 'Contact_Custom__c', value: 'Contact Custom Value' },
@@ -2000,6 +2005,8 @@ describe('Salesforce', () => {
 						AccountId: 'acc123',
 						Birthdate: '1990-01-01',
 						FirstName: 'Jane',
+						MiddleName: 'Anne',
+						Suffix: 'Jr.',
 						HomePhone: '+1987654321',
 						OtherCity: 'Other City',
 						Department: 'Sales',
@@ -2007,6 +2014,8 @@ describe('Salesforce', () => {
 						OtherPhone: '+1555555555',
 						OtherState: 'TX',
 						Salutation: 'Mrs.',
+						Pronouns: 'She/Her',
+						GenderIdentity: 'Woman',
 						Description: 'Contact description',
 						MailingCity: 'Mailing City',
 						MobilePhone: '+1777777777',
@@ -2021,6 +2030,7 @@ describe('Salesforce', () => {
 						EmailBouncedDate: '2023-01-01',
 						MailingPostalCode: '12345',
 						EmailBouncedReason: 'Mailbox full',
+						HasOptedOutOfEmail: true,
 						Contact_Custom__c: 'Contact Custom Value',
 					}),
 				);
@@ -2088,6 +2098,8 @@ describe('Salesforce', () => {
 							acconuntId: 'acc999', // Note: This is a typo in the original code
 							birthdate: '1985-05-05',
 							firstName: 'Updated Jane',
+							middleName: 'Updated Anne',
+							suffix: 'Sr.',
 							homePhone: '+1888888888',
 							otherCity: 'Updated Other City',
 							department: 'Updated Sales',
@@ -2095,6 +2107,8 @@ describe('Salesforce', () => {
 							otherPhone: '+1777777777',
 							otherState: 'Updated TX',
 							salutation: 'Dr.',
+							pronouns: 'He/Him',
+							genderIdentity: 'Man',
 							description: 'Updated contact description',
 							mailingCity: 'Updated Mailing City',
 							mobilePhone: '+1666666666',
@@ -2109,6 +2123,7 @@ describe('Salesforce', () => {
 							emailBouncedDate: '2024-01-01',
 							mailingPostalCode: 'Updated 12345',
 							emailBouncedReason: 'Updated Mailbox full',
+							hasOptedOutOfEmail: false,
 							customFieldsUi: {
 								customFieldsValues: [
 									{ fieldId: 'Updated_Contact_Custom__c', value: 'Updated Contact Custom Value' },
@@ -2138,6 +2153,8 @@ describe('Salesforce', () => {
 						AccountId: 'acc999',
 						Birthdate: '1985-05-05',
 						FirstName: 'Updated Jane',
+						MiddleName: 'Updated Anne',
+						Suffix: 'Sr.',
 						HomePhone: '+1888888888',
 						OtherCity: 'Updated Other City',
 						Department: 'Updated Sales',
@@ -2145,6 +2162,8 @@ describe('Salesforce', () => {
 						OtherPhone: '+1777777777',
 						OtherState: 'Updated TX',
 						Salutation: 'Dr.',
+						Pronouns: 'He/Him',
+						GenderIdentity: 'Man',
 						Description: 'Updated contact description',
 						MailingCity: 'Updated Mailing City',
 						MobilePhone: '+1666666666',
@@ -2159,6 +2178,7 @@ describe('Salesforce', () => {
 						EmailBouncedDate: '2024-01-01',
 						MailingPostalCode: 'Updated 12345',
 						EmailBouncedReason: 'Updated Mailbox full',
+						HasOptedOutOfEmail: false,
 						Updated_Contact_Custom__c: 'Updated Contact Custom Value',
 					}),
 				);
