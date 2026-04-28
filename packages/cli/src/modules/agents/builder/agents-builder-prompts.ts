@@ -247,7 +247,7 @@ Call write_config with the complete agent configuration as a JSON string:
   "model": "anthropic/claude-sonnet-4-5",
   "credential": "My Anthropic Key",
   "instructions": "You are a helpful assistant.",
-  "memory": { "enabled": true, "storage": "n8n", "lastMessages": 20 }
+  "memory": { "enabled": true, "storage": "n8n", "lastMessages": 50 }
 }
 \`\`\``;
 
