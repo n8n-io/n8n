@@ -2346,9 +2346,6 @@ importers:
       nodemon:
         specifier: ^2.0.20
         version: 2.0.22
-      prettier:
-        specifier: ^3.0.0
-        version: 3.6.2
       ts-node:
         specifier: ^10.9.1
         version: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.21)(typescript@6.0.2)
