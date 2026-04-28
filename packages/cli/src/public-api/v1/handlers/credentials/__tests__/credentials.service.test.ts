@@ -2,7 +2,7 @@ import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/d
 import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { Cipher, CipherAes256GCM, CipherAes256CBC } from 'n8n-core';
+import { Cipher, CipherAes256GCM, CipherAes256CBC, EncryptionKeyProxy } from 'n8n-core';
 import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
@@ -19,6 +19,7 @@ const cipher = new Cipher(
 	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
 	new CipherAes256GCM(),
 	new CipherAes256CBC(),
+	new EncryptionKeyProxy(),
 );
 Container.set(Cipher, cipher);
 

@@ -460,10 +460,11 @@ export class CredentialsService {
 		credentials: CredentialsEntity[],
 	): Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> {
 		return credentials.map(
-			(
-				c: CredentialsEntity & ScopesField,
-			): ICredentialsDecrypted<ICredentialDataDecryptedObject> => {
-				const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+			(c: CredentialsEntity): ICredentialsDecrypted<ICredentialDataDecryptedObject> => {
+				const credWithScopes = c as CredentialsEntity & ScopesField;
+				const data = credWithScopes.scopes.includes('credential:update')
+					? this.decrypt(c)
+					: undefined;
 
 				// We never want to expose the oauthTokenData to the frontend, but it
 				// expects it to check if the credential is already connected.

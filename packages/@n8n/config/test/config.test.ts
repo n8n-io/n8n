@@ -532,6 +532,8 @@ describe('GlobalConfig', () => {
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
+			logStreamingManagedByEnv: false,
+			logStreamingDestinations: '',
 		},
 	} satisfies GlobalConfigShape;
 

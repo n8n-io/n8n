@@ -21,7 +21,10 @@ jest.mock('n8n-core', () => ({
 
 describe('WebhookRequestHandler', () => {
 	const webhookManager = mock<Required<IWebhookManager>>();
-	const handler = createWebhookHandlerFor(webhookManager);
+	const handler = createWebhookHandlerFor(webhookManager) as (
+		req: WebhookRequest | WebhookOptionsRequest,
+		res: Response,
+	) => Promise<void>;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -29,6 +32,7 @@ describe('WebhookRequestHandler', () => {
 
 	it('should throw for unsupported methods', async () => {
 		const req = mock<WebhookRequest | WebhookOptionsRequest>({
+			path: '/',
 			method: 'CONNECT' as IHttpRequestMethods,
 		});
 		const res = mock<Response>();
@@ -46,6 +50,7 @@ describe('WebhookRequestHandler', () => {
 	describe('preflight requests', () => {
 		it('should handle missing header for requested method', async () => {
 			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				path: '/',
 				method: 'OPTIONS',
 				headers: {
 					origin: 'https://example.com',
@@ -69,6 +74,7 @@ describe('WebhookRequestHandler', () => {
 
 		it('should handle default origin and max-age', async () => {
 			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				path: '/',
 				method: 'OPTIONS',
 				headers: {
 					origin: 'https://example.com',
@@ -95,6 +101,7 @@ describe('WebhookRequestHandler', () => {
 		it('should handle wildcard origin', async () => {
 			const randomOrigin = randomString(10);
 			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				path: '/',
 				method: 'OPTIONS',
 				headers: {
 					origin: randomOrigin,
@@ -122,6 +129,7 @@ describe('WebhookRequestHandler', () => {
 
 		it('should handle custom origin', async () => {
 			const req = mock<WebhookRequest | WebhookOptionsRequest>({
+				path: '/',
 				method: 'OPTIONS',
 				headers: {
 					origin: 'https://example.com',
@@ -151,6 +159,7 @@ describe('WebhookRequestHandler', () => {
 	describe('webhook requests', () => {
 		it('should delegate the request to the webhook manager and send the response', async () => {
 			const req = mock<WebhookRequest>({
+				path: '/',
 				method: 'GET',
 				params: { path: 'test' },
 			});
@@ -177,6 +186,7 @@ describe('WebhookRequestHandler', () => {
 		it('should send an error response if webhook execution throws', async () => {
 			class TestError extends ResponseError {}
 			const req = mock<WebhookRequest>({
+				path: '/',
 				method: 'GET',
 				params: { path: 'test' },
 			});
@@ -201,6 +211,7 @@ describe('WebhookRequestHandler', () => {
 
 		it('should not throw when legacy response headers contain invalid names', async () => {
 			const req = mock<WebhookRequest>({
+				path: '/',
 				method: 'GET',
 				params: { path: 'test' },
 			});
@@ -226,6 +237,7 @@ describe('WebhookRequestHandler', () => {
 
 		it('should not allow user to override CSP via response headers', async () => {
 			const req = mock<WebhookRequest>({
+				path: '/',
 				method: 'GET',
 				params: { path: 'test' },
 			});
@@ -251,6 +263,7 @@ describe('WebhookRequestHandler', () => {
 			"should handle '%s' method",
 			async (method) => {
 				const req = mock<WebhookRequest>({
+					path: '/',
 					method,
 					params: { path: 'test' },
 				});
@@ -274,6 +287,7 @@ describe('WebhookRequestHandler', () => {
 	describe('CSP sandbox header', () => {
 		it('should set CSP sandbox header on all webhook responses', async () => {
 			const req = mock<WebhookRequest>({
+				path: '/',
 				method: 'GET',
 				params: { path: 'test' },
 			});
@@ -296,6 +310,7 @@ describe('WebhookRequestHandler', () => {
 			jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			const req = mock<WebhookRequest>({
+				path: '/',
 				method: 'GET',
 				params: { path: 'test' },
 			});

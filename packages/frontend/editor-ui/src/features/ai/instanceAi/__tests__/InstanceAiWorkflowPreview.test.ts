@@ -16,8 +16,19 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 	global: {
 		stubs: {
 			WorkflowPreview: {
-				template: '<div data-test-id="workflow-preview" />',
-				props: ['mode', 'workflow', 'executionId', 'canOpenNdv', 'hideControls', 'loaderType'],
+				template:
+					'<div data-test-id="workflow-preview" :data-can-execute="canExecute" :data-suppress-notifications="suppressNotifications" :data-allow-error-notifications="allowErrorNotifications" />',
+				props: [
+					'mode',
+					'workflow',
+					'executionId',
+					'canOpenNdv',
+					'canExecute',
+					'hideControls',
+					'suppressNotifications',
+					'allowErrorNotifications',
+					'loaderType',
+				],
 			},
 		},
 	},
@@ -70,6 +81,21 @@ describe('InstanceAiWorkflowPreview', () => {
 		await waitFor(() => {
 			const preview = getByTestId('workflow-preview');
 			expect(preview).toBeInTheDocument();
+		});
+	});
+
+	it('should allow error notifications for executable preview', async () => {
+		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
+
+		const { getByTestId } = renderComponent({
+			props: { workflowId: 'wf-123', executionId: null },
+		});
+
+		await waitFor(() => {
+			const preview = getByTestId('workflow-preview');
+			expect(preview).toHaveAttribute('data-can-execute', 'true');
+			expect(preview).toHaveAttribute('data-suppress-notifications', 'true');
+			expect(preview).toHaveAttribute('data-allow-error-notifications', 'true');
 		});
 	});
 

@@ -283,7 +283,7 @@ export function useWorkflowExtraction() {
 			const { href } = router.resolve({
 				name: VIEWS.WORKFLOW,
 				params: {
-					name: createdWorkflow.id,
+					workflowId: createdWorkflow.id,
 				},
 			});
 

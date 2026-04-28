@@ -265,7 +265,7 @@ describe('SettingsAiGatewayView', () => {
 
 			expect(mockRouterPush).toHaveBeenCalledWith({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: 'R9JFXwkUCL1jZBuw', executionId: '29021' },
+				params: { workflowId: 'R9JFXwkUCL1jZBuw', executionId: '29021' },
 			});
 		});
 
