@@ -1,119 +1,54 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import dateformat from 'dateformat';
 import { useI18n } from '@n8n/i18n';
 import { N8nText, N8nLoading, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import { useWorkflowHistoryStore } from '../workflowHistory.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
-import dateformat from 'dateformat';
+import { useWorkflowHistoryStore } from '../workflowHistory.store';
+
+/** Brief unpublished gaps shorter than this are version-change artefacts, not real deactivations */
+const TRANSIENT_DEACTIVATION_MS = 2000;
+/** Active/inactive duration is shown on entries only when the period lasted at least this long */
+const MIN_DURATION_FOR_LABEL_MS = 10 * 60 * 1000;
+/** Adoption point for publish-timeline tracking — older events may be incomplete */
+const ADOPTION_VERSION = { major: 2, minor: 17, patch: 0 } as const;
+
+const props = defineProps<{
+	workflowId: string;
+	selectedVersionId?: string;
+}>();
 
 const emit = defineEmits<{
 	selectVersion: [versionId: string];
 }>();
 
-/** Threshold to filter out transient deactivation/reactivation gaps during version changes */
-const MIN_UNPUBLISHED_DURATION_MS = 2000;
-/** Show the active/inactive duration on an entry only when the period lasted longer than this */
-const MIN_DURATION_FOR_LABEL_MS = 10 * 60 * 1000;
-
-const props = defineProps<{
-	workflowId: string;
-}>();
-
 const i18n = useI18n();
 const workflowHistoryStore = useWorkflowHistoryStore();
-const usersStore = useUsersStore();
 
 const isLoading = ref(true);
 const events = ref<PublishTimelineEvent[]>([]);
 const adoptionDate = ref<Date | null>(null);
 
-const hasMultipleAuthors = computed(
-	() => usersStore.allUsers.filter((user) => !user.isPendingUser).length > 1,
-);
+type EntryStatus = 'published' | 'unpublished';
 
-const showDeletedVersionsDisclaimer = computed(() => {
-	if (adoptionDate.value === null) return false;
-
-	const adoptionTime = adoptionDate.value.getTime();
-	return events.value.some((e) => new Date(e.createdAt).getTime() < adoptionTime);
-});
-
-type TimelinePeriod = {
-	status: 'published' | 'unpublished';
+type TimelineEntry = {
+	status: EntryStatus;
 	startedAt: Date;
 	endedAt: Date | null;
 	versionId: string | null;
-	versionName: string | null;
 	user: string | null;
-	isCurrent: boolean;
-	durationText: string;
+	isLatest: boolean;
+	isClickable: boolean;
+	isSelected: boolean;
+	isDeletedVersion: boolean;
+	hasDuration: boolean;
+	title: string;
+	durationLabel: string;
+	shortDate: string;
+	fullDate: string;
 };
 
-const formatDuration = (start: Date, end: Date | null) => {
-	const endDate = end ?? new Date();
-	const diffMs = endDate.getTime() - start.getTime();
-
-	const seconds = Math.floor(diffMs / 1000);
-	const minutes = Math.floor(seconds / 60);
-	const hours = Math.floor(minutes / 60);
-	const days = Math.floor(hours / 24);
-
-	if (days > 0) {
-		const remainingHours = hours % 24;
-		return `${days}d ${remainingHours}h`;
-	}
-	if (hours > 0) {
-		const remainingMinutes = minutes % 60;
-		return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
-	}
-	if (minutes > 0) return `${minutes}m`;
-	return `${seconds}s`;
-};
-
-const periods = computed<TimelinePeriod[]>(() => {
-	if (events.value.length === 0) return [];
-
-	const result: TimelinePeriod[] = [];
-
-	for (let idx = 0; idx < events.value.length; idx++) {
-		const event = events.value[idx];
-		const nextEvent = events.value[idx + 1];
-		const isActivated = event.event === 'activated';
-
-		const startedAt = new Date(event.createdAt);
-		const endedAt = nextEvent ? new Date(nextEvent.createdAt) : null;
-
-		const durationText = i18n.baseText(
-			isActivated
-				? 'workflowHistory.publishTimeline.activeDuration'
-				: 'workflowHistory.publishTimeline.inactiveDuration',
-			{
-				interpolate: {
-					duration: formatDuration(startedAt, endedAt),
-				},
-			},
-		);
-
-		result.push({
-			status: isActivated ? 'published' : 'unpublished',
-			startedAt,
-			endedAt,
-			durationText,
-			versionId: isActivated ? event.versionId : null,
-			versionName: isActivated ? (event.versionName ?? null) : null,
-			user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
-			isCurrent: !nextEvent,
-		});
-	}
-
-	// Filter out brief unpublished periods — these are not actual unpublishes
-	// but version changes where the workflow was deactivated and immediately reactivated
-	return result.toReversed().filter((period) => {
-		if (period.status !== 'unpublished' || period.endedAt === null) return true;
-		return period.endedAt.getTime() - period.startedAt.getTime() >= MIN_UNPUBLISHED_DURATION_MS;
-	});
-});
+// ---- formatters --------------------------------------------------------
 
 const isToday = (date: Date) => {
 	const now = new Date();
@@ -124,26 +59,109 @@ const isToday = (date: Date) => {
 	);
 };
 
-const formatDateShort = (date: Date) => {
+const formatShortDate = (date: Date) => {
 	if (isToday(date)) return dateformat(date, 'HH:MM');
 	const format = date.getFullYear() !== new Date().getFullYear() ? 'd mmm yyyy' : 'd mmm';
 	return dateformat(date, format);
 };
 
-const formatDateFull = (date: Date) => {
-	return dateformat(date, 'mmm d, yyyy HH:MM:ss');
+const formatFullDate = (date: Date) => dateformat(date, 'mmm d, yyyy HH:MM:ss');
+
+const formatDuration = (start: Date, end: Date | null) => {
+	const ms = (end ?? new Date()).getTime() - start.getTime();
+	const seconds = Math.floor(ms / 1000);
+	const minutes = Math.floor(seconds / 60);
+	const hours = Math.floor(minutes / 60);
+	const days = Math.floor(hours / 24);
+
+	if (days > 0) return `${days}d ${hours % 24}h`;
+	if (hours > 0) {
+		const remMin = minutes % 60;
+		return remMin > 0 ? `${hours}h ${remMin}m` : `${hours}h`;
+	}
+	if (minutes > 0) return `${minutes}m`;
+	return `${seconds}s`;
 };
 
-const getDurationMs = (period: TimelinePeriod) =>
-	(period.endedAt ?? new Date()).getTime() - period.startedAt.getTime();
+// ---- entry construction ------------------------------------------------
 
-const shouldShowDuration = (period: TimelinePeriod) =>
-	getDurationMs(period) >= MIN_DURATION_FOR_LABEL_MS;
+const titleFor = (event: PublishTimelineEvent): string => {
+	if (event.event === 'deactivated') {
+		return i18n.baseText('workflowHistory.publishTimeline.event.deactivated');
+	}
+	if (!event.versionId) {
+		return i18n.baseText('workflowHistory.publishTimeline.event.activatedDeletedVersion');
+	}
+	if (event.versionName) {
+		return i18n.baseText('workflowHistory.publishTimeline.event.activatedVersion', {
+			interpolate: { version: event.versionName },
+		});
+	}
+	return i18n.baseText('workflowHistory.publishTimeline.event.activated');
+};
 
-const isClickable = (period: TimelinePeriod) => period.status === 'published' && !!period.versionId;
+const buildEntry = (
+	event: PublishTimelineEvent,
+	next: PublishTimelineEvent | undefined,
+): TimelineEntry => {
+	const status: EntryStatus = event.event === 'activated' ? 'published' : 'unpublished';
+	const startedAt = new Date(event.createdAt);
+	const endedAt = next ? new Date(next.createdAt) : null;
+	const durationMs = (endedAt ?? new Date()).getTime() - startedAt.getTime();
+	const versionId = status === 'published' ? event.versionId : null;
+	const durationKey =
+		status === 'published'
+			? 'workflowHistory.publishTimeline.activeDuration'
+			: 'workflowHistory.publishTimeline.inactiveDuration';
 
-const onSelect = (period: TimelinePeriod) => {
-	if (period.versionId) emit('selectVersion', period.versionId);
+	return {
+		status,
+		startedAt,
+		endedAt,
+		versionId,
+		user: event.user ? `${event.user.firstName} ${event.user.lastName}` : null,
+		isLatest: !next,
+		isClickable: status === 'published' && !!versionId,
+		isSelected: !!versionId && versionId === props.selectedVersionId,
+		isDeletedVersion: status === 'published' && !versionId,
+		hasDuration: durationMs >= MIN_DURATION_FOR_LABEL_MS,
+		title: titleFor(event),
+		durationLabel: i18n.baseText(durationKey, {
+			interpolate: { duration: formatDuration(startedAt, endedAt) },
+		}),
+		shortDate: formatShortDate(startedAt),
+		fullDate: formatFullDate(startedAt),
+	};
+};
+
+const isMeaningfulEntry = (entry: TimelineEntry) => {
+	if (entry.status !== 'unpublished' || entry.endedAt === null) return true;
+	return entry.endedAt.getTime() - entry.startedAt.getTime() >= TRANSIENT_DEACTIVATION_MS;
+};
+
+// ---- computed ----------------------------------------------------------
+
+const entries = computed<TimelineEntry[]>(() =>
+	events.value
+		.map((event, idx) => buildEntry(event, events.value[idx + 1]))
+		.toReversed()
+		.filter(isMeaningfulEntry),
+);
+
+const showDeletedVersionsDisclaimer = computed(() => {
+	if (adoptionDate.value === null) return false;
+	const adoptionTime = adoptionDate.value.getTime();
+	return events.value.some((e) => new Date(e.createdAt).getTime() < adoptionTime);
+});
+
+const adoptionShortDate = computed(() =>
+	adoptionDate.value ? formatShortDate(adoptionDate.value) : '',
+);
+
+// ---- actions -----------------------------------------------------------
+
+const handleSelect = (entry: TimelineEntry) => {
+	if (entry.versionId) emit('selectVersion', entry.versionId);
 };
 
 const loadTimeline = async () => {
@@ -151,13 +169,9 @@ const loadTimeline = async () => {
 	try {
 		const [timelineEvents, firstAdoptionDate] = await Promise.all([
 			workflowHistoryStore.getPublishTimeline(props.workflowId),
-			workflowHistoryStore
-				.getVersionFirstAdoptionDate({ major: 2, minor: 17, patch: 0 })
-				.catch(() => null),
-			// ensure usersStore is sufficiently initialized for `hasMultipleAuthors`
-			usersStore.fetchUsers({ filter: { isPending: false }, take: 2 }),
+			workflowHistoryStore.getVersionFirstAdoptionDate(ADOPTION_VERSION).catch(() => null),
 		]);
-		adoptionDate.value = firstAdoptionDate === null ? null : new Date(firstAdoptionDate);
+		adoptionDate.value = firstAdoptionDate ? new Date(firstAdoptionDate) : null;
 		events.value = timelineEvents;
 	} finally {
 		isLoading.value = false;
@@ -170,81 +184,64 @@ onMounted(loadTimeline);
 <template>
 	<div :class="$style.content">
 		<N8nLoading v-if="isLoading" :rows="4" />
-		<div v-else-if="periods.length === 0" :class="$style.empty">
+		<div v-else-if="entries.length === 0" :class="$style.empty">
 			<N8nText>{{ i18n.baseText('workflowHistory.publishTimeline.empty') }}</N8nText>
 		</div>
 		<template v-else>
 			<div :class="$style.timeline">
 				<div
-					v-for="(period, idx) in periods"
+					v-for="(entry, idx) in entries"
 					:key="idx"
 					:class="[
 						$style.timelineItem,
-						isClickable(period) && $style.timelineItemClickable,
-						shouldShowDuration(period) && $style.timelineItemTall,
+						entry.isClickable && $style.timelineItemClickable,
+						entry.isSelected && $style.timelineItemSelected,
+						entry.hasDuration && $style.timelineItemTall,
 					]"
-					:role="isClickable(period) ? 'button' : undefined"
-					:tabindex="isClickable(period) ? 0 : undefined"
-					@click="isClickable(period) && onSelect(period)"
-					@keydown.enter="isClickable(period) && onSelect(period)"
-					@keydown.space.prevent="isClickable(period) && onSelect(period)"
+					:role="entry.isClickable ? 'button' : undefined"
+					:tabindex="entry.isClickable ? 0 : undefined"
+					@click="entry.isClickable && handleSelect(entry)"
+					@keydown.enter="entry.isClickable && handleSelect(entry)"
+					@keydown.space.prevent="entry.isClickable && handleSelect(entry)"
 				>
 					<div :class="$style.timelineIndicator">
 						<span
 							:class="[
 								$style.timelineLine,
-								idx === 0 && period.status !== 'published' && $style.timelineLineHidden,
+								idx === 0 && entry.status !== 'published' && $style.timelineLineHidden,
 							]"
 						/>
-						<span
-							v-if="period.status === 'unpublished'"
-							:class="[$style.timelineMarker, $style.markerUnpublished]"
-						>
+						<span v-if="entry.status === 'unpublished'" :class="$style.timelineMarker">
 							<N8nIcon icon="x" size="small" />
 						</span>
 						<span
 							v-else
 							:class="[
 								$style.timelineDot,
-								period.isCurrent ? $style.dotPublished : $style.dotPastPublished,
+								entry.isLatest ? $style.dotPublished : $style.dotPastPublished,
 							]"
 						/>
 						<span
 							:class="[
 								$style.timelineLine,
-								idx === periods.length - 1 && $style.timelineLineHidden,
+								idx === entries.length - 1 && $style.timelineLineHidden,
 							]"
 						/>
 					</div>
 					<div :class="$style.timelineContent">
 						<div :class="$style.durationRow">
-							<template v-if="shouldShowDuration(period)">
+							<template v-if="entry.hasDuration">
 								<N8nIcon icon="clock" size="small" />
 								<N8nText size="xsmall" color="text-light">
-									{{ period.durationText }}
+									{{ entry.durationLabel }}
 								</N8nText>
 							</template>
 						</div>
 						<div :class="$style.timelineHeader">
 							<N8nText :bold="true" size="small" :class="$style.timelineTitle">
-								<template v-if="period.status === 'published'">
-									{{
-										period.versionId
-											? period.versionName
-												? i18n.baseText('workflowHistory.publishTimeline.event.activatedVersion', {
-														interpolate: { version: period.versionName },
-													})
-												: i18n.baseText('workflowHistory.publishTimeline.event.activated')
-											: i18n.baseText(
-													'workflowHistory.publishTimeline.event.activatedDeletedVersion',
-												)
-									}}
-								</template>
-								<template v-else>
-									{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
-								</template>
+								{{ entry.title }}
 								<N8nTooltip
-									v-if="period.status === 'published' && !period.versionId"
+									v-if="entry.isDeletedVersion"
 									placement="top"
 									:content="
 										i18n.baseText(
@@ -255,22 +252,22 @@ onMounted(loadTimeline);
 									<N8nIcon icon="info" size="small" :class="$style.deletedVersionHint" />
 								</N8nTooltip>
 							</N8nText>
-							<N8nTooltip placement="left" :content="formatDateFull(period.startedAt)">
+							<N8nTooltip placement="left" :content="entry.fullDate">
 								<N8nText size="small" color="text-light" :class="$style.dateText">
-									{{ formatDateShort(period.startedAt) }}
+									{{ entry.shortDate }}
 								</N8nText>
 							</N8nTooltip>
 						</div>
 						<div :class="$style.userText">
 							<N8nText size="xsmall" color="text-light">
-								{{ period.user }}
+								{{ entry.user }}
 							</N8nText>
 						</div>
 					</div>
 				</div>
 			</div>
 			<N8nTooltip
-				v-if="adoptionDate && showDeletedVersionsDisclaimer"
+				v-if="showDeletedVersionsDisclaimer"
 				placement="top"
 				:content="
 					i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer.tooltip')
@@ -279,9 +276,7 @@ onMounted(loadTimeline);
 				<N8nText size="small" color="text-light" :class="$style.deletedVersionsDisclaimer">
 					{{
 						i18n.baseText('workflowHistory.publishTimeline.deletedVersionsDisclaimer', {
-							interpolate: {
-								date: formatDateShort(adoptionDate),
-							},
+							interpolate: { date: adoptionShortDate },
 						})
 					}}
 					<N8nIcon icon="info" size="small" />
@@ -298,16 +293,9 @@ onMounted(loadTimeline);
 	height: 100%;
 }
 
-.deletedVersionHint {
-	color: var(--color--text--tint-2);
-	margin-left: var(--spacing--4xs);
-	vertical-align: middle;
-}
-
 .empty {
 	display: flex;
-	align-items: center;
-	justify-content: center;
+	place-content: center;
 	min-height: 200px;
 }
 
@@ -318,24 +306,28 @@ onMounted(loadTimeline);
 
 .timelineItem {
 	display: flex;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--3xs);
+	gap: var(--spacing--2xs);
+	margin: var(--spacing--4xs);
+	padding: var(--spacing--4xs);
 	border-radius: var(--radius);
-	box-sizing: border-box;
-	height: 61px;
-}
+	height: 60px;
 
-.timelineItemTall {
-	height: 81px;
-}
+	&.timelineItemTall {
+		height: 80px;
+	}
 
-.timelineItemClickable {
-	cursor: pointer;
+	&.timelineItemClickable {
+		cursor: pointer;
 
-	&:hover,
-	&:focus-visible {
-		background-color: var(--color--background--light-2);
-		outline: none;
+		&:hover,
+		&:focus-visible {
+			background-color: var(--color--background--light-1);
+			outline: none;
+		}
+	}
+
+	&.timelineItemSelected {
+		background-color: var(--color--background--light-1);
 	}
 }
 
@@ -343,12 +335,11 @@ onMounted(loadTimeline);
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	width: 13px;
 	flex-shrink: 0;
+	width: 13px;
 }
 
 .timelineDot {
-	display: inline-block;
 	width: 11px;
 	height: 11px;
 	border-radius: 50%;
@@ -360,62 +351,56 @@ onMounted(loadTimeline);
 }
 
 .dotPastPublished {
-	border: var(--border-width) var(--border-style) var(--color--text--tint-2);
+	border: var(--border-width) solid var(--color--text--tint-2);
 }
 
 .timelineMarker {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
+	display: flex;
+	place-content: center;
 	width: 13px;
 	height: 13px;
 	flex-shrink: 0;
-}
-
-.markerUnpublished {
 	color: var(--color--warning);
 }
 
 .timelineLine {
+	flex: 1;
 	width: 1px;
-	flex: 1 1 0;
 	min-height: var(--spacing--2xs);
 	background-color: var(--color--foreground);
-}
 
-.timelineLineHidden {
-	visibility: hidden;
+	&.timelineLineHidden {
+		visibility: hidden;
+	}
 }
 
 .timelineContent {
 	display: flex;
 	flex-direction: column;
+	justify-content: center;
 	flex-grow: 1;
 	min-width: 0;
-	justify-content: center;
-	gap: var(--spacing--5xs);
 }
 
 .timelineHeader {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	gap: var(--spacing--2xs);
 }
 
 .timelineTitle {
 	display: block;
-	flex: 1 1 auto;
+	flex: 1;
 	min-width: 0;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.userText {
-	display: block;
-	min-height: var(--spacing--xs);
-	line-height: var(--spacing--xs);
+.deletedVersionHint {
+	margin-left: var(--spacing--4xs);
+	vertical-align: middle;
+	color: var(--color--text--tint-2);
 }
 
 .dateText {
@@ -427,16 +412,20 @@ onMounted(loadTimeline);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	min-height: var(--spacing--xs);
 	color: var(--color--text--tint-2);
+	padding-bottom: var(--spacing--2xs);
+}
+
+.userText {
 	min-height: var(--spacing--xs);
 }
 
 .deletedVersionsDisclaimer {
-	display: inline-flex;
+	display: flex;
+	justify-content: center;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--sm) 0;
-	width: 100%;
-	justify-content: center;
 }
 </style>

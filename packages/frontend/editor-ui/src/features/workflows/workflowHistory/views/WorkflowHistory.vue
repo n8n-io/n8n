@@ -650,6 +650,7 @@ watchEffect(async () => {
 			<WorkflowPublishTimelineContent
 				v-if="canRender && activeTab === 'publishTimeline'"
 				:workflow-id="workflowId"
+				:selected-version-id="versionId"
 				@select-version="navigateToVersion"
 			/>
 		</div>

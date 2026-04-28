@@ -4,7 +4,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import WorkflowPublishTimelineContent from './WorkflowPublishTimelineContent.vue';
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import type { PublishTimelineEvent } from '@n8n/rest-api-client/api/workflowHistory';
 
 const workflowId = 'wf-1';
@@ -25,29 +24,22 @@ const renderComponent = createComponentRenderer(WorkflowPublishTimelineContent);
 
 type RenderOptions = {
 	adoptionDate?: string | null;
-	users?: Array<{ id: string; isPendingUser: boolean }>;
 };
 
 const renderWithEvents = (events: PublishTimelineEvent[], options: RenderOptions = {}) => {
-	const { adoptionDate = null, users = [{ id: 'u1', isPendingUser: false }] } = options;
+	const { adoptionDate = null } = options;
 	const pinia = createTestingPinia({ stubActions: false });
 	const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-	const usersStore = mockedStore(useUsersStore);
 
 	workflowHistoryStore.getPublishTimeline.mockResolvedValue(events);
 	workflowHistoryStore.getVersionFirstAdoptionDate.mockResolvedValue(adoptionDate);
-	usersStore.fetchUsers.mockResolvedValue(undefined);
-	Object.defineProperty(usersStore, 'allUsers', {
-		get: () => users,
-		configurable: true,
-	});
 
 	const utils = renderComponent({
 		pinia,
 		props: { workflowId },
 	});
 
-	return { ...utils, workflowHistoryStore, usersStore };
+	return { ...utils, workflowHistoryStore };
 };
 
 describe('WorkflowPublishTimelineContent', () => {
@@ -116,28 +108,19 @@ describe('WorkflowPublishTimelineContent', () => {
 		expect(queryByRole('link')).not.toBeInTheDocument();
 	});
 
-	it('should hide author attribution when there is only one non-pending user', async () => {
-		const { findByText, queryByText } = renderWithEvents([
+	it('should show the user attribution when an event has an associated user', async () => {
+		const { findByText } = renderWithEvents([
 			buildEvent({ user: { firstName: 'Alice', lastName: 'Anderson' } }),
 		]);
 
-		await findByText('Published');
-		expect(queryByText(/by Alice Anderson/)).not.toBeInTheDocument();
+		expect(await findByText('Alice Anderson')).toBeInTheDocument();
 	});
 
-	it('should show author attribution when there are multiple non-pending users', async () => {
-		const { findByText } = renderWithEvents(
-			[buildEvent({ user: { firstName: 'Alice', lastName: 'Anderson' } })],
-			{
-				users: [
-					{ id: 'u1', isPendingUser: false },
-					{ id: 'u2', isPendingUser: false },
-					{ id: 'u3', isPendingUser: true },
-				],
-			},
-		);
+	it('should not show user attribution when no user is associated with the event', async () => {
+		const { findByText, queryByText } = renderWithEvents([buildEvent({ user: null })]);
 
-		expect(await findByText(/by Alice Anderson/)).toBeInTheDocument();
+		await findByText('Published');
+		expect(queryByText(/Alice Anderson/)).not.toBeInTheDocument();
 	});
 
 	it('should filter out a brief deactivation that lasted under the transient threshold', async () => {
@@ -232,15 +215,9 @@ describe('WorkflowPublishTimelineContent', () => {
 	it('should tolerate a failure fetching the adoption date and still render events', async () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		const workflowHistoryStore = mockedStore(useWorkflowHistoryStore);
-		const usersStore = mockedStore(useUsersStore);
 
 		workflowHistoryStore.getPublishTimeline.mockResolvedValue([buildEvent()]);
 		workflowHistoryStore.getVersionFirstAdoptionDate.mockRejectedValue(new Error('boom'));
-		usersStore.fetchUsers.mockResolvedValue(undefined);
-		Object.defineProperty(usersStore, 'allUsers', {
-			value: [{ id: 'u1', isPendingUser: false }],
-			configurable: true,
-		});
 
 		const { findByText } = renderComponent({ pinia, props: { workflowId } });
 
