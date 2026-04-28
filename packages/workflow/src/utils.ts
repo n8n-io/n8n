@@ -472,6 +472,27 @@ export function isDomainAllowed(
 	}
 }
 
+/**
+ * Extracts the allow-listed domains configured on a credential via the
+ * `allowedHttpRequestDomains` + `allowedDomains` properties.
+ *
+ * Returns the comma-separated allow-list string when the credential is in
+ * 'domains' mode with a non-empty list, otherwise `undefined`. Callers that
+ * need to reject 'none' mode or an empty 'domains' list must handle that
+ * explicitly.
+ */
+export function getCredentialAllowedDomains(
+	credentialData: Record<string, unknown> | undefined,
+): string | undefined {
+	if (!credentialData || credentialData.allowedHttpRequestDomains !== 'domains') {
+		return undefined;
+	}
+	const allowedDomains = credentialData.allowedDomains;
+	if (typeof allowedDomains !== 'string') return undefined;
+	const trimmed = allowedDomains.trim();
+	return trimmed === '' ? undefined : trimmed;
+}
+
 const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
 export function isCommunityPackageName(packageName: string): boolean {
