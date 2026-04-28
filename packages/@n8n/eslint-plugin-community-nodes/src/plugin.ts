@@ -49,6 +49,7 @@ const configs = {
 			'@n8n/community-nodes/valid-peer-dependencies': 'error',
 			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 			'@n8n/community-nodes/node-class-description-naming': 'error',
+			'@n8n/community-nodes/node-file-conventions': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -84,6 +85,7 @@ const configs = {
 			'@n8n/community-nodes/valid-peer-dependencies': 'error',
 			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 			'@n8n/community-nodes/node-class-description-naming': 'error',
+			'@n8n/community-nodes/node-file-conventions': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;
