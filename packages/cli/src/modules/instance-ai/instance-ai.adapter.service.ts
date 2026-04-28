@@ -2307,7 +2307,7 @@ export async function extractExecutionResult(
 
 	// Extract error if present
 	const error = execution.data?.resultData?.error;
-	const errorMessage = error ? formatExecutionError(error) : undefined;
+	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
 
 	return {
 		executionId,
@@ -2329,23 +2329,37 @@ export async function extractExecutionResult(
 const MAX_ERROR_CHARS = 4_000;
 
 /**
- * Format an ExecutionError for LLM consumption. Combines `message`,
- * `description` (when distinct), and upstream API `messages` (NodeError
- * variants only).
+ * `.description` and `.messages[]` carry upstream API response content, so
+ * they're gated behind the AI privacy setting. `.message` stays — it's
+ * sanitized (STATUS_CODE_MESSAGES) and lets the LLM recognize the failure.
  *
- * Operates structurally on the ExecutionError union, so it works on both live
- * error instances and plain objects deserialized from execution data — where
- * prototypes are gone and `instanceof Error` would be false.
+ * Accesses fields structurally: persisted errors lose their prototype on
+ * `unflattenData`, so `instanceof Error` is false in production.
  */
-export function formatExecutionError(error: ExecutionError): string {
+export function formatExecutionError(
+	error: ExecutionError,
+	includeUpstreamDetails: boolean,
+): string {
 	const parts: string[] = [];
 	if (error.message) parts.push(error.message);
-	if (error.description && error.description !== error.message) {
-		parts.push(error.description);
+
+	if (includeUpstreamDetails) {
+		if (error.description && error.description !== error.message) {
+			parts.push(error.description);
+		}
+		if ('messages' in error && error.messages.length > 0) {
+			parts.push(`Details: ${error.messages.join(' | ')}`);
+		}
+	} else {
+		const hasDescription = !!error.description && error.description !== error.message;
+		const hasMessages = 'messages' in error && error.messages.length > 0;
+		if (hasDescription || hasMessages) {
+			parts.push(
+				'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)',
+			);
+		}
 	}
-	if ('messages' in error && error.messages.length > 0) {
-		parts.push(`Details: ${error.messages.join(' | ')}`);
-	}
+
 	const combined = parts.join(' — ') || 'Unknown error';
 	return combined.length > MAX_ERROR_CHARS ? `${combined.slice(0, MAX_ERROR_CHARS)}…` : combined;
 }
@@ -2623,7 +2637,7 @@ export async function extractExecutionDebugInfo(
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
-					error: formatExecutionError(lastRun.error),
+					error: formatExecutionError(lastRun.error, includeOutputData),
 					inputData: includeOutputData
 						? (() => {
 								const inputItems = lastRun.data?.main

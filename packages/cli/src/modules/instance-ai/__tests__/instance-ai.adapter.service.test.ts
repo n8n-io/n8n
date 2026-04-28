@@ -122,12 +122,41 @@ describe('extractExecutionResult', () => {
 			}),
 		);
 
-		const result = await extractExecutionResult(repo as unknown as ExecutionRepository, 'exec-1');
+		const result = await extractExecutionResult(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			true,
+		);
 
 		expect(result.error).toContain('Bad request - please check your parameters');
 		expect(result.error).toContain('Your credit balance is too low');
 		expect(result.error).toContain('Details:');
 		expect(result.error).toContain('400');
+	});
+
+	it('suppresses upstream description and messages when allowSendingParameterValues is false', async () => {
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'error',
+				error: {
+					name: 'NodeOperationError',
+					message: 'Bad request - please check your parameters',
+					description: 'Your credit balance is too low to access the Anthropic API.',
+					messages: ['400 {"type":"error","error":{"message":"credits"}}'],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			false,
+		);
+
+		expect(result.error).toContain('Bad request - please check your parameters');
+		expect(result.error).not.toContain('Your credit balance is too low');
+		expect(result.error).not.toContain('400');
+		expect(result.error).toContain('instance AI privacy setting');
 	});
 
 	it('maps "crashed" status to "error"', async () => {
@@ -257,65 +286,122 @@ describe('extractExecutionResult', () => {
 // ---------------------------------------------------------------------------
 
 describe('formatExecutionError', () => {
-	it('returns message + description + upstream messages for a NodeOperationError shape', () => {
-		const result = formatExecutionError({
-			name: 'NodeOperationError',
-			message: 'Bad request - please check your parameters',
-			description: 'Your credit balance is too low to access the Anthropic API.',
-			messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
-		} as ExecutionError);
+	const nodeOpError = {
+		name: 'NodeOperationError',
+		message: 'Bad request - please check your parameters',
+		description: 'Your credit balance is too low to access the Anthropic API.',
+		messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
+	} as ExecutionError;
 
-		expect(result).toContain('Bad request - please check your parameters');
-		expect(result).toContain('Your credit balance is too low');
-		expect(result).toContain('Details:');
-		expect(result).toContain('low balance');
+	describe('with upstream details enabled (allowSendingParameterValues=true)', () => {
+		it('returns message + description + upstream messages for a NodeOperationError shape', () => {
+			const result = formatExecutionError(nodeOpError, true);
+
+			expect(result).toContain('Bad request - please check your parameters');
+			expect(result).toContain('Your credit balance is too low');
+			expect(result).toContain('Details:');
+			expect(result).toContain('low balance');
+		});
+
+		it('returns just the message when description and messages are absent', () => {
+			const result = formatExecutionError(
+				{
+					name: 'WorkflowOperationError',
+					message: 'something went wrong',
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result).toBe('something went wrong');
+		});
+
+		it('does not duplicate description when it equals the message', () => {
+			const result = formatExecutionError(
+				{
+					name: 'WorkflowOperationError',
+					message: 'identical',
+					description: 'identical',
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result).toBe('identical');
+		});
+
+		it('joins multiple upstream messages with a separator', () => {
+			const result = formatExecutionError(
+				{
+					name: 'NodeApiError',
+					message: 'API error',
+					messages: ['first', 'second', 'third'],
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result).toContain('Details: first | second | third');
+		});
+
+		it('truncates oversized output to keep the agent context bounded', () => {
+			const huge = 'x'.repeat(10_000);
+			const result = formatExecutionError(
+				{
+					name: 'NodeApiError',
+					message: 'API error',
+					messages: [huge],
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result.length).toBeLessThanOrEqual(4_001); // MAX_ERROR_CHARS + ellipsis
+			expect(result.endsWith('…')).toBe(true);
+		});
+
+		it('returns "Unknown error" for an empty error object', () => {
+			const result = formatExecutionError({} as ExecutionError, true);
+
+			expect(result).toBe('Unknown error');
+		});
 	});
 
-	it('returns just the message when description and messages are absent', () => {
-		const result = formatExecutionError({
-			name: 'WorkflowOperationError',
-			message: 'something went wrong',
-		} as ExecutionError);
+	describe('with upstream details suppressed (allowSendingParameterValues=false)', () => {
+		it('omits description and upstream messages and adds a hint to ask the user', () => {
+			const result = formatExecutionError(nodeOpError, false);
 
-		expect(result).toBe('something went wrong');
-	});
+			expect(result).toContain('Bad request - please check your parameters');
+			expect(result).not.toContain('Your credit balance is too low');
+			expect(result).not.toContain('low balance');
+			expect(result).not.toContain('Details:');
+			expect(result).toContain('instance AI privacy setting');
+			expect(result).toContain('ask the user');
+		});
 
-	it('does not duplicate description when it equals the message', () => {
-		const result = formatExecutionError({
-			name: 'WorkflowOperationError',
-			message: 'identical',
-			description: 'identical',
-		} as ExecutionError);
+		it('does not append the suppression hint when there are no upstream details to suppress', () => {
+			// A bare message has nothing to gate, so the hint would be misleading.
+			const result = formatExecutionError(
+				{
+					name: 'WorkflowOperationError',
+					message: 'just a message',
+				} as ExecutionError,
+				false,
+			);
 
-		expect(result).toBe('identical');
-	});
+			expect(result).toBe('just a message');
+		});
 
-	it('joins multiple upstream messages with a separator', () => {
-		const result = formatExecutionError({
-			name: 'NodeApiError',
-			message: 'API error',
-			messages: ['first', 'second', 'third'],
-		} as ExecutionError);
+		it('appends the suppression hint when only description is present', () => {
+			const result = formatExecutionError(
+				{
+					name: 'NodeOperationError',
+					message: 'top',
+					description: 'sensitive upstream payload',
+				} as ExecutionError,
+				false,
+			);
 
-		expect(result).toContain('Details: first | second | third');
-	});
-
-	it('truncates oversized output to keep the agent context bounded', () => {
-		const huge = 'x'.repeat(10_000);
-		const result = formatExecutionError({
-			name: 'NodeApiError',
-			message: 'API error',
-			messages: [huge],
-		} as ExecutionError);
-
-		expect(result.length).toBeLessThanOrEqual(4_001); // MAX_ERROR_CHARS + ellipsis
-		expect(result.endsWith('…')).toBe(true);
-	});
-
-	it('returns "Unknown error" for an empty error object', () => {
-		const result = formatExecutionError({} as ExecutionError);
-
-		expect(result).toBe('Unknown error');
+			expect(result).toContain('top');
+			expect(result).not.toContain('sensitive upstream payload');
+			expect(result).toContain('instance AI privacy setting');
+		});
 	});
 });
 
@@ -578,6 +664,7 @@ describe('extractExecutionDebugInfo', () => {
 		const result = await extractExecutionDebugInfo(
 			repo as unknown as ExecutionRepository,
 			'exec-1',
+			true,
 		);
 
 		expect(result.failedNode).toBeDefined();
@@ -586,6 +673,34 @@ describe('extractExecutionDebugInfo', () => {
 		expect(result.failedNode!.error).toContain('Your credit balance is too low');
 		expect(result.failedNode!.error).toContain('Details:');
 		expect(result.failedNode!.error).toContain('low balance');
+	});
+
+	it('suppresses upstream description and messages on the failed node when allowSendingParameterValues is false', async () => {
+		const deserialized: Partial<ExecutionError> = {
+			name: 'NodeOperationError',
+			message: 'Bad request - please check your parameters',
+			description: 'Your credit balance is too low to access the Anthropic API.',
+			messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
+		};
+		const execution = makeExecution({
+			status: 'error',
+			workflowNodes: [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }],
+			runData: {
+				'AI Agent': [makeTaskData([{ chatInput: 'Hello' }], { error: deserialized })],
+			},
+		});
+		const repo = createMockExecutionRepository(execution);
+
+		const result = await extractExecutionDebugInfo(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			false,
+		);
+
+		expect(result.failedNode!.error).toContain('Bad request');
+		expect(result.failedNode!.error).not.toContain('Your credit balance is too low');
+		expect(result.failedNode!.error).not.toContain('low balance');
+		expect(result.failedNode!.error).toContain('instance AI privacy setting');
 	});
 
 	it('uses "unknown" type when node is not in workflowData', async () => {
