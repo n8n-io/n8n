@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import type { ProvisioningMode } from '@n8n/api-types';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
@@ -9,12 +10,6 @@ import type {
 import { type SupportedProtocolType } from '../../sso.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-
-type TelemetrySettingValue =
-	| 'disabled'
-	| 'instance_role'
-	| 'instance_and_project_roles'
-	| 'expression_based';
 
 export type RoleAssignmentTransitionType = 'none' | 'backup' | 'switchToManual';
 
@@ -72,7 +67,7 @@ function getProvisioningConfigFromDropdowns(
 function getTelemetrySettingValue(
 	roleAssignment: RoleAssignmentSetting,
 	mappingMethod: RoleMappingMethodSetting,
-): TelemetrySettingValue {
+): ProvisioningMode {
 	if (roleAssignment === 'manual') return 'disabled';
 	if (mappingMethod === 'rules_in_n8n') return 'expression_based';
 	if (roleAssignment === 'instance_and_project') return 'instance_and_project_roles';
@@ -98,7 +93,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		);
 	});
 
-	const sendTrackingEventForUserProvisioning = (updatedSetting: TelemetrySettingValue) => {
+	const sendTrackingEventForUserProvisioning = (updatedSetting: ProvisioningMode) => {
 		telemetry.track('User updated provisioning settings', {
 			instance_id: useRootStore().instanceId,
 			authentication_method: protocol,
