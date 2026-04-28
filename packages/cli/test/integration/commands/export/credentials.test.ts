@@ -1,7 +1,7 @@
 import { createTeamProject, mockInstance, testDb } from '@n8n/backend-test-utils';
-import fs from 'fs';
-import os from 'os';
-import path from 'path';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 
 import { ExportCredentialsCommand } from '@/commands/export/credentials';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
