@@ -1,5 +1,8 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useWorkflowDocumentStore, createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import {
 	buildAdjacencyList,
 	parseExtractableSubgraphSelection,
