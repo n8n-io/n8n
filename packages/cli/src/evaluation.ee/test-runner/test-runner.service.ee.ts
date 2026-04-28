@@ -28,6 +28,7 @@ import type {
 } from 'n8n-workflow';
 import assert from 'node:assert';
 import type { JsonObject } from 'openid-client';
+import pLimit from 'p-limit';
 
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
@@ -39,7 +40,7 @@ import {
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
-import { EvaluationMetrics } from './evaluation-metrics.ee';
+import { EvaluationMetrics, type MetricContribution } from './evaluation-metrics.ee';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -504,8 +505,7 @@ export class TestRunnerService {
 	 *
 	 * `concurrency` is the requested number of test cases to run in parallel.
 	 * Clamped 1–10 defensively (the controller already validates this via zod).
-	 * The fan-out itself lands in a later commit; today the runner remains
-	 * sequential regardless of this value.
+	 * `concurrency = 1` reproduces the legacy sequential behaviour exactly.
 	 */
 	async runTest(user: User, workflowId: string, concurrency: number = 1): Promise<void> {
 		const effectiveConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
@@ -583,167 +583,178 @@ export class TestRunnerService {
 			// 2. Run over all the test cases
 			///
 
-			for (const testCase of testCases) {
-				if (abortSignal.aborted) {
-					telemetryMeta.status = 'cancelled';
-					this.logger.debug('Test run was cancelled', {
-						workflowId,
-					});
-					break;
-				}
+			// pLimit(N) governs how many per-case tasks may be in flight at
+			// once. With concurrency=1 the per-case callback runs in serial,
+			// reproducing the legacy `for…of` loop exactly. Each callback
+			// returns the contributions it built; merging happens once on the
+			// main thread after Promise.all so EvaluationMetrics state is
+			// never touched concurrently.
+			//
+			// `telemetryMeta.*++` increments inside the callback are safe under
+			// JS's single-threaded event loop: `++` is synchronous, and there
+			// is no `await` between the read and the write of the counter.
+			const limit = pLimit(effectiveConcurrency);
 
-				// Check database cancellation flag (fallback for multi-main mode only)
-				// This ensures cancellation works even if the pub/sub message didn't reach this instance
-				// In single-main mode, the local abort controller check above is sufficient
-				if (
-					this.instanceSettings.isMultiMain &&
-					(await this.testRunRepository.isCancellationRequested(testRun.id))
-				) {
-					this.logger.debug('Test run cancellation requested via database flag', {
-						workflowId,
-						testRunId: testRun.id,
-					});
-					abortController.abort();
-					telemetryMeta.status = 'cancelled';
-					break;
-				}
+			const contributionResults = await Promise.all(
+				testCases.map((testCase) =>
+					limit(async (): Promise<MetricContribution[]> => {
+						if (abortSignal.aborted) {
+							return [];
+						}
 
-				this.logger.debug('Running test case');
-				const runAt = new Date();
+						// Multi-main DB cancellation poll, run per case as a defensive
+						// fallback for the rare case a foreign main flips the cancel
+						// flag but the pubsub broadcast doesn't reach this instance.
+						// Cheap (~1ms indexed PK lookup); kept as-is rather than
+						// optimised to once-per-run to preserve the existing safety net.
+						if (
+							this.instanceSettings.isMultiMain &&
+							(await this.testRunRepository.isCancellationRequested(testRun.id))
+						) {
+							this.logger.debug('Test run cancellation requested via database flag', {
+								workflowId,
+								testRunId: testRun.id,
+							});
+							abortController.abort();
+							return [];
+						}
 
-				try {
-					const testCaseMetadata = {
-						...testRunMetadata,
-					};
+						this.logger.debug('Running test case');
+						const runAt = new Date();
 
-					// Run the test case and wait for it to finish
-					const testCaseResult = await this.runTestCase(
-						workflow,
-						testCaseMetadata,
-						testCase,
-						abortSignal,
-					);
-					assert(testCaseResult);
+						try {
+							const testCaseMetadata = { ...testRunMetadata };
 
-					const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
-						testCaseResult;
+							const testCaseResult = await this.runTestCase(
+								workflow,
+								testCaseMetadata,
+								testCase,
+								abortSignal,
+							);
+							assert(testCaseResult);
 
-					assert(testCaseExecution);
-					assert(testCaseExecutionId);
+							const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
+								testCaseResult;
 
-					this.logger.debug('Test case execution finished');
+							assert(testCaseExecution);
+							assert(testCaseExecutionId);
 
-					// In case of a permission check issue, the test case execution will be undefined.
-					// If that happens, or if the test case execution produced an error, mark the test case as failed.
-					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
-						// Save the failed test case execution in DB
-						await this.testCaseExecutionRepository.createTestCaseExecution({
-							executionId: testCaseExecutionId,
-							testRun: {
-								id: testRun.id,
-							},
-							status: 'error',
-							errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
-							metrics: {},
-						});
-						telemetryMeta.errored_test_case_count++;
-						continue;
-					}
-					const completedAt = new Date();
+							this.logger.debug('Test case execution finished');
 
-					// Collect common metrics
-					const { addedMetrics: addedPredefinedMetrics } = metrics.addResults(
-						this.extractPredefinedMetrics(testCaseExecution),
-					);
-					this.logger.debug('Test case common metrics extracted', addedPredefinedMetrics);
+							if (!testCaseExecution || testCaseExecution.data.resultData.error) {
+								await this.testCaseExecutionRepository.createTestCaseExecution({
+									executionId: testCaseExecutionId,
+									testRun: { id: testRun.id },
+									status: 'error',
+									errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+									metrics: {},
+								});
+								telemetryMeta.errored_test_case_count++;
+								return [];
+							}
+							const completedAt = new Date();
 
-					// Collect user-defined metrics
-					const { addedMetrics: addedUserDefinedMetrics } = metrics.addResults(
-						this.extractUserDefinedMetrics(testCaseExecution, workflow),
-					);
+							const predefinedContribution = EvaluationMetrics.buildContribution(
+								this.extractPredefinedMetrics(testCaseExecution),
+							);
+							this.logger.debug(
+								'Test case common metrics extracted',
+								predefinedContribution.addedMetrics,
+							);
 
-					if (Object.keys(addedUserDefinedMetrics).length === 0) {
-						await this.testCaseExecutionRepository.createTestCaseExecution({
-							executionId: testCaseExecutionId,
-							testRun: {
-								id: testRun.id,
-							},
-							runAt,
-							completedAt,
-							status: 'error',
-							errorCode: 'NO_METRICS_COLLECTED',
-						});
-						telemetryMeta.errored_test_case_count++;
-					} else {
-						const combinedMetrics = {
-							...addedUserDefinedMetrics,
-							...addedPredefinedMetrics,
-						};
+							const userDefinedContribution = EvaluationMetrics.buildContribution(
+								this.extractUserDefinedMetrics(testCaseExecution, workflow),
+							);
 
-						const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
-						const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
+							if (Object.keys(userDefinedContribution.addedMetrics).length === 0) {
+								await this.testCaseExecutionRepository.createTestCaseExecution({
+									executionId: testCaseExecutionId,
+									testRun: { id: testRun.id },
+									runAt,
+									completedAt,
+									status: 'error',
+									errorCode: 'NO_METRICS_COLLECTED',
+								});
+								telemetryMeta.errored_test_case_count++;
+								// Predefined metrics still merge — the case ran, just had no user metrics.
+								return [predefinedContribution];
+							}
 
-						this.logger.debug(
-							'Test case metrics extracted (user-defined)',
-							addedUserDefinedMetrics,
-						);
+							const combinedMetrics = {
+								...userDefinedContribution.addedMetrics,
+								...predefinedContribution.addedMetrics,
+							};
 
-						// Create a new test case execution in DB
-						await this.testCaseExecutionRepository.createTestCaseExecution({
-							executionId: testCaseExecutionId,
-							testRun: {
-								id: testRun.id,
-							},
-							runAt,
-							completedAt,
-							status: 'success',
-							metrics: combinedMetrics,
-							inputs,
-							outputs,
-						});
-					}
-				} catch (e) {
-					const completedAt = new Date();
-					// FIXME: this is a temporary log
-					this.logger.error('Test case execution failed', {
-						workflowId,
-						testRunId: testRun.id,
-						error: e,
-					});
+							const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
+							const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
 
-					telemetryMeta.errored_test_case_count++;
+							this.logger.debug(
+								'Test case metrics extracted (user-defined)',
+								userDefinedContribution.addedMetrics,
+							);
 
-					// In case of an unexpected error save it as failed test case execution and continue with the next test case
-					if (e instanceof TestCaseExecutionError) {
-						await this.testCaseExecutionRepository.createTestCaseExecution({
-							testRun: {
-								id: testRun.id,
-							},
-							runAt,
-							completedAt,
-							status: 'error',
-							errorCode: e.code,
-							errorDetails: e.extra as IDataObject,
-						});
-					} else {
-						await this.testCaseExecutionRepository.createTestCaseExecution({
-							testRun: {
-								id: testRun.id,
-							},
-							runAt,
-							completedAt,
-							status: 'error',
-							errorCode: 'UNKNOWN_ERROR',
-						});
+							await this.testCaseExecutionRepository.createTestCaseExecution({
+								executionId: testCaseExecutionId,
+								testRun: { id: testRun.id },
+								runAt,
+								completedAt,
+								status: 'success',
+								metrics: combinedMetrics,
+								inputs,
+								outputs,
+							});
 
-						// Report unexpected errors
-						this.errorReporter.error(e);
-					}
+							return [predefinedContribution, userDefinedContribution];
+						} catch (e) {
+							const completedAt = new Date();
+							this.logger.error('Test case execution failed', {
+								workflowId,
+								testRunId: testRun.id,
+								error: e,
+							});
+
+							telemetryMeta.errored_test_case_count++;
+
+							if (e instanceof TestCaseExecutionError) {
+								await this.testCaseExecutionRepository.createTestCaseExecution({
+									testRun: { id: testRun.id },
+									runAt,
+									completedAt,
+									status: 'error',
+									errorCode: e.code,
+									errorDetails: e.extra as IDataObject,
+								});
+							} else {
+								await this.testCaseExecutionRepository.createTestCaseExecution({
+									testRun: { id: testRun.id },
+									runAt,
+									completedAt,
+									status: 'error',
+									errorCode: 'UNKNOWN_ERROR',
+								});
+								this.errorReporter.error(e);
+							}
+							return [];
+						}
+					}),
+				),
+			);
+
+			// Single-threaded merge step. Order is irrelevant for averages
+			// (within IEEE-754 precision; see evaluation-metrics tests).
+			for (const caseContributions of contributionResults) {
+				for (const contribution of caseContributions) {
+					metrics.mergeContribution(contribution);
 				}
 			}
 
-			// Mark the test run as completed or cancelled
+			// Mark the test run as completed or cancelled. The multi-main DB
+			// poll inside each per-case callback can flip `abortController.abort()`
+			// on its own; this branch is the only place telemetry status is set
+			// for cancellations, so both the user-initiated and poll-initiated
+			// paths converge here.
 			if (abortSignal.aborted) {
+				this.logger.debug('Test run was cancelled', { workflowId });
 				await dbManager.transaction(async (trx) => {
 					await this.testRunRepository.markAsCancelled(testRun.id, trx);
 					await this.testCaseExecutionRepository.markAllPendingAsCancelled(testRun.id, trx);
