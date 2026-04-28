@@ -1,4 +1,4 @@
-import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
+import type { AgentJsonConfig, AgentJsonConfigRef, AgentResource } from '../types';
 
 export type AgentTelemetryStatus = 'draft' | 'production';
 
@@ -24,7 +24,8 @@ async function sha256Hex16(input: string): Promise<string> {
 	return hex.slice(0, 16);
 }
 
-function toolIdentifier(ref: AgentJsonToolRef): string {
+function toolIdentifier(ref: AgentJsonConfigRef): string {
+	if (ref.type === 'skill') return ref.id;
 	if (ref.type === 'custom') return ref.id ?? '';
 	if (ref.type === 'workflow') return ref.name ?? ref.workflow ?? '';
 	return ref.name ?? ref.node?.nodeType ?? '';

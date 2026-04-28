@@ -23,7 +23,7 @@ import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonConfigRef, AgentJsonToolRef } from '../types';
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
@@ -37,12 +37,12 @@ import { useAgentToolTelemetry } from '../composables/useAgentToolTelemetry';
 const props = defineProps<{
 	modalName: string;
 	data: {
-		tools: AgentJsonToolRef[];
+		tools: AgentJsonConfigRef[];
 		/** Optional — when present, the Available list will include workflows scoped to this project. */
 		projectId?: string;
 		/** Optional — tagged onto telemetry events for correlation with agent analytics. */
 		agentId?: string;
-		onConfirm: (tools: AgentJsonToolRef[]) => void;
+		onConfirm: (tools: AgentJsonConfigRef[]) => void;
 	};
 }>();
 
@@ -58,7 +58,7 @@ const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
 // Local working copy — all edits go here; saved to config via onConfirm.
-const workingTools = ref<AgentJsonToolRef[]>([...props.data.tools]);
+const workingTools = ref<AgentJsonConfigRef[]>([...props.data.tools]);
 watch(
 	() => props.data.tools,
 	(tools) => {
@@ -182,9 +182,11 @@ interface ConfiguredWorkflowView {
 	description?: string;
 }
 
+type WorkflowToolRef = AgentJsonConfigRef & { type: 'workflow' };
+
 const configuredWorkflows = computed<ConfiguredWorkflowView[]>(() =>
 	workingTools.value
-		.filter((t) => t.type === 'workflow')
+		.filter((t): t is WorkflowToolRef => t.type === 'workflow')
 		.map((ref) => ({
 			ref,
 			name: ref.name ?? (ref.workflow as string),

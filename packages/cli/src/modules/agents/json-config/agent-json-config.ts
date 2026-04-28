@@ -47,6 +47,14 @@ const JsonSchemaObjectSchema = z
 	})
 	.passthrough();
 
+const AgentJsonSkillConfigSchema = z.object({
+	type: z.literal('skill'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[a-z0-9_-]+$/),
+});
+
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
@@ -55,13 +63,6 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 			.min(1)
 			.regex(/^[a-z0-9_-]+$/),
 		requireApproval: z.boolean().optional(),
-	}),
-	z.object({
-		type: z.literal('skill'),
-		id: z
-			.string()
-			.min(1)
-			.regex(/^[a-z0-9_-]+$/),
 	}),
 	z.object({
 		type: z.literal('workflow'),
@@ -84,6 +85,8 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	}),
 ]);
 
+const AgentJsonConfigRefSchema = z.union([AgentJsonToolConfigSchema, AgentJsonSkillConfigSchema]);
+
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
@@ -102,7 +105,7 @@ export const AgentJsonConfigSchema = z.object({
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
-	tools: z.array(AgentJsonToolConfigSchema).optional(),
+	tools: z.array(AgentJsonConfigRefSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	config: z
 		.object({
@@ -122,6 +125,8 @@ export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
+export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonConfigRef = z.infer<typeof AgentJsonConfigRefSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 
 export interface ConfigValidationError {

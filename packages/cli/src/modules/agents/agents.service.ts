@@ -43,6 +43,7 @@ import { N8nMemory } from './integrations/n8n-memory';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
+	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './json-config/agent-json-config';
@@ -1063,7 +1064,7 @@ export class AgentsService {
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(
 			(result.config.tools ?? [])
-				.filter((t): t is { type: 'custom'; id: string } => t.type === 'custom')
+				.filter((t): t is Extract<AgentJsonConfigRef, { type: 'custom' }> => t.type === 'custom')
 				.map((t) => t.id),
 		);
 		const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
@@ -1077,7 +1078,7 @@ export class AgentsService {
 
 		const referencedSkillIds = new Set(
 			(result.config.tools ?? [])
-				.filter((t): t is { type: 'skill'; id: string } => t.type === 'skill')
+				.filter((t): t is Extract<AgentJsonConfigRef, { type: 'skill' }> => t.type === 'skill')
 				.map((t) => t.id),
 		);
 		const orphanSkillIds = Object.keys(entity.skills ?? {}).filter(
@@ -1217,7 +1218,7 @@ export class AgentsService {
 		// Remove from config tools array
 		if (entity.schema?.tools) {
 			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonToolConfig) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
+				(t: AgentJsonConfigRef) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
 			);
 		}
 
@@ -1240,7 +1241,7 @@ export class AgentsService {
 
 		if (entity.schema?.tools) {
 			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonToolConfig) => !(t.type === 'skill' && 'id' in t && t.id === skillId),
+				(t: AgentJsonConfigRef) => !(t.type === 'skill' && 'id' in t && t.id === skillId),
 			);
 		}
 

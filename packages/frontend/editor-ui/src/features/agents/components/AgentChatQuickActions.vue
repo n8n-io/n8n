@@ -10,10 +10,10 @@ import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_ADD_TRIGGER_MODAL_KEY } from '../constants';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonConfigRef } from '../types';
 
 const props = defineProps<{
-	tools: AgentJsonToolRef[];
+	tools: AgentJsonConfigRef[];
 	projectId: string;
 	agentId: string;
 	isPublished: boolean;
@@ -21,7 +21,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	'update:tools': [tools: AgentJsonToolRef[]];
+	'update:tools': [tools: AgentJsonConfigRef[]];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
 }>();
@@ -36,7 +36,7 @@ function onAddTool() {
 			tools: props.tools,
 			projectId: props.projectId,
 			agentId: props.agentId,
-			onConfirm: (tools: AgentJsonToolRef[]) => emit('update:tools', tools),
+			onConfirm: (tools: AgentJsonConfigRef[]) => emit('update:tools', tools),
 		},
 	});
 }

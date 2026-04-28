@@ -11,6 +11,7 @@ import { Agent, Memory, wrapToolForApproval } from '@n8n/agents';
 
 import type {
 	AgentJsonConfig,
+	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './agent-json-config';
@@ -72,6 +73,7 @@ export async function buildFromJson(
 	// Tools
 	if (config.tools) {
 		for (const ref of config.tools) {
+			if (isSkillRef(ref)) continue;
 			const built = await resolveToolRef(ref, toolDescriptors, options);
 			if (built) {
 				agent.tool(built);
@@ -107,6 +109,12 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+function isSkillRef(
+	ref: AgentJsonConfigRef,
+): ref is Extract<AgentJsonConfigRef, { type: 'skill' }> {
+	return ref.type === 'skill';
 }
 
 async function resolveToolRef(
@@ -171,9 +179,6 @@ async function resolveToolRef(
 			}
 			return tool;
 		}
-
-		case 'skill':
-			return null;
 	}
 }
 

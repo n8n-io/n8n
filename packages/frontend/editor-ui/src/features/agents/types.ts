@@ -118,4 +118,10 @@ export interface ThinkingSchema {
 	reasoningEffort?: string;
 }
 
-export type { NodeToolConfig, AgentJsonToolRef, AgentJsonConfig } from '@n8n/api-types';
+export type {
+	NodeToolConfig,
+	AgentJsonToolRef,
+	AgentJsonSkillRef,
+	AgentJsonConfigRef,
+	AgentJsonConfig,
+} from '@n8n/api-types';

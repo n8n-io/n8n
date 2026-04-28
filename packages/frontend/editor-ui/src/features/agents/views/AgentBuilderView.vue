@@ -28,7 +28,7 @@ import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonConfigRef } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -655,7 +655,7 @@ function onOpenAddToolModal() {
 			tools: localConfig.value?.tools ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolRef[]) => onConfigFieldUpdate({ tools }),
+			onConfirm: (tools: AgentJsonConfigRef[]) => onConfigFieldUpdate({ tools }),
 		},
 	});
 }
@@ -698,6 +698,7 @@ const toolHeaderTitle = computed(() => {
 	if (!Number.isInteger(idx)) return '';
 	const ref = localConfig.value?.tools?.[idx];
 	if (!ref) return `Tool ${idx + 1}`;
+	if (ref.type === 'skill') return ref.id || `skill-${idx + 1}`;
 	const name = ref.name?.trim();
 	if (ref.type === 'custom') {
 		const base = name || ref.id || `tool-${idx + 1}`;
@@ -718,7 +719,7 @@ const customToolSelection = computed<{ code: string } | null>(() => {
 	return { code: entry.code ?? '' };
 });
 
-function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
+function onQuickActionAddTool(tools: AgentJsonConfigRef[]) {
 	onConfigFieldUpdate({ tools });
 }
 
