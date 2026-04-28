@@ -13,8 +13,8 @@ import { NoForbiddenLifecycleScriptsRule } from './no-forbidden-lifecycle-script
 import { NoHttpRequestWithManualAuthRule } from './no-http-request-with-manual-auth.js';
 import { NoOverridesFieldRule } from './no-overrides-field.js';
 import { NoRestrictedGlobalsRule } from './no-restricted-globals.js';
-import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NoRestrictedImportsRule } from './no-restricted-imports.js';
+import { NoRuntimeDependenciesRule } from './no-runtime-dependencies.js';
 import { NodeClassDescriptionIconMissingRule } from './node-class-description-icon-missing.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
