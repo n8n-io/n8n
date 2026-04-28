@@ -1,6 +1,8 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { CryptoKey } from 'jose';
+import { CompactEncrypt, compactDecrypt, importJWK } from 'jose';
 import { InstanceSettings } from 'n8n-core';
 
 import { CacheService } from '@/services/cache/cache.service';
@@ -73,5 +75,20 @@ describe('OAuthJweKeyService (integration)', () => {
 		expect(publicJwk).not.toHaveProperty('d');
 		expect(publicJwk).not.toHaveProperty('p');
 		expect(publicJwk).not.toHaveProperty('q');
+	});
+
+	it('generates a usable JWE key pair (encrypt with public, decrypt with private)', async () => {
+		const service = Container.get(OAuthJweKeyService);
+		await service.initialize();
+
+		const { publicJwk, privateKey, algorithm } = await service.getKeyPair();
+		const publicKey = (await importJWK(publicJwk, algorithm)) as CryptoKey;
+
+		const token = await new CompactEncrypt(new TextEncoder().encode('hello-jwe'))
+			.setProtectedHeader({ alg: algorithm, enc: 'A256GCM' })
+			.encrypt(publicKey);
+
+		const { plaintext } = await compactDecrypt(token, privateKey);
+		expect(new TextDecoder().decode(plaintext)).toBe('hello-jwe');
 	});
 });
