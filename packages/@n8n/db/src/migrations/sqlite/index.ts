@@ -323,9 +323,9 @@ const sqliteMigrations: Migration[] = [
 	CreateFavoritesTable1776150756000,
 	CreateDeploymentKeyTable1777000000000,
 	AddJweKeyIndexesToDeploymentKey1777023444000,
-	AddTracingContextToExecution1777045000000,
 	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
 	AddExecutionDeduplicationKey1778000000000,
+	AddTracingContextToExecution1777045000000,
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 ];
 
