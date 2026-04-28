@@ -78,7 +78,7 @@ export function useExecutionHelpers() {
 	function openExecutionInNewTab(executionId: string, workflowId: string): void {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowId, executionId },
+			params: { workflowId, executionId },
 		});
 
 		window.open(route.href, '_blank');
@@ -97,7 +97,7 @@ export function useExecutionHelpers() {
 
 		return router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowId, executionId },
+			params: { workflowId, executionId },
 		}).fullPath;
 	}
 

@@ -235,7 +235,7 @@ async function handleActionClick(actionId: string) {
 			// Navigate to evaluations
 			await router.push({
 				name: VIEWS.EVALUATION_EDIT,
-				params: { name: props.workflow.id },
+				params: { workflowId: props.workflow.id },
 			});
 			break;
 		case 'errorWorkflow':
