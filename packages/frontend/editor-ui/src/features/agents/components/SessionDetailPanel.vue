@@ -149,7 +149,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</div>
 				<N8nButton
 					v-if="fullExecutionHref"
-					variant="ghost"
+					variant="outline"
 					size="small"
 					:label="i18n.baseText('agentSessions.workflowLog.openFull')"
 					data-test-id="open-full-execution"
