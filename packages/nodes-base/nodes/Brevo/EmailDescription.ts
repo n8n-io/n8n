@@ -126,8 +126,8 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Receipients',
-		name: 'receipients',
+		displayName: 'Recipients',
+		name: 'recipients',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -139,7 +139,7 @@ const sendHtmlEmailFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				preSend: [BrevoNode.Validators.validateAndCompileReceipientEmails],
+				preSend: [BrevoNode.Validators.validateAndCompileRecipientEmails],
 			},
 		},
 	},
@@ -186,18 +186,18 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Receipients BCC',
-				name: 'receipientsBCC',
+				displayName: 'Recipients BCC',
+				name: 'recipientsBCC',
 				placeholder: 'Add BCC',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						name: 'receipientBcc',
-						displayName: 'Receipient',
+						name: 'recipientBcc',
+						displayName: 'Recipient',
 						values: [
 							{
-								displayName: 'Receipient',
+								displayName: 'Recipient',
 								name: 'bcc',
 								type: 'string',
 								default: '',
@@ -212,18 +212,18 @@ const sendHtmlEmailFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Receipients CC',
-				name: 'receipientsCC',
+				displayName: 'Recipients CC',
+				name: 'recipientsCC',
 				placeholder: 'Add CC',
 				type: 'fixedCollection',
 				default: {},
 				options: [
 					{
-						name: 'receipientCc',
-						displayName: 'Receipient',
+						name: 'recipientCc',
+						displayName: 'Recipient',
 						values: [
 							{
-								displayName: 'Receipient',
+								displayName: 'Recipient',
 								name: 'cc',
 								type: 'string',
 								default: '',
@@ -327,8 +327,8 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Receipients',
-		name: 'receipients',
+		displayName: 'Recipients',
+		name: 'recipients',
 		type: 'string',
 		displayOptions: {
 			show: {
@@ -340,7 +340,7 @@ const sendHtmlTemplateEmailFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
-				preSend: [BrevoNode.Validators.validateAndCompileReceipientEmails],
+				preSend: [BrevoNode.Validators.validateAndCompileRecipientEmails],
 			},
 		},
 	},
