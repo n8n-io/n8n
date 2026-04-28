@@ -8,13 +8,14 @@ import type {
 	ExecutionError,
 	INodeExecutionData,
 	INode,
+	IRun,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { WorkflowActivationError } from 'n8n-workflow';
+import { createDeferredPromise, WorkflowActivationError } from 'n8n-workflow';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -433,6 +434,33 @@ describe('ActiveWorkflowManager', () => {
 				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(eventService.emit).not.toHaveBeenCalled();
+			});
+
+			test('resolves donePromise with undefined when runWorkflow rejects with DuplicateExecutionError', async () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node', id: 'node-1' });
+				const triggerData: INodeExecutionData[][] = [[]];
+
+				workflowExecutionService.runWorkflow.mockRejectedValueOnce(
+					new DuplicateExecutionError('wf-1:node-1:1700000000000'),
+				);
+
+				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				const donePromise = createDeferredPromise<IRun | undefined>();
+				context.emit(triggerData, undefined, donePromise, 'wf-1:node-1:1700000000000');
+
+				await expect(donePromise.promise).resolves.toBeUndefined();
 			});
 		});
 
