@@ -11,11 +11,14 @@ function createInitialState(threadId: string, outcome: WorkflowBuildOutcome): Wo
 	return {
 		workItemId: outcome.workItemId,
 		threadId,
+		runId: outcome.runId,
 		workflowId: outcome.workflowId,
 		phase: 'building',
 		status: 'active',
 		source: outcome.workflowId ? 'modify' : 'create',
 		rebuildAttempts: 0,
+		preSaveSubmitFailures: 0,
+		postSubmitRemediationSubmitsUsed: 0,
 	};
 }
 

@@ -1,3 +1,4 @@
+import { createRemediation } from '../remediation';
 import {
 	createWorkItem,
 	handleBuildOutcome,
@@ -100,7 +101,7 @@ describe('handleBuildOutcome', () => {
 		expect(action.type).toBe('done');
 	});
 
-	it('transitions to blocked when not submitted', () => {
+	it('keeps pre-save code-fixable submit failures active before budget is exhausted', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			submitted: false,
@@ -109,9 +110,9 @@ describe('handleBuildOutcome', () => {
 
 		const { state: next, action, attempt } = handleBuildOutcome(state, [], outcome);
 
-		expect(next.phase).toBe('blocked');
-		expect(next.status).toBe('blocked');
-		expect(action.type).toBe('blocked');
+		expect(next.phase).toBe('building');
+		expect(next.status).toBe('active');
+		expect(action.type).toBe('continue_building');
 		expect(attempt.result).toBe('failure');
 	});
 
@@ -164,6 +165,95 @@ describe('handleBuildOutcome', () => {
 		if (action.type === 'done') {
 			expect(action.hasUnresolvedPlaceholders).toBe(true);
 		}
+	});
+
+	it('allows two pre-save submit failures before blocking the third', () => {
+		let state = makeState({ runId: 'run_1' });
+		const first = handleBuildOutcome(state, [], {
+			...makeOutcome({
+				runId: 'run_1',
+				submitted: false,
+				failureSignature: 'validation 1',
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			}),
+		});
+		expect(first.state.status).toBe('active');
+		expect(first.state.preSaveSubmitFailures).toBe(1);
+
+		state = first.state;
+		const second = handleBuildOutcome(state, [first.attempt], {
+			...makeOutcome({
+				runId: 'run_1',
+				submitted: false,
+				failureSignature: 'validation 2',
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			}),
+		});
+		expect(second.state.status).toBe('active');
+		expect(second.state.preSaveSubmitFailures).toBe(2);
+
+		const third = handleBuildOutcome(second.state, [first.attempt, second.attempt], {
+			...makeOutcome({
+				runId: 'run_1',
+				submitted: false,
+				failureSignature: 'validation 3',
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			}),
+		});
+		expect(third.state.status).toBe('blocked');
+		expect(third.state.lastRemediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'pre_save_submit_budget_exhausted',
+		});
+	});
+
+	it('starts post-submit remediation budget at zero after successful submit with mocked credentials', () => {
+		const state = makeState({ runId: 'run_1', preSaveSubmitFailures: 2 });
+		const result = handleBuildOutcome(state, [], {
+			...makeOutcome({
+				runId: 'run_1',
+				workflowId: 'wf_123',
+				mockedCredentialTypes: ['gmailOAuth2'],
+				mockedNodeNames: ['Gmail'],
+			}),
+		});
+
+		expect(result.state.successfulSubmitSeen).toBe(true);
+		expect(result.state.preSaveSubmitFailures).toBe(0);
+		expect(result.state.postSubmitRemediationSubmitsUsed).toBe(0);
+		expect(result.state.mockedCredentialTypes).toEqual(['gmailOAuth2']);
+	});
+
+	it('counts successful repair submits after the first successful submit', () => {
+		const state = makeState({
+			runId: 'run_1',
+			phase: 'repairing',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 1,
+		});
+		const result = handleBuildOutcome(state, [], {
+			...makeOutcome({
+				runId: 'run_1',
+				workflowId: 'wf_123',
+			}),
+		});
+
+		expect(result.state.postSubmitRemediationSubmitsUsed).toBe(2);
+		expect(result.state.phase).toBe('verifying');
 	});
 
 	it('does not set hasUnresolvedPlaceholders when not present in outcome', () => {
@@ -405,6 +495,106 @@ describe('retry policy', () => {
 
 		expect(next.phase).toBe('blocked');
 		expect(action.type).toBe('blocked');
+	});
+
+	it('blocks duplicate failure signatures without consuming the remaining submit budget', () => {
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 1,
+		});
+		const priorAttempts: AttemptRecord[] = [
+			{
+				workItemId: 'wi_test',
+				phase: 'repairing',
+				attempt: 1,
+				action: 'patch',
+				result: 'failure',
+				failureSignature: 'node:error',
+				createdAt: new Date().toISOString(),
+			},
+		];
+
+		const { state: next } = handleVerificationVerdict(
+			state,
+			priorAttempts,
+			makeVerdict({
+				verdict: 'needs_patch',
+				failureSignature: 'node:error',
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code.',
+				}),
+			}),
+		);
+
+		expect(next.status).toBe('blocked');
+		expect(next.postSubmitRemediationSubmitsUsed).toBe(1);
+		expect(next.lastRemediation).toMatchObject({
+			reason: 'duplicate_failure_signature',
+			remainingSubmitFixes: 1,
+		});
+	});
+
+	it('blocks new repair verdicts after two post-submit remediation submits', () => {
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+		});
+
+		const { state: next, action } = handleVerificationVerdict(
+			state,
+			[],
+			makeVerdict({
+				verdict: 'needs_rebuild',
+				failureSignature: 'new:error',
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code.',
+				}),
+			}),
+		);
+
+		expect(next.status).toBe('blocked');
+		expect(action.type).toBe('blocked');
+		expect(next.lastRemediation).toMatchObject({
+			reason: 'post_submit_budget_exhausted',
+			remainingSubmitFixes: 0,
+		});
+	});
+
+	it('blocks non-editable remediation immediately and preserves workflow id', () => {
+		const state = makeState({
+			phase: 'verifying',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+		});
+
+		const { state: next } = handleVerificationVerdict(
+			state,
+			[],
+			makeVerdict({
+				verdict: 'needs_patch',
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					reason: 'mocked_credentials_or_placeholders',
+					guidance: 'Route to setup.',
+				}),
+			}),
+		);
+
+		expect(next.status).toBe('blocked');
+		expect(next.workflowId).toBe('wf_123');
+		expect(next.lastRemediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+		});
 	});
 
 	it('parallel work items do not collide in attempt history', () => {
