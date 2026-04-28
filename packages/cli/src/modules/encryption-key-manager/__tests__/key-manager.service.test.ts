@@ -171,7 +171,7 @@ describe('KeyManagerService', () => {
 			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledTimes(1);
 			const [rawKey] = cipher.encryptDEKWithInstanceKey.mock.calls[0];
 			expect(typeof rawKey).toBe('string');
-			expect((rawKey as string).length).toBe(64);
+			expect(rawKey.length).toBe(64);
 
 			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
