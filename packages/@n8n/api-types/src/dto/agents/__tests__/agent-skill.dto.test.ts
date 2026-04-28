@@ -5,32 +5,15 @@ describe('agent skill DTOs', () => {
 	const validSkill = {
 		id: 'summarize_notes',
 		name: 'Summarize Notes',
-		description: 'Use when summarizing notes',
+		description: 'Summarizes meeting notes',
 		instructions: 'Extract decisions and action items.',
 	};
 
-	it('rejects create payloads with descriptions that are not routing hints', () => {
-		const result = CreateAgentSkillDto.safeParse({
-			...validSkill,
-			description: 'Summarize notes',
-		});
-
-		expect(result.success).toBe(false);
-	});
-
-	it('rejects update payloads with descriptions that are not routing hints', () => {
-		const result = UpdateAgentSkillDto.safeParse({
-			description: 'Summarize notes',
-		});
-
-		expect(result.success).toBe(false);
-	});
-
-	it('accepts descriptions that start with Use when', () => {
+	it('accepts natural-language descriptions', () => {
 		expect(CreateAgentSkillDto.safeParse(validSkill).success).toBe(true);
 		expect(
 			UpdateAgentSkillDto.safeParse({
-				description: 'Use when extracting decisions from notes',
+				description: 'Extracts decisions from notes',
 			}).success,
 		).toBe(true);
 	});

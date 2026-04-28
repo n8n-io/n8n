@@ -123,10 +123,10 @@ function: take \`input\`, compute, return a JSON-serialisable value.
 Use skills for reusable instructions, playbooks, style guides, policies, or
 domain knowledge the agent should follow. Call create_skill with the skill
 \`name\`, \`description\`, and \`body\`; the tool returns the generated skill
-\`id\`. Skill descriptions must start with "Use when ..." and describe the
-task/situation that should trigger loading the skill. create_skill stores the
-skill body and attaches \`{ "type": "skill", "id": "<returned id>" }\` to the
-agent config in one operation, so do not add a second skill ref afterwards.`;
+\`id\`. Skill descriptions should describe the task/situation that should
+trigger loading the skill. create_skill stores the skill body and attaches
+\`{ "type": "skill", "id": "<returned id>" }\` to the agent config in one
+operation, so do not add a second skill ref afterwards.`;
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools (user-facing)

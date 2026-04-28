@@ -89,9 +89,9 @@ describe('TOOL_TYPES_SECTION', () => {
 
 	it('instructs to create and register skills', () => {
 		expect(TOOL_TYPES_SECTION).toContain('create_skill');
-		expect(TOOL_TYPES_SECTION).toContain('Use when');
+		expect(TOOL_TYPES_SECTION).toContain('task/situation');
 		expect(TOOL_TYPES_SECTION).toContain('{ "type": "skill", "id": "<returned id>" }');
-		expect(TOOL_TYPES_SECTION).toContain('in one operation');
+		expect(TOOL_TYPES_SECTION).toContain('operation, so do not add a second skill ref');
 	});
 
 	it('no longer tells the model to fill credentials with empty values', () => {

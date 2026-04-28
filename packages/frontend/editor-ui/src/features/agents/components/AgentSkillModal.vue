@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX, skillNameToId } from '@n8n/api-types';
+import { skillNameToId } from '@n8n/api-types';
 import { N8nButton, N8nHeading } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -57,8 +57,6 @@ const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() 
 
 	if (!description) {
 		errors.description = i18n.baseText('agents.builder.skills.validation.descriptionRequired');
-	} else if (!AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX.test(description)) {
-		errors.description = i18n.baseText('agents.builder.skills.validation.descriptionUseWhen');
 	} else if (description.length > 512) {
 		errors.description = i18n.baseText('agents.builder.skills.validation.descriptionMaxLength');
 	}

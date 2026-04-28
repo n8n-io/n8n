@@ -225,7 +225,6 @@ export { UpdateAgentDto } from './agents/update-agent.dto';
 export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
 export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
 export {
-	AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX,
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	CreateAgentSkillDto,
 	agentSkillSchema,

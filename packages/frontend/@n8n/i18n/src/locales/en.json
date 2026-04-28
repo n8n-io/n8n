@@ -5788,7 +5788,6 @@
 	"agents.builder.skills.validation.nameRequired": "Enter a title.",
 	"agents.builder.skills.validation.nameMaxLength": "Title must be 128 characters or fewer.",
 	"agents.builder.skills.validation.descriptionRequired": "Enter a description.",
-	"agents.builder.skills.validation.descriptionUseWhen": "Description must start with \"Use when ...\".",
 	"agents.builder.skills.validation.descriptionMaxLength": "Description must be 512 characters or fewer.",
 	"agents.builder.skills.validation.instructionsRequired": "Enter instructions.",
 	"agents.builder.skills.validation.instructionsMaxLength": "Instructions must be {max} characters or fewer.",
