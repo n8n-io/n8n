@@ -17,6 +17,10 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@/app/stores/roles.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 const mockRouteQuery = reactive<Record<string, string>>({});
 vi.mock('vue-router', async (importOriginal) => {
@@ -121,6 +125,15 @@ describe('WorkflowShareModal.ee.vue', () => {
 		// Set route query to indicate new workflow
 		mockRouteQuery.new = 'true';
 
+		const homeProject = {
+			id: 'personal-project-id',
+			name: 'Personal Project',
+			type: ProjectTypes.Personal as const,
+			icon: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		};
+
 		workflowsStore.workflow = {
 			id: '',
 			name: 'My workflow',
@@ -133,7 +146,11 @@ describe('WorkflowShareModal.ee.vue', () => {
 			scopes: [],
 			nodes: [],
 			connections: {},
+			homeProject,
 		};
+
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+		workflowDocumentStore.setHomeProject(homeProject);
 
 		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
 
@@ -174,6 +191,15 @@ describe('WorkflowShareModal.ee.vue', () => {
 				type: ProjectTypes.Personal,
 			});
 
+			const homeProject = {
+				id: 'personal-project-id',
+				name: 'Personal Project',
+				type: ProjectTypes.Personal as const,
+				icon: null,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+			};
+
 			workflowsStore.workflow = {
 				id: 'workflow-1',
 				name: 'My workflow',
@@ -186,15 +212,13 @@ describe('WorkflowShareModal.ee.vue', () => {
 				scopes: [],
 				nodes: [],
 				connections: {},
-				homeProject: {
-					id: 'personal-project-id',
-					name: 'Personal Project',
-					type: ProjectTypes.Personal,
-					icon: null,
-					createdAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-				},
+				homeProject,
 			};
+
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('workflow-1'),
+			);
+			workflowDocumentStore.setHomeProject(homeProject);
 
 			const props = {
 				data: { id: 'workflow-1' },

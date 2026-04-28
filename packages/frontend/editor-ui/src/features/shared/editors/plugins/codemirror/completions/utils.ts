@@ -248,8 +248,14 @@ export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterCo
 	return workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName) !== null;
 };
 
-export const isSplitInBatchesAbsent = () =>
-	!useWorkflowsStore().workflow.nodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
+export const isSplitInBatchesAbsent = () => {
+	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowsStore.workflowId),
+	);
+
+	return !workflowDocumentStore.allNodes.some((node) => node.type === SPLIT_IN_BATCHES_NODE_TYPE);
+};
 
 export function autocompletableNodeNames(targetNodeParameterContext?: TargetNodeParameterContext) {
 	const workflowsStore = useWorkflowsStore();

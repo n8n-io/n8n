@@ -65,9 +65,7 @@ describe('ReadyToRunButton.vue', () => {
 				branchReadOnly: false,
 			} as never);
 
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
+			const { getByTestId } = renderComponent({ pinia });
 
 			expect(getByTestId('ready-to-run-button')).toBeInTheDocument();
 		});
@@ -82,9 +80,7 @@ describe('ReadyToRunButton.vue', () => {
 			vi.spyOn(readyToRunStore, 'getButtonVisibility').mockReturnValue(false);
 			vi.spyOn(foldersStore, 'totalWorkflowCount', 'get').mockReturnValue(0);
 
-			const { queryByTestId } = renderComponent({
-				pinia,
-			});
+			const { queryByTestId } = renderComponent({ pinia });
 
 			expect(queryByTestId('ready-to-run-button')).not.toBeInTheDocument();
 		});
@@ -103,9 +99,7 @@ describe('ReadyToRunButton.vue', () => {
 				branchReadOnly: true,
 			} as never);
 
-			const { queryByTestId } = renderComponent({
-				pinia,
-			});
+			const { queryByTestId } = renderComponent({ pinia });
 
 			expect(queryByTestId('ready-to-run-button')).not.toBeInTheDocument();
 		});
@@ -124,9 +118,7 @@ describe('ReadyToRunButton.vue', () => {
 				scopes: [],
 			} as Partial<Project> as Project);
 
-			const { queryByTestId } = renderComponent({
-				pinia,
-			});
+			const { queryByTestId } = renderComponent({ pinia });
 
 			expect(queryByTestId('ready-to-run-button')).not.toBeInTheDocument();
 		});
@@ -164,9 +156,7 @@ describe('ReadyToRunButton.vue', () => {
 			vi.spyOn(readyToRunStore, 'claimingCredits', 'get').mockReturnValue(true);
 			vi.spyOn(foldersStore, 'totalWorkflowCount', 'get').mockReturnValue(5);
 
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
+			const { getByTestId } = renderComponent({ pinia });
 
 			const button = getByTestId('ready-to-run-button');
 			expect(button).toBeDisabled();
@@ -187,9 +177,7 @@ describe('ReadyToRunButton.vue', () => {
 				branchReadOnly: true,
 			} as never);
 
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
+			const { getByTestId } = renderComponent({ pinia });
 
 			const button = getByTestId('ready-to-run-button');
 			expect(button).toBeDisabled();
@@ -210,9 +198,7 @@ describe('ReadyToRunButton.vue', () => {
 				.spyOn(readyToRunStore, 'claimCreditsAndOpenWorkflow')
 				.mockResolvedValue(undefined);
 
-			const { getByTestId } = renderComponent({
-				pinia,
-			});
+			const { getByTestId } = renderComponent({ pinia });
 
 			const button = getByTestId('ready-to-run-button');
 			button.click();
