@@ -8,7 +8,7 @@ vi.mock('../workflows.store', () => ({
 }));
 
 function createSettings() {
-	return useWorkflowDocumentSettings();
+	return useWorkflowDocumentSettings({ syncWorkflowObject: vi.fn() });
 }
 
 describe('useWorkflowDocumentSettings', () => {

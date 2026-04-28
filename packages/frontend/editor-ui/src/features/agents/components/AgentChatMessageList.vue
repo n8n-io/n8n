@@ -3,13 +3,33 @@ import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nIcon } from '@n8n/design-system';
 import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import { buildDisplayGroups, type ChatMessage } from '../composables/agentChatMessages';
+import {
+	buildDisplayGroups,
+	type ChatMessage,
+	type InteractivePayload,
+} from '../composables/agentChatMessages';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
+import InteractiveCard from './interactive/InteractiveCard.vue';
+import { CHAT_MESSAGE_STATUS } from '../constants';
+import shared from '../styles/agent-panel.module.scss';
 
 const props = defineProps<{
 	messages: ChatMessage[];
 	messagingState: 'idle' | 'waitingFirstChunk' | 'receiving';
+	projectId?: string;
+	agentId?: string;
 }>();
+
+const emit = defineEmits<{
+	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
+}>();
+
+function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
+	// Cards without a runId are disabled at the card level (see InteractiveCard).
+	// This guard is a defensive belt-and-braces for the type narrowing.
+	if (!payload.runId) return;
+	emit('resume', { runId: payload.runId, toolCallId: payload.toolCallId, resumeData });
+}
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
 
@@ -103,12 +123,9 @@ watch(
 </script>
 
 <template>
-	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
+	<div ref="scrollRef" :class="[$style.messages, shared.scrollbarThin]" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
 			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
-				<div :class="$style.avatar">
-					<N8nIcon icon="robot" width="20" height="20" />
-				</div>
 				<div :class="$style.content">
 					<details v-if="group.thinking" :class="$style.thinkingBlock">
 						<summary :class="$style.thinkingSummary">
@@ -117,17 +134,45 @@ watch(
 						</summary>
 						<div :class="$style.thinkingContent">{{ group.thinking }}</div>
 					</details>
-					<AgentChatToolSteps :tool-calls="group.toolCalls" />
+					<AgentChatToolSteps v-if="group.toolCalls.length" :tool-calls="group.toolCalls" />
+					<div v-if="group.interactives.some((p) => !p.resolvedAt)" :class="$style.interactives">
+						<InteractiveCard
+							v-for="payload in group.interactives.filter((p) => !p.resolvedAt)"
+							:key="payload.toolCallId"
+							:payload="payload"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@submit="onInteractiveSubmit(payload, $event)"
+						/>
+					</div>
+					<div
+						v-if="group.finalMessage?.content"
+						:class="[
+							$style.chatMessage,
+							{ [$style.chatMessageError]: group.finalMessage.status === 'error' },
+						]"
+					>
+						<div :class="$style.markdownContent">
+							<ChatMarkdownChunk
+								:source="{ type: 'text', content: group.finalMessage.content }"
+								@open-artifact="() => {}"
+							/>
+						</div>
+					</div>
+					<ChatTypingIndicator
+						v-if="
+							group.finalMessage?.status === CHAT_MESSAGE_STATUS.STREAMING &&
+							!group.finalMessage.content &&
+							!group.toolCalls.length
+						"
+						:class="$style.typingIndicator"
+					/>
 				</div>
 			</div>
 			<div
 				v-else
 				:class="[$style.message, group.message.role === 'user' ? $style.user : $style.assistant]"
 			>
-				<div :class="$style.avatar">
-					<N8nIcon v-if="group.message.role === 'user'" icon="user" width="20" height="20" />
-					<N8nIcon v-else icon="robot" width="20" height="20" />
-				</div>
 				<div :class="$style.content">
 					<details v-if="group.message.thinking" :class="$style.thinkingBlock">
 						<summary :class="$style.thinkingSummary">
@@ -140,6 +185,7 @@ watch(
 						v-if="group.message.toolCalls?.length"
 						:tool-calls="group.message.toolCalls"
 					/>
+
 					<div
 						v-if="group.message.role === 'user'"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
@@ -160,10 +206,22 @@ watch(
 							/>
 						</div>
 					</div>
+
+					<div
+						v-if="group.message.interactive && !group.message.interactive.resolvedAt"
+						:class="$style.interactives"
+					>
+						<InteractiveCard
+							:payload="group.message.interactive"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@submit="onInteractiveSubmit(group.message.interactive, $event)"
+						/>
+					</div>
 					<ChatTypingIndicator
 						v-if="
 							group.message.role === 'assistant' &&
-							group.message.status === 'streaming' &&
+							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.message.content &&
 							!group.message.toolCalls?.length
 						"
@@ -174,9 +232,6 @@ watch(
 		</template>
 
 		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
-			<div :class="$style.avatar">
-				<N8nIcon icon="robot" width="20" height="20" />
-			</div>
 			<div :class="$style.content">
 				<ChatTypingIndicator :class="$style.typingIndicator" />
 			</div>
@@ -189,28 +244,14 @@ watch(
 	flex: 1;
 	min-height: 0;
 	overflow-y: auto;
-	padding: var(--spacing--lg) var(--spacing--xl);
+	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
 }
 
 .message {
-	position: relative;
-	padding-left: 40px;
-}
-
-.avatar {
-	position: absolute;
-	left: 0;
-	top: 0;
-	display: grid;
-	place-items: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--color--background);
-	color: var(--color--text--tint-1);
+	padding-top: var(--spacing--4xs);
 }
 
 .content {
@@ -219,9 +260,25 @@ watch(
 	align-items: stretch;
 }
 
+.message.user .content {
+	align-items: flex-end;
+}
+
+/**
+ * Vertical stack for one or more interactive cards inside an assistant message.
+ * Adds a small gap between adjacent cards (when a tool run produced several)
+ * and a top margin so the cards don't sit flush against the tool-step list.
+ */
+.interactives {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
+}
+
 .chatMessage {
 	overflow-wrap: break-word;
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 }
 
@@ -244,7 +301,7 @@ watch(
 
 .markdownContent {
 	color: var(--color--text--shade-1);
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
 	> *:last-child > *:last-child {

@@ -70,6 +70,8 @@ class BufferingTestIntegration extends AgentChatIntegration {
 	readonly credentialTypes: string[] = [];
 	readonly supportedComponents: string[] = [];
 	readonly description = '';
+	readonly displayLabel = 'Test Buffered';
+	readonly displayIcon = 'circle';
 	readonly disableStreaming = true;
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
@@ -81,6 +83,8 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly credentialTypes: string[] = [];
 	readonly supportedComponents: string[] = [];
 	readonly description = '';
+	readonly displayLabel = 'Test Streaming';
+	readonly displayIcon = 'circle';
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -116,8 +120,8 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = makeAgentExecutor([
-				{ type: 'text-delta', delta: 'Hello ' },
-				{ type: 'text-delta', delta: 'world' },
+				{ type: 'text-delta', id: 't1', delta: 'Hello ' },
+				{ type: 'text-delta', id: 't1', delta: 'world' },
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
@@ -145,7 +149,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			componentMapper.toCard.mockResolvedValue({ kind: 'card' } as never);
 
 			const agentExecutor = makeAgentExecutor([
-				{ type: 'text-delta', delta: 'Before suspend. ' },
+				{ type: 'text-delta', id: 't1', delta: 'Before suspend. ' },
 				{
 					type: 'tool-call-suspended',
 					runId: 'run-1',
@@ -153,7 +157,7 @@ describe('AgentChatBridge — consumeStream', () => {
 					toolName: 'approval',
 					suspendPayload: { message: 'Approve?' },
 				},
-				{ type: 'text-delta', delta: 'After resume.' },
+				{ type: 'text-delta', id: 't2', delta: 'After resume.' },
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
@@ -181,7 +185,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = makeAgentExecutor([
-				{ type: 'text-delta', delta: '   ' },
+				{ type: 'text-delta', id: 't1', delta: '   ' },
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 
@@ -208,8 +212,8 @@ describe('AgentChatBridge — consumeStream', () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const agentExecutor = makeAgentExecutor([
-				{ type: 'text-delta', delta: 'Hello ' },
-				{ type: 'text-delta', delta: 'world' },
+				{ type: 'text-delta', id: 't1', delta: 'Hello ' },
+				{ type: 'text-delta', id: 't1', delta: 'world' },
 				{ type: 'finish', finishReason: 'stop' },
 			]);
 

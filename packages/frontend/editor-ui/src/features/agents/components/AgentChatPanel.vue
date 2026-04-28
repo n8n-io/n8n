@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
@@ -19,8 +19,6 @@ const props = withDefaults(
 		endpoint?: 'build' | 'chat';
 		initialMessage?: string;
 		continueSessionId?: string;
-		sessionTitle?: string;
-		sessionEmoji?: string;
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
@@ -31,8 +29,6 @@ const props = withDefaults(
 		endpoint: 'chat',
 		initialMessage: undefined,
 		continueSessionId: undefined,
-		sessionTitle: undefined,
-		sessionEmoji: undefined,
 	},
 );
 
@@ -42,17 +38,13 @@ const emit = defineEmits<{
 	configUpdated: [];
 	'update:streaming': [streaming: boolean];
 	'continue-loaded': [count: number];
+	'initial-consumed': [];
 	back: [];
 	'open-build': [];
 }>();
 
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
-
-// Sub-header title for chat sessions — the persisted session title if one
-// exists, otherwise "New chat" for freshly-started ephemeral sessions.
-// (Builder has no sub-header, so no builder branch here.)
-const displayTitle = computed(() => props.sessionTitle ?? locale.baseText('agents.chat.newChat'));
 
 const inputText = ref('');
 
@@ -64,6 +56,7 @@ const {
 	loadHistory,
 	sendMessage,
 	stopGenerating,
+	resume,
 	dismissFatalError,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
@@ -144,11 +137,18 @@ if (seedMessage) {
 }
 
 onMounted(() => {
-	// Only load history when there's no seed message — a fresh session has
-	// nothing to fetch yet and the endpoint would 404.
-	if (!seedMessage) {
-		void loadHistory();
+	// A supplied `initialMessage` means the parent just minted a fresh session
+	// and wants us to seed it with the first message — there's no thread to
+	// load yet, and hitting the history endpoint would 404. The seed was
+	// already sent synchronously during setup (see the `seedMessage` block
+	// above) — here we just emit `initial-consumed` so the parent can clear
+	// its source ref. This guards against re-sending on HMR / any re-mount
+	// where the parent's prompt ref is still populated.
+	if (seedMessage) {
+		emit('initial-consumed');
+		return;
 	}
+	void loadHistory();
 });
 
 // Abort any in-flight stream when the panel unmounts (e.g. route change,
@@ -161,23 +161,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<!-- Builder intentionally has no sub-header: it's one persistent per-agent
-			 conversation with no "session" to label or exit back from. -->
-		<div v-if="endpoint !== 'build'" :class="$style.subHeader">
-			<button
-				:class="$style.backBtn"
-				:title="locale.baseText('agents.chat.back')"
-				@click="emit('back')"
-			>
-				<N8nIcon icon="arrow-left" :size="14" />
-			</button>
-			<span v-if="sessionEmoji" :class="$style.sessionEmoji">{{ sessionEmoji }}</span>
-			<N8nIcon v-else :class="$style.sessionIcon" icon="message-square" :size="14" />
-			<span :class="$style.sessionTitle">{{ displayTitle }}</span>
-		</div>
-
-		<div v-if="fatalError" :class="$style.errorBanner" role="alert">
-			<N8nIcon icon="triangle-alert" :size="16" :class="$style.errorBannerIcon" />
+		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
 			<div :class="$style.errorBannerBody">
 				<span :class="$style.errorBannerTitle">
 					{{ locale.baseText('agents.chat.misconfigured.title') }}
@@ -186,37 +170,47 @@ onBeforeUnmount(() => {
 					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
 				</span>
 			</div>
-			<div :class="$style.errorBannerActions">
-				<button
-					:class="$style.errorBannerBtn"
+			<template #trailingContent>
+				<N8nButton
+					variant="outline"
+					size="xsmall"
 					data-testid="agent-misconfigured-open-build"
 					@click="onOpenBuild"
 				>
 					{{ locale.baseText('agents.chat.misconfigured.openBuild') }}
-				</button>
-				<button
-					:class="$style.errorBannerDismiss"
+				</N8nButton>
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="xsmall"
+					:aria-label="locale.baseText('agents.chat.misconfigured.dismiss')"
 					:title="locale.baseText('agents.chat.misconfigured.dismiss')"
 					@click="dismissFatalError"
-				>
-					<N8nIcon icon="x" :size="14" />
-				</button>
-			</div>
-		</div>
+				/>
+			</template>
+		</N8nCallout>
 
 		<!--
 			Suppress the centered empty state when we have an `initialMessage` to
 			seed. Without this, the panel briefly renders the empty view before
-			onMounted fires and pushes the user message — visible as a flicker of
-			the centered layout under the mode transition.
+			the seedMessage push (during setup) lands in `messages` — visible as
+			a flicker of the centered layout under the mode transition.
 		-->
 		<AgentChatEmptyState
 			v-if="messages.length === 0 && !isStreaming && !initialMessage"
 			:endpoint="endpoint"
 		/>
-		<AgentChatMessageList v-else :messages="messages" :messaging-state="messagingState" />
+		<AgentChatMessageList
+			v-else
+			:messages="messages"
+			:messaging-state="messagingState"
+			:project-id="projectId"
+			:agent-id="agentId"
+			@resume="resume"
+		/>
 
 		<div :class="$style.inputArea">
+			<slot name="above-input" />
 			<ChatInputBase
 				v-model="inputText"
 				placeholder="Type a message..."
@@ -250,75 +244,16 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
-.subHeader {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
-	flex-shrink: 0;
-}
-
-.backBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--primary);
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-	flex-shrink: 0;
-
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
-	}
-}
-
-.sessionEmoji {
-	font-size: var(--font-size--md);
-	line-height: 1;
-	flex-shrink: 0;
-}
-
-.sessionIcon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.sessionTitle {
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--xl);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	min-width: 0;
-	flex: 1;
-}
-
 .inputArea {
-	padding: var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
+	border-top: var(--border);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 .errorBanner {
-	display: flex;
-	align-items: flex-start;
-	gap: var(--spacing--2xs);
 	margin: var(--spacing--sm);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
-	background-color: var(--color--danger--tint-4);
-	border-radius: var(--radius);
-	color: var(--color--text);
-	flex-shrink: 0;
-}
-
-.errorBannerIcon {
-	color: var(--color--danger);
-	margin-top: 2px;
 	flex-shrink: 0;
 }
 
@@ -331,56 +266,11 @@ onBeforeUnmount(() => {
 }
 
 .errorBannerTitle {
-	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	line-height: var(--line-height--xl);
 }
 
 .errorBannerDetail {
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
-	line-height: var(--line-height--xl);
-}
-
-.errorBannerActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	flex-shrink: 0;
-}
-
-.errorBannerBtn {
-	display: inline-flex;
-	align-items: center;
-	border: var(--border-width) var(--border-style) var(--color--primary);
-	background-color: transparent;
-	color: var(--color--primary);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius);
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--primary--tint-3);
-	}
-}
-
-.errorBannerDismiss {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	color: var(--color--text--tint-2);
-	width: 24px;
-	height: 24px;
-	border-radius: var(--radius);
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--foreground--tint-2);
-		color: var(--color--text);
-	}
 }
 </style>

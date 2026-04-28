@@ -6,6 +6,7 @@ import {
 	nodeTypeToNewToolRef,
 	toBaseNodeType,
 	toolRefToNode,
+	extractFromAIInputSchema,
 	updateToolRefFromNode,
 	updateWorkflowToolRef,
 	workflowToNewToolRef,
@@ -227,7 +228,9 @@ describe('useAgentToolRefAdapter', () => {
 					nodeParameters: { channel: 'general' },
 					credentials: undefined,
 				},
-				inputSchema: { type: 'object' },
+				// Reset to a canonical empty object since there are no $fromAI
+				// overrides — backend `resolveInputSchema` will re-introspect.
+				inputSchema: { type: 'object', properties: {} },
 			});
 		});
 
@@ -289,6 +292,150 @@ describe('useAgentToolRefAdapter', () => {
 			};
 			expect(updateToolRefFromNode(workflowRef, node)).toBe(workflowRef);
 		});
+
+		it('regenerates inputSchema from $fromAI overrides in nodeParameters on save', () => {
+			const original: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
+				inputSchema: { type: 'object', properties: {} },
+			};
+
+			const node: INode = {
+				id: 'n-1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {
+					channel: "={{ $fromAI('channel', 'Slack channel id', 'string') }}",
+					message: "={{ $fromAI('message', 'Message body') }}",
+				},
+			};
+
+			const updated = updateToolRefFromNode(original, node);
+
+			expect(updated.inputSchema).toEqual({
+				type: 'object',
+				properties: {
+					channel: { type: 'string', description: 'Slack channel id' },
+					message: { type: 'string', description: 'Message body' },
+				},
+				required: ['channel', 'message'],
+			});
+		});
+
+		it('resets inputSchema to an empty object when no $fromAI overrides remain', () => {
+			// The user may have previously added $fromAI overrides (making
+			// inputSchema list those keys) and then removed them all. Carrying the
+			// stale schema forward would advertise args the tool no longer expects;
+			// resetting lets the backend re-introspect at registration time.
+			const original: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+				inputSchema: {
+					type: 'object',
+					properties: { channel: { type: 'string', description: 'stale' } },
+					required: ['channel'],
+				},
+			};
+
+			const node: INode = {
+				id: 'n-1',
+				name: 'Slack',
+				type: 'n8n-nodes-base.slack',
+				typeVersion: 1,
+				position: [0, 0],
+				// No `$fromAI(...)` expression — user cleared the override.
+				parameters: { channel: '#general' },
+			};
+
+			const updated = updateToolRefFromNode(original, node);
+			expect(updated.inputSchema).toEqual({ type: 'object', properties: {} });
+		});
+	});
+
+	describe('extractFromAIInputSchema()', () => {
+		it('returns null when no $fromAI expressions are present', () => {
+			expect(extractFromAIInputSchema({ channel: 'general', text: 'hi' })).toBeNull();
+		});
+
+		it('walks nested objects and arrays to find overrides', () => {
+			const params = {
+				authentication: 'accessToken',
+				resource: 'message',
+				operation: 'post',
+				channel: "={{ $fromAI('channel', 'Target channel', 'string') }}",
+				additionalFields: {
+					attachments: [
+						{
+							fallback: "={{ $fromAI('fallback', 'Fallback text') }}",
+						},
+					],
+				},
+			};
+
+			expect(extractFromAIInputSchema(params)).toEqual({
+				type: 'object',
+				properties: {
+					channel: { type: 'string', description: 'Target channel' },
+					fallback: { type: 'string', description: 'Fallback text' },
+				},
+				required: ['channel', 'fallback'],
+			});
+		});
+
+		it('maps $fromAI type hints to JSON Schema types', () => {
+			const params = {
+				a: "={{ $fromAI('a', 'str field', 'string') }}",
+				b: "={{ $fromAI('b', 'num field', 'number') }}",
+				c: "={{ $fromAI('c', 'bool field', 'boolean') }}",
+				d: "={{ $fromAI('d', 'json field', 'json') }}",
+				e: "={{ $fromAI('e', 'no type') }}",
+			};
+
+			expect(extractFromAIInputSchema(params)).toEqual({
+				type: 'object',
+				properties: {
+					a: { type: 'string', description: 'str field' },
+					b: { type: 'number', description: 'num field' },
+					c: { type: 'boolean', description: 'bool field' },
+					d: { type: 'object', description: 'json field' },
+					e: { type: 'string', description: 'no type' },
+				},
+				required: ['a', 'b', 'c', 'd', 'e'],
+			});
+		});
+
+		it('deduplicates repeated override keys (first occurrence wins)', () => {
+			const params = {
+				a: "={{ $fromAI('key', 'first', 'string') }}",
+				b: "={{ $fromAI('key', 'second', 'number') }}",
+			};
+
+			expect(extractFromAIInputSchema(params)).toEqual({
+				type: 'object',
+				properties: { key: { type: 'string', description: 'first' } },
+				required: ['key'],
+			});
+		});
+
+		it('accepts single- and double-quoted arguments and extra whitespace', () => {
+			const params = {
+				a: '={{ $fromAI(  "spaced" ,  "with commas"  , \'string\' ) }}',
+			};
+
+			expect(extractFromAIInputSchema(params)).toEqual({
+				type: 'object',
+				properties: { spaced: { type: 'string', description: 'with commas' } },
+				required: ['spaced'],
+			});
+		});
 	});
 
 	describe('workflowToNewToolRef()', () => {
@@ -311,13 +458,17 @@ describe('useAgentToolRefAdapter', () => {
 			// See cli/src/modules/agents/tools/workflow-tool-factory.ts:506 — the
 			// backend queries `workflowRepository.findOne({ where: { name } })`.
 			const ref = workflowToNewToolRef(makeWorkflow({ name: 'Notify Sales' }));
-			expect(ref).toStrictEqual({
+			expect(ref).toMatchObject({
 				type: 'workflow',
 				workflow: 'Notify Sales',
 				name: 'Notify Sales',
 				description: 'Ship a daily summary',
 				allOutputs: false,
 			});
+			// A stable id is assigned at creation so the config modal's onConfirm
+			// can match this ref even if the surrounding tools array is rebuilt.
+			expect(typeof ref.id).toBe('string');
+			expect(ref.id).not.toBe('');
 		});
 
 		it('defaults description to empty when the workflow has none', () => {

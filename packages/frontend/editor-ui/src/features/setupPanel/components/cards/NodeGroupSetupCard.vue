@@ -99,7 +99,7 @@ const hasParameters = computed(() => allSections.value.some(sectionHasParameters
 const telemetryPayload = computed(() => ({
 	type: ['node-group'],
 	template_id: workflowDocumentStore?.value?.meta?.templateId,
-	workflow_id: workflowsStore.workflow.id,
+	workflow_id: workflowsStore.workflowId,
 	node_types: allSections.value.map((s) => s.node.type),
 	has_parameters: hasParameters.value,
 }));

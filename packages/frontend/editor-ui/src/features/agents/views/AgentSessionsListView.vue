@@ -6,14 +6,17 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
+import shared from '@/features/agents/styles/agent-panel.module.scss';
+import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nTableBase, N8nText } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const i18n = useI18n();
+const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
@@ -99,7 +102,14 @@ async function loadMore() {
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div :class="[$style.wrapper, shared.scrollbarThin]">
+		<div :class="$style.header">
+			<N8nText tag="h3" size="large" :bold="true">Executions</N8nText>
+			<N8nText size="small" color="text-light">
+				{{ sessionsStore.threads.length }}
+				{{ sessionsStore.threads.length === 1 ? 'execution' : 'executions' }}
+			</N8nText>
+		</div>
 		<div :class="$style.tableContainer">
 			<N8nTableBase>
 				<thead>
@@ -120,7 +130,7 @@ async function loadMore() {
 						data-test-id="agent-session-list-item"
 						@click="onRowClick(thread.id)"
 					>
-						<td>{{ truncate(thread.title ?? `Session ${thread.sessionNumber}`, 32) }}</td>
+						<td>{{ truncate(threadTitleOf(thread), 32) }}</td>
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>
@@ -171,13 +181,24 @@ async function loadMore() {
 
 <style module lang="scss">
 .wrapper {
-	padding: var(--spacing--lg) var(--spacing--2xl);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
 	height: 100%;
-	overflow: auto;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
 }
 
 .tableContainer {
-	max-width: var(--content-container--width);
+	width: 100%;
+	overflow-x: auto;
 }
 
 .clickableRow {

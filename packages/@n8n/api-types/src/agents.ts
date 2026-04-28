@@ -1,12 +1,3 @@
-import { z } from 'zod';
-
-/**
- * JSON shape of an agent's configuration, as stored on the backend and
- * consumed by the UI. The backend has a Zod schema that produces a
- * structurally-compatible type (see `agent-json-config.ts` in the CLI module);
- * keep this interface in sync when the schema changes.
- */
-
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -14,6 +5,18 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
+import { z } from 'zod';
+
+/**
+ * Describes a chat platform integration that agents can connect to.
+ * Source of truth: the backend `ChatIntegrationRegistry`.
+ */
+export interface ChatIntegrationDescriptor {
+	type: string;
+	label: string;
+	icon: string;
+	credentialTypes: string[];
+}
 
 /**
  * Node types a workflow can use as its trigger to be eligible as an agent
@@ -28,6 +31,19 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	CHAT_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+] as const;
+
+/**
+ * Node types in a workflow's body that disqualify it from being used as an
+ * agent tool (execution model can't handle pause/respond-style nodes). Single
+ * source of truth for the backend `validateCompatibility` check in
+ * `workflow-tool-factory.ts` and the frontend pre-check in
+ * `AgentToolsModal.vue` so the two sides can't drift.
+ */
+export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
+	'n8n-nodes-base.wait',
+	'n8n-nodes-base.form',
+	'n8n-nodes-base.respondToWebhook',
 ] as const;
 
 export interface NodeToolConfig {
@@ -52,6 +68,8 @@ export interface AgentJsonToolRef {
 export interface AgentJsonConfig {
 	name: string;
 	description?: string;
+	/** Optional icon/emoji shown in the agent builder header. */
+	icon?: { type: 'icon' | 'emoji'; value: string };
 	model: string;
 	credential?: string;
 	instructions: string;
@@ -175,3 +193,25 @@ export const agentBuilderStatusResponseSchema = z.object({
 	isConfigured: z.boolean(),
 });
 export type AgentBuilderStatusResponse = z.infer<typeof agentBuilderStatusResponseSchema>;
+
+/**
+ * One still-open interactive tool call, surfaced alongside persisted messages
+ * so the FE can re-attach a `runId` to suspended interactive cards after a
+ * page refresh.
+ */
+export interface AgentBuilderOpenSuspension {
+	toolCallId: string;
+	runId: string;
+}
+
+/**
+ * Response body of `GET /projects/:projectId/agents/v2/:agentId/build/messages`.
+ *
+ * `messages` is the merged history (persisted memory + any in-flight checkpoint
+ * messages). `openSuspensions` carries the runIds for every still-open
+ * interactive tool call so the FE can resume them.
+ */
+export interface AgentBuilderMessagesResponse {
+	messages: AgentPersistedMessageDto[];
+	openSuspensions: AgentBuilderOpenSuspension[];
+}

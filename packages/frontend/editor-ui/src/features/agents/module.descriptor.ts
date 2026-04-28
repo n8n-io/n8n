@@ -5,6 +5,9 @@ import {
 	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
+	AGENT_TOOLS_MODAL_KEY,
+	AGENT_TOOL_CONFIG_MODAL_KEY,
+	AGENT_ADD_TRIGGER_MODAL_KEY,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -32,6 +35,45 @@ export const AgentsModule: FrontendModuleDescription = {
 	name: 'Agents',
 	description: 'Build and manage AI agents',
 	icon: 'robot',
+	modals: [
+		{
+			key: AGENT_TOOLS_MODAL_KEY,
+			component: async () => await import('./components/AgentToolsModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					tools: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_TOOL_CONFIG_MODAL_KEY,
+			component: async () => await import('./components/AgentToolConfigModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					toolRef: null,
+					existingToolNames: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_ADD_TRIGGER_MODAL_KEY,
+			component: async () => await import('./components/AgentAddTriggerModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					projectId: '',
+					agentId: '',
+					connectedTriggers: [],
+					onConnectedTriggersChange: () => {},
+					onTriggerAdded: () => {},
+				},
+			},
+		},
+	],
 	routes: [
 		{
 			name: AGENTS_LIST_VIEW,
@@ -47,6 +89,14 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: AgentsListView,
 			meta: {
 				projectRoute: true,
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: NEW_AGENT_VIEW,
+			path: '/new-agent',
+			component: NewAgentView,
+			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
@@ -76,14 +126,6 @@ export const AgentsModule: FrontendModuleDescription = {
 					component: AgentSessionTimelineView,
 				},
 			],
-		},
-		{
-			name: NEW_AGENT_VIEW,
-			path: '/new-agent',
-			component: NewAgentView,
-			meta: {
-				middleware: ['authenticated', 'custom'],
-			},
 		},
 		{
 			name: AGENT_BUILDER_SETTINGS_VIEW,
