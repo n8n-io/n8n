@@ -51,6 +51,13 @@ interface SuggestionTemplate {
 	name: string;
 	description: string;
 	prompt: string;
+	skills: SkillTemplate[];
+}
+
+interface SkillTemplate {
+	name: string;
+	description: string;
+	body: string;
 }
 
 const suggestions: SuggestionTemplate[] = [
@@ -61,6 +68,30 @@ const suggestions: SuggestionTemplate[] = [
 			'An SEO auditor. Give it a website URL and it crawls the pages, identifies issues, and suggests improvements.',
 		prompt:
 			'Create an SEO auditor agent. It should accept a website URL, crawl the pages, identify SEO issues like missing meta tags, broken links, slow load times, and suggest improvements.',
+		skills: [
+			{
+				name: 'Technical SEO Triage',
+				description:
+					'Use when checking crawlability, indexability, structured data, or performance issues',
+				body: [
+					'Review the site in a technical SEO pass before recommending content changes.',
+					'Check crawlability, indexability, robots directives, canonical tags, redirects, broken links, sitemap coverage, structured data, mobile usability, and page performance.',
+					'Group findings by severity: critical blockers, ranking risks, and nice-to-have improvements.',
+					'For every issue, explain the user impact, the likely SEO impact, and a concrete fix.',
+				].join('\n'),
+			},
+			{
+				name: 'SERP Snippet Review',
+				description:
+					'Use when evaluating titles, meta descriptions, headings, or search-result copy',
+				body: [
+					'Assess whether titles, meta descriptions, and H1s clearly match search intent.',
+					'Prefer specific, benefit-led copy over generic marketing language.',
+					'Flag missing, duplicate, overlong, or vague metadata.',
+					'When rewriting snippets, keep titles concise and make meta descriptions actionable without overpromising.',
+				].join('\n'),
+			},
+		],
 	},
 	{
 		icon: '👋',
@@ -69,6 +100,28 @@ const suggestions: SuggestionTemplate[] = [
 			'A recruiting sourcer. Give it a job description and it finds matching candidates from multiple platforms.',
 		prompt:
 			'Create a recruiting sourcer agent. It should accept a job description, search for matching candidates across platforms, and compile a shortlist with contact info and relevance scores.',
+		skills: [
+			{
+				name: 'Candidate Scorecard',
+				description: 'Use when comparing candidates against a role or building a shortlist',
+				body: [
+					'Score candidates against the job requirements using explicit evidence from their profile.',
+					'Separate must-have qualifications from nice-to-have signals.',
+					'Call out uncertainty instead of inferring experience that is not visible.',
+					'Return a concise scorecard with fit score, strongest evidence, possible gaps, and recommended next step.',
+				].join('\n'),
+			},
+			{
+				name: 'Personalized Outreach',
+				description: 'Use when drafting initial candidate outreach or follow-up messages',
+				body: [
+					'Write concise, respectful outreach that references one or two specific candidate signals.',
+					'Lead with why the role may be relevant to the candidate, not with company boilerplate.',
+					'Keep the tone warm, direct, and low-pressure.',
+					'Include a clear call to action and avoid exaggerated claims about fit.',
+				].join('\n'),
+			},
+		],
 	},
 	{
 		icon: '📬',
@@ -77,8 +130,48 @@ const suggestions: SuggestionTemplate[] = [
 			'Sort your inbox, classifying emails by sender and marking them as read when they match your rules.',
 		prompt:
 			'Create an inbox sorter agent. It should classify incoming emails by sender and topic, apply user-defined rules to mark as read, label, or archive, and provide a daily summary.',
+		skills: [
+			{
+				name: 'Inbox Classification Rules',
+				description: 'Use when categorizing, labeling, archiving, or marking emails as read',
+				body: [
+					'Classify emails by sender, topic, urgency, and whether a response is needed.',
+					'Apply user rules conservatively: when a message is ambiguous, leave it visible and explain why.',
+					'Never archive or mark an email as read if it appears urgent, personal, financial, legal, security-related, or action-required unless the user rule explicitly covers it.',
+					'Prefer labels that make future review easier, such as Action Needed, FYI, Receipt, Newsletter, Scheduling, or Support.',
+				].join('\n'),
+			},
+			{
+				name: 'Daily Inbox Digest',
+				description: 'Use when creating a daily or periodic summary of inbox activity',
+				body: [
+					'Summarize the inbox by priority, not by raw arrival order.',
+					'Start with urgent or response-needed messages, then important updates, then low-priority bulk mail.',
+					'Include sender, subject, one-line summary, recommended action, and due date if present.',
+					'Keep the digest skimmable and avoid exposing unnecessary message body details.',
+				].join('\n'),
+			},
+		],
 	},
 ];
+
+function buildPromptWithSkills(suggestion: SuggestionTemplate): string {
+	if (suggestion.skills.length === 0) return suggestion.prompt;
+
+	const skills = suggestion.skills
+		.map(
+			(skill) => `- ${skill.name}
+  description: ${skill.description}
+  body: ${skill.body}`,
+		)
+		.join('\n\n');
+
+	return `${suggestion.prompt}
+
+Also create and attach these curated skills to the agent. For each skill, call create_skill with the name, description, and body, then register the returned id in the agent config skills array.
+
+${skills}`;
+}
 
 async function createBlank() {
 	if (isCreating.value) return;
@@ -127,7 +220,7 @@ function onBuildDone() {
 }
 
 function selectSuggestion(suggestion: SuggestionTemplate) {
-	inputText.value = suggestion.prompt;
+	inputText.value = buildPromptWithSkills(suggestion);
 	telemetry.track('User selected agent suggestion', {
 		suggestion_name: suggestion.name,
 	});
