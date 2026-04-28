@@ -92,11 +92,11 @@ describe('DataTableActions', () => {
 		mockMessage.confirm.mockResolvedValue(MODAL_CONFIRM);
 	});
 
-	it('should render N8nActionToggle with correct props', () => {
+	it('should render N8nDropdown with correct props', () => {
 		const { getByTestId } = renderComponent();
 
-		const actionToggle = getByTestId('data-table-card-actions');
-		expect(actionToggle).toBeInTheDocument();
+		const dropdown = getByTestId('data-table-card-actions');
+		expect(dropdown).toBeInTheDocument();
 	});
 
 	it('should render actions when read-only', () => {

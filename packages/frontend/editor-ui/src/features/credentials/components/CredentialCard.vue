@@ -18,14 +18,7 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { CredentialsResource } from '@/Interface';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 
-import {
-	N8nActionToggle,
-	N8nBadge,
-	N8nCard,
-	N8nIcon,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nDropdown, N8nBadge, N8nCard, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
 	DELETE: 'delete',
@@ -207,12 +200,7 @@ function moveResource() {
 					:show-badge-border="false"
 					:global="data.isGlobal"
 				/>
-				<N8nActionToggle
-					data-test-id="credential-card-actions"
-					:actions="actions"
-					theme="dark"
-					@action="onAction"
-				/>
+				<N8nDropdown data-test-id="credential-card-actions" :actions="actions" @action="onAction" />
 			</div>
 		</template>
 	</N8nCard>

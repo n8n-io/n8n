@@ -11,11 +11,10 @@ import {
 
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
-import type { IUser, UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
-import { N8nActionToggle } from '@n8n/design-system';
+import { N8nDropdown } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import DownloadDataTableModal from './DownloadDataTableModal.vue';
@@ -53,7 +52,7 @@ const telemetry = useTelemetry();
 const downloadModalKey = computed(() => `${DOWNLOAD_DATA_TABLE_MODAL_KEY}-${props.dataTable.id}`);
 const importCsvModalKey = computed(() => `${IMPORT_CSV_MODAL_KEY}-${props.dataTable.id}`);
 
-const actions = computed<Array<UserAction<IUser>>>(() => {
+const actions = computed(() => {
 	const availableActions = [
 		{
 			label: i18n.baseText('dataTable.importCsv'),
@@ -171,12 +170,7 @@ const deleteDataTable = async () => {
 </script>
 <template>
 	<div>
-		<N8nActionToggle
-			:actions="actions"
-			theme="dark"
-			data-test-id="data-table-card-actions"
-			@action="onAction"
-		/>
+		<N8nDropdown :actions="actions" data-test-id="data-table-card-actions" @action="onAction" />
 		<DownloadDataTableModal
 			:modal-name="downloadModalKey"
 			:data-table-name="dataTable.name"

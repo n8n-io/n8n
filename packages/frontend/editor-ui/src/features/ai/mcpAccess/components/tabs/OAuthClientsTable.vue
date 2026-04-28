@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 import type { UserAction } from '@/Interface';
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nDataTableServer,
 	N8nLoading,
@@ -59,7 +59,7 @@ const tableHeaders = ref<Array<TableHeader<OAuthClientResponseDto>>>([
 	},
 ]);
 
-const tableActions = ref<Array<UserAction<OAuthClientResponseDto>>>([
+const tableActions = ref<Array<{ label: string; value: string }>>([
 	{
 		label: i18n.baseText('settings.mcp.oAuthClients.table.action.revokeAccess'),
 		value: 'revokeClient',
@@ -118,11 +118,9 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 					</N8nText>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nActionToggle
+					<N8nDropdown
 						data-test-id="mcp-oauth-client-action-toggle"
-						placement="bottom"
 						:actions="tableActions"
-						theme="dark"
 						@action="onTableAction($event, item)"
 					/>
 				</template>

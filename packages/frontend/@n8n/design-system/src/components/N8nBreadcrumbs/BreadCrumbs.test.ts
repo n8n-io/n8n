@@ -6,9 +6,9 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Breadcrumbs from '.';
 import type { PathItem } from './Breadcrumbs.vue';
 
-// Simple mock for the N8nActionToggle component to test hidden items and events
-const N8nActionToggleMock = defineComponent({
-	name: 'N8nActionToggle',
+// Simple mock for the N8nDropdown component to test hidden items and events
+const N8nDropdownMock = defineComponent({
+	name: 'N8nDropdown',
 	props: {
 		actions: {
 			type: Array as () => Array<{ value: string; label: string }>,
@@ -19,7 +19,7 @@ const N8nActionToggleMock = defineComponent({
 			default: false,
 		},
 	},
-	emits: ['visible-change', 'action'],
+	emits: ['update:open', 'action', 'item-mouseup'],
 	data() {
 		return {
 			showContent: false,
@@ -28,11 +28,11 @@ const N8nActionToggleMock = defineComponent({
 	methods: {
 		handleClick() {
 			this.showContent = !this.showContent;
-			this.$emit('visible-change', this.showContent);
+			this.$emit('update:open', this.showContent);
 		},
 	},
 	template: `
-    <div data-test-id="action-toggle-mock" class="mock-action-toggle">
+    <div data-test-id="dropdown-mock" class="mock-dropdown">
       <button
         data-test-id="mock-dropdown-button"
         @click="handleClick"
@@ -50,6 +50,7 @@ const N8nActionToggleMock = defineComponent({
             :data-test-id="'action-' + action.value"
             class="dropdown-item"
             @click="$emit('action', action.value)"
+            @mouseup="$emit('item-mouseup', action)"
           >
             {{ action.label }}
           </div>
@@ -198,7 +199,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nDropdownMock,
 				},
 				plugins: [router],
 			},
@@ -242,7 +243,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nDropdownMock,
 				},
 				plugins: [router],
 			},
@@ -285,7 +286,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nDropdownMock,
 				},
 				plugins: [router],
 			},
@@ -318,7 +319,7 @@ describe('Breadcrumbs', async () => {
 			},
 			global: {
 				stubs: {
-					N8nActionToggle: N8nActionToggleMock,
+					N8nDropdown: N8nDropdownMock,
 				},
 				plugins: [router],
 			},

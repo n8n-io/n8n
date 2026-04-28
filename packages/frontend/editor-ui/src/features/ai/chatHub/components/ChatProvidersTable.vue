@@ -3,12 +3,11 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
-	N8nActionBox,
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nDataTableServer,
-	N8nHeading,
-	N8nLoading,
+	N8nIcon,
+	N8nTag,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -197,12 +196,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 					</span>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nActionToggle
-						placement="bottom"
-						:actions="tableActions"
-						theme="dark"
-						@action="onTableAction($event, item)"
-					/>
+					<N8nDropdown :actions="tableActions" @action="onTableAction($event, item)" />
 				</template>
 			</N8nDataTableServer>
 		</div>

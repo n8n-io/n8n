@@ -5,7 +5,7 @@ import type { IUser, UserAction } from '@n8n/design-system/types';
 import AsyncLoadingCacheDemo from './AsyncLoadingCacheDemo.vue';
 import Breadcrumbs from './Breadcrumbs.vue';
 import type { PathItem } from './Breadcrumbs.vue';
-import ActionToggle from '../N8nActionToggle/ActionToggle.vue';
+import ActionToggle from '../N8nDropdown/Dropdown.vue';
 import Tags from '../N8nTags/Tags.vue';
 
 export default {
@@ -154,12 +154,12 @@ const withSlotsTemplate: StoryFn = (args, { argTypes }) => ({
         <n8n-text>My Project</n8n-text>
       </div>
     </template>
-    <template #append>
-      <div style="display: flex; align-items: center;">
+<template #append>
+       <div style="display: flex; align-items: center;">
 				<n8n-tags :tags="testTags" />
-        <n8n-action-toggle size="small" :actions="testActions" theme="dark"/>
-      </div>
-    </template>
+        <n8n-dropdown size="small" :actions="testActions" theme="dark"/>
+       </div>
+     </template>
   </Breadcrumbs>`,
 });
 export const WithSlots = withSlotsTemplate.bind({});

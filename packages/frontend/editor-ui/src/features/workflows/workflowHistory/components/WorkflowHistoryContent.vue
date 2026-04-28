@@ -9,14 +9,7 @@ import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import {
-	N8nActionToggle,
-	N8nButton,
-	N8nIcon,
-	N8nLink,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nDropdown, N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { formatTimestamp, getVersionLabel } from '@/features/workflows/workflowHistory/utils';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 import omit from 'lodash/omit';
@@ -153,18 +146,19 @@ watch(
 						</N8nLink>
 					</N8nText>
 				</div>
-				<N8nActionToggle
+				<N8nDropdown
 					:class="$style.actions"
 					:actions="actions"
-					placement="bottom-end"
 					data-test-id="workflow-history-content-actions"
 					@action="onAction"
 				>
-					<N8nButton variant="subtle" size="large" data-test-id="action-toggle-button">
-						{{ i18n.baseText('workflowHistory.content.actions') }}
-						<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
-					</N8nButton>
-				</N8nActionToggle>
+					<template #trigger>
+						<N8nButton variant="subtle" size="large" data-test-id="action-toggle-button">
+							{{ i18n.baseText('workflowHistory.content.actions') }}
+							<N8nIcon class="ml-3xs" icon="chevron-down" size="small" />
+						</N8nButton>
+					</template>
+				</N8nDropdown>
 			</div>
 		</div>
 	</div>

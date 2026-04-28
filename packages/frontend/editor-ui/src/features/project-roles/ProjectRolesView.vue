@@ -8,7 +8,7 @@ import { CUSTOM_ROLES_DOCS_URL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nButton,
 	N8nDataTableServer,
 	N8nHeading,
@@ -333,7 +333,7 @@ function addRole() {
 					<template v-else>0</template>
 				</template>
 				<template #[`item.actions`]="{ item }">
-					<N8nActionToggle
+					<N8nDropdown
 						v-if="!item.systemRole"
 						:actions="rowActions(item)"
 						@action="($event) => handleAction($event, item)"

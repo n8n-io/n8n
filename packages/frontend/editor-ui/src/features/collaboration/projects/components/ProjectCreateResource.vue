@@ -1,12 +1,11 @@
 <script lang="ts" setup>
-import type { ButtonVariant, UserAction } from '@n8n/design-system';
-import type { IUser } from 'n8n-workflow';
+import type { ButtonVariant } from '@n8n/design-system';
 import { useTemplateRef } from 'vue';
 
-import { N8nActionToggle, N8nIconButton } from '@n8n/design-system';
+import { N8nDropdown, N8nIconButton } from '@n8n/design-system';
 
 defineProps<{
-	actions: Array<UserAction<IUser>>;
+	actions: Array<{ label: string; value: string }>;
 	disabled?: boolean;
 	variant?: ButtonVariant;
 }>();
@@ -18,28 +17,31 @@ const emit = defineEmits<{
 const actionToggleRef = useTemplateRef('actionToggleRef');
 
 defineExpose({
-	openActionToggle: (isOpen: boolean) => actionToggleRef.value?.openActionToggle(isOpen),
+	openActionToggle: (isOpen: boolean) => {
+		if (isOpen) actionToggleRef.value?.open();
+		else actionToggleRef.value?.close();
+	},
 });
 </script>
 
 <template>
 	<div :class="[$style.buttonGroup]">
 		<slot></slot>
-		<N8nActionToggle
+		<N8nDropdown
 			ref="actionToggleRef"
 			data-test-id="add-resource"
 			:actions="actions"
-			placement="bottom-end"
-			:teleported="false"
 			@action="emit('action', $event)"
 		>
-			<N8nIconButton
-				:disabled="disabled"
-				:class="[$style.buttonGroupDropdown]"
-				icon="chevron-down"
-				:variant="variant ?? 'solid'"
-			/>
-		</N8nActionToggle>
+			<template #trigger>
+				<N8nIconButton
+					:disabled="disabled"
+					:class="[$style.buttonGroupDropdown]"
+					icon="chevron-down"
+					:variant="variant ?? 'solid'"
+				/>
+			</template>
+		</N8nDropdown>
 	</div>
 </template>
 

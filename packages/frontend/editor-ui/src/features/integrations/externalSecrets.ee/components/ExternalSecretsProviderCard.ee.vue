@@ -12,14 +12,7 @@ import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRef } from 'vue';
 import { isDateObject } from '@/app/utils/typeGuards';
 
-import {
-	N8nActionToggle,
-	N8nBadge,
-	N8nButton,
-	N8nCard,
-	N8nIcon,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nDropdown, N8nBadge, N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	provider: ExternalSecretsProvider;
 }>();
@@ -154,9 +147,8 @@ async function onActionDropdownClick(id: string) {
 					:before-update="onBeforeConnectionUpdate"
 					:disabled="connectionState === 'error' && !provider.connected"
 				/>
-				<N8nActionToggle
+				<N8nDropdown
 					class="ml-s"
-					theme="dark"
 					:actions="actionDropdownOptions"
 					@action="onActionDropdownClick"
 				/>

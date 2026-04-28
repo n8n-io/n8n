@@ -35,7 +35,7 @@ import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nBadge,
 	N8nBreadcrumbs,
 	N8nCard,
@@ -736,12 +736,7 @@ const tags = computed(
 						locale.baseText('workflows.published')
 					}}</N8nText>
 				</div>
-				<N8nActionToggle
-					:actions="actions"
-					theme="dark"
-					data-test-id="workflow-card-actions"
-					@action="onAction"
-				/>
+				<N8nDropdown :actions="actions" data-test-id="workflow-card-actions" @action="onAction" />
 			</div>
 		</template>
 	</N8nCard>

@@ -15,7 +15,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 
 import {
-	N8nActionToggle,
+	N8nDropdown,
 	N8nBadge,
 	N8nBreadcrumbs,
 	N8nCard,
@@ -27,7 +27,7 @@ import {
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions?: Array<UserAction<IUser>>;
+	actions?: Array<{ label: string; value: string; disabled?: boolean }>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
@@ -55,7 +55,7 @@ const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
 const resourceTypeLabel = computed(() => i18n.baseText('generic.folder').toLowerCase());
 
-const allActions = computed<Array<UserAction<IUser>>>(() => {
+const allActions = computed(() => {
 	const favoriteAction = {
 		label: favoritesStore.isFavorite(props.data.id, 'folder')
 			? i18n.baseText('favorites.remove')
@@ -259,9 +259,8 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 								</div>
 							</ProjectCardBadge>
 						</div>
-						<N8nActionToggle
+						<N8nDropdown
 							:actions="allActions"
-							theme="dark"
 							data-test-id="folder-card-actions"
 							@action="onAction"
 						/>

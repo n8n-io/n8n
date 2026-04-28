@@ -14,13 +14,7 @@ import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useIsInExperimentalNdv } from '@/features/workflows/canvas/experimental/composables/useIsInExperimentalNdv';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 
-import {
-	N8nActionToggle,
-	N8nIcon,
-	N8nIconButton,
-	N8nRadioButtons,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nDropdown, N8nIcon, N8nIconButton, N8nRadioButtons, N8nText } from '@n8n/design-system';
 interface Props {
 	parameter: INodeProperties;
 	isReadOnly: boolean;
@@ -204,16 +198,15 @@ const onViewSelected = (selected: string) => {
 			/>
 
 			<div>
-				<N8nActionToggle
+				<N8nDropdown
 					v-if="shouldShowOptions"
-					placement="bottom-end"
+					:actions="actions"
 					size="small"
 					theme="dark"
 					icon-size="large"
-					:actions="actions"
 					:icon-orientation="iconOrientation"
 					@action="(action: string) => $emit('update:modelValue', action)"
-					@visible-change="onMenuToggle"
+					@update:open="onMenuToggle"
 				/>
 			</div>
 

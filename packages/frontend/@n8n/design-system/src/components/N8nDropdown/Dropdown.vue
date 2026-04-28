@@ -6,9 +6,15 @@ import {
 	DropdownMenuRoot,
 	DropdownMenuTrigger,
 } from 'reka-ui';
-import { ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef, computed } from 'vue';
 
 import N8nIcon from '../N8nIcon';
+import N8nLoading from '../N8nLoading';
+import type { IconSize } from '../../types/icon';
+
+const SIZE = ['mini', 'small', 'medium'] as const;
+const THEME = ['default', 'dark'] as const;
+const ICON_ORIENTATION = ['horizontal', 'vertical'] as const;
 
 export interface N8nDropdownOption<V = string | number> {
 	label: string;
@@ -16,43 +22,55 @@ export interface N8nDropdownOption<V = string | number> {
 	disabled?: boolean;
 }
 
-export interface Props<T extends string | number> {
-	/**
-	 * The list of options to display in the dropdown
-	 */
-	options: Array<N8nDropdownOption<T>>;
-	/**
-	 * Whether the dropdown is disabled
-	 */
+export interface N8nDropdownAction<V = string | number> {
+	label: string;
+	value: V;
 	disabled?: boolean;
-	/**
-	 * Placeholder text for the default trigger
-	 */
+	type?: 'external-link';
+}
+
+interface Props<T extends string | number> {
+	options?: Array<N8nDropdownOption<T>>;
+	actions?: Array<N8nDropdownAction<T>>;
+	disabled?: boolean;
 	placeholder?: string;
-	/**
-	 * Size variant for the default trigger
-	 */
-	size?: 'small' | 'medium' | 'large';
+	size?: (typeof SIZE)[number];
+	theme?: (typeof THEME)[number];
+	iconSize?: IconSize;
+	iconOrientation?: (typeof ICON_ORIENTATION)[number];
+	loading?: boolean;
+	loadingRowCount?: number;
 }
 
 const props = withDefaults(defineProps<Props<T>>(), {
+	options: () => [],
+	actions: () => [],
 	disabled: false,
 	placeholder: 'Select an option',
 	size: 'medium',
+	theme: 'default',
+	iconSize: 'medium',
+	iconOrientation: 'vertical',
+	loading: false,
+	loadingRowCount: 3,
 });
 
 const emit = defineEmits<{
 	select: [value: T];
+	action: [value: T];
 	'update:open': [value: boolean];
+	'item-mouseup': [item: N8nDropdownAction<T>];
 }>();
 
 const isOpen = ref(false);
+const rootRef = useTemplateRef<HTMLElement>('rootRef');
+
+const items = computed(() => (props.actions.length > 0 ? props.actions : props.options));
 
 const handleOpenChange = (value: boolean) => {
 	isOpen.value = value;
 	emit('update:open', value);
 };
-const rootRef = useTemplateRef<HTMLElement>('rootRef');
 
 const open = () => {
 	if (!props.disabled) {
@@ -68,9 +86,10 @@ const scrollIntoView = (options?: ScrollIntoViewOptions) => {
 	rootRef.value?.scrollIntoView(options);
 };
 
-const handleSelect = (option: N8nDropdownOption<T>) => {
-	if (!option.disabled) {
-		emit('select', option.value);
+const handleSelect = (item: N8nDropdownOption<T> | N8nDropdownAction<T>) => {
+	if (!item.disabled) {
+		emit('select', item.value);
+		emit('action', item.value);
 		close();
 	}
 };
@@ -83,20 +102,18 @@ defineExpose({
 </script>
 
 <template>
-	<div ref="rootRef">
+	<div ref="rootRef" :class="[$style.container]">
 		<DropdownMenuRoot :open="isOpen" @update:open="handleOpenChange">
 			<DropdownMenuTrigger
 				v-if="!$slots.trigger"
-				:class="[$style.defaultTrigger, $style[size]]"
+				:class="[$style.button, $style[theme]]"
 				:aria-label="placeholder"
 				:disabled="disabled"
-				:data-test-id="`dropdown-trigger`"
+				data-test-id="dropdown-trigger"
 			>
-				<span :class="$style.triggerText">{{ placeholder }}</span>
 				<N8nIcon
-					icon="chevron-down"
-					:class="[$style.triggerIcon, { [$style.open]: isOpen }]"
-					size="large"
+					:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
+					:size="iconSize"
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuTrigger v-else as-child :disabled="disabled">
@@ -104,24 +121,35 @@ defineExpose({
 			</DropdownMenuTrigger>
 
 			<DropdownMenuPortal>
-				<DropdownMenuContent
-					:class="$style.content"
-					:side-offset="8"
-					align="start"
-					:avoid-collisions="true"
-				>
-					<DropdownMenuItem
-						v-for="option in options"
-						:key="option.value"
-						:disabled="option.disabled"
-						:class="$style.item"
-						:data-test-id="`dropdown-option-${option.value}`"
-						@select="handleSelect(option)"
-					>
-						<span :class="$style.itemText">
-							{{ option.label }}
-						</span>
-					</DropdownMenuItem>
+				<DropdownMenuContent :class="$style.content" :side-offset="4" align="start">
+					<template v-if="loading">
+						<div :class="$style['loading-dropdown']" data-test-id="dropdown-loading">
+							<div v-for="index in loadingRowCount" :key="index" :class="$style.loadingItem">
+								<N8nLoading animated variant="text" />
+							</div>
+						</div>
+					</template>
+					<template v-else>
+						<DropdownMenuItem
+							v-for="item in items"
+							:key="item.value"
+							:disabled="item.disabled"
+							:class="$style.item"
+							:data-test-id="`dropdown-option-${item.value}`"
+							@select="handleSelect(item)"
+							@mouseup="emit('item-mouseup', item)"
+						>
+							<span :class="$style.itemText">
+								{{ item.label }}
+							</span>
+							<N8nIcon
+								v-if="item.type === 'external-link'"
+								icon="external-link"
+								size="xsmall"
+								color="text-base"
+							/>
+						</DropdownMenuItem>
+					</template>
 				</DropdownMenuContent>
 			</DropdownMenuPortal>
 		</DropdownMenuRoot>
@@ -129,109 +157,46 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-.defaultTrigger {
-	display: inline-flex;
-	align-items: center;
-	justify-content: space-between;
-	width: 100%;
-	padding: 0 var(--spacing--2xs);
-	background-color: var(--color--foreground--tint-2);
-	border: var(--border);
+.container > * {
+	line-height: 1;
+}
+
+.button {
+	cursor: pointer;
+	padding: var(--spacing--4xs);
 	border-radius: var(--radius);
-	color: var(--color--text);
-	font-family: var(--font-family);
-	line-height: var(--line-height--md);
-	gap: var(--spacing--3xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
 
 	&:hover {
-		border-color: var(--color--foreground--shade-1);
+		color: var(--color--primary);
+		cursor: pointer;
 	}
 
 	&:focus {
-		outline: none;
-		border-color: var(--color--secondary);
-	}
-
-	&[data-placeholder] {
-		color: var(--color--text--tint-1);
-	}
-
-	&[data-disabled] {
-		cursor: not-allowed;
-		background-color: var(--color--background--shade-1);
-		opacity: 0.6;
-	}
-
-	&.small {
-		height: 30px;
-		font-size: var(--font-size--2xs);
-		padding: 0 var(--spacing--3xs);
-	}
-
-	&.medium {
-		height: 36px;
-		font-size: var(--font-size--xs);
-	}
-
-	&.large {
-		height: 42px;
-		font-size: var(--font-size--sm);
+		color: var(--color--primary);
 	}
 }
 
-.triggerText {
-	flex: 1;
-	text-align: left;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-weight: var(--font-weight--regular);
-}
+.dark {
+	color: var(--color--text--shade-1);
 
-.triggerIcon {
-	color: var(--color--text--tint-1);
-	transition: transform var(--animation--duration) var(--animation--easing);
-
-	&.open {
-		transform: rotate(180deg);
+	&:focus {
+		background-color: var(--color--background--light-3);
 	}
 }
 
 .content {
-	min-width: 200px;
-	max-width: 400px;
-	max-height: 320px;
+	min-width: 160px;
+	max-width: 320px;
 	background-color: var(--color--foreground--tint-2);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	box-shadow: var(--shadow--light);
 	z-index: 9999;
-	overflow: auto;
-	padding: var(--spacing--3xs);
-
-	&[data-side='bottom'] {
-		transform-origin: top center;
-
-		&[data-state='open'] {
-			animation: slideDown var(--animation--duration) var(--animation--easing);
-		}
-
-		&[data-state='closed'] {
-			animation: slideDown var(--animation--duration) var(--animation--easing) reverse;
-		}
-	}
-
-	&[data-side='top'] {
-		transform-origin: bottom center;
-
-		&[data-state='open'] {
-			animation: slideUp var(--animation--duration) var(--animation--easing);
-		}
-
-		&[data-state='closed'] {
-			animation: slideUp var(--animation--duration) var(--animation--easing) reverse;
-		}
-	}
+	overflow: hidden;
+	padding: var(--spacing--3xs) 0;
 }
 
 .item {
@@ -239,13 +204,12 @@ defineExpose({
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding: 0 var(--spacing--2xs);
-	border-radius: var(--radius);
+	padding: 0 var(--spacing--sm);
+	min-height: 32px;
+	line-height: 32px;
 	cursor: pointer;
 	user-select: none;
 	font-size: var(--font-size--2xs);
-	min-height: 28px;
-	line-height: 28px;
 	color: var(--color--text);
 	transition:
 		background-color var(--animation--duration) var(--animation--easing),
@@ -271,25 +235,13 @@ defineExpose({
 	white-space: nowrap;
 }
 
-@keyframes slideDown {
-	from {
-		opacity: 0;
-		transform: translateY(-4px) scaleY(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scaleY(1);
-	}
+.loading-dropdown {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
 }
 
-@keyframes slideUp {
-	from {
-		opacity: 0;
-		transform: translateY(4px) scaleY(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scaleY(1);
-	}
+.loadingItem {
+	padding: 0 var(--spacing--sm);
 }
 </style>

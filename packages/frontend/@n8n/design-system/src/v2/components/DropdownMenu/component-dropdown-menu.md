@@ -429,15 +429,16 @@ const items = ref([
   :loading="loading"
   :loading-row-count="3"
   @action="onAction"
+  @visible-change="onVisibleChange"
 />
 
 <!-- After -->
-<N8nDropdownMenu
-  :items="actions"
-  placement="bottom"
+<N8nDropdown
+  :actions="actions"
   :loading="loading"
-  :loading-item-count="3"
-  @select="onAction"
+  :loading-row-count="3"
+  @action="onAction"
+  @update:open="onVisibleChange"
 />
 ```
 

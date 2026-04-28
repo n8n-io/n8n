@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import type { UserAction } from '@n8n/design-system';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
 	WorkflowHistoryActionTypes,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import { useI18n } from '@n8n/i18n';
-import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nIconButton, N8nTooltip, N8nText } from '@n8n/design-system';
+import { N8nDropdown, N8nIconButton, N8nTooltip, N8nText } from '@n8n/design-system';
 import {
 	getLastPublishedVersion,
 	formatTimestamp,
@@ -28,7 +26,7 @@ const props = withDefaults(
 		item: WorkflowHistory;
 		index: number;
 		compareWith?: { name: string; versionId: WorkflowVersionId } | null;
-		actions: Array<UserAction<IUser>>;
+		actions: Array<{ label: string; value: string; disabled?: boolean }>;
 		isSelected?: boolean;
 		isPublished?: boolean;
 		isGrouped?: boolean;
@@ -52,7 +50,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const usersStore = useUsersStore();
 
-const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
 
 const formattedCreatedAt = computed<string>(() => {
@@ -147,10 +144,6 @@ const onAction = (value: string) => {
 	});
 };
 
-const onVisibleChange = (visible: boolean) => {
-	actionsVisible.value = visible;
-};
-
 const onItemClick = (event: MouseEvent) => {
 	emit('preview', { event, id: props.item.versionId });
 };
@@ -182,7 +175,6 @@ onMounted(() => {
 			:class="{
 				[$style.item]: true,
 				[$style.selected]: props.isSelected,
-				[$style.actionsVisible]: actionsVisible,
 				[$style.grouped]: props.isGrouped,
 				[$style.firstItem]: props.index === 0,
 			}"
@@ -236,13 +228,11 @@ onMounted(() => {
 						@click.stop="onCompareClick"
 					/>
 				</N8nTooltip>
-				<N8nActionToggle
+				<N8nDropdown
 					:class="$style.actions"
 					:actions="props.actions"
-					placement="bottom-end"
-					@action="onAction"
 					@click.stop
-					@visible-change="onVisibleChange"
+					@action="onAction"
 				/>
 			</div>
 		</li>

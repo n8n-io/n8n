@@ -249,7 +249,7 @@ describe('WorkflowsTable', () => {
 			await userEvent.click(toggleButton);
 
 			// Check that the action menu item is not disabled
-			const menuItems = document.querySelectorAll('[data-test-id="action-removeFromMCP"]');
+			const menuItems = document.querySelectorAll('[data-test-id="dropdown-option-removeFromMCP"]');
 			expect(menuItems.length).toBe(1);
 			expect(menuItems[0]).not.toHaveAttribute('disabled');
 		});
@@ -271,9 +271,9 @@ describe('WorkflowsTable', () => {
 			await userEvent.click(toggleButton);
 
 			// Check that the action menu item is disabled
-			const menuItems = document.querySelectorAll('[data-test-id="action-removeFromMCP"]');
+			const menuItems = document.querySelectorAll('[data-test-id="dropdown-option-removeFromMCP"]');
 			expect(menuItems.length).toBe(1);
-			expect(menuItems[0]).toHaveClass('is-disabled');
+			expect(menuItems[0]).toHaveAttribute('data-disabled');
 		});
 
 		it('should emit removeMcpAccess event when action is clicked', async () => {
@@ -292,7 +292,7 @@ describe('WorkflowsTable', () => {
 			const toggleButton = within(actionToggle).getByRole('button');
 			await userEvent.click(toggleButton);
 
-			const menuItem = document.querySelector('[data-test-id="action-removeFromMCP"]');
+			const menuItem = document.querySelector('[data-test-id="dropdown-option-removeFromMCP"]');
 			expect(menuItem).not.toBeNull();
 			await userEvent.click(menuItem!);
 
@@ -316,7 +316,9 @@ describe('WorkflowsTable', () => {
 			const toggleButton = within(actionToggle).getByRole('button');
 			await userEvent.click(toggleButton);
 
-			const menuItems = document.querySelectorAll('[data-test-id="action-updateDescription"]');
+			const menuItems = document.querySelectorAll(
+				'[data-test-id="dropdown-option-updateDescription"]',
+			);
 			expect(menuItems.length).toBe(1);
 			expect(menuItems[0]).not.toHaveAttribute('disabled');
 		});
@@ -337,9 +339,11 @@ describe('WorkflowsTable', () => {
 			const toggleButton = within(actionToggle).getByRole('button');
 			await userEvent.click(toggleButton);
 
-			const menuItems = document.querySelectorAll('[data-test-id="action-updateDescription"]');
+			const menuItems = document.querySelectorAll(
+				'[data-test-id="dropdown-option-updateDescription"]',
+			);
 			expect(menuItems.length).toBe(1);
-			expect(menuItems[0]).toHaveClass('is-disabled');
+			expect(menuItems[0]).toHaveAttribute('data-disabled');
 		});
 
 		it('should emit updateDescription event when action is clicked', async () => {
@@ -358,7 +362,7 @@ describe('WorkflowsTable', () => {
 			const toggleButton = within(actionToggle).getByRole('button');
 			await userEvent.click(toggleButton);
 
-			const menuItem = document.querySelector('[data-test-id="action-updateDescription"]');
+			const menuItem = document.querySelector('[data-test-id="dropdown-option-updateDescription"]');
 			expect(menuItem).not.toBeNull();
 			await userEvent.click(menuItem!);
 

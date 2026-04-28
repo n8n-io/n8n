@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue';
 
 import type { IUser, UserAction } from '../../types';
-import N8nActionToggle from '../N8nActionToggle';
+import N8nDropdown from '../N8nDropdown';
 import N8nLink from '../N8nLink';
 import N8nLoading from '../N8nLoading';
 import N8nText from '../N8nText';
@@ -191,25 +191,19 @@ const handleTooltipClose = () => {
 			>
 				<!-- Show interactive dropdown for larger versions -->
 				<div v-if="props.theme !== 'small'" :class="$style['hidden-items-menu']">
-					<N8nActionToggle
+					<N8nDropdown
 						:actions="hiddenItemActions"
 						:loading="isLoadingHiddenItems"
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
-						:popper-class="`${$style['hidden-items-menu-popper']} ${dragActive ? $style.dragging : ''}`"
-						:trigger="hiddenItemsTrigger"
-						theme="dark"
-						placement="bottom"
-						size="small"
-						icon-orientation="horizontal"
 						data-test-id="hidden-items-menu"
-						@visible-change="onHiddenMenuVisibleChange"
+						@update:open="onHiddenMenuVisibleChange"
 						@action="emitItemSelected"
 						@item-mouseup="onHiddenItemMouseUp"
 					>
 						<N8nText :bold="true" :class="$style.dots">...</N8nText>
-					</N8nActionToggle>
+					</N8nDropdown>
 				</div>
 				<!-- Just a tooltip for smaller versions -->
 				<N8nTooltip

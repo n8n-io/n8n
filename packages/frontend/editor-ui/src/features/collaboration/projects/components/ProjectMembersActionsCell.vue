@@ -1,11 +1,7 @@
 <script lang="ts" setup>
-import type { ProjectMemberData } from '../projects.types';
-import type { UserAction } from '@n8n/design-system';
-
-import { N8nActionToggle } from '@n8n/design-system';
 const props = defineProps<{
-	data: ProjectMemberData;
-	actions: Array<UserAction<ProjectMemberData>>;
+	data: { id: string };
+	actions: Array<{ label: string; value: string }>;
 }>();
 
 const emit = defineEmits<{
@@ -18,11 +14,10 @@ const onAction = (action: string) => {
 </script>
 
 <template>
-	<N8nActionToggle
+	<N8nDropdown
 		v-if="props.actions.length > 0"
-		placement="bottom"
 		:actions="props.actions"
-		theme="dark"
+		data-test-id="project-members-actions"
 		@action="onAction"
 	/>
 </template>
