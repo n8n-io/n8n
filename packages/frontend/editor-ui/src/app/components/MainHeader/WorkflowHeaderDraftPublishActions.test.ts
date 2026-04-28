@@ -132,7 +132,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 	const setupEnabledPublishButton = (overrides = {}) => {
 		workflowsStore.workflowTriggerNodes = [triggerNode];
-		workflowsStore.nodesIssuesExist = false;
 		Object.assign(workflowsStore, overrides);
 	};
 
