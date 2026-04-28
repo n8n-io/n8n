@@ -5,14 +5,24 @@ import {
 	type IConnection,
 	type INode,
 	type INodeConnection,
+	type INodeConnections,
 	type NodeConnectionType,
 	type Workflow,
 } from 'n8n-workflow';
-import { type Ref } from 'vue';
+import { computed, type Ref } from 'vue';
+import type { INodeUi } from '@/Interface';
+
+export type WorkflowDocumentGraphDeps = {
+	workflowObject: Readonly<Ref<Workflow>>;
+	allNodes: Readonly<Ref<INodeUi[]>>;
+	outgoingConnectionsByNodeName: (nodeName: string) => INodeConnections;
+	incomingConnectionsByNodeName: (nodeName: string) => INodeConnections;
+};
 
 // --- Composable ---
 
-export function useWorkflowDocumentGraph(workflowObject: Readonly<Ref<Workflow>>) {
+export function useWorkflowDocumentGraph(deps: WorkflowDocumentGraphDeps) {
+	const { workflowObject } = deps;
 	// -----------------------------------------------------------------------
 	// Graph traversal
 	// -----------------------------------------------------------------------
@@ -119,6 +129,24 @@ export function useWorkflowDocumentGraph(workflowObject: Readonly<Ref<Workflow>>
 		return agentNodes.some((agentNode) => checkIfNodeHasChatParent(agentNode));
 	}
 
+	// -----------------------------------------------------------------------
+	// Node issues
+	// -----------------------------------------------------------------------
+
+	const nodesWithIssues = computed(() => {
+		return deps.allNodes.value.filter((node) => {
+			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
+			const isConnected =
+				Object.keys(deps.outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(deps.incomingConnectionsByNodeName(node.name)).length > 0;
+			return !node.disabled && isConnected && nodeHasIssues;
+		});
+	});
+
+	const nodesWithIssuesCount = computed(() => nodesWithIssues.value.length);
+
+	const nodesIssuesExist = computed(() => nodesWithIssuesCount.value > 0);
+
 	return {
 		// Graph traversal
 		getParentNodes,
@@ -135,5 +163,10 @@ export function useWorkflowDocumentGraph(workflowObject: Readonly<Ref<Workflow>>
 		// Node lookup
 		getNodeByNameFromWorkflow,
 		getStartNode,
+
+		// Node issues
+		nodesWithIssues,
+		nodesWithIssuesCount,
+		nodesIssuesExist,
 	};
 }

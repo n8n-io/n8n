@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject } from 'vue';
+import { inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -135,9 +135,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const nodeTypesStore = useNodeTypesStore();
 		const nodeHelpers = useNodeHelpers();
 
-		const { workflowObject, ...workflowDocumentWorkflowObject } = useWorkflowDocumentWorkflowObject(
-			{ workflowId },
-		);
+		const { cloneWorkflowObject, createWorkflowObject, ...workflowDocumentWorkflowObject } =
+			useWorkflowDocumentWorkflowObject({ workflowId });
 
 		const workflowDocumentName = useWorkflowDocumentName({
 			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
@@ -175,24 +174,15 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				syncWorkflowObject: (connections) =>
 					workflowDocumentWorkflowObject.syncWorkflowObjectConnections(connections),
 			});
-		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
-		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
-
-		const nodesWithIssues = computed(() => {
-			return workflowDocumentNodes.allNodes.value.filter((node) => {
-				const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
-				const isConnected =
-					Object.keys(workflowDocumentConnections.outgoingConnectionsByNodeName(node.name)).length >
-						0 ||
-					Object.keys(workflowDocumentConnections.incomingConnectionsByNodeName(node.name)).length >
-						0;
-				return !node.disabled && isConnected && nodeHasIssues;
-			});
+		const workflowDocumentGraph = useWorkflowDocumentGraph({
+			workflowObject: workflowDocumentWorkflowObject.workflowObject,
+			allNodes: workflowDocumentNodes.allNodes,
+			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
+			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
 		});
-
-		const nodesWithIssuesCount = computed(() => nodesWithIssues.value.length);
-
-		const nodesIssuesExist = computed(() => nodesWithIssuesCount.value > 0);
+		const workflowDocumentExpression = useWorkflowDocumentExpression(
+			workflowDocumentWorkflowObject.workflowObject,
+		);
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -344,9 +334,6 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		return {
 			workflowId,
 			workflowVersion,
-			nodesWithIssues,
-			nodesWithIssuesCount,
-			nodesIssuesExist,
 			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,
@@ -374,8 +361,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			reset,
 			getSnapshot,
 			serialize,
-			cloneWorkflowObject: workflowDocumentWorkflowObject.cloneWorkflowObject,
-			createWorkflowObject: workflowDocumentWorkflowObject.createWorkflowObject,
+			cloneWorkflowObject,
+			createWorkflowObject,
 		};
 	})();
 }
