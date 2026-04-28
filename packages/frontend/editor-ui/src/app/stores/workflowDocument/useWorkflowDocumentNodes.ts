@@ -177,7 +177,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	// Read API
 	// -----------------------------------------------------------------------
 
-	const allNodes = computed<INodeUi[]>(() => workflowsStore.allNodes);
+	const allNodes = computed<INodeUi[]>(() => workflowsStore.workflow.nodes);
 
 	const nodesByName = computed<Record<string, INodeUi>>(() => workflowsStore.nodesByName);
 

@@ -347,7 +347,7 @@ export function useChatState(
 	function displayExecution(executionId: string) {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: workflowsStore.workflowId, executionId },
+			params: { workflowId: workflowsStore.workflowId, executionId },
 		});
 		window.open(route.href, '_blank');
 	}

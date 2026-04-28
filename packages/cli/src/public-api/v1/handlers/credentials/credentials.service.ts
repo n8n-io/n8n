@@ -167,7 +167,10 @@ export async function updateCredential(
 		const credentialsService = Container.get(CredentialsService);
 
 		// Decrypt existing data to access oauthTokenData
-		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
+		const decryptedData = await credentialsService.decrypt(
+			existingCredential as CredentialsEntity,
+			true,
+		);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
@@ -254,7 +257,7 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	const coreCredential = new Credentials({ id: null, name: credential.name }, credential.type);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data);
+	await coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
