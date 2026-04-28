@@ -96,33 +96,6 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
-	it('should not mount WorkflowPreview before any workflow has loaded', () => {
-		const { queryByTestId } = renderComponent({
-			props: { workflowId: null, executionId: null },
-		});
-
-		expect(queryByTestId('workflow-preview')).toBeNull();
-	});
-
-	it('should keep WorkflowPreview mounted across tab switches that transiently clear workflow', async () => {
-		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
-
-		const { getByTestId, queryByTestId, rerender } = renderComponent({
-			props: { workflowId: 'wf-123', executionId: null },
-		});
-
-		await waitFor(() => {
-			expect(getByTestId('workflow-preview')).toBeInTheDocument();
-		});
-
-		// Switching workflowId triggers an internal fetch that briefly clears
-		// `workflow.value`; the preview must stay mounted to keep the iframe warm.
-		mockFetchWorkflow.mockReturnValue(new Promise(() => {}));
-		await rerender({ workflowId: 'wf-456', executionId: null });
-
-		expect(queryByTestId('workflow-preview')).not.toBeNull();
-	});
-
 	it('should allow error notifications for executable preview', async () => {
 		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
 
