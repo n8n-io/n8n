@@ -1,6 +1,12 @@
 import { testDb, createWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { type User, type ExecutionEntity, GLOBAL_OWNER_ROLE, Project } from '@n8n/db';
+import {
+	type User,
+	type ExecutionEntity,
+	GLOBAL_OWNER_ROLE,
+	Project,
+	ExecutionRepository,
+} from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
@@ -60,6 +66,7 @@ afterAll(() => {
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow']);
 	jest.clearAllMocks();
+	jest.spyOn(Container.get(ExecutionRepository), 'setRunning').mockResolvedValue(new Date());
 });
 
 describe('processError', () => {
@@ -572,16 +579,69 @@ describe('workflow timeout with startedAt', () => {
 	});
 });
 
+describe('needsFullExecutionData', () => {
+	const originalEnv = process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+	afterEach(() => {
+		if (originalEnv === undefined) {
+			delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+		} else {
+			process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = originalEnv;
+		}
+	});
+
+	it('should return true when forceFullExecutionData is true even with N8N_MINIMIZE_EXECUTION_DATA_FETCHING set', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('evaluation', 'exec-id', true);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return true when env var is not set and forceFullExecutionData is undefined', () => {
+		delete process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING;
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(true);
+	});
+
+	it('should return false when env var is set, forceFullExecutionData is undefined, and mode is not integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		const activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'getResponseMode').mockReturnValue('responseNode');
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('webhook', 'exec-id', undefined);
+
+		expect(result).toBe(false);
+	});
+
+	it('should return true when env var is set and mode is integrated', () => {
+		process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING = 'true';
+
+		// @ts-expect-error Private method
+		const result = runner.needsFullExecutionData('integrated', 'exec-id', undefined);
+
+		expect(result).toBe(true);
+	});
+});
+
 describe('streaming functionality', () => {
-	it('should setup sendChunk handler when streaming is enabled and execution mode is not manual', async () => {
+	it('should setup heartbeat interval and sendChunk handler when streaming is enabled', async () => {
 		// ARRANGE
 		const activeExecutions = Container.get(ActiveExecutions);
 		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
 		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+		jest.spyOn(activeExecutions, 'getPostExecutePromise').mockReturnValue(new Promise(() => {}));
 		const permissionChecker = Container.get(CredentialsPermissionChecker);
 		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
 
-		const mockResponse = mock<Response>();
+		const mockResponse = mock<Response>({ writableEnded: false });
+		const mockSetInterval = jest.spyOn(global, 'setInterval');
 
 		const data = mock<IWorkflowExecutionDataProcess>({
 			workflowData: { nodes: [] },
@@ -610,46 +670,11 @@ describe('streaming functionality', () => {
 		await runner.run(data);
 
 		// ASSERT
+		// Heartbeat interval is set up in run() before queue/local decision
+		expect(mockSetInterval).toHaveBeenCalledWith(expect.any(Function), 30_000);
+		// sendChunk handler is still registered on lifecycle hooks
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
-	});
 
-	it('should setup sendChunk handler when streaming is enabled and execution mode is manual', async () => {
-		// ARRANGE
-		const activeExecutions = Container.get(ActiveExecutions);
-		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
-		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
-		const permissionChecker = Container.get(CredentialsPermissionChecker);
-		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
-
-		const mockResponse = mock<Response>();
-
-		const data = mock<IWorkflowExecutionDataProcess>({
-			workflowData: { nodes: [] },
-			executionData: undefined,
-			executionMode: 'manual',
-			streamingEnabled: true,
-			httpResponse: mockResponse,
-		});
-
-		const mockHooks = mock<core.ExecutionLifecycleHooks>();
-		jest
-			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
-			.mockReturnValue(mockHooks);
-
-		const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-		jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(mockAdditionalData);
-
-		const manualExecutionService = Container.get(ManualExecutionService);
-		jest.spyOn(manualExecutionService, 'runManually').mockReturnValue(
-			new PCancelable(() => {
-				return mock<IRun>();
-			}),
-		);
-
-		// ACT
-		await runner.run(data);
-
-		// ASSERT
-		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
+		mockSetInterval.mockRestore();
 	});
 });

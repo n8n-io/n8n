@@ -323,7 +323,7 @@ describe('Node Builder', () => {
 				version: 3.4,
 				config: { name: 'Set', position: [600, 200] },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- IF nodes always have onTrue
+
 			const builder = ifNode.onTrue!(target);
 
 			const s = sticky('## Conditional Logic', [builder as never]);
@@ -341,7 +341,7 @@ describe('Node Builder', () => {
 				version: 3.4,
 				config: { name: 'Set', position: [700, 300] },
 			});
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- Switch nodes always have onCase
+
 			const builder = sw.onCase!(0, target);
 
 			const s = sticky('## Routing', [builder as never]);
@@ -372,15 +372,28 @@ describe('Node Builder', () => {
 			const c = newCredential('My Slack Bot');
 			expect(c.__newCredential).toBe(true);
 			expect(c.name).toBe('My Slack Bot');
+			expect(c.id).toBeUndefined();
 		});
 
-		it('should serialize to undefined (not yet implemented)', () => {
+		it('should create a credential marker with name and id', () => {
+			const c = newCredential('My Slack Bot', 'cred-abc');
+			expect(c.__newCredential).toBe(true);
+			expect(c.name).toBe('My Slack Bot');
+			expect(c.id).toBe('cred-abc');
+		});
+
+		it('should serialize to undefined when no id (placeholder)', () => {
 			const c = newCredential('My API Auth');
 			// toJSON returns undefined, which JSON.stringify omits
 			expect(JSON.stringify({ cred: c })).toBe('{}');
 		});
 
-		it('should work in node credentials config', () => {
+		it('should serialize to { id, name } when id is provided', () => {
+			const c = newCredential('Slack Bot', 'cred-123');
+			expect(JSON.stringify({ cred: c })).toBe('{"cred":{"id":"cred-123","name":"Slack Bot"}}');
+		});
+
+		it('should work in node credentials config (placeholder, no id)', () => {
 			const n = node({
 				type: 'n8n-nodes-base.slack',
 				version: 2.2,
@@ -391,8 +404,25 @@ describe('Node Builder', () => {
 			});
 			expect(n.config.credentials).toBeDefined();
 			const credJson = deepCopy(n.config.credentials);
-			// newCredential serializes to undefined, which is omitted from JSON
+			// newCredential without id serializes to undefined, which is omitted from JSON
 			expect(credJson).toEqual({});
+		});
+
+		it('should work in node credentials config (with id)', () => {
+			const n = node({
+				type: 'n8n-nodes-base.slack',
+				version: 2.2,
+				config: {
+					parameters: { channel: '#general' },
+					credentials: { slackApi: newCredential('Slack Bot', 'cred-456') },
+				},
+			});
+			expect(n.config.credentials).toBeDefined();
+			const credJson = deepCopy(n.config.credentials);
+			// newCredential with id serializes to { id, name }
+			expect(credJson).toEqual({
+				slackApi: { id: 'cred-456', name: 'Slack Bot' },
+			});
 		});
 
 		it('should work alongside regular credential references', () => {
@@ -408,7 +438,7 @@ describe('Node Builder', () => {
 				},
 			});
 			const credJson = deepCopy(n.config.credentials);
-			// Regular credentials preserved, newCredential omitted (serializes to undefined)
+			// Regular credentials preserved, newCredential without id omitted
 			expect(credJson).toEqual({
 				httpBasicAuth: { id: 'existing-123', name: 'Existing Auth' },
 			});
@@ -709,6 +739,89 @@ describe('Node Builder', () => {
 				config: { position: [100, 200] },
 			});
 			expect(mergeNode.config.position).toEqual([100, 200]);
+		});
+	});
+
+	describe('node() and trigger() invalid input handling', () => {
+		it('node() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest', { url: 'https://example.com' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/node\(\) requires a configuration object/);
+		});
+
+		it('trigger() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook', { httpMethod: 'GET', path: 'test' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/trigger\(\) requires a configuration object/);
+		});
+
+		it('node() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('trigger() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('node() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node([{ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('trigger() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger([{ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('node() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node(null);
+			}).toThrow(/received null/);
+		});
+
+		it('trigger() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger(null);
+			}).toThrow(/received null/);
+		});
+
+		it('should not crash when config is undefined', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node({ type: 'n8n-nodes-base.set', version: 3, config: undefined });
+			}).not.toThrow();
 		});
 	});
 });

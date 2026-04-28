@@ -4,6 +4,7 @@ import type { BinaryCheckContext } from '../../types';
 import { allNodesConnected } from '../all-nodes-connected';
 import { expressionsReferenceExistingNodes } from '../expressions-reference-existing-nodes';
 import { hasStartNode } from '../has-start-node';
+import { noCodeImports } from '../no-code-imports';
 import { noEmptySetNodes } from '../no-empty-set-nodes';
 import { noUnnecessaryCodeNodes } from '../no-unnecessary-code-nodes';
 import { noUnreachableNodes } from '../no-unreachable-nodes';
@@ -1042,6 +1043,251 @@ describe('tools_have_parameters', () => {
 			}),
 			makeCtx({ nodeTypes: [...nodeTypes, excludedToolType] }),
 		);
+		expect(result.pass).toBe(true);
+	});
+});
+
+describe('no_code_imports', () => {
+	it('passes when no code nodes', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [{ name: 'Set', type: 'n8n-nodes-base.set', typeVersion: 3, position: [0, 0] }],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes when code node has no imports', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Code',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'javaScript',
+							jsCode: 'return items.map(item => ({ json: { value: item.json.value * 2 } }));',
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when JS code uses require()', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Code',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'javaScript',
+							jsCode: "const lodash = require('lodash');\nreturn items;",
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Code');
+	});
+
+	it('fails when JS code uses import from', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Code',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'javaScript',
+							jsCode: "import axios from 'axios';\nreturn items;",
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Code');
+	});
+
+	it('fails when JS code uses dynamic import()', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Code',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'javaScript',
+							jsCode: "const mod = await import('some-module');\nreturn items;",
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Code');
+	});
+
+	it('fails when Python code uses import statement', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'PyCode',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'pythonNative',
+							pythonCode: 'import requests\nreturn items',
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('PyCode');
+	});
+
+	it('fails when Python code uses from...import', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'PyCode',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'pythonNative',
+							pythonCode: 'from os import path\nreturn items',
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('PyCode');
+	});
+
+	it('fails when Python code uses __import__()', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'PyCode',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'pythonNative',
+							pythonCode: "os = __import__('os')\nreturn items",
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('PyCode');
+	});
+
+	it('passes when Python code has no imports', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'PyCode',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'pythonNative',
+							pythonCode: 'return [{"json": {"value": 42}}]',
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('defaults to javaScript when language is not set', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Code',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {
+							jsCode: "const fs = require('fs');\nreturn items;",
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Code');
+	});
+
+	it('reports all code nodes with imports', async () => {
+		const result = await noCodeImports.run(
+			makeWorkflow({
+				nodes: [
+					{
+						name: 'Code1',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [0, 0],
+						parameters: {
+							language: 'javaScript',
+							jsCode: "const _ = require('lodash');\nreturn items;",
+						},
+					},
+					{
+						name: 'Code2',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [200, 0],
+						parameters: {
+							language: 'pythonNative',
+							pythonCode: 'import json\nreturn items',
+						},
+					},
+				],
+			}),
+			makeCtx(),
+		);
+		expect(result.pass).toBe(false);
+		expect(result.comment).toContain('Code1');
+		expect(result.comment).toContain('Code2');
+	});
+
+	it('passes for empty workflow', async () => {
+		const result = await noCodeImports.run(makeWorkflow({ nodes: [] }), makeCtx());
 		expect(result.pass).toBe(true);
 	});
 });

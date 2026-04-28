@@ -50,7 +50,40 @@ interface FoundFunction {
 	function: Function;
 }
 
+/**
+ * Property names that must never be accessed via expression extensions.
+ * Matches the host-side blocklist in packages/workflow/src/utils.ts.
+ */
+const UNSAFE_PROPERTY_NAMES = new Set([
+	'__proto__',
+	'prototype',
+	'constructor',
+	'getPrototypeOf',
+	'mainModule',
+	'binding',
+	'_linkedBinding',
+	'_load',
+	'prepareStackTrace',
+	'__lookupGetter__',
+	'__lookupSetter__',
+	'__defineGetter__',
+	'__defineSetter__',
+	'caller',
+	'arguments',
+	'getBuiltinModule',
+	'dlopen',
+	'execve',
+	'loadEnvFile',
+]);
+
 function findExtendedFunction(input: unknown, functionName: string): FoundFunction | undefined {
+	const name = typeof functionName === 'string' ? functionName : String(functionName);
+	if (UNSAFE_PROPERTY_NAMES.has(name)) {
+		throw new ExpressionExtensionError(
+			`Cannot access "${name}" via expression extension due to security concerns`,
+		);
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-restricted-types
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {

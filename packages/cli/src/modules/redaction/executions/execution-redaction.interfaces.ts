@@ -12,6 +12,8 @@ export interface RedactionContext {
 	readonly redactExecutionData: boolean | undefined;
 	/** Pre-resolved by the orchestrator — true if the user can see unredacted data. */
 	readonly userCanReveal: boolean;
+	/** True when the execution used dynamic credential resolution. */
+	readonly hasDynamicCredentials: boolean;
 	/** Generic memo store — strategies may cache intermediate results here
 	 *  to avoid redundant computation across requiresRedaction/apply calls.
 	 *  Keyed by strategy name. */

@@ -80,13 +80,13 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 		// Update local  version of the workflow
 		if (id === workflowsStore.workflowId) {
-			workflowsStore.setWorkflowVersionData({
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+			workflowDocumentStore.setVersionData({
 				versionId,
-				name: workflowsStore.versionData?.name ?? null,
-				description: workflowsStore.versionData?.description ?? null,
+				name: workflowDocumentStore.versionData?.name ?? null,
+				description: workflowDocumentStore.versionData?.description ?? null,
 			});
 			if (settings) {
-				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
 				workflowDocumentStore.mergeSettings(settings);
 			}
 		}

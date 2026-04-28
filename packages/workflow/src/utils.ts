@@ -412,6 +412,14 @@ export function setSafeObjectProperty(
 	}
 }
 
+const DANGEROUS_XML_NAMES = new Set(['__proto__', 'constructor', 'prototype']);
+
+export function sanitizeXmlName(name: string) {
+	if (DANGEROUS_XML_NAMES.has(name)) return `sanitized_${name}`;
+
+	return name;
+}
+
 export function isDomainAllowed(
 	urlString: string,
 	options: {
@@ -509,4 +517,11 @@ export function sanitizeFilename(fileName: string): string {
 	}
 
 	return sanitized;
+}
+
+/** Generates a cryptographically secure 64-character hex token (256 bits). */
+export function generateSecureToken(): string {
+	const bytes = new Uint8Array(32);
+	crypto.getRandomValues(bytes);
+	return bytes.reduce((hex, byte) => hex + byte.toString(16).padStart(2, '0'), '');
 }

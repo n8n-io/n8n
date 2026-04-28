@@ -1,6 +1,7 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
+import type { ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionData,
 	ExecutionEntity,
@@ -20,6 +21,10 @@ describe('ExecutionPersistence', () => {
 	const executionRepository = mock<ExecutionRepository>();
 	const binaryDataService = mock<BinaryDataService>();
 	const fsStore = mock<FsStore>();
+	const executionsConfig = mock<ExecutionsConfig>({
+		pruneData: true,
+		pruneDataHardDeleteBuffer: 1,
+	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -55,6 +60,7 @@ describe('ExecutionPersistence', () => {
 			binaryDataService,
 			fsStore,
 			mock<StorageConfig>({ modeTag }),
+			executionsConfig,
 		);
 
 	describe('create', () => {
@@ -202,6 +208,38 @@ describe('ExecutionPersistence', () => {
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
 			expect(fsStore.delete).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('deleteUnsaved', () => {
+		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
+
+		it('should soft-delete with backdated `deletedAt` when pruning is enabled', async () => {
+			jest.useFakeTimers();
+			const now = Date.now();
+
+			executionsConfig.pruneData = true;
+			executionsConfig.pruneDataHardDeleteBuffer = 1;
+			const executionPersistence = createPersistenceService('db');
+
+			await executionPersistence.deleteInFlightExecution(target);
+
+			expect(executionRepository.update).toHaveBeenCalledWith('exec-1', {
+				deletedAt: new Date(now - 3600_000),
+			});
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+
+			jest.useRealTimers();
+		});
+
+		it('should hard-delete immediately when pruning is disabled', async () => {
+			executionsConfig.pruneData = false;
+			const executionPersistence = createPersistenceService('db');
+
+			await executionPersistence.deleteInFlightExecution(target);
+
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
+			expect(executionRepository.update).not.toHaveBeenCalled();
 		});
 	});
 });

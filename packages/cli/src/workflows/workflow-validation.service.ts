@@ -11,6 +11,7 @@ import {
 	isNodeConnected,
 	isTriggerLikeNode,
 	toExecutionContextEstablishmentHookParameter,
+	CHAT_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 import type { INode, INodes, IConnections, INodeType, IWorkflowSettings } from 'n8n-workflow';
 
@@ -148,11 +149,9 @@ export class WorkflowValidationService {
 			);
 
 			if (nodeIssues?.parameters) {
-				const parameterIssuesCount = Object.keys(nodeIssues.parameters).length;
-				if (parameterIssuesCount > 0) {
-					issues.push(
-						`Missing or invalid required parameters (${parameterIssuesCount} issue${parameterIssuesCount === 1 ? '' : 's'})`,
-					);
+				const paramNames = Object.keys(nodeIssues.parameters);
+				if (paramNames.length > 0) {
+					issues.push(`Missing or invalid required parameters: ${paramNames.join(', ')}`);
 				}
 			}
 		} catch (error) {
@@ -242,6 +241,12 @@ export class WorkflowValidationService {
 			if (node.disabled) return false;
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 			if (!nodeType || !isTriggerLikeNode(nodeType)) return false;
+
+			// Chat Trigger nodes with availableInChat have identity injected at runtime by Chat Hub
+			if (node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters.availableInChat === true) {
+				return true;
+			}
+
 			const hookParams = toExecutionContextEstablishmentHookParameter(node.parameters);
 			return (
 				hookParams !== null &&

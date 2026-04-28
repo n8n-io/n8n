@@ -50,23 +50,30 @@ export class OAuth2CredentialController {
 			const [credential, decryptedDataOriginal, oauthCredentials, state] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
 
-			let options: Partial<ClientOAuth2Options> = {};
-
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
-			if (oauthCredentials.grantType === 'pkce') {
-				options = {
-					body: { code_verifier: decryptedDataOriginal.codeVerifier },
-				};
-			} else if (oauthCredentials.authentication === 'body') {
-				options = {
-					body: {
-						...(oAuthOptions.body ?? {}),
-						client_id: oAuthOptions.clientId,
-						client_secret: oAuthOptions.clientSecret,
-					},
-				};
+			const isPkce = oauthCredentials.grantType === 'pkce';
+			const isBodyAuth = oauthCredentials.authentication === 'body';
+
+			const body: Record<string, string> = { ...(oAuthOptions.body ?? {}) };
+
+			if (isPkce) {
+				body.code_verifier = decryptedDataOriginal.codeVerifier as string;
+			}
+
+			if (isBodyAuth) {
+				body.client_id = oAuthOptions.clientId;
+				if (oAuthOptions.clientSecret) {
+					body.client_secret = oAuthOptions.clientSecret;
+				}
+				// Remove clientSecret so code-flow.ts won't also send it
+				// via the Authorization header
 				delete oAuthOptions.clientSecret;
+			}
+
+			let options: Partial<ClientOAuth2Options> = {};
+			if (isPkce || isBodyAuth) {
+				options = { body };
 			}
 
 			await this.externalHooks.run('oauth2.callback', [oAuthOptions]);

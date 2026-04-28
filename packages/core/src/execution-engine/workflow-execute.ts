@@ -181,6 +181,7 @@ export class WorkflowExecute {
 			resultData: {
 				pinData,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		return this.processRunExecutionData(workflow);
@@ -295,6 +296,7 @@ export class WorkflowExecute {
 				waitingExecution,
 				waitingExecutionSource,
 			},
+			resumeToken: this.runExecutionData.resumeToken,
 		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy
@@ -1033,40 +1035,55 @@ export class WorkflowExecute {
 		);
 
 		let data: INodeExecutionData[][] | EngineRequest | null;
+		let executionSucceeded = false;
+		let closingError: Error | undefined;
 
-		if (customOperation) {
-			data = await customOperation.call(context);
-		} else if (nodeType.execute) {
-			data =
-				nodeType instanceof Node
-					? await nodeType.execute(context, subNodeExecutionResults)
-					: await nodeType.execute.call(context, subNodeExecutionResults);
-		} else {
-			throw new UnexpectedError(
-				"Can't execute node. There is no custom operation and the node has not execute function.",
-			);
+		try {
+			if (customOperation) {
+				data = await customOperation.call(context);
+			} else if (nodeType.execute) {
+				data =
+					nodeType instanceof Node
+						? await nodeType.execute(context, subNodeExecutionResults)
+						: await nodeType.execute.call(context, subNodeExecutionResults);
+			} else {
+				throw new UnexpectedError(
+					"Can't execute node. There is no custom operation and the node has not execute function.",
+				);
+			}
+			executionSucceeded = true;
+		} finally {
+			if (closeFunctions.length > 0) {
+				const closeFunctionsResults = await Promise.allSettled(
+					closeFunctions.map(async (fn) => await fn()),
+				);
+
+				// Only throw close function errors if the execution itself succeeded,
+				// to avoid masking the original execution error.
+				if (executionSucceeded) {
+					const closingErrors = closeFunctionsResults
+						.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+						.map((result) => result.reason);
+
+					if (closingErrors.length > 0) {
+						closingError =
+							closingErrors[0] instanceof Error
+								? closingErrors[0]
+								: new ApplicationError("Error on execution node's close function(s)", {
+										extra: { nodeName: node.name },
+										tags: { nodeType: node.type },
+										cause: closingErrors,
+									});
+					}
+				}
+			}
 		}
+
+		if (closingError) throw closingError;
 
 		if (isEngineRequest(data)) {
 			return data;
-		}
-
-		const closeFunctionsResults = await Promise.allSettled(
-			closeFunctions.map(async (fn) => await fn()),
-		);
-
-		const closingErrors = closeFunctionsResults
-			.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			.map((result) => result.reason);
-
-		if (closingErrors.length > 0) {
-			if (closingErrors[0] instanceof Error) throw closingErrors[0];
-			throw new ApplicationError("Error on execution node's close function(s)", {
-				extra: { nodeName: node.name },
-				tags: { nodeType: node.type },
-				cause: closingErrors,
-			});
 		}
 
 		return { data, hints: context.hints };
@@ -1438,6 +1455,8 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					await workflow.expression.acquireIsolate();
+
 					// Establish the execution context
 					await establishExecutionContext(
 						workflow,
@@ -2308,6 +2327,13 @@ export class WorkflowExecute {
 					}
 
 					return fullRunData;
+				})
+				.finally(async () => {
+					try {
+						await workflow.expression.releaseIsolate();
+					} catch (error) {
+						Container.get(ErrorReporter).error(error);
+					}
 				});
 
 			return await returnPromise.then(resolve);

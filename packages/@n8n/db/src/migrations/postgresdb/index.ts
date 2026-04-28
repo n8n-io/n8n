@@ -133,7 +133,7 @@ import { AddAgentIdForeignKeys1765886667897 } from '../common/1765886667897-AddA
 import { AddWorkflowVersionIdToExecutionData1765892199653 } from '../common/1765892199653-AddVersionIdToExecutionData';
 import { AddWorkflowPublishScopeToProjectRoles1766064542000 } from '../common/1766064542000-AddWorkflowPublishScopeToProjectRoles';
 import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddChatMessageIndices';
-import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
+import { ModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
@@ -153,6 +153,20 @@ import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../com
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
 import { ExpandVariablesValueColumnToText1772800000000 } from './1772800000000-ExpandVariablesValueColumnToText';
+import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
+import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
+import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
+import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
+import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
+import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
+import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
+import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
+import { AddTracingContextToExecution1777045000000 } from '../common/1777045000000-AddTracingContextToExecution';
+import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
+import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
+import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -311,4 +325,18 @@ export const postgresMigrations: Migration[] = [
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
 	ExpandVariablesValueColumnToText1772800000000,
+	CreateRoleMappingRuleTable1772800000000,
+	CreateCredentialDependencyTable1773000000000,
+	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
+	CreateInstanceVersionHistoryTable1774854660000,
+	CreateInstanceAiTables1775000000000,
+	CreateTokenExchangeJtiTable1775116241000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
+	CreateTrustedKeyTables1776000000000,
+	CreateFavoritesTable1776150756000,
+	CreateDeploymentKeyTable1777000000000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
+	AddExecutionDeduplicationKey1778000000000,
+	AddTracingContextToExecution1777045000000,
+	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 ];

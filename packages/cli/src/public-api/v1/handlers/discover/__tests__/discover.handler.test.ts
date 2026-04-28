@@ -4,8 +4,6 @@ import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '@n8n/db';
 
-import { License } from '@/license';
-
 import * as discoverService from '../discover.service';
 
 const handler = require('../discover.handler');
@@ -13,7 +11,6 @@ const handler = require('../discover.handler');
 describe('Discover Handler', () => {
 	let mockApiKeyRepository: jest.Mocked<ApiKeyRepository>;
 	let mockResponse: Partial<Response>;
-	const mockLicense = { isApiKeyScopesEnabled: jest.fn().mockReturnValue(true) };
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -22,7 +19,6 @@ describe('Discover Handler', () => {
 
 		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === ApiKeyRepository) return mockApiKeyRepository as any;
-			if (serviceClass === License) return mockLicense as any;
 			return {} as any;
 		});
 
@@ -93,7 +89,6 @@ describe('Discover Handler', () => {
 		expect(mockResponse.json).toHaveBeenCalledWith({ data: mockDiscoverResponse });
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: false,
-			scopesEnabled: true,
 			resource: undefined,
 			operation: undefined,
 		});
@@ -146,7 +141,6 @@ describe('Discover Handler', () => {
 
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: true,
-			scopesEnabled: true,
 			resource: undefined,
 			operation: undefined,
 		});
@@ -173,7 +167,6 @@ describe('Discover Handler', () => {
 
 		expect(discoverService.buildDiscoverResponse).toHaveBeenCalledWith(scopes, {
 			includeSchemas: false,
-			scopesEnabled: true,
 			resource: 'workflow',
 			operation: 'create',
 		});

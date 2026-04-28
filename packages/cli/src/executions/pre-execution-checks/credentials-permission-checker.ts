@@ -140,6 +140,14 @@ export class CredentialsPermissionChecker {
 				activeTypes.add(nodeCredentialType);
 			}
 
+			// For nodes using generic credential types (e.g., HTTP Request with
+			// authentication=genericCredentialType), the active credential type is
+			// specified by the genericAuthType parameter
+			const { genericAuthType } = node.parameters;
+			if (typeof genericAuthType === 'string' && genericAuthType) {
+				activeTypes.add(genericAuthType);
+			}
+
 			return activeTypes;
 		} catch {
 			// If we can't resolve the node type, fall back to checking all credentials

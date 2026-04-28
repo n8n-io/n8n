@@ -91,6 +91,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'project:update',
 	'project:delete',
 	'insights:list',
+	'insights:read',
 	'folder:move',
 	'folder:read',
 	'folder:update',
@@ -107,6 +108,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',
+	'dataTable:readColumn',
+	'dataTable:writeColumn',
 	'role:manage',
 	'mcp:manage',
 	'mcp:oauth',
@@ -122,11 +125,20 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'breakingChanges:list',
 	'execution:reveal',
 	'apiKey:manage',
+	'encryptionKey:manage',
 	'credentialResolver:create',
 	'credentialResolver:read',
 	'credentialResolver:update',
 	'credentialResolver:delete',
 	'credentialResolver:list',
+	'instanceAi:message',
+	'instanceAi:manage',
+	'instanceAi:gateway',
+	'roleMappingRule:create',
+	'roleMappingRule:read',
+	'roleMappingRule:update',
+	'roleMappingRule:delete',
+	'roleMappingRule:list',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -146,6 +158,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'user:list',
 	'variable:list',
 	'variable:read',
+	'insights:read',
 	'dataTable:list',
 	'mcp:oauth',
 	'mcpApiKey:create',
@@ -158,6 +171,8 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'chatHubAgent:list',
 	'apiKey:manage',
 	'credentialResolver:list',
+	'instanceAi:message',
+	'instanceAi:gateway',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [

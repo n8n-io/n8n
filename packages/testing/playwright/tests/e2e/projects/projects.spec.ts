@@ -110,7 +110,8 @@ test.describe(
 
 				await n8n.canvas.openNode('Append a block');
 
-				await expect(n8n.ndv.getCredentialSelectInput()).toBeEnabled();
+				// Credential is inaccessible after move, so empty state is shown
+				await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeVisible();
 			});
 
 			test('should filter credentials by project ID when creating new workflow or hard reloading an opened workflow', async ({
