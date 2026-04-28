@@ -12,6 +12,7 @@ import {
 	N8nIcon,
 	N8nNavigationDropdown,
 	N8nRadioButtons,
+	N8nResizeWrapper,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -120,7 +121,17 @@ const {
 	onNewChat,
 } = useAgentBuilderSession();
 
-const { chatColumnCollapsed, gridColumns, onToggleChatColumn } = useAgentBuilderLayout();
+const {
+	builderRef,
+	chatColumnCollapsed,
+	chatColumnWidth,
+	treeColumnWidth,
+	gridColumns,
+	onChatColumnResize,
+	onTreeColumnResize,
+	onToggleChatColumn,
+	resizeGridSize,
+} = useAgentBuilderLayout();
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -722,10 +733,15 @@ function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
 }
 
 function onContinueLoaded(count: number) {
-	// Only kick back to home for a URL-supplied session that turned out to be
-	// empty/stale. Ephemeral in-tab sessions always start empty and fill in as
-	// the user chats, so the zero-count signal is expected there.
-	if (count === 0 && continueSessionId.value) {
+	// Only kick away from a URL-supplied session when the URL points at a
+	// missing/stale thread. A real thread can legitimately have zero persisted
+	// chat messages if its execution failed before history was saved.
+	const requestedSessionId = continueSessionId.value;
+	const knownThread = requestedSessionId
+		? sessionsStore.threads.some((thread) => thread.id === requestedSessionId)
+		: false;
+
+	if (count === 0 && requestedSessionId && !knownThread) {
 		exitContinueMode();
 		// `exitContinueMode` only drops the query param; the chat panel would
 		// otherwise sit blank waiting for a session to bind. Once the route
@@ -770,186 +786,196 @@ function onSwitchAgent(nextAgentId: string) {
 			@unpublished="onUnpublished"
 			@switch-agent="onSwitchAgent"
 		/>
-		<div :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">
+		<div ref="builderRef" :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">
 			<!-- Column 1: chat -->
-			<aside
-				:class="$style.chatColumn"
-				:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
-				data-testid="agent-builder-chat-column"
+			<N8nResizeWrapper
+				:class="$style.chatColumnResizeWrapper"
+				:width="chatColumnWidth"
+				:min-width="320"
+				:grid-size="resizeGridSize"
+				:supported-directions="chatColumnCollapsed ? [] : ['right']"
+				:is-resizing-enabled="!chatColumnCollapsed"
+				@resize="onChatColumnResize"
 			>
-				<div
-					v-if="initialized && chatMode === 'test' && effectiveSessionId"
-					:class="$style.sessionHeader"
-					data-testid="agent-chat-session-header"
+				<aside
+					:class="$style.chatColumn"
+					:aria-label="locale.baseText('agents.builder.chatColumn.ariaLabel')"
+					data-testid="agent-builder-chat-column"
 				>
-					<N8nNavigationDropdown
-						:menu="sessionMenu"
-						submenu-class="agent-chat-session-menu"
-						data-testid="agent-chat-session-picker"
-						@select="onSessionPick"
+					<div
+						v-if="initialized && chatMode === 'test' && effectiveSessionId"
+						:class="$style.sessionHeader"
+						data-testid="agent-chat-session-header"
 					>
-						<button
-							type="button"
-							:class="$style.sessionTitleBtn"
-							:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
-							data-testid="agent-chat-session-picker-btn"
+						<N8nNavigationDropdown
+							:menu="sessionMenu"
+							submenu-class="agent-chat-session-menu"
+							data-testid="agent-chat-session-picker"
+							@select="onSessionPick"
 						>
-							<N8nIcon icon="history" :size="14" />
-							<span :class="$style.sessionTitleText">{{ currentSessionTitle }}</span>
-							<N8nIcon icon="chevron-down" :size="12" />
+							<button
+								type="button"
+								:class="$style.sessionTitleBtn"
+								:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
+								data-testid="agent-chat-session-picker-btn"
+							>
+								<N8nIcon icon="history" :size="14" />
+								<span :class="$style.sessionTitleText">{{ currentSessionTitle }}</span>
+								<N8nIcon icon="chevron-down" :size="12" />
+							</button>
+							<template v-for="item in sessionMenu" :key="item.id" #[`item.append.${item.id}`]>
+								<span v-if="item.label" :class="$style.sessionItemLabel">{{ item.label }}</span>
+								<span v-if="item.when" :class="$style.sessionItemWhen">{{ item.when }}</span>
+							</template>
+						</N8nNavigationDropdown>
+						<button
+							v-if="currentSessionHasMessages"
+							type="button"
+							:class="$style.newChatBtn"
+							:aria-label="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
+							data-testid="agent-chat-new-chat-btn"
+							@click="onNewChat"
+						>
+							<N8nIcon icon="plus" :size="14" />
+							<span>{{ locale.baseText('agents.builder.chat.newChat.label') }}</span>
 						</button>
-						<template v-for="item in sessionMenu" :key="item.id" #[`item.append.${item.id}`]>
-							<span v-if="item.label" :class="$style.sessionItemLabel">{{ item.label }}</span>
-							<span v-if="item.when" :class="$style.sessionItemWhen">{{ item.when }}</span>
-						</template>
-					</N8nNavigationDropdown>
-					<button
-						v-if="currentSessionHasMessages"
-						type="button"
-						:class="$style.newChatBtn"
-						:aria-label="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
-						data-testid="agent-chat-new-chat-btn"
-						@click="onNewChat"
-					>
-						<N8nIcon icon="plus" :size="14" />
-						<span>{{ locale.baseText('agents.builder.chat.newChat.label') }}</span>
-					</button>
-				</div>
-				<div :class="$style.chatBody">
-					<AgentChatPanel
-						v-if="initialized && chatModeOpened.test && effectiveSessionId"
-						v-show="chatMode === 'test'"
-						:key="`test-${effectiveSessionId}`"
-						:project-id="projectId"
-						:agent-id="agentId"
-						mode="inline"
-						endpoint="chat"
-						:initial-message="initialPrompt"
-						:continue-session-id="effectiveSessionId"
-						:agent-config="localConfig"
-						:agent-status="deriveAgentStatus(agent)"
-						:connected-triggers="connectedTriggers"
-						@config-updated="onConfigUpdated"
-						@continue-loaded="onContinueLoaded"
-						@open-build="onOpenBuildFromChat"
-					>
-						<template #above-input>
-							<div :class="$style.quickActionsRow">
-								<div :class="$style.quickActionsStart"></div>
-								<N8nTooltip
-									v-if="initialized"
-									:class="$style.chatModeToggle"
-									:disabled="isBuilt"
-									:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
-									:show-after="100"
-									placement="top"
-								>
-									<N8nRadioButtons
-										:model-value="chatMode"
-										:options="chatModeOptions"
-										:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-										data-testid="agent-chat-mode-toggle"
-										@update:model-value="setChatMode"
+					</div>
+					<div :class="$style.chatBody">
+						<AgentChatPanel
+							v-if="initialized && chatModeOpened.test && effectiveSessionId"
+							v-show="chatMode === 'test'"
+							:key="`test-${effectiveSessionId}`"
+							:project-id="projectId"
+							:agent-id="agentId"
+							mode="inline"
+							endpoint="chat"
+							:initial-message="initialPrompt"
+							:continue-session-id="effectiveSessionId"
+							:agent-config="localConfig"
+							:agent-status="deriveAgentStatus(agent)"
+							:connected-triggers="connectedTriggers"
+							@config-updated="onConfigUpdated"
+							@continue-loaded="onContinueLoaded"
+							@open-build="onOpenBuildFromChat"
+						>
+							<template #above-input>
+								<div :class="$style.quickActionsRow">
+									<div :class="$style.quickActionsStart"></div>
+									<N8nTooltip
+										v-if="initialized"
+										:class="$style.chatModeToggle"
+										:disabled="isBuilt"
+										:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+										:show-after="100"
+										placement="top"
 									>
-										<template #option="option">
-											<span :class="$style.chatModeOption">
-												<N8nIcon
-													v-if="option.value === 'build' && isBuildChatStreaming"
-													icon="loader-circle"
-													:size="14"
-													:spin="true"
-												/>
-												<N8nIcon
-													v-else-if="option.value === 'test' && !isBuilt"
-													icon="triangle-alert"
-													:size="14"
-													:class="$style.chatModeLockedIcon"
-												/>
-												<N8nIcon
-													v-else
-													:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
-													:size="14"
-												/>
-												<span>{{ option.label }}</span>
-											</span>
-										</template>
-									</N8nRadioButtons>
-								</N8nTooltip>
-							</div>
-						</template>
-					</AgentChatPanel>
-					<AgentChatPanel
-						v-if="initialized && chatModeOpened.build"
-						v-show="chatMode === 'build' && isBuilderConfigured"
-						:project-id="projectId"
-						:agent-id="agentId"
-						mode="inline"
-						endpoint="build"
-						:initial-message="chatMode === 'build' ? initialPrompt : undefined"
-						:agent-config="localConfig"
-						:agent-status="deriveAgentStatus(agent)"
-						:connected-triggers="connectedTriggers"
-						@config-updated="onConfigUpdated"
-						@update:streaming="onBuildChatStreamingChange"
-					>
-						<template #above-input>
-							<div :class="$style.quickActionsRow">
-								<AgentChatQuickActions
-									:tools="localConfig?.tools ?? []"
-									:project-id="projectId"
-									:agent-id="agentId"
-									:connected-triggers="connectedTriggers"
-									@update:tools="onQuickActionAddTool"
-									@update:connected-triggers="onConnectedTriggersUpdate"
-									@trigger-added="onTriggerAdded"
-								/>
-								<N8nTooltip
-									v-if="initialized"
-									:class="$style.chatModeToggle"
-									:disabled="isBuilt"
-									:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
-									:show-after="100"
-									placement="top"
-								>
-									<N8nRadioButtons
-										:model-value="chatMode"
-										:options="chatModeOptions"
-										:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-										data-testid="agent-chat-mode-toggle"
-										@update:model-value="setChatMode"
+										<N8nRadioButtons
+											:model-value="chatMode"
+											:options="chatModeOptions"
+											:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+											data-testid="agent-chat-mode-toggle"
+											@update:model-value="setChatMode"
+										>
+											<template #option="option">
+												<span :class="$style.chatModeOption">
+													<N8nIcon
+														v-if="option.value === 'build' && isBuildChatStreaming"
+														icon="loader-circle"
+														:size="14"
+														:spin="true"
+													/>
+													<N8nIcon
+														v-else-if="option.value === 'test' && !isBuilt"
+														icon="triangle-alert"
+														:size="14"
+														:class="$style.chatModeLockedIcon"
+													/>
+													<N8nIcon
+														v-else
+														:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+														:size="14"
+													/>
+													<span>{{ option.label }}</span>
+												</span>
+											</template>
+										</N8nRadioButtons>
+									</N8nTooltip>
+								</div>
+							</template>
+						</AgentChatPanel>
+						<AgentChatPanel
+							v-if="initialized && chatModeOpened.build"
+							v-show="chatMode === 'build' && isBuilderConfigured"
+							:project-id="projectId"
+							:agent-id="agentId"
+							mode="inline"
+							endpoint="build"
+							:initial-message="chatMode === 'build' ? initialPrompt : undefined"
+							:agent-config="localConfig"
+							:agent-status="deriveAgentStatus(agent)"
+							:connected-triggers="connectedTriggers"
+							@config-updated="onConfigUpdated"
+							@update:streaming="onBuildChatStreamingChange"
+						>
+							<template #above-input>
+								<div :class="$style.quickActionsRow">
+									<AgentChatQuickActions
+										:tools="localConfig?.tools ?? []"
+										:project-id="projectId"
+										:agent-id="agentId"
+										:connected-triggers="connectedTriggers"
+										@update:tools="onQuickActionAddTool"
+										@update:connected-triggers="onConnectedTriggersUpdate"
+										@trigger-added="onTriggerAdded"
+									/>
+									<N8nTooltip
+										v-if="initialized"
+										:class="$style.chatModeToggle"
+										:disabled="isBuilt"
+										:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+										:show-after="100"
+										placement="top"
 									>
-										<template #option="option">
-											<span :class="$style.chatModeOption">
-												<N8nIcon
-													v-if="option.value === 'build' && isBuildChatStreaming"
-													icon="loader-circle"
-													:size="14"
-													:spin="true"
-												/>
-												<N8nIcon
-													v-else-if="option.value === 'test' && !isBuilt"
-													icon="triangle-alert"
-													:size="14"
-													:class="$style.chatModeLockedIcon"
-												/>
-												<N8nIcon
-													v-else
-													:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
-													:size="14"
-												/>
-												<span>{{ option.label }}</span>
-											</span>
-										</template>
-									</N8nRadioButtons>
-								</N8nTooltip>
-							</div>
-						</template>
-					</AgentChatPanel>
-					<AgentBuilderUnconfiguredEmptyState
+										<N8nRadioButtons
+											:model-value="chatMode"
+											:options="chatModeOptions"
+											:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+											data-testid="agent-chat-mode-toggle"
+											@update:model-value="setChatMode"
+										>
+											<template #option="option">
+												<span :class="$style.chatModeOption">
+													<N8nIcon
+														v-if="option.value === 'build' && isBuildChatStreaming"
+														icon="loader-circle"
+														:size="14"
+														:spin="true"
+													/>
+													<N8nIcon
+														v-else-if="option.value === 'test' && !isBuilt"
+														icon="triangle-alert"
+														:size="14"
+														:class="$style.chatModeLockedIcon"
+													/>
+													<N8nIcon
+														v-else
+														:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+														:size="14"
+													/>
+													<span>{{ option.label }}</span>
+												</span>
+											</template>
+										</N8nRadioButtons>
+									</N8nTooltip>
+								</div>
+							</template>
+						</AgentChatPanel>
+						<AgentBuilderUnconfiguredEmptyState
 							v-if="chatModeOpened.build && !isBuilderConfigured"
 						/>
-				</div>
-			</aside>
+					</div>
+				</aside>
+			</N8nResizeWrapper>
 
 			<!-- Column 2: editor -->
 			<section
@@ -1107,18 +1133,27 @@ function onSwitchAgent(nextAgentId: string) {
 			</section>
 
 			<!-- Column 3: tree -->
-			<aside
-				:class="[$style.treeColumn, shared.scrollbarThin]"
-				data-testid="agent-builder-tree-column"
+			<N8nResizeWrapper
+				:class="$style.treeColumnResizeWrapper"
+				:width="treeColumnWidth"
+				:min-width="220"
+				:grid-size="resizeGridSize"
+				:supported-directions="['left']"
+				@resize="onTreeColumnResize"
 			>
-				<AgentConfigTree
-					:config="localConfig"
-					:selected-key="selectedSection"
-					:connected-triggers="connectedTriggers"
-					:executions-count="sessionsStore.threads.length"
-					@select="onTreeSelect"
-				/>
-			</aside>
+				<aside
+					:class="[$style.treeColumn, shared.scrollbarThin]"
+					data-testid="agent-builder-tree-column"
+				>
+					<AgentConfigTree
+						:config="localConfig"
+						:selected-key="selectedSection"
+						:connected-triggers="connectedTriggers"
+						:executions-count="sessionsStore.threads.length"
+						@select="onTreeSelect"
+					/>
+				</aside>
+			</N8nResizeWrapper>
 		</div>
 	</div>
 </template>
@@ -1138,11 +1173,19 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow: hidden;
 }
 
+.chatColumnResizeWrapper,
+.treeColumnResizeWrapper {
+	min-width: 0;
+	min-height: 0;
+	overflow: hidden;
+}
+
 .chatColumn {
 	position: relative;
 	display: flex;
 	flex-direction: column;
 	border-right: var(--border);
+	height: 100%;
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;
@@ -1316,6 +1359,7 @@ function onSwitchAgent(nextAgentId: string) {
 	display: flex;
 	flex-direction: column;
 	border-left: var(--border);
+	height: 100%;
 	min-height: 0;
 	overflow: auto;
 }
@@ -1324,6 +1368,7 @@ function onSwitchAgent(nextAgentId: string) {
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
+	min-width: 0;
 }
 
 .triggersTab {
