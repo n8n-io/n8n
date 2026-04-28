@@ -65,11 +65,12 @@ interface SkillTemplate {
 	body: string;
 }
 
-const suggestions = computed<SuggestionTemplate[]>(() => [
+const suggestions: SuggestionTemplate[] = [
 	{
 		icon: '🔍',
-		name: i18n.baseText('agents.new.template.seoAudit.name'),
-		description: i18n.baseText('agents.new.template.seoAudit.description'),
+		name: 'SEO Audit',
+		description:
+			'An SEO auditor. Give it a website URL and it crawls the pages, identifies issues, and suggests improvements.',
 		prompt:
 			'Create an SEO auditor agent. It should accept a website URL, crawl the pages, identify SEO issues like missing meta tags, broken links, slow load times, and suggest improvements.',
 		skills: [
@@ -99,8 +100,9 @@ const suggestions = computed<SuggestionTemplate[]>(() => [
 	},
 	{
 		icon: '👋',
-		name: i18n.baseText('agents.new.template.recruitingSourcer.name'),
-		description: i18n.baseText('agents.new.template.recruitingSourcer.description'),
+		name: 'Recruiting Sourcer',
+		description:
+			'A recruiting sourcer. Give it a job description and it finds matching candidates from multiple platforms.',
 		prompt:
 			'Create a recruiting sourcer agent. It should accept a job description, search for matching candidates across platforms, and compile a shortlist with contact info and relevance scores.',
 		skills: [
@@ -128,8 +130,9 @@ const suggestions = computed<SuggestionTemplate[]>(() => [
 	},
 	{
 		icon: '📬',
-		name: i18n.baseText('agents.new.template.inboxSorter.name'),
-		description: i18n.baseText('agents.new.template.inboxSorter.description'),
+		name: 'Inbox Sorter',
+		description:
+			'Sort your inbox, classifying emails by sender and marking them as read when they match your rules.',
 		prompt:
 			'Create an inbox sorter agent. It should classify incoming emails by sender and topic, apply user-defined rules to mark as read, label, or archive, and provide a daily summary.',
 		skills: [
@@ -155,7 +158,7 @@ const suggestions = computed<SuggestionTemplate[]>(() => [
 			},
 		],
 	},
-]);
+];
 
 function buildPromptWithSkills(suggestion: SuggestionTemplate): string {
 	if (suggestion.skills.length === 0) return suggestion.prompt;
