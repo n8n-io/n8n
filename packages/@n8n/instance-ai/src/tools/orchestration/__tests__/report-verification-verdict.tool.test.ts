@@ -212,6 +212,50 @@ describe('report-verification-verdict tool', () => {
 		expect(result.guidance).toContain('Stop editing');
 	});
 
+	it('ignores terminal remediation from a previous run', async () => {
+		const reportVerificationVerdict = createReportVerificationVerdictMock({
+			type: 'patch',
+			workflowId: 'wf-123',
+			failedNodeName: 'HTTP Request',
+			diagnosis: 'Fix URL',
+		});
+		const workflowTaskService = createWorkflowTaskService(reportVerificationVerdict);
+		workflowTaskService.getWorkflowLoopState.mockResolvedValue({
+			workItemId: 'wi_test1234',
+			threadId: 'test-thread',
+			runId: 'previous-run',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			},
+		});
+		const context = createMockContext({ workflowTaskService });
+		const tool = createReportVerificationVerdictTool(context);
+
+		await tool.execute!(
+			{
+				...baseInput,
+				verdict: 'needs_patch',
+				failedNodeName: 'HTTP Request',
+				diagnosis: 'Fix URL',
+			},
+			{} as never,
+		);
+
+		expect(reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'needs_patch',
+				failedNodeName: 'HTTP Request',
+			}),
+		);
+	});
+
 	it('converts non-editable remediation into a terminal verdict', async () => {
 		const reportVerificationVerdict = jest.fn().mockResolvedValue({
 			type: 'blocked',

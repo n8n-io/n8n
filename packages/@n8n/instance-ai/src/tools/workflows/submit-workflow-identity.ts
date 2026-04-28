@@ -42,6 +42,7 @@ export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkfl
 
 interface SubmitGuardOptions {
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	currentRunId?: string;
 	onGuardFired?: (event: {
 		workflowId?: string;
 		category: RemediationMetadata['category'];
@@ -128,6 +129,7 @@ export function wrapSubmitExecuteWithIdentity(
 		const resolvedPath = resolvePath(input.filePath);
 		const terminalRemediation = terminalRemediationFromState(
 			await options.getWorkflowLoopState?.(),
+			options.currentRunId,
 		);
 		if (terminalRemediation) {
 			options.onGuardFired?.({
@@ -205,6 +207,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	credentialMap?: CredentialMap;
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;
+	currentRunId?: string;
 	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
 	onGuardFired?: SubmitGuardOptions['onGuardFired'];
 }) {
@@ -228,6 +231,7 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		(rawFilePath) => resolveSandboxWorkflowFilePath(rawFilePath, args.root),
 		{
 			budgetTracker,
+			currentRunId: args.currentRunId,
 			getWorkflowLoopState: args.getWorkflowLoopState,
 			onGuardFired: args.onGuardFired,
 		},

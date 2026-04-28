@@ -129,6 +129,32 @@ describe('verify-built-workflow tool', () => {
 		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
 	});
 
+	it('ignores terminal remediation from a previous run', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+			workItemId: 'wi_1',
+			threadId: 'thread_1',
+			runId: 'run_previous',
+			workflowId: 'wf_1',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(true);
+		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
+	});
+
 	it('still verifies the second allowed post-submit repair before blocking further edits', async () => {
 		const context = createContext();
 		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({

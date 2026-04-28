@@ -477,6 +477,7 @@ export async function startBuildWorkflowAgentTask(
 							workspace,
 							credentialMap: credMap,
 							root,
+							currentRunId: context.runId,
 							getWorkflowLoopState: async () =>
 								await context.workflowTaskService?.getWorkflowLoopState(workItemId),
 							onGuardFired: (event) => {

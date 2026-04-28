@@ -69,6 +69,26 @@ describe('remediation helpers', () => {
 		).toBeUndefined();
 	});
 
+	it('ignores terminal remediation from a previous run', () => {
+		const remediation = terminalRemediationFromState(
+			{
+				...baseState,
+				runId: 'run_previous',
+				successfulSubmitSeen: true,
+				postSubmitRemediationSubmitsUsed: MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
+				lastRemediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					reason: 'mocked_credentials_or_placeholders',
+					guidance: 'Route to setup.',
+				}),
+			},
+			'run_current',
+		);
+
+		expect(remediation).toBeUndefined();
+	});
+
 	it('reports remaining post-submit repairs without going below zero', () => {
 		expect(
 			remainingPostSubmitRemediations({

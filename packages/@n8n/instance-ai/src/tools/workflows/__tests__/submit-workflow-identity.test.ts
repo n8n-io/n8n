@@ -232,6 +232,40 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		);
 	});
 
+	it('ignores terminal remediation from a previous run', async () => {
+		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+			await Promise.resolve();
+			return { success: true, workflowId: 'wf_current' };
+		});
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_previous',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		};
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			currentRunId: 'run_current',
+			getWorkflowLoopState: async () => {
+				await Promise.resolve();
+				return state;
+			},
+		});
+
+		const result = await wrapped({});
+
+		expect(result).toMatchObject({ success: true, workflowId: 'wf_current' });
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
 	it('marks the third pre-save failed submit as terminal', async () => {
 		const tracker = createPreSaveBudgetTracker();
 		const execute = async (): Promise<SubmitWorkflowOutput> => {

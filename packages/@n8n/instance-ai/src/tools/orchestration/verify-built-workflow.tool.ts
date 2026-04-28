@@ -144,7 +144,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
 			const terminalRemediation =
 				stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
-					? terminalRemediationFromState(stateBefore)
+					? terminalRemediationFromState(stateBefore, context.runId)
 					: undefined;
 			if (terminalRemediation) {
 				return {

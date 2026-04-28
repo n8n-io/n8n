@@ -27,8 +27,10 @@ export function remainingPostSubmitRemediations(state: WorkflowLoopState): numbe
 
 export function terminalRemediationFromState(
 	state: WorkflowLoopState | undefined,
+	currentRunId?: string,
 ): RemediationMetadata | undefined {
 	if (!state) return undefined;
+	if (currentRunId !== undefined && state.runId !== currentRunId) return undefined;
 	if (state.lastRemediation && !state.lastRemediation.shouldEdit) {
 		return state.lastRemediation;
 	}
