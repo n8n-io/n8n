@@ -1,3 +1,42 @@
+## [2.18.4](https://github.com/n8n-io/n8n/compare/n8n@2.18.3...n8n@2.18.4) (2026-04-27)
+
+
+### Bug Fixes
+
+* Disable "Get 100 free OpenAI API credits"  if aiGateway enabled in the license ([#29057](https://github.com/n8n-io/n8n/issues/29057)) ([436274e](https://github.com/n8n-io/n8n/commit/436274eabaceadf2f8b70d0bc739dc8c55aa5a8c))
+* **editor:** Refresh wallet balance when usage refresh is clicked ([#29080](https://github.com/n8n-io/n8n/issues/29080)) ([88c531a](https://github.com/n8n-io/n8n/commit/88c531af1a0d638c35c5731aab0d616570434bda))
+
+
+### Features
+
+* **editor:** Move computer use toggle to chat sidebar ([#29108](https://github.com/n8n-io/n8n/issues/29108)) ([7f1fcad](https://github.com/n8n-io/n8n/commit/7f1fcade9484688c326cf5c93b753eb898f2eb70))
+
+
+## [2.18.3](https://github.com/n8n-io/n8n/compare/n8n@2.18.2...n8n@2.18.3) (2026-04-24)
+
+
+### Features
+
+* **Google Gemini Node:** Gemini default models update ([#28938](https://github.com/n8n-io/n8n/issues/28938)) ([548f90d](https://github.com/n8n-io/n8n/commit/548f90d22258e5aff22b4fd08d7b8eb14ce57147))
+
+
+## [2.18.2](https://github.com/n8n-io/n8n/compare/n8n@2.18.1...n8n@2.18.2) (2026-04-23)
+
+
+### Bug Fixes
+
+* **ai-builder:** Validate merge node connections matches 'numberInputs' parameter ([#28857](https://github.com/n8n-io/n8n/issues/28857)) ([51aa79b](https://github.com/n8n-io/n8n/commit/51aa79b3f0476cc8e10df6ea375c28a990b53852))
+* **core:**  Fixes user search functionality in ProjectSettings for pr… ([#28948](https://github.com/n8n-io/n8n/issues/28948)) ([c1ab423](https://github.com/n8n-io/n8n/commit/c1ab423ab5aa6453744c2d1c2be8041848986b91))
+
+
+### Features
+
+* **MiniMax Node:** Add standalone MiniMax vendor node ([#28868](https://github.com/n8n-io/n8n/issues/28868)) ([eb70651](https://github.com/n8n-io/n8n/commit/eb70651b314141a8a39f17301411c1aa972b6e83))
+
+
+## [2.18.1](https://github.com/n8n-io/n8n/compare/n8n@2.18.0...n8n@2.18.1) (2026-04-22)
+
+
 # [2.18.0](https://github.com/n8n-io/n8n/compare/n8n@2.17.0...n8n@2.18.0) (2026-04-21)
 
 
