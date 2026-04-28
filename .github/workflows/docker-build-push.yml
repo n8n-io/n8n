@@ -58,14 +58,18 @@ jobs:
 
       - name: Determine build context
         id: context
+        env:
+          N8N_VERSION: ${{ inputs.n8n_version }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          PUSH_ENABLED: ${{ inputs.push_enabled }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
             --event "${{ github.event_name }}" \
             --pr "${{ github.event.pull_request.number }}" \
             --branch "${{ github.ref_name }}" \
-            --version "${{ inputs.n8n_version }}" \
-            --release-type "${{ inputs.release_type }}" \
-            --push-enabled "${{ inputs.push_enabled }}"
+            --version "$N8N_VERSION" \
+            --release-type "$RELEASE_TYPE" \
+            --push-enabled "$PUSH_ENABLED"
 
   build-and-push-docker:
     name: Build App, then Build and Push Docker Image (${{ matrix.platform }})
