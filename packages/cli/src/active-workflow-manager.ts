@@ -393,6 +393,8 @@ export class ActiveWorkflowManager {
 					});
 
 				void executePromise.then((executionId) => {
+					// `executionId` is undefined when the catch above swallowed a
+					// duplicate scheduled execution; nothing ran, so nothing to emit.
 					if (executionId === undefined) return;
 					this.eventService.emit('workflow-executed', {
 						workflowId: workflowData.id,
@@ -404,6 +406,8 @@ export class ActiveWorkflowManager {
 
 				if (donePromise) {
 					void executePromise.then((executionId) => {
+						// Same as above: a duplicate scheduled execution was skipped,
+						// so resolve with undefined and don't wait on a non-existent run.
 						if (executionId === undefined) {
 							donePromise.resolve(undefined);
 							return;

@@ -166,8 +166,10 @@ describe('ExecutionPersistence', () => {
 		describe('deduplication key handling', () => {
 			const executionPersistence = createPersistenceService('db');
 
-			const makeUniqueViolationError = () => {
-				const driverError = Object.assign(new Error('duplicate key'), { code: '23505' });
+			const makeUniqueViolationError = (
+				message = 'duplicate key value violates unique constraint on deduplicationKey',
+			) => {
+				const driverError = Object.assign(new Error(message), { code: '23505' });
 				return new QueryFailedError('Query', [], driverError);
 			};
 
@@ -210,6 +212,22 @@ describe('ExecutionPersistence', () => {
 				};
 
 				await expect(executionPersistence.create(payloadWithKey)).rejects.toBe(otherError);
+			});
+
+			it('rethrows unique-violation on a different column unchanged', async () => {
+				const otherUniqueViolation = makeUniqueViolationError(
+					'duplicate key value violates unique constraint on someOtherColumn',
+				);
+				executionRepository.manager.transaction = jest.fn().mockRejectedValue(otherUniqueViolation);
+
+				const payloadWithKey: CreateExecutionPayload = {
+					...createPayload,
+					deduplicationKey: 'wf-1:node-1:1700000000000',
+				};
+
+				await expect(executionPersistence.create(payloadWithKey)).rejects.toBe(
+					otherUniqueViolation,
+				);
 			});
 
 			it('returns executionId on happy path when deduplicationKey is provided', async () => {

@@ -6,7 +6,7 @@ const UNIQUE_VIOLATION_CODES = new Set([
 	'SQLITE_CONSTRAINT_UNIQUE', // SQLite with extended result codes enabled
 ]);
 
-export function isUniqueViolationError(error: unknown): boolean {
+export function isUniqueViolationError(error: unknown): error is QueryFailedError {
 	if (!(error instanceof QueryFailedError)) return false;
 	const code = (error.driverError as { code?: unknown })?.code;
 	if (typeof code !== 'string') return false;

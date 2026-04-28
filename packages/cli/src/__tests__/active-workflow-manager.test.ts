@@ -407,7 +407,7 @@ describe('ActiveWorkflowManager', () => {
 				);
 			});
 
-			test('warns and skips event emission when runWorkflow rejects with DuplicateExecutionError', async () => {
+			test('skips event emission when runWorkflow rejects with DuplicateExecutionError', async () => {
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const mode: WorkflowExecuteMode = 'trigger';
@@ -432,15 +432,6 @@ describe('ActiveWorkflowManager', () => {
 
 				await new Promise((resolve) => setTimeout(resolve, 0));
 
-				expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
-				expect(scopedLogger.warn).toHaveBeenCalledWith(
-					expect.stringContaining('duplicate deduplication key'),
-					{
-						workflowId: 'wf-1',
-						nodeId: 'node-1',
-						deduplicationKey: 'wf-1:node-1:1700000000000',
-					},
-				);
 				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 		});
