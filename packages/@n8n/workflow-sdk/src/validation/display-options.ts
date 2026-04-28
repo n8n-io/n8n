@@ -187,17 +187,26 @@ export function checkConditions(conditions: unknown[], actualValues: unknown[]):
 					const { from, to } = targetValue as { from: number; to: number };
 					return (propertyValue as number) >= from && (propertyValue as number) <= to;
 				}
+				// String operators (`includes` / `startsWith` / `endsWith` / `regex`)
+				// require a string property value. When the referenced parameter is
+				// absent — common for fresh nodes where optional fields like
+				// `modelId` aren't in `parameters` — propertyValue is `undefined`.
+				// Treat that as "condition not met" rather than crashing.
 				if (key === 'includes') {
-					return (propertyValue as string).includes(targetValue as string);
+					if (typeof propertyValue !== 'string') return false;
+					return propertyValue.includes(targetValue as string);
 				}
 				if (key === 'startsWith') {
-					return (propertyValue as string).startsWith(targetValue as string);
+					if (typeof propertyValue !== 'string') return false;
+					return propertyValue.startsWith(targetValue as string);
 				}
 				if (key === 'endsWith') {
-					return (propertyValue as string).endsWith(targetValue as string);
+					if (typeof propertyValue !== 'string') return false;
+					return propertyValue.endsWith(targetValue as string);
 				}
 				if (key === 'regex') {
-					return new RegExp(targetValue as string).test(propertyValue as string);
+					if (typeof propertyValue !== 'string') return false;
+					return new RegExp(targetValue as string).test(propertyValue);
 				}
 				if (key === 'exists') {
 					return propertyValue !== null && propertyValue !== undefined && propertyValue !== '';

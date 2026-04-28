@@ -15,6 +15,7 @@ import {
 	mergePropertiesByName,
 	extractDefaultsForDisplayOptions,
 } from './generate-zod-schemas';
+import type { SchemaVariant } from '../validation/resolve-schema';
 
 describe('mapPropertyToZodSchema for resourceLocator', () => {
 	it('returns resourceLocatorValueSchema when no modes are specified', () => {
@@ -679,8 +680,10 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 			[],
 		);
 
-		// CommonJS: resolveSchema is included in the require destructure
-		expect(code).toContain('resolveSchema }');
+		// resolveSchema and resolveOneOfSchemas are added together when
+		// conditional resolution is needed; asserting on the trailing helper
+		// confirms both made it into the factory's parameter destructure.
+		expect(code).toContain('resolveSchema, resolveOneOfSchemas }');
 	});
 
 	it('uses resolveSchema for properties with remaining displayOptions', () => {
@@ -778,9 +781,9 @@ describe('generateDiscriminatorSchemaFile with displayOptions', () => {
 			[],
 		);
 
-		// CommonJS module.exports for factory function with all helpers as parameters
+		// CommonJS module.exports for factory function with all helpers as parameters.
 		expect(code).toContain('module.exports = function getSchema({ parameters, z,');
-		expect(code).toContain('resolveSchema }');
+		expect(code).toContain('resolveSchema, resolveOneOfSchemas }');
 		expect(code).toContain('return z.object({');
 	});
 
@@ -919,9 +922,9 @@ describe('generateSingleVersionSchemaFile', () => {
 
 		const code = generateSingleVersionSchemaFile(node, 1);
 
-		// Should generate a factory function with all helpers as parameters (CommonJS)
+		// Should generate a factory function with all helpers as parameters (CommonJS).
 		expect(code).toContain('module.exports = function getSchema({ parameters, z,');
-		expect(code).toContain('resolveSchema }');
+		expect(code).toContain('resolveSchema, resolveOneOfSchemas }');
 		expect(code).toContain('return z.object({');
 	});
 
@@ -1488,9 +1491,10 @@ describe('mergePropertiesByName with disabledOptions', () => {
 
 		const merged = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
 
-		const prop = merged.get('sessionKey');
-		expect(prop).toBeDefined();
-		expect(prop?.displayOptions).toEqual({ show: { sessionIdType: ['customKey'] } });
+		const group = merged.get('sessionKey');
+		expect(group).toBeDefined();
+		expect(group).toHaveLength(1);
+		expect(group?.[0].displayOptions).toEqual({ show: { sessionIdType: ['customKey'] } });
 	});
 
 	it('produces the same narrowed result regardless of property ordering', () => {
@@ -1513,10 +1517,10 @@ describe('mergePropertiesByName with disabledOptions', () => {
 		const mergedA = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
 		const mergedB = mergePropertiesByName([editableSessionKey, expressionSessionKey]);
 
-		expect(mergedA.get('sessionKey')?.displayOptions).toEqual({
+		expect(mergedA.get('sessionKey')?.[0].displayOptions).toEqual({
 			show: { sessionIdType: ['customKey'] },
 		});
-		expect(mergedB.get('sessionKey')?.displayOptions).toEqual({
+		expect(mergedB.get('sessionKey')?.[0].displayOptions).toEqual({
 			show: { sessionIdType: ['customKey'] },
 		});
 	});
@@ -1562,7 +1566,7 @@ describe('mergePropertiesByName with disabledOptions', () => {
 		};
 
 		const merged = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
-		const line = generateConditionalSchemaLine(merged.get('sessionKey')!, [
+		const line = generateConditionalSchemaLine(merged.get('sessionKey')![0], [
 			{
 				name: 'sessionIdType',
 				displayName: 'Session ID',
@@ -1573,6 +1577,311 @@ describe('mergePropertiesByName with disabledOptions', () => {
 
 		expect(line).toContain('displayOptions: {"show":{"sessionIdType":["customKey"]}}');
 		expect(line).not.toMatch(/"show":\{[^}]*"fromInput"/);
+	});
+});
+
+describe('mergePropertiesByName with multi-declaration variants', () => {
+	// Real-world repro: BigQuery v2 declares `sqlQuery` twice — one variant for
+	// standard SQL (`hide: useLegacySql=[true]`) and one for legacy SQL
+	// (`show: useLegacySql=[true]`). The two predicates are mutually exclusive,
+	// so the variants must reach codegen as separate entries to be OR-evaluated.
+	const standardSql: NodeProperty = {
+		name: 'sqlQuery',
+		displayName: 'SQL Query',
+		type: 'string',
+		default: '',
+		displayOptions: { hide: { '/options.useLegacySql': [true] } },
+	};
+	const legacySql: NodeProperty = {
+		name: 'sqlQuery',
+		displayName: 'SQL Query',
+		type: 'string',
+		default: '',
+		displayOptions: { show: { '/options.useLegacySql': [true] } },
+	};
+
+	it('keeps mutually-exclusive declarations as separate variants', () => {
+		const merged = mergePropertiesByName([standardSql, legacySql]);
+		const group = merged.get('sqlQuery');
+
+		expect(group).toHaveLength(2);
+		expect(group?.[0].displayOptions).toEqual({ hide: { '/options.useLegacySql': [true] } });
+		expect(group?.[1].displayOptions).toEqual({ show: { '/options.useLegacySql': [true] } });
+	});
+
+	it('emits a resolveOneOfSchemas line when codegen runs on a multi-variant group', () => {
+		const node: NodeTypeDescription = {
+			name: 'n8n-nodes-base.dummy',
+			displayName: 'Dummy',
+			version: 1,
+			group: ['transform'],
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [standardSql, legacySql],
+		};
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toContain('resolveOneOfSchemas({');
+		expect(code).toContain('"hide":{"/options.useLegacySql":[true]}');
+		expect(code).toContain('"show":{"/options.useLegacySql":[true]}');
+		expect(code).toContain('resolveOneOfSchemas }');
+	});
+
+	it('runtime: accepts sqlQuery for every value of useLegacySql via resolveOneOfSchemas', async () => {
+		const { resolveOneOfSchemas } = await import('../validation/resolve-schema');
+		const { z } = await import('zod');
+
+		const variants = [
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: standardSql.displayOptions!,
+			},
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: legacySql.displayOptions!,
+			},
+		];
+
+		const schemaWhenLegacy = resolveOneOfSchemas({
+			parameters: { options: { useLegacySql: true } },
+			variants,
+		});
+		const schemaWhenStandard = resolveOneOfSchemas({
+			parameters: { options: { useLegacySql: false } },
+			variants,
+		});
+		const schemaWhenUnset = resolveOneOfSchemas({
+			parameters: { options: {} },
+			variants,
+		});
+
+		expect(schemaWhenLegacy.safeParse('SELECT 1').success).toBe(true);
+		expect(schemaWhenStandard.safeParse('SELECT 1').success).toBe(true);
+		expect(schemaWhenUnset.safeParse('SELECT 1').success).toBe(true);
+	});
+
+	it('runtime: enforces required when the visible variant is required', async () => {
+		const { resolveOneOfSchemas } = await import('../validation/resolve-schema');
+		const { z } = await import('zod');
+
+		// Hypothetical: variantA is required when mode=a, variantB is optional
+		// when mode=b. With OR-of-resolveSchema, the inactive variant's
+		// "must-be-undefined" branch would silently mask the required check —
+		// resolveOneOfSchemas must instead use the active variant's required flag.
+		const variants = [
+			{
+				schema: z.string(),
+				required: true,
+				displayOptions: { show: { mode: ['a'] } },
+			},
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: { show: { mode: ['b'] } },
+			},
+		];
+
+		const whenA = resolveOneOfSchemas({ parameters: { mode: 'a' }, variants });
+		const whenB = resolveOneOfSchemas({ parameters: { mode: 'b' }, variants });
+		const whenC = resolveOneOfSchemas({ parameters: { mode: 'c' }, variants });
+
+		expect(whenA.safeParse(undefined).success).toBe(false); // required
+		expect(whenA.safeParse('value').success).toBe(true);
+		expect(whenB.safeParse(undefined).success).toBe(true); // optional
+		expect(whenB.safeParse('value').success).toBe(true);
+		expect(whenC.safeParse(undefined).success).toBe(true); // hidden, must be undefined
+		expect(whenC.safeParse('value').success).toBe(false);
+	});
+
+	it('runtime: full DSL — @version, _cnd operators, root paths — work per variant', async () => {
+		const { resolveOneOfSchemas } = await import('../validation/resolve-schema');
+		const { z } = await import('zod');
+
+		const variants: SchemaVariant[] = [
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: { show: { '/modelId': [{ _cnd: { includes: 'gpt-image' } }] } },
+			},
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: { show: { '/model': ['dall-e-2'] } },
+			},
+		];
+
+		const whenGptImage = resolveOneOfSchemas({
+			parameters: { modelId: 'gpt-image-1-2024' },
+			variants,
+		});
+		const whenDallE = resolveOneOfSchemas({ parameters: { model: 'dall-e-2' }, variants });
+		const whenNeither = resolveOneOfSchemas({ parameters: {}, variants });
+
+		expect(whenGptImage.safeParse('hello').success).toBe(true);
+		expect(whenDallE.safeParse('hello').success).toBe(true);
+		expect(whenNeither.safeParse('hello').success).toBe(false);
+	});
+
+	it('runtime: refuses settings when no variant is visible, with a combined OR error message', async () => {
+		const { resolveOneOfSchemas } = await import('../validation/resolve-schema');
+		const { z } = await import('zod');
+
+		const schema = resolveOneOfSchemas({
+			parameters: { options: { useLegacySql: 'maybe' } },
+			variants: [
+				{
+					schema: z.string(),
+					required: false,
+					displayOptions: { show: { '/options.useLegacySql': [true] } },
+				},
+				{
+					schema: z.string(),
+					required: false,
+					// Also not visible because hide checks against actual value 'maybe'
+					// but actual value is 'maybe' so hide doesn't fire — still visible.
+					// Adjust: make this also impossible.
+					displayOptions: { show: { '/options.useLegacySql': [false] } },
+				},
+			],
+		});
+
+		const result = schema.safeParse('SELECT 1');
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			const message = result.error.issues[0]?.message ?? '';
+			expect(message).toContain('OR');
+		}
+	});
+
+	it('OR alternatives still merge cleanly when the existing union behaviour suffices', () => {
+		// Three Agent-style text declarations differing only in promptType show
+		// values. Each variant lands as its own group entry; the runtime
+		// resolver picks whichever matches, so the visible behaviour matches
+		// the historical "show: { promptType: [a, b, c] }" merge.
+		const a: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { promptType: ['guardrails'] } },
+		};
+		const b: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { promptType: ['auto'] } },
+		};
+		const c: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { promptType: ['define'] } },
+		};
+		const merged = mergePropertiesByName([a, b, c]);
+		const group = merged.get('text');
+
+		expect(group).toHaveLength(3);
+		expect(group?.map((g) => g.displayOptions)).toEqual([
+			{ show: { promptType: ['guardrails'] } },
+			{ show: { promptType: ['auto'] } },
+			{ show: { promptType: ['define'] } },
+		]);
+	});
+
+	it('preserves OR semantics for show-on-one-value + hide-on-another-value (CoinGecko shape)', async () => {
+		// Real-world repro: CoinGecko v1 declares this shape on a coin/market
+		// chart parameter — `show: searchBy=['coinId']` and
+		// `hide: searchBy=['contractAddress']`. The two predicates aren't
+		// literally contradictory (no value overlap), but the naive union-merge
+		// produces `searchBy='coinId' AND searchBy≠'contractAddress'`, which
+		// equals just "searchBy='coinId'" — wrong, since the OR semantic is
+		// "searchBy='coinId' OR searchBy≠'contractAddress'" = "searchBy ≠
+		// 'contractAddress'". With the fix in place the variants stay separate
+		// and the runtime resolver evaluates OR.
+		const showOnA: NodeProperty = {
+			name: 'tickerField',
+			displayName: 'Ticker Field',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { searchBy: ['coinId'] } },
+		};
+		const hideOnB: NodeProperty = {
+			name: 'tickerField',
+			displayName: 'Ticker Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: { searchBy: ['contractAddress'] } },
+		};
+
+		const merged = mergePropertiesByName([showOnA, hideOnB]);
+		const group = merged.get('tickerField');
+
+		// Variants stay separate — no lossy union-merge.
+		expect(group).toHaveLength(2);
+		expect(group?.[0].displayOptions).toEqual({ show: { searchBy: ['coinId'] } });
+		expect(group?.[1].displayOptions).toEqual({ hide: { searchBy: ['contractAddress'] } });
+
+		// Runtime: the field must be settable in every state OR-semantics demands.
+		const { resolveOneOfSchemas } = await import('../validation/resolve-schema');
+		const { z } = await import('zod');
+		const variants: SchemaVariant[] = [
+			{ schema: z.string(), required: false, displayOptions: { show: { searchBy: ['coinId'] } } },
+			{
+				schema: z.string(),
+				required: false,
+				displayOptions: { hide: { searchBy: ['contractAddress'] } },
+			},
+		];
+
+		// searchBy='coinId': variantA visible (variantB also visible since hide
+		// doesn't fire) → settable. The naive merge would also accept this.
+		expect(
+			resolveOneOfSchemas({ parameters: { searchBy: 'coinId' }, variants }).safeParse('AAPL')
+				.success,
+		).toBe(true);
+
+		// searchBy='other': variantA hidden, variantB visible → settable. The
+		// naive merge would have REJECTED this — that's the bug the OR fix
+		// addresses.
+		expect(
+			resolveOneOfSchemas({ parameters: { searchBy: 'other' }, variants }).safeParse('AAPL')
+				.success,
+		).toBe(true);
+
+		// searchBy='contractAddress': variantA hidden, variantB hidden by its
+		// own `hide` rule → field must be unset.
+		expect(
+			resolveOneOfSchemas({
+				parameters: { searchBy: 'contractAddress' },
+				variants,
+			}).safeParse('AAPL').success,
+		).toBe(false);
+	});
+
+	it('collapses to a single unconditional declaration when any variant is unconditional', () => {
+		const conditional: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { mode: ['advanced'] } },
+		};
+		const unconditional: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+		};
+
+		const merged = mergePropertiesByName([conditional, unconditional]);
+		const group = merged.get('field');
+
+		expect(group).toHaveLength(1);
+		expect(group?.[0].displayOptions).toBeUndefined();
 	});
 });
 

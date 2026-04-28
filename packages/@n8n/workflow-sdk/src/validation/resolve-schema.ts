@@ -170,3 +170,75 @@ export function resolveSchema({
 		});
 	}
 }
+
+/**
+ * One variant of a parameter that has multiple declarations sharing a name —
+ * e.g. BigQuery's two `sqlQuery` declarations (one shown for standard SQL,
+ * one for legacy). At runtime the resolver picks the variant whose
+ * displayOptions match the current parameters.
+ */
+export type SchemaVariant = {
+	schema: z.ZodTypeAny;
+	required: boolean;
+	displayOptions: DisplayOptions;
+};
+
+export type ResolveOneOfSchemasConfig = {
+	parameters: Record<string, unknown>;
+	variants: SchemaVariant[];
+	defaults?: Record<string, unknown>;
+	isToolNode?: boolean;
+};
+
+/**
+ * Resolve a property whose visibility is described by multiple alternative
+ * variants (OR semantics). Used when a node declares the same property name
+ * more than once with mutually-exclusive `displayOptions`.
+ *
+ * Logic:
+ * - 0 visible variants → field must be `undefined` (returns refinement with a
+ *   combined "A OR B …" message).
+ * - 1 visible variant → that variant's schema (required, or `.optional()`).
+ * - ≥2 visible variants → `z.union` of their schemas, optional iff every
+ *   visible variant is optional. Required-when-visible is honoured: if any
+ *   currently-visible variant is required, the field cannot be `undefined`.
+ */
+export function resolveOneOfSchemas({
+	parameters,
+	variants,
+	defaults = {},
+	isToolNode,
+}: ResolveOneOfSchemasConfig): z.ZodTypeAny {
+	const context: DisplayOptionsContext = { parameters, defaults, isToolNode };
+	const visible = variants.filter((v) => matchesDisplayOptionsCore(context, v.displayOptions));
+
+	if (visible.length === 0) {
+		const requirementParts = variants
+			.map((v) => formatDisplayOptionsRequirements(v.displayOptions))
+			.filter((s) => s.length > 0);
+		const requirements =
+			requirementParts.length > 0
+				? requirementParts.length === 1
+					? requirementParts[0]
+					: requirementParts.map((s) => `(${s})`).join(' OR ')
+				: '';
+		return z.any().refine((val) => val === undefined, {
+			message: requirements
+				? `This field is only allowed when: ${requirements}`
+				: 'This field is not applicable for the current configuration',
+		});
+	}
+
+	if (visible.length === 1) {
+		const v = visible[0];
+		return v.required ? v.schema : v.schema.optional();
+	}
+
+	// 2+ variants visible at once — rare; happens when overlapping show/hide
+	// conditions are simultaneously satisfied. Combine into a union and only
+	// allow `undefined` if every visible variant is itself optional.
+	const allOptional = visible.every((v) => !v.required);
+	const [first, second, ...rest] = visible;
+	const union = z.union([first.schema, second.schema, ...rest.map((v) => v.schema)]);
+	return allOptional ? union.optional() : union;
+}

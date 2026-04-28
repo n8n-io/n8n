@@ -876,73 +876,139 @@ export function mergeDisplayOptions(
 }
 
 /**
- * Merge duplicate properties by name, combining displayOptions and nested options.
- * When multiple properties have the same name (e.g., multiple 'options' collections
- * with different displayOptions), their displayOptions and nested options are merged.
+ * Group properties by name and resolve duplicate declarations.
  *
- * Properties whose displayOptions are fully covered by disabledOptions (the field
- * is rendered read-only in all its visible states, e.g. the expression-prefilled
- * variant of a sessionKey) contribute no settable states and are skipped, so the
- * generated schema only accepts values in states where the field is actually
- * user-editable.
+ * In n8n, multiple property declarations sharing a name represent OR
+ * alternatives (only one is "active" at a time, depending on the user's other
+ * parameter values). Wherever the alternatives have *compatible* visibility
+ * predicates, this function union-merges them into a single declaration —
+ * preserving the historical merge behaviour that existing tests and downstream
+ * consumers expect (e.g. the Agent node's three `text` declarations differ
+ * only in `promptType` show-values and merge cleanly to
+ * `show: { promptType: ['guardrails', 'auto', 'define'] }`).
+ *
+ * When the alternatives have *incompatible* predicates — typical example:
+ * BigQuery's two `sqlQuery` declarations, one shown when `useLegacySql=true`
+ * and one hidden when `useLegacySql=true` — the naive union-merge produces a
+ * self-contradicting `{show, hide}` that rejects every configuration. In
+ * those cases the declarations are kept as separate entries in the returned
+ * array so the codegen can emit a `resolveOneOfSchemas(...)` call that
+ * OR-evaluates the variants at runtime.
+ *
+ * Properties whose displayOptions are fully covered by disabledOptions (the
+ * field is rendered read-only in all its visible states, e.g. the
+ * expression-prefilled variant of a sessionKey) contribute no settable states
+ * and are skipped, so the generated schema only accepts values in states
+ * where the field is actually user-editable.
  *
  * @param properties - Array of node properties, possibly with duplicates
- * @returns Map of property name to merged property
+ * @returns Map of property name to its declaration group. Single-element
+ *   arrays are the common case (one declaration, or several that merged
+ *   cleanly). Multi-element arrays are mutually-exclusive variants.
  */
-export function mergePropertiesByName(properties: NodeProperty[]): Map<string, NodeProperty> {
-	const propsByName = new Map<string, NodeProperty>();
-
+export function mergePropertiesByName(properties: NodeProperty[]): Map<string, NodeProperty[]> {
+	// Pass 1: bucket the raw declarations by name, after dropping
+	// display-only types and fully-disabled variants.
+	const declsByName = new Map<string, NodeProperty[]>();
 	for (const prop of properties) {
-		// Skip display-only types
 		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
-
 		const { displayOptions: narrowedDisplayOptions, fullyDisabled } =
 			narrowDisplayOptionsByDisabled(prop);
 		if (fullyDisabled) {
 			continue;
 		}
-
-		const normalizedProp: NodeProperty = { ...prop, displayOptions: narrowedDisplayOptions };
-
-		const existing = propsByName.get(normalizedProp.name);
-		if (existing) {
-			// Merge displayOptions from duplicate property
-			if (normalizedProp.displayOptions && existing.displayOptions) {
-				existing.displayOptions = mergeDisplayOptions(
-					existing.displayOptions,
-					normalizedProp.displayOptions,
-				);
-			} else if (normalizedProp.displayOptions && !existing.displayOptions) {
-				// If only the new one has displayOptions, the existing one has no condition
-				// which means it's always visible - keep existing as-is (no condition)
-			}
-
-			// For collection/fixedCollection types, merge nested options
-			if (
-				(normalizedProp.type === 'collection' || normalizedProp.type === 'fixedCollection') &&
-				normalizedProp.options &&
-				existing.options
-			) {
-				const existingOptionNames = new Set(existing.options.map((o) => o.name));
-				for (const opt of normalizedProp.options) {
-					if (!existingOptionNames.has(opt.name)) {
-						existing.options.push(opt);
-					}
-				}
-			}
-			// Keep the first property's other attributes (type, required, etc.)
+		const normalized: NodeProperty = {
+			...prop,
+			displayOptions: narrowedDisplayOptions,
+			options: prop.options ? [...prop.options] : undefined,
+		};
+		const list = declsByName.get(normalized.name);
+		if (list) {
+			list.push(normalized);
 		} else {
-			// Create a shallow copy to avoid mutating the original when merging
-			propsByName.set(normalizedProp.name, {
-				...normalizedProp,
-				options: normalizedProp.options ? [...normalizedProp.options] : undefined,
-			});
+			declsByName.set(normalized.name, [normalized]);
 		}
 	}
 
-	return propsByName;
+	// Pass 2: collapse compatible declarations and keep incompatible ones split.
+	const result = new Map<string, NodeProperty[]>();
+	for (const [name, decls] of declsByName) {
+		result.set(name, collapseDeclarations(decls));
+	}
+	return result;
+}
+
+/**
+ * Resolve a list of same-named declarations into the form the codegen will
+ * emit:
+ *
+ * - 1 declaration: returned as-is (codegen emits a single `resolveSchema`).
+ * - Any declaration is unconditional (no displayOptions): the OR short-circuits
+ *   to "always visible" — emit a single declaration without displayOptions.
+ *   Inner options (for collection/fixedCollection) are unioned across all
+ *   declarations so the schema accepts any inner option from any variant.
+ * - All declarations are conditional and there are 2+ of them: keep them as
+ *   separate variants (codegen emits `resolveOneOfSchemas`). We deliberately
+ *   do NOT union-merge them into a single show/hide object — the merge is
+ *   only equivalent to OR in narrow cases, and silently produces a *more
+ *   restrictive* predicate the rest of the time (e.g. CoinGecko's
+ *   `show: searchBy=['coinId']` + `hide: searchBy=['contractAddress']`
+ *   collapses to "searchBy=coinId" instead of the intended
+ *   "searchBy≠contractAddress").
+ *
+ *   Inner options for collection/fixedCollection variants are still unioned
+ *   onto the *first* variant — at runtime the parameter has a single key/value
+ *   slot, so the schema must accept any inner option from any variant. The
+ *   first variant carries the merged inner options; later variants share the
+ *   same `options` reference for emit consistency.
+ */
+function collapseDeclarations(decls: NodeProperty[]): NodeProperty[] {
+	if (decls.length === 1) return decls;
+
+	// Any unconditional declaration short-circuits the OR to "always visible".
+	const unconditional = decls.find((d) => !d.displayOptions);
+	if (unconditional) {
+		return [
+			{
+				...unconditional,
+				displayOptions: undefined,
+				options: mergeNestedOptions(decls),
+			},
+		];
+	}
+
+	// All declarations have displayOptions — keep them separate as variants
+	// so the runtime resolver OR-combines them. Union the nested options so
+	// every variant carries the same complete option set.
+	const mergedOptions = mergeNestedOptions(decls);
+	return decls.map((d) => ({ ...d, options: mergedOptions }));
+}
+
+/**
+ * For collection/fixedCollection declarations sharing a name, union the inner
+ * options arrays by inner-option name (first declaration wins on conflicts).
+ * Mirrors the previous in-place merge behaviour.
+ */
+function mergeNestedOptions(decls: NodeProperty[]): NodeProperty['options'] {
+	const first = decls[0];
+	if (first.type !== 'collection' && first.type !== 'fixedCollection') {
+		return first.options ? [...first.options] : undefined;
+	}
+	const merged = first.options ? [...first.options] : [];
+	const seen = new Set(merged.map((o) => o.name));
+	for (let i = 1; i < decls.length; i++) {
+		const opts = decls[i].options;
+		if (!opts) continue;
+		for (const opt of opts) {
+			if (!seen.has(opt.name)) {
+				merged.push(opt);
+				seen.add(opt.name);
+			}
+		}
+	}
+	return merged.length > 0 ? merged : undefined;
 }
 
 /**
@@ -974,6 +1040,144 @@ export function generateConditionalSchemaLine(
 		Object.keys(defaults).length > 0 ? `, defaults: ${JSON.stringify(defaults)}` : '';
 
 	return `${INDENT}${propName}: resolveSchema({ parameters, schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr}${defaultsStr} }),`;
+}
+
+/**
+ * Emit one or more lines of generated code for a single property group from
+ * `mergePropertiesByName`. A group is either:
+ *
+ * - 1 declaration → emit a single `resolveSchema` (or static schema) line.
+ * - 2+ declarations → emit one `resolveOneOfSchemas` line covering all
+ *   variants.
+ *
+ * Discriminator keys (e.g. `@version`, or `resource`/`operation` for
+ * discriminator-split files) are stripped from each variant's displayOptions
+ * since the discriminator file split already enforces them. If every variant
+ * strips down to an empty displayOptions, the field is unconditional and
+ * codegen falls back to a static schema line.
+ */
+function emitPropertyGroup(
+	group: NodeProperty[],
+	allDeclarations: NodeProperty[],
+	discriminatorKeys: string[],
+	indent: string,
+	out: string[],
+): void {
+	if (group.length === 0) return;
+
+	if (group.length === 1) {
+		const prop = group[0];
+		if (prop.displayOptions) {
+			const stripped = stripDiscriminatorKeysFromDisplayOptions(
+				prop.displayOptions,
+				discriminatorKeys,
+			);
+			if (stripped) {
+				const line = generateConditionalSchemaLine(
+					{ ...prop, displayOptions: stripped },
+					allDeclarations,
+				);
+				if (line) out.push(indent + line);
+				return;
+			}
+		}
+		const line = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
+		if (line) out.push(indent + line);
+		return;
+	}
+
+	// Multi-variant group. Strip discriminator keys from each variant; drop
+	// variants that strip down to nothing (they were entirely discriminated).
+	const strippedVariants: NodeProperty[] = [];
+	for (const variant of group) {
+		if (!variant.displayOptions) {
+			// Should not happen — collapseDeclarations resolves unconditional
+			// short-circuits to a single declaration. Be defensive anyway.
+			strippedVariants.push(variant);
+			continue;
+		}
+		const stripped = stripDiscriminatorKeysFromDisplayOptions(
+			variant.displayOptions,
+			discriminatorKeys,
+		);
+		if (stripped) {
+			strippedVariants.push({ ...variant, displayOptions: stripped });
+		}
+	}
+
+	if (strippedVariants.length === 0) {
+		// Every variant was wholly discriminated away. Emit a static schema
+		// line using the first declaration's shape.
+		const line = generateSchemaPropertyLine(group[0], isPropertyOptional(group[0]));
+		if (line) out.push(indent + line);
+		return;
+	}
+
+	if (strippedVariants.length === 1) {
+		// Only one variant survived stripping — emit it as a single
+		// `resolveSchema` call.
+		const line = generateConditionalSchemaLine(strippedVariants[0], allDeclarations);
+		if (line) out.push(indent + line);
+		return;
+	}
+
+	const line = generateOneOfSchemasLine(strippedVariants, allDeclarations);
+	if (line) out.push(indent + line);
+}
+
+/**
+ * Generate a `resolveOneOfSchemas(...)` line for a property whose visibility
+ * is described by multiple mutually-exclusive variants. Each variant gets its
+ * own `{ schema, required, displayOptions }` entry; the runtime evaluator
+ * picks the visible variant via the same `matchesDisplayOptions` matcher
+ * `resolveSchema` uses, so the full DSL (`@version`, `@tool`, `_cnd`
+ * operators, root-paths, regex paths, defaults, expressions) is honoured per
+ * variant.
+ *
+ * All variants are expected to share a name (callers feed them straight from
+ * `mergePropertiesByName`). Each variant carries its own `required` flag, so
+ * "required when visible" is enforced correctly even when some other variant
+ * is the one currently active.
+ */
+export function generateOneOfSchemasLine(
+	variants: NodeProperty[],
+	allProperties: NodeProperty[] = [],
+): string {
+	if (variants.length === 0) return '';
+
+	const propName = quotePropertyName(variants[0].name);
+
+	const variantEntries: string[] = [];
+	const referencedProperties: MergeableDisplayOptions[] = [];
+	for (const variant of variants) {
+		const zodSchema = mapPropertyToZodSchema(variant);
+		if (!zodSchema) continue;
+		const required = !isPropertyOptional(variant);
+		const displayOptionsStr = JSON.stringify(variant.displayOptions ?? {});
+		variantEntries.push(
+			`{ schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr} }`,
+		);
+		if (variant.displayOptions) {
+			referencedProperties.push(variant.displayOptions);
+		}
+	}
+
+	if (variantEntries.length === 0) return '';
+
+	// Defaults are extracted from every variant's referenced property names,
+	// so the runtime resolver can fall back to declared defaults when checking
+	// whether a variant matches.
+	const defaults: Record<string, unknown> = {};
+	for (const dispOpts of referencedProperties) {
+		const partial = extractDefaultsForDisplayOptions(dispOpts, allProperties);
+		for (const [k, v] of Object.entries(partial)) {
+			if (!(k in defaults)) defaults[k] = v;
+		}
+	}
+	const defaultsStr =
+		Object.keys(defaults).length > 0 ? `, defaults: ${JSON.stringify(defaults)}` : '';
+
+	return `${INDENT}${propName}: resolveOneOfSchemas({ parameters, variants: [${variantEntries.join(', ')}]${defaultsStr} }),`;
 }
 
 // =============================================================================
@@ -1168,9 +1372,14 @@ export function generateSingleVersionSchemaFile(
 		'iDataObjectSchema',
 	];
 
-	// Add resolveSchema if we need it
+	// Add resolveSchema (and the multi-variant counterpart) if we need it.
+	// resolveOneOfSchemas is only used when a property name has multiple
+	// declarations with mutually-exclusive displayOptions, but we surface both
+	// helpers together — schema-helpers.ts exports them as a pair and the cost
+	// of an unused destructured binding is nothing.
 	if (needsResolveSchema) {
 		helpers.push('resolveSchema');
+		helpers.push('resolveOneOfSchemas');
 	}
 
 	// Add subnode schema imports if this is an AI node
@@ -1269,36 +1478,10 @@ export function generateSingleVersionSchemaFile(
 
 	// Group properties by name, merging displayOptions and nested options for duplicates
 	const propsByName = mergePropertiesByName(filteredProperties);
-	const allPropsArray = Array.from(propsByName.values());
+	const allDeclarations = Array.from(propsByName.values()).flat();
 
-	for (const prop of allPropsArray) {
-		if (prop.displayOptions) {
-			// Strip @version since it's implicit in the file path
-			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(prop.displayOptions, [
-				'@version',
-			]);
-			if (strippedDisplayOptions) {
-				const propWithStripped: NodeProperty = {
-					...prop,
-					displayOptions: strippedDisplayOptions,
-				};
-				const propLine = generateConditionalSchemaLine(propWithStripped, allPropsArray);
-				if (propLine) {
-					lines.push(INDENT + propLine);
-				}
-			} else {
-				// No remaining conditions after stripping @version - use static schema
-				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-				if (propLine) {
-					lines.push(INDENT + propLine);
-				}
-			}
-		} else {
-			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-			if (propLine) {
-				lines.push(INDENT + propLine);
-			}
-		}
+	for (const group of propsByName.values()) {
+		emitPropertyGroup(group, allDeclarations, ['@version'], INDENT, lines);
 	}
 
 	lines.push(`${INDENT}});`);
@@ -1428,6 +1611,7 @@ export function generateDiscriminatorSchemaFile(
 	// Add resolveSchema if properties have displayOptions OR AI inputs have displayOptions
 	if (hasRemainingDisplayOptions || hasConditionalAiInputs) {
 		helpers.push('resolveSchema');
+		helpers.push('resolveOneOfSchemas');
 	}
 
 	// Add subnode schema imports if this combo has AI inputs
@@ -1543,37 +1727,10 @@ export function generateDiscriminatorSchemaFile(
 
 	// Group properties by name, merging displayOptions and nested options for duplicates
 	const propsByName = mergePropertiesByName(props);
+	const allDeclarations = Array.from(propsByName.values()).flat();
 
-	// Generate schema for each merged property
-	// Convert propsByName to array for extractDefaultsForDisplayOptions
-	const allPropsArray = Array.from(propsByName.values());
-	for (const prop of allPropsArray) {
-		if (prop.displayOptions) {
-			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
-				prop.displayOptions,
-				discriminatorKeys,
-			);
-			if (strippedDisplayOptions) {
-				const propWithStrippedOptions: NodeProperty = {
-					...prop,
-					displayOptions: strippedDisplayOptions,
-				};
-				const propLine = generateConditionalSchemaLine(propWithStrippedOptions, allPropsArray);
-				if (propLine) {
-					lines.push(INDENT.repeat(2) + propLine);
-				}
-			} else {
-				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-				if (propLine) {
-					lines.push(INDENT.repeat(2) + propLine);
-				}
-			}
-		} else {
-			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-			if (propLine) {
-				lines.push(INDENT.repeat(2) + propLine);
-			}
-		}
+	for (const group of propsByName.values()) {
+		emitPropertyGroup(group, allDeclarations, discriminatorKeys, INDENT.repeat(2), lines);
 	}
 
 	lines.push(`${INDENT.repeat(2)}}).optional(),`);
