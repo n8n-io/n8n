@@ -136,7 +136,7 @@ export const AgentsModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'aiAssistant:manage',
+						scope: 'agent:manage',
 					},
 				},
 				telemetry: {
