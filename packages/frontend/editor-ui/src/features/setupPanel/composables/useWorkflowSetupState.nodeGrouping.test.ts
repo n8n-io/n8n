@@ -39,6 +39,7 @@ const mockWorkflowDocumentStore = {
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	connectionsByDestinationNode: {},
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -169,7 +170,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		});
 
 		// AI connection: LLM → Agent via ai_languageModel
-		workflowsStore.connectionsByDestinationNode = {
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {
 			'AI Agent': {
 				ai_languageModel: [[{ node: 'OpenAI Chat Model', type: 'ai_languageModel', index: 0 }]],
 			},

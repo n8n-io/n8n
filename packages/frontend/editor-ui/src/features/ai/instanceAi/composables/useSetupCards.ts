@@ -197,7 +197,7 @@ export function useSetupCards(
 
 	const displayCards = computed((): DisplayCard[] => {
 		const directSubnodes = new Map<string, Set<string>>();
-		const connectionsByDest = workflowsStore.connectionsByDestinationNode;
+		const connectionsByDest = workflowDocumentStore.value.connectionsByDestinationNode;
 		for (const [destName, conns] of Object.entries(connectionsByDest)) {
 			for (const connType of Object.keys(conns)) {
 				if (connType === NodeConnectionTypes.Main) continue;

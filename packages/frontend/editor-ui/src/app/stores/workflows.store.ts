@@ -19,7 +19,6 @@ import type {
 	IDataObject,
 	ExecutionSummary,
 	INode,
-	INodeConnections,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeTypes,
@@ -31,7 +30,6 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 import { deepCopy, TelemetryHelpers } from 'n8n-workflow';
-import * as workflowUtils from 'n8n-workflow/common';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
@@ -172,25 +170,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return false;
 	});
 
-	const nodesWithIssues = computed(() =>
-		workflow.value.nodes.filter((node) => {
-			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
-			const isConnected =
-				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
-			return !node.disabled && isConnected && nodeHasIssues;
-		}),
-	);
-
-	const nodesWithIssuesCount = computed(() => nodesWithIssues.value.length);
-
-	const nodesIssuesExist = computed(() => nodesWithIssuesCount.value > 0);
-
 	/**
 	 * Get detailed validation issues for all connected, enabled nodes
 	 */
 	const workflowValidationIssues = computed(() => {
 		const issues: WorkflowValidationIssue[] = [];
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowId.value),
+		);
 
 		const isStringOrStringArray = (value: unknown): value is string | string[] =>
 			typeof value === 'string' || Array.isArray(value);
@@ -199,8 +186,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			if (!node.issues || node.disabled) return;
 
 			const isConnected =
-				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
+				Object.keys(workflowDocumentStore.outgoingConnectionsByNodeName(node.name)).length > 0 ||
+				Object.keys(workflowDocumentStore.incomingConnectionsByNodeName(node.name)).length > 0;
 
 			if (!isConnected) return;
 
@@ -254,19 +241,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const getPastChatMessages = computed(() => chatMessages.value);
 
-	/**
-	 * This section contains functions migrated from the workflow class
-	 */
-
-	/** @deprecated Use `workflowDocumentStore.connectionsBySourceNode` instead. */
-	const connectionsBySourceNode = computed(() => workflow.value.connections);
-	/** @deprecated Use `workflowDocumentStore.connectionsByDestinationNode` instead. */
-	const connectionsByDestinationNode = computed(() =>
-		workflowUtils.mapConnectionsByDestination(workflow.value.connections),
-	);
-
-	// End section
-
 	const selectableTriggerNodes = computed(() =>
 		workflowTriggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
 	);
@@ -315,27 +289,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return null;
 		}
 		return getWorkflowRunData.value[nodeName];
-	}
-
-	/** @deprecated Use `workflowDocumentStore.outgoingConnectionsByNodeName()` instead. */
-	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {
-		if (workflow.value.connections.hasOwnProperty(nodeName)) {
-			return workflow.value.connections[nodeName] as unknown as INodeConnections;
-		}
-		return {};
-	}
-
-	/** @deprecated Use `workflowDocumentStore.incomingConnectionsByNodeName()` instead. */
-	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
-		if (connectionsByDestinationNode.value.hasOwnProperty(nodeName)) {
-			return connectionsByDestinationNode.value[nodeName] as unknown as INodeConnections;
-		}
-		return {};
-	}
-
-	/** @deprecated Use `workflowDocumentStore.getNodeById()` instead. */
-	function getNodeById(nodeId: string): INodeUi | undefined {
-		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
 	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
@@ -1114,23 +1067,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		chatMessages.value.push(message);
 	}
 
-	//
-	// Start Canvas V2 Functions
-	//
-
-	function removeNodeExecutionDataById(nodeId: string): void {
-		const node = getNodeById(nodeId);
-		if (!node) {
-			return;
-		}
-
-		clearNodeExecutionData(node.name);
-	}
-
-	//
-	// End Canvas V2 Functions
-	//
-
 	function setSelectedTriggerNodeName(value: string) {
 		selectedTriggerNodeName.value = value;
 	}
@@ -1186,12 +1122,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
-		connectionsBySourceNode,
-		connectionsByDestinationNode,
 		isWorkflowRunning,
-		nodesWithIssuesCount,
-		nodesWithIssues,
-		nodesIssuesExist,
 		workflowValidationIssues,
 		formatIssueMessage,
 		executedNode,
@@ -1200,8 +1131,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getPastChatMessages,
 		selectedTriggerNodeName: computed(() => selectedTriggerNodeName.value),
 		workflowExecutionTriggerNodeName,
-		outgoingConnectionsByNodeName,
-		incomingConnectionsByNodeName,
 		getExecutionDataById,
 		getNodeTypes,
 		convertTemplateNodeToNodeUi,
@@ -1239,7 +1168,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getBinaryUrl,
 		resetChatMessages,
 		appendChatMessage,
-		removeNodeExecutionDataById,
 		getPartialIdForNode,
 		setSelectedTriggerNodeName,
 		fetchLastSuccessfulExecution,

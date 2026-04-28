@@ -1,6 +1,6 @@
 import { defineStore, getActivePinia, type StoreGeneric } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useWorkflowDocumentActive } from './workflowDocument/useWorkflowDocumentActive';
 import { useWorkflowDocumentHomeProject } from './workflowDocument/useWorkflowDocumentHomeProject';
@@ -178,6 +178,22 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
 
+		const nodesWithIssues = computed(() => {
+			return workflowDocumentNodes.allNodes.value.filter((node) => {
+				const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
+				const isConnected =
+					Object.keys(workflowDocumentConnections.outgoingConnectionsByNodeName(node.name)).length >
+						0 ||
+					Object.keys(workflowDocumentConnections.incomingConnectionsByNodeName(node.name)).length >
+						0;
+				return !node.disabled && isConnected && nodeHasIssues;
+			});
+		});
+
+		const nodesWithIssuesCount = computed(() => nodesWithIssues.value.length);
+
+		const nodesIssuesExist = computed(() => nodesWithIssuesCount.value > 0);
+
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
 		// store is where cross-concern side effects are wired. When adding new
@@ -328,6 +344,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		return {
 			workflowId,
 			workflowVersion,
+			nodesWithIssues,
+			nodesWithIssuesCount,
+			nodesIssuesExist,
 			...workflowDocumentName,
 			...workflowDocumentActive,
 			...workflowDocumentHomeProject,

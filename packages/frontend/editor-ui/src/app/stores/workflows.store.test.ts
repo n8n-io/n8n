@@ -16,7 +16,7 @@ import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import { createEmptyRunExecutionData, createRunExecutionData, deepCopy } from 'n8n-workflow';
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type { IConnections, INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
@@ -326,53 +326,6 @@ describe('useWorkflowsStore', () => {
 
 			const runData = workflowsStore.getWorkflowRunData;
 			expect(runData).toEqual(expectedRunData);
-		});
-	});
-
-	describe('nodesIssuesExist', () => {
-		it('should return true when a node has issues and connected', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1', issues: { error: ['Error message'] } },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			workflowsStore.workflow.connections = {
-				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(true);
-		});
-
-		it('should return false when node has issues but it is not connected', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1', issues: { error: ['Error message'] } },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false when no nodes have issues', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			workflowsStore.workflow.connections = {
-				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false when there are no nodes', () => {
-			workflowsStore.workflow.nodes = [];
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
 		});
 	});
 

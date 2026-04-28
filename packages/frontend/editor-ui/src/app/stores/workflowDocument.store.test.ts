@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, type IConnection } from 'n8n-workflow';
 import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
 import type { Scope } from '@n8n/permissions';
 import {
@@ -514,6 +514,58 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.connectionsBySourceNode).toEqual({});
 			expect(store.pinData).toEqual({});
 			expect(store.viewport).toBeNull();
+		});
+	});
+
+	describe('nodesIssuesExist', () => {
+		it('should return true when a node has issues and connected', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			store.setNodes([
+				{ name: 'Node1', issues: { error: ['Error message'] } },
+				{ name: 'Node2' },
+			] as unknown as IWorkflowDb['nodes']);
+
+			store.setConnections({
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			});
+
+			const hasIssues = store.nodesIssuesExist;
+			expect(hasIssues).toBe(true);
+		});
+
+		it('should return false when node has issues but it is not connected', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			store.setNodes([
+				{ name: 'Node1', issues: { error: ['Error message'] } },
+				{ name: 'Node2' },
+			] as unknown as IWorkflowDb['nodes']);
+
+			const hasIssues = store.nodesIssuesExist;
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should return false when no nodes have issues', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			store.setNodes([{ name: 'Node1' }, { name: 'Node2' }] as unknown as IWorkflowDb['nodes']);
+
+			store.setConnections({
+				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
+			});
+
+			const hasIssues = store.nodesIssuesExist;
+			expect(hasIssues).toBe(false);
+		});
+
+		it('should return false when there are no nodes', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+
+			store.setNodes([]);
+
+			const hasIssues = store.nodesIssuesExist;
+			expect(hasIssues).toBe(false);
 		});
 	});
 });

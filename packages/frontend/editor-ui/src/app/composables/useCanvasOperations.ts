@@ -489,7 +489,7 @@ export function useCanvasOperations() {
 		connectAdjacentNodes(id, { trackHistory });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
-		workflowsStore.removeNodeExecutionDataById(id);
+		workflowsStore.clearNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
 
 		if (trackHistory) {
