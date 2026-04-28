@@ -26,7 +26,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
-import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
+import { getAgent, deleteAgent, publishAgent, updateAgentSkill } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import type { AgentResource, AgentJsonConfig, AgentJsonConfigRef, AgentSkill } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
@@ -302,13 +302,24 @@ function onOpenBuildFromChat() {
 	chatMode.value = 'build';
 }
 
-interface AutosaveSnapshot {
+interface ConfigAutosaveSnapshot {
+	type: 'config';
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
 }
 
-async function saveConfig(snapshot: AutosaveSnapshot): Promise<void> {
+interface SkillAutosaveSnapshot {
+	type: 'skill';
+	projectId: string;
+	agentId: string;
+	skillId: string;
+	skill: AgentSkill;
+}
+
+type AutosaveSnapshot = ConfigAutosaveSnapshot | SkillAutosaveSnapshot;
+
+async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// Drop the response if the user has switched to a different agent in the
 	// meantime — both `config` (handled inside useAgentConfig) and
@@ -320,11 +331,38 @@ async function saveConfig(snapshot: AutosaveSnapshot): Promise<void> {
 	}
 }
 
+async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
+	const updated = await updateAgentSkill(
+		rootStore.restApiContext,
+		snapshot.projectId,
+		snapshot.agentId,
+		snapshot.skillId,
+		snapshot.skill,
+	);
+	if (agent.value?.id !== snapshot.agentId) return;
+	agent.value = {
+		...agent.value,
+		skills: {
+			...(agent.value.skills ?? {}),
+			[snapshot.skillId]: updated,
+		},
+	};
+	await fetchAgent();
+}
+
+async function saveAutosaveSnapshot(snapshot: AutosaveSnapshot): Promise<void> {
+	if (snapshot.type === 'config') {
+		await saveConfig(snapshot);
+		return;
+	}
+	await saveSkill(snapshot);
+}
+
 // Debounce shorter than the workflow canvas' 1500ms — the publish button's
 // "enabled" state is gated on the save landing, so a longer wait makes the
 // UI feel laggy right after an edit.
 const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave<AutosaveSnapshot>({
-	save: saveConfig,
+	save: saveAutosaveSnapshot,
 	onSaved: () => {
 		telemetry.track('User saved agent settings', { agent_id: agentId.value });
 		builderTelemetry.flushConfigEdits();
@@ -346,6 +384,7 @@ function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
 	scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
+		type: 'config',
 		config: deepCopy(localConfig.value),
 	});
 }
@@ -364,6 +403,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
+		type: 'config',
 		config: deepCopy(localConfig.value),
 	});
 }
@@ -469,6 +509,7 @@ async function guardUnpublishedChanges(
 			await settleAutosave();
 			if (!localConfig.value) return;
 			await saveConfig({
+				type: 'config',
 				projectId: leavingProjectId,
 				agentId: leavingAgentId,
 				config: deepCopy(localConfig.value),
@@ -664,6 +705,28 @@ function onRemoveSkill(id: string) {
 	if (selectedSection.value === `skills.${id}`) {
 		selectedSection.value = 'skills';
 	}
+}
+
+function onSkillUpdate(updates: Partial<AgentSkill>) {
+	const selected = selectedSkill.value;
+	if (!selected || !agent.value) return;
+
+	const updatedSkill = { ...selected.skill, ...updates };
+	agent.value = {
+		...agent.value,
+		skills: {
+			...(agent.value.skills ?? {}),
+			[selected.id]: updatedSkill,
+		},
+	};
+
+	scheduleAutosave({
+		type: 'skill',
+		projectId: projectId.value,
+		agentId: agentId.value,
+		skillId: selected.id,
+		skill: deepCopy(updatedSkill),
+	});
 }
 
 function onOpenAddToolModal() {
@@ -1100,7 +1163,12 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:config="onSectionEditorUpdate"
 					/>
 					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
-					<AgentSkillViewer v-else-if="selectedSkill" :skill="selectedSkill.skill" />
+					<AgentSkillViewer
+						v-else-if="selectedSkill"
+						:skill="selectedSkill.skill"
+						:disabled="isBuildChatStreaming"
+						@update:skill="onSkillUpdate"
+					/>
 					<AgentAdvancedPanel
 						v-else-if="selectedSection === ADVANCED_SECTION_KEY"
 						:config="localConfig"
@@ -1483,13 +1551,14 @@ function onSwitchAgent(nextAgentId: string) {
 .panelToolbar {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--sm);
 	border-bottom: var(--border);
 	/* Overrides `.panelArea > *` which sets flex:1. The toolbar should size to
 	   its content, not share height with the panel below. */
-	flex: 0 0 auto !important;
-	min-height: auto !important;
+	flex: 0 0 36px !important;
+	height: 36px !important;
+	min-height: 36px !important;
 }
 
 .panelToolbarTitle {
@@ -1499,7 +1568,7 @@ function onSwitchAgent(nextAgentId: string) {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-family: var(--font-family--monospace, monospace);
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text);
 }
 
@@ -1507,8 +1576,8 @@ function onSwitchAgent(nextAgentId: string) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
+	width: 24px;
+	height: 24px;
 	padding: 0;
 	background: transparent;
 	border: var(--border);
