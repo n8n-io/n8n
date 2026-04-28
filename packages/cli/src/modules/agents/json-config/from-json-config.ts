@@ -38,7 +38,7 @@ export interface BuildFromJsonOptions {
 	credentialProvider: CredentialProvider;
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
 	resolveTool?: ToolResolver;
-	/** Stored skill bodies keyed by skill id. Only refs present in config.tools are enabled. */
+	/** Stored skill bodies keyed by skill id. Only refs present in config.skills are enabled. */
 	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
@@ -72,13 +72,12 @@ export async function buildFromJson(
 		agent.model(config.model);
 	}
 
-	const enabledSkills = getEnabledSkills(config.tools ?? [], options.skills ?? {});
+	const enabledSkills = getEnabledSkills(config.skills ?? [], options.skills ?? {});
 	agent.instructions(withSkillCatalog(config.instructions, enabledSkills));
 
 	// Tools
 	if (config.tools) {
 		for (const ref of config.tools) {
-			if (isSkillRef(ref)) continue;
 			const built = await resolveToolRef(ref, toolDescriptors, options);
 			if (built) {
 				agent.tool(built);
@@ -122,14 +121,14 @@ export async function buildFromJson(
 type EnabledSkill = { id: string; skill: AgentSkill };
 
 function getEnabledSkills(
-	refs: AgentJsonConfigRef[],
+	refs: Array<Extract<AgentJsonConfigRef, { type: 'skill' }>>,
 	skills: Record<string, AgentSkill>,
 ): EnabledSkill[] {
 	const seen = new Set<string>();
 	const enabled: EnabledSkill[] = [];
 
 	for (const ref of refs) {
-		if (!isSkillRef(ref) || seen.has(ref.id)) continue;
+		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) continue;
@@ -184,12 +183,6 @@ function createLoadSkillTool(skills: EnabledSkill[]): BuiltTool {
 			};
 		})
 		.build();
-}
-
-function isSkillRef(
-	ref: AgentJsonConfigRef,
-): ref is Extract<AgentJsonConfigRef, { type: 'skill' }> {
-	return ref.type === 'skill';
 }
 
 async function resolveToolRef(

@@ -1,10 +1,11 @@
-import type { AgentJsonConfig, AgentJsonConfigRef, AgentResource } from '../types';
+import type { AgentJsonConfig, AgentJsonToolRef, AgentResource } from '../types';
 
 export type AgentTelemetryStatus = 'draft' | 'production';
 
 export type AgentConfigFingerprint = {
 	instructions: string;
 	tools: string[];
+	skills: string[];
 	triggers: string[];
 	memory: { enabled: boolean; storage: 'n8n' | 'sqlite' | 'postgres' } | null;
 	model: string | null;
@@ -24,8 +25,7 @@ async function sha256Hex16(input: string): Promise<string> {
 	return hex.slice(0, 16);
 }
 
-function toolIdentifier(ref: AgentJsonConfigRef): string {
-	if (ref.type === 'skill') return ref.id;
+function toolIdentifier(ref: AgentJsonToolRef): string {
 	if (ref.type === 'custom') return ref.id ?? '';
 	if (ref.type === 'workflow') return ref.name ?? ref.workflow ?? '';
 	return ref.name ?? ref.node?.nodeType ?? '';
@@ -35,12 +35,20 @@ export function toolIdentifiersFromConfig(config: AgentJsonConfig | null): strin
 	return (config?.tools ?? []).map(toolIdentifier).filter(Boolean).sort();
 }
 
+export function skillIdentifiersFromConfig(config: AgentJsonConfig | null): string[] {
+	return (config?.skills ?? [])
+		.map((ref) => ref.id)
+		.filter(Boolean)
+		.sort();
+}
+
 export async function buildAgentConfigFingerprint(
 	config: AgentJsonConfig | null,
 	connectedTriggers: string[],
 ): Promise<AgentConfigFingerprint> {
 	const instructions = config?.instructions ?? '';
 	const tools = toolIdentifiersFromConfig(config);
+	const skills = skillIdentifiersFromConfig(config);
 	const triggers = [...connectedTriggers].sort();
 	const memory = config?.memory
 		? { enabled: config.memory.enabled, storage: config.memory.storage }
@@ -50,6 +58,7 @@ export async function buildAgentConfigFingerprint(
 	const versionPayload = JSON.stringify({
 		instructions,
 		tools,
+		skills,
 		triggers,
 		memory,
 		model,
@@ -59,6 +68,7 @@ export async function buildAgentConfigFingerprint(
 	return {
 		instructions,
 		tools,
+		skills,
 		triggers,
 		memory,
 		model,

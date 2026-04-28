@@ -69,8 +69,8 @@ const sections = computed<SectionDescriptor[]>(() => {
 	const cfg = props.config;
 	if (!cfg) return [];
 	const out: SectionDescriptor[] = [];
-	const toolRefs = Array.isArray(cfg.tools) ? cfg.tools.filter((ref) => ref.type !== 'skill') : [];
-	const skillRefs = Array.isArray(cfg.tools) ? cfg.tools.filter((ref) => ref.type === 'skill') : [];
+	const toolRefs = Array.isArray(cfg.tools) ? cfg.tools : [];
+	const skillRefs = Array.isArray(cfg.skills) ? cfg.skills : [];
 	const skillCount = new Set(skillRefs.map((ref) => ref.id).filter(Boolean)).size;
 
 	// Primary config rows: Agent (bundles name/model/credential/instructions)
@@ -129,7 +129,14 @@ const sections = computed<SectionDescriptor[]>(() => {
 
 	// Any remaining top-level keys render as flat rows.
 	for (const key of Object.keys(cfg)) {
-		if (AGENT_KEYS.has(key) || key === 'tools' || key === 'memory' || key === 'triggers') continue;
+		if (
+			AGENT_KEYS.has(key) ||
+			key === 'tools' ||
+			key === 'skills' ||
+			key === 'memory' ||
+			key === 'triggers'
+		)
+			continue;
 		const known = KNOWN_SECTIONS[key];
 		out.push({
 			key,

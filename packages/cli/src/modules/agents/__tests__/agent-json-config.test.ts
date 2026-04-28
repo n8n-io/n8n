@@ -44,11 +44,11 @@ describe('AgentJsonConfigSchema — config.nodeTools', () => {
 	});
 });
 
-describe('AgentJsonConfigSchema — skill tool refs', () => {
+describe('AgentJsonConfigSchema — skill refs', () => {
 	it('accepts a skill ref with a valid id', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
-			tools: [{ type: 'skill', id: 'summarize_notes' }],
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		});
 
 		expect(parsed.success).toBe(true);
@@ -57,7 +57,16 @@ describe('AgentJsonConfigSchema — skill tool refs', () => {
 	it('rejects a skill ref with an invalid id', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
-			tools: [{ type: 'skill', id: 'SummarizeNotes' }],
+			skills: [{ type: 'skill', id: 'SummarizeNotes' }],
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects skill refs inside tools', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			tools: [{ type: 'skill', id: 'summarize_notes' }],
 		});
 
 		expect(parsed.success).toBe(false);

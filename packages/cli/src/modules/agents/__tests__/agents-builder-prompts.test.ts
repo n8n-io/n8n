@@ -86,6 +86,7 @@ describe('TOOL_TYPES_SECTION', () => {
 		expect(TOOL_TYPES_SECTION).toContain('create_skill');
 		expect(TOOL_TYPES_SECTION).toContain('Use when');
 		expect(TOOL_TYPES_SECTION).toContain('{ "type": "skill", "id": "summarize_meetings" }');
+		expect(TOOL_TYPES_SECTION).toContain('path: "/skills/-"');
 	});
 
 	it('no longer tells the model to fill credentials with empty values', () => {
@@ -107,5 +108,6 @@ describe('IMPORTANT_SECTION', () => {
 		expect(IMPORTANT_SECTION).toContain('create_skill');
 		expect(IMPORTANT_SECTION).toContain('patch_config');
 		expect(IMPORTANT_SECTION).toContain('{ type: "skill", id }');
+		expect(IMPORTANT_SECTION).toContain('entry to `skills`');
 	});
 });

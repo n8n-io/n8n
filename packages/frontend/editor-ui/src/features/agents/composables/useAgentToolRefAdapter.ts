@@ -2,7 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
-import type { AgentJsonConfigRef, AgentJsonToolRef, NodeToolConfig } from '../types';
+import type { AgentJsonToolRef, NodeToolConfig } from '../types';
 
 /**
  * Two-way adapter between the agent's persisted tool shape (`AgentJsonToolRef`
@@ -289,10 +289,10 @@ export function workflowToNewToolRef(workflow: IWorkflowDb): AgentJsonToolRef {
  * element then has a fresh reference and the map would silently no-op.
  */
 export function replaceToolRefInList(
-	tools: AgentJsonConfigRef[],
+	tools: AgentJsonToolRef[],
 	target: AgentJsonToolRef,
 	replacement: AgentJsonToolRef,
-): AgentJsonConfigRef[] {
+): AgentJsonToolRef[] {
 	if (target.id) {
 		return tools.map((t) => (t.id === target.id ? replacement : t));
 	}
@@ -306,12 +306,10 @@ export function replaceToolRefInList(
  * paths so they stay in sync.
  */
 export function getExistingToolNames(
-	tools: AgentJsonConfigRef[],
+	tools: AgentJsonToolRef[],
 	exclude?: AgentJsonToolRef,
 ): string[] {
-	return tools
-		.filter((t): t is AgentJsonToolRef => t.type !== 'skill' && t !== exclude && Boolean(t.name))
-		.map((t) => t.name as string);
+	return tools.filter((t) => t !== exclude && Boolean(t.name)).map((t) => t.name as string);
 }
 
 /** Merge edits from the workflow config form back into the ref. */

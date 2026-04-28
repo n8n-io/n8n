@@ -114,7 +114,7 @@ describe('buildFromJson()', () => {
 
 	it('injects enabled skill names and descriptions, but not bodies, into instructions', async () => {
 		const config = makeConfig({
-			tools: [{ type: 'skill', id: 'summarize_notes' }],
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		});
 
 		const agent = await buildFromJson(
@@ -143,7 +143,7 @@ describe('buildFromJson()', () => {
 
 	it('wires load_skill for enabled skills and returns the selected skill body on demand', async () => {
 		const config = makeConfig({
-			tools: [{ type: 'skill', id: 'summarize_notes' }],
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
 		});
 
 		const agent = await buildFromJson(

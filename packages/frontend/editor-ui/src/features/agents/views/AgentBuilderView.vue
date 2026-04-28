@@ -28,7 +28,7 @@ import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent, updateAgentSkill } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonConfigRef, AgentSkill } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef, AgentSkill } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -687,8 +687,8 @@ function onOpenSkillFromList(id: string) {
 
 function onOpenAddSkillModal() {
 	const existingSkillIds = new Set(Object.keys(agent.value?.skills ?? {}));
-	for (const ref of localConfig.value?.tools ?? []) {
-		if (ref.type === 'skill' && ref.id) existingSkillIds.add(ref.id);
+	for (const ref of localConfig.value?.skills ?? []) {
+		if (ref.id) existingSkillIds.add(ref.id);
 	}
 
 	uiStore.openModalWithData({
@@ -709,7 +709,7 @@ function onOpenAddSkillModal() {
 				}
 
 				onConfigFieldUpdate({
-					tools: [...(localConfig.value?.tools ?? []), { type: 'skill', id }],
+					skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
 				});
 				selectedSection.value = `skills.${id}`;
 			},
@@ -729,11 +729,11 @@ function onRemoveTool(index: number) {
 }
 
 function onRemoveSkill(id: string) {
-	const currentTools = localConfig.value?.tools ?? [];
-	const nextTools = currentTools.filter((ref) => !(ref.type === 'skill' && ref.id === id));
-	if (nextTools.length === currentTools.length) return;
+	const currentSkills = localConfig.value?.skills ?? [];
+	const nextSkills = currentSkills.filter((ref) => ref.id !== id);
+	if (nextSkills.length === currentSkills.length) return;
 
-	onConfigFieldUpdate({ tools: nextTools });
+	onConfigFieldUpdate({ skills: nextSkills });
 
 	if (selectedSection.value === `skills.${id}`) {
 		selectedSection.value = 'skills';
@@ -769,7 +769,7 @@ function onOpenAddToolModal() {
 			tools: localConfig.value?.tools ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonConfigRef[]) => onConfigFieldUpdate({ tools }),
+			onConfirm: (tools: AgentJsonToolRef[]) => onConfigFieldUpdate({ tools }),
 		},
 	});
 }
@@ -808,12 +808,12 @@ const isToolSliceSelection = computed(() => selectedSection.value?.startsWith('t
 const isSkillSliceSelection = computed(() => selectedSection.value?.startsWith('skills.') ?? false);
 
 const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
-	const refs = localConfig.value?.tools ?? [];
+	const refs = localConfig.value?.skills ?? [];
 	const seen = new Set<string>();
 	const out: Array<{ id: string; skill: AgentSkill }> = [];
 
 	for (const ref of refs) {
-		if (ref.type !== 'skill' || !ref.id || seen.has(ref.id)) continue;
+		if (!ref.id || seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		out.push({
 			id: ref.id,
@@ -844,7 +844,6 @@ const toolHeaderTitle = computed(() => {
 	if (!Number.isInteger(idx)) return '';
 	const ref = localConfig.value?.tools?.[idx];
 	if (!ref) return `Tool ${idx + 1}`;
-	if (ref.type === 'skill') return ref.id || `skill-${idx + 1}`;
 	const name = ref.name?.trim();
 	if (ref.type === 'custom') {
 		const base = name || ref.id || `tool-${idx + 1}`;
@@ -869,7 +868,7 @@ const customToolSelection = computed<{ code: string } | null>(() => {
 	return { code: entry.code ?? '' };
 });
 
-function onQuickActionAddTool(tools: AgentJsonConfigRef[]) {
+function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
 	onConfigFieldUpdate({ tools });
 }
 

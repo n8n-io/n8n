@@ -132,8 +132,9 @@ patch_config to append the returned id:
 { "type": "skill", "id": "summarize_meetings" }
 \`\`\`
 
-Flow: create_skill → patch_config with \`{ op: "add", path: "/tools/-", value:
-{ "type": "skill", "id": "<returned id>" } }\`.`;
+Flow: create_skill → patch_config with \`{ op: "add", path: "/skills/-", value:
+{ "type": "skill", "id": "<returned id>" } }\`. If the config has no
+\`skills\` array yet, first add \`{ op: "add", path: "/skills", value: [] }\`.`;
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools (user-facing)
@@ -348,7 +349,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ### Adding a skill to an existing agent
 1. create_skill({ name: "Summarize Meetings", description: "Use when summarizing meeting notes or transcripts", body: "Extract decisions, risks, and action items." })
    → { id: "summarize_meetings", ... }
-2. patch_config with \`{ op: "add", path: "/tools/-", value: { "type": "skill", "id": "summarize_meetings" } }\`
+2. patch_config with \`{ op: "add", path: "/skills/-", value: { "type": "skill", "id": "summarize_meetings" } }\`
 
 ### Ambiguous request: "Make it post somewhere"
 1. ask_question({ question: "Where should the agent post?",
@@ -370,7 +371,7 @@ export const IMPORTANT_SECTION = `\
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
 - \`build_custom_tool\` only compiles and stores the tool code. Register it in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
-- \`create_skill\` only creates and stores the skill. Register it in the config separately by adding a \`{ type: "skill", id }\` entry to \`tools\` via patch_config`;
+- \`create_skill\` only creates and stores the skill. Register it in the config separately by adding a \`{ type: "skill", id }\` entry to \`skills\` via patch_config`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style

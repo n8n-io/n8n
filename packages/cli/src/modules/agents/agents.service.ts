@@ -174,6 +174,8 @@ export class AgentsService {
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: '',
 			instructions: '',
+			tools: [],
+			skills: [],
 		};
 
 		const agent = this.agentRepository.create({
@@ -1076,11 +1078,7 @@ export class AgentsService {
 			entity.tools = tools;
 		}
 
-		const referencedSkillIds = new Set(
-			(result.config.tools ?? [])
-				.filter((t): t is Extract<AgentJsonConfigRef, { type: 'skill' }> => t.type === 'skill')
-				.map((t) => t.id),
-		);
+		const referencedSkillIds = new Set((result.config.skills ?? []).map((t) => t.id));
 		const orphanSkillIds = Object.keys(entity.skills ?? {}).filter(
 			(id) => !referencedSkillIds.has(id),
 		);
@@ -1239,10 +1237,8 @@ export class AgentsService {
 		delete skills[skillId];
 		entity.skills = skills;
 
-		if (entity.schema?.tools) {
-			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonConfigRef) => !(t.type === 'skill' && 'id' in t && t.id === skillId),
-			);
+		if (entity.schema?.skills) {
+			entity.schema.skills = entity.schema.skills.filter((t) => t.id !== skillId);
 		}
 
 		this.markDraftDirty(entity);

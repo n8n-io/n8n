@@ -151,7 +151,8 @@ export interface AgentJsonConfig {
 			embedder?: string;
 		};
 	};
-	tools?: AgentJsonConfigRef[];
+	tools?: AgentJsonToolRef[];
+	skills?: AgentJsonSkillRef[];
 	providerTools?: Record<string, Record<string, unknown>>;
 	config?: {
 		thinking?: {

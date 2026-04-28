@@ -201,10 +201,8 @@ describe('AgentsService', () => {
 					name: 'Test Agent',
 					model: 'anthropic/claude-sonnet-4-5',
 					instructions: 'Be helpful',
-					tools: [
-						{ type: 'skill', id: 'summarize_notes' },
-						{ type: 'custom', id: 'custom_tool' },
-					],
+					tools: [{ type: 'custom', id: 'custom_tool' }],
+					skills: [{ type: 'skill', id: 'summarize_notes' }],
 				},
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -213,6 +211,7 @@ describe('AgentsService', () => {
 
 			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({});
 			expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
+			expect(agent.schema?.skills).toEqual([]);
 		});
 	});
 

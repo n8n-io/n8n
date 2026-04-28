@@ -29,11 +29,11 @@ import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 import shared from '../styles/agent-panel.module.scss';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
-import type { AgentJsonConfig, AgentJsonConfigRef } from '../types';
+import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 
 const props = withDefaults(
 	defineProps<{
-		tools: AgentJsonConfigRef[];
+		tools: AgentJsonToolRef[];
 		config: AgentJsonConfig | null;
 		disabled?: boolean;
 	}>(),
@@ -86,8 +86,8 @@ interface CustomRow {
 	description?: string;
 }
 
-type WorkflowToolRef = AgentJsonConfigRef & { type: 'workflow' };
-type CustomToolRef = AgentJsonConfigRef & { type: 'custom' };
+type WorkflowToolRef = AgentJsonToolRef & { type: 'workflow' };
+type CustomToolRef = AgentJsonToolRef & { type: 'custom' };
 
 const nodeRows = computed<NodeRow[]>(() => {
 	const out: NodeRow[] = [];
@@ -130,7 +130,7 @@ const customRows = computed<CustomRow[]>(() =>
 		})),
 );
 
-const totalCount = computed(() => props.tools.filter((ref) => ref.type !== 'skill').length);
+const totalCount = computed(() => props.tools.length);
 </script>
 
 <template>
