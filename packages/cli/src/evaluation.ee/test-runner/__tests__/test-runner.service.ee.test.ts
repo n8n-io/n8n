@@ -22,6 +22,7 @@ import path from 'path';
 import { TestRunnerService } from '../test-runner.service.ee';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -45,6 +46,7 @@ describe('TestRunnerService', () => {
 	const executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
 	const publisher = mock<Publisher>();
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'test-host-id', isMultiMain: false });
+	const concurrencyControlService = mock<ConcurrencyControlService>();
 	let testRunnerService: TestRunnerService;
 
 	mockInstance(LoadNodesAndCredentials, {
@@ -65,6 +67,7 @@ describe('TestRunnerService', () => {
 			mock(),
 			publisher,
 			instanceSettings,
+			concurrencyControlService,
 		);
 
 		testRunRepository.createTestRun.mockResolvedValue(mock<TestRun>({ id: 'test-run-id' }));
@@ -507,6 +510,7 @@ describe('TestRunnerService', () => {
 				mock(),
 				publisher,
 				instanceSettings,
+				concurrencyControlService,
 			);
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
@@ -824,6 +828,7 @@ describe('TestRunnerService', () => {
 					mock(),
 					publisher,
 					instanceSettings,
+					concurrencyControlService,
 				);
 			});
 
@@ -2161,6 +2166,134 @@ describe('TestRunnerService', () => {
 			expect(testRunRepository.markAsCompleted).toHaveBeenCalledTimes(1);
 		});
 
+		test('throttle is called once per case and release is called once per case', async () => {
+			setupHappyPathMocks(4);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			expect(concurrencyControlService.throttle).toHaveBeenCalledTimes(4);
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(4);
+			expect(concurrencyControlService.throttle).toHaveBeenCalledWith({
+				mode: 'evaluation',
+				executionId: expect.stringContaining('test-run-id-case-'),
+			});
+			expect(concurrencyControlService.release).toHaveBeenCalledWith({ mode: 'evaluation' });
+		});
+
+		test('release is called even when runTestCase throws', async () => {
+			// `setupHappyPathMocks` wires the dataset-trigger execution; the
+			// override below replaces only the per-case execution path so each
+			// case throws. The `dataset-exec` branch is preserved manually here
+			// to keep the dataset trigger intact.
+			setupHappyPathMocks(3);
+
+			activeExecutions.getPostExecutePromise.mockImplementation(async (executionId) => {
+				if (executionId === 'dataset-exec') {
+					return {
+						data: {
+							resultData: {
+								runData: {
+									[TRIGGER_NODE_NAME]: [
+										{
+											data: {
+												[NodeConnectionTypes.Main]: [
+													[{ json: { id: 0 } }, { json: { id: 1 } }, { json: { id: 2 } }],
+												],
+											},
+										},
+									],
+								},
+							},
+						},
+					} as unknown as IRun;
+				}
+				throw new Error('synthetic per-case failure');
+			});
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 2);
+
+			expect(concurrencyControlService.throttle).toHaveBeenCalledTimes(3);
+			// release fires in the finally block — must run even though every
+			// case threw.
+			expect(concurrencyControlService.release).toHaveBeenCalledTimes(3);
+		});
+
+		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
+
+			const trackCalls = telemetry.track.mock.calls.filter(
+				([eventName]) => eventName === 'Test run finished',
+			);
+			expect(trackCalls).toHaveLength(1);
+			const payload = trackCalls[0][1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 4,
+					parallel_enabled: true,
+					concurrency_limited_by_config: false,
+				}),
+			);
+		});
+
+		test('telemetry parallel_enabled is false for sequential runs', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			const trackCalls = telemetry.track.mock.calls.filter(
+				([eventName]) => eventName === 'Test run finished',
+			);
+			expect(trackCalls).toHaveLength(1);
+			const payload = trackCalls[0][1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 1,
+					parallel_enabled: false,
+					concurrency_limited_by_config: false,
+				}),
+			);
+		});
+
+		test('evaluationLimit clamps requested concurrency and flags concurrency_limited_by_config', async () => {
+			const cappedConfig = mockInstance(ExecutionsConfig, {
+				mode: 'regular',
+				concurrency: { productionLimit: -1, evaluationLimit: 2 } as never,
+			});
+			const cappedService = new TestRunnerService(
+				logger,
+				telemetry,
+				workflowRepository,
+				workflowRunner,
+				activeExecutions,
+				testRunRepository,
+				testCaseExecutionRepository,
+				errorReporter,
+				cappedConfig,
+				mock(),
+				publisher,
+				instanceSettings,
+				concurrencyControlService,
+			);
+
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await cappedService.runTest(USER as never, WORKFLOW_ID, 5);
+
+			expect(inFlightTracker.max).toBeLessThanOrEqual(2);
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload).toEqual(
+				expect.objectContaining({
+					concurrency: 2,
+					parallel_enabled: true,
+					concurrency_limited_by_config: true,
+				}),
+			);
+		});
+
 		test('multi-main DB cancel flag flipped mid-run aborts the controller', async () => {
 			const multiMainInstance = mock<InstanceSettings>({
 				hostId: 'main-a',
@@ -2179,6 +2312,7 @@ describe('TestRunnerService', () => {
 				mock(),
 				publisher,
 				multiMainInstance,
+				concurrencyControlService,
 			);
 
 			setupHappyPathMocks(4);

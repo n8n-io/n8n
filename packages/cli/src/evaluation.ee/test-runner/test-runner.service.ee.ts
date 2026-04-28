@@ -6,6 +6,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
+import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
 	EVALUATION_NODE_TYPE,
@@ -78,6 +79,7 @@ export class TestRunnerService {
 		private readonly eventService: EventService,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly concurrencyControlService: ConcurrencyControlService,
 	) {}
 
 	/**
@@ -504,12 +506,30 @@ export class TestRunnerService {
 	 * Creates a new test run for the given workflow.
 	 *
 	 * `concurrency` is the requested number of test cases to run in parallel.
-	 * Clamped 1–10 defensively (the controller already validates this via zod).
+	 * The effective value is `min(user_request, 10, evaluationLimit)`:
+	 *   - Clamped 1–10 as a defensive UX guardrail (the controller already
+	 *     validates this via zod, but direct service callers must not exceed
+	 *     it either).
+	 *   - Further clamped to `evaluationLimit` (`N8N_CONCURRENCY_EVALUATION_LIMIT`)
+	 *     when an admin has set a positive cap. `concurrency_limited_by_config`
+	 *     is recorded in telemetry when this kicks in.
+	 *
 	 * `concurrency = 1` reproduces the legacy sequential behaviour exactly.
 	 */
 	async runTest(user: User, workflowId: string, concurrency: number = 1): Promise<void> {
-		const effectiveConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
-		this.logger.debug('Starting new test run', { workflowId, concurrency: effectiveConcurrency });
+		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
+		const evaluationLimit = this.executionsConfig.concurrency.evaluationLimit;
+		const concurrencyLimitedByConfig =
+			evaluationLimit > 0 && requestedConcurrency > evaluationLimit;
+		const effectiveConcurrency = concurrencyLimitedByConfig
+			? evaluationLimit
+			: requestedConcurrency;
+
+		this.logger.debug('Starting new test run', {
+			workflowId,
+			concurrency: effectiveConcurrency,
+			concurrencyLimitedByConfig,
+		});
 
 		const workflow = await this.workflowRepository.findById(workflowId);
 		assert(workflow, 'Workflow not found');
@@ -530,6 +550,9 @@ export class TestRunnerService {
 			metric_count: 0,
 			error_message: '',
 			duration: 0,
+			concurrency: effectiveConcurrency,
+			parallel_enabled: effectiveConcurrency > 1,
+			concurrency_limited_by_config: concurrencyLimitedByConfig,
 		};
 
 		// 0.1 Initialize AbortController
@@ -596,7 +619,7 @@ export class TestRunnerService {
 			const limit = pLimit(effectiveConcurrency);
 
 			const contributionResults = await Promise.all(
-				testCases.map((testCase) =>
+				testCases.map((testCase, caseIndex) =>
 					limit(async (): Promise<MetricContribution[]> => {
 						if (abortSignal.aborted) {
 							return [];
@@ -619,122 +642,149 @@ export class TestRunnerService {
 							return [];
 						}
 
+						// Layer onto the existing instance-wide concurrency control. The
+						// service is a no-op in queue mode (BullMQ governs there) and when
+						// `evaluationLimit` is unset (-1). pLimit and the eval queue cap
+						// the in-flight count at *the same number* by design — pLimit is
+						// per-run, the queue is shared across all test runs from all users
+						// on the instance, so they're complementary, not redundant.
+						//
+						// The synthetic id is a per-case bookkeeping key for the queue's
+						// internal map. `release` dequeues by mode, not id; nothing in
+						// this flow calls `remove(id)` to actively drain on abort, so a
+						// case blocked in `enqueue` after abort fires will keep waiting
+						// until earlier cases release capacity, then short-circuit at the
+						// `abortSignal.aborted` check inside `runTestCase`. No leak — the
+						// outer `finally` always calls release — just no promptness on
+						// freeing slots. Acceptable given test runs are minute-scale.
+						const caseTrackingId = `${testRun.id}-case-${caseIndex}`;
+						await this.concurrencyControlService.throttle({
+							mode: 'evaluation',
+							executionId: caseTrackingId,
+						});
+
 						this.logger.debug('Running test case');
 						const runAt = new Date();
 
 						try {
-							const testCaseMetadata = { ...testRunMetadata };
+							try {
+								const testCaseMetadata = { ...testRunMetadata };
 
-							const testCaseResult = await this.runTestCase(
-								workflow,
-								testCaseMetadata,
-								testCase,
-								abortSignal,
-							);
-							assert(testCaseResult);
+								const testCaseResult = await this.runTestCase(
+									workflow,
+									testCaseMetadata,
+									testCase,
+									abortSignal,
+								);
+								assert(testCaseResult);
 
-							const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
-								testCaseResult;
+								const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
+									testCaseResult;
 
-							assert(testCaseExecution);
-							assert(testCaseExecutionId);
+								assert(testCaseExecution);
+								assert(testCaseExecutionId);
 
-							this.logger.debug('Test case execution finished');
+								this.logger.debug('Test case execution finished');
 
-							if (!testCaseExecution || testCaseExecution.data.resultData.error) {
+								if (!testCaseExecution || testCaseExecution.data.resultData.error) {
+									await this.testCaseExecutionRepository.createTestCaseExecution({
+										executionId: testCaseExecutionId,
+										testRun: { id: testRun.id },
+										status: 'error',
+										errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+										metrics: {},
+									});
+									telemetryMeta.errored_test_case_count++;
+									return [];
+								}
+								const completedAt = new Date();
+
+								const predefinedContribution = EvaluationMetrics.buildContribution(
+									this.extractPredefinedMetrics(testCaseExecution),
+								);
+								this.logger.debug(
+									'Test case common metrics extracted',
+									predefinedContribution.addedMetrics,
+								);
+
+								const userDefinedContribution = EvaluationMetrics.buildContribution(
+									this.extractUserDefinedMetrics(testCaseExecution, workflow),
+								);
+
+								if (Object.keys(userDefinedContribution.addedMetrics).length === 0) {
+									await this.testCaseExecutionRepository.createTestCaseExecution({
+										executionId: testCaseExecutionId,
+										testRun: { id: testRun.id },
+										runAt,
+										completedAt,
+										status: 'error',
+										errorCode: 'NO_METRICS_COLLECTED',
+									});
+									telemetryMeta.errored_test_case_count++;
+									// Predefined metrics still merge — the case ran, just had no user metrics.
+									return [predefinedContribution];
+								}
+
+								const combinedMetrics = {
+									...userDefinedContribution.addedMetrics,
+									...predefinedContribution.addedMetrics,
+								};
+
+								const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
+								const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
+
+								this.logger.debug(
+									'Test case metrics extracted (user-defined)',
+									userDefinedContribution.addedMetrics,
+								);
+
 								await this.testCaseExecutionRepository.createTestCaseExecution({
 									executionId: testCaseExecutionId,
 									testRun: { id: testRun.id },
-									status: 'error',
-									errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
-									metrics: {},
+									runAt,
+									completedAt,
+									status: 'success',
+									metrics: combinedMetrics,
+									inputs,
+									outputs,
 								});
+
+								return [predefinedContribution, userDefinedContribution];
+							} catch (e) {
+								const completedAt = new Date();
+								this.logger.error('Test case execution failed', {
+									workflowId,
+									testRunId: testRun.id,
+									error: e,
+								});
+
 								telemetryMeta.errored_test_case_count++;
+
+								if (e instanceof TestCaseExecutionError) {
+									await this.testCaseExecutionRepository.createTestCaseExecution({
+										testRun: { id: testRun.id },
+										runAt,
+										completedAt,
+										status: 'error',
+										errorCode: e.code,
+										errorDetails: e.extra as IDataObject,
+									});
+								} else {
+									await this.testCaseExecutionRepository.createTestCaseExecution({
+										testRun: { id: testRun.id },
+										runAt,
+										completedAt,
+										status: 'error',
+										errorCode: 'UNKNOWN_ERROR',
+									});
+									this.errorReporter.error(e);
+								}
 								return [];
 							}
-							const completedAt = new Date();
-
-							const predefinedContribution = EvaluationMetrics.buildContribution(
-								this.extractPredefinedMetrics(testCaseExecution),
-							);
-							this.logger.debug(
-								'Test case common metrics extracted',
-								predefinedContribution.addedMetrics,
-							);
-
-							const userDefinedContribution = EvaluationMetrics.buildContribution(
-								this.extractUserDefinedMetrics(testCaseExecution, workflow),
-							);
-
-							if (Object.keys(userDefinedContribution.addedMetrics).length === 0) {
-								await this.testCaseExecutionRepository.createTestCaseExecution({
-									executionId: testCaseExecutionId,
-									testRun: { id: testRun.id },
-									runAt,
-									completedAt,
-									status: 'error',
-									errorCode: 'NO_METRICS_COLLECTED',
-								});
-								telemetryMeta.errored_test_case_count++;
-								// Predefined metrics still merge — the case ran, just had no user metrics.
-								return [predefinedContribution];
-							}
-
-							const combinedMetrics = {
-								...userDefinedContribution.addedMetrics,
-								...predefinedContribution.addedMetrics,
-							};
-
-							const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
-							const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
-
-							this.logger.debug(
-								'Test case metrics extracted (user-defined)',
-								userDefinedContribution.addedMetrics,
-							);
-
-							await this.testCaseExecutionRepository.createTestCaseExecution({
-								executionId: testCaseExecutionId,
-								testRun: { id: testRun.id },
-								runAt,
-								completedAt,
-								status: 'success',
-								metrics: combinedMetrics,
-								inputs,
-								outputs,
-							});
-
-							return [predefinedContribution, userDefinedContribution];
-						} catch (e) {
-							const completedAt = new Date();
-							this.logger.error('Test case execution failed', {
-								workflowId,
-								testRunId: testRun.id,
-								error: e,
-							});
-
-							telemetryMeta.errored_test_case_count++;
-
-							if (e instanceof TestCaseExecutionError) {
-								await this.testCaseExecutionRepository.createTestCaseExecution({
-									testRun: { id: testRun.id },
-									runAt,
-									completedAt,
-									status: 'error',
-									errorCode: e.code,
-									errorDetails: e.extra as IDataObject,
-								});
-							} else {
-								await this.testCaseExecutionRepository.createTestCaseExecution({
-									testRun: { id: testRun.id },
-									runAt,
-									completedAt,
-									status: 'error',
-									errorCode: 'UNKNOWN_ERROR',
-								});
-								this.errorReporter.error(e);
-							}
-							return [];
+						} finally {
+							// Always release capacity, even when runTestCase throws.
+							// The synthetic id is irrelevant — release dequeues by mode.
+							this.concurrencyControlService.release({ mode: 'evaluation' });
 						}
 					}),
 				),
