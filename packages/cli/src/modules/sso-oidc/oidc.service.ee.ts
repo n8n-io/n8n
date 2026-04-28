@@ -528,7 +528,7 @@ export class OidcService {
 				const discoveryUrl = new URL(oidcConfig.discoveryEndpoint);
 
 				if (oidcConfig.clientSecret && decryptSecret) {
-					oidcConfig.clientSecret = this.cipher.decrypt(oidcConfig.clientSecret);
+					oidcConfig.clientSecret = await this.cipher.decryptV2(oidcConfig.clientSecret);
 				}
 				return {
 					...oidcConfig,
@@ -593,7 +593,7 @@ export class OidcService {
 			key: OIDC_PREFERENCES_DB_KEY,
 			value: JSON.stringify({
 				...newConfig,
-				clientSecret: this.cipher.encrypt(newConfig.clientSecret),
+				clientSecret: await this.cipher.encryptV2(newConfig.clientSecret),
 			}),
 			loadOnStartup: true,
 		});
