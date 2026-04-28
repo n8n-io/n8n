@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { markdown } from '@codemirror/lang-markdown';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
 import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
@@ -83,7 +82,6 @@ function createEditor(doc: string) {
 		state: EditorState.create({
 			doc,
 			extensions: [
-				markdown(),
 				lineNumbers(),
 				EditorView.lineWrapping,
 				readOnly.of(EditorState.readOnly.of(props.disabled)),
