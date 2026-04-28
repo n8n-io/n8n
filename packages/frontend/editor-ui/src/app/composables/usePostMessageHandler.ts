@@ -249,6 +249,13 @@ export function usePostMessageHandler({
 						type: 'error',
 					});
 				}
+			} else if (json?.command === 'resetWorkflow') {
+				// Parent is about to swap to a different workflow — clear the canvas
+				// and viewport now, while the iframe is hidden, so it doesn't briefly
+				// show the previous workflow (or render the new one at the previous
+				// viewport's zoom/pan) when it becomes visible again.
+				resetWorkspace();
+				fitView();
 			} else if (json?.command === 'setActiveExecution') {
 				executionsStore.activeExecution = (await executionsStore.fetchExecution(
 					json.executionId,

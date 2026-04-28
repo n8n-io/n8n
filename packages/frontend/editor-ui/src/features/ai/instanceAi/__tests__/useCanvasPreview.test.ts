@@ -646,6 +646,70 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeExecutionId.value).toBe('exec-1');
 			expect(ctx.activeWorkflowId.value).toBe('wf-1');
 		});
+
+		test('skips activeExecutionId when push events already cover the live run', async () => {
+			const executions = ref(
+				new Map<string, WorkflowExecutionState>([
+					['wf-1', { executionId: 'exec-1', workflowId: 'wf-1', status: 'running', eventLog: [] }],
+				]),
+			);
+			const ctx = setup({ workflowExecutions: executions });
+			ctx.store.isStreaming = true;
+			registerWorkflow(ctx.store, 'wf-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.store.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-run',
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
+								result: { executionId: 'exec-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeExecutionId.value).toBeNull();
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+		});
+
+		test('sets activeExecutionId when push events are for a different execution', async () => {
+			const executions = ref(
+				new Map<string, WorkflowExecutionState>([
+					[
+						'wf-1',
+						{ executionId: 'exec-old', workflowId: 'wf-1', status: 'success', eventLog: [] },
+					],
+				]),
+			);
+			const ctx = setup({ workflowExecutions: executions });
+			ctx.store.isStreaming = true;
+			registerWorkflow(ctx.store, 'wf-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.store.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-run',
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
+								result: { executionId: 'exec-new' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeExecutionId.value).toBe('exec-new');
+		});
 	});
 
 	describe('auto-open data table preview', () => {

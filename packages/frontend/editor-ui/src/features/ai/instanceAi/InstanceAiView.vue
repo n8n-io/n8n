@@ -51,7 +51,7 @@ import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/Cr
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
-import { TabsContent, TabsRoot } from 'reka-ui';
+import { TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
 	threadId?: string;
@@ -603,27 +603,30 @@ function handleStop() {
 					:active-tab-id="preview.activeTabId.value"
 					@close="preview.closePreview()"
 				/>
-				<TabsContent
-					v-for="tab in preview.allArtifactTabs.value"
-					:key="tab.id"
-					:value="tab.id"
-					:class="$style.previewContent"
-				>
+				<!-- Single workflow preview hoisted above the tab v-for so the iframe stays
+				     mounted across tab switches (no re-fetch / re-boot) and pre-warms on panel
+				     open before any artifact exists. Workflow swap happens via openWorkflow
+				     postMessage when activeWorkflowId changes. -->
+				<div :class="$style.previewContent">
 					<InstanceAiWorkflowPreview
-						v-if="preview.activeWorkflowId.value"
 						ref="workflowPreview"
+						:class="[
+							$style.previewSlot,
+							{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
+						]"
 						:workflow-id="preview.activeWorkflowId.value"
 						:execution-id="preview.activeExecutionId.value"
 						:refresh-key="preview.workflowRefreshKey.value"
 						@iframe-ready="eventRelay.handleIframeReady"
 					/>
 					<InstanceAiDataTablePreview
-						v-else-if="preview.activeDataTableId.value"
+						v-if="preview.activeDataTableId.value"
+						:class="$style.previewSlot"
 						:data-table-id="preview.activeDataTableId.value"
 						:project-id="preview.activeDataTableProjectId.value"
 						:refresh-key="preview.dataTableRefreshKey.value"
 					/>
-				</TabsContent>
+				</div>
 			</TabsRoot>
 		</N8nResizeWrapper>
 	</div>
@@ -826,6 +829,17 @@ function handleStop() {
 .previewContent {
 	flex: 1;
 	min-height: 0;
+	position: relative;
+}
+
+.previewSlot {
+	position: absolute;
+	inset: 0;
+}
+
+.previewSlotHidden {
+	visibility: hidden;
+	pointer-events: none;
 }
 </style>
 

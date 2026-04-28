@@ -65,6 +65,12 @@ async function fetchWorkflow(id: string) {
 	fetchError.value = null;
 	if (!isRefresh) {
 		isLoading.value = true;
+		// Null the workflow so showPreview flips false, the iframe hides, and the
+		// loading overlay below appears — gives the user a clear visual signal that
+		// the preview is switching workflows. WorkflowPreview also sends a
+		// resetWorkflow postMessage on this transition so the iframe canvas is
+		// cleared while hidden, avoiding a flash of the old workflow when the new
+		// one becomes visible.
 		workflow.value = null;
 	}
 
@@ -110,6 +116,12 @@ const POLL_INTERVAL_MS = 1_500;
 const MAX_POST_STREAM_POLLS = 5; // ~7.5 s grace after streaming ends
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let postStreamAttempts = 0;
+// Tracks whether we've seen this execution as in-progress at any point during
+// polling. The iframe's initial openExecution already fetches the latest data,
+// so if the first poll already sees `finished=true`, that data is final and a
+// reload would just produce a redundant loading flash. We only reload when we
+// observe a true running → finished transition.
+let observedRunning = false;
 
 function stopPolling() {
 	if (pollTimer !== null) {
@@ -117,6 +129,7 @@ function stopPolling() {
 		pollTimer = null;
 	}
 	postStreamAttempts = 0;
+	observedRunning = false;
 }
 
 async function pollExecutionUntilDone(executionId: string) {
@@ -135,13 +148,15 @@ async function pollExecutionUntilDone(executionId: string) {
 
 		const isFinished = execution?.finished === true;
 		if (isFinished) {
-			// Tell the iframe to re-load the now-complete execution data
-			const preview = previewRef.value as
-				| { reloadExecution?: () => void; iframeRef?: HTMLIFrameElement | null }
-				| undefined;
-			preview?.reloadExecution?.();
+			if (observedRunning) {
+				const preview = previewRef.value as
+					| { reloadExecution?: () => void; iframeRef?: HTMLIFrameElement | null }
+					| undefined;
+				preview?.reloadExecution?.();
+			}
 			return;
 		}
+		observedRunning = true;
 	} catch {
 		// Execution might not be ready yet — retry
 	}
@@ -182,12 +197,13 @@ defineExpose({ relayPushEvent });
 			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Preview — stays mounted during re-fetch to keep iframe ready state -->
+		<!-- Preview — always mounted so the iframe boots before any artifact exists, eliminating
+		     the load-race against execution events. WorkflowPreview hides its own iframe when no
+		     workflow is set (visibility:hidden via internal showPreview gate). -->
 		<WorkflowPreview
-			v-if="workflow"
 			ref="previewComponent"
 			:mode="previewMode"
-			:workflow="workflow"
+			:workflow="workflow ?? undefined"
 			:execution-id="props.executionId ?? undefined"
 			:can-open-ndv="true"
 			:can-execute="true"

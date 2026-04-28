@@ -344,7 +344,18 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
 
-			activeExecutionId.value = exec.executionId;
+			// Push events are streaming this execution live — leave the iframe in
+			// workflow mode and let `relayPushEvent` drive the canvas. Setting
+			// activeExecutionId here would flip WorkflowPreview to execution mode
+			// and trigger an `openExecution` refetch, discarding the live-painted
+			// state and showing a loading flash. Cold paths (refresh, tab switch)
+			// recover execution mode via the activeTabId watcher above using
+			// `historicalExecutions`.
+			const liveExec = workflowExecutions?.value.get(exec.workflowId);
+			const isLive = liveExec?.executionId === exec.executionId;
+			if (!isLive) {
+				activeExecutionId.value = exec.executionId;
+			}
 			activeTabId.value = exec.workflowId;
 			if (!isPreviewVisible.value) {
 				workflowRefreshKey.value++;

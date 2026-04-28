@@ -6,13 +6,16 @@ import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
 
+const settingsStore = useSettingsStore();
+
 const isActive = computed(() => props.agentNode.status === 'active');
-const isExpanded = ref(false);
+const isExpanded = ref(settingsStore.isCloudDeployment);
 
 const isError = computed(() => props.agentNode.status === 'error');
 
