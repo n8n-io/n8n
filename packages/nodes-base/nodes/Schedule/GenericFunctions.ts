@@ -1,5 +1,6 @@
+import { createHash } from 'crypto';
 import moment from 'moment-timezone';
-import { type CronExpression, type INode, NodeOperationError, randomInt } from 'n8n-workflow';
+import { type CronExpression, type INode, NodeOperationError } from 'n8n-workflow';
 
 import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
 
@@ -83,28 +84,50 @@ export function recurrenceCheck(
 	return false;
 }
 
-export const toCronExpression = (interval: ScheduleInterval): CronExpression => {
+/**
+ * Deterministic integer in `[min, max)`, derived from `seed` and `label`.
+ *
+ * Used to fill in the otherwise-unspecified parts of a cron expression
+ * (e.g. the second within a minute) in a way that's stable across
+ * instances. Two mains computing the same schedule for the same node
+ * therefore produce identical cron expressions, identical fire times,
+ * and identical deduplication keys.
+ *
+ * @param seed - Stable identity of the entity being filled in (e.g.
+ *   `${workflowId}:${nodeId}`). The same seed always produces the same
+ *   set of values across calls and across instances; different seeds
+ *   produce different values, preserving the load-spreading the original
+ *   randomization was meant to provide.
+ * @param label - Distinguishes multiple values derived from the same
+ *   seed (e.g. `'second'` vs `'minute'`) so they don't collide when one
+ *   cron expression needs several filler values for the same node.
+ */
+const stableInt = (seed: string, label: string, min: number, max: number): number => {
+	const hash = createHash('sha256').update(`${seed}:${label}`).digest();
+	return min + (hash.readUInt32BE(0) % (max - min));
+};
+
+export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): CronExpression => {
 	if (interval.field === 'cronExpression') return interval.expression;
 	if (interval.field === 'seconds') return `*/${interval.secondsInterval} * * * * *`;
 
-	const randomSecond = randomInt(0, 60);
-	if (interval.field === 'minutes') return `${randomSecond} */${interval.minutesInterval} * * * *`;
+	const second = stableInt(nodeKey, 'second', 0, 60);
+	if (interval.field === 'minutes') return `${second} */${interval.minutesInterval} * * * *`;
 
-	const minute = interval.triggerAtMinute ?? randomInt(0, 60);
-	if (interval.field === 'hours')
-		return `${randomSecond} ${minute} */${interval.hoursInterval} * * *`;
+	const minute = interval.triggerAtMinute ?? stableInt(nodeKey, 'minute', 0, 60);
+	if (interval.field === 'hours') return `${second} ${minute} */${interval.hoursInterval} * * *`;
 
 	// Since Cron does not support `*/` for days or weeks, all following expressions trigger more often, but are then filtered by `recurrenceCheck`
-	const hour = interval.triggerAtHour ?? randomInt(0, 24);
-	if (interval.field === 'days') return `${randomSecond} ${minute} ${hour} * * *`;
+	const hour = interval.triggerAtHour ?? stableInt(nodeKey, 'hour', 0, 24);
+	if (interval.field === 'days') return `${second} ${minute} ${hour} * * *`;
 	if (interval.field === 'weeks') {
 		const days = interval.triggerAtDay;
 		const daysOfWeek = days.length === 0 ? '*' : days.join(',');
-		return `${randomSecond} ${minute} ${hour} * * ${daysOfWeek}` as CronExpression;
+		return `${second} ${minute} ${hour} * * ${daysOfWeek}` as CronExpression;
 	}
 
-	const dayOfMonth = interval.triggerAtDayOfMonth ?? randomInt(1, 31);
-	return `${randomSecond} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
+	const dayOfMonth = interval.triggerAtDayOfMonth ?? stableInt(nodeKey, 'dayOfMonth', 1, 31);
+	return `${second} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
 };
 
 export function intervalToRecurrence(interval: ScheduleInterval, index: number) {

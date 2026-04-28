@@ -119,7 +119,7 @@ const instanceAi = computed<IMenuItem>(() => ({
 	icon: 'sparkles',
 	label: locale.baseText('projects.menu.instanceAi'),
 	route: { to: { name: INSTANCE_AI_VIEW } },
-	beta: true,
+	preview: true,
 }));
 
 const chat = computed<IMenuItem>(() => ({
@@ -128,7 +128,7 @@ const chat = computed<IMenuItem>(() => ({
 	label: locale.baseText('projects.menu.chat'),
 	position: 'bottom',
 	route: { to: { name: CHAT_VIEW } },
-	beta: true,
+	preview: true,
 }));
 
 async function onSourceControlPull() {

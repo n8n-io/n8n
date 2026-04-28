@@ -11,6 +11,7 @@ jest.mock('@n8n/instance-ai', () => ({
 
 import { mock } from 'jest-mock-extended';
 import type {
+	AiBuilderTemporaryWorkflowRepository,
 	User,
 	ExecutionRepository,
 	ProjectRepository,
@@ -90,6 +91,7 @@ const executionPersistence = mock<ExecutionPersistence>();
 const eventService = mock<EventService>();
 const roleService = mock<RoleService>();
 const telemetry = mock<Telemetry>();
+const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
 const service = new InstanceAiAdapterService(
 	logger,
@@ -121,6 +123,7 @@ const service = new InstanceAiAdapterService(
 	eventService,
 	roleService,
 	telemetry,
+	aiBuilderTemporaryWorkflowRepository,
 );
 
 const user = mock<User>({
