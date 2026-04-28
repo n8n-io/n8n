@@ -27,7 +27,6 @@ const renderComponent = createComponentRenderer(WorkflowSetupWizard, {
 				template: '<footer><slot /></footer>',
 			},
 			WorkflowSetupCard: {
-				props: ['card'],
 				template:
 					'<section data-test-id="instance-ai-workflow-setup-card"><slot name="footer" /></section>',
 			},

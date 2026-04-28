@@ -25,8 +25,10 @@ const ctx = provideWorkflowSetupContext({
 
 <template>
 	<div data-test-id="instance-ai-workflow-setup">
-		<div v-if="!ctx.isReady.value && !ctx.terminalState.value" />
-		<WorkflowSetupStatus v-else-if="ctx.terminalState.value" :state="ctx.terminalState.value" />
-		<WorkflowSetupWizard v-else-if="ctx.cards.value.length" />
+		<WorkflowSetupStatus
+			v-if="ctx.isReady.value && ctx.terminalState.value"
+			:state="ctx.terminalState.value"
+		/>
+		<WorkflowSetupWizard v-else-if="ctx.isReady.value && ctx.cards.value.length" />
 	</div>
 </template>

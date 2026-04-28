@@ -53,7 +53,6 @@ const applyLabel = computed(() =>
 	<WorkflowSetupCard
 		v-if="ctx.activeCard.value"
 		:key="ctx.activeCard.value.id"
-		:card="ctx.activeCard.value"
 		data-test-id="instance-ai-workflow-setup-wizard"
 	>
 		<template #footer>

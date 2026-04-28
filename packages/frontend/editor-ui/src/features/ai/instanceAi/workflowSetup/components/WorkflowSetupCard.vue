@@ -7,25 +7,21 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
-import type { WorkflowSetupCard } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
-
-const props = defineProps<{
-	card: WorkflowSetupCard;
-}>();
 
 const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 
-const credentialType = computed(() => props.card.credentialType);
+const card = computed(() => ctx.activeCard.value!);
+const credentialType = computed(() => card.value.credentialType);
 
 const selectedCredentialId = computed(
-	() => ctx.selections.value[props.card.targetNodeName]?.[credentialType.value] ?? null,
+	() => ctx.selections.value[card.value.targetNodeName]?.[credentialType.value] ?? null,
 );
 
-const isComplete = computed(() => ctx.isCardComplete(props.card));
-const isSkipped = computed(() => ctx.isCardSkipped(props.card));
+const isComplete = computed(() => ctx.isCardComplete(card.value));
+const isSkipped = computed(() => ctx.isCardSkipped(card.value));
 
 const displayName = computed(() => {
 	const raw =
@@ -39,12 +35,12 @@ const displayName = computed(() => {
 // dropdown stays in sync — it derives its selection from props.node.credentials.
 const displayNode = computed<INodeUi>(() => {
 	if (!selectedCredentialId.value) {
-		const { credentials: _drop, ...rest } = props.card.node;
+		const { credentials: _drop, ...rest } = card.value.node;
 		return rest as INodeUi;
 	}
 	const cred = credentialsStore.getCredentialById(selectedCredentialId.value);
 	return {
-		...props.card.node,
+		...card.value.node,
 		credentials: cred ? { [credentialType.value]: { id: cred.id, name: cred.name } } : {},
 	} as INodeUi;
 });
@@ -52,10 +48,10 @@ const displayNode = computed<INodeUi>(() => {
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	const data = update.properties.credentials?.[credentialType.value];
 	if (!data) {
-		ctx.setSelection(props.card.targetNodeName, credentialType.value, null);
+		ctx.setSelection(card.value.targetNodeName, credentialType.value, null);
 		return;
 	}
-	ctx.setSelection(props.card.targetNodeName, credentialType.value, data.id);
+	ctx.setSelection(card.value.targetNodeName, credentialType.value, data.id);
 }
 </script>
 

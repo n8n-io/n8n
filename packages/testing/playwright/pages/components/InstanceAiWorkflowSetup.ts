@@ -55,10 +55,6 @@ export class InstanceAiWorkflowSetup {
 		return this.root.getByTestId('instance-ai-workflow-setup-next');
 	}
 
-	getStatusChip(state: 'applying' | 'applied' | 'partial' | 'deferred'): Locator {
-		return this.root.getByTestId(`instance-ai-workflow-setup-status-${state}`);
-	}
-
 	async selectCredential(credentialName: string): Promise<void> {
 		await this.getCredentialSelect().click();
 		await this.getCredentialOption(credentialName).click();
