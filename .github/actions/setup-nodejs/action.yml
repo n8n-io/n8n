@@ -59,7 +59,7 @@ runs:
 
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
-      ENV:
+      env:
         INSTALL_COMMAND: ${{ inputs.install-command }}
       run: |
         $INSTALL_COMMAND
