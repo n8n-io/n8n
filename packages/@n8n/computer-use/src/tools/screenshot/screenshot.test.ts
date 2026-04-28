@@ -5,11 +5,14 @@ import { screenshotTool, screenshotRegionTool } from './screenshot';
 
 jest.mock('node-screenshots');
 
-const mockSharp = jest.fn<unknown, unknown[]>();
-jest.mock('sharp', () => ({
+const mockFromRgbaPixels = jest.fn<unknown, unknown[]>();
+jest.mock('@napi-rs/image', () => ({
 	__esModule: true,
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	default: (...args: unknown[]) => mockSharp(...args),
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	Transformer: {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		fromRgbaPixels: (...args: unknown[]) => mockFromRgbaPixels(...args),
+	},
 }));
 
 const MockMonitor = Monitor as jest.MockedClass<typeof Monitor>;
@@ -75,13 +78,11 @@ function makeMockMonitor(opts: {
 }
 
 beforeEach(() => {
-	// sharp(buffer, opts)[.resize()].jpeg().toBuffer() → fake JPEG
-	const mockToBuffer = jest.fn().mockResolvedValue(Buffer.from('fake-jpeg'));
-	const mockJpeg = jest.fn().mockReturnValue({ toBuffer: mockToBuffer });
+	const mockJpeg = jest.fn().mockResolvedValue(Buffer.from('fake-jpeg'));
 	const mockResize = jest.fn();
 	const pipeline = { resize: mockResize, jpeg: mockJpeg };
 	mockResize.mockReturnValue(pipeline);
-	mockSharp.mockReturnValue(pipeline);
+	mockFromRgbaPixels.mockReturnValue(pipeline);
 });
 
 describe('screen_screenshot tool', () => {
@@ -136,7 +137,7 @@ describe('screen_screenshot tool', () => {
 
 		await screenshotTool.execute({}, DUMMY_CONTEXT);
 
-		const pipeline = mockSharp.mock.results[0].value as { resize: jest.Mock };
+		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: jest.Mock };
 		expect(pipeline.resize).toHaveBeenCalledWith(1920, 1080);
 	});
 
@@ -151,7 +152,7 @@ describe('screen_screenshot tool', () => {
 
 		await screenshotTool.execute({}, DUMMY_CONTEXT);
 
-		const pipeline = mockSharp.mock.results[0].value as { resize: jest.Mock };
+		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: jest.Mock };
 		// No HiDPI resize, but LLM downscale kicks in (1920x1080 → 1024x576)
 		expect(pipeline.resize).toHaveBeenCalledWith(1024, 576);
 	});
@@ -252,7 +253,7 @@ describe('screen_screenshot_region tool', () => {
 		await screenshotRegionTool.execute({ x: 100, y: 200, width: 400, height: 300 }, DUMMY_CONTEXT);
 
 		// Cropped image (800×600 physical) must be resized to logical 400×300
-		const pipeline = mockSharp.mock.results[0].value as { resize: jest.Mock };
+		const pipeline = mockFromRgbaPixels.mock.results[0].value as { resize: jest.Mock };
 		expect(pipeline.resize).toHaveBeenCalledWith(400, 300);
 	});
 });

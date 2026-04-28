@@ -35,6 +35,7 @@ export interface IUserManagementSettings {
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+	passwordMinLength: number;
 }
 
 export interface IEnterpriseSettings {
@@ -146,6 +147,9 @@ export interface FrontendSettings {
 			loginEnabled: boolean;
 		};
 	};
+	logStreaming: {
+		managedByEnv: boolean;
+	};
 	publicApi: {
 		enabled: boolean;
 		latestVersion: number;
@@ -231,6 +235,9 @@ export interface FrontendSettings {
 	security: {
 		blockFileAccessToN8nFiles: boolean;
 	};
+	chatTrigger?: {
+		disablePublicChat: boolean;
+	};
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;
@@ -282,6 +289,7 @@ export type FrontendModuleSettings = {
 		localGatewayDisabled: boolean;
 		proxyEnabled: boolean;
 		optinModalDismissed: boolean;
+		cloudManaged: boolean;
 	};
 
 	/**

@@ -93,6 +93,9 @@ export const defaultSettings: FrontendSettings = {
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
 	},
+	logStreaming: {
+		managedByEnv: false,
+	},
 	telemetry: {
 		enabled: false,
 	},
@@ -108,6 +111,7 @@ export const defaultSettings: FrontendSettings = {
 		smtpSetup: true,
 		authenticationMethod: 'email',
 		quota: 10,
+		passwordMinLength: 8,
 	},
 	versionCli: '',
 	nodeJsVersion: '',

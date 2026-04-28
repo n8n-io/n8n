@@ -11,7 +11,8 @@ import {
 	COMMITTED_FIXTURES_DIR,
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
-import { normalizeConnections } from '../types/base';
+import { foldLegacyErrorConnections, normalizeConnections } from '../types/base';
+import { validateWorkflow } from '../validation';
 import {
 	escapeNewlinesInExpressionStrings,
 	isPlaceholderValue,
@@ -22,12 +23,18 @@ interface ExpectedWarning {
 	nodeName?: string;
 }
 
+interface ExpectedError {
+	code: string;
+	nodeName?: string;
+}
+
 interface TestWorkflow {
 	id: string;
 	name: string;
 	json: WorkflowJSON;
 	nodeCount: number;
 	expectedWarnings?: ExpectedWarning[];
+	expectedErrors?: ExpectedError[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -45,6 +52,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			skip?: boolean;
 			skipReason?: string;
 			expectedWarnings?: ExpectedWarning[];
+			expectedErrors?: ExpectedError[];
 		}>;
 	};
 
@@ -61,6 +69,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				json,
 				nodeCount: json.nodes?.length ?? 0,
 				expectedWarnings: entry.expectedWarnings,
+				expectedErrors: entry.expectedErrors,
 			});
 		}
 	}
@@ -2522,67 +2531,6 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 				}
 			};
 
-			// Normalize main[errorIndex] connections into error[0] connections.
-			// Many original workflows store error outputs under main at the error index;
-			// the builder now natively produces error[0]. Convert the original to match.
-			// Uses the same error output index logic as the semantic registry.
-			const getErrorOutputIndex = (type: string, params?: Record<string, unknown>): number => {
-				// Must match the logic in semantic-registry.ts getErrorOutputIndex
-				switch (type) {
-					case 'n8n-nodes-base.if':
-						return 2; // outputs: ['trueBranch', 'falseBranch']
-					case 'n8n-nodes-base.switch': {
-						const rules = params?.rules as Record<string, unknown> | undefined;
-						const rulesArray = (rules?.rules ?? rules?.values) as unknown[] | undefined;
-						const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
-						return numCases + 1; // cases + fallback
-					}
-					case 'n8n-nodes-base.merge':
-						return 1; // outputs: ['output']
-					case 'n8n-nodes-base.splitInBatches':
-						return 2; // outputs: ['done', 'loop']
-					default:
-						return 1; // regular nodes: error at index 1
-				}
-			};
-
-			const normalizeMainErrorToErrorConnections = (
-				connections: Record<string, Record<string, unknown[][]>>,
-				nodes: Array<{
-					name?: string;
-					type: string;
-					parameters?: Record<string, unknown>;
-					onError?: string;
-				}>,
-			): void => {
-				const nodeMap = new Map<
-					string,
-					{ type: string; parameters?: Record<string, unknown>; onError?: string }
-				>();
-				for (const n of nodes) {
-					if (n.name) nodeMap.set(n.name, n);
-				}
-
-				for (const [nodeName, nodeConns] of Object.entries(connections)) {
-					const node = nodeMap.get(nodeName);
-					if (!node || node.onError !== 'continueErrorOutput') continue;
-					if (!nodeConns.main || !Array.isArray(nodeConns.main)) continue;
-					// Already has error connections — skip
-					if (nodeConns.error) continue;
-
-					const errorOutputIndex = getErrorOutputIndex(node.type, node.parameters);
-
-					// Extract main[errorOutputIndex] → error[0]
-					if (errorOutputIndex < nodeConns.main.length) {
-						const errorTargets = nodeConns.main[errorOutputIndex];
-						if (Array.isArray(errorTargets) && errorTargets.length > 0) {
-							nodeConns.error = [errorTargets];
-							nodeConns.main[errorOutputIndex] = [];
-						}
-					}
-				}
-			};
-
 			// Helper to normalize warnings for comparison
 			const normalizeWarning = (w: ExpectedWarning): string => `${w.code}:${w.nodeName ?? ''}`;
 
@@ -2655,13 +2603,15 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						json.nodes.map((n) => n.name).filter((name): name is string => !!name),
 					);
 					// Normalize original connections (clone first to avoid mutating input)
-					// since the original JSON may have flat tuple connections
+					// since the original JSON may have flat tuple connections. Also fold
+					// any legacy top-level `error` connections into main[last] — the SDK
+					// now always emits the modern shape, so the original must be aligned
+					// before comparison. Old templates are kept untouched; the test does
+					// the old/new translation so symmetry holds against the serializer's
+					// matching fold.
 					const normalizedOriginalConns = deepCopy(json.connections);
 					normalizeConnections(normalizedOriginalConns);
-					normalizeMainErrorToErrorConnections(
-						normalizedOriginalConns as Record<string, Record<string, unknown[][]>>,
-						json.nodes,
-					);
+					foldLegacyErrorConnections(normalizedOriginalConns, json.nodes);
 					const filteredOriginal = filterEmptyConnections(normalizedOriginalConns, validNodeNames);
 					const filteredParsed = filterEmptyConnections(parsedJson.connections);
 
@@ -2675,6 +2625,90 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
 					}
 				});
+			});
+		});
+	}
+});
+
+describe('Committed workflows — schema validation errors', () => {
+	// Mirror the relevant builderHint.inputs declarations from the real node types
+	// so validateWorkflow can resolve required AI inputs without pulling in the
+	// full nodes-langchain dependency tree.
+	const mockNodeTypesProvider = {
+		getByNameAndVersion: (type: string, _version?: number) => {
+			if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: {
+								ai_memory: {
+									required: true,
+									displayOptions: {
+										show: {
+											mode: ['hostedChat', 'webhook'],
+											'options.loadPreviousSession': ['memory'],
+										},
+									},
+								},
+							},
+						},
+					},
+				};
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: {
+								ai_languageModel: { required: true },
+								ai_memory: { required: false },
+								ai_tool: { required: false },
+							},
+						},
+					},
+				};
+			}
+			return { description: { inputs: ['main'] } };
+		},
+		getByName: (type: string) => mockNodeTypesProvider.getByNameAndVersion(type),
+		getKnownTypes: () => ({}),
+	};
+
+	const normalizeError = (e: ExpectedError): string => `${e.code}:${e.nodeName ?? ''}`;
+
+	const workflowsWithExpectedErrors = workflows.filter(
+		(w) => w.expectedErrors && w.expectedErrors.length > 0,
+	);
+
+	if (workflowsWithExpectedErrors.length === 0) {
+		it('has at least one fixture with expectedErrors declared', () => {
+			expect(workflowsWithExpectedErrors.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedErrors.forEach(({ id, name, json, expectedErrors }) => {
+			it(`emits expected validation errors for workflow ${id}: "${name}"`, () => {
+				const expectedCodes = new Set((expectedErrors ?? []).map((e) => e.code));
+
+				const result = validateWorkflow(json, {
+					nodeTypesProvider: mockNodeTypesProvider as never,
+					// Disconnected-node warnings are unrelated to the AI-input checks
+					// these fixtures are designed to exercise.
+					allowDisconnectedNodes: true,
+				});
+
+				const actualErrors: ExpectedError[] = result.errors
+					.filter((e) => expectedCodes.has(e.code))
+					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				const expected = (expectedErrors ?? [])
+					.slice()
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				expect(actualErrors).toEqual(expected);
+				expect(result.valid).toBe(false);
 			});
 		});
 	}

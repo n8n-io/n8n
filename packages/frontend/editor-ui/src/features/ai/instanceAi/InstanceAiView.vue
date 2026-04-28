@@ -16,13 +16,13 @@ import {
 	N8nResizeWrapper,
 	N8nScrollArea,
 	N8nText,
+	N8nButton,
 } from '@n8n/design-system';
-import { useScroll, useWindowSize } from '@vueuse/core';
+import { useLocalStorage, useScroll, useWindowSize } from '@vueuse/core';
 import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -30,7 +30,12 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useEventRelay } from './useEventRelay';
 import { useExecutionPushEvents } from './useExecutionPushEvents';
-import { INSTANCE_AI_SETTINGS_VIEW, NEW_CONVERSATION_TITLE } from './constants';
+import {
+	INSTANCE_AI_VIEW,
+	INSTANCE_AI_SETTINGS_VIEW,
+	INSTANCE_AI_THREAD_VIEW,
+	NEW_CONVERSATION_TITLE,
+} from './constants';
 import { INSTANCE_AI_EMPTY_STATE_SUGGESTIONS } from './emptyStateSuggestions';
 import InstanceAiMessage from './components/InstanceAiMessage.vue';
 import InstanceAiInput from './components/InstanceAiInput.vue';
@@ -46,12 +51,16 @@ import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/Cr
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import { TabsContent, TabsRoot } from 'reka-ui';
+
+const props = defineProps<{
+	threadId?: string;
+}>();
 
 const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
-const pushConnectionStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const route = useRoute();
@@ -63,7 +72,7 @@ function goToSettings() {
 	void router.push({ name: INSTANCE_AI_SETTINGS_VIEW });
 }
 
-documentTitle.set('n8n Agent');
+documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
@@ -106,41 +115,48 @@ watch(
 	},
 );
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
-const showEmptyStateLayout = computed(() => !store.hasMessages && !store.isHydratingThread);
+const showEmptyStateLayout = computed(() => !props.threadId);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
-	pushConnectionStore.pushConnect();
-	void store.loadThreads();
+	void store.loadThreads().then((loaded) => {
+		if (!loaded || !props.threadId) return;
+		// After threads load, validate deep-link: redirect if thread doesn't exist
+		if (!store.threads.some((t) => t.id === props.threadId)) {
+			void router.replace({ name: INSTANCE_AI_VIEW });
+		} else if (props.threadId !== store.currentThreadId) {
+			// Thread exists on server — now safe to switch
+			store.switchThread(props.threadId);
+		}
+	});
 	void store.fetchCredits();
 	store.startCreditsPushListener();
 	void nextTick(() => chatInputRef.value?.focus());
 
-	// Auto-connect local gateway if enabled
+	// Subscribe to push + fetch backend gateway state. The backend keeps the
+	// pairing alive across reloads, so the client never contacts the daemon
+	// on mount — only in response to explicit user action in the setup modal.
 	void settingsStore
 		.refreshModuleSettings()
 		.catch(() => {})
+		.then(async () => await settingsStore.ensurePreferencesLoaded())
+		.catch(() => {})
 		.then(() => {
-			if (!settingsStore.isLocalGatewayDisabled) {
-				settingsStore.startDaemonProbing();
-				settingsStore.startGatewayPushListener();
-				settingsStore.pollGatewayStatus();
-			}
+			if (settingsStore.isLocalGatewayDisabled) return;
+			settingsStore.startGatewayPushListener();
+			void settingsStore.fetchGatewayStatus();
 		});
 });
 
-// React to local gateway being toggled in settings without requiring a page reload
+// React to admin or user toggling local gateway
 watch(
 	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			settingsStore.stopDaemonProbing();
-			settingsStore.stopGatewayPolling();
 			settingsStore.stopGatewayPushListener();
 		} else {
-			settingsStore.startDaemonProbing();
 			settingsStore.startGatewayPushListener();
-			settingsStore.pollGatewayStatus();
+			void settingsStore.fetchGatewayStatus();
 		}
 	},
 );
@@ -150,9 +166,20 @@ const showArtifactsPanel = ref(true);
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
-// --- Sidebar resize ---
+// --- Sidebar collapse & resize ---
+const sidebarCollapsed = useLocalStorage('instanceAi.sidebarCollapsed', false);
 const sidebarWidth = ref(260);
+
+function toggleSidebarCollapse() {
+	sidebarCollapsed.value = !sidebarCollapsed.value;
+}
+
 function handleSidebarResize({ width }: { width: number }) {
+	// Drag below min-width threshold → auto-collapse
+	if (width <= 200) {
+		sidebarCollapsed.value = true;
+		return;
+	}
 	sidebarWidth.value = width;
 }
 
@@ -278,18 +305,10 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
-	pushConnectionStore.pushDisconnect();
 	store.closeSSE();
 	store.stopCreditsPushListener();
-	settingsStore.stopDaemonProbing();
-	settingsStore.stopGatewayPolling();
 	settingsStore.stopGatewayPushListener();
 });
-
-// --- Route-thread synchronization ---
-const routeThreadId = computed(() =>
-	typeof route.params.threadId === 'string' ? route.params.threadId : null,
-);
 
 function reconnectThreadIfHydrationApplied(threadId: string): void {
 	void store.loadHistoricalMessages(threadId).then((hydrationStatus) => {
@@ -300,20 +319,15 @@ function reconnectThreadIfHydrationApplied(threadId: string): void {
 }
 
 watch(
-	routeThreadId,
+	() => props.threadId,
 	(threadId) => {
 		if (!threadId) {
-			// /instance-ai base route (no :threadId) — bootstrap default thread + SSE
-			if ((store.threads?.length ?? 0) === 0) {
-				store.threads.push({
-					id: store.currentThreadId,
-					title: NEW_CONVERSATION_TITLE,
-					createdAt: new Date().toISOString(),
-				});
-			}
-			if (store.sseState === 'disconnected') {
-				reconnectThreadIfHydrationApplied(store.currentThreadId);
-			}
+			// /instance-ai base route (no :threadId) — reset to a clean empty
+			// state. Without this, `currentThreadId` keeps pointing at the
+			// last thread and the sidebar highlights it alongside the empty
+			// main view (AI-2408). A new thread is created on the first
+			// `sendMessage` via `syncThread`.
+			store.clearCurrentThread();
 			return;
 		}
 		if (threadId === store.currentThreadId) {
@@ -328,16 +342,11 @@ watch(
 		// Clear execution tracking for previous thread
 		executionTracking.clearAll();
 
-		// Deep-link hydration: ensure thread exists in sidebar
-		if (!store.threads.some((t) => t.id === threadId)) {
-			store.threads.push({
-				id: threadId,
-				title: NEW_CONVERSATION_TITLE,
-				createdAt: new Date().toISOString(),
-			});
+		// Only switch to threads that exist in the sidebar (loaded from server).
+		// Unknown thread IDs are validated after loadThreads completes (see onMounted).
+		if (store.threads.some((t) => t.id === threadId)) {
+			store.switchThread(threadId);
 		}
-		// switchThread already calls loadHistoricalMessages internally
-		store.switchThread(threadId);
 	},
 	{ immediate: true },
 );
@@ -355,11 +364,23 @@ const eventRelay = useEventRelay({
 });
 
 // --- Message handlers ---
-async function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 	preview.markUserSentMessage();
-	await store.sendMessage(message, attachments, rootStore.pushRef);
+	const shouldUpdateRoute = !props.threadId;
+	const threadId = store.currentThreadId;
+	void store.sendMessage(message, attachments, rootStore.pushRef).then(() => {
+		// After the first message is sent, update the URL to include the thread ID
+		// so the thread is addressable and appears in the sidebar.
+		// Only update the route if the thread was persisted (syncThread succeeded).
+		if (shouldUpdateRoute && store.threads.some((t) => t.id === threadId)) {
+			void router.replace({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId },
+			});
+		}
+	});
 }
 
 function handleStop() {
@@ -371,11 +392,14 @@ function handleStop() {
 	<div :class="$style.container" data-test-id="instance-ai-container">
 		<!-- Resizable sidebar -->
 		<N8nResizeWrapper
+			v-if="!sidebarCollapsed"
 			:class="$style.sidebar"
 			:width="sidebarWidth"
 			:style="{ width: `${sidebarWidth}px` }"
 			:supported-directions="['right']"
 			:is-resizing-enabled="true"
+			:min-width="200"
+			:max-width="400"
 			@resize="handleSidebarResize"
 		>
 			<InstanceAiThreadList />
@@ -385,6 +409,18 @@ function handleStop() {
 		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
+				<N8nButton
+					:icon="sidebarCollapsed ? 'list' : 'panel-left'"
+					variant="ghost"
+					size="medium"
+					data-test-id="instance-ai-sidebar-toggle"
+					:icon-only="!sidebarCollapsed"
+					@click="toggleSidebarCollapse"
+				>
+					<template v-if="sidebarCollapsed">{{
+						i18n.baseText('instanceAi.sidebar.threads')
+					}}</template>
+				</N8nButton>
 				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
 					{{ currentThreadTitle }}
 				</N8nHeading>
@@ -480,7 +516,6 @@ function handleStop() {
 										v-for="message in store.messages"
 										:key="message.id"
 										:message="message"
-										:class="$style.message"
 									/>
 								</TransitionGroup>
 								<InstanceAiConfirmationPanel />
@@ -558,14 +593,22 @@ function handleStop() {
 			@resizestart="isResizingPreview = true"
 			@resizeend="isResizingPreview = false"
 		>
-			<div :class="$style.previewPanel">
+			<TabsRoot
+				v-model="preview.activeTabId.value"
+				orientation="horizontal"
+				:class="$style.previewPanel"
+			>
 				<InstanceAiPreviewTabBar
 					:tabs="preview.allArtifactTabs.value"
 					:active-tab-id="preview.activeTabId.value"
-					@update:active-tab-id="preview.selectTab($event)"
 					@close="preview.closePreview()"
 				/>
-				<div :class="$style.previewContent">
+				<TabsContent
+					v-for="tab in preview.allArtifactTabs.value"
+					:key="tab.id"
+					:value="tab.id"
+					:class="$style.previewContent"
+				>
 					<InstanceAiWorkflowPreview
 						v-if="preview.activeWorkflowId.value"
 						ref="workflowPreview"
@@ -580,8 +623,8 @@ function handleStop() {
 						:project-id="preview.activeDataTableProjectId.value"
 						:refresh-key="preview.dataTableRefreshKey.value"
 					/>
-				</div>
-			</div>
+				</TabsContent>
+			</TabsRoot>
 		</N8nResizeWrapper>
 	</div>
 </template>
@@ -593,12 +636,17 @@ function handleStop() {
 	width: 100%;
 	min-width: 900px;
 	overflow: hidden;
+	position: relative;
+	z-index: 0;
 }
 
 .sidebar {
 	min-width: 200px;
 	max-width: 400px;
 	flex-shrink: 0;
+	display: flex;
+	flex-direction: column;
+	border-right: var(--border);
 }
 
 .readOnlyBanner {
@@ -702,9 +750,9 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 	gap: var(--spacing--lg);
 	padding: var(--spacing--lg);
+	padding-top: 20vh;
 }
 
 .centeredInput {
@@ -725,10 +773,6 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
-
-.message {
-	width: 90%;
 }
 
 .scrollButtonContainer {

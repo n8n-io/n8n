@@ -8,6 +8,9 @@
 		"GET /credentials": {
 			"status": "gap"
 		},
+		"GET /credentials/{id}": {
+			"status": "gap"
+		},
 		"POST /credentials": {
 			"status": "covered",
 			"nodeOperation": "credential:create"
@@ -24,6 +27,9 @@
 			"nodeOperation": "credential:getSchema"
 		},
 		"PUT /credentials/{id}/transfer": {
+			"status": "gap"
+		},
+		"POST /credentials/{id}/test": {
 			"status": "gap"
 		},
 		"GET /community-packages": {
@@ -193,7 +199,16 @@
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
 			"status": "gap"
 		},
-		"GET /insights/summary": {
+		"GET /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"POST /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"PATCH /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/columns/{columnId}": {
 			"status": "gap"
 		},
 		"POST /projects": {
@@ -208,6 +223,15 @@
 		"PUT /projects/{projectId}": {
 			"status": "gap"
 		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
 		"GET /projects/{projectId}/users": {
 			"status": "gap"
 		},
@@ -218,6 +242,21 @@
 			"status": "gap"
 		},
 		"PATCH /projects/{projectId}/users/{userId}": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"PATCH /projects/{projectId}/folders/{folderId}": {
 			"status": "gap"
 		}
 	}

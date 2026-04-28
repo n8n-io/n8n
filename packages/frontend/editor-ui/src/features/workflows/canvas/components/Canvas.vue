@@ -10,7 +10,7 @@ import { type KeyMap, useKeybindings } from '@/app/composables/useKeybindings';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { CanvasKey } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { NODE_CREATOR_SHORTCUT_COACHMARK_KEY } from '@/features/shared/nodeCreator/composables/useNodeCreatorShortcutCoachmark';
 import type { NodeCreatorOpenSource } from '@/Interface';
 import type {
@@ -141,6 +141,7 @@ const props = withDefaults(
 		controlsPosition?: PanelPosition;
 		eventBus?: EventBus<CanvasEventBusEvents>;
 		readOnly?: boolean;
+		canExecute?: boolean;
 		executing?: boolean;
 		keyBindings?: boolean;
 		loading?: boolean;
@@ -155,6 +156,7 @@ const props = withDefaults(
 		controlsPosition: PanelPosition.BottomLeft,
 		eventBus: () => createEventBus(),
 		readOnly: false,
+		canExecute: false,
 		executing: false,
 		keyBindings: true,
 		loading: false,
@@ -165,6 +167,7 @@ const props = withDefaults(
 
 const { isMobileDevice, controlKeyCode } = useDeviceSupport();
 const usersStore = useUsersStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const experimentalNdvStore = useExperimentalNdvStore();
 const focusedNodesStore = useFocusedNodesStore();
 const chatPanelStore = useChatPanelStore();
@@ -359,6 +362,9 @@ const keyMap = computed(() => {
 		z: onToggleZoomMode,
 	};
 
+	if (props.readOnly && props.canExecute) {
+		return { ...readOnlyKeymap, ctrl_enter: () => emit('run:workflow') };
+	}
 	if (props.readOnly) return readOnlyKeymap;
 
 	const fullKeymap: KeyMap = {
@@ -1017,7 +1023,7 @@ onNodesInitialized(() => {
 	if (pendingConnections) {
 		const connections = pendingConnections;
 		pendingConnections = null;
-		useWorkflowsStore().setConnections(connections);
+		workflowDocumentStore?.value?.setConnections(connections);
 	}
 
 	if (pendingFitViewOnInit) {
@@ -1123,6 +1129,7 @@ defineExpose({
 					v-bind="nodeProps"
 					:data="nodeDataById[nodeProps.id]"
 					:read-only="readOnly"
+					:can-execute="canExecute"
 					:event-bus="eventBus"
 					:hovered="nodesHoveredById[nodeProps.id]"
 					:nearby-hovered="nodeProps.id === hoveredTriggerNode.id.value"

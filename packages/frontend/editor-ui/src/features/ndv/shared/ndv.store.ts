@@ -97,12 +97,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 	const activeNode = computed(() => {
-		return workflowDocumentStore.value?.getNodeByName(activeNodeName.value || '') ?? null;
+		return workflowDocumentStore.value.getNodeByName(activeNodeName.value || '') ?? null;
 	});
 
 	const ndvInputData = computed(() => {
@@ -134,7 +132,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const ndvInputDataWithPinnedData = computed(() => {
 		const data = ndvInputData.value;
 		return ndvInputNodeName.value
-			? (workflowDocumentStore.value?.pinData?.[ndvInputNodeName.value] ?? data)
+			? (workflowDocumentStore.value.pinData?.[ndvInputNodeName.value] ?? data)
 			: data;
 	});
 
@@ -157,7 +155,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const ndvNodeInputNumber = computed(() => {
 		const returnData: { [nodeName: string]: number[] } = {};
 		const activeNodeConections = (
-			workflowDocumentStore.value?.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
+			workflowDocumentStore.value.connectionsByDestinationNode[activeNode.value?.name || ''] ?? {}
 		).main;
 
 		if (!activeNodeConections || activeNodeConections.length < 2) return returnData;
@@ -187,7 +185,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		if (!activeNode.value || !inputNodeName) {
 			return false;
 		}
-		const parentNodes = workflowDocumentStore.value?.getParentNodes(
+		const parentNodes = workflowDocumentStore.value.getParentNodes(
 			activeNode.value.name,
 			NodeConnectionTypes.Main,
 			1,
@@ -370,10 +368,10 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	};
 
 	const updateNodeParameterIssues = (issues: INodeIssues): void => {
-		const node = workflowDocumentStore.value?.getNodeByName(activeNodeName.value || '');
+		const node = workflowDocumentStore.value.getNodeByName(activeNodeName.value || '');
 
 		if (node?.id) {
-			workflowDocumentStore.value?.updateNodeById(node.id, {
+			workflowDocumentStore.value.updateNodeById(node.id, {
 				issues: {
 					...node.issues,
 					...issues,

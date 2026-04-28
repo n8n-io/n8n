@@ -1,7 +1,6 @@
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import type { INode } from 'n8n-workflow';
+import type { INode, WorkflowExpression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import {
 	getBadgeIconUrl,
@@ -44,35 +43,21 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	})),
 }));
 
-const resolveExpressionMock = vi.fn();
-
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		workflowObject: {
-			expression: {
-				getParameterValue: resolveExpressionMock,
-			},
-		},
-	})),
-}));
-
 describe('util: Node Icon', () => {
 	describe('getNodeIcon', () => {
 		it('should return the icon from nodeType', () => {
-			expect(getNodeIcon(mock<IconNodeType>({ icon: 'user', iconUrl: undefined }), null)).toBe(
-				'user',
-			);
+			expect(
+				getNodeIcon(mock<IconNodeType>({ icon: 'user', iconUrl: undefined }), null, null),
+			).toBe('user');
 		});
 
 		it('should return null if no icon is present', () => {
 			expect(
-				getNodeIcon(mock<IconNodeType>({ icon: undefined, iconUrl: '/test.svg' }), null),
+				getNodeIcon(mock<IconNodeType>({ icon: undefined, iconUrl: '/test.svg' }), null, null),
 			).toBeUndefined();
 		});
 
 		it('should resolve expression icon without a node using defaults', () => {
-			resolveExpressionMock.mockReturnValueOnce('file:python.svg');
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ $parameter.mode === "python" ? "file:python.svg" : "file:js.svg" }}',
 				defaults: {
@@ -82,13 +67,13 @@ describe('util: Node Icon', () => {
 				},
 			});
 
-			const result = getNodeIcon(nodeType, null);
+			const result = getNodeIcon(nodeType, null, {
+				getParameterValue: () => 'file:python.svg',
+			} as Partial<WorkflowExpression> as WorkflowExpression);
 			expect(result).toBe('file:python.svg');
 		});
 
 		it('should resolve expression icon with a node using node parameters', () => {
-			resolveExpressionMock.mockReturnValueOnce('file:python.svg');
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ $parameter.mode === "python" ? "file:python.svg" : "file:js.svg" }}',
 				defaults: {
@@ -104,41 +89,31 @@ describe('util: Node Icon', () => {
 				},
 			});
 
-			const result = getNodeIcon(nodeType, node);
+			const result = getNodeIcon(nodeType, node, {
+				getParameterValue: () => 'file:python.svg',
+			} as Partial<WorkflowExpression> as WorkflowExpression);
 			expect(result).toBe('file:python.svg');
 		});
 
 		it('should return null when expression resolution fails', () => {
-			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
-				workflowObject: {
-					expression: {
-						getParameterValue: vi.fn().mockReturnValue({ invalid: 'object' }),
-					},
-				},
-			} as never);
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ invalid expression }}',
 			});
 
-			const result = getNodeIcon(nodeType, null);
+			const result = getNodeIcon(nodeType, null, {
+				getParameterValue: () => ({ invalid: 'object' }),
+			} as Partial<WorkflowExpression> as WorkflowExpression);
 			expect(result).toBeNull();
 		});
 
 		it('should return null when expression resolves to invalid format', () => {
-			vi.mocked(useWorkflowsStore).mockReturnValueOnce({
-				workflowObject: {
-					expression: {
-						getParameterValue: vi.fn().mockReturnValue('invalid:prefix:name'),
-					},
-				},
-			} as never);
-
 			const nodeType = mock<IconNodeType>({
 				icon: '={{ $parameter.icon }}',
 			});
 
-			const result = getNodeIcon(nodeType, null);
+			const result = getNodeIcon(nodeType, null, {
+				getParameterValue: () => ({ invalid: 'object' }),
+			} as Partial<WorkflowExpression> as WorkflowExpression);
 			expect(result).toBeNull();
 		});
 	});
@@ -196,13 +171,14 @@ describe('util: Node Icon', () => {
 
 	describe('getNodeIconSource', () => {
 		it('should return undefined if nodeType is null or undefined', () => {
-			expect(getNodeIconSource(null)).toBeUndefined();
-			expect(getNodeIconSource(undefined)).toBeUndefined();
+			expect(getNodeIconSource(null, null, null)).toBeUndefined();
+			expect(getNodeIconSource(undefined, null, null)).toBeUndefined();
 		});
 
 		it('should create an icon source from iconData.icon if available', () => {
 			const result = getNodeIconSource(
 				mock<IconNodeType>({ iconData: { type: 'icon', icon: 'pencil' } }),
+				null,
 				null,
 			);
 			expect(result).toEqual({
@@ -223,6 +199,7 @@ describe('util: Node Icon', () => {
 					},
 				}),
 				null,
+				null,
 			);
 			expect(result).toEqual({
 				type: 'file',
@@ -234,6 +211,7 @@ describe('util: Node Icon', () => {
 		it('should create a file source from iconUrl if available', () => {
 			const result = getNodeIconSource(
 				mock<IconNodeType>({ iconUrl: 'images/node-icon.svg', name: undefined }),
+				null,
 				null,
 			);
 			expect(result).toEqual({
@@ -253,6 +231,7 @@ describe('util: Node Icon', () => {
 					name: undefined,
 				}),
 				null,
+				null,
 			);
 			expect(result).toEqual({
 				type: 'icon',
@@ -264,6 +243,7 @@ describe('util: Node Icon', () => {
 		it('should include badge if available', () => {
 			const result = getNodeIconSource(
 				mock<IconNodeType>({ badgeIconUrl: 'images/badge.svg', name: undefined }),
+				null,
 				null,
 			);
 			expect(result?.badge).toEqual({
@@ -291,7 +271,7 @@ describe('util: Node Icon', () => {
 
 				vi.mocked(getThemedValue).mockReturnValue('community/icon.svg');
 
-				const result = getNodeIconSource('community-node');
+				const result = getNodeIconSource('community-node', null, null);
 
 				expect(result).toEqual({
 					type: 'file',
@@ -312,7 +292,7 @@ describe('util: Node Icon', () => {
 
 				vi.mocked(getThemedValue).mockReturnValue('regular/icon.svg');
 
-				const result = getNodeIconSource('regular-node');
+				const result = getNodeIconSource('regular-node', null, null);
 
 				expect(result).toEqual({
 					type: 'file',
@@ -333,7 +313,7 @@ describe('util: Node Icon', () => {
 
 				vi.mocked(removePreviewToken).mockReturnValue('preview-node');
 
-				getNodeIconSource('preview-node__preview__');
+				getNodeIconSource('preview-node__preview__', null, null);
 
 				expect(removePreviewToken).toHaveBeenCalledWith('preview-node__preview__');
 				expect(useNodeTypesStore().getNodeType).toHaveBeenCalledWith('preview-node');
@@ -345,7 +325,7 @@ describe('util: Node Icon', () => {
 					getNodeType: vi.fn().mockReturnValue(null),
 				} as unknown as ReturnType<typeof useNodeTypesStore>);
 
-				const result = getNodeIconSource('non-existent-node');
+				const result = getNodeIconSource('non-existent-node', null, null);
 
 				expect(result).toBeUndefined();
 			});
@@ -360,7 +340,7 @@ describe('util: Node Icon', () => {
 					getNodeType: vi.fn().mockReturnValue(mockNodeType),
 				} as unknown as ReturnType<typeof useNodeTypesStore>);
 
-				const result = getNodeIconSource('node-without-icon');
+				const result = getNodeIconSource('node-without-icon', null, null);
 
 				expect(result).toBeUndefined();
 			});
@@ -377,7 +357,7 @@ describe('util: Node Icon', () => {
 
 				vi.mocked(getThemedValue).mockReturnValue(null);
 
-				const result = getNodeIconSource('node-with-null-themed-icon');
+				const result = getNodeIconSource('node-with-null-themed-icon', null, null);
 
 				expect(result).toBeUndefined();
 			});

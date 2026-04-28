@@ -178,6 +178,39 @@ describe('nodes tool', () => {
 		});
 	});
 
+	describe('type-definition action', () => {
+		it('should return a Zod-derived error when nodeTypes is missing', async () => {
+			// The discriminated union is flattened for Anthropic, so `nodeTypes`
+			// becomes optional at the top-level schema. The handler re-validates
+			// against the variant schema so missing fields return a structured
+			// error instead of crashing downstream on input.nodeTypes.map.
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			const result = await tool.execute!({ action: 'type-definition' } as never, {} as never);
+
+			expect(result).toMatchObject({
+				definitions: [],
+				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+
+		it('should return a Zod-derived error when nodeTypes is empty', async () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			const result = await tool.execute!(
+				{ action: 'type-definition', nodeTypes: [] } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				definitions: [],
+				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+	});
+
 	describe('describe action', () => {
 		it('should return found: false when node type is not found', async () => {
 			const context = createMockContext();

@@ -116,6 +116,8 @@ export class UsersController {
 		_res: Response,
 		@Query listQueryOptions: UsersListFilterDto,
 	) {
+		await this.userService.assertGetUsersAccess(req.user, listQueryOptions.filter?.projectId);
+
 		const userQuery = this.userRepository.buildUserQuery(listQueryOptions);
 		const response = await userQuery.getManyAndCount();
 

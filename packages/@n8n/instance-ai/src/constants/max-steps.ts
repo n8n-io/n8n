@@ -8,7 +8,7 @@
  */
 export const MAX_STEPS = {
 	/** Main orchestrator — coordinates all other agents and handles direct tool calls. */
-	ORCHESTRATOR: 60,
+	ORCHESTRATOR: 100,
 	/** Browser automation sub-agent — needs many steps for multi-page flows. */
 	BROWSER: 300,
 	/** Workflow builder sub-agent — complex multi-tool build/verify loops. */

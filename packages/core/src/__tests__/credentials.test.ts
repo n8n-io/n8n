@@ -4,7 +4,10 @@ import type { CredentialInformation } from 'n8n-workflow';
 import { AssertionError } from 'node:assert';
 
 import { CREDENTIAL_ERRORS } from '@/constants';
+import { CipherAes256CBC } from '@/encryption/aes-256-cbc';
+import { CipherAes256GCM } from '@/encryption/aes-256-gcm';
 import { Cipher } from '@/encryption/cipher';
+import { EncryptionKeyProxy } from '@/encryption/encryption-key-proxy';
 import type { InstanceSettings } from '@/instance-settings';
 
 import { Credentials } from '../credentials';
@@ -13,7 +16,12 @@ describe('Credentials', () => {
 	const nodeCredentials = { id: '123', name: 'Test Credential' };
 	const credentialType = 'testApi';
 
-	const cipher = new Cipher(mock<InstanceSettings>({ encryptionKey: 'password' }));
+	const cipher = new Cipher(
+		mock<InstanceSettings>({ encryptionKey: 'password' }),
+		new CipherAes256GCM(),
+		new CipherAes256CBC(),
+		new EncryptionKeyProxy(),
+	);
 	Container.set(Cipher, cipher);
 
 	const setDataKey = (credentials: Credentials, key: string, data: CredentialInformation) => {

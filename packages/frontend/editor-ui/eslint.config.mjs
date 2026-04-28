@@ -63,9 +63,9 @@ export default defineConfig(
 				},
 				{
 					selector:
-						"MemberExpression[property.name='nodes'][object.property.name='workflow'][object.object.name='workflowsStore']",
+						"MemberExpression[property.name=/^(name|nodes|connections|active|isArchived|settings|tags|pinData|meta|versionId|activeVersionId|createdAt|updatedAt|parentFolder|scopes|usedCredentials|homeProject|description|versionData)$/][object.property.name='workflow'][object.object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore node accessors instead of workflowsStore.workflow.nodes',
+						'Use the equivalent workflowDocumentStore accessor instead of workflowsStore.workflow.<property>',
 				},
 				{
 					selector:
@@ -114,80 +114,6 @@ export default defineConfig(
 						"CallExpression[callee.property.name='setLastNodeParameters'][callee.object.name='workflowsStore']",
 					message:
 						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowsStore.setLastNodeParameters()',
-				},
-				// Guard: prevent direct workflowObject access — use workflowDocumentStore graph/expression methods.
-				{
-					selector:
-						"MemberExpression[property.name='workflowObject'][object.name='workflowsStore']",
-					message:
-						'Use workflowDocumentStore graph/expression methods instead of workflowsStore.workflowObject',
-				},
-				// Guard: prevent per-node mutations via deprecated workflowState composable.
-				{
-					selector:
-						"CallExpression[callee.property.name='setNodeParameters'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.setNodeParameters() instead of workflowState.setNodeParameters()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='setNodeValue'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.setNodeValue() instead of workflowState.setNodeValue()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='setNodePositionById'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.setNodePositionById() instead of workflowState.setNodePositionById()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='updateNodeById'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.updateNodeById() instead of workflowState.updateNodeById()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='updateNodeProperties'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.updateNodeProperties() instead of workflowState.updateNodeProperties()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='setNodeIssue'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.setNodeIssue() instead of workflowState.setNodeIssue()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='resetAllNodesIssues'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.resetAllNodesIssues() instead of workflowState.resetAllNodesIssues()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='setLastNodeParameters'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowState.setLastNodeParameters()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='resetParametersLastUpdatedAt'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.resetParametersLastUpdatedAt() instead of workflowState.resetParametersLastUpdatedAt()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='removeAllNodes'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.removeAllNodes() instead of workflowState.removeAllNodes()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='updateNodeAtIndex'][callee.object.name='workflowState']",
-					message:
-						'Use per-node mutation methods on workflowDocumentStore instead of workflowState.updateNodeAtIndex()',
 				},
 			],
 			// TODO: Remove these

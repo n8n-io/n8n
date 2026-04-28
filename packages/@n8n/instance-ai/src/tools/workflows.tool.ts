@@ -36,9 +36,10 @@ const getAsCodeAction = z.object({
 });
 
 const deleteAction = z.object({
-	action: z.literal('delete').describe('Archive a workflow by ID (soft delete)'),
+	action: z
+		.literal('delete')
+		.describe('Archive a workflow by ID (soft delete — recoverable by the user)'),
 	workflowId: z.string().describe('ID of the workflow'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 });
 
 const setupAction = z.object({
@@ -54,7 +55,6 @@ const publishBaseAction = z.object({
 		.literal('publish')
 		.describe('Publish a workflow version to production (omit versionId for latest draft)'),
 	workflowId: z.string().describe('ID of the workflow'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 	versionId: z.string().optional().describe('Version ID'),
 });
 
@@ -66,7 +66,6 @@ const publishExtendedAction = publishBaseAction.extend({
 const unpublishAction = z.object({
 	action: z.literal('unpublish').describe('Unpublish a workflow — stop it from running'),
 	workflowId: z.string().describe('ID of the workflow'),
-	workflowName: z.string().optional().describe('Name of the workflow (for confirmation message)'),
 });
 
 const listVersionsAction = z.object({
@@ -161,6 +160,16 @@ function buildInputSchema(context: InstanceAiContext, surface: 'full' | 'orchest
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
+async function resolveWorkflowName(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<string> {
+	return await context.workflowService
+		.get(workflowId)
+		.then((wf) => wf.name)
+		.catch(() => workflowId);
+}
+
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
 	const workflows = await context.workflowService.list({
 		limit: input.limit,
@@ -208,9 +217,10 @@ async function handleDelete(
 
 	// First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Archive workflow "${input.workflowName ?? input.workflowId}"? This will deactivate it if needed and can be undone later.`,
+			message: `Archive workflow "${workflowName}" (ID: ${input.workflowId})? This will deactivate it if needed and can be undone later.`,
 			severity: 'warning' as const,
 		});
 		// suspend() never resolves — this line is unreachable but satisfies the type checker
@@ -222,7 +232,6 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	// Approved or always_allow — execute
 	await context.workflowService.archive(input.workflowId);
 	return { success: true };
 }
@@ -440,13 +449,13 @@ async function handlePublish(
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		const label = input.workflowName ?? input.workflowId;
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
 
 		await suspend?.({
 			requestId: nanoid(),
 			message: input.versionId
-				? `Publish version "${input.versionId}" of workflow "${label}"?`
-				: `Publish workflow "${label}"?`,
+				? `Publish version "${input.versionId}" of workflow "${workflowName}" (ID: ${input.workflowId})?`
+				: `Publish workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
 		});
 		return { success: false };
@@ -490,9 +499,10 @@ async function handleUnpublish(
 	const needsApproval = context.permissions?.publishWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
 		await suspend?.({
 			requestId: nanoid(),
-			message: `Unpublish workflow "${input.workflowName ?? input.workflowId}"?`,
+			message: `Unpublish workflow "${workflowName}" (ID: ${input.workflowId})?`,
 			severity: 'warning' as const,
 		});
 		return { success: false };

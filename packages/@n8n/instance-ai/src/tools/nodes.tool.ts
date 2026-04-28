@@ -43,9 +43,9 @@ const describeAction = z.object({
 });
 
 const nodeRequestSchema = z.union([
-	z.string().describe('Simple node ID, e.g. "n8n-nodes-base.httpRequest"'),
+	z.string().describe('Simple node type ID, e.g. "n8n-nodes-base.httpRequest"'),
 	z.object({
-		nodeId: z.string().describe('Node type ID'),
+		nodeType: z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
 		version: z.string().optional().describe('Version, e.g. "4.3" or "v43"'),
 		resource: z.string().optional().describe('Resource discriminator for split nodes'),
 		operation: z.string().optional().describe('Operation discriminator for split nodes'),
@@ -55,11 +55,13 @@ const nodeRequestSchema = z.union([
 
 const typeDefinitionAction = z.object({
 	action: z.literal('type-definition').describe('Get TypeScript type definitions for nodes'),
-	nodeIds: z
+	nodeTypes: z
 		.array(nodeRequestSchema)
 		.min(1)
 		.max(5)
-		.describe('Node IDs to get definitions for (max 5)'),
+		.describe(
+			'Node type IDs to get definitions for (max 5). Each entry may be a plain node type string (e.g. "n8n-nodes-base.slack") or an object with `nodeType` plus optional `resource`/`operation`/`mode`/`version` discriminators.',
+		),
 });
 
 const suggestedAction = z.object({
@@ -80,14 +82,16 @@ const exploreResourcesAction = z.object({
 	methodName: z
 		.string()
 		.describe(
-			'The method name from the node type definition JSDoc annotation, ' +
-				'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
+			"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+				'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+				'do not invent or guess method names; they must match the annotation exactly.',
 		),
 	methodType: z
 		.enum(['listSearch', 'loadOptions'])
 		.describe(
-			'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
-				'"loadOptions" for @loadOptionsMethod annotations',
+			'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+				'"loadOptions" for @loadOptionsMethod annotations. ' +
+				'Pick the one matching the annotation you found in the type definition.',
 		),
 	credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 	credentialId: z.string().describe('Credential ID from list-credentials'),
@@ -188,10 +192,26 @@ async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
 ) {
+	// Mastra validates against the flattened top-level schema (required for
+	// Anthropic's `type: "object"` constraint), which makes every variant field
+	// optional. Re-assert the variant contract so missing/invalid inputs return
+	// a structured error the model can self-correct from, instead of crashing
+	// downstream on `input.nodeTypes.map`.
+	const parsed = typeDefinitionAction.safeParse(input);
+	if (!parsed.success) {
+		return {
+			definitions: [],
+			error: parsed.error.issues
+				.map((i) => `${i.path.join('.') || '<root>'}: ${i.message}`)
+				.join('; '),
+		};
+	}
+	const { nodeTypes } = parsed.data;
+
 	if (!context.nodeService.getNodeTypeDefinition) {
 		return {
-			definitions: input.nodeIds.map((req: z.infer<typeof nodeRequestSchema>) => ({
-				nodeId: typeof req === 'string' ? req : req.nodeId,
+			definitions: nodeTypes.map((req: z.infer<typeof nodeRequestSchema>) => ({
+				nodeType: typeof req === 'string' ? req : req.nodeType,
 				content: '',
 				error: 'Node type definitions are not available.',
 			})),
@@ -199,30 +219,30 @@ async function handleTypeDefinition(
 	}
 
 	const definitions = await Promise.all(
-		input.nodeIds.map(async (req: z.infer<typeof nodeRequestSchema>) => {
-			const nodeId = typeof req === 'string' ? req : req.nodeId;
+		nodeTypes.map(async (req: z.infer<typeof nodeRequestSchema>) => {
+			const nodeType = typeof req === 'string' ? req : req.nodeType;
 			const options = typeof req === 'string' ? undefined : req;
 
-			const result = await context.nodeService.getNodeTypeDefinition!(nodeId, options);
+			const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
 
 			if (!result) {
 				return {
-					nodeId,
+					nodeType,
 					content: '',
-					error: `No type definition found for '${nodeId}'.`,
+					error: `No type definition found for '${nodeType}'.`,
 				};
 			}
 
 			if (result.error) {
 				return {
-					nodeId,
+					nodeType,
 					content: '',
 					error: result.error,
 				};
 			}
 
 			return {
-				nodeId,
+				nodeType,
 				version: result.version,
 				content: result.content,
 			};
@@ -275,6 +295,7 @@ async function handleExploreResources(
 		return {
 			results: result.results,
 			paginationToken: result.paginationToken,
+			...(result.builderHint ? { builderHint: result.builderHint } : {}),
 		};
 	} catch (error) {
 		return {
@@ -291,7 +312,7 @@ export function createNodesTool(
 	surface: 'full' | 'orchestrator' = 'full',
 ) {
 	if (surface === 'orchestrator') {
-		const orchestratorInputSchema = z.object({
+		const orchestratorExploreAction = z.object({
 			action: z
 				.literal('explore-resources')
 				.describe("Query real resources for a node's RLC parameters"),
@@ -300,14 +321,16 @@ export function createNodesTool(
 			methodName: z
 				.string()
 				.describe(
-					'The method name from the node type definition JSDoc annotation, ' +
-						'e.g. "spreadSheetsSearch" from @searchListMethod, "getModels" from @loadOptionsMethod',
+					"The exact method name from the node's @searchListMethod or @loadOptionsMethod annotation. " +
+						'Call `action: "type-definition"` first to read the real method name from the type definition — ' +
+						'do not invent or guess method names; they must match the annotation exactly.',
 				),
 			methodType: z
 				.enum(['listSearch', 'loadOptions'])
 				.describe(
-					'The method type: "listSearch" for @searchListMethod annotations (supports filter/pagination), ' +
-						'"loadOptions" for @loadOptionsMethod annotations',
+					'"listSearch" for @searchListMethod annotations (supports filter/pagination); ' +
+						'"loadOptions" for @loadOptionsMethod annotations. ' +
+						'Pick the one matching the annotation you found in the type definition.',
 				),
 			credentialType: z.string().describe('Credential type key, e.g. "googleSheetsOAuth2Api"'),
 			credentialId: z.string().describe('Credential ID from list-credentials'),
@@ -326,15 +349,27 @@ export function createNodesTool(
 				),
 		});
 
+		const orchestratorInputSchema = sanitizeInputSchema(
+			z.discriminatedUnion('action', [typeDefinitionAction, orchestratorExploreAction]),
+		);
+
+		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
+
 		return createTool({
 			id: 'nodes',
 			description:
-				"Query real resources for a node's RLC parameters (e.g., list Google Sheets, " +
-				"OpenAI models, Slack channels). Uses the node's built-in search/load methods " +
-				'with your credentials.',
+				"Read node type definitions or query real resources for a node's RLC parameters " +
+				'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+				'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+				'`explore-resources` with the real method name and a credential.',
 			inputSchema: orchestratorInputSchema,
-			execute: async (input: z.infer<typeof orchestratorInputSchema>) => {
-				return await handleExploreResources(context, input);
+			execute: async (input: OrchestratorInput) => {
+				switch (input.action) {
+					case 'type-definition':
+						return await handleTypeDefinition(context, input);
+					case 'explore-resources':
+						return await handleExploreResources(context, input);
+				}
 			},
 		});
 	}

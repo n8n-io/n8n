@@ -9,6 +9,7 @@ type CreateProviderFn = (opts?: {
 	apiKey?: string;
 	baseURL?: string;
 	fetch?: FetchFn;
+	headers?: Record<string, string>;
 }) => (model: string) => LanguageModel;
 type CreateEmbeddingProviderFn = (opts?: { apiKey?: string }) => {
 	embeddingModel(model: string): EmbeddingModel;
@@ -56,6 +57,7 @@ export function createModel(config: ModelConfig): LanguageModel {
 	const modelId = stripEmpty(typeof config === 'string' ? config : config.id);
 	const apiKey = stripEmpty(typeof config === 'string' ? undefined : config.apiKey);
 	const baseURL = stripEmpty(typeof config === 'string' ? undefined : config.url);
+	const headers = typeof config === 'string' ? undefined : config.headers;
 
 	if (!modelId) {
 		throw new Error('Model ID is required');
@@ -70,25 +72,25 @@ export function createModel(config: ModelConfig): LanguageModel {
 			const { createAnthropic } = require('@ai-sdk/anthropic') as {
 				createAnthropic: CreateProviderFn;
 			};
-			return createAnthropic({ apiKey, baseURL, fetch })(modelName);
+			return createAnthropic({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		case 'openai': {
 			const { createOpenAI } = require('@ai-sdk/openai') as {
 				createOpenAI: CreateProviderFn;
 			};
-			return createOpenAI({ apiKey, baseURL, fetch })(modelName);
+			return createOpenAI({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		case 'google': {
 			const { createGoogleGenerativeAI } = require('@ai-sdk/google') as {
 				createGoogleGenerativeAI: CreateProviderFn;
 			};
-			return createGoogleGenerativeAI({ apiKey, baseURL, fetch })(modelName);
+			return createGoogleGenerativeAI({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		case 'xai': {
 			const { createXai } = require('@ai-sdk/xai') as {
 				createXai: CreateProviderFn;
 			};
-			return createXai({ apiKey, baseURL, fetch })(modelName);
+			return createXai({ apiKey, baseURL, fetch, headers })(modelName);
 		}
 		default:
 			throw new Error(

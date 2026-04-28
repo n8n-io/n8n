@@ -299,6 +299,58 @@ describe('NodeCredentials', () => {
 		expect(screen.queryByText('Test OpenAi account')).toBeInTheDocument();
 	});
 
+	it('should render the dropdown with saved credentials when node has a mismatched credentials object', async () => {
+		const anthropicApiCredentialType: ICredentialType = {
+			name: 'anthropicApi',
+			displayName: 'Anthropic',
+			documentationUrl: 'anthropic',
+			properties: [
+				{ displayName: 'API Key', name: 'apiKey', type: 'string', required: true, default: '' },
+			],
+		};
+
+		const mismatchedNode: INodeUi = {
+			...httpNode,
+			parameters: {
+				...httpNode.parameters,
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'anthropicApi',
+			},
+			credentials: { httpHeaderAuth: { id: 'header-auth-id', name: 'Header Auth' } },
+		};
+
+		credentialsStore.state.credentialTypes = {
+			...credentialsStore.state.credentialTypes,
+			anthropicApi: anthropicApiCredentialType,
+		};
+		credentialsStore.state.credentials = {
+			'anthropic-cred-id': createCredential({
+				id: 'anthropic-cred-id',
+				name: 'My Anthropic account',
+				type: 'anthropicApi',
+			}),
+		};
+
+		ndvStore.activeNode = mismatchedNode;
+
+		renderComponent(
+			{
+				props: {
+					node: mismatchedNode,
+					overrideCredType: 'anthropicApi',
+				},
+			},
+			{ merge: true },
+		);
+
+		expect(screen.queryByTestId('node-credentials-empty-state')).not.toBeInTheDocument();
+		expect(screen.queryByTestId('node-credentials-select')).toBeInTheDocument();
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+		expect(screen.queryByText('My Anthropic account')).toBeInTheDocument();
+	});
+
 	it('should not ignored managed credentials in the dropdown if active node is not the HTTP node', async () => {
 		ndvStore.activeNode = openAiNode;
 		credentialsStore.state.credentials = {

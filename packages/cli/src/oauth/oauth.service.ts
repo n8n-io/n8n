@@ -345,11 +345,13 @@ export class OauthService {
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
-		// Generic Oauth2 API is an exception because it needs to save the scope
+		// Skip the cleanup when the credential exposes scope as user-editable (directly or via
+		// inheritance) so that manually entered scopes survive reconnects.
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type)
+			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
+			!this.hasEditableScopeProperty(credential.type)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -361,6 +363,21 @@ export class OauthService {
 		);
 
 		return oauthCredentials;
+	}
+
+	/**
+	 * Checks whether the credential type (after merging inherited properties) exposes
+	 * a user-editable `scope` property. A property is considered editable when it is
+	 * defined and its `type` is not `'hidden'`.
+	 */
+	private hasEditableScopeProperty(credentialType: string): boolean {
+		try {
+			const properties = this.credentialsHelper.getCredentialsProperties(credentialType);
+			const scopeProperty = properties.find((property) => property.name === 'scope');
+			return scopeProperty !== undefined && scopeProperty.type !== 'hidden';
+		} catch {
+			return false;
+		}
 	}
 
 	async generateAOauth2AuthUri(
