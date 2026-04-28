@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { VIEWS } from '@/app/constants/navigation';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
@@ -11,8 +13,32 @@ import type { TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey } from '../session-timeline.utils';
 
 const i18n = useI18n();
+const router = useRouter();
 
 const props = defineProps<{ item: TimelineItem | null; agentName?: string }>();
+
+const fullExecutionHref = computed((): string => {
+	if (
+		props.item?.kind !== 'workflow' ||
+		!props.item.workflowId ||
+		!props.item.workflowExecutionId
+	) {
+		return '';
+	}
+	return router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: {
+			name: props.item.workflowId,
+			executionId: props.item.workflowExecutionId,
+		},
+	}).href;
+});
+
+function openFullExecution(): void {
+	if (fullExecutionHref.value) {
+		window.open(fullExecutionHref.value, '_blank', 'noopener');
+	}
+}
 const emit = defineEmits<{ close: [] }>();
 
 function formatTimestamp(ts: number): string {
@@ -91,14 +117,10 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<template v-if="item.kind === 'workflow'">{{
 						item.workflowName ?? item.toolName
 					}}</template>
-					<template v-else-if="item.kind === 'tool'">
-						<N8nIcon icon="wrench" :size="14" />
-						<span>{{ toolDisplayName }}</span>
-					</template>
-					<template v-else-if="item.kind === 'node'">
-						<N8nIcon icon="server" :size="14" />
-						<span>{{ item.nodeDisplayName ?? item.toolName }}</span>
-					</template>
+					<template v-else-if="item.kind === 'tool'">{{ toolDisplayName }}</template>
+					<template v-else-if="item.kind === 'node'">{{
+						item.nodeDisplayName ?? item.toolName
+					}}</template>
 					<template v-else-if="item.kind === 'working-memory'">{{
 						i18n.baseText('agentSessions.timeline.memory')
 					}}</template>
@@ -125,6 +147,15 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<span :class="$style.label">{{ i18n.baseText('agentSessions.timeline.created') }}</span>
 					<span :class="$style.value">{{ formatTimestamp(item.timestamp) }}</span>
 				</div>
+				<N8nButton
+					v-if="fullExecutionHref"
+					variant="ghost"
+					size="small"
+					:label="i18n.baseText('agentSessions.workflowLog.openFull')"
+					data-test-id="open-full-execution"
+					:class="$style.openFullButton"
+					@click="openFullExecution"
+				/>
 			</div>
 
 			<template v-if="item.kind === 'workflow'">
@@ -249,6 +280,10 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	font-size: var(--font-size--2xs);
 	color: var(--color--text);
 	font-variant-numeric: tabular-nums;
+}
+
+.openFullButton {
+	align-self: flex-start;
 }
 
 .json {

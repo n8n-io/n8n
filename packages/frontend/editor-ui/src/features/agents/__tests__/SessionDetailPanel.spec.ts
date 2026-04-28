@@ -51,6 +51,39 @@ describe('SessionDetailPanel — workflow branches', () => {
 		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
 	});
 
+	it('opens the full execution in a new tab when the header button is clicked', async () => {
+		const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+		const w = mountIt({
+			kind: 'workflow',
+			executionId: 'e1',
+			timestamp: 0,
+			workflowId: 'wf-1',
+			workflowName: 'WF',
+			workflowExecutionId: 'exec-1',
+		});
+		const button = w.find('[data-test-id="open-full-execution"]');
+		expect(button.exists()).toBe(true);
+		await button.trigger('click');
+		expect(openSpy).toHaveBeenCalledWith(
+			expect.stringContaining('/workflow/wf-1/executions/exec-1'),
+			'_blank',
+			'noopener',
+		);
+		openSpy.mockRestore();
+	});
+
+	it('does not show the open-full-execution button for non-workflow rows', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http',
+			toolInput: {},
+			toolOutput: {},
+		});
+		expect(w.find('[data-test-id="open-full-execution"]').exists()).toBe(false);
+	});
+
 	it('renders the form-link card when triggerType is "form" and toolOutput has formUrl', () => {
 		const w = mountIt({
 			kind: 'workflow',

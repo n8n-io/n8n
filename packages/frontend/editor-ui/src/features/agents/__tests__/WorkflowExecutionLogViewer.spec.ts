@@ -118,26 +118,6 @@ describe('WorkflowExecutionLogViewer', () => {
 		expect(w.text()).toContain('unavailable');
 	});
 
-	it('opens the full execution in a new tab when the button is clicked', async () => {
-		fetchExecution.mockResolvedValueOnce({
-			id: 'exec-1',
-			status: 'success',
-			data: { resultData: { runData: {} } },
-		});
-		const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-		const w = mountIt({ workflowId: 'wf-1', workflowExecutionId: 'exec-1' });
-		await flushPromises();
-		const button = w.find('[data-test-id="open-full-execution"]');
-		expect(button.exists()).toBe(true);
-		await button.trigger('click');
-		expect(openSpy).toHaveBeenCalledWith(
-			expect.stringContaining('/workflow/wf-1/executions/exec-1'),
-			'_blank',
-			'noopener',
-		);
-		openSpy.mockRestore();
-	});
-
 	it('calls fetchExecution with the executionId on mount', async () => {
 		fetchExecution.mockResolvedValueOnce({
 			id: 'exec-1',

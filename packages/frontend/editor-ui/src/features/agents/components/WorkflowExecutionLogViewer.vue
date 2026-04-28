@@ -1,12 +1,9 @@
 <script lang="ts" setup>
 import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton } from '@n8n/design-system';
 import { Workflow } from 'n8n-workflow';
 import { ChatSymbol } from '@n8n/chat/constants';
 import type { Chat } from '@n8n/chat/types';
-import { VIEWS } from '@/app/constants/navigation';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -29,7 +26,6 @@ const props = defineProps<{
 	workflowExecutionId: string;
 }>();
 
-const router = useRouter();
 const i18n = useI18n();
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
@@ -87,18 +83,6 @@ const latestNodeInfo = computed<Record<string, LatestNodeInfo>>(() => {
 const shouldShowTokenCountColumn = computed(() =>
 	entries.value.some((entry) => getSubtreeTotalConsumedTokens(entry, true).totalTokens > 0),
 );
-
-const fullExecutionHref = computed(
-	() =>
-		router.resolve({
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: { name: props.workflowId, executionId: props.workflowExecutionId },
-		}).href,
-);
-
-function openFullExecution(): void {
-	window.open(fullExecutionHref.value, '_blank', 'noopener');
-}
 
 const statusBanner = computed((): string => {
 	const s = execution.value?.status;
@@ -209,14 +193,6 @@ onBeforeUnmount(() => {
 		</div>
 		<template v-else-if="errorMessage">
 			<div :class="$style.errorBanner">{{ errorMessage }}</div>
-			<N8nButton
-				variant="outline"
-				size="small"
-				:label="i18n.baseText('agentSessions.workflowLog.openFull')"
-				data-test-id="open-full-execution"
-				:class="$style.openButton"
-				@click="openFullExecution"
-			/>
 		</template>
 		<template v-else>
 			<div v-if="statusBanner" :class="$style.banner">{{ statusBanner }}</div>
@@ -297,14 +273,6 @@ onBeforeUnmount(() => {
 					/>
 				</div>
 			</div>
-			<N8nButton
-				variant="outline"
-				size="small"
-				:label="i18n.baseText('agentSessions.workflowLog.openFull')"
-				data-test-id="open-full-execution"
-				:class="$style.openButton"
-				@click="openFullExecution"
-			/>
 		</template>
 	</div>
 </template>
