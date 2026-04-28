@@ -2,13 +2,15 @@
 /**
  * Retry a shell command with configurable attempts and delay.
  *
- * Usage: node retry.mjs [--attempts N] [--delay N] '<command>'
+ * Usage (safe):   node retry.mjs [--attempts N] [--delay N] -- <cmd> [args...]
+ * Usage (legacy): node retry.mjs [--attempts N] [--delay N] '<shell command>'
  *
  * Options:
  *   --attempts N   Maximum number of attempts (default: 4)
  *   --delay N      Seconds to wait between retries (default: 15)
  *
- * The command is executed via shell, so pipes and env-var expansion work.
+ * The -- form passes args directly to the process (no shell, safe for untrusted input).
+ * The legacy form executes via shell, so pipes and env-var expansion work but injection is possible.
  * Exits 0 on first success, 1 if all attempts fail.
  */
 import { execSync, spawnSync } from 'node:child_process';
@@ -49,7 +51,7 @@ if (separatorIndex !== -1) {
 }
 
 if (!command) {
-	console.error("Usage: node retry.mjs [--attempts N] [--delay N] -- <cmd> [args...]");
+	console.error('Usage: node retry.mjs [--attempts N] [--delay N] -- <cmd> [args...]');
 	process.exit(1);
 }
 
