@@ -11,35 +11,35 @@ ruleTester.run('node-execute-block', NodeExecuteBlockRule, {
 		{
 			name: 'NodeOperationError with itemIndex shorthand',
 			filename: nodeFilePath,
-			code: `throw new NodeOperationError(this.getNode(), 'Error message', { itemIndex });`,
+			code: "throw new NodeOperationError(this.getNode(), 'Error message', { itemIndex });",
 		},
 		{
 			name: 'NodeOperationError with explicit itemIndex value',
 			filename: nodeFilePath,
-			code: `throw new NodeOperationError(this.getNode(), 'Error', { itemIndex: i });`,
+			code: "throw new NodeOperationError(this.getNode(), 'Error', { itemIndex: i });",
 		},
 		{
 			name: 'NodeApiError is not checked by this rule',
 			filename: nodeFilePath,
-			code: `throw new NodeApiError(this.getNode(), error);`,
+			code: 'throw new NodeApiError(this.getNode(), error);',
 		},
 		{
 			name: 'NodeOperationError in non-.node.ts file is ignored',
 			filename: 'utils/helpers.ts',
-			code: `throw new NodeOperationError(this.getNode(), 'Error message');`,
+			code: "throw new NodeOperationError(this.getNode(), 'Error message');",
 		},
 	],
 	invalid: [
 		{
 			name: 'NodeOperationError with no options at all',
 			filename: nodeFilePath,
-			code: `throw new NodeOperationError(this.getNode(), 'Error message');`,
+			code: "throw new NodeOperationError(this.getNode(), 'Error message');",
 			errors: [{ messageId: 'missingItemIndex' }],
 		},
 		{
 			name: 'NodeOperationError with options object missing itemIndex',
 			filename: nodeFilePath,
-			code: `throw new NodeOperationError(this.getNode(), 'Error', { description: 'foo' });`,
+			code: "throw new NodeOperationError(this.getNode(), 'Error', { description: 'foo' });",
 			errors: [{ messageId: 'missingItemIndex' }],
 		},
 	],

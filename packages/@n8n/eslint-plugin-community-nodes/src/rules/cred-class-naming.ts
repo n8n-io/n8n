@@ -1,6 +1,6 @@
-import path from 'node:path';
 import type { TSESTree } from '@typescript-eslint/utils';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import path from 'node:path';
 
 import { createRule, isCredentialTypeClass } from '../utils/index.js';
 

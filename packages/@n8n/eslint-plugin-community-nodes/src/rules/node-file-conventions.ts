@@ -1,5 +1,5 @@
-import path from 'node:path';
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
+import path from 'node:path';
 
 import {
 	createRule,
