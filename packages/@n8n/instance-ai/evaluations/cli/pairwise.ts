@@ -223,14 +223,18 @@ interface ExampleRecord {
  * — there is no human in the loop, so a clarification turn is a guaranteed
  * `no_workflow_built`. Lives in the harness, not the production builder
  * prompt, so production behavior is unaffected.
+ *
+ * Strictly describes the eval environment and the required terminal action
+ * (call `submit-workflow`). Does not name SDK helpers or otherwise lead the
+ * agent toward specific implementation choices — those are what the eval
+ * measures.
  */
 const EVAL_PROMPT_SUFFIX =
 	'\n\n---\n' +
 	'You are running inside an automated, non-interactive evaluation. ' +
-	'There is no human to answer follow-up questions and no real credentials are configured. ' +
+	'There is no human to answer follow-up questions. ' +
 	'Build a single workflow that best satisfies the request above and call `submit-workflow` before you finish. ' +
-	'Use `newCredential()` placeholders for any credentials the workflow needs. ' +
-	'Do not call `ask-user`, do not pause to set up credentials, and do not ask for clarification — pick reasonable defaults and proceed.';
+	'Do not call `ask-user` and do not ask for clarification — pick reasonable defaults and proceed.';
 
 async function runExample(
 	example: DatasetExample,
