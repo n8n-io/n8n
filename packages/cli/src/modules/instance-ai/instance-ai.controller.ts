@@ -1,5 +1,6 @@
 import {
 	InstanceAiConfirmRequestDto,
+	InstanceAiFeedbackRequestDto,
 	InstanceAiGatewayCapabilitiesDto,
 	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
@@ -12,6 +13,7 @@ import {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalSubAgentRequest,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
@@ -35,6 +37,7 @@ import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
+import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -90,6 +93,7 @@ export class InstanceAiController {
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly subAgentEvalService: SubAgentEvalService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
@@ -357,6 +361,26 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	@Post('/feedback/:threadId/:responseId')
+	@GlobalScope('instanceAi:message')
+	async feedback(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('responseId') responseId: string,
+		@Body payload: InstanceAiFeedbackRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		// Fire-and-forget: never surface LangSmith errors to the UI. The service
+		// logs its own failures; the .catch here guards against unhandled
+		// rejections from paths not wrapped internally (e.g. DB lookups).
+		void this.instanceAiService
+			.submitLangsmithFeedback(req.user, threadId, responseId, payload)
+			.catch(() => {});
+		return { ok: true };
+	}
+
 	@Post('/chat/:threadId/tasks/:taskId/cancel')
 	@GlobalScope('instanceAi:message')
 	async cancelTask(
@@ -587,6 +611,19 @@ export class InstanceAiController {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
+	@Post('/eval/run-sub-agent')
+	@GlobalScope('instanceAi:message')
+	async runSubAgentEval(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalSubAgentRequest,
+	) {
+		if (process.env.E2E_TESTS !== 'true' || process.env.NODE_ENV === 'production') {
+			throw new ForbiddenError('Sub-agent evaluation is not enabled');
+		}
+		return await this.subAgentEvalService.run(req.user, payload);
+	}
+
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
@@ -623,9 +660,14 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		const unsubscribe = gateway.onRequest((event) => {
+		const unsubscribeRequest = gateway.onRequest((event) => {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			res.flush?.();
+		});
+		const unsubscribeDisconnect = gateway.onDisconnect((event) => {
+			res.write(`data: ${JSON.stringify(event)}\n\n`);
+			res.flush?.();
+			res.end();
 		});
 
 		const keepAlive = setInterval(() => {
@@ -633,8 +675,12 @@ export class InstanceAiController {
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
 
+		let cleanedUp = false;
 		const cleanup = () => {
-			unsubscribe();
+			if (cleanedUp) return;
+			cleanedUp = true;
+			unsubscribeRequest();
+			unsubscribeDisconnect();
 			clearInterval(keepAlive);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
@@ -727,6 +773,28 @@ export class InstanceAiController {
 	async gatewayStatus(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
 		return this.instanceAiService.getGatewayStatus(req.user.id);
+	}
+
+	/**
+	 * User-initiated gateway disconnect. Tears down the paired daemon session
+	 * so its tools are no longer exposed to the agent, without changing the
+	 * user's preference to disabled.
+	 */
+	@Post('/gateway/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayDisconnectSession(req: AuthenticatedRequest) {
+		const userId = req.user.id;
+		this.instanceAiService.clearDisconnectTimer(userId);
+		this.instanceAiService.disconnectGateway(userId);
+		this.instanceAiService.clearActiveSessionKey(userId);
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
+			[userId],
+		);
+		return { ok: true };
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────

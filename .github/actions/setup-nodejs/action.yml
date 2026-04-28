@@ -59,8 +59,10 @@ runs:
 
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
+      env:
+        INSTALL_COMMAND: ${{ inputs.install-command }}
       run: |
-        ${{ inputs.install-command }}
+        $INSTALL_COMMAND
       shell: bash
 
     - name: Disable safe-chain
@@ -81,8 +83,10 @@ runs:
 
     - name: Build Project
       if: ${{ inputs.build-command != '' }}
+      env:
+        BUILD_COMMAND: ${{ inputs.build-command }}
       run: |
-        ${{ inputs.build-command }} --summarize
+        $BUILD_COMMAND --summarize
         node .github/scripts/send-build-stats.mjs || true
         node .github/scripts/send-docker-stats.mjs || true
       shell: bash

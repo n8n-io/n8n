@@ -646,6 +646,47 @@ describe('RoleMappingRuleService', () => {
 		});
 	});
 
+	describe('deleteAllOfType', () => {
+		it('should delete all rules of the given type using the direct repository when no tx is provided', async () => {
+			roleMappingRuleRepository.delete.mockResolvedValue({ affected: 3, raw: {} });
+
+			const count = await service.deleteAllOfType('project');
+
+			expect(roleMappingRuleRepository.delete).toHaveBeenCalledWith({ type: 'project' });
+			expect(count).toBe(3);
+		});
+
+		it('should use the transactional repository when an EntityManager is provided', async () => {
+			const txRepoDelete = jest.fn().mockResolvedValue({ affected: 2, raw: {} });
+			const txRepository = { delete: txRepoDelete };
+			const getRepository = jest.fn().mockReturnValue(txRepository);
+			const tx = { getRepository } as unknown as Parameters<typeof service.deleteAllOfType>[1];
+
+			const count = await service.deleteAllOfType('instance', tx);
+
+			expect(getRepository).toHaveBeenCalled();
+			expect(txRepoDelete).toHaveBeenCalledWith({ type: 'instance' });
+			expect(count).toBe(2);
+			expect(roleMappingRuleRepository.delete).not.toHaveBeenCalled();
+		});
+
+		it('should return 0 when no rows match', async () => {
+			roleMappingRuleRepository.delete.mockResolvedValue({ affected: 0, raw: {} });
+
+			const count = await service.deleteAllOfType('project');
+
+			expect(count).toBe(0);
+		});
+
+		it('should treat missing affected count as 0', async () => {
+			roleMappingRuleRepository.delete.mockResolvedValue({ affected: undefined, raw: {} });
+
+			const count = await service.deleteAllOfType('project');
+
+			expect(count).toBe(0);
+		});
+	});
+
 	describe('move', () => {
 		const updateSpy = jest.fn().mockResolvedValue(undefined);
 		const transactionSpy = jest.fn().mockImplementation(async (cb) => {

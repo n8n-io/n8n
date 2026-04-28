@@ -78,10 +78,11 @@ export function usePostMessageHandler({
 		projectId?: string;
 		tidyUp?: boolean;
 		suppressNotifications?: boolean;
+		allowErrorNotifications?: boolean;
 	}) {
-		if (json.suppressNotifications) {
-			uiStore.setNotificationsSuppressed(true);
-		}
+		uiStore.setNotificationsSuppressed(json.suppressNotifications === true, {
+			allowErrors: json.allowErrorNotifications === true,
+		});
 
 		if (json.projectId) {
 			await projectsStore.fetchAndSetProject(json.projectId);

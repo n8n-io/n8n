@@ -12,6 +12,7 @@ import {
 } from '../__tests__/fixtures-download';
 import type { WorkflowJSON } from '../types/base';
 import { foldLegacyErrorConnections, normalizeConnections } from '../types/base';
+import { validateWorkflow } from '../validation';
 import {
 	escapeNewlinesInExpressionStrings,
 	isPlaceholderValue,
@@ -22,12 +23,18 @@ interface ExpectedWarning {
 	nodeName?: string;
 }
 
+interface ExpectedError {
+	code: string;
+	nodeName?: string;
+}
+
 interface TestWorkflow {
 	id: string;
 	name: string;
 	json: WorkflowJSON;
 	nodeCount: number;
 	expectedWarnings?: ExpectedWarning[];
+	expectedErrors?: ExpectedError[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -45,6 +52,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			skip?: boolean;
 			skipReason?: string;
 			expectedWarnings?: ExpectedWarning[];
+			expectedErrors?: ExpectedError[];
 		}>;
 	};
 
@@ -61,6 +69,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				json,
 				nodeCount: json.nodes?.length ?? 0,
 				expectedWarnings: entry.expectedWarnings,
+				expectedErrors: entry.expectedErrors,
 			});
 		}
 	}
@@ -2616,6 +2625,90 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
 					}
 				});
+			});
+		});
+	}
+});
+
+describe('Committed workflows — schema validation errors', () => {
+	// Mirror the relevant builderHint.inputs declarations from the real node types
+	// so validateWorkflow can resolve required AI inputs without pulling in the
+	// full nodes-langchain dependency tree.
+	const mockNodeTypesProvider = {
+		getByNameAndVersion: (type: string, _version?: number) => {
+			if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: {
+								ai_memory: {
+									required: true,
+									displayOptions: {
+										show: {
+											mode: ['hostedChat', 'webhook'],
+											'options.loadPreviousSession': ['memory'],
+										},
+									},
+								},
+							},
+						},
+					},
+				};
+			}
+			if (type === '@n8n/n8n-nodes-langchain.agent') {
+				return {
+					description: {
+						inputs: ['main'],
+						builderHint: {
+							inputs: {
+								ai_languageModel: { required: true },
+								ai_memory: { required: false },
+								ai_tool: { required: false },
+							},
+						},
+					},
+				};
+			}
+			return { description: { inputs: ['main'] } };
+		},
+		getByName: (type: string) => mockNodeTypesProvider.getByNameAndVersion(type),
+		getKnownTypes: () => ({}),
+	};
+
+	const normalizeError = (e: ExpectedError): string => `${e.code}:${e.nodeName ?? ''}`;
+
+	const workflowsWithExpectedErrors = workflows.filter(
+		(w) => w.expectedErrors && w.expectedErrors.length > 0,
+	);
+
+	if (workflowsWithExpectedErrors.length === 0) {
+		it('has at least one fixture with expectedErrors declared', () => {
+			expect(workflowsWithExpectedErrors.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedErrors.forEach(({ id, name, json, expectedErrors }) => {
+			it(`emits expected validation errors for workflow ${id}: "${name}"`, () => {
+				const expectedCodes = new Set((expectedErrors ?? []).map((e) => e.code));
+
+				const result = validateWorkflow(json, {
+					nodeTypesProvider: mockNodeTypesProvider as never,
+					// Disconnected-node warnings are unrelated to the AI-input checks
+					// these fixtures are designed to exercise.
+					allowDisconnectedNodes: true,
+				});
+
+				const actualErrors: ExpectedError[] = result.errors
+					.filter((e) => expectedCodes.has(e.code))
+					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				const expected = (expectedErrors ?? [])
+					.slice()
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				expect(actualErrors).toEqual(expected);
+				expect(result.valid).toBe(false);
 			});
 		});
 	}

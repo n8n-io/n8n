@@ -551,7 +551,7 @@ export class SourceControlExportService {
 						};
 					}
 
-					const sanitizedData = sanitizeCredentialData(credentials.getData());
+					const sanitizedData = sanitizeCredentialData(await credentials.getData());
 
 					const stub: ExportableCredential = {
 						id,

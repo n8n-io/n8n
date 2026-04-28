@@ -418,7 +418,7 @@ export class CredentialsService {
 		}
 
 		if (includeData) {
-			return this.addDecryptedDataToCredentials(credentials);
+			return await this.addDecryptedDataToCredentials(credentials);
 		}
 
 		return credentials;
@@ -456,14 +456,12 @@ export class CredentialsService {
 		return credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 	}
 
-	private addDecryptedDataToCredentials(
+	private async addDecryptedDataToCredentials(
 		credentials: CredentialsEntity[],
-	): Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> {
-		return credentials.map(
-			(
-				c: CredentialsEntity & ScopesField,
-			): ICredentialsDecrypted<ICredentialDataDecryptedObject> => {
-				const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>> {
+		return await Promise.all(
+			credentials.map(async (c: CredentialsEntity & ScopesField) => {
+				const data = c.scopes.includes('credential:update') ? await this.decrypt(c) : undefined;
 
 				// We never want to expose the oauthTokenData to the frontend, but it
 				// expects it to check if the credential is already connected.
@@ -474,8 +472,8 @@ export class CredentialsService {
 				return {
 					...c,
 					data,
-				};
-			},
+				} satisfies ICredentialsDecrypted<ICredentialDataDecryptedObject>;
+			}),
 		);
 	}
 
@@ -591,7 +589,7 @@ export class CredentialsService {
 		data: CredentialRequest.CredentialProperties,
 		existingCredential: CredentialsEntity,
 	): Promise<CredentialsEntity> {
-		const decryptedData = this.decrypt(existingCredential, true);
+		const decryptedData = await this.decrypt(existingCredential, true);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
@@ -643,18 +641,18 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	createEncryptedData(credential: {
+	async createEncryptedData(credential: {
 		id: string | null;
 		name: string;
 		type: string;
 		data: ICredentialDataDecryptedObject;
-	}): ICredentialsDb {
+	}): Promise<ICredentialsDb> {
 		const credentials = new Credentials(
 			{ id: credential.id, name: credential.name },
 			credential.type,
 		);
 
-		credentials.setData(credential.data);
+		await credentials.setData(credential.data);
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -669,10 +667,10 @@ export class CredentialsService {
 	 *
 	 * If `includeRawData` is set to true it will not redact the data.
 	 */
-	decrypt(credential: CredentialsEntity, includeRawData = false) {
+	async decrypt(credential: CredentialsEntity, includeRawData = false) {
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
 		try {
-			const data = coreCredential.getData();
+			const data = await coreCredential.getData();
 			if (includeRawData) {
 				return data;
 			}
@@ -1067,7 +1065,7 @@ export class CredentialsService {
 		if (sharing) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.decrypt(sharing.credentials);
+			decryptedData = await this.decrypt(sharing.credentials);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -1281,7 +1279,7 @@ export class CredentialsService {
 				'create',
 			);
 		}
-		const encryptedCredential = this.createEncryptedData({
+		const encryptedCredential = await this.createEncryptedData({
 			id: null,
 			name: opts.name,
 			type: opts.type,
@@ -1336,7 +1334,7 @@ export class CredentialsService {
 		user?: User;
 		credentialsToTest?: ICredentialsDecrypted;
 	}): Promise<ICredentialsDecrypted> {
-		const decryptedData = this.decrypt(storedCredential, true);
+		const decryptedData = await this.decrypt(storedCredential, true);
 		const mergedCredentials: ICredentialsDecrypted = credentialsToTest
 			? deepCopy(credentialsToTest)
 			: {
