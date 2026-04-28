@@ -48,20 +48,37 @@ export class KeyManagerService {
 	}
 
 	/**
-	 * Seeds the legacy aes-256-cbc key as active if no active encryption key exists.
-	 * Race-safe across concurrent mains: the DB's partial unique index serializes
-	 * insert attempts, and losers are silently ignored.
+	 * Seeds an inactive aes-256-cbc key from the instance encryption key if none exists.
+	 * The value is wrapped with the instance key via AES-256-GCM before storage.
 	 */
-	async bootstrapLegacyKey(value: string): Promise<void> {
-		const existing = await this.deploymentKeyRepository.findActiveByType('data_encryption');
+	async bootstrapLegacyCbcKey(instanceEncryptionKey: string): Promise<void> {
+		const existing = await this.deploymentKeyRepository.findOne({
+			where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+		});
 		if (existing) return;
 
-		await this.deploymentKeyRepository.insertOrIgnore({
+		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(instanceEncryptionKey);
+		const entity = this.deploymentKeyRepository.create({
 			type: 'data_encryption',
-			value,
-			status: 'active',
+			value: encryptedValue,
 			algorithm: 'aes-256-cbc',
+			status: 'inactive',
 		});
+		await this.deploymentKeyRepository.save(entity);
+	}
+
+	/**
+	 * Seeds an active aes-256-gcm key if no active GCM key exists.
+	 * Generates a fresh random 256-bit key and inserts it as active.
+	 */
+	async bootstrapGcmKey(): Promise<void> {
+		const existing = await this.deploymentKeyRepository.findOne({
+			where: { type: 'data_encryption', algorithm: 'aes-256-gcm', status: 'active' },
+		});
+		if (existing) return;
+
+		const rawKey = randomBytes(32).toString('hex');
+		await this.addKey(rawKey, 'aes-256-gcm', true);
 	}
 
 	/** Lists encryption keys, optionally filtered by type. */
