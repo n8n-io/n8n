@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Config, Env } from '../decorators';
 
 const runnerModeSchema = z.enum(['internal', 'external']);
+const positiveIntSchema = z.number({ coerce: true }).int().positive();
 
 export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
@@ -68,7 +69,7 @@ export class TaskRunnersConfig {
 	 * How long (in seconds) a grant token is valid for runner authentication.
 	 * Increase on slow hardware where the runner needs more time to start.
 	 */
-	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL', z.number({ coerce: true }).int().positive())
+	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL', positiveIntSchema)
 	grantTokenTtl: number = 15;
 
 	/**
