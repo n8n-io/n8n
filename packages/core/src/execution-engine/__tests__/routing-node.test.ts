@@ -2546,6 +2546,15 @@ describe('RoutingNode', () => {
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
+		test("throws when mode is 'none'", async () => {
+			await expect(
+				runWithCredential({
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'none',
+				}),
+			).rejects.toThrow('This credential is configured to prevent use within an HTTP Request node');
+		});
+
 		test("throws when mode is 'domains' but the list is empty", async () => {
 			await expect(
 				runWithCredential({

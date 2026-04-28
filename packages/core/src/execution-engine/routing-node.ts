@@ -227,6 +227,13 @@ export class RoutingNode {
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
 			}
 
+			if (credentials?.allowedHttpRequestDomains === 'none') {
+				throw new NodeOperationError(
+					node,
+					'This credential is configured to prevent use within an HTTP Request node',
+				);
+			}
+
 			const allowedDomains = getCredentialAllowedDomains(credentials);
 			if (credentials?.allowedHttpRequestDomains === 'domains' && !allowedDomains) {
 				throw new NodeOperationError(
