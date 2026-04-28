@@ -18,7 +18,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
+import type { AgentEntity } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
@@ -61,7 +61,7 @@ function makeService(agentsToolsService: AgentsToolsService): AgentsService {
 	);
 }
 
-function makeAgentEntity(schemaConfig?: AgentJsonConfig['config']): Agent {
+function makeAgentEntity(schemaConfig?: AgentJsonConfig['config']): AgentEntity {
 	const schema: AgentJsonConfig = {
 		name: 'Test',
 		model: 'anthropic/claude-sonnet-4-5',
@@ -73,13 +73,13 @@ function makeAgentEntity(schemaConfig?: AgentJsonConfig['config']): Agent {
 		projectId: 'project-1',
 		schema,
 		tools: {},
-	} as unknown as Agent;
+	} as unknown as AgentEntity;
 }
 
 // reconstructFromConfig is private; cast to invoke directly.
 type Reconstructable = {
 	reconstructFromConfig(
-		agentEntity: Agent,
+		agentEntity: AgentEntity,
 		credentialProvider: CredentialProvider,
 		userId?: string,
 	): Promise<agents.Agent>;

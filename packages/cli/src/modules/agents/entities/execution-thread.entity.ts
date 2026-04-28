@@ -1,13 +1,13 @@
 import { Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity';
+import { AgentEntity } from './agent.entity';
 
 @Entity({ name: 'execution_threads' })
 export class ExecutionThread extends WithTimestampsAndStringId {
-	@ManyToOne(() => Agent, { onDelete: 'CASCADE' })
+	@ManyToOne(() => AgentEntity, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
-	agent: Agent;
+	agent: AgentEntity;
 
 	@Index()
 	@Column({ type: 'varchar', length: 36 })

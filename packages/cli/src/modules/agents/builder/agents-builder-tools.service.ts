@@ -7,6 +7,8 @@ import { z } from 'zod';
 
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
+import { BUILDER_TOOLS } from './builder-tool-names';
+import { buildAskCredentialTool, buildAskLlmTool, buildAskQuestionTool } from './interactive';
 import type { AgentJsonConfig, ConfigValidationError } from '../json-config/agent-json-config';
 import {
 	AgentJsonConfigSchema,
@@ -14,8 +16,6 @@ import {
 	tryParseConfigJson,
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { buildAskCredentialTool, buildAskLlmTool, buildAskQuestionTool } from './interactive';
-import { BUILDER_TOOLS } from './builder-tool-names';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',

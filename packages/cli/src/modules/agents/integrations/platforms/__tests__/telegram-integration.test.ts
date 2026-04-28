@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
 
-import type { Agent } from '../../../entities/agent.entity';
+import type { AgentEntity } from '../../../entities/agent.entity';
 import type { AgentRepository } from '../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../agent-chat-integration';
 import { TelegramIntegration } from '../telegram-integration';
@@ -14,7 +14,7 @@ const makeAgent = (
 	id: string,
 	name: string,
 	integrations: Array<{ type: string; credentialId: string }>,
-) => ({ id, name, integrations }) as Agent;
+) => ({ id, name, integrations }) as AgentEntity;
 
 const makeContext = (
 	overrides: Partial<AgentChatIntegrationContext> = {},

@@ -62,7 +62,7 @@ export class AgentsModule implements ModuleInterface {
 	}
 
 	async entities() {
-		const { Agent } = await import('./entities/agent.entity');
+		const { AgentEntity } = await import('./entities/agent.entity');
 		const { AgentCheckpoint } = await import('./entities/agent-checkpoint.entity');
 		const { AgentResourceEntity } = await import('./entities/agent-resource.entity');
 		const { AgentThreadEntity } = await import('./entities/agent-thread.entity');
@@ -71,7 +71,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentPublishedVersion } = await import('./entities/agent-published-version.entity');
 
 		return [
-			Agent,
+			AgentEntity,
 			AgentCheckpoint,
 			AgentResourceEntity,
 			AgentThreadEntity,

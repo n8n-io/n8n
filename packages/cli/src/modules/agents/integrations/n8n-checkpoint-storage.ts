@@ -29,9 +29,9 @@ export class N8NCheckpointStorage {
 		this.isInitialized = this.moduleRegistry.isActive('agents');
 	}
 
-	getStorage(agentId: string): CheckpointStore {
+	getStorage(agentId: string, userId: string): CheckpointStore {
 		return {
-			save: async (key, state) => await this.save(key, state, agentId),
+			save: async (key, state) => await this.save(key, state, agentId, userId),
 			load: async (key) => await this.load(key),
 			delete: async (key) => await this.delete(key),
 		};
@@ -47,6 +47,7 @@ export class N8NCheckpointStorage {
 		key: string,
 		state: SerializableAgentState,
 		agentId: string | null = null,
+		userId: string,
 	): Promise<void> {
 		const existing = await this.agentCheckpointRepository.findOneBy({ runId: key });
 
@@ -58,6 +59,7 @@ export class N8NCheckpointStorage {
 			const checkpoint = this.agentCheckpointRepository.create({
 				runId: key,
 				agentId,
+				userId,
 				state: JSON.stringify(state),
 				expired: false,
 			});

@@ -85,13 +85,11 @@ export class N8nMemory implements BuiltMemory {
 		opts?: { limit?: number; before?: Date; resourceId?: string },
 	): Promise<AgentDbMessage[]> {
 		// `resourceId` is the per-user scope for shared threads (e.g. the test-chat
-		// thread is keyed by agentId but each message carries the originating user's
-		// id). Use an explicit `!== undefined` check — a falsy (empty-string) value
-		// would otherwise drop the filter and leak other users' messages.
+		// thread is keyed by agentId but each message carries the originating user's id).
 		const where: FindOptionsWhere<AgentMessageEntity> = {
 			threadId,
 			...(opts?.before && { createdAt: LessThan(opts.before) }),
-			...(opts?.resourceId !== undefined && { resourceId: opts.resourceId }),
+			...(!!opts?.resourceId?.length && { resourceId: opts.resourceId }),
 		};
 
 		const entities = await this.messageRepository.find({
@@ -135,14 +133,23 @@ export class N8nMemory implements BuiltMemory {
 		await this.messageRepository.delete(messageIds);
 	}
 
-	async deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void> {
-		// Mirrors `getMessages`: explicit `!== undefined` check so that a falsy
-		// (empty-string) `resourceId` cannot accidentally delete every user's
-		// messages on a shared thread.
+	async deleteMessagesByThread(threadId: string, resourceId: string): Promise<void> {
+		if (!resourceId || !threadId) {
+			throw new Error('Resource ID and thread ID are required');
+		}
 		await this.messageRepository.delete({
 			threadId,
-			...(resourceId !== undefined && { resourceId }),
+			...(!!resourceId?.length && { resourceId }),
 		});
+	}
+
+	/**
+	 * Delete all messages of a thread not matching on resourceId.
+	 * Use deleteMessagesByThread for deleting messages of a specific resourceId.
+	 * @param threadId - The ID of the thread to delete messages from.
+	 */
+	async deleteAllThreadMessages(threadId: string): Promise<void> {
+		await this.messageRepository.delete({ threadId });
 	}
 
 	// ── Working memory ───────────────────────────────────────────────────

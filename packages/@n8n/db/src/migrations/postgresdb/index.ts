@@ -168,6 +168,7 @@ import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/
 import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import { AddAgentPublishVersionSupport1780000000000 } from '../common/1780000000000-AddAgentPublishVersionSupport';
+import { AddUserIdToAgentCheckpoints1781000000000 } from '../common/1781000000000-AddUserIdToAgentCheckpoints';
 import { CreateExecutionThreads1780000000000 } from '../common/1780000000000-CreateExecutionThreads';
 import type { Migration } from '../migration-types';
 
@@ -343,4 +344,5 @@ export const postgresMigrations: Migration[] = [
 	DropAgentCodeColumn1779000000000,
 	AddAgentPublishVersionSupport1780000000000,
 	CreateExecutionThreads1780000000000,
+	AddUserIdToAgentCheckpoints1781000000000,
 ];

@@ -3,10 +3,10 @@ import { mock } from 'jest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
 
-import { Agent } from '../entities/agent.entity';
+import { AgentEntity } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
-const entityManager = mockEntityManager(Agent);
+const entityManager = mockEntityManager(AgentEntity);
 const mockDataSource = { manager: entityManager };
 
 describe('AgentRepository', () => {
@@ -19,7 +19,7 @@ describe('AgentRepository', () => {
 
 	describe('findByIdAndProjectId', () => {
 		it('calls findOne with id, projectId, and the publishedVersion relation', async () => {
-			const agent = mock<Agent>({ id: 'agent-1', projectId: 'project-1' });
+			const agent = mock<AgentEntity>({ id: 'agent-1', projectId: 'project-1' });
 			jest.spyOn(repository, 'findOne').mockResolvedValue(agent);
 
 			const result = await repository.findByIdAndProjectId('agent-1', 'project-1');
@@ -42,7 +42,7 @@ describe('AgentRepository', () => {
 
 	describe('findByProjectId', () => {
 		it('calls find ordered by updatedAt descending with the publishedVersion relation', async () => {
-			const agents = [mock<Agent>(), mock<Agent>()];
+			const agents = [mock<AgentEntity>(), mock<AgentEntity>()];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);
 
 			const result = await repository.findByProjectId('project-1');
@@ -66,7 +66,7 @@ describe('AgentRepository', () => {
 
 	describe('findByIntegrationCredential', () => {
 		const makeAgent = (id: string, integrations: Array<{ type: string; credentialId: string }>) =>
-			({ id, integrations }) as Agent;
+			({ id, integrations }) as AgentEntity;
 
 		it('returns agents that have a matching type + credentialId, excluding the given agentId', async () => {
 			const agents = [
@@ -108,8 +108,8 @@ describe('AgentRepository', () => {
 		it('handles agents whose integrations column is null / undefined without crashing', async () => {
 			const agents = [
 				makeAgent('agent-a', [{ type: 'telegram', credentialId: 'cred-1' }]),
-				{ id: 'agent-null', integrations: null } as unknown as Agent,
-				{ id: 'agent-undef' } as unknown as Agent,
+				{ id: 'agent-null', integrations: null } as unknown as AgentEntity,
+				{ id: 'agent-undef' } as unknown as AgentEntity,
 			];
 			jest.spyOn(repository, 'find').mockResolvedValue(agents);
 

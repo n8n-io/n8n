@@ -138,9 +138,10 @@ describe('N8nMemory', () => {
 		});
 
 		it('deletes every message on the thread when resourceId is omitted', async () => {
-			await memory.deleteMessagesByThread('thread-1');
-
-			expect(messageRepository.delete).toHaveBeenCalledWith({ threadId: 'thread-1' });
+			await expect(memory.deleteMessagesByThread('thread-1', undefined as any)).rejects.toThrow(
+				'Resource ID and thread ID are required',
+			);
+			expect(messageRepository.delete).not.toHaveBeenCalled();
 		});
 
 		it('does not widen the delete to all users when resourceId is an empty string', async () => {

@@ -6,7 +6,7 @@ import type { AgentPublishedVersion } from './agent-published-version.entity';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 @Entity({ name: 'agents' })
-export class Agent extends WithTimestampsAndStringId {
+export class AgentEntity extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 

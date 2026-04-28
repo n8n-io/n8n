@@ -16,14 +16,14 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentsService } from '../agents.service';
-import type { Agent } from '../entities/agent.entity';
+import type { AgentEntity } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<AgentEntity> = {}): AgentEntity {
 	return {
 		id: 'agent-1',
 		name: 'Old Name',
@@ -43,7 +43,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		createdAt: new Date('2026-01-01'),
 		updatedAt: new Date('2026-01-01'),
 		...overrides,
-	} as Agent;
+	} as AgentEntity;
 }
 
 describe('AgentsService — updateName / updateDescription schema sync', () => {
@@ -52,7 +52,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 
 	beforeEach(() => {
 		agentRepository = mock<AgentRepository>();
-		agentRepository.save.mockImplementation(async (entity) => entity as Agent);
+		agentRepository.save.mockImplementation(async (entity) => entity as AgentEntity);
 
 		service = new AgentsService(
 			mock<Logger>(),
@@ -99,7 +99,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 		});
 
 		it('handles agent with null schema', async () => {
-			const agent = makeAgent({ schema: null } as unknown as Partial<Agent>);
+			const agent = makeAgent({ schema: null } as unknown as Partial<AgentEntity>);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			const result = await service.updateName('agent-1', 'project-1', 'New Name');
@@ -141,7 +141,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 		});
 
 		it('handles agent with null schema', async () => {
-			const agent = makeAgent({ schema: null } as unknown as Partial<Agent>);
+			const agent = makeAgent({ schema: null } as unknown as Partial<AgentEntity>);
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			const result = await service.updateDescription('agent-1', 'project-1', 'New desc');

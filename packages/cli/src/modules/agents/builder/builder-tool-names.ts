@@ -9,9 +9,3 @@ export const BUILDER_TOOLS = {
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];
-
-/** Thread-id prefixes scoping different chat surfaces of the same agent. */
-export const AGENT_THREAD_PREFIX = {
-	TEST: 'test-',
-	BUILDER: 'builder:',
-} as const;

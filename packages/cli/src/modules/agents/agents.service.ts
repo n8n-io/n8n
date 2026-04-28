@@ -5,8 +5,8 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
@@ -20,6 +20,30 @@ import { In } from '@n8n/typeorm';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentExecutionService } from './agent-execution.service';
+import { AgentsToolsService } from './agents-tools.service';
+import { builderThreadId, testChatThreadId } from './builder/thread';
+import { AgentEntity } from './entities/agent.entity';
+import { ExecutionRecorder } from './execution-recorder';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
+import { N8nMemory } from './integrations/n8n-memory';
+import type {
+	AgentJsonConfig,
+	AgentJsonMemoryConfig,
+	AgentJsonToolConfig,
+} from './json-config/agent-json-config';
+import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
+import {
+	buildFromJson,
+	type MemoryFactory,
+	type ToolResolver,
+} from './json-config/from-json-config';
+import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
+import { AgentRepository } from './repositories/agent.repository';
+import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -31,43 +55,15 @@ import { TtlMap } from '@/utils/ttl-map';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
-import { AgentExecutionService } from './agent-execution.service';
-import { AgentsToolsService } from './agents-tools.service';
-import { Agent } from './entities/agent.entity';
-import { ExecutionRecorder } from './execution-recorder';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
-import { N8nMemory } from './integrations/n8n-memory';
-import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
-import type {
-	AgentJsonConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-} from './json-config/agent-json-config';
-import {
-	buildFromJson,
-	type MemoryFactory,
-	type ToolResolver,
-} from './json-config/from-json-config';
-import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
-import { AgentRepository } from './repositories/agent.repository';
-import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
-
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
 	agentId: string;
 	projectId: string;
+	userId: string;
 	credentialProvider: CredentialProvider;
 	nodeToolsEnabled: boolean;
 	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
 	integrationType?: string;
-}
-
-/** Derive a stable thread ID for the test-chat of a given agent. */
-export function chatThreadId(agentId: string): string {
-	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
 }
 
 export interface ExecuteAgentData {
@@ -119,7 +115,7 @@ export class AgentsService {
 	 * Any mutation that changes how the agent would run must call this so that
 	 * `hasUnpublishedChanges` (derived from versionId vs publishedFromVersionId) stays accurate.
 	 */
-	private markDraftDirty(agent: Agent): void {
+	private markDraftDirty(agent: AgentEntity): void {
 		if (
 			agent.versionId !== null &&
 			agent.versionId === agent.publishedVersion?.publishedFromVersionId
@@ -163,7 +159,7 @@ export class AgentsService {
 			}));
 	}
 
-	async create(projectId: string, name: string): Promise<Agent> {
+	async create(projectId: string, name: string): Promise<AgentEntity> {
 		// New agents start with no instructions so the home screen routes the
 		// first user message to the builder (/build) instead of to the chat
 		// endpoint. The builder fills in instructions and credentials.
@@ -188,15 +184,15 @@ export class AgentsService {
 		return saved;
 	}
 
-	async findByProjectId(projectId: string): Promise<Agent[]> {
+	async findByProjectId(projectId: string): Promise<AgentEntity[]> {
 		return await this.agentRepository.findByProjectId(projectId);
 	}
 
-	async findById(agentId: string, projectId: string): Promise<Agent | null> {
+	async findById(agentId: string, projectId: string): Promise<AgentEntity | null> {
 		return await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 	}
 
-	async updateName(agentId: string, projectId: string, name: string): Promise<Agent | null> {
+	async updateName(agentId: string, projectId: string, name: string): Promise<AgentEntity | null> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
@@ -220,7 +216,7 @@ export class AgentsService {
 		projectId: string,
 		description: string,
 		updatedAt?: string,
-	): Promise<Agent | null> {
+	): Promise<AgentEntity | null> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
@@ -241,7 +237,7 @@ export class AgentsService {
 		return saved;
 	}
 
-	async findByUser(userId: string): Promise<Agent[]> {
+	async findByUser(userId: string): Promise<AgentEntity[]> {
 		const projectRelations = await this.projectRelationRepository.findAllByUser(userId);
 		const projectIds = projectRelations.map((pr) => pr.projectId);
 
@@ -253,7 +249,7 @@ export class AgentsService {
 		});
 	}
 
-	async publishAgent(agentId: string, projectId: string, userId: string): Promise<Agent> {
+	async publishAgent(agentId: string, projectId: string, userId: string): Promise<AgentEntity> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -289,7 +285,7 @@ export class AgentsService {
 		return agent;
 	}
 
-	async unpublishAgent(agentId: string, projectId: string): Promise<Agent> {
+	async unpublishAgent(agentId: string, projectId: string): Promise<AgentEntity> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
@@ -323,19 +319,20 @@ export class AgentsService {
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
-
-		// Remove the test-chat thread + its messages so deleting an agent
-		// doesn't leave orphaned rows in agents_threads / agents_messages.
-		// Swallow errors — the agent is already gone; best-effort cleanup.
-		// Log at warn level so orphaned rows are observable in production.
-		try {
-			await this.clearAllTestChatMessages(agentId);
-		} catch (error) {
-			this.logger.warn('Failed to clear test chat on agent delete', {
-				agentId,
-				error: error instanceof Error ? error.message : error,
-			});
-		}
+		await Promise.all([
+			this.clearAllTestChatMessages(agentId, agent.schema?.memory).catch((error) => {
+				this.logger.warn('Failed to clear test chat on agent delete', {
+					agentId,
+					error: error instanceof Error ? error.message : error,
+				});
+			}),
+			this.clearAllBuilderChatMessages(agentId).catch((error) => {
+				this.logger.warn('Failed to clear builder chat on agent delete', {
+					agentId,
+					error: error instanceof Error ? error.message : error,
+				});
+			}),
+		]);
 
 		this.logger.debug('Deleted SDK agent', { agentId, projectId });
 
@@ -363,8 +360,8 @@ export class AgentsService {
 	}
 
 	/** Return persisted chat messages for a given session/thread. */
-	async getChatMessages(threadId: string) {
-		return await this.n8nMemory.getMessages(threadId);
+	async getChatMessages(threadId: string, userId: string) {
+		return await this.n8nMemory.getMessages(threadId, { resourceId: userId });
 	}
 
 	private getMemoryFactory(): MemoryFactory {
@@ -428,8 +425,15 @@ export class AgentsService {
 	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
 	 */
 	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
-		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
-			params;
+		const {
+			agent,
+			agentId,
+			projectId,
+			credentialProvider,
+			nodeToolsEnabled,
+			integrationType,
+			userId,
+		} = params;
 
 		// Inject the rich_interaction tool only for platforms that can actually
 		// render its suspend/resume HITL cards. Two gates:
@@ -463,7 +467,7 @@ export class AgentsService {
 
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage);
+			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId, userId));
 		}
 	}
 
@@ -648,15 +652,15 @@ export class AgentsService {
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(
-			runtime.agent,
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
 			agentId,
 			message,
 			threadId,
 			userId,
 			projectId,
-			integrationType,
-		);
+			source: integrationType,
+		});
 	}
 
 	/**
@@ -666,7 +670,7 @@ export class AgentsService {
 	 * we filter here to give every user their own private conversation view.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory.getMessages(chatThreadId(agentId), { resourceId: userId });
+		return await this.n8nMemory.getMessages(testChatThreadId(agentId), { resourceId: userId });
 	}
 
 	/**
@@ -674,13 +678,23 @@ export class AgentsService {
 	 * stays so other users' histories on the same thread are preserved.
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
-		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId), userId);
+		await this.n8nMemory.deleteMessagesByThread(testChatThreadId(agentId), userId);
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
-	async clearAllTestChatMessages(agentId: string) {
-		const threadId = chatThreadId(agentId);
-		await this.n8nMemory.deleteMessagesByThread(threadId);
+	async clearAllTestChatMessages(agentId: string, memoryConfig?: AgentJsonMemoryConfig) {
+		const threadId = testChatThreadId(agentId);
+		if (!memoryConfig || memoryConfig.storage === 'n8n') {
+			await this.n8nMemory.deleteAllThreadMessages(threadId);
+			await this.n8nMemory.deleteThread(threadId);
+		} else {
+			// TODO: Implement for other memory storages
+		}
+	}
+
+	async clearAllBuilderChatMessages(agentId: string) {
+		const threadId = builderThreadId(agentId);
+		await this.n8nMemory.deleteAllThreadMessages(threadId);
 		await this.n8nMemory.deleteThread(threadId);
 	}
 
@@ -714,7 +728,7 @@ export class AgentsService {
 		const key = this.runtimeKey(agentId, userId, integrationType);
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
-			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as AgentEntity;
 			const agentInstance = await this.reconstructFromConfig(
 				publishedAgentData,
 				credentialProvider,
@@ -726,15 +740,15 @@ export class AgentsService {
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(
-			runtime.agent,
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
 			agentId,
 			message,
 			threadId,
 			userId,
 			projectId,
-			integrationType,
-		);
+			source: integrationType,
+		});
 	}
 
 	/**
@@ -743,15 +757,16 @@ export class AgentsService {
 	 * and persists the full message record via `AgentExecutionService` so chat
 	 * history shows up in the executions view.
 	 */
-	private async *streamChatResponse(
-		agentInstance: agents.Agent,
-		agentId: string,
-		message: string,
-		threadId: string,
-		userId: string,
-		projectId: string,
-		source?: string,
-	): AsyncGenerator<StreamChunk> {
+	private async *streamChatResponse(opts: {
+		agentInstance: agents.Agent;
+		agentId: string;
+		message: string;
+		threadId: string;
+		userId: string;
+		projectId: string;
+		source?: string;
+	}): AsyncGenerator<StreamChunk> {
+		const { agentInstance, agentId, message, threadId, userId, projectId, source } = opts;
 		const recorder = new ExecutionRecorder();
 
 		const resultStream = await agentInstance.stream(message, {
@@ -811,9 +826,9 @@ export class AgentsService {
 	 * are not affected.
 	 */
 	private async compileIsolated(
-		agentEntity: Agent,
+		agentEntity: AgentEntity,
 		credentialProvider: CredentialProvider,
-		userId?: string,
+		userId: string,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -1135,9 +1150,9 @@ export class AgentsService {
 	 * This is the new execution path for JSON-config agents.
 	 */
 	private async reconstructFromConfig(
-		agentEntity: Agent,
+		agentEntity: AgentEntity,
 		credentialProvider: CredentialProvider,
-		userId?: string,
+		userId: string,
 		integrationType?: string,
 	): Promise<agents.Agent> {
 		const config = agentEntity.schema;
@@ -1177,6 +1192,7 @@ export class AgentsService {
 			credentialProvider,
 			nodeToolsEnabled: isNodeToolsEnabled(config.config),
 			integrationType,
+			userId,
 		});
 
 		return reconstructed;

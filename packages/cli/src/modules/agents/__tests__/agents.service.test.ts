@@ -5,9 +5,9 @@ import { mock } from 'jest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
-import { AgentsService, chatThreadId } from '../agents.service';
+import { AgentsService } from '../agents.service';
 import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
-import type { Agent } from '../entities/agent.entity';
+import type { AgentEntity } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import {
 	AgentChatIntegration,
@@ -18,13 +18,14 @@ import type { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { testChatThreadId } from '../builder/thread';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
 const userId = 'user-1';
 const versionId = 'v1';
 
-function makeAgent(overrides: Partial<Agent> = {}): Agent {
+function makeAgent(overrides: Partial<AgentEntity> = {}): AgentEntity {
 	return {
 		id: agentId,
 		versionId,
@@ -36,7 +37,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		tools: {},
 		updatedAt: new Date(),
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as AgentEntity;
 }
 
 function makePublishedVersion(
@@ -95,7 +96,7 @@ describe('AgentsService', () => {
 
 		beforeEach(() => {
 			jest.spyOn(service, 'validateConfig').mockResolvedValue({ valid: true, config });
-			agentRepository.save.mockImplementation(async (a) => a as Agent);
+			agentRepository.save.mockImplementation(async (a) => a as AgentEntity);
 		});
 
 		it('does not bump versionId when agent has never been published', async () => {
@@ -266,7 +267,7 @@ describe('AgentsService', () => {
 
 			await service.getTestChatMessages(agentId, userId);
 
-			expect(n8nMemory.getMessages).toHaveBeenCalledWith(chatThreadId(agentId), {
+			expect(n8nMemory.getMessages).toHaveBeenCalledWith(testChatThreadId(agentId), {
 				resourceId: userId,
 			});
 		});
@@ -285,7 +286,10 @@ describe('AgentsService', () => {
 		it('deletes only the caller’s messages on the shared test-chat thread', async () => {
 			await service.clearTestChatMessages(agentId, userId);
 
-			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId), userId);
+			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(
+				testChatThreadId(agentId),
+				userId,
+			);
 			// Must not wipe the thread row — other users share it.
 			expect(n8nMemory.deleteThread).not.toHaveBeenCalled();
 		});
@@ -295,10 +299,10 @@ describe('AgentsService', () => {
 		it('deletes every message and the thread row itself', async () => {
 			await service.clearAllTestChatMessages(agentId);
 
-			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(testChatThreadId(agentId));
 			// Second arg must be absent — undefined means "all users".
 			expect(n8nMemory.deleteMessagesByThread.mock.calls[0]).toHaveLength(1);
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(testChatThreadId(agentId));
 		});
 	});
 
@@ -349,8 +353,8 @@ describe('AgentsService', () => {
 			await service.delete(agentId, projectId);
 
 			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
-			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
-			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(testChatThreadId(agentId));
+			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(testChatThreadId(agentId));
 		});
 
 		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {

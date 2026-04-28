@@ -9,7 +9,7 @@ import {
 	type Relation,
 } from '@n8n/typeorm';
 
-import type { Agent } from './agent.entity';
+import { AgentEntity } from './agent.entity';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 @Entity({ name: 'agent_published_version' })
@@ -17,9 +17,9 @@ export class AgentPublishedVersion extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 36 })
 	agentId: string;
 
-	@OneToOne('Agent', { onDelete: 'CASCADE' })
+	@OneToOne(() => AgentEntity, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
-	agent: Relation<Agent>;
+	agent: Relation<AgentEntity>;
 
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;

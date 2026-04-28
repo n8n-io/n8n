@@ -1,19 +1,22 @@
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
-import { Agent } from './agent.entity';
+import { AgentEntity } from './agent.entity';
 
 @Entity({ name: 'agent_checkpoints' })
 export class AgentCheckpoint extends WithTimestamps {
 	@PrimaryColumn({ type: 'varchar', length: 255 })
 	runId: string;
 
-	@ManyToOne(() => Agent, { nullable: true, onDelete: 'CASCADE' })
+	@ManyToOne(() => AgentEntity, { nullable: true, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'agentId' })
-	agent: Agent | null;
+	agent: AgentEntity | null;
 
 	@Column({ type: 'varchar', length: 255, nullable: true })
 	agentId: string | null;
+
+	@Column({ type: 'varchar', length: 255 })
+	userId: string;
 
 	@Column({ type: 'text', nullable: true })
 	state: string | null;

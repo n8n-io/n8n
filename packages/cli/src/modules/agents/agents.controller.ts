@@ -353,7 +353,7 @@ export class AgentsController {
 		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		return await this.agentsService.getChatMessages(threadId);
+		return await this.agentsService.getChatMessages(threadId, req.user.id);
 	}
 
 	@Get('/:agentId/build/messages')
@@ -363,29 +363,10 @@ export class AgentsController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-
-		// Merge persisted thread memory with any open suspension's checkpoint
-		// so a refresh during a suspended turn still returns the suspended
-		// assistant message (the SDK only saveToMemory's on completion).
-		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpoint(agentId);
-		const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
-			.filter((tc) => tc.suspended)
-			.map((tc) => ({
-				toolCallId: tc.toolCallId,
-				runId: tc.runId,
-			}));
-
-		let messages: AgentPersistedMessageDto[];
-		if (!checkpoint) {
-			messages = messagesToDto(memory);
-		} else {
-			const memoryIds = new Set(memory.map((m) => m.id));
-			const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
-			messages = messagesToDto([...memory, ...newFromCheckpoint]);
-		}
-
-		return { messages, openSuspensions };
+		return await this.agentsBuilderService.getBuilderMessageHistory({
+			agentId,
+			userId: req.user.id,
+		});
 	}
 
 	@Delete('/:agentId/build/messages')
@@ -393,7 +374,7 @@ export class AgentsController {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		await this.agentsBuilderService.clearBuilderMessages(agentId);
+		await this.agentsBuilderService.clearBuilderMessages(agentId, req.user.id);
 		return { ok: true };
 	}
 
@@ -439,13 +420,13 @@ export class AgentsController {
 
 		try {
 			const suspended = await pumpChunks(
-				this.agentsBuilderService.buildAgent(
-					agentId,
+				this.agentsBuilderService.buildAgent({
+					agent,
 					projectId,
 					message,
 					credentialProvider,
-					req.user.id,
-				),
+					userId: req.user.id,
+				}),
 				send,
 				makeBuilderToolEvents(send),
 			);
@@ -483,14 +464,15 @@ export class AgentsController {
 
 		try {
 			const suspended = await pumpChunks(
-				this.agentsBuilderService.resumeBuild(
-					agentId,
+				this.agentsBuilderService.resumeBuild({
+					agent,
 					projectId,
 					runId,
 					toolCallId,
 					resumeData,
 					credentialProvider,
-				),
+					userId: req.user.id,
+				}),
 				send,
 				makeBuilderToolEvents(send),
 			);

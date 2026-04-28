@@ -1,15 +1,15 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 
-import { Agent } from '../entities/agent.entity';
+import { AgentEntity } from '../entities/agent.entity';
 
 @Service()
-export class AgentRepository extends Repository<Agent> {
+export class AgentRepository extends Repository<AgentEntity> {
 	constructor(dataSource: DataSource) {
-		super(Agent, dataSource.manager);
+		super(AgentEntity, dataSource.manager);
 	}
 
-	async findByProjectId(projectId: string): Promise<Agent[]> {
+	async findByProjectId(projectId: string): Promise<AgentEntity[]> {
 		return await this.find({
 			where: { projectId },
 			relations: { publishedVersion: true },
@@ -26,14 +26,14 @@ export class AgentRepository extends Repository<Agent> {
 	 * published snapshot (or `null`) in a single query, which is what the publish button uses
 	 * to compute its state (published vs. unpublished, has changes vs. up to date).
 	 */
-	async findByIdAndProjectId(id: string, projectId: string): Promise<Agent | null> {
+	async findByIdAndProjectId(id: string, projectId: string): Promise<AgentEntity | null> {
 		return await this.findOne({
 			where: { id, projectId },
 			relations: { publishedVersion: true },
 		});
 	}
 
-	async findPublished(): Promise<Agent[]> {
+	async findPublished(): Promise<AgentEntity[]> {
 		return await this.createQueryBuilder('agent')
 			.innerJoinAndSelect('agent.publishedVersion', 'publishedVersion')
 			.getMany();
@@ -56,7 +56,7 @@ export class AgentRepository extends Repository<Agent> {
 		credentialId: string,
 		projectId: string,
 		excludeAgentId: string,
-	): Promise<Agent[]> {
+	): Promise<AgentEntity[]> {
 		const agents = await this.find({ where: { projectId } });
 		return agents.filter(
 			(agent) =>
