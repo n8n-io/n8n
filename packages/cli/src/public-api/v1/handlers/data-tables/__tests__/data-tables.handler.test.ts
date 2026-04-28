@@ -6,9 +6,9 @@ import type { Response } from 'express';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
-import { ProjectService } from '@/services/project.service.ee';
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+import { ProjectService } from '@/services/project.service.ee';
 
 // Mock middleware before requiring handler
 const mockMiddleware = jest.fn(async (_req, _res, next) => next()) as any;
@@ -42,32 +42,24 @@ describe('DataTable Handler', () => {
 
 		jest.spyOn(Container, 'get').mockImplementation((serviceClass) => {
 			if (serviceClass === DataTableService) {
-				return mockDataTableService as any;
+				return mockDataTableService;
 			}
 			if (serviceClass === DataTableRepository) {
-				return mockDataTableRepository as any;
+				return mockDataTableRepository;
 			}
 			if (serviceClass === ProjectRepository) {
-				return mockProjectRepository as any;
+				return mockProjectRepository;
 			}
 			if (serviceClass === ProjectRelationRepository) {
-				return mockProjectRelationRepository as any;
+				return mockProjectRelationRepository;
 			}
 			if (serviceClass === ProjectService) {
-				return mockProjectService as any;
+				return mockProjectService;
 			}
-			return {} as any;
+			return {};
 		});
 
-		mockDataTableRepository.findOne.mockResolvedValue({
-			id: dataTableId,
-			project: { id: projectId },
-		} as any);
-
-		mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
-			id: projectId,
-		} as any);
-
+		mockDataTableService.getProjectIdForDataTable.mockResolvedValue(projectId);
 		mockProjectRelationRepository.find.mockResolvedValue([]);
 
 		mockResponse = {
@@ -75,7 +67,9 @@ describe('DataTable Handler', () => {
 			status: jest.fn().mockReturnThis(),
 			send: jest.fn().mockReturnThis(),
 		};
+	});
 
+	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
@@ -144,10 +138,7 @@ describe('DataTable Handler', () => {
 			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
-			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
-				where: { id: dataTableId },
-				relations: ['project'],
-			});
+			expect(mockDataTableService.getProjectIdForDataTable).toHaveBeenCalledWith(dataTableId);
 			expect(mockDataTableService.getManyRowsAndCount).toHaveBeenCalledWith(
 				dataTableId,
 				projectId,
@@ -204,7 +195,9 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.GetRows;
 
-			mockDataTableRepository.findOne.mockRejectedValue(new DataTableNotFoundError(dataTableId));
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
+				new DataTableNotFoundError(dataTableId),
+			);
 
 			// Act
 			await handler.getDataTableRows[3](req, mockResponse as Response);
@@ -317,7 +310,9 @@ describe('DataTable Handler', () => {
 				user: { id: userId },
 			} as unknown as DataTableRequest.InsertRows;
 
-			mockDataTableRepository.findOne.mockRejectedValue(new DataTableNotFoundError(dataTableId));
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
+				new DataTableNotFoundError(dataTableId),
+			);
 
 			// Act
 			await handler.insertDataTableRows[2](req, mockResponse as Response);
@@ -616,8 +611,8 @@ describe('DataTable Handler', () => {
 				id: projectId,
 			} as any);
 
-			// But the data table belongs to another project, so getProjectIdForDataTable throws
-			mockDataTableRepository.findOne.mockRejectedValue(
+			// But the data table belongs to another project, so resolving project id throws
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
 				new DataTableNotFoundError(otherUserDataTableId),
 			);
 
@@ -625,10 +620,9 @@ describe('DataTable Handler', () => {
 			await handler.getDataTableRows[3](req, mockResponse as Response);
 
 			// Assert
-			expect(mockDataTableRepository.findOne).toHaveBeenCalledWith({
-				where: { id: otherUserDataTableId },
-				relations: ['project'],
-			});
+			expect(mockDataTableService.getProjectIdForDataTable).toHaveBeenCalledWith(
+				otherUserDataTableId,
+			);
 			expect(mockResponse.status).toHaveBeenCalledWith(404);
 			expect(mockResponse.json).toHaveBeenCalledWith({
 				message: expect.stringContaining(otherUserDataTableId),
@@ -776,7 +770,7 @@ describe('DataTable Handler', () => {
 				id: projectId,
 			} as any);
 
-			mockDataTableRepository.findOne.mockRejectedValue(
+			mockDataTableService.getProjectIdForDataTable.mockRejectedValue(
 				new DataTableNotFoundError(nonExistentDataTableId),
 			);
 

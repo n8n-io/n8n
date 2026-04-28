@@ -67,6 +67,8 @@ import '@/webhooks/webhooks.controller';
 import { ChatServer } from './chat/chat-server';
 import { MfaService } from './mfa/mfa.service';
 import { PubSubRegistry } from './scaling/pubsub/pubsub.registry';
+import { ApiKeyAuthStrategy } from './services/api-key-auth.strategy';
+import { AuthStrategyRegistry } from './services/auth-strategy.registry';
 
 @Service()
 export class Server extends AbstractServer {
@@ -164,6 +166,14 @@ export class Server extends AbstractServer {
 		await this.postHogClient.init();
 
 		const publicApiEndpoint = this.globalConfig.publicApi.path;
+
+		// Register auth strategies in priority order. The registry evaluates them
+		// sequentially — the first strategy that returns a non-null result wins.
+		// API key auth is registered first so existing behavior is preserved.
+		// Additional strategies (e.g. scoped JWT from the token-exchange module)
+		// can be appended later during their own module initialization.
+		const registry = Container.get(AuthStrategyRegistry);
+		registry.register(Container.get(ApiKeyAuthStrategy));
 
 		// ----------------------------------------
 		// Public API

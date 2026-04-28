@@ -23,7 +23,6 @@ import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -47,11 +46,14 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import AgentSection from './components/AgentSection.vue';
+import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import InstanceAiWorkflowPreview from './components/InstanceAiWorkflowPreview.vue';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
+import { TabsContent, TabsRoot } from 'reka-ui';
 
 const props = defineProps<{
 	threadId?: string;
@@ -61,7 +63,6 @@ const store = useInstanceAiStore();
 const settingsStore = useInstanceAiSettingsStore();
 const sourceControlStore = useSourceControlStore();
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
-const pushConnectionStore = usePushConnectionStore();
 const rootStore = useRootStore();
 const i18n = useI18n();
 const route = useRoute();
@@ -74,6 +75,16 @@ function goToSettings() {
 }
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
+
+// Running builders render in a dedicated bottom section of the conversation.
+// Once a builder finishes it falls out of this list and AgentTimeline renders
+// it in its natural chronological slot.
+const builderAgents = computed(() => collectActiveBuilderAgents(store.messages));
+
+// Assistant messages whose only content has been extracted to the bottom
+// builder section (or which haven't produced anything renderable yet) would
+// otherwise leave an empty wrapper in the list — filter them out.
+const displayedMessages = computed(() => store.messages.filter(messageHasVisibleContent));
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
@@ -120,7 +131,6 @@ const showEmptyStateLayout = computed(() => !props.threadId);
 
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
-	pushConnectionStore.pushConnect();
 	void store.loadThreads().then((loaded) => {
 		if (!loaded || !props.threadId) return;
 		// After threads load, validate deep-link: redirect if thread doesn't exist
@@ -135,31 +145,30 @@ onMounted(() => {
 	store.startCreditsPushListener();
 	void nextTick(() => chatInputRef.value?.focus());
 
-	// Auto-connect local gateway if enabled
+	// Subscribe to push + fetch backend gateway state. The backend keeps the
+	// pairing alive across reloads, so the client never contacts the daemon
+	// on mount — only in response to explicit user action in the setup modal.
 	void settingsStore
 		.refreshModuleSettings()
 		.catch(() => {})
+		.then(async () => await settingsStore.ensurePreferencesLoaded())
+		.catch(() => {})
 		.then(() => {
-			if (!settingsStore.isLocalGatewayDisabled && !settingsStore.isInstanceAiDisabled) {
-				settingsStore.startDaemonProbing();
-				settingsStore.startGatewayPushListener();
-				settingsStore.pollGatewayStatus();
-			}
+			if (settingsStore.isLocalGatewayDisabled) return;
+			settingsStore.startGatewayPushListener();
+			void settingsStore.fetchGatewayStatus();
 		});
 });
 
-// React to local gateway being toggled in settings without requiring a page reload
+// React to admin or user toggling local gateway
 watch(
-	() => settingsStore.isLocalGatewayDisabled || settingsStore.isInstanceAiDisabled,
+	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			settingsStore.stopDaemonProbing();
-			settingsStore.stopGatewayPolling();
 			settingsStore.stopGatewayPushListener();
 		} else {
-			settingsStore.startDaemonProbing();
 			settingsStore.startGatewayPushListener();
-			settingsStore.pollGatewayStatus();
+			void settingsStore.fetchGatewayStatus();
 		}
 	},
 );
@@ -308,11 +317,8 @@ onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
 	executionTracking.cleanup();
-	pushConnectionStore.pushDisconnect();
 	store.closeSSE();
 	store.stopCreditsPushListener();
-	settingsStore.stopDaemonProbing();
-	settingsStore.stopGatewayPolling();
 	settingsStore.stopGatewayPushListener();
 });
 
@@ -519,11 +525,21 @@ function handleStop() {
 							>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
-										v-for="message in store.messages"
+										v-for="message in displayedMessages"
 										:key="message.id"
 										:message="message"
 									/>
 								</TransitionGroup>
+								<!-- Builder sub-agents are extracted from their parent assistant
+									 messages and rendered here so they always sit at the bottom
+									 of the conversation. -->
+								<div v-if="builderAgents.length" :class="$style.builderAgents">
+									<AgentSection
+										v-for="builder in builderAgents"
+										:key="builder.agentId"
+										:agent-node="builder"
+									/>
+								</div>
 								<InstanceAiConfirmationPanel />
 							</div>
 						</N8nScrollArea>
@@ -599,14 +615,22 @@ function handleStop() {
 			@resizestart="isResizingPreview = true"
 			@resizeend="isResizingPreview = false"
 		>
-			<div :class="$style.previewPanel">
+			<TabsRoot
+				v-model="preview.activeTabId.value"
+				orientation="horizontal"
+				:class="$style.previewPanel"
+			>
 				<InstanceAiPreviewTabBar
 					:tabs="preview.allArtifactTabs.value"
 					:active-tab-id="preview.activeTabId.value"
-					@update:active-tab-id="preview.selectTab($event)"
 					@close="preview.closePreview()"
 				/>
-				<div :class="$style.previewContent">
+				<TabsContent
+					v-for="tab in preview.allArtifactTabs.value"
+					:key="tab.id"
+					:value="tab.id"
+					:class="$style.previewContent"
+				>
 					<InstanceAiWorkflowPreview
 						v-if="preview.activeWorkflowId.value"
 						ref="workflowPreview"
@@ -621,8 +645,8 @@ function handleStop() {
 						:project-id="preview.activeDataTableProjectId.value"
 						:refresh-key="preview.dataTableRefreshKey.value"
 					/>
-				</div>
-			</div>
+				</TabsContent>
+			</TabsRoot>
 		</N8nResizeWrapper>
 	</div>
 </template>
@@ -634,6 +658,8 @@ function handleStop() {
 	width: 100%;
 	min-width: 900px;
 	overflow: hidden;
+	position: relative;
+	z-index: 0;
 }
 
 .sidebar {
@@ -769,6 +795,13 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.builderAgents {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
 }
 
 .scrollButtonContainer {

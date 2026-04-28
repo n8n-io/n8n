@@ -27,8 +27,6 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto('/instance-ai');
 	}
 
-	// ── Container & Header ────────────────────────────────────────────
-
 	getContainer(): Locator {
 		return this.container;
 	}
