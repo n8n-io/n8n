@@ -59,6 +59,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.agent');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
+		case 'node':
+			return i18n.baseText('agentSessions.timeline.node');
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memory');
 		case 'suspension':

@@ -40,6 +40,9 @@ function searchableText(item: TimelineItem): string {
 		case 'workflow':
 			parts.push(i18n.baseText('agentSessions.timeline.workflow'));
 			break;
+		case 'node':
+			parts.push(i18n.baseText('agentSessions.timeline.node'));
+			break;
 		case 'working-memory':
 			parts.push(i18n.baseText('agentSessions.timeline.memory'));
 			parts.push(i18n.baseText('agentSessions.timeline.memoryUpdated'));
@@ -51,7 +54,7 @@ function searchableText(item: TimelineItem): string {
 	}
 
 	// Free text + raw identifiers
-	parts.push(item.content, item.toolName, item.workflowName);
+	parts.push(item.content, item.toolName, item.workflowName, item.nodeDisplayName);
 
 	// Built-in tool friendly label
 	const toolKey = builtinToolLabelKey(item.toolName);

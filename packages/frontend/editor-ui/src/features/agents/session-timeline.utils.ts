@@ -24,6 +24,7 @@ export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
 
 export function itemFilterKey(item: TimelineItem): string {
 	if (item.kind === 'workflow') return 'workflow';
+	if (item.kind === 'node') return 'node';
 	if (item.kind === 'tool') return `tool:${item.toolName ?? 'unknown'}`;
 	return item.kind;
 }
@@ -45,6 +46,7 @@ const COLOR_MAP: Record<EventKind, string> = {
 	user: 'var(--color--blue-400)',
 	agent: 'var(--color--secondary)',
 	tool: 'var(--color--success)',
+	node: 'var(--color--text)',
 	workflow: 'var(--color--primary)',
 	'working-memory': 'var(--color--foreground--shade-1)',
 	suspension: 'var(--color--warning)',
@@ -84,7 +86,7 @@ export function formatDuration(ms: number): string {
 
 interface RawToolCallEvent {
 	type: 'tool-call';
-	kind?: 'tool' | 'workflow';
+	kind?: 'tool' | 'workflow' | 'node';
 	name: string;
 	toolCallId: string;
 	input: unknown;
@@ -96,6 +98,9 @@ interface RawToolCallEvent {
 	workflowName?: string;
 	workflowExecutionId?: string;
 	triggerType?: string;
+	nodeType?: string;
+	nodeTypeVersion?: number;
+	nodeDisplayName?: string;
 }
 
 interface RawTextEvent {
@@ -162,8 +167,9 @@ export function flattenExecutionsToTimelineItems(executions: ThreadExecution[]):
 				});
 			} else if (event.type === 'tool-call') {
 				const isWorkflow = event.kind === 'workflow';
+				const isNode = event.kind === 'node';
 				items.push({
-					kind: isWorkflow ? 'workflow' : 'tool',
+					kind: isWorkflow ? 'workflow' : isNode ? 'node' : 'tool',
 					executionId: exec.id,
 					toolName: event.name,
 					toolCallId: event.toolCallId,
@@ -176,6 +182,9 @@ export function flattenExecutionsToTimelineItems(executions: ThreadExecution[]):
 					workflowName: isWorkflow ? event.workflowName : undefined,
 					workflowExecutionId: isWorkflow ? event.workflowExecutionId : undefined,
 					workflowTriggerType: isWorkflow ? event.triggerType : undefined,
+					nodeType: isNode ? event.nodeType : undefined,
+					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
+					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
 				});
 			} else if (event.type === 'working-memory') {
 				items.push({

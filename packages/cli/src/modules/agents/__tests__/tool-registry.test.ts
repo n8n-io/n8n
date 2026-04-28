@@ -45,6 +45,28 @@ describe('buildToolRegistry', () => {
 		expect(r.get('wf')).toEqual({ kind: 'workflow', workflowId: 'wf-1', workflowName: 'X' });
 	});
 
+	it('extracts node metadata when kind is node', () => {
+		const r = buildToolRegistry([
+			mkTool('http-tool', {
+				kind: 'node',
+				nodeType: 'n8n-nodes-base.httpRequest',
+				nodeTypeVersion: 4.2,
+				displayName: 'HTTP Request',
+			}),
+		]);
+		expect(r.get('http-tool')).toEqual({
+			kind: 'node',
+			nodeType: 'n8n-nodes-base.httpRequest',
+			nodeTypeVersion: 4.2,
+			nodeDisplayName: 'HTTP Request',
+		});
+	});
+
+	it('falls back to kind:tool when node metadata lacks nodeType', () => {
+		const r = buildToolRegistry([mkTool('partial-node', { kind: 'node' })]);
+		expect(r.get('partial-node')).toEqual({ kind: 'tool' });
+	});
+
 	it('keys the registry by tool name', () => {
 		const r = buildToolRegistry([mkTool('a'), mkTool('b')]);
 		expect(r.size).toBe(2);

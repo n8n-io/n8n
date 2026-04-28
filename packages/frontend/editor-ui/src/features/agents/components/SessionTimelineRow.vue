@@ -40,6 +40,8 @@ const infoText = computed((): string => {
 		}
 		case 'workflow':
 			return it.workflowName ?? it.toolName ?? '';
+		case 'node':
+			return it.nodeDisplayName ?? it.toolName ?? '';
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
@@ -59,6 +61,8 @@ const label = computed((): string => {
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
+		case 'node':
+			return i18n.baseText('agentSessions.timeline.node');
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memory');
 		case 'suspension':

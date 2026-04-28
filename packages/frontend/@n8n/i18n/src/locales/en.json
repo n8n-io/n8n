@@ -1357,6 +1357,7 @@
 	"agentSessions.timeline.selectItem": "Select an item to view details",
 	"agentSessions.timeline.continueChat": "Continue chat",
 	"agentSessions.timeline.workflow": "Workflow",
+	"agentSessions.timeline.node": "Node",
 	"agentSessions.timeline.memoryUpdated": "Memory updated",
 	"agentSessions.timeline.openForm": "Open form",
 	"agentSessions.timeline.workflowError": "Workflow call did not produce an execution",

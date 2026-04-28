@@ -17,7 +17,7 @@ export type TimelineEvent =
 	| { type: 'text'; content: string; timestamp: number }
 	| {
 			type: 'tool-call';
-			kind: 'tool' | 'workflow';
+			kind: 'tool' | 'workflow' | 'node';
 			name: string;
 			toolCallId: string;
 			input: unknown;
@@ -29,6 +29,9 @@ export type TimelineEvent =
 			workflowName?: string;
 			workflowExecutionId?: string;
 			triggerType?: string;
+			nodeType?: string;
+			nodeTypeVersion?: number;
+			nodeDisplayName?: string;
 	  }
 	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
@@ -202,6 +205,9 @@ export class ExecutionRecorder {
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,
+			nodeType: entry?.nodeType,
+			nodeTypeVersion: entry?.nodeTypeVersion,
+			nodeDisplayName: entry?.nodeDisplayName,
 		});
 	}
 

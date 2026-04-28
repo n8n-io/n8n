@@ -11,6 +11,9 @@ vi.mock('../components/WorkflowExecutionLogViewer.vue', () => ({
 vi.mock('../components/RichInteractionCard.vue', () => ({
 	default: { template: '<div data-test-id="rich-card"></div>' },
 }));
+vi.mock('../components/ToolIoView.vue', () => ({
+	default: { template: '<div data-test-id="tool-io-view"></div>' },
+}));
 vi.mock('vue-markdown-render', () => ({
 	default: { template: '<div data-test-id="markdown"><slot /></div>' },
 }));
@@ -90,7 +93,7 @@ describe('SessionDetailPanel — other kinds', () => {
 		expect(w.find('[data-test-id="rich-card"]').exists()).toBe(true);
 	});
 
-	it('renders Input/Output sections for generic tool calls', () => {
+	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
 			kind: 'tool',
 			executionId: 'e1',
@@ -101,6 +104,23 @@ describe('SessionDetailPanel — other kinds', () => {
 		});
 		expect(w.text()).toContain('Input');
 		expect(w.text()).toContain('Output');
+		// Tool kind should NOT use ToolIoView (it's reserved for node-backed calls).
+		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
+	});
+
+	it('renders the ToolIoView for node tool calls', () => {
+		const w = mountIt({
+			kind: 'node',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http-tool',
+			nodeType: 'n8n-nodes-base.httpRequest',
+			nodeTypeVersion: 4.2,
+			nodeDisplayName: 'HTTP Request',
+			toolInput: { url: 'https://x' },
+			toolOutput: { status: 200 },
+		});
+		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(true);
 	});
 
 	it('renders markdown for user messages', () => {

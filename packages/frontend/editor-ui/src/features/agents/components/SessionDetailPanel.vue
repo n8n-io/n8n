@@ -6,6 +6,7 @@ import { N8nIcon } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import RichInteractionCard from './RichInteractionCard.vue';
 import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
+import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey } from '../session-timeline.utils';
 
@@ -94,6 +95,10 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						<N8nIcon icon="wrench" :size="14" />
 						<span>{{ toolDisplayName }}</span>
 					</template>
+					<template v-else-if="item.kind === 'node'">
+						<N8nIcon icon="server" :size="14" />
+						<span>{{ item.nodeDisplayName ?? item.toolName }}</span>
+					</template>
 					<template v-else-if="item.kind === 'working-memory'">{{
 						i18n.baseText('agentSessions.timeline.memory')
 					}}</template>
@@ -170,6 +175,16 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						<!-- eslint-enable vue/no-v-html -->
 					</div>
 				</template>
+			</template>
+
+			<template v-else-if="item.kind === 'node'">
+				<ToolIoView
+					:name="item.nodeDisplayName ?? item.toolName ?? 'node'"
+					:input="item.toolInput"
+					:output="item.toolOutput"
+					:node-type="item.nodeType"
+					:node-type-version="item.nodeTypeVersion"
+				/>
 			</template>
 
 			<template v-else-if="item.kind === 'working-memory'">

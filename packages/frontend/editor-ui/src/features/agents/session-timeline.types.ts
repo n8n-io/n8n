@@ -1,4 +1,11 @@
-export type EventKind = 'user' | 'agent' | 'tool' | 'workflow' | 'working-memory' | 'suspension';
+export type EventKind =
+	| 'user'
+	| 'agent'
+	| 'tool'
+	| 'node'
+	| 'workflow'
+	| 'working-memory'
+	| 'suspension';
 
 export interface TimelineItem {
 	kind: EventKind;
@@ -15,6 +22,9 @@ export interface TimelineItem {
 	workflowName?: string;
 	workflowExecutionId?: string;
 	workflowTriggerType?: string;
+	nodeType?: string;
+	nodeTypeVersion?: number;
+	nodeDisplayName?: string;
 	resumed?: boolean;
 }
 

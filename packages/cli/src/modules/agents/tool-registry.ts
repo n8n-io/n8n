@@ -1,10 +1,13 @@
 import type { BuiltTool } from '@n8n/agents';
 
 export interface ToolRegistryEntry {
-	kind: 'tool' | 'workflow';
+	kind: 'tool' | 'workflow' | 'node';
 	workflowId?: string;
 	workflowName?: string;
 	triggerType?: string;
+	nodeType?: string;
+	nodeTypeVersion?: number;
+	nodeDisplayName?: string;
 }
 
 export type ToolRegistry = Map<string, ToolRegistryEntry>;
@@ -31,6 +34,14 @@ export function buildToolRegistry(tools: BuiltTool[]): ToolRegistry {
 			if (typeof m.triggerType === 'string') {
 				entry.triggerType = m.triggerType;
 			}
+			registry.set(tool.name, entry);
+		} else if (m !== undefined && m.kind === 'node' && typeof m.nodeType === 'string') {
+			const entry: ToolRegistryEntry = {
+				kind: 'node',
+				nodeType: m.nodeType,
+			};
+			if (typeof m.nodeTypeVersion === 'number') entry.nodeTypeVersion = m.nodeTypeVersion;
+			if (typeof m.displayName === 'string') entry.nodeDisplayName = m.displayName;
 			registry.set(tool.name, entry);
 		} else {
 			registry.set(tool.name, { kind: 'tool' });
