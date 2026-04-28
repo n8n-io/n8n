@@ -32,6 +32,12 @@ const previewRef = useTemplateRef<InstanceType<typeof WorkflowPreview>>('preview
 const workflow = ref<IWorkflowDb | null>(null);
 const isLoading = ref(false);
 const fetchError = ref<string | null>(null);
+// Sticky once a workflow has loaded — keeps the iframe mounted across
+// subsequent tab switches (workflow.value transiently null during fetches)
+// so we avoid the ~18s editor cold-start. Stays false until first load to
+// keep the iframe out of the demo route, which would trigger app-level
+// modals (e.g. instance-ai opt-in) in the embedded App.vue.
+const hasLoadedWorkflow = ref(false);
 let fetchGeneration = 0;
 
 // When executionId is set, switch WorkflowPreview to execution mode
@@ -72,6 +78,7 @@ async function fetchWorkflow(id: string) {
 		const result = await workflowsListStore.fetchWorkflow(id);
 		if (generation !== fetchGeneration) return;
 		workflow.value = result;
+		hasLoadedWorkflow.value = true;
 	} catch {
 		if (generation !== fetchGeneration) return;
 		workflow.value = null;
@@ -182,9 +189,10 @@ defineExpose({ relayPushEvent });
 			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Always mounted so the iframe boots before any artifact exists; it hides itself
-		     internally when no workflow is set. -->
+		<!-- Mounted on first workflow load and kept mounted thereafter so the iframe
+		     survives tab switches (workflow.value transiently null during fetches). -->
 		<WorkflowPreview
+			v-if="hasLoadedWorkflow"
 			ref="previewComponent"
 			:mode="previewMode"
 			:workflow="workflow ?? undefined"
