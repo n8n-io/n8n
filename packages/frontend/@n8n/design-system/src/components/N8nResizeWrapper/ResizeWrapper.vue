@@ -135,13 +135,25 @@ const mouseMove = (event: MouseEvent) => {
 	state.dWidth.value = dWidth;
 };
 
-// Idempotent — safe to call from mouseup, unmount, or any other abort path.
-const cleanupResize = () => {
-	(props.window ?? window).removeEventListener('mousemove', mouseMove);
-	(props.window ?? window).removeEventListener('mouseup', mouseUp);
+// Idempotent — safe to call from mouseup, blur, unmount, or any abort path.
+// Returns whether a drag was actually in progress, so callers can decide
+// whether to emit resizeend without risk of double-emitting.
+const cleanupResize = (): boolean => {
+	if (state.dir.value === '') return false;
+	const w = props.window ?? window;
+	w.removeEventListener('mousemove', mouseMove);
+	w.removeEventListener('mouseup', mouseUp);
+	w.removeEventListener('blur', onBlur);
 	document.body.style.cursor = 'unset';
 	document.body.classList.remove('n8n-resizing');
 	state.dir.value = '';
+	return true;
+};
+
+// Tab switch, OS notification, alt-tab — any focus loss aborts the drag so
+// the body class doesn't stick when mouseup never fires on this window.
+const onBlur = () => {
+	if (cleanupResize()) emit('resizeend');
 };
 
 const mouseUp = (event: MouseEvent) => {
@@ -149,11 +161,12 @@ const mouseUp = (event: MouseEvent) => {
 	event.stopPropagation();
 	// Clean up before emitting so a throwing parent handler can't leave the
 	// body in a stuck-resizing state.
-	cleanupResize();
-	emit('resizeend');
+	if (cleanupResize()) emit('resizeend');
 };
 
-onBeforeUnmount(cleanupResize);
+onBeforeUnmount(() => {
+	cleanupResize();
+});
 
 const resizerMove = (event: MouseEvent) => {
 	event.preventDefault();
@@ -174,8 +187,10 @@ const resizerMove = (event: MouseEvent) => {
 	state.vHeight.value = props.height;
 	state.vWidth.value = props.width;
 
-	(props.window ?? window).addEventListener('mousemove', mouseMove);
-	(props.window ?? window).addEventListener('mouseup', mouseUp);
+	const w = props.window ?? window;
+	w.addEventListener('mousemove', mouseMove);
+	w.addEventListener('mouseup', mouseUp);
+	w.addEventListener('blur', onBlur);
 	emit('resizestart');
 };
 </script>
