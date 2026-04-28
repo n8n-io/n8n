@@ -35,7 +35,6 @@ const showUserRoleProvisioningDialog = ref(false);
 const {
 	roleAssignment,
 	mappingMethod,
-	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
 	roleAssignmentTransition,
@@ -171,7 +170,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			roleMappingRuleEditorRef.value?.discardProjectRules();
 		}
 
-		if (userRoleProvisioning.value === 'expression_based') {
+		if (mappingMethod.value === 'rules_in_n8n') {
 			await roleMappingRuleEditorRef.value?.save();
 		}
 
@@ -311,7 +310,6 @@ onMounted(async () => {
 			<UserRoleProvisioningDropdown
 				v-model:role-assignment="roleAssignment"
 				v-model:mapping-method="mappingMethod"
-				v-model:legacy-value="userRoleProvisioning"
 				auth-protocol="oidc"
 				:disabled="isSsoManagedByEnv"
 			/>
