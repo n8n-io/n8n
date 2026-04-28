@@ -38,7 +38,9 @@ const separatorIndex = args.indexOf('--');
 let command;
 let commandArgs = [];
 
-if (separatorIndex !== -1) {
+const isSafeRetry = separatorIndex !== -1;
+
+if (isSafeRetry) {
 	[command, ...commandArgs] = args.slice(separatorIndex + 1);
 } else {
 	command = args
@@ -57,7 +59,7 @@ if (!command) {
 
 for (let i = 1; i <= attempts; i++) {
 	try {
-		if (commandArgs.length > 0) {
+		if (isSafeRetry) {
 			const result = spawnSync(command, commandArgs, { stdio: 'inherit' });
 			if (result.status !== 0) throw new Error(`Exit code ${result.status}`);
 		} else {
