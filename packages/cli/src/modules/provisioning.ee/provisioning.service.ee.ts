@@ -30,10 +30,6 @@ import { RoleMappingRuleService } from './role-mapping-rule.service.ee';
 import type { RoleMappingConfig, ResolvedRoles, RoleResolverContext } from './role-resolver-types';
 import { RoleResolverService } from './role-resolver.service.ee';
 
-export function isExpressionMappingFlagEnabled(): boolean {
-	return process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING === 'true';
-}
-
 @Service()
 export class ProvisioningService {
 	private provisioningConfig: ProvisioningConfigDto;
@@ -437,7 +433,6 @@ export class ProvisioningService {
 	}
 
 	async isExpressionMappingEnabled(): Promise<boolean> {
-		if (!isExpressionMappingFlagEnabled()) return false;
 		const provisioningConfig = await this.getConfig();
 		return provisioningConfig.scopesUseExpressionMapping;
 	}

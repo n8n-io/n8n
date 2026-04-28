@@ -215,7 +215,7 @@ describe('OidcService', () => {
 			const encryptedSecret = 'encrypted-secret';
 			const decryptedSecret = 'decrypted-secret';
 
-			cipher.decrypt = jest.fn().mockReturnValue(decryptedSecret);
+			cipher.decryptV2 = jest.fn().mockResolvedValue(decryptedSecret);
 
 			const configWithEncryptedSecret = {
 				...mockOidcConfig,
@@ -243,7 +243,7 @@ describe('OidcService', () => {
 
 			const result = await oidcService.loadConfigurationFromDatabase(true);
 
-			expect(cipher.decrypt).toHaveBeenCalledWith(encryptedSecret);
+			expect(cipher.decryptV2).toHaveBeenCalledWith(encryptedSecret);
 			expect(result?.clientSecret).toBe(decryptedSecret);
 		});
 

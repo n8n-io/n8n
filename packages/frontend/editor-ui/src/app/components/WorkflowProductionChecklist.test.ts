@@ -460,7 +460,7 @@ describe('WorkflowProductionChecklist', () => {
 			await vi.waitFor(() => {
 				expect(router.push).toHaveBeenCalledWith({
 					name: VIEWS.EVALUATION_EDIT,
-					params: { name: mockWorkflow.id },
+					params: { workflowId: mockWorkflow.id },
 				});
 			});
 		});

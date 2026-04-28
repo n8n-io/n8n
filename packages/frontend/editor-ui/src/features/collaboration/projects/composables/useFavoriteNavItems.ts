@@ -30,7 +30,7 @@ export function useFavoriteNavItems() {
 					id: `favorite-workflow-${f.resourceId}`,
 					label: f.resourceName,
 					icon: 'log-in' as IMenuItem['icon'],
-					route: { to: { name: VIEWS.WORKFLOW, params: { name: f.resourceId } } },
+					route: { to: { name: VIEWS.WORKFLOW, params: { workflowId: f.resourceId } } },
 				},
 				resourceId: f.resourceId,
 				resourceType: 'workflow',

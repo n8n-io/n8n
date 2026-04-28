@@ -160,7 +160,7 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 
 const aiGatewayWarningNodes = computed((): INodeUi[] => {
 	if (!settingsStore.isAiGatewayEnabled) return [];
-	return workflowsStore.allNodes.filter(
+	return (workflowDocumentStore.value?.allNodes ?? []).filter(
 		(node) =>
 			!node.disabled &&
 			Object.values(node.credentials ?? {}).some((cred) => cred.__aiGatewayManaged === true),

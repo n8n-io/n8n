@@ -193,6 +193,7 @@ test.describe(
 			await n8n.instanceAi.sendMessage(`Set up the workflow named "${B3_WORKFLOW_NAME_PARTIAL}".`);
 
 			await expect(n8n.instanceAi.getWorkflowSetupCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.getWorkflowSetupStepCounter()).toContainText('1 of 2');
 
 			await expect(n8n.instanceAi.getWorkflowSetupParameterIssues()).toBeVisible();
 			await n8n.instanceAi.getWorkflowSetupParameterInput().fill('https://example.com/api');
@@ -200,10 +201,15 @@ test.describe(
 				timeout: 5_000,
 			});
 
-			// With two seeded Slack credentials and none attached to the node, the
-			// setup-workflow tool surfaces the credential picker rather than
-			// auto-applying. Slack is therefore the incomplete card; auto-advance
-			// moves the wizard there once HTTP becomes complete.
+			// Filling the HTTP URL completes the HTTP card. Slack stays incomplete:
+			// the workflow has no Slack credential and there are two existing
+			// slackApi credentials, so neither the backend's auto-attach
+			// (`existingCredentials.length === 1` gate in setup-workflow.service)
+			// nor the frontend's auto-select (same gate in
+			// useCredentialGroupSelection) picks one. With Slack still incomplete,
+			// the auto-advance watcher in InstanceAiWorkflowSetup.vue advances the
+			// wizard to step 2 — observing that is more reliable than racing it
+			// with a manual `Next` click.
 			await expect(n8n.instanceAi.getWorkflowSetupStepCounter()).toContainText('2 of 2');
 
 			// Prev navigation must return to the HTTP card and keep the user's

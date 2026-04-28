@@ -130,11 +130,13 @@ export abstract class ICredentials<T extends object = ICredentialDataDecryptedOb
 		this.data = data;
 	}
 
-	abstract getData(nodeType?: string): T;
+	abstract getData(nodeType?: string): Promise<T>;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
-	abstract setData(data: T): void;
+	abstract setData(data: T): Promise<void>;
+
+	abstract updateData(toUpdate: Partial<T>, toDelete?: Array<keyof T>): Promise<void>;
 }
 
 export interface IUser {
@@ -1240,7 +1242,7 @@ export interface IPollFunctions
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		donePromise?: IDeferredPromise<IRun>,
+		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
