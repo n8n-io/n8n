@@ -190,7 +190,7 @@ export class SsoInstanceSettingsLoader {
 				key: OIDC_PREFERENCES_DB_KEY,
 				value: JSON.stringify({
 					...preferences,
-					clientSecret: this.cipher.encrypt(preferences.clientSecret),
+					clientSecret: await this.cipher.encryptV2(preferences.clientSecret),
 				}),
 				loadOnStartup: true,
 			},
