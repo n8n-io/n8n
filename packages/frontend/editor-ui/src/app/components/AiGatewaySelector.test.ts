@@ -76,6 +76,21 @@ describe('AiGatewaySelector', () => {
 			expect(screen.queryByText(/\$[\d.]+/)).not.toBeInTheDocument();
 		});
 
+		it('should show "No credits" badge when balance is 0', () => {
+			mockBalance.value = 0;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			expect(screen.getByText('No credits')).toBeInTheDocument();
+			expect(screen.queryByText(/\$[\d.]+/)).not.toBeInTheDocument();
+		});
+
+		it('should show "No credits" badge when balance is negative', () => {
+			mockBalance.value = -1;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			expect(screen.getByText('No credits')).toBeInTheDocument();
+		});
+
 		it('should disable both cards in readonly mode', () => {
 			renderComponent({ props: { aiGatewayEnabled: false, readonly: true } });
 
@@ -213,6 +228,13 @@ describe('AiGatewaySelector', () => {
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
 			expect(screen.getByText('Top up')).toBeInTheDocument();
+		});
+
+		it('does not render "Top up" when balance is depleted', () => {
+			mockBalance.value = 0;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			expect(screen.queryByText('Top up')).not.toBeInTheDocument();
 		});
 	});
 });
