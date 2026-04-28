@@ -9,6 +9,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import type { INodeParameters } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { fetchFormPreview } from '../api';
+import { FORM_STEP_IFRAME_ZOOM, FORM_STEP_PADDING, FORM_STEP_WIDTH } from '../constants';
 
 const emit = defineEmits<{
 	activate: [id: string, event: MouseEvent];
@@ -87,7 +88,11 @@ watch(
 </script>
 
 <template>
-	<div class="n8n-form-preview" @dblclick.stop="onActivate">
+	<div
+		class="n8n-form-preview"
+		:style="{ width: `${FORM_STEP_WIDTH}px`, padding: `${FORM_STEP_PADDING}px 0` }"
+		@dblclick.stop="onActivate"
+	>
 		<div class="n8n-form-preview__card">
 			<iframe
 				v-if="previewHtml"
@@ -95,6 +100,7 @@ watch(
 				:srcdoc="previewHtml"
 				sandbox="allow-same-origin"
 				class="n8n-form-preview__iframe"
+				:style="{ zoom: FORM_STEP_IFRAME_ZOOM }"
 				@load="onIframeLoad"
 			/>
 			<div v-else class="n8n-form-preview__skeleton" />
@@ -104,12 +110,7 @@ watch(
 
 <style scoped>
 .n8n-form-preview {
-	/*
-	 * 228px outer width; VueFlow measures this for node sizing.
-	 * Canvas mapping shifts X by -66px to centre the card on the original 96px node.
-	 */
-	width: 228px;
-	padding: 20px 0;
+	/* width and padding driven by FORM_STEP_WIDTH / FORM_STEP_PADDING from forms/constants.ts */
 	position: relative;
 	pointer-events: auto;
 	user-select: none;
@@ -127,18 +128,14 @@ watch(
 .n8n-form-preview__iframe {
 	display: block;
 	/*
-	 * 560px > 500px mobile breakpoint → desktop card styles always apply.
-	 * Card (448px) centred in 560px iframe → 56px left margin in iframe.
-	 * After zoom 0.45: 56 × 0.45 = 25.2px visual from iframe left.
-	 * 504px > 500px mobile breakpoint → desktop card styles always apply.
-	 * Card (448px) centred in 504px iframe → 28px left margin in iframe.
-	 * After zoom 0.45: 28 × 0.45 = 12.6px from iframe left — no negative margin needed.
-	 * Inner card area = 228px − 3px border = 225px; card sits at 12.6 → 214.2px. ✓
+	 * 504px > 500px mobile breakpoint → desktop card styles (border, shadow) always apply.
+	 * Card (448px) centred in 504px iframe → 28px left margin → 12.6px visual (zoom 0.45).
+	 * Inner card area = FORM_STEP_WIDTH − 3px border = 225px; card sits at 12.6 → 214.2px.
+	 * zoom is set via :style binding from FORM_STEP_IFRAME_ZOOM in forms/constants.ts.
 	 */
 	width: 504px;
 	border: none;
 	pointer-events: none;
-	zoom: 0.45;
 }
 
 .n8n-form-preview__skeleton {

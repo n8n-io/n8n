@@ -1,34 +1,169 @@
 import { ref, nextTick } from 'vue';
 import { useVueFlow } from '@vue-flow/core';
+import type { GraphNode } from '@vue-flow/core';
 import { useDebounceFn } from '@vueuse/core';
 import type { CanvasNodeData } from '@/features/workflows/canvas/canvas.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { FORM_STEP_MIN_GAP } from '../constants';
 
-// FormStepCard.vue wraps the card in 20px top+bottom padding.
-// MIN_WRAPPER_GAP = 60px between wrapper bottom and next wrapper top
-// → 60 + 20 (bottom pad) + 20 (top pad) = 100px visual gap between card edges.
-const MIN_WRAPPER_GAP = 60;
+const DEFAULT_H = DEFAULT_NODE_SIZE[1]; // 96 — standard canvas node height
 
-const DEFAULT_H = DEFAULT_NODE_SIZE[1]; // 96
+// ---------------------------------------------------------------------------
+// Pure layout helpers — no Vue reactivity, easy to unit-test in isolation.
+// ---------------------------------------------------------------------------
+
+/**
+ * Groups FormStep nodes by their original workflow Y coordinate.
+ * Nodes sharing the same rounded Y belong to the same canvas "row" and compete
+ * for vertical space together.
+ *
+ * @param formStepNodes  Only the FormStep-typed nodes.
+ * @param originalYById  Snapshot of each node's Y before any layout shift;
+ *                       used so re-runs don't corrupt grouping after positions move.
+ */
+function groupFormStepsByRow(
+	formStepNodes: GraphNode[],
+	originalYById: Map<string, number>,
+): Map<number, GraphNode[]> {
+	const byRow = new Map<number, GraphNode[]>();
+	for (const node of formStepNodes) {
+		const y = Math.round(originalYById.get(node.id) ?? node.position.y);
+		const row = byRow.get(y) ?? [];
+		row.push(node);
+		byRow.set(y, row);
+	}
+	return byRow;
+}
+
+/**
+ * For each row (sorted top-to-bottom by original Y), computes the Y coordinate
+ * of the row's vertical centre.
+ *
+ * A row keeps its natural centre (originalY + DEFAULT_H / 2) when there is enough
+ * room above it. When the previous row's wrapper would overlap, the row is pushed
+ * down so the gap between wrapper edges is at least FORM_STEP_MIN_GAP pixels.
+ * Visual gap between card content edges = FORM_STEP_MIN_GAP + 2 × FORM_STEP_PADDING (from constants).
+ *
+ * @param sortedRows  [originalY, nodes] pairs sorted ascending by originalY.
+ */
+function computeRowCenters(
+	sortedRows: Array<[originalY: number, nodes: GraphNode[]]>,
+): Map<number, number> {
+	const rowCenters = new Map<number, number>();
+	let prevWrapperBottom = -Infinity;
+
+	for (const [originalY, rowNodes] of sortedRows) {
+		const wrapperH = Math.max(...rowNodes.map((n) => n.dimensions.height || DEFAULT_H));
+		const naturalCenter = originalY + DEFAULT_H / 2;
+		const minCenter =
+			prevWrapperBottom === -Infinity
+				? naturalCenter
+				: prevWrapperBottom + FORM_STEP_MIN_GAP + wrapperH / 2;
+		const center = Math.max(naturalCenter, minCenter);
+		rowCenters.set(originalY, center);
+		prevWrapperBottom = center + wrapperH / 2;
+	}
+
+	return rowCenters;
+}
+
+/**
+ * Returns how far each FormStep row moved from its natural vertical centre.
+ * shift > 0 means the row was pushed down; shift = 0 means it kept its place.
+ *
+ * These shifts are later used to move non-FormStep nodes proportionally so
+ * connection lines maintain geometrically consistent angles.
+ *
+ * @param rowYs      Original Y values in ascending order (index matches sortedRows).
+ * @param rowCenters Computed centre for each original Y (from computeRowCenters).
+ */
+function buildRowShifts(rowYs: number[], rowCenters: Map<number, number>): Map<number, number> {
+	return new Map(
+		rowYs.map((y) => [y, (rowCenters.get(y) ?? y + DEFAULT_H / 2) - (y + DEFAULT_H / 2)]),
+	);
+}
+
+/**
+ * Returns the layout shift for a node at an arbitrary original Y by linearly
+ * interpolating between the two nearest FormStep rows. Clamps to the first or
+ * last row's shift when the Y falls outside the range of known rows.
+ *
+ * Used for non-FormStep nodes (e.g. "Edit Fields") so they travel proportionally
+ * with their surrounding form cards and connection lines don't develop sinusoidal kinks.
+ *
+ * @param y          The node's original workflow Y.
+ * @param rowYs      Sorted original Y values of all FormStep rows.
+ * @param rowShifts  Shift amount for each row Y (from buildRowShifts).
+ */
+function interpolateShift(y: number, rowYs: number[], rowShifts: Map<number, number>): number {
+	if (rowYs.length === 0) return 0;
+	if (y <= rowYs[0]) return rowShifts.get(rowYs[0]) ?? 0;
+	if (y >= rowYs[rowYs.length - 1]) return rowShifts.get(rowYs[rowYs.length - 1]) ?? 0;
+
+	// Binary search for the surrounding pair of row Ys.
+	let lo = 0;
+	let hi = rowYs.length - 1;
+	while (hi - lo > 1) {
+		const mid = (lo + hi) >> 1;
+		if (rowYs[mid] <= y) lo = mid;
+		else hi = mid;
+	}
+	const y0 = rowYs[lo];
+	const y1 = rowYs[hi];
+	const t = (y - y0) / (y1 - y0);
+	return (rowShifts.get(y0) ?? 0) + t * ((rowShifts.get(y1) ?? 0) - (rowShifts.get(y0) ?? 0));
+}
+
+/**
+ * Computes the new Y position for a single node.
+ *
+ * - **FormStep node**: positioned so its vertical centre lands on the row's computed
+ *   centre, taking the node's actual measured height into account.
+ * - **Other node**: shifted by the interpolated shift at its original Y so it tracks
+ *   surrounding form cards proportionally.
+ *
+ * Returns `null` when the node's row has no entry in rowCenters (should not happen).
+ *
+ * @param origY        The node's original workflow Y (pre-layout snapshot).
+ * @param isFormStep   Whether this node renders as a FormStepCard.
+ * @param wrapperH     The node's measured height (or DEFAULT_H as fallback).
+ * @param rowCenters   Computed centres from computeRowCenters.
+ * @param rowYs        Sorted row Y values.
+ * @param rowShifts    Row shifts from buildRowShifts.
+ */
+function computeNodeNewY(
+	origY: number,
+	isFormStep: boolean,
+	wrapperH: number,
+	rowCenters: Map<number, number>,
+	rowYs: number[],
+	rowShifts: Map<number, number>,
+): number | null {
+	if (isFormStep) {
+		const center = rowCenters.get(Math.round(origY));
+		if (center === undefined) return null;
+		return center - wrapperH / 2;
+	}
+	return origY + interpolateShift(origY, rowYs, rowShifts);
+}
+
+// ---------------------------------------------------------------------------
+// Composable — orchestrates the helpers above with VueFlow reactivity.
+// ---------------------------------------------------------------------------
 
 /**
  * Post-render layout for the Forms canvas view.
  *
- * useCanvasMapping only applies the X offset needed to centre form-step cards
- * on their workflow position. This composable runs after VueFlow measures
- * actual node dimensions and then:
+ * useCanvasMapping applies only the X offset needed to centre form-step cards on
+ * their workflow position. This composable runs after VueFlow measures actual node
+ * dimensions and then:
  *
- *  1. Vertically centres every FormStep card on its row's natural centre point
- *     (originalY + DEFAULT_H / 2), matching how a 96px default node is centred.
- *  2. Pushes rows apart when neighbouring card wrappers would otherwise overlap,
- *     guaranteeing at least MIN_WRAPPER_GAP pixels between wrapper edges.
- *  3. Applies an interpolated Y shift to non-FormStep nodes (e.g. Edit Fields)
- *     so they move proportionally with their surrounding FormStep rows and
- *     connection lines stay geometrically consistent (no sinusoid effect).
- *  4. Re-runs automatically when any FormStep card changes height (e.g. after
- *     its iframe finishes loading), using snapshotted original Y positions so
- *     row grouping stays stable across multiple layout passes.
+ *  1. Vertically centres every FormStep card on its row's natural centre point.
+ *  2. Pushes rows apart when neighbouring card wrappers would otherwise overlap.
+ *  3. Shifts non-FormStep nodes proportionally so connection lines stay straight.
+ *  4. Re-runs automatically when any FormStep card changes height (e.g. after its
+ *     iframe finishes loading).
  */
 export function useFormsLayout(vueFlowId: string) {
 	const { onNodesInitialized, onNodesChange, getNodes, updateNode, updateNodeInternals, fitView } =
@@ -50,101 +185,45 @@ export function useFormsLayout(vueFlowId: string) {
 		const formStepNodes = nodes.filter(
 			(n) => (n.data as CanvasNodeData).render?.type === CanvasNodeRenderType.FormStep,
 		);
-
 		if (!formStepNodes.length) {
 			layoutReady.value = true;
 			return;
 		}
 
-		// Snapshot original Ys on first encounter so subsequent runs use stable row keys.
+		// Snapshot original Ys on first encounter so subsequent re-runs use stable row keys.
 		for (const node of nodes) {
 			if (!originalYById.has(node.id)) {
 				originalYById.set(node.id, node.position.y);
 			}
 		}
 
-		// Group FormStep nodes by original workflow Y (row identity).
-		const byRow = new Map<number, typeof formStepNodes>();
-		for (const node of formStepNodes) {
-			const y = Math.round(originalYById.get(node.id) ?? node.position.y);
-			const row = byRow.get(y) ?? [];
-			row.push(node);
-			byRow.set(y, row);
-		}
-
+		const byRow = groupFormStepsByRow(formStepNodes, originalYById);
 		const sortedRows = [...byRow.entries()].sort(([a], [b]) => a - b);
-
-		// Compute the vertical centre for each row.
-		// Rows that already have enough natural space keep their original centre.
-		// Rows that would overlap the previous row are pushed down.
-		const rowCenters = new Map<number, number>();
-		let prevWrapperBottom = -Infinity;
-
-		for (const [originalY, rowNodes] of sortedRows) {
-			const maxH = Math.max(...rowNodes.map((n) => n.dimensions.height || DEFAULT_H));
-			const naturalCenter = originalY + DEFAULT_H / 2;
-			const minCenter =
-				prevWrapperBottom === -Infinity
-					? naturalCenter
-					: prevWrapperBottom + MIN_WRAPPER_GAP + maxH / 2;
-			const center = Math.max(naturalCenter, minCenter);
-			rowCenters.set(originalY, center);
-			prevWrapperBottom = center + maxH / 2;
-		}
-
-		// Compute the Y shift applied to each FormStep row's natural centre.
+		const rowCenters = computeRowCenters(sortedRows);
 		const rowYs = sortedRows.map(([y]) => y);
-		const rowShifts = new Map(
-			rowYs.map((y) => [y, (rowCenters.get(y) ?? y + DEFAULT_H / 2) - (y + DEFAULT_H / 2)]),
-		);
+		const rowShifts = buildRowShifts(rowYs, rowCenters);
 
-		// For a given original Y, interpolate (or clamp) the shift from surrounding FormStep rows.
-		function shiftAt(y: number): number {
-			if (rowYs.length === 0) return 0;
-			if (y <= rowYs[0]) return rowShifts.get(rowYs[0]) ?? 0;
-			if (y >= rowYs[rowYs.length - 1]) return rowShifts.get(rowYs[rowYs.length - 1]) ?? 0;
-			let lo = 0;
-			let hi = rowYs.length - 1;
-			while (hi - lo > 1) {
-				const mid = (lo + hi) >> 1;
-				if (rowYs[mid] <= y) lo = mid;
-				else hi = mid;
-			}
-			const y0 = rowYs[lo];
-			const y1 = rowYs[hi];
-			const t = (y - y0) / (y1 - y0);
-			return (rowShifts.get(y0) ?? 0) + t * ((rowShifts.get(y1) ?? 0) - (rowShifts.get(y0) ?? 0));
-		}
-
-		// Reposition all nodes:
-		// - FormStep nodes: centre on their row's computed centre using actual height.
-		// - All other nodes: apply interpolated shift to preserve relative geometry.
 		const updatedIds: string[] = [];
 		for (const node of nodes) {
 			const origY = originalYById.get(node.id) ?? node.position.y;
 			const isFormStep =
 				(node.data as CanvasNodeData).render?.type === CanvasNodeRenderType.FormStep;
-
-			let newY: number;
-			if (isFormStep) {
-				const rowY = Math.round(origY);
-				const center = rowCenters.get(rowY);
-				if (center === undefined) continue;
-				const h = node.dimensions.height || DEFAULT_H;
-				newY = center - h / 2;
-			} else {
-				newY = origY + shiftAt(origY);
-			}
-
+			const newY = computeNodeNewY(
+				origY,
+				isFormStep,
+				node.dimensions.height || DEFAULT_H,
+				rowCenters,
+				rowYs,
+				rowShifts,
+			);
+			if (newY === null) continue;
 			if (Math.abs(newY - node.position.y) >= 0.5) {
 				updateNode(node.id, { position: { x: node.position.x, y: newY } });
 				updatedIds.push(node.id);
 			}
 		}
 
-		if (updatedIds.length) {
-			updateNodeInternals(updatedIds);
-		}
+		if (updatedIds.length) updateNodeInternals(updatedIds);
 
 		void nextTick(() => {
 			if (doFitView) void fitView({ padding: 0.1 });
@@ -153,7 +232,7 @@ export function useFormsLayout(vueFlowId: string) {
 	}
 
 	// Re-apply layout (without fitView) when a FormStep card changes height.
-	// Debounced so rapid sequential loads don't thrash.
+	// Debounced so rapid sequential iframe loads don't thrash.
 	const debouncedApply = useDebounceFn(() => applyLayout({ doFitView: false }), 50);
 
 	onNodesChange((changes) => {
@@ -165,7 +244,7 @@ export function useFormsLayout(vueFlowId: string) {
 				(node?.data as CanvasNodeData | undefined)?.render?.type === CanvasNodeRenderType.FormStep
 			);
 		});
-		if (hasDimChange) debouncedApply();
+		if (hasDimChange) void debouncedApply();
 	});
 
 	const { off } = onNodesInitialized(() => {

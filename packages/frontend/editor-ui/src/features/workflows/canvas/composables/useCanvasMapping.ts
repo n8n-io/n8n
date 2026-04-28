@@ -60,6 +60,7 @@ import {
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { FORM_STEP_WIDTH } from '@/features/forms/constants';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { MarkerType } from '@vue-flow/core';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -745,11 +746,10 @@ export function useCanvasMapping({
 				const isFormStep =
 					renderTypeByNodeId.value[node.id]?.type === CanvasNodeRenderType.FormStep;
 
-				// FormStep cards are 228px wide (bordered preview wrapper); centre them on the
-				// original 96px node position by shifting left (card_width − default_width) / 2.
-				// Vertical centering and row-gap expansion are handled post-render by
-				// useFormsLayout, which uses VueFlow's measured node dimensions.
-				const FORM_STEP_WIDTH = 228;
+				// FormStep cards are FORM_STEP_WIDTH px wide (see forms/constants.ts);
+				// centre them on the original 96px node position by shifting left
+				// (card_width − default_width) / 2. Vertical centering and row-gap
+				// expansion are handled post-render by useFormsLayout.
 				const nodeX = node.position[0];
 				const nodeY = node.position[1];
 				const position = isFormStep
