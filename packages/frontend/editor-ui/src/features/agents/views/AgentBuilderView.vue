@@ -28,7 +28,7 @@ import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonConfigRef } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonConfigRef, AgentSkill } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -59,10 +59,12 @@ import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentConfigTree from '../components/AgentConfigTree.vue';
 import AgentSectionEditor from '../components/AgentSectionEditor.vue';
 import AgentCustomToolViewer from '../components/AgentCustomToolViewer.vue';
+import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import AgentSessionsListView from './AgentSessionsListView.vue';
 import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
+import AgentSkillsListPanel from '../components/AgentSkillsListPanel.vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
@@ -637,6 +639,10 @@ function onOpenToolFromList(index: number) {
 	selectedSection.value = `tools.${index}`;
 }
 
+function onOpenSkillFromList(id: string) {
+	selectedSection.value = `skills.${id}`;
+}
+
 function onRemoveTool(index: number) {
 	const currentTools = localConfig.value?.tools ?? [];
 	if (index < 0 || index >= currentTools.length) return;
@@ -690,6 +696,38 @@ const selectedTriggerType = computed<string | null>(() => {
 /** True when a tree selection points at a specific tool slice (tools.<i>). */
 const isToolSliceSelection = computed(() => selectedSection.value?.startsWith('tools.') ?? false);
 
+/** True when a tree selection points at a specific skill slice (skills.<id>). */
+const isSkillSliceSelection = computed(() => selectedSection.value?.startsWith('skills.') ?? false);
+
+const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
+	const refs = localConfig.value?.tools ?? [];
+	const seen = new Set<string>();
+	const out: Array<{ id: string; skill: AgentSkill }> = [];
+
+	for (const ref of refs) {
+		if (ref.type !== 'skill' || !ref.id || seen.has(ref.id)) continue;
+		seen.add(ref.id);
+		out.push({
+			id: ref.id,
+			skill: agent.value?.skills?.[ref.id] ?? {
+				name: ref.id,
+				description: '',
+				instructions: '',
+			},
+		});
+	}
+
+	return out;
+});
+
+const selectedSkill = computed<{ id: string; skill: AgentSkill } | null>(() => {
+	const key = selectedSection.value;
+	if (!key?.startsWith('skills.')) return null;
+	const id = key.slice('skills.'.length);
+	if (!id) return null;
+	return appliedSkills.value.find((entry) => entry.id === id) ?? null;
+});
+
 /** Filename-like label for the currently-open tool. */
 const toolHeaderTitle = computed(() => {
 	const key = selectedSection.value;
@@ -706,6 +744,10 @@ const toolHeaderTitle = computed(() => {
 	}
 	return name || `${ref.type ?? 'tool'}-${idx + 1}`;
 });
+
+const skillHeaderTitle = computed(
+	() => selectedSkill.value?.skill.name || selectedSkill.value?.id || '',
+);
 
 const customToolSelection = computed<{ code: string } | null>(() => {
 	const key = selectedSection.value;
@@ -987,24 +1029,28 @@ function onSwitchAgent(nextAgentId: string) {
 			>
 				<div :class="$style.panelArea">
 					<div
-						v-if="isToolSliceSelection"
+						v-if="isToolSliceSelection || isSkillSliceSelection"
 						:class="$style.panelToolbar"
 						data-testid="agent-tool-header"
 					>
 						<button
 							type="button"
 							:class="$style.backBtn"
-							aria-label="Back to tools"
+							:aria-label="
+								isSkillSliceSelection
+									? locale.baseText('agents.builder.skills.back')
+									: locale.baseText('agents.builder.tools.back')
+							"
 							data-testid="agent-tool-back"
-							@click="selectedSection = 'tools'"
+							@click="selectedSection = isSkillSliceSelection ? 'skills' : 'tools'"
 						>
 							<N8nIcon icon="arrow-left" :size="16" />
 						</button>
 						<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
-							{{ toolHeaderTitle }}
+							{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
 						</span>
 						<button
-							v-if="canToggleRaw"
+							v-if="canToggleRaw && isToolSliceSelection"
 							type="button"
 							:class="[
 								$style.rawToggle,
@@ -1042,6 +1088,7 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:config="onSectionEditorUpdate"
 					/>
 					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
+					<AgentSkillViewer v-else-if="selectedSkill" :skill="selectedSkill.skill" />
 					<AgentAdvancedPanel
 						v-else-if="selectedSection === ADVANCED_SECTION_KEY"
 						:config="localConfig"
@@ -1068,6 +1115,12 @@ function onSwitchAgent(nextAgentId: string) {
 						@add-tool="onOpenAddToolModal"
 						@remove-tool="onRemoveTool"
 						@update:config="onConfigFieldUpdate"
+					/>
+					<AgentSkillsListPanel
+						v-else-if="selectedSection === 'skills'"
+						:skills="appliedSkills"
+						:disabled="isBuildChatStreaming"
+						@open-skill="onOpenSkillFromList"
 					/>
 					<div
 						v-else-if="selectedTriggerType"

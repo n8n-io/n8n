@@ -1,18 +1,15 @@
 <script setup lang="ts">
 /**
  * Middle column of the agent builder: a list of top-level sections derived
- * from `Object.keys(config)`. Sections that carry an array of items (today
- * only `tools`) render as collapsible folders with one row per entry.
- * Selection is a dot-path — `model`, `tools`, or `tools.0` — which the
- * parent feeds into AgentSectionEditor to pick the editor's slice.
+ * from `Object.keys(config)`. Selection is a dot-path — `model`, `tools`, or
+ * `skills.<id>` — which the parent uses to pick the editor's slice.
  */
-import { computed, ref, watch } from 'vue';
+import { computed } from 'vue';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
 import type { AgentJsonConfig } from '../types';
-import shared from '../styles/agent-panel.module.scss';
 import {
 	AGENT_SECTION_KEY,
 	ADVANCED_SECTION_KEY,
@@ -39,7 +36,6 @@ interface SectionDescriptor {
 	key: string;
 	label: string;
 	icon: IconProp;
-	children?: ChildDescriptor[];
 	/** When true, render a visual divider rendered *before* this row. */
 	dividerBefore?: boolean;
 	/** Optional count shown as a pill next to the label. */
@@ -50,24 +46,18 @@ interface SectionDescriptor {
 	pill?: string;
 }
 
-interface ChildDescriptor {
-	key: string;
-	label: string;
-	icon?: IconProp;
-	badge?: string;
-}
-
 const KNOWN_SECTIONS: Record<string, { i18nKey: BaseTextKey; icon: IconProp }> = {
 	model: { i18nKey: 'agents.builder.sections.model', icon: 'brain' },
 	instructions: { i18nKey: 'agents.builder.sections.instructions', icon: 'file-text' },
 	triggers: { i18nKey: 'agents.builder.sections.triggers', icon: 'zap' },
 	tools: { i18nKey: 'agents.builder.sections.tools', icon: 'wrench' },
+	skills: { i18nKey: 'agents.builder.sections.skills', icon: 'sparkles' },
 	memory: { i18nKey: 'agents.builder.sections.memory', icon: 'database' },
 	guardrails: { i18nKey: 'agents.builder.sections.guardrails', icon: 'shield' },
 };
 
-// Keys that are collapsed under the synthetic "Agent" section — they should
-// not also render as top-level rows.
+// Keys represented by the synthetic "Agent" section — they should not also
+// render as top-level rows.
 const AGENT_KEYS = new Set(['name', 'model', 'credential', 'instructions']);
 
 function humanize(key: string): string {
@@ -79,6 +69,9 @@ const sections = computed<SectionDescriptor[]>(() => {
 	const cfg = props.config;
 	if (!cfg) return [];
 	const out: SectionDescriptor[] = [];
+	const toolRefs = Array.isArray(cfg.tools) ? cfg.tools.filter((ref) => ref.type !== 'skill') : [];
+	const skillRefs = Array.isArray(cfg.tools) ? cfg.tools.filter((ref) => ref.type === 'skill') : [];
+	const skillCount = new Set(skillRefs.map((ref) => ref.id).filter(Boolean)).size;
 
 	// Primary config rows: Agent (bundles name/model/credential/instructions)
 	// and Memory sit at the top as peers.
@@ -98,7 +91,7 @@ const sections = computed<SectionDescriptor[]>(() => {
 		icon: 'database',
 	});
 
-	// Triggers & Tools. Lists live in their own tabs.
+	// Triggers, Tools & Skills. Lists live in their own tabs.
 	out.push({
 		key: 'triggers',
 		label: i18n.baseText(KNOWN_SECTIONS.triggers.i18nKey),
@@ -109,7 +102,13 @@ const sections = computed<SectionDescriptor[]>(() => {
 		key: 'tools',
 		label: i18n.baseText(KNOWN_SECTIONS.tools.i18nKey),
 		icon: KNOWN_SECTIONS.tools.icon,
-		count: Array.isArray(cfg.tools) ? cfg.tools.length : 0,
+		count: toolRefs.length,
+	});
+	out.push({
+		key: 'skills',
+		label: i18n.baseText(KNOWN_SECTIONS.skills.i18nKey),
+		icon: KNOWN_SECTIONS.skills.icon,
+		count: skillCount,
 	});
 	out.push({
 		key: EVALS_SECTION_KEY,
@@ -142,44 +141,15 @@ const sections = computed<SectionDescriptor[]>(() => {
 	return out;
 });
 
-const expanded = ref<Record<string, boolean>>({});
-
-function isExpanded(key: string): boolean {
-	return expanded.value[key] ?? false;
+function isSelected(sectionKey: string): boolean {
+	return (
+		props.selectedKey === sectionKey || props.selectedKey?.startsWith(`${sectionKey}.`) === true
+	);
 }
-
-function toggleExpanded(key: string) {
-	expanded.value = { ...expanded.value, [key]: !isExpanded(key) };
-}
-
-// Auto-expand a folder whose child is currently selected (e.g. after reloading
-// with a selection in URL state, or when the parent programmatically selects).
-watch(
-	() => props.selectedKey,
-	(key) => {
-		if (!key) return;
-		const dot = key.indexOf('.');
-		if (dot <= 0) return;
-		const parent = key.slice(0, dot);
-		if (!isExpanded(parent)) expanded.value = { ...expanded.value, [parent]: true };
-	},
-	{ immediate: true },
-);
 
 function onSectionClick(section: SectionDescriptor) {
 	if (section.disabled) return;
-	if (section.children) {
-		toggleExpanded(section.key);
-		// Only the Tools folder surfaces a proper list panel; the Configuration
-		// group is a UI-only grouping with no corresponding content.
-		if (section.key === 'tools') emit('select', section.key);
-		return;
-	}
 	emit('select', section.key);
-}
-
-function onChildClick(childKey: string) {
-	emit('select', childKey);
 }
 </script>
 
@@ -200,12 +170,10 @@ function onChildClick(childKey: string) {
 			<button
 				:class="[
 					$style.item,
-					selectedKey === section.key && $style.selected,
-					section.children && $style.folder,
+					isSelected(section.key) && $style.selected,
 					section.disabled && $style.disabled,
 				]"
-				:aria-pressed="selectedKey === section.key"
-				:aria-expanded="section.children ? isExpanded(section.key) : undefined"
+				:aria-pressed="isSelected(section.key)"
 				:aria-disabled="section.disabled"
 				:data-key="section.key"
 				data-testid="agent-config-tree-item"
@@ -226,36 +194,7 @@ function onChildClick(childKey: string) {
 				<N8nBadge v-if="section.pill" theme="primary" size="xsmall" :class="$style.statusPill">{{
 					section.pill
 				}}</N8nBadge>
-				<N8nIcon v-if="section.children" :class="$style.caret" icon="chevron-down" :size="14" />
 			</button>
-			<div
-				v-if="section.children && isExpanded(section.key)"
-				:class="[$style.children, shared.scrollbarThin]"
-			>
-				<div
-					v-if="section.children.length === 0"
-					:class="$style.childEmpty"
-					data-testid="agent-config-tree-child-empty"
-				>
-					<N8nText size="small" color="text-light">{{
-						i18n.baseText('agents.builder.tree.foldersEmpty')
-					}}</N8nText>
-				</div>
-				<button
-					v-for="child in section.children"
-					:key="child.key"
-					:class="[$style.item, $style.childItem, selectedKey === child.key && $style.selected]"
-					:aria-pressed="selectedKey === child.key"
-					:data-key="child.key"
-					data-testid="agent-config-tree-child"
-					type="button"
-					@click="onChildClick(child.key)"
-				>
-					<N8nIcon :icon="child.icon ?? 'file'" :size="16" />
-					<N8nText tag="span" size="medium" :class="$style.childLabel">{{ child.label }}</N8nText>
-					<span v-if="child.badge" :class="$style.badge">{{ child.badge }}</span>
-				</button>
-			</div>
 		</template>
 		<div :class="$style.pinnedWrap">
 			<button
@@ -357,56 +296,6 @@ function onChildClick(childKey: string) {
 
 .countPill {
 	flex-shrink: 0;
-}
-
-.caret {
-	flex-shrink: 0;
-	color: var(--color--text--tint-2);
-	transition: transform 120ms ease;
-}
-
-.folder[aria-expanded='false'] .caret {
-	transform: rotate(-90deg);
-}
-
-.children {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	padding-left: var(--spacing--md);
-	/* Show ~5 child rows before the folder becomes its own scroll area. */
-	max-height: 200px;
-	overflow-y: auto;
-}
-
-.childItem {
-	padding-left: var(--spacing--xs);
-}
-
-.childLabel {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.badge {
-	flex-shrink: 0;
-	padding: 0 var(--spacing--4xs);
-	background: var(--color--background--light-3);
-	border: var(--border);
-	border-color: var(--color--foreground--tint-1);
-	border-radius: var(--radius--sm);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--3xs);
-	line-height: 1.4;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-}
-
-.childEmpty {
-	padding: var(--spacing--3xs) var(--spacing--2xs);
 }
 
 .selected {

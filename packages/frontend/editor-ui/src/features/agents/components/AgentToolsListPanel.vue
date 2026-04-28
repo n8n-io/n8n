@@ -130,7 +130,7 @@ const customRows = computed<CustomRow[]>(() =>
 		})),
 );
 
-const totalCount = computed(() => props.tools.length);
+const totalCount = computed(() => props.tools.filter((ref) => ref.type !== 'skill').length);
 </script>
 
 <template>

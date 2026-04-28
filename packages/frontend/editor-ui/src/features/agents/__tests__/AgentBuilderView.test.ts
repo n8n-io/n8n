@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
+import type { AgentJsonConfigRef } from '../types';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -55,18 +56,11 @@ vi.mock('@/app/stores/ui.store', () => ({
 const updateAgentMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
+const getAgentMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
-	getAgent: vi.fn().mockResolvedValue({
-		id: 'a1',
-		name: 'Agent One',
-		description: null,
-		tools: {},
-		updatedAt: '2026-01-01T00:00:00Z',
-		publishedVersion: null,
-		versionId: 'v1',
-	}),
+	getAgent: getAgentMock,
 	updateAgent: updateAgentMock,
 	deleteAgent: vi.fn(),
 	publishAgent: publishAgentMock,
@@ -94,7 +88,13 @@ vi.mock('../composables/useAgentBuilderStatus', () => ({
 
 // Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
 // Tests that need an unbuilt agent flip this to empty instructions before render.
-const mockConfig = ref<{ name: string; instructions: string } | null>({
+interface TestAgentConfig {
+	name: string;
+	instructions: string;
+	tools?: AgentJsonConfigRef[];
+}
+
+const mockConfig = ref<TestAgentConfig | null>({
 	name: 'Agent One',
 	instructions: 'You are a helpful assistant.',
 });
@@ -102,10 +102,24 @@ const mockConfig = ref<{ name: string; instructions: string } | null>({
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
 // changed, so the `watch(config, ...)` listener doesn't re-fire.
-let intendedConfig: { name: string; instructions: string } | null = {
+let intendedConfig: TestAgentConfig | null = {
 	name: 'Agent One',
 	instructions: 'You are a helpful assistant.',
 };
+
+function makeAgentResponse(overrides: Record<string, unknown> = {}) {
+	return {
+		id: 'a1',
+		name: 'Agent One',
+		description: null,
+		tools: {},
+		skills: {},
+		updatedAt: '2026-01-01T00:00:00Z',
+		publishedVersion: null,
+		versionId: 'v1',
+		...overrides,
+	};
+}
 
 vi.mock('../composables/useAgentConfig', () => ({
 	useAgentConfig: () => ({
@@ -257,6 +271,17 @@ const commonStubs = {
 		props: ['tools', 'config', 'disabled'],
 		emits: ['open-tool', 'add-tool', 'remove-tool', 'update:config'],
 	},
+	AgentSkillsListPanel: {
+		name: 'AgentSkillsListPanel',
+		template: '<div data-testid="stub-agent-skills-list-panel" />',
+		props: ['skills', 'disabled'],
+		emits: ['open-skill'],
+	},
+	AgentSkillViewer: {
+		name: 'AgentSkillViewer',
+		template: '<div data-testid="stub-agent-skill-viewer" />',
+		props: ['skill'],
+	},
 	AgentIntegrationsPanel: {
 		name: 'AgentIntegrationsPanel',
 		template: '<div data-testid="stub-agent-integrations-panel" />',
@@ -296,6 +321,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 			instructions: 'You are a helpful assistant.',
 		};
 		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
@@ -474,6 +500,7 @@ describe('AgentBuilderView — three-column shell', () => {
 			instructions: 'You are a helpful assistant.',
 		};
 		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
@@ -534,6 +561,43 @@ describe('AgentBuilderView — three-column shell', () => {
 				params: { projectId: 'p1' },
 			}),
 		);
+	});
+
+	it('shows applied skills and opens a skill detail from the tree', async () => {
+		const skill = {
+			name: 'summarize_notes',
+			description: 'Summarize notes before replying',
+			instructions: 'Read the notes and produce a concise summary.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'skill', id: 'summarize_notes' }],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: skill,
+				},
+			}),
+		);
+
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
+		await nextTick();
+
+		const skillsPanel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		expect(skillsPanel.exists()).toBe(true);
+		expect(skillsPanel.props('skills')).toEqual([{ id: 'summarize_notes', skill }]);
+
+		skillsPanel.vm.$emit('open-skill', 'summarize_notes');
+		await nextTick();
+
+		const skillViewer = wrapper.findComponent({ name: 'AgentSkillViewer' });
+		expect(skillViewer.exists()).toBe(true);
+		expect(skillViewer.props('skill')).toEqual(skill);
 	});
 });
 
