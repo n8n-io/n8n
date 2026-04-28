@@ -352,6 +352,10 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	return actions;
 });
 
+const shouldDisableActionDropdown = computed(() => {
+	return versionMenuActions.value.every((action) => action.disabled);
+});
+
 const onNameVersion = async () => {
 	// If there are unsaved changes, save the workflow first
 	if (uiStore.stateIsDirty || props.isNewWorkflow) {
@@ -560,6 +564,7 @@ defineExpose({
 							:class="$style.groupButtonRight"
 							variant="subtle"
 							icon="chevron-down"
+							:disabled="shouldDisableActionDropdown"
 							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
 						/>
