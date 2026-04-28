@@ -22,7 +22,6 @@ export interface WorkflowSetupActions {
 	nextUnhandledIndex: ComputedRef<number>;
 	hasOtherUnhandledCards: ComputedRef<boolean>;
 	canAdvanceToNextIncomplete: ComputedRef<boolean>;
-	showContinueButton: ComputedRef<boolean>;
 	isActionPending: Ref<boolean>;
 	apply: () => Promise<void>;
 	skipCurrentCard: () => Promise<void>;
@@ -82,8 +81,6 @@ export function useWorkflowSetupActions(deps: {
 			nextUnhandledIndex.value >= 0
 		);
 	});
-
-	const showContinueButton = computed(() => nextUnhandledIndex.value >= 0);
 
 	function goToNextIncomplete(): void {
 		if (canAdvanceToNextIncomplete.value) {
@@ -163,7 +160,6 @@ export function useWorkflowSetupActions(deps: {
 		nextUnhandledIndex,
 		hasOtherUnhandledCards,
 		canAdvanceToNextIncomplete,
-		showContinueButton,
 		isActionPending,
 		apply,
 		skipCurrentCard,

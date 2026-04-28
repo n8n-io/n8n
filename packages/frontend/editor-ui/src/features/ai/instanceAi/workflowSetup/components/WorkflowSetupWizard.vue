@@ -34,6 +34,7 @@ const showSkipButton = computed(
 		!isActiveCardComplete.value &&
 		!ctx.isCardSkipped(ctx.activeCard.value),
 );
+const showContinueButton = computed(() => ctx.hasOtherUnhandledCards.value);
 const skipLabel = computed(() =>
 	i18n.baseText(
 		isFinalize.value ? 'instanceAi.credential.finalize.later' : 'instanceAi.workflowSetup.later',
@@ -99,7 +100,7 @@ const applyLabel = computed(() =>
 						@click="ctx.skipCurrentCard"
 					/>
 					<N8nTooltip
-						v-if="ctx.showContinueButton.value"
+						v-if="showContinueButton"
 						:disabled="!isPrimaryActionBlockedByCredentialTest"
 						:content="i18n.baseText('instanceAi.workflowSetup.credentialTestFailedTooltip')"
 					>

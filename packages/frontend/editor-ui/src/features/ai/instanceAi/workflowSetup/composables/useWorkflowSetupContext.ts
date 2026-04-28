@@ -24,6 +24,7 @@ export interface WorkflowSetupContext {
 	cards: ComputedRef<WorkflowSetupCard[]>;
 	currentStepIndex: Ref<number>;
 	activeCard: ComputedRef<WorkflowSetupCard | undefined>;
+	hasOtherUnhandledCards: ComputedRef<boolean>;
 	canAdvanceToNextIncomplete: ComputedRef<boolean>;
 	selections: Ref<SelectionsMap>;
 	terminalState: Ref<TerminalState | null>;
@@ -41,7 +42,6 @@ export interface WorkflowSetupContext {
 	goToNextIncomplete: () => void;
 	apply: () => Promise<void>;
 	skipCurrentCard: () => Promise<void>;
-	showContinueButton: ComputedRef<boolean>;
 }
 
 const WorkflowSetupContextKey: InjectionKey<WorkflowSetupContext> = Symbol('WorkflowSetupContext');
@@ -160,6 +160,7 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		cards,
 		currentStepIndex,
 		activeCard,
+		hasOtherUnhandledCards: actions.hasOtherUnhandledCards,
 		canAdvanceToNextIncomplete: actions.canAdvanceToNextIncomplete,
 		selections: selectionsState.selections,
 		terminalState: applyMachine.terminalState,
@@ -177,7 +178,6 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		goToNextIncomplete: actions.goToNextIncomplete,
 		apply: actions.apply,
 		skipCurrentCard: actions.skipCurrentCard,
-		showContinueButton: actions.showContinueButton,
 	};
 
 	provide(WorkflowSetupContextKey, context);
