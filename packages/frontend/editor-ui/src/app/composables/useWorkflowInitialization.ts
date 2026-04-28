@@ -86,9 +86,8 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			disposeNDVStore(storeId);
 			disposeWorkflowDocumentStore(storeId);
 			currentWorkflowDocumentStore.value = null;
+			currentNDVStore.value = null;
 		}
-
-		currentNDVStore.value = null;
 	}
 
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');
