@@ -21,6 +21,7 @@ const configs = {
 		},
 		rules: {
 			'@n8n/community-nodes/ai-node-package-json': 'error',
+			'@n8n/community-nodes/community-package-json': 'error',
 			'@n8n/community-nodes/no-restricted-globals': 'error',
 			'@n8n/community-nodes/no-restricted-imports': 'error',
 			'@n8n/community-nodes/credential-password-field': 'error',
@@ -54,6 +55,7 @@ const configs = {
 		},
 		rules: {
 			'@n8n/community-nodes/ai-node-package-json': 'error',
+			'@n8n/community-nodes/community-package-json': 'error',
 			'@n8n/community-nodes/credential-password-field': 'error',
 			'@n8n/community-nodes/no-deprecated-workflow-functions': 'error',
 			'@n8n/community-nodes/node-usable-as-tool': 'error',

@@ -1,6 +1,7 @@
 import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { AiNodePackageJsonRule } from './ai-node-package-json.js';
+import { CommunityPackageJsonRule } from './community-package-json.js';
 import { CredClassFieldIconMissingRule } from './cred-class-field-icon-missing.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
@@ -29,6 +30,7 @@ import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
 export const rules = {
 	'ai-node-package-json': AiNodePackageJsonRule,
+	'community-package-json': CommunityPackageJsonRule,
 	'no-restricted-globals': NoRestrictedGlobalsRule,
 	'no-restricted-imports': NoRestrictedImportsRule,
 	'credential-password-field': CredentialPasswordFieldRule,
