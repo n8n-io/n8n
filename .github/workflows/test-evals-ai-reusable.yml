@@ -48,15 +48,16 @@ jobs:
 
       - name: Generate experiment name
         id: experiment
+        env:
+          PREFIX: ${{ inputs.experiment_name_prefix }}
+          BRANCH: ${{ inputs.branch }}
         run: |
           DATE=$(date +%Y_%m_%d)
-          PREFIX="${{ inputs.experiment_name_prefix }}"
 
           if [ -n "$PREFIX" ]; then
             NAME="${PREFIX}_${DATE}"
           else
             # Extract ticket ID from branch name (e.g., AI-1234 from ai-1234-feature-name)
-            BRANCH="${{ inputs.branch }}"
             TICKET=$(echo "$BRANCH" | grep -oE '^[Aa][Ii]-[0-9]+' | tr '[:lower:]' '[:upper:]' || true)
             if [ -n "$TICKET" ]; then
               NAME="${TICKET}_${DATE}"
