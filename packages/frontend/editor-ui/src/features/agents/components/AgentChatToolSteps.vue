@@ -39,6 +39,13 @@ defineProps<{
 				/>
 			</div>
 			<span :class="$style.toolStepLabel">{{ tc.tool }}</span>
+			<span
+				v-if="tc.displaySummary"
+				:class="$style.toolStepSummary"
+				data-testid="tool-step-summary"
+			>
+				· {{ tc.displaySummary }}
+			</span>
 		</li>
 	</ol>
 </template>
@@ -102,5 +109,15 @@ defineProps<{
 	font-family: monospace;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
+}
+
+.toolStepSummary {
+	color: var(--color--text--tint-2);
+	font-size: var(--font-size--2xs);
+	margin-left: var(--spacing--3xs);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	min-width: 0;
 }
 </style>

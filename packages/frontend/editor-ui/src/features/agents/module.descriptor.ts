@@ -4,6 +4,7 @@ import {
 	AGENT_BUILDER_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
+	AGENT_ADD_TRIGGER_MODAL_KEY,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -53,6 +54,20 @@ export const AgentsModule: FrontendModuleDescription = {
 				},
 			},
 		},
+		{
+			key: AGENT_ADD_TRIGGER_MODAL_KEY,
+			component: async () => await import('./components/AgentAddTriggerModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					projectId: '',
+					agentId: '',
+					connectedTriggers: [],
+					onConnectedTriggersChange: () => {},
+					onTriggerAdded: () => {},
+				},
+			},
+		},
 	],
 	routes: [
 		{
@@ -69,6 +84,14 @@ export const AgentsModule: FrontendModuleDescription = {
 			component: AgentsListView,
 			meta: {
 				projectRoute: true,
+				middleware: ['authenticated', 'custom'],
+			},
+		},
+		{
+			name: NEW_AGENT_VIEW,
+			path: '/new-agent',
+			component: NewAgentView,
+			meta: {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
@@ -98,14 +121,6 @@ export const AgentsModule: FrontendModuleDescription = {
 					component: AgentSessionTimelineView,
 				},
 			],
-		},
-		{
-			name: NEW_AGENT_VIEW,
-			path: '/new-agent',
-			component: NewAgentView,
-			meta: {
-				middleware: ['authenticated', 'custom'],
-			},
 		},
 	],
 	projectTabs: {

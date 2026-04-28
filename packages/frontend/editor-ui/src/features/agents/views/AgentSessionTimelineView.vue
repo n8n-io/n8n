@@ -2,7 +2,8 @@
 import { truncate } from '@n8n/utils';
 import { useToast } from '@/app/composables/useToast';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM } from '@/features/agents/constants';
+import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
 	ExecutionThread,
 	ThreadExecution,
@@ -26,6 +27,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const i18n = useI18n();
+const threadTitleOf = useThreadTitle();
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
@@ -106,8 +108,7 @@ const triggerLabel = computed((): string => {
 
 const sessionTitle = computed(() => {
 	if (!thread.value) return '';
-	const title = thread.value.title ?? `Session ${thread.value.sessionNumber}`;
-	return truncate(title, 64);
+	return truncate(threadTitleOf(thread.value), 64);
 });
 
 const selectedItem = computed<TimelineItem | null>(() =>
@@ -147,7 +148,7 @@ function continueChat() {
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
-		query: { continueSessionId: threadId.value },
+		query: { [CONTINUE_SESSION_ID_PARAM]: threadId.value },
 	});
 }
 </script>

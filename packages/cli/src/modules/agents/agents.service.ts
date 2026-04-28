@@ -6,6 +6,7 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
+import type { ChatIntegrationDescriptor } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
@@ -54,6 +55,7 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -67,7 +69,7 @@ interface InjectRuntimeDependenciesParams {
 
 /** Derive a stable thread ID for the test-chat of a given agent. */
 export function chatThreadId(agentId: string): string {
-	return `test-${agentId}`;
+	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
 }
 
 export interface ExecuteAgentData {
@@ -147,6 +149,21 @@ export class AgentsService {
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
 	) {}
+
+	/**
+	 * Return the list of registered chat platform integrations with their
+	 * FE display metadata. Used by `GET /agents/integrations`.
+	 */
+	listChatIntegrations(): ChatIntegrationDescriptor[] {
+		return Container.get(ChatIntegrationRegistry)
+			.list()
+			.map((i) => ({
+				type: i.type,
+				label: i.displayLabel,
+				icon: i.displayIcon,
+				credentialTypes: i.credentialTypes,
+			}));
+	}
 
 	async create(projectId: string, name: string): Promise<Agent> {
 		// New agents start with no instructions so the home screen routes the
@@ -564,6 +581,7 @@ export class AgentsService {
 		if (!agentEntity) {
 			return { missing: ['agent'] };
 		}
+		// Schema is persisted as JSON — double-cast rehydrates to the typed config.
 		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
 		const missing: string[] = [];
 

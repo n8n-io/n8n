@@ -16,13 +16,14 @@ import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
-	return `builder:${agentId}`;
+	return `${AGENT_THREAD_PREFIX.BUILDER}${agentId}`;
 }
 
 /** Read an Anthropic key from env, preferring the n8n-specific variable. */
@@ -159,6 +160,7 @@ export class AgentsBuilderService {
 			);
 		}
 
+		// Schema is persisted as JSON — double-cast rehydrates to the typed config.
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
 		const toolList =

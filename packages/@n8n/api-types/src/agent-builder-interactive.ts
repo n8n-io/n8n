@@ -81,7 +81,12 @@ export const askQuestionOptionSchema = z.object({
 
 export const askQuestionInputSchema = z.object({
 	question: z.string().describe('The question to display to the user'),
-	options: z.array(askQuestionOptionSchema).min(2).describe('Choices to present (minimum 2)'),
+	options: z
+		.array(askQuestionOptionSchema)
+		.min(1)
+		.describe(
+			'Choices to present. With a single option the tool auto-resolves to that option without rendering a card.',
+		),
 	allowMultiple: z
 		.boolean()
 		.optional()

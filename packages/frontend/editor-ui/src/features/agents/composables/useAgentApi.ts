@@ -1,4 +1,8 @@
-import type { AgentBuilderMessagesResponse, AgentPersistedMessageDto } from '@n8n/api-types';
+import type {
+	AgentBuilderMessagesResponse,
+	AgentPersistedMessageDto,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -290,5 +294,16 @@ export const deleteCustomTool = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
+	);
+};
+
+export const listAgentIntegrations = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ChatIntegrationDescriptor[]> => {
+	return await makeRestApiRequest<ChatIntegrationDescriptor[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/integrations`,
 	);
 };

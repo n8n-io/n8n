@@ -6,6 +6,11 @@
  * button) and the sidebar (pill-shaped button — the only affordance to fix
  * the tool when the gear is hidden). Both variants emit `click` so the
  * caller can route to the config modal.
+ *
+ * Kept handrolled because N8nButton doesn't expose a "warning" theme — the
+ * available variants (solid/subtle/ghost/outline/destructive/success) don't
+ * cover the amber-tint affordance product wants for missing-credentials.
+ * Reassess if/when a warning variant lands in the design system.
  */
 import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';

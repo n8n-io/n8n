@@ -15,6 +15,7 @@ import {
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { buildAskCredentialTool, buildAskLlmTool, buildAskQuestionTool } from './interactive';
+import { BUILDER_TOOLS } from './builder-tool-names';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 	path: '/instructions',
@@ -51,13 +52,17 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId),
+			json: this.getJsonTools(agentId, projectId, credentialProvider),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider),
 		};
 	}
 
-	private getJsonTools(agentId: string, projectId: string): BuiltTool[] {
-		const writeConfigTool = new Tool('write_config')
+	private getJsonTools(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): BuiltTool[] {
+		const writeConfigTool = new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.description(
 				'Create or replace the agent configuration by writing a complete JSON string. ' +
 					'Returns { ok: true } on success or { ok: false, errors } with path, message, ' +
@@ -93,7 +98,7 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		const patchConfigTool = new Tool('patch_config')
+		const patchConfigTool = new Tool(BUILDER_TOOLS.PATCH_CONFIG)
 			.description(
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
 					'Pass an array of patch operations as a JSON string. ' +
@@ -162,8 +167,8 @@ export class AgentsBuilderToolsService {
 		return [
 			writeConfigTool,
 			patchConfigTool,
-			buildAskCredentialTool(),
-			buildAskLlmTool(),
+			buildAskCredentialTool({ credentialProvider }),
+			buildAskLlmTool({ credentialProvider }),
 			buildAskQuestionTool(),
 		];
 	}
@@ -173,7 +178,7 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 	): BuiltTool[] {
-		const buildCustomToolTool = new Tool('build_custom_tool')
+		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
 				'Compile and store a custom tool. Pass the tool ID and complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +

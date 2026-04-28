@@ -16,6 +16,10 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	readonly credentialTypes = ['slackApi', 'slackOAuth2Api'];
 
+	readonly displayLabel = 'Slack';
+
+	readonly displayIcon = 'hashtag';
+
 	readonly supportedComponents = [
 		'section',
 		'button',
