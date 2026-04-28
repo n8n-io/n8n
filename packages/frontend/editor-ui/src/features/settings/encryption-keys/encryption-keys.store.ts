@@ -9,12 +9,11 @@ import type {
 	EncryptionKeySort,
 } from './encryption-keys.types';
 
-const DEFAULT_SORT: EncryptionKeySort = { field: 'activatedAt', direction: 'desc' };
+const DEFAULT_SORT: EncryptionKeySort = { field: 'createdAt', direction: 'desc' };
 
 const DEFAULT_FILTERS: EncryptionKeyFilters = {
 	activatedFrom: null,
 	activatedTo: null,
-	createdByIds: [],
 };
 
 export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
@@ -26,37 +25,19 @@ export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 	const sort = ref<EncryptionKeySort>({ ...DEFAULT_SORT });
 	const filters = ref<EncryptionKeyFilters>({ ...DEFAULT_FILTERS });
 
-	const getDateValue = (key: EncryptionKey, field: 'activatedAt' | 'archivedAt'): string | null =>
-		key[field];
-
 	const compareKeys = (a: EncryptionKey, b: EncryptionKey, field: EncryptionKeySort['field']) => {
-		if (field === 'createdBy') {
-			const nameA = `${a.createdBy.firstName} ${a.createdBy.lastName}`.trim().toLowerCase();
-			const nameB = `${b.createdBy.firstName} ${b.createdBy.lastName}`.trim().toLowerCase();
-			return nameA.localeCompare(nameB);
-		}
-
-		if (field === 'type') {
+		if (field === 'status') {
 			return a.status.localeCompare(b.status);
 		}
-
-		const valueA = getDateValue(a, field);
-		const valueB = getDateValue(b, field);
-
-		if (valueA === null && valueB === null) return 0;
-		if (valueA === null) return 1;
-		if (valueB === null) return -1;
-
-		return new Date(valueA).getTime() - new Date(valueB).getTime();
+		return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
 	};
 
 	const matchesFilters = (key: EncryptionKey) => {
-		const { activatedFrom, activatedTo, createdByIds } = filters.value;
-		const activatedAt = new Date(key.activatedAt).getTime();
+		const { activatedFrom, activatedTo } = filters.value;
+		const activatedAt = new Date(key.createdAt).getTime();
 
 		if (activatedFrom && activatedAt < new Date(activatedFrom).getTime()) return false;
 		if (activatedTo && activatedAt > new Date(activatedTo).getTime()) return false;
-		if (createdByIds.length > 0 && !createdByIds.includes(key.createdBy.id)) return false;
 
 		return true;
 	};
@@ -73,16 +54,6 @@ export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 	const activeKey = computed(() => keys.value.find((key) => key.status === 'active') ?? null);
 
 	const isEmpty = computed(() => !isLoading.value && keys.value.length === 0);
-
-	const createdByOptions = computed(() => {
-		const seen = new Map<string, EncryptionKey['createdBy']>();
-		for (const key of keys.value) {
-			if (!seen.has(key.createdBy.id)) {
-				seen.set(key.createdBy.id, key.createdBy);
-			}
-		}
-		return Array.from(seen.values());
-	});
 
 	const fetchKeys = async () => {
 		isLoading.value = true;
@@ -124,7 +95,6 @@ export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 		isEmpty,
 		sort,
 		filters,
-		createdByOptions,
 		fetchKeys,
 		rotateKey,
 		setSort,

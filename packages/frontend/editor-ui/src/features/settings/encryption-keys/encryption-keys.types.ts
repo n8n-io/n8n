@@ -1,23 +1,12 @@
+import type { EncryptionKeyResponseDto } from '@n8n/api-types';
+
 export type EncryptionKeyStatus = 'active' | 'inactive';
 
-export type EncryptionKeyUser = {
-	id: string;
-	firstName: string;
-	lastName: string;
-	email: string;
-};
-
-export type EncryptionKey = {
-	id: string;
-	type: string;
-	algorithm: string | null;
+export type EncryptionKey = Omit<EncryptionKeyResponseDto, 'status'> & {
 	status: EncryptionKeyStatus;
-	activatedAt: string;
-	archivedAt: string | null;
-	createdBy: EncryptionKeyUser;
 };
 
-export type EncryptionKeySortField = 'activatedAt' | 'archivedAt' | 'type' | 'createdBy';
+export type EncryptionKeySortField = 'createdAt' | 'status';
 
 export type EncryptionKeySort = {
 	field: EncryptionKeySortField;
@@ -27,5 +16,4 @@ export type EncryptionKeySort = {
 export type EncryptionKeyFilters = {
 	activatedFrom: string | null;
 	activatedTo: string | null;
-	createdByIds: string[];
 };

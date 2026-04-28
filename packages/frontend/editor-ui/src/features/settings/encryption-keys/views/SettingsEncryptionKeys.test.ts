@@ -24,14 +24,7 @@ const makeKey = (overrides: Partial<EncryptionKey> = {}): EncryptionKey => ({
 	type: 'data_encryption',
 	algorithm: 'aes-256-gcm',
 	status: 'active',
-	activatedAt: '2026-04-21T10:00:00.000Z',
-	archivedAt: null,
-	createdBy: {
-		id: 'user-1',
-		firstName: 'Sindhuja',
-		lastName: 'Jeyabal',
-		email: 'sindhuja.jeyabal@n8n.io',
-	},
+	createdAt: '2026-04-21T10:00:00.000Z',
 	...overrides,
 });
 
@@ -48,8 +41,7 @@ describe('SettingsEncryptionKeys', () => {
 			makeKey({
 				id: '74f6c1e9b4d8a2f51234',
 				status: 'inactive',
-				activatedAt: '2026-03-15T10:00:00.000Z',
-				archivedAt: '2026-04-21T10:00:00.000Z',
+				createdAt: '2026-03-15T10:00:00.000Z',
 			}),
 		];
 		store.visibleKeys = store.keys;
@@ -70,7 +62,7 @@ describe('SettingsEncryptionKeys', () => {
 			makeKey({
 				id: '74f6c1e9b4d8a2f51234',
 				status: 'inactive',
-				archivedAt: '2026-04-21T10:00:00.000Z',
+				createdAt: '2026-03-15T10:00:00.000Z',
 			}),
 		];
 		store.visibleKeys = store.keys;

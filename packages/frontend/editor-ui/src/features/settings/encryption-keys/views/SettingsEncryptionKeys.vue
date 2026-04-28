@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nAlertDialog,
-	N8nAvatar,
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
@@ -36,10 +35,8 @@ const DOCS_URL = 'https://docs.n8n.io/hosting/configuration/encryption-keys/';
 const isConfirmRotateOpen = ref(false);
 
 const sortOptions = computed<Array<{ value: EncryptionKeySortField; label: string }>>(() => [
-	{ value: 'activatedAt', label: i18n.baseText('settings.encryptionKeys.sortBy.activated') },
-	{ value: 'archivedAt', label: i18n.baseText('settings.encryptionKeys.sortBy.archived') },
-	{ value: 'type', label: i18n.baseText('settings.encryptionKeys.sortBy.type') },
-	{ value: 'createdBy', label: i18n.baseText('settings.encryptionKeys.sortBy.createdBy') },
+	{ value: 'createdAt', label: i18n.baseText('settings.encryptionKeys.sortBy.activated') },
+	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.type') },
 ]);
 
 const dateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -60,8 +57,6 @@ const maskId = (id: string) => {
 	return `${id.slice(0, 4)}••••••••${id.slice(-4)}`;
 };
 
-const fullName = (user: EncryptionKey['createdBy']) => `${user.firstName} ${user.lastName}`.trim();
-
 const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
 	{
 		title: i18n.baseText('settings.encryptionKeys.column.key'),
@@ -71,28 +66,15 @@ const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
 	},
 	{
 		title: i18n.baseText('settings.encryptionKeys.column.type'),
-		key: 'type',
+		key: 'status',
 		value: (row) => row.status,
 		minWidth: 120,
 	},
 	{
 		title: i18n.baseText('settings.encryptionKeys.column.activated'),
-		key: 'activatedAt',
-		value: (row) => row.activatedAt,
+		key: 'createdAt',
+		value: (row) => row.createdAt,
 		minWidth: 140,
-	},
-	{
-		title: i18n.baseText('settings.encryptionKeys.column.archived'),
-		key: 'archivedAt',
-		value: (row) => row.archivedAt ?? '',
-		minWidth: 140,
-	},
-	{
-		title: i18n.baseText('settings.encryptionKeys.column.createdBy'),
-		key: 'createdBy',
-		value: (row) => fullName(row.createdBy),
-		minWidth: 220,
-		disableSort: true,
 	},
 ]);
 
@@ -138,14 +120,6 @@ const copyKeyId = async (id: string) => {
 		type: 'success',
 		title: i18n.baseText('settings.encryptionKeys.copyId.success'),
 	});
-};
-
-const onCreatedByToggle = (userId: string, event: Event) => {
-	const checked = (event.target as HTMLInputElement).checked;
-	const next = new Set(store.filters.createdByIds);
-	if (checked) next.add(userId);
-	else next.delete(userId);
-	store.setFilters({ createdByIds: Array.from(next) });
 };
 
 onMounted(async () => {
@@ -229,22 +203,6 @@ onMounted(async () => {
 								"
 							/>
 						</div>
-						<N8nText bold>
-							{{ i18n.baseText('settings.encryptionKeys.filter.createdBy') }}
-						</N8nText>
-						<ul :class="$style.filterUserList">
-							<li v-for="user in store.createdByOptions" :key="user.id">
-								<label :class="$style.filterUserRow">
-									<input
-										type="checkbox"
-										:checked="store.filters.createdByIds.includes(user.id)"
-										@change="onCreatedByToggle(user.id, $event)"
-									/>
-									<N8nAvatar :first-name="user.firstName" :last-name="user.lastName" size="small" />
-									<span>{{ fullName(user) }}</span>
-								</label>
-							</li>
-						</ul>
 						<div :class="$style.filterActions">
 							<N8nButton
 								type="tertiary"
@@ -297,7 +255,7 @@ onMounted(async () => {
 					</div>
 				</template>
 
-				<template #[`item.type`]="{ item }">
+				<template #[`item.status`]="{ item }">
 					<N8nBadge :theme="item.status === 'active' ? 'success' : 'default'" size="small">
 						<N8nIcon :icon="item.status === 'active' ? 'circle-check' : 'circle'" size="xsmall" />
 						{{
@@ -310,26 +268,8 @@ onMounted(async () => {
 					</N8nBadge>
 				</template>
 
-				<template #[`item.activatedAt`]="{ item }">
-					{{ formatDate(item.activatedAt) }}
-				</template>
-
-				<template #[`item.archivedAt`]="{ item }">
-					{{ formatDate(item.archivedAt) }}
-				</template>
-
-				<template #[`item.createdBy`]="{ item }">
-					<div :class="$style.userCell">
-						<N8nAvatar
-							:first-name="item.createdBy.firstName"
-							:last-name="item.createdBy.lastName"
-							size="small"
-						/>
-						<div :class="$style.userMeta">
-							<span :class="$style.userName">{{ fullName(item.createdBy) }}</span>
-							<N8nText size="small" color="text-light">{{ item.createdBy.email }}</N8nText>
-						</div>
-					</div>
+				<template #[`item.createdAt`]="{ item }">
+					{{ formatDate(item.createdAt) }}
 				</template>
 			</N8nDataTableServer>
 
@@ -411,23 +351,6 @@ onMounted(async () => {
 	letter-spacing: 0.02em;
 }
 
-.userCell {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.userMeta {
-	display: flex;
-	flex-direction: column;
-	line-height: var(--line-height--sm);
-}
-
-.userName {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-}
-
 .rotateIcon {
 	margin-right: var(--spacing--3xs);
 	transition: transform 0.2s ease;
@@ -463,26 +386,6 @@ onMounted(async () => {
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border: var(--border);
 	border-radius: var(--radius);
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-}
-
-.filterUserList {
-	list-style: none;
-	margin: 0;
-	padding: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-	max-height: 200px;
-	overflow-y: auto;
-}
-
-.filterUserRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	cursor: pointer;
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
 }
