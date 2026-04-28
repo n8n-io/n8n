@@ -87,17 +87,33 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const options = this.getNodeParameter('options', i, {});
 
-	let name = this.getNodeParameter('name', i) as string;
-	name = name ? name : `Copy of ${file.cachedResultName}`;
-
-	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
-
 	const qs = {
 		includeItemsFromAllDrives: true,
 		supportsAllDrives: true,
 		spaces: 'appDataFolder, drive',
 		corpora: 'allDrives',
 	};
+
+	let name = this.getNodeParameter('name', i) as string | undefined;
+	if (!name) {
+		name = file.cachedResultName;
+		if (!name) {
+			const fileMetadata = (await googleApiRequest.call(
+				this,
+				'GET',
+				`/drive/v3/files/${fileId}`,
+				undefined,
+				{
+					...qs,
+					fields: 'name',
+				},
+			)) as IDataObject;
+			name = typeof fileMetadata.name === 'string' ? fileMetadata.name : undefined;
+		}
+		name = name ? `Copy of ${name}` : 'Copy';
+	}
+
+	const copyRequiresWriterPermission = options.copyRequiresWriterPermission || false;
 
 	const parents: string[] = [];
 	const sameFolder = this.getNodeParameter('sameFolder', i) as boolean;

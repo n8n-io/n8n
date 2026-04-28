@@ -13,7 +13,13 @@ jest.mock('../../../../v2/transport', () => {
 });
 
 describe('test GoogleDriveV2: file copy', () => {
+	beforeEach(() => {
+		jest.mocked(transport.googleApiRequest).mockReset();
+	});
+
 	it('should be called with', async () => {
+		jest.mocked(transport.googleApiRequest).mockResolvedValue({});
+
 		const nodeParameters = {
 			operation: 'copy',
 			fileId: {
@@ -51,6 +57,60 @@ describe('test GoogleDriveV2: file copy', () => {
 				description: 'image copy',
 				name: 'copyImage.png',
 				parents: ['folderIDxxxxxx'],
+			},
+			{
+				supportsAllDrives: true,
+				corpora: 'allDrives',
+				includeItemsFromAllDrives: true,
+				spaces: 'appDataFolder, drive',
+			},
+		);
+	});
+
+	it('should fetch file name from Drive when defaulting copy name in id mode', async () => {
+		jest
+			.mocked(transport.googleApiRequest)
+			.mockResolvedValueOnce({ name: 'MyDoc.gsheet' })
+			.mockResolvedValueOnce({});
+
+		const nodeParameters = {
+			operation: 'copy',
+			fileId: {
+				__rl: true,
+				value: 'fileIDxxxxxx',
+				mode: 'id',
+			},
+			name: '',
+			sameFolder: true,
+			options: {},
+		};
+
+		const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, driveNode);
+
+		await copy.execute.call(fakeExecuteFunction, 0);
+
+		expect(transport.googleApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.googleApiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/drive/v3/files/fileIDxxxxxx',
+			undefined,
+			{
+				supportsAllDrives: true,
+				corpora: 'allDrives',
+				includeItemsFromAllDrives: true,
+				spaces: 'appDataFolder, drive',
+				fields: 'name',
+			},
+		);
+		expect(transport.googleApiRequest).toHaveBeenNthCalledWith(
+			2,
+			'POST',
+			'/drive/v3/files/fileIDxxxxxx/copy',
+			{
+				copyRequiresWriterPermission: false,
+				parents: [],
+				name: 'Copy of MyDoc.gsheet',
 			},
 			{
 				supportsAllDrives: true,
