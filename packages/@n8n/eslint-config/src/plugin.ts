@@ -30,3 +30,5 @@ export const localRulesPlugin = {
 		},
 	},
 } satisfies ESLint.Plugin;
+
+export default localRulesPlugin;

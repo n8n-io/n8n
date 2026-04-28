@@ -1,0 +1,430 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "import", "unicorn"],
+	"jsPlugins": [
+		"@n8n/eslint-config/plugin",
+		"@stylistic/eslint-plugin",
+		"eslint-plugin-unused-imports",
+		"eslint-plugin-lodash"
+	],
+	"categories": {
+		"correctness": "off"
+	},
+	"options": {
+		"typeAware": true
+	},
+	"env": {
+		"builtin": true,
+		"es2024": true,
+		"commonjs": true
+	},
+	"globals": {
+		"__dirname": "readonly",
+		"__filename": "readonly",
+		"AbortController": "readonly",
+		"AbortSignal": "readonly",
+		"AsyncDisposableStack": "readonly",
+		"atob": "readonly",
+		"Blob": "readonly",
+		"BroadcastChannel": "readonly",
+		"btoa": "readonly",
+		"Buffer": "readonly",
+		"ByteLengthQueuingStrategy": "readonly",
+		"clearImmediate": "readonly",
+		"clearInterval": "readonly",
+		"clearTimeout": "readonly",
+		"CloseEvent": "readonly",
+		"CompressionStream": "readonly",
+		"console": "readonly",
+		"CountQueuingStrategy": "readonly",
+		"crypto": "readonly",
+		"Crypto": "readonly",
+		"CryptoKey": "readonly",
+		"CustomEvent": "readonly",
+		"DecompressionStream": "readonly",
+		"DisposableStack": "readonly",
+		"DOMException": "readonly",
+		"Event": "readonly",
+		"EventTarget": "readonly",
+		"fetch": "readonly",
+		"File": "readonly",
+		"FormData": "readonly",
+		"Headers": "readonly",
+		"MessageChannel": "readonly",
+		"MessageEvent": "readonly",
+		"MessagePort": "readonly",
+		"navigator": "readonly",
+		"Navigator": "readonly",
+		"performance": "readonly",
+		"Performance": "readonly",
+		"PerformanceEntry": "readonly",
+		"PerformanceMark": "readonly",
+		"PerformanceMeasure": "readonly",
+		"PerformanceObserver": "readonly",
+		"PerformanceObserverEntryList": "readonly",
+		"PerformanceResourceTiming": "readonly",
+		"process": "readonly",
+		"queueMicrotask": "readonly",
+		"ReadableByteStreamController": "readonly",
+		"ReadableStream": "readonly",
+		"ReadableStreamBYOBReader": "readonly",
+		"ReadableStreamBYOBRequest": "readonly",
+		"ReadableStreamDefaultController": "readonly",
+		"ReadableStreamDefaultReader": "readonly",
+		"Request": "readonly",
+		"Response": "readonly",
+		"setImmediate": "readonly",
+		"setInterval": "readonly",
+		"setTimeout": "readonly",
+		"structuredClone": "readonly",
+		"SubtleCrypto": "readonly",
+		"SuppressedError": "readonly",
+		"TextDecoder": "readonly",
+		"TextDecoderStream": "readonly",
+		"TextEncoder": "readonly",
+		"TextEncoderStream": "readonly",
+		"TransformStream": "readonly",
+		"TransformStreamDefaultController": "readonly",
+		"URL": "readonly",
+		"URLPattern": "readonly",
+		"URLSearchParams": "readonly",
+		"WebAssembly": "readonly",
+		"WebSocket": "readonly",
+		"WritableStream": "readonly",
+		"WritableStreamDefaultController": "readonly",
+		"WritableStreamDefaultWriter": "readonly"
+	},
+	"settings": {
+		"import-x/extensions": [".ts", ".tsx", ".cts", ".mts", ".js", ".jsx", ".cjs", ".mjs"],
+		"import-x/external-module-folders": ["node_modules", "node_modules/@types"],
+		"import-x/parsers": {
+			"@typescript-eslint/parser": [".ts", ".tsx", ".cts", ".mts"]
+		},
+		"import-x/resolver": {
+			"typescript": true
+		},
+		"import-x/resolver-next": [
+			{
+				"interfaceVersion": 3,
+				"name": "eslint-import-resolver-typescript"
+			}
+		]
+	},
+	"ignorePatterns": [
+		"scripts/**/*.mjs",
+		"jest.config*.js",
+		"test/*-testcontainers.js",
+		"coverage/**",
+		"node_modules/**",
+		"dist/**",
+		"eslint.config.mjs",
+		"tsup.config.ts",
+		"jest.config.js",
+		"vite.config.ts",
+		"vitest.config.ts"
+	],
+	"rules": {
+		"constructor-super": "error",
+		"for-direction": "error",
+		"no-async-promise-executor": "warn",
+		"no-case-declarations": "warn",
+		"no-class-assign": "error",
+		"no-compare-neg-zero": "error",
+		"no-cond-assign": "error",
+		"no-const-assign": "error",
+		"no-constant-binary-expression": "error",
+		"no-constant-condition": "error",
+		"no-control-regex": "error",
+		"no-debugger": "error",
+		"no-delete-var": "error",
+		"no-dupe-class-members": "error",
+		"no-dupe-else-if": "error",
+		"no-dupe-keys": "error",
+		"no-duplicate-case": "error",
+		"no-empty": "warn",
+		"no-empty-character-class": "error",
+		"no-empty-pattern": "error",
+		"no-empty-static-block": "error",
+		"no-ex-assign": "warn",
+		"no-extra-boolean-cast": "error",
+		"no-fallthrough": "warn",
+		"no-func-assign": "error",
+		"no-global-assign": "error",
+		"no-import-assign": "error",
+		"no-invalid-regexp": "error",
+		"no-irregular-whitespace": "error",
+		"no-loss-of-precision": "error",
+		"no-misleading-character-class": "error",
+		"no-new-native-nonconstructor": "error",
+		"no-nonoctal-decimal-escape": "error",
+		"no-obj-calls": "error",
+		"no-prototype-builtins": "error",
+		"no-redeclare": "error",
+		"no-regex-spaces": "error",
+		"no-self-assign": "error",
+		"no-setter-return": "error",
+		"no-shadow-restricted-names": "error",
+		"no-sparse-arrays": "error",
+		"no-this-before-super": "error",
+		"no-unsafe-finally": "error",
+		"no-unsafe-negation": "error",
+		"no-unsafe-optional-chaining": "warn",
+		"no-unused-labels": "error",
+		"no-unused-private-class-members": "error",
+		"no-useless-backreference": "error",
+		"no-useless-catch": "error",
+		"no-useless-escape": "warn",
+		"no-with": "error",
+		"require-yield": "error",
+		"use-isnan": "error",
+		"valid-typeof": "error",
+		"no-array-constructor": "error",
+		"no-unused-expressions": "error",
+		"n8n-local-rules/no-uncaught-json-parse": "error",
+		"n8n-local-rules/no-json-parse-json-stringify": "error",
+		"n8n-local-rules/no-unneeded-backticks": "error",
+		"n8n-local-rules/no-interpolation-in-regular-string": "error",
+		"n8n-local-rules/no-unused-param-in-catch-clause": "error",
+		"n8n-local-rules/no-useless-catch-throw": "error",
+		"n8n-local-rules/no-internal-package-import": "error",
+		"n8n-local-rules/no-type-only-import-in-di": "error",
+		"no-void": [
+			"error",
+			{
+				"allowAsStatement": true
+			}
+		],
+		"@stylistic/member-delimiter-style": [
+			"error",
+			{
+				"multiline": {
+					"delimiter": "semi",
+					"requireLast": true
+				},
+				"singleline": {
+					"delimiter": "semi",
+					"requireLast": false
+				}
+			}
+		],
+		"eqeqeq": "error",
+		"object-shorthand": "error",
+		"prefer-const": "error",
+		"unused-imports/no-unused-imports": "error",
+		"unicorn/no-unnecessary-await": "error",
+		"unicorn/no-useless-promise-resolve-reject": "error",
+		"lodash/path-style": ["error", "as-needed"],
+		"lodash/import-scope": ["error", "method"],
+		"unicorn/filename-case": [
+			"error",
+			{
+				"case": "kebabCase"
+			}
+		],
+		"n8n-local-rules/no-dynamic-import-template": "error",
+		"n8n-local-rules/misplaced-n8n-typeorm-import": "error",
+		"n8n-local-rules/no-type-unsafe-event-emitter": "error",
+		"complexity": "warn",
+		"import/no-named-as-default": "warn",
+		"import/no-duplicates": "error",
+		"import/no-cycle": [
+			"warn",
+			{
+				"ignoreExternal": false,
+				"maxDepth": 3
+			}
+		],
+		"import/no-default-export": "error",
+		"import/extensions": "warn",
+		"typescript/ban-ts-comment": [
+			"warn",
+			{
+				"ts-ignore": true
+			}
+		],
+		"typescript/no-duplicate-enum-values": "error",
+		"typescript/no-empty-object-type": "warn",
+		"typescript/no-explicit-any": "warn",
+		"typescript/no-extra-non-null-assertion": "error",
+		"typescript/no-misused-new": "error",
+		"typescript/no-non-null-asserted-optional-chain": "error",
+		"typescript/no-require-imports": "warn",
+		"typescript/no-this-alias": "error",
+		"typescript/no-unnecessary-type-constraint": "error",
+		"typescript/no-unsafe-declaration-merging": "warn",
+		"typescript/no-unsafe-function-type": "warn",
+		"typescript/no-wrapper-object-types": "error",
+		"typescript/prefer-as-const": "error",
+		"typescript/prefer-namespace-keyword": "error",
+		"typescript/await-thenable": "error",
+		"typescript/no-array-delete": "error",
+		"typescript/no-base-to-string": "warn",
+		"typescript/no-duplicate-type-constituents": "warn",
+		"typescript/no-floating-promises": [
+			"error",
+			{
+				"ignoreVoid": true
+			}
+		],
+		"typescript/no-for-in-array": "error",
+		"typescript/no-implied-eval": "error",
+		"typescript/no-misused-promises": [
+			"error",
+			{
+				"checksVoidReturn": false
+			}
+		],
+		"typescript/no-redundant-type-constituents": "warn",
+		"typescript/no-unnecessary-type-assertion": "error",
+		"typescript/no-unsafe-argument": "error",
+		"typescript/no-unsafe-assignment": "warn",
+		"typescript/no-unsafe-call": "warn",
+		"typescript/no-unsafe-enum-comparison": "warn",
+		"typescript/no-unsafe-member-access": "warn",
+		"typescript/no-unsafe-return": "error",
+		"typescript/no-unsafe-unary-minus": "error",
+		"typescript/only-throw-error": "warn",
+		"typescript/prefer-promise-reject-errors": "warn",
+		"typescript/require-await": "warn",
+		"typescript/restrict-plus-operands": "error",
+		"typescript/restrict-template-expressions": "error",
+		"typescript/unbound-method": "warn",
+		"typescript/array-type": [
+			"warn",
+			{
+				"default": "array-simple"
+			}
+		],
+		"typescript/no-restricted-types": [
+			"warn",
+			{
+				"types": {
+					"Object": {
+						"message": "Use object instead",
+						"fixWith": "object"
+					},
+					"String": {
+						"message": "Use string instead",
+						"fixWith": "string"
+					},
+					"Boolean": {
+						"message": "Use boolean instead",
+						"fixWith": "boolean"
+					},
+					"Number": {
+						"message": "Use number instead",
+						"fixWith": "number"
+					},
+					"Symbol": {
+						"message": "Use symbol instead",
+						"fixWith": "symbol"
+					},
+					"Function": {
+						"message": "The `Function` type accepts any function-like value.\nIt provides no type safety when calling the function, which can be a common source of bugs.\nIt also accepts things like class declarations, which will throw at runtime as they will not be called with `new`.\nIf you are expecting the function to accept certain arguments, you should explicitly define the function shape."
+					}
+				}
+			}
+		],
+		"typescript/consistent-type-assertions": "error",
+		"typescript/consistent-type-imports": "error",
+		"typescript/consistent-type-exports": "error",
+		"typescript/no-invalid-void-type": "error",
+		"typescript/no-unnecessary-boolean-literal-compare": "error",
+		"typescript/no-unnecessary-qualifier": "error",
+		"typescript/prefer-nullish-coalescing": "warn",
+		"typescript/promise-function-async": "error",
+		"typescript/return-await": ["error", "always"],
+		"typescript/explicit-member-accessibility": [
+			"error",
+			{
+				"accessibility": "no-public"
+			}
+		]
+	},
+	"overrides": [
+		{
+			"files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+			"rules": {
+				"constructor-super": "off",
+				"no-class-assign": "off",
+				"no-const-assign": "off",
+				"no-dupe-class-members": "off",
+				"no-dupe-keys": "off",
+				"no-func-assign": "off",
+				"no-import-assign": "off",
+				"no-new-native-nonconstructor": "off",
+				"no-obj-calls": "off",
+				"no-redeclare": "off",
+				"no-setter-return": "off",
+				"no-this-before-super": "off",
+				"no-unsafe-negation": "off",
+				"no-var": "error",
+				"no-with": "off",
+				"prefer-rest-params": "error"
+			}
+		},
+		{
+			"files": ["test/**/*.ts", "**/__tests__/*.ts", "**/*.test.ts", "**/*.cy.ts"],
+			"rules": {
+				"n8n-local-rules/no-plain-errors": "off",
+				"n8n-local-rules/no-skipped-tests": "error",
+				"typescript/unbound-method": "off"
+			},
+			"jsPlugins": ["@n8n/eslint-config/plugin"]
+		},
+		{
+			"files": ["./src/databases/migrations/**/*.ts"],
+			"rules": {
+				"unicorn/filename-case": "off"
+			}
+		},
+		{
+			"files": [
+				"./src/databases/**/*.ts",
+				"./src/modules/**/*.ts",
+				"./test/**/*.ts",
+				"./src/**/__tests__/**/*.ts"
+			],
+			"rules": {
+				"n8n-local-rules/misplaced-n8n-typeorm-import": "off"
+			},
+			"jsPlugins": ["@n8n/eslint-config/plugin"]
+		},
+		{
+			"files": ["./test/**/*.ts", "./src/**/__tests__/**/*.ts"],
+			"rules": {
+				"n8n-local-rules/no-type-unsafe-event-emitter": "off"
+			},
+			"jsPlugins": ["@n8n/eslint-config/plugin"]
+		},
+		{
+			"files": ["./src/decorators/**/*.ts"],
+			"rules": {
+				"typescript/no-restricted-types": "off"
+			}
+		},
+		{
+			"files": ["./test/**/*.ts", "./src/**/__tests__/**/*.ts"],
+			"rules": {
+				"prefer-const": "warn",
+				"n8n-local-rules/no-dynamic-import-template": "off",
+				"n8n-local-rules/no-uncaught-json-parse": "warn",
+				"no-unused-expressions": "warn",
+				"import/no-duplicates": "warn",
+				"import/no-default-export": "warn",
+				"typescript/no-unsafe-return": "warn",
+				"typescript/no-unsafe-argument": "warn",
+				"typescript/restrict-template-expressions": "warn"
+			},
+			"jsPlugins": ["@n8n/eslint-config/plugin"]
+		},
+		{
+			"files": ["**/*.module.ts"],
+			"rules": {
+				"n8n-local-rules/no-top-level-relative-imports-in-backend-module": "error",
+				"n8n-local-rules/no-constructor-in-backend-module": "error"
+			},
+			"jsPlugins": ["@n8n/eslint-config/plugin"]
+		}
+	]
+}
