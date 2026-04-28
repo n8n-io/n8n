@@ -280,6 +280,7 @@ export class InstanceAiService {
 				daytonaApiUrl: daytonaApiUrl || undefined,
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
+				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 			};
 		}
@@ -350,7 +351,7 @@ export class InstanceAiService {
 		if (config.provider === 'daytona') {
 			return new BuilderSandboxFactory(
 				config,
-				new SnapshotManager(config.image, this.logger),
+				new SnapshotManager(config.image, this.logger, config.n8nVersion),
 				this.logger,
 			);
 		}

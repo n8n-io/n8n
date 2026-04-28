@@ -159,22 +159,24 @@ export class BuilderSandboxFactory {
 	): Promise<BuilderWorkspace> {
 		const config = this.assertIsDaytona();
 		assert(this.imageManager, 'Daytona snapshot manager required');
+		const snapshotManager = this.imageManager;
 
-		// Get pre-warmed image (config + deps, no catalog — catalog is too large for API body)
-		const image = this.imageManager.ensureImage();
+		const mode: 'direct' | 'proxy' = config.getAuthToken ? 'proxy' : 'direct';
 
-		// Start sandbox creation AND catalog generation in parallel
+		// Resolve sandbox source — versioned named snapshot when available,
+		// fallback to declarative image otherwise. Run in parallel with catalog gen.
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
-			return await daytona.create(
-				{
-					image,
-					language: 'typescript',
-					ephemeral: true,
-					labels: { 'n8n-builder': builderId },
-				},
-				{ timeout: 300 },
-			);
+			const snapshotName = await snapshotManager.ensureSnapshot(daytona, mode);
+			const baseParams = {
+				language: 'typescript',
+				ephemeral: true,
+				labels: { 'n8n-builder': builderId },
+			} as const;
+			const sourceParams = snapshotName
+				? { snapshot: snapshotName }
+				: { image: snapshotManager.ensureImage() };
+			return await daytona.create({ ...baseParams, ...sourceParams }, { timeout: 300 });
 		};
 
 		const [sandbox, catalog] = await Promise.all([createSandboxFn(), this.getNodeCatalog(context)]);
