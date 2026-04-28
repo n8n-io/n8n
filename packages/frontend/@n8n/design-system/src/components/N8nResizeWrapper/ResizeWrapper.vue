@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref, useCssModule } from 'vue';
+import { computed, onBeforeUnmount, ref, useCssModule } from 'vue';
 
 import { directionsCursorMaps, type Direction, type ResizeData } from '../../types';
 
@@ -135,16 +135,25 @@ const mouseMove = (event: MouseEvent) => {
 	state.dWidth.value = dWidth;
 };
 
-const mouseUp = (event: MouseEvent) => {
-	event.preventDefault();
-	event.stopPropagation();
-	emit('resizeend');
+// Idempotent — safe to call from mouseup, unmount, or any other abort path.
+const cleanupResize = () => {
 	(props.window ?? window).removeEventListener('mousemove', mouseMove);
 	(props.window ?? window).removeEventListener('mouseup', mouseUp);
 	document.body.style.cursor = 'unset';
 	document.body.classList.remove('n8n-resizing');
 	state.dir.value = '';
 };
+
+const mouseUp = (event: MouseEvent) => {
+	event.preventDefault();
+	event.stopPropagation();
+	// Clean up before emitting so a throwing parent handler can't leave the
+	// body in a stuck-resizing state.
+	cleanupResize();
+	emit('resizeend');
+};
+
+onBeforeUnmount(cleanupResize);
 
 const resizerMove = (event: MouseEvent) => {
 	event.preventDefault();
