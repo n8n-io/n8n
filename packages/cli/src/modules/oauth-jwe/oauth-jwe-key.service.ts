@@ -116,7 +116,7 @@ export class OAuthJweKeyService {
 		const privateJwk = jsonParse<JWK>(decryptedPrivate, {
 			errorMessage: 'Failed to parse OAuth JWE private key',
 		});
-		const publicJwk = toPublicJwk(privateJwk);
+		const publicJwk = toPublicJwk(privateJwk, entry.algorithm);
 
 		const [publicKey, privateKey] = await Promise.all([
 			importJWK(publicJwk, entry.algorithm),
@@ -223,12 +223,26 @@ export class OAuthJweKeyService {
 }
 
 /**
- * Strips the private-only fields from an RSA private JWK to produce its
- * public counterpart.
+ * Per-algorithm allow-list of JWK fields safe to expose publicly. Adding a
+ * new algorithm to {@link JWE_KEY_ALGORITHMS} forces a corresponding entry
+ * here at compile time, so the failure mode for an unrecognised algorithm
+ * is "we forgot to expose a public field" (visible) rather than "we leaked
+ * a private one" (silent).
  */
-function toPublicJwk(privateJwk: JWK): JWK {
-	const { d, p, q, dp, dq, qi, ...publicJwk } = privateJwk;
-	return publicJwk;
+const PUBLIC_JWK_FIELDS: Record<JweKeyAlgorithm, ReadonlyArray<keyof JWK>> = {
+	'RSA-OAEP-256': ['kty', 'kid', 'alg', 'use', 'n', 'e'],
+};
+
+/**
+ * Picks only the public fields of a private JWK based on the algorithm's
+ * allow-list. Any field not explicitly listed is dropped.
+ */
+function toPublicJwk(privateJwk: JWK, algorithm: JweKeyAlgorithm): JWK {
+	const allowed = PUBLIC_JWK_FIELDS[algorithm];
+	const entries = allowed
+		.filter((field) => privateJwk[field] !== undefined)
+		.map((field) => [field, privateJwk[field]] as const);
+	return Object.fromEntries(entries) as JWK;
 }
 
 function isUniqueConstraintViolation(error: unknown): boolean {
