@@ -144,9 +144,6 @@ describe('WorkflowPublishModal', () => {
 			},
 		];
 
-		workflowsStore.nodesIssuesExist = false;
-		workflowsStore.nodesWithIssues = [];
-
 		mockPublishWorkflow.mockReset().mockResolvedValue({
 			success: true,
 			errorHandled: false,
