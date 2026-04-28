@@ -42,7 +42,7 @@ jobs:
       - name: Pull Docker image with retry
         env:
           IMAGE_REF: ${{ inputs.image_ref }}
-        run: node .github/scripts/retry.mjs --attempts 4 --delay 15 "docker pull \"$IMAGE_REF\""
+        run: node .github/scripts/retry.mjs --attempts 4 --delay 15 -- docker pull "$IMAGE_REF"
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
