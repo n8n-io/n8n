@@ -86,6 +86,7 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 
 		expect(results.loggedMessages.length).toBeLessThan(100);
 		expect(results.loggedMessages.length).toBeLessThanOrEqual(maxMessagesPerParse + 1);
+		expect(results.unfinishedExecutions).toEqual({});
 		expect(logger.warn).toHaveBeenCalledWith(
 			expect.stringContaining('exceeded 5 in-memory messages during parse'),
 		);

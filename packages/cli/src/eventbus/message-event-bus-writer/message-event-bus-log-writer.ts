@@ -227,6 +227,12 @@ export class MessageEventBusLogWriter {
 				const maxTotalMessagesPerFile =
 					this.globalConfig.eventBus.logWriter.maxTotalMessagesPerFile;
 				const baselineCount = results.loggedMessages.length;
+				const baselineUnfinishedExecutions = Object.fromEntries(
+					Object.entries(results.unfinishedExecutions).map(([executionId, messages]) => [
+						executionId,
+						[...messages],
+					]),
+				);
 				let aborted = false;
 				// Stack-local counters: aggregate malformed lines into a single warn at
 				// the end of the parse pass. Each per-line error log allocates the raw
@@ -272,6 +278,9 @@ export class MessageEventBusLogWriter {
 				});
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
+				if (aborted) {
+					results.unfinishedExecutions = baselineUnfinishedExecutions;
+				}
 				if (parseSkipped > 0) {
 					this.logger.warn(
 						`Event log parse skipped ${parseSkipped} malformed line(s) in ${logFileName}. Sample (truncated): ${parseSkippedSample}`,
