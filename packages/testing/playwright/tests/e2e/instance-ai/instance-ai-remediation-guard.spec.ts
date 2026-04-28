@@ -1,6 +1,7 @@
 import type { TestInfo } from '@playwright/test';
 
 import { test, expect, instanceAiTestConfig } from './fixtures';
+import type { ApiHelpers } from '../../../services/api-helper';
 
 test.use({
 	...instanceAiTestConfig,
@@ -15,17 +16,19 @@ test.use({
 	},
 });
 
-// The remediation loop is only exercised by the sandbox-backed builder, which exposes
-// submit-workflow and verify-built-workflow. The default Instance AI E2E container
-// uses the legacy build-workflow fallback, so this replay is opt-in until a sandbox
-// service is available in the regular CI project.
+const RUN_REMEDIATION_REPLAY = process.env.N8N_INSTANCE_AI_RECORD_REMEDIATION_REPLAY === 'true';
+
+// This is a real UI/proxy replay scaffold, not a synthetic trace contract test.
+// Keep it opt-in until a sandbox-backed recording exists for this exact flow.
 test.skip(
-	process.env.N8N_INSTANCE_AI_RECORD_REMEDIATION_REPLAY !== 'true',
-	'Sandbox-backed remediation replay recording is opt-in until the CI container provides a builder sandbox',
+	!RUN_REMEDIATION_REPLAY,
+	'Real sandbox-backed remediation replay is opt-in until its recorded fixture is available',
 );
 
 type TraceEvent = {
 	kind?: string;
+	stepId?: number;
+	agentRole?: string;
 	toolName?: string;
 	output?: Record<string, unknown>;
 };
@@ -36,6 +39,7 @@ type RemediationTraceSummary = {
 	needsUserInput: boolean;
 	mockedSlackCredential: boolean;
 	postSubmitRemediationSubmitsUsed?: number;
+	submitCallsAfterTerminalSetup: number;
 };
 
 function slugify(text: string): string {
@@ -45,14 +49,8 @@ function slugify(text: string): string {
 		.replace(/(^-|-$)/g, '');
 }
 
-async function getTraceEvents(backendUrl: string, testInfo: TestInfo): Promise<TraceEvent[]> {
-	const response = await fetch(
-		`${backendUrl}/rest/instance-ai/test/tool-trace/${slugify(testInfo.title)}`,
-	);
-	expect(response.ok).toBe(true);
-
-	const body = (await response.json()) as { data?: { events?: TraceEvent[] } };
-	return body.data?.events ?? [];
+async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<TraceEvent[]> {
+	return (await api.getInstanceAiToolTraceEvents(slugify(testInfo.title))) as TraceEvent[];
 }
 
 function getToolCalls(events: TraceEvent[], toolName: string): TraceEvent[] {
@@ -65,17 +63,32 @@ function getStringArray(value: unknown): string[] {
 
 function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummary {
 	const submitCalls = getToolCalls(events, 'submit-workflow');
-	const verifyCalls = getToolCalls(events, 'verify-built-workflow');
 	const firstSuccessfulSubmitIndex = submitCalls.findIndex(
 		(event) => event.output?.success === true && typeof event.output.workflowId === 'string',
 	);
 	const firstSuccessfulSubmit = submitCalls[firstSuccessfulSubmitIndex]?.output;
-	const remediation = verifyCalls.find(
-		(event) =>
+	const terminalSetupVerifyIndex = events.findIndex((event) => {
+		const remediation = event.output?.remediation as Record<string, unknown> | undefined;
+		return (
+			event.kind === 'tool-call' &&
+			event.toolName === 'verify-built-workflow' &&
 			event.output?.success === false &&
-			typeof event.output.remediation === 'object' &&
-			event.output.remediation !== null,
-	)?.output?.remediation as Record<string, unknown> | undefined;
+			remediation?.category === 'needs_setup' &&
+			remediation.shouldEdit === false &&
+			remediation.reason === 'mocked_credentials_or_placeholders'
+		);
+	});
+	const remediation =
+		terminalSetupVerifyIndex >= 0
+			? (events[terminalSetupVerifyIndex].output?.remediation as Record<string, unknown>)
+			: undefined;
+	const submitCallsAfterTerminalSetup =
+		terminalSetupVerifyIndex >= 0
+			? events
+					.slice(terminalSetupVerifyIndex + 1)
+					.filter((event) => event.kind === 'tool-call' && event.toolName === 'submit-workflow')
+					.length
+			: 0;
 
 	return {
 		submitted: firstSuccessfulSubmitIndex >= 0,
@@ -94,6 +107,7 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			firstSuccessfulSubmitIndex >= 0
 				? submitCalls.length - firstSuccessfulSubmitIndex - 1
 				: undefined,
+		submitCallsAfterTerminalSetup,
 	};
 }
 
@@ -104,44 +118,47 @@ test.describe(
 	},
 	() => {
 		test('should preserve a submitted workflow when mocked credential verification needs setup', async ({
-			backendUrl,
+			api,
 			n8nContainer,
 			n8n,
 		}, testInfo) => {
-			test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
 			test.setTimeout(600_000);
+			test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
+			test.skip(
+				testInfo.project.name.includes('multi-main'),
+				'Trace replay state is process-local and not stable in multi-main mode',
+			);
 
 			await n8n.navigate.toInstanceAi();
-
 			await n8n.instanceAi.sendMessage(
-				'Build a workflow named "INS-164 mocked credential guard". ' +
-					'Use Manual Trigger, then a Slack node that sends a message using a new slackApi credential placeholder, ' +
-					'then a Code node named "Guard Assertion" that throws if the incoming item contains _mockedCredential. ' +
+				'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
+					'connected to a Slack node that posts a message using a new slackApi credential placeholder. ' +
 					'Submit it, verify it with verify-built-workflow, and if verification says setup or credentials are needed, stop editing.',
 			);
 
-			await expect
-				.poll(
-					async () => {
-						const events = await getTraceEvents(backendUrl, testInfo);
-						const summary = summarizeRemediationTrace(events);
+			await expect(n8n.instanceAi.getWorkflowSetupCard()).toBeVisible({ timeout: 540_000 });
 
-						return summary.submitted && summary.needsUserInput && summary.mockedSlackCredential;
-					},
-					{ timeout: 540_000 },
-				)
-				.toBe(true);
-
-			const events = await getTraceEvents(backendUrl, testInfo);
+			const events = await getTraceEvents(api, testInfo);
 			const summary = summarizeRemediationTrace(events);
+			const submitCalls = getToolCalls(events, 'submit-workflow');
+			const verifyCalls = getToolCalls(events, 'verify-built-workflow');
 
 			expect(summary).toMatchObject({
 				submitted: true,
 				workflowId: expect.any(String),
 				needsUserInput: true,
 				mockedSlackCredential: true,
+				submitCallsAfterTerminalSetup: 0,
 			});
 			expect(summary.postSubmitRemediationSubmitsUsed).toBeLessThanOrEqual(2);
+			expect(submitCalls[0]).toMatchObject({
+				agentRole: 'workflow-builder',
+				stepId: expect.any(Number),
+			});
+			expect(verifyCalls[0]).toMatchObject({
+				agentRole: 'workflow-builder',
+				stepId: expect.any(Number),
+			});
 		});
 	},
 );
