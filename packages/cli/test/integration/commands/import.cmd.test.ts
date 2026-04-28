@@ -351,12 +351,12 @@ test('import:workflow --activeState=fromJson should respect the JSON active fiel
 	]);
 
 	const workflowsInDB = await getAllWorkflows();
-	expect(workflowsInDB).toMatchObject([
-		expect.objectContaining({ name: 'active-workflow', active: true }),
-		expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
-	]);
 	const activeWorkflow = workflowsInDB.find((w) => w.name === 'active-workflow');
+	const inactiveWorkflow = workflowsInDB.find((w) => w.name === 'inactive-workflow');
+	expect(workflowsInDB).toHaveLength(2);
+	expect(activeWorkflow).toMatchObject({ active: true });
 	expect(activeWorkflow?.activeVersionId).toBe(activeWorkflow?.versionId);
+	expect(inactiveWorkflow).toMatchObject({ active: false, activeVersionId: null });
 });
 
 test('import:workflow --activeState with an invalid value fails', async () => {
