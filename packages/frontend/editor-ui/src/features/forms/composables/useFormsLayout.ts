@@ -1,5 +1,6 @@
 import { ref, nextTick } from 'vue';
 import { useVueFlow } from '@vue-flow/core';
+import { useDebounceFn } from '@vueuse/core';
 import type { CanvasNodeData } from '@/features/workflows/canvas/canvas.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
@@ -25,14 +26,21 @@ const DEFAULT_H = DEFAULT_NODE_SIZE[1]; // 96
  *  3. Applies an interpolated Y shift to non-FormStep nodes (e.g. Edit Fields)
  *     so they move proportionally with their surrounding FormStep rows and
  *     connection lines stay geometrically consistent (no sinusoid effect).
+ *  4. Re-runs automatically when any FormStep card changes height (e.g. after
+ *     its iframe finishes loading), using snapshotted original Y positions so
+ *     row grouping stays stable across multiple layout passes.
  */
 export function useFormsLayout(vueFlowId: string) {
-	const { onNodesInitialized, getNodes, updateNode, updateNodeInternals, fitView } =
+	const { onNodesInitialized, onNodesChange, getNodes, updateNode, updateNodeInternals, fitView } =
 		useVueFlow(vueFlowId);
 
 	const layoutReady = ref(false);
 
-	function applyLayout() {
+	// Original workflow Y positions snapshotted on first layout run.
+	// Re-runs use these so shifted positions don't corrupt row grouping.
+	const originalYById = new Map<string, number>();
+
+	function applyLayout({ doFitView }: { doFitView: boolean }) {
 		const nodes = getNodes.value;
 		if (!nodes.length) {
 			layoutReady.value = true;
@@ -48,11 +56,17 @@ export function useFormsLayout(vueFlowId: string) {
 			return;
 		}
 
-		// Group FormStep nodes by original Y coordinate (row).
-		// Nodes on the same workflow row share the same Y value.
+		// Snapshot original Ys on first encounter so subsequent runs use stable row keys.
+		for (const node of nodes) {
+			if (!originalYById.has(node.id)) {
+				originalYById.set(node.id, node.position.y);
+			}
+		}
+
+		// Group FormStep nodes by original workflow Y (row identity).
 		const byRow = new Map<number, typeof formStepNodes>();
 		for (const node of formStepNodes) {
-			const y = Math.round(node.position.y);
+			const y = Math.round(originalYById.get(node.id) ?? node.position.y);
 			const row = byRow.get(y) ?? [];
 			row.push(node);
 			byRow.set(y, row);
@@ -79,15 +93,12 @@ export function useFormsLayout(vueFlowId: string) {
 		}
 
 		// Compute the Y shift applied to each FormStep row's natural centre.
-		// shift = 0 means the row stayed in place; positive means pushed down.
 		const rowYs = sortedRows.map(([y]) => y);
 		const rowShifts = new Map(
 			rowYs.map((y) => [y, (rowCenters.get(y) ?? y + DEFAULT_H / 2) - (y + DEFAULT_H / 2)]),
 		);
 
-		// For a given Y, interpolate (or clamp) the shift from surrounding FormStep rows.
-		// This keeps non-FormStep nodes (Edit Fields, etc.) moving in proportion to their
-		// neighbouring form cards so connection lines maintain consistent angles.
+		// For a given original Y, interpolate (or clamp) the shift from surrounding FormStep rows.
 		function shiftAt(y: number): number {
 			if (rowYs.length === 0) return 0;
 			if (y <= rowYs[0]) return rowShifts.get(rowYs[0]) ?? 0;
@@ -110,22 +121,22 @@ export function useFormsLayout(vueFlowId: string) {
 		// - All other nodes: apply interpolated shift to preserve relative geometry.
 		const updatedIds: string[] = [];
 		for (const node of nodes) {
-			const originalY = node.position.y;
+			const origY = originalYById.get(node.id) ?? node.position.y;
 			const isFormStep =
 				(node.data as CanvasNodeData).render?.type === CanvasNodeRenderType.FormStep;
 
 			let newY: number;
 			if (isFormStep) {
-				const rowY = Math.round(originalY);
+				const rowY = Math.round(origY);
 				const center = rowCenters.get(rowY);
 				if (center === undefined) continue;
 				const h = node.dimensions.height || DEFAULT_H;
 				newY = center - h / 2;
 			} else {
-				newY = originalY + shiftAt(originalY);
+				newY = origY + shiftAt(origY);
 			}
 
-			if (Math.abs(newY - originalY) >= 0.5) {
+			if (Math.abs(newY - node.position.y) >= 0.5) {
 				updateNode(node.id, { position: { x: node.position.x, y: newY } });
 				updatedIds.push(node.id);
 			}
@@ -136,13 +147,29 @@ export function useFormsLayout(vueFlowId: string) {
 		}
 
 		void nextTick(() => {
-			void fitView({ padding: 0.1 });
+			if (doFitView) void fitView({ padding: 0.1 });
 			layoutReady.value = true;
 		});
 	}
 
+	// Re-apply layout (without fitView) when a FormStep card changes height.
+	// Debounced so rapid sequential loads don't thrash.
+	const debouncedApply = useDebounceFn(() => applyLayout({ doFitView: false }), 50);
+
+	onNodesChange((changes) => {
+		if (!layoutReady.value) return;
+		const hasDimChange = changes.some((c) => {
+			if (c.type !== 'dimensions') return false;
+			const node = getNodes.value.find((n) => n.id === c.id);
+			return (
+				(node?.data as CanvasNodeData | undefined)?.render?.type === CanvasNodeRenderType.FormStep
+			);
+		});
+		if (hasDimChange) debouncedApply();
+	});
+
 	const { off } = onNodesInitialized(() => {
-		applyLayout();
+		applyLayout({ doFitView: true });
 		off();
 	});
 
