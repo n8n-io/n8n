@@ -12,6 +12,23 @@ export class FormPreviewController {
 
 	@Post('/', { usesTemplates: true })
 	preview(_req: AuthenticatedRequest, res: Response, @Body body: FormPreviewRequestDto) {
+		if (body.isCompletion) {
+			const instanceId = this.instanceSettings.instanceId;
+			const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
+			res.render('form-trigger-completion', {
+				title: body.formTitle,
+				message: body.formDescription,
+				formTitle: body.formTitle,
+				appendAttribution: true,
+				n8nWebsiteLink: `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`,
+				responseText: '',
+				responseBinary: encodeURIComponent(JSON.stringify('')),
+				dangerousCustomCss: '.container { padding-bottom: var(--padding-container-top); }',
+				redirectUrl: undefined,
+			});
+			return;
+		}
+
 		const formFields = prepareFormFields(body.formFields as FormFieldsParameter);
 		const data = prepareFormData({
 			formTitle: body.formTitle,

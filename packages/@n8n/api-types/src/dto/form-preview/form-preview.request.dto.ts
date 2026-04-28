@@ -11,4 +11,5 @@ export class FormPreviewRequestDto extends Z.class({
 	buttonLabel: z.string().optional(),
 	nodeVersion: z.number().optional(),
 	customCss: z.string().optional(),
+	isCompletion: z.boolean().optional(),
 }) {}

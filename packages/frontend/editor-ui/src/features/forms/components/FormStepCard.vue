@@ -5,8 +5,10 @@ import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useCanvasNode } from '@/features/workflows/canvas/composables/useCanvasNode';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type { INodeParameters } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { fetchFormPreview } from '../api';
 import { FORM_STEP_IFRAME_ZOOM, FORM_STEP_PADDING, FORM_STEP_WIDTH } from '../constants';
@@ -22,6 +24,7 @@ function onActivate(event: MouseEvent) {
 }
 
 const workflowsStore = useWorkflowsStore();
+const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
 
 const node = computed(() => workflowsStore.workflow.nodes.find((n: INodeUi) => n.id === id.value));
@@ -31,30 +34,57 @@ const isCompletion = computed(() => node.value?.parameters?.operation === 'compl
 const previewHtml = ref('');
 const iframeEl = ref<HTMLIFrameElement | null>(null);
 
+const resolvedParameters = computed((): INodeParameters => {
+	if (!node.value) return {};
+	const nodeType = nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion);
+	if (!nodeType) return node.value.parameters;
+	return (
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			node.value.parameters,
+			true,
+			false,
+			node.value,
+			nodeType,
+		) ?? node.value.parameters
+	);
+});
+
+const optionsCollectionDefaults = computed(() => {
+	const nodeType = nodeTypesStore.getNodeType(node.value?.type ?? '', node.value?.typeVersion);
+	const collection = nodeType?.properties.find(
+		(p): p is INodeProperties => p.name === 'options' && p.type === 'collection',
+	);
+	const items = collection?.options as INodeProperties[] | undefined;
+	return Object.fromEntries(items?.map((p) => [p.name, p.default]) ?? []);
+});
+
 const previewParams = computed(() => {
-	const params = node.value?.parameters;
-	if (!params) return null;
+	if (!node.value) return null;
+	const params = resolvedParameters.value;
 
 	if (isCompletion.value) {
 		return {
-			formTitle: (params.completionTitle as string) || 'Form Submitted',
+			formTitle: (params.completionTitle as string) || '',
 			formDescription: (params.completionMessage as string) ?? '',
 			formFields: [],
-			buttonLabel: undefined,
-			nodeVersion: node.value?.typeVersion,
+			isCompletion: true,
+			nodeVersion: node.value.typeVersion,
 		};
 	}
 
+	const options = params.options as INodeParameters | undefined;
+	const defaults = optionsCollectionDefaults.value;
 	return {
 		formTitle: isTrigger.value
 			? ((params.formTitle as string) ?? '')
-			: (((params.options as INodeParameters)?.formTitle as string) ?? ''),
+			: ((options?.formTitle as string) ?? (defaults.formTitle as string) ?? ''),
 		formDescription: isTrigger.value
 			? ((params.formDescription as string) ?? '')
-			: (((params.options as INodeParameters)?.formDescription as string) ?? ''),
-		buttonLabel: ((params.options as INodeParameters)?.buttonLabel as string) || undefined,
+			: ((options?.formDescription as string) ?? (defaults.formDescription as string) ?? ''),
+		buttonLabel: (options?.buttonLabel as string) || (defaults.buttonLabel as string) || undefined,
 		formFields: (params.formFields as { values?: INodeParameters[] })?.values ?? [],
-		nodeVersion: node.value?.typeVersion,
+		nodeVersion: node.value.typeVersion,
 	};
 });
 

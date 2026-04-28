@@ -9,6 +9,7 @@ export async function fetchFormPreview(
 		buttonLabel?: string;
 		nodeVersion?: number;
 		customCss?: string;
+		isCompletion?: boolean;
 	},
 ): Promise<string | null> {
 	const browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY) ?? '';
