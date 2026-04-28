@@ -67,8 +67,6 @@ export abstract class AbstractServer {
 
 	private fullyReady = false;
 
-	readonly uniqueInstanceId: string;
-
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');

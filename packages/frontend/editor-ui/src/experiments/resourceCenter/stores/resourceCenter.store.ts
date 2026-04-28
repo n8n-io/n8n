@@ -126,7 +126,7 @@ export const useResourceCenterStore = defineStore('resourceCenter', () => {
 
 		await router.push({
 			name: VIEWS.WORKFLOW,
-			params: { name: createdWorkflow.id },
+			params: { workflowId: createdWorkflow.id },
 		});
 	}
 

@@ -2251,13 +2251,16 @@ describe('AI Builder store', () => {
 			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
 				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
+				const docStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
 
 				// Start with nodes, then clear them (simulates workflow load sequence)
-				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				docStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
-				workflowsStore.allNodes = [];
+				docStore.setNodes([]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 			});
@@ -2265,18 +2268,21 @@ describe('AI Builder store', () => {
 			it('should switch to build mode when nodes are added', async () => {
 				enablePlanModeExperiment();
 				// Start with nodes so the watcher can observe changes
-				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				const docStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				docStore.setNodes([createTestNode({ name: 'Node1' })]);
 
 				const builderStore = useBuilderStore();
 				await nextTick();
 
 				// Clear nodes to trigger plan mode
-				workflowsStore.allNodes = [];
+				docStore.setNodes([]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 
 				// Add nodes back to trigger build mode
-				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				docStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 			});
@@ -2294,16 +2300,19 @@ describe('AI Builder store', () => {
 			it('should not change mode when chat has messages', async () => {
 				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
+				const docStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
 
 				// Add nodes first so we can trigger a change later
-				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				docStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 
 				// Simulate an active conversation
 				builderStore.chatMessages = [{ role: 'user', type: 'text', text: 'hello' } as never];
 
 				// Remove nodes — would normally switch to plan, but chat has messages
-				workflowsStore.allNodes = [];
+				docStore.setNodes([]);
 				await nextTick();
 
 				// Should stay at build because chat has messages
@@ -2316,7 +2325,10 @@ describe('AI Builder store', () => {
 
 				// Simulate navigating to a new empty workflow
 				workflowsStore.workflowId = 'new-empty-workflow';
-				workflowsStore.allNodes = [];
+				const docStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
+				docStore.setNodes([]);
 				await nextTick();
 
 				expect(builderStore.builderMode).toBe('plan');
@@ -2325,20 +2337,23 @@ describe('AI Builder store', () => {
 			it('should not switch to plan mode after restoreToVersion truncates messages', async () => {
 				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
+				const docStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(workflowsStore.workflowId),
+				);
 
 				// Simulate a conversation with nodes on canvas (active build session)
 				builderStore.chatMessages = [
 					{ role: 'user', type: 'text', text: 'Build me something' } as never,
 					{ role: 'assistant', type: 'text', text: 'Done' } as never,
 				];
-				workflowsStore.allNodes = [createTestNode({ name: 'Node1' })];
+				docStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
 				// Simulate what happens during restore: chat messages are truncated to []
 				// and nodes are cleared. The watcher would normally switch to plan mode.
 				builderStore.chatMessages = [];
-				workflowsStore.allNodes = [];
+				docStore.setNodes([]);
 				await nextTick();
 
 				// The watcher fires and sets plan mode

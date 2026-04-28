@@ -60,6 +60,7 @@ catalog:
   callsites: 3.1.0
   chokidar: 4.0.3
   eslint: 9.29.0
+  eslint-plugin-oxlint: ^1.61.0
   fast-glob: 3.2.12
   fastest-levenshtein: 1.0.16
   flatted: 3.4.2
@@ -81,6 +82,8 @@ catalog:
   nanoid: 3.3.8
   nodemailer: 7.0.11
   openai: 6.19.0
+  oxlint: ^1.61.0
+  oxlint-tsgolint: ^0.21.1
   pg: 8.17.0
   picocolors: 1.0.1
   playwright-core: 1.58.0

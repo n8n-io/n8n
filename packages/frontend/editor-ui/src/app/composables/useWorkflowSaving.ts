@@ -135,7 +135,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflowId },
+				params: { workflowId: workflowsStore.workflowId },
 			}),
 		);
 	}
@@ -159,7 +159,7 @@ export function useWorkflowSaving({
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'name');
+		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'workflowId');
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
@@ -266,7 +266,7 @@ export function useWorkflowSaving({
 
 						const url = router.resolve({
 							name: VIEWS.WORKFLOW,
-							params: { name: currentWorkflow },
+							params: { workflowId: currentWorkflow },
 						}).href;
 
 						const overwrite = await message.confirm(
@@ -446,7 +446,7 @@ export function useWorkflowSaving({
 			if (openInNewWindow) {
 				const routeData = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id },
+					params: { workflowId: workflowData.id },
 				});
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');
