@@ -2763,7 +2763,7 @@
 	"settings.communityNodes.confirmModal.update.buttonLoadingLabel": "Updating...",
 	"settings.communityNodes.confirmModal.cancel": "Cancel",
 	"settings.mcp": "Instance-level MCP",
-	"settings.mcp.description": "Connect Claude, Cursor, or any MCP client to create, iterate, run, and manage your workflows",
+	"settings.mcp.description": "Connect MCP clients like Claude Code and Cursor to build, run, and iterate on workflows in your instance",
 	"settings.mcp.preview.tooltip": "This feature is in preview. Expect improvements and changes over time.",
 	"settings.mcp.header.toggle.enabled": "Enabled",
 	"settings.mcp.header.toggle.disabled": "Disabled",
