@@ -5,12 +5,11 @@
  * and truncated text label.
  */
 import { N8nButton } from '@n8n/design-system';
-import { useElementHover } from '@vueuse/core';
-import { useTemplateRef } from 'vue';
 
 withDefaults(
 	defineProps<{
 		size?: 'small' | 'medium';
+		loading?: boolean;
 	}>(),
 	{
 		size: 'small',
@@ -18,24 +17,17 @@ withDefaults(
 );
 
 defineSlots<{
-	icon?: (props: { isHovered: boolean }) => unknown;
+	icon?: () => unknown;
 	default?: () => unknown;
 }>();
-
-const triggerRef = useTemplateRef<HTMLElement>('triggerRef');
-const isHovered = useElementHover(triggerRef);
-
-defineExpose({ isHovered });
 </script>
 
 <template>
-	<N8nButton ref="triggerRef" variant="ghost" :size="size" :class="$style.block">
-		<template #icon>
-			<slot name="icon" :is-hovered="isHovered" />
-		</template>
-		<span :class="$style.ellipsis">
+	<N8nButton variant="ghost" :size="size" :class="$style.block">
+		<span :class="{ [$style.ellipsis]: true, [$style.shimmer]: loading }">
 			<slot />
 		</span>
+		<slot name="icon" />
 	</N8nButton>
 </template>
 
@@ -61,5 +53,29 @@ defineExpose({ isHovered });
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: normal;
+}
+
+// Shimmer animation for active section headers
+.shimmer {
+	background: linear-gradient(
+		90deg,
+		var(--color--text--tint-1) 25%,
+		var(--color--text--tint-2) 50%,
+		var(--color--text--tint-1) 75%
+	);
+	background-size: 200% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
 }
 </style>

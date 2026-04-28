@@ -169,8 +169,10 @@ jobs:
 
       - name: Push branch
         if: always()
+        env:
+          REF: ${{ inputs.ref }}
         run: |
-          if ! git diff --quiet "${{ inputs.ref }}" 2>/dev/null; then
+          if ! git diff --quiet "$REF" 2>/dev/null; then
             git push -u origin "$BRANCH_NAME"
             echo "::notice::Changes pushed to branch $BRANCH_NAME"
           else

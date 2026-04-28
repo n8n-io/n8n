@@ -220,14 +220,16 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			credentials = credentialsUnchecked;
 		}
 
-		return credentials.map((credential) => {
-			if (typeof credential.data === 'object') {
-				// plain data / decrypted input. Should be encrypted first.
-				credential.data = cipher.encrypt(credential.data);
-			}
+		return await Promise.all(
+			credentials.map(async (credential) => {
+				if (typeof credential.data === 'object') {
+					// plain data / decrypted input. Should be encrypted first.
+					credential.data = await cipher.encryptV2(credential.data);
+				}
 
-			return credential;
-		});
+				return credential;
+			}),
+		);
 	}
 
 	private async getCredentialOwner(credentialsId: string) {
