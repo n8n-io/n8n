@@ -275,7 +275,7 @@ const commonStubs = {
 		name: 'AgentSkillsListPanel',
 		template: '<div data-testid="stub-agent-skills-list-panel" />',
 		props: ['skills', 'disabled'],
-		emits: ['open-skill'],
+		emits: ['open-skill', 'remove-skill'],
 	},
 	AgentSkillViewer: {
 		name: 'AgentSkillViewer',
@@ -598,6 +598,42 @@ describe('AgentBuilderView — three-column shell', () => {
 		const skillViewer = wrapper.findComponent({ name: 'AgentSkillViewer' });
 		expect(skillViewer.exists()).toBe(true);
 		expect(skillViewer.props('skill')).toEqual(skill);
+	});
+
+	it('removes an applied skill from the config tools list', async () => {
+		const skill = {
+			name: 'summarize_notes',
+			description: 'Use when summarizing notes',
+			instructions: 'Read the notes and produce a concise summary.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tools: [
+				{ type: 'skill', id: 'summarize_notes' },
+				{ type: 'custom', id: 'custom_tool' },
+			],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: skill,
+				},
+			}),
+		);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
+		await nextTick();
+
+		const skillsPanel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		skillsPanel.vm.$emit('remove-skill', 'summarize_notes');
+		await nextTick();
+
+		const vm = wrapper.vm as unknown as { localConfig: { tools?: AgentJsonConfigRef[] } };
+		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
+		expect(wrapper.findComponent({ name: 'AgentSkillsListPanel' }).props('skills')).toEqual([]);
 	});
 });
 

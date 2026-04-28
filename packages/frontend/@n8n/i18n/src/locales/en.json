@@ -5763,6 +5763,7 @@
 	"agents.builder.skills.count": "{count} skill applied | {count} skills applied",
 	"agents.builder.skills.empty": "No skills applied yet.",
 	"agents.builder.skills.instructions": "Instructions",
+	"agents.builder.skills.remove": "Remove skill",
 	"agents.builder.skills.back": "Back to skills",
 	"agents.builder.editor.invalidJson": "Invalid JSON",
 	"agents.builder.editorColumn.ariaLabel": "Configuration editor",

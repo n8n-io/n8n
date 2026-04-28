@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentSkill } from '../types';
 import shared from '../styles/agent-panel.module.scss';
@@ -15,6 +15,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'open-skill': [id: string];
+	'remove-skill': [id: string];
 }>();
 
 const i18n = useI18n();
@@ -51,13 +52,16 @@ const totalCount = computed(() => props.skills.length);
 		</div>
 
 		<div v-else :class="$style.rows">
-			<button
+			<div
 				v-for="{ id, skill } in skills"
 				:key="id"
-				type="button"
 				:class="$style.row"
+				role="button"
+				tabindex="0"
 				data-testid="agent-skills-list-row"
 				@click="emit('open-skill', id)"
+				@keydown.enter.prevent="emit('open-skill', id)"
+				@keydown.space.prevent="emit('open-skill', id)"
 			>
 				<N8nIcon icon="sparkles" :size="14" :class="$style.skillIcon" />
 				<div :class="$style.labels">
@@ -72,8 +76,19 @@ const totalCount = computed(() => props.skills.length);
 						>{{ skill.description }}</N8nText
 					>
 				</div>
+				<N8nTooltip :content="i18n.baseText('agents.builder.skills.remove')" placement="top">
+					<N8nIconButton
+						icon="trash-2"
+						variant="ghost"
+						size="mini"
+						text
+						:aria-label="i18n.baseText('agents.builder.skills.remove')"
+						data-testid="agent-skills-list-remove"
+						@click.stop="emit('remove-skill', id)"
+					/>
+				</N8nTooltip>
 				<N8nIcon icon="chevron-right" :size="14" :class="$style.chevron" />
-			</button>
+			</div>
 		</div>
 	</div>
 </template>

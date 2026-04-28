@@ -654,6 +654,18 @@ function onRemoveTool(index: number) {
 	}
 }
 
+function onRemoveSkill(id: string) {
+	const currentTools = localConfig.value?.tools ?? [];
+	const nextTools = currentTools.filter((ref) => !(ref.type === 'skill' && ref.id === id));
+	if (nextTools.length === currentTools.length) return;
+
+	onConfigFieldUpdate({ tools: nextTools });
+
+	if (selectedSection.value === `skills.${id}`) {
+		selectedSection.value = 'skills';
+	}
+}
+
 function onOpenAddToolModal() {
 	uiStore.openModalWithData({
 		name: AGENT_TOOLS_MODAL_KEY,
@@ -1121,6 +1133,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:skills="appliedSkills"
 						:disabled="isBuildChatStreaming"
 						@open-skill="onOpenSkillFromList"
+						@remove-skill="onRemoveSkill"
 					/>
 					<div
 						v-else-if="selectedTriggerType"
