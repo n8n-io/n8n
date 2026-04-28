@@ -32,8 +32,8 @@ export class N8NCheckpointStorage {
 	getStorage(agentId: string, userId: string): CheckpointStore {
 		return {
 			save: async (key, state) => await this.save(key, state, agentId, userId),
-			load: async (key) => await this.load(key),
-			delete: async (key) => await this.delete(key),
+			load: async (key) => await this.load(key, userId),
+			delete: async (key) => await this.delete(key, userId),
 		};
 	}
 
@@ -67,8 +67,8 @@ export class N8NCheckpointStorage {
 		}
 	}
 
-	async load(key: string): Promise<SerializableAgentState | undefined> {
-		const checkpoint = await this.agentCheckpointRepository.findOneBy({ runId: key });
+	async load(key: string, userId: string): Promise<SerializableAgentState | undefined> {
+		const checkpoint = await this.agentCheckpointRepository.findOneBy({ runId: key, userId });
 
 		if (!checkpoint) return undefined;
 
@@ -86,8 +86,11 @@ export class N8NCheckpointStorage {
 		return 'active';
 	}
 
-	async delete(key: string): Promise<void> {
-		await this.agentCheckpointRepository.update({ runId: key }, { expired: true, state: null });
+	async delete(key: string, userId: string): Promise<void> {
+		await this.agentCheckpointRepository.update(
+			{ runId: key, userId },
+			{ expired: true, state: null },
+		);
 	}
 
 	@OnLeaderTakeover()

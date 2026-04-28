@@ -104,7 +104,7 @@ export class AgentsBuilderService {
 
 		const builder = await this.createBuilderAgent({ agent, projectId, credentialProvider, userId });
 
-		this.logger.debug('Resuming builder agent', { agentdId: agent.id, runId, toolCallId });
+		this.logger.debug('Resuming builder agent', { agentId: agent.id, runId, toolCallId });
 
 		const resultStream = await builder.resume('stream', resumeData, {
 			runId,
