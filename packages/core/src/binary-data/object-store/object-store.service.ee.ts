@@ -90,7 +90,7 @@ export class ObjectStoreService {
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
 			await this.s3Client.send(command);
 		} catch (e) {
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
@@ -120,7 +120,7 @@ export class ObjectStoreService {
 			const command = new PutObjectCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
@@ -149,7 +149,7 @@ export class ObjectStoreService {
 			return await streamToBuffer(body as Readable);
 		} catch (e) {
 			if (e instanceof UnexpectedError) throw e;
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
@@ -184,7 +184,7 @@ export class ObjectStoreService {
 
 			return headers;
 		} catch (e) {
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
@@ -201,7 +201,7 @@ export class ObjectStoreService {
 			this.logger.debug('Sending DELETE request to S3', { bucket: this.bucket, key: fileId });
 			return await this.s3Client.send(command);
 		} catch (e) {
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
@@ -229,7 +229,7 @@ export class ObjectStoreService {
 			const command = new DeleteObjectsCommand(params);
 			return await this.s3Client.send(command);
 		} catch (e) {
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
@@ -255,7 +255,7 @@ export class ObjectStoreService {
 
 			return items;
 		} catch (e) {
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
@@ -293,11 +293,11 @@ export class ObjectStoreService {
 				nextContinuationToken: response.NextContinuationToken,
 			};
 		} catch (e) {
-			this.s3Error(e);
+			this.handleS3Error(e);
 		}
 	}
 
-	private s3Error(e: unknown): never {
+	private handleS3Error(e: unknown): never {
 		const error = ensureError(e);
 		throw new UnexpectedError(`Request to S3 failed: ${error.message}`, { cause: error });
 	}
