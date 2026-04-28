@@ -144,13 +144,15 @@ interface MessageTraceFinalization {
  *
  *  Most kinds carry implicit approval (you wouldn't be submitting answers,
  *  selected credentials, or a setup action otherwise) — only `approval` and
- *  `domainAccess` actually carry a denial path. */
+ *  `domainAccessDeny` actually carry a denial path. */
 function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
 	switch (request.kind) {
 		case 'approval':
 			return { approved: request.approved, userInput: request.userInput };
-		case 'domainAccess':
-			return { approved: request.approved, domainAccessAction: request.domainAccessAction };
+		case 'domainAccessApprove':
+			return { approved: true, domainAccessAction: request.domainAccessAction };
+		case 'domainAccessDeny':
+			return { approved: false };
 		case 'questions':
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':

@@ -48,27 +48,19 @@ describe('InstanceAiConfirmRequestDto', () => {
 			],
 			// DomainAccessApproval: handleAction (primary path — with action)
 			[
-				'domainAccess approve with allow_domain',
-				{ kind: 'domainAccess', approved: true, domainAccessAction: 'allow_domain' },
+				'domainAccessApprove with allow_domain',
+				{ kind: 'domainAccessApprove', domainAccessAction: 'allow_domain' },
 			],
 			[
-				'domainAccess approve with allow_once',
-				{
-					kind: 'domainAccess',
-					approved: true,
-					domainAccessAction: 'allow_once',
-				},
+				'domainAccessApprove with allow_once',
+				{ kind: 'domainAccessApprove', domainAccessAction: 'allow_once' },
 			],
 			[
-				'domainAccess approve with allow_all',
-				{
-					kind: 'domainAccess',
-					approved: true,
-					domainAccessAction: 'allow_all',
-				},
+				'domainAccessApprove with allow_all',
+				{ kind: 'domainAccessApprove', domainAccessAction: 'allow_all' },
 			],
-			// DomainAccessApproval: handleAction (deny path — no action passed)
-			['domainAccess deny', { kind: 'domainAccess', approved: false }],
+			// DomainAccessApproval: handleAction (deny path)
+			['domainAccessDeny', { kind: 'domainAccessDeny' }],
 			// confirmResourceDecision (store)
 			[
 				'resourceDecision with arbitrary decision token',
@@ -145,10 +137,14 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('domainAccessAction must be a known value', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({
-				kind: 'domainAccess',
-				approved: true,
+				kind: 'domainAccessApprove',
 				domainAccessAction: 'allow_never',
 			});
+			expect(result.success).toBe(false);
+		});
+
+		test('domainAccessApprove without domainAccessAction', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'domainAccessApprove' });
 			expect(result.success).toBe(false);
 		});
 	});

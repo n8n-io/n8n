@@ -52,11 +52,12 @@ const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() =>
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
 	store.resolveConfirmation(props.requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(props.requestId, {
-		kind: 'domainAccess',
-		approved,
-		domainAccessAction,
-	});
+	void store.confirmAction(
+		props.requestId,
+		approved && domainAccessAction
+			? { kind: 'domainAccessApprove', domainAccessAction }
+			: { kind: 'domainAccessDeny' },
+	);
 }
 
 function onPrimaryClick() {
