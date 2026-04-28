@@ -9,16 +9,17 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import {
 	N8nHeading,
 	N8nIconButton,
 	N8nResizeWrapper,
 	N8nScrollArea,
 	N8nText,
-	N8nButton,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { useLocalStorage, useScroll, useWindowSize } from '@vueuse/core';
+import { useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
 import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
@@ -129,10 +130,31 @@ watch(
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
 const showEmptyStateLayout = computed(() => !props.threadId);
 
+// If the user re-enters the AI view within this window of the most recent
+// thread's last activity, jump back into that thread instead of the empty
+// state. Beyond this, a fresh entry feels like a new task — show empty state.
+const RESUME_RECENT_THREAD_WINDOW_MS = 6 * 60 * 60 * 1000;
+
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	void store.loadThreads().then((loaded) => {
-		if (!loaded || !props.threadId) return;
+		if (!loaded) return;
+		if (!props.threadId) {
+			// No deep-link: optionally resume the most recently active thread.
+			const mostRecent = [...store.threads].sort((a, b) =>
+				(b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt),
+			)[0];
+			if (mostRecent) {
+				const lastTouchedMs = new Date(mostRecent.updatedAt ?? mostRecent.createdAt).getTime();
+				if (Date.now() - lastTouchedMs <= RESUME_RECENT_THREAD_WINDOW_MS) {
+					void router.replace({
+						name: INSTANCE_AI_THREAD_VIEW,
+						params: { threadId: mostRecent.id },
+					});
+				}
+			}
+			return;
+		}
 		// After threads load, validate deep-link: redirect if thread doesn't exist
 		if (!store.threads.some((t) => t.id === props.threadId)) {
 			void router.replace({ name: INSTANCE_AI_VIEW });
@@ -179,12 +201,25 @@ const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
 // --- Sidebar collapse & resize ---
-const sidebarCollapsed = useLocalStorage('instanceAi.sidebarCollapsed', false);
+// Session-scoped: survives page refresh, resets when the user navigates away
+// from the AI chat view (see onBeforeRouteLeave below).
+const sidebarCollapsed = useSessionStorage('instanceAi.sidebarCollapsed', true);
 const sidebarWidth = ref(260);
 
 function toggleSidebarCollapse() {
 	sidebarCollapsed.value = !sidebarCollapsed.value;
 }
+
+// Reset to collapsed when leaving the AI chat namespace, so the next entry
+// starts collapsed by default. Refreshes (which don't trigger the guard) keep
+// the user's current open/closed state.
+const CHAT_ROUTE_NAMES = new Set<string>([INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW]);
+onBeforeRouteLeave((to) => {
+	const name = typeof to.name === 'string' ? to.name : undefined;
+	if (!name || !CHAT_ROUTE_NAMES.has(name)) {
+		sidebarCollapsed.value = true;
+	}
+});
 
 function handleSidebarResize({ width }: { width: number }) {
 	// Drag below min-width threshold → auto-collapse
@@ -403,36 +438,41 @@ function handleStop() {
 <template>
 	<div :class="$style.container" data-test-id="instance-ai-container">
 		<!-- Resizable sidebar -->
-		<N8nResizeWrapper
-			v-if="!sidebarCollapsed"
-			:class="$style.sidebar"
-			:width="sidebarWidth"
-			:style="{ width: `${sidebarWidth}px` }"
-			:supported-directions="['right']"
-			:is-resizing-enabled="true"
-			:min-width="200"
-			:max-width="400"
-			@resize="handleSidebarResize"
-		>
-			<InstanceAiThreadList />
-		</N8nResizeWrapper>
+		<Transition name="sidebar-slide">
+			<N8nResizeWrapper
+				v-if="!sidebarCollapsed"
+				:class="$style.sidebar"
+				:width="sidebarWidth"
+				:style="{ width: `${sidebarWidth}px` }"
+				:supported-directions="['right']"
+				:is-resizing-enabled="true"
+				:min-width="200"
+				:max-width="400"
+				@resize="handleSidebarResize"
+			>
+				<InstanceAiThreadList @collapse="toggleSidebarCollapse" />
+			</N8nResizeWrapper>
+		</Transition>
 
 		<!-- Main chat area -->
 		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
-				<N8nButton
-					:icon="sidebarCollapsed ? 'list' : 'panel-left'"
-					variant="ghost"
-					size="medium"
-					data-test-id="instance-ai-sidebar-toggle"
-					:icon-only="!sidebarCollapsed"
-					@click="toggleSidebarCollapse"
+				<N8nTooltip
+					v-if="sidebarCollapsed"
+					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+					placement="bottom"
+					:show-after="TOOLTIP_DELAY_MS"
 				>
-					<template v-if="sidebarCollapsed">{{
-						i18n.baseText('instanceAi.sidebar.threads')
-					}}</template>
-				</N8nButton>
+					<N8nIconButton
+						icon="history"
+						variant="ghost"
+						size="medium"
+						data-test-id="instance-ai-sidebar-toggle"
+						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+						@click="toggleSidebarCollapse"
+					/>
+				</N8nTooltip>
 				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
 					{{ currentThreadTitle }}
 				</N8nHeading>
@@ -717,7 +757,7 @@ function handleStop() {
 }
 
 .header {
-	padding: var(--spacing--sm) var(--spacing--lg);
+	padding: var(--spacing--xs) var(--spacing--lg) var(--spacing--sm);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
@@ -876,5 +916,21 @@ function handleStop() {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+}
+
+.sidebar-slide-enter-active,
+.sidebar-slide-leave-active {
+	transition:
+		width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		min-width 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+		opacity 0.2s ease;
+	overflow: hidden;
+}
+
+.sidebar-slide-enter-from,
+.sidebar-slide-leave-to {
+	width: 0 !important;
+	min-width: 0 !important;
+	opacity: 0;
 }
 </style>
