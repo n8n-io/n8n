@@ -90,6 +90,7 @@ export declare namespace Zammad {
 			body: string;
 			sender: 'Agent' | 'Customer' | 'System';
 			type: 'chat' | 'email' | 'fax' | 'note' | 'phone' | 'sms';
+			to?: string;
 			reply_to: string;
 		};
 	};

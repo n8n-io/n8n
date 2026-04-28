@@ -253,6 +253,14 @@ export const ticketDescription: INodeProperties[] = [
 						default: 'note',
 					},
 					{
+						displayName: 'To',
+						name: 'to',
+						type: 'string',
+						default: '',
+						placeholder: 'recipient@example.com',
+						description: 'Recipient of the article (required for email type tickets)',
+					},
+					{
 						displayName: 'Reply To',
 						name: 'reply_to',
 						type: 'string',
