@@ -1176,6 +1176,7 @@ describe('createWorkflowAdapter', () => {
 		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService } =
 			createWorkflowAdapterForTests();
 		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+		mockWorkflowService.archive.mockResolvedValue({ id: 'wf-new' });
 
 		await expect(adapter.archiveIfAiTemporary('wf-new')).resolves.toBe(true);
 
@@ -1204,6 +1205,17 @@ describe('createWorkflowAdapter', () => {
 
 		expect(mockWorkflowService.archive).not.toHaveBeenCalled();
 		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-archived');
+	});
+
+	it('keeps the temporary marker when archive does not archive the workflow', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+		mockWorkflowService.archive.mockResolvedValue(undefined);
+
+		await expect(adapter.archiveIfAiTemporary('wf-new')).resolves.toBe(false);
+
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).not.toHaveBeenCalled();
 	});
 
 	describe('instance read-only mode', () => {

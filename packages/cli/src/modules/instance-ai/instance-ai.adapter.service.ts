@@ -349,7 +349,11 @@ export class InstanceAiAdapterService {
 					return false;
 				}
 
-				await workflowService.archive(user, workflowId, { skipArchived: true });
+				const archivedWorkflow = await workflowService.archive(user, workflowId, {
+					skipArchived: true,
+				});
+				if (!archivedWorkflow) return false;
+
 				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
 				return true;
 			},
