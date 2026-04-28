@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import type { ProvisioningMode } from '@n8n/api-types';
+import type { ProvisioningMode, ProvisioningModeFlags } from '@n8n/api-types';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
@@ -43,10 +43,7 @@ function getDropdownValuesFromConfig(
 function getProvisioningConfigFromDropdowns(
 	roleAssignment: RoleAssignmentSetting,
 	mappingMethod: RoleMappingMethodSetting,
-): Pick<
-	ProvisioningConfig,
-	'scopesProvisionInstanceRole' | 'scopesProvisionProjectRoles' | 'scopesUseExpressionMapping'
-> {
+): ProvisioningModeFlags {
 	if (roleAssignment === 'manual') {
 		return {
 			scopesProvisionInstanceRole: false,
