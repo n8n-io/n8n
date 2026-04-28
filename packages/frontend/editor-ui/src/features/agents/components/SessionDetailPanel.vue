@@ -138,7 +138,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					size="small"
 					data-test-id="detail-close"
 					@click="emit('close')"
-				/>=
+				/>
 			</div>
 
 			<div :class="$style.info">
