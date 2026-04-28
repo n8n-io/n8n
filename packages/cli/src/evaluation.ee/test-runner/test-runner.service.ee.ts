@@ -500,10 +500,16 @@ export class TestRunnerService {
 	}
 
 	/**
-	 * Creates a new test run for the given workflow
+	 * Creates a new test run for the given workflow.
+	 *
+	 * `concurrency` is the requested number of test cases to run in parallel.
+	 * Clamped 1–10 defensively (the controller already validates this via zod).
+	 * The fan-out itself lands in a later commit; today the runner remains
+	 * sequential regardless of this value.
 	 */
-	async runTest(user: User, workflowId: string): Promise<void> {
-		this.logger.debug('Starting new test run', { workflowId });
+	async runTest(user: User, workflowId: string, concurrency: number = 1): Promise<void> {
+		const effectiveConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
+		this.logger.debug('Starting new test run', { workflowId, concurrency: effectiveConcurrency });
 
 		const workflow = await this.workflowRepository.findById(workflowId);
 		assert(workflow, 'Workflow not found');

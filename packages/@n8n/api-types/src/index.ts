@@ -389,6 +389,12 @@ export {
 
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
 
+export {
+	startTestRunPayloadSchema,
+	StartTestRunRequestDto,
+	type StartTestRunPayload,
+} from './schemas/evaluations.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
 export {

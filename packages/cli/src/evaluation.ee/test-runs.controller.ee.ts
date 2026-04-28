@@ -1,6 +1,7 @@
+import { StartTestRunRequestDto } from '@n8n/api-types';
 import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Delete, Get, Post, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -110,13 +111,21 @@ export class TestRunsController {
 	}
 
 	@Post('/:workflowId/test-runs/new')
-	async create(req: TestRunsRequest.Create, res: express.Response) {
+	async create(
+		req: TestRunsRequest.Create,
+		res: express.Response,
+		@Body payload: StartTestRunRequestDto,
+	) {
 		const { workflowId } = req.params;
 
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
+		// `concurrency` is clamped 1–10 by the zod schema. The PostHog flag gate
+		// that coerces flag-off users to sequential lands in a later commit.
+		const concurrency = payload.concurrency ?? 1;
+
 		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, workflowId);
+		void this.testRunnerService.runTest(req.user, workflowId, concurrency);
 
 		res.status(202).json({ success: true });
 	}
