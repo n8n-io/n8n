@@ -353,6 +353,10 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 });
 
 const shouldDisableActionDropdown = computed(() => {
+	if (activeVersion.value) {
+		return false;
+	}
+
 	return versionMenuActions.value.every((action) => action.disabled);
 });
 
