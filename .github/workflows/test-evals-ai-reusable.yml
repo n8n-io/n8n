@@ -101,7 +101,7 @@ jobs:
           DATASET: ${{ inputs.dataset }}
           REPETITIONS: ${{ inputs.repetitions }}
           JUDGES: ${{ inputs.judges }}
-          CONCURRENCY: ${{ inputs.CONCURRENCY }}
+          CONCURRENCY: ${{ inputs.concurrency }}
           EXPERIMENT_NAME: ${{ steps.experiment.outputs.name }}
           WEBHOOK_URL_ARG: ${{ secrets.EVALS_WEBHOOK_URL && format('--webhook-url={0}', secrets.EVALS_WEBHOOK_URL) || '' }}
           WEBHOOK_SECRET_ARG: ${{ secrets.EVALS_WEBHOOK_SECRET && format('--webhook-secret={0}', secrets.EVALS_WEBHOOK_SECRET) || '' }}
