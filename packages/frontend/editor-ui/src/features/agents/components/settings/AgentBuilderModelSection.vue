@@ -20,9 +20,9 @@ import {
 	AGENT_UNSUPPORTED_PROVIDERS,
 	CATALOG_TO_CHATHUB,
 	CHATHUB_TO_CATALOG,
-	sanitizeModelId,
 } from '../../provider-mapping';
 import { useAgentBuilderSettingsStore } from '../../agentBuilderSettings.store';
+import { sanitizeModelId } from '../../utils/model-string';
 
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
