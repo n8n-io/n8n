@@ -31,6 +31,10 @@ const SETTINGS_KEY = 'agentBuilder.settings';
 
 const DEFAULT_SETTINGS: AgentBuilderAdminSettings = { mode: 'default' };
 
+const PROXY_HEADERS = {
+	'x-n8n-feature': 'agent-builder',
+};
+
 /** Read an Anthropic key from env, preferring the n8n-specific variable. */
 function readEnvAnthropicKey(): string | null {
 	const key = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
@@ -108,28 +112,23 @@ export class AgentsBuilderSettingsService {
 	}
 
 	/** Get the persisted admin settings + the derived `isConfigured` flag. */
-	async getAdminSettings(user: User): Promise<AgentBuilderAdminSettingsResponse> {
+	async getAdminSettings(): Promise<AgentBuilderAdminSettingsResponse> {
 		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings, user);
+		const isConfigured = await this.computeIsConfigured(settings);
 		return { settings, isConfigured };
 	}
 
 	/** Lightweight readiness check used by the builder UI to gate the input box. */
-	async getStatus(user: User): Promise<{ isConfigured: boolean }> {
+	async getStatus(): Promise<{ isConfigured: boolean }> {
 		const settings = await this.loadSettings();
-		const isConfigured = await this.computeIsConfigured(settings, user);
+		const isConfigured = await this.computeIsConfigured(settings);
 		return { isConfigured };
 	}
 
-	private async computeIsConfigured(
-		settings: AgentBuilderAdminSettings,
-		user: User,
-	): Promise<boolean> {
+	private async computeIsConfigured(settings: AgentBuilderAdminSettings): Promise<boolean> {
 		if (settings.mode === 'custom') {
-			const credential = await this.credentialsFinderService.findCredentialForUser(
+			const credential = await this.credentialsFinderService.findCredentialById(
 				settings.credentialId,
-				user,
-				['credential:read'],
 			);
 			return !!credential;
 		}
@@ -170,7 +169,7 @@ export class AgentsBuilderSettingsService {
 		const settings = await this.loadSettings();
 
 		if (settings.mode === 'custom') {
-			const fromCredential = await this.tryResolveCustomCredential(settings, user);
+			const fromCredential = await this.tryResolveCustomCredential(settings);
 			if (fromCredential) return { config: fromCredential, isProxied: false };
 			this.logger.warn(
 				'Agent builder custom credential could not be resolved; falling back to default',
@@ -198,7 +197,6 @@ export class AgentsBuilderSettingsService {
 
 	private async tryResolveCustomCredential(
 		settings: Extract<AgentBuilderAdminSettings, { mode: 'custom' }>,
-		user: User,
 	): Promise<ModelConfig | null> {
 		if (!isSupportedAgentProvider(settings.provider)) {
 			this.logger.warn('Agent builder provider is not supported by the runtime', {
@@ -208,10 +206,8 @@ export class AgentsBuilderSettingsService {
 			return null;
 		}
 
-		const credential = await this.credentialsFinderService.findCredentialForUser(
+		const credential = await this.credentialsFinderService.findCredentialById(
 			settings.credentialId,
-			user,
-			['credential:read'],
 		);
 		if (!credential) return null;
 
@@ -248,6 +244,9 @@ export class AgentsBuilderSettingsService {
 				const headers = new Headers(init?.headers);
 				const auth = await tokenManager.getAuthHeaders();
 				for (const [k, v] of Object.entries(auth)) {
+					headers.set(k, v);
+				}
+				for (const [k, v] of Object.entries(PROXY_HEADERS)) {
 					headers.set(k, v);
 				}
 				const baseFetch = httpProxyFetch ?? globalThis.fetch;

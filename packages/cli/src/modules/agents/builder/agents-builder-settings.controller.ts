@@ -21,13 +21,13 @@ export class AgentsBuilderSettingsController {
 	constructor(private readonly settingsService: AgentsBuilderSettingsService) {}
 
 	@Get('/settings')
-	@GlobalScope('aiAssistant:manage')
-	async getAdminSettings(req: AuthenticatedRequest): Promise<AgentBuilderAdminSettingsResponse> {
-		return await this.settingsService.getAdminSettings(req.user);
+	@GlobalScope('agent:read')
+	async getAdminSettings(_req: AuthenticatedRequest): Promise<AgentBuilderAdminSettingsResponse> {
+		return await this.settingsService.getAdminSettings();
 	}
 
 	@Patch('/settings')
-	@GlobalScope('aiAssistant:manage')
+	@GlobalScope('agent:manage')
 	async updateAdminSettings(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -41,11 +41,11 @@ export class AgentsBuilderSettingsController {
 			throw new BadRequestError(parseResult.error.errors[0]?.message ?? 'Invalid request body');
 		}
 		await this.settingsService.updateAdminSettings(parseResult.data);
-		return await this.settingsService.getAdminSettings(req.user);
+		return await this.settingsService.getAdminSettings();
 	}
 
 	@Get('/status')
-	async getStatus(req: AuthenticatedRequest): Promise<AgentBuilderStatusResponse> {
-		return await this.settingsService.getStatus(req.user);
+	async getStatus(): Promise<AgentBuilderStatusResponse> {
+		return await this.settingsService.getStatus();
 	}
 }

@@ -489,10 +489,14 @@ export class AgentsController {
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Build failed';
 			const errorCode =
-			error && typeof error === 'object' && 'code' in error
-				? (error as { code?: unknown }).code
-				: undefined;
-			send({ type: 'error', message: errorMessage, ...(typeof errorCode === 'string' ? { code: errorCode } : {}) });
+				error && typeof error === 'object' && 'code' in error
+					? (error as { code?: unknown }).code
+					: undefined;
+			send({
+				type: 'error',
+				message: errorMessage,
+				...(typeof errorCode === 'string' ? { code: errorCode } : {}),
+			});
 		}
 
 		res.end();
@@ -528,6 +532,7 @@ export class AgentsController {
 					toolCallId,
 					resumeData,
 					credentialProvider,
+					req.user,
 				),
 				send,
 				makeBuilderToolEvents(send),
