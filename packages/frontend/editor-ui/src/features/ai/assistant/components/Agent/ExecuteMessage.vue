@@ -1,7 +1,10 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,

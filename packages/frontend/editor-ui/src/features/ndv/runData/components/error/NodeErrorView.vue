@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';

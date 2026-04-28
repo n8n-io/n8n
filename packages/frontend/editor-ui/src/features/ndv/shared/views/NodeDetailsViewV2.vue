@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { MainPanelType, NodePanelType } from '../ndv.types';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -304,7 +307,9 @@ const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
-const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowExecutionSessionStore().executionWaitingForWebhook,
+);
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 

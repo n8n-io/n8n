@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { IUpdateInformation } from '@/Interface';
 import { resolveRequiredParameters } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';

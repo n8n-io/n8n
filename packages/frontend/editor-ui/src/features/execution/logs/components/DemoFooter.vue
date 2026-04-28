@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import LogsPanel from '@/features/execution/logs/components/LogsPanel.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 

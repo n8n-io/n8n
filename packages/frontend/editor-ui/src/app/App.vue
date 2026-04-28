@@ -65,9 +65,9 @@ const workflowId = useWorkflowId();
 const currentWorkflowDocumentStore = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
 	null,
 );
-const currentWorkflowExecutionSessionStore = shallowRef<
-	ReturnType<typeof useWorkflowExecutionSessionStore> | null
->(null);
+const currentWorkflowExecutionSessionStore = shallowRef<ReturnType<
+	typeof useWorkflowExecutionSessionStore
+> | null>(null);
 
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);

@@ -132,7 +132,9 @@ const showTriggerCallout = computed(() => props.state.isTrigger && isInListening
 // isExecuting stays false throughout the listening lifecycle.
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
-		const runData = workflowExecutionSessionStore().getExecutionRunDataByNodeName(props.state.node.name);
+		const runData = workflowExecutionSessionStore().getExecutionRunDataByNodeName(
+			props.state.node.name,
+		);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
 			emit('stepExecuted');

@@ -1,7 +1,10 @@
 <script lang="ts" setup>
 import { useBuilderStore, type WorkflowBuilderJourneyEventType } from '../../builder.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useHistoryStore } from '@/app/stores/history.store';

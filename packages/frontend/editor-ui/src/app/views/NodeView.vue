@@ -12,7 +12,10 @@ import {
 	useTemplateRef,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -414,7 +417,10 @@ const isRunButtonSplit = computed(() => {
 	const selectableTriggerNodes = triggerNodes.value.filter(
 		(node) => !node.disabled && !isChatNode(node),
 	);
-	return selectableTriggerNodes.length > 1 && workflowExecutionSessionStore().selectedTriggerNodeName !== undefined;
+	return (
+		selectableTriggerNodes.length > 1 &&
+		workflowExecutionSessionStore().selectedTriggerNodeName !== undefined
+	);
 });
 
 function onTidyUp(
@@ -1029,7 +1035,9 @@ const projectPermissions = computed(() => {
 const isStoppingExecution = ref(false);
 
 const isWorkflowRunning = computed(() => workflowExecutionSessionStore().isWorkflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowExecutionSessionStore().executionWaitingForWebhook,
+);
 function setSelectedTriggerNodeName(name: string) {
 	workflowExecutionSessionStore().setSelectedTriggerNodeName(name);
 }

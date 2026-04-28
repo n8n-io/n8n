@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
@@ -135,14 +138,17 @@ const rootNode = computed(() => {
 
 const hasRootNodeRun = computed(() => {
 	return !!(
-		rootNode.value && workflowExecutionSessionStore().currentExecution?.data?.resultData.runData[rootNode.value]
+		rootNode.value &&
+		workflowExecutionSessionStore().currentExecution?.data?.resultData.runData[rootNode.value]
 	);
 });
 
 const inputMode = ref<MappingMode>(
 	// Show debugging mode by default only when the node has already run
 	activeNode.value &&
-		workflowExecutionSessionStore().currentExecution?.data?.resultData.runData[activeNode.value.name]
+		workflowExecutionSessionStore().currentExecution?.data?.resultData.runData[
+			activeNode.value.name
+		]
 		? 'debugging'
 		: 'mapping',
 );

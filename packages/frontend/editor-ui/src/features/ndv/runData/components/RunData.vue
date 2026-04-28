@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { useStorage } from '@/app/composables/useStorage';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { saveAs } from 'file-saver';
 import NodeSettingsHint from '@/features/ndv/settings/components/NodeSettingsHint.vue';
 import type {
@@ -313,7 +316,8 @@ const shouldShowSchemaView = computed(() => {
 	return (
 		hasNodeRun.value ||
 		hasPreviewSchema.value ||
-		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowExecutionSessionStore().lastSuccessfulExecution))
+		(!hasNodeRun.value &&
+			(hasAnyUpstreamExecuted.value || workflowExecutionSessionStore().lastSuccessfulExecution))
 	);
 });
 
@@ -419,7 +423,8 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowExecutionSessionStore().currentExecution?.data ?? undefined,
+	() =>
+		props.workflowExecution ?? workflowExecutionSessionStore().currentExecution?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {

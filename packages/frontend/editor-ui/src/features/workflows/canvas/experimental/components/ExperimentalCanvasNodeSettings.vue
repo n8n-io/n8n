@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';
@@ -37,7 +40,9 @@ const foreignCredentials = computed(() =>
 	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowExecutionSessionStore().executionWaitingForWebhook,
+);
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
 function handleValueChanged(parameterData: IUpdateInformation) {

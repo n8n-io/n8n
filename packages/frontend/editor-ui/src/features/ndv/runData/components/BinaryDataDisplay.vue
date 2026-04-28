@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from './BinaryDataDisplayEmbed.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';

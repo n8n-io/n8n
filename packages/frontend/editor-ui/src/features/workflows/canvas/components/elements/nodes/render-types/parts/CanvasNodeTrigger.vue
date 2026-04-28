@@ -1,6 +1,9 @@
 <script lang="ts" setup>
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';

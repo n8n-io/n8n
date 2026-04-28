@@ -103,7 +103,9 @@ const isAnyCredentialTesting = computed(() =>
 // Notify parent on execution finish
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
-		const runData = workflowExecutionSessionStore().getExecutionRunDataByNodeName(props.nodeGroup.parentNode.name);
+		const runData = workflowExecutionSessionStore().getExecutionRunDataByNodeName(
+			props.nodeGroup.parentNode.name,
+		);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
 			emit('stepExecuted');

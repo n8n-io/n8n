@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
@@ -316,7 +319,9 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(
+	() => workflowExecutionSessionStore().executionWaitingForWebhook,
+);
 
 const blockUi = computed(
 	() => workflowExecutionSessionStore().isWorkflowRunning || isExecutionWaitingForWebhook.value,

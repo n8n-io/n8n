@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
@@ -131,7 +134,9 @@ const hasAiMetadata = computed(() => {
 
 	if (node.value) {
 		const connectedSubNodes = props.workflowObject.getParentNodes(node.value.name, 'ALL_NON_MAIN');
-		const resultData = connectedSubNodes.map((nodeName) => workflowExecutionSessionStore().getExecutionRunDataByNodeName(nodeName));
+		const resultData = connectedSubNodes.map((nodeName) =>
+			workflowExecutionSessionStore().getExecutionRunDataByNodeName(nodeName),
+		);
 
 		return resultData && Array.isArray(resultData) && resultData.length > 0;
 	}
