@@ -183,7 +183,7 @@ export const AgentsModule: FrontendModuleDescription = {
 			beta: true,
 			route: { to: { name: AGENT_BUILDER_SETTINGS_VIEW } },
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'aiAssistant:manage' } });
+				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
 			},
 		},
 	],
