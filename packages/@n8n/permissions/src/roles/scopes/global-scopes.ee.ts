@@ -151,14 +151,6 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
 
 export const GLOBAL_MEMBER_SCOPES: Scope[] = [
-	'agent:create',
-	'agent:read',
-	'agent:update',
-	'agent:list',
-	'agent:delete',
-	'agent:publish',
-	'agent:unpublish',
-	'agent:execute',
 	'annotationTag:create',
 	'annotationTag:read',
 	'annotationTag:update',
