@@ -5,6 +5,7 @@ import fs from 'fs';
 import { UserError } from 'n8n-workflow';
 import path from 'path';
 import { z } from 'zod';
+import '../../zod-alias-support';
 
 import { BaseCommand } from '../base-command';
 
@@ -53,16 +54,6 @@ export class ExportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			flags.all = true;
 			flags.pretty = true;
 			flags.separate = true;
-		}
-
-		if (flags.version && flags.published) {
-			this.logger.info('Cannot use both --version and --published flags. Please specify one.');
-			return;
-		}
-
-		if (flags.version && flags.all) {
-			this.logger.info('--version flag cannot be used with --all flag.');
-			return;
 		}
 
 		const selectorCount = [flags.all, flags.id, flags.projectId].filter(Boolean).length;
