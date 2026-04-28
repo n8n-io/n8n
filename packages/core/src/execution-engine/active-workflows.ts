@@ -172,7 +172,9 @@ export class ActiveWorkflows {
 				expression,
 			};
 
-			this.scheduledTaskManager.registerCron(ctx, executeTrigger);
+			this.scheduledTaskManager.registerCron(ctx, () => {
+				void executeTrigger();
+			});
 		}
 	}
 

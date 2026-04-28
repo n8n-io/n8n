@@ -6,6 +6,7 @@ import { useInstanceAiStore } from '../instanceAi.store';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
 import type { ResourceEntry } from '../useResourceRegistry';
+import ConnectionsCard from './ConnectionsCard.vue';
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
@@ -81,7 +82,7 @@ const artifactIconMap: Record<string, IconName> = {
 				<div
 					v-for="artifact in artifacts"
 					:key="artifact.id"
-					:class="$style.artifactRow"
+					:class="[$style.artifactRow, artifact.archived && $style.artifactRowArchived]"
 					@click="handleArtifactClick(artifact, $event)"
 				>
 					<span :class="$style.artifactIconWrap">
@@ -92,6 +93,9 @@ const artifactIconMap: Record<string, IconName> = {
 						/>
 					</span>
 					<span :class="$style.artifactName">{{ artifact.name }}</span>
+					<span v-if="artifact.archived" :class="$style.archivedBadge">
+						{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
+					</span>
 				</div>
 			</div>
 
@@ -134,6 +138,9 @@ const artifactIconMap: Record<string, IconName> = {
 				</div>
 			</div>
 		</div>
+
+		<!-- Connections section -->
+		<ConnectionsCard />
 	</div>
 </template>
 
@@ -221,6 +228,25 @@ const artifactIconMap: Record<string, IconName> = {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	flex: 1;
+	min-width: 0;
+}
+
+.artifactRowArchived {
+	opacity: 0.55;
+
+	.artifactName {
+		text-decoration: line-through;
+	}
+}
+
+.archivedBadge {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	background: var(--color--foreground--tint-1);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	flex-shrink: 0;
 }
 
 /* Empty state */

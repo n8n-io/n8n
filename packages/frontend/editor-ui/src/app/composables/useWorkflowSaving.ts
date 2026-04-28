@@ -59,8 +59,7 @@ export function useWorkflowSaving({
 	const templatesStore = useTemplatesStore();
 	const builderStore = useBuilderStore();
 
-	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
-		useWorkflowHelpers();
+	const { checkConflictingWebhooks, getWorkflowProjectRole } = useWorkflowHelpers();
 
 	const saveStore = useWorkflowSaveStore();
 	const backendConnectionStore = useBackendConnectionStore();
@@ -136,7 +135,7 @@ export function useWorkflowSaving({
 		next(
 			router.resolve({
 				name: VIEWS.WORKFLOW,
-				params: { name: workflowsStore.workflowId },
+				params: { workflowId: workflowsStore.workflowId },
 			}),
 		);
 	}
@@ -160,7 +159,7 @@ export function useWorkflowSaving({
 		}
 
 		const isLoading = useCanvasStore().isLoading;
-		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'name');
+		const currentWorkflow = id ?? getQueryParam(router.currentRoute.value.params, 'workflowId');
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
@@ -201,7 +200,10 @@ export function useWorkflowSaving({
 				// Capture dirty state count before save to detect changes made during save
 				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
-				const workflowDataRequest: WorkflowDataUpdate = await getWorkflowDataToSave();
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(currentWorkflow),
+				);
+				const workflowDataRequest: WorkflowDataUpdate = workflowDocumentStore.serialize();
 				// This can happen if the user has another workflow in the browser history and navigates
 				// via the browser back button, encountering our warning dialog with the new route already set
 				if (workflowDataRequest.id !== currentWorkflow) {
@@ -210,9 +212,6 @@ export function useWorkflowSaving({
 
 				// Check if AI Builder made edits since last save
 				workflowDataRequest.aiBuilderAssisted = builderStore.getAiBuilderMadeEdits();
-				const workflowDocumentStore = useWorkflowDocumentStore(
-					createWorkflowDocumentId(currentWorkflow),
-				);
 				workflowDataRequest.versionId = workflowDocumentStore.versionId;
 				workflowDataRequest.expectedChecksum = workflowDocumentStore.checksum;
 				workflowDataRequest.autosaved = autosaved;
@@ -267,7 +266,7 @@ export function useWorkflowSaving({
 
 						const url = router.resolve({
 							name: VIEWS.WORKFLOW,
-							params: { name: currentWorkflow },
+							params: { workflowId: currentWorkflow },
 						}).href;
 
 						const overwrite = await message.confirm(
@@ -385,7 +384,10 @@ export function useWorkflowSaving({
 			// Capture dirty state count before save to detect changes made during save
 			const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
-			const workflowDataRequest: WorkflowDataCreate = data || (await getWorkflowDataToSave());
+			const currentDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			const workflowDataRequest: WorkflowDataCreate = data || currentDocumentStore.serialize();
 			const changedNodes = {} as IDataObject;
 
 			if (requestNewId) {
@@ -444,7 +446,7 @@ export function useWorkflowSaving({
 			if (openInNewWindow) {
 				const routeData = router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: workflowData.id },
+					params: { workflowId: workflowData.id },
 				});
 				window.open(routeData.href, '_blank');
 				uiStore.removeActiveAction('workflowSaving');

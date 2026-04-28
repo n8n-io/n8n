@@ -741,4 +741,87 @@ describe('Node Builder', () => {
 			expect(mergeNode.config.position).toEqual([100, 200]);
 		});
 	});
+
+	describe('node() and trigger() invalid input handling', () => {
+		it('node() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest', { url: 'https://example.com' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/node\(\) requires a configuration object/);
+		});
+
+		it('trigger() should throw a clear TypeError when called with a string instead of a config object', () => {
+			const fn = () => {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook', { httpMethod: 'GET', path: 'test' });
+			};
+			expect(fn).toThrow(TypeError);
+			expect(fn).toThrow(/trigger\(\) requires a configuration object/);
+		});
+
+		it('node() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				node('n8n-nodes-base.httpRequest');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('trigger() error message should include the received type and a usage example', () => {
+			let errorMessage = '';
+			try {
+				// @ts-expect-error intentional misuse
+				trigger('n8n-nodes-base.webhook');
+			} catch (e) {
+				errorMessage = (e as Error).message;
+			}
+			expect(errorMessage).toContain('string');
+			expect(errorMessage).toContain('type');
+			expect(errorMessage).toContain('version');
+			expect(errorMessage).toContain('config');
+		});
+
+		it('node() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node([{ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('trigger() should reject array input with a descriptive TypeError', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger([{ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } }]);
+			}).toThrow(/received an array/);
+		});
+
+		it('node() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node(null);
+			}).toThrow(/received null/);
+		});
+
+		it('trigger() should report null input as null in the error message', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				trigger(null);
+			}).toThrow(/received null/);
+		});
+
+		it('should not crash when config is undefined', () => {
+			expect(() => {
+				// @ts-expect-error intentional misuse
+				node({ type: 'n8n-nodes-base.set', version: 3, config: undefined });
+			}).not.toThrow();
+		});
+	});
 });

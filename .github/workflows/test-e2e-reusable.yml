@@ -8,7 +8,7 @@ on:
         required: false
         type: string
       test-mode:
-        description: 'Test mode: local, docker-artifact, or docker-pull'
+        description: 'Test mode: local or docker-artifact'
         required: false
         default: 'local'
         type: string
@@ -16,11 +16,6 @@ on:
         description: 'Test command to run'
         required: false
         default: 'pnpm --filter=n8n-playwright test:local'
-        type: string
-      docker-image:
-        description: 'Docker image to use (docker-pull mode only). Ignored in docker-artifact mode (image is loaded as n8nio/n8n:local).'
-        required: false
-        default: 'n8nio/n8n:nightly'
         type: string
       workers:
         description: 'Number of parallel workers'
@@ -48,7 +43,7 @@ on:
         default: 'LRxcNt'
         type: string
       pre-generated-matrix:
-        description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own (see test-e2e-ci-reusable.yml prepare-matrix).'
+        description: 'Pre-generated shard matrix JSON. Defaults to 1 shard; multi-shard callers pass their own.'
         required: false
         default: '[{"shard":1,"images":""}]'
         type: string
@@ -63,8 +58,8 @@ env:
   PLAYWRIGHT_WORKERS: ${{ inputs.workers != '' && inputs.workers || '2' }}
   # Browser cache location - must match install-browsers script
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/.playwright-browsers
-  # docker-artifact loads the image locally as n8nio/n8n:local.
-  TEST_IMAGE_N8N: ${{ inputs.test-mode == 'docker-artifact' && 'n8nio/n8n:local' || inputs.docker-image }}
+  # docker-artifact loads the image locally as n8nio/n8n:local; unused in local mode.
+  TEST_IMAGE_N8N: 'n8nio/n8n:local'
   N8N_SKIP_LICENSES: 'true'
   CURRENTS_CI_BUILD_ID: ${{ github.repository }}-${{ github.run_id }}-${{ github.run_attempt }}
   CURRENTS_PROJECT_ID: ${{ inputs.currents-project-id }}
@@ -107,10 +102,17 @@ jobs:
         run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Run Tests
-        # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
-        run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+        run: |
+          # shellcheck disable=SC2086
+          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS
         env:
-          CURRENTS_RECORD_KEY: ${{ vars.CURRENTS_RECORD_VAR }}
+          # Protect args from template injections
+          TEST_COMMAND: ${{ inputs.test-command }}
+          # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
+          WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
+          SHARD_ARGS: ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          # Args for actual test command runner
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}

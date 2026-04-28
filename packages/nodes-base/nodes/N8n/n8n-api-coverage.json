@@ -199,6 +199,18 @@
 		"DELETE /data-tables/{dataTableId}/rows/delete": {
 			"status": "gap"
 		},
+		"GET /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"POST /data-tables/{dataTableId}/columns": {
+			"status": "gap"
+		},
+		"PATCH /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
+		"DELETE /data-tables/{dataTableId}/columns/{columnId}": {
+			"status": "gap"
+		},
 		"POST /projects": {
 			"status": "gap"
 		},
@@ -230,6 +242,21 @@
 			"status": "gap"
 		},
 		"PATCH /projects/{projectId}/users/{userId}": {
+			"status": "gap"
+		},
+		"DELETE /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"POST /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders": {
+			"status": "gap"
+		},
+		"GET /projects/{projectId}/folders/{folderId}": {
+			"status": "gap"
+		},
+		"PATCH /projects/{projectId}/folders/{folderId}": {
 			"status": "gap"
 		}
 	}

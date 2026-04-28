@@ -15,14 +15,8 @@ export class InstanceAiPage extends BasePage {
 		await this.page.goto('/instance-ai');
 	}
 
-	// ── Container & Header ────────────────────────────────────────────
-
 	getContainer(): Locator {
 		return this.page.getByTestId('instance-ai-container');
-	}
-
-	getSettingsButton(): Locator {
-		return this.page.getByTestId('instance-ai-settings-button');
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
@@ -60,17 +54,7 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-empty-state');
 	}
 
-	// ── Timeline & Tool Calls ─────────────────────────────────────────
-
-	getToolCalls(): Locator {
-		return this.page.getByTestId('instance-ai-tool-call');
-	}
-
 	// ── Confirmations ─────────────────────────────────────────────────
-
-	getConfirmationPanel(): Locator {
-		return this.page.getByTestId('instance-ai-confirmation-panel');
-	}
 
 	getConfirmApproveButton(): Locator {
 		return this.page.getByTestId('instance-ai-panel-confirm-approve');
@@ -90,16 +74,8 @@ export class InstanceAiPage extends BasePage {
 
 	// ── Plan Review ───────────────────────────────────────────────────
 
-	getPlanReviewPanel(): Locator {
-		return this.page.getByTestId('instance-ai-plan-review');
-	}
-
 	getPlanApproveButton(): Locator {
 		return this.page.getByTestId('instance-ai-plan-approve');
-	}
-
-	getPlanRequestChangesButton(): Locator {
-		return this.page.getByTestId('instance-ai-plan-request-changes');
 	}
 
 	/**
@@ -111,34 +87,6 @@ export class InstanceAiPage extends BasePage {
 			.or(this.getDomainAccessApprove())
 			.or(this.getPlanApproveButton())
 			.or(this.getCredentialContinue());
-	}
-
-	// ── Questions ─────────────────────────────────────────────────────
-
-	getQuestionsPanel(): Locator {
-		return this.page.getByTestId('instance-ai-questions');
-	}
-
-	getQuestionOptions(): Locator {
-		return this.getQuestionsPanel().getByRole('button');
-	}
-
-	getQuestionsNextButton(): Locator {
-		return this.page.getByTestId('instance-ai-questions-next');
-	}
-
-	getQuestionsSkipButton(): Locator {
-		return this.page.getByTestId('instance-ai-questions-skip');
-	}
-
-	// ── Feedback ──────────────────────────────────────────────────────
-
-	getMessageRating(): Locator {
-		return this.page.getByTestId('instance-ai-message-rating');
-	}
-
-	getFeedbackSuccess(): Locator {
-		return this.page.getByTestId('instance-ai-feedback-success');
 	}
 
 	// ── Preview ───────────────────────────────────────────────────────
@@ -197,24 +145,6 @@ export class InstanceAiPage extends BasePage {
 
 	getArtifactCards(): Locator {
 		return this.page.locator('.card').filter({ has: this.page.getByTestId('card-content') });
-	}
-
-	getArtifactsPanelToggle(): Locator {
-		return this.page.getByRole('button', { name: /artifacts/i });
-	}
-
-	getArtifactsPanelRows(): Locator {
-		return this.page.locator('[class*="artifactRow"]');
-	}
-
-	// ── Timeline Details ──────────────────────────────────────────────
-
-	getToolCallTrigger(toolCall: Locator): Locator {
-		return toolCall.getByRole('button').first();
-	}
-
-	getToolCallExpandedContent(toolCall: Locator): Locator {
-		return toolCall.locator('[data-state="open"]');
 	}
 
 	// ── Convenience Actions ───────────────────────────────────────────
