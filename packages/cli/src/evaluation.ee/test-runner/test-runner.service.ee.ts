@@ -516,7 +516,12 @@ export class TestRunnerService {
 	 *
 	 * `concurrency = 1` reproduces the legacy sequential behaviour exactly.
 	 */
-	async runTest(user: User, workflowId: string, concurrency: number = 1): Promise<void> {
+	async runTest(
+		user: User,
+		workflowId: string,
+		concurrency: number = 1,
+		flagEnabledForUser: boolean = false,
+	): Promise<void> {
 		const requestedConcurrency = Math.max(1, Math.min(10, Math.floor(concurrency)));
 		const evaluationLimit = this.executionsConfig.concurrency.evaluationLimit;
 		const concurrencyLimitedByConfig =
@@ -553,6 +558,7 @@ export class TestRunnerService {
 			concurrency: effectiveConcurrency,
 			parallel_enabled: effectiveConcurrency > 1,
 			concurrency_limited_by_config: concurrencyLimitedByConfig,
+			flag_enabled_for_user: flagEnabledForUser,
 		};
 
 		// 0.1 Initialize AbortController

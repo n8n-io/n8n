@@ -2218,10 +2218,10 @@ describe('TestRunnerService', () => {
 			expect(concurrencyControlService.release).toHaveBeenCalledTimes(3);
 		});
 
-		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config', async () => {
+		test('telemetry payload includes concurrency, parallel_enabled, concurrency_limited_by_config, flag_enabled_for_user', async () => {
 			setupHappyPathMocks(2);
 
-			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4);
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 4, true);
 
 			const trackCalls = telemetry.track.mock.calls.filter(
 				([eventName]) => eventName === 'Test run finished',
@@ -2233,8 +2233,20 @@ describe('TestRunnerService', () => {
 					concurrency: 4,
 					parallel_enabled: true,
 					concurrency_limited_by_config: false,
+					flag_enabled_for_user: true,
 				}),
 			);
+		});
+
+		test('flag_enabled_for_user defaults to false when not passed', async () => {
+			setupHappyPathMocks(2);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 1);
+
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload.flag_enabled_for_user).toBe(false);
 		});
 
 		test('telemetry parallel_enabled is false for sequential runs', async () => {
