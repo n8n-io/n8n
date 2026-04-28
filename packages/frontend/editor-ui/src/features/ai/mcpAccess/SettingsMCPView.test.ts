@@ -95,6 +95,8 @@ describe('SettingsMCPView', () => {
 				mcpAccessEnabled: false,
 			},
 		};
+
+		mcpStore.getAllOAuthClients.mockResolvedValue([]);
 	});
 
 	afterEach(() => {

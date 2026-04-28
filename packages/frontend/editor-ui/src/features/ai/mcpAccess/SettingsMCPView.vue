@@ -46,22 +46,37 @@ const uiStore = useUIStore();
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
 
-const tabs = ref<Array<TabOptions<MCPTabs>>>([
-	{
-		label: i18n.baseText('settings.mcp.tabs.workflows'),
-		value: 'workflows',
-	},
-	{
-		label: i18n.baseText('settings.mcp.tabs.oauth'),
-		value: 'oauth',
-	},
-]);
-
 const workflowsLoading = ref(false);
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
 const oAuthClientsLoading = ref(false);
 const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
+
+const oAuthTabLabel = computed(() => {
+	const baseLabel = i18n.baseText('settings.mcp.tabs.oauth');
+	const limit = mcpStore.oauthClientsLimit;
+	if (limit === null) {
+		return baseLabel;
+	}
+	return i18n.baseText('settings.mcp.tabs.oauth.withCount', {
+		interpolate: {
+			label: baseLabel,
+			count: connectedOAuthClients.value.length,
+			limit,
+		},
+	});
+});
+
+const tabs = computed<Array<TabOptions<MCPTabs>>>(() => [
+	{
+		label: i18n.baseText('settings.mcp.tabs.workflows'),
+		value: 'workflows',
+	},
+	{
+		label: oAuthTabLabel.value,
+		value: 'oauth',
+	},
+]);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
@@ -164,7 +179,7 @@ const fetchoAuthCLients = async () => {
 	try {
 		oAuthClientsLoading.value = true;
 		const clients = await mcpStore.getAllOAuthClients();
-		connectedOAuthClients.value = clients;
+		connectedOAuthClients.value = clients ?? [];
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
 	} finally {
@@ -207,7 +222,7 @@ onMounted(async () => {
 	if (!mcpStore.mcpAccessEnabled) {
 		return;
 	}
-	await fetchAvailableWorkflows();
+	await Promise.all([fetchAvailableWorkflows(), fetchoAuthCLients()]);
 });
 </script>
 <template>

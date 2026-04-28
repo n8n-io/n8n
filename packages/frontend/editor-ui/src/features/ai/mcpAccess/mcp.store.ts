@@ -33,6 +33,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const oauthClientsLimit = ref<number | null>(null);
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
@@ -145,6 +146,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
 		const response = await fetchOAuthClients(rootStore.restApiContext);
 		oauthClients.value = response.data;
+		oauthClientsLimit.value = response.limit;
 		return response.data;
 	}
 
@@ -182,6 +184,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		generateNewApiKey,
 		resetCurrentUserMCPKey,
 		oauthClients,
+		oauthClientsLimit,
 		getAllOAuthClients,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,

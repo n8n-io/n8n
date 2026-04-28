@@ -19,4 +19,8 @@ export class UserConsentRepository extends Repository<UserConsent> {
 			order: { grantedAt: 'DESC' },
 		});
 	}
+
+	async countByUserId(userId: string): Promise<number> {
+		return await this.count({ where: { userId } });
+	}
 }

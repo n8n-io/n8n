@@ -26,6 +26,46 @@ afterEach(async () => {
 	await testDb.truncate(['OAuthClient', 'UserConsent']);
 });
 
+describe('GET /rest/mcp/oauth-clients', () => {
+	test('should return only the requesting user clients along with the per-user limit', async () => {
+		const ownerClient = await oauthClientRepository.save({
+			id: 'owner-list-client',
+			name: 'Owner Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+		const memberClient = await oauthClientRepository.save({
+			id: 'member-list-client',
+			name: 'Member Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: ownerClient.id,
+			grantedAt: Date.now(),
+		});
+		await userConsentRepository.save({
+			userId: member.id,
+			clientId: memberClient.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			count: 1,
+			limit: expect.any(Number),
+		});
+		expect(response.body.data.data).toHaveLength(1);
+		expect(response.body.data.data[0].id).toBe(ownerClient.id);
+	});
+});
+
 describe('DELETE /rest/mcp/oauth-clients/:clientId', () => {
 	test('should allow a user to delete their own OAuth client', async () => {
 		const client = await oauthClientRepository.save({

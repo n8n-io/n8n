@@ -31,6 +31,7 @@ export class ListOAuthClientsResponseDto extends Z.class({
 		}),
 	),
 	count: z.number(),
+	limit: z.number(),
 }) {}
 
 /**

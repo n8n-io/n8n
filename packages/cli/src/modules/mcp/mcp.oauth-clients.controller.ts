@@ -4,6 +4,7 @@ import {
 	OAuthClientResponseDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Delete, Get, GlobalScope, Param, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
@@ -17,6 +18,7 @@ export class McpOAuthClientsController {
 	constructor(
 		private readonly mcpOAuthService: McpOAuthService,
 		private readonly logger: Logger,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -47,6 +49,7 @@ export class McpOAuthClientsController {
 		return {
 			data: clientDtos,
 			count: clients.length,
+			limit: this.globalConfig.endpoints.mcpMaxClientsPerUser,
 		};
 	}
 

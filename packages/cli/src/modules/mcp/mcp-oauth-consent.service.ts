@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -6,6 +7,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthHelpers } from './mcp-oauth.helpers';
+import { McpClientLimitReachedError } from './mcp.errors';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 
 /**
@@ -20,6 +22,7 @@ export class McpOAuthConsentService {
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -81,6 +84,19 @@ export class McpOAuthConsentService {
 			});
 
 			return { redirectUrl };
+		}
+
+		const existingConsent = await this.userConsentRepository.findOneBy({
+			userId,
+			clientId: sessionPayload.clientId,
+		});
+
+		if (!existingConsent) {
+			const consentCount = await this.userConsentRepository.countByUserId(userId);
+			const limit = this.globalConfig.endpoints.mcpMaxClientsPerUser;
+			if (consentCount >= limit) {
+				throw new McpClientLimitReachedError(limit);
+			}
 		}
 
 		await this.userConsentRepository.upsert(

@@ -49,3 +49,17 @@ export class WorkflowAccessError extends UserError {
 		this.reason = reason;
 	}
 }
+
+/**
+ * Error thrown when a user attempts to connect a new MCP client but has
+ * already reached the per-user limit.
+ */
+export class McpClientLimitReachedError extends UserError {
+	readonly limit: number;
+
+	constructor(limit: number) {
+		super(`Maximum number of connected MCP clients (${limit}) reached for this user`);
+		this.name = 'McpClientLimitReachedError';
+		this.limit = limit;
+	}
+}

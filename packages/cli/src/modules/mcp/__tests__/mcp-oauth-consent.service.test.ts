@@ -1,5 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { mock } from 'jest-mock-extended';
 
@@ -8,12 +9,15 @@ import { McpOAuthConsentService } from '../mcp-oauth-consent.service';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
+import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
+import { McpClientLimitReachedError } from '../mcp.errors';
 
 let logger: jest.Mocked<Logger>;
 let oauthSessionService: jest.Mocked<OAuthSessionService>;
 let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
 let userConsentRepository: jest.Mocked<UserConsentRepository>;
 let authorizationCodeService: jest.Mocked<McpOAuthAuthorizationCodeService>;
+let globalConfig: GlobalConfig;
 let service: McpOAuthConsentService;
 
 describe('McpOAuthConsentService', () => {
@@ -27,6 +31,9 @@ describe('McpOAuthConsentService', () => {
 			UserConsentRepository,
 		) as jest.Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(McpOAuthAuthorizationCodeService);
+		globalConfig = mock<GlobalConfig>({
+			endpoints: { mcpMaxClientsPerUser: 200 } as GlobalConfig['endpoints'],
+		});
 
 		service = new McpOAuthConsentService(
 			logger,
@@ -34,11 +41,14 @@ describe('McpOAuthConsentService', () => {
 			oauthClientRepository,
 			userConsentRepository,
 			authorizationCodeService,
+			globalConfig,
 		);
 	});
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		userConsentRepository.findOneBy.mockResolvedValue(null);
+		userConsentRepository.countByUserId.mockResolvedValue(0);
 	});
 
 	describe('getConsentDetails', () => {
@@ -257,6 +267,53 @@ describe('McpOAuthConsentService', () => {
 			await expect(service.handleConsentDecision(sessionToken, userId, true)).rejects.toThrow(
 				'Invalid or expired session',
 			);
+		});
+
+		it('should reject approval when user has reached the per-user client limit', async () => {
+			const sessionToken = 'valid-session-token';
+			const userId = 'user-123';
+			const sessionPayload = {
+				clientId: 'new-client',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-abc',
+				state: 'state-xyz',
+			};
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			userConsentRepository.findOneBy.mockResolvedValue(null);
+			userConsentRepository.countByUserId.mockResolvedValue(200);
+
+			await expect(service.handleConsentDecision(sessionToken, userId, true)).rejects.toThrow(
+				McpClientLimitReachedError,
+			);
+			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+		});
+
+		it('should allow re-consent for an existing client even at the limit', async () => {
+			const sessionToken = 'valid-session-token';
+			const userId = 'user-123';
+			const sessionPayload = {
+				clientId: 'existing-client',
+				redirectUri: 'https://example.com/callback',
+				codeChallenge: 'challenge-abc',
+				state: 'state-xyz',
+			};
+			const authCode = 'generated-auth-code';
+
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			userConsentRepository.findOneBy.mockResolvedValue(
+				mock<UserConsent>({ userId, clientId: 'existing-client' }),
+			);
+			userConsentRepository.countByUserId.mockResolvedValue(200);
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
+
+			const result = await service.handleConsentDecision(sessionToken, userId, true);
+
+			expect(result.redirectUrl).toContain('code=generated-auth-code');
+			expect(userConsentRepository.upsert).toHaveBeenCalledTimes(1);
+			expect(userConsentRepository.countByUserId).not.toHaveBeenCalled();
 		});
 
 		it('should handle denial without state parameter', async () => {
