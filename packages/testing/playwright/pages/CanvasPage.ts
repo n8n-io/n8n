@@ -298,6 +298,14 @@ export class CanvasPage extends BasePage {
 		await responsePromise;
 	}
 
+	getCreateFrontendButton(): Locator {
+		return this.page.getByTestId('canvas-create-frontend-button');
+	}
+
+	async clickCreateFrontendButton(): Promise<void> {
+		await this.getCreateFrontendButton().click();
+	}
+
 	async openShareModal(): Promise<void> {
 		await this.clickByTestId('workflow-menu');
 		await this.clickByTestId('workflow-menu-item-share');

@@ -20,6 +20,7 @@ import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
+import { FrontendBuilderDrawerPage } from './FrontendBuilderDrawerPage';
 import { InstanceAiPage } from './InstanceAiPage';
 import { InteractionsPage } from './InteractionsPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
@@ -81,6 +82,7 @@ export class n8nPage {
 	readonly chatHubWorkflowAgents: ChatHubWorkflowAgentsPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
+	readonly frontendBuilderDrawer: FrontendBuilderDrawerPage;
 	readonly instanceAi: InstanceAiPage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
@@ -161,6 +163,7 @@ export class n8nPage {
 		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
+		this.frontendBuilderDrawer = new FrontendBuilderDrawerPage(page);
 		this.instanceAi = new InstanceAiPage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
