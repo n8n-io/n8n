@@ -70,6 +70,7 @@ import {
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
+import type { ITelemetryTrackProperties } from 'n8n-workflow';
 import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
@@ -1401,6 +1402,9 @@ export class InstanceAiService {
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
 			logger: this.logger,
+			trackTelemetry: (eventName: string, properties: ITelemetryTrackProperties) => {
+				this.telemetry.track(eventName, properties);
+			},
 			domainTools,
 			abortSignal,
 			taskStorage,
@@ -2508,6 +2512,7 @@ export class InstanceAiService {
 									status: task.result ? 'completed' : task.error ? 'failed' : 'finished',
 									result: task.result ?? undefined,
 									error: task.error ?? undefined,
+									outcome: task.outcome ?? undefined,
 								},
 								null,
 								2,
