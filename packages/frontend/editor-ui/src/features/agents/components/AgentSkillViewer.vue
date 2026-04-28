@@ -3,7 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { StreamLanguage, type StringStream } from '@codemirror/language';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
-import { N8nFormInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { Rule, RuleGroup } from '@/Interface';
@@ -29,8 +29,10 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
+const fileInput = ref<HTMLInputElement>();
 const name = ref(props.skill.name);
 const description = ref(props.skill.description);
+const fileError = ref('');
 const formValidation = reactive({
 	name: false,
 	description: false,
@@ -59,6 +61,7 @@ const instructionsValid = computed(() => Boolean((props.skill.instructions ?? ''
 const formIsValid = computed(
 	() => formValidation.name && formValidation.description && instructionsValid.value,
 );
+const acceptedInstructionExtensions = new Set(['txt', 'md']);
 
 interface MarkdownState {
 	inFencedCode: boolean;
@@ -128,6 +131,53 @@ function onDescriptionInput(value: string | number | boolean | null | undefined)
 
 function onFieldValidate(field: 'name' | 'description', valid: boolean) {
 	formValidation[field] = valid;
+}
+
+function replaceInstructions(instructions: string) {
+	fileError.value = '';
+	if (view) {
+		view.dispatch({
+			changes: {
+				from: 0,
+				to: view.state.doc.length,
+				insert: instructions,
+			},
+		});
+		return;
+	}
+	emit('update:skill', { instructions });
+}
+
+function openFilePicker() {
+	fileInput.value?.click();
+}
+
+function readInstructionsFile(file: File) {
+	const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+	if (!acceptedInstructionExtensions.has(extension)) {
+		fileError.value = i18n.baseText('agents.builder.skills.instructions.file.invalidType');
+		return;
+	}
+
+	const reader = new FileReader();
+	reader.onload = () => {
+		replaceInstructions(String(reader.result ?? ''));
+		reader.onload = null;
+		reader.onerror = null;
+	};
+	reader.onerror = () => {
+		fileError.value = i18n.baseText('agents.builder.skills.instructions.file.readError');
+		reader.onload = null;
+		reader.onerror = null;
+	};
+	reader.readAsText(file);
+}
+
+function onInstructionsFileChange(event: Event) {
+	const input = event.target instanceof HTMLInputElement ? event.target : null;
+	const file = input?.files?.[0];
+	if (file) readInstructionsFile(file);
+	if (input) input.value = '';
 }
 
 onMounted(() => createEditor(props.skill.instructions ?? ''));
@@ -223,12 +273,34 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 		</div>
 
 		<div :class="[$style.field, $style.instructionsField]">
-			<label :class="$style.label">
-				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.skills.instructions.label')
-				}}</N8nText>
-			</label>
+			<div :class="$style.instructionsHeader">
+				<label :class="$style.label">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.skills.instructions.label')
+					}}</N8nText>
+				</label>
+				<N8nButton
+					variant="subtle"
+					size="mini"
+					:disabled="props.disabled"
+					data-testid="agent-skill-upload-instructions"
+					@click="openFilePicker"
+				>
+					<template #prefix><N8nIcon icon="upload" :size="12" /></template>
+					{{ i18n.baseText('agents.builder.skills.instructions.file.upload') }}
+				</N8nButton>
+				<input
+					ref="fileInput"
+					type="file"
+					accept=".txt,.md,text/plain,text/markdown"
+					:disabled="props.disabled"
+					:class="$style.fileInput"
+					data-testid="agent-skill-instructions-file-input"
+					@change="onInstructionsFileChange"
+				/>
+			</div>
 			<div ref="container" :class="$style.editor"></div>
+			<N8nText v-if="fileError" size="small" color="danger">{{ fileError }}</N8nText>
 			<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
 				props.errors.instructions
 			}}</N8nText>
@@ -270,6 +342,17 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 .label {
 	display: block;
+}
+
+.instructionsHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
+}
+
+.fileInput {
+	display: none;
 }
 
 .editor {
