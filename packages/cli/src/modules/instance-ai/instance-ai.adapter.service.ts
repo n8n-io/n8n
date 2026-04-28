@@ -972,7 +972,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: credentialsService.decrypt(credential, true),
+					data: await credentialsService.decrypt(credential, true),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
@@ -1136,7 +1136,7 @@ export class InstanceAiAdapterService {
 					// Use redacted decryption first — accountIdentifier is not a
 					// password field so it survives redaction. This avoids exposing
 					// the full secret payload (tokens, keys) in memory.
-					const redacted = credentialsService.decrypt(credential, false);
+					const redacted = await credentialsService.decrypt(credential, false);
 
 					if (typeof redacted.accountIdentifier === 'string' && redacted.accountIdentifier) {
 						return { accountIdentifier: mask(redacted.accountIdentifier) };
@@ -1151,7 +1151,7 @@ export class InstanceAiAdapterService {
 
 					// Fallback for legacy credentials: oauthTokenData is blanked by
 					// redaction, so we need unredacted access here only.
-					const raw = credentialsService.decrypt(credential, true);
+					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
 						const { OauthService } = await import('@/oauth/oauth.service');

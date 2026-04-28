@@ -5,7 +5,7 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import type { INodeUi, IStartRunData, IWorkflowDb, WorkflowValidationIssue } from '@/Interface';
+import type { INodeUi, IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -161,9 +161,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	/** @deprecated Use `workflowDocumentStore.allConnections` instead. */
 	const allConnections = computed(() => workflow.value.connections);
 
-	/** @deprecated Use `workflowDocumentStore.allNodes` instead. */
-	const allNodes = computed<INodeUi[]>(() => workflow.value.nodes);
-
 	const isWorkflowRunning = computed(() => {
 		if (activeExecutionId.value === null) {
 			return true;
@@ -186,76 +183,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return acc;
 		}, {});
 	});
-
-	const nodesWithIssues = computed(() =>
-		workflow.value.nodes.filter((node) => {
-			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
-			const isConnected =
-				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
-			return !node.disabled && isConnected && nodeHasIssues;
-		}),
-	);
-
-	const nodesWithIssuesCount = computed(() => nodesWithIssues.value.length);
-
-	const nodesIssuesExist = computed(() => nodesWithIssuesCount.value > 0);
-
-	/**
-	 * Get detailed validation issues for all connected, enabled nodes
-	 */
-	const workflowValidationIssues = computed(() => {
-		const issues: WorkflowValidationIssue[] = [];
-
-		const isStringOrStringArray = (value: unknown): value is string | string[] =>
-			typeof value === 'string' || Array.isArray(value);
-
-		workflow.value.nodes.forEach((node) => {
-			if (!node.issues || node.disabled) return;
-
-			const isConnected =
-				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
-
-			if (!isConnected) return;
-
-			Object.entries(node.issues).forEach(([issueType, issueValue]) => {
-				if (!issueValue) return;
-
-				if (typeof issueValue === 'object' && !Array.isArray(issueValue)) {
-					// Handle nested issues (parameters, credentials)
-					Object.entries(issueValue).forEach(([_key, value]) => {
-						if (value) {
-							issues.push({
-								node: node.name,
-								type: issueType,
-								value,
-							});
-						}
-					});
-				} else {
-					// Handle direct issues
-					issues.push({
-						node: node.name,
-						type: issueType,
-						value: isStringOrStringArray(issueValue) ? issueValue : String(issueValue),
-					});
-				}
-			});
-		});
-
-		return issues;
-	});
-
-	/**
-	 * Format issue message for display
-	 */
-	function formatIssueMessage(issue: string | string[]): string {
-		if (Array.isArray(issue)) {
-			return issue.join(', ').replace(/\.$/, '');
-		}
-		return String(issue);
-	}
 
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
@@ -1247,16 +1174,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
 		allConnections,
-		allNodes,
 		connectionsBySourceNode,
 		connectionsByDestinationNode,
 		isWorkflowRunning,
 		nodesByName,
-		nodesWithIssuesCount,
-		nodesWithIssues,
-		nodesIssuesExist,
-		workflowValidationIssues,
-		formatIssueMessage,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,

@@ -338,6 +338,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
+			grantTokenTtl: 15,
 			insecureMode: false,
 		},
 		sentry: {

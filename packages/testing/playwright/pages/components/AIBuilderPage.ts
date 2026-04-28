@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-import { BuilderSetupWizard } from './components/BuilderSetupWizard';
+import { BuilderSetupWizard } from './BuilderSetupWizard';
 
 /**
  * Page object for AI Workflow Builder interactions

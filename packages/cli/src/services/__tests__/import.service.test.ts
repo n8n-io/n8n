@@ -54,7 +54,9 @@ describe('ImportService', () => {
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 
 		// Set up cipher mock
-		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		mockCipher.decryptV2 = jest.fn(async (data: string) =>
+			data.replace('encrypted:', ''),
+		) as Cipher['decryptV2'];
 
 		// Set up dataSource mocks
 		// @ts-expect-error Accessing private property for testing
@@ -348,8 +350,8 @@ describe('ImportService', () => {
 				{ id: 1, name: 'Test' },
 				{ id: 2, name: 'Test2' },
 			]);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}', undefined);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}', undefined);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('{"id":1,"name":"Test"}', undefined);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('{"id":2,"name":"Test2"}', undefined);
 		});
 
 		it('should handle empty lines in JSONL file', async () => {
@@ -511,7 +513,7 @@ describe('ImportService', () => {
 				'custom-encryption-key',
 			);
 
-			expect(mockCipher.decrypt).toHaveBeenCalledWith(
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(
 				'{"id":1,"name":"Test User"}',
 				'custom-encryption-key',
 			);

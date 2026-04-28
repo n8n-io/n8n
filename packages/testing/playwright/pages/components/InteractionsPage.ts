@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { expect } from '@playwright/test';
 
-import { BasePage } from './BasePage';
+import { BasePage } from '../BasePage';
 
 export class InteractionsPage extends BasePage {
 	constructor(page: Page) {
