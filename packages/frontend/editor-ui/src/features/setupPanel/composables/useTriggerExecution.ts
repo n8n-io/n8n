@@ -1,4 +1,8 @@
 import { computed, toValue, type MaybeRef } from 'vue';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useI18n } from '@n8n/i18n';
 
 import type { INodeUi } from '@/Interface';
@@ -25,6 +29,8 @@ export function useTriggerExecution(
 	const i18n = useI18n();
 	const nodeTypesStore = useNodeTypesStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -55,7 +61,7 @@ export function useTriggerExecution(
 		return (
 			nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE &&
 			logsStore.isOpen &&
-			workflowsStore.chatPartialExecutionDestinationNode === nodeValue.value?.name
+			workflowExecutionSessionStore().chatPartialExecutionDestinationNode === nodeValue.value?.name
 		);
 	});
 

@@ -7,6 +7,11 @@ import {
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
@@ -16,20 +21,23 @@ export async function executionStarted(
 	options: { workflowState: WorkflowState },
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+	);
 	const isIframe = window !== window.parent;
 
 	// In non-iframe context, undefined means "not tracking executions" → skip.
 	// In iframe context, executionFinished resets activeExecutionId to undefined,
 	// but we still want to accept new executions (re-execution scenario).
-	if (typeof workflowsStore.activeExecutionId === 'undefined' && !isIframe) {
+	if (typeof workflowExecutionSessionStore.activeExecutionId === 'undefined' && !isIframe) {
 		return;
 	}
 
 	// Determine if we need to (re)initialize execution tracking state
 	const needsInit =
-		workflowsStore.activeExecutionId === null ||
-		typeof workflowsStore.activeExecutionId === 'undefined' ||
-		(isIframe && workflowsStore.activeExecutionId !== data.executionId);
+		workflowExecutionSessionStore.activeExecutionId === null ||
+		typeof workflowExecutionSessionStore.activeExecutionId === 'undefined' ||
+		(isIframe && workflowExecutionSessionStore.activeExecutionId !== data.executionId);
 
 	if (needsInit) {
 		options.workflowState.setActiveExecutionId(data.executionId);
@@ -37,7 +45,8 @@ export async function executionStarted(
 
 	// Initialize or reinitialize workflowExecutionData to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
-	if (!workflowsStore.workflowExecutionData?.data || needsInit) {
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
+	if (!executionDataStore.execution?.data || needsInit) {
 		const wf = workflowsStore.workflow;
 		const workflowDocumentStore = workflowsStore.workflowId
 			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
@@ -65,7 +74,13 @@ export async function executionStarted(
 		});
 	}
 
-	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {
-		workflowsStore.workflowExecutionData.data.resultData.runData = parse(data.flattedRunData);
+	if (executionDataStore.execution?.data && data.flattedRunData) {
+		executionDataStore.setExecutionRunData({
+			...executionDataStore.execution.data,
+			resultData: {
+				...executionDataStore.execution.data.resultData,
+				runData: parse(data.flattedRunData),
+			},
+		});
 	}
 }

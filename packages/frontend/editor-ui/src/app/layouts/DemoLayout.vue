@@ -29,12 +29,14 @@ provide(WorkflowStateKey, workflowState);
 const {
 	initializeData,
 	currentWorkflowDocumentStore,
+	currentWorkflowExecutionSessionStore,
 	cleanup: cleanupInitialization,
 } = useWorkflowInitialization(workflowState);
 
 const { setup: setupPostMessages, cleanup: cleanupPostMessages } = usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
+	currentWorkflowExecutionSessionStore,
 });
 
 // Initialize push event handlers so relayed execution events (via postMessage

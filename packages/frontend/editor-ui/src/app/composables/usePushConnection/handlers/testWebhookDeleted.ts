@@ -1,5 +1,9 @@
 import type { TestWebhookDeleted } from '@n8n/api-types/push/webhook';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /**
@@ -12,7 +16,9 @@ export async function testWebhookDeleted(
 	const workflowsStore = useWorkflowsStore();
 
 	if (data.workflowId === workflowsStore.workflowId) {
-		workflowsStore.executionWaitingForWebhook = false;
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowsStore.workflowId),
+		).setExecutionWaitingForWebhook(false);
 		options.workflowState.setActiveExecutionId(undefined);
 	}
 }

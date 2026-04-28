@@ -12,6 +12,7 @@ import {
 	useTemplateRef,
 } from 'vue';
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 import FocusSidebar from '@/app/components/FocusSidebar.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -180,6 +181,8 @@ const clipboard = useClipboard({ onPaste: onClipboardPaste });
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowsListStore = useWorkflowsListStore();
 const sourceControlStore = useSourceControlStore();
 const nodeCreatorStore = useNodeCreatorStore();
@@ -384,7 +387,7 @@ async function openWorkflow(data: IWorkflowDb) {
 	// const selectedExecution = executionsStore.activeExecution;
 	// if (selectedExecution?.workflowId !== data.id) {
 	// 	executionsStore.activeExecution = null;
-	// 	workflowsStore.currentWorkflowExecutions = [];
+	// 	workflowExecutionSessionStore().currentWorkflowExecutions = [];
 	// } else {
 	// 	executionsStore.activeExecution = selectedExecution;
 	// }
@@ -411,7 +414,7 @@ const isRunButtonSplit = computed(() => {
 	const selectableTriggerNodes = triggerNodes.value.filter(
 		(node) => !node.disabled && !isChatNode(node),
 	);
-	return selectableTriggerNodes.length > 1 && workflowsStore.selectedTriggerNodeName !== undefined;
+	return selectableTriggerNodes.length > 1 && workflowExecutionSessionStore().selectedTriggerNodeName !== undefined;
 });
 
 function onTidyUp(
@@ -1025,8 +1028,11 @@ const projectPermissions = computed(() => {
 
 const isStoppingExecution = ref(false);
 
-const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isWorkflowRunning = computed(() => workflowExecutionSessionStore().isWorkflowRunning);
+const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
+function setSelectedTriggerNodeName(name: string) {
+	workflowExecutionSessionStore().setSelectedTriggerNodeName(name);
+}
 
 const isExecutionDisabled = computed(() => {
 	if (
@@ -1856,11 +1862,11 @@ onBeforeUnmount(() => {
 					:executing="isWorkflowRunning"
 					:trigger-nodes="triggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowExecutionSessionStore().selectedTriggerNodeName"
 					@mouseenter="onRunWorkflowButtonMouseEnter"
 					@mouseleave="onRunWorkflowButtonMouseLeave"
 					@execute="runEntireWorkflow('main')"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					@select-trigger-node="setSelectedTriggerNodeName"
 				/>
 				<template v-if="containsChatTriggerNodes">
 					<CanvasChatButton

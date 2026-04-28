@@ -1,4 +1,8 @@
 import { computed, h } from 'vue';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -9,12 +13,16 @@ import RevealDataWarning from '../components/RevealDataWarning.vue';
 
 export function useExecutionRedaction() {
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const message = useMessage();
 	const telemetry = useTelemetry();
 	const { showError } = useToast();
 	const i18n = useI18n();
 
-	const redactionInfo = computed(() => workflowsStore.getWorkflowExecution?.data?.redactionInfo);
+	const redactionInfo = computed(
+		() => workflowExecutionSessionStore().currentExecution?.data?.redactionInfo,
+	);
 
 	const isRedacted = computed(() => redactionInfo.value?.isRedacted === true);
 
@@ -27,7 +35,7 @@ export function useExecutionRedaction() {
 	async function revealData() {
 		telemetry.track('User clicked reveal data', {
 			workflow_id: workflowsStore.workflowId,
-			execution_id: workflowsStore.getWorkflowExecution?.id,
+			execution_id: workflowExecutionSessionStore().currentExecution?.id,
 		});
 
 		const warningContent = h(RevealDataWarning, {
@@ -49,7 +57,7 @@ export function useExecutionRedaction() {
 
 		if (confirmed !== MODAL_CONFIRM) return;
 
-		const executionId = workflowsStore.getWorkflowExecution?.id;
+		const executionId = workflowExecutionSessionStore().currentExecution?.id;
 		if (!executionId) return;
 
 		try {
@@ -57,7 +65,7 @@ export function useExecutionRedaction() {
 				redactExecutionData: false,
 			});
 			if (revealed?.data) {
-				workflowsStore.setWorkflowExecutionRunData(revealed.data);
+				workflowExecutionSessionStore().setCurrentExecutionRunData(revealed.data);
 			}
 		} catch (error) {
 			showError(error, i18n.baseText('ndv.redacted.revealError'));

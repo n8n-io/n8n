@@ -1,12 +1,18 @@
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INode, IRunExecutionData } from 'n8n-workflow';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { computed, type ComputedRef } from 'vue';
 
 export function useExecutionData({ node }: { node: ComputedRef<INode | undefined> }) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 
 	const workflowExecution = computed(() => {
-		return workflowsStore.getWorkflowExecution;
+		return workflowExecutionSessionStore().currentExecution;
 	});
 
 	const workflowRunData = computed(() => {

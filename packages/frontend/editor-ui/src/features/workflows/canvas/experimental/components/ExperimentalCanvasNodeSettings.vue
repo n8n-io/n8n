@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 
@@ -23,6 +24,8 @@ const emit = defineEmits<{
 }>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const uiStore = useUIStore();
 const { renameNode } = useCanvasOperations();
@@ -34,7 +37,7 @@ const foreignCredentials = computed(() =>
 	nodeHelpers.getForeignCredentialsIfSharingEnabled(activeNode.value?.credentials),
 );
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 
 function handleValueChanged(parameterData: IUpdateInformation) {

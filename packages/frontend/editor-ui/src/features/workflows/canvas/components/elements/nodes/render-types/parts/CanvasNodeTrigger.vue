@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useI18n } from '@n8n/i18n';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
@@ -45,6 +46,8 @@ const containerClass = computed(() => ({
 const router = useRouter();
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
@@ -67,7 +70,7 @@ const isChatHubOpen = computed(() => chatHubPanelStore.isOpen);
 const isChatOpen = computed(() =>
 	isChatHubAvailable.value ? isChatHubOpen.value : logsStore.isOpen,
 );
-const isExecuting = computed(() => workflowsStore.isWorkflowRunning);
+const isExecuting = computed(() => workflowExecutionSessionStore().isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
 
 function openChat() {
@@ -87,7 +90,7 @@ function closeChat() {
 }
 
 async function handleClickExecute() {
-	workflowsStore.setSelectedTriggerNodeName(name);
+	workflowExecutionSessionStore().setSelectedTriggerNodeName(name);
 	await runEntireWorkflow('node', name);
 }
 </script>

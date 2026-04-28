@@ -1,4 +1,8 @@
 import { HTTP_REQUEST_NODE_TYPE, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 import type {
 	IConnections,
@@ -92,6 +96,8 @@ export async function resolveParameter<T = IDataObject>(
 	}
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
@@ -102,7 +108,7 @@ export async function resolveParameter<T = IDataObject>(
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
-		workflowsStore.workflowExecutionData,
+		workflowExecutionSessionStore().currentExecution,
 		workflowDocumentStore.getPinDataSnapshot(),
 		opts,
 	);
@@ -386,6 +392,8 @@ export function executeData(
 	parentRunIndex?: number,
 ): IExecuteData {
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
@@ -397,7 +405,7 @@ export function executeData(
 		inputName,
 		runIndex,
 		workflowDocumentStore.getPinDataSnapshot(),
-		workflowsStore.getWorkflowRunData,
+		workflowExecutionSessionStore().currentExecutionRunData,
 		parentRunIndex,
 	);
 }

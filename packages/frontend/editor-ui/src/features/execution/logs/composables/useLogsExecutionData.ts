@@ -1,4 +1,8 @@
 import { watch, computed, ref, type ComputedRef } from 'vue';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -33,6 +37,8 @@ interface UseLogsExecutionDataOptions {
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -43,12 +49,14 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		| { response: IExecutionResponse; startData: { [nodeName: string]: ITaskStartedData[] } }
 		| undefined
 	>();
-	const updateInterval = computed(() =>
-		workflowsStore.workflowExecutionData?.status === 'running' &&
-		Object.keys(workflowsStore.workflowExecutionData.data?.resultData.runData ?? {}).length > 1
+	const updateInterval = computed(() => {
+		const currentExecution = workflowExecutionSessionStore().currentExecution;
+
+		return currentExecution?.status === 'running' &&
+			Object.keys(currentExecution.data?.resultData.runData ?? {}).length > 1
 			? LOGS_EXECUTION_DATA_THROTTLE_DURATION
-			: 0,
-	);
+			: 0;
+	});
 	const throttledState = useThrottleWithReactiveDelay(state, updateInterval);
 	const throttledWorkflowData = computed(() => throttledState.value?.response.workflowData);
 
@@ -111,7 +119,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		workflowState.setWorkflowExecutionData(null);
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.chatPartialExecutionDestinationNode = null;
+		workflowExecutionSessionStore().setChatPartialExecutionDestinationNode(null);
 		void workflowsStore.fetchLastSuccessfulExecution();
 	}
 
@@ -143,20 +151,22 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 	watch(
 		// Fields that should trigger update
 		[
-			() => workflowsStore.workflowExecutionData?.id,
-			() => workflowsStore.workflowExecutionData?.workflowData.id,
-			() => workflowsStore.workflowExecutionData?.status,
-			() => workflowsStore.workflowExecutionResultDataLastUpdate,
-			() => workflowsStore.workflowExecutionStartedData,
+			() => workflowExecutionSessionStore().currentExecution?.id,
+			() => workflowExecutionSessionStore().currentExecution?.workflowData.id,
+			() => workflowExecutionSessionStore().currentExecution?.status,
+			() => workflowExecutionSessionStore().currentExecutionResultDataLastUpdate,
+			() => workflowExecutionSessionStore().currentExecutionStartedData,
 		],
 		useThrottleFn(
 			([executionId], [previousExecutionId]) => {
+				const currentExecution = workflowExecutionSessionStore().currentExecution;
+
 				state.value =
-					workflowsStore.workflowExecutionData === null
+					currentExecution === null
 						? undefined
 						: {
-								response: copyExecutionData(workflowsStore.workflowExecutionData),
-								startData: workflowsStore.workflowExecutionStartedData?.[1] ?? {},
+								response: copyExecutionData(currentExecution),
+								startData: workflowExecutionSessionStore().currentExecutionStartedData?.[1] ?? {},
 							};
 
 				if (executionId !== previousExecutionId) {

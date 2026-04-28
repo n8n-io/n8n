@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { watch } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { N8nActionPill } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
@@ -21,6 +22,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const telemetry = useTelemetry();
 
 const { balance, fetchWallet } = useAiGateway();
@@ -36,7 +39,7 @@ watch(
 
 // Refresh after each execution completes so the badge reflects consumed balance.
 watch(
-	() => workflowsStore.workflowExecutionData,
+	() => workflowExecutionSessionStore().currentExecution,
 	(executionData) => {
 		if (
 			(executionData?.finished || executionData?.stoppedAt !== undefined) &&

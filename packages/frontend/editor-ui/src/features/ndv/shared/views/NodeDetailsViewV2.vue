@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import type { MainPanelType, NodePanelType } from '../ndv.types';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -32,7 +34,6 @@ import { ndvEventBus } from '../ndv.eventBus';
 import { useNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
@@ -74,6 +75,8 @@ const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
@@ -218,7 +221,7 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecution = computed(() => workflowExecutionSessionStore().currentExecution);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {
@@ -301,7 +304,7 @@ const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
 const isWorkflowRunning = computed(() => uiStore.isActionActive.workflowRunning);
 
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
 
 const blockUi = computed(() => isWorkflowRunning.value || isExecutionWaitingForWebhook.value);
 

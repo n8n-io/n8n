@@ -11,6 +11,10 @@ import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import {
 	useCredentialsStore,
 	listenForCredentialChanges,
 } from '@/features/credentials/credentials.store';
@@ -58,6 +62,8 @@ export const useWorkflowSetupState = (
 	},
 ) => {
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const nodeHelpers = useNodeHelpers();
@@ -252,7 +258,7 @@ export const useWorkflowSetupState = (
 	};
 
 	const hasTriggerExecutedSuccessfully = (nodeName: string): boolean => {
-		const runData = workflowsStore.getWorkflowResultDataByNodeName(nodeName);
+		const runData = workflowExecutionSessionStore().getExecutionRunDataByNodeName(nodeName);
 		return runData !== null && runData.length > 0;
 	};
 

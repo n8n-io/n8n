@@ -1,4 +1,8 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	isExpression as isExpressionUtil,
@@ -40,6 +44,8 @@ export function useResolvedExpression({
 }) {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -58,7 +64,9 @@ export function useResolvedExpression({
 	const activeNode = computed(() => ndvStore.activeNode);
 	const hasRunData = computed(() =>
 		Boolean(
-			workflowsStore.workflowExecutionData?.data?.resultData?.runData[activeNode.value?.name ?? ''],
+			workflowExecutionSessionStore().currentExecution?.data?.resultData?.runData[
+				activeNode.value?.name ?? ''
+			],
 		),
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
@@ -124,8 +132,8 @@ export function useResolvedExpression({
 			expressionLocalResolveCtx,
 			toRef(expression),
 			toRef(additionalData),
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
+			() => workflowExecutionSessionStore().currentExecution,
+			() => workflowExecutionSessionStore().currentExecutionRunData,
 			() => workflowDocumentStore.value.name,
 			targetItem,
 		],

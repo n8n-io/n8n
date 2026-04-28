@@ -1,6 +1,10 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
@@ -50,7 +54,9 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	workflowsStore.updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
+	useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+	).updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
 	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);

@@ -16,6 +16,10 @@ import type {
 import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
@@ -39,6 +43,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 
@@ -97,7 +103,7 @@ const isAnyCredentialTesting = computed(() =>
 // Notify parent on execution finish
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
-		const runData = workflowsStore.getWorkflowResultDataByNodeName(props.nodeGroup.parentNode.name);
+		const runData = workflowExecutionSessionStore().getExecutionRunDataByNodeName(props.nodeGroup.parentNode.name);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
 			emit('stepExecuted');

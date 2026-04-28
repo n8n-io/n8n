@@ -9,6 +9,10 @@ import type {
 } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
@@ -180,15 +184,18 @@ export function useDataSchema() {
 		runIndex = 0,
 		outputIndex = 0,
 	): INodeExecutionData[] {
-		const { getWorkflowExecution } = useWorkflowsStore();
+		const workflowsStore = useWorkflowsStore();
+		const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowsStore.workflowId),
+		);
 		if (node === null) {
 			return [];
 		}
 
-		if (getWorkflowExecution === null) {
+		if (workflowExecutionSessionStore.currentExecution === null) {
 			return [];
 		}
-		const executionData = getWorkflowExecution.data;
+		const executionData = workflowExecutionSessionStore.currentExecution.data;
 		if (!executionData?.resultData) {
 			// unknown status
 			return [];

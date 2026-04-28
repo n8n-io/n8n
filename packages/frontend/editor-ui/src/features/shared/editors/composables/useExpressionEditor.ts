@@ -14,6 +14,11 @@ import {
 } from 'vue';
 
 import { ensureSyntaxTree } from '@codemirror/language';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { IDataObject } from 'n8n-workflow';
 import { Expression, ExpressionExtensions } from 'n8n-workflow';
 
@@ -45,7 +50,6 @@ import { EditorView, type ViewUpdate } from '@codemirror/view';
 import debounce from 'lodash/debounce';
 import isEqual from 'lodash/isEqual';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAutocompleteTelemetry } from '@/app/composables/useAutocompleteTelemetry';
 import { ignoreUpdateAnnotation } from '@/app/utils/forceParse';
 import { TARGET_NODE_PARAMETER_FACET } from '../plugins/codemirror/completions/constants';
@@ -77,6 +81,8 @@ export const useExpressionEditor = ({
 }) => {
 	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowHelpers = useWorkflowHelpers();
 	const { isMacOs } = useDeviceSupport();
 	const i18n = useI18n();
@@ -385,7 +391,7 @@ export const useExpressionEditor = ({
 			}
 		} catch (error) {
 			const hasRunData =
-				!!workflowsStore.workflowExecutionData?.data?.resultData?.runData[
+				!!workflowExecutionSessionStore().currentExecution?.data?.resultData?.runData[
 					ndvStore.activeNode?.name ?? ''
 				];
 			result.resolved = `[${getExpressionErrorMessage(error, hasRunData)}]`;
@@ -490,7 +496,10 @@ export const useExpressionEditor = ({
 	});
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => workflowExecutionSessionStore().currentExecution,
+			() => workflowExecutionSessionStore().currentExecutionRunData,
+		],
 		debouncedUpdateSegments,
 	);
 

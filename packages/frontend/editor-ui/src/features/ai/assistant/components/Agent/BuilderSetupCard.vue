@@ -20,6 +20,10 @@ import type { INodeUi } from '@/Interface';
 import type { INodeProperties } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
@@ -44,6 +48,8 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const credentialsStore = useCredentialsStore();
 const nodeHelpers = useNodeHelpers();
 
@@ -126,7 +132,7 @@ const showTriggerCallout = computed(() => props.state.isTrigger && isInListening
 // isExecuting stays false throughout the listening lifecycle.
 watch(isActive, (active, wasActive) => {
 	if (wasActive && !active) {
-		const runData = workflowsStore.getWorkflowResultDataByNodeName(props.state.node.name);
+		const runData = workflowExecutionSessionStore().getExecutionRunDataByNodeName(props.state.node.name);
 		const lastRun = runData?.[runData.length - 1];
 		if (!lastRun?.error) {
 			emit('stepExecuted');

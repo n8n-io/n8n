@@ -1,4 +1,8 @@
 import type { VIEWS } from '@/app/constants';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { CODE_WORKFLOW_BUILDER_EXPERIMENT } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -253,6 +257,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	const settings = useSettingsStore();
 	const rootStore = useRootStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -787,7 +793,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			let resultDataSizeKb = 0;
 
 			try {
-				resultData = JSON.stringify(workflowsStore.workflowExecutionData ?? {});
+				resultData = JSON.stringify(workflowExecutionSessionStore().currentExecution ?? {});
 				resultDataSizeKb = stringSizeInBytes(resultData) / 1024;
 			} catch (error) {
 				// Handle circular structure errors gracefully
@@ -996,7 +1002,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			options.skipUserMessage,
 		);
 
-		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const executionResult = workflowExecutionSessionStore().currentExecution?.data?.resultData;
 		const modeForPayload =
 			resumeData !== undefined
 				? mode

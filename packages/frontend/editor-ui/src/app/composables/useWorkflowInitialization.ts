@@ -7,6 +7,11 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	disposeWorkflowExecutionSessionStore,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -29,7 +34,10 @@ import {
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
+import {
+	WorkflowDocumentStoreKey,
+	WorkflowExecutionSessionStoreKey,
+} from '@/app/constants/injectionKeys';
 import { injectStrict } from '@/app/utils/injectStrict';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
 
@@ -56,6 +64,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const telemetry = useTelemetry();
 	const workflowId = useWorkflowId();
 	const currentWorkflowDocumentStore = injectStrict(WorkflowDocumentStoreKey);
+	const currentWorkflowExecutionSessionStore = injectStrict(WorkflowExecutionSessionStoreKey);
 
 	const DEMO_ROUTES: RouteRecordNameGeneric[] = [VIEWS.DEMO, VIEWS.DEMO_DIFF];
 
@@ -76,6 +85,10 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const { fetchParentFolder } = useParentFolder();
 
 	function disposeCurrentWorkflowDocumentStore() {
+		if (currentWorkflowExecutionSessionStore.value) {
+			disposeWorkflowExecutionSessionStore(currentWorkflowExecutionSessionStore.value.workflowId);
+			currentWorkflowExecutionSessionStore.value = null;
+		}
 		if (currentWorkflowDocumentStore.value) {
 			const storeId = createWorkflowDocumentId(
 				currentWorkflowDocumentStore.value.workflowId,
@@ -158,6 +171,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+			currentWorkflowExecutionSessionStore.value = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(currentWorkflowId),
+			);
 		}
 
 		return true;
@@ -172,11 +188,12 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
-		if (!workflowsStore.isInDebugMode) {
+		const workflowExecutionSessionStore = currentWorkflowExecutionSessionStore.value;
+		if (!workflowExecutionSessionStore?.isInDebugMode) {
 			const executionId = route.params.executionId;
 			if (typeof executionId === 'string') {
 				await applyExecutionData(executionId);
-				workflowsStore.isInDebugMode = true;
+				currentWorkflowExecutionSessionStore.value?.setDebugMode(true);
 			}
 		}
 	}
@@ -231,6 +248,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const { workflowDocumentStore } = await initializeWorkspace(data);
 		currentWorkflowDocumentStore.value = workflowDocumentStore;
+		currentWorkflowExecutionSessionStore.value = useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(data.id),
+		);
 
 		void externalHooks.run('workflow.open', {
 			workflowId: data.id,
@@ -250,6 +270,9 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
 		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
+		currentWorkflowExecutionSessionStore.value = useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowId.value),
+		);
 
 		// Sync document store name → list cache (mirrors initializeWorkflowDocument)
 		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
@@ -417,6 +440,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 		initializedWorkflowId,
 		workflowId,
 		currentWorkflowDocumentStore,
+		currentWorkflowExecutionSessionStore,
 		isNewWorkflowRoute,
 		isDemoRoute,
 		isTemplateRoute,

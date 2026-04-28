@@ -1,5 +1,9 @@
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { computed } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useRoute } from 'vue-router';
@@ -9,8 +13,10 @@ export function useClearExecutionButtonVisible() {
 	const route = useRoute();
 	const sourceControlStore = useSourceControlStore();
 	const workflowsStore = useWorkflowsStore();
-	const workflowExecutionData = computed(() => workflowsStore.workflowExecutionData);
-	const isWorkflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
+	const workflowExecutionData = computed(() => workflowExecutionSessionStore().currentExecution);
+	const isWorkflowRunning = computed(() => workflowExecutionSessionStore().isWorkflowRunning);
 	const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
 	const { editableWorkflow } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();

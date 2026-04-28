@@ -1,6 +1,10 @@
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 /**
  * Handles the 'nodeExecuteAfterData' event, which is sent after a node has executed and contains the resulting data.
@@ -9,7 +13,9 @@ export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterD
 	const workflowsStore = useWorkflowsStore();
 	const schemaPreviewStore = useSchemaPreviewStore();
 
-	workflowsStore.updateNodeExecutionRunData(pushData);
+	useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+	).updateNodeExecutionRunData(pushData);
 
 	void schemaPreviewStore.trackSchemaPreviewExecution(pushData);
 }

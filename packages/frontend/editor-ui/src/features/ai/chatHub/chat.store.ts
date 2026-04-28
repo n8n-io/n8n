@@ -1,4 +1,8 @@
 import { defineStore } from 'pinia';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { CHAT_SESSIONS_PAGE_SIZE } from './constants';
 import { EnterpriseEditionFeature } from '@/app/constants/enterprise';
 import { computed, ref } from 'vue';
@@ -110,6 +114,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	const toast = useToast();
 	const telemetry = useTelemetry();
 	const i18n = useI18n();
+	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 
 	const agents = ref<ChatModelsResponse | null>(null);
 	let pendingAgentsFetch: Promise<ChatModelsResponse> | null = null;
@@ -542,7 +549,6 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	function isCanvasManualExecution(model: ChatHubConversationModel): boolean {
 		if (model.provider !== 'n8n') return false;
 
-		const workflowsStore = useWorkflowsStore();
 		if (workflowsStore.workflowId !== model.workflowId) return false;
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
@@ -562,9 +568,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 	 * node results (makes nodes turn green during manual execution).
 	 */
 	function initManualExecutionScaffold() {
-		const workflowsStore = useWorkflowsStore();
+		// Signal canvas that an execution is pending (null = waiting for execution ID)
+		workflowExecutionSessionStore().setActiveExecutionId(null);
 
-		workflowsStore.workflowExecutionData = {
+		workflowExecutionSessionStore().setCurrentExecution({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',
@@ -577,10 +584,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 				resultData: { runData: {} },
 			}),
 			workflowData: workflowsStore.workflow,
-		};
-
-		// Signal canvas that an execution is pending (null = waiting for execution ID)
-		workflowsStore.private.setActiveExecutionId(null);
+		});
 	}
 
 	async function sendMessage(

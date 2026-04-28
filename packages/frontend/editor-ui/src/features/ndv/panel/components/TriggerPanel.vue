@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { computedAsync } from '@vueuse/core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -15,7 +17,6 @@ import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -55,6 +56,8 @@ const workflowId = useInjectWorkflowId();
 const nodesTypeStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = useNDVStore();
 
@@ -171,11 +174,11 @@ const isListeningForEvents = computed(() => {
 		return false;
 	}
 
-	if (!workflowsStore.executionWaitingForWebhook) {
+	if (!workflowExecutionSessionStore().executionWaitingForWebhook) {
 		return false;
 	}
 
-	const executedNode = workflowsStore.executedNode;
+	const executedNode = workflowExecutionSessionStore().executedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
 		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
@@ -184,10 +187,10 @@ const isListeningForEvents = computed(() => {
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;
 });
 
-const workflowRunning = computed(() => workflowsStore.isWorkflowRunning);
+const workflowRunning = computed(() => workflowExecutionSessionStore().isWorkflowRunning);
 
 const isActivelyPolling = computed(() => {
-	const triggeredNode = workflowsStore.executedNode;
+	const triggeredNode = workflowExecutionSessionStore().executedNode;
 
 	return workflowRunning.value && isPollingNode.value && props.nodeName === triggeredNode;
 });

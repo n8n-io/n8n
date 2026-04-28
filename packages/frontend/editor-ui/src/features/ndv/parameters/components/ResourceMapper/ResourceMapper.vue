@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ResourceMapperFieldsRequestDto } from '@n8n/api-types';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import type { IUpdateInformation } from '@/Interface';
 import { resolveRequiredParameters } from '@/app/composables/useWorkflowHelpers';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -49,6 +50,8 @@ type Props = {
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -138,7 +141,7 @@ async function checkStaleFields(): Promise<void> {
 
 // Reload fields to map when node is executed
 watch(
-	() => workflowsStore.getWorkflowExecution,
+	() => workflowExecutionSessionStore().currentExecution,
 	async (data) => {
 		if (
 			data &&

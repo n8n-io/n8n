@@ -2,6 +2,10 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { nodeExecuteAfterData } from './nodeExecuteAfterData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
 
@@ -15,6 +19,9 @@ describe('nodeExecuteAfterData', () => {
 
 	it('should update node execution data with incoming payload', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
+		const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowsStore.workflowId),
+		);
 
 		const event: NodeExecuteAfterData = {
 			type: 'nodeExecuteAfterData',
@@ -36,7 +43,9 @@ describe('nodeExecuteAfterData', () => {
 
 		await nodeExecuteAfterData(event);
 
-		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
+		expect(workflowExecutionSessionStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
+		expect(workflowExecutionSessionStore.updateNodeExecutionRunData).toHaveBeenCalledWith(
+			event.data,
+		);
 	});
 });

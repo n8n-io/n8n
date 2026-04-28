@@ -29,8 +29,13 @@ import { useStyles } from '@/app/composables/useStyles';
 import { useExposeCssVar } from '@/app/composables/useExposeCssVar';
 import { useFloatingUiOffsets } from '@/app/composables/useFloatingUiOffsets';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
-import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	WorkflowDocumentStoreKey,
+	WorkflowExecutionSessionStoreKey,
+	WorkflowIdKey,
+} from '@/app/constants/injectionKeys';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 const route = useRoute();
 const rootStore = useRootStore();
@@ -60,9 +65,13 @@ const workflowId = useWorkflowId();
 const currentWorkflowDocumentStore = shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>(
 	null,
 );
+const currentWorkflowExecutionSessionStore = shallowRef<
+	ReturnType<typeof useWorkflowExecutionSessionStore> | null
+>(null);
 
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+provide(WorkflowExecutionSessionStoreKey, currentWorkflowExecutionSessionStore);
 
 useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
 

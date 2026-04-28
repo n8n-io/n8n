@@ -25,17 +25,26 @@ import {
 	useWorkflowDocumentStore as createWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import type { useWorkflowExecutionSessionStore as useWorkflowExecutionSessionStoreType } from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowImport } from '@/app/composables/useWorkflowImport';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 interface PostMessageHandlerDeps {
 	workflowState: WorkflowState;
 	currentWorkflowDocumentStore: ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>;
+	currentWorkflowExecutionSessionStore?: ShallowRef<ReturnType<
+		typeof useWorkflowExecutionSessionStoreType
+	> | null>;
 }
 
 export function usePostMessageHandler({
 	workflowState,
 	currentWorkflowDocumentStore,
+	currentWorkflowExecutionSessionStore,
 }: PostMessageHandlerDeps) {
 	const i18n = useI18n();
 	const toast = useToast();
@@ -52,7 +61,10 @@ export function usePostMessageHandler({
 	const route = useRoute();
 	const workflowsStore = useWorkflowsStore();
 	const { resetWorkspace, openExecution, fitView } = useCanvasOperations();
-	const { importWorkflowExact } = useWorkflowImport(currentWorkflowDocumentStore);
+	const { importWorkflowExact } = useWorkflowImport(
+		currentWorkflowDocumentStore,
+		currentWorkflowExecutionSessionStore,
+	);
 
 	function emitPostMessageReady() {
 		if (window.parent) {
@@ -141,6 +153,11 @@ export function usePostMessageHandler({
 			currentWorkflowDocumentStore.value = createWorkflowDocumentStore(
 				createWorkflowDocumentId(wfId),
 			);
+			if (currentWorkflowExecutionSessionStore) {
+				currentWorkflowExecutionSessionStore.value = useWorkflowExecutionSessionStore(
+					createWorkflowExecutionSessionId(wfId),
+				);
+			}
 		}
 
 		void nextTick(() => {

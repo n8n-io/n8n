@@ -1,4 +1,9 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowState, type WorkflowState } from './useWorkflowState';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
@@ -16,32 +21,39 @@ describe('useWorkflowState', () => {
 
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
-			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-				status: 'running',
-				startedAt: new Date('2023-01-01T09:00:00Z'),
-				stoppedAt: undefined,
-				data: createRunExecutionData({
-					resultData: {
-						runData: {
-							node1: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'error' }),
-								createTestTaskData({ executionStatus: 'running' }),
-							],
-							node2: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'waiting' }),
-							],
+			const workflowExecutionSessionStore = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			);
+			workflowExecutionSessionStore.setActiveExecutionId('exec-1');
+			useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
+				createTestWorkflowExecutionResponse({
+					status: 'running',
+					startedAt: new Date('2023-01-01T09:00:00Z'),
+					stoppedAt: undefined,
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'error' }),
+									createTestTaskData({ executionStatus: 'running' }),
+								],
+								node2: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'waiting' }),
+								],
+							},
 						},
-					},
+					}),
 				}),
-			});
+			);
 		});
 
 		it('should remove non successful node runs', () => {
 			workflowState.markExecutionAsStopped();
 
-			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+			const runData = useExecutionDataStore(createExecutionDataId('exec-1')).execution?.data
+				?.resultData?.runData;
 			expect(runData?.node1).toHaveLength(1);
 			expect(runData?.node1[0].executionStatus).toBe('success');
 			expect(runData?.node2).toHaveLength(1);
@@ -56,23 +68,21 @@ describe('useWorkflowState', () => {
 				mode: 'manual',
 			});
 
-			expect(workflowsStore.workflowExecutionData?.status).toBe('canceled');
-			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
-				new Date('2023-01-01T10:00:00Z'),
-			);
-			expect(workflowsStore.workflowExecutionData?.stoppedAt).toEqual(
-				new Date('2023-01-01T10:05:00Z'),
-			);
+			const execution = useExecutionDataStore(createExecutionDataId('exec-1')).execution;
+
+			expect(execution?.status).toBe('canceled');
+			expect(execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
+			expect(execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
 		});
 
 		it('should not update execution data when stopData is not provided', () => {
 			workflowState.markExecutionAsStopped();
 
-			expect(workflowsStore.workflowExecutionData?.status).toBe('running');
-			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
-				new Date('2023-01-01T09:00:00Z'),
-			);
-			expect(workflowsStore.workflowExecutionData?.stoppedAt).toBeUndefined();
+			const execution = useExecutionDataStore(createExecutionDataId('exec-1')).execution;
+
+			expect(execution?.status).toBe('running');
+			expect(execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
+			expect(execution?.stoppedAt).toBeUndefined();
 		});
 	});
 });

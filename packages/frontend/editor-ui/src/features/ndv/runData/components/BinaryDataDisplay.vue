@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import type { IBinaryData, IRunData } from 'n8n-workflow';
 import BinaryDataDisplayEmbed from './BinaryDataDisplayEmbed.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 
@@ -18,11 +19,13 @@ const emit = defineEmits<{
 
 const nodeHelpers = useNodeHelpers();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 
 const i18n = useI18n();
 
 const workflowRunData = computed<IRunData | null>(() => {
-	const workflowExecution = workflowsStore.getWorkflowExecution;
+	const workflowExecution = workflowExecutionSessionStore().currentExecution;
 	if (workflowExecution === null) {
 		return null;
 	}

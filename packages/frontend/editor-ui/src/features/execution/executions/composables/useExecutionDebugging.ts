@@ -1,4 +1,8 @@
 import { h, computed } from 'vue';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
@@ -33,6 +37,8 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const message = useMessage();
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -174,7 +180,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			event.stopPropagation();
 			return;
 		}
-		workflowsStore.isInDebugMode = false;
+		workflowExecutionSessionStore().setDebugMode(false);
 	};
 
 	return {

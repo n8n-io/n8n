@@ -8,6 +8,7 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { TelemetryContext } from '@/app/types/telemetry';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
 export const CanvasKey = 'canvas' as unknown as InjectionKey<CanvasInjectionData>;
@@ -23,5 +24,8 @@ export const WorkflowStateKey: InjectionKey<WorkflowState> = Symbol('WorkflowSta
 export const WorkflowDocumentStoreKey: InjectionKey<
 	ShallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
 > = Symbol('WorkflowDocumentStore');
+export const WorkflowExecutionSessionStoreKey: InjectionKey<
+	ShallowRef<ReturnType<typeof useWorkflowExecutionSessionStore> | null>
+> = Symbol('WorkflowExecutionSessionStore');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');

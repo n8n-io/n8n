@@ -56,6 +56,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type {
 	CanvasConnection,
 	CanvasConnectionCreateData,
@@ -193,6 +197,9 @@ export function useCanvasOperations() {
 	const setupPanelStore = useSetupPanelStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
+	const workflowExecutionSessionStore = computed(() =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
 	);
 
 	const i18n = useI18n();
@@ -377,8 +384,15 @@ export function useCanvasOperations() {
 			historyStore.pushCommandToUndo(new RenameNodeCommand(currentName, newName, Date.now()));
 		}
 
-		// Update also last selected node and execution data
-		workflowsStore.renameNodeSelectedAndExecution({ old: currentName, new: newName });
+		// Update also last selected node and execution/session data
+		uiStore.markStateDirty();
+		if (uiStore.lastSelectedNode === currentName) {
+			uiStore.lastSelectedNode = newName;
+		}
+		workflowDocumentStore.value.renameNodeMetadata(currentName, newName);
+		workflowDocumentStore.value.renamePinDataNode(currentName, newName);
+		workflowExecutionSessionStore.value.renameExecutionDataNode(currentName, newName);
+		workflowExecutionSessionStore.value.renameExecutionSessionNode(currentName, newName);
 
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
@@ -489,7 +503,7 @@ export function useCanvasOperations() {
 		connectAdjacentNodes(id, { trackHistory });
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
-		workflowsStore.removeNodeExecutionDataById(id);
+		workflowExecutionSessionStore.value.clearNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
 
 		if (trackHistory) {
@@ -2307,7 +2321,7 @@ export function useCanvasOperations() {
 		nodeCreatorStore.setNodeCreatorState({ createNodeActive: false });
 
 		// Make sure that if there is a waiting test-webhook, it gets removed
-		if (workflowsStore.executionWaitingForWebhook) {
+		if (workflowExecutionSessionStore.value.executionWaitingForWebhook) {
 			try {
 				void workflowsStore.removeTestWebhook(workflowsStore.workflowId);
 			} catch (error) {}
@@ -2316,9 +2330,9 @@ export function useCanvasOperations() {
 		// Reset editable workflow state
 		workflowsStore.resetWorkflow();
 		workflowState.resetState();
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowExecutionSessionStore.value.setCurrentWorkflowExecutions([]);
 		workflowState.setActiveExecutionId(undefined);
-		workflowsStore.lastSuccessfulExecution = null;
+		workflowExecutionSessionStore.value.setLastSuccessfulExecution(null);
 
 		// Reset actions
 		uiStore.resetLastInteractedWith();
@@ -3152,7 +3166,7 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowExecutionSessionStore.value.setCurrentWorkflowExecutions([]);
 		executionsStore.activeExecution = null;
 
 		let data: IWorkflowTemplate | undefined;
@@ -3215,7 +3229,7 @@ export function useCanvasOperations() {
 		canvasStore.startLoading();
 		canvasStore.setLoadingText(i18n.baseText('nodeView.loadingTemplate'));
 
-		workflowsStore.currentWorkflowExecutions = [];
+		workflowExecutionSessionStore.value.setCurrentWorkflowExecutions([]);
 		executionsStore.activeExecution = null;
 
 		uiStore.isBlankRedirect = true;

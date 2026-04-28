@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
@@ -7,7 +9,6 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -54,12 +55,14 @@ const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
-const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
+const executionId = computed(() => workflowExecutionSessionStore().currentExecution?.id);
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;

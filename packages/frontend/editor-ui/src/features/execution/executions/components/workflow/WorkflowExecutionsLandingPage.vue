@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useRoute, useRouter } from 'vue-router';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { VIEWS } from '@/app/constants';
@@ -16,8 +17,10 @@ const locale = useI18n();
 const workflowId = useInjectWorkflowId();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 
-const executionCount = computed(() => workflowsStore.currentWorkflowExecutions.length);
+const executionCount = computed(() => workflowExecutionSessionStore().currentWorkflowExecutions.length);
 const containsTrigger = computed(() => workflowsStore.workflowTriggerNodes.length > 0);
 
 function onSetupFirstStep(): void {

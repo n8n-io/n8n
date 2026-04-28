@@ -7,6 +7,10 @@ import {
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { computed, reactive, ref, watch, type Ref } from 'vue';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowsStore } from '../stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -31,6 +35,8 @@ interface GetToolParametersProps {
 export function useToolParameters({ node }: GetToolParametersProps) {
 	const parameters = ref<IFormInput[]>([]);
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const projectsStore = useProjectsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const agentRequestStore = useAgentRequestStore();
@@ -45,7 +51,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const nodeRunData = computed(() => {
 		if (!node.value) return undefined;
 
-		const workflowExecutionData = workflowsStore.getWorkflowExecution;
+		const workflowExecutionData = workflowExecutionSessionStore().currentExecution;
 		const lastRunData = workflowExecutionData?.data?.resultData.runData[node.value?.name];
 		if (!lastRunData) return undefined;
 		return lastRunData[0];

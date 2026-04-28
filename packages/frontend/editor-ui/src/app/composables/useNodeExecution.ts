@@ -1,4 +1,8 @@
 import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -98,6 +102,8 @@ export function useNodeExecution(
 	const externalHooks = useExternalHooks();
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const nodeTypesStore = useNodeTypesStore();
 	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
@@ -145,8 +151,9 @@ export function useNodeExecution(
 	const isWebhookNode = computed(() => nodeType.value?.name === WEBHOOK_NODE_TYPE);
 
 	const isNodeRunning = computed(() => {
-		if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
-		const triggeredNode = workflowsStore.executedNode;
+		if (!workflowExecutionSessionStore().isWorkflowRunning || codeGenerationInProgress.value)
+			return false;
+		const triggeredNode = workflowExecutionSessionStore().executedNode;
 		return (
 			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
@@ -154,8 +161,8 @@ export function useNodeExecution(
 	});
 
 	const isListening = computed(() => {
-		const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
-		const executedNode = workflowsStore.executedNode;
+		const waitingOnWebhook = workflowExecutionSessionStore().executionWaitingForWebhook;
+		const executedNode = workflowExecutionSessionStore().executedNode;
 
 		return (
 			!!nodeRef.value &&
@@ -204,7 +211,7 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.requiredFieldsMissing');
 		}
 
-		if (workflowsStore.isWorkflowRunning && !isNodeRunning.value) {
+		if (workflowExecutionSessionStore().isWorkflowRunning && !isNodeRunning.value) {
 			return i18n.baseText('ndv.execute.workflowAlreadyRunning');
 		}
 

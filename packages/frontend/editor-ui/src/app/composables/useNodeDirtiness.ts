@@ -8,6 +8,10 @@ import {
 	type Undoable,
 } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
@@ -124,6 +128,8 @@ function findLoop(
 export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
@@ -241,7 +247,7 @@ export function useNodeDirtiness() {
 
 	const dirtinessByName = computed(() => {
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
-		const runDataByNode = workflowsStore.getWorkflowRunData ?? {};
+		const runDataByNode = workflowExecutionSessionStore().currentExecutionRunData ?? {};
 
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;

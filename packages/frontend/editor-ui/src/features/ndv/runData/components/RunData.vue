@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useStorage } from '@/app/composables/useStorage';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { saveAs } from 'file-saver';
 import NodeSettingsHint from '@/features/ndv/settings/components/NodeSettingsHint.vue';
 import type {
@@ -58,7 +60,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
 import { searchInObject } from '@/app/utils/objectUtils';
@@ -229,6 +230,8 @@ const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
@@ -291,7 +294,7 @@ const hasAnyDataAvailable = computed(() => {
 		node.value?.disabled ||
 		hasPreviewSchema.value ||
 		hasAnyUpstreamExecuted.value ||
-		!!workflowsStore.lastSuccessfulExecution
+		!!workflowExecutionSessionStore().lastSuccessfulExecution
 	);
 });
 const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
@@ -310,7 +313,7 @@ const shouldShowSchemaView = computed(() => {
 	return (
 		hasNodeRun.value ||
 		hasPreviewSchema.value ||
-		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowsStore.lastSuccessfulExecution))
+		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowExecutionSessionStore().lastSuccessfulExecution))
 	);
 });
 
@@ -416,7 +419,7 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
+	() => props.workflowExecution ?? workflowExecutionSessionStore().currentExecution?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
@@ -959,7 +962,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: Object.keys(inputData ?? {}).length;
 
 	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
-		workflowsStore.lastSuccessfulExecution,
+		workflowExecutionSessionStore().lastSuccessfulExecution,
 		node.value,
 	);
 	previousExecutionDataUsedInEditMode.value =
@@ -2153,7 +2156,7 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
-					:preview-execution="workflowsStore.lastSuccessfulExecution"
+					:preview-execution="workflowExecutionSessionStore().lastSuccessfulExecution"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>

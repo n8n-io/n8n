@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import {
@@ -10,7 +12,6 @@ import {
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
@@ -109,6 +110,8 @@ const inputModes = [
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const workflowState = injectWorkflowState();
 const router = useRouter();
@@ -132,14 +135,14 @@ const rootNode = computed(() => {
 
 const hasRootNodeRun = computed(() => {
 	return !!(
-		rootNode.value && workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
+		rootNode.value && workflowExecutionSessionStore().currentExecution?.data?.resultData.runData[rootNode.value]
 	);
 });
 
 const inputMode = ref<MappingMode>(
 	// Show debugging mode by default only when the node has already run
 	activeNode.value &&
-		workflowsStore.getWorkflowExecution?.data?.resultData.runData[activeNode.value.name]
+		workflowExecutionSessionStore().currentExecution?.data?.resultData.runData[activeNode.value.name]
 		? 'debugging'
 		: 'mapping',
 );
@@ -192,10 +195,10 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowsStore.isWorkflowRunning) {
+	if (!workflowExecutionSessionStore().isWorkflowRunning) {
 		return false;
 	}
-	const triggeredNode = workflowsStore.executedNode;
+	const triggeredNode = workflowExecutionSessionStore().executedNode;
 	const executingNode = workflowState.executingNode.executingNode;
 
 	if (
@@ -266,7 +269,7 @@ const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
 	if (!parentNode) return '';
 
-	const runData = workflowsStore.getWorkflowExecution?.data?.resultData?.runData;
+	const runData = workflowExecutionSessionStore().currentExecution?.data?.resultData?.runData;
 	const parentRunData = runData?.[parentNode.name]?.[0];
 
 	return waitingNodeTooltip(

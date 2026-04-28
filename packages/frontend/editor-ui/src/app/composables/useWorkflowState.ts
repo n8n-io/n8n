@@ -1,13 +1,21 @@
 import * as workflowsApi from '@/app/api/workflows';
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
+import {
+	DEFAULT_NEW_WORKFLOW_NAME,
+	IN_PROGRESS_EXECUTION_ID,
+	WorkflowStateKey,
+} from '@/app/constants';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
-import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
@@ -26,24 +34,27 @@ export function useWorkflowState() {
 	const workflowStateStore = useWorkflowStateStore();
 	const rootStore = useRootStore();
 
+	function getWorkflowExecutionSessionStore() {
+		return useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(ws.workflowId));
+	}
+
+	function getWritableExecutionDataStore(executionId: string | null | undefined) {
+		return useExecutionDataStore(createExecutionDataId(executionId ?? IN_PROGRESS_EXECUTION_ID));
+	}
+
 	////
 	// Workflow editing state
 	////
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		if (workflowResultData?.data?.waitTill) {
-			delete workflowResultData.data.resultData.runData[
-				workflowResultData.data.resultData.lastNodeExecuted as string
-			];
-		}
-		ws.workflowExecutionData = workflowResultData;
-		ws.workflowExecutionPairedItemMappings = getPairedItemsMapping(workflowResultData);
-		ws.workflowExecutionResultDataLastUpdate = Date.now();
-		ws.workflowExecutionStartedData = undefined;
+		const executionDataStore = getWritableExecutionDataStore(
+			workflowResultData?.id ?? getWorkflowExecutionSessionStore().activeExecutionId,
+		);
+		executionDataStore.setExecution(workflowResultData);
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		ws.private.setActiveExecutionId(id);
+		getWorkflowExecutionSessionStore().setActiveExecutionId(id);
 	}
 
 	async function getNewWorkflowData(
@@ -81,23 +92,26 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
+		const workflowExecutionSessionStore = getWorkflowExecutionSessionStore();
+		const executionId = workflowExecutionSessionStore.activeExecutionId;
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
-		ws.executionWaitingForWebhook = false;
+		workflowExecutionSessionStore.setExecutionWaitingForWebhook(false);
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(ws.workflow.id),
 		);
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-		ws.workflowExecutionStartedData = undefined;
+		getWritableExecutionDataStore(executionId).clearExecutionStartedData();
 
 		// TODO(ckolb): confirm this works across files?
 		clearPopupWindowState();
 
-		if (!ws.workflowExecutionData) {
+		const executionDataStore = getWritableExecutionDataStore(executionId);
+		if (!executionDataStore.execution) {
 			return;
 		}
 
-		const runData = ws.workflowExecutionData.data?.resultData.runData ?? {};
+		const runData = executionDataStore.execution.data?.resultData.runData ?? {};
 
 		for (const nodeName in runData) {
 			runData[nodeName] = runData[nodeName].filter(
@@ -106,9 +120,12 @@ export function useWorkflowState() {
 		}
 
 		if (stopData) {
-			ws.workflowExecutionData.status = stopData.status;
-			ws.workflowExecutionData.startedAt = stopData.startedAt;
-			ws.workflowExecutionData.stoppedAt = stopData.stoppedAt;
+			executionDataStore.setExecution({
+				...executionDataStore.execution,
+				status: stopData.status,
+				startedAt: stopData.startedAt,
+				stoppedAt: stopData.stoppedAt,
+			});
 		}
 	}
 
@@ -117,7 +134,7 @@ export function useWorkflowState() {
 
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
-		ws.executionWaitingForWebhook = false;
+		getWorkflowExecutionSessionStore().setExecutionWaitingForWebhook(false);
 		useBuilderStore().resetManualExecutionStats();
 	}
 

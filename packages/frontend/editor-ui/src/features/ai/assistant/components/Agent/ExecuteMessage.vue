@@ -1,6 +1,7 @@
 <!-- eslint-disable import-x/extensions -->
 <script setup lang="ts">
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -34,6 +35,8 @@ interface Emits {
 const emit = defineEmits<Emits>();
 
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
@@ -41,6 +44,10 @@ const workflowDocumentStore = computed(() =>
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
 const i18n = useI18n();
+
+function setSelectedTriggerNodeName(name: string) {
+	workflowExecutionSessionStore().setSelectedTriggerNodeName(name);
+}
 const builderStore = useBuilderStore();
 const posthogStore = usePostHog();
 
@@ -304,9 +311,9 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					size="medium"
 					:trigger-nodes="availableTriggerNodes"
 					:get-node-type="nodeTypesStore.getNodeType"
-					:selected-trigger-node-name="workflowsStore.selectedTriggerNodeName"
+					:selected-trigger-node-name="workflowExecutionSessionStore().selectedTriggerNodeName"
 					@execute="onExecute"
-					@select-trigger-node="workflowsStore.setSelectedTriggerNodeName"
+					@select-trigger-node="setSelectedTriggerNodeName"
 				/>
 			</N8nTooltip>
 

@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IRunData, NodeConnectionType, IConnectedNode } from 'n8n-workflow';
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
@@ -23,7 +25,6 @@ import {
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -72,6 +73,8 @@ const { activeNode } = storeToRefs(ndvStore);
 const pinnedData = usePinnedData(activeNode);
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const deviceSupport = useDeviceSupport();
 const workflowId = useInjectWorkflowId();
@@ -112,8 +115,8 @@ const showTriggerWaitingWarning = computed(
 		triggerWaitingWarningEnabled.value &&
 		!!activeNodeType.value &&
 		!activeNodeType.value.group.includes('trigger') &&
-		workflowsStore.isWorkflowRunning &&
-		workflowsStore.executionWaitingForWebhook,
+		workflowExecutionSessionStore().isWorkflowRunning &&
+		workflowExecutionSessionStore().executionWaitingForWebhook,
 );
 
 const workflowRunData = computed(() => {
@@ -214,7 +217,7 @@ const isActiveStickyNode = computed(
 	() => !!ndvStore.activeNode && ndvStore.activeNode.type === STICKY_NODE_TYPE,
 );
 
-const workflowExecution = computed(() => workflowsStore.getWorkflowExecution);
+const workflowExecution = computed(() => workflowExecutionSessionStore().currentExecution);
 
 const maxOutputRun = computed(() => {
 	if (activeNode.value === null) {
@@ -313,10 +316,10 @@ const featureRequestUrl = computed(() => {
 
 const outputPanelEditMode = computed(() => ndvStore.outputPanelEditMode);
 
-const isExecutionWaitingForWebhook = computed(() => workflowsStore.executionWaitingForWebhook);
+const isExecutionWaitingForWebhook = computed(() => workflowExecutionSessionStore().executionWaitingForWebhook);
 
 const blockUi = computed(
-	() => workflowsStore.isWorkflowRunning || isExecutionWaitingForWebhook.value,
+	() => workflowExecutionSessionStore().isWorkflowRunning || isExecutionWaitingForWebhook.value,
 );
 
 const foreignCredentials = computed(() =>
@@ -429,7 +432,7 @@ const onUnlinkRun = (pane: string) => {
 
 const onNodeExecute = () => {
 	setTimeout(() => {
-		if (!activeNode.value || !workflowsStore.isWorkflowRunning) {
+		if (!activeNode.value || !workflowExecutionSessionStore().isWorkflowRunning) {
 			return;
 		}
 		triggerWaitingWarningEnabled.value = true;

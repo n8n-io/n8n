@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ExpressionEditorModalInput from './ExpressionEditorModal/ExpressionEditorModalInput.vue';
+import { createWorkflowExecutionSessionId, useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import { computed, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
@@ -62,6 +63,8 @@ const emit = defineEmits<{
 
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const workflowExecutionSessionStore = () =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
 );
@@ -198,7 +201,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
-						:preview-execution="workflowsStore.lastSuccessfulExecution"
+						:preview-execution="workflowExecutionSessionStore().lastSuccessfulExecution"
 						pane-type="input"
 					/>
 				</div>

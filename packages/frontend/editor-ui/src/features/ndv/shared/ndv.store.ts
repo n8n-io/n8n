@@ -1,4 +1,8 @@
 import { useLocalStorage } from '@vueuse/core';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { Draggable, IRunDataDisplayMode, TargetItem } from '@/Interface';
 import type {
 	NodePanelType,
@@ -96,6 +100,8 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	const lastSetActiveNodeSource = ref<TelemetryNdvSource>();
 
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSessionStore = () =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId));
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -104,7 +110,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 	});
 
 	const ndvInputData = computed(() => {
-		const executionData = workflowsStore.getWorkflowExecution;
+		const executionData = workflowExecutionSessionStore().currentExecution;
 		const inputNodeName: string | undefined = input.value.nodeName;
 		const inputRunIndex: number = input.value.run ?? 0;
 		const inputBranchIndex: number = input.value.branch ?? 0;

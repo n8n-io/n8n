@@ -33,6 +33,10 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from './workflowExecutionSession.store';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 import type { INode, IPinData } from 'n8n-workflow';
@@ -313,6 +317,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				settings: { ...DEFAULT_SETTINGS },
 				pinData: {},
 			});
+
+			if (workflowId) {
+				useWorkflowExecutionSessionStore(
+					createWorkflowExecutionSessionId(workflowId),
+				).resetExecutionSession();
+			}
 		}
 
 		function getSnapshot(): WorkflowObjectAccessors {
