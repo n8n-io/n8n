@@ -38,6 +38,7 @@
   ],
   "devDependencies": {
     "@langchain/core": "catalog:",
+    "@types/sanitize-html": "^2.11.0",
     "@n8n/config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
@@ -52,6 +53,7 @@
   },
   "dependencies": {
     "@n8n/errors": "workspace:*",
+    "sanitize-html": "2.12.1",
     "@n8n/expression-runtime": "workspace:*",
     "@n8n/tournament": "1.0.6",
     "ast-types": "0.16.1",

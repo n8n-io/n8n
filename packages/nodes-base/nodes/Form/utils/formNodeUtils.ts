@@ -8,7 +8,9 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 
-import { handleNewlines, renderForm, sanitizeHtml } from './utils';
+import { handleNewlines, sanitizeHtml } from 'n8n-workflow';
+
+import { renderForm } from './utils';
 
 export const renderFormNode = async (
 	context: IWebhookFunctions,

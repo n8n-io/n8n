@@ -9,7 +9,12 @@ import {
 	OperationalError,
 } from 'n8n-workflow';
 
-import { handleNewlines, sanitizeCustomCss, sanitizeHtml, validateSafeRedirectUrl } from './utils';
+import {
+	handleNewlines,
+	sanitizeCustomCss,
+	sanitizeHtml,
+	validateSafeRedirectUrl,
+} from 'n8n-workflow';
 
 const getBinaryDataFromNode = (context: IWebhookFunctions, nodeName: string): IDataObject => {
 	return context.evaluateExpression(`{{ $('${nodeName}').first().binary }}`) as IDataObject;

@@ -7,16 +7,17 @@ import type {
 	INodeProperties,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeOperationError, SEND_AND_WAIT_OPERATION, updateDisplayOptions } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	SEND_AND_WAIT_OPERATION,
+	updateDisplayOptions,
+	prepareFormData,
+	prepareFormFields,
+} from 'n8n-workflow';
 
 import { cssVariables } from '../../nodes/Form/cssVariables';
 import { formFieldsProperties } from '../../nodes/Form/Form.node';
-import {
-	parseFormFields,
-	prepareFormData,
-	prepareFormFields,
-	prepareFormReturnItem,
-} from '../../nodes/Form/utils/utils';
+import { parseFormFields, prepareFormReturnItem } from '../../nodes/Form/utils/utils';
 import { escapeHtml } from '../utilities';
 import { limitWaitTimeOption } from './descriptions';
 import {

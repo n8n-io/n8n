@@ -46,7 +46,7 @@ const dimCss = computed(() => {
 	const selectors = nonFormNodeIds.value
 		.map((id) => `#${containerId} .vue-flow__node[data-id="${id}"]`)
 		.join(', ');
-	return `${selectors} { opacity: 0.25; }`;
+	return `${selectors} { opacity: 0.5; }`;
 });
 
 function openWorkflow() {

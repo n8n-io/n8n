@@ -1,5 +1,7 @@
 export { GetNodeTypesByIdentifierRequestDto } from './node-types/get-node-types-by-identifier.dto';
 
+export { FormPreviewRequestDto } from './form-preview/form-preview.request.dto';
+
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';
 export { AiBuilderChatRequestDto, type SelectedNodeContext } from './ai/ai-build-request.dto';
