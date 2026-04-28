@@ -71,6 +71,14 @@ export interface AgentJsonToolRef {
 	allOutputs?: boolean;
 }
 
+export interface AgentJsonSkillRef {
+	id: string;
+	name: string;
+	description?: string;
+	enabled: boolean;
+	definition: string;
+}
+
 export interface AgentJsonConfig {
 	name: string;
 	description?: string;
@@ -92,6 +100,7 @@ export interface AgentJsonConfig {
 		};
 	};
 	tools?: AgentJsonToolRef[];
+	skills?: AgentJsonSkillRef[];
 	providerTools?: Record<string, Record<string, unknown>>;
 	config?: {
 		thinking?: {

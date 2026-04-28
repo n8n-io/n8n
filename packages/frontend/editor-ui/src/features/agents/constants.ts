@@ -9,6 +9,7 @@ export const PROJECT_AGENTS = 'ProjectAgents';
 export const AGENT_TOOLS_MODAL_KEY = 'agentToolsModal';
 export const AGENT_TOOL_CONFIG_MODAL_KEY = 'agentToolConfigModal';
 export const AGENT_ADD_TRIGGER_MODAL_KEY = 'agentAddTriggerModal';
+export const AGENT_SKILL_MODAL_KEY = 'agentSkillModal';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
 export const AGENT_SECTION_KEY = '__agent';

@@ -5,6 +5,7 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_SKILL_MODAL_KEY,
 	AGENT_VIEW,
 	AGENT_SESSIONS_LIST_VIEW,
 	AGENT_SESSION_DETAIL_VIEW,
@@ -65,6 +66,16 @@ export const AgentsModule: FrontendModuleDescription = {
 					connectedTriggers: [],
 					onConnectedTriggersChange: () => {},
 					onTriggerAdded: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_SKILL_MODAL_KEY,
+			component: async () => await import('./components/AgentSkillModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					onConfirm: () => {},
 				},
 			},
 		},

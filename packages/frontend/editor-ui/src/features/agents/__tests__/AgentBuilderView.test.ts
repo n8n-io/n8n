@@ -2,6 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
+import type { AgentJsonConfig } from '../types';
 
 const routerPush = vi.fn();
 vi.mock('vue-router', () => ({
@@ -84,16 +85,18 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 
 // Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
 // Tests that need an unbuilt agent flip this to empty instructions before render.
-const mockConfig = ref<{ name: string; instructions: string } | null>({
+const mockConfig = ref<AgentJsonConfig | null>({
 	name: 'Agent One',
+	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'You are a helpful assistant.',
 });
 // Stash the "desired config" separately so the fetchConfig mock can restore
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
 // changed, so the `watch(config, ...)` listener doesn't re-fire.
-let intendedConfig: { name: string; instructions: string } | null = {
+let intendedConfig: AgentJsonConfig | null = {
 	name: 'Agent One',
+	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'You are a helpful assistant.',
 };
 
@@ -247,6 +250,12 @@ const commonStubs = {
 		props: ['tools', 'config', 'disabled'],
 		emits: ['open-tool', 'add-tool', 'remove-tool', 'update:config'],
 	},
+	AgentSkillsListPanel: {
+		name: 'AgentSkillsListPanel',
+		template: '<div data-testid="stub-agent-skills-list-panel" />',
+		props: ['skills', 'disabled'],
+		emits: ['add-skill', 'remove-skill', 'toggle-skill'],
+	},
 	AgentIntegrationsPanel: {
 		name: 'AgentIntegrationsPanel',
 		template: '<div data-testid="stub-agent-integrations-panel" />',
@@ -270,6 +279,7 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		// Reset to a built agent; tests that need an unbuilt agent override locally.
 		intendedConfig = {
 			name: 'Agent One',
+			model: 'anthropic/claude-sonnet-4-5',
 			instructions: 'You are a helpful assistant.',
 		};
 		mockConfig.value = { ...intendedConfig };
@@ -332,7 +342,11 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		// panel mounts, triggers loadHistory, and any prior conversation with
 		// the builder is visible instead of being stranded behind the home
 		// screen (where the Test tab is locked and clicking Build is a no-op).
-		intendedConfig = { name: 'Agent One', instructions: '' };
+		intendedConfig = {
+			name: 'Agent One',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: '',
+		};
 		mockConfig.value = { ...intendedConfig };
 
 		const wrapper = await renderView();
@@ -354,7 +368,11 @@ describe('AgentBuilderView — chat mode toggle', () => {
 	});
 
 	it('locks the Test tab when the agent has no instructions', async () => {
-		intendedConfig = { name: 'Agent One', instructions: '' };
+		intendedConfig = {
+			name: 'Agent One',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: '',
+		};
 		mockConfig.value = { ...intendedConfig };
 		const wrapper = await renderView();
 		const vm = wrapper.vm as unknown as { chatMode: string };
@@ -395,7 +413,11 @@ describe('AgentBuilderView — chat mode toggle', () => {
 	});
 
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
-		intendedConfig = { name: 'Agent One', instructions: '' };
+		intendedConfig = {
+			name: 'Agent One',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: '',
+		};
 		mockConfig.value = { ...intendedConfig };
 
 		const wrapper = await renderView();
@@ -430,6 +452,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		routerPush.mockReset();
 		intendedConfig = {
 			name: 'Agent One',
+			model: 'anthropic/claude-sonnet-4-5',
 			instructions: 'You are a helpful assistant.',
 		};
 		mockConfig.value = { ...intendedConfig };
@@ -493,6 +516,31 @@ describe('AgentBuilderView — three-column shell', () => {
 				params: { projectId: 'p1' },
 			}),
 		);
+	});
+
+	it('renders the Skills panel when the skills section is selected', async () => {
+		intendedConfig = {
+			name: 'Agent One',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a helpful assistant.',
+			skills: [
+				{
+					id: 'support-triage',
+					name: 'Support triage',
+					enabled: true,
+					definition: 'Classify requests.',
+				},
+			],
+		};
+		mockConfig.value = { ...intendedConfig };
+		const wrapper = await renderView();
+
+		(wrapper.vm as unknown as { selectedSection: string }).selectedSection = 'skills';
+		await nextTick();
+
+		const panel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		expect(panel.exists()).toBe(true);
+		expect(panel.props('skills')).toEqual(intendedConfig.skills);
 	});
 });
 

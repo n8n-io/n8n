@@ -44,6 +44,61 @@ describe('AgentJsonConfigSchema — config.nodeTools', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — skills', () => {
+	it('accepts configured skills', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			skills: [
+				{
+					id: 'support-triage',
+					name: 'Support triage',
+					description: 'Classify support requests and propose next steps.',
+					enabled: true,
+					definition: 'Identify urgency, missing context, and the next support action.',
+				},
+				{
+					id: 'renewal-risk',
+					name: 'Renewal risk',
+					enabled: false,
+					definition: 'Look for renewal blockers and summarize risk signals.',
+				},
+			],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it.each([
+		['id', { name: 'Support triage', enabled: true, definition: 'Do the task.' }],
+		['name', { id: 'support-triage', enabled: true, definition: 'Do the task.' }],
+		['enabled', { id: 'support-triage', name: 'Support triage', definition: 'Do the task.' }],
+		['definition', { id: 'support-triage', name: 'Support triage', enabled: true }],
+	])('rejects a skill missing %s', (_field, skill) => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			skills: [skill],
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects empty skill fields', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			skills: [
+				{
+					id: '',
+					name: '',
+					enabled: true,
+					definition: '',
+				},
+			],
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+});
+
 describe('isNodeToolsEnabled', () => {
 	it('returns false when config is undefined', () => {
 		expect(isNodeToolsEnabled(undefined)).toBe(false);

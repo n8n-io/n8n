@@ -26,7 +26,7 @@ import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef, AgentJsonSkillRef } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -49,6 +49,7 @@ import {
 	EXECUTIONS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
+	AGENT_SKILL_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 } from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
@@ -60,6 +61,7 @@ import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import AgentSessionsListView from './AgentSessionsListView.vue';
 import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
+import AgentSkillsListPanel from '../components/AgentSkillsListPanel.vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
@@ -640,6 +642,30 @@ function onOpenAddToolModal() {
 	});
 }
 
+function onOpenAddSkillModal() {
+	uiStore.openModalWithData({
+		name: AGENT_SKILL_MODAL_KEY,
+		data: {
+			onConfirm: (skill: AgentJsonSkillRef) => {
+				const skills = [...(localConfig.value?.skills ?? []), skill];
+				onConfigFieldUpdate({ skills });
+			},
+		},
+	});
+}
+
+function onRemoveSkill(skillId: string) {
+	const skills = (localConfig.value?.skills ?? []).filter((skill) => skill.id !== skillId);
+	onConfigFieldUpdate({ skills });
+}
+
+function onToggleSkill(skillId: string, enabled: boolean) {
+	const skills = (localConfig.value?.skills ?? []).map((skill) =>
+		skill.id === skillId ? { ...skill, enabled } : skill,
+	);
+	onConfigFieldUpdate({ skills });
+}
+
 function onOpenAddTriggerModal() {
 	uiStore.openModalWithData({
 		name: AGENT_ADD_TRIGGER_MODAL_KEY,
@@ -1027,6 +1053,14 @@ function onSwitchAgent(nextAgentId: string) {
 						@add-tool="onOpenAddToolModal"
 						@remove-tool="onRemoveTool"
 						@update:config="onConfigFieldUpdate"
+					/>
+					<AgentSkillsListPanel
+						v-else-if="selectedSection === 'skills'"
+						:skills="localConfig?.skills ?? []"
+						:disabled="isBuildChatStreaming"
+						@add-skill="onOpenAddSkillModal"
+						@remove-skill="onRemoveSkill"
+						@toggle-skill="onToggleSkill"
 					/>
 					<div
 						v-else-if="selectedTriggerType"

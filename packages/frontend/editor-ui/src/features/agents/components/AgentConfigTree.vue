@@ -62,6 +62,7 @@ const KNOWN_SECTIONS: Record<string, { i18nKey: BaseTextKey; icon: IconProp }> =
 	instructions: { i18nKey: 'agents.builder.sections.instructions', icon: 'file-text' },
 	triggers: { i18nKey: 'agents.builder.sections.triggers', icon: 'zap' },
 	tools: { i18nKey: 'agents.builder.sections.tools', icon: 'wrench' },
+	skills: { i18nKey: 'agents.builder.sections.skills', icon: 'sparkles' },
 	memory: { i18nKey: 'agents.builder.sections.memory', icon: 'database' },
 	guardrails: { i18nKey: 'agents.builder.sections.guardrails', icon: 'shield' },
 };
@@ -112,6 +113,12 @@ const sections = computed<SectionDescriptor[]>(() => {
 		count: Array.isArray(cfg.tools) ? cfg.tools.length : 0,
 	});
 	out.push({
+		key: 'skills',
+		label: i18n.baseText(KNOWN_SECTIONS.skills.i18nKey),
+		icon: KNOWN_SECTIONS.skills.icon,
+		count: Array.isArray(cfg.skills) ? cfg.skills.length : 0,
+	});
+	out.push({
 		key: EVALS_SECTION_KEY,
 		label: i18n.baseText('agents.builder.sections.evaluations'),
 		icon: 'check',
@@ -130,7 +137,14 @@ const sections = computed<SectionDescriptor[]>(() => {
 
 	// Any remaining top-level keys render as flat rows.
 	for (const key of Object.keys(cfg)) {
-		if (AGENT_KEYS.has(key) || key === 'tools' || key === 'memory' || key === 'triggers') continue;
+		if (
+			AGENT_KEYS.has(key) ||
+			key === 'tools' ||
+			key === 'skills' ||
+			key === 'memory' ||
+			key === 'triggers'
+		)
+			continue;
 		const known = KNOWN_SECTIONS[key];
 		out.push({
 			key,

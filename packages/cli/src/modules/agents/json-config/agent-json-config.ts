@@ -77,6 +77,14 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	}),
 ]);
 
+const AgentJsonSkillSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	description: z.string().optional(),
+	enabled: z.boolean(),
+	definition: z.string().min(1),
+});
+
 export const AgentJsonConfigSchema = z.object({
 	name: z.string().min(1).max(128),
 	description: z.string().max(512).optional(),
@@ -96,6 +104,7 @@ export const AgentJsonConfigSchema = z.object({
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
+	skills: z.array(AgentJsonSkillSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	config: z
 		.object({
