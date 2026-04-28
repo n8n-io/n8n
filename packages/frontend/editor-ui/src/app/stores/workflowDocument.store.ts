@@ -28,6 +28,7 @@ import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
+import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
@@ -78,6 +79,7 @@ type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
+type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -100,6 +102,9 @@ void (0 as unknown as [
 	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
 	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
 	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
+	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
+	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
+	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -183,6 +188,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 		const workflowDocumentExpression = useWorkflowDocumentExpression(
 			workflowDocumentWorkflowObject.workflowObject,
 		);
+		const workflowDocumentNodesIssues = useWorkflowDocumentNodesIssues({
+			allNodes: workflowDocumentNodes.allNodes,
+			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
+			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+		});
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -356,6 +366,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
+			...workflowDocumentNodesIssues,
 			removeAllNodes,
 			hydrate,
 			reset,

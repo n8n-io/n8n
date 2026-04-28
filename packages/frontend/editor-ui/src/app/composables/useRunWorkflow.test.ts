@@ -64,6 +64,8 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		getPinnedDataLastUpdate: vi.fn(),
 		getPinnedDataLastRemovedAt: vi.fn(),
 		getSnapshot: vi.fn(),
+		hasNodeValidationIssues: false,
+		nodeValidationIssues: [],
 		serialize: vi.fn(),
 	};
 	store.getSnapshot.mockReturnValue({
@@ -92,7 +94,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 		activeExecutionId: undefined,
 		previousExecutionId: undefined,
 		executionWaitingForWebhook: false,
-		workflowValidationIssues: [],
 		workflow: {
 			nodes: [],
 			id: '',
@@ -308,7 +309,7 @@ describe('useRunWorkflow({ router })', () => {
 
 		it('should not prevent running a webhook-based workflow that has issues', async () => {
 			const { runWorkflowApi } = useRunWorkflow({ router });
-			mockDocumentStore.nodesIssuesExist = true;
+			mockDocumentStore.hasNodeValidationIssues = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({
 				executionId: '123',
 				waitingForWebhook: true,
@@ -316,7 +317,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			await expect(runWorkflowApi({} as IStartRunData)).resolves.not.toThrow();
 
-			mockDocumentStore.nodesIssuesExist = false;
+			mockDocumentStore.hasNodeValidationIssues = false;
 		});
 
 		it('should handle workflow run failure', async () => {
@@ -358,7 +359,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(uiStore).activeActions = [''];
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			mockDocumentStore.nodesIssuesExist = true;
+			mockDocumentStore.hasNodeValidationIssues = true;
 			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
@@ -377,7 +378,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			mockDocumentStore.nodesIssuesExist = false;
+			mockDocumentStore.hasNodeValidationIssues = false;
 			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
@@ -441,7 +442,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			mockDocumentStore.nodesIssuesExist = false;
+			mockDocumentStore.hasNodeValidationIssues = false;
 			mockDocumentStore.serialize.mockReturnValue({
 				id: 'workflowId',
 				nodes: [],
@@ -674,7 +675,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			mockDocumentStore.nodesIssuesExist = false;
+			mockDocumentStore.hasNodeValidationIssues = false;
 			mockDocumentStore.serialize.mockReturnValue(workflowData);
 			vi.mocked(workflowsStore).getWorkflowRunData = mockRunData;
 			vi.mocked(agentRequestStore).getAgentRequest.mockReturnValue(agentRequest);
@@ -722,7 +723,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			mockDocumentStore.nodesIssuesExist = false;
+			mockDocumentStore.hasNodeValidationIssues = false;
 			mockDocumentStore.serialize.mockReturnValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
@@ -751,7 +752,7 @@ describe('useRunWorkflow({ router })', () => {
 
 			vi.mocked(pushConnectionStore).isConnected = true;
 			vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-			mockDocumentStore.nodesIssuesExist = false;
+			mockDocumentStore.hasNodeValidationIssues = false;
 			mockDocumentStore.serialize.mockReturnValue(
 				mock<WorkflowData>({ id: 'workflowId', nodes: [] }),
 			);
@@ -806,7 +807,7 @@ describe('useRunWorkflow({ router })', () => {
 			beforeEach(() => {
 				vi.mocked(pushConnectionStore).isConnected = true;
 				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue({ executionId: 'exec-123' });
-				mockDocumentStore.nodesIssuesExist = false;
+				mockDocumentStore.hasNodeValidationIssues = false;
 				mockDocumentStore.checkIfNodeHasChatParent.mockReturnValue(false);
 				mockDocumentStore.checkIfToolNodeHasChatParent.mockReturnValue(false);
 			});
@@ -866,7 +867,7 @@ describe('useRunWorkflow({ router })', () => {
 			beforeEach(() => {
 				vi.mocked(pushConnectionStore).isConnected = true;
 				vi.mocked(workflowsStore).runWorkflow.mockResolvedValue(mockExecutionResponse);
-				mockDocumentStore.nodesIssuesExist = false;
+				mockDocumentStore.hasNodeValidationIssues = false;
 				vi.mocked(workflowsStore).getWorkflowRunData = {
 					NodeName: [],
 				};

@@ -1,7 +1,7 @@
 # Design System Style Review Rules
 
-Use these rules when reviewing CSS/SCSS/Vue style changes, especially in
-`packages/frontend/` and `packages/frontend/@n8n/design-system/`.
+Use these rules when working in `packages/frontend/` and `packages/frontend/@n8n/design-system/`.
+Always follow guidance in `packages/frontend/@n8n/design-system/src/styleguide/*.mdx`.
 
 ## 1) Token source priority
 

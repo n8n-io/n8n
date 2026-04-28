@@ -19,17 +19,12 @@ export type PostgresExporterResult = ServiceResult<PostgresExporterMeta>;
  * Runs a Prometheus-compatible exporter that scrapes PostgreSQL internal statistics
  * (connections, transactions, replication lag, etc.) and exposes them as metrics on /metrics.
  * VictoriaMetrics scrapes this endpoint to make Postgres performance data queryable via PromQL.
- * Auto-starts when both postgres and victoriaMetrics services are in use.
+ * Opt-in only: include `postgresExporter` in `config.services` (e.g. for benchmark profiles).
+ * E2E correctness tests don't need this and shouldn't pay the ~1.3s startup + extra container.
  */
 export const postgresExporter: Service<PostgresExporterResult> = {
 	description: 'Postgres Exporter',
 	dependsOn: ['postgres'],
-
-	shouldStart(ctx: StartContext): boolean {
-		// Auto-start when both postgres and victoriaMetrics are in use
-		const services = ctx.config.services ?? [];
-		return ctx.usePostgres && services.includes('victoriaMetrics');
-	},
 
 	async start(
 		network: StartedNetwork,

@@ -2,8 +2,7 @@
  -------------------------- */
 
 @mixin focus-ring {
-	outline: var(--focus--border-width) solid var(--focus--border-color);
-	outline-offset: 2px;
+	outline: var(--focus--border-width) solid var(--focus--outline-color);
 	transition: outline 0.15s ease-out;
 }
 

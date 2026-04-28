@@ -5,7 +5,7 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import type { INodeUi, IStartRunData, IWorkflowDb, WorkflowValidationIssue } from '@/Interface';
+import type { INodeUi, IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -169,65 +169,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		return false;
 	});
-
-	/**
-	 * Get detailed validation issues for all connected, enabled nodes
-	 */
-	const workflowValidationIssues = computed(() => {
-		const issues: WorkflowValidationIssue[] = [];
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowId.value),
-		);
-
-		const isStringOrStringArray = (value: unknown): value is string | string[] =>
-			typeof value === 'string' || Array.isArray(value);
-
-		workflow.value.nodes.forEach((node) => {
-			if (!node.issues || node.disabled) return;
-
-			const isConnected =
-				Object.keys(workflowDocumentStore.outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(workflowDocumentStore.incomingConnectionsByNodeName(node.name)).length > 0;
-
-			if (!isConnected) return;
-
-			Object.entries(node.issues).forEach(([issueType, issueValue]) => {
-				if (!issueValue) return;
-
-				if (typeof issueValue === 'object' && !Array.isArray(issueValue)) {
-					// Handle nested issues (parameters, credentials)
-					Object.entries(issueValue).forEach(([_key, value]) => {
-						if (value) {
-							issues.push({
-								node: node.name,
-								type: issueType,
-								value,
-							});
-						}
-					});
-				} else {
-					// Handle direct issues
-					issues.push({
-						node: node.name,
-						type: issueType,
-						value: isStringOrStringArray(issueValue) ? issueValue : String(issueValue),
-					});
-				}
-			});
-		});
-
-		return issues;
-	});
-
-	/**
-	 * Format issue message for display
-	 */
-	function formatIssueMessage(issue: string | string[]): string {
-		if (Array.isArray(issue)) {
-			return issue.join(', ').replace(/\.$/, '');
-		}
-		return String(issue);
-	}
 
 	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
 
@@ -1123,8 +1064,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
 		isWorkflowRunning,
-		workflowValidationIssues,
-		formatIssueMessage,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,

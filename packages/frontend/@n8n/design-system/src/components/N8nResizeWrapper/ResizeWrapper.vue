@@ -232,6 +232,8 @@ const resizerMove = (event: MouseEvent) => {
 	top: var(--resizer--spacing--side);
 	right: var(--resizer--spacing--side);
 	cursor: ew-resize;
+	border-color: var(--border-color);
+	border-color: var(--color--neutral-400);
 }
 
 .top {
