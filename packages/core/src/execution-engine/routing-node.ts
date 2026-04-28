@@ -191,7 +191,7 @@ export class RoutingNode {
 						!(property in proxyParsed) ||
 						proxyParsed[property as keyof typeof proxyParsed] === null
 					) {
-						throw new NodeOperationError(node, 'The proxy is not value', {
+						throw new NodeOperationError(node, 'The proxy is not valid', {
 							runIndex,
 							itemIndex,
 							description: `The proxy URL does not contain a valid value for "${property}"`,

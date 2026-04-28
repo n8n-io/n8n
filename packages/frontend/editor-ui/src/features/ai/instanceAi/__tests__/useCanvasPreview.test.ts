@@ -308,7 +308,7 @@ describe('useCanvasPreview', () => {
 
 			ctx.closePreview();
 
-			expect(ctx.activeTabId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
@@ -382,7 +382,7 @@ describe('useCanvasPreview', () => {
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
 
-			expect(ctx.activeTabId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.activeWorkflowId.value).toBeNull();
 			expect(ctx.activeExecutionId.value).toBeNull();
 			expect(ctx.activeDataTableId.value).toBeNull();
@@ -492,7 +492,7 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
-			expect(ctx.activeTabId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBeUndefined();
 			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 
