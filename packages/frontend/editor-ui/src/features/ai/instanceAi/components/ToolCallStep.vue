@@ -3,7 +3,7 @@ import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { N8nCallout, N8nIcon } from '@n8n/design-system';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
-import { getToolIcon, useToolLabel } from '../toolLabels';
+import { useToolLabel } from '../toolLabels';
 import DataSection from './DataSection.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
 import ToolResultJson from './ToolResultJson.vue';
@@ -48,22 +48,9 @@ function getDisplayLabel(tc: InstanceAiToolCallState): string {
 <template>
 	<CollapsibleRoot v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
-			<TimelineStepButton>
-				<template #icon="{ isHovered }">
-					<template v-if="isHovered">
-						<N8nIcon v-if="!isOpen" icon="plus" size="small" />
-						<N8nIcon v-else icon="minus" size="small" />
-					</template>
-					<template v-else>
-						<N8nIcon
-							v-if="props.toolCall.isLoading"
-							icon="spinner"
-							color="primary"
-							size="small"
-							spin
-						/>
-						<N8nIcon v-else :icon="getToolIcon(props.toolCall.toolName)" size="small" />
-					</template>
+			<TimelineStepButton :loading="props.toolCall.isLoading">
+				<template #icon>
+					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
 				</template>
 				{{ props.label ?? getDisplayLabel(props.toolCall) }}
 			</TimelineStepButton>
