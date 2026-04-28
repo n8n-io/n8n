@@ -274,5 +274,54 @@ test.describe(
 			// Verify table still shows the owner
 			await n8n.projectSettings.expectTableHasMemberCount(1);
 		});
+
+		test('should show all users when adding members to project, even with 50+ users @auth:owner', async ({
+			n8n,
+			api,
+		}) => {
+			// Bug reproduction: GHC-8035
+			// When there are more than 50 users in the workspace, and many are already
+			// in the project, users beyond the first 50 returned by the API are not
+			// available in the member selection dropdown.
+
+			// Create 55 users (exceeds the default API limit of 50)
+			const users = await Promise.all(
+				Array.from({ length: 55 }, (_, i) =>
+					api.publicApi.createUser({
+						email: `user${i + 1}-${nanoid()}@test.com`.toLowerCase(),
+						firstName: `User`,
+						lastName: `${i + 1}`,
+					}),
+				),
+			);
+
+			// Create a project
+			const projectName = `Large Team ${nanoid(8)}`;
+			const { projectId } = await n8n.projectComposer.createProject(projectName);
+
+			// Add the first 50 users to the project
+			// This leaves users 51-55 not in the project
+			await Promise.all(
+				users.slice(0, 50).map((user) => api.projects.addUserToProject(projectId, user.id)),
+			);
+
+			// Navigate to project settings
+			await n8n.navigate.toProjectSettings(projectId);
+
+			// Verify 51 members in total (50 added + 1 owner)
+			await n8n.projectSettings.expectTableHasMemberCount(51);
+
+			// Now try to add user 51 (should be available but won't be due to pagination bug)
+			const user51 = users[50];
+			await n8n.projectSettings.searchForMember(user51.email);
+
+			// This should find the user, but it won't because:
+			// 1. The API returns only the first 50 users
+			// 2. All 50 of those users are already in the project
+			// 3. So the frontend filters them all out, leaving no options
+			// 4. Users 51-55 are never fetched from the API
+			const popoverOption = n8n.projectSettings.getVisiblePopoverOption(user51.email);
+			await expect(popoverOption).toBeVisible({ timeout: 3000 });
+		});
 	},
 );
