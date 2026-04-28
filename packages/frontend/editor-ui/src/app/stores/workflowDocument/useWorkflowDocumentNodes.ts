@@ -23,6 +23,7 @@ import findLast from 'lodash/findLast';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
+import { isPresent } from '@/app/utils/typesUtils';
 
 // --- Event types ---
 
@@ -152,7 +153,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function applyRemoveNodeById(id: string) {
-		const node = workflowsStore.getNodeById(id);
+		const node = workflowsStore.workflow.nodes.find((n) => n.id === id);
 		const idx = workflowsStore.workflow.nodes.findIndex((n) => n.id === id);
 		if (idx !== -1) {
 			workflowsStore.workflow.nodes = [
@@ -180,12 +181,10 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	const nodesByName = computed<Record<string, INodeUi>>(() => workflowsStore.nodesByName);
 
-	const canvasNames = computed<Set<string>>(
-		() => new Set(workflowsStore.allNodes.map((n) => n.name)),
-	);
+	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
 	function getNodeById(id: string): INodeUi | undefined {
-		return workflowsStore.getNodeById(id);
+		return workflowsStore.workflow.nodes.find((node) => node.id === id);
 	}
 
 	function getNodeByName(name: string): INodeUi | null {
@@ -197,11 +196,11 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
-		return workflowsStore.findNodeByPartialId(partialId);
+		return workflowsStore.workflow.nodes.find((node) => node.id.startsWith(partialId));
 	}
 
-	function getNodesByIds(ids: string[]): INodeUi[] {
-		return workflowsStore.getNodesByIds(ids);
+	function getNodesByIds(nodeIds: string[]): INodeUi[] {
+		return nodeIds.map(getNodeById).filter(isPresent);
 	}
 
 	// -----------------------------------------------------------------------

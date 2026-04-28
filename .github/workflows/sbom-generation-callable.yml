@@ -64,9 +64,10 @@ jobs:
       - name: Attach SBOM and VEX files to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG_REF: ${{ inputs.release_tag_ref }}
         run: |
           # Upload SBOM and VEX files to the existing release
-          gh release upload "${{ inputs.release_tag_ref }}" \
+          gh release upload "$RELEASE_TAG_REF" \
             sbom-source.cdx.json \
             security/vex.openvex.json \
             --clobber

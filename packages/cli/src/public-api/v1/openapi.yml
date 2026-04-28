@@ -116,6 +116,10 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
+  /data-tables/{dataTableId}/columns:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml'
+  /data-tables/{dataTableId}/columns/{columnId}:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml'
   /projects:
     $ref: './handlers/projects/spec/paths/projects.yml'
   /projects/{projectId}:

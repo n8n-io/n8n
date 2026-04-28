@@ -69,10 +69,11 @@ describe('OauthService', () => {
 		axios.post = jest.fn();
 
 		// Setup cipher mock - encrypt returns the input as-is for testing, decrypt does the reverse
-		cipher.encrypt.mockImplementation((data: string) => {
+		cipher.encrypt.mockImplementation((data: string | object) => {
 			// For testing, we'll use base64 encoding as a simple mock
 			// In production, this would be actual encryption
-			return Buffer.from(data).toString('base64');
+			const str = typeof data === 'string' ? data : JSON.stringify(data);
+			return Buffer.from(str).toString('base64');
 		});
 		cipher.decrypt.mockImplementation((data: string) => {
 			// For testing, decode the base64

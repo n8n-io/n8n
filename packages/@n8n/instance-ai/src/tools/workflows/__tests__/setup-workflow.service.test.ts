@@ -27,6 +27,8 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			delete: jest.fn(),
 			publish: jest.fn(),
 			unpublish: jest.fn(),
+			clearAiTemporary: jest.fn(),
+			archiveIfAiTemporary: jest.fn(),
 		},
 		executionService: {
 			list: jest.fn(),
@@ -316,7 +318,19 @@ describe('buildSetupRequests', () => {
 		expect(result[0].parameterIssues).toBeDefined();
 	});
 
-	it('auto-applies most recent credential when node has none', async () => {
+	it('auto-applies the only credential when node has none', async () => {
+		(context.credentialService.list as jest.Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBe(true);
+		expect(result[0].existingCredentials?.[0].id).toBe('cred-1');
+	});
+
+	it('does not auto-apply when multiple credentials of the same type exist', async () => {
 		(context.credentialService.list as jest.Mock).mockResolvedValue([
 			{ id: 'cred-2', name: 'Newer Slack', updatedAt: '2025-06-01T00:00:00.000Z' },
 			{ id: 'cred-1', name: 'Older Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
@@ -325,8 +339,12 @@ describe('buildSetupRequests', () => {
 		const node = makeNode();
 		const result = await buildSetupRequests(context, node);
 
-		expect(result[0].isAutoApplied).toBe(true);
-		expect(result[0].existingCredentials?.[0].id).toBe('cred-2');
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toBeUndefined();
+		expect(result[0].existingCredentials).toHaveLength(2);
+		expect(result[0].needsAction).toBe(true);
+		// No credential was picked, so no test was run either.
+		expect(context.credentialService.test).not.toHaveBeenCalled();
 	});
 
 	it('sets isAutoApplied=false when node already has credential', async () => {

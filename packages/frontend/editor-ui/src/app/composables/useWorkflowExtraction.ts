@@ -283,7 +283,7 @@ export function useWorkflowExtraction() {
 			const { href } = router.resolve({
 				name: VIEWS.WORKFLOW,
 				params: {
-					name: createdWorkflow.id,
+					workflowId: createdWorkflow.id,
 				},
 			});
 
@@ -416,7 +416,9 @@ export function useWorkflowExtraction() {
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {
-		const subGraph = nodeIds.map(workflowsStore.getNodeById).filter((x) => x !== undefined);
+		const subGraph = nodeIds
+			.map((id) => workflowDocumentStore?.value?.getNodeById(id))
+			.filter((x) => x !== undefined);
 
 		const triggers = subGraph.filter((x) =>
 			useNodeTypesStore().getNodeType(x.type, x.typeVersion)?.group.includes('trigger'),
