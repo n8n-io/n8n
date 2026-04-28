@@ -608,6 +608,7 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/integrations/schedule')
+	@ProjectScope('agent:read')
 	async getScheduleIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -620,6 +621,7 @@ export class AgentsController {
 	}
 
 	@Put('/:agentId/integrations/schedule')
+	@ProjectScope('agent:update')
 	async updateScheduleIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -637,6 +639,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/integrations/schedule/activate')
+	@ProjectScope('agent:update')
 	async activateScheduleIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -649,6 +652,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/integrations/schedule/deactivate')
+	@ProjectScope('agent:update')
 	async deactivateScheduleIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
