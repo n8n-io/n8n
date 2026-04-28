@@ -85,6 +85,7 @@ import {
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	type ExecutionError,
 	NodeHelpers,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -2305,7 +2306,8 @@ export async function extractExecutionResult(
 	}
 
 	// Extract error if present
-	const errorMessage = execution.data?.resultData?.error?.message;
+	const error = execution.data?.resultData?.error;
+	const errorMessage = error ? formatExecutionError(error) : undefined;
 
 	return {
 		executionId,
@@ -2318,6 +2320,34 @@ export async function extractExecutionResult(
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
 	};
+}
+
+/**
+ * NodeApiError.messages can hold large API response bodies; cap formatted
+ * errors so a single failure doesn't blow up the agent's context window.
+ */
+const MAX_ERROR_CHARS = 4_000;
+
+/**
+ * Format an ExecutionError for LLM consumption. Combines `message`,
+ * `description` (when distinct), and upstream API `messages` (NodeError
+ * variants only).
+ *
+ * Operates structurally on the ExecutionError union, so it works on both live
+ * error instances and plain objects deserialized from execution data — where
+ * prototypes are gone and `instanceof Error` would be false.
+ */
+export function formatExecutionError(error: ExecutionError): string {
+	const parts: string[] = [];
+	if (error.message) parts.push(error.message);
+	if (error.description && error.description !== error.message) {
+		parts.push(error.description);
+	}
+	if ('messages' in error && error.messages.length > 0) {
+		parts.push(`Details: ${error.messages.join(' | ')}`);
+	}
+	const combined = parts.join(' — ') || 'Unknown error';
+	return combined.length > MAX_ERROR_CHARS ? `${combined.slice(0, MAX_ERROR_CHARS)}…` : combined;
 }
 
 /**
@@ -2574,13 +2604,12 @@ export async function extractExecutionDebugInfo(
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (!lastRun) continue;
 
-			const hasError = lastRun.error !== undefined;
 			const nodeType = nodeTypeMap.get(nodeName) ?? 'unknown';
 
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: hasError ? 'error' : 'success',
+				status: lastRun.error !== undefined ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:
@@ -2590,14 +2619,11 @@ export async function extractExecutionDebugInfo(
 			});
 
 			// Capture the first failed node with its error and input data
-			if (hasError && !failedNode) {
+			if (lastRun.error !== undefined && !failedNode) {
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
-					error:
-						lastRun.error instanceof Error
-							? lastRun.error.message
-							: String(lastRun.error ?? 'Unknown error'),
+					error: formatExecutionError(lastRun.error),
 					inputData: includeOutputData
 						? (() => {
 								const inputItems = lastRun.data?.main
