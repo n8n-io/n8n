@@ -22,7 +22,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { IConnections, INodeIssueObjectProperty } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -350,50 +350,6 @@ describe('useWorkflowDocumentGraph', () => {
 			const graph = seedAndCreateGraph([]);
 
 			expect(graph.checkIfToolNodeHasChatParent('NonExistentNode')).toBe(false);
-		});
-	});
-
-	describe('nodesIssuesExist', () => {
-		it('should return true when a node has issues and is connected', () => {
-			const graph = seedAndCreateGraph(
-				[
-					createNode({
-						name: 'Node1',
-						issues: { error: ['Error message'] as unknown as INodeIssueObjectProperty },
-					}),
-					createNode({ name: 'Node2' }),
-				],
-				{ Node1: { main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]] } },
-			);
-
-			expect(graph.nodesIssuesExist.value).toBe(true);
-		});
-
-		it('should return false when node has issues but is not connected', () => {
-			const graph = seedAndCreateGraph([
-				createNode({
-					name: 'Node1',
-					issues: { error: ['Error message'] as unknown as INodeIssueObjectProperty },
-				}),
-				createNode({ name: 'Node2' }),
-			]);
-
-			expect(graph.nodesIssuesExist.value).toBe(false);
-		});
-
-		it('should return false when no nodes have issues', () => {
-			const graph = seedAndCreateGraph(
-				[createNode({ name: 'Node1' }), createNode({ name: 'Node2' })],
-				{ Node1: { main: [[{ node: 'Node2', type: NodeConnectionTypes.Main, index: 0 }]] } },
-			);
-
-			expect(graph.nodesIssuesExist.value).toBe(false);
-		});
-
-		it('should return false when there are no nodes', () => {
-			const graph = seedAndCreateGraph([]);
-
-			expect(graph.nodesIssuesExist.value).toBe(false);
 		});
 	});
 
