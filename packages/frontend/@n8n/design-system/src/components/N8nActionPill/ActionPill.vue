@@ -86,8 +86,8 @@ const hovered = ref(false);
 	color: var(--color--danger--shade-1);
 
 	&.clickable:hover {
-		background-color: var(--color--danger--tint-3);
-		color: var(--color--danger--shade-1);
+		background-color: var(--color--green-200);
+		color: var(--color--green-950);
 	}
 }
 
