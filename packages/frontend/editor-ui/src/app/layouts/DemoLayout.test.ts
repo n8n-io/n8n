@@ -4,6 +4,14 @@ import DemoLayout from './DemoLayout.vue';
 import { computed, ref, shallowRef } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
+const demoLayoutMocks = vi.hoisted(() => ({
+	initializeData: vi.fn(),
+	initializeWorkflow: vi.fn(),
+	cleanupInitialization: vi.fn(),
+	setupPostMessages: vi.fn(),
+	cleanupPostMessages: vi.fn(),
+}));
+
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as object;
 	return {
@@ -39,16 +47,16 @@ vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 		workflowId: computed(() => 'demo'),
 		currentWorkflowDocumentStore: shallowRef(null),
 		currentNDVStore: shallowRef({}),
-		initializeData: vi.fn().mockResolvedValue(undefined),
-		initializeWorkflow: vi.fn().mockResolvedValue(undefined),
-		cleanup: vi.fn(),
+		initializeData: demoLayoutMocks.initializeData,
+		initializeWorkflow: demoLayoutMocks.initializeWorkflow,
+		cleanup: demoLayoutMocks.cleanupInitialization,
 	})),
 }));
 
 vi.mock('@/app/composables/usePostMessageHandler', () => ({
 	usePostMessageHandler: vi.fn(() => ({
-		setup: vi.fn(),
-		cleanup: vi.fn(),
+		setup: demoLayoutMocks.setupPostMessages,
+		cleanup: demoLayoutMocks.cleanupPostMessages,
 	})),
 }));
 
@@ -81,6 +89,8 @@ describe('DemoLayout', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		vi.clearAllMocks();
+		demoLayoutMocks.initializeData.mockResolvedValue(undefined);
+		demoLayoutMocks.initializeWorkflow.mockResolvedValue(undefined);
 	});
 
 	it('should render the layout without throwing', () => {
@@ -185,6 +195,33 @@ describe('DemoLayout', () => {
 	});
 
 	describe('push connection', () => {
+		it('should set up post messages only after workflow initialization completes', async () => {
+			let resolveInitializeWorkflow: () => void;
+			demoLayoutMocks.initializeWorkflow.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					resolveInitializeWorkflow = resolve;
+				}),
+			);
+
+			renderComponent();
+
+			await vi.waitFor(() => {
+				expect(demoLayoutMocks.initializeWorkflow).toHaveBeenCalled();
+			});
+			expect(mockPushInitialize).not.toHaveBeenCalled();
+			expect(demoLayoutMocks.setupPostMessages).not.toHaveBeenCalled();
+
+			resolveInitializeWorkflow!();
+
+			await vi.waitFor(() => {
+				expect(demoLayoutMocks.setupPostMessages).toHaveBeenCalled();
+			});
+			expect(mockPushInitialize).toHaveBeenCalled();
+			expect(mockPushInitialize.mock.invocationCallOrder[0]).toBeLessThan(
+				demoLayoutMocks.setupPostMessages.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('should initialize push handlers on mount', async () => {
 			renderComponent();
 			await vi.waitFor(() => {

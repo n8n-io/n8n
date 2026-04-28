@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, provide, onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
+import { computed, provide, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import BaseLayout from './BaseLayout.vue';
 import DemoFooter from '@/features/execution/logs/components/DemoFooter.vue';
@@ -58,10 +58,6 @@ if (!canExecute.value) {
 	workflowState.setActiveExecutionId(null);
 }
 
-onBeforeMount(() => {
-	setupPostMessages();
-});
-
 onMounted(async () => {
 	await initializeData();
 	await initializeWorkflow();
@@ -72,6 +68,8 @@ onMounted(async () => {
 	if (canExecute.value) {
 		pushConnectionStore.pushConnect();
 	}
+
+	setupPostMessages();
 });
 
 onBeforeUnmount(() => {
