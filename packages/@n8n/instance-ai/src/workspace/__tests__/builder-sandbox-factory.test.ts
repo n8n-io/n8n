@@ -206,3 +206,108 @@ describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 		expect(ensureSnapshotSpy).toHaveBeenCalledWith(expect.anything(), 'proxy');
 	});
 });
+
+describe('BuilderSandboxFactory createDaytona error reporting', () => {
+	beforeEach(() => {
+		daytonaCreateMock.mockReset();
+		daytonaDeleteMock.mockClear();
+	});
+
+	function makeManager(): SnapshotManager {
+		const manager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
+		jest.spyOn(manager, 'ensureSnapshot').mockResolvedValue('n8n-instance-ai-1.123.0');
+		jest.spyOn(manager, 'ensureImage').mockReturnValue({ dockerfile: 'FROM node:20' } as never);
+		return manager;
+	}
+
+	it('falls back to declarative image when create with snapshot fails', async () => {
+		const config = makeDaytonaConfig();
+		const snapshotManager = makeManager();
+		const errorReporter = { error: jest.fn() };
+		daytonaCreateMock
+			.mockRejectedValueOnce(
+				Object.assign(new Error('Snapshot n8n-instance-ai-1.123.0 not found'), {
+					statusCode: 400,
+				}),
+			)
+			.mockResolvedValueOnce({ id: 'sandbox-id' });
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER, errorReporter);
+		await factory.create('builder-1', makeContext());
+
+		expect(daytonaCreateMock).toHaveBeenCalledTimes(2);
+		expect(daytonaCreateMock.mock.calls[0][0].snapshot).toBe('n8n-instance-ai-1.123.0');
+		expect(daytonaCreateMock.mock.calls[1][0].image).toBeDefined();
+		expect(daytonaCreateMock.mock.calls[1][0].snapshot).toBeUndefined();
+	});
+
+	it('reports snapshot-strategy create failures to the error reporter', async () => {
+		const config = makeDaytonaConfig();
+		const snapshotManager = makeManager();
+		const errorReporter = { error: jest.fn() };
+		const error = Object.assign(new Error('Snapshot not found'), { statusCode: 400 });
+		daytonaCreateMock.mockRejectedValueOnce(error).mockResolvedValueOnce({ id: 'sandbox-id' });
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER, errorReporter);
+		await factory.create('builder-1', makeContext());
+
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({
+				tags: expect.objectContaining({
+					component: 'builder-sandbox-factory',
+					strategy: 'snapshot',
+				}),
+			}),
+		);
+	});
+
+	it('reports image-strategy create failures and rethrows', async () => {
+		const config = makeDaytonaConfig();
+		const snapshotManager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
+		jest.spyOn(snapshotManager, 'ensureSnapshot').mockResolvedValue(null);
+		jest
+			.spyOn(snapshotManager, 'ensureImage')
+			.mockReturnValue({ dockerfile: 'FROM node:20' } as never);
+		const errorReporter = { error: jest.fn() };
+		const error = new Error('Daytona is on fire');
+		daytonaCreateMock.mockRejectedValue(error);
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER, errorReporter);
+
+		await expect(factory.create('builder-1', makeContext())).rejects.toThrow('Daytona is on fire');
+		expect(errorReporter.error).toHaveBeenCalledWith(
+			error,
+			expect.objectContaining({
+				tags: expect.objectContaining({
+					component: 'builder-sandbox-factory',
+					strategy: 'image',
+				}),
+			}),
+		);
+	});
+
+	it('reports both strategies and rethrows when both fail', async () => {
+		const config = makeDaytonaConfig();
+		const snapshotManager = makeManager();
+		const errorReporter = { error: jest.fn() };
+		const snapshotError = Object.assign(new Error('Snapshot not found'), { statusCode: 400 });
+		const imageError = new Error('Image build failed');
+		daytonaCreateMock.mockRejectedValueOnce(snapshotError).mockRejectedValueOnce(imageError);
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER, errorReporter);
+
+		await expect(factory.create('builder-1', makeContext())).rejects.toThrow('Image build failed');
+		expect(errorReporter.error).toHaveBeenCalledTimes(2);
+		expect(errorReporter.error).toHaveBeenNthCalledWith(
+			1,
+			snapshotError,
+			expect.objectContaining({ tags: expect.objectContaining({ strategy: 'snapshot' }) }),
+		);
+		expect(errorReporter.error).toHaveBeenNthCalledWith(
+			2,
+			imageError,
+			expect.objectContaining({ tags: expect.objectContaining({ strategy: 'image' }) }),
+		);
+	});
+});

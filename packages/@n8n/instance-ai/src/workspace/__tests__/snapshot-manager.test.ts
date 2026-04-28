@@ -27,7 +27,7 @@ jest.mock('@daytonaio/sdk', () => {
 	return { DaytonaError, DaytonaNotFoundError, Image };
 });
 
-import { DaytonaError, DaytonaNotFoundError } from '@daytonaio/sdk';
+import { DaytonaError } from '@daytonaio/sdk';
 
 import type { Logger } from '../../logger';
 import { SnapshotManager } from '../snapshot-manager';
@@ -137,64 +137,28 @@ describe('SnapshotManager.ensureSnapshot', () => {
 			expect(daytona.snapshot.get).not.toHaveBeenCalled();
 			expect(daytona.snapshot.create).not.toHaveBeenCalled();
 		});
+
+		it('returns null in proxy mode without calling daytona', async () => {
+			const manager = new SnapshotManager(undefined, NOOP_LOGGER, undefined);
+			const daytona = makeFakeDaytona();
+
+			const result = await manager.ensureSnapshot(daytona as never, 'proxy');
+
+			expect(result).toBeNull();
+			expect(daytona.snapshot.get).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('proxy mode', () => {
-		it('returns the snapshot name when get succeeds', async () => {
+		it('returns the snapshot name without calling daytona', async () => {
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 			const daytona = makeFakeDaytona();
-			daytona.snapshot.get.mockResolvedValue({ name: 'n8n-instance-ai-1.123.0' });
 
 			const result = await manager.ensureSnapshot(daytona as never, 'proxy');
 
 			expect(result).toBe('n8n-instance-ai-1.123.0');
-			expect(daytona.snapshot.get).toHaveBeenCalledWith('n8n-instance-ai-1.123.0');
+			expect(daytona.snapshot.get).not.toHaveBeenCalled();
 			expect(daytona.snapshot.create).not.toHaveBeenCalled();
-		});
-
-		it('returns null when snapshot is not found', async () => {
-			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
-			const daytona = makeFakeDaytona();
-			daytona.snapshot.get.mockRejectedValue(new DaytonaNotFoundError('not found'));
-
-			const result = await manager.ensureSnapshot(daytona as never, 'proxy');
-
-			expect(result).toBeNull();
-			expect(daytona.snapshot.create).not.toHaveBeenCalled();
-		});
-
-		it('returns null when get fails with a transient error', async () => {
-			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
-			const daytona = makeFakeDaytona();
-			daytona.snapshot.get.mockRejectedValue(new DaytonaError('upstream 500', 500));
-
-			const result = await manager.ensureSnapshot(daytona as never, 'proxy');
-
-			expect(result).toBeNull();
-		});
-
-		it('memoizes the verdict — does not call get twice', async () => {
-			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
-			const daytona = makeFakeDaytona();
-			daytona.snapshot.get.mockResolvedValue({ name: 'n8n-instance-ai-1.123.0' });
-
-			await manager.ensureSnapshot(daytona as never, 'proxy');
-			const second = await manager.ensureSnapshot(daytona as never, 'proxy');
-
-			expect(second).toBe('n8n-instance-ai-1.123.0');
-			expect(daytona.snapshot.get).toHaveBeenCalledTimes(1);
-		});
-
-		it('memoizes a not-found verdict — does not retry', async () => {
-			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
-			const daytona = makeFakeDaytona();
-			daytona.snapshot.get.mockRejectedValue(new DaytonaNotFoundError('not found'));
-
-			await manager.ensureSnapshot(daytona as never, 'proxy');
-			const second = await manager.ensureSnapshot(daytona as never, 'proxy');
-
-			expect(second).toBeNull();
-			expect(daytona.snapshot.get).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -208,9 +172,6 @@ describe('SnapshotManager.ensureSnapshot', () => {
 
 			expect(result).toBe('n8n-instance-ai-1.123.0');
 			expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
-			const callArgs = daytona.snapshot.create.mock.calls[0][0];
-			expect(callArgs).toEqual(expect.objectContaining({ name: 'n8n-instance-ai-1.123.0' }));
-			expect(callArgs.image).toBeDefined();
 			expect(daytona.snapshot.get).not.toHaveBeenCalled();
 		});
 
@@ -218,18 +179,6 @@ describe('SnapshotManager.ensureSnapshot', () => {
 			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
 			const daytona = makeFakeDaytona();
 			daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
-
-			const result = await manager.ensureSnapshot(daytona as never, 'direct');
-
-			expect(result).toBe('n8n-instance-ai-1.123.0');
-		});
-
-		it('treats messages mentioning "already exists" as success', async () => {
-			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
-			const daytona = makeFakeDaytona();
-			daytona.snapshot.create.mockRejectedValue(
-				new DaytonaError('Snapshot with this name already exists', 400),
-			);
 
 			const result = await manager.ensureSnapshot(daytona as never, 'direct');
 
@@ -263,33 +212,43 @@ describe('SnapshotManager.ensureSnapshot', () => {
 			expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
 		});
 
-		it('does not call get in direct mode', async () => {
-			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		it('reports transient failures via the error reporter', async () => {
+			const errorReporter = { error: jest.fn() };
+			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
+			const daytona = makeFakeDaytona();
+			const error = new DaytonaError('upstream 500', 500);
+			daytona.snapshot.create.mockRejectedValue(error);
+
+			await manager.ensureSnapshot(daytona as never, 'direct');
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				error,
+				expect.objectContaining({
+					tags: expect.objectContaining({ component: 'snapshot-manager' }),
+				}),
+			);
+		});
+
+		it('does not report when create succeeds', async () => {
+			const errorReporter = { error: jest.fn() };
+			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
 			daytona.snapshot.create.mockResolvedValue({ name: 'n8n-instance-ai-1.123.0' });
 
 			await manager.ensureSnapshot(daytona as never, 'direct');
 
-			expect(daytona.snapshot.get).not.toHaveBeenCalled();
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 
-		it('serializes concurrent calls — only creates once', async () => {
-			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0');
+		it('does not report 409/already-exists as an error', async () => {
+			const errorReporter = { error: jest.fn() };
+			const manager = new SnapshotManager(undefined, NOOP_LOGGER, '1.123.0', errorReporter);
 			const daytona = makeFakeDaytona();
-			let resolveCreate: (value: unknown) => void = () => {};
-			daytona.snapshot.create.mockReturnValue(
-				new Promise((resolve) => {
-					resolveCreate = resolve;
-				}),
-			);
+			daytona.snapshot.create.mockRejectedValue(new DaytonaError('already exists', 409));
 
-			const first = manager.ensureSnapshot(daytona as never, 'direct');
-			const second = manager.ensureSnapshot(daytona as never, 'direct');
-			resolveCreate({ name: 'n8n-instance-ai-1.123.0' });
+			await manager.ensureSnapshot(daytona as never, 'direct');
 
-			await expect(first).resolves.toBe('n8n-instance-ai-1.123.0');
-			await expect(second).resolves.toBe('n8n-instance-ai-1.123.0');
-			expect(daytona.snapshot.create).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).not.toHaveBeenCalled();
 		});
 	});
 });

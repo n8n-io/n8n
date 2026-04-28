@@ -13,7 +13,7 @@ import { DaytonaSandbox } from '@mastra/daytona';
 import assert from 'node:assert/strict';
 import { join as posixJoin } from 'node:path/posix';
 
-import type { Logger } from '../logger';
+import type { ErrorReporter, Logger } from '../logger';
 import type { SandboxConfig } from './create-workspace';
 import { DaytonaFilesystem } from './daytona-filesystem';
 import { N8nSandboxFilesystem } from './n8n-sandbox-filesystem';
@@ -72,6 +72,7 @@ export class BuilderSandboxFactory {
 		private readonly config: SandboxConfig,
 		private readonly imageManager?: SnapshotManager,
 		private readonly logger: Logger = NOOP_LOGGER,
+		private readonly errorReporter?: ErrorReporter,
 	) {}
 
 	/** Cached workspace-SDK tarball promise (one pack per process). */
@@ -164,7 +165,10 @@ export class BuilderSandboxFactory {
 		const mode: 'direct' | 'proxy' = config.getAuthToken ? 'proxy' : 'direct';
 
 		// Resolve sandbox source — versioned named snapshot when available,
-		// fallback to declarative image otherwise. Run in parallel with catalog gen.
+		// fallback to declarative image otherwise. Every Daytona create
+		// failure is reported with a `strategy` tag so missing-snapshot bugs
+		// are loud and trackable in Sentry, regardless of which path
+		// ultimately succeeds.
 		const createSandboxFn = async () => {
 			const daytona = await this.getDaytona();
 			const snapshotName = await snapshotManager.ensureSnapshot(daytona, mode);
@@ -173,10 +177,43 @@ export class BuilderSandboxFactory {
 				ephemeral: true,
 				labels: { 'n8n-builder': builderId },
 			} as const;
-			const sourceParams = snapshotName
-				? { snapshot: snapshotName }
-				: { image: snapshotManager.ensureImage() };
-			return await daytona.create({ ...baseParams, ...sourceParams }, { timeout: 300 });
+
+			if (snapshotName) {
+				try {
+					return await daytona.create({ ...baseParams, snapshot: snapshotName }, { timeout: 300 });
+				} catch (error) {
+					this.errorReporter?.error(error, {
+						tags: {
+							component: 'builder-sandbox-factory',
+							strategy: 'snapshot',
+							mode,
+						},
+						extra: { snapshotName, builderId },
+					});
+					this.logger.warn('Sandbox create from snapshot failed; falling back to image', {
+						snapshotName,
+						mode,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
+			try {
+				return await daytona.create(
+					{ ...baseParams, image: snapshotManager.ensureImage() },
+					{ timeout: 300 },
+				);
+			} catch (error) {
+				this.errorReporter?.error(error, {
+					tags: {
+						component: 'builder-sandbox-factory',
+						strategy: 'image',
+						mode,
+					},
+					extra: { builderId },
+				});
+				throw error;
+			}
 		};
 
 		const [sandbox, catalog] = await Promise.all([createSandboxFn(), this.getNodeCatalog(context)]);

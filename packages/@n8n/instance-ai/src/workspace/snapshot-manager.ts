@@ -5,10 +5,13 @@
  *
  * Two strategies for `ensureSnapshot`:
  * - 'direct' mode (self-hosted): optimistic create via `snapshot.create`.
- *   Treats a 409 / "already exists" response as success.
- * - 'proxy' mode (cloud): read-only `snapshot.get`. Falls back to `null`
- *   when the snapshot is missing, leaving the caller to use the declarative
- *   image path. Snapshots are pre-built by CI, never by the runtime.
+ *   Treats a 409 / "already exists" response as success. Any other failure
+ *   is reported (when an `errorReporter` is wired) and the manager falls
+ *   back to declarative image so the next request retries the create.
+ * - 'proxy' mode (cloud): trusts CI to have published the snapshot for
+ *   this version and returns the name without an upstream call. The
+ *   sandbox-create request validates existence; missing-snapshot failures
+ *   surface there with a discriminable Daytona error.
  *
  * The node-types catalog is NOT baked into the image (too large for API body limit).
  * It's written to each sandbox after creation via the filesystem API.
@@ -17,7 +20,7 @@
 import type { Daytona } from '@daytonaio/sdk';
 import { DaytonaError, Image } from '@daytonaio/sdk';
 
-import type { Logger } from '../logger';
+import type { ErrorReporter, Logger } from '../logger';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 
 export type SnapshotMode = 'direct' | 'proxy';
@@ -47,6 +50,7 @@ export class SnapshotManager {
 		private readonly baseImage: string | undefined,
 		private readonly logger: Logger,
 		private readonly n8nVersion: string | undefined,
+		private readonly errorReporter?: ErrorReporter,
 	) {}
 
 	/** Get or prepare the image descriptor. Synchronous after first call. */
@@ -75,37 +79,6 @@ export class SnapshotManager {
 	}
 
 	/**
-	 * Resolve the named snapshot for the running n8n version, returning the
-	 * snapshot name if it can be used, or null if the caller should fall back
-	 * to the declarative image. Memoized per process.
-	 *
-	 * Memoization differs by mode:
-	 * - 'proxy': verdict (including null) is cached for the lifetime of the
-	 *   process. CI builds these snapshots once per release, so a miss this
-	 *   request is a miss for the version.
-	 * - 'direct': successes are cached; failures clear the memo so the next
-	 *   request retries the create (transient errors shouldn't pin a process
-	 *   to the declarative path forever).
-	 */
-	async ensureSnapshot(daytona: Daytona, mode: SnapshotMode): Promise<string | null> {
-		if (!this.n8nVersion) return null;
-
-		const name = `n8n-instance-ai-${this.n8nVersion}`;
-		this.snapshotPromise ??= this.resolveSnapshot(daytona, mode, name).catch((error) => {
-			this.logger.warn('Snapshot resolution failed; falling back to declarative image', {
-				name,
-				mode,
-				error: error instanceof Error ? error.message : String(error),
-			});
-			return null;
-		});
-
-		const result = await this.snapshotPromise;
-		if (result === null && mode === 'direct') this.snapshotPromise = null;
-		return result;
-	}
-
-	/**
 	 * Create the versioned Daytona snapshot for the configured n8n version.
 	 * Treats 409 / "already exists" as success — re-runs against the same
 	 * version are idempotent. Throws on transient or unexpected errors so
@@ -130,42 +103,47 @@ export class SnapshotManager {
 		}
 	}
 
-	private snapshotName(): string {
-		if (!this.n8nVersion) {
-			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
-		}
-		return `n8n-instance-ai-${this.n8nVersion}`;
-	}
+	/**
+	 * Resolve the named snapshot for the running n8n version, returning the
+	 * snapshot name if it can be used, or null if the caller should fall back
+	 * to the declarative image.
+	 *
+	 * - 'proxy': returns the name without an upstream call. CI is the only
+	 *   producer of cloud snapshots; trusting the name keeps the proxy
+	 *   surface minimal (no `snapshot.get` allow-list needed). Existence is
+	 *   validated implicitly by the subsequent `daytona.create({ snapshot })`.
+	 * - 'direct': lazy-creates the snapshot via `createSnapshot`, memoized
+	 *   per process. On transient failure, clears the memo so the next
+	 *   request retries, and reports the error.
+	 */
+	async ensureSnapshot(daytona: Daytona, mode: SnapshotMode): Promise<string | null> {
+		if (!this.n8nVersion) return null;
+		const name = this.snapshotName();
 
-	private async resolveSnapshot(
-		daytona: Daytona,
-		mode: SnapshotMode,
-		name: string,
-	): Promise<string | null> {
-		if (mode === 'proxy') {
-			try {
-				await daytona.snapshot.get(name);
-				this.logger.info('Resolved prebuilt Daytona snapshot', { name, mode });
-				return name;
-			} catch (error) {
-				this.logger.info('Prebuilt snapshot unavailable; using declarative image', {
-					name,
-					mode,
-					error: error instanceof Error ? error.message : String(error),
-				});
-				return null;
-			}
-		}
+		if (mode === 'proxy') return name;
 
-		try {
-			return await this.createSnapshot(daytona);
-		} catch (error) {
+		this.snapshotPromise ??= this.createSnapshot(daytona).catch((error) => {
+			this.errorReporter?.error(error, {
+				tags: { component: 'snapshot-manager', operation: 'create-snapshot' },
+				extra: { snapshotName: name },
+			});
 			this.logger.warn('Failed to create versioned snapshot; using declarative image', {
 				name,
 				error: error instanceof Error ? error.message : String(error),
 			});
 			return null;
+		});
+
+		const result = await this.snapshotPromise;
+		if (result === null) this.snapshotPromise = null;
+		return result;
+	}
+
+	private snapshotName(): string {
+		if (!this.n8nVersion) {
+			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
 		}
+		return `n8n-instance-ai-${this.n8nVersion}`;
 	}
 
 	/** Invalidate cached image (e.g., when base image changes). */
