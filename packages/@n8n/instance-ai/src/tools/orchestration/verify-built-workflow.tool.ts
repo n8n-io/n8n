@@ -147,17 +147,6 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					? terminalRemediationFromState(stateBefore)
 					: undefined;
 			if (terminalRemediation) {
-				await context.workflowTaskService.reportVerificationVerdict({
-					workItemId: input.workItemId,
-					runId: context.runId,
-					workflowId: input.workflowId,
-					verdict:
-						terminalRemediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
-					failureSignature: terminalRemediation.reason,
-					diagnosis: terminalRemediation.guidance,
-					remediation: terminalRemediation,
-					summary: terminalRemediation.guidance,
-				});
 				return {
 					success: false,
 					error: terminalRemediation.guidance,

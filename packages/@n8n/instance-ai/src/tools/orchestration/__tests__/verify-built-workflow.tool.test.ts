@@ -96,7 +96,7 @@ describe('verify-built-workflow tool', () => {
 		expect(reported.remediation).toMatchObject({ category: 'needs_setup' });
 	});
 
-	it('does not execute when the persisted guard is terminal', async () => {
+	it('does not execute or report another verdict when the persisted guard is terminal', async () => {
 		const context = createContext();
 		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
 			workItemId: 'wi_1',
@@ -117,10 +117,16 @@ describe('verify-built-workflow tool', () => {
 		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
 
 		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const repeatedResult = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
 
 		expect(result.success).toBe(false);
 		expect(result.remediation).toMatchObject({ reason: 'post_submit_budget_exhausted' });
+		expect(repeatedResult.success).toBe(false);
+		expect(repeatedResult.remediation).toMatchObject({
+			reason: 'post_submit_budget_exhausted',
+		});
 		expect(context.domainContext!.executionService.run).not.toHaveBeenCalled();
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
 	});
 
 	it('still verifies the second allowed post-submit repair before blocking further edits', async () => {
