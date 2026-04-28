@@ -3,13 +3,16 @@ import type {
 	FrontendBuilderStateResponse,
 } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import type { IDataObject } from 'n8n-workflow';
 
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+
 import { buildV0Prompt } from './core/build-v0-prompt';
+import { V0UpstreamError } from './frontend-builder.errors';
 import { sanitizeEndpointExamples } from './core/sanitize-endpoint-examples';
 import { V0Client } from './v0-client';
-import type { V0ChatResult } from './v0-client.interface';
+import type { IV0Client, V0ChatResult } from './v0-client.interface';
 
 type WorkflowStaticData = IDataObject & {
 	global?: IDataObject & { v0Chat?: { chatId: string } };
@@ -22,10 +25,32 @@ function readChatId(staticData: unknown): string | undefined {
 
 @Service()
 export class FrontendBuilderService {
-	constructor(
-		private readonly workflowRepository: WorkflowRepository,
-		private readonly v0Client: V0Client,
-	) {}
+	constructor(private readonly workflowRepository: WorkflowRepository) {}
+
+	/**
+	 * Resolve V0Client per-call instead of via constructor injection. This lets
+	 * the module swap implementations (real vs fake) at runtime, and lets tests
+	 * substitute a throwing stub mid-suite via `Container.set(V0Client, ...)`.
+	 */
+	private get v0Client(): IV0Client {
+		return Container.get(V0Client);
+	}
+
+	/**
+	 * Wrap any call into v0 so unexpected throws surface as a 502 with the
+	 * underlying message. Re-throws ResponseErrors unchanged so they keep
+	 * their original status (e.g. 4xx validation we choose to raise from
+	 * inside the v0 wrapper if needed in the future).
+	 */
+	private async callV0<T>(label: string, fn: () => Promise<T>): Promise<T> {
+		try {
+			return await fn();
+		} catch (err) {
+			if (err instanceof ResponseError) throw err;
+			const message = err instanceof Error ? err.message : String(err);
+			throw new V0UpstreamError(`Frontend generation failed (${label}): ${message}`, err);
+		}
+	}
 
 	/**
 	 * Forget the workflow's link to its v0 chat. The chat itself is not
@@ -57,7 +82,7 @@ export class FrontendBuilderService {
 		const chatId = readChatId(workflow?.staticData);
 		if (!chatId) return { chatId: null };
 
-		const result = await this.v0Client.getChat(chatId);
+		const result = await this.callV0('getChat', () => this.v0Client.getChat(chatId));
 		return { chatId: result.chatId, demoUrl: result.demoUrl, messages: result.messages };
 	}
 
@@ -87,9 +112,11 @@ export class FrontendBuilderService {
 			})),
 		});
 
-		const result = existingChatId
-			? await this.v0Client.sendMessage({ chatId: existingChatId, message })
-			: await this.v0Client.create({ message });
+		const result = await this.callV0('sendMessage', () =>
+			existingChatId
+				? this.v0Client.sendMessage({ chatId: existingChatId, message })
+				: this.v0Client.create({ message }),
+		);
 
 		if (!existingChatId) {
 			const nextStaticData: WorkflowStaticData = {

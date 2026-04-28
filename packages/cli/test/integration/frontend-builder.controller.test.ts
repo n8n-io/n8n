@@ -1,6 +1,9 @@
 import { createWorkflow } from '@n8n/backend-test-utils';
 import { GLOBAL_OWNER_ROLE, type User, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
+
+import { V0Client } from '@/modules/frontend-builder/v0-client';
 
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
@@ -81,6 +84,44 @@ describe('FrontendBuilderController', () => {
 				});
 
 			expect(response.statusCode).toBe(401);
+		});
+
+		it('returns 400 when endpoints array is empty', async () => {
+			const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/frontend/messages`)
+				.send({ prompt: 'hi', endpoints: [] });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		it('returns 502 with a clear message when the v0 client throws', async () => {
+			const previous = Container.get(V0Client);
+
+			const throwingClient = mock<V0Client>();
+			throwingClient.create.mockRejectedValue(new Error('upstream down'));
+			throwingClient.sendMessage.mockRejectedValue(new Error('upstream down'));
+			throwingClient.getChat.mockRejectedValue(new Error('upstream down'));
+			Container.set(V0Client, throwingClient);
+
+			try {
+				const workflow = await createWorkflow({ name: 'WF', active: true }, owner);
+
+				const response = await authOwnerAgent
+					.post(`/workflows/${workflow.id}/frontend/messages`)
+					.send({
+						prompt: 'hi',
+						endpoints: [
+							{ nodeName: 'Webhook', method: 'POST', url: 'https://example.invalid/webhook/x' },
+						],
+					});
+
+				expect(response.statusCode).toBe(502);
+				expect(response.body.message).toMatch(/upstream down|frontend generation failed/i);
+			} finally {
+				Container.set(V0Client, previous);
+			}
 		});
 
 		it('forwards composed prompt with sanitized endpoint examples', async () => {
