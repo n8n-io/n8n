@@ -217,6 +217,21 @@ interface ExampleRecord {
 	feedback: Feedback[];
 }
 
+/**
+ * Eval-only suffix appended to every dataset prompt. Pushes the agent past
+ * its production "ask before assuming / set up credentials first" instinct
+ * — there is no human in the loop, so a clarification turn is a guaranteed
+ * `no_workflow_built`. Lives in the harness, not the production builder
+ * prompt, so production behavior is unaffected.
+ */
+const EVAL_PROMPT_SUFFIX =
+	'\n\n---\n' +
+	'You are running inside an automated, non-interactive evaluation. ' +
+	'There is no human to answer follow-up questions and no real credentials are configured. ' +
+	'Build a single workflow that best satisfies the request above and call `submit-workflow` before you finish. ' +
+	'Use `newCredential()` placeholders for any credentials the workflow needs. ' +
+	'Do not call `ask-user`, do not pause to set up credentials, and do not ask for clarification — pick reasonable defaults and proceed.';
+
 async function runExample(
 	example: DatasetExample,
 	iteration: number,
@@ -232,7 +247,7 @@ async function runExample(
 		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
 	);
 	const build = await buildInProcess({
-		prompt: example.prompt,
+		prompt: example.prompt + EVAL_PROMPT_SUFFIX,
 		timeoutMs: args.timeoutMs,
 		logPath,
 		sandboxFactory,
