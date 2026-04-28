@@ -6,6 +6,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, VIEWS } from '@/app/constants';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useFormsLayout } from '../composables/useFormsLayout';
+import { FORM_STEP_NON_FORM_NODE_SCALE } from '../constants';
+import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
 import type { Workflow } from 'n8n-workflow';
 import { N8nButton, N8nLoading } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -41,12 +43,12 @@ const nonFormNodeIds = computed(() =>
 	workflowsStore.workflow.nodes.filter((n) => !FORM_NODE_TYPES.has(n.type)).map((n) => n.id),
 );
 
-const dimCss = computed(() => {
+const nonFormNodeCss = computed(() => {
 	if (!nonFormNodeIds.value.length) return '';
 	const selectors = nonFormNodeIds.value
 		.map((id) => `#${containerId} .vue-flow__node[data-id="${id}"]`)
 		.join(', ');
-	return `${selectors} { opacity: 0.5; }`;
+	return `${selectors} { opacity: 0.5; transform: scale(${FORM_STEP_NON_FORM_NODE_SCALE}); transform-origin: center center; }`;
 });
 
 function openWorkflow() {
@@ -66,7 +68,7 @@ function onNodeActivated(nodeId: string) {
 
 <template>
 	<div :id="containerId" :class="$style.container">
-		<component :is="'style'">{{ dimCss }}</component>
+		<component :is="'style'">{{ nonFormNodeCss }}</component>
 		<N8nLoading v-if="loading" :rows="10" />
 		<div v-else :class="[$style.canvasContainer, layoutReady && $style.canvasVisible]">
 			<WorkflowCanvas
@@ -83,6 +85,7 @@ function onNodeActivated(nodeId: string) {
 						:striped="false"
 						variant="lines"
 						pattern-color="var(--forms--canvas--grid--color)"
+						:gap="DEFAULT_NODE_SIZE[0] / 2"
 					/>
 				</template>
 				<div :class="$style.canvasButtons">

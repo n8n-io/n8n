@@ -85,34 +85,26 @@ function buildRowShifts(rowYs: number[], rowCenters: Map<number, number>): Map<n
 }
 
 /**
- * Returns the layout shift for a node at an arbitrary original Y by linearly
- * interpolating between the two nearest FormStep rows. Clamps to the first or
- * last row's shift when the Y falls outside the range of known rows.
+ * Returns the layout shift for a non-FormStep node by taking the shift of the
+ * last FormStep row whose original Y is ≤ the node's Y (floor). Clamps to the
+ * first row's shift when the node sits above all form rows.
  *
- * Used for non-FormStep nodes (e.g. "Edit Fields") so they travel proportionally
- * with their surrounding form cards and connection lines don't develop sinusoidal kinks.
+ * Using the floor row (rather than interpolating) means all non-FormStep nodes
+ * between two form rows shift by the same amount, so entire branches move
+ * together as a unit instead of stretching.
  *
  * @param y          The node's original workflow Y.
  * @param rowYs      Sorted original Y values of all FormStep rows.
  * @param rowShifts  Shift amount for each row Y (from buildRowShifts).
  */
-function interpolateShift(y: number, rowYs: number[], rowShifts: Map<number, number>): number {
+function floorShift(y: number, rowYs: number[], rowShifts: Map<number, number>): number {
 	if (rowYs.length === 0) return 0;
-	if (y <= rowYs[0]) return rowShifts.get(rowYs[0]) ?? 0;
-	if (y >= rowYs[rowYs.length - 1]) return rowShifts.get(rowYs[rowYs.length - 1]) ?? 0;
-
-	// Binary search for the surrounding pair of row Ys.
-	let lo = 0;
-	let hi = rowYs.length - 1;
-	while (hi - lo > 1) {
-		const mid = (lo + hi) >> 1;
-		if (rowYs[mid] <= y) lo = mid;
-		else hi = mid;
+	let result = rowShifts.get(rowYs[0]) ?? 0; // clamp: default to first row when y is above all rows
+	for (const ry of rowYs) {
+		if (ry <= y) result = rowShifts.get(ry) ?? 0;
+		else break; // rowYs is sorted ascending
 	}
-	const y0 = rowYs[lo];
-	const y1 = rowYs[hi];
-	const t = (y - y0) / (y1 - y0);
-	return (rowShifts.get(y0) ?? 0) + t * ((rowShifts.get(y1) ?? 0) - (rowShifts.get(y0) ?? 0));
+	return result;
 }
 
 /**
@@ -120,8 +112,8 @@ function interpolateShift(y: number, rowYs: number[], rowShifts: Map<number, num
  *
  * - **FormStep node**: positioned so its vertical centre lands on the row's computed
  *   centre, taking the node's actual measured height into account.
- * - **Other node**: shifted by the interpolated shift at its original Y so it tracks
- *   surrounding form cards proportionally.
+ * - **Other node**: shifted by the floor shift at its original Y (shift of the nearest
+ *   FormStep row at or above), so the whole branch moves as a unit.
  *
  * Returns `null` when the node's row has no entry in rowCenters (should not happen).
  *
@@ -145,7 +137,7 @@ function computeNodeNewY(
 		if (center === undefined) return null;
 		return center - wrapperH / 2;
 	}
-	return origY + interpolateShift(origY, rowYs, rowShifts);
+	return origY + floorShift(origY, rowYs, rowShifts);
 }
 
 // ---------------------------------------------------------------------------

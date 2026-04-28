@@ -10,10 +10,12 @@ withDefaults(
 		viewport: ViewportTransform;
 		variant?: 'dots' | 'lines';
 		patternColor?: string;
+		gap?: number;
 	}>(),
 	{
 		variant: 'dots',
 		patternColor: 'var(--canvas--dot--color)',
+		gap: GRID_SIZE,
 	},
 );
 </script>
@@ -22,7 +24,7 @@ withDefaults(
 		data-test-id="canvas-background"
 		:pattern-color="patternColor"
 		:variant="variant"
-		:gap="GRID_SIZE"
+		:gap="gap"
 	>
 		<template v-if="striped" #pattern-container="patternProps">
 			<CanvasBackgroundStripedPattern

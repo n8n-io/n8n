@@ -16,3 +16,6 @@ export const FORM_STEP_IFRAME_ZOOM = 0.45;
  * FORM_STEP_MIN_GAP + 2 × FORM_STEP_PADDING = 100 px.
  */
 export const FORM_STEP_MIN_GAP = 60;
+
+/** CSS transform scale applied to non-form nodes (regular workflow nodes) in the form view. */
+export const FORM_STEP_NON_FORM_NODE_SCALE = 0.5;
