@@ -1,5 +1,5 @@
 import { render, fireEvent } from '@testing-library/vue';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 import ActionPill from './ActionPill.vue';
 
