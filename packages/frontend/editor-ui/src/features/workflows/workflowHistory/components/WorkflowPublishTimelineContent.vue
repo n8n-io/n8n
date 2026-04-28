@@ -13,8 +13,8 @@ const emit = defineEmits<{
 
 /** Threshold to filter out transient deactivation/reactivation gaps during version changes */
 const MIN_UNPUBLISHED_DURATION_MS = 2000;
-/** Show a duration badge between entries when the period lasted longer than this */
-const MIN_DURATION_FOR_BADGE_MS = 1 * 60 * 1000;
+/** Show the active/inactive duration on an entry only when the period lasted longer than this */
+const MIN_DURATION_FOR_LABEL_MS = 10 * 60 * 1000;
 
 const props = defineProps<{
 	workflowId: string;
@@ -137,8 +137,14 @@ const formatDateFull = (date: Date) => {
 const getDurationMs = (period: TimelinePeriod) =>
 	(period.endedAt ?? new Date()).getTime() - period.startedAt.getTime();
 
-const shouldShowDurationBadge = (idx: number) =>
-	getDurationMs(periods.value[idx]) >= MIN_DURATION_FOR_BADGE_MS;
+const shouldShowDuration = (period: TimelinePeriod) =>
+	getDurationMs(period) >= MIN_DURATION_FOR_LABEL_MS;
+
+const isClickable = (period: TimelinePeriod) => period.status === 'published' && !!period.versionId;
+
+const onSelect = (period: TimelinePeriod) => {
+	if (period.versionId) emit('selectVersion', period.versionId);
+};
 
 const loadTimeline = async () => {
 	isLoading.value = true;
@@ -169,92 +175,99 @@ onMounted(loadTimeline);
 		</div>
 		<template v-else>
 			<div :class="$style.timeline">
-				<template v-for="(period, idx) in periods" :key="idx">
-					<div v-if="shouldShowDurationBadge(idx)" :class="$style.durationSeparator">
-						<div :class="$style.timelineIndicator">
-							<span :class="$style.timelineLine" />
+				<div
+					v-for="(period, idx) in periods"
+					:key="idx"
+					:class="[
+						$style.timelineItem,
+						isClickable(period) && $style.timelineItemClickable,
+						shouldShowDuration(period) && $style.timelineItemTall,
+					]"
+					:role="isClickable(period) ? 'button' : undefined"
+					:tabindex="isClickable(period) ? 0 : undefined"
+					@click="isClickable(period) && onSelect(period)"
+					@keydown.enter="isClickable(period) && onSelect(period)"
+					@keydown.space.prevent="isClickable(period) && onSelect(period)"
+				>
+					<div :class="$style.timelineIndicator">
+						<span
+							:class="[
+								$style.timelineLine,
+								idx === 0 && period.status !== 'published' && $style.timelineLineHidden,
+							]"
+						/>
+						<span
+							v-if="period.status === 'unpublished'"
+							:class="[$style.timelineMarker, $style.markerUnpublished]"
+						>
+							<N8nIcon icon="x" size="small" />
+						</span>
+						<span
+							v-else
+							:class="[
+								$style.timelineDot,
+								period.isCurrent ? $style.dotPublished : $style.dotPastPublished,
+							]"
+						/>
+						<span
+							:class="[
+								$style.timelineLine,
+								idx === periods.length - 1 && $style.timelineLineHidden,
+							]"
+						/>
+					</div>
+					<div :class="$style.timelineContent">
+						<div :class="$style.durationRow">
+							<template v-if="shouldShowDuration(period)">
+								<N8nIcon icon="clock" size="small" />
+								<N8nText size="xsmall" color="text-light">
+									{{ period.durationText }}
+								</N8nText>
+							</template>
 						</div>
-						<div :class="$style.durationBadge">
-							<N8nIcon icon="clock" size="small" />
-							<N8nText size="small" color="text-light">
-								{{ period.durationText }}
+						<div :class="$style.timelineHeader">
+							<N8nText :bold="true" size="small" :class="$style.timelineTitle">
+								<template v-if="period.status === 'published'">
+									{{
+										period.versionId
+											? period.versionName
+												? i18n.baseText('workflowHistory.publishTimeline.event.activatedVersion', {
+														interpolate: { version: period.versionName },
+													})
+												: i18n.baseText('workflowHistory.publishTimeline.event.activated')
+											: i18n.baseText(
+													'workflowHistory.publishTimeline.event.activatedDeletedVersion',
+												)
+									}}
+								</template>
+								<template v-else>
+									{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
+								</template>
+								<N8nTooltip
+									v-if="period.status === 'published' && !period.versionId"
+									placement="top"
+									:content="
+										i18n.baseText(
+											'workflowHistory.publishTimeline.event.activatedDeletedVersion.tooltip',
+										)
+									"
+								>
+									<N8nIcon icon="info" size="small" :class="$style.deletedVersionHint" />
+								</N8nTooltip>
+							</N8nText>
+							<N8nTooltip placement="left" :content="formatDateFull(period.startedAt)">
+								<N8nText size="small" color="text-light" :class="$style.dateText">
+									{{ formatDateShort(period.startedAt) }}
+								</N8nText>
+							</N8nTooltip>
+						</div>
+						<div :class="$style.userText">
+							<N8nText size="xsmall" color="text-light">
+								{{ period.user }}
 							</N8nText>
 						</div>
 					</div>
-					<div :class="$style.timelineItem">
-						<div :class="$style.timelineIndicator">
-							<span
-								:class="[
-									$style.timelineDot,
-									period.status === 'unpublished'
-										? $style.dotUnpublished
-										: period.isCurrent
-											? $style.dotPublished
-											: $style.dotPastPublished,
-								]"
-							/>
-							<span v-if="idx < periods.length - 1" :class="$style.timelineLine" />
-						</div>
-						<div :class="$style.timelineContent">
-							<div :class="$style.timelineHeader">
-								<N8nText :bold="true" size="small">
-									<template v-if="period.status === 'published'">
-										<a
-											v-if="period.versionId"
-											:class="$style.versionLink"
-											@click="emit('selectVersion', period.versionId)"
-										>
-											{{
-												period.versionName
-													? i18n.baseText(
-															'workflowHistory.publishTimeline.event.activatedVersion',
-															{ interpolate: { version: period.versionName } },
-														)
-													: i18n.baseText('workflowHistory.publishTimeline.event.activated')
-											}}
-										</a>
-										<template v-else>
-											{{
-												i18n.baseText(
-													'workflowHistory.publishTimeline.event.activatedDeletedVersion',
-												)
-											}}
-										</template>
-									</template>
-									<template v-else>
-										{{ i18n.baseText('workflowHistory.publishTimeline.event.deactivated') }}
-									</template>
-									<template v-if="period.user && hasMultipleAuthors">
-										{{ ' ' }}
-										<N8nText size="small" color="text-light">
-											{{
-												i18n.baseText('workflowHistory.publishTimeline.by', {
-													interpolate: { user: period.user },
-												})
-											}}
-										</N8nText>
-									</template>
-									<N8nTooltip
-										v-if="period.status === 'published' && !period.versionId"
-										placement="top"
-										:content="
-											i18n.baseText(
-												'workflowHistory.publishTimeline.event.activatedDeletedVersion.tooltip',
-											)
-										"
-									>
-										<N8nIcon icon="info" size="small" :class="$style.deletedVersionHint" />
-									</N8nTooltip>
-								</N8nText>
-								<N8nTooltip placement="left" :content="formatDateFull(period.startedAt)">
-									<N8nText size="small" color="text-light" :class="$style.dateText">
-										{{ formatDateShort(period.startedAt) }}
-									</N8nText>
-								</N8nTooltip>
-							</div>
-						</div>
-					</div>
-				</template>
+				</div>
 			</div>
 			<N8nTooltip
 				v-if="adoptionDate && showDeletedVersionsDisclaimer"
@@ -280,7 +293,7 @@ onMounted(loadTimeline);
 
 <style module lang="scss">
 .content {
-	padding: var(--spacing--sm);
+	padding: var(--spacing--2xs);
 	overflow-y: auto;
 	height: 100%;
 }
@@ -291,32 +304,11 @@ onMounted(loadTimeline);
 	vertical-align: middle;
 }
 
-.versionLink {
-	cursor: pointer;
-	color: inherit;
-
-	&:hover {
-		color: var(--color--primary);
-	}
-}
-
 .empty {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	min-height: 200px;
-}
-
-.dotPublished {
-	background-color: var(--color--success);
-}
-
-.dotPastPublished {
-	border: var(--border-width) var(--border-style) var(--color--text--tint-2);
-}
-
-.dotUnpublished {
-	border: var(--border-width) var(--border-style) var(--color--danger);
 }
 
 .timeline {
@@ -327,38 +319,81 @@ onMounted(loadTimeline);
 .timelineItem {
 	display: flex;
 	gap: var(--spacing--xs);
+	padding: var(--spacing--3xs);
+	border-radius: var(--radius);
+	box-sizing: border-box;
+	height: 61px;
+}
+
+.timelineItemTall {
+	height: 81px;
+}
+
+.timelineItemClickable {
+	cursor: pointer;
+
+	&:hover,
+	&:focus-visible {
+		background-color: var(--color--background--light-2);
+		outline: none;
+	}
 }
 
 .timelineIndicator {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	width: var(--spacing--sm);
+	width: 13px;
 	flex-shrink: 0;
 }
 
 .timelineDot {
 	display: inline-block;
-	width: 10px;
-	height: 10px;
+	width: 11px;
+	height: 11px;
 	border-radius: 50%;
 	flex-shrink: 0;
-	margin-top: 3px;
+}
+
+.dotPublished {
+	background-color: var(--color--success);
+}
+
+.dotPastPublished {
+	border: var(--border-width) var(--border-style) var(--color--text--tint-2);
+}
+
+.timelineMarker {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 13px;
+	height: 13px;
+	flex-shrink: 0;
+}
+
+.markerUnpublished {
+	color: var(--color--warning);
 }
 
 .timelineLine {
-	width: 2px;
-	flex-grow: 1;
+	width: 1px;
+	flex: 1 1 0;
+	min-height: var(--spacing--2xs);
 	background-color: var(--color--foreground);
-	min-height: var(--spacing--sm);
+}
+
+.timelineLineHidden {
+	visibility: hidden;
 }
 
 .timelineContent {
 	display: flex;
 	flex-direction: column;
 	flex-grow: 1;
+	min-width: 0;
+	justify-content: center;
 	gap: var(--spacing--5xs);
-	padding-bottom: var(--spacing--md);
 }
 
 .timelineHeader {
@@ -368,14 +403,32 @@ onMounted(loadTimeline);
 	gap: var(--spacing--2xs);
 }
 
+.timelineTitle {
+	display: block;
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.userText {
+	display: block;
+	min-height: var(--spacing--xs);
+	line-height: var(--spacing--xs);
+}
+
 .dateText {
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
 
-.durationSeparator {
+.durationRow {
 	display: flex;
-	gap: var(--spacing--xs);
+	align-items: center;
+	gap: var(--spacing--4xs);
+	color: var(--color--text--tint-2);
+	min-height: var(--spacing--xs);
 }
 
 .deletedVersionsDisclaimer {
@@ -385,17 +438,5 @@ onMounted(loadTimeline);
 	padding: var(--spacing--sm) 0;
 	width: 100%;
 	justify-content: center;
-}
-
-.durationBadge {
-	display: inline-flex;
-	align-self: center;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	background-color: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	width: fit-content;
-	margin-bottom: var(--spacing--md);
 }
 </style>
