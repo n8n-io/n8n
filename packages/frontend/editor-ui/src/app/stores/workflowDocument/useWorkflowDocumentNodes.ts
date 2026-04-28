@@ -24,7 +24,6 @@ import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { isPresent } from '@/app/utils/typesUtils';
-import * as workflowUtils from 'n8n-workflow/common';
 
 // --- Event types ---
 
@@ -194,7 +193,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function getNodeByName(name: string): INodeUi | null {
-		return workflowUtils.getNodeByName(nodesByName.value, name);
+		return nodesByName.value[name] ?? null;
 	}
 
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
