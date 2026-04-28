@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants/src';
+import { Time } from '@n8n/constants';
 import { sleep } from 'n8n-workflow';
 
 import config from '@/config';

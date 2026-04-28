@@ -68,7 +68,7 @@ export class TaskRunnersConfig {
 	 * How long (in seconds) a grant token is valid for runner authentication.
 	 * Increase on slow hardware where the runner needs more time to start.
 	 */
-	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL')
+	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL', z.number({ coerce: true }).int().positive())
 	grantTokenTtl: number = 15;
 
 	/**
