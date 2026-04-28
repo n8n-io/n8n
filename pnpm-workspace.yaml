@@ -19,6 +19,7 @@ catalog:
   '@codemirror/lang-css': 6.3.1
   '@codemirror/lang-javascript': 6.2.4
   '@codemirror/lang-json': 6.0.2
+  '@codemirror/lang-markdown': 6.3.4
   '@codemirror/lang-python': 6.2.1
   '@codemirror/language': 6.12.1
   '@codemirror/lint': 6.9.2

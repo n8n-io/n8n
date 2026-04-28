@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { StreamLanguage, type StringStream } from '@codemirror/language';
+import { markdown } from '@codemirror/lang-markdown';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
 import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
@@ -67,39 +67,15 @@ const instructionsValid = computed(
 const formIsValid = computed(
 	() => formValidation.name && formValidation.description && instructionsValid.value,
 );
+const instructionsCharacterCount = computed(() =>
+	i18n.baseText('agents.builder.skills.instructions.characterCount', {
+		interpolate: {
+			count: (props.skill.instructions ?? '').length.toLocaleString(),
+			max: AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH.toLocaleString(),
+		},
+	}),
+);
 const acceptedInstructionExtensions = new Set(['txt', 'md']);
-
-interface MarkdownState {
-	inFencedCode: boolean;
-}
-
-const markdownLanguage = StreamLanguage.define<MarkdownState>({
-	name: 'markdown',
-	startState: () => ({ inFencedCode: false }),
-	token(stream: StringStream, state: MarkdownState) {
-		if (stream.sol() && stream.match(/^```.*$/)) {
-			state.inFencedCode = !state.inFencedCode;
-			return 'processingInstruction';
-		}
-
-		if (state.inFencedCode) {
-			stream.skipToEnd();
-			return 'monospace';
-		}
-
-		if (stream.sol() && stream.match(/^#{1,6}(?=\s).*/)) return 'heading';
-		if (stream.sol() && stream.match(/^>\s?.*/)) return 'quote';
-		if (stream.sol() && stream.match(/^\s*(?:[-*+]|\d+\.)\s+/)) return 'list';
-		if (stream.match(/`[^`]*`/)) return 'monospace';
-		if (stream.match(/\*\*[^*]+\*\*/)) return 'strong';
-		if (stream.match(/\*[^*]+\*/)) return 'emphasis';
-		if (stream.match(/\[[^\]]+\]\([^)]+\)/)) return 'link';
-		if (stream.match(/https?:\/\/\S+/)) return 'url';
-
-		stream.next();
-		return null;
-	},
-});
 
 function createEditor(doc: string) {
 	if (!container.value) return;
@@ -107,7 +83,7 @@ function createEditor(doc: string) {
 		state: EditorState.create({
 			doc,
 			extensions: [
-				markdownLanguage,
+				markdown(),
 				lineNumbers(),
 				EditorView.lineWrapping,
 				readOnly.of(EditorState.readOnly.of(props.disabled)),
@@ -313,11 +289,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 			<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
 				props.errors.instructions
 			}}</N8nText>
-			<N8nText size="xsmall" color="text-light">{{
-				i18n.baseText('agents.builder.skills.instructions.characterCount', {
-					interpolate: { count: String((skill.instructions ?? '').length) },
-				})
-			}}</N8nText>
+			<N8nText size="xsmall" color="text-light">{{ instructionsCharacterCount }}</N8nText>
 		</div>
 	</div>
 </template>

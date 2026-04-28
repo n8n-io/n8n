@@ -27,6 +27,7 @@
     "@codemirror/lang-css": "catalog:",
     "@codemirror/lang-javascript": "catalog:",
     "@codemirror/lang-json": "catalog:",
+    "@codemirror/lang-markdown": "catalog:",
     "@codemirror/lang-python": "catalog:",
     "@codemirror/language": "catalog:",
     "@codemirror/lint": "catalog:",
