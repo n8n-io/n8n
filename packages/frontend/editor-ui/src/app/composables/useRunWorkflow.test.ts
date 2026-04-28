@@ -109,11 +109,6 @@ vi.mock('@/app/stores/workflows.store', () => {
 		isWorkflowSaved: {
 			'123': true,
 		},
-		getNodeByName: vi
-			.fn()
-			.mockImplementation((name) =>
-				name === 'Test node' ? { name: 'Test node', id: 'Test id' } : undefined,
-			),
 		getExecution: vi.fn(),
 		incomingConnectionsByNodeName: vi.fn(),
 		outgoingConnectionsByNodeName: vi.fn(),

@@ -24,6 +24,7 @@ import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
 import type { useWorkflowDocumentNodeMetadata } from './useWorkflowDocumentNodeMetadata';
 import { isPresent } from '@/app/utils/typesUtils';
+import * as workflowUtils from 'n8n-workflow/common';
 
 // --- Event types ---
 
@@ -179,7 +180,12 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 
 	const allNodes = computed<INodeUi[]>(() => workflowsStore.workflow.nodes);
 
-	const nodesByName = computed<Record<string, INodeUi>>(() => workflowsStore.nodesByName);
+	const nodesByName = computed(() => {
+		return workflowsStore.workflow.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
+			acc[node.name] = node;
+			return acc;
+		}, {});
+	});
 
 	const canvasNames = computed(() => new Set(allNodes.value.map((n) => n.name)));
 
@@ -188,7 +194,7 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 	}
 
 	function getNodeByName(name: string): INodeUi | null {
-		return workflowsStore.getNodeByName(name);
+		return workflowUtils.getNodeByName(nodesByName.value, name);
 	}
 
 	function getNodes(): INodeUi[] {

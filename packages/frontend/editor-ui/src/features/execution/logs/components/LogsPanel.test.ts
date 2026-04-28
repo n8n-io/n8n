@@ -413,7 +413,7 @@ describe('LogsPanel', () => {
 
 		await nextTick();
 
-		expect(workflowsStore.nodesByName['AI Agent']).toBeUndefined();
+		expect(workflowsStore.workflow.nodes.find((n) => n.name === 'AI Agent')).toBeUndefined();
 		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
 	});
 

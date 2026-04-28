@@ -834,9 +834,12 @@ describe('useWorkflowsStore', () => {
 		it('should add node success run data', () => {
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
 
-			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
-				type: 'n8n-nodes-base.manualTrigger',
-			});
+			workflowsStore.workflow.nodes.push(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
 
 			// ACT
 			workflowsStore.updateNodeExecutionStatus(successEvent);
@@ -928,9 +931,12 @@ describe('useWorkflowsStore', () => {
 			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
-			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
-				type: 'n8n-nodes-base.manualTrigger',
-			});
+			workflowsStore.workflow.nodes.push(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
 
 			// ACT
 			workflowsStore.updateNodeExecutionStatus(successEvent);
@@ -986,9 +992,12 @@ describe('useWorkflowsStore', () => {
 			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
-			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
-				type: 'n8n-nodes-base.manualTrigger',
-			});
+			workflowsStore.workflow.nodes.push(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
 
 			// ACT
 			workflowsStore.updateNodeExecutionStatus(successEventWithExecutionIndex);

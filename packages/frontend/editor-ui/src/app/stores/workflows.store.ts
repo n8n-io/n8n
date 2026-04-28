@@ -176,14 +176,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return false;
 	});
 
-	/** @deprecated Use `workflowDocumentStore.nodesByName` instead. */
-	const nodesByName = computed(() => {
-		return workflow.value.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
-			acc[node.name] = node;
-			return acc;
-		}, {});
-	});
-
 	const nodesWithIssues = computed(() =>
 		workflow.value.nodes.filter((node) => {
 			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
@@ -343,11 +335,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			return connectionsByDestinationNode.value[nodeName] as unknown as INodeConnections;
 		}
 		return {};
-	}
-
-	/** @deprecated Use `workflowDocumentStore.getNodeByName()` instead. */
-	function getNodeByName(nodeName: string): INodeUi | null {
-		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
 	}
 
 	/** @deprecated Use `workflowDocumentStore.getNodeById()` instead. */
@@ -753,7 +740,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const nodeName = pushData.nodeName;
 
 		if (pushData.data.error) {
-			const node = getNodeByName(nodeName);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+			const node = workflowDocumentStore.getNodeByName(nodeName);
 			telemetry.track('Manual exec errored', {
 				error_title: pushData.data.error.message,
 				node_type: node?.type,
@@ -761,7 +751,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				node_id: node?.id,
 				node_graph_string: JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(
-						useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)).serialize(),
+						workflowDocumentStore.serialize(),
 						workflowHelpers.getNodeTypes(),
 						{
 							isCloudDeployment: settingsStore.isCloudDeployment,
@@ -797,7 +787,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 		const { nodeName, data } = pushData;
 		const isNodeWaiting = data.executionStatus === 'waiting';
-		const node = getNodeByName(nodeName);
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowId.value),
+		);
+		const node = workflowDocumentStore.getNodeByName(nodeName);
 		if (!node) return;
 
 		workflowExecutionData.value.data.resultData.lastNodeExecuted = nodeName;
@@ -1247,7 +1240,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		connectionsBySourceNode,
 		connectionsByDestinationNode,
 		isWorkflowRunning,
-		nodesByName,
 		nodesWithIssuesCount,
 		nodesWithIssues,
 		nodesIssuesExist,
@@ -1261,7 +1253,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionTriggerNodeName,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
-		getNodeByName,
 		getExecutionDataById,
 		getNodeTypes,
 		getNodes,

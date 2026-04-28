@@ -6,10 +6,13 @@ import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useCredentialGroupSelection } from '../composables/useCredentialGroupSelection';
 import type { SetupCard } from '../instanceAiWorkflowSetup.utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,7 +50,7 @@ function makeCard(overrides: Partial<SetupCard> = {}): SetupCard {
 }
 
 describe('useCredentialGroupSelection', () => {
-	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 	let credentialsStore: ReturnType<typeof useCredentialsStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
@@ -55,7 +58,7 @@ describe('useCredentialGroupSelection', () => {
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
-		workflowsStore = useWorkflowsStore();
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
 		credentialsStore = useCredentialsStore();
 		nodeTypesStore = useNodeTypesStore();
 		uiStore = useUIStore();
@@ -156,7 +159,7 @@ describe('useCredentialGroupSelection', () => {
 				nodes: [makeSetupNode({ credentialType: 'slackApi' })],
 			});
 			const storeNode = { name: 'Slack', credentials: {} };
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(storeNode);
+			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(storeNode);
 			const mockGetById = (id: string) =>
 				id === 'cred-2' ? { id: 'cred-2', name: 'New Slack' } : undefined;
 			// @ts-expect-error Known pinia issue when spying on store getters
@@ -180,7 +183,7 @@ describe('useCredentialGroupSelection', () => {
 			const card = makeCard({
 				nodes: [makeSetupNode({ credentialType: 'slackApi' })],
 			});
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(undefined);
+			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(undefined);
 			const mockGetById = () => ({ id: 'cred-2', name: 'New Slack' });
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(credentialsStore, 'getCredentialById', 'get').mockReturnValue(mockGetById);
@@ -208,7 +211,7 @@ describe('useCredentialGroupSelection', () => {
 				name: 'Slack',
 				credentials: { slackApi: { id: 'cred-1', name: 'Old' } },
 			};
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue(storeNode);
+			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(storeNode);
 
 			const cards = computed(() => [card]);
 			const { initCredGroupSelections, clearCredentialForGroup, getCardCredentialId } =
