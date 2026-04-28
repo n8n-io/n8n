@@ -45,8 +45,7 @@ const activateDisabled = computed(
 		cronExpression.value.trim() === '' ||
 		loading.value ||
 		saving.value ||
-		cronErrorMessage.value !== '' ||
-		generalErrorMessage.value !== '',
+		cronErrorMessage.value !== '',
 );
 
 type ScheduleErrorKey =

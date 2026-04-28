@@ -140,6 +140,31 @@ describe('AgentScheduleTriggerCard', () => {
 		expect(wrapper.emitted('status-change')?.at(-1)).toEqual([true]);
 	});
 
+	it('keeps activation retry available after a general save error', async () => {
+		updateScheduleIntegrationMock.mockRejectedValueOnce(new Error('Temporary outage'));
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-testid="schedule-activate-button"]').trigger('click');
+		await flushPromises();
+
+		expect(wrapper.text()).toContain('Temporary outage');
+		expect(
+			wrapper.find('[data-testid="schedule-activate-button"]').attributes('disabled'),
+		).toBeUndefined();
+		expect(activateScheduleIntegrationMock).not.toHaveBeenCalled();
+
+		updateScheduleIntegrationMock.mockResolvedValueOnce({
+			active: false,
+			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
+		});
+
+		await wrapper.find('[data-testid="schedule-activate-button"]').trigger('click');
+		await flushPromises();
+
+		expect(activateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+	});
+
 	it('autosaves cron and wake-up prompt changes', async () => {
 		updateScheduleIntegrationMock.mockImplementation(async (_ctx, _projectId, _agentId, data) => ({
 			active: false,

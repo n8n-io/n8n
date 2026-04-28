@@ -17,9 +17,10 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 
 interface CredentialOption {
 	id: string;
@@ -31,6 +32,7 @@ const props = defineProps<{
 	data: {
 		projectId: string;
 		agentId: string;
+		isPublished: boolean;
 		connectedTriggers: string[];
 		onConnectedTriggersChange: (triggers: string[]) => void;
 		onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) => void;
@@ -207,8 +209,24 @@ function emitConnectedTriggers() {
 }
 
 async function fetchStatus() {
-	await fetchStatusShared(integrations.value.map((i) => i.type));
+	await fetchStatusShared([
+		...integrations.value.map((integration) => integration.type),
+		AGENT_SCHEDULE_TRIGGER_TYPE,
+	]);
 	emitConnectedTriggers();
+}
+
+function onScheduleStatusChange(active: boolean) {
+	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = active ? 'connected' : 'disconnected';
+	connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
+	emitConnectedTriggers();
+}
+
+function onScheduleTriggerAdded() {
+	props.data.onTriggerAdded({
+		triggerType: AGENT_SCHEDULE_TRIGGER_TYPE,
+		triggers: computeConnectedTriggers(),
+	});
 }
 
 async function fetchCredentials() {
@@ -295,6 +313,14 @@ onMounted(async () => {
 
 		<template #content>
 			<div :class="$style.listWrapper">
+				<AgentScheduleTriggerCard
+					:project-id="data.projectId"
+					:agent-id="data.agentId"
+					:is-published="data.isPublished"
+					@status-change="onScheduleStatusChange"
+					@trigger-added="onScheduleTriggerAdded"
+				/>
+
 				<N8nCard v-for="integration in integrations" :key="integration.type" :class="$style.card">
 					<template #header>
 						<div :class="$style.cardHeader">

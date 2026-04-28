@@ -36,7 +36,9 @@ const visibleConfigs = computed(() => {
 });
 
 const showScheduleCard = computed(
-	() => !props.focusType || props.focusType === AGENT_SCHEDULE_TRIGGER_TYPE,
+	() =>
+		(!props.focusType || props.focusType === AGENT_SCHEDULE_TRIGGER_TYPE) &&
+		(!props.onlyConnected || isConnected(AGENT_SCHEDULE_TRIGGER_TYPE)),
 );
 
 const emit = defineEmits<{
