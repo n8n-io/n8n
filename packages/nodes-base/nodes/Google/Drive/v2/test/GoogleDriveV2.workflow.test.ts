@@ -55,6 +55,28 @@ describe('Google Drive V2', () => {
 				})
 				.persist();
 
+			// Mock file metadata fetch for copy when no filename is provided (falls back to API)
+			mock
+				.get('/drive/v3/files/456')
+				.query({ fields: 'name', supportsAllDrives: true })
+				.reply(200, {
+					id: '456',
+					name: 'My Document',
+					mimeType: 'text/plain',
+				})
+				.persist();
+
+			// Mock file copy for the no-name test case
+			mock
+				.post('/drive/v3/files/456/copy')
+				.query(true)
+				.reply(200, {
+					id: 'copy456',
+					name: 'Copy of My Document',
+					mimeType: 'text/plain',
+				})
+				.persist();
+
 			// Mock file createFromText - multipart upload
 			mock
 				.post('/upload/drive/v3/files')
@@ -166,6 +188,7 @@ describe('Google Drive V2', () => {
 			credentials,
 			workflowFiles: [
 				'file-copy.workflow.json',
+				'file-copy-no-name.workflow.json',
 				'file-createFromText.workflow.json',
 				'file-delete.workflow.json',
 				'file-download.workflow.json',
