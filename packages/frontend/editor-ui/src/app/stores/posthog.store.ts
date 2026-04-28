@@ -25,13 +25,33 @@ export const usePostHog = defineStore('posthog', () => {
 
 	const featureFlags: Ref<FeatureFlags | null> = ref(null);
 	const trackedDemoExp: Ref<FeatureFlags> = ref({});
+	const pendingFeatureFlagsEvaluation = ref(false);
 
 	const overrides: Ref<Record<string, string | boolean>> = ref({});
+	let featureFlagsWaitPromise: Promise<FeatureFlags | null> | null = null;
+	let resolveFeatureFlagsWait: ((flags: FeatureFlags | null) => void) | null = null;
+
+	const clearFeatureFlagsWait = () => {
+		featureFlagsWaitPromise = null;
+		resolveFeatureFlagsWait = null;
+	};
+
+	const resolveFeatureFlagsWaiters = (flags: FeatureFlags | null) => {
+		pendingFeatureFlagsEvaluation.value = false;
+
+		if (resolveFeatureFlagsWait) {
+			resolveFeatureFlagsWait(flags);
+		}
+
+		clearFeatureFlagsWait();
+	};
 
 	const reset = () => {
 		window.posthog?.reset?.();
 		featureFlags.value = null;
 		trackedDemoExp.value = {};
+		pendingFeatureFlagsEvaluation.value = false;
+		clearFeatureFlagsWait();
 	};
 
 	const getVariant = (experiment: keyof FeatureFlags): FeatureFlags[keyof FeatureFlags] => {
@@ -47,6 +67,22 @@ export const usePostHog = defineStore('posthog', () => {
 	 */
 	const isFeatureEnabled = (experiment: keyof FeatureFlags) => {
 		return getVariant(experiment) === true;
+	};
+
+	const hasPendingFeatureFlags = () => pendingFeatureFlagsEvaluation.value;
+
+	const waitForFeatureFlags = async () => {
+		if (!pendingFeatureFlagsEvaluation.value) {
+			return featureFlags.value;
+		}
+
+		if (!featureFlagsWaitPromise) {
+			featureFlagsWaitPromise = new Promise((resolve) => {
+				resolveFeatureFlagsWait = resolve;
+			});
+		}
+
+		return await featureFlagsWaitPromise;
 	};
 
 	if (!window.featureFlags) {
@@ -150,6 +186,7 @@ export const usePostHog = defineStore('posthog', () => {
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
 			featureFlags.value = evaluatedFeatureFlags;
+			resolveFeatureFlagsWaiters(featureFlags.value);
 			options.bootstrap = {
 				distinctId,
 				featureFlags: evaluatedFeatureFlags,
@@ -159,8 +196,10 @@ export const usePostHog = defineStore('posthog', () => {
 			trackExperimentsDebounced(featureFlags.value);
 		} else {
 			// depend on client side evaluation if serverside evaluation fails
+			pendingFeatureFlagsEvaluation.value = true;
 			window.posthog?.onFeatureFlags?.((_, map: FeatureFlags) => {
 				featureFlags.value = map;
+				resolveFeatureFlagsWaiters(featureFlags.value);
 
 				// must be debounced because it is called multiple times by posthog
 				trackExperimentsDebounced(featureFlags.value);
@@ -190,6 +229,8 @@ export const usePostHog = defineStore('posthog', () => {
 		isFeatureEnabled,
 		isVariantEnabled,
 		getVariant,
+		hasPendingFeatureFlags,
+		waitForFeatureFlags,
 		reset,
 		identify,
 		setMetadata,

@@ -731,6 +731,54 @@ describe('GoogleGemini Node', () => {
 				);
 			});
 
+			it('should handle undefined entries in parts array', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'foo' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {};
+						case 'options':
+							return {};
+						case 'options.maxToolsIterations':
+							return 15;
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [undefined, { text: 'bar' }],
+								role: 'model',
+							},
+						},
+					],
+				});
+
+				const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(result).toEqual([
+					{
+						json: {
+							content: {
+								parts: [undefined, { text: 'bar' }],
+								role: 'model',
+							},
+						},
+						pairedItem: { item: 0 },
+					},
+				]);
+			});
+
 			describe('includeMergedResponse', () => {
 				it('should include mergedResponse per candidate when enabled and simplify is true', async () => {
 					executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {

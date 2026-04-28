@@ -101,6 +101,10 @@ export class LmChatGroq implements INodeType {
 				description:
 					'The model which will generate the completion. <a href="https://console.groq.com/docs/models">Learn more</a>.',
 				default: 'llama3-8b-8192',
+				builderHint: {
+					message:
+						'Default to a flagship model on Groq (openai/gpt-oss-120b, llama-3.3-70b-versatile, or moonshotai/kimi-k2-instruct-0905). Avoid the legacy llama3-8b-8192 default and older llama3/llama-2 variants.',
+				},
 			},
 			{
 				displayName: 'Options',

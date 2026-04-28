@@ -589,4 +589,26 @@ describe('useWorkflowDocumentNodes', () => {
 			});
 		});
 	});
+
+	describe('findNodeByPartialId', () => {
+		test.each([
+			[[], 'D', undefined],
+			[['A', 'B', 'C'], 'D', undefined],
+			[['A', 'B', 'C'], 'B', 1],
+			[['AA', 'BB', 'CC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'BC', 2],
+		] as Array<[string[], string, number | undefined]>)(
+			'with input %s , %s returns node with index %s',
+			(ids, id, expectedIndex) => {
+				const nodes = ids.map((x) => createNode({ id: x, name: x }));
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes(nodes);
+
+				expect(workflowDocumentNodes.findNodeByPartialId(id)?.id).toBe(
+					nodes[expectedIndex ?? -1]?.id,
+				);
+			},
+		);
+	});
 });

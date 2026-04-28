@@ -42,7 +42,7 @@ type ListSearchMethod = (
 type LoadOptionsMethod = (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 type ActionHandlerMethod = (
 	this: ILoadOptionsFunctions,
-	payload?: string,
+	payload?: string | IDataObject,
 ) => Promise<NodeParameterValueType>;
 type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 
@@ -137,7 +137,7 @@ export class DynamicNodeParametersService {
 		// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
 		// enabled in `tsconfig.json`
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return await method.call(thisArgs);
 	}
 
 	/** Returns the available options via a loadOptions param */
@@ -238,7 +238,7 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs, filter, paginationToken);
+		return await method.call(thisArgs, filter, paginationToken);
 	}
 
 	/** Returns the available mapping fields for the ResourceMapper component */
@@ -254,9 +254,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return this.removeDuplicateResourceMappingFields(
-			(await method.call(thisArgs)) as ResourceMapperFields,
-		);
+		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
 	}
 
 	/** Returns the available workflow input mapping fields for the ResourceMapper component */
@@ -269,9 +267,7 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
 		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
-		return this.removeDuplicateResourceMappingFields(
-			(await method.call(thisArgs)) as ResourceMapperFields,
-		);
+		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
 	}
 
 	/** Returns the result of the action handler */
@@ -289,7 +285,7 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs, payload);
+		return await method.call(thisArgs, payload);
 	}
 
 	private getMethod(
@@ -323,12 +319,39 @@ export class DynamicNodeParametersService {
 		methodName: string,
 		nodeType: INodeType,
 	): NodeMethod {
-		const method = nodeType.methods?.[type]?.[methodName] as NodeMethod;
+		const methodsOfType = nodeType.methods?.[type];
+		const method = methodsOfType?.[methodName] as NodeMethod;
 		if (typeof method !== 'function') {
-			throw new UnexpectedError('Node type does not have method defined', {
-				tags: { nodeType: nodeType.description.name },
-				extra: { methodName },
-			});
+			const available = methodsOfType ? Object.keys(methodsOfType) : [];
+
+			// Cross-reference: if the requested type has nothing (or lacks this
+			// method), surface other method-type registrations so callers can
+			// self-correct when they picked the wrong methodType. E.g. asking
+			// for `loadOptions.listModels` on a node that only has
+			// `listSearch.searchModels` now returns both pieces of information.
+			const otherTypesWithMethods: string[] = [];
+			for (const [otherType, otherMethods] of Object.entries(nodeType.methods ?? {})) {
+				if (otherType === type || !otherMethods) continue;
+				const names = Object.keys(otherMethods);
+				if (names.length > 0) {
+					otherTypesWithMethods.push(`${otherType}: ${names.join(', ')}`);
+				}
+			}
+
+			const availableText =
+				available.length > 0 ? available.join(', ') : `<no ${type} methods declared>`;
+			const otherTypesText =
+				otherTypesWithMethods.length > 0
+					? ` Other method types on this node — ${otherTypesWithMethods.join('; ')}.`
+					: '';
+
+			throw new UnexpectedError(
+				`Node type "${nodeType.description.name}" has no ${type} method named "${methodName}". Available ${type} methods: ${availableText}.${otherTypesText}`,
+				{
+					tags: { nodeType: nodeType.description.name },
+					extra: { methodName, type, available, otherTypes: otherTypesWithMethods },
+				},
+			);
 		}
 		return method;
 	}

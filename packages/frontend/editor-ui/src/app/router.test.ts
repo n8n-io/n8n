@@ -2,8 +2,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import router, { routes } from '@/app/router';
 import { VIEWS } from '@/app/constants';
+import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants/experiments';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Scope } from '@n8n/permissions';
@@ -185,6 +187,63 @@ describe('router', () => {
 		settingsStore.settings.hideUsagePage = hideUsagePage;
 		await router.push('/settings');
 		expect(router.currentRoute.value.name).toBe(name);
+	});
+
+	describe('resource center route guard', () => {
+		beforeEach(async () => {
+			// Reset to a neutral route so each test's push('/resource-center')
+			// triggers the guard instead of being dropped as a duplicate navigation.
+			await router.push('/workflows');
+		});
+
+		afterEach(() => {
+			const posthog = usePostHog();
+			delete posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name];
+		});
+
+		test('allows enrolled users to reach the resource center view', async () => {
+			const posthog = usePostHog();
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+
+			await router.push('/resource-center');
+			expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
+		});
+
+		test('redirects control users away from the resource center view', async () => {
+			const posthog = usePostHog();
+			posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.control;
+
+			await router.push('/resource-center');
+			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		});
+
+		test('redirects users with no flag away from the resource center view', async () => {
+			await router.push('/resource-center');
+			expect(router.currentRoute.value.name).toBe(VIEWS.WORKFLOWS);
+		});
+
+		test('waits for delayed flag hydration before allowing enrolled users through', async () => {
+			const posthog = usePostHog();
+			const hasPendingFeatureFlagsSpy = vi
+				.spyOn(posthog, 'hasPendingFeatureFlags')
+				.mockReturnValue(true);
+			const waitForFeatureFlagsSpy = vi
+				.spyOn(posthog, 'waitForFeatureFlags')
+				.mockImplementation(async () => {
+					posthog.overrides[RESOURCE_CENTER_EXPERIMENT.name] = RESOURCE_CENTER_EXPERIMENT.variant;
+					return null;
+				});
+
+			try {
+				await router.push('/resource-center');
+
+				expect(waitForFeatureFlagsSpy).toHaveBeenCalledTimes(1);
+				expect(router.currentRoute.value.name).toBe(VIEWS.RESOURCE_CENTER);
+			} finally {
+				waitForFeatureFlagsSpy.mockRestore();
+				hasPendingFeatureFlagsSpy.mockRestore();
+			}
+		});
 	});
 
 	test('should set props: true for PROJECT_ROLE_SETTINGS route', () => {

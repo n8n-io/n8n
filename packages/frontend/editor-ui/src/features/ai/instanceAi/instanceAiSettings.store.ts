@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed, reactive, toRaw } from 'vue';
+import { ref, computed, reactive, toRaw, watch } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -13,7 +13,7 @@ import {
 	fetchServiceCredentials,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { createGatewayLink, getGatewayStatus } from './instanceAi.api';
+import { createGatewayLink, disconnectGatewaySession, getGatewayStatus } from './instanceAi.api';
 import type {
 	FrontendModuleSettings,
 	InstanceAiAdminSettingsResponse,
@@ -25,6 +25,7 @@ import type {
 	InstanceAiPermissionMode,
 	ToolCategory,
 } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -41,11 +42,32 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const preferencesDraft = reactive<InstanceAiUserPreferencesUpdateRequest>({});
 
 	// ── Gateway / daemon state ──────────────────────────────────────────
+	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
-	const isGatewayPolling = ref(false);
+
+	const hasEverConnectedGateway = ref(
+		typeof localStorage !== 'undefined' &&
+			localStorage.getItem(HAS_CONNECTED_STORAGE_KEY) === 'true',
+	);
+
+	function markGatewayEverConnected(): void {
+		if (hasEverConnectedGateway.value) return;
+		hasEverConnectedGateway.value = true;
+		try {
+			localStorage.setItem(HAS_CONNECTED_STORAGE_KEY, 'true');
+		} catch {}
+	}
+
+	function clearGatewayEverConnected(): void {
+		hasEverConnectedGateway.value = false;
+		try {
+			localStorage.removeItem(HAS_CONNECTED_STORAGE_KEY);
+		} catch {}
+	}
 
 	const gatewayConnected = ref(false);
+	const gatewayStatusLoaded = ref(false);
 	const gatewayDirectory = ref<string | null>(null);
 	const gatewayHostIdentifier = ref<string | null>(null);
 	const gatewayToolCategories = ref<ToolCategory[]>([]);
@@ -57,6 +79,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isLocalGatewayDisabledByAdmin = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.localGatewayDisabled !== false,
 	);
+	/** Whether the local gateway is effectively disabled (admin override OR user preference). */
 	const isLocalGatewayDisabled = computed(
 		() => isLocalGatewayDisabledByAdmin.value || preferences.value?.localGatewayDisabled === true,
 	);
@@ -197,6 +220,96 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		}
 	}
 
+	async function persistLocalGatewayPreference(disabled: boolean): Promise<void> {
+		try {
+			const result = await updatePreferences(rootStore.restApiContext, {
+				localGatewayDisabled: disabled,
+			});
+			preferences.value = result;
+		} catch {
+			toast.showError(new Error('Failed to save preference'), 'Settings error');
+		}
+	}
+
+	async function ensurePreferencesLoaded(): Promise<void> {
+		if (preferences.value) return;
+		try {
+			preferences.value = await fetchPreferences(rootStore.restApiContext);
+		} catch {}
+	}
+
+	// ── Sidebar connections ──────────────────────────────────────────────
+	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
+
+	interface SidebarConnection {
+		type: 'computer-use' | 'browser-use';
+		name: string;
+		subtitle: string;
+		status: ConnectionStatus;
+	}
+
+	const hasBrowserCategory = computed(() =>
+		gatewayToolCategories.value.some((c) => c.name === 'browser'),
+	);
+
+	const isBrowserUseConnected = computed(
+		() => gatewayToolCategories.value.find((c) => c.name === 'browser')?.enabled === true,
+	);
+
+	const connections = computed<SidebarConnection[]>(() => {
+		const result: SidebarConnection[] = [];
+
+		if (!isLocalGatewayDisabled.value) {
+			result.push({
+				type: 'computer-use',
+				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
+				subtitle: gatewayConnected.value
+					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
+					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
+				status: gatewayConnected.value ? 'connected' : 'disconnected',
+			});
+		}
+
+		if (gatewayConnected.value && hasBrowserCategory.value) {
+			result.push({
+				type: 'browser-use',
+				name: 'Google Chrome',
+				subtitle: i18n.baseText('instanceAi.connections.types.browserUse.subtitle'),
+				status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
+			});
+		}
+
+		return result;
+	});
+
+	/**
+	 * Tears down the paired gateway session on the server (so its tools are no
+	 * longer exposed to the agent). User preference stays enabled — the user
+	 * can re-pair via the setup modal.
+	 */
+	async function disconnectComputerUse(): Promise<void> {
+		try {
+			await disconnectGatewaySession(rootStore.restApiContext);
+		} catch {
+			toast.showError(
+				new Error(i18n.baseText('instanceAi.connections.disconnectError.message')),
+				i18n.baseText('instanceAi.connections.disconnectError.title'),
+			);
+			return;
+		}
+		clearGatewayEverConnected();
+		gatewayConnected.value = false;
+		gatewayToolCategories.value = [];
+		gatewayDirectory.value = null;
+		gatewayHostIdentifier.value = null;
+	}
+
+	/** Destructive: disables the user preference and removes the row from the list. */
+	async function removeComputerUse(): Promise<void> {
+		await disconnectComputerUse();
+		await persistLocalGatewayPreference(true);
+	}
+
 	function setField<K extends keyof InstanceAiAdminSettingsUpdateRequest>(
 		key: K,
 		value: InstanceAiAdminSettingsUpdateRequest[K],
@@ -235,59 +348,34 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		clearDraft();
 	}
 
-	// ── Gateway polling ───────────────────────────────────────────────────
+	// ── Gateway status fetch ──────────────────────────────────────────────
 
-	let gatewayPollTimer: ReturnType<typeof setInterval> | null = null;
-
-	function pollGatewayStatus(): void {
-		if (isGatewayPolling.value) return;
-		isGatewayPolling.value = true;
-
-		// Fetch initial status immediately so UI reflects current state
-		void getGatewayStatus(rootStore.restApiContext)
-			.then((status) => {
-				gatewayConnected.value = status.connected;
-				gatewayDirectory.value = status.directory;
-				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
-				gatewayToolCategories.value = status.toolCategories ?? [];
-			})
-			.catch(() => {});
-
-		gatewayPollTimer = setInterval(async () => {
-			try {
-				const status = await getGatewayStatus(rootStore.restApiContext);
-				const wasConnected = gatewayConnected.value;
-				gatewayConnected.value = status.connected;
-				gatewayDirectory.value = status.directory;
-				gatewayHostIdentifier.value = status.hostIdentifier ?? null;
-				gatewayToolCategories.value = status.toolCategories ?? [];
-				if (!status.connected && wasConnected) {
-					daemonConnectAttempted = false;
-					startDaemonProbing();
-				}
-			} catch {
-				// Silently retry
-			}
-		}, 3000);
-	}
-
-	function stopGatewayPolling(): void {
-		if (gatewayPollTimer) {
-			clearInterval(gatewayPollTimer);
-			gatewayPollTimer = null;
+	async function fetchGatewayStatus(): Promise<void> {
+		try {
+			const status = await getGatewayStatus(rootStore.restApiContext);
+			gatewayConnected.value = status.connected;
+			gatewayDirectory.value = status.directory;
+			gatewayHostIdentifier.value = status.hostIdentifier ?? null;
+			gatewayToolCategories.value = status.toolCategories ?? [];
+			if (status.connected) markGatewayEverConnected();
+		} catch {
+		} finally {
+			gatewayStatusLoaded.value = true;
 		}
-		isGatewayPolling.value = false;
 	}
 
-	// ── Auto-connect daemon ──────────────────────────────────────────────
+	// ── Connect to local daemon ──────────────────────────────────────────
+	// The daemon is only contacted in response to an explicit user action.
+	// Once paired, the backend keeps the connection alive on its own.
 
 	const DAEMON_BASE = 'http://127.0.0.1:7655';
-	let daemonEventSource: EventSource | null = null;
-	let daemonConnectAttempted = false;
 
-	async function connectDaemon(): Promise<void> {
-		if (isGatewayConnected.value || isDaemonConnecting.value || daemonConnectAttempted) return;
-		daemonConnectAttempted = true;
+	/**
+	 * User-initiated pairing with a running `@n8n/computer-use` daemon.
+	 * Returns true on success, false on failure (a toast is shown on failure).
+	 */
+	async function connectLocalGateway(): Promise<boolean> {
+		if (isGatewayConnected.value || isDaemonConnecting.value) return isGatewayConnected.value;
 		isDaemonConnecting.value = true;
 		try {
 			const result = await createGatewayLink(rootStore.restApiContext);
@@ -310,35 +398,25 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 				throw new Error(body.error ?? 'Daemon connection failed');
 			}
 
-			pollGatewayStatus();
-		} catch (error) {
-			const message = error instanceof Error ? error.message : 'Failed to connect daemon';
-			toast.showError(new Error(message), 'Daemon connection failed');
+			void fetchGatewayStatus();
+			return true;
+		} catch {
+			toast.showError(
+				new Error(
+					'Could not reach the local daemon. Make sure `npx @n8n/computer-use` is running.',
+				),
+				'Connection failed',
+			);
+			return false;
 		} finally {
 			isDaemonConnecting.value = false;
-			stopDaemonProbing();
-		}
-	}
-
-	function startDaemonProbing(): void {
-		if (daemonEventSource || daemonConnectAttempted || isGatewayConnected.value) return;
-
-		daemonEventSource = new EventSource(`${DAEMON_BASE}/events`);
-		daemonEventSource.addEventListener('ready', () => {
-			void connectDaemon();
-		});
-	}
-
-	function stopDaemonProbing(): void {
-		if (daemonEventSource) {
-			daemonEventSource.close();
-			daemonEventSource = null;
 		}
 	}
 
 	// ── Gateway push listener ──────────────────────────────────────────
 
 	let removeGatewayPushListener: (() => void) | null = null;
+	let stopPushReconnectWatch: (() => void) | null = null;
 
 	function startGatewayPushListener(): void {
 		if (removeGatewayPushListener) return;
@@ -349,17 +427,27 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			gatewayDirectory.value = message.data.directory;
 			gatewayHostIdentifier.value = message.data.hostIdentifier ?? null;
 			gatewayToolCategories.value = message.data.toolCategories ?? [];
-			if (!message.data.connected) {
-				daemonConnectAttempted = false;
-				startDaemonProbing();
+			if (message.data.connected) {
+				markGatewayEverConnected();
 			}
 		});
+
+		stopPushReconnectWatch = watch(
+			() => pushStore.isConnected,
+			(now, prev) => {
+				if (now && !prev) void fetchGatewayStatus();
+			},
+		);
 	}
 
 	function stopGatewayPushListener(): void {
 		if (removeGatewayPushListener) {
 			removeGatewayPushListener();
 			removeGatewayPushListener = null;
+		}
+		if (stopPushReconnectWatch) {
+			stopPushReconnectWatch();
+			stopPushReconnectWatch = null;
 		}
 	}
 
@@ -413,7 +501,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		fetch,
 		save,
 		persistEnabled,
+		persistLocalGatewayPreference,
 		persistOptinModalDismissed,
+		ensurePreferencesLoaded,
 		setField,
 		setPreferenceField,
 		setPermission,
@@ -422,8 +512,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,
-		isGatewayPolling,
+		hasEverConnectedGateway,
 		isGatewayConnected,
+		gatewayStatusLoaded,
 		gatewayDirectory,
 		gatewayHostIdentifier,
 		gatewayToolCategories,
@@ -432,15 +523,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
 		isProxyEnabled,
+		fetchGatewayStatus,
+		connectLocalGateway,
 		isCloudManaged,
-		pollGatewayStatus,
-		stopGatewayPolling,
-		startDaemonProbing,
-		stopDaemonProbing,
 		startGatewayPushListener,
 		stopGatewayPushListener,
 		fetchSetupCommand,
 		refreshCredentials,
 		refreshModuleSettings,
+		// Sidebar connections
+		connections,
+		isBrowserUseConnected,
+		disconnectComputerUse,
+		removeComputerUse,
 	};
 });

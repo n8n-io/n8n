@@ -9,7 +9,7 @@ jest.mock('@mastra/core/mastra', () => ({
 import { renderHandoff, type SubAgentHandoff } from '../../../agent/handoff';
 import type { SubmitWorkflowAttempt } from '../../workflows/submit-workflow.tool';
 
-const { resultFromPostStreamError, builderRenderers } =
+const { resultFromPostStreamError, builderRenderers, recordSuccessfulWorkflowBuilds } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
 
@@ -228,5 +228,39 @@ describe('builderRenderers', () => {
 			expect(briefing).not.toContain('<artifacts>');
 			expect(briefing).not.toContain('availableCredentials');
 		});
+	});
+});
+
+describe('recordSuccessfulWorkflowBuilds', () => {
+	it('records workflow IDs returned from successful build-workflow executions', async () => {
+		const onWorkflowId = jest.fn();
+		const input = { prompt: 'build it' };
+		const context = { runId: 'run-1' };
+		const result = { success: true, workflowId: 'wf-main', displayName: 'Main' };
+		const execute = jest.fn(
+			async (_input: unknown, _context?: unknown) => await Promise.resolve(result),
+		);
+		const tool = { execute };
+
+		recordSuccessfulWorkflowBuilds(tool, onWorkflowId);
+
+		await expect(tool.execute(input, context)).resolves.toBe(result);
+		expect(execute).toHaveBeenCalledWith(input, context);
+		expect(onWorkflowId).toHaveBeenCalledWith('wf-main');
+	});
+
+	it('does not record failed or incomplete build-workflow results', async () => {
+		const onWorkflowId = jest.fn();
+		const execute = jest
+			.fn()
+			.mockResolvedValueOnce({ success: false, workflowId: 'wf-failed' })
+			.mockResolvedValueOnce({ success: true });
+		const tool = { execute };
+
+		recordSuccessfulWorkflowBuilds(tool, onWorkflowId);
+
+		await tool.execute({});
+		await tool.execute({});
+		expect(onWorkflowId).not.toHaveBeenCalled();
 	});
 });
