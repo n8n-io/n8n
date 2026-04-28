@@ -205,17 +205,4 @@ describe('useWorkflowDocumentWorkflowObject', () => {
 			expect(workflowObject.value.settings).toEqual(newSettings);
 		});
 	});
-
-	describe('syncWorkflowObjectId', () => {
-		it('updates id on the workflow object', () => {
-			const { workflowObject, syncWorkflowObjectId } = useWorkflowDocumentWorkflowObject(
-				createDeps(),
-			);
-			expect(workflowObject.value.id).toBe('wf-1');
-
-			syncWorkflowObjectId('wf-updated');
-
-			expect(workflowObject.value.id).toBe('wf-updated');
-		});
-	});
 });

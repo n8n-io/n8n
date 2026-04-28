@@ -59,23 +59,12 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 		workflowObject.value.setSettings(settings);
 	}
 
-	function syncWorkflowObjectId(id: string) {
-		workflowObject.value.id = id;
-	}
-
 	function createWorkflowObject(
 		nodes: INodeUi[],
 		connections: IConnections,
 		copyData?: boolean,
 	): Workflow {
 		const nodeTypes = workflowsStore.getNodeTypes();
-
-		// TODO: is it necessary to keep the equivalent logic?
-		// let id: string | undefined = workflow.value.id;
-		// // If workflow doesn't exist in store, treat as new (no ID)
-		// if (id && !workflowsListStore.getWorkflowById(id)?.id) {
-		// 	id = undefined;
-		// }
 
 		return new Workflow({
 			id: deps.workflowId,
@@ -113,6 +102,5 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 		syncWorkflowObjectConnections,
 		syncWorkflowObjectName,
 		syncWorkflowObjectSettings,
-		syncWorkflowObjectId,
 	};
 }
