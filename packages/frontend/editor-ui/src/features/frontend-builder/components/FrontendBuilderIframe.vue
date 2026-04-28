@@ -21,7 +21,9 @@ defineProps<{ demoUrl: string | null; hasMessages: boolean }>();
 <style module>
 .iframeWrap {
 	display: flex;
-	flex: 1;
+	/* Take all remaining space inside the drawer body so the iframe is the
+	   dominant element regardless of how long the chat history grows. */
+	flex: 1 1 0;
 	min-height: 0;
 }
 .iframe {

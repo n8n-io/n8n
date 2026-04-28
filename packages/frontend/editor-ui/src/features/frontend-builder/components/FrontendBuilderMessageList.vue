@@ -23,6 +23,10 @@ defineProps<{ messages: FrontendBuilderMessage[] }>();
 	margin: 0;
 	padding: var(--spacing--sm);
 	overflow-y: auto;
+	/* Cap at a portion of the drawer height so long histories don't squeeze the iframe.
+	   flex-basis 0 + max-height keeps it scrollable while leaving the rest for the iframe. */
+	flex: 0 1 auto;
+	max-height: 35%;
 }
 .message {
 	margin-bottom: var(--spacing--xs);

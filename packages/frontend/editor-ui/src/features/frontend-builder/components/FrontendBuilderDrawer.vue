@@ -56,11 +56,11 @@ watch(
 
 <style module>
 .drawer {
-	position: absolute;
+	position: fixed;
 	top: 0;
 	right: 0;
-	bottom: 0;
 	width: 560px;
+	height: 100dvh;
 	background: var(--color--background);
 	border-left: var(--border);
 	display: flex;
