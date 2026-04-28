@@ -664,7 +664,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		mockConfig.value = { ...intendedConfig };
 		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
-		createAgentSkillMock.mockResolvedValueOnce(skill);
+		createAgentSkillMock.mockResolvedValueOnce({ skill, versionId: 'v2' });
 
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
@@ -732,7 +732,7 @@ describe('AgentBuilderView — three-column shell', () => {
 				},
 			}),
 		);
-		updateAgentSkillMock.mockResolvedValue(updatedSkill);
+		updateAgentSkillMock.mockResolvedValue({ skill: updatedSkill, versionId: 'v2' });
 
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
@@ -754,6 +754,9 @@ describe('AgentBuilderView — three-column shell', () => {
 			'a1',
 			'summarize_notes',
 			updatedSkill,
+		);
+		expect((wrapper.vm as unknown as { agent: { versionId: string | null } }).agent.versionId).toBe(
+			'v2',
 		);
 	});
 });

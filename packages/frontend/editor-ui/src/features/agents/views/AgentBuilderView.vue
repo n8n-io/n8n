@@ -337,7 +337,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 }
 
 async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
-	const updated = await updateAgentSkill(
+	const result = await updateAgentSkill(
 		rootStore.restApiContext,
 		snapshot.projectId,
 		snapshot.agentId,
@@ -347,9 +347,10 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 	if (agent.value?.id !== snapshot.agentId) return;
 	agent.value = {
 		...agent.value,
+		versionId: result.versionId,
 		skills: {
 			...(agent.value.skills ?? {}),
-			[snapshot.skillId]: updated,
+			[snapshot.skillId]: result.skill,
 		},
 	};
 }
@@ -719,14 +720,17 @@ function onOpenAddSkillModal() {
 				const targetAgentId = agentId.value;
 				void (async () => {
 					let created: AgentSkill;
+					let versionId: string | null;
 					try {
-						created = await createAgentSkill(
+						const result = await createAgentSkill(
 							rootStore.restApiContext,
 							targetProjectId,
 							targetAgentId,
 							id,
 							skill,
 						);
+						created = result.skill;
+						versionId = result.versionId;
 					} catch (error) {
 						showError(error, locale.baseText('agents.builder.skills.create.error'));
 						return;
@@ -734,6 +738,7 @@ function onOpenAddSkillModal() {
 					if (agent.value?.id !== targetAgentId) return;
 					agent.value = {
 						...agent.value,
+						versionId,
 						skills: {
 							...(agent.value.skills ?? {}),
 							[id]: created,

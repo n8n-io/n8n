@@ -190,7 +190,7 @@ describe('AgentsService', () => {
 
 			const result = await service.createSkill(agentId, projectId, 'summarize_notes', skill);
 
-			expect(result).toEqual(skill);
+			expect(result).toEqual({ skill, versionId: agent.versionId });
 			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
 				summarize_notes: skill,
 			});
@@ -214,11 +214,14 @@ describe('AgentsService', () => {
 			});
 
 			expect(result).toEqual({
-				...skill,
-				description: 'Summarizes support notes',
+				skill: {
+					...skill,
+					description: 'Summarizes support notes',
+				},
+				versionId: agent.versionId,
 			});
 			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
-				summarize_notes: result,
+				summarize_notes: result.skill,
 			});
 		});
 

@@ -3,6 +3,7 @@ import type {
 	AgentIntegrationStatusResponse,
 	AgentPersistedMessageDto,
 	AgentSkill,
+	AgentSkillMutationResponse,
 	AgentScheduleConfig,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
@@ -282,8 +283,8 @@ export const createAgentSkill = async (
 	agentId: string,
 	skillId: string,
 	skill: AgentSkill,
-): Promise<AgentSkill> => {
-	return await makeRestApiRequest<AgentSkill>(
+): Promise<AgentSkillMutationResponse> => {
+	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
@@ -297,8 +298,8 @@ export const updateAgentSkill = async (
 	agentId: string,
 	skillId: string,
 	updates: Partial<AgentSkill>,
-): Promise<AgentSkill> => {
-	return await makeRestApiRequest<AgentSkill>(
+): Promise<AgentSkillMutationResponse> => {
+	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,

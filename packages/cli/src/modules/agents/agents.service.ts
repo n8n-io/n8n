@@ -5,7 +5,12 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type { AgentSkill, ChatIntegrationDescriptor } from '@n8n/api-types';
+import type {
+	AgentSkill,
+	AgentSkillMutationResponse,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
+import { agentSkillSchema } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
 import { AGENT_SCHEDULE_TRIGGER_TYPE, isAgentScheduleIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -1178,11 +1183,13 @@ export class AgentsService {
 		projectId: string,
 		skillId: string,
 		skill: AgentSkill,
-	): Promise<AgentSkill> {
+	): Promise<AgentSkillMutationResponse> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 		if (entity.skills?.[skillId]) throw new ConflictError('Skill already exists');
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
+
+		this.validateSkill(skill);
 
 		entity.skills = {
 			...(entity.skills ?? {}),
@@ -1195,11 +1202,11 @@ export class AgentsService {
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);
-		await this.agentRepository.save(entity);
+		const saved = await this.agentRepository.save(entity);
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
 
-		return skill;
+		return { skill, versionId: saved.versionId };
 	}
 
 	async updateSkill(
@@ -1207,7 +1214,7 @@ export class AgentsService {
 		projectId: string,
 		skillId: string,
 		updates: Partial<AgentSkill>,
-	): Promise<AgentSkill> {
+	): Promise<AgentSkillMutationResponse> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
@@ -1215,6 +1222,8 @@ export class AgentsService {
 		if (!existing) throw new NotFoundError('Skill not found');
 
 		const updated = { ...existing, ...updates };
+		this.validateSkill(updated);
+
 		entity.skills = {
 			...(entity.skills ?? {}),
 			[skillId]: updated,
@@ -1222,11 +1231,20 @@ export class AgentsService {
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);
-		await this.agentRepository.save(entity);
+		const saved = await this.agentRepository.save(entity);
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
-		return updated;
+		return { skill: updated, versionId: saved.versionId };
+	}
+
+	private validateSkill(skill: AgentSkill): void {
+		const result = agentSkillSchema.safeParse(skill);
+		if (!result.success) {
+			throw new UserError(
+				`Invalid agent skill: ${result.error.issues[0]?.message ?? 'Invalid skill'}`,
+			);
+		}
 	}
 
 	/**

@@ -223,11 +223,11 @@ export class AgentsBuilderToolsService {
 			)
 			.input(
 				z.object({
-					name: z.string().min(1).describe('Human-readable skill name'),
+					name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
 					description: agentSkillSchema.shape.description.describe(
 						'Short description of when to load the skill.',
 					),
-					body: z.string().min(1).describe('Full skill instructions/body'),
+					body: agentSkillSchema.shape.instructions.describe('Full skill instructions/body'),
 				}),
 			)
 			.handler(
@@ -242,10 +242,14 @@ export class AgentsBuilderToolsService {
 				}) => {
 					const id = skillNameToId(name);
 					const skill = { name, description, instructions: body };
+					const validation = agentSkillSchema.safeParse(skill);
+					if (!validation.success) {
+						return { ok: false, errors: formatZodErrors(validation.error) };
+					}
 
 					try {
 						const created = await this.agentsService.createSkill(agentId, projectId, id, skill);
-						return { ok: true, id, skill: created };
+						return { ok: true, id, skill: created.skill };
 					} catch (e) {
 						return {
 							ok: false,

@@ -131,6 +131,11 @@ export interface AgentSkill {
 	instructions: string;
 }
 
+export interface AgentSkillMutationResponse {
+	skill: AgentSkill;
+	versionId: string | null;
+}
+
 /**
  * Normalise a skill name into a stable id used to key the agent skill map.
  * Trims, lowercases, replaces non-`[a-z0-9_-]` runs with `_`, strips leading
