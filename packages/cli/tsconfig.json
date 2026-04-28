@@ -4,6 +4,8 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
+		"moduleResolution": "NodeNext",
+		"module": "NodeNext",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"paths": {

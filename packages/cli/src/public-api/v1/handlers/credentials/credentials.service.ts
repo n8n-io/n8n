@@ -169,10 +169,13 @@ export async function updateCredential(
 		// Decrypt existing data to access oauthTokenData
 		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
 
-		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
 			(shared) => shared.role === 'credential:owner',
-		)!;
+		);
+
+		if (!projectOwningCredential) {
+			throw new Error('projectOwningCredential not set');
+		}
 
 		await validateExternalSecretsPermissions({
 			user,
