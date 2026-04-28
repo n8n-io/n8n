@@ -99,6 +99,7 @@ const TestRunDetailView = async () =>
 	await import('@/features/ai/evaluation.ee/views/TestRunDetailView.vue');
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
+const FormsWorkflowView = async () => await import('@/features/forms/views/FormsWorkflowView.vue');
 const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
@@ -331,6 +332,16 @@ export const routes: RouteRecordRaw[] = [
 				props: true,
 			},
 		],
+	},
+	{
+		path: '/workflow/:name/forms',
+		name: VIEWS.WORKFLOW_FORMS,
+		component: FormsWorkflowView,
+		meta: {
+			layout: 'workflow',
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
 	},
 	{
 		path: '/workflow/:workflowId/history/:versionId?',

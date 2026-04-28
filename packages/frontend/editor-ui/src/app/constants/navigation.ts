@@ -71,6 +71,7 @@ export const enum VIEWS {
 	RESOLVERS = 'Resolvers',
 	RESOURCE_CENTER = 'ResourceCenter',
 	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
+	WORKFLOW_FORMS = 'WorkflowForms',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -80,4 +81,5 @@ export const enum MAIN_HEADER_TABS {
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
+	FORMS = 'forms',
 }

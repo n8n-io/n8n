@@ -9,6 +9,8 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	N8N_MAIN_GITHUB_REPO_URL,
+	FORM_TRIGGER_NODE_TYPE,
+	FORM_NODE_TYPE,
 } from '@/app/constants';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -16,7 +18,16 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { computed, inject, onBeforeMount, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import {
+	computed,
+	inject,
+	onBeforeMount,
+	onBeforeUnmount,
+	onMounted,
+	ref,
+	watch,
+	watchEffect,
+} from 'vue';
 import type { RouteLocation, RouteLocationRaw } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
@@ -59,12 +70,25 @@ const executionRoutes: VIEWS[] = [
 	VIEWS.WORKFLOW_EXECUTIONS,
 	VIEWS.EXECUTION_PREVIEW,
 ];
+
+const formRoutes: VIEWS[] = [VIEWS.WORKFLOW_FORMS];
+
+const FORM_NODE_TYPES = new Set([FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE]);
+
+const hasFormNodes = computed(() =>
+	workflowsStore.workflow.nodes.some((n) => FORM_NODE_TYPES.has(n.type) && !n.disabled),
+);
+
 const tabBarItems = computed(() => {
-	return [
+	const items = [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
 		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
 	];
+	if (hasFormNodes.value) {
+		items.push({ value: MAIN_HEADER_TABS.FORMS, label: locale.baseText('generic.forms') });
+	}
+	return items;
 });
 
 const activeNode = computed(() => ndvStore.activeNode);
@@ -72,6 +96,10 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
+const stableWorkflowName = ref(workflow.value?.name ?? '');
+watchEffect(() => {
+	if (workflow.value?.name) stableWorkflowName.value = workflow.value.name;
+});
 const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 const workflowTags = computed(() => workflowDocumentStore?.value?.tags ?? []);
@@ -122,7 +150,7 @@ onMounted(async () => {
 function isViewRoute(name: unknown): name is VIEWS {
 	return (
 		typeof name === 'string' &&
-		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+		[evaluationRoutes, workflowRoutes, executionRoutes, formRoutes].flat().includes(name as VIEWS)
 	);
 }
 
@@ -131,6 +159,7 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	const routeTabMapping = [
 		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
 		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
+		{ routes: formRoutes, tab: MAIN_HEADER_TABS.FORMS },
 		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
 	];
 
@@ -170,6 +199,10 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EVALUATION:
 			void navigateToEvaluationsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.FORMS:
+			void navigateToFormsView(openInNewTab);
 			break;
 
 		default:
@@ -252,6 +285,24 @@ async function navigateToEvaluationsView(openInNewTab: boolean) {
 	}
 }
 
+async function navigateToFormsView(openInNewTab: boolean) {
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.WORKFLOW_FORMS,
+		params: { name: workflowId.value },
+		query: route.query,
+	};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.FORMS;
+		await router.push(routeToNavigateTo);
+	}
+}
+
 function hideGithubButton() {
 	githubButtonHidden.value = true;
 }
@@ -288,10 +339,10 @@ async function onWorkflowDeactivated() {
 		>
 			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
 				<WorkflowDetails
-					v-if="workflow?.name"
+					v-if="stableWorkflowName"
 					:id="workflow.id"
 					:tags="workflowTags"
-					:name="workflow.name"
+					:name="stableWorkflowName"
 					:current-folder="parentFolderForBreadcrumbs"
 					:is-archived="workflowIsArchived"
 					:description="workflow.description"

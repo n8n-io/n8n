@@ -103,7 +103,7 @@ const chat = computed<IMenuItem>(() => ({
 
 const forms = computed<IMenuItem>(() => ({
 	id: 'forms',
-	icon: 'form',
+	icon: 'clipboard-list',
 	label: locale.baseText('projects.menu.forms'),
 	route: { to: { name: FORMS_VIEW } },
 }));

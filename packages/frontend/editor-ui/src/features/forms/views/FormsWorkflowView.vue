@@ -6,8 +6,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, VIEWS } from '@/app/constants';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useFormsLayout } from '../composables/useFormsLayout';
-import { FORM_STEP_NON_FORM_NODE_SCALE } from '../constants';
-import { DEFAULT_NODE_SIZE } from '@/app/utils/nodeViewUtils';
+import { FORM_STEP_NON_FORM_NODE_SCALE, FORMS_WORKFLOW_VIEW } from '../constants';
 import type { Workflow } from 'n8n-workflow';
 import { N8nButton, N8nLoading } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
@@ -31,11 +30,15 @@ const formNodeRenderOverrides: Partial<Record<string, CanvasNodeRenderType>> = {
 };
 
 onMounted(async () => {
-	const workflowId = route.params.workflowId as string;
-	const workflowData = await workflowsListStore.fetchWorkflow(workflowId);
-	workflowsStore.setWorkflow(workflowData);
+	const workflowId = route.params.name as string;
+	if (workflowsStore.workflow.id !== workflowId) {
+		const workflowData = await workflowsListStore.fetchWorkflow(workflowId);
+		workflowsStore.setWorkflow(workflowData);
+	}
 	loading.value = false;
 });
+
+const showOpenWorkflowButton = computed(() => route.name === FORMS_WORKFLOW_VIEW);
 
 const workflowObject = computed(() => workflowsStore.workflowObject as unknown as Workflow);
 
@@ -67,10 +70,14 @@ function onNodeActivated(nodeId: string) {
 </script>
 
 <template>
-	<div :id="containerId" :class="$style.container">
+	<div :class="$style.container">
 		<component :is="'style'">{{ nonFormNodeCss }}</component>
 		<N8nLoading v-if="loading" :rows="10" />
-		<div v-else :class="[$style.canvasContainer, layoutReady && $style.canvasVisible]">
+		<div
+			v-else
+			:id="containerId"
+			:class="[$style.canvasContainer, layoutReady && $style.canvasVisible]"
+		>
 			<WorkflowCanvas
 				:id="containerId"
 				:workflow="workflowsStore.workflow"
@@ -84,11 +91,10 @@ function onNodeActivated(nodeId: string) {
 						:viewport="viewport"
 						:striped="false"
 						variant="lines"
-						pattern-color="var(--forms--canvas--grid--color)"
-						:gap="DEFAULT_NODE_SIZE[0] / 2"
+						pattern-color="color-mix(in srgb, var(--canvas--dot--color) 20%, transparent)"
 					/>
 				</template>
-				<div :class="$style.canvasButtons">
+				<div v-if="showOpenWorkflowButton" :class="$style.canvasButtons">
 					<N8nButton variant="subtle" size="large" @click="openWorkflow"> Open workflow </N8nButton>
 				</div>
 			</WorkflowCanvas>
@@ -102,7 +108,6 @@ function onNodeActivated(nodeId: string) {
 	flex-direction: column;
 	height: 100%;
 	width: 100%;
-	--forms--canvas--grid--color: color-mix(in srgb, var(--color--primary) 12%, transparent);
 }
 
 .canvasContainer {

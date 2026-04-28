@@ -129,6 +129,7 @@ watch(
 				ref="iframeEl"
 				:srcdoc="previewHtml"
 				sandbox="allow-same-origin"
+				scrolling="no"
 				class="n8n-form-preview__iframe"
 				:style="{ zoom: FORM_STEP_IFRAME_ZOOM }"
 				@load="onIframeLoad"

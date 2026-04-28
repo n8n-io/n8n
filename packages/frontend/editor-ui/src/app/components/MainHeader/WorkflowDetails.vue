@@ -452,7 +452,7 @@ onBeforeUnmount(() => {
 			</span>
 		</span>
 
-		<ConnectionTracker class="actions">
+		<ConnectionTracker v-if="!route.meta.formsOnlyView" class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"

@@ -20,10 +20,12 @@ export const FormsModule: FrontendModuleDescription = {
 		},
 		{
 			name: FORMS_WORKFLOW_VIEW,
-			path: '/home/forms/:workflowId',
+			path: '/home/forms/:name',
 			component: FormsWorkflowView,
 			meta: {
+				layout: 'workflow',
 				middleware: ['authenticated'],
+				formsOnlyView: true,
 			},
 		},
 	],
