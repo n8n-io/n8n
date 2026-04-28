@@ -230,11 +230,26 @@ describe('AiGatewaySelector', () => {
 			expect(screen.getByText('Top up')).toBeInTheDocument();
 		});
 
-		it('does not render "Top up" when balance is depleted', () => {
+		it('renders "Top up" label when balance is depleted', () => {
 			mockBalance.value = 0;
 			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
 
-			expect(screen.queryByText('Top up')).not.toBeInTheDocument();
+			expect(screen.getByText('Top up')).toBeInTheDocument();
+		});
+
+		it('opens top-up modal when "No credits" badge is clicked', async () => {
+			mockBalance.value = 0;
+			renderComponent({ props: { aiGatewayEnabled: true, readonly: false } });
+
+			const uiStore = useUIStore();
+			vi.spyOn(uiStore, 'openModalWithData');
+
+			await userEvent.click(screen.getByText('No credits'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: AI_GATEWAY_TOP_UP_MODAL_KEY,
+				data: { credentialType: undefined },
+			});
 		});
 	});
 });
