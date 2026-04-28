@@ -5,7 +5,7 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import type { AgentSkill, ChatIntegrationDescriptor } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
 import { AGENT_SCHEDULE_TRIGGER_TYPE, isAgentScheduleIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -1075,6 +1075,22 @@ export class AgentsService {
 			entity.tools = tools;
 		}
 
+		const referencedSkillIds = new Set(
+			(result.config.tools ?? [])
+				.filter((t): t is { type: 'skill'; id: string } => t.type === 'skill')
+				.map((t) => t.id),
+		);
+		const orphanSkillIds = Object.keys(entity.skills ?? {}).filter(
+			(id) => !referencedSkillIds.has(id),
+		);
+		if (orphanSkillIds.length > 0) {
+			const skills = { ...(entity.skills ?? {}) };
+			for (const id of orphanSkillIds) {
+				delete skills[id];
+			}
+			entity.skills = skills;
+		}
+
 		// Invalidate runtime caches
 		this.clearRuntimes(agentId);
 
@@ -1121,6 +1137,72 @@ export class AgentsService {
 		return { ok: true, descriptor };
 	}
 
+	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+
+		return entity.skills ?? {};
+	}
+
+	async getSkill(agentId: string, projectId: string, skillId: string): Promise<AgentSkill> {
+		const skills = await this.listSkills(agentId, projectId);
+		const skill = skills[skillId];
+		if (!skill) throw new NotFoundError('Skill not found');
+
+		return skill;
+	}
+
+	async createSkill(
+		agentId: string,
+		projectId: string,
+		skillId: string,
+		skill: AgentSkill,
+	): Promise<AgentSkill> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+		if (entity.skills?.[skillId]) throw new ConflictError('Skill already exists');
+
+		entity.skills = {
+			...(entity.skills ?? {}),
+			[skillId]: skill,
+		};
+
+		this.markDraftDirty(entity);
+		this.clearRuntimes(agentId);
+		await this.agentRepository.save(entity);
+
+		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
+
+		return skill;
+	}
+
+	async updateSkill(
+		agentId: string,
+		projectId: string,
+		skillId: string,
+		updates: Partial<AgentSkill>,
+	): Promise<AgentSkill> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+
+		const existing = entity.skills?.[skillId];
+		if (!existing) throw new NotFoundError('Skill not found');
+
+		const updated = { ...existing, ...updates };
+		entity.skills = {
+			...(entity.skills ?? {}),
+			[skillId]: updated,
+		};
+
+		this.markDraftDirty(entity);
+		this.clearRuntimes(agentId);
+		await this.agentRepository.save(entity);
+
+		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
+
+		return updated;
+	}
+
 	/**
 	 * Remove a custom tool from an agent.
 	 */
@@ -1144,6 +1226,29 @@ export class AgentsService {
 		await this.agentRepository.save(entity);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
+	}
+
+	async deleteSkill(agentId: string, projectId: string, skillId: string): Promise<void> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+
+		const skills = { ...(entity.skills ?? {}) };
+		if (!skills[skillId]) throw new NotFoundError('Skill not found');
+
+		delete skills[skillId];
+		entity.skills = skills;
+
+		if (entity.schema?.tools) {
+			entity.schema.tools = entity.schema.tools.filter(
+				(t: AgentJsonToolConfig) => !(t.type === 'skill' && 'id' in t && t.id === skillId),
+			);
+		}
+
+		this.markDraftDirty(entity);
+		this.clearRuntimes(agentId);
+		await this.agentRepository.save(entity);
+
+		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
 
 	/**

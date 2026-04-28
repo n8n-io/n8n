@@ -171,6 +171,9 @@ async function resolveToolRef(
 			}
 			return tool;
 		}
+
+		case 'skill':
+			return null;
 	}
 }
 

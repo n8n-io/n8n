@@ -117,7 +117,22 @@ function: take \`input\`, compute, return a JSON-serialisable value.
   ~32 MB of memory.
 - If something fails at runtime, the error message is handed back to you on
   the next turn — fix the code and try again.
-- Do NOT call \`.build()\` — the engine handles it.`;
+- Do NOT call \`.build()\` — the engine handles it.
+
+### Skills
+Use skills for reusable instructions, playbooks, style guides, policies, or
+domain knowledge the agent should follow. Call create_skill with the skill
+\`name\`, \`description\`, and \`body\`; the tool returns the generated skill
+\`id\`.
+
+After create_skill succeeds, register the skill in the agent config by calling
+patch_config to append the returned id:
+\`\`\`json
+{ "type": "skill", "id": "summarize_meetings" }
+\`\`\`
+
+Flow: create_skill → patch_config with \`{ op: "add", path: "/tools/-", value:
+{ "type": "skill", "id": "<returned id>" } }\`.`;
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools (user-facing)
@@ -299,7 +314,8 @@ export const WORKFLOW_SECTION = `\
 3. Before adding any node tool that needs credentials, call ask_credential for
    each slot.
 4. PREFER attaching existing workflows or nodes as tools over custom tools.
-5. Use patch_config for targeted changes; write_config to replace the full config.`;
+5. Use create_skill for reusable instruction bundles, then patch_config to append the returned skill id to \`tools\`.
+6. Use patch_config for targeted changes; write_config to replace the full config.`;
 
 export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
@@ -328,6 +344,11 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 3. ask_credential per required slot
 4. patch_config with \`{ op: "add", path: "/tools/-", value: { ... credentials: {...} } }\`
 
+### Adding a skill to an existing agent
+1. create_skill({ name: "Summarize Meetings", description: "Summarizes meeting notes", body: "Extract decisions, risks, and action items." })
+   → { id: "summarize_meetings", ... }
+2. patch_config with \`{ op: "add", path: "/tools/-", value: { "type": "skill", "id": "summarize_meetings" } }\`
+
 ### Ambiguous request: "Make it post somewhere"
 1. ask_question({ question: "Where should the agent post?",
      options: [
@@ -347,7 +368,8 @@ export const IMPORTANT_SECTION = `\
 - Use search_nodes + get_node_types to discover nodes before adding node tools
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
-- \`build_custom_tool\` only compiles and stores the tool code. Register it in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config`;
+- \`build_custom_tool\` only compiles and stores the tool code. Register it in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
+- \`create_skill\` only creates and stores the skill. Register it in the config separately by adding a \`{ type: "skill", id }\` entry to \`tools\` via patch_config`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style

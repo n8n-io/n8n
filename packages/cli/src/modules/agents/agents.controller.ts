@@ -3,13 +3,16 @@ import {
 	type AgentBuilderMessagesResponse,
 	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
+	type AgentSkill,
 	type AgentScheduleConfig,
 	type AgentSseEvent,
 	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
 	AgentChatMessageDto,
+	CreateAgentSkillDto,
 	AgentIntegrationDto,
 	CreateAgentDto,
+	UpdateAgentSkillDto,
 	UpdateAgentConfigDto,
 	UpdateAgentScheduleDto,
 	UpdateAgentDto,
@@ -146,6 +149,64 @@ export class AgentsController {
 	) {
 		const { projectId } = req.params;
 		await this.agentsService.deleteCustomTool(agentId, projectId, toolId);
+		return { ok: true };
+	}
+
+	@Get('/:agentId/skills')
+	async listSkills(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		return await this.agentsService.listSkills(agentId, projectId);
+	}
+
+	@Get('/:agentId/skills/:skillId')
+	async getSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+	) {
+		const { projectId } = req.params;
+		return await this.agentsService.getSkill(agentId, projectId, skillId);
+	}
+
+	@Post('/:agentId/skills')
+	async createSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: CreateAgentSkillDto,
+	) {
+		const { projectId } = req.params;
+		const skill: AgentSkill = {
+			name: payload.name,
+			description: payload.description,
+			instructions: payload.instructions,
+		};
+
+		return await this.agentsService.createSkill(agentId, projectId, payload.id, skill);
+	}
+
+	@Patch('/:agentId/skills/:skillId')
+	async updateSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+		@Body payload: UpdateAgentSkillDto,
+	) {
+		const { projectId } = req.params;
+		return await this.agentsService.updateSkill(agentId, projectId, skillId, payload);
+	}
+
+	@Delete('/:agentId/skills/:skillId')
+	async deleteSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+	) {
+		const { projectId } = req.params;
+		await this.agentsService.deleteSkill(agentId, projectId, skillId);
 		return { ok: true };
 	}
 

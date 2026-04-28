@@ -32,6 +32,16 @@ function rejectIfEmptyInstructions(
 	return null;
 }
 
+function skillNameToId(name: string): string {
+	const normalized = name
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9_-]+/g, '_')
+		.replace(/^_+|_+$/g, '');
+
+	return normalized || 'skill';
+}
+
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -213,6 +223,46 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
+			.description(
+				'Create and store an agent skill. Pass the skill name, a short description, and the full skill body. ' +
+					'The body is stored as the skill instructions. This does NOT register the skill in the agent config — ' +
+					'after this succeeds, follow up with patch_config to append a `{ type: "skill", id }` entry to `tools` ' +
+					'using the returned id. Returns { ok: true, id, skill } or { ok: false, errors }.',
+			)
+			.input(
+				z.object({
+					name: z.string().min(1).describe('Human-readable skill name'),
+					description: z.string().describe('Short description of what the skill teaches the agent'),
+					body: z.string().min(1).describe('Full skill instructions/body'),
+				}),
+			)
+			.handler(
+				async ({
+					name,
+					description,
+					body,
+				}: {
+					name: string;
+					description: string;
+					body: string;
+				}) => {
+					const id = skillNameToId(name);
+					const skill = { name, description, instructions: body };
+
+					try {
+						const created = await this.agentsService.createSkill(agentId, projectId, id, skill);
+						return { ok: true, id, skill: created };
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
+			.build();
+
 		const listWorkflowsTool = new Tool('list_workflows')
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
@@ -262,6 +312,7 @@ export class AgentsBuilderToolsService {
 
 		return [
 			buildCustomToolTool,
+			createSkillTool,
 			listWorkflowsTool,
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,

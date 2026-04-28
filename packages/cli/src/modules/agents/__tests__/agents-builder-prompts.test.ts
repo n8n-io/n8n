@@ -82,6 +82,11 @@ describe('TOOL_TYPES_SECTION', () => {
 		expect(TOOL_TYPES_SECTION).toContain('ask_credential');
 	});
 
+	it('instructs to create and register skills', () => {
+		expect(TOOL_TYPES_SECTION).toContain('create_skill');
+		expect(TOOL_TYPES_SECTION).toContain('{ "type": "skill", "id": "summarize_meetings" }');
+	});
+
 	it('no longer tells the model to fill credentials with empty values', () => {
 		expect(TOOL_TYPES_SECTION).not.toContain('fill them with empty values');
 	});
@@ -95,5 +100,11 @@ describe('IMPORTANT_SECTION', () => {
 
 	it('does not instruct to use list_credentials to pick credentials', () => {
 		expect(IMPORTANT_SECTION).not.toContain('Always call list_credentials first');
+	});
+
+	it('instructs to register skills after creating them', () => {
+		expect(IMPORTANT_SECTION).toContain('create_skill');
+		expect(IMPORTANT_SECTION).toContain('patch_config');
+		expect(IMPORTANT_SECTION).toContain('{ type: "skill", id }');
 	});
 });

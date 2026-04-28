@@ -44,6 +44,26 @@ describe('AgentJsonConfigSchema — config.nodeTools', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — skill tool refs', () => {
+	it('accepts a skill ref with a valid id', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			tools: [{ type: 'skill', id: 'summarize_notes' }],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects a skill ref with an invalid id', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			tools: [{ type: 'skill', id: 'SummarizeNotes' }],
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+});
+
 describe('isNodeToolsEnabled', () => {
 	it('returns false when config is undefined', () => {
 		expect(isNodeToolsEnabled(undefined)).toBe(false);

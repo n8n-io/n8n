@@ -57,6 +57,13 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 		requireApproval: z.boolean().optional(),
 	}),
 	z.object({
+		type: z.literal('skill'),
+		id: z
+			.string()
+			.min(1)
+			.regex(/^[a-z0-9_-]+$/),
+	}),
+	z.object({
 		type: z.literal('workflow'),
 		workflow: z.string().min(1),
 		name: z.string().optional(),

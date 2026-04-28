@@ -37,6 +37,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		publishedVersion: null,
 		integrations: [],
 		tools: {},
+		skills: {},
 		updatedAt: new Date(),
 		...overrides,
 	} as unknown as Agent;
@@ -142,6 +143,76 @@ describe('AgentsService', () => {
 			expect(savedVersionId).toMatch(
 				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
 			);
+		});
+	});
+
+	describe('skills', () => {
+		const skill = {
+			name: 'Summarize Notes',
+			description: 'Summarizes a meeting transcript',
+			instructions: 'Extract decisions and action items.',
+		};
+
+		beforeEach(() => {
+			agentRepository.save.mockImplementation(async (a) => a as Agent);
+		});
+
+		it('creates a skill on the agent', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.createSkill(agentId, projectId, 'summarize_notes', skill);
+
+			expect(result).toEqual(skill);
+			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+				summarize_notes: skill,
+			});
+		});
+
+		it('loads one skill from the agent', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ skills: { summarize_notes: skill } }),
+			);
+
+			await expect(service.getSkill(agentId, projectId, 'summarize_notes')).resolves.toEqual(skill);
+		});
+
+		it('updates an existing skill on the agent', async () => {
+			const agent = makeAgent({ skills: { summarize_notes: skill } });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.updateSkill(agentId, projectId, 'summarize_notes', {
+				description: 'Summarizes support notes',
+			});
+
+			expect(result).toEqual({
+				...skill,
+				description: 'Summarizes support notes',
+			});
+			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+				summarize_notes: result,
+			});
+		});
+
+		it('deletes a skill and removes its config ref', async () => {
+			const agent = makeAgent({
+				skills: { summarize_notes: skill },
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					tools: [
+						{ type: 'skill', id: 'summarize_notes' },
+						{ type: 'custom', id: 'custom_tool' },
+					],
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.deleteSkill(agentId, projectId, 'summarize_notes');
+
+			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({});
+			expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		});
 	});
 
