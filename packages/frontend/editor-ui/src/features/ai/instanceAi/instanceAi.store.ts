@@ -134,6 +134,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
+	const archivedWorkflowIdsByThread = ref<Record<string, Set<string>>>({});
+	const archivedWorkflowIds = computed<ReadonlySet<string>>(
+		() => archivedWorkflowIdsByThread.value[currentThreadId.value] ?? new Set(),
+	);
 	const latestTasks = ref<TaskList | null>(null);
 	const hydratingThreadId = ref<string | null>(null);
 	const pendingMessageCount = ref(0);
@@ -168,6 +172,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
+		() => archivedWorkflowIds.value,
 	);
 
 	// Response feedback — rateability selector + submission
@@ -340,6 +345,18 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				const thread = threads.value.find((t) => t.id === currentThreadId.value);
 				if (thread) {
 					thread.title = parsed.data.payload.title;
+				}
+			}
+			if (parsed.data.type === 'run-finish') {
+				const ids = parsed.data.payload.archivedWorkflowIds;
+				if (ids && ids.length > 0) {
+					const threadId = currentThreadId.value;
+					const next = new Set(archivedWorkflowIdsByThread.value[threadId] ?? []);
+					for (const id of ids) next.add(id);
+					archivedWorkflowIdsByThread.value = {
+						...archivedWorkflowIdsByThread.value,
+						[threadId]: next,
+					};
 				}
 			}
 			// Force Vue reactivity when streaming state changes (run-start can

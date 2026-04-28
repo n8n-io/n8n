@@ -91,6 +91,8 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
+					:archived="store.producedArtifacts.get(artifact.resourceId)?.archived"
+					:class="$style.artifactCard"
 				/>
 			</template>
 
