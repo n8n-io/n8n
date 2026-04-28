@@ -914,6 +914,7 @@ onBeforeUnmount(() => {
 
 .column {
 	min-width: 0;
+	background-color: var(--ndv--background--color);
 
 	+ .column {
 		border-left: var(--border);

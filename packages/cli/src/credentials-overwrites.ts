@@ -61,7 +61,7 @@ export class CredentialsOverwrites {
 			const data = await this.settings.findByKey(CREDENTIALS_OVERWRITE_KEY);
 
 			if (data) {
-				const decryptedData = this.cipher.decrypt(data.value);
+				const decryptedData = await this.cipher.decryptV2(data.value);
 				const overwriteData = jsonParse<ICredentialsOverwrite>(decryptedData, {
 					errorMessage: 'The credentials-overwrite is not valid JSON.',
 				});
@@ -81,7 +81,7 @@ export class CredentialsOverwrites {
 	}
 
 	async saveOverwriteDataToDB(overwriteData: ICredentialsOverwrite, broadcast: boolean = true) {
-		const data = this.cipher.encrypt(JSON.stringify(overwriteData));
+		const data = await this.cipher.encryptV2(JSON.stringify(overwriteData));
 		const setting = this.settings.create({
 			key: CREDENTIALS_OVERWRITE_KEY,
 			value: data,

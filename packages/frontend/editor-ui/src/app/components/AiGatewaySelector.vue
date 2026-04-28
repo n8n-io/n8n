@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowExecutionSessionId,
@@ -30,6 +30,8 @@ const workflowExecutionSessionStore = () =>
 const telemetry = useTelemetry();
 
 const { balance, fetchWallet } = useAiGateway();
+
+const isBalanceDepleted = computed(() => balance.value !== undefined && balance.value <= 0);
 
 // Fetch when enabled (on mount if already enabled, or when toggled on)
 watch(
@@ -109,11 +111,14 @@ function onBadgeClick(event: MouseEvent): void {
 				<N8nActionPill
 					v-if="aiGatewayEnabled && balance !== undefined"
 					:clickable="!readonly"
+					:type="isBalanceDepleted ? 'danger' : 'default'"
 					size="small"
 					:text="
-						i18n.baseText('aiGateway.wallet.balanceRemaining', {
-							interpolate: { balance: `$${Number(balance).toFixed(2)}` },
-						})
+						isBalanceDepleted
+							? i18n.baseText('aiGateway.wallet.noCredits')
+							: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+									interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+								})
 					"
 					:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"
 					@click="onBadgeClick"

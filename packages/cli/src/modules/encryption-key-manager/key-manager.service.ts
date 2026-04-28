@@ -93,7 +93,7 @@ export class KeyManagerService {
 		algorithm: CipherAlgorithm,
 		setAsActive = false,
 	): Promise<DeploymentKey> {
-		const encryptedValue = this.cipher.encryptWithInstanceKey(plaintextValue);
+		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(plaintextValue);
 
 		if (!setAsActive) {
 			const entity = this.deploymentKeyRepository.create({

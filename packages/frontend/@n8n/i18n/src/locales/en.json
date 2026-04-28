@@ -1995,6 +1995,7 @@
 	"aiGateway.toggle.description": "n8n Connect is the easy way to manage AI model usage",
 	"aiGateway.toggle.topUp": "Top up",
 	"aiGateway.wallet.balanceRemaining": "{balance} remaining",
+	"aiGateway.wallet.noCredits": "No credits",
 	"aiGateway.credentialMode.sectionLabel": "Credential",
 	"aiGateway.credentialMode.n8nConnect.title": "n8n Connect",
 	"aiGateway.credentialMode.n8nConnect.subtitle": "No API key required",
