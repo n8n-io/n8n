@@ -19,6 +19,8 @@ import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import type { InstanceAiContext } from '../../types';
 import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
+import { createRemediation } from '../../workflow-loop/remediation';
+import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
 import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
@@ -40,6 +42,7 @@ export interface SubmitWorkflowAttempt {
 	verificationPinData?: Record<string, Array<Record<string, unknown>>>;
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders?: boolean;
+	remediation?: RemediationMetadata;
 	errors?: string[];
 }
 
@@ -160,6 +163,16 @@ export const submitWorkflowOutputSchema = z.object({
 	mockedCredentialsByNode: z.record(z.array(z.string())).optional(),
 	/** Verification-only pin data — scoped to this build, never persisted to workflow. */
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
+	remediation: z
+		.object({
+			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
+			shouldEdit: z.boolean(),
+			guidance: z.string(),
+			reason: z.string().optional(),
+			remainingSubmitFixes: z.number().int().min(0).optional(),
+			attemptCount: z.number().int().min(0).optional(),
+		})
+		.optional(),
 	errors: z.array(z.string()).optional(),
 	warnings: z.array(z.string()).optional(),
 });
@@ -185,6 +198,31 @@ export function resolveSandboxWorkflowFilePath(
 		return `${root}/${rawFilePath}`;
 	}
 	return rawFilePath;
+}
+
+function classifySubmitFailure(errors: string[], reason = 'submit_failed'): RemediationMetadata {
+	const text = errors.join('\n').toLowerCase();
+	if (
+		text.includes('blocked by admin') ||
+		text.includes('read-only') ||
+		text.includes('not accessible') ||
+		text.includes('permission')
+	) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission is blocked by permissions or instance configuration. Stop editing and explain the blocker to the user.',
+		});
+	}
+
+	return createRemediation({
+		category: 'code_fixable',
+		shouldEdit: true,
+		reason,
+		guidance: 'Fix the workflow code in one batched edit, then call submit-workflow again.',
+	});
 }
 
 export function createSubmitWorkflowTool(
@@ -224,8 +262,9 @@ export function createSubmitWorkflowTool(
 			const permKey = workflowId ? 'updateWorkflow' : 'createWorkflow';
 			if (context.permissions?.[permKey] === 'blocked') {
 				const errors = ['Action blocked by admin'];
-				await reportAttempt({ success: false, errors });
-				return { success: false, errors };
+				const remediation = classifySubmitFailure(errors, 'permission_blocked');
+				await reportAttempt({ success: false, errors, remediation });
+				return { success: false, errors, remediation };
 			}
 
 			// Execute the TS file in the sandbox via tsx to produce WorkflowJSON.
@@ -254,19 +293,23 @@ export function createSubmitWorkflowTool(
 					`Failed to execute workflow file in sandbox (exit code ${buildResult.exitCode}).`,
 					buildResult.stderr?.trim() || buildResult.stdout?.trim() || 'No output',
 				];
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'sandbox_execution_failed');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 
 			if (!buildOutput.success || !buildOutput.workflow) {
 				const errors = enhanceBuildErrors(buildOutput.errors ?? ['Unknown build error']);
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'build_failed');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 
@@ -293,10 +336,12 @@ export function createSubmitWorkflowTool(
 				const formattedErrors = enhanceValidationErrors(
 					errors.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
 				);
-				await reportAttempt({ success: false, errors: formattedErrors });
+				const remediation = classifySubmitFailure(formattedErrors, 'validation_failed');
+				await reportAttempt({ success: false, errors: formattedErrors, remediation });
 				return {
 					success: false,
 					errors: formattedErrors,
+					remediation,
 					warnings:
 						informational.length > 0
 							? informational.map((w) => `[${w.code}]: ${w.message}`)
@@ -314,10 +359,12 @@ export function createSubmitWorkflowTool(
 				const errors = [
 					'Workflow name is required for new workflows. Provide a name parameter or set it in the SDK code.',
 				];
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'missing_workflow_name');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 
@@ -361,10 +408,12 @@ export function createSubmitWorkflowTool(
 				const errors = [
 					`Workflow save failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				];
-				await reportAttempt({ success: false, errors });
+				const remediation = classifySubmitFailure(errors, 'workflow_save_failed');
+				await reportAttempt({ success: false, errors, remediation });
 				return {
 					success: false,
 					errors,
+					remediation,
 				};
 			}
 

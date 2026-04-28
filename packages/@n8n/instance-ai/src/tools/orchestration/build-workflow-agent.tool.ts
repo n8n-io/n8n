@@ -40,7 +40,7 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { BackgroundTaskResult, InstanceAiContext, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
-import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
+import type { TriggerType, WorkflowBuildOutcome, WorkflowLoopState } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
@@ -125,6 +125,7 @@ function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerT
 
 function buildOutcome(
 	workItemId: string,
+	runId: string,
 	taskId: string,
 	attempt: SubmitWorkflowAttempt | undefined,
 	finalText: string,
@@ -132,16 +133,19 @@ function buildOutcome(
 	if (!attempt?.success) {
 		return {
 			workItemId,
+			runId,
 			taskId,
 			submitted: false,
 			triggerType: 'manual_or_testable',
 			needsUserInput: false,
 			failureSignature: attempt?.errors?.join('; '),
+			remediation: attempt?.remediation,
 			summary: finalText,
 		};
 	}
 	return {
 		workItemId,
+		runId,
 		taskId,
 		workflowId: attempt.workflowId,
 		submitted: true,
@@ -152,8 +156,38 @@ function buildOutcome(
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
 		verificationPinData: attempt.verificationPinData,
 		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
+		remediation: attempt.remediation,
 		summary: finalText,
 	};
+}
+
+export function withTerminalLoopState(
+	outcome: WorkflowBuildOutcome,
+	state: WorkflowLoopState | undefined,
+): WorkflowBuildOutcome {
+	const remediation = state?.lastRemediation;
+	if (!outcome.submitted || !remediation || remediation.shouldEdit) {
+		return outcome;
+	}
+
+	return {
+		...outcome,
+		workflowId: outcome.workflowId ?? state.workflowId,
+		needsUserInput: remediation.category === 'needs_setup',
+		blockingReason: remediation.guidance,
+		remediation,
+	};
+}
+
+async function finalBuildOutcome(
+	context: OrchestrationContext,
+	workItemId: string,
+	outcome: WorkflowBuildOutcome,
+): Promise<WorkflowBuildOutcome> {
+	return withTerminalLoopState(
+		outcome,
+		await context.workflowTaskService?.getWorkflowLoopState(workItemId),
+	);
 }
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
@@ -176,8 +210,9 @@ The system tracks file hashes. If you edit the code and then call \`executions(a
 
 - If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
 - Otherwise call \`executions(action="run")\` to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
-- If verification fails, call \`executions(action="debug")\`, fix the code, re-submit, and retry once
-- If the same failure signature repeats, stop and explain the block
+- If verify-built-workflow returns remediation with \`shouldEdit: false\`, stop editing and follow its guidance.
+- If verification fails with \`shouldEdit: true\`, make one batched code repair and re-submit. Never exceed the remaining repair budget in the remediation metadata.
+- If the same failure signature repeats, stop and explain the block.
 
 ### Resource discovery
 
@@ -210,6 +245,7 @@ export function resultFromPostStreamError(input: {
 	submitAttempts: SubmitWorkflowAttempt[];
 	mainWorkflowPath: string;
 	workItemId: string;
+	runId: string;
 	taskId: string;
 }): BackgroundTaskResult | undefined {
 	let attempt: SubmitWorkflowAttempt | undefined;
@@ -226,7 +262,7 @@ export function resultFromPostStreamError(input: {
 	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildOutcome(input.workItemId, input.taskId, attempt, text),
+		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, attempt, text),
 	};
 }
 
@@ -234,6 +270,7 @@ export interface StartBuildWorkflowAgentInput {
 	task: string;
 	workflowId?: string;
 	conversationContext?: string;
+	workItemId?: string;
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
@@ -312,7 +349,8 @@ export async function startBuildWorkflowAgentTask(
 
 	const subAgentId = input.agentId ?? `agent-builder-${nanoid(6)}`;
 	const taskId = input.taskId ?? `build-${nanoid(8)}`;
-	const workItemId = `wi_${nanoid(8)}`;
+	const workItemId =
+		input.workItemId ?? (input.workflowId ? `${context.runId}:default` : `wi_${nanoid(8)}`);
 
 	context.eventBus.publish(context.threadId, {
 		type: 'agent-spawned',
@@ -424,6 +462,19 @@ export async function startBuildWorkflowAgentTask(
 							workspace,
 							credentialMap: credMap,
 							root,
+							getWorkflowLoopState: async () =>
+								await context.workflowTaskService?.getWorkflowLoopState(workItemId),
+							onGuardFired: (event) => {
+								context.trackTelemetry?.('Builder remediation guard fired', {
+									thread_id: context.threadId,
+									run_id: context.runId,
+									work_item_id: workItemId,
+									workflow_id: event.workflowId,
+									category: event.category,
+									attempt_count: event.attemptCount,
+									reason: event.reason,
+								});
+							},
 							onAttempt: async (attempt) => {
 								submitAttempts.set(attempt.filePath, attempt);
 								submitAttemptHistory.push(attempt);
@@ -434,6 +485,7 @@ export async function startBuildWorkflowAgentTask(
 								await context.workflowTaskService.reportBuildOutcome(
 									buildOutcome(
 										workItemId,
+										context.runId,
 										taskId,
 										attempt,
 										attempt.success
@@ -516,6 +568,7 @@ export async function startBuildWorkflowAgentTask(
 								submitAttempts: submitAttemptHistory,
 								mainWorkflowPath,
 								workItemId,
+								runId: context.runId,
 								taskId,
 							});
 							if (recovered) return recovered;
@@ -530,7 +583,7 @@ export async function startBuildWorkflowAgentTask(
 							const text = 'Error: workflow builder finished without submitting /src/workflow.ts.';
 							return {
 								text,
-								outcome: buildOutcome(workItemId, taskId, undefined, text),
+								outcome: buildOutcome(workItemId, context.runId, taskId, undefined, text),
 							};
 						}
 
@@ -540,7 +593,7 @@ export async function startBuildWorkflowAgentTask(
 							const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
 							return {
 								text,
-								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, text),
+								outcome: buildOutcome(workItemId, context.runId, taskId, mainWorkflowAttempt, text),
 							};
 						}
 
@@ -567,7 +620,11 @@ export async function startBuildWorkflowAgentTask(
 									);
 									return {
 										text: finalText,
-										outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
+										outcome: await finalBuildOutcome(
+											context,
+											workItemId,
+											buildOutcome(workItemId, context.runId, taskId, refreshedAttempt, finalText),
+										),
 									};
 								}
 
@@ -579,7 +636,13 @@ export async function startBuildWorkflowAgentTask(
 								const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
 								return {
 									text,
-									outcome: buildOutcome(workItemId, taskId, refreshedAttempt ?? undefined, text),
+									outcome: buildOutcome(
+										workItemId,
+										context.runId,
+										taskId,
+										refreshedAttempt ?? undefined,
+										text,
+									),
 								};
 							}
 						}
@@ -591,7 +654,11 @@ export async function startBuildWorkflowAgentTask(
 						);
 						return {
 							text: finalText,
-							outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+							outcome: await finalBuildOutcome(
+								context,
+								workItemId,
+								buildOutcome(workItemId, context.runId, taskId, mainWorkflowAttempt, finalText),
+							),
 						};
 					}
 
@@ -691,6 +758,12 @@ export const buildWorkflowAgentInputSchema = z.object({
 		.optional()
 		.describe(
 			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
+		),
+	workItemId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow-loop work item ID. Required for repair builds so remediation budgets continue on the same work item.',
 		),
 });
 

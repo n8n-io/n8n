@@ -1,4 +1,9 @@
-import { wrapSubmitExecuteWithIdentity } from '../submit-workflow-identity';
+import { createRemediation } from '../../../workflow-loop/remediation';
+import type { WorkflowLoopState } from '../../../workflow-loop/workflow-loop-state';
+import {
+	createPreSaveBudgetTracker,
+	wrapSubmitExecuteWithIdentity,
+} from '../submit-workflow-identity';
 import type { SubmitWorkflowInput, SubmitWorkflowOutput } from '../submit-workflow.tool';
 
 const ROOT = '/home/daytona/workspace';
@@ -183,5 +188,92 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 
 		const retried = await wrapped({});
 		expect(retried.workflowId).toBe('wf_after_throw');
+	});
+
+	it('blocks submit when persisted remediation says editing must stop', async () => {
+		const execute = jest.fn(async (): Promise<SubmitWorkflowOutput> => {
+			await Promise.resolve();
+			return { success: true, workflowId: 'wf_unused' };
+		});
+		const onGuardFired = jest.fn();
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		};
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			getWorkflowLoopState: async () => {
+				await Promise.resolve();
+				return state;
+			},
+			onGuardFired,
+		});
+
+		const result = await wrapped({});
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({ shouldEdit: false, category: 'needs_setup' });
+		expect(execute).not.toHaveBeenCalled();
+		expect(onGuardFired).toHaveBeenCalledWith(
+			expect.objectContaining({
+				category: 'needs_setup',
+				reason: 'mocked_credentials_or_placeholders',
+			}),
+		);
+	});
+
+	it('marks the third pre-save failed submit as terminal', async () => {
+		const tracker = createPreSaveBudgetTracker();
+		const execute = async (): Promise<SubmitWorkflowOutput> => {
+			await Promise.resolve();
+			tracker.recordAttempt({
+				filePath: MAIN_PATH,
+				sourceHash: 'current',
+				success: false,
+				errors: ['validation'],
+			});
+			return {
+				success: false,
+				errors: ['validation'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code.',
+				}),
+			};
+		};
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			budgetTracker: tracker,
+		});
+
+		tracker.recordAttempt({
+			filePath: MAIN_PATH,
+			sourceHash: '1',
+			success: false,
+			errors: ['validation'],
+		});
+		tracker.recordAttempt({
+			filePath: MAIN_PATH,
+			sourceHash: '2',
+			success: false,
+			errors: ['validation'],
+		});
+		const third = await wrapped({});
+
+		expect(third.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'pre_save_submit_budget_exhausted',
+		});
 	});
 });

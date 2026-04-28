@@ -6,9 +6,11 @@ jest.mock('@mastra/core/mastra', () => ({
 	Mastra: jest.fn(),
 }));
 
+import { createRemediation } from '../../../workflow-loop';
+import type { WorkflowBuildOutcome, WorkflowLoopState } from '../../../workflow-loop';
 import type { SubmitWorkflowAttempt } from '../../workflows/submit-workflow.tool';
 
-const { recordSuccessfulWorkflowBuilds, resultFromPostStreamError } =
+const { recordSuccessfulWorkflowBuilds, resultFromPostStreamError, withTerminalLoopState } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
 
@@ -30,6 +32,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -49,6 +52,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts: [],
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -70,6 +74,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -91,6 +96,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -118,6 +124,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -125,6 +132,51 @@ describe('resultFromPostStreamError', () => {
 		expect(result!.outcome).toMatchObject({
 			workflowId: 'WF_123',
 			submitted: true,
+		});
+	});
+});
+
+describe('withTerminalLoopState', () => {
+	it('marks a saved workflow as needing user input when verification is blocked by setup', () => {
+		const outcome: WorkflowBuildOutcome = {
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: 'wf_123',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			summary: 'Submitted workflow.',
+		};
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_test',
+			workflowId: 'wf_123',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		};
+
+		expect(withTerminalLoopState(outcome, state)).toMatchObject({
+			submitted: true,
+			workflowId: 'wf_123',
+			needsUserInput: true,
+			blockingReason: 'Route to setup.',
+			remediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+			},
 		});
 	});
 });
