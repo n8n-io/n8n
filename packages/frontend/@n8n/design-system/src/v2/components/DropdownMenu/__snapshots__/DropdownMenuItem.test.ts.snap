@@ -13,6 +13,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render checked item
   
   <!--v-if-->
   
+  
   <span
     class="n8n-text text-dark size-medium regular item-label item-label"
   >
@@ -20,6 +21,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render checked item
     Checked Item
     
   </span>
+  
   
   
   <svg
@@ -62,6 +64,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render disabled ite
   
   <!--v-if-->
   
+  
   <span
     class="n8n-text text-light size-medium regular item-label item-label"
   >
@@ -69,6 +72,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render disabled ite
     Disabled Item
     
   </span>
+  
   
   
   <!--v-if-->
@@ -91,6 +95,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render highlighted 
   
   <!--v-if-->
   
+  
   <span
     class="n8n-text text-dark size-medium regular item-label item-label"
   >
@@ -98,6 +103,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render highlighted 
     Highlighted Item
     
   </span>
+  
   
   
   <!--v-if-->
@@ -124,6 +130,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with em
     🎉
   </span>
   
+  
   <span
     class="n8n-text text-dark size-medium regular item-label item-label"
   >
@@ -131,6 +138,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with em
     With Emoji
     
   </span>
+  
   
   
   <!--v-if-->
@@ -179,6 +187,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with ic
     </g>
   </svg>
   
+  
   <span
     class="n8n-text text-dark size-medium regular item-label item-label"
   >
@@ -186,6 +195,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with ic
     With Icon
     
   </span>
+  
   
   
   <!--v-if-->
@@ -208,6 +218,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with la
   
   <!--v-if-->
   
+  
   <span
     class="n8n-text text-dark size-medium regular item-label item-label"
   >
@@ -215,6 +226,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render item with la
     Test Item
     
   </span>
+  
   
   
   <!--v-if-->
@@ -250,6 +262,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render separator wh
     
     <!--v-if-->
     
+    
     <span
       class="n8n-text text-dark size-medium regular item-label item-label"
     >
@@ -257,6 +270,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render separator wh
       Divided Item
       
     </span>
+    
     
     
     <!--v-if-->
@@ -286,6 +300,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render sub-menu tri
   
   <!--v-if-->
   
+  
   <span
     class="n8n-text text-dark size-medium regular item-label item-label"
   >
@@ -293,6 +308,7 @@ exports[`v2/components/DropdownMenuItem > rendering > should render sub-menu tri
     Parent Item
     
   </span>
+  
   <svg
     aria-hidden="true"
     class="n8n-icon sub-indicator"

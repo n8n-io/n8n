@@ -1,13 +1,20 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { ExecutionRepository, SettingsRepository } from '@n8n/db';
+import {
+	AuthRolesService,
+	DeploymentKeyRepository,
+	ExecutionRepository,
+	SettingsRepository,
+} from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
-import { jsonParse, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { BinaryDataConfig } from 'n8n-core';
+import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -26,6 +33,7 @@ import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { Server } from '@/server';
+import { JwtService } from '@/services/jwt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { UrlService } from '@/services/url.service';
@@ -43,12 +51,6 @@ const open = require('open');
 
 const flagsSchema = z.object({
 	open: z.boolean().alias('o').describe('opens the UI automatically in browser').optional(),
-	tunnel: z
-		.boolean()
-		.describe(
-			'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
-		)
-		.optional(),
 });
 
 @Command({
@@ -199,6 +201,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const scopedLogger = this.logger.scoped('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
+
+			if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
+				this.needsTaskRunner = false;
+			}
 		}
 
 		await super.init();
@@ -225,10 +231,29 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.initOrchestration();
 		}
 
+		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
+
 		await this.initLicense();
 
-		if (isMultiMainEnabled && !this.license.isMultiMainLicensed()) {
-			throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
+		if (isMultiMainEnabled) {
+			await this.ensureMultiMainLicensed();
+		}
+
+		await this.initCommunityPackages();
+
+		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
+		// Only run on main instance - workers should not modify auth roles/scopes as they may have
+		// different code versions, and scope sync would incorrectly delete scopes they don't know about.
+		// All main instances sync on startup; a Postgres advisory lock inside a transaction
+		// serializes concurrent callers to prevent duplicate-key crashes.
+		if (this.instanceSettings.instanceType === 'main') {
+			await Container.get(AuthRolesService).init();
+			this.logger.debug('Auth roles service init complete');
+
+			await this.initInstanceSettingsLoader();
+			this.logger.debug('Instance settings loader init complete');
 		}
 
 		Container.get(WaitTracker).init();
@@ -255,6 +280,10 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// Initialize auth handler registry after modules are loaded
+		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry');
+		await Container.get(AuthHandlerRegistry).init();
+
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers
 			if (this.globalConfig.endpoints.metrics.enable) {
@@ -269,6 +298,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
+	private async initInstanceSettingsLoader(): Promise<void> {
+		const { InstanceSettingsLoaderService } = await import(
+			'@/instance-settings-loader/instance-settings-loader.service'
+		);
+		await Container.get(InstanceSettingsLoaderService).init();
+	}
+
 	async initOrchestration() {
 		Container.get(Publisher);
 
@@ -277,12 +313,51 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		const subscriber = Container.get(Subscriber);
 		await subscriber.subscribe(subscriber.getCommandChannel());
 		await subscriber.subscribe(subscriber.getWorkerResponseChannel());
+		await subscriber.subscribe(subscriber.getMcpRelayChannel());
+
+		// Set up MCP relay handler for multi-main queue mode
+		subscriber.setMcpRelayHandler((msg) => {
+			try {
+				const mcpServer = McpServer.instance(this.logger);
+				mcpServer.handleWorkerResponse(msg.sessionId, msg.messageId, msg.response);
+			} catch (error) {
+				this.logger.error('Failed to handle MCP relay message', {
+					sessionId: msg.sessionId,
+					messageId: msg.messageId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		});
 
 		if (this.instanceSettings.isMultiMain) {
 			await Container.get(MultiMainSetup).init();
 		} else {
 			this.instanceSettings.markAsLeader();
 		}
+	}
+
+	/**
+	 * Ensures the multi-main license entitlement is present. Followers retry with
+	 * exponential backoff because the leader may not have written the cert to the
+	 * database yet when the follower starts up.
+	 */
+	private async ensureMultiMainLicensed() {
+		if (this.license.isMultiMainLicensed()) return;
+
+		if (!this.instanceSettings.isLeader) {
+			const maxRetries = 5;
+			for (let attempt = 1; attempt <= maxRetries; attempt++) {
+				const delayMs = 2 ** attempt * 1000; // 2s, 4s, 8s, 16s, 32s (~62s total)
+				this.logger.warn(
+					`Instance not licensed for multi-main — retrying license check in ${delayMs / 1000}s (attempt ${attempt}/${maxRetries})`,
+				);
+				await sleep(delayMs);
+				await this.license.reload();
+				if (this.license.isMultiMainLicensed()) return;
+			}
+		}
+
+		throw new FeatureNotLicensedError(LICENSE_FEATURES.MULTIPLE_MAIN_INSTANCES);
 	}
 
 	async run() {
@@ -304,15 +379,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}
 		}
 
-		if (this.globalConfig.database.isLegacySqlite) {
-			// Employ lazy loading to avoid unnecessary imports in the CLI
-			// and to ensure that the legacy recovery service is only used when needed.
-			const { LegacySqliteExecutionRecoveryService } = await import(
-				'@/executions/legacy-sqlite-execution-recovery.service'
-			);
-			await Container.get(LegacySqliteExecutionRecoveryService).cleanupWorkflowExecutions();
-		}
-
 		await this.server.start();
 
 		Container.get(ExecutionsPruningService).init();
@@ -324,6 +390,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		// Start to get active workflows and run their triggers
 		await this.activeWorkflowManager.init();
+
+		Container.get(LoadNodesAndCredentials).releaseTypes();
 
 		const editorUrl = this.getEditorUrl();
 

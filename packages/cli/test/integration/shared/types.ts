@@ -37,6 +37,7 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
+	| 'roleMappingRule'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -44,9 +45,12 @@ type EndpointGroup =
 	| 'folder'
 	| 'insights'
 	| 'module-settings'
+	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
-	| 'mcp';
+	| 'mcp'
+	| 'workflowDependencies'
+	| 'encryption-keys';
 
 type ModuleName =
 	| 'insights'
@@ -54,7 +58,12 @@ type ModuleName =
 	| 'community-packages'
 	| 'data-table'
 	| 'mcp'
-	| 'dynamic-credentials';
+	| 'dynamic-credentials'
+	| 'log-streaming'
+	| 'ldap'
+	| 'redaction'
+	| 'source-control'
+	| 'token-exchange';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];

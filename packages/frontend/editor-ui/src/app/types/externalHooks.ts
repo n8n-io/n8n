@@ -218,10 +218,6 @@ export interface ExternalHooks {
 		onClick: Array<ExternalHooksMethod<ITelemetryTrackProperties>>;
 	};
 	workflow: {
-		activeChange: Array<ExternalHooksMethod<{ active: boolean; workflowId: string }>>;
-		activeChangeCurrent: Array<
-			ExternalHooksMethod<{ workflowId: string; versionId: string | null; active: boolean }>
-		>;
 		afterUpdate: Array<ExternalHooksMethod<{ workflowData: IWorkflowDb }>>;
 		open: Array<ExternalHooksMethod<{ workflowId: string; workflowName: string }>>;
 		published: Array<ExternalHooksMethod<{ workflowId: string; versionId: string }>>;

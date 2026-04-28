@@ -7,7 +7,7 @@ import { Container } from '@n8n/di';
  * Runs MCP server and exposes endpoints for MCP clients to connect to.
  * Requires MCP access to be enabled in settings and a valid API key.
  */
-@BackendModule({ name: 'mcp' })
+@BackendModule({ name: 'mcp', instanceTypes: ['main'] })
 export class McpModule implements ModuleInterface {
 	async init() {
 		await import('./mcp.controller');
@@ -15,10 +15,6 @@ export class McpModule implements ModuleInterface {
 		await import('./mcp.oauth.controller');
 		await import('./mcp.auth.consent.controller');
 		await import('./mcp.oauth-clients.controller');
-
-		// Initialize event relay to handle workflow deactivation
-		const { McpEventRelay } = await import('./mcp.event-relay');
-		Container.get(McpEventRelay).init();
 	}
 
 	/**

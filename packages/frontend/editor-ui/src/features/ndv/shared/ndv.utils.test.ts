@@ -17,6 +17,7 @@ import {
 	parseFromExpression,
 	setValue,
 	shouldSkipParamValidation,
+	createCommonNodeSettings,
 } from './ndv.utils';
 import { CUSTOM_API_CALL_KEY, SWITCH_NODE_TYPE } from '@/app/constants';
 import type { INodeUi, IUpdateInformation } from '@/Interface';
@@ -554,6 +555,45 @@ describe('shouldSkipParamValidation', () => {
 				expect(result).toBe(false);
 			});
 		});
+	});
+});
+
+describe('createCommonNodeSettings', () => {
+	const mockT = (key: string) => key;
+
+	it('should include retry, executeOnce, and alwaysOutputData settings when isToolOrModelNode is false', () => {
+		const settings = createCommonNodeSettings(false, mockT);
+		const names = settings.map((s) => s.name);
+
+		expect(names).toContain('retryOnFail');
+		expect(names).toContain('maxTries');
+		expect(names).toContain('waitBetweenTries');
+		expect(names).toContain('executeOnce');
+		expect(names).toContain('alwaysOutputData');
+		expect(names).toContain('onError');
+	});
+
+	it('should exclude retry, executeOnce, and alwaysOutputData settings when isToolOrModelNode is true', () => {
+		const settings = createCommonNodeSettings(true, mockT);
+		const names = settings.map((s) => s.name);
+
+		expect(names).not.toContain('retryOnFail');
+		expect(names).not.toContain('maxTries');
+		expect(names).not.toContain('waitBetweenTries');
+		expect(names).not.toContain('executeOnce');
+		expect(names).not.toContain('alwaysOutputData');
+		expect(names).not.toContain('onError');
+	});
+
+	it('should always include notes and notesInFlow settings', () => {
+		const regularSettings = createCommonNodeSettings(false, mockT);
+		const toolSettings = createCommonNodeSettings(true, mockT);
+
+		for (const settings of [regularSettings, toolSettings]) {
+			const names = settings.map((s) => s.name);
+			expect(names).toContain('notes');
+			expect(names).toContain('notesInFlow');
+		}
 	});
 });
 

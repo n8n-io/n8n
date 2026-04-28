@@ -1,10 +1,10 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import {
 	workflowVersionNameSchema,
 	workflowVersionDescriptionSchema,
 } from '../../schemas/workflow-version.schema';
+import { Z } from '../../zod-class';
 
 export class ActivateWorkflowDto extends Z.class({
 	versionId: z.string(),

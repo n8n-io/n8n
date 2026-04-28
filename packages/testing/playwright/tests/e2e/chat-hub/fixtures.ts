@@ -19,10 +19,10 @@ type ChatHubFixtures = {
 
 export const chatHubTestConfig = {
 	timezoneId: 'America/New_York',
-	addContainerCapability: {
-		proxyServerEnabled: true,
+	capability: {
+		services: ['proxy'],
 		env: {
-			N8N_COMMUNITY_PACKAGES_ENABLED: 'false', // To not generate API requests to staging server
+			N8N_COMMUNITY_PACKAGES_ENABLED: 'false',
 		},
 	},
 } as const;
@@ -37,16 +37,16 @@ export const test = base.extend<ChatHubFixtures>({
 	},
 
 	chatHubProxySetup: [
-		async ({ proxyServer }, use) => {
+		async ({ services }, use) => {
 			// Setup
-			await proxyServer.clearAllExpectations();
-			await proxyServer.loadExpectations('chat-hub', { strictBodyMatching: true });
+			await services.proxy.clearAllExpectations();
+			await services.proxy.loadExpectations('chat-hub', { strictBodyMatching: true });
 
 			await use(undefined);
 
 			// Teardown
 			if (!process.env.CI) {
-				await proxyServer.recordExpectations('chat-hub', {
+				await services.proxy.recordExpectations('chat-hub', {
 					dedupe: true,
 					transform: (expectation) => {
 						const response = expectation.httpResponse as {

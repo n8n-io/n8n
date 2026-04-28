@@ -10,12 +10,11 @@ import type { ListQuery } from '@/requests';
 
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
-import { SUPPORTED_MCP_TRIGGERS } from '../mcp.constants';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -86,6 +85,7 @@ describe('McpSettingsController', () => {
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowService = mock<WorkflowService>();
+	const collaborationService = mock<CollaborationService>();
 
 	let controller: McpSettingsController;
 
@@ -97,6 +97,12 @@ describe('McpSettingsController', () => {
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
 		Container.set(WorkflowFinderService, workflowFinderService);
 		Container.set(WorkflowService, workflowService);
+		Container.set(CollaborationService, collaborationService);
+		// Default resolved broadcast — the controller fires this without
+		// awaiting and attaches a `.catch(...)`, so the mock must return a
+		// real Promise. Tests that exercise the failure path override this
+		// with `mockRejectedValueOnce`.
+		collaborationService.broadcastWorkflowSettingsUpdated.mockResolvedValue(undefined);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -215,10 +221,8 @@ describe('McpSettingsController', () => {
 				user,
 				expect.objectContaining({
 					filter: expect.objectContaining({
-						active: true,
 						isArchived: false,
 						availableInMCP: false,
-						triggerNodeTypes: Object.keys(SUPPORTED_MCP_TRIGGERS),
 					}),
 				}),
 				false, // includeScopes
@@ -268,10 +272,8 @@ describe('McpSettingsController', () => {
 				expect.objectContaining({
 					filter: expect.objectContaining({
 						name: 'test-workflow',
-						active: true,
 						isArchived: false,
 						availableInMCP: false,
-						triggerNodeTypes: Object.keys(SUPPORTED_MCP_TRIGGERS),
 					}),
 					take: 10,
 					skip: 5,
@@ -301,7 +303,6 @@ describe('McpSettingsController', () => {
 				user,
 				expect.objectContaining({
 					filter: expect.objectContaining({
-						active: true,
 						isArchived: false,
 						availableInMCP: false,
 					}),
@@ -344,18 +345,29 @@ describe('McpSettingsController', () => {
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 
-		test('rejects enabling MCP for inactive workflows', async () => {
+		test('allows enabling MCP for inactive workflows', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ activeVersionId: null }),
+				createWorkflow({
+					activeVersionId: null,
+					nodes: [createWebhookNode({ disabled: false })],
+				}),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: true },
+				versionId: 'client-version',
+			} as unknown as WorkflowEntity);
+
+			await controller.toggleWorkflowMCPAccess(
+				createReq({}, { user }),
+				mock<Response>(),
+				workflowId,
+				{
+					availableInMCP: true,
+				},
 			);
 
-			await expect(
-				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
-					availableInMCP: true,
-				}),
-			).rejects.toThrow(new BadRequestError('MCP access can only be set for published workflows'));
-
-			expect(workflowService.update).not.toHaveBeenCalled();
+			expect(workflowService.update).toHaveBeenCalledTimes(1);
 		});
 
 		test('allows disabling MCP for inactive workflows', async () => {
@@ -377,12 +389,11 @@ describe('McpSettingsController', () => {
 			expect(workflowService.update).toHaveBeenCalledTimes(1);
 		});
 
-		test('rejects enabling MCP without active webhook nodes', async () => {
+		test('allows enabling MCP regardless of trigger node types', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				createWorkflow({
 					activeVersionId: uuid(),
 					nodes: [
-						createWebhookNode({ disabled: true }),
 						{
 							id: 'node-2',
 							name: 'HTTP Request',
@@ -394,18 +405,22 @@ describe('McpSettingsController', () => {
 					],
 				}),
 			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { saveManualExecutions: true, availableInMCP: true },
+				versionId: 'client-version',
+			} as unknown as WorkflowEntity);
 
-			await expect(
-				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+			await controller.toggleWorkflowMCPAccess(
+				createReq({}, { user }),
+				mock<Response>(),
+				workflowId,
+				{
 					availableInMCP: true,
-				}),
-			).rejects.toThrow(
-				new BadRequestError(
-					'MCP access can only be set for published workflows with one of the following trigger nodes: Schedule Trigger, Webhook Trigger, Form Trigger, Chat Trigger.',
-				),
+				},
 			);
 
-			expect(workflowService.update).not.toHaveBeenCalled();
+			expect(workflowService.update).toHaveBeenCalledTimes(1);
 		});
 
 		test('persists MCP availability when validation passes', async () => {
@@ -449,6 +464,73 @@ describe('McpSettingsController', () => {
 				settings: { saveManualExecutions: true, availableInMCP: true },
 				versionId: 'updated-version-id',
 			});
+		});
+
+		test('broadcasts a settings update with a post-update checksum to open collaborators', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ activeVersionId: null }),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				name: 'wf',
+				nodes: [],
+				connections: {},
+				settings: { availableInMCP: true },
+				versionId: 'updated-version-id',
+			} as unknown as WorkflowEntity);
+
+			await controller.toggleWorkflowMCPAccess(
+				createReq({}, { user }),
+				mock<Response>(),
+				workflowId,
+				{
+					availableInMCP: true,
+				},
+			);
+
+			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledTimes(1);
+			const [broadcastWorkflowId, broadcastSettings, broadcastChecksum] =
+				collaborationService.broadcastWorkflowSettingsUpdated.mock.calls[0];
+			expect(broadcastWorkflowId).toBe(workflowId);
+			expect(broadcastSettings).toEqual({ availableInMCP: true });
+			expect(typeof broadcastChecksum).toBe('string');
+			expect(broadcastChecksum).toMatch(/^[a-f0-9]{64}$/);
+		});
+
+		test('does not fail the request when the broadcast throws', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				createWorkflow({ activeVersionId: null }),
+			);
+			workflowService.update.mockResolvedValue({
+				id: workflowId,
+				settings: { availableInMCP: false },
+				versionId: 'updated-version-id',
+			} as unknown as WorkflowEntity);
+			collaborationService.broadcastWorkflowSettingsUpdated.mockRejectedValueOnce(
+				new Error('push down'),
+			);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: false,
+				}),
+			).resolves.toEqual({
+				id: workflowId,
+				settings: { availableInMCP: false },
+				versionId: 'updated-version-id',
+			});
+		});
+
+		test('does not broadcast when the workflow cannot be accessed', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(
+				controller.toggleWorkflowMCPAccess(createReq({}, { user }), mock<Response>(), workflowId, {
+					availableInMCP: true,
+				}),
+			).rejects.toThrow(NotFoundError);
+
+			expect(collaborationService.broadcastWorkflowSettingsUpdated).not.toHaveBeenCalled();
 		});
 	});
 });

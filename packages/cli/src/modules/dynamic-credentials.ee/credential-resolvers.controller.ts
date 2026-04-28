@@ -3,9 +3,11 @@ import {
 	CredentialResolver,
 	credentialResolverSchema,
 	credentialResolversSchema,
+	credentialResolverAffectedWorkflowsSchema,
 	UpdateCredentialResolverDto,
 	CredentialResolverType,
 	credentialResolverTypesSchema,
+	type CredentialResolverAffectedWorkflow,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -25,6 +27,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { CredentialResolutionError } from './errors/credential-resolution.error';
 import { DynamicCredentialResolverNotFoundError } from './errors/credential-resolver-not-found.error';
 import { DynamicCredentialResolverService } from './services/credential-resolver.service';
 
@@ -36,7 +39,8 @@ export class CredentialResolversController {
 	@GlobalScope('credentialResolver:list')
 	async listResolvers(_req: AuthenticatedRequest, _res: Response): Promise<CredentialResolver[]> {
 		try {
-			return credentialResolversSchema.parse(await this.service.findAll());
+			const resolvers = credentialResolversSchema.parse(await this.service.findAll());
+			return resolvers.map(({ decryptedConfig: _, ...rest }) => ({ ...rest, config: '' }));
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -62,7 +66,7 @@ export class CredentialResolversController {
 	@Post('/')
 	@GlobalScope('credentialResolver:create')
 	async createResolver(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body dto: CreateCredentialResolverDto,
 	): Promise<CredentialResolver> {
@@ -71,11 +75,36 @@ export class CredentialResolversController {
 				name: dto.name,
 				type: dto.type,
 				config: dto.config,
+				user: req.user,
 			});
 			return credentialResolverSchema.parse(createdResolver);
 		} catch (e: unknown) {
 			if (e instanceof CredentialResolverValidationError) {
 				throw new BadRequestError(e.message);
+			}
+			if (e instanceof CredentialResolutionError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			}
+			throw e;
+		}
+	}
+
+	@Get('/:id/workflows')
+	@GlobalScope('credentialResolver:read')
+	async getAffectedWorkflows(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<CredentialResolverAffectedWorkflow[]> {
+		try {
+			const workflows = await this.service.findAffectedWorkflows(id);
+			return credentialResolverAffectedWorkflowsSchema.parse(workflows);
+		} catch (e: unknown) {
+			if (e instanceof DynamicCredentialResolverNotFoundError) {
+				throw new NotFoundError(e.message);
 			}
 			if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
@@ -107,7 +136,7 @@ export class CredentialResolversController {
 	@Patch('/:id')
 	@GlobalScope('credentialResolver:update')
 	async updateResolver(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('id') id: string,
 		@Body dto: UpdateCredentialResolverDto,
@@ -118,6 +147,8 @@ export class CredentialResolversController {
 					type: dto.type,
 					name: dto.name,
 					config: dto.config,
+					clearCredentials: dto.clearCredentials,
+					user: req.user,
 				}),
 			);
 		} catch (e: unknown) {
@@ -125,6 +156,9 @@ export class CredentialResolversController {
 				throw new NotFoundError(e.message);
 			}
 			if (e instanceof CredentialResolverValidationError) {
+				throw new BadRequestError(e.message);
+			}
+			if (e instanceof CredentialResolutionError) {
 				throw new BadRequestError(e.message);
 			}
 			if (e instanceof Error) {

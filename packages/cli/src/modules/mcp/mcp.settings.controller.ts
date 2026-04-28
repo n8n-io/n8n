@@ -11,15 +11,14 @@ import {
 	ProjectScope,
 } from '@n8n/decorators';
 import type { Response } from 'express';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
-import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { McpSettingsService } from './mcp.settings.service';
-import { findMcpSupportedTrigger } from './mcp.utils';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
@@ -35,6 +34,7 @@ export class McpSettingsController {
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	@GlobalScope('mcp:manage')
@@ -70,16 +70,12 @@ export class McpSettingsController {
 
 	@Get('/workflows', { middlewares: listQueryMiddleware })
 	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
-		const supportedTriggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
-
 		const options: ListQuery.Options = {
 			...req.listQueryOptions,
 			filter: {
 				...req.listQueryOptions?.filter,
-				active: true,
 				isArchived: false,
 				availableInMCP: false,
-				triggerNodeTypes: supportedTriggerNodeTypes,
 			},
 		};
 
@@ -120,20 +116,6 @@ export class McpSettingsController {
 			);
 		}
 
-		if (dto.availableInMCP) {
-			if (!workflow.activeVersionId) {
-				throw new BadRequestError('MCP access can only be set for published workflows');
-			}
-			const nodes = workflow.activeVersion?.nodes ?? [];
-			const supportedTrigger = findMcpSupportedTrigger(nodes);
-
-			if (!supportedTrigger) {
-				throw new BadRequestError(
-					`MCP access can only be set for published workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
-				);
-			}
-		}
-
 		const workflowUpdate = new WorkflowEntity();
 		const currentSettings = workflow.settings ?? {};
 		workflowUpdate.settings = {
@@ -143,6 +125,21 @@ export class McpSettingsController {
 		workflowUpdate.versionId = workflow.versionId;
 
 		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
+
+		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
+
+		void this.collaborationService
+			.broadcastWorkflowSettingsUpdated(
+				workflowId,
+				{ availableInMCP: dto.availableInMCP },
+				checksum,
+			)
+			.catch((error) => {
+				this.logger.warn('Failed to broadcast workflow settings update', {
+					workflowId,
+					cause: error instanceof Error ? error.message : String(error),
+				});
+			});
 
 		return {
 			id: updatedWorkflow.id,

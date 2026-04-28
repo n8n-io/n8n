@@ -1,11 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { waitFor } from '@testing-library/vue';
-import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
+import type { IWorkflowDb } from '@/Interface';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
+import { createTestWorkflow } from '@/__tests__/mocks';
+import { useWorkflowNavigationCommands } from './useWorkflowNavigationCommands';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -56,66 +59,68 @@ describe('useWorkflowNavigationCommands', () => {
 	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let mockCredentialsStore: ReturnType<typeof useCredentialsStore>;
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let mockProjectsStore: ReturnType<typeof useProjectsStore>;
 	let mockTagsStore: ReturnType<typeof useTagsStore>;
 	let mockSourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let mockFoldersStore: ReturnType<typeof useFoldersStore>;
 
 	const allWorkflows = [
-		{
+		createTestWorkflow({
 			id: 'w1',
 			name: 'Alpha',
 			active: false,
 			isArchived: false,
-			homeProject: { id: 'proj-1', type: ProjectTypes.Personal },
-			parentFolder: { id: 'f2', name: 'Child' },
-			tags: ['Marketing'],
-		},
-		{
+			homeProject: { id: 'proj-1', type: ProjectTypes.Personal } as IWorkflowDb['homeProject'],
+			parentFolder: { id: 'f2', name: 'Child' } as IWorkflowDb['parentFolder'],
+			tags: ['Marketing'] as IWorkflowDb['tags'],
+		}),
+		createTestWorkflow({
 			id: 'w2',
 			name: 'Beta',
 			active: true,
 			isArchived: false,
-			homeProject: { id: 'proj-2', name: 'Team A' },
-			parentFolder: null,
+			homeProject: { id: 'proj-2', name: 'Team A' } as IWorkflowDb['homeProject'],
+			parentFolder: undefined,
 			tags: [],
-		},
-		{
+		}),
+		createTestWorkflow({
 			id: 'w3',
 			name: 'Gamma',
 			active: true,
 			isArchived: true, // should be filtered out
-			homeProject: { id: 'proj-2', name: 'Team A' },
-			parentFolder: null,
+			homeProject: { id: 'proj-2', name: 'Team A' } as IWorkflowDb['homeProject'],
+			parentFolder: undefined,
 			tags: [],
-		},
+		}),
 	];
-
-	beforeAll(() => {
-		setActivePinia(createTestingPinia());
-	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		setActivePinia(createTestingPinia());
 
 		const folderCache = new Map<string, { id: string; name: string; parentFolder?: string }>();
 
 		mockNodeTypesStore = useNodeTypesStore();
 		Object.defineProperty(mockNodeTypesStore, 'allNodeTypes', {
 			value: [{ name: 'n8n-nodes-base.httpRequest', displayName: 'http request' }],
+			configurable: true,
 		});
 		Object.defineProperty(mockNodeTypesStore, 'getNodeType', {
 			value: vi.fn((name: string) => ({ name, displayName: 'http request' })),
+			configurable: true,
 		});
 
 		mockCredentialsStore = useCredentialsStore();
 		Object.defineProperty(mockCredentialsStore, 'httpOnlyCredentialTypes', {
 			value: [],
+			configurable: true,
 		});
 
 		mockProjectsStore = useProjectsStore();
 		Object.defineProperty(mockProjectsStore, 'currentProjectId', {
 			value: 'proj-1',
+			configurable: true,
 		});
 
 		mockTagsStore = useTagsStore();
@@ -130,33 +135,35 @@ describe('useWorkflowNavigationCommands', () => {
 			value: vi.fn((folders: Array<{ id: string; name: string; parentFolder?: string }>) => {
 				for (const f of folders) folderCache.set(f.id, f);
 			}),
+			configurable: true,
 		});
 		Object.defineProperty(mockFoldersStore, 'getCachedFolder', {
 			value: vi.fn((id: string) => folderCache.get(id)),
+			configurable: true,
 		});
 
 		mockWorkflowsStore = useWorkflowsStore();
+		mockWorkflowsListStore = useWorkflowsListStore();
 		Object.defineProperty(mockWorkflowsStore, 'canViewWorkflows', {
 			value: true,
+			configurable: true,
 		});
-		Object.defineProperty(mockWorkflowsStore, 'searchWorkflows', {
-			value: vi
-				.fn()
-				.mockImplementation(
-					async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
-						if (params.nodeTypes && params.nodeTypes.length > 0) {
-							return [{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] }];
-						}
-						if (params.tags && params.tags.length > 0) {
-							return [allWorkflows[0]];
-						}
-						if (typeof params.query === 'string') {
-							return [allWorkflows[0], allWorkflows[1], allWorkflows[2]];
-						}
-						return [];
-					},
-				),
-		});
+		vi.spyOn(mockWorkflowsListStore, 'searchWorkflows').mockImplementation(
+			async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
+				if (params.nodeTypes && params.nodeTypes.length > 0) {
+					return [
+						{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] } as IWorkflowDb,
+					];
+				}
+				if (params.tags && params.tags.length > 0) {
+					return [allWorkflows[0]];
+				}
+				if (typeof params.query === 'string') {
+					return [allWorkflows[0], allWorkflows[1], allWorkflows[2]];
+				}
+				return [];
+			},
+		);
 
 		Object.defineProperty(window, 'location', {
 			value: { href: '' },

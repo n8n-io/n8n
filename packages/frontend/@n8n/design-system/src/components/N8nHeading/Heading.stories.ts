@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nHeading from './Heading.vue';
 
 export default {
-	title: 'Atoms/Heading',
+	title: 'Core/Heading',
 	component: N8nHeading,
 	argTypes: {
 		size: {
@@ -17,6 +17,12 @@ export default {
 				type: 'select',
 			},
 			options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: { component: 'A typographic heading component for section and page titles.' },
 		},
 	},
 };

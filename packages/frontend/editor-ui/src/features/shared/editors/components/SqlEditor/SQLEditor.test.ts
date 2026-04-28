@@ -8,8 +8,19 @@ import { renderComponent, type RenderOptions } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
+import { shallowRef } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
@@ -66,6 +77,7 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
+						id: 'test',
 						nodes,
 						connections: {},
 					},
@@ -75,7 +87,14 @@ describe('SqlEditor.vue', () => {
 		setActivePinia(pinia);
 
 		const workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-workflow';
 		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(nodes[0]);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 	});
 
 	afterAll(() => {

@@ -10,11 +10,11 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 
+import type { RequestResponseMetadata } from '@utils/agent-execution';
 import { textInput, toolDescription } from '@utils/descriptions';
 
 import { getInputs } from '../utils';
 import { toolsAgentProperties } from '../agents/ToolsAgent/V3/description';
-import type { RequestResponseMetadata } from '../agents/ToolsAgent/V3/execute';
 import { toolsAgentExecute } from '../agents/ToolsAgent/V3/execute';
 
 export class AgentToolV3 implements INodeType {
@@ -34,6 +34,18 @@ export class AgentToolV3 implements INodeType {
 				})($parameter.hasOutputParser === undefined || $parameter.hasOutputParser === true, $parameter.needsFallback !== undefined && $parameter.needsFallback === true)
 			}}`,
 			outputs: [NodeConnectionTypes.AiTool],
+			builderHint: {
+				...baseDescription.builderHint,
+				inputs: {
+					ai_languageModel: { required: true },
+					ai_memory: { required: false },
+					ai_tool: { required: false },
+					ai_outputParser: {
+						required: false,
+						displayOptions: { show: { hasOutputParser: [true] } },
+					},
+				},
+			},
 			properties: [
 				toolDescription,
 				{

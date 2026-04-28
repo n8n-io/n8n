@@ -7,23 +7,66 @@
 			"name": "When clicking \"Execute Workflow\"",
 			"type": "n8n-nodes-base.manualTrigger",
 			"typeVersion": 1,
-			"position": [
-				960,
-				520
-			]
+			"position": [960, 520]
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  { mixed: \"1\", match: \"foo\" },\n  { mixed: 1, match: \"foo\" },\n  { mixed: true, match: \"foo\" },\n  { mixed: false, match: \"foo\" },\n  { mixed: {}, match: \"foo\" },\n  { mixed: [], match: \"foo\" },\n  //duplicates\n  { mixed: \"1\", match: \"foo\" },\n  { mixed: 1, match: \"foo\" },\n  { mixed: true, match: \"foo\" },\n  { mixed: false, match: \"foo\" },\n  { mixed: {}, match: \"foo\" },\n  { mixed: [], match: \"foo\" },\n];"
+				"data": [
+					{
+						"mixed": "1",
+						"match": "foo"
+					},
+					{
+						"mixed": 1,
+						"match": "foo"
+					},
+					{
+						"mixed": true,
+						"match": "foo"
+					},
+					{
+						"mixed": false,
+						"match": "foo"
+					},
+					{
+						"mixed": {},
+						"match": "foo"
+					},
+					{
+						"mixed": [],
+						"match": "foo"
+					},
+					{
+						"mixed": "1",
+						"match": "foo"
+					},
+					{
+						"mixed": 1,
+						"match": "foo"
+					},
+					{
+						"mixed": true,
+						"match": "foo"
+					},
+					{
+						"mixed": false,
+						"match": "foo"
+					},
+					{
+						"mixed": {},
+						"match": "foo"
+					},
+					{
+						"mixed": [],
+						"match": "foo"
+					}
+				]
 			},
 			"id": "2aa52759-f7a5-4a60-bf2e-9c1e3d2821dc",
 			"name": "Code",
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
-			"position": [
-				1160,
-				520
-			]
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
+			"position": [1160, 520]
 		},
 		{
 			"parameters": {
@@ -33,10 +76,7 @@
 			"name": "Remove duplicates",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 3.1,
-			"position": [
-				1440,
-				160
-			]
+			"position": [1440, 160]
 		},
 		{
 			"parameters": {
@@ -49,10 +89,7 @@
 			"name": "Remove duplicates by mixed",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 3.1,
-			"position": [
-				1440,
-				340
-			]
+			"position": [1440, 340]
 		},
 		{
 			"parameters": {
@@ -65,10 +102,7 @@
 			"name": "Remove duplicates by match",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 3.1,
-			"position": [
-				1440,
-				520
-			]
+			"position": [1440, 520]
 		},
 		{
 			"parameters": {
@@ -81,10 +115,7 @@
 			"name": "Remove duplicates except by mixed",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 3.1,
-			"position": [
-				1440,
-				720
-			]
+			"position": [1440, 720]
 		},
 		{
 			"parameters": {
@@ -97,10 +128,7 @@
 			"name": "Remove duplicates except by match",
 			"type": "n8n-nodes-base.itemLists",
 			"typeVersion": 3.1,
-			"position": [
-				1440,
-				940
-			]
+			"position": [1440, 940]
 		}
 	],
 	"pinData": {

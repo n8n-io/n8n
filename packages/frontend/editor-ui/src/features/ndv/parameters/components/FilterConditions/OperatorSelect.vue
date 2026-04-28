@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { computed, ref, watch } from 'vue';
+import { computed, useCssModule } from 'vue';
 import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';
 import { getFilterOperator } from './utils';
 import type { FilterOperatorType } from 'n8n-workflow';
+import { Primitive } from 'reka-ui';
 
-import { N8nIcon, N8nOption, N8nPopover, N8nSelect } from '@n8n/design-system';
+import { N8nIcon } from '@n8n/design-system';
+import {
+	N8nDropdownMenu,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system/v2/components/DropdownMenu';
+
 interface Props {
 	selected: string;
 	suggestedType?: FilterOperatorType;
@@ -15,165 +21,160 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), { readOnly: false, suggestedType: 'any' });
 
-const selected = ref(props.selected);
-const menuOpen = ref(false);
-const shouldRenderItems = ref(false);
-const submenu = ref('none');
-
 const emit = defineEmits<{
 	operatorChange: [value: string];
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 
 const groups = OPERATOR_GROUPS;
 
 const selectedGroupIcon = computed(
-	() => groups.find((group) => group.id === selected.value.split(':')[0])?.icon,
+	() => groups.find((group) => group.id === props.selected.split(':')[0])?.icon,
 );
 
-const selectedOperator = computed(() => getFilterOperator(selected.value));
+const selectedOperator = computed(() => getFilterOperator(props.selected));
 
 const selectedType = computed(() => selectedOperator.value.type);
-
-const onOperatorChange = (operator: string): void => {
-	selected.value = operator;
-	emit('operatorChange', operator);
-};
 
 const getOperatorId = (operator: FilterOperator): string =>
 	`${operator.type}:${operator.operation}`;
 
-function onSelectVisibleChange(open: boolean) {
-	menuOpen.value = open;
-	submenu.value = 'none';
-}
+const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() => {
+	return groups.map((group) => {
+		const isSuggested = group.id === props.suggestedType;
+		const isSelected = group.id === selectedType.value;
+		const classes = [];
 
-function onGroupSelect(group: string) {
-	if (menuOpen.value) {
-		submenu.value = group;
+		if (isSuggested) classes.push($style.suggested);
+		if (isSelected) classes.push($style.selected);
+
+		return {
+			id: group.id,
+			label: i18n.baseText(group.name),
+			icon: group.icon ? { type: 'icon' as const, value: group.icon } : undefined,
+			class: classes,
+			children: group.children.map((operator) => {
+				const operatorId = getOperatorId(operator);
+				const isOperatorSelected = operatorId === props.selected;
+				return {
+					id: operatorId,
+					label: i18n.baseText(operator.name),
+					checked: isOperatorSelected,
+					class: isOperatorSelected ? $style.selected : '',
+				};
+			}),
+		};
+	});
+});
+
+const onSelect = (operatorId: string): void => {
+	// Only emit if it's an actual operator (contains colon), not a group
+	if (operatorId.includes(':')) {
+		emit('operatorChange', operatorId);
 	}
-}
-
-watch(
-	() => props.selected,
-	(newSelected) => {
-		selected.value = newSelected;
-	},
-);
+};
 </script>
 
 <template>
-	<N8nSelect
-		:key="selectedGroupIcon"
-		data-test-id="filter-operator-select"
-		size="small"
-		:model-value="selected"
-		:disabled="readOnly"
-		@update:model-value="onOperatorChange"
-		@visible-change="onSelectVisibleChange"
-		@mouseenter="shouldRenderItems = true"
-	>
-		<template v-if="selectedGroupIcon" #prefix>
-			<N8nIcon :class="$style.icon" :icon="selectedGroupIcon" color="text-light" size="small" />
-		</template>
-		<div v-if="shouldRenderItems" :class="$style.groups">
-			<div v-for="group of groups" :key="group.name">
-				<N8nPopover
-					:open="submenu === group.id"
-					side="right"
-					align="start"
-					:side-offset="2"
-					:show-arrow="false"
-					width="auto"
-					:content-class="$style.submenuContent"
-					:enable-scrolling="false"
-					:teleported="false"
-					:force-mount="true"
-				>
-					<template #trigger>
-						<div
-							:class="[
-								$style.group,
-								{
-									[$style.selected]: group.id === selectedType,
-									[$style.suggested]: group.id === suggestedType,
-								},
-							]"
-							@mouseenter="() => onGroupSelect(group.id)"
-							@click="() => onGroupSelect(group.id)"
-						>
-							<div :class="$style.groupTitle">
-								<N8nIcon v-if="group.icon" :icon="group.icon" :class="$style.icon" size="small" />
-								<span>{{ i18n.baseText(group.name) }}</span>
-							</div>
-							<N8nIcon icon="chevron-right" color="text-light" size="xsmall" />
-						</div>
-					</template>
-					<template #content>
-						<div>
-							<N8nOption
-								v-for="operator in group.children"
-								:key="getOperatorId(operator)"
-								:value="getOperatorId(operator)"
-								:label="i18n.baseText(operator.name)"
-							/>
-						</div>
-					</template>
-				</N8nPopover>
-			</div>
-		</div>
-		<N8nOption
-			v-else
-			:key="selected"
-			:value="selected"
-			:label="i18n.baseText(selectedOperator.name)"
-		/>
-	</N8nSelect>
+	<div :class="$style.wrapper" data-test-id="filter-operator-select">
+		<N8nDropdownMenu
+			:items="menuItems"
+			:disabled="readOnly"
+			placement="bottom-start"
+			:extra-popper-class="$style.dropdownContent"
+			@select="onSelect"
+		>
+			<template #trigger>
+				<Primitive as="button" type="button" :class="$style.trigger" :disabled="readOnly">
+					<N8nIcon
+						v-if="selectedGroupIcon"
+						:class="$style.icon"
+						:icon="selectedGroupIcon"
+						color="text-light"
+						size="small"
+					/>
+					<span :class="$style.label">{{ i18n.baseText(selectedOperator.name) }}</span>
+					<N8nIcon :class="$style.chevron" icon="chevron-down" color="text-light" size="small" />
+				</Primitive>
+			</template>
+		</N8nDropdownMenu>
+	</div>
 </template>
 
 <style lang="scss" module>
+.wrapper {
+	width: 100%;
+	height: 100%;
+}
+
+.trigger {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	width: 100%;
+	height: 100%;
+	min-height: 30px;
+	padding: 0 var(--spacing--2xs);
+	border: var(--border-width) var(--border-style) var(--input--border-color, var(--border-color));
+	border-top-left-radius: var(--input--radius--top-left, var(--input--radius, 0));
+	border-bottom-left-radius: var(--input--radius--bottom-left, var(--input--radius, 0));
+	border-top-right-radius: var(--input-triple--radius--top-right, var(--input--radius, 0));
+	border-bottom-right-radius: var(--input-triple--radius--bottom-right, var(--input--radius, 0));
+	background-color: var(--color--background--light-2);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+	font-family: var(--font-family);
+	line-height: var(--line-height--md);
+	cursor: pointer;
+	white-space: nowrap;
+	text-align: left;
+
+	&:hover:not(:disabled) {
+		background-color: var(--color--background--light-1);
+	}
+
+	&:focus {
+		outline: none;
+		border-color: var(--color--secondary);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		background-color: var(--color--background--light-3);
+		color: var(--color--text--tint-1);
+	}
+}
+
 .icon {
 	color: var(--color--text--tint-1);
+	flex-shrink: 0;
 }
 
-.groups {
-	display: flex;
-	flex-direction: column;
+.label {
+	flex-grow: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	font-weight: var(--font-weight--regular);
 }
 
-.group {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
-	justify-content: space-between;
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--md);
-	color: var(--color--text--shade-1);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	cursor: pointer;
-
-	&.suggested {
-		font-weight: var(--font-weight--bold);
-	}
-
-	&.selected {
-		color: var(--color--primary);
-		font-weight: var(--font-weight--bold);
-	}
-
-	&:hover {
-		background: var(--color--background);
-	}
+.chevron {
+	color: var(--color--text--tint-1);
+	flex-shrink: 0;
+	margin-left: auto;
 }
 
-.groupTitle {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
+.dropdownContent {
+	z-index: var(--ndv--z);
 }
 
-.submenuContent {
-	padding: var(--spacing--3xs) 0;
+.suggested span {
+	font-weight: var(--font-weight--bold);
+}
+
+.selected span {
+	color: var(--color--primary);
+	font-weight: var(--font-weight--bold);
 }
 </style>

@@ -1,0 +1,82 @@
+{
+  "name": "@n8n/cli",
+  "version": "0.4.0",
+  "description": "[beta] Client CLI for n8n — manage workflows, executions, and credentials from the terminal",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "bin": {
+    "n8n-cli": "bin/n8n-cli.mjs"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "skills"
+  ],
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "format": "biome format --write .",
+    "format:check": "biome ci .",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "test": "vitest run",
+    "test:unit": "vitest run"
+  },
+  "oclif": {
+    "bin": "n8n-cli",
+    "commands": {
+      "strategy": "explicit",
+      "target": "./dist/index.js",
+      "identifier": "commands"
+    },
+    "topicSeparator": " ",
+    "topics": {
+      "workflow": {
+        "description": "Create, update, and manage workflows"
+      },
+      "execution": {
+        "description": "Monitor and control workflow executions"
+      },
+      "credential": {
+        "description": "Create, update, and manage credentials"
+      },
+      "project": {
+        "description": "Create and manage projects and team members"
+      },
+      "tag": {
+        "description": "Create, update, and manage tags"
+      },
+      "variable": {
+        "description": "Create, update, and manage variables"
+      },
+      "data-table": {
+        "description": "Create and manage data tables and rows"
+      },
+      "user": {
+        "description": "List and look up instance users"
+      },
+      "config": {
+        "description": "View and update CLI configuration"
+      },
+      "source-control": {
+        "description": "Pull changes from the configured source control provider"
+      },
+      "skill": {
+        "description": "Install n8n CLI skills for AI coding agents"
+      }
+    }
+  },
+  "dependencies": {
+    "@oclif/core": "^4.5.2"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/node": "24.10.1",
+    "vitest": "catalog:"
+  }
+}

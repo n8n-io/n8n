@@ -6,23 +6,11 @@ import { BasePage } from './BasePage';
  * Page object for Settings including Personal Settings where users can update their profile and manage MFA.
  */
 export class SettingsPersonalPage extends BasePage {
-	getChangePasswordLink(): Locator {
-		return this.page.getByTestId('change-password-link');
-	}
-
 	getMenuItems() {
 		return this.page.getByTestId('menu-item');
 	}
 
-	getMenuItem(id: string) {
-		return this.page.getByTestId('menu-item').getByTestId(id);
-	}
-
-	getMenuItemByText(text: string) {
-		return this.page.getByTestId('menu-item').getByText(text, { exact: true });
-	}
-
-	async goToSettings() {
+	async gotoSettings() {
 		await this.page.goto('/settings');
 	}
 
@@ -30,7 +18,7 @@ export class SettingsPersonalPage extends BasePage {
 		return this.page.getByTestId('current-user-role');
 	}
 
-	async goToPersonalSettings(): Promise<void> {
+	async goto(): Promise<void> {
 		await this.page.goto('/settings/personal');
 	}
 
@@ -72,22 +60,12 @@ export class SettingsPersonalPage extends BasePage {
 	}
 
 	/**
-	 * Complete workflow to update user's email address
-	 * @param newEmail - The new email address to set
-	 */
-	async updateEmail(newEmail: string): Promise<void> {
-		await this.goToPersonalSettings();
-		await this.fillEmail(newEmail);
-		await this.saveSettings();
-	}
-
-	/**
 	 * Complete workflow to update user's first and last name
 	 * @param firstName - The new first name
 	 * @param lastName - The new last name
 	 */
 	async updateFirstAndLastName(firstName: string, lastName: string): Promise<void> {
-		await this.goToPersonalSettings();
+		await this.goto();
 		await this.fillPersonalData(firstName, lastName);
 		await this.saveSettings();
 	}
@@ -120,7 +98,7 @@ export class SettingsPersonalPage extends BasePage {
 	 * Navigate to personal settings and initiate MFA disable workflow
 	 */
 	async triggerDisableMfa(): Promise<void> {
-		await this.goToPersonalSettings();
+		await this.goto();
 		await this.clickDisableMfa();
 	}
 
@@ -135,35 +113,5 @@ export class SettingsPersonalPage extends BasePage {
 
 	getUpgradeCta(): Locator {
 		return this.page.getByTestId('public-api-upgrade-cta');
-	}
-
-	async changeTheme(theme: 'System default' | 'Light theme' | 'Dark theme') {
-		await this.page.getByTestId('theme-select').click();
-		await this.page.getByRole('option', { name: theme }).click();
-		await this.getSaveSettingsButton().click();
-	}
-
-	currentPassword(): Locator {
-		return this.page.locator('input[name="currentPassword"]');
-	}
-
-	newPassword(): Locator {
-		return this.page.locator('input[name="password"]');
-	}
-
-	repeatPassword(): Locator {
-		return this.page.locator('input[name="password2"]');
-	}
-
-	changePasswordModal(): Locator {
-		return this.page.getByTestId('changePassword-modal');
-	}
-
-	changePasswordButton(): Locator {
-		return this.changePasswordModal().getByRole('button', { name: 'Change password' });
-	}
-
-	emailBox(): Locator {
-		return this.page.getByTestId('email');
 	}
 }

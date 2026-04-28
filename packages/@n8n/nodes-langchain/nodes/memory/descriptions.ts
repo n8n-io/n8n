@@ -19,6 +19,10 @@ export const sessionIdOption: INodeProperties = {
 		},
 	],
 	default: 'fromInput',
+	builderHint: {
+		message:
+			"Use 'Connected Chat Trigger Node' (fromInput) if there is a Chat Trigger node earlier in the workflow. Otherwise use 'Define below' (customKey).",
+	},
 };
 
 export const expressionSessionKeyProperty = (fromVersion: number): INodeProperties => ({

@@ -1,6 +1,9 @@
 import type { Request, Response } from 'express';
 import type { IDataObject, IHttpRequestMethods } from 'n8n-workflow';
 
+import type { ExpectedWebhookNodeType } from './node-type-matcher';
+import type { WebhookResponse } from './webhook-response';
+
 export type WebhookOptionsRequest = Request & { method: 'OPTIONS' };
 
 export type WebhookRequest = Request<{ path: string }> & {
@@ -21,12 +24,16 @@ export interface IWebhookManager {
 	getWebhookMethods?: (path: string) => Promise<IHttpRequestMethods[]>;
 
 	/** Find the CORS options matching a path and method */
-	findAccessControlOptions?: (
+	findAccessControlOptions: (
 		path: string,
 		httpMethod: IHttpRequestMethods,
 	) => Promise<WebhookAccessControlOptions | undefined>;
 
-	executeWebhook(req: WebhookRequest, res: Response): Promise<IWebhookResponseCallbackData>;
+	executeWebhook(
+		req: WebhookRequest,
+		res: Response,
+		expectedNodeType?: ExpectedWebhookNodeType,
+	): Promise<IWebhookResponseCallbackData | WebhookResponse>;
 }
 
 export interface IWebhookResponseCallbackData {
@@ -37,16 +44,3 @@ export interface IWebhookResponseCallbackData {
 }
 
 export type Method = NonNullable<IHttpRequestMethods>;
-
-/** Response headers. Keys are always lower-cased. */
-export type WebhookResponseHeaders = Map<string, string>;
-
-/**
- * The headers object that node's `responseHeaders` property can return
- */
-export type WebhookNodeResponseHeaders = {
-	entries?: Array<{
-		name: string;
-		value: string;
-	}>;
-};

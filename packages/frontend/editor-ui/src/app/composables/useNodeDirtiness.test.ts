@@ -16,9 +16,14 @@ import {
 	type IConnections,
 	type IRunData,
 } from 'n8n-workflow';
-import { defineComponent } from 'vue';
+import { defineComponent, provide, shallowRef } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@/app/composables/useWorkflowState', async () => {
 	const actual = await vi.importActual('@/app/composables/useWorkflowState');
@@ -42,13 +47,21 @@ describe(useNodeDirtiness, () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 
+		const TEST_WORKFLOW_ID = 'test-workflow-id';
+
 		const TestComponent = defineComponent({
 			setup() {
 				nodeTypeStore = useNodeTypesStore();
 				workflowsStore = useWorkflowsStore();
+				workflowsStore.workflow.id = TEST_WORKFLOW_ID;
 				historyHelper = useHistoryHelper({} as RouteLocationNormalizedLoaded);
 				workflowState = useWorkflowState();
 				vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
+
+				const workflowDocumentStore = useWorkflowDocumentStore(
+					createWorkflowDocumentId(TEST_WORKFLOW_ID),
+				);
+				provide(WorkflowDocumentStoreKey, shallowRef(workflowDocumentStore));
 
 				canvasOperations = useCanvasOperations();
 				uiStore = useUIStore();
@@ -184,7 +197,11 @@ describe(useNodeDirtiness, () => {
 		it('should not update dirtiness when the notes field is updated', () => {
 			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
 
-			workflowState.setNodeValue({ key: 'notes', name: 'b', value: 'test' });
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).setNodeValue({
+				key: 'notes',
+				name: 'b',
+				value: 'test',
+			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
 		});
@@ -288,7 +305,11 @@ describe(useNodeDirtiness, () => {
 		it('should update dirtiness when an existing pinned data of an incoming node is updated', async () => {
 			setupTestWorkflow('a🚨✅ -> b✅📌 -> c✅, b -> d, b -> e✅ -> f✅');
 
-			workflowsStore.pinData({ node: workflowsStore.nodesByName.b, data: [{ json: {} }] });
+			// Simulate updating pinned data for node 'b' (set metadata timestamp as usePinnedData.setData would)
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflow.id),
+			);
+			workflowDocumentStore.touchPinnedDataLastUpdatedAt('b');
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({
 				// 'd' is not marked as pinned-data-updated because it has no run data.
@@ -443,14 +464,14 @@ describe(useNodeDirtiness, () => {
 
 		const workflow = createTestWorkflow({ nodes: Object.values(nodes), connections });
 
-		workflowsStore.setNodes(workflow.nodes);
-		workflowsStore.setConnections(workflow.connections);
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflow.id),
+		);
+		workflowDocumentStore.setNodes(workflow.nodes);
+		workflowDocumentStore.setConnections(workflow.connections);
 
 		for (const name of nodeNamesWithPinnedData) {
-			workflowsStore.pinData({
-				node: workflowsStore.nodesByName[name],
-				data: [{ json: {} }],
-			});
+			workflowDocumentStore.pinNodeData(name, [{ json: {} }]);
 		}
 
 		const workflowState = useWorkflowState();

@@ -12,6 +12,7 @@ import {
 	VectorStoreAzureAISearch,
 	getIndexName,
 	clearAzureSearchIndex,
+	transformDocumentsForAzure,
 } from './VectorStoreAzureAISearch.node';
 
 jest.mock('@langchain/community/vectorstores/azure_aisearch');
@@ -271,6 +272,122 @@ describe('VectorStoreAzureAISearch', () => {
 			expect(mockLogger.debug).toHaveBeenCalledWith('Error deleting index (may not exist):', {
 				message: 'Index not found',
 			});
+		});
+	});
+
+	describe('transformDocumentsForAzure', () => {
+		it('should transform metadata into attributes array with specified keys', () => {
+			const documents = [
+				{
+					pageContent: 'test content',
+					metadata: {
+						source: 'test.pdf',
+						author: 'John Doe',
+						category: 'tech',
+						unused: 'field',
+					},
+				},
+			];
+
+			const result = transformDocumentsForAzure(documents, ['source', 'author']);
+
+			expect(result[0].metadata.attributes).toEqual([
+				{ key: 'source', value: 'test.pdf' },
+				{ key: 'author', value: 'John Doe' },
+			]);
+			// Original metadata should be preserved
+			expect(result[0].metadata.source).toBe('test.pdf');
+			expect(result[0].metadata.author).toBe('John Doe');
+			expect(result[0].metadata.category).toBe('tech');
+			expect(result[0].metadata.unused).toBe('field');
+		});
+
+		it('should include all metadata keys when metadataKeysToInclude is empty', () => {
+			const documents = [
+				{
+					pageContent: 'test content',
+					metadata: { source: 'test.pdf', page: 1 },
+				},
+			];
+
+			const result = transformDocumentsForAzure(documents, []);
+
+			expect(result[0].metadata.attributes).toHaveLength(2);
+			expect(result[0].metadata.attributes).toContainEqual({ key: 'source', value: 'test.pdf' });
+			expect(result[0].metadata.attributes).toContainEqual({ key: 'page', value: '1' });
+		});
+
+		it('should filter out null and undefined values', () => {
+			const documents = [
+				{
+					pageContent: 'test content',
+					metadata: { source: 'test.pdf', author: null, page: undefined },
+				},
+			];
+
+			const result = transformDocumentsForAzure(documents, []);
+
+			expect(result[0].metadata.attributes).toEqual([{ key: 'source', value: 'test.pdf' }]);
+		});
+
+		it('should convert non-string values to strings', () => {
+			const documents = [
+				{
+					pageContent: 'test content',
+					metadata: { page: 42, isPublic: true, score: 0.95 },
+				},
+			];
+
+			const result = transformDocumentsForAzure(documents, []);
+
+			expect(result[0].metadata.attributes).toContainEqual({ key: 'page', value: '42' });
+			expect(result[0].metadata.attributes).toContainEqual({ key: 'isPublic', value: 'true' });
+			expect(result[0].metadata.attributes).toContainEqual({ key: 'score', value: '0.95' });
+		});
+
+		it('should skip keys that do not exist in metadata', () => {
+			const documents = [
+				{
+					pageContent: 'test content',
+					metadata: { source: 'test.pdf' },
+				},
+			];
+
+			const result = transformDocumentsForAzure(documents, ['source', 'nonexistent']);
+
+			expect(result[0].metadata.attributes).toEqual([{ key: 'source', value: 'test.pdf' }]);
+		});
+
+		it('should not mutate original documents', () => {
+			const originalMetadata = { source: 'test.pdf' };
+			const originalDoc = {
+				pageContent: 'test content',
+				metadata: originalMetadata,
+			};
+			const documents = [originalDoc];
+
+			transformDocumentsForAzure(documents, []);
+
+			expect(originalDoc.metadata).not.toHaveProperty('attributes');
+			expect(originalMetadata).not.toHaveProperty('attributes');
+		});
+
+		it('should handle empty documents array', () => {
+			const result = transformDocumentsForAzure([], []);
+			expect(result).toEqual([]);
+		});
+
+		it('should handle documents with empty metadata', () => {
+			const documents = [
+				{
+					pageContent: 'test content',
+					metadata: {},
+				},
+			];
+
+			const result = transformDocumentsForAzure(documents, []);
+
+			expect(result[0].metadata.attributes).toEqual([]);
 		});
 	});
 });

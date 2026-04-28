@@ -15,17 +15,18 @@ import ProjectCreateResource from './ProjectCreateResource.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -35,6 +36,20 @@ const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
 const usersStore = useUsersStore();
+const favoritesStore = useFavoritesStore();
+
+const currentProjectId = computed(() => projectsStore.currentProject?.id);
+
+const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
+
+const isProjectFavorited = computed(() =>
+	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value, 'project') : false,
+);
+
+async function onToggleProjectFavorite() {
+	if (!currentProjectId.value) return;
+	await favoritesStore.toggleFavorite(currentProjectId.value, 'project');
+}
 
 const projectPages = useProjectPages();
 
@@ -92,10 +107,14 @@ const globalVariablesPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
 
+const externalSecretsProviderPermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).externalSecretsProvider,
+);
+
 const showSettings = computed(
 	() =>
 		!!route?.params?.projectId &&
-		!!projectPermissions.value.update &&
+		(!!projectPermissions.value.update || !!externalSecretsProviderPermissions.value.read) &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
 
@@ -366,6 +385,8 @@ const projectDescription = computed(() => {
 	return null;
 });
 
+const favoriteIcon = computed(() => (isProjectFavorited.value ? 'star-filled' : 'star'));
+
 const projectHeaderRef = ref<HTMLElement | null>(null);
 const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
 
@@ -432,6 +453,15 @@ const onSelect = (action: string) => {
 						</div>
 					</template>
 				</div>
+				<N8nIconButton
+					v-if="isTeamProject"
+					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
+					:icon="favoriteIcon"
+					variant="ghost"
+					size="medium"
+					data-test-id="project-favorite-btn"
+					@click.stop="onToggleProjectFavorite"
+				/>
 			</div>
 			<div
 				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
@@ -453,6 +483,7 @@ const onSelect = (action: string) => {
 							<N8nButton
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
+								size="medium"
 								@click="onSelect(selectedMainButtonType)"
 							/>
 						</ProjectCreateResource>
@@ -509,6 +540,22 @@ const onSelect = (action: string) => {
 	white-space: normal;
 	border-radius: 6px;
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.favoriteBtn {
+	cursor: pointer;
+	color: var(--color--text--tint-2);
+	margin-top: var(--spacing--5xs);
+	margin-left: var(--spacing--3xs);
+	opacity: 0.8;
+
+	&.favoriteBtnActive {
+		color: var(--color--yellow-500);
+	}
+}
+
+.projectDetails:hover .favoriteBtn {
+	opacity: 1;
 }
 
 @include mixins.breakpoint('xs-only') {

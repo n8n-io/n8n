@@ -1,5 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { waitFor, fireEvent } from '@testing-library/vue';
+import { waitFor } from '@testing-library/vue';
 
 import NodeDetailsView from '@/features/ndv/shared/views/NodeDetailsView.vue';
 import { VIEWS } from '@/app/constants';
@@ -8,6 +8,10 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
@@ -17,7 +21,8 @@ import {
 	defaultNodeDescriptions,
 	mockNodes,
 } from '@/__tests__/mocks';
-import type { Workflow } from 'n8n-workflow';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => {
 	return {
@@ -44,8 +49,8 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
-	workflowsStore.workflowObject = createTestWorkflowObject(workflow);
-	workflowsStore.nodeMetadata[node.name] = { pristine: true };
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.initPristineNodeMetadata(node.name);
 
 	if (isActiveNode) {
 		ndvStore.setActiveNodeName(node.name, 'other');
@@ -56,7 +61,8 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	return {
 		pinia,
-		workflowObject: workflowsStore.workflowObject as Workflow,
+		workflow,
+		workflowObject: createTestWorkflowObject(workflow),
 		nodeName: node.name,
 	};
 }
@@ -77,13 +83,16 @@ describe('NodeDetailsView', () => {
 	});
 
 	it('should render correctly', async () => {
-		const { pinia, workflowObject } = await createPiniaStore(true);
+		const { pinia, workflow, workflowObject } = await createPiniaStore(true);
 
 		const renderComponent = createComponentRenderer(NodeDetailsView, {
 			props: {
 				workflowObject,
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+				},
 				mocks: {
 					$route: {
 						name: VIEWS.WORKFLOW,
@@ -101,13 +110,16 @@ describe('NodeDetailsView', () => {
 
 	describe('keyboard listener', () => {
 		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, workflowObject } = await createPiniaStore(true);
+			const { pinia, workflow, workflowObject } = await createPiniaStore(true);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				props: {
 					workflowObject,
 				},
 				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+					},
 					mocks: {
 						$route: {
 							name: VIEWS.WORKFLOW,
@@ -142,7 +154,7 @@ describe('NodeDetailsView', () => {
 		});
 
 		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, workflowObject, nodeName } = await createPiniaStore(false);
+			const { pinia, workflow, workflowObject, nodeName } = await createPiniaStore(false);
 			const ndvStore = useNDVStore(pinia);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
@@ -150,6 +162,9 @@ describe('NodeDetailsView', () => {
 					workflowObject,
 				},
 				global: {
+					provide: {
+						[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+					},
 					mocks: {
 						$route: {
 							name: VIEWS.WORKFLOW,
@@ -179,39 +194,6 @@ describe('NodeDetailsView', () => {
 			expect(removeEventListenerSpy).toHaveBeenCalledWith('keydown', expect.any(Function), true);
 
 			removeEventListenerSpy.mockRestore();
-		});
-
-		test("should emit 'saveKeyboardShortcut' when save shortcut keybind is pressed", async () => {
-			const { pinia, workflowObject } = await createPiniaStore(true);
-
-			const renderComponent = createComponentRenderer(NodeDetailsView, {
-				props: {
-					workflowObject,
-				},
-				global: {
-					mocks: {
-						$route: {
-							name: VIEWS.WORKFLOW,
-						},
-					},
-				},
-			});
-
-			const { getByTestId, queryByTestId, emitted } = renderComponent({
-				pinia,
-			});
-
-			await waitFor(() => expect(getByTestId('ndv')).toBeInTheDocument());
-			await waitFor(() => expect(queryByTestId('ndv-modal')).toBeInTheDocument());
-
-			await fireEvent.keyDown(getByTestId('ndv'), {
-				key: 's',
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			});
-
-			expect(emitted().saveKeyboardShortcut).toBeTruthy();
 		});
 	});
 });

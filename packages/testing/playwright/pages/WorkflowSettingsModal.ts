@@ -3,8 +3,12 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 
 export class WorkflowSettingsModal extends BasePage {
-	getModal(): Locator {
+	get container() {
 		return this.page.getByTestId('workflow-settings-dialog');
+	}
+
+	getModal(): Locator {
+		return this.container;
 	}
 
 	getWorkflowMenu(): Locator {
@@ -16,35 +20,35 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getErrorWorkflowField(): Locator {
-		return this.page.getByTestId('workflow-settings-error-workflow');
+		return this.container.getByTestId('workflow-settings-error-workflow');
 	}
 
 	getTimezoneField(): Locator {
-		return this.page.getByTestId('workflow-settings-timezone');
+		return this.container.getByTestId('workflow-settings-timezone');
 	}
 
 	getSaveFailedExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-failed-executions');
+		return this.container.getByTestId('workflow-settings-save-failed-executions');
 	}
 
 	getSaveSuccessExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-success-executions');
+		return this.container.getByTestId('workflow-settings-save-success-executions');
 	}
 
 	getSaveManualExecutionsField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-manual-executions');
+		return this.container.getByTestId('workflow-settings-save-manual-executions');
 	}
 
 	getSaveExecutionProgressField(): Locator {
-		return this.page.getByTestId('workflow-settings-save-execution-progress');
+		return this.container.getByTestId('workflow-settings-save-execution-progress');
 	}
 
 	getTimeoutSwitch(): Locator {
-		return this.page.getByTestId('workflow-settings-timeout-workflow');
+		return this.container.getByTestId('workflow-settings-timeout-workflow');
 	}
 
 	getTimeoutInput(): Locator {
-		return this.page.getByTestId('workflow-settings-timeout-form').locator('input').first();
+		return this.container.getByTestId('workflow-settings-timeout-form').locator('input').first();
 	}
 
 	getDuplicateMenuItem(): Locator {
@@ -57,6 +61,10 @@ export class WorkflowSettingsModal extends BasePage {
 
 	getArchiveMenuItem(): Locator {
 		return this.page.getByTestId('workflow-menu-item-archive');
+	}
+
+	getArchiveMenuItemWrapper(): Locator {
+		return this.getArchiveMenuItem().locator('..');
 	}
 
 	getUnarchiveMenuItem(): Locator {
@@ -84,7 +92,7 @@ export class WorkflowSettingsModal extends BasePage {
 	}
 
 	getSaveButton(): Locator {
-		return this.page.getByRole('button', { name: 'Save' });
+		return this.container.getByRole('button', { name: 'Save' });
 	}
 
 	getDuplicateModal(): Locator {

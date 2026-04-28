@@ -12,14 +12,17 @@ function isTextBlock(
 		typeof block === 'object' &&
 		block !== null &&
 		'text' in block &&
-		typeof (block as { text: unknown }).text === 'string'
+		typeof (block as { text: unknown }).text === 'string' &&
+		(block as { text: string }).text.length > 0
 	);
 }
 
 /**
  * Type guard to check if a block has cache_control property.
  */
-function hasCacheControl(block: unknown): block is { cache_control?: { type: 'ephemeral' } } {
+export function hasCacheControl(
+	block: unknown,
+): block is { cache_control?: { type: 'ephemeral' } } {
 	return typeof block === 'object' && block !== null && 'cache_control' in block;
 }
 
@@ -126,13 +129,15 @@ export function applyCacheControlMarkers(
 		const secondToLastMessage = messages[secondToLastIdx];
 
 		if (typeof secondToLastMessage.content === 'string') {
-			secondToLastMessage.content = [
-				{
-					type: 'text',
-					text: secondToLastMessage.content,
-					cache_control: { type: 'ephemeral' },
-				},
-			];
+			if (secondToLastMessage.content.length > 0) {
+				secondToLastMessage.content = [
+					{
+						type: 'text',
+						text: secondToLastMessage.content,
+						cache_control: { type: 'ephemeral' },
+					},
+				];
+			}
 		} else if (Array.isArray(secondToLastMessage.content)) {
 			const lastBlock = secondToLastMessage.content[secondToLastMessage.content.length - 1];
 			if (isTextBlock(lastBlock)) {
@@ -146,13 +151,15 @@ export function applyCacheControlMarkers(
 	const lastUserToolMessage = messages[lastUserToolIdx];
 
 	if (typeof lastUserToolMessage.content === 'string') {
-		lastUserToolMessage.content = [
-			{
-				type: 'text',
-				text: lastUserToolMessage.content,
-				cache_control: { type: 'ephemeral' },
-			},
-		];
+		if (lastUserToolMessage.content.length > 0) {
+			lastUserToolMessage.content = [
+				{
+					type: 'text',
+					text: lastUserToolMessage.content,
+					cache_control: { type: 'ephemeral' },
+				},
+			];
+		}
 	} else if (Array.isArray(lastUserToolMessage.content)) {
 		const lastBlock = lastUserToolMessage.content[lastUserToolMessage.content.length - 1];
 		if (isTextBlock(lastBlock)) {
@@ -196,17 +203,40 @@ export function applySubgraphCacheMarkers(messages: BaseMessage[]): void {
 	const lastMessage = messages[lastIdx];
 
 	if (typeof lastMessage.content === 'string') {
-		lastMessage.content = [
-			{
-				type: 'text',
-				text: lastMessage.content,
-				cache_control: { type: 'ephemeral' },
-			},
-		];
+		if (lastMessage.content.length > 0) {
+			lastMessage.content = [
+				{
+					type: 'text',
+					text: lastMessage.content,
+					cache_control: { type: 'ephemeral' },
+				},
+			];
+		}
 	} else if (Array.isArray(lastMessage.content)) {
 		const lastBlock = lastMessage.content[lastMessage.content.length - 1];
 		if (isTextBlock(lastBlock)) {
 			lastBlock.cache_control = { type: 'ephemeral' };
+		}
+	}
+}
+
+/**
+ * Remove all cache_control markers from messages.
+ *
+ * This is used when loading historical messages from persistence to ensure
+ * we don't exceed Anthropic's 4 cache_control block limit when combined
+ * with fresh system prompts that also have cache_control markers.
+ *
+ * @param messages - Array of LangChain messages to clean (modified in place)
+ */
+export function stripAllCacheControlMarkers(messages: BaseMessage[]): void {
+	for (const message of messages) {
+		if (Array.isArray(message.content)) {
+			for (const block of message.content) {
+				if (hasCacheControl(block) && block.cache_control) {
+					delete block.cache_control;
+				}
+			}
 		}
 	}
 }

@@ -2,11 +2,18 @@ import { Tournament } from '@n8n/tournament';
 
 import {
 	DollarSignValidator,
-	FunctionThisSanitizer,
+	ThisSanitizer,
 	PrototypeSanitizer,
 	sanitizer,
 	DOLLAR_SIGN_ERROR,
 } from '../src/expression-sandboxing';
+import {
+	ExpressionClassExtensionError,
+	ExpressionComputedDestructuringError,
+	ExpressionDestructuringError,
+	ExpressionError,
+	ExpressionWithStatementError,
+} from '../src/errors';
 
 const tournament = new Tournament(
 	(e) => {
@@ -15,7 +22,7 @@ const tournament = new Tournament(
 	undefined,
 	undefined,
 	{
-		before: [FunctionThisSanitizer],
+		before: [ThisSanitizer],
 		after: [PrototypeSanitizer, DollarSignValidator],
 	},
 );
@@ -81,6 +88,46 @@ describe('PrototypeSanitizer', () => {
 		])('should not allow access to %s via template literal', (_, expression, context) => {
 			expect(() => {
 				tournament.execute(expression, { __sanitize: sanitizer, ...context });
+			}).toThrowError(errorRegex);
+		});
+
+		it.each([
+			['getPrototypeOf', '{{ Object.getPrototypeOf }}'],
+			['binding', '{{ process.binding }}'],
+			['_load', '{{ module._load }}'],
+		])('should not allow access to %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer, Object, process: {}, module: {} });
+			}).toThrowError(errorRegex);
+		});
+
+		it.each([
+			['dot notation', '{{ (()=>{}).caller }}'],
+			['bracket notation', '{{ (()=>{})["caller"] }}'],
+		])('should not allow access to caller via %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer });
+			}).toThrowError(errorRegex);
+		});
+
+		it.each([
+			['dot notation', '{{ (()=>{}).arguments }}'],
+			['bracket notation', '{{ (()=>{})["arguments"] }}'],
+		])('should not allow access to arguments via %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer });
+			}).toThrowError(errorRegex);
+		});
+
+		it.each([
+			['getBuiltinModule', '{{ ({}).getBuiltinModule }}'],
+			['_linkedBinding', '{{ ({})._linkedBinding }}'],
+			['dlopen', '{{ ({}).dlopen }}'],
+			['execve', '{{ ({}).execve }}'],
+			['loadEnvFile', '{{ ({}).loadEnvFile }}'],
+		])('should not allow access to %s', (_, expression) => {
+			expect(() => {
+				tournament.execute(expression, { __sanitize: sanitizer });
 			}).toThrowError(errorRegex);
 		});
 
@@ -249,10 +296,477 @@ describe('PrototypeSanitizer', () => {
 				});
 			}).toThrowError(errorRegex);
 		});
+
+		it('should not allow access to caller via concatenation', () => {
+			expect(() => {
+				tournament.execute('{{ (()=>{})["cal" + "ler"] }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(errorRegex);
+		});
+
+		it('should not allow access to arguments via concatenation', () => {
+			expect(() => {
+				tournament.execute('{{ (()=>{})["arg" + "uments"] }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(errorRegex);
+		});
+
+		describe('Array-based property access bypass attempts', () => {
+			it('should not allow access to __proto__ via array', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["__proto__"]] }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow access to constructor via array', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["constructor"]] }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow access to prototype via array', () => {
+				expect(() => {
+					tournament.execute('{{ Number[["prototype"]] }}', {
+						__sanitize: sanitizer,
+						Number,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow prototype pollution via array access', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["__proto__"]].polluted = 1 }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow RCE via chained array access', () => {
+				expect(() => {
+					tournament.execute('{{ ({})[["toString"]][["constructor"]]("return 1")() }}', {
+						__sanitize: sanitizer,
+					});
+				}).toThrowError(errorRegex);
+			});
+
+			it('should not allow access to prepareStackTrace via array', () => {
+				expect(() => {
+					tournament.execute('{{ Error[["prepareStackTrace"]] }}', {
+						__sanitize: sanitizer,
+						Error,
+					});
+				}).toThrowError(errorRegex);
+			});
+		});
+	});
+
+	describe('Class extension bypass attempts', () => {
+		it('should not allow class extending Function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends Function {} return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class expression extending Function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const Z = class extends Function {}; return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class extending GeneratorFunction', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends GeneratorFunction {} return new Z("yield 1"); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class extending AsyncFunction', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends AsyncFunction {} return new Z("return 1"); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should not allow class extending AsyncGeneratorFunction', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends AsyncGeneratorFunction {} return new Z("yield 1"); })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionClassExtensionError);
+		});
+
+		it('should allow class extending safe classes', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Child extends Array {} return new Child(1, 2, 3).length; })() }}',
+					{ __sanitize: sanitizer, Array },
+				);
+			}).not.toThrow();
+		});
+
+		it('should allow class without extends', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { class MyClass {} return new MyClass(); })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).not.toThrow();
+		});
+
+		it('should not allow class extending via CallExpression bypass', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends (() => Function)() {} return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer, Function },
+				);
+			}).toThrowError(ExpressionError);
+		});
+
+		it('should not allow class expression extending via CallExpression bypass', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const Z = class extends (() => Function)() {}; return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer, Function },
+				);
+			}).toThrowError(ExpressionError);
+		});
+
+		it('should not allow class extending via ConditionalExpression bypass', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends (true ? Function : Object) {} return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer, Function, Object },
+				);
+			}).toThrowError(ExpressionError);
+		});
+
+		it('should not allow class extending via SequenceExpression bypass', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends (0, Function) {} return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer, Function },
+				);
+			}).toThrowError(ExpressionError);
+		});
+
+		it('should not allow class extending via LogicalExpression bypass', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { class Z extends (Function || Object) {} return new Z("return 1")(); })() }}',
+					{ __sanitize: sanitizer, Function, Object },
+				);
+			}).toThrowError(ExpressionError);
+		});
+	});
+
+	describe('Destructuring patterns', () => {
+		it('should not allow destructuring constructor from arrow function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const {constructor} = ()=>{}; return constructor; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring constructor from regular function', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const {constructor} = function(){}; return constructor; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring constructor with alias', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {constructor: c} = ()=>{}; return c; })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring __proto__', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {__proto__} = {}; return __proto__; })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring prototype', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const {prototype} = function(){}; return prototype; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring mainModule', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {mainModule} = process; return mainModule; })() }}', {
+					__sanitize: sanitizer,
+					process: { mainModule: {} },
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring caller', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {caller} = ()=>{}; return caller; })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should not allow destructuring arguments', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { const {arguments: a} = function(){}; return a; })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionDestructuringError);
+		});
+
+		it('should allow destructuring safe properties', () => {
+			const result = tournament.execute(
+				'{{ (() => { const {name, value} = {name: "test", value: 42}; return name + value; })() }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe('test42');
+		});
+
+		it('should allow destructuring multiple safe properties', () => {
+			const result = tournament.execute(
+				'{{ (() => { const {a, b, c} = {a: 1, b: 2, c: 3}; return a + b + c; })() }}',
+				{
+					__sanitize: sanitizer,
+				},
+			);
+			expect(result).toBe(6);
+		});
+
+		it('should not allow computed property destructuring', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (() => { const a = "constructor"; const {[a]: c} = {}; return c; })() }}',
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionComputedDestructuringError);
+		});
+	});
+
+	describe('Spread-based global access', () => {
+		it('should not allow spreading process', () => {
+			expect(() => {
+				tournament.execute('{{ ((g) => g.getBuiltinModule)(({...process})) }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(/due to security concerns/);
+		});
+
+		it('should not allow spreading process in object literal', () => {
+			expect(() => {
+				tournament.execute('{{ ({...process}) }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "process" due to security concerns/);
+		});
+
+		it('should not allow spreading process in array', () => {
+			expect(() => {
+				tournament.execute('{{ [...process] }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "process" due to security concerns/);
+		});
+
+		it('should not allow spreading global', () => {
+			expect(() => {
+				tournament.execute('{{ ({...global}) }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "global" due to security concerns/);
+		});
+
+		it('should not allow spreading Buffer', () => {
+			expect(() => {
+				tournament.execute('{{ ({...Buffer}) }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "Buffer" due to security concerns/);
+		});
+
+		it('should not allow the exact RCE PoC payload', () => {
+			expect(() => {
+				tournament.execute(
+					"{{ ((g) => g.getBuiltinModule('child_process').execSync('id').toString())({...process}) }}",
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(/due to security concerns/);
+		});
+
+		it('should not allow spreading process in function call arguments', () => {
+			expect(() => {
+				tournament.execute('{{ ((a, b) => a)(...process) }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "process" due to security concerns/);
+		});
+
+		it('should not allow spreading process inside arrow function', () => {
+			expect(() => {
+				tournament.execute('{{ (() => ({...process}))() }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "process" due to security concerns/);
+		});
+
+		it('should not allow spreading process in nested spread', () => {
+			expect(() => {
+				tournament.execute('{{ ({...({...process})}) }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "process" due to security concerns/);
+		});
+
+		it('should not allow spreading process in template expression', () => {
+			expect(() => {
+				// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+				tournament.execute('{{ `${JSON.stringify({...process})}` }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrow();
+		});
+
+		it('should not allow spreading process among other spreads', () => {
+			expect(() => {
+				tournament.execute('{{ ({...{a:1}, ...process}) }}', { __sanitize: sanitizer });
+			}).toThrowError(/Cannot spread "process" due to security concerns/);
+		});
+
+		it('should resolve spread from data context process, not the real one', () => {
+			const result = tournament.execute('{{ ({...process}).safe }}', {
+				__sanitize: sanitizer,
+				process: { safe: true },
+			});
+			expect(result).toBe(true);
+		});
+
+		it('should not expose real process.version via spread', () => {
+			const result = tournament.execute('{{ typeof ({...process}).version }}', {
+				__sanitize: sanitizer,
+				process: {},
+			});
+			expect(result).toBe('undefined');
+		});
+
+		it('should use data context pid via spread, not real pid', () => {
+			const result = tournament.execute('{{ ({...process}).pid }}', {
+				__sanitize: sanitizer,
+				process: { pid: -1 },
+			});
+			expect(result).toBe(-1);
+		});
+
+		it('should use data context when spread is wrapped in arrow function', () => {
+			const result = tournament.execute('{{ ((g) => g.pid)({...process}) }}', {
+				__sanitize: sanitizer,
+				process: { pid: -1 },
+			});
+			expect(result).toBe(-1);
+		});
+
+		it('should not give access to real process.exit via spread', () => {
+			const result = tournament.execute('{{ typeof ({...process}).exit }}', {
+				__sanitize: sanitizer,
+				process: {},
+			});
+			expect(result).not.toBe('function');
+		});
+
+		it('should not give access to real process.env via spread', () => {
+			const result = tournament.execute('{{ typeof ({...process}).env }}', {
+				__sanitize: sanitizer,
+				process: {},
+			});
+			expect(result).not.toBe('object');
+		});
+
+		it('should not give access to getBuiltinModule via spread', () => {
+			let result: unknown;
+			try {
+				result = tournament.execute('{{ typeof ({...process}).getBuiltinModule }}', {
+					__sanitize: sanitizer,
+					process: {},
+				});
+			} catch {
+				// Blocked by PrototypeSanitizer — also a valid outcome
+				return;
+			}
+			expect(result).not.toBe('function');
+		});
+	});
+
+	describe('`with` statement', () => {
+		it('should not allow `with` statements', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { with({}) { return 1; } })() }}', { __sanitize: sanitizer });
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow constructor access via `with` statement', () => {
+			expect(() => {
+				tournament.execute(
+					'{{ (function(){ var constructor = 123; with(function(){}){ return constructor("return 1")() } })() }}',
+					{ __sanitize: sanitizer },
+				);
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow RCE via with statement', () => {
+			expect(() => {
+				tournament.execute(
+					"{{ (function(){ var constructor = 123; with(function(){}){ return constructor(\"return process.mainModule.require('child_process').execSync('env').toString().trim()\")() } })() }}",
+					{
+						__sanitize: sanitizer,
+					},
+				);
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow nested `with` statements', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { with({a:1}) { with({b:2}) { return a + b; } } })() }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrowError(ExpressionWithStatementError);
+		});
+
+		it('should not allow `with` statement accessing prototype chain', () => {
+			expect(() => {
+				tournament.execute('{{ (() => { with(Object) { return getPrototypeOf({}); } })() }}', {
+					__sanitize: sanitizer,
+					Object,
+				});
+			}).toThrowError(ExpressionWithStatementError);
+		});
 	});
 });
 
-describe('FunctionThisSanitizer', () => {
+describe('ThisSanitizer', () => {
 	describe('call expression where callee is function expression', () => {
 		it('should transform call expression', () => {
 			const result = tournament.execute('{{ (function() { return this.process; })() }}', {
@@ -386,6 +900,95 @@ describe('FunctionThisSanitizer', () => {
 				$json: { value: 'workflow-data' },
 			});
 			expect(result).toBe('workflow-data');
+		});
+	});
+
+	describe('globalThis access via arrow functions', () => {
+		it('should replace globalThis with empty object', () => {
+			const result = tournament.execute('{{ (() => globalThis)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+			expect(result).not.toBe(globalThis);
+		});
+
+		it('should block process.env access via globalThis', () => {
+			const result = tournament.execute('{{ (() => globalThis.process)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should block chained globalThis access', () => {
+			const result = tournament.execute('{{ ((g) => g.process)((() => globalThis)()) }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should block env access via nested arrow functions', () => {
+			// This payload attempts to access process.env via chained arrow functions
+			// With the fix, globalThis becomes {}, so g.process is undefined,
+			// and accessing .env on undefined throws an error - which is the desired security outcome
+			expect(() => {
+				tournament.execute('{{ ((p) => p.env)(((g) => g.process)((() => globalThis)())) }}', {
+					__sanitize: sanitizer,
+				});
+			}).toThrow();
+		});
+
+		it('should replace globalThis with empty object in non-arrow contexts too', () => {
+			// globalThis is replaced with {} at AST level, regardless of context
+			const result = tournament.execute('{{ globalThis }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+		});
+
+		it('should still allow access to workflow data via variables', () => {
+			const result = tournament.execute('{{ (() => $json.value)() }}', {
+				__sanitize: sanitizer,
+				$json: { value: 'test-value' },
+			});
+			expect(result).toBe('test-value');
+		});
+	});
+
+	describe('this access via arrow functions', () => {
+		it('should replace this with safe context in arrow functions', () => {
+			const result = tournament.execute('{{ (() => this)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({ process: {}, require: {}, module: {}, Buffer: {} });
+		});
+
+		it('should block process.env access via this in arrow functions', () => {
+			const result = tournament.execute('{{ (() => this?.process)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
+			expect(result).not.toHaveProperty('env');
+		});
+
+		it('should block this access in nested arrow functions', () => {
+			const result = tournament.execute('{{ (() => (() => this)())() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({ process: {}, require: {}, module: {}, Buffer: {} });
+		});
+
+		it('should block this?.process?.env access pattern', () => {
+			const result = tournament.execute('{{ (() => this?.process?.env)() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toBe(undefined);
+		});
+
+		it('should still work with this in regular function expressions', () => {
+			const result = tournament.execute('{{ (function() { return this.process; })() }}', {
+				__sanitize: sanitizer,
+			});
+			expect(result).toEqual({});
 		});
 	});
 });

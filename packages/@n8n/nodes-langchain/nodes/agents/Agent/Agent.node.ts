@@ -10,7 +10,7 @@ export class Agent extends VersionedNodeType {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'AI Agent',
 			name: 'agent',
-			icon: 'fa:robot',
+			icon: 'node:ai-agent',
 			iconColor: 'black',
 			group: ['transform'],
 			description: 'Generates an action plan and executes it. Can use external tools.',
@@ -29,6 +29,28 @@ export class Agent extends VersionedNodeType {
 				},
 			},
 			defaultVersion: 3.1,
+			builderHint: {
+				relatedNodes: [
+					{
+						nodeType: 'n8n-nodes-base.aggregate',
+						relationHint: 'Use to combine multiple items together before the agent',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.outputParserStructured',
+						relationHint:
+							'Attach for structured output; reference fields as $json.output.fieldName for use in subsequent nodes (conditions, storing data)',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.agentTool',
+						relationHint: 'For multi-agent systems using orchestrator pattern',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						relationHint:
+							'Required for conversational workflows - connect memory to every agent that needs to recall previous messages in the conversation',
+					},
+				],
+			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {

@@ -219,6 +219,10 @@ export const useGlobalEntityCreation = () => {
 	};
 
 	const projectsLimitReachedMessage = computed(() => {
+		if (!projectsStore.hasPermissionToCreateProjects) {
+			return i18n.baseText('projects.create.permissionDenied');
+		}
+
 		if (settingsStore.isCloudDeployment) {
 			return i18n.baseText('projects.create.limitReached.cloud', {
 				interpolate: {
@@ -230,10 +234,6 @@ export const useGlobalEntityCreation = () => {
 
 		if (!projectsStore.isTeamProjectFeatureEnabled) {
 			return i18n.baseText('projects.create.limitReached.self');
-		}
-
-		if (!projectsStore.hasPermissionToCreateProjects) {
-			return i18n.baseText('projects.create.permissionDenied');
 		}
 
 		return i18n.baseText('projects.create.limitReached', {

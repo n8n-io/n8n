@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { Z } from 'zod-class';
 
 import {
 	projectDescriptionSchema,
@@ -7,6 +6,7 @@ import {
 	projectNameSchema,
 	projectRelationSchema,
 } from '../../schemas/project.schema';
+import { Z } from '../../zod-class';
 
 const updateProjectShape = {
 	name: projectNameSchema.optional(),

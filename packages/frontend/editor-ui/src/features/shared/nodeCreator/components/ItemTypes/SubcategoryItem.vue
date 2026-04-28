@@ -24,6 +24,7 @@ const subcategoryName = computed(() => camelCase(props.item.subcategory || props
 			i18n.baseText(`nodeCreator.subcategoryDescriptions.${subcategoryName}` as BaseTextKey)
 		"
 		:show-action-arrow="true"
+		:is-new="item.new"
 	>
 		<template #icon>
 			<N8nNodeIcon

@@ -1,4 +1,4 @@
-import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import { FakeChatModel } from '@langchain/core/utils/testing';
 import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
@@ -100,6 +100,50 @@ describe('processItem', () => {
 			expect.any(String),
 		);
 		expect(tracing.getTracingConfig).toHaveBeenCalledWith(mockContext);
+	});
+
+	it('should escape curly braces in custom system prompt template', async () => {
+		const templateWithBraces = 'Classify using format {"category": "value"}: {categories}';
+
+		mockContext.getNodeParameter.mockImplementation((param, _itemIndex, defaultValue) => {
+			if (param === 'inputText') return 'Test input';
+			if (param === 'options.systemPromptTemplate') return templateWithBraces;
+			return defaultValue;
+		});
+
+		const mockParser = {
+			getFormatInstructions: () => '[format instructions]',
+		};
+
+		const mockChain = {
+			invoke: jest.fn().mockResolvedValue({ category: 'test' }),
+		};
+
+		const mockPipe = jest.fn().mockReturnValue({
+			pipe: jest.fn().mockReturnValue({
+				withConfig: jest.fn().mockReturnValue(mockChain),
+			}),
+		});
+
+		jest.mocked(ChatPromptTemplate.fromMessages).mockReturnValue({ pipe: mockPipe } as any);
+
+		await processItem(
+			mockContext,
+			0,
+			{ json: {} },
+			fakeLLM,
+			mockParser as any,
+			[{ category: 'test', description: 'test category' }],
+			'multi class prompt',
+			undefined,
+		);
+
+		expect(SystemMessagePromptTemplate.fromTemplate).toHaveBeenCalledWith(
+			expect.stringContaining('{{"category": "value"}}'),
+		);
+		expect(SystemMessagePromptTemplate.fromTemplate).toHaveBeenCalledWith(
+			expect.stringContaining('{categories}'),
+		);
 	});
 
 	it('should handle fallback prompt', async () => {

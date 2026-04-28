@@ -1,6 +1,8 @@
 import { ref } from 'vue';
 import _debounce from 'lodash/debounce';
 
+import { getDebounceTime } from '@/app/constants/durations';
+
 export interface DebounceOptions {
 	debounceTime: number;
 	trailing?: boolean;
@@ -17,6 +19,8 @@ export function useDebounce() {
 	const debounce = <T extends AnyFunction>(fn: T, options: DebounceOptions): DebouncedFunc<T> => {
 		const { trailing, debounceTime } = options;
 
+		const effectiveDebounceTime = getDebounceTime(debounceTime);
+
 		// Check if a debounced version of the function is already stored in the WeakMap.
 		let debouncedFn = debounceCache.value.get(fn);
 
@@ -26,7 +30,7 @@ export function useDebounce() {
 				async (...args: Parameters<T>) => {
 					return fn(...args);
 				},
-				debounceTime,
+				effectiveDebounceTime,
 				trailing ? { trailing } : { leading: true },
 			);
 

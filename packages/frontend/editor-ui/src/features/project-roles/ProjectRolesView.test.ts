@@ -136,7 +136,7 @@ describe('ProjectRolesView', () => {
 
 		expect(getByText('Name')).toBeInTheDocument();
 		expect(getByText('Type')).toBeInTheDocument();
-		expect(getByText('Assigned to')).toBeInTheDocument();
+		expect(getByText('Projects assigned')).toBeInTheDocument();
 		expect(getByText('Last edited')).toBeInTheDocument();
 	});
 

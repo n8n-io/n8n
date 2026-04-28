@@ -1,7 +1,7 @@
 import type { INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { validateEmbedQueryInput, validateEmbedDocumentsInput } from './embeddingInputValidation';
+import { validateEmbedQueryInput, validateEmbedDocumentsInput } from '@n8n/ai-utilities';
 
 const createMockNode = (): INode => ({
 	id: 'test-node',

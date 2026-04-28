@@ -1,3 +1,8 @@
+// NOTE: This file is intentionally mirrored in @n8n/expression-runtime/src/extensions/
+// for use inside the isolated VM. Changes here must be reflected there and vice versa.
+// TODO: Eliminate the duplication. The blocker is that @n8n/expression-runtime is
+// Vite-stubbed for browser builds (to exclude isolated-vm), which prevents n8n-workflow
+// from importing these extension utilities directly from the runtime package.
 import { average as aAverage } from './array-extensions';
 import { ExpressionExtensionError } from '../errors/expression-extension.error';
 import { ExpressionError } from '../errors/expression.error';
@@ -22,14 +27,18 @@ const numberList = (start: number, end: number): number[] => {
 };
 
 const zip = (keys: unknown[], values: unknown[]): unknown => {
+	if (!Array.isArray(keys) || !Array.isArray(values)) {
+		throw new ExpressionExtensionError('keys and values must be arrays');
+	}
 	if (keys.length !== values.length) {
 		throw new ExpressionExtensionError('keys and values not of equal length');
 	}
-	return keys.reduce((p, c, i) => {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-		(p as any)[c as any] = values[i];
-		return p;
-	}, {});
+
+	const result: Record<string, unknown> = {};
+	for (let i = 0; i < keys.length; i++) {
+		result[keys[i] as string] = values[i];
+	}
+	return result;
 };
 
 const average = (...args: number[]) => {

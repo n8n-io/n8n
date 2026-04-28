@@ -116,6 +116,28 @@ describe('processItem', () => {
 		expect(result).toEqual({ name: 'John', age: 30 });
 	});
 
+	it('should handle curly braces in custom system prompt template', async () => {
+		const customTemplate = 'Extract JSON like this: {"name": "value"} from the text.';
+		const mockExecuteFunctions = {
+			getNodeParameter: (param: string) => {
+				if (param === 'text') return 'John is 30 years old';
+				if (param === 'options') return { systemPromptTemplate: customTemplate };
+				return undefined;
+			},
+			getNode: () => ({ typeVersion: 1.1 }),
+		};
+
+		const llm = new FakeLLM({ response: formatFakeLlmResponse({ name: 'John', age: 30 }) });
+		const parser = OutputFixingParser.fromLLM(
+			llm,
+			StructuredOutputParser.fromZodSchema(makeZodSchemaFromAttributes(mockPersonAttributes)),
+		);
+
+		const result = await processItem(mockExecuteFunctions as any, 0, llm, parser);
+
+		expect(result).toEqual({ name: 'John', age: 30 });
+	});
+
 	it('should handle retries when LLM returns invalid data', async () => {
 		const mockExecuteFunctions = {
 			getNodeParameter: (param: string) => {
