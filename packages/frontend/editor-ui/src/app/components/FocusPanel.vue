@@ -556,7 +556,6 @@ function onRenameNode(value: string) {
 							v-else
 							ref="inputField"
 							v-model="inputValue"
-							:autosize="{ minRows: 3, maxRows: 20 }"
 							:class="$style.editor"
 							:readonly="isReadOnly"
 							type="textarea"
@@ -704,6 +703,11 @@ function onRenameNode(value: string) {
 				width: 100%;
 				align-items: normal;
 				font-size: var(--font-size--2xs);
+
+				textarea {
+					height: 100%;
+					resize: none;
+				}
 
 				:global(.cm-editor) {
 					background-color: var(--code--color--background);
