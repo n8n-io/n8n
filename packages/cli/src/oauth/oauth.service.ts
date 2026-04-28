@@ -185,7 +185,7 @@ export class OauthService {
 		}
 
 		const credentials = new Credentials(credential, credential.type, credential.data);
-		credentials.updateData(toUpdate, toDelete);
+		await credentials.updateData(toUpdate, toDelete);
 		await this.credentialsRepository.update(credential.id, {
 			...credentials.getDataToSave(),
 			updatedAt: new Date(),
@@ -234,32 +234,35 @@ export class OauthService {
 		return await this.credentialsRepository.findOneBy({ id: credentialId });
 	}
 
-	createCsrfState(data: CreateCsrfStateData): [string, string] {
+	async createCsrfState(data: CreateCsrfStateData): Promise<[string, string]> {
 		const token = new Csrf();
 		const csrfSecret = token.secretSync();
 		const state: CsrfState = {
 			token: token.create(csrfSecret),
 			createdAt: Date.now(),
-			data: this.cipher.encrypt(JSON.stringify(data)),
+			data: await this.cipher.encryptV2(JSON.stringify(data)),
 		};
 
 		const base64State = Buffer.from(JSON.stringify(state)).toString('base64');
 		return [csrfSecret, base64State];
 	}
 
-	protected decodeCsrfState(
+	protected async decodeCsrfState(
 		encodedState: string,
 		req: AuthenticatedRequest,
-	): CsrfState & CreateCsrfStateData {
+	): Promise<CsrfState & CreateCsrfStateData> {
 		const errorMessage = 'Invalid state format';
 		const decodedState = Buffer.from(encodedState, 'base64').toString();
 		const decoded = jsonParse<CsrfState>(decodedState, {
 			errorMessage,
 		});
 
-		const decryptedState = jsonParse<CreateCsrfStateData>(this.cipher.decrypt(decoded.data), {
-			errorMessage,
-		});
+		const decryptedState = jsonParse<CreateCsrfStateData>(
+			await this.cipher.decryptV2(decoded.data),
+			{
+				errorMessage,
+			},
+		);
 
 		if (typeof decryptedState.cid !== 'string' || typeof decoded.token !== 'string') {
 			throw new UnexpectedError(errorMessage);
@@ -310,7 +313,7 @@ export class OauthService {
 		[CredentialsEntity, ICredentialDataDecryptedObject, T, CsrfState & CreateCsrfStateData]
 	> {
 		const { state: encodedState } = req.query;
-		const state = this.decodeCsrfState(encodedState, req);
+		const state = await this.decodeCsrfState(encodedState, req);
 		const credential = await this.getCredentialWithoutUser(state.cid);
 		if (!credential) {
 			throw new UnexpectedError('OAuth callback failed because of insufficient permissions');
@@ -345,11 +348,13 @@ export class OauthService {
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
-		// Generic Oauth2 API is an exception because it needs to save the scope
+		// Skip the cleanup when the credential exposes scope as user-editable (directly or via
+		// inheritance) so that manually entered scopes survive reconnects.
 		if (
 			decryptedDataOriginal?.scope &&
 			credential.type.includes('OAuth2') &&
-			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type)
+			!GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE.includes(credential.type) &&
+			!this.hasEditableScopeProperty(credential.type)
 		) {
 			delete decryptedDataOriginal.scope;
 		}
@@ -361,6 +366,21 @@ export class OauthService {
 		);
 
 		return oauthCredentials;
+	}
+
+	/**
+	 * Checks whether the credential type (after merging inherited properties) exposes
+	 * a user-editable `scope` property. A property is considered editable when it is
+	 * defined and its `type` is not `'hidden'`.
+	 */
+	private hasEditableScopeProperty(credentialType: string): boolean {
+		try {
+			const properties = this.credentialsHelper.getCredentialsProperties(credentialType);
+			const scopeProperty = properties.find((property) => property.name === 'scope');
+			return scopeProperty !== undefined && scopeProperty.type !== 'hidden';
+		} catch {
+			return false;
+		}
 	}
 
 	async generateAOauth2AuthUri(
@@ -533,7 +553,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
 		// Generate a CSRF prevention token and send it as an OAuth2 state string
-		const [csrfSecret, state] = this.createCsrfState(csrfData);
+		const [csrfSecret, state] = await this.createCsrfState(csrfData);
 
 		const oAuthOptions = {
 			...this.convertCredentialToOptions(oauthCredentials),
@@ -581,7 +601,7 @@ export class OauthService {
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.accessTokenUrl ?? '');
 
-		const [csrfSecret, state] = this.createCsrfState(csrfData);
+		const [csrfSecret, state] = await this.createCsrfState(csrfData);
 
 		const signatureMethod = oauthCredentials.signatureMethod;
 
@@ -799,7 +819,7 @@ export class OauthService {
 		authMetadata: Record<string, unknown> = {},
 	) {
 		const credentials = new Credentials(credential, credential.type, credential.data);
-		credentials.updateData(oauthTokenData, ['csrfSecret']);
+		await credentials.updateData(oauthTokenData, ['csrfSecret']);
 
 		const credentialStoreMetadata: CredentialStoreMetadata = {
 			id: credential.id,
@@ -813,7 +833,7 @@ export class OauthService {
 			credentialStoreMetadata,
 			oauthTokenData,
 			{ version: 1, identity: authHeader, metadata: authMetadata },
-			credentials.getData(),
+			await credentials.getData(),
 			{ credentialResolverId },
 		);
 	}

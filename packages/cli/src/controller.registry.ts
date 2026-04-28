@@ -1,7 +1,6 @@
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {
 	AccessScope,
@@ -28,6 +27,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { send } from '@/response-helper';
 import { CorsService } from './services/cors-service';
 import { inProduction } from '@n8n/backend-common';
+import { isAuthenticatedRequest } from '@n8n/db';
 
 @Service()
 export class ControllerRegistry {
@@ -172,7 +172,7 @@ export class ControllerRegistry {
 					allowSkipPreviewAuth: route.allowSkipPreviewAuth ?? false,
 					allowUnauthenticated: route.allowUnauthenticated ?? false,
 				}),
-				this.lastActiveAtService.middleware.bind(this.lastActiveAtService) as RequestHandler,
+				this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 			);
 		}
 
@@ -219,11 +219,8 @@ export class ControllerRegistry {
 	}
 
 	private createScopedMiddleware(accessScope: AccessScope): RequestHandler {
-		return async (
-			req: AuthenticatedRequest<{ credentialId?: string; workflowId?: string; projectId?: string }>,
-			res,
-			next,
-		) => {
+		return async (req, res, next) => {
+			if (!isAuthenticatedRequest(req)) throw new UnauthenticatedError();
 			if (!req.user) throw new UnauthenticatedError();
 
 			const { scope, globalOnly } = accessScope;

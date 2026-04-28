@@ -39,7 +39,7 @@ import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { User, WorkflowEntity, ExecutionSummaries } from '@n8n/db';
+import type { User, ExecutionSummaries } from '@n8n/db';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
@@ -55,9 +55,11 @@ import {
 	LRUCache,
 } from './web-research';
 import {
+	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
@@ -70,6 +72,10 @@ import {
 	type IDataObject,
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyMode,
+	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -86,6 +92,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	UnexpectedError,
 	jsonParse,
 } from 'n8n-workflow';
 
@@ -179,6 +186,7 @@ export class InstanceAiAdapterService {
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
+		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -263,6 +271,7 @@ export class InstanceAiAdapterService {
 			workflowFinderService,
 			workflowRepository,
 			sharedWorkflowRepository,
+			aiBuilderTemporaryWorkflowRepository,
 			workflowHistoryService,
 			enterpriseWorkflowService,
 			license,
@@ -319,6 +328,36 @@ export class InstanceAiAdapterService {
 				await workflowService.delete(user, workflowId);
 			},
 
+			async clearAiTemporary(workflowId: string) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) return;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
+
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+			},
+
+			async archiveIfAiTemporary(workflowId: string) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) return false;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) {
+					return false;
+				}
+				if (workflow.isArchived) {
+					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+					return false;
+				}
+
+				await workflowService.archive(user, workflowId, { skipArchived: true });
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				return true;
+			},
+
 			async publish(
 				workflowId: string,
 				options?: { versionId?: string; name?: string; description?: string },
@@ -357,7 +396,10 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf, { redactParameters });
 			},
 
-			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
+			async createFromWorkflowJSON(
+				json: WorkflowJSON,
+				options?: { projectId?: string; markAsAiTemporary?: boolean },
+			) {
 				assertNotReadOnly();
 				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
 
@@ -389,15 +431,23 @@ export class InstanceAiAdapterService {
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
 
-				const saved = await workflowRepository.save(newWorkflow);
-
-				await sharedWorkflowRepository.save(
-					sharedWorkflowRepository.create({
-						role: 'workflow:owner',
-						projectId,
-						workflow: saved,
-					}),
-				);
+				const saved = await workflowRepository.manager.transaction(async (transactionManager) => {
+					const workflow = await transactionManager.save(WorkflowEntity, newWorkflow);
+					await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
+					if (options?.markAsAiTemporary) {
+						if (!threadId) {
+							throw new UnexpectedError(
+								'Cannot mark AI-builder temporary workflow without a thread ID',
+							);
+						}
+						await aiBuilderTemporaryWorkflowRepository.mark(
+							workflow.id,
+							threadId,
+							transactionManager,
+						);
+					}
+					return workflow;
+				});
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
@@ -922,7 +972,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: credentialsService.decrypt(credential, true),
+					data: await credentialsService.decrypt(credential, true),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
@@ -1086,7 +1136,7 @@ export class InstanceAiAdapterService {
 					// Use redacted decryption first — accountIdentifier is not a
 					// password field so it survives redaction. This avoids exposing
 					// the full secret payload (tokens, keys) in memory.
-					const redacted = credentialsService.decrypt(credential, false);
+					const redacted = await credentialsService.decrypt(credential, false);
 
 					if (typeof redacted.accountIdentifier === 'string' && redacted.accountIdentifier) {
 						return { accountIdentifier: mask(redacted.accountIdentifier) };
@@ -1101,7 +1151,7 @@ export class InstanceAiAdapterService {
 
 					// Fallback for legacy credentials: oauthTokenData is blanked by
 					// redaction, so we need unredacted access here only.
-					const raw = credentialsService.decrypt(credential, true);
+					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
 						const { OauthService } = await import('@/oauth/oauth.service');
@@ -1840,6 +1890,18 @@ export class InstanceAiAdapterService {
 					projectId: personalProject.id,
 					currentNodeParameters,
 				});
+				// Look up the property's builderHint so the agent sees selection guidance
+				// alongside the raw list. This makes the hint reachable even when the
+				// agent jumps straight to explore-resources without reading type-definition.
+				let builderHint: string | undefined;
+				{
+					const nodes = await getNodes();
+					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
+					if (nodeDesc) {
+						builderHint = findBuilderHintForMethod(nodeDesc, params.methodName, params.methodType);
+					}
+				}
+
 				try {
 					if (params.methodType === 'listSearch') {
 						const result = await dynamicNodeParametersService.getResourceLocatorResults(
@@ -1859,6 +1921,7 @@ export class InstanceAiAdapterService {
 								url: r.url,
 							})),
 							paginationToken: result.paginationToken,
+							...(builderHint ? { builderHint } : {}),
 						};
 					}
 
@@ -1876,6 +1939,7 @@ export class InstanceAiAdapterService {
 							value: o.value,
 							description: o.description,
 						})),
+						...(builderHint ? { builderHint } : {}),
 					};
 				} catch (error) {
 					this.logger.error('Failed to load options for explore-resources', {
@@ -2093,6 +2157,62 @@ const MAX_RESULT_CHARS = 20_000;
 
 /** Maximum characters for a single node's output preview when truncating. */
 const MAX_NODE_OUTPUT_CHARS = 1_000;
+
+/**
+ * Find the `builderHint.message` of the property that references a given
+ * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
+ * Returns undefined if no matching property is found.
+ *
+ * Used to surface a node's per-parameter hint alongside explore-resources
+ * results so agents that skip `type-definition` still see selection guidance.
+ */
+function findBuilderHintForMethod(
+	nodeDesc: INodeTypeDescription,
+	methodName: string,
+	methodType: 'listSearch' | 'loadOptions',
+): string | undefined {
+	const referencesMethod = (prop: INodeProperties): boolean => {
+		switch (methodType) {
+			case 'loadOptions':
+				return prop.typeOptions?.loadOptionsMethod === methodName;
+			case 'listSearch': {
+				const modes: INodePropertyMode[] = prop.modes ?? [];
+				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
+			}
+		}
+	};
+
+	// `options` on INodeProperties is a three-way union: enum values (no nested
+	// params), INodeProperties (nested params), or INodePropertyCollection
+	// (nested params under `.values`). Discriminate instead of blind-casting.
+	const isCollection = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodePropertyCollection => 'values' in item;
+	const isProperty = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodeProperties => 'type' in item;
+
+	const searchProps = (
+		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): string | undefined => {
+		for (const item of items ?? []) {
+			if (isCollection(item)) {
+				const nested = searchProps(item.values);
+				if (nested) return nested;
+				continue;
+			}
+			if (!isProperty(item)) continue; // plain enum value — skip
+			if (referencesMethod(item) && item.builderHint?.message) {
+				return item.builderHint.message;
+			}
+			const nested = searchProps(item.options);
+			if (nested) return nested;
+		}
+		return undefined;
+	};
+
+	return searchProps(nodeDesc.properties);
+}
 
 /**
  * Truncate execution result data to stay within context budget.

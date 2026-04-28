@@ -1,7 +1,7 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../types';
-import { analyzeWorkflow } from '../workflows/setup-workflow.service';
+import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
 import { createWorkflowsTool } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -362,6 +362,46 @@ describe('workflows tool', () => {
 			} as never);
 
 			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
+		});
+
+		it('forwards resumeData.nodeParameters to applyNodeChanges on apply', async () => {
+			// Regression: even though the FE sends `nodeParameters` in the confirm
+			// POST, the e2e test showed the workflow's parameter was empty after
+			// apply. This pins down the tool-layer contract between the resume
+			// payload and the service call — if this ever drifts we catch it here.
+			(analyzeWorkflow as jest.Mock).mockResolvedValue([]);
+			(applyNodeChanges as jest.Mock).mockResolvedValue({ applied: ['HTTP Request'], failed: [] });
+
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Test WF',
+				nodes: [
+					{
+						id: 'http',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0],
+						parameters: { method: 'GET', url: '', authentication: 'none' },
+					},
+				],
+				connections: {},
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+				agent: {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
+					},
+				},
+			} as never);
+
+			expect(applyNodeChanges).toHaveBeenCalledWith(context, 'wf1', undefined, {
+				'HTTP Request': { url: 'https://example.com/api' },
+			});
 		});
 	});
 

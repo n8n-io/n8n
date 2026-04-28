@@ -224,7 +224,7 @@ describe('useExecutionDebugging()', () => {
 		expect(toast.showToast).toHaveBeenCalledTimes(1);
 	});
 
-	it('should mark workflow state dirty after pinning execution data', async () => {
+	it('should mark workflow as dirty after pinning imported execution data', async () => {
 		const mockExecution = {
 			data: {
 				resultData: {
@@ -232,7 +232,7 @@ describe('useExecutionDebugging()', () => {
 						TriggerNode: [
 							{
 								data: {
-									main: [[{ json: { test: 'data' } }]],
+									main: [[{ json: { id: '1' } }, { json: { id: '2' } }]],
 								},
 							},
 						],
@@ -248,8 +248,7 @@ describe('useExecutionDebugging()', () => {
 
 		await executionDebugging.applyExecutionData('1');
 
-		expect(mockWorkflowDocumentStore.pinNodeData).toHaveBeenCalled();
-		expect(uiStore.markStateDirty).toHaveBeenCalled();
+		expect(uiStore.markStateDirty).toHaveBeenCalledTimes(1);
 	});
 
 	it('should not mark workflow state dirty when nothing is pinned or unpinned', async () => {
@@ -269,7 +268,6 @@ describe('useExecutionDebugging()', () => {
 
 		const workflowStore = mockedStore(useWorkflowsStore);
 		const uiStore = mockedStore(useUIStore);
-		// Workflow has a different node name than the execution — nothing gets pinned
 		mockWorkflowDocumentStore.getNodes.mockReturnValue([{ name: 'CurrentNode' }] as INodeUi[]);
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 

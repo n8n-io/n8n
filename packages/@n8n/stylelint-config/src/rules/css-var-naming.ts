@@ -2,6 +2,7 @@ import stylelint from 'stylelint';
 import type { Rule } from 'stylelint';
 
 const ruleName = '@n8n/css-var-naming';
+const DESIGN_SYSTEM_CSS_PATH_SEGMENT = '/frontend/@n8n/design-system/src/css/';
 
 const messages = stylelint.utils.ruleMessages(ruleName, {
 	rejected: (variable: string, reason: string) => `Invalid CSS variable "${variable}": ${reason}`,
@@ -19,6 +20,8 @@ const PROPERTY_VOCABULARY = new Set([
 	'color--text',
 	'color--background',
 	'color--foreground',
+	'background',
+	'text-color',
 	'border-color',
 	'border-width',
 	'border-top-color',
@@ -33,6 +36,7 @@ const PROPERTY_VOCABULARY = new Set([
 	'size',
 	'stroke-width',
 	'shadow',
+	'shadow-color',
 	'spacing',
 	'padding',
 	'font-size',
@@ -59,6 +63,7 @@ const PROPERTY_VOCABULARY = new Set([
 	'bottom',
 	'left',
 	'right',
+	'letter-spacing',
 ]);
 
 // Properties that can be used as standalone single-group variables (without a value)
@@ -70,6 +75,11 @@ const STANDALONE_PROPERTIES = new Set([
 	'border-width',
 	'border',
 	'font-family',
+	'background',
+	'icon-color',
+	'text-color',
+	'shadow-color',
+	'letter-spacing',
 ]);
 
 const STATES = new Set([
@@ -92,6 +102,8 @@ const VARIANTS = new Set(['solid', 'outline', 'ghost', 'link', 'soft', 'subtle']
 const MODES = new Set(['light', 'dark', 'hc', 'rtl', 'print']);
 
 const MEDIA = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
+
+const N8N_BYPASS_PREFIX = '--n8n--';
 
 // Ignore issues related to these namespaces
 const DISABLE_CHECK_FOR_NAMESPACES = new Set(['reka', 'ag', 'chat']);
@@ -141,7 +153,24 @@ interface ValidationResult {
 	reason?: string;
 }
 
+function shouldValidateFile(filePath: string | undefined) {
+	if (!filePath) {
+		return false;
+	}
+
+	const normalizedPath = filePath.replace(/\\/g, '/');
+
+	return normalizedPath.includes(DESIGN_SYSTEM_CSS_PATH_SEGMENT);
+}
+
 function shouldSkip(variable: string) {
+	if (variable.startsWith(N8N_BYPASS_PREFIX)) {
+		const groups = variable.slice(2).split('--').slice(1);
+		const hasKnownProperty = groups.some((group) => PROPERTY_VOCABULARY.has(group));
+
+		return !hasKnownProperty;
+	}
+
 	// Split into groups first (drop first empty element from leading --)
 	const parts = variable.slice(2).split('-');
 	if (DISABLE_CHECK_FOR_NAMESPACES.has(parts[0])) {
@@ -350,6 +379,10 @@ function validateCssVariable(variable: string): ValidationResult {
 
 const ruleFunction: Rule = (primary, secondaryOptions, context) => {
 	return (root, result) => {
+		if (root.source?.input.file && !shouldValidateFile(root.source.input.file)) {
+			return;
+		}
+
 		const validOptions = stylelint.utils.validateOptions(result, ruleName, {
 			actual: primary,
 		});

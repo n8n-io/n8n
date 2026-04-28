@@ -11,6 +11,10 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -724,8 +728,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				],
 			}));
 
-			const workflowsStore = useWorkflowsStore();
-			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const hydrateSpy = vi.spyOn(workflowDocumentStore, 'hydrate');
 
 			const requests = [
 				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
@@ -740,8 +744,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				},
 			});
 
-			expect(setWorkflowSpy).toHaveBeenCalled();
-			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			expect(hydrateSpy).toHaveBeenCalled();
+			const firstCall = hydrateSpy.mock.calls[0][0];
 			expect(firstCall.nodes[0].parameters).toEqual(
 				expect.objectContaining({
 					authentication: 'triggerOAuth2',
@@ -775,8 +779,8 @@ describe('InstanceAiWorkflowSetup', () => {
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => null);
 
-			const workflowsStore = useWorkflowsStore();
-			const setWorkflowSpy = vi.spyOn(workflowsStore, 'setWorkflow');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+			const hydrateSpy = vi.spyOn(workflowDocumentStore, 'hydrate');
 
 			const requests = [
 				makeSetupNodeWithCredentials('slackApi', [{ id: 'cred-1', name: 'Slack Cred' }]),
@@ -791,7 +795,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				},
 			});
 
-			const firstCall = setWorkflowSpy.mock.calls[0][0];
+			const firstCall = hydrateSpy.mock.calls[0][0];
 			expect(firstCall.nodes[0].parameters).toEqual({ foo: 'bar' });
 		});
 	});
@@ -870,6 +874,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
 				name: 'n8n-nodes-base.dataTable',
+				group: [],
 				properties: [
 					{
 						name: 'filters',
@@ -938,6 +943,7 @@ describe('InstanceAiWorkflowSetup', () => {
 			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(nodeTypesStore, 'getNodeType', 'get').mockReturnValue(() => ({
 				name: 'n8n-nodes-base.dataTable',
+				group: [],
 				properties: [
 					{
 						name: 'tableName',

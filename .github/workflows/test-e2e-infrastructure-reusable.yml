@@ -17,7 +17,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare-docker:
+    uses: ./.github/workflows/prepare-docker-reusable.yml
+    secrets: inherit
+
   benchmark:
+    needs: [prepare-docker]
     name: ${{ matrix.profile }}
     strategy:
       fail-fast: false
@@ -31,9 +36,8 @@ jobs:
             runner: blacksmith-8vcpu-ubuntu-2204
     uses: ./.github/workflows/test-e2e-reusable.yml
     with:
-      test-mode: docker-build
+      test-mode: docker-artifact
       test-command: pnpm --filter=n8n-playwright test:all --project='${{ matrix.profile }}:infrastructure' --workers=1
-      shards: 1
       runner: ${{ matrix.runner }}
       timeout-minutes: 60
     secrets: inherit

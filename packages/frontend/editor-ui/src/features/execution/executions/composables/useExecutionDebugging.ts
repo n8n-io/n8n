@@ -98,7 +98,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			} else {
 				await router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: workflowDocumentStore.value.workflowId, executionId },
+					params: { workflowId: workflowDocumentStore.value.workflowId, executionId },
 				});
 				return;
 			}
@@ -132,8 +132,6 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 		});
 
 		if (pinnings > 0 || matchingPinnedNodeNames.length > 0) {
-			// Mark workflow dirty so it gets saved before execution.
-			// Without this, the backend loads stale pinData from the DB.
 			markStateDirty();
 		}
 
