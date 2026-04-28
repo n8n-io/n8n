@@ -5,7 +5,14 @@ import { JiraSoftwareCloudOAuth2Api } from '../JiraSoftwareCloudOAuth2Api.creden
 
 describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 	const jiraOAuth2Api = new JiraSoftwareCloudOAuth2Api();
-	const defaultScopes = ['read:jira-user', 'read:jira-work', 'write:jira-work', 'offline_access'];
+	const defaultScopes = [
+		'read:jira-user',
+		'read:jira-work',
+		'write:jira-work',
+		'manage:jira-webhook',
+		'manage:jira-user',
+		'offline_access',
+	];
 
 	// Shared OAuth2 configuration
 	const baseUrl = 'https://auth.atlassian.com';
@@ -60,7 +67,7 @@ describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 
 		const enabledScopesProperty = jiraOAuth2Api.properties.find((p) => p.name === 'enabledScopes');
 		expect(enabledScopesProperty?.default).toBe(
-			'read:jira-user read:jira-work write:jira-work offline_access',
+			'read:jira-user read:jira-work write:jira-work manage:jira-webhook manage:jira-user offline_access',
 		);
 
 		// Verify Atlassian-specific OAuth2 endpoints
@@ -88,6 +95,8 @@ describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 			expect(authUri).toContain('read%3Ajira-user');
 			expect(authUri).toContain('read%3Ajira-work');
 			expect(authUri).toContain('write%3Ajira-work');
+			expect(authUri).toContain('manage%3Ajira-webhook');
+			expect(authUri).toContain('manage%3Ajira-user');
 			expect(authUri).toContain('offline_access');
 			expect(authUri).toContain(`client_id=${clientId}`);
 			expect(authUri).toContain('response_type=code');
@@ -103,6 +112,8 @@ describe('JiraSoftwareCloudOAuth2Api Credential', () => {
 			expect(token.data.scope).toContain('read:jira-user');
 			expect(token.data.scope).toContain('read:jira-work');
 			expect(token.data.scope).toContain('write:jira-work');
+			expect(token.data.scope).toContain('manage:jira-webhook');
+			expect(token.data.scope).toContain('manage:jira-user');
 			expect(token.data.scope).toContain('offline_access');
 		});
 	});

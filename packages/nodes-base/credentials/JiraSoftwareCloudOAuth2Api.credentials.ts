@@ -1,6 +1,13 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const defaultScopes = ['read:jira-user', 'read:jira-work', 'write:jira-work', 'offline_access'];
+const defaultScopes = [
+	'read:jira-user',
+	'read:jira-work',
+	'write:jira-work',
+	'manage:jira-webhook',
+	'manage:jira-user',
+	'offline_access',
+];
 
 export class JiraSoftwareCloudOAuth2Api implements ICredentialType {
 	name = 'jiraSoftwareCloudOAuth2Api';
