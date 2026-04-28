@@ -1,5 +1,7 @@
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
+import * as fs from 'fs';
 import { nanoid } from 'nanoid';
+import * as path from 'path';
 
 import '@/zod-alias-support';
 import { ImportCredentialsCommand } from '@/commands/import/credentials';
@@ -8,6 +10,17 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
+import { jsonParse } from 'n8n-workflow';
+
+type CredentialFixture = {
+	createdAt: string;
+	updatedAt: string;
+};
+
+const credentialsFixturePath = path.resolve(__dirname, 'import-credentials/credentials.json');
+const [credentialsFixture] = jsonParse<Array<CredentialFixture>>(
+	fs.readFileSync(credentialsFixturePath, { encoding: 'utf8' }),
+);
 
 mockInstance(LoadNodesAndCredentials);
 const command = setupTestCommand(ImportCredentialsCommand);
@@ -86,6 +99,74 @@ test('import:credentials should import a credential from separated files', async
 			}),
 		],
 	});
+});
+
+test('import:credentials should include only selected credential properties', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		'--include=id,name,type,data',
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+	expect(after.credentials[0].createdAt.toISOString()).not.toBe(credentialsFixture.createdAt);
+	expect(after.credentials[0].updatedAt.toISOString()).not.toBe(credentialsFixture.updatedAt);
+});
+
+test('import:credentials should exclude selected credential properties', async () => {
+	const owner = await createOwner();
+	const ownerProject = await getPersonalProject(owner);
+
+	await command.run([
+		'--input=./test/integration/commands/import-credentials/credentials.json',
+		'--exclude=createdAt,updatedAt',
+	]);
+
+	const after = {
+		credentials: await getAllCredentials(),
+		sharings: await getAllSharedCredentials(),
+	};
+
+	expect(after).toMatchObject({
+		credentials: [expect.objectContaining({ id: '123', name: 'cred-aws-test' })],
+		sharings: [
+			expect.objectContaining({
+				credentialsId: '123',
+				projectId: ownerProject.id,
+				role: 'credential:owner',
+			}),
+		],
+	});
+	expect(after.credentials[0].createdAt.toISOString()).not.toBe(credentialsFixture.createdAt);
+	expect(after.credentials[0].updatedAt.toISOString()).not.toBe(credentialsFixture.updatedAt);
+});
+
+test('`import:credentials --include ... --exclude ...` should fail explaining that only one option can be used', async () => {
+	await expect(
+		command.run([
+			'--input=./test/integration/commands/import-credentials/credentials.json',
+			'--include=id,name,type,data',
+			'--exclude=createdAt,updatedAt',
+		]),
+	).rejects.toThrowError(
+		'You cannot use `--include` and `--exclude` together. Use one or the other.',
+	);
 });
 
 test('`import:credentials --userId ...` should fail if the credential exists already and is owned by somebody else', async () => {
