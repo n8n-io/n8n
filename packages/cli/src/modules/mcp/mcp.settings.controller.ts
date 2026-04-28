@@ -1,4 +1,5 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
 import {
 	Body,
@@ -19,6 +20,7 @@ import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpSettingsService } from './mcp.settings.service';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
@@ -35,6 +37,7 @@ export class McpSettingsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
 		private readonly collaborationService: CollaborationService,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@GlobalScope('mcp:manage')
@@ -44,6 +47,9 @@ export class McpSettingsController {
 		_res: Response,
 		@Body dto: UpdateMcpSettingsDto,
 	) {
+		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
+			throw new ForbiddenError('MCP settings are managed via environment variables');
+		}
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
 		try {

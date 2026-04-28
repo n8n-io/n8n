@@ -1,4 +1,5 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, WorkflowEntity, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -15,6 +16,7 @@ import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -86,11 +88,13 @@ describe('McpSettingsController', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowService = mock<WorkflowService>();
 	const collaborationService = mock<CollaborationService>();
+	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
 
 	let controller: McpSettingsController;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		instanceSettingsLoaderConfig.mcpManagedByEnv = false;
 		Container.set(Logger, logger);
 		Container.set(McpSettingsService, mcpSettingsService);
 		Container.set(ModuleRegistry, moduleRegistry);
@@ -98,6 +102,7 @@ describe('McpSettingsController', () => {
 		Container.set(WorkflowFinderService, workflowFinderService);
 		Container.set(WorkflowService, workflowService);
 		Container.set(CollaborationService, collaborationService);
+		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
 		// Default resolved broadcast — the controller fires this without
 		// awaiting and attaches a `.catch(...)`, so the mock must return a
 		// real Promise. Tests that exercise the failure path override this
@@ -156,6 +161,18 @@ describe('McpSettingsController', () => {
 				cause: 'Registry sync failed',
 			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
+		});
+
+		test('rejects updates when MCP settings are managed by env', async () => {
+			instanceSettingsLoaderConfig.mcpManagedByEnv = true;
+			const req = createReq({ mcpAccessEnabled: true });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+
+			await expect(controller.updateSettings(req, createRes(), dto)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
 
 		test('requires boolean mcpAccessEnabled value', () => {
