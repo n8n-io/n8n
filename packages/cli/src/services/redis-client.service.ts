@@ -33,6 +33,8 @@ function enableRedisDebug() {
 	}
 }
 
+type RequiredFields<T, K extends keyof T> = T & Required<Pick<T, K>>;
+
 type RedisEventMap = {
 	['connection-lost']: number;
 	['connection-recovered']: never;
@@ -50,6 +52,20 @@ type RedisClientCreateOptions = {
 	type: RedisClientType;
 	extraOptions?: RedisOptions;
 };
+
+type RedisOptionsRequired = RequiredFields<
+	RedisOptions,
+	| 'username'
+	| 'password'
+	| 'db'
+	| 'enableReadyCheck'
+	| 'lazyConnect'
+	| 'maxRetriesPerRequest'
+	| 'enableAutoPipelining'
+	| 'family'
+	| 'reconnectOnError'
+	| 'retryStrategy'
+>;
 
 const RECONNECT_AND_RETRY = 2;
 const DO_NOT_RECONNECT = false;
@@ -214,7 +230,7 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		 * @todo Test enableAutoPipelining for performance impact on high load deployments. Maybe remove later if no acceleration provable.
 		 * @see https://github.com/redis/ioredis?tab=readme-ov-file#autopipelining
 		 */
-		const options: RedisOptions = {
+		const options: RedisOptionsRequired = {
 			username,
 			password,
 			db,
@@ -357,12 +373,16 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 		process.exit(1);
 	}
 
-	private getClusterOptions(options: RedisOptions, retryStrategy: RetryStrategy): ClusterOptions {
+	private getClusterOptions(
+		options: RedisOptionsRequired,
+		retryStrategy: RetryStrategy,
+	): ClusterOptions {
 		const { slotsRefreshTimeout, slotsRefreshInterval, dnsResolveStrategy } =
 			this.globalConfig.queue.bull.redis;
 		const clusterOptions: ClusterOptions = {
 			redisOptions: options,
 			clusterRetryStrategy: retryStrategy,
+			dnsLookup: this.getDnsLookupFunction(options.family, dnsResolveStrategy),
 			slotsRefreshTimeout,
 			slotsRefreshInterval,
 		};
