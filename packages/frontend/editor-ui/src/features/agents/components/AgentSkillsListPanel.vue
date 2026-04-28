@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentSkill } from '../types';
 import shared from '../styles/agent-panel.module.scss';
@@ -15,6 +15,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'open-skill': [id: string];
+	'add-skill': [];
 	'remove-skill': [id: string];
 }>();
 
@@ -43,6 +44,16 @@ const totalCount = computed(() => props.skills.length);
 					}}
 				</N8nText>
 			</div>
+			<N8nButton
+				type="primary"
+				size="small"
+				:disabled="props.disabled"
+				data-testid="agent-skills-add"
+				@click="emit('add-skill')"
+			>
+				<template #prefix><N8nIcon icon="plus" :size="14" /></template>
+				{{ i18n.baseText('agents.builder.skills.add') }}
+			</N8nButton>
 		</div>
 
 		<div v-if="totalCount === 0" :class="$style.empty">

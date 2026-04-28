@@ -7,6 +7,8 @@ import type { AgentJsonConfigRef } from '../types';
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const routeQuery: Record<string, string | undefined> = {};
+const openModalWithDataMock = vi.fn();
+const closeModalMock = vi.fn();
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, replace: routerReplace }),
 	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: routeQuery }),
@@ -48,8 +50,8 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
-		openModalWithData: vi.fn(),
-		closeModal: vi.fn(),
+		openModalWithData: openModalWithDataMock,
+		closeModal: closeModalMock,
 	}),
 }));
 
@@ -277,12 +279,12 @@ const commonStubs = {
 		name: 'AgentSkillsListPanel',
 		template: '<div data-testid="stub-agent-skills-list-panel" />',
 		props: ['skills', 'disabled'],
-		emits: ['open-skill', 'remove-skill'],
+		emits: ['open-skill', 'add-skill', 'remove-skill'],
 	},
 	AgentSkillViewer: {
 		name: 'AgentSkillViewer',
 		template: '<div data-testid="stub-agent-skill-viewer" />',
-		props: ['skill', 'disabled'],
+		props: ['skill', 'disabled', 'errors'],
 		emits: ['update:skill'],
 	},
 	AgentIntegrationsPanel: {
@@ -316,6 +318,8 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		vi.clearAllMocks();
 		routerPush.mockReset();
 		routerReplace.mockReset();
+		openModalWithDataMock.mockReset();
+		closeModalMock.mockReset();
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		sessionThreads.length = 0;
 		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
@@ -497,6 +501,8 @@ describe('AgentBuilderView — three-column shell', () => {
 		vi.clearAllMocks();
 		routerPush.mockReset();
 		routerReplace.mockReset();
+		openModalWithDataMock.mockReset();
+		closeModalMock.mockReset();
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		sessionThreads.length = 0;
 		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
@@ -639,6 +645,53 @@ describe('AgentBuilderView — three-column shell', () => {
 		const vm = wrapper.vm as unknown as { localConfig: { tools?: AgentJsonConfigRef[] } };
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(wrapper.findComponent({ name: 'AgentSkillsListPanel' }).props('skills')).toEqual([]);
+	});
+
+	it('opens the add skill modal and applies the created skill', async () => {
+		const skill = {
+			name: 'Summarize Meetings',
+			description: 'Use when summarizing meeting notes',
+			instructions: 'Extract decisions and action items.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'custom', id: 'custom_tool' }],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
+		await nextTick();
+
+		const skillsPanel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		skillsPanel.vm.$emit('add-skill');
+		await nextTick();
+
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'agentSkillModal',
+				data: expect.objectContaining({
+					projectId: 'p1',
+					agentId: 'a1',
+					existingSkillIds: [],
+				}),
+			}),
+		);
+
+		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
+			onConfirm: (payload: { id: string; skill: typeof skill }) => void;
+		};
+		modalData.onConfirm({ id: 'summarize_meetings', skill });
+		await nextTick();
+
+		const vm = wrapper.vm as unknown as { localConfig: { tools?: AgentJsonConfigRef[] } };
+		expect(vm.localConfig.tools).toEqual([
+			{ type: 'custom', id: 'custom_tool' },
+			{ type: 'skill', id: 'summarize_meetings' },
+		]);
+		expect(wrapper.findComponent({ name: 'AgentSkillViewer' }).props('skill')).toEqual(skill);
 	});
 
 	it('autosaves skill detail edits from the detail view', async () => {

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { StreamLanguage, type StringStream } from '@codemirror/language';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
-import { N8nInput, N8nText } from '@n8n/design-system';
+import { N8nFormInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+import type { Rule, RuleGroup } from '@/Interface';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import shared from '../styles/agent-panel.module.scss';
 import type { AgentSkill } from '../types';
@@ -14,23 +15,50 @@ const props = withDefaults(
 	defineProps<{
 		skill: AgentSkill;
 		disabled?: boolean;
+		errors?: Partial<Record<keyof AgentSkill, string>>;
+		scrollable?: boolean;
+		showValidationWarnings?: boolean;
 	}>(),
-	{ disabled: false },
+	{ disabled: false, scrollable: true, showValidationWarnings: false },
 );
 
 const emit = defineEmits<{
 	'update:skill': [updates: Partial<AgentSkill>];
+	'update:valid': [valid: boolean];
 }>();
 
 const i18n = useI18n();
 const container = ref<HTMLDivElement>();
 const name = ref(props.skill.name);
 const description = ref(props.skill.description);
+const formValidation = reactive({
+	name: false,
+	description: false,
+});
 let view: EditorView | null = null;
 let applyingExternalUpdate = false;
 
 const editable = new Compartment();
 const readOnly = new Compartment();
+
+const nameValidationRules: Array<Rule | RuleGroup> = [
+	{ name: 'MAX_LENGTH', config: { maximum: 128 } },
+];
+const descriptionValidationRules: Array<Rule | RuleGroup> = [
+	{
+		name: 'MATCH_REGEX',
+		config: {
+			regex: /^Use when\s+\S/i,
+			message: i18n.baseText('agents.builder.skills.validation.descriptionUseWhen'),
+		},
+	},
+	{ name: 'MAX_LENGTH', config: { maximum: 512 } },
+];
+
+const instructionsValid = computed(() => Boolean((props.skill.instructions ?? '').trim()));
+const formIsValid = computed(
+	() => formValidation.name && formValidation.description && instructionsValid.value,
+);
 
 interface MarkdownState {
 	inFencedCode: boolean;
@@ -86,14 +114,20 @@ function createEditor(doc: string) {
 	});
 }
 
-function onNameInput(value: string) {
-	name.value = value;
-	emit('update:skill', { name: value });
+function onNameInput(value: string | number | boolean | null | undefined) {
+	const next = typeof value === 'string' ? value : String(value ?? '');
+	name.value = next;
+	emit('update:skill', { name: next });
 }
 
-function onDescriptionInput(value: string) {
-	description.value = value;
-	emit('update:skill', { description: value });
+function onDescriptionInput(value: string | number | boolean | null | undefined) {
+	const next = typeof value === 'string' ? value : String(value ?? '');
+	description.value = next;
+	emit('update:skill', { description: next });
+}
+
+function onFieldValidate(field: 'name' | 'description', valid: boolean) {
+	formValidation[field] = valid;
 }
 
 onMounted(() => createEditor(props.skill.instructions ?? ''));
@@ -141,37 +175,50 @@ watch(
 		});
 	},
 );
+
+watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 </script>
 
 <template>
-	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-skill-viewer">
+	<div
+		:class="[
+			$style.panel,
+			props.scrollable && $style.scrollable,
+			props.scrollable && shared.scrollbarThin,
+		]"
+		data-testid="agent-skill-viewer"
+	>
 		<div :class="$style.field">
-			<label :class="$style.label">
-				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.skills.name.label')
-				}}</N8nText>
-			</label>
-			<N8nInput
+			<N8nFormInput
 				:model-value="name"
+				:label="i18n.baseText('agents.builder.skills.name.label')"
+				name="skill-name"
+				required
+				label-size="small"
 				:placeholder="i18n.baseText('agents.builder.skills.name.placeholder')"
 				:disabled="props.disabled"
-				data-testid="agent-skill-name-input"
+				:show-validation-warnings="props.showValidationWarnings"
+				:validation-rules="nameValidationRules"
+				data-test-id="agent-skill-name-input"
 				@update:model-value="onNameInput"
+				@validate="onFieldValidate('name', $event)"
 			/>
 		</div>
 
 		<div :class="$style.field">
-			<label :class="$style.label">
-				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.skills.description.label')
-				}}</N8nText>
-			</label>
-			<N8nInput
+			<N8nFormInput
 				:model-value="description"
+				:label="i18n.baseText('agents.builder.skills.description.label')"
+				name="skill-description"
+				required
+				label-size="small"
 				:placeholder="i18n.baseText('agents.builder.skills.description.placeholder')"
 				:disabled="props.disabled"
-				data-testid="agent-skill-description-input"
+				:show-validation-warnings="props.showValidationWarnings"
+				:validation-rules="descriptionValidationRules"
+				data-test-id="agent-skill-description-input"
 				@update:model-value="onDescriptionInput"
+				@validate="onFieldValidate('description', $event)"
 			/>
 		</div>
 
@@ -182,6 +229,9 @@ watch(
 				}}</N8nText>
 			</label>
 			<div ref="container" :class="$style.editor"></div>
+			<N8nText v-if="props.errors?.instructions" size="small" color="danger">{{
+				props.errors.instructions
+			}}</N8nText>
 			<N8nText size="xsmall" color="text-light">{{
 				i18n.baseText('agents.builder.skills.instructions.characterCount', {
 					interpolate: { count: String((skill.instructions ?? '').length) },
@@ -194,13 +244,17 @@ watch(
 <style lang="scss" module>
 .panel {
 	padding: var(--spacing--lg);
-	overflow-y: auto;
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+.scrollable {
+	overflow-y: auto;
 }
 
 .field {

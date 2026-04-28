@@ -276,6 +276,21 @@ export const updateAgentConfig = async (
 	);
 };
 
+export const createAgentSkill = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+	skill: AgentSkill,
+): Promise<AgentSkill> => {
+	return await makeRestApiRequest<AgentSkill>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/skills`,
+		{ id: skillId, ...skill },
+	);
+};
+
 export const updateAgentSkill = async (
 	context: IRestApiContext,
 	projectId: string,

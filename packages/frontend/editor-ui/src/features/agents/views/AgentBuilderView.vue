@@ -50,6 +50,7 @@ import {
 	CONFIG_JSON_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
+	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
@@ -684,6 +685,38 @@ function onOpenSkillFromList(id: string) {
 	selectedSection.value = `skills.${id}`;
 }
 
+function onOpenAddSkillModal() {
+	const existingSkillIds = new Set(Object.keys(agent.value?.skills ?? {}));
+	for (const ref of localConfig.value?.tools ?? []) {
+		if (ref.type === 'skill' && ref.id) existingSkillIds.add(ref.id);
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_SKILL_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingSkillIds: [...existingSkillIds],
+			onConfirm: ({ id, skill }: { id: string; skill: AgentSkill }) => {
+				if (agent.value) {
+					agent.value = {
+						...agent.value,
+						skills: {
+							...(agent.value.skills ?? {}),
+							[id]: skill,
+						},
+					};
+				}
+
+				onConfigFieldUpdate({
+					tools: [...(localConfig.value?.tools ?? []), { type: 'skill', id }],
+				});
+				selectedSection.value = `skills.${id}`;
+			},
+		},
+	});
+}
+
 function onRemoveTool(index: number) {
 	const currentTools = localConfig.value?.tools ?? [];
 	if (index < 0 || index >= currentTools.length) return;
@@ -1201,6 +1234,7 @@ function onSwitchAgent(nextAgentId: string) {
 						:skills="appliedSkills"
 						:disabled="isBuildChatStreaming"
 						@open-skill="onOpenSkillFromList"
+						@add-skill="onOpenAddSkillModal"
 						@remove-skill="onRemoveSkill"
 					/>
 					<div
