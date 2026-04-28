@@ -10,7 +10,7 @@ export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nDropdown } from './N8nDropdown';
-export type { N8nDropdownOption, N8nDropdownAction } from './N8nDropdown';
+export type { N8nDropdownOption } from './N8nDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
 export { default as N8nAlert } from './N8nAlert';
 export { default as N8nAvatar } from './N8nAvatar';

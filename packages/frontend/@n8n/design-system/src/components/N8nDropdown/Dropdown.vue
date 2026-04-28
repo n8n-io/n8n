@@ -6,15 +6,9 @@ import {
 	DropdownMenuRoot,
 	DropdownMenuTrigger,
 } from 'reka-ui';
-import { ref, useTemplateRef, computed } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import N8nIcon from '../N8nIcon';
-import N8nLoading from '../N8nLoading';
-import type { IconSize } from '../../types/icon';
-
-const SIZE = ['mini', 'small', 'medium'] as const;
-const THEME = ['default', 'dark'] as const;
-const ICON_ORIENTATION = ['horizontal', 'vertical'] as const;
 
 export interface N8nDropdownOption<V = string | number> {
 	label: string;
@@ -22,55 +16,43 @@ export interface N8nDropdownOption<V = string | number> {
 	disabled?: boolean;
 }
 
-export interface N8nDropdownAction<V = string | number> {
-	label: string;
-	value: V;
+export interface Props<T extends string | number> {
+	/**
+	 * The list of options to display in the dropdown
+	 */
+	options: Array<N8nDropdownOption<T>>;
+	/**
+	 * Whether the dropdown is disabled
+	 */
 	disabled?: boolean;
-	type?: 'external-link';
-}
-
-interface Props<T extends string | number> {
-	options?: Array<N8nDropdownOption<T>>;
-	actions?: Array<N8nDropdownAction<T>>;
-	disabled?: boolean;
+	/**
+	 * Placeholder text for the default trigger
+	 */
 	placeholder?: string;
-	size?: (typeof SIZE)[number];
-	theme?: (typeof THEME)[number];
-	iconSize?: IconSize;
-	iconOrientation?: (typeof ICON_ORIENTATION)[number];
-	loading?: boolean;
-	loadingRowCount?: number;
+	/**
+	 * Size variant for the default trigger
+	 */
+	size?: 'small' | 'medium' | 'large';
 }
 
 const props = withDefaults(defineProps<Props<T>>(), {
-	options: () => [],
-	actions: () => [],
 	disabled: false,
 	placeholder: 'Select an option',
 	size: 'medium',
-	theme: 'default',
-	iconSize: 'medium',
-	iconOrientation: 'vertical',
-	loading: false,
-	loadingRowCount: 3,
 });
 
 const emit = defineEmits<{
 	select: [value: T];
-	action: [value: T];
 	'update:open': [value: boolean];
-	'item-mouseup': [item: N8nDropdownAction<T>];
 }>();
 
 const isOpen = ref(false);
-const rootRef = useTemplateRef<HTMLElement>('rootRef');
-
-const items = computed(() => (props.actions.length > 0 ? props.actions : props.options));
 
 const handleOpenChange = (value: boolean) => {
 	isOpen.value = value;
 	emit('update:open', value);
 };
+const rootRef = useTemplateRef<HTMLElement>('rootRef');
 
 const open = () => {
 	if (!props.disabled) {
@@ -86,10 +68,9 @@ const scrollIntoView = (options?: ScrollIntoViewOptions) => {
 	rootRef.value?.scrollIntoView(options);
 };
 
-const handleSelect = (item: N8nDropdownOption<T> | N8nDropdownAction<T>) => {
-	if (!item.disabled) {
-		emit('select', item.value);
-		emit('action', item.value);
+const handleSelect = (option: N8nDropdownOption<T>) => {
+	if (!option.disabled) {
+		emit('select', option.value);
 		close();
 	}
 };
@@ -102,18 +83,20 @@ defineExpose({
 </script>
 
 <template>
-	<div ref="rootRef" :class="[$style.container]">
+	<div ref="rootRef">
 		<DropdownMenuRoot :open="isOpen" @update:open="handleOpenChange">
 			<DropdownMenuTrigger
 				v-if="!$slots.trigger"
-				:class="[$style.button, $style[theme]]"
+				:class="[$style.defaultTrigger, $style[size]]"
 				:aria-label="placeholder"
 				:disabled="disabled"
-				data-test-id="dropdown-trigger"
+				:data-test-id="`dropdown-trigger`"
 			>
+				<span :class="$style.triggerText">{{ placeholder }}</span>
 				<N8nIcon
-					:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
-					:size="iconSize"
+					icon="chevron-down"
+					:class="[$style.triggerIcon, { [$style.open]: isOpen }]"
+					size="large"
 				/>
 			</DropdownMenuTrigger>
 			<DropdownMenuTrigger v-else as-child :disabled="disabled">
@@ -121,35 +104,24 @@ defineExpose({
 			</DropdownMenuTrigger>
 
 			<DropdownMenuPortal>
-				<DropdownMenuContent :class="$style.content" :side-offset="4" align="start">
-					<template v-if="loading">
-						<div :class="$style['loading-dropdown']" data-test-id="dropdown-loading">
-							<div v-for="index in loadingRowCount" :key="index" :class="$style.loadingItem">
-								<N8nLoading animated variant="text" />
-							</div>
-						</div>
-					</template>
-					<template v-else>
-						<DropdownMenuItem
-							v-for="item in items"
-							:key="item.value"
-							:disabled="item.disabled"
-							:class="$style.item"
-							:data-test-id="`dropdown-option-${item.value}`"
-							@select="handleSelect(item)"
-							@mouseup="emit('item-mouseup', item)"
-						>
-							<span :class="$style.itemText">
-								{{ item.label }}
-							</span>
-							<N8nIcon
-								v-if="item.type === 'external-link'"
-								icon="external-link"
-								size="xsmall"
-								color="text-base"
-							/>
-						</DropdownMenuItem>
-					</template>
+				<DropdownMenuContent
+					:class="$style.content"
+					:side-offset="8"
+					align="start"
+					:avoid-collisions="true"
+				>
+					<DropdownMenuItem
+						v-for="option in options"
+						:key="option.value"
+						:disabled="option.disabled"
+						:class="$style.item"
+						:data-test-id="`dropdown-option-${option.value}`"
+						@select="handleSelect(option)"
+					>
+						<span :class="$style.itemText">
+							{{ option.label }}
+						</span>
+					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenuPortal>
 		</DropdownMenuRoot>
@@ -157,46 +129,112 @@ defineExpose({
 </template>
 
 <style lang="scss" module>
-.container > * {
-	line-height: 1;
-}
-
-.button {
-	cursor: pointer;
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-	display: flex;
+.defaultTrigger {
+	display: inline-flex;
 	align-items: center;
-	justify-content: center;
+	justify-content: space-between;
+	width: 100%;
+	padding: 0 var(--spacing--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border: var(--border);
+	border-radius: var(--radius);
+	color: var(--color--text);
+	font-family: var(--font-family);
+	line-height: var(--line-height--md);
+	gap: var(--spacing--3xs);
 
 	&:hover {
-		color: var(--color--primary);
-		cursor: pointer;
+		border-color: var(--color--foreground--shade-1);
 	}
 
 	&:focus {
-		color: var(--color--primary);
+		outline: none;
+		border-color: var(--color--secondary);
+	}
+
+	&[data-placeholder] {
+		color: var(--color--text--tint-1);
+	}
+
+	&[data-disabled] {
+		cursor: not-allowed;
+		background-color: var(--color--background--shade-1);
+		opacity: 0.6;
+	}
+
+	&.small {
+		height: 30px;
+		font-size: var(--font-size--2xs);
+		padding: 0 var(--spacing--3xs);
+	}
+
+	&.medium {
+		height: 36px;
+		font-size: var(--font-size--xs);
+	}
+
+	&.large {
+		height: 42px;
+		font-size: var(--font-size--sm);
 	}
 }
 
-.dark {
-	color: var(--color--text--shade-1);
+.triggerText {
+	flex: 1;
+	text-align: left;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	font-weight: var(--font-weight--regular);
+}
 
-	&:focus {
-		background-color: var(--color--background--light-3);
+.triggerIcon {
+	color: var(--color--text--tint-1);
+	transition: transform var(--animation--duration) var(--animation--easing);
+
+	&.open {
+		transform: rotate(180deg);
 	}
 }
 
 .content {
-	min-width: 160px;
-	max-width: 320px;
+	--dropdown--offset--slide-x: 0;
+	--dropdown--offset--slide-y: 0;
+	--dropdown--offset--origin-x: center;
+	--dropdown--offset--origin-y: center;
+
+	min-width: 200px;
+	max-width: 400px;
+	max-height: 320px;
 	background-color: var(--color--foreground--tint-2);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	box-shadow: var(--shadow--light);
 	z-index: 9999;
-	overflow: hidden;
-	padding: var(--spacing--3xs) 0;
+	overflow: auto;
+	padding: var(--spacing--3xs);
+	will-change: transform, opacity;
+	transform-origin: var(--dropdown--offset--origin-x) var(--dropdown--offset--origin-y);
+	animation-duration: var(--duration--snappy);
+	animation-timing-function: var(--easing--ease-out);
+
+	&[data-state='open'] {
+		animation-name: dropdownIn;
+	}
+
+	&[data-state='closed'] {
+		display: none;
+	}
+}
+
+.content[data-state='open'][data-side='top'] {
+	--dropdown--offset--slide-y: -2px;
+	--dropdown--offset--origin-y: bottom;
+}
+
+.content[data-state='open'][data-side='bottom'] {
+	--dropdown--offset--slide-y: 2px;
+	--dropdown--offset--origin-y: top;
 }
 
 .item {
@@ -204,12 +242,13 @@ defineExpose({
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
-	padding: 0 var(--spacing--sm);
-	min-height: 32px;
-	line-height: 32px;
+	padding: 0 var(--spacing--2xs);
+	border-radius: var(--radius);
 	cursor: pointer;
 	user-select: none;
 	font-size: var(--font-size--2xs);
+	min-height: 28px;
+	line-height: 28px;
 	color: var(--color--text);
 	transition:
 		background-color var(--animation--duration) var(--animation--easing),
@@ -235,13 +274,15 @@ defineExpose({
 	white-space: nowrap;
 }
 
-.loading-dropdown {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.loadingItem {
-	padding: 0 var(--spacing--sm);
+@keyframes dropdownIn {
+	from {
+		opacity: 0;
+		transform: translate(var(--dropdown--offset--slide-x), var(--dropdown--offset--slide-y))
+			scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translate(0, 0) scale(1);
+	}
 }
 </style>
