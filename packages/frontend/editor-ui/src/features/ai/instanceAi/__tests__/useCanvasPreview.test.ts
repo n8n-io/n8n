@@ -710,6 +710,36 @@ describe('useCanvasPreview', () => {
 
 			expect(ctx.activeExecutionId.value).toBe('exec-new');
 		});
+
+		test('sets activeExecutionId once the live run finishes so the iframe can load final data', async () => {
+			const executions = ref(
+				new Map<string, WorkflowExecutionState>([
+					['wf-1', { executionId: 'exec-1', workflowId: 'wf-1', status: 'success', eventLog: [] }],
+				]),
+			);
+			const ctx = setup({ workflowExecutions: executions });
+			ctx.store.isStreaming = true;
+			registerWorkflow(ctx.store, 'wf-1');
+			ctx.openWorkflowPreview('wf-1');
+
+			ctx.store.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-run',
+								toolName: 'executions',
+								args: { action: 'run', workflowId: 'wf-1' },
+								result: { executionId: 'exec-1' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeExecutionId.value).toBe('exec-1');
+		});
 	});
 
 	describe('auto-open data table preview', () => {

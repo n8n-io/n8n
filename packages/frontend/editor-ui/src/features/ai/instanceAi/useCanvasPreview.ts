@@ -344,13 +344,15 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
 
-			// If push events are already streaming this execution, leave the iframe
+			// While push events are still streaming this execution, leave the iframe
 			// in workflow mode so `relayPushEvent` keeps painting the live state —
-			// flipping to execution mode would refetch and discard it. Cold paths
-			// (refresh, tab switch) restore execution mode via `historicalExecutions`.
+			// flipping to execution mode would refetch and discard it. Once the
+			// execution finishes (status leaves 'running'), set activeExecutionId so
+			// the iframe loads the persisted final data.
 			const liveExec = workflowExecutions?.value.get(exec.workflowId);
-			const isLive = liveExec?.executionId === exec.executionId;
-			if (!isLive) {
+			const isLiveRunning =
+				liveExec?.executionId === exec.executionId && liveExec?.status === 'running';
+			if (!isLiveRunning) {
 				activeExecutionId.value = exec.executionId;
 			}
 			activeTabId.value = exec.workflowId;
