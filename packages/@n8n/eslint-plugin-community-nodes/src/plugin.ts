@@ -51,6 +51,7 @@ const configs = {
 			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 			'@n8n/community-nodes/node-class-description-naming': 'error',
 			'@n8n/community-nodes/node-file-conventions': 'error',
+			'@n8n/community-nodes/node-param-conventions': 'error',
 		},
 	},
 	recommendedWithoutN8nCloudSupport: {
@@ -88,6 +89,7 @@ const configs = {
 			'@n8n/community-nodes/webhook-lifecycle-complete': 'error',
 			'@n8n/community-nodes/node-class-description-naming': 'error',
 			'@n8n/community-nodes/node-file-conventions': 'error',
+			'@n8n/community-nodes/node-param-conventions': 'error',
 		},
 	},
 } satisfies Record<string, Linter.Config>;

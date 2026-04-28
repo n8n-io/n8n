@@ -21,6 +21,7 @@ import { NodeClassDescriptionIconMissingRule } from './node-class-description-ic
 import { NodeClassDescriptionNamingRule } from './node-class-description-naming.js';
 import { NodeExecuteBlockRule } from './node-execute-block.js';
 import { NodeFileConventionsRule } from './node-file-conventions.js';
+import { NodeParamConventionsRule } from './node-param-conventions.js';
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
 import { OptionsSortedAlphabeticallyRule } from './options-sorted-alphabetically.js';
@@ -54,6 +55,7 @@ export const rules = {
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
 	'node-class-description-naming': NodeClassDescriptionNamingRule,
 	'node-file-conventions': NodeFileConventionsRule,
+	'node-param-conventions': NodeParamConventionsRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
 	'cred-class-field-naming': CredClassFieldNamingRule,
 	'cred-class-naming': CredClassNamingRule,
