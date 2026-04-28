@@ -723,10 +723,15 @@ function onTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
 }
 
 function onContinueLoaded(count: number) {
-	// Only kick back to home for a URL-supplied session that turned out to be
-	// empty/stale. Ephemeral in-tab sessions always start empty and fill in as
-	// the user chats, so the zero-count signal is expected there.
-	if (count === 0 && continueSessionId.value) {
+	// Only kick away from a URL-supplied session when the URL points at a
+	// missing/stale thread. A real thread can legitimately have zero persisted
+	// chat messages if its execution failed before history was saved.
+	const requestedSessionId = continueSessionId.value;
+	const knownThread = requestedSessionId
+		? sessionsStore.threads.some((thread) => thread.id === requestedSessionId)
+		: false;
+
+	if (count === 0 && requestedSessionId && !knownThread) {
 		exitContinueMode();
 		// `exitContinueMode` only drops the query param; the chat panel would
 		// otherwise sit blank waiting for a session to bind. Once the route

@@ -1,4 +1,6 @@
+import { useDebounceFn, useElementSize } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
+import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 
 const CHAT_COLLAPSED_KEY = 'agentBuilder.chatColumnCollapsed';
 const CHAT_WIDTH_KEY = 'agentBuilder.chatColumnWidth';
@@ -17,21 +19,28 @@ const RESIZE_GRID_SIZE = 8;
  */
 export function useAgentBuilderLayout() {
 	const builderRef = ref<HTMLElement | null>(null);
-	const builderWidth = ref(0);
+	const { width: observedBuilderWidth } = useElementSize(builderRef);
+	const builderWidth = computed(
+		() => observedBuilderWidth.value || builderRef.value?.offsetWidth || 0,
+	);
 	const chatColumnCollapsed = ref(
 		typeof window !== 'undefined' && window.localStorage?.getItem(CHAT_COLLAPSED_KEY) === '1',
 	);
 	const chatColumnWidth = ref(readStoredNumber(CHAT_WIDTH_KEY, DEFAULT_CHAT_WIDTH));
 	const treeColumnWidth = ref(readStoredNumber(TREE_WIDTH_KEY, DEFAULT_TREE_WIDTH));
+	const writeChatColumnWidth = useDebounceFn((width: number) => {
+		writeStoredNumber(CHAT_WIDTH_KEY, width);
+	}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
+	const writeTreeColumnWidth = useDebounceFn((width: number) => {
+		writeStoredNumber(TREE_WIDTH_KEY, width);
+	}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
 
 	const maxChatWidth = computed(() =>
 		Math.max(MIN_CHAT_WIDTH, builderWidth.value - treeColumnWidth.value - MIN_EDITOR_WIDTH),
 	);
-	const maxTreeWidth = computed(() => {
-		const visibleChatWidth = chatColumnCollapsed.value ? 0 : chatColumnWidth.value;
-
-		return Math.max(MIN_TREE_WIDTH, builderWidth.value - visibleChatWidth - MIN_EDITOR_WIDTH);
-	});
+	const maxTreeWidth = computed(() =>
+		Math.max(MIN_TREE_WIDTH, builderWidth.value - chatColumnWidth.value - MIN_EDITOR_WIDTH),
+	);
 
 	watch(chatColumnCollapsed, (v) => {
 		try {
@@ -42,32 +51,14 @@ export function useAgentBuilderLayout() {
 	});
 
 	watch(chatColumnWidth, (width) => {
-		writeStoredNumber(CHAT_WIDTH_KEY, width);
+		void writeChatColumnWidth(width);
 	});
 
 	watch(treeColumnWidth, (width) => {
-		writeStoredNumber(TREE_WIDTH_KEY, width);
+		void writeTreeColumnWidth(width);
 	});
 
-	watch(
-		builderRef,
-		(el, _, onCleanup) => {
-			if (!el) return;
-
-			const updateWidth = () => {
-				builderWidth.value = el.offsetWidth;
-				chatColumnWidth.value = clamp(chatColumnWidth.value, MIN_CHAT_WIDTH, maxChatWidth.value);
-				treeColumnWidth.value = clamp(treeColumnWidth.value, MIN_TREE_WIDTH, maxTreeWidth.value);
-			};
-
-			const observer = new ResizeObserver(updateWidth);
-			observer.observe(el);
-			updateWidth();
-
-			onCleanup(() => observer.disconnect());
-		},
-		{ immediate: true },
-	);
+	watch([builderRef, builderWidth], () => clampPanelWidths(), { immediate: true });
 
 	const gridColumns = computed(() =>
 		chatColumnCollapsed.value
@@ -77,15 +68,24 @@ export function useAgentBuilderLayout() {
 
 	function onToggleChatColumn() {
 		chatColumnCollapsed.value = !chatColumnCollapsed.value;
+		clampPanelWidths();
 	}
 
 	function onChatColumnResize({ width }: { width: number }) {
 		chatColumnCollapsed.value = false;
 		chatColumnWidth.value = clamp(width, MIN_CHAT_WIDTH, maxChatWidth.value);
+		clampPanelWidths();
 	}
 
 	function onTreeColumnResize({ width }: { width: number }) {
 		treeColumnWidth.value = clamp(width, MIN_TREE_WIDTH, maxTreeWidth.value);
+	}
+
+	function clampPanelWidths() {
+		if (builderWidth.value <= 0) return;
+
+		treeColumnWidth.value = clamp(treeColumnWidth.value, MIN_TREE_WIDTH, maxTreeWidth.value);
+		chatColumnWidth.value = clamp(chatColumnWidth.value, MIN_CHAT_WIDTH, maxChatWidth.value);
 	}
 
 	return {

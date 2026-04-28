@@ -4,9 +4,11 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 
 const routerPush = vi.fn();
+const routerReplace = vi.fn();
+const routeQuery: Record<string, string | undefined> = {};
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: routerPush, replace: vi.fn() }),
-	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: {} }),
+	useRouter: () => ({ push: routerPush, replace: routerReplace }),
+	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: routeQuery }),
 	onBeforeRouteLeave: vi.fn(),
 	onBeforeRouteUpdate: vi.fn(),
 	RouterLink: { template: '<a><slot/></a>' },
@@ -53,6 +55,7 @@ vi.mock('@/app/stores/ui.store', () => ({
 const updateAgentMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
+const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
 	getAgent: vi.fn().mockResolvedValue({
@@ -111,7 +114,7 @@ vi.mock('../composables/useAgentConfig', () => ({
 
 vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({
-		threads: [],
+		threads: sessionThreads,
 		loading: false,
 		fetchThreads: vi.fn().mockResolvedValue(undefined),
 		startAutoRefresh: vi.fn(),
@@ -267,6 +270,9 @@ describe('AgentBuilderView — chat mode toggle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		routerPush.mockReset();
+		routerReplace.mockReset();
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
+		sessionThreads.length = 0;
 		// Reset to a built agent; tests that need an unbuilt agent override locally.
 		intendedConfig = {
 			name: 'Agent One',
@@ -394,6 +400,21 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		expect((testPanel.element as HTMLElement).style.display).not.toBe('none');
 	});
 
+	it('keeps a known continued session selected even when it has no persisted messages', async () => {
+		routeQuery.continueSessionId = 'faulty-thread';
+		sessionThreads.push({ id: 'faulty-thread', updatedAt: '2026-01-01T00:00:00Z' });
+
+		const wrapper = await renderView();
+		routerReplace.mockClear();
+
+		(wrapper.vm as unknown as { onContinueLoaded: (count: number) => void }).onContinueLoaded(0);
+		await nextTick();
+		await flushPromises();
+
+		expect(routerReplace).not.toHaveBeenCalled();
+		expect((wrapper.vm as unknown as { chatMode: string }).chatMode).toBe('test');
+	});
+
 	it('navigates directly to build chat on startChat for an unbuilt agent', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = { ...intendedConfig };
@@ -428,6 +449,9 @@ describe('AgentBuilderView — three-column shell', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		routerPush.mockReset();
+		routerReplace.mockReset();
+		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
+		sessionThreads.length = 0;
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
