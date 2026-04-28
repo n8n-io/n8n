@@ -65,12 +65,6 @@ async function fetchWorkflow(id: string) {
 	fetchError.value = null;
 	if (!isRefresh) {
 		isLoading.value = true;
-		// Null the workflow so showPreview flips false, the iframe hides, and the
-		// loading overlay below appears — gives the user a clear visual signal that
-		// the preview is switching workflows. WorkflowPreview also sends a
-		// resetWorkflow postMessage on this transition so the iframe canvas is
-		// cleared while hidden, avoiding a flash of the old workflow when the new
-		// one becomes visible.
 		workflow.value = null;
 	}
 
@@ -103,24 +97,15 @@ watch(
 	{ immediate: true },
 );
 
-// --- Execution completion polling ---
-// The execute_workflow tool returns immediately (fire-and-forget). When the
-// preview loads the execution it may still be running or waiting (e.g. Wait
-// node). Poll until the execution finishes so the iframe can reload with the
-// final node statuses.
-//
-// While the agent is streaming we poll indefinitely. Once streaming stops we
-// allow a short grace window (MAX_POST_STREAM_POLLS) for the execution to
-// finish before giving up.
+// The execute_workflow tool is fire-and-forget. Poll until the execution
+// finishes so the iframe can reload with the final node statuses. Indefinite
+// while the agent is streaming, then a short grace window after.
 const POLL_INTERVAL_MS = 1_500;
-const MAX_POST_STREAM_POLLS = 5; // ~7.5 s grace after streaming ends
+const MAX_POST_STREAM_POLLS = 5;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let postStreamAttempts = 0;
-// Tracks whether we've seen this execution as in-progress at any point during
-// polling. The iframe's initial openExecution already fetches the latest data,
-// so if the first poll already sees `finished=true`, that data is final and a
-// reload would just produce a redundant loading flash. We only reload when we
-// observe a true running → finished transition.
+// Only reload on a running → finished transition. If the first poll already
+// sees `finished=true`, the initial openExecution already has final data.
 let observedRunning = false;
 
 function stopPolling() {
@@ -197,9 +182,8 @@ defineExpose({ relayPushEvent });
 			<N8nText color="text-light">{{ fetchError }}</N8nText>
 		</div>
 
-		<!-- Preview — always mounted so the iframe boots before any artifact exists, eliminating
-		     the load-race against execution events. WorkflowPreview hides its own iframe when no
-		     workflow is set (visibility:hidden via internal showPreview gate). -->
+		<!-- Always mounted so the iframe boots before any artifact exists; it hides itself
+		     internally when no workflow is set. -->
 		<WorkflowPreview
 			ref="previewComponent"
 			:mode="previewMode"

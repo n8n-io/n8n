@@ -82,11 +82,6 @@ const showPreview = computed(() => {
 	);
 });
 
-// Track the last workflow + executionId we sent to the iframe so multiple watches
-// converging on the same change (e.g. showPreview true ↔ props.workflow set, both
-// firing on the same tick) only result in one postMessage. Without this dedup the
-// iframe receives duplicate openWorkflow / openExecution calls and re-initializes
-// the canvas, briefly clearing rendered connections.
 let lastSentWorkflow: typeof props.workflow | undefined;
 let lastSentExecutionId: string | undefined;
 
@@ -270,11 +265,6 @@ watch(
 watch(
 	() => props.workflow,
 	(newWorkflow, oldWorkflow) => {
-		// When transitioning away from a valid workflow (e.g. tab switch — parent
-		// nulls workflow during fetch), tell the iframe to clear its canvas now,
-		// while it's hidden. Without this, when the iframe reappears with the new
-		// workflow there's a brief flash of the previously-rendered workflow before
-		// the new openWorkflow postMessage finishes processing.
 		if (oldWorkflow && oldWorkflow !== newWorkflow) {
 			sendResetWorkflow();
 		}
@@ -284,8 +274,6 @@ watch(
 	},
 );
 
-// External reload bypasses the dedup so callers can force the iframe to refresh
-// with new execution data (e.g. after an execution finishes via polling).
 const reloadExecution = () => {
 	lastSentExecutionId = undefined;
 	loadExecution();

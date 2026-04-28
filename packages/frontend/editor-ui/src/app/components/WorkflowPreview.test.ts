@@ -409,4 +409,61 @@ describe('WorkflowPreview', () => {
 			});
 		});
 	});
+
+	describe('postMessage dedup and tab-switch reset', () => {
+		const countCommand = (command: string) =>
+			postMessageSpy.mock.calls.filter(([payload, target]) => {
+				if (typeof payload !== 'string' || target !== '*') return false;
+				try {
+					return jsonParse<{ command?: string }>(payload).command === command;
+				} catch {
+					return false;
+				}
+			}).length;
+
+		it('should send openWorkflow only once when multiple watches converge on the same change', async () => {
+			const nodes = [{ name: 'Start' }] as INodeUi[];
+			const workflow = { nodes } as IWorkflowDb;
+
+			renderComponent({ pinia, props: { workflow } });
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
+		it('should send resetWorkflow then openWorkflow when switching to a different workflow', async () => {
+			const workflowA = { nodes: [{ name: 'A' }] } as unknown as IWorkflowDb;
+			const workflowB = { nodes: [{ name: 'B' }] } as unknown as IWorkflowDb;
+
+			const { rerender } = renderComponent({ pinia, props: { workflow: workflowA } });
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+
+			postMessageSpy.mockClear();
+			await rerender({ workflow: workflowB });
+
+			await waitFor(() => {
+				expect(countCommand('resetWorkflow')).toBe(1);
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
+		it('should not send resetWorkflow on the initial workflow mount', async () => {
+			const nodes = [{ name: 'Start' }] as INodeUi[];
+			const workflow = { nodes } as IWorkflowDb;
+
+			renderComponent({ pinia, props: { workflow } });
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+			expect(countCommand('resetWorkflow')).toBe(0);
+		});
+	});
 });

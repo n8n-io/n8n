@@ -603,10 +603,8 @@ function handleStop() {
 					:active-tab-id="preview.activeTabId.value"
 					@close="preview.closePreview()"
 				/>
-				<!-- Single workflow preview hoisted above the tab v-for so the iframe stays
-				     mounted across tab switches (no re-fetch / re-boot) and pre-warms on panel
-				     open before any artifact exists. Workflow swap happens via openWorkflow
-				     postMessage when activeWorkflowId changes. -->
+				<!-- Hoisted above the tab v-for so the iframe survives tab switches; tabs swap
+				     workflows via openWorkflow postMessage instead of remounting. -->
 				<div :class="$style.previewContent">
 					<InstanceAiWorkflowPreview
 						ref="workflowPreview"
