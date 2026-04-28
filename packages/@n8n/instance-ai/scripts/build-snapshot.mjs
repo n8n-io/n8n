@@ -12,6 +12,10 @@
  * The runtime never calls `snapshot.create` through the sandbox proxy in
  * cloud mode; CI is the only producer of cloud snapshots.
  *
+ * The actual create-with-already-exists logic lives in
+ * `SnapshotManager.createSnapshot` so the runtime (direct mode) and CI
+ * share a single implementation.
+ *
  * Required env vars:
  *   DAYTONA_API_KEY   admin key with snapshot.create permissions
  *   DAYTONA_API_URL   Daytona API base URL (optional — SDK default used if absent)
@@ -40,13 +44,6 @@ const consoleLogger = {
 	debug: () => {},
 };
 
-function isAlreadyExistsError(error) {
-	if (!error) return false;
-	if (error.statusCode === 409) return true;
-	const msg = error.message || String(error);
-	return /already exists/i.test(msg);
-}
-
 async function main() {
 	const version = parseVersion(process.argv.slice(2));
 	if (!version) {
@@ -64,32 +61,17 @@ async function main() {
 	const daytona = new Daytona({ apiKey, apiUrl });
 	const baseImage = process.env.SANDBOX_IMAGE || undefined;
 	const manager = new SnapshotManager(baseImage, consoleLogger, version);
-	const name = `n8n-instance-ai-${version}`;
-	const image = manager.ensureImage();
 
-	consoleLogger.info('Creating Daytona snapshot', { name });
+	const name = await manager.createSnapshot(daytona, {
+		timeout: 1800,
+		onLogs: (chunk) => process.stdout.write(`${chunk}\n`),
+	});
 
-	try {
-		await daytona.snapshot.create(
-			{ name, image },
-			{ timeout: 1800, onLogs: (chunk) => process.stdout.write(`${chunk}\n`) },
-		);
-		consoleLogger.info('Snapshot created', { name });
-	} catch (error) {
-		if (isAlreadyExistsError(error)) {
-			consoleLogger.info('Snapshot already exists — treating as success', { name });
-			return;
-		}
-		consoleLogger.error('Snapshot creation failed', {
-			name,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		process.exit(1);
-	}
+	consoleLogger.info('Snapshot ready', { name });
 }
 
 main().catch((error) => {
-	consoleLogger.error('Unexpected error during snapshot build', {
+	consoleLogger.error('Snapshot creation failed', {
 		error: error instanceof Error ? error.message : String(error),
 	});
 	process.exit(1);

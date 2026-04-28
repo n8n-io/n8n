@@ -22,6 +22,11 @@ import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
 
 export type SnapshotMode = 'direct' | 'proxy';
 
+export interface CreateSnapshotOptions {
+	timeout?: number;
+	onLogs?: (chunk: string) => void;
+}
+
 /** Base64-encode content for safe embedding in RUN commands (avoids newline/quote issues). */
 function b64(s: string): string {
 	return Buffer.from(s, 'utf-8').toString('base64');
@@ -100,6 +105,38 @@ export class SnapshotManager {
 		return result;
 	}
 
+	/**
+	 * Create the versioned Daytona snapshot for the configured n8n version.
+	 * Treats 409 / "already exists" as success — re-runs against the same
+	 * version are idempotent. Throws on transient or unexpected errors so
+	 * callers can decide whether to retry, fall back, or fail loudly.
+	 *
+	 * Single source of truth for snapshot creation across:
+	 * - Runtime direct mode (lazy create on first builder invocation)
+	 * - CI release pipeline (`scripts/build-snapshot.mjs`)
+	 */
+	async createSnapshot(daytona: Daytona, options?: CreateSnapshotOptions): Promise<string> {
+		const name = this.snapshotName();
+		try {
+			await daytona.snapshot.create({ name, image: this.ensureImage() }, options);
+			this.logger.info('Created versioned Daytona snapshot', { name });
+			return name;
+		} catch (error) {
+			if (isAlreadyExistsError(error)) {
+				this.logger.info('Versioned Daytona snapshot already exists', { name });
+				return name;
+			}
+			throw error;
+		}
+	}
+
+	private snapshotName(): string {
+		if (!this.n8nVersion) {
+			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
+		}
+		return `n8n-instance-ai-${this.n8nVersion}`;
+	}
+
 	private async resolveSnapshot(
 		daytona: Daytona,
 		mode: SnapshotMode,
@@ -121,14 +158,8 @@ export class SnapshotManager {
 		}
 
 		try {
-			await daytona.snapshot.create({ name, image: this.ensureImage() });
-			this.logger.info('Created versioned Daytona snapshot', { name });
-			return name;
+			return await this.createSnapshot(daytona);
 		} catch (error) {
-			if (isAlreadyExistsError(error)) {
-				this.logger.info('Versioned Daytona snapshot already exists', { name });
-				return name;
-			}
 			this.logger.warn('Failed to create versioned snapshot; using declarative image', {
 				name,
 				error: error instanceof Error ? error.message : String(error),
