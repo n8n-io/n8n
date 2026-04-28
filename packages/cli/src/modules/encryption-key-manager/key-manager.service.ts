@@ -69,7 +69,8 @@ export class KeyManagerService {
 
 	/**
 	 * Seeds an active aes-256-gcm key if no active GCM key exists.
-	 * Generates a fresh random 256-bit key and inserts it as active.
+	 * Race-safe across concurrent mains: the DB's partial unique index on
+	 * (type, status='active') serializes inserts, and losers are silently ignored.
 	 */
 	async bootstrapGcmKey(): Promise<void> {
 		const existing = await this.deploymentKeyRepository.findOne({
@@ -78,7 +79,13 @@ export class KeyManagerService {
 		if (existing) return;
 
 		const rawKey = randomBytes(32).toString('hex');
-		await this.addKey(rawKey, 'aes-256-gcm', true);
+		const encryptedValue = this.cipher.encryptDEKWithInstanceKey(rawKey);
+		await this.deploymentKeyRepository.insertOrIgnore({
+			type: 'data_encryption',
+			value: encryptedValue,
+			algorithm: 'aes-256-gcm',
+			status: 'active',
+		});
 	}
 
 	/** Lists encryption keys, optionally filtered by type. */

@@ -140,9 +140,6 @@ describe('KeyManagerService', () => {
 
 		it('generates a 64-char hex key and inserts as active when no active GCM key exists', async () => {
 			repository.findOne.mockResolvedValue(null);
-			const entity = makeKey({ algorithm: 'aes-256-gcm', status: 'active' });
-			repository.create.mockReturnValue(entity);
-			repository.insertAsActive.mockResolvedValue(entity);
 			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-gcm-key');
 
 			await Container.get(KeyManagerService).bootstrapGcmKey();
@@ -151,7 +148,12 @@ describe('KeyManagerService', () => {
 			const [rawKey] = cipher.encryptDEKWithInstanceKey.mock.calls[0];
 			expect(typeof rawKey).toBe('string');
 			expect(rawKey).toHaveLength(64);
-			expect(repository.insertAsActive).toHaveBeenCalled();
+			expect(repository.insertOrIgnore).toHaveBeenCalledWith({
+				type: 'data_encryption',
+				value: 'encrypted-gcm-key',
+				algorithm: 'aes-256-gcm',
+				status: 'active',
+			});
 		});
 	});
 
