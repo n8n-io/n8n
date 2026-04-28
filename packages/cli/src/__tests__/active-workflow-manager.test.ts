@@ -457,7 +457,7 @@ describe('ActiveWorkflowManager', () => {
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
-				const donePromise = createDeferredPromise<IRun | undefined>();
+				const donePromise = createDeferredPromise<IRun>();
 				context.emit(triggerData, undefined, donePromise, 'wf-1:node-1:1700000000000');
 
 				await expect(donePromise.promise).resolves.toBeUndefined();
