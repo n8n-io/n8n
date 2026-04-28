@@ -7,7 +7,9 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import { Agent, Memory, wrapToolForApproval } from '@n8n/agents';
+import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
+import type { AgentSkill } from '@n8n/api-types';
+import { z } from 'zod';
 
 import type {
 	AgentJsonConfig,
@@ -36,6 +38,8 @@ export interface BuildFromJsonOptions {
 	credentialProvider: CredentialProvider;
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
 	resolveTool?: ToolResolver;
+	/** Stored skill bodies keyed by skill id. Only refs present in config.tools are enabled. */
+	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
 }
@@ -68,7 +72,8 @@ export async function buildFromJson(
 		agent.model(config.model);
 	}
 
-	agent.instructions(config.instructions);
+	const enabledSkills = getEnabledSkills(config.tools ?? [], options.skills ?? {});
+	agent.instructions(withSkillCatalog(config.instructions, enabledSkills));
 
 	// Tools
 	if (config.tools) {
@@ -79,6 +84,9 @@ export async function buildFromJson(
 				agent.tool(built);
 			}
 		}
+	}
+	if (enabledSkills.length > 0) {
+		agent.tool(createLoadSkillTool(enabledSkills));
 	}
 
 	// Provider tools
@@ -109,6 +117,73 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+type EnabledSkill = { id: string; skill: AgentSkill };
+
+function getEnabledSkills(
+	refs: AgentJsonConfigRef[],
+	skills: Record<string, AgentSkill>,
+): EnabledSkill[] {
+	const seen = new Set<string>();
+	const enabled: EnabledSkill[] = [];
+
+	for (const ref of refs) {
+		if (!isSkillRef(ref) || seen.has(ref.id)) continue;
+		seen.add(ref.id);
+		const skill = skills[ref.id];
+		if (!skill) continue;
+		enabled.push({ id: ref.id, skill });
+	}
+
+	return enabled;
+}
+
+function withSkillCatalog(instructions: string, skills: EnabledSkill[]): string {
+	if (skills.length === 0) return instructions;
+
+	const catalog = skills
+		.map(({ id, skill }) => `- ${id}: ${skill.name} - ${skill.description}`)
+		.join('\n');
+	const baseInstructions = instructions.trimEnd();
+
+	return `${baseInstructions}${baseInstructions ? '\n\n' : ''}Available skills:
+${catalog}
+
+If the user's task matches a skill description, call load_skill with the skill id before applying that skill. Skill bodies are intentionally not included here; load them only when relevant.`;
+}
+
+function createLoadSkillTool(skills: EnabledSkill[]): BuiltTool {
+	const skillsById = new Map(skills.map(({ id, skill }) => [id, skill]));
+
+	return new Tool('load_skill')
+		.description(
+			'Load the full instructions for an enabled skill when its name or description matches the current task. ' +
+				'Use this before applying a skill; available skill ids are listed in the system instructions.',
+		)
+		.input(
+			z.object({
+				skillId: z.string().describe('The skill id from the Available skills list'),
+			}),
+		)
+		.handler(async ({ skillId }: { skillId: string }) => {
+			const skill = skillsById.get(skillId);
+			if (!skill) {
+				return {
+					ok: false,
+					error: `Skill "${skillId}" is not enabled for this agent.`,
+				};
+			}
+
+			return {
+				ok: true,
+				skillId,
+				name: skill.name,
+				description: skill.description,
+				instructions: skill.instructions,
+			};
+		})
+		.build();
 }
 
 function isSkillRef(

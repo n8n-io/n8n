@@ -1,6 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
+import type { ZodTypeAny } from 'zod';
 
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
@@ -55,20 +56,21 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool).toBeDefined();
 			expect(tool.description).toContain('patch_config');
 			expect(tool.description).toContain('{ type: "skill", id }');
+			expect(tool.description).toContain('Use when');
 		});
 
 		it('creates a skill and returns the generated skill id', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.createSkill.mockResolvedValue({
 				name: 'Summarize Meetings',
-				description: 'Summarizes meetings',
+				description: 'Use when summarizing meeting notes',
 				instructions: 'Extract decisions and action items.',
 			});
 
 			const result = await getCreateSkillTool(service).handler!(
 				{
 					name: 'Summarize Meetings',
-					description: 'Summarizes meetings',
+					description: 'Use when summarizing meeting notes',
 					body: 'Extract decisions and action items.',
 				},
 				ctx,
@@ -80,7 +82,7 @@ describe('AgentsBuilderToolsService', () => {
 				'summarize_meetings',
 				{
 					name: 'Summarize Meetings',
-					description: 'Summarizes meetings',
+					description: 'Use when summarizing meeting notes',
 					instructions: 'Extract decisions and action items.',
 				},
 			);
@@ -89,10 +91,27 @@ describe('AgentsBuilderToolsService', () => {
 				id: 'summarize_meetings',
 				skill: {
 					name: 'Summarize Meetings',
-					description: 'Summarizes meetings',
+					description: 'Use when summarizing meeting notes',
 					instructions: 'Extract decisions and action items.',
 				},
 			});
+		});
+
+		it('requires skill descriptions to start with "Use when"', () => {
+			const { service } = makeService();
+			const tool = getCreateSkillTool(service);
+			const inputSchema = tool.inputSchema as ZodTypeAny;
+
+			const result = inputSchema.safeParse({
+				name: 'Summarize Meetings',
+				description: 'Summarizes meetings',
+				body: 'Extract decisions and action items.',
+			});
+
+			expect(result?.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0]?.message).toBe('Description must start with "Use when ..."');
+			}
 		});
 	});
 });

@@ -123,7 +123,8 @@ function: take \`input\`, compute, return a JSON-serialisable value.
 Use skills for reusable instructions, playbooks, style guides, policies, or
 domain knowledge the agent should follow. Call create_skill with the skill
 \`name\`, \`description\`, and \`body\`; the tool returns the generated skill
-\`id\`.
+\`id\`. Skill descriptions must start with "Use when ..." and describe the
+task/situation that should trigger loading the skill.
 
 After create_skill succeeds, register the skill in the agent config by calling
 patch_config to append the returned id:
@@ -345,7 +346,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 4. patch_config with \`{ op: "add", path: "/tools/-", value: { ... credentials: {...} } }\`
 
 ### Adding a skill to an existing agent
-1. create_skill({ name: "Summarize Meetings", description: "Summarizes meeting notes", body: "Extract decisions, risks, and action items." })
+1. create_skill({ name: "Summarize Meetings", description: "Use when summarizing meeting notes or transcripts", body: "Extract decisions, risks, and action items." })
    → { id: "summarize_meetings", ... }
 2. patch_config with \`{ op: "add", path: "/tools/-", value: { "type": "skill", "id": "summarize_meetings" } }\`
 

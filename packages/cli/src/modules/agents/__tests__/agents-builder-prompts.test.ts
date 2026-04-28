@@ -84,6 +84,7 @@ describe('TOOL_TYPES_SECTION', () => {
 
 	it('instructs to create and register skills', () => {
 		expect(TOOL_TYPES_SECTION).toContain('create_skill');
+		expect(TOOL_TYPES_SECTION).toContain('Use when');
 		expect(TOOL_TYPES_SECTION).toContain('{ "type": "skill", "id": "summarize_meetings" }');
 	});
 

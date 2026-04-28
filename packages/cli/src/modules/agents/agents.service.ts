@@ -1336,6 +1336,7 @@ export class AgentsService {
 			resolveTool: async (ref) => {
 				return await toolResolver(ref);
 			},
+			skills: agentEntity.skills ?? {},
 			memoryFactory: this.getMemoryFactory(),
 		});
 

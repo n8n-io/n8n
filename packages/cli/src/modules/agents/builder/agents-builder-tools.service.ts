@@ -226,6 +226,7 @@ export class AgentsBuilderToolsService {
 		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
 			.description(
 				'Create and store an agent skill. Pass the skill name, a short description, and the full skill body. ' +
+					'The description must start with "Use when ..." so the runtime can decide when to load it. ' +
 					'The body is stored as the skill instructions. This does NOT register the skill in the agent config — ' +
 					'after this succeeds, follow up with patch_config to append a `{ type: "skill", id }` entry to `tools` ' +
 					'using the returned id. Returns { ok: true, id, skill } or { ok: false, errors }.',
@@ -233,7 +234,12 @@ export class AgentsBuilderToolsService {
 			.input(
 				z.object({
 					name: z.string().min(1).describe('Human-readable skill name'),
-					description: z.string().describe('Short description of what the skill teaches the agent'),
+					description: z
+						.string()
+						.regex(/^Use when\s+\S/i, 'Description must start with "Use when ..."')
+						.describe(
+							'Short description of when to load the skill. Must start with "Use when ...".',
+						),
 					body: z.string().min(1).describe('Full skill instructions/body'),
 				}),
 			)
