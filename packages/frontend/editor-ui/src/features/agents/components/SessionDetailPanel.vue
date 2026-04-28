@@ -147,15 +147,16 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<span :class="$style.label">{{ i18n.baseText('agentSessions.timeline.created') }}</span>
 					<span :class="$style.value">{{ formatTimestamp(item.timestamp) }}</span>
 				</div>
-				<N8nButton
-					v-if="fullExecutionHref"
-					variant="outline"
-					size="small"
-					:label="i18n.baseText('agentSessions.workflowLog.openFull')"
-					data-test-id="open-full-execution"
-					:class="$style.openFullButton"
-					@click="openFullExecution"
-				/>
+				<div :class="$style.executionButton">
+					<N8nButton
+						v-if="fullExecutionHref"
+						variant="outline"
+						size="small"
+						:label="i18n.baseText('agentSessions.workflowLog.openFull')"
+						data-test-id="open-full-execution"
+						@click="openFullExecution"
+					/>
+				</div>
 			</div>
 
 			<template v-if="item.kind === 'workflow'">
@@ -282,8 +283,10 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	font-variant-numeric: tabular-nums;
 }
 
-.openFullButton {
-	align-self: flex-start;
+.executionButton {
+	padding-top: var(--spacing--xs);
+	display: flex;
+	justify-content: end;
 }
 
 .json {
