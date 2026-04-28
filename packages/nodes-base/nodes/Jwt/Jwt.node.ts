@@ -416,8 +416,13 @@ export class Jwt implements INodeType {
 
 					const { ignoreExpiration, ignoreNotBefore, clockTolerance, complete } = options;
 
+					const algorithm = options.algorithm || credentials.algorithm;
+					if (!algorithm) {
+						throw new NodeOperationError(this.getNode(), 'Algorithm must be specified for JWT verification', { itemIndex });
+					}
+
 					const data = jwt.verify(token, secretOrPublicKey, {
-						algorithms: [options.algorithm ?? credentials.algorithm],
+						algorithms: [algorithm],
 						ignoreExpiration,
 						ignoreNotBefore,
 						clockTolerance,
