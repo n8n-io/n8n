@@ -583,28 +583,6 @@ describe('analyzeWorkflow', () => {
 		const result = await analyzeWorkflow(context, 'wf-1');
 
 		expect(result).toHaveLength(1);
-		expect(result[0].needsAction).toBe(true);
-	});
-
-	it('keeps auto-applied requests so hidden setup can still persist them', async () => {
-		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
-			makeWorkflowJSON([makeNode()]),
-		);
-		(context.nodeService.getDescription as jest.Mock).mockResolvedValue({
-			group: [],
-			credentials: [{ name: 'slackApi' }],
-		});
-		(context.credentialService.list as jest.Mock).mockResolvedValue([
-			{ id: 'cred-2', name: 'Newer Slack', updatedAt: '2025-06-01T00:00:00.000Z' },
-			{ id: 'cred-1', name: 'Older Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
-		]);
-		(context.credentialService.test as jest.Mock).mockResolvedValue({ success: true });
-
-		const result = await analyzeWorkflow(context, 'wf-1');
-
-		expect(result).toHaveLength(1);
-		expect(result[0].isAutoApplied).toBe(true);
-		expect(result[0].needsAction).toBe(false);
 	});
 
 	it('keeps testable trigger requests even when their credential is already valid', async () => {

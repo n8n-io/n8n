@@ -883,15 +883,13 @@ export class InstanceAiAdapterService {
 					includeGlobal: true,
 				});
 
-				return [...credentials]
-					.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-					.map(
-						(c): CredentialSummary => ({
-							id: c.id,
-							name: c.name,
-							type: c.type,
-						}),
-					);
+				return credentials.map(
+					(c): CredentialSummary => ({
+						id: c.id,
+						name: c.name,
+						type: c.type,
+					}),
+				);
 			},
 
 			async get(credentialId: string) {
