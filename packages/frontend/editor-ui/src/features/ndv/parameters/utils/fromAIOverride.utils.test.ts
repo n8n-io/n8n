@@ -125,6 +125,17 @@ describe('makeOverrideValue', () => {
 		expect(makeOverrideValue(context, nodeType)).toBeNull();
 	});
 
+	it('should create an fromAI override for a field named "name"', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext('', 'parameters.name'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).not.toBeNull();
+		expect(result?.type).toEqual('fromAI');
+	});
+
 	it('should create an fromAI override', () => {
 		getNodeType.mockReturnValue(AI_NODE_TYPE);
 		const result = makeOverrideValue(

@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Head, Post, RootLevelController } from '@n8n/decorators';
+import { Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
@@ -65,6 +65,54 @@ export class McpController {
 		this.setCorsHeaders(res);
 		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 		res.status(401).end();
+	}
+
+	/**
+	 * GET endpoint for SSE stream connections
+	 * Some MCP clients (e.g. Gemini CLI) use GET requests to establish SSE streams
+	 * for server-initiated messages per the MCP Streamable HTTP transport spec.
+	 */
+	@Get('/http', {
+		middlewares: [getAuthMiddleware()],
+		skipAuth: true,
+		usesTemplates: true,
+	})
+	async stream(req: AuthenticatedRequest, res: FlushableResponse) {
+		this.setCorsHeaders(res);
+
+		const enabled = await this.mcpSettingsService.getEnabled();
+		if (!enabled) {
+			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+			return;
+		}
+
+		try {
+			const { StreamableHTTPServerTransport } = await import(
+				'@modelcontextprotocol/sdk/server/streamableHttp.js'
+			);
+			const server = await this.mcpService.getServer(req.user);
+			const transport = new StreamableHTTPServerTransport({
+				sessionIdGenerator: undefined,
+			});
+			res.on('close', () => {
+				void transport.close();
+				void server.close();
+			});
+			await server.connect(transport);
+			await transport.handleRequest(req, res);
+		} catch (error) {
+			this.errorReporter.error(error);
+			if (!res.headersSent) {
+				res.status(500).json({
+					jsonrpc: '2.0',
+					error: {
+						code: -32603,
+						message: INTERNAL_SERVER_ERROR_MESSAGE,
+					},
+					id: null,
+				});
+			}
+		}
 	}
 
 	@Post('/http', {
