@@ -23,25 +23,6 @@ import { UM_FIX_INSTRUCTION } from '@/constants';
 
 import { BaseCommand } from '../base-command';
 
-type AllowedCredentialProperty = Exclude<
-	Extract<keyof CredentialsEntity, string>,
-	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate'
->;
-
-const allowedCredentialProperties: Record<AllowedCredentialProperty, true> = {
-	createdAt: true,
-	updatedAt: true,
-	id: true,
-	name: true,
-	data: true,
-	type: true,
-	isManaged: true,
-	isGlobal: true,
-	isResolvable: true,
-	resolvableAllowFallback: true,
-	resolverId: true,
-};
-
 type ReadCredentialsOptions = {
 	inputPath: string;
 	separate: boolean;
@@ -76,6 +57,11 @@ const flagsSchema = z.object({
 		.describe('The ID of the project to assign the imported credential to')
 		.optional(),
 });
+
+type ImportableCredentialProperty = Exclude<
+	Extract<keyof CredentialsEntity, string>,
+	'shared' | 'toJSON' | 'generateId' | 'setUpdateDate'
+>;
 
 @Command({
 	name: 'import:credentials',
@@ -332,14 +318,14 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	): Partial<CredentialsEntity> {
 		if (include?.length) {
 			const includeProperties = include.filter((property) =>
-				this.isCredentialPropertyAllowed(property),
+				this.isCredentialPropertyImportable(property),
 			);
 			return pick(credential, includeProperties);
 		}
 
 		if (exclude?.length) {
 			const excludeProperties = exclude.filter((property) =>
-				this.isCredentialPropertyAllowed(property),
+				this.isCredentialPropertyImportable(property),
 			);
 			return omit(credential, excludeProperties);
 		}
@@ -347,8 +333,24 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 		return credential;
 	}
 
-	private isCredentialPropertyAllowed(property: string): property is AllowedCredentialProperty {
-		return property in allowedCredentialProperties;
+	private isCredentialPropertyImportable(
+		property: string,
+	): property is ImportableCredentialProperty {
+		const importableProperties = {
+			createdAt: true,
+			updatedAt: true,
+			id: true,
+			name: true,
+			data: true,
+			type: true,
+			isManaged: true,
+			isGlobal: true,
+			isResolvable: true,
+			resolvableAllowFallback: true,
+			resolverId: true,
+		} satisfies Record<ImportableCredentialProperty, true>;
+
+		return property in importableProperties;
 	}
 
 	private async getCredentialOwner(credentialsId: string) {
