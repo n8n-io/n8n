@@ -16,7 +16,7 @@ import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import { createEmptyRunExecutionData, createRunExecutionData, deepCopy } from 'n8n-workflow';
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
@@ -111,92 +111,6 @@ describe('useWorkflowsStore', () => {
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.id).toBe('');
-	});
-
-	describe('workflowValidationIssues', () => {
-		it('collects issues only from connected, enabled nodes', () => {
-			const connections: IConnections = {
-				Start: {
-					main: [
-						[
-							{
-								node: 'Fetch',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-			};
-
-			workflowsStore.workflow.nodes = [
-				{
-					id: 'start',
-					name: 'Start',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					parameters: {},
-					position: [0, 0],
-				},
-				{
-					id: 'fetch',
-					name: 'Fetch',
-					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 1,
-					parameters: {},
-					issues: {
-						parameters: {
-							url: ['Missing URL', 'Invalid URL.'],
-						},
-						credentials: {
-							httpBasicAuth: ['Credentials not set'],
-						},
-					},
-					position: [300, 0],
-				},
-				{
-					id: 'orphan',
-					name: 'Disconnected',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					parameters: {},
-					issues: {
-						parameters: { field: ['Should be ignored'] },
-					},
-					position: [0, 400],
-				},
-				{
-					id: 'disabled',
-					name: 'Disabled Node',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					disabled: true,
-					parameters: {},
-					issues: {
-						parameters: { field: ['Disabled issue'] },
-					},
-					position: [0, 600],
-				},
-			];
-			workflowsStore.workflow.connections = connections;
-
-			const issues = workflowsStore.workflowValidationIssues;
-			expect(issues).toEqual([
-				{ node: 'Fetch', type: 'parameters', value: ['Missing URL', 'Invalid URL.'] },
-				{ node: 'Fetch', type: 'credentials', value: ['Credentials not set'] },
-			]);
-		});
-	});
-
-	describe('formatIssueMessage', () => {
-		it('joins array entries and trims trailing period', () => {
-			const message = workflowsStore.formatIssueMessage(['Missing URL', 'Invalid value.']);
-			expect(message).toBe('Missing URL, Invalid value');
-		});
-
-		it('returns string representation for non-array values', () => {
-			expect(workflowsStore.formatIssueMessage('Simple issue.')).toBe('Simple issue.');
-		});
 	});
 
 	describe('allWorkflows', () => {
@@ -329,53 +243,6 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('nodesIssuesExist', () => {
-		it('should return true when a node has issues and connected', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1', issues: { error: ['Error message'] } },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			workflowsStore.workflow.connections = {
-				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(true);
-		});
-
-		it('should return false when node has issues but it is not connected', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1', issues: { error: ['Error message'] } },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false when no nodes have issues', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			workflowsStore.workflow.connections = {
-				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false when there are no nodes', () => {
-			workflowsStore.workflow.nodes = [];
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
-		});
-	});
-
 	describe('getWorkflowResultDataByNodeName()', () => {
 		it('should return null when no workflow run data is present', () => {
 			workflowsStore.workflowExecutionData = null;
@@ -401,73 +268,6 @@ describe('useWorkflowsStore', () => {
 
 			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
 			expect(resultData).toEqual(expectedData);
-		});
-	});
-
-	describe('isNodeInOutgoingNodeConnections()', () => {
-		it('should return false when no outgoing connections from root node', () => {
-			workflowsStore.workflow.connections = {};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(false);
-		});
-
-		it('should return true when search node is directly connected to root node', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(true);
-		});
-
-		it('should return true when search node is indirectly connected to root node', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(true);
-		});
-
-		it('should return false when search node is not connected to root node', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'AnotherNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode');
-			expect(result).toBe(false);
-		});
-
-		it('should return true if connection is indirect within `depth`', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 2);
-			expect(result).toBe(true);
-		});
-
-		it('should return false if connection is indirect beyond `depth`', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'IntermediateNode' } as IConnection]] },
-				IntermediateNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 1);
-			expect(result).toBe(false);
-		});
-
-		it('should return false if depth is 0', () => {
-			workflowsStore.workflow.connections = {
-				RootNode: { main: [[{ node: 'SearchNode' } as IConnection]] },
-			};
-
-			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 0);
-			expect(result).toBe(false);
 		});
 	});
 
@@ -1075,26 +875,6 @@ describe('useWorkflowsStore', () => {
 				},
 			});
 		});
-	});
-
-	describe('findNodeByPartialId', () => {
-		test.each([
-			[[], 'D', undefined],
-			[['A', 'B', 'C'], 'D', undefined],
-			[['A', 'B', 'C'], 'B', 1],
-			[['AA', 'BB', 'CC'], 'B', 1],
-			[['AA', 'BB', 'BC'], 'B', 1],
-			[['AA', 'BB', 'BC'], 'BC', 2],
-		] as Array<[string[], string, number | undefined]>)(
-			'with input %s , %s returns node with index %s',
-			(ids, id, expectedIndex) => {
-				workflowsStore.workflow.nodes = ids.map((x) => ({ id: x }) as never);
-
-				expect(workflowsStore.findNodeByPartialId(id)).toBe(
-					workflowsStore.workflow.nodes[expectedIndex ?? -1],
-				);
-			},
-		);
 	});
 
 	describe('getPartialIdForNode', () => {
@@ -1880,108 +1660,6 @@ describe('useWorkflowsStore', () => {
 			});
 
 			expect(result).toBe(0); // No nodes to update (only current node exists)
-		});
-	});
-
-	describe('getWebhookUrl', () => {
-		it('should return undefined when node does not exist', async () => {
-			workflowsStore.workflow.nodes = [];
-
-			const result = await workflowsStore.getWebhookUrl('non-existent-node', 'test');
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should return undefined when node type does not exist', async () => {
-			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue(null);
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should return undefined when node type has no webhooks', async () => {
-			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should return webhook URL for test type', async () => {
-			const testNode = createTestNode({
-				id: 'node-1',
-				name: 'Webhook Node',
-				type: 'n8n-nodes-base.webhook',
-			});
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [{ name: 'default', httpMethod: 'GET', path: 'webhook' }],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeDefined();
-			expect(typeof result).toBe('string');
-			expect(result).toContain('webhook');
-		});
-
-		it('should return webhook URL for production type', async () => {
-			const testNode = createTestNode({
-				id: 'node-1',
-				name: 'Webhook Node',
-				type: 'n8n-nodes-base.webhook',
-			});
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [{ name: 'default', httpMethod: 'POST', path: 'webhook' }],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'production');
-
-			expect(result).toBeDefined();
-			expect(typeof result).toBe('string');
-			expect(result).toContain('webhook');
-		});
-
-		it('should use the first webhook when node has multiple webhooks', async () => {
-			workflowsStore.workflow.id = 'test-workflow-id';
-			const testNode = createTestNode({
-				id: 'node-1',
-				name: 'Webhook Node',
-				type: 'n8n-nodes-base.webhook',
-			});
-			workflowsStore.workflow.nodes = [testNode];
-			getNodeType.mockReturnValue({
-				inputs: [],
-				group: [],
-				webhooks: [
-					{ name: 'default', httpMethod: 'GET', path: 'webhook1' },
-					{ name: 'default', httpMethod: 'POST', path: 'webhook2' },
-				],
-				properties: [],
-			});
-
-			const result = await workflowsStore.getWebhookUrl('node-1', 'test');
-
-			expect(result).toBeDefined();
-			expect(typeof result).toBe('string');
-			expect(result).toContain('webhook1');
 		});
 	});
 

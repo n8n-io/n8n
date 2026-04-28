@@ -43,9 +43,13 @@ const properties: INodeProperties[] = [
 				displayName: 'Number of Images',
 				name: 'sampleCount',
 				default: 1,
-				description:
-					'Number of images to generate. Not supported by Gemini models, supported by Imagen models.',
+				description: 'Number of images to generate',
 				type: 'number',
+				displayOptions: {
+					show: {
+						'/modelId': [{ _cnd: { includes: 'imagen' } }],
+					},
+				},
 				typeOptions: {
 					minValue: 1,
 				},

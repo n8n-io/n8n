@@ -29,6 +29,7 @@ import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
+import type { Logger } from '../../logger';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -37,7 +38,7 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
-import type { BackgroundTaskResult, OrchestrationContext } from '../../types';
+import type { BackgroundTaskResult, InstanceAiContext, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
@@ -59,6 +60,57 @@ const UNTESTABLE_TRIGGERS = new Set([
 function triggerLabel(nodeType: string): string {
 	const short = nodeType.split('.').pop() ?? nodeType;
 	return short.replace(/Trigger$/i, '').toLowerCase() || short.toLowerCase();
+}
+
+/**
+ * Clear the AI-builder temporary marker from the build's main workflow so the
+ * run-finish reap leaves it alone. Best-effort: a failure here means the
+ * main workflow gets archived at run-finish, which the user can recover
+ * from the archive view.
+ */
+async function promoteMainWorkflow(
+	context: InstanceAiContext | undefined,
+	logger: Logger,
+	workflowId: string | undefined,
+): Promise<void> {
+	if (!workflowId || !context) return;
+	try {
+		await context.workflowService.clearAiTemporary(workflowId);
+	} catch (error) {
+		logger.warn(
+			`Failed to clear AI-builder temporary marker on main workflow ${workflowId}: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+		);
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+type ExecutableTool = Record<string, unknown> & {
+	execute: (...args: unknown[]) => unknown;
+};
+
+function isExecutableTool(tool: unknown): tool is ExecutableTool {
+	return isRecord(tool) && typeof tool.execute === 'function';
+}
+
+export function recordSuccessfulWorkflowBuilds(
+	tool: unknown,
+	onWorkflowId: (workflowId: string) => void,
+): void {
+	if (!isExecutableTool(tool)) return;
+
+	const execute = tool.execute.bind(tool);
+	tool.execute = async (...args: unknown[]) => {
+		const result = await execute(...args);
+		if (isRecord(result) && result.success === true && typeof result.workflowId === 'string') {
+			onWorkflowId(result.workflowId);
+		}
+		return result;
+	};
 }
 
 const UNTESTABLE_TRIGGER_LABELS = [...UNTESTABLE_TRIGGERS].map(triggerLabel).join(', ');
@@ -508,6 +560,11 @@ export async function startBuildWorkflowAgentTask(
 
 								const refreshedAttempt = submitAttempts.get(mainWorkflowPath);
 								if (refreshedAttempt?.success) {
+									await promoteMainWorkflow(
+										domainContext,
+										context.logger,
+										refreshedAttempt.workflowId,
+									);
 									return {
 										text: finalText,
 										outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
@@ -527,11 +584,21 @@ export async function startBuildWorkflowAgentTask(
 							}
 						}
 
+						await promoteMainWorkflow(
+							domainContext,
+							context.logger,
+							mainWorkflowAttempt.workflowId,
+						);
 						return {
 							text: finalText,
 							outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
 						};
 					}
+
+					let fallbackMainWorkflowId: string | undefined;
+					recordSuccessfulWorkflowBuilds(builderTools['build-workflow'], (workflowId) => {
+						fallbackMainWorkflowId = workflowId;
+					});
 
 					const tracedBuilderTools = traceSubAgentTools(context, builderTools, 'workflow-builder');
 
@@ -592,6 +659,7 @@ export async function startBuildWorkflowAgentTask(
 					});
 
 					const toolFinalText = await hitlResult.text;
+					await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
 					return { text: toolFinalText };
 				} finally {
 					await builderWs?.cleanup();

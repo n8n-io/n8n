@@ -8,6 +8,7 @@ import { finished } from 'stream/promises';
 
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import * as ResponseHelper from '@/response-helper';
+import type { ExpectedWebhookNodeType } from '@/webhooks/node-type-matcher';
 import type {
 	WebhookStaticResponse,
 	WebhookResponse,
@@ -29,7 +30,10 @@ import type {
 const WEBHOOK_METHODS: IHttpRequestMethods[] = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
 class WebhookRequestHandler {
-	constructor(private readonly webhookManager: IWebhookManager) {}
+	constructor(
+		private readonly webhookManager: IWebhookManager,
+		private readonly expectedNodeType?: ExpectedWebhookNodeType,
+	) {}
 
 	/**
 	 * Handles an incoming webhook request. Handles CORS and delegates the
@@ -58,7 +62,7 @@ class WebhookRequestHandler {
 		}
 
 		try {
-			const response = await this.webhookManager.executeWebhook(req, res);
+			const response = await this.webhookManager.executeWebhook(req, res, this.expectedNodeType);
 
 			// Modern way of responding to webhooks
 			if (isWebhookResponse(response)) {
@@ -231,14 +235,19 @@ class WebhookRequestHandler {
 	}
 }
 
-export function createWebhookHandlerFor(webhookManager: IWebhookManager) {
-	const handler = new WebhookRequestHandler(webhookManager);
+export function createWebhookHandlerFor(
+	webhookManager: IWebhookManager,
+	expectedNodeType?: ExpectedWebhookNodeType,
+): express.RequestHandler {
+	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
 
-	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
-		const { params } = req;
+	return async (req, res) => {
+		const webhookRequest = req as WebhookRequest | WebhookOptionsRequest;
+
+		const { params } = webhookRequest;
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
-		await handler.handleRequest(req, res);
+		await handler.handleRequest(webhookRequest, res);
 	};
 }
