@@ -66,8 +66,7 @@ export function handleBuildOutcome(
 ): TransitionResult {
 	const normalizedState = normalizeRunState(state, outcome.runId);
 	const attempt = makeAttempt(normalizedState, 'build', attempts);
-	const isRepairSubmit =
-		Boolean(normalizedState.successfulSubmitSeen) && normalizedState.phase === 'repairing';
+	const isRepairSubmit = Boolean(normalizedState.successfulSubmitSeen) && outcome.submitted;
 	const postSubmitRemediationSubmitsUsed = isRepairSubmit
 		? (normalizedState.postSubmitRemediationSubmitsUsed ?? 0) + 1
 		: (normalizedState.postSubmitRemediationSubmitsUsed ?? 0);
@@ -152,6 +151,14 @@ export function handleBuildOutcome(
 		lastRemediation: remediation,
 	};
 
+	if (outcome.needsUserInput) {
+		return {
+			state: { ...updatedState, phase: 'blocked', status: 'blocked' },
+			action: { type: 'blocked', reason: outcome.blockingReason ?? 'Needs user input' },
+			attempt,
+		};
+	}
+
 	if (outcome.triggerType === 'trigger_only') {
 		return {
 			state: { ...updatedState, phase: 'done', status: 'completed' },
@@ -162,14 +169,6 @@ export function handleBuildOutcome(
 				mockedCredentialTypes,
 				hasUnresolvedPlaceholders: updatedState.hasUnresolvedPlaceholders,
 			},
-			attempt,
-		};
-	}
-
-	if (outcome.needsUserInput) {
-		return {
-			state: { ...updatedState, phase: 'blocked', status: 'blocked' },
-			action: { type: 'blocked', reason: outcome.blockingReason ?? 'Needs user input' },
 			attempt,
 		};
 	}

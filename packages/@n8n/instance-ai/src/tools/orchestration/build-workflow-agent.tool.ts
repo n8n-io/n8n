@@ -40,7 +40,12 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { BackgroundTaskResult, InstanceAiContext, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
-import type { TriggerType, WorkflowBuildOutcome, WorkflowLoopState } from '../../workflow-loop';
+import {
+	createRemediation,
+	type TriggerType,
+	type WorkflowBuildOutcome,
+	type WorkflowLoopState,
+} from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
@@ -143,20 +148,30 @@ function buildOutcome(
 			summary: finalText,
 		};
 	}
+	const placeholderRemediation = attempt.hasUnresolvedPlaceholders
+		? createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance:
+					'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
+			})
+		: undefined;
 	return {
 		workItemId,
 		runId,
 		taskId,
 		workflowId: attempt.workflowId,
 		submitted: true,
-		triggerType: attempt.hasUnresolvedPlaceholders ? 'trigger_only' : detectTriggerType(attempt),
-		needsUserInput: false,
+		triggerType: detectTriggerType(attempt),
+		needsUserInput: Boolean(placeholderRemediation),
+		blockingReason: placeholderRemediation?.guidance,
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
 		verificationPinData: attempt.verificationPinData,
 		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
-		remediation: attempt.remediation,
+		remediation: placeholderRemediation ?? attempt.remediation,
 		summary: finalText,
 	};
 }

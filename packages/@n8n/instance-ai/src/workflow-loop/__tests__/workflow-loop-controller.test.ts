@@ -150,21 +150,34 @@ describe('handleBuildOutcome', () => {
 		expect(attempt.attempt).toBe(2);
 	});
 
-	it('persists hasUnresolvedPlaceholders in state and done action', () => {
+	it('blocks unresolved placeholders as saved-workflow setup', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
 			workflowId: 'wf_123',
 			triggerType: 'trigger_only',
 			hasUnresolvedPlaceholders: true,
+			needsUserInput: true,
+			blockingReason: 'Route to setup.',
+			remediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
 		});
 
 		const { state: next, action } = handleBuildOutcome(state, [], outcome);
 
+		expect(next.phase).toBe('blocked');
+		expect(next.status).toBe('blocked');
+		expect(next.workflowId).toBe('wf_123');
 		expect(next.hasUnresolvedPlaceholders).toBe(true);
-		expect(action.type).toBe('done');
-		if (action.type === 'done') {
-			expect(action.hasUnresolvedPlaceholders).toBe(true);
-		}
+		expect(next.lastRemediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+		expect(action.type).toBe('blocked');
 	});
 
 	it('allows two pre-save submit failures before blocking the third', () => {
@@ -241,6 +254,25 @@ describe('handleBuildOutcome', () => {
 		const state = makeState({
 			runId: 'run_1',
 			phase: 'repairing',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 1,
+		});
+		const result = handleBuildOutcome(state, [], {
+			...makeOutcome({
+				runId: 'run_1',
+				workflowId: 'wf_123',
+			}),
+		});
+
+		expect(result.state.postSubmitRemediationSubmitsUsed).toBe(2);
+		expect(result.state.phase).toBe('verifying');
+	});
+
+	it('counts direct post-submit resubmits even when the state is still verifying', () => {
+		const state = makeState({
+			runId: 'run_1',
+			phase: 'verifying',
 			workflowId: 'wf_123',
 			successfulSubmitSeen: true,
 			postSubmitRemediationSubmitsUsed: 1,

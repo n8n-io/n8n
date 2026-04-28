@@ -134,6 +134,40 @@ describe('resultFromPostStreamError', () => {
 			submitted: true,
 		});
 	});
+
+	it('marks unresolved placeholder submits as saved workflows needing setup', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'abc',
+				success: true,
+				workflowId: 'WF_123',
+				hasUnresolvedPlaceholders: true,
+			},
+		];
+
+		const result = resultFromPostStreamError({
+			error: new Error('Stopped after submit'),
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result!.outcome).toMatchObject({
+			workflowId: 'WF_123',
+			submitted: true,
+			needsUserInput: true,
+			blockingReason:
+				'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
+			remediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+			},
+		});
+	});
 });
 
 describe('withTerminalLoopState', () => {
