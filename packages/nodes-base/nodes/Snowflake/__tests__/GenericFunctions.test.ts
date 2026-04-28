@@ -16,6 +16,16 @@ describe('escapeSnowflakeObjectIdentifier', () => {
 	it('quotes each segment of a three-part identifier', () => {
 		expect(escapeSnowflakeObjectIdentifier('db.schema.orders')).toBe('"DB"."SCHEMA"."ORDERS"');
 	});
+
+	it('preserves case for pre-quoted identifiers', () => {
+		expect(escapeSnowflakeObjectIdentifier('"myTable"')).toBe('"myTable"');
+	});
+
+	it('does not split on dots inside quoted segments', () => {
+		expect(escapeSnowflakeObjectIdentifier('"my.schema"."my.table"')).toBe(
+			'"my.schema"."my.table"',
+		);
+	});
 });
 
 describe('getConnectionOptions', () => {

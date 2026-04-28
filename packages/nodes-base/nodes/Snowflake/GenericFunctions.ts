@@ -74,17 +74,41 @@ export async function destroy(conn: snowflake.Connection) {
 }
 
 export function escapeSnowflakeIdentifier(identifier: string): string {
-	// Strip surrounding double quotes if user already added them
-	const bare =
-		identifier.startsWith('"') && identifier.endsWith('"') && identifier.length > 2
-			? identifier.slice(1, -1).replace(/""/g, '"')
-			: identifier;
+	if (identifier.startsWith('"') && identifier.endsWith('"') && identifier.length > 2) {
+		// Already quoted — preserve case (Snowflake quoted identifiers are case-sensitive)
+		const bare = identifier.slice(1, -1).replace(/""/g, '"');
+		return `"${bare.replace(/"/g, '""')}"`;
+	}
 	// Snowflake stores unquoted identifiers as UPPERCASE by default; uppercase for compatibility
-	return `"${bare.toUpperCase().replace(/"/g, '""')}"`;
+	return `"${identifier.toUpperCase().replace(/"/g, '""')}"`;
 }
 
 export function escapeSnowflakeObjectIdentifier(identifier: string): string {
-	return identifier.split('.').map(escapeSnowflakeIdentifier).join('.');
+	const parts: string[] = [];
+	let current = '';
+	let inQuotes = false;
+
+	for (let i = 0; i < identifier.length; i++) {
+		const char = identifier[i];
+		if (char === '"') {
+			if (inQuotes && identifier[i + 1] === '"') {
+				// Escaped double-quote inside a quoted identifier
+				current += '""';
+				i++;
+			} else {
+				inQuotes = !inQuotes;
+				current += char;
+			}
+		} else if (char === '.' && !inQuotes) {
+			parts.push(current);
+			current = '';
+		} else {
+			current += char;
+		}
+	}
+	parts.push(current);
+
+	return parts.map(escapeSnowflakeIdentifier).join('.');
 }
 
 export async function execute(
