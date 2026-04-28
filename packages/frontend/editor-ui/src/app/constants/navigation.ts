@@ -72,7 +72,6 @@ export const enum VIEWS {
 	RESOLVERS = 'Resolvers',
 	INSTANCE_REGISTRY = 'InstanceRegistryView',
 	RESOURCE_CENTER = 'ResourceCenter',
-	RESOURCE_CENTER_SECTION = 'ResourceCenterSection',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];

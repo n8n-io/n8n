@@ -1,187 +1,175 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest } from '@n8n/db';
-import { ApiKeyRepository, UserRepository } from '@n8n/db';
+import type { AuthenticatedRequest, User } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { randomUUID } from 'crypto';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import { randomString } from 'n8n-workflow';
 
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 
 import { ApiKeyAuthStrategy } from '../api-key-auth.strategy';
 import { JwtService } from '../jwt.service';
-import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { API_KEY_ISSUER } from '../public-api-key.service';
 
-const mockReqWith = (apiKey: string, path: string, method: string): AuthenticatedRequest =>
+const mockReqWith = (apiKey: string): AuthenticatedRequest =>
 	mock<AuthenticatedRequest>({
-		path,
-		method,
-		headers: {
-			'x-n8n-api-key': apiKey,
-		},
+		path: '/test',
+		method: 'GET',
+		headers: { 'x-n8n-api-key': apiKey },
 	});
 
-const mockReqWithoutApiKey = (path: string, method: string): AuthenticatedRequest => {
-	const req = mock<AuthenticatedRequest>({
-		path,
-		method,
-	});
-	// Override the deep-mock proxy so the header lookup returns undefined
+const mockReqWithoutApiKey = (): AuthenticatedRequest => {
+	const req = mock<AuthenticatedRequest>({ path: '/test', method: 'GET' });
+	// Override the deep-mock proxy so the header lookup returns undefined.
 	req.headers = { host: 'localhost' } as AuthenticatedRequest['headers'];
 	return req;
 };
+
+async function signAndStoreMcpApiKey(owner: User): Promise<string> {
+	const apiKey = Container.get(JwtService).sign({
+		sub: owner.id,
+		iss: API_KEY_ISSUER,
+		aud: 'mcp-server-api',
+		jti: randomUUID(),
+	});
+
+	const entity = Container.get(ApiKeyRepository).create({
+		userId: owner.id,
+		apiKey,
+		audience: 'mcp-server-api',
+		scopes: [],
+		label: `Test MCP Key ${randomString(6)}`,
+	});
+	await Container.get(ApiKeyRepository).manager.insert(ApiKey, entity);
+
+	return apiKey;
+}
 
 let jwtService: JwtService;
 let strategy: ApiKeyAuthStrategy;
 
 describe('ApiKeyAuthStrategy', () => {
-	beforeEach(async () => {
-		await testDb.truncate(['User']);
-	});
-
 	beforeAll(async () => {
 		await testDb.init();
 		jwtService = Container.get(JwtService);
 		strategy = new ApiKeyAuthStrategy(Container.get(ApiKeyRepository), jwtService);
 	});
 
+	beforeEach(async () => {
+		await testDb.truncate(['User']);
+	});
+
 	afterAll(async () => {
 		await testDb.terminate();
 	});
 
-	it('should return null when no x-n8n-api-key header is present', async () => {
-		const req = mockReqWithoutApiKey('/test', 'GET');
-		expect(await strategy.authenticate(req)).toBeNull();
-	});
+	describe('buildTokenGrant', () => {
+		it('returns a grant with subject, role scopes, and apiKeyScopes for a valid public API key', async () => {
+			const owner = await createOwnerWithApiKey({ scopes: ['workflow:read', 'workflow:list'] });
+			const [{ apiKey }] = owner.apiKeys;
 
-	it('should return false if api key is invalid', async () => {
-		const req = mockReqWith('invalid', '/test', 'GET');
-		expect(await strategy.authenticate(req)).toBe(false);
-	});
+			const grant = await strategy.buildTokenGrant(apiKey);
 
-	it('should return false if valid api key is not in database', async () => {
-		const apiKey = jwtService.sign({ sub: '123', iss: API_KEY_ISSUER });
-		const req = mockReqWith(apiKey, '/test', 'GET');
-		expect(await strategy.authenticate(req)).toBe(false);
-	});
-
-	it('should return true and set req.user if valid api key exists in the database', async () => {
-		const owner = await createOwnerWithApiKey();
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		expect(await strategy.authenticate(req)).toBe(true);
-		expect(req.user).toBeDefined();
-		expect(req.user.id).toBe(owner.id);
-	});
-
-	it('should set req.user.role on successful authentication', async () => {
-		const owner = await createOwnerWithApiKey();
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		await strategy.authenticate(req);
-
-		expect(req.user.role).toBeDefined();
-		expect(req.user.role.slug).toBeDefined();
-	});
-
-	it('should set req.tokenGrant with the scopes of the authenticated user role', async () => {
-		const owner = await createOwnerWithApiKey();
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		await strategy.authenticate(req);
-
-		expect(req.tokenGrant).toBeDefined();
-		expect(Array.isArray(req.tokenGrant?.scopes)).toBe(true);
-	});
-
-	it('should set req.tokenGrant.apiKeyScopes from the scopes stored on the API key', async () => {
-		const owner = await createOwnerWithApiKey({ scopes: ['workflow:read', 'workflow:list'] });
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		await strategy.authenticate(req);
-
-		expect(req.tokenGrant?.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
-	});
-
-	it('should set req.tokenGrant.apiKeyScopes independently from role scopes', async () => {
-		const owner = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		await strategy.authenticate(req);
-
-		// role scopes come from the user's role — unaffected by the API key scopes restriction
-		expect(Array.isArray(req.tokenGrant?.scopes)).toBe(true);
-		expect(req.tokenGrant?.scopes.length).toBeGreaterThan(1);
-		// apiKeyScopes reflects what was stored on the key
-		expect(req.tokenGrant?.apiKeyScopes).toEqual(['workflow:read']);
-	});
-
-	it('should return false if expired JWT is used', async () => {
-		const dateInThePast = DateTime.now().minus({ days: 1 }).toUnixInteger();
-		const owner = await createOwnerWithApiKey({ expiresAt: dateInThePast });
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		expect(await strategy.authenticate(req)).toBe(false);
-	});
-
-	it('should rethrow non-TokenExpiredError from JWT verification', async () => {
-		const owner = await createOwnerWithApiKey();
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		const verifyError = new Error('Unexpected JWT error');
-		jest.spyOn(jwtService, 'verify').mockImplementationOnce(() => {
-			throw verifyError;
+			if (!grant) throw new Error('expected grant');
+			expect(grant.subject.id).toBe(owner.id);
+			expect(grant.subject.role.slug).toBeDefined();
+			// role scopes come from the user's role and are independent of the key's apiKeyScopes
+			expect(grant.scopes.length).toBeGreaterThan(1);
+			expect(grant.apiKeyScopes).toEqual(['workflow:read', 'workflow:list']);
 		});
 
-		await expect(strategy.authenticate(req)).rejects.toThrow(verifyError);
+		it('accepts legacy (non-JWT) api keys by looking up the record directly', async () => {
+			const legacyApiKey = `n8n_api_${randomString(10)}`;
+			const owner = await createOwnerWithApiKey();
+			const [{ apiKey }] = owner.apiKeys;
+			await Container.get(ApiKeyRepository).update({ apiKey }, { apiKey: legacyApiKey });
+
+			const grant = await strategy.buildTokenGrant(legacyApiKey);
+
+			expect(grant).not.toBe(false);
+			expect(grant).not.toBeNull();
+			if (grant) expect(grant.subject.id).toBe(owner.id);
+		});
+
+		it('returns null when token is empty (abstain)', async () => {
+			expect(await strategy.buildTokenGrant('')).toBeNull();
+		});
+
+		it('returns null for a JWT whose issuer does not match (abstain)', async () => {
+			const tokenExchangeJwt = jwtService.sign({ iss: TOKEN_EXCHANGE_ISSUER, sub: '123' });
+			expect(await strategy.buildTokenGrant(tokenExchangeJwt)).toBeNull();
+		});
+
+		it('returns false for tokens that cannot be validated', async () => {
+			// Covers: non-JWT garbage, valid JWT not in DB, expired JWT, disabled user.
+			// Each is a short setup with the same expected outcome — folded into one.
+			expect(await strategy.buildTokenGrant('invalid')).toBe(false);
+
+			const unknownKey = jwtService.sign({ sub: '123', iss: API_KEY_ISSUER });
+			expect(await strategy.buildTokenGrant(unknownKey)).toBe(false);
+
+			const expiredOwner = await createOwnerWithApiKey({
+				expiresAt: DateTime.now().minus({ days: 1 }).toUnixInteger(),
+			});
+			expect(await strategy.buildTokenGrant(expiredOwner.apiKeys[0].apiKey)).toBe(false);
+
+			const disabledOwner = await createOwnerWithApiKey();
+			await Container.get(UserRepository).update({ id: disabledOwner.id }, { disabled: true });
+			expect(await strategy.buildTokenGrant(disabledOwner.apiKeys[0].apiKey)).toBe(false);
+		});
+
+		it('rethrows non-TokenExpiredError from JWT verification', async () => {
+			const owner = await createOwnerWithApiKey();
+			const [{ apiKey }] = owner.apiKeys;
+
+			const verifyError = new Error('Unexpected JWT error');
+			jest.spyOn(jwtService, 'verify').mockImplementationOnce(() => {
+				throw verifyError;
+			});
+
+			await expect(strategy.buildTokenGrant(apiKey)).rejects.toThrow(verifyError);
+		});
+
+		describe('audience option', () => {
+			it('accepts an MCP API key only when audience=mcp-server-api is specified', async () => {
+				const owner = await createOwnerWithApiKey();
+				const mcpApiKey = await signAndStoreMcpApiKey(owner);
+
+				// Default audience (public-api) → DB lookup misses on audience column.
+				expect(await strategy.buildTokenGrant(mcpApiKey)).toBe(false);
+
+				const grant = await strategy.buildTokenGrant(mcpApiKey, {
+					audience: 'mcp-server-api',
+				});
+				if (!grant) throw new Error('expected grant');
+				expect(grant.subject.id).toBe(owner.id);
+			});
+
+			it('rejects a public API key when audience=mcp-server-api is required', async () => {
+				const owner = await createOwnerWithApiKey();
+				const [{ apiKey }] = owner.apiKeys;
+
+				expect(await strategy.buildTokenGrant(apiKey, { audience: 'mcp-server-api' })).toBe(false);
+			});
+		});
 	});
 
-	it('should work with non JWT (legacy) api keys', async () => {
-		const legacyApiKey = `n8n_api_${randomString(10)}`;
-		const owner = await createOwnerWithApiKey();
-		const [{ apiKey }] = owner.apiKeys;
+	describe('authenticate (wrapper)', () => {
+		it('returns null when no x-n8n-api-key header is present', async () => {
+			expect(await strategy.authenticate(mockReqWithoutApiKey())).toBeNull();
+		});
 
-		await Container.get(ApiKeyRepository).update({ apiKey }, { apiKey: legacyApiKey });
+		it('returns true and populates req.user + req.tokenGrant on success', async () => {
+			const owner = await createOwnerWithApiKey();
+			const [{ apiKey }] = owner.apiKeys;
+			const req = mockReqWith(apiKey);
 
-		const req = mockReqWith(legacyApiKey, '/test', 'GET');
-
-		expect(await strategy.authenticate(req)).toBe(true);
-		expect(req.user).toBeDefined();
-		expect(req.user.id).toBe(owner.id);
-	});
-
-	it('should return false if user is disabled', async () => {
-		const owner = await createOwnerWithApiKey();
-		await Container.get(UserRepository).update({ id: owner.id }, { disabled: true });
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		expect(await strategy.authenticate(req)).toBe(false);
-	});
-
-	it('should set req.tokenGrant.subject to the API key owner', async () => {
-		const owner = await createOwnerWithApiKey();
-		const [{ apiKey }] = owner.apiKeys;
-		const req = mockReqWith(apiKey, '/test', 'GET');
-
-		await strategy.authenticate(req);
-
-		expect(req.tokenGrant?.subject).toBeDefined();
-		expect(req.tokenGrant?.subject.id).toBe(owner.id);
-	});
-
-	it('should return null when x-n8n-api-key contains a token-exchange JWT', async () => {
-		const tokenExchangeJwt = jwtService.sign({ iss: TOKEN_EXCHANGE_ISSUER, sub: '123' });
-		const req = mockReqWith(tokenExchangeJwt, '/test', 'GET');
-
-		expect(await strategy.authenticate(req)).toBeNull();
+			expect(await strategy.authenticate(req)).toBe(true);
+			expect(req.user.id).toBe(owner.id);
+			expect(req.tokenGrant?.subject.id).toBe(owner.id);
+		});
 	});
 });

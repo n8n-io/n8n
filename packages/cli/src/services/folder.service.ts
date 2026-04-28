@@ -90,6 +90,8 @@ export class FolderService {
 				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
 			);
 		}
+
+		return await this.findFolderInProjectOrFail(folderId, projectId);
 	}
 
 	async findFolderInProjectOrFail(folderId: string, projectId: string, em?: EntityManager) {
@@ -242,11 +244,11 @@ export class FolderService {
 		});
 	}
 
-	async getFolderAndWorkflowCount(
+	async findFolderWithContentCounts(
 		folderId: string,
 		projectId: string,
-	): Promise<{ totalSubFolders: number; totalWorkflows: number }> {
-		await this.findFolderInProjectOrFail(folderId, projectId);
+	): Promise<{ folder: Folder; totalSubFolders: number; totalWorkflows: number }> {
+		const folder = await this.findFolderInProjectOrFail(folderId, projectId);
 
 		const baseQuery = this.folderRepository
 			.createQueryBuilder('folder')
@@ -300,6 +302,7 @@ export class FolderService {
 		]);
 
 		return {
+			folder,
 			totalSubFolders: parseInt(subFolderResult?.count ?? '0', 10),
 			totalWorkflows: parseInt(workflowResult?.count ?? '0', 10),
 		};

@@ -57,6 +57,25 @@ export async function postCancel(context: IRestApiContext, threadId: string): Pr
 }
 
 /**
+ * POST /instance-ai/feedback/:threadId/:responseId -> { ok: true }
+ * Annotate the LangSmith trace for this response with a thumbs-up/down rating
+ * and optional text comment. Idempotent: re-submitting upserts the record.
+ */
+export async function postFeedback(
+	context: IRestApiContext,
+	threadId: string,
+	responseId: string,
+	payload: { rating: 'up' | 'down'; comment?: string },
+): Promise<void> {
+	await makeRestApiRequest(
+		context,
+		'POST',
+		`/instance-ai/feedback/${threadId}/${responseId}`,
+		payload,
+	);
+}
+
+/**
  * POST /instance-ai/chat/:threadId/tasks/:taskId/cancel -> 200 OK
  * Cancel a specific background task.
  */
@@ -143,6 +162,16 @@ export async function createGatewayLink(
 		'POST',
 		'/instance-ai/gateway/create-link',
 	);
+}
+
+/**
+ * POST /instance-ai/gateway/disconnect-session -> { ok }
+ * Tear down the current user's gateway session so its tools are no longer
+ * exposed to the agent. Does not change the user's localGatewayDisabled
+ * preference.
+ */
+export async function disconnectGatewaySession(context: IRestApiContext): Promise<void> {
+	await makeRestApiRequest(context, 'POST', '/instance-ai/gateway/disconnect-session');
 }
 
 /**

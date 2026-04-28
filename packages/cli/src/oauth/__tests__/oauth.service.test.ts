@@ -54,7 +54,7 @@ describe('OauthService', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
-		credentialsHelper.getParentTypes.mockReturnValue([]);
+		credentialsHelper.getCredentialsProperties.mockReturnValue([]);
 
 		globalConfig.endpoints = { rest: 'rest' } as any;
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
@@ -69,10 +69,11 @@ describe('OauthService', () => {
 		axios.post = jest.fn();
 
 		// Setup cipher mock - encrypt returns the input as-is for testing, decrypt does the reverse
-		cipher.encrypt.mockImplementation((data: string) => {
+		cipher.encrypt.mockImplementation((data: string | object) => {
 			// For testing, we'll use base64 encoding as a simple mock
 			// In production, this would be actual encryption
-			return Buffer.from(data).toString('base64');
+			const str = typeof data === 'string' ? data : JSON.stringify(data);
+			return Buffer.from(str).toString('base64');
 		});
 		cipher.decrypt.mockImplementation((data: string) => {
 			// For testing, decode the base64
@@ -1131,32 +1132,6 @@ describe('OauthService', () => {
 			);
 		});
 
-		it('should not delete scope for credentials inheriting editable generic OAuth2 scope', async () => {
-			const credential = mock<CredentialsEntity>({
-				id: '1',
-				type: 'customOAuth2Api',
-			});
-			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
-			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
-			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
-
-			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
-			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
-			credentialsHelper.getParentTypes.mockReturnValue(['oAuth2Api']);
-			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
-
-			await service.getOAuthCredentials(credential);
-
-			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
-				mockAdditionalData,
-				{ clientId: 'client-id', scope: 'custom-scope' },
-				credential.type,
-				'internal',
-				undefined,
-				undefined,
-			);
-		});
-
 		it('should not delete scope for wordpressOAuth2Api credentials', async () => {
 			const credential = mock<CredentialsEntity>({
 				id: '1',
@@ -1200,6 +1175,90 @@ describe('OauthService', () => {
 			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
 				mockAdditionalData,
 				{ clientId: 'client-id', scope: 'old-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should not delete scope when the credential inherits an editable scope property', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'customOAuth2Api',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id', scope: 'custom-scope' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'string', default: '' },
+			]);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id', scope: 'custom-scope' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should delete scope when the credential overrides the inherited scope as hidden', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'gmailOAuth2',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'stale-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			credentialsHelper.getCredentialsProperties.mockReturnValue([
+				{ displayName: 'Scope', name: 'scope', type: 'hidden', default: 'default-scope' },
+			]);
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id' },
+				credential.type,
+				'internal',
+				undefined,
+				undefined,
+			);
+		});
+
+		it('should delete scope when getCredentialsProperties throws', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: '1',
+				type: 'unknownOAuth2Api',
+			});
+			const mockDecryptedData = { clientId: 'client-id', scope: 'stale-scope' };
+			const mockOAuthCredentials = { clientId: 'client-id' };
+			const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			jest.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(mockAdditionalData);
+			credentialsHelper.getDecrypted.mockResolvedValue(mockDecryptedData);
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue(mockOAuthCredentials);
+			credentialsHelper.getCredentialsProperties.mockImplementation(() => {
+				throw new Error('Unknown credential type');
+			});
+
+			await service.getOAuthCredentials(credential);
+
+			expect(credentialsHelper.applyDefaultsAndOverwrites).toHaveBeenCalledWith(
+				mockAdditionalData,
+				{ clientId: 'client-id' },
 				credential.type,
 				'internal',
 				undefined,

@@ -140,7 +140,7 @@ describe('WorkflowCard', () => {
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 
@@ -181,7 +181,7 @@ describe('WorkflowCard', () => {
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 	});

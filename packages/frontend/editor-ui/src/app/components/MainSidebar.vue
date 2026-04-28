@@ -26,7 +26,7 @@ import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
-import { RESOURCE_CENTER_EXPERIMENT } from '@/app/constants';
+import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
 
@@ -47,6 +47,15 @@ const { getReportingURL } = useBugReporting();
 
 const { applyExperiment: applySidebarExpandedExperiment } = useSidebarExpandedExperiment();
 applySidebarExpandedExperiment();
+
+// RC-1: auto-expand sidebar once if not already expanded
+if (resourceCenterStore.shouldAutoExpandSidebar) {
+	if (uiStore.sidebarMenuCollapsed) {
+		uiStore.sidebarMenuCollapsed = false;
+		localStorage.setItem(LOCAL_STORAGE_SIDEBAR_WIDTH, '200');
+	}
+	resourceCenterStore.markSidebarAutoExpanded();
+}
 
 const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
 	useSidebarLayout();
@@ -71,14 +80,6 @@ const showWhatsNewNotification = computed(
 
 const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
 
-const resourceCenterLabel = computed(() => {
-	const variant = resourceCenterStore.getCurrentVariant();
-	if (variant === RESOURCE_CENTER_EXPERIMENT.variantInspiration) {
-		return i18n.baseText('experiments.resourceCenter.sidebar.inspiration');
-	}
-	return i18n.baseText('experiments.resourceCenter.sidebar');
-});
-
 const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		id: 'cloud-admin',
@@ -90,8 +91,8 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	{
 		// Resource Center - replaces Templates when experiment is enabled
 		id: 'resource-center',
-		icon: 'lightbulb',
-		label: resourceCenterLabel.value,
+		icon: { type: 'icon', value: 'lightbulb', color: 'primary' },
+		label: i18n.baseText('experiments.resourceCenter.sidebar'),
 		position: 'bottom',
 		available: isResourceCenterEnabled.value,
 		route: { to: { name: VIEWS.RESOURCE_CENTER } },

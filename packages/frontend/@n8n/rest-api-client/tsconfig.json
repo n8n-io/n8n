@@ -1,7 +1,6 @@
 {
 	"extends": "@n8n/typescript-config/tsconfig.frontend.json",
 	"compilerOptions": {
-		"baseUrl": ".",
 		"moduleResolution": "bundler",
 		"outDir": "dist",
 		"noEmit": true,

@@ -106,7 +106,7 @@ const diffWithVersionId = computed(() => {
 const editorRoute = computed(() => ({
 	name: VIEWS.WORKFLOW,
 	params: {
-		name: workflowId.value,
+		workflowId: workflowId.value,
 	},
 }));
 const workflowPermissions = computed(
@@ -240,7 +240,7 @@ const cloneWorkflowVersion = async (
 	const { href } = router.resolve({
 		name: VIEWS.WORKFLOW,
 		params: {
-			name: clonedWorkflow.id,
+			workflowId: clonedWorkflow.id,
 		},
 	});
 

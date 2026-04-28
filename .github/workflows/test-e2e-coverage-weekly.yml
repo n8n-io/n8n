@@ -39,7 +39,7 @@ jobs:
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
           BUILD_WITH_COVERAGE: 'true'
-          CURRENTS_RECORD_KEY: ${{ vars.CURRENTS_RECORD_VAR }}
+          CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           CURRENTS_PROJECT_ID: 'LRxcNt'
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}

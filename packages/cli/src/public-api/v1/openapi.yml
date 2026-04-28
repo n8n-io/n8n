@@ -116,6 +116,10 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
+  /data-tables/{dataTableId}/columns:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.yml'
+  /data-tables/{dataTableId}/columns/{columnId}:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.columns.columnId.yml'
   /projects:
     $ref: './handlers/projects/spec/paths/projects.yml'
   /projects/{projectId}:
@@ -134,6 +138,8 @@ paths:
     $ref: './handlers/insights/spec/paths/insights.yml'
   /projects/{projectId}/folders:
     $ref: './handlers/folders/spec/paths/folders.yml'
+  /projects/{projectId}/folders/{folderId}:
+    $ref: './handlers/folders/spec/paths/folders.folderId.yml'
 components:
   schemas:
     $ref: './shared/spec/schemas/_index.yml'
