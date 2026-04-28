@@ -23,7 +23,7 @@ export default {
 	'formInput.validator.uppercaseCharsRequired': (config: { minimum: number }) =>
 		`Must have at least ${config.minimum} uppercase character${config.minimum > 1 ? 's' : ''}`,
 	'formInput.validator.defaultPasswordRequirements':
-		'8+ characters, at least 1 number and 1 capital letter',
+		'{minimum}+ characters, at least 1 number and 1 capital letter',
 	'sticky.markdownHint':
 		'You can style with <a href="https://docs.n8n.io/workflows/components/sticky-notes/" target="_blank">Markdown</a>',
 	'tags.showMore': (count: number) => `+${count} more`,
@@ -33,7 +33,6 @@ export default {
 	'codeDiff.replaceMyCode': 'Replace my code',
 	'codeDiff.replacing': 'Replacing...',
 	'codeDiff.undo': 'Undo',
-	'betaTag.beta': 'beta',
 	'previewTag.preview': 'Preview',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',

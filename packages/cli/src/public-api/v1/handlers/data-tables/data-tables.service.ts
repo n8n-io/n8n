@@ -2,28 +2,9 @@ import { type DataTableListFilter } from '@n8n/api-types';
 import { ProjectRepository, ProjectRelationRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { ProjectService } from '@/services/project.service.ee';
-
-/**
- * Gets the project ID for a data table.
- * Called AFTER projectScope middleware has validated access.
- */
-export async function getProjectIdForDataTable(dataTableId: string): Promise<string> {
-	const dataTable = await Container.get(DataTableRepository).findOne({
-		where: { id: dataTableId },
-		relations: ['project'],
-	});
-
-	if (!dataTable) {
-		throw new DataTableNotFoundError(dataTableId);
-	}
-
-	return dataTable.project.id;
-}
 
 export async function getDataTableListFilter(
 	userId: string,

@@ -22,7 +22,7 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
+import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
@@ -107,8 +107,7 @@ const SettingsAiGatewayView = async () =>
 	await import('@/features/ai/gateway/views/SettingsAiGatewayView.vue');
 const ResourceCenterView = async () =>
 	await import('@/experiments/resourceCenter/views/ResourceCenterView.vue');
-const ResourceCenterSectionView = async () =>
-	await import('@/experiments/resourceCenter/views/ResourceCenterSectionView.vue');
+
 const SecuritySettingsView = async () =>
 	await import('@/features/settings/security/SecuritySettings.vue');
 
@@ -129,6 +128,39 @@ function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: stri
 
 	return false;
 }
+
+const RESOURCE_CENTER_FLAG_WAIT_TIMEOUT = 2000;
+
+const waitForPendingFeatureFlags = async (posthogStore: ReturnType<typeof usePostHog>) => {
+	let timeoutId: number | undefined;
+
+	await Promise.race([
+		posthogStore.waitForFeatureFlags(),
+		new Promise<void>((resolve) => {
+			timeoutId = window.setTimeout(resolve, RESOURCE_CENTER_FLAG_WAIT_TIMEOUT);
+		}),
+	]);
+
+	if (timeoutId !== undefined) {
+		window.clearTimeout(timeoutId);
+	}
+};
+
+const allowResourceCenterRoute = (
+	posthogStore: ReturnType<typeof usePostHog>,
+	next: NavigationGuardNext,
+) => {
+	if (
+		posthogStore.isVariantEnabled(
+			RESOURCE_CENTER_EXPERIMENT.name,
+			RESOURCE_CENTER_EXPERIMENT.variant,
+		)
+	) {
+		next();
+	} else {
+		next({ name: VIEWS.HOMEPAGE });
+	}
+};
 
 export const routes: RouteRecordRaw[] = [
 	{
@@ -252,17 +284,32 @@ export const routes: RouteRecordRaw[] = [
 		meta: {
 			middleware: ['authenticated'],
 		},
-	},
-	{
-		path: '/resource-center/section/:sectionId',
-		name: VIEWS.RESOURCE_CENTER_SECTION,
-		component: ResourceCenterSectionView,
-		meta: {
-			middleware: ['authenticated'],
+		beforeEnter: (_to, _from, next) => {
+			const posthogStore = usePostHog();
+
+			if (
+				posthogStore.isVariantEnabled(
+					RESOURCE_CENTER_EXPERIMENT.name,
+					RESOURCE_CENTER_EXPERIMENT.variant,
+				)
+			) {
+				next();
+				return;
+			}
+
+			if (!posthogStore.hasPendingFeatureFlags()) {
+				next({ name: VIEWS.HOMEPAGE });
+				return;
+			}
+
+			void waitForPendingFeatureFlags(posthogStore).then(() => {
+				allowResourceCenterRoute(posthogStore, next);
+			});
 		},
 	},
+
 	{
-		path: '/workflow/:name/debug/:executionId',
+		path: '/workflow/:workflowId/debug/:executionId',
 		name: VIEWS.EXECUTION_DEBUG,
 		component: NodeView,
 		meta: {
@@ -279,7 +326,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/executions',
+		path: '/workflow/:workflowId/executions',
 		name: VIEWS.WORKFLOW_EXECUTIONS,
 		component: WorkflowExecutionsView,
 		meta: {
@@ -313,7 +360,7 @@ export const routes: RouteRecordRaw[] = [
 		],
 	},
 	{
-		path: '/workflow/:name/evaluation',
+		path: '/workflow/:workflowId/evaluation',
 		name: VIEWS.EVALUATION,
 		component: EvaluationRootView,
 		props: true,
@@ -386,7 +433,7 @@ export const routes: RouteRecordRaw[] = [
 			const newWorkflowId = generateNanoId();
 			return {
 				name: VIEWS.WORKFLOW,
-				params: { name: newWorkflowId },
+				params: { workflowId: newWorkflowId },
 				query: { ...to.query, new: 'true' },
 			};
 		},
@@ -426,7 +473,7 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/workflow/:name/:nodeId?',
+		path: '/workflow/:workflowId/:nodeId?',
 		name: VIEWS.WORKFLOW,
 		component: NodeView,
 		meta: {

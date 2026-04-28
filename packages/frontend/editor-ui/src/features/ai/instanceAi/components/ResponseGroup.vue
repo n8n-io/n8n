@@ -5,8 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed } from 'vue';
-import { getToolIcon } from '../toolLabels';
-import { getGroupToolIcons, type ResponseGroupSegment } from '../useTimelineGrouping';
+import type { ResponseGroupSegment } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
 
@@ -53,10 +52,6 @@ const summaryText = computed(() => {
 	return parts.join(', ');
 });
 
-const toolIcons = computed(() =>
-	getGroupToolIcons(props.group, props.agentNode.toolCalls, getToolIcon),
-);
-
 /** Whether any tool call in this group is still loading. */
 const hasLoadingToolCalls = computed(() =>
 	props.group.entries.some((e) => {
@@ -94,15 +89,9 @@ const isCollapsible = computed(
 		<CollapsibleTrigger as-child>
 			<TimelineStepButton size="medium">
 				<template #icon>
-					<N8nIcon v-if="!isOpen" icon="chevron-right" size="small" />
-					<N8nIcon v-else icon="chevron-down" size="small" />
+					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
 				</template>
-				<span :class="$style.summaryLabel">
-					{{ summaryText }}
-					<span v-if="toolIcons.length > 0" :class="$style.summaryIcons">
-						<N8nIcon v-for="icon in toolIcons" :key="icon" :icon="icon" size="small" />
-					</span>
-				</span>
+				{{ summaryText }}
 			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<AnimatedCollapsibleContent>
@@ -113,17 +102,3 @@ const isCollapsible = computed(
 	<!-- Flat: groups with only text + special UI (questions, plan-review) -->
 	<AgentTimeline v-else :agent-node="props.agentNode" :visible-entries="props.group.entries" />
 </template>
-
-<style lang="scss" module>
-.summaryLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.summaryIcons {
-	display: inline-flex;
-	gap: var(--spacing--4xs);
-	opacity: 0.6;
-}
-</style>

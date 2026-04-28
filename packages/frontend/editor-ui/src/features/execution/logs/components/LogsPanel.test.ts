@@ -160,7 +160,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should only render logs panel if the workflow has no chat trigger', async () => {
-		workflowsStore.setWorkflow(aiManualWorkflow);
+		workflowsStore.workflow = aiManualWorkflow;
 
 		const rendered = render();
 
@@ -169,7 +169,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should render chat panel and logs panel if the workflow has chat trigger', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 
 		const rendered = render();
 
@@ -179,7 +179,7 @@ describe('LogsPanel', () => {
 
 	it('should render only output panel of selected node by default', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiManualWorkflow);
+		workflowsStore.workflow = aiManualWorkflow;
 		workflowState.setWorkflowExecutionData(aiManualExecutionResponse);
 
 		const rendered = render();
@@ -193,7 +193,7 @@ describe('LogsPanel', () => {
 
 	it('should render both input and output panel of selected node by default if it is sub node', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -206,7 +206,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('toggles panel when header is clicked', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 
 		const rendered = render();
 
@@ -222,7 +222,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should toggle panel when chevron icon button in the overview panel is clicked', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 
 		const rendered = render();
 
@@ -236,7 +236,7 @@ describe('LogsPanel', () => {
 	});
 
 	it('should open log details panel when a log entry is clicked in the logs overview panel', async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -253,7 +253,7 @@ describe('LogsPanel', () => {
 	});
 
 	it("should show the button to toggle panel in the header of log details panel when it's opened", async () => {
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -318,7 +318,7 @@ describe('LogsPanel', () => {
 
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
 			id: IN_PROGRESS_EXECUTION_ID,
@@ -394,7 +394,7 @@ describe('LogsPanel', () => {
 	it('should still show logs for a removed node', async () => {
 		const operations = useCanvasOperations();
 
-		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+		workflowsStore.workflow = deepCopy(aiChatWorkflow);
 		logsStore.toggleOpen(true);
 		workflowState.setWorkflowExecutionData({
 			...aiChatExecutionResponse,
@@ -419,7 +419,7 @@ describe('LogsPanel', () => {
 
 	it('should open NDV if the button is clicked', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -438,7 +438,7 @@ describe('LogsPanel', () => {
 
 	it('should toggle subtree when chevron icon button is pressed', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -465,7 +465,7 @@ describe('LogsPanel', () => {
 
 	it('should toggle input and output panel when the button is clicked', async () => {
 		logsStore.toggleOpen(true);
-		workflowsStore.setWorkflow(aiChatWorkflow);
+		workflowsStore.workflow = aiChatWorkflow;
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -493,7 +493,7 @@ describe('LogsPanel', () => {
 		logsStore.toggleOpen(true);
 
 		// Create deep copy so that renaming doesn't affect other test cases
-		workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+		workflowsStore.workflow = deepCopy(aiChatWorkflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -518,7 +518,7 @@ describe('LogsPanel', () => {
 	describe('selection', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
-			workflowsStore.setWorkflow(aiChatWorkflow);
+			workflowsStore.workflow = aiChatWorkflow;
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 		});
 
@@ -575,7 +575,7 @@ describe('LogsPanel', () => {
 		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
 			const canvasOperations = useCanvasOperations();
 
-			workflowsStore.setWorkflow(deepCopy(aiChatWorkflow));
+			workflowsStore.workflow = deepCopy(aiChatWorkflow);
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 			logsStore.toggleLogSelectionSync(true);
@@ -597,7 +597,7 @@ describe('LogsPanel', () => {
 	describe('chat', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
-			workflowsStore.setWorkflow(aiChatWorkflow);
+			workflowsStore.workflow = aiChatWorkflow;
 		});
 
 		describe('rendering', () => {
