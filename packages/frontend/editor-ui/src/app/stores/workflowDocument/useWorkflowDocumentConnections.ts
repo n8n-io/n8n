@@ -196,8 +196,8 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	);
 
 	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {
-		if (connectionsBySourceNode.value.connections.hasOwnProperty(nodeName)) {
-			return connectionsBySourceNode.value.connections[nodeName] as unknown as INodeConnections;
+		if (connectionsBySourceNode.value.hasOwnProperty(nodeName)) {
+			return connectionsBySourceNode.value[nodeName] as unknown as INodeConnections;
 		}
 		return {};
 	}

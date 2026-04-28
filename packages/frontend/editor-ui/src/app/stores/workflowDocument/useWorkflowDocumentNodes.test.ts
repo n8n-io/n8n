@@ -84,7 +84,7 @@ describe('useWorkflowDocumentNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
 
-			const nodes = workflowDocumentNodes.allNodes;
+			const nodes = workflowDocumentNodes.allNodes.value;
 			expect(nodes).toHaveLength(2);
 		});
 
