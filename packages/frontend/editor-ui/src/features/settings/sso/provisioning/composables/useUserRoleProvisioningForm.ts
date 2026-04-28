@@ -5,11 +5,16 @@ import { useRoleMappingRulesApi } from './useRoleMappingRulesApi';
 import type {
 	RoleAssignmentSetting,
 	RoleMappingMethodSetting,
-	UserRoleProvisioningSetting,
 } from '../components/UserRoleProvisioningDropdown.vue';
 import { type SupportedProtocolType } from '../../sso.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+
+type TelemetrySettingValue =
+	| 'disabled'
+	| 'instance_role'
+	| 'instance_and_project_roles'
+	| 'expression_based';
 
 export type RoleAssignmentTransitionType = 'none' | 'backup' | 'switchToManual';
 
@@ -64,23 +69,14 @@ function getProvisioningConfigFromDropdowns(
 	};
 }
 
-function toLegacyValue(
+function getTelemetrySettingValue(
 	roleAssignment: RoleAssignmentSetting,
 	mappingMethod: RoleMappingMethodSetting,
-): UserRoleProvisioningSetting {
+): TelemetrySettingValue {
 	if (roleAssignment === 'manual') return 'disabled';
 	if (mappingMethod === 'rules_in_n8n') return 'expression_based';
 	if (roleAssignment === 'instance_and_project') return 'instance_and_project_roles';
 	return 'instance_role';
-}
-
-function fromLegacyValue(value: UserRoleProvisioningSetting): DropdownValues {
-	const map: Record<string, DropdownValues> = {
-		instance_role: { roleAssignment: 'instance', mappingMethod: 'idp' },
-		instance_and_project_roles: { roleAssignment: 'instance_and_project', mappingMethod: 'idp' },
-		expression_based: { roleAssignment: 'instance', mappingMethod: 'rules_in_n8n' },
-	};
-	return map[value] ?? DEFAULTS;
 }
 
 export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
@@ -95,15 +91,6 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		getDropdownValuesFromConfig(provisioningStore.provisioningConfig, storedHasProjectRules.value),
 	);
 
-	const formValue = computed<UserRoleProvisioningSetting>({
-		get: () => toLegacyValue(roleAssignment.value, mappingMethod.value),
-		set: (value: UserRoleProvisioningSetting) => {
-			const values = fromLegacyValue(value);
-			roleAssignment.value = values.roleAssignment;
-			mappingMethod.value = values.mappingMethod;
-		},
-	});
-
 	const isUserRoleProvisioningChanged = computed<boolean>(() => {
 		const stored = storedValues.value;
 		return (
@@ -111,7 +98,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		);
 	});
 
-	const sendTrackingEventForUserProvisioning = (updatedSetting: UserRoleProvisioningSetting) => {
+	const sendTrackingEventForUserProvisioning = (updatedSetting: TelemetrySettingValue) => {
 		telemetry.track('User updated provisioning settings', {
 			instance_id: useRootStore().instanceId,
 			authentication_method: protocol,
@@ -155,7 +142,7 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		}
 
 		sendTrackingEventForUserProvisioning(
-			toLegacyValue(effectiveRoleAssignment, effectiveMappingMethod),
+			getTelemetrySettingValue(effectiveRoleAssignment, effectiveMappingMethod),
 		);
 	};
 
@@ -212,7 +199,6 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	return {
 		roleAssignment,
 		mappingMethod,
-		formValue,
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
 		roleAssignmentTransition,
