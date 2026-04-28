@@ -6,21 +6,24 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import type { WorkflowListItem } from '@/Interface';
+import type { IWorkflowSettings, WorkflowListItem } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	updateMcpSettings,
-	toggleWorkflowMcpAccessApi,
+	toggleWorkflowsMcpAccessApi,
 	fetchApiKey,
 	rotateApiKey,
 	fetchOAuthClients,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	type ToggleWorkflowsMcpAccessResponse,
+	type ToggleWorkflowsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
 import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -62,40 +65,62 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return updated;
 	}
 
+	function applyAvailableInMCPToLocalStores(workflowId: string, availableInMCP: boolean) {
+		const existing = workflowsListStore.workflowsById[workflowId];
+		if (existing) {
+			if (existing.settings) {
+				existing.settings.availableInMCP = availableInMCP;
+			} else {
+				existing.settings = { availableInMCP } as IWorkflowSettings;
+			}
+		}
+
+		if (workflowId === workflowsStore.workflowId) {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.mergeSettings({ availableInMCP });
+		}
+	}
+
+	// Toggle MCP access for a single workflow
 	async function toggleWorkflowMcpAccess(
 		workflowId: string,
 		availableInMCP: boolean,
-	): Promise<{
-		id: string;
-		settings: { availableInMCP?: boolean } | undefined;
-		versionId: string;
-	}> {
-		const response = await toggleWorkflowMcpAccessApi(
+	): Promise<ToggleWorkflowsMcpAccessResponse> {
+		const response = await toggleWorkflowsMcpAccessApi(
 			rootStore.restApiContext,
-			workflowId,
+			{ workflowIds: [workflowId] },
 			availableInMCP,
 		);
 
-		const { id, settings, versionId } = response;
-
-		// Update local  version of the workflow
-		if (id === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
-			workflowDocumentStore.setVersionData({
-				versionId,
-				name: workflowDocumentStore.versionData?.name ?? null,
-				description: workflowDocumentStore.versionData?.description ?? null,
-			});
-			if (settings) {
-				workflowDocumentStore.mergeSettings(settings);
-			}
+		if (!(response.updatedIds ?? []).includes(workflowId)) {
+			throw new Error(
+				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
+					interpolate: { workflowId },
+				}),
+			);
 		}
-		if (workflowsListStore.workflowsById[id]) {
-			workflowsListStore.workflowsById[id] = {
-				...workflowsListStore.workflowsById[id],
-				settings,
-				versionId,
-			};
+
+		applyAvailableInMCPToLocalStores(workflowId, availableInMCP);
+
+		return response;
+	}
+
+	/**
+	 * Bulk-toggle MCP availability, scoped by an id list, a project,
+	 * or a folder (+ descendants)
+	 */
+	async function toggleWorkflowsMcpAccess(
+		target: ToggleWorkflowsMcpAccessTarget,
+		availableInMCP: boolean,
+	): Promise<ToggleWorkflowsMcpAccessResponse> {
+		const response = await toggleWorkflowsMcpAccessApi(
+			rootStore.restApiContext,
+			target,
+			availableInMCP,
+		);
+
+		for (const id of response.updatedIds ?? []) {
+			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 
 		return response;
@@ -151,6 +176,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,
+		toggleWorkflowsMcpAccess,
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,

@@ -5,6 +5,7 @@ import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
 	deepCopy,
+	getCredentialAllowedDomains,
 	NodeOperationError,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
@@ -321,8 +322,8 @@ export const getAllowedDomains = (
 	}
 
 	if (credentialData.allowedHttpRequestDomains === 'domains') {
-		const allowedDomains = credentialData.allowedDomains as string;
-		if (!allowedDomains || allowedDomains.trim() === '') {
+		const allowedDomains = getCredentialAllowedDomains(credentialData);
+		if (!allowedDomains) {
 			throw new NodeOperationError(
 				node,
 				'No allowed domains specified. Configure allowed domains or change restriction setting.',

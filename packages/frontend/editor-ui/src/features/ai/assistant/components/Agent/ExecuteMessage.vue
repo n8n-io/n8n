@@ -96,8 +96,8 @@ const parameterRequiredPattern = /Parameter\s+".+"\s+is\s+required/i;
  * Custom formatter for issue messages in the execute panel.
  * Transforms verbose validation messages into user-friendly action prompts.
  */
-function formatIssueMessage(issue: string | string[]): string {
-	const baseMessage = workflowsStore.formatIssueMessage(issue);
+function formatNodeIssueMessage(issue: string | string[]): string {
+	const baseMessage = workflowDocumentStore.value.formatNodeIssueMessage(issue);
 
 	// Transform "Parameter "X" is required" → "Choose model" (for Model) or keep original
 	if (parameterRequiredPattern.test(baseMessage)) {
@@ -256,10 +256,10 @@ watch(hasValidationIssues, (hasIssues, hadIssues) => {
 					>
 						<NodeIssueItem
 							v-for="issue in issuesByType.other"
-							:key="`${formatIssueMessage(issue.value)}_${issue.node}`"
+							:key="`${formatNodeIssueMessage(issue.value)}_${issue.node}`"
 							:issue="issue"
 							:get-node-type="getNodeTypeByName"
-							:format-issue-message="formatIssueMessage"
+							:format-node-issue-message="formatNodeIssueMessage"
 							@click="() => trackBuilderPlaceholders(issue)"
 						/>
 					</TransitionGroup>

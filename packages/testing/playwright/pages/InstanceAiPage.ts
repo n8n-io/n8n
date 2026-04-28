@@ -220,4 +220,14 @@ export class InstanceAiPage extends BasePage {
 	async waitForRunComplete(timeoutMs = 180_000): Promise<void> {
 		await this.getStopButton().waitFor({ state: 'hidden', timeout: timeoutMs });
 	}
+
+	/**
+	 * Wait for the plan-review panel to appear and approve it. New workflow
+	 * builds now route through the planner and pause at `awaiting_approval`
+	 * until the user approves — without this step the build never starts.
+	 */
+	async approveBuildPlan(timeout = 120_000): Promise<void> {
+		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });
+		await this.getPlanApproveButton().click();
+	}
 }
