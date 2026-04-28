@@ -310,8 +310,6 @@ describe('AgentsService', () => {
 			readonly credentialTypes = ['testApi'];
 			readonly displayLabel = 'Test Platform';
 			readonly displayIcon = 'circle';
-			readonly displayHelpText = 'Connect a Test credential.';
-			readonly displayConnectedText = 'Connected to Test.';
 			async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 				return {};
 			}
@@ -330,8 +328,6 @@ describe('AgentsService', () => {
 				label: 'Test Platform',
 				icon: 'circle',
 				credentialTypes: ['testApi'],
-				helpText: 'Connect a Test credential.',
-				connectedText: 'Connected to Test.',
 			});
 		});
 

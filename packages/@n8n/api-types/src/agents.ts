@@ -22,8 +22,6 @@ export interface ChatIntegrationDescriptor {
 	label: string;
 	icon: string;
 	credentialTypes: string[];
-	helpText: string;
-	connectedText: string;
 }
 
 /**

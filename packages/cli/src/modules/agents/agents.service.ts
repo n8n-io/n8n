@@ -170,8 +170,6 @@ export class AgentsService {
 				label: i.displayLabel,
 				icon: i.displayIcon,
 				credentialTypes: i.credentialTypes,
-				helpText: i.displayHelpText,
-				connectedText: i.displayConnectedText,
 			}));
 	}
 
