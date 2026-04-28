@@ -2,7 +2,11 @@
 import { truncate } from '@n8n/utils';
 import { useToast } from '@/app/composables/useToast';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
-import { AGENT_BUILDER_VIEW, CONTINUE_SESSION_ID_PARAM } from '@/features/agents/constants';
+import {
+	AGENT_BUILDER_VIEW,
+	CONTINUE_SESSION_ID_PARAM,
+	EXECUTIONS_SECTION_KEY,
+} from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
 	ExecutionThread,
@@ -22,7 +26,7 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nInput } from '@n8n/design-system';
+import { N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -141,6 +145,7 @@ function goBack() {
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
+		query: { section: EXECUTIONS_SECTION_KEY },
 	});
 }
 
@@ -157,9 +162,14 @@ function continueChat() {
 	<div :class="$style.view">
 		<div :class="$style.topBar">
 			<div :class="$style.topBarLeft">
-				<button :class="$style.backButton" @click="goBack">
-					<N8nIcon icon="arrow-left" />
-				</button>
+				<N8nIconButton
+					icon="arrow-left"
+					variant="ghost"
+					size="small"
+					:aria-label="i18n.baseText('agentSessions.timeline.backToAgent')"
+					data-test-id="session-timeline-back"
+					@click="goBack"
+				/>
 				<span :class="$style.sessionTitle">{{ sessionTitle }}</span>
 			</div>
 			<div v-if="thread" :class="$style.topBarRight">
@@ -244,6 +254,35 @@ function continueChat() {
 </template>
 
 <style module lang="scss">
+/*
+ * Theme-aware colour intensity variables for the session timeline. Defined on
+ * `body` (rather than `.view`) so that content teleported out of the component
+ * subtree — e.g. the chart's `N8nTooltip` popovers — picks them up too.
+ *
+ * Light mode: high alpha so kind colours read as solid pills/blocks.
+ * Dark mode: lower alpha so the colours sit naturally on the dark surface.
+ */
+:global(body) {
+	--color--session-timeline-pill-bg-alpha: 70%;
+	--color--session-timeline-block-bg-alpha: 75%;
+	--color--session-timeline-row-border-alpha: 70%;
+	--color--session-timeline-pill-text: white;
+}
+:global(body[data-theme='dark']) {
+	--color--session-timeline-pill-bg-alpha: 40%;
+	--color--session-timeline-block-bg-alpha: 45%;
+	--color--session-timeline-row-border-alpha: 45%;
+	--color--session-timeline-pill-text: white;
+}
+@media (prefers-color-scheme: dark) {
+	:global(body:not([data-theme])) {
+		--color--session-timeline-pill-bg-alpha: 40%;
+		--color--session-timeline-block-bg-alpha: 45%;
+		--color--session-timeline-row-border-alpha: 45%;
+		--color--session-timeline-pill-text: white;
+	}
+}
+
 .view {
 	display: flex;
 	flex-direction: column;
@@ -257,6 +296,8 @@ function continueChat() {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	background-color: var(--color--foreground--tint-2);
 	flex-shrink: 0;
+	box-sizing: content-box;
+	height: var(--height--sm);
 }
 .topBarLeft {
 	display: flex;
@@ -273,19 +314,6 @@ function continueChat() {
 }
 .sep {
 	color: var(--color--text--tint-1);
-}
-.backButton {
-	background: none;
-	border: none;
-	color: var(--color--primary);
-	cursor: pointer;
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-	display: flex;
-	align-items: center;
-	&:hover {
-		background-color: var(--color--foreground--tint-1);
-	}
 }
 .sessionTitle {
 	font-size: var(--font-size--sm);

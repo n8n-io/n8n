@@ -6,7 +6,11 @@ import { truncate } from '@n8n/utils';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, kindColorToken } from '../session-timeline.utils';
+import { builtinToolLabelKey } from '../session-timeline.utils';
+import {
+	pillStyle as kindPillStyle,
+	rowBorderColor as kindRowBorderColor,
+} from '../session-timeline.styles';
 
 const props = defineProps<{
 	item: TimelineItem;
@@ -72,18 +76,8 @@ const label = computed((): string => {
 	}
 });
 
-const pillStyle = computed(() => {
-	const color = kindColorToken(props.item.kind);
-	return {
-		backgroundColor: `color-mix(in srgb, ${color} 40%, transparent)`,
-		color,
-	};
-});
-
-const rowBorderColor = computed(() => {
-	const color = kindColorToken(props.item.kind);
-	return `color-mix(in srgb, ${color} 45%, transparent)`;
-});
+const pillStyle = computed(() => kindPillStyle(props.item.kind));
+const rowBorderColor = computed(() => kindRowBorderColor(props.item.kind));
 </script>
 
 <template>

@@ -4,6 +4,7 @@ import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon } from '@n8n/design-system';
 import type { FilterOption } from '../session-timeline.types';
+import { swatchBackground } from '../session-timeline.styles';
 
 const props = defineProps<{
 	available: FilterOption[];
@@ -57,10 +58,7 @@ function clearAll(): void {
 					:checked="props.selected.has(opt.key)"
 					@change="toggle(opt.key, ($event.target as HTMLInputElement).checked)"
 				/>
-				<span
-					:class="$style.swatch"
-					:style="{ backgroundColor: `color-mix(in srgb, ${opt.color} 45%, transparent)` }"
-				/>
+				<span :class="$style.swatch" :style="{ backgroundColor: swatchBackground(opt.color) }" />
 				<span :class="$style.label">{{ opt.label }}</span>
 				<span :class="$style.count">{{ opt.count }}</span>
 			</label>
@@ -124,7 +122,7 @@ function clearAll(): void {
 	flex: 1;
 }
 .count {
-	color: var(--color--text--tint-2);
+	color: var(--color--text);
 }
 .clear {
 	margin-top: var(--spacing--3xs);

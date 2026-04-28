@@ -4,13 +4,10 @@ import { truncate } from '@n8n/utils';
 import { useI18n } from '@n8n/i18n';
 import { N8nTooltip } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import {
-	builtinToolLabelKey,
-	formatDuration,
-	itemFilterKey,
-	kindColorToken,
-} from '../session-timeline.utils';
+import { builtinToolLabelKey, formatDuration, itemFilterKey } from '../session-timeline.utils';
+import { chartBlockStyle, pillStyle as kindPillStyle } from '../session-timeline.styles';
 
 const props = defineProps<{
 	items: TimelineItem[];
@@ -62,10 +59,8 @@ function cellStyle(seg: Segment): Record<string, string> {
 	return { flex: `${Math.max(seg.duration, 1)} 1 0` };
 }
 
-function eventStyle(item: TimelineItem): Record<string, string> {
-	const style: Record<string, string> = {
-		backgroundColor: `color-mix(in srgb, ${kindColorToken(item.kind)} 45%, transparent)`,
-	};
+function eventStyle(item: TimelineItem): CSSProperties {
+	const style: CSSProperties = chartBlockStyle(item.kind);
 	if (isDimmed(item)) {
 		style.opacity = '0.15';
 		style.pointerEvents = 'none';
@@ -73,12 +68,8 @@ function eventStyle(item: TimelineItem): Record<string, string> {
 	return style;
 }
 
-function pillStyle(item: TimelineItem): Record<string, string> {
-	const color = kindColorToken(item.kind);
-	return {
-		backgroundColor: `color-mix(in srgb, ${color} 40%, transparent)`,
-		color,
-	};
+function pillStyle(item: TimelineItem): CSSProperties {
+	return kindPillStyle(item.kind);
 }
 
 function popoverLabel(item: TimelineItem): string {
@@ -124,8 +115,17 @@ function popoverName(item: TimelineItem): string {
 	}
 }
 
-function popoverDuration(durationMs: number): string {
-	return formatDuration(durationMs);
+/**
+ * Real-event duration for the popover. Returns empty when the item has no
+ * `endTimestamp` greater than `timestamp` — point events (user/agent text,
+ * memory, suspension) and incomplete tool calls. The chart's `seg.duration`
+ * applies a synthetic `INSTANT_MS` floor so point events get a visible block;
+ * we deliberately don't use that here, otherwise every popover would read
+ * "100ms".
+ */
+function popoverDuration(item: TimelineItem): string {
+	if (!item.endTimestamp || item.endTimestamp <= item.timestamp) return '';
+	return formatDuration(item.endTimestamp - item.timestamp);
 }
 
 function idleDuration(range: IdleRange): string {
@@ -180,8 +180,8 @@ function onClick(index: number, item: TimelineItem): void {
 							{{ popoverLabel(seg.item) }}
 						</span>
 						<span :class="$style.popoverName">{{ popoverName(seg.item) }}</span>
-						<span v-if="popoverDuration(seg.duration)" :class="$style.popoverMeta">
-							{{ popoverDuration(seg.duration) }}
+						<span v-if="popoverDuration(seg.item)" :class="$style.popoverMeta">
+							{{ popoverDuration(seg.item) }}
 						</span>
 						<span :class="$style.popoverMeta">{{ popoverTime(seg.item) }}</span>
 					</div>

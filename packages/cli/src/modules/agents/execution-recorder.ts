@@ -14,7 +14,7 @@ export interface RecordedToolCall {
 }
 
 export type TimelineEvent =
-	| { type: 'text'; content: string; timestamp: number }
+	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
 			kind: 'tool' | 'workflow' | 'node';
@@ -82,6 +82,9 @@ export class ExecutionRecorder {
 
 	private timeline: TimelineEvent[] = [];
 
+	/** Wall-clock when the first text-delta of the current segment arrived. */
+	private textStartTime: number | null = null;
+
 	private _suspended = false;
 
 	private error: string | null = null;
@@ -94,6 +97,7 @@ export class ExecutionRecorder {
 	record(chunk: StreamChunk): void {
 		switch (chunk.type) {
 			case 'text-delta':
+				if (this.textStartTime === null) this.textStartTime = Date.now();
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
 				break;
@@ -176,9 +180,18 @@ export class ExecutionRecorder {
 		if (this.textBuffer.length === 0) return;
 		const content = this.textBuffer.join('');
 		if (content.trim()) {
-			this.timeline.push({ type: 'text', content, timestamp: Date.now() });
+			const now = Date.now();
+			this.timeline.push({
+				type: 'text',
+				content,
+				// Generation start (first text-delta) → end (now). Falls back to `now`
+				// if no start was recorded (defensive: empty segment shouldn't reach here).
+				timestamp: this.textStartTime ?? now,
+				endTime: now,
+			});
 		}
 		this.textBuffer = [];
+		this.textStartTime = null;
 	}
 
 	/**

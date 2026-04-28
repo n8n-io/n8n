@@ -164,14 +164,20 @@ const toolNodeUi = computed<INodeUi>(() => {
 });
 
 let previousWorkflowExecutionData: typeof workflowsStore.workflowExecutionData | null = null;
+let unmounted = false;
 
 onMounted(async () => {
 	previousWorkflowExecutionData = workflowsStore.workflowExecutionData;
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+	// If the component unmounted while node-types were loading, the unmount
+	// hook already restored the previous execution data — installing the synth
+	// payload now would clobber the real workflow's state.
+	if (unmounted) return;
 	workflowState.setWorkflowExecutionData(synthExecution.value);
 });
 
 onBeforeUnmount(() => {
+	unmounted = true;
 	workflowState.setWorkflowExecutionData(previousWorkflowExecutionData);
 });
 </script>

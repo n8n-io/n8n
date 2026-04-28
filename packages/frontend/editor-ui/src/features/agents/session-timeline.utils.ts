@@ -107,6 +107,7 @@ interface RawTextEvent {
 	type: 'text';
 	content: string;
 	timestamp: number;
+	endTime?: number;
 }
 
 interface RawMemoryEvent {
@@ -158,11 +159,15 @@ export function flattenExecutionsToTimelineItems(executions: ThreadExecution[]):
 			if (event.type === 'text') {
 				const showResumed = isResumed && !resumedTagUsed;
 				if (showResumed) resumedTagUsed = true;
+				const startTs = event.timestamp ?? 0;
 				items.push({
 					kind: 'agent',
 					executionId: exec.id,
 					content: event.content,
-					timestamp: event.timestamp ?? 0,
+					timestamp: startTs,
+					// Generation duration: from first delta to flush. Older records without
+					// `endTime` skip this so the popover doesn't show a misleading 0.
+					endTimestamp: event.endTime && event.endTime > startTs ? event.endTime : undefined,
 					resumed: showResumed,
 				});
 			} else if (event.type === 'tool-call') {

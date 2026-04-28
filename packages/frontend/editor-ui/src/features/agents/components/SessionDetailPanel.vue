@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIconButton } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import RichInteractionCard from './RichInteractionCard.vue';
@@ -132,14 +132,13 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					}}</template>
 					<template v-else>{{ i18n.baseText('agentSessions.timeline.suspended') }}</template>
 				</span>
-				<button
-					type="button"
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="small"
 					data-test-id="detail-close"
-					:class="$style.close"
 					@click="emit('close')"
-				>
-					<N8nIcon icon="x" :size="14" />
-				</button>
+				/>=
 			</div>
 
 			<div :class="$style.info">
@@ -247,14 +246,6 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	justify-content: space-between;
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
-}
-
-.close {
-	background: none;
-	border: none;
-	cursor: pointer;
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--4xs);
 }
 
 .info {

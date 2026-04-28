@@ -1341,6 +1341,7 @@
 	"agentSessions.drawer.cost": "Cost",
 	"agentSessions.drawer.status": "Status",
 	"agentSessions.drawer.noTitle": "Session #{number}",
+	"agentSessions.timeline.backToAgent": "Back to agent",
 	"agentSessions.timeline.user": "User",
 	"agentSessions.timeline.assistant": "Assistant",
 	"agentSessions.timeline.tool": "Tool",
