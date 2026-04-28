@@ -1,3 +1,5 @@
+import type { ToolDescriptor } from '@n8n/agents';
+import type { AgentSkill } from '@n8n/api-types';
 import { JsonColumn, User, WithTimestamps } from '@n8n/db';
 import {
 	Column,
@@ -23,6 +25,18 @@ export class AgentPublishedVersion extends WithTimestamps {
 
 	@JsonColumn({ nullable: true, default: null })
 	schema: AgentJsonConfig | null;
+
+	@JsonColumn({ nullable: true, default: null })
+	tools: Record<
+		string,
+		{
+			code: string;
+			descriptor: ToolDescriptor;
+		}
+	> | null;
+
+	@JsonColumn({ nullable: true, default: null })
+	skills: Record<string, AgentSkill> | null;
 
 	/**
 	 * The agent's draft versionId at the time this snapshot was published.

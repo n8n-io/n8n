@@ -77,6 +77,10 @@ function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallb
 				send({ type: 'config-updated' });
 				streamingToolName = undefined;
 			}
+			if (name === BUILDER_TOOLS.CREATE_SKILL) {
+				send({ type: 'config-updated' });
+				streamingToolName = undefined;
+			}
 			if (name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL) {
 				send({ type: 'tool-updated' });
 				streamingToolName = undefined;
@@ -153,12 +157,14 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/skills')
+	@ProjectScope('agent:read')
 	async listSkills(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		return await this.agentsService.listSkills(agentId, projectId);
 	}
 
 	@Get('/:agentId/skills/:skillId')
+	@ProjectScope('agent:read')
 	async getSkill(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
 		_res: Response,
@@ -170,6 +176,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/skills')
+	@ProjectScope('agent:update')
 	async createSkill(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 		_res: Response,
@@ -187,6 +194,7 @@ export class AgentsController {
 	}
 
 	@Patch('/:agentId/skills/:skillId')
+	@ProjectScope('agent:update')
 	async updateSkill(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
 		_res: Response,
@@ -199,6 +207,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId/skills/:skillId')
+	@ProjectScope('agent:update')
 	async deleteSkill(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
 		_res: Response,

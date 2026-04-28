@@ -53,6 +53,8 @@ function makePublishedVersion(
 		model: null,
 		provider: null,
 		credentialId: null,
+		tools: null,
+		skills: null,
 		publishedById: null,
 		...overrides,
 	} as unknown as AgentPublishedVersion;
@@ -144,6 +146,25 @@ describe('AgentsService', () => {
 				/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
 			);
 		});
+
+		it('rejects config saves that reference a missing skill body', async () => {
+			const configWithMissingSkill = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				skills: [{ type: 'skill', id: 'missing_skill' }],
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithMissingSkill,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ skills: {} }));
+
+			await expect(
+				service.updateConfig(agentId, projectId, configWithMissingSkill),
+			).rejects.toThrow('Invalid agent config: Missing skill bodies: missing_skill');
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('skills', () => {
@@ -158,7 +179,13 @@ describe('AgentsService', () => {
 		});
 
 		it('creates a skill on the agent', async () => {
-			const agent = makeAgent();
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+				},
+			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
 			const result = await service.createSkill(agentId, projectId, 'summarize_notes', skill);
@@ -167,6 +194,7 @@ describe('AgentsService', () => {
 			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
 				summarize_notes: skill,
 			});
+			expect(agent.schema?.skills).toEqual([{ type: 'skill', id: 'summarize_notes' }]);
 		});
 
 		it('loads one skill from the agent', async () => {
@@ -248,6 +276,8 @@ describe('AgentsService', () => {
 				{
 					agentId: agent.id,
 					schema: agent.schema,
+					tools: null,
+					skills: null,
 					publishedFromVersionId: versionId,
 					model: agent.model,
 					provider: agent.provider,
@@ -255,6 +285,62 @@ describe('AgentsService', () => {
 					publishedById: userId,
 				},
 				mockTrx,
+			);
+		});
+
+		it('snapshots attached skill bodies when publishing', async () => {
+			const skill = {
+				name: 'Summarize Notes',
+				description: 'Use when summarizing notes',
+				instructions: 'Extract decisions and action items.',
+			};
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					skills: [{ type: 'skill', id: 'summarize_notes' }],
+				},
+				skills: {
+					summarize_notes: skill,
+					unattached: {
+						name: 'Unattached',
+						description: 'Use when unattached',
+						instructions: 'Do not snapshot.',
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(
+				makePublishedVersion(),
+			);
+
+			await service.publishAgent(agentId, projectId, userId);
+
+			expect(agentPublishedVersionRepository.savePublishedVersion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					skills: {
+						summarize_notes: skill,
+					},
+				}),
+				mockTrx,
+			);
+		});
+
+		it('rejects publishing when a configured skill body is missing', async () => {
+			const agent = makeAgent({
+				schema: {
+					name: 'Test Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Be helpful',
+					skills: [{ type: 'skill', id: 'missing_skill' }],
+				},
+				skills: {},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await expect(service.publishAgent(agentId, projectId, userId)).rejects.toThrow(
+				'Cannot publish agent with missing skill bodies: missing_skill',
 			);
 		});
 
@@ -283,6 +369,53 @@ describe('AgentsService', () => {
 
 			expect(result.publishedVersion).toBe(publishedVersion);
 			expect(result).toBe(agent);
+		});
+	});
+
+	describe('executeForChatPublished', () => {
+		it('reconstructs from the published skill snapshot instead of the draft skill body', async () => {
+			const publishedSkill = {
+				name: 'Summarize Notes',
+				description: 'Use when summarizing notes',
+				instructions: 'Published instructions.',
+			};
+			const draftSkill = {
+				...publishedSkill,
+				instructions: 'Draft instructions.',
+			};
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				skills: [{ type: 'skill', id: 'summarize_notes' }],
+			};
+			const agent = makeAgent({
+				schema,
+				skills: { summarize_notes: draftSkill },
+				publishedVersion: makePublishedVersion({
+					schema,
+					skills: { summarize_notes: publishedSkill },
+				}),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const reconstructSpy = jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({} as never);
+			jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChatPublished(agentId, 'hello', 'thread-1', userId, projectId, mock())
+				.next();
+
+			expect(reconstructSpy.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					skills: { summarize_notes: publishedSkill },
+				}),
+			);
+			expect(reconstructSpy.mock.calls[0][2]).toBe(userId);
 		});
 	});
 

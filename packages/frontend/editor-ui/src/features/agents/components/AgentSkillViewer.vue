@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { StreamLanguage, type StringStream } from '@codemirror/language';
 import { Compartment, EditorState } from '@codemirror/state';
 import { EditorView, lineNumbers } from '@codemirror/view';
+import { AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX } from '@n8n/api-types';
 import { N8nButton, N8nFormInput, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -50,7 +51,7 @@ const descriptionValidationRules: Array<Rule | RuleGroup> = [
 	{
 		name: 'MATCH_REGEX',
 		config: {
-			regex: /^Use when\s+\S/i,
+			regex: AGENT_SKILL_DESCRIPTION_USE_WHEN_REGEX,
 			message: i18n.baseText('agents.builder.skills.validation.descriptionUseWhen'),
 		},
 	},

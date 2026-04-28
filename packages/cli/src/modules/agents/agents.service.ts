@@ -57,6 +57,9 @@ import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 
+type AgentToolEntries = Agent['tools'];
+type AgentSkillEntries = Agent['skills'];
+
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
 	agentId: string;
@@ -274,6 +277,8 @@ export class AgentsService {
 				{
 					agentId: agent.id,
 					schema: agent.schema,
+					tools: this.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
+					skills: this.snapshotConfiguredSkills(agent.schema, agent.skills ?? {}),
 					publishedFromVersionId: agent.versionId,
 					model: agent.model,
 					provider: agent.provider,
@@ -729,6 +734,8 @@ export class AgentsService {
 		if (!publishedSchema) {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
+		const publishedTools = agentEntity.publishedVersion?.tools ?? agentEntity.tools;
+		const publishedSkills = agentEntity.publishedVersion?.skills ?? agentEntity.skills;
 
 		// Reconstruct from the published snapshot and cache the runtime so that
 		// a follow-up `resumeForChat` (HITL button click) can find it via
@@ -737,7 +744,12 @@ export class AgentsService {
 		const key = this.runtimeKey(agentId, userId, integrationType);
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
-			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+			const publishedAgentData = {
+				...agentEntity,
+				schema: publishedSchema,
+				tools: publishedTools ?? {},
+				skills: publishedSkills ?? {},
+			} as Agent;
 			const agentInstance = await this.reconstructFromConfig(
 				publishedAgentData,
 				credentialProvider,
@@ -1058,6 +1070,8 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
+		this.validateConfigRefs(result.config, entity);
+
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
@@ -1160,11 +1174,16 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 		if (entity.skills?.[skillId]) throw new ConflictError('Skill already exists');
+		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		entity.skills = {
 			...(entity.skills ?? {}),
 			[skillId]: skill,
 		};
+		entity.schema.skills = [
+			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
+			{ type: 'skill', id: skillId },
+		];
 
 		this.markDraftDirty(entity);
 		this.clearRuntimes(agentId);
@@ -1293,6 +1312,92 @@ export class AgentsService {
 		}
 
 		return errors.length > 0 ? errors.join('\n') : null;
+	}
+
+	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
+		const missingSkillIds = this.getMissingSkillIds(config, entity.skills ?? {});
+		if (missingSkillIds.length > 0) {
+			throw new UserError(
+				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
+			);
+		}
+
+		const missingToolIds = this.getMissingCustomToolIds(config, entity.tools ?? {});
+		if (missingToolIds.length > 0) {
+			throw new UserError(
+				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
+			);
+		}
+	}
+
+	private getMissingSkillIds(config: AgentJsonConfig | null, skills: AgentSkillEntries): string[] {
+		const refs = config?.skills ?? [];
+		const seen = new Set<string>();
+		const missing: string[] = [];
+
+		for (const ref of refs) {
+			if (seen.has(ref.id)) continue;
+			seen.add(ref.id);
+			if (!skills[ref.id]) missing.push(ref.id);
+		}
+
+		return missing;
+	}
+
+	private getMissingCustomToolIds(
+		config: AgentJsonConfig | null,
+		tools: AgentToolEntries,
+	): string[] {
+		const refs = (config?.tools ?? []).filter(
+			(ref): ref is Extract<AgentJsonConfigRef, { type: 'custom' }> => ref.type === 'custom',
+		);
+		const seen = new Set<string>();
+		const missing: string[] = [];
+
+		for (const ref of refs) {
+			if (seen.has(ref.id)) continue;
+			seen.add(ref.id);
+			if (!tools[ref.id]) missing.push(ref.id);
+		}
+
+		return missing;
+	}
+
+	private snapshotConfiguredSkills(
+		config: AgentJsonConfig | null,
+		skills: AgentSkillEntries,
+	): AgentSkillEntries | null {
+		if (!config) return null;
+		const missing = this.getMissingSkillIds(config, skills);
+		if (missing.length > 0) {
+			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
+		}
+
+		const snapshot: AgentSkillEntries = {};
+		for (const ref of config.skills ?? []) {
+			const skill = skills[ref.id];
+			if (skill) snapshot[ref.id] = { ...skill };
+		}
+		return snapshot;
+	}
+
+	private snapshotConfiguredTools(
+		config: AgentJsonConfig | null,
+		tools: AgentToolEntries,
+	): AgentToolEntries | null {
+		if (!config) return null;
+		const missing = this.getMissingCustomToolIds(config, tools);
+		if (missing.length > 0) {
+			throw new UserError(`Cannot publish agent with missing custom tools: ${missing.join(', ')}`);
+		}
+
+		const snapshot: AgentToolEntries = {};
+		for (const ref of config.tools ?? []) {
+			if (ref.type !== 'custom') continue;
+			const tool = tools[ref.id];
+			if (tool) snapshot[ref.id] = tool;
+		}
+		return snapshot;
 	}
 
 	/**

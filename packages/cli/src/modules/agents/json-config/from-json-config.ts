@@ -38,7 +38,7 @@ export interface BuildFromJsonOptions {
 	credentialProvider: CredentialProvider;
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
 	resolveTool?: ToolResolver;
-	/** Stored skill bodies keyed by skill id. Only refs present in config.skills are enabled. */
+	/** Stored skill bodies keyed by skill id. Only refs present in config.skills are attached. */
 	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
@@ -72,8 +72,8 @@ export async function buildFromJson(
 		agent.model(config.model);
 	}
 
-	const enabledSkills = getEnabledSkills(config.skills ?? [], options.skills ?? {});
-	agent.instructions(withSkillCatalog(config.instructions, enabledSkills));
+	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
+	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
 
 	// Tools
 	if (config.tools) {
@@ -84,8 +84,8 @@ export async function buildFromJson(
 			}
 		}
 	}
-	if (enabledSkills.length > 0) {
-		agent.tool(createLoadSkillTool(enabledSkills));
+	if (configuredSkills.length > 0) {
+		agent.tool(createLoadSkillTool(configuredSkills));
 	}
 
 	// Provider tools
@@ -118,27 +118,27 @@ export async function buildFromJson(
 	return agent;
 }
 
-type EnabledSkill = { id: string; skill: AgentSkill };
+type ConfiguredSkill = { id: string; skill: AgentSkill };
 
-function getEnabledSkills(
+function getConfiguredSkills(
 	refs: Array<Extract<AgentJsonConfigRef, { type: 'skill' }>>,
 	skills: Record<string, AgentSkill>,
-): EnabledSkill[] {
+): ConfiguredSkill[] {
 	const seen = new Set<string>();
-	const enabled: EnabledSkill[] = [];
+	const configured: ConfiguredSkill[] = [];
 
 	for (const ref of refs) {
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
-		if (!skill) continue;
-		enabled.push({ id: ref.id, skill });
+		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
+		configured.push({ id: ref.id, skill });
 	}
 
-	return enabled;
+	return configured;
 }
 
-function withSkillCatalog(instructions: string, skills: EnabledSkill[]): string {
+function withSkillCatalog(instructions: string, skills: ConfiguredSkill[]): string {
 	if (skills.length === 0) return instructions;
 
 	const catalog = skills
@@ -152,12 +152,12 @@ ${catalog}
 If the user's task matches a skill description, call load_skill with the skill id before applying that skill. Skill bodies are intentionally not included here; load them only when relevant.`;
 }
 
-function createLoadSkillTool(skills: EnabledSkill[]): BuiltTool {
+function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
 	const skillsById = new Map(skills.map(({ id, skill }) => [id, skill]));
 
 	return new Tool('load_skill')
 		.description(
-			'Load the full instructions for an enabled skill when its name or description matches the current task. ' +
+			'Load the full instructions for an attached skill when its name or description matches the current task. ' +
 				'Use this before applying a skill; available skill ids are listed in the system instructions.',
 		)
 		.input(
@@ -170,7 +170,7 @@ function createLoadSkillTool(skills: EnabledSkill[]): BuiltTool {
 			if (!skill) {
 				return {
 					ok: false,
-					error: `Skill "${skillId}" is not enabled for this agent.`,
+					error: `Skill "${skillId}" is not attached to this agent.`,
 				};
 			}
 

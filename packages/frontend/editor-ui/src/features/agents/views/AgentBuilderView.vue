@@ -318,8 +318,6 @@ interface SkillAutosaveSnapshot {
 	skill: AgentSkill;
 }
 
-type AutosaveSnapshot = ConfigAutosaveSnapshot | SkillAutosaveSnapshot;
-
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// Drop the response if the user has switched to a different agent in the
@@ -351,19 +349,11 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 	await fetchAgent();
 }
 
-async function saveAutosaveSnapshot(snapshot: AutosaveSnapshot): Promise<void> {
-	if (snapshot.type === 'config') {
-		await saveConfig(snapshot);
-		return;
-	}
-	await saveSkill(snapshot);
-}
-
 // Debounce shorter than the workflow canvas' 1500ms — the publish button's
 // "enabled" state is gated on the save landing, so a longer wait makes the
 // UI feel laggy right after an edit.
-const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave<AutosaveSnapshot>({
-	save: saveAutosaveSnapshot,
+const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
+	save: saveConfig,
 	onSaved: () => {
 		telemetry.track('User saved agent settings', { agent_id: agentId.value });
 		builderTelemetry.flushConfigEdits();
@@ -377,12 +367,34 @@ const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave<
 		showError(error, locale.baseText('agents.builder.saveError'));
 	},
 });
+const skillAutosave = useAgentConfigAutosave<SkillAutosaveSnapshot>({
+	save: saveSkill,
+	onSaved: () => {
+		telemetry.track('User saved agent settings', { agent_id: agentId.value });
+	},
+	onError: (error: unknown) => {
+		showError(error, locale.baseText('agents.builder.saveError'));
+	},
+});
+const saveStatus = computed(() => {
+	if (configAutosave.saveStatus.value === 'saving' || skillAutosave.saveStatus.value === 'saving') {
+		return 'saving';
+	}
+	if (configAutosave.saveStatus.value === 'saved' || skillAutosave.saveStatus.value === 'saved') {
+		return 'saved';
+	}
+	return 'idle';
+});
+
+async function settleAutosave() {
+	await Promise.all([configAutosave.settleAutosave(), skillAutosave.settleAutosave()]);
+}
 
 function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
 	if (!localConfig.value) return;
 	builderTelemetry.recordConfigEdit(nextConfig);
 	localConfig.value = nextConfig;
-	scheduleAutosave({
+	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
@@ -401,7 +413,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
 	}
-	scheduleAutosave({
+	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
 		type: 'config',
@@ -753,7 +765,7 @@ function onSkillUpdate(updates: Partial<AgentSkill>) {
 		},
 	};
 
-	scheduleAutosave({
+	skillAutosave.scheduleAutosave({
 		type: 'skill',
 		projectId: projectId.value,
 		agentId: agentId.value,

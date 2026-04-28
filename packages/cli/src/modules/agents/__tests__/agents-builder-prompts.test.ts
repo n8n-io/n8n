@@ -75,6 +75,11 @@ describe('WORKFLOW_SECTION', () => {
 	it('instructs to call ask_credential before adding node tools', () => {
 		expect(WORKFLOW_SECTION).toContain('ask_credential');
 	});
+
+	it('instructs to register created skills in skills, not tools', () => {
+		expect(WORKFLOW_SECTION).toContain('attaches the returned skill id to `skills`');
+		expect(WORKFLOW_SECTION).not.toContain('append the returned skill id to `tools`');
+	});
 });
 
 describe('TOOL_TYPES_SECTION', () => {
@@ -85,8 +90,8 @@ describe('TOOL_TYPES_SECTION', () => {
 	it('instructs to create and register skills', () => {
 		expect(TOOL_TYPES_SECTION).toContain('create_skill');
 		expect(TOOL_TYPES_SECTION).toContain('Use when');
-		expect(TOOL_TYPES_SECTION).toContain('{ "type": "skill", "id": "summarize_meetings" }');
-		expect(TOOL_TYPES_SECTION).toContain('path: "/skills/-"');
+		expect(TOOL_TYPES_SECTION).toContain('{ "type": "skill", "id": "<returned id>" }');
+		expect(TOOL_TYPES_SECTION).toContain('in one operation');
 	});
 
 	it('no longer tells the model to fill credentials with empty values', () => {
@@ -104,10 +109,9 @@ describe('IMPORTANT_SECTION', () => {
 		expect(IMPORTANT_SECTION).not.toContain('Always call list_credentials first');
 	});
 
-	it('instructs to register skills after creating them', () => {
+	it('instructs that create_skill attaches skills', () => {
 		expect(IMPORTANT_SECTION).toContain('create_skill');
-		expect(IMPORTANT_SECTION).toContain('patch_config');
 		expect(IMPORTANT_SECTION).toContain('{ type: "skill", id }');
-		expect(IMPORTANT_SECTION).toContain('entry to `skills`');
+		expect(IMPORTANT_SECTION).toContain('entry to `skills` in one operation');
 	});
 });

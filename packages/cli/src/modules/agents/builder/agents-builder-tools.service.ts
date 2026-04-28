@@ -1,5 +1,6 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { agentSkillSchema } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
@@ -227,19 +228,15 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Create and store an agent skill. Pass the skill name, a short description, and the full skill body. ' +
 					'The description must start with "Use when ..." so the runtime can decide when to load it. ' +
-					'The body is stored as the skill instructions. This does NOT register the skill in the agent config — ' +
-					'after this succeeds, follow up with patch_config to append a `{ type: "skill", id }` entry to `skills` ' +
-					'using the returned id. Returns { ok: true, id, skill } or { ok: false, errors }.',
+					'The body is stored as the skill instructions and the skill is attached to the agent config. ' +
+					'Returns { ok: true, id, skill } or { ok: false, errors }.',
 			)
 			.input(
 				z.object({
 					name: z.string().min(1).describe('Human-readable skill name'),
-					description: z
-						.string()
-						.regex(/^Use when\s+\S/i, 'Description must start with "Use when ..."')
-						.describe(
-							'Short description of when to load the skill. Must start with "Use when ...".',
-						),
+					description: agentSkillSchema.shape.description.describe(
+						'Short description of when to load the skill. Must start with "Use when ...".',
+					),
 					body: z.string().min(1).describe('Full skill instructions/body'),
 				}),
 			)

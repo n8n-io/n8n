@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nButton, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -13,15 +14,14 @@ import { AGENT_BUILDER_VIEW } from '../constants';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
-import { useI18n } from '@n8n/i18n';
 
-const locale = useI18n();
 const router = useRouter();
 const route = useRoute();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const i18n = useI18n();
 const { showError } = useToast();
 const { isBuilderConfigured, fetchStatus } = useAgentBuilderStatus();
 
@@ -31,6 +31,11 @@ const projectId = computed(() =>
 		: (projectsStore.personalProject?.id ?? ''),
 );
 const firstName = computed(() => usersStore.currentUser?.firstName ?? '');
+const heading = computed(() =>
+	firstName.value
+		? i18n.baseText('agents.new.headingWithName', { interpolate: { name: firstName.value } })
+		: i18n.baseText('agents.new.heading'),
+);
 
 const inputText = ref('');
 const isCreating = ref(false);
@@ -39,7 +44,7 @@ onMounted(async () => {
 	try {
 		await fetchStatus();
 	} catch (error) {
-		showError(error, locale.baseText('settings.agentBuilder.loadError'));
+		showError(error, i18n.baseText('settings.agentBuilder.loadError'));
 	}
 });
 // When set, we've created the agent and the progress overlay is streaming
@@ -60,12 +65,11 @@ interface SkillTemplate {
 	body: string;
 }
 
-const suggestions: SuggestionTemplate[] = [
+const suggestions = computed<SuggestionTemplate[]>(() => [
 	{
 		icon: '🔍',
-		name: 'SEO Audit',
-		description:
-			'An SEO auditor. Give it a website URL and it crawls the pages, identifies issues, and suggests improvements.',
+		name: i18n.baseText('agents.new.template.seoAudit.name'),
+		description: i18n.baseText('agents.new.template.seoAudit.description'),
 		prompt:
 			'Create an SEO auditor agent. It should accept a website URL, crawl the pages, identify SEO issues like missing meta tags, broken links, slow load times, and suggest improvements.',
 		skills: [
@@ -95,9 +99,8 @@ const suggestions: SuggestionTemplate[] = [
 	},
 	{
 		icon: '👋',
-		name: 'Recruiting Sourcer',
-		description:
-			'A recruiting sourcer. Give it a job description and it finds matching candidates from multiple platforms.',
+		name: i18n.baseText('agents.new.template.recruitingSourcer.name'),
+		description: i18n.baseText('agents.new.template.recruitingSourcer.description'),
 		prompt:
 			'Create a recruiting sourcer agent. It should accept a job description, search for matching candidates across platforms, and compile a shortlist with contact info and relevance scores.',
 		skills: [
@@ -125,9 +128,8 @@ const suggestions: SuggestionTemplate[] = [
 	},
 	{
 		icon: '📬',
-		name: 'Inbox Sorter',
-		description:
-			'Sort your inbox, classifying emails by sender and marking them as read when they match your rules.',
+		name: i18n.baseText('agents.new.template.inboxSorter.name'),
+		description: i18n.baseText('agents.new.template.inboxSorter.description'),
 		prompt:
 			'Create an inbox sorter agent. It should classify incoming emails by sender and topic, apply user-defined rules to mark as read, label, or archive, and provide a daily summary.',
 		skills: [
@@ -153,7 +155,7 @@ const suggestions: SuggestionTemplate[] = [
 			},
 		],
 	},
-];
+]);
 
 function buildPromptWithSkills(suggestion: SuggestionTemplate): string {
 	if (suggestion.skills.length === 0) return suggestion.prompt;
@@ -177,7 +179,11 @@ async function createBlank() {
 	if (isCreating.value) return;
 	isCreating.value = true;
 	try {
-		const agent = await createAgent(rootStore.restApiContext, projectId.value, 'New Agent');
+		const agent = await createAgent(
+			rootStore.restApiContext,
+			projectId.value,
+			i18n.baseText('agents.new.defaultName'),
+		);
 		telemetry.track('User created agent', {
 			agent_id: agent.id,
 			source: 'create_blank',
@@ -196,7 +202,11 @@ async function submitDescription() {
 	isCreating.value = true;
 	const message = inputText.value.trim();
 	try {
-		const agent = await createAgent(rootStore.restApiContext, projectId.value, 'New Agent');
+		const agent = await createAgent(
+			rootStore.restApiContext,
+			projectId.value,
+			i18n.baseText('agents.new.defaultName'),
+		);
 		telemetry.track('User created agent', {
 			agent_id: agent.id,
 			source: 'description_prompt',
@@ -240,9 +250,9 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 				/>
 			</div>
 			<div :class="$style.topBar">
-				<N8nText tag="span" bold size="large">New agent</N8nText>
+				<N8nText tag="span" bold size="large">{{ i18n.baseText('agents.new.title') }}</N8nText>
 				<N8nButton
-					label="Start blank"
+					:label="i18n.baseText('agents.new.startBlank')"
 					type="secondary"
 					size="medium"
 					icon="file"
@@ -253,14 +263,12 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 			</div>
 
 			<div :class="$style.center">
-				<h1 :class="$style.heading">
-					What should we build{{ firstName ? `, ${firstName}` : '' }}?
-				</h1>
+				<h1 :class="$style.heading">{{ heading }}</h1>
 
 				<div :class="$style.inputWrapper">
 					<ChatInputBase
 						v-model="inputText"
-						placeholder="Describe your agent…"
+						:placeholder="i18n.baseText('agents.new.description.placeholder')"
 						:is-streaming="false"
 						:can-submit="inputText.trim().length > 0 && !isCreating"
 						:show-voice="true"
@@ -271,13 +279,14 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 				<div :class="$style.suggestions">
 					<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
-						Or try a template
+						{{ i18n.baseText('agents.new.templates.label') }}
 					</N8nText>
 
 					<div :class="$style.suggestionGrid">
-						<div
+						<button
 							v-for="suggestion in suggestions"
 							:key="suggestion.name"
+							type="button"
 							:class="$style.suggestionCard"
 							data-testid="agent-suggestion-card"
 							@click="selectSuggestion(suggestion)"
@@ -296,7 +305,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 							>
 								{{ suggestion.description }}
 							</N8nText>
-						</div>
+						</button>
 					</div>
 				</div>
 			</div>
@@ -377,15 +386,20 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 .suggestionCard {
 	display: flex;
 	flex-direction: column;
+	width: 100%;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
+	background: transparent;
 	cursor: pointer;
 	transition: background-color 0.15s ease;
+	text-align: left;
+	font: inherit;
 }
 
-.suggestionCard:hover {
+.suggestionCard:hover,
+.suggestionCard:focus-visible {
 	background-color: var(--color--foreground--tint-2);
 }
 
