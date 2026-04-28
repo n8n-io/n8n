@@ -2220,9 +2220,9 @@ describe('Validation', () => {
 		});
 
 		it('does not also fire SUBNODE_PARAMETER_MISMATCH for parent-relative displayOptions (INS-136)', () => {
-			// Repro of trace14: chat trigger has loadPreviousSession=memory but no
+			// Scenario: chat trigger that has loadPreviousSession: memory but no
 			// `mode` set, so the parent fails its own displayOptions. The memory
-			// subnode is connected — but `mode` and `options.loadPreviousSession`
+			// subnode is connected - but `mode` and `options.loadPreviousSession`
 			// are parent params, not subnode params. Only UNSUPPORTED_SUBNODE_INPUT
 			// should fire (parent-relative); SUBNODE_PARAMETER_MISMATCH is a false
 			// positive when the subnode doesn't even own those params.
@@ -2265,7 +2265,7 @@ describe('Validation', () => {
 						typeVersion: 1.4,
 						position: [0, 0] as [number, number],
 						// Parent's own `mode` and `options.loadPreviousSession` not set
-						// → parent fails displayOptions
+						// -> parent fails displayOptions
 						parameters: {},
 					},
 					{
