@@ -17,7 +17,10 @@ const isActiveCardComplete = computed(() =>
 	ctx.activeCard.value ? ctx.isCardComplete(ctx.activeCard.value) : false,
 );
 const isPrimaryActionDisabled = computed(
-	() => ctx.activeCard.value !== undefined && !isActiveCardComplete.value,
+	() =>
+		ctx.activeCard.value !== undefined &&
+		!isActiveCardComplete.value &&
+		!ctx.isCardSkipped(ctx.activeCard.value),
 );
 const isPrimaryActionBlockedByCredentialTest = computed(
 	() => ctx.activeCard.value !== undefined && ctx.isCredentialTestFailed(ctx.activeCard.value),
@@ -25,7 +28,13 @@ const isPrimaryActionBlockedByCredentialTest = computed(
 
 const isFinalize = computed(() => ctx.credentialFlow.value?.stage === 'finalize');
 
-const laterLabel = computed(() =>
+const showSkipButton = computed(
+	() =>
+		ctx.activeCard.value !== undefined &&
+		!isActiveCardComplete.value &&
+		!ctx.isCardSkipped(ctx.activeCard.value),
+);
+const skipLabel = computed(() =>
 	i18n.baseText(
 		isFinalize.value ? 'instanceAi.credential.finalize.later' : 'instanceAi.workflowSetup.later',
 	),
@@ -81,13 +90,14 @@ const applyLabel = computed(() =>
 
 				<div :class="$style.actions">
 					<N8nButton
-						v-if="!isActiveCardComplete"
+						v-if="showSkipButton"
 						variant="outline"
 						size="medium"
 						:class="$style.actionButton"
-						:label="laterLabel"
+						:label="skipLabel"
+						:disabled="ctx.isActionPending.value"
 						data-test-id="instance-ai-workflow-setup-later"
-						@click="ctx.defer"
+						@click="ctx.skipCurrentCard"
 					/>
 					<N8nTooltip
 						v-if="ctx.showContinueButton.value"

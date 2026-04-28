@@ -25,6 +25,7 @@ const selectedCredentialId = computed(
 );
 
 const isComplete = computed(() => ctx.isCardComplete(props.card));
+const isSkipped = computed(() => ctx.isCardSkipped(props.card));
 
 const displayName = computed(() => {
 	const raw =
@@ -75,6 +76,16 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 				<N8nIcon icon="check" size="large" />
 				{{ i18n.baseText('generic.complete') }}
 			</N8nText>
+			<N8nText
+				v-else-if="isSkipped"
+				data-test-id="instance-ai-workflow-setup-card-skipped"
+				:class="$style.skippedLabel"
+				size="medium"
+				color="text-light"
+			>
+				<N8nIcon icon="arrow-right" size="large" />
+				{{ i18n.baseText('instanceAi.workflowSetup.cardSkipped') }}
+			</N8nText>
 		</header>
 
 		<div :class="$style.body">
@@ -115,6 +126,13 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 }
 
 .completeLabel {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
+
+.skippedLabel {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);

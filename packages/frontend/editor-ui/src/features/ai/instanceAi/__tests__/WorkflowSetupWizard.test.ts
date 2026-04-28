@@ -77,21 +77,23 @@ function makeContext(isComplete: Ref<boolean>): WorkflowSetupContext {
 		isReady: ref(true),
 		projectId: computed(() => undefined),
 		credentialFlow: computed(() => undefined),
+		isActionPending: ref(false),
 		setSelection: vi.fn(),
 		isCardComplete: () => isComplete.value,
 		isCredentialTestFailed: () => false,
+		isCardSkipped: () => false,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
 		goToNextIncomplete: vi.fn(),
 		apply: vi.fn(),
-		defer: vi.fn(),
+		skipCurrentCard: vi.fn(),
 		showContinueButton: computed(() => false),
 	};
 }
 
 describe('WorkflowSetupWizard', () => {
-	it('hides the defer action once the active setup card is complete', async () => {
+	it('hides the skip action once the active setup card is complete', async () => {
 		const isComplete = ref(false);
 		workflowSetupContext.current = makeContext(isComplete);
 

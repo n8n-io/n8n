@@ -43,6 +43,18 @@ export class InstanceAiWorkflowSetup {
 		return this.root.getByText('Complete', { exact: true });
 	}
 
+	getCardSkipped(): Locator {
+		return this.root.getByTestId('instance-ai-workflow-setup-card-skipped');
+	}
+
+	getPrevButton(): Locator {
+		return this.root.getByTestId('instance-ai-workflow-setup-prev');
+	}
+
+	getNextButton(): Locator {
+		return this.root.getByTestId('instance-ai-workflow-setup-next');
+	}
+
 	getStatusChip(state: 'applying' | 'applied' | 'partial' | 'deferred'): Locator {
 		return this.root.getByTestId(`instance-ai-workflow-setup-status-${state}`);
 	}

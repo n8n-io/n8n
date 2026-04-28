@@ -1,34 +1,9 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import type { InstanceAiCredentialFlow } from '@n8n/api-types';
+import { i18n } from '@n8n/i18n';
 import type { TerminalState } from '../workflowSetup.types';
 
-const props = defineProps<{
-	state: TerminalState;
-	credentialFlow?: InstanceAiCredentialFlow;
-}>();
-
-const i18n = useI18n();
-
-const isFinalize = computed(() => props.credentialFlow?.stage === 'finalize');
-
-const deferredLabel = computed(() =>
-	i18n.baseText(
-		isFinalize.value
-			? 'instanceAi.credential.finalize.deferred'
-			: 'instanceAi.workflowSetup.deferred',
-	),
-);
-
-const appliedLabel = computed(() =>
-	i18n.baseText(
-		isFinalize.value
-			? 'instanceAi.credential.finalize.applied'
-			: 'instanceAi.workflowSetup.applied',
-	),
-);
+defineProps<{ state: TerminalState }>();
 </script>
 
 <template>
@@ -42,7 +17,9 @@ const appliedLabel = computed(() =>
 
 		<template v-else-if="state === 'applied'">
 			<N8nIcon icon="check" size="small" :class="$style.iconSuccess" />
-			<N8nText size="small" color="text-light">{{ appliedLabel }}</N8nText>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('instanceAi.workflowSetup.applied')
+			}}</N8nText>
 		</template>
 
 		<template v-else-if="state === 'partial'">
@@ -54,7 +31,9 @@ const appliedLabel = computed(() =>
 
 		<template v-else-if="state === 'deferred'">
 			<N8nIcon icon="arrow-right" size="small" :class="$style.iconMuted" />
-			<N8nText size="small" color="text-light">{{ deferredLabel }}</N8nText>
+			<N8nText size="small" color="text-light">{{
+				i18n.baseText('instanceAi.workflowSetup.deferred')
+			}}</N8nText>
 		</template>
 	</div>
 </template>

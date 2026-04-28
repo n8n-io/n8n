@@ -1,0 +1,3 @@
+{"kind":"header","version":1,"testName":"recording","recordedAt":"2026-04-27T18:43:28.368Z"}
+{"kind":"tool-call","stepId":1,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"list","query":"B3 Workflow Setup Skip Badge"},"output":{"workflows":[{"id":"X6WxlyO8UWR2Jzz4","name":"B3 Workflow Setup Skip Badge","versionId":"b79eb506-3d66-48ab-b45f-93bfbca7b856","activeVersionId":null,"createdAt":"2026-04-27T18:43:26.574Z","updatedAt":"2026-04-27T18:43:26.574Z"}]}}
+{"kind":"tool-call","stepId":2,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"setup","workflowId":"X6WxlyO8UWR2Jzz4"},"output":{"success":false}}

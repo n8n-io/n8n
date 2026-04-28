@@ -297,6 +297,7 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:message="chunk.item.toolCall.confirmation.message"
 					:project-id="chunk.item.toolCall.confirmation.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
+					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
 
 				<!-- Credential setup -->

@@ -9,7 +9,14 @@ const APPLY_BASIC_CREDENTIAL_NAME = 'B3 Apply Basic Auth';
 const APPLY_HEADER_CREDENTIAL_NAME = 'B3 Apply Header Auth';
 
 const DEFER_WORKFLOW_NAME = 'B3 Workflow Setup Defer Credentials';
-const DEFER_BASIC_CREDENTIAL_NAME = 'B3 Defer Basic Auth';
+
+const PARTIAL_WORKFLOW_NAME = 'B3 Workflow Setup Partial Apply Credentials';
+const PARTIAL_BASIC_CREDENTIAL_NAME = 'B3 Partial Basic Auth';
+
+const SKIP_BADGE_WORKFLOW_NAME = 'B3 Workflow Setup Skip Badge';
+const SKIP_BADGE_BASIC_CREDENTIAL_NAME = 'B3 Skip Badge Basic Auth';
+
+const ROUTE_BACK_WORKFLOW_NAME = 'B3 Workflow Setup Route Back To Earlier Card';
 
 const AUTO_APPLY_WORKFLOW_NAME = 'B3 Workflow Setup Auto Apply Header Auth';
 const AUTO_APPLY_OLDER_CREDENTIAL_NAME = 'B3 Auto Apply Header Older';
@@ -292,7 +299,9 @@ test.describe(
 			);
 		});
 
-		test('should defer setup without persisting created credential selections', async ({ n8n }) => {
+		test('should defer all setup when user skips every card without persisting credentials', async ({
+			n8n,
+		}) => {
 			const workflow = await n8n.api.workflows.createWorkflow(
 				createTwoCardWorkflow(DEFER_WORKFLOW_NAME),
 			);
@@ -303,27 +312,121 @@ test.describe(
 			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
 
-			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
-			await n8n.instanceAi.credentialModal.waitForModal();
-			await expect(n8n.instanceAi.credentialModal.getFieldInput('user')).toBeVisible();
-			await expect(n8n.instanceAi.credentialModal.getFieldInput('password')).toBeVisible();
-			await n8n.instanceAi.credentialModal.addCredential(
-				{
-					user: 'defer-basic-user',
-					password: 'defer-basic-password',
-				},
-				{ name: DEFER_BASIC_CREDENTIAL_NAME },
-			);
-
+			// Skip card 1 — wizard should advance to card 2 without resolving.
+			await n8n.instanceAi.workflowSetup.getLaterButton().click();
 			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
+
+			// Skip card 2 — every card is now skipped; wizard resolves as deferred.
 			await n8n.instanceAi.workflowSetup.getLaterButton().click();
 			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeHidden();
 
 			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
 			expect(getNode(persisted, 'HTTP Request Basic')?.credentials?.httpBasicAuth).toBeUndefined();
 			expect(
 				getNode(persisted, 'HTTP Request Header')?.credentials?.httpHeaderAuth,
 			).toBeUndefined();
+		});
+
+		test('should partially apply credentials when user completes one card and skips the last', async ({
+			n8n,
+		}) => {
+			const workflow = await n8n.api.workflows.createWorkflow(
+				createTwoCardWorkflow(PARTIAL_WORKFLOW_NAME),
+			);
+
+			await n8n.navigate.toInstanceAi();
+			await n8n.instanceAi.sendMessage(`Set up the workflow named "${PARTIAL_WORKFLOW_NAME}".`);
+
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+
+			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
+			await n8n.instanceAi.credentialModal.waitForModal();
+			await n8n.instanceAi.credentialModal.addCredential(
+				{
+					user: 'partial-basic-user',
+					password: 'partial-basic-password',
+				},
+				{ name: PARTIAL_BASIC_CREDENTIAL_NAME },
+			);
+
+			// Card 1 is now complete; wizard auto-advances to card 2.
+			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
+
+			// Skip card 2 — terminal action with one completion → partial apply.
+			await n8n.instanceAi.workflowSetup.getLaterButton().click();
+			await n8n.instanceAi.waitForResponseComplete();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeHidden();
+
+			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
+			expectAssignedCredentialName(
+				persisted,
+				'HTTP Request Basic',
+				'httpBasicAuth',
+				PARTIAL_BASIC_CREDENTIAL_NAME,
+			);
+			expect(
+				getNode(persisted, 'HTTP Request Header')?.credentials?.httpHeaderAuth,
+			).toBeUndefined();
+		});
+
+		test('should mark a skipped card and keep the wizard open while other cards are unhandled', async ({
+			n8n,
+		}) => {
+			await n8n.api.workflows.createWorkflow(createTwoCardWorkflow(SKIP_BADGE_WORKFLOW_NAME));
+
+			await n8n.navigate.toInstanceAi();
+			await n8n.instanceAi.sendMessage(`Set up the workflow named "${SKIP_BADGE_WORKFLOW_NAME}".`);
+
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+
+			// Skip card 1 — wizard stays open and advances to card 2.
+			await n8n.instanceAi.workflowSetup.getLaterButton().click();
+			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible();
+
+			// Navigate back to card 1 — the Skipped badge should be visible.
+			await n8n.instanceAi.workflowSetup.getPrevButton().click();
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCardSkipped()).toBeVisible();
+
+			// Selecting a credential on the skipped card auto-clears the badge
+			// and marks it complete.
+			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
+			await n8n.instanceAi.credentialModal.waitForModal();
+			await n8n.instanceAi.credentialModal.addCredential(
+				{
+					user: 'skip-badge-user',
+					password: 'skip-badge-password',
+				},
+				{ name: SKIP_BADGE_BASIC_CREDENTIAL_NAME },
+			);
+
+			await expect(n8n.instanceAi.workflowSetup.getCardSkipped()).toBeHidden();
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+		});
+
+		test('should route back to an earlier unhandled card when user skips a later one', async ({
+			n8n,
+		}) => {
+			await n8n.api.workflows.createWorkflow(createTwoCardWorkflow(ROUTE_BACK_WORKFLOW_NAME));
+
+			await n8n.navigate.toInstanceAi();
+			await n8n.instanceAi.sendMessage(`Set up the workflow named "${ROUTE_BACK_WORKFLOW_NAME}".`);
+
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+
+			// Manually navigate forward without handling card 1.
+			await n8n.instanceAi.workflowSetup.getNextButton().click();
+			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
+
+			// Skip card 2 — card 1 is still unhandled, wizard should route back.
+			await n8n.instanceAi.workflowSetup.getLaterButton().click();
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible();
 		});
 
 		test('should auto-apply a matching existing credential when setup starts complete', async ({

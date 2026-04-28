@@ -5189,6 +5189,7 @@
 	"instanceAi.workflowSetup.applied": "Workflow configured",
 	"instanceAi.workflowSetup.partiallyApplied": "Partially configured — some nodes skipped",
 	"instanceAi.workflowSetup.deferred": "Skipped — configure later",
+	"instanceAi.workflowSetup.cardSkipped": "Skipped",
 	"instanceAi.workflowSetup.selectOption": "Select an option",
 	"instanceAi.workflowSetup.confirmTitle": "Ready to apply",
 	"instanceAi.workflowSetup.confirmDescription": "{count} item configured | {count} items configured",

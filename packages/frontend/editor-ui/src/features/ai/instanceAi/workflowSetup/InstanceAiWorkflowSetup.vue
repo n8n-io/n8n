@@ -10,6 +10,7 @@ const props = defineProps<{
 	setupRequests: InstanceAiWorkflowSetupNode[];
 	message: string;
 	projectId?: string;
+	workflowId?: string;
 	credentialFlow?: InstanceAiCredentialFlow;
 }>();
 
@@ -17,6 +18,7 @@ const ctx = provideWorkflowSetupContext({
 	requestId: toRef(props, 'requestId'),
 	setupRequests: toRef(props, 'setupRequests'),
 	projectId: toRef(props, 'projectId'),
+	workflowId: toRef(props, 'workflowId'),
 	credentialFlow: toRef(props, 'credentialFlow'),
 });
 </script>
@@ -24,13 +26,7 @@ const ctx = provideWorkflowSetupContext({
 <template>
 	<div data-test-id="instance-ai-workflow-setup">
 		<div v-if="!ctx.isReady.value && !ctx.terminalState.value" />
-
-		<WorkflowSetupStatus
-			v-else-if="ctx.terminalState.value"
-			:state="ctx.terminalState.value"
-			:credential-flow="credentialFlow"
-		/>
-
+		<WorkflowSetupStatus v-else-if="ctx.terminalState.value" :state="ctx.terminalState.value" />
 		<WorkflowSetupWizard v-else-if="ctx.cards.value.length" />
 	</div>
 </template>
