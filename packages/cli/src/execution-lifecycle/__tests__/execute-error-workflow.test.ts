@@ -64,6 +64,7 @@ describe('executeErrorWorkflow', () => {
 				}),
 				mode: 'trigger',
 				startedAt: new Date(),
+				storedAt: 'db',
 				status: 'error',
 			};
 
@@ -98,6 +99,7 @@ describe('executeErrorWorkflow', () => {
 				}),
 				mode: 'trigger',
 				startedAt: new Date(),
+				storedAt: 'db',
 				status: 'error',
 			};
 
