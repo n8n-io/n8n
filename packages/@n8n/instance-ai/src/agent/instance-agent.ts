@@ -208,7 +208,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const systemPrompt = getSystemPrompt({
 		researchMode: orchestrationContext?.researchMode,
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
-		filesystemAccess: (context.localMcpServer?.getToolsByCategory('filesystem').length ?? 0) > 0,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
