@@ -9,8 +9,6 @@ import type { AgentMessage, MessageContent } from '../types/sdk/message';
  *  2. If a message becomes empty after stripping, drops the message entirely.
  *  3. Preserves all other content (text, reasoning, files, resolved/rejected
  *     tool-call blocks, and non-LLM custom messages).
- *  4. Returns the original array reference when no pending blocks exist (no-op
- *     fast path — avoids allocations on the common case).
  */
 export function stripOrphanedToolMessages<T extends AgentMessage>(messages: T[]): T[] {
 	const result: T[] = [];
