@@ -92,7 +92,7 @@ describe('components/N8nTooltip', () => {
 			expect(tooltip).toHaveTextContent('Bold text');
 		});
 
-		it('should show arrow by default', async () => {
+		it('should not render arrow', async () => {
 			render(Tooltip, {
 				props: {
 					content: 'Test tooltip',
@@ -103,12 +103,8 @@ describe('components/N8nTooltip', () => {
 				},
 			});
 
-			await waitFor(() => {
-				// Arrow is an SVG element inside the tooltip content
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				const arrow = tooltipContent?.querySelector('svg');
-				expect(arrow).toBeInTheDocument();
-			});
+			const tooltipContent = await getTooltip();
+			expect(tooltipContent.querySelector('svg')).not.toBeInTheDocument();
 		});
 	});
 

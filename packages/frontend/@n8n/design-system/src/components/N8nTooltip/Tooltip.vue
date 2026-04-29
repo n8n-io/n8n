@@ -5,7 +5,6 @@ import {
 	TooltipTrigger,
 	TooltipContent,
 	TooltipPortal,
-	TooltipArrow,
 } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 
@@ -111,7 +110,6 @@ const handleOpenChange = (open: boolean) => {
 							v-bind="{ ...button.attrs, ...button.listeners }"
 						/>
 					</div>
-					<TooltipArrow :class="$style.arrow" :width="11" :height="5" />
 				</TooltipContent>
 			</TooltipPortal>
 		</TooltipRoot>
@@ -119,9 +117,6 @@ const handleOpenChange = (open: boolean) => {
 </template>
 
 <style lang="scss" module>
-.arrow {
-	fill: currentColor;
-}
 
 .buttons {
 	display: flex;
@@ -140,18 +135,41 @@ const handleOpenChange = (open: boolean) => {
 
 // Global styles for teleported tooltip content
 :global(.n8n-tooltip) {
-	z-index: 2100; // Above header and other fixed elements
+	z-index: 99999999; // Above header and other fixed elements
 	max-width: 180px;
-	padding: 10px;
-	font-size: 12px;
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	min-height: var(--height--sm);
+	width: var(--reka-tooltip-trigger-width);
+	max-height: var(--reka-tooltip-content-available-height);
+	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
-	border-radius: 4px;
-	background: var(--color--background--shade-2);
-	color: var(--color--foreground--tint-2);
+	border-radius: var(--radius--xs);
+	background: var(--color--neutral-black);
+	color: var(--color--neutral-100);
 	word-wrap: break-word;
+	transform-origin: var(--reka-tooltip-content-transform-origin);
+	animation: scaleIn var(--duration--snappy) var(--easing--ease-out);
 
 	svg {
-		fill: var(--color--background--shade-2);
+		fill: currentColor;
+		opacity: 0.7;
+	}
+}
+
+:global(.n8n-tooltip[data-state='closed']) {
+	animation: none;
+}
+
+@keyframes scaleIn {
+	from {
+		opacity: 0;
+		filter: blur(2px);
+		transform: scale(0);
+	}
+	to {
+		opacity: 1;
+		filter: blur(0px);
+		transform: scale(1);
 	}
 }
 </style>
