@@ -203,7 +203,6 @@ const totalCount = computed(() => props.tools.length);
 						<N8nIconButton
 							icon="trash-2"
 							variant="ghost"
-							size="mini"
 							text
 							:aria-label="i18n.baseText('agents.builder.tools.remove')"
 							data-testid="agent-tools-list-remove"
@@ -236,7 +235,6 @@ const totalCount = computed(() => props.tools.length);
 						<N8nIconButton
 							icon="trash-2"
 							variant="ghost"
-							size="mini"
 							text
 							:aria-label="i18n.baseText('agents.builder.tools.remove')"
 							data-testid="agent-tools-list-remove"
@@ -280,7 +278,6 @@ const totalCount = computed(() => props.tools.length);
 						<N8nIconButton
 							icon="trash-2"
 							variant="ghost"
-							size="mini"
 							text
 							:aria-label="i18n.baseText('agents.builder.tools.remove')"
 							data-testid="agent-tools-list-remove"

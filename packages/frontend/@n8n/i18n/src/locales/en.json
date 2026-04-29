@@ -5696,6 +5696,7 @@
 	"agents.tools.noResults.withQuery": "No tools match “{query}”. Try a different keyword.",
 	"agents.tools.configure": "Configure",
 	"agents.tools.connect": "Connect",
+	"agents.tools.added": "Tool added",
 	"agents.tools.connected": "Connected",
 	"agents.tools.addCredentials": "Add credentials",
 	"agents.tools.noCredentials": "No credentials",
