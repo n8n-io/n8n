@@ -21,6 +21,27 @@ type PostHogSDK = {
 	getFeatureFlags?: () => Record<string, FlagValue> | null | undefined;
 };
 
+type EvaluatedFlagsAPI = {
+	getAll?: () => Record<string, FlagValue | undefined> | null | undefined;
+};
+
+function readEvaluatedFlags(): Record<string, FlagValue> {
+	const out: Record<string, FlagValue> = {};
+	try {
+		const api = (window as unknown as { featureFlags?: EvaluatedFlagsAPI }).featureFlags;
+		const all = api?.getAll?.();
+		if (all) {
+			for (const key of Object.keys(all)) {
+				const value = all[key];
+				if (value !== undefined) out[key] = value;
+			}
+		}
+	} catch {
+		// store not initialised yet
+	}
+	return out;
+}
+
 function readSdkFlags(): Record<string, FlagValue> {
 	const out: Record<string, FlagValue> = {};
 	try {
@@ -99,7 +120,8 @@ export function useFeatureFlags() {
 	function refresh() {
 		const persisted = readPersistedFlags();
 		const sdk = readSdkFlags();
-		const ph: Record<string, FlagValue> = { ...persisted, ...sdk };
+		const evaluated = readEvaluatedFlags();
+		const ph: Record<string, FlagValue> = { ...persisted, ...sdk, ...evaluated };
 		const ovr = readOverrides();
 		const allNames = Array.from(new Set([...Object.keys(ph), ...Object.keys(ovr)])).sort();
 
