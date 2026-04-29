@@ -4,6 +4,7 @@ import type { Settings, SettingsRepository, User, WorkflowRepository } from '@n8
 import { WorkflowEntity } from '@n8n/db';
 import type { EntityManager, FindOperator } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -209,6 +210,53 @@ describe('McpSettingsService', () => {
 					},
 				],
 			});
+		});
+
+		test('computes checksum from the full persisted workflow snapshot with updated settings', async () => {
+			const workflow = {
+				id: 'wf-1',
+				name: 'Workflow with checksum fields',
+				description: 'Description included in checksum',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Manual Trigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				settings: { saveManualExecutions: true, availableInMCP: false },
+				meta: { templateCredsSetupCompleted: true },
+				pinData: { 'Manual Trigger': [{ json: { value: 1 } }] },
+				isArchived: false,
+				activeVersionId: 'version-1',
+			};
+			setupRepository([workflow]);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
+			const expectedSettings = { saveManualExecutions: true, availableInMCP: true };
+			const expectedChecksum = await calculateWorkflowChecksum({
+				...workflow,
+				settings: expectedSettings,
+			});
+
+			const result = await service.bulkSetAvailableInMCP(
+				user,
+				new UpdateWorkflowsAvailabilityDto({
+					availableInMCP: true,
+					workflowIds: ['wf-1'],
+				}),
+			);
+
+			expect(result.changedWorkflows).toEqual([
+				{
+					workflowId: 'wf-1',
+					settings: { availableInMCP: true },
+					checksum: expectedChecksum,
+				},
+			]);
 		});
 
 		test('skips archived workflows and reports them as skipped', async () => {
