@@ -35,9 +35,11 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
 import type { IWorkflowDb } from '@/Interface';
-import type { INode, IPinData } from 'n8n-workflow';
+import type { INode, IPinData, ProjectSharingData } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
+import type { Scope } from '@n8n/permissions';
+import type { IUsedCredential } from '@/features/credentials/credentials.types';
 
 export {
 	getPinDataSize,
@@ -323,6 +325,9 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		}
 
+		/**
+		 * @deprecated use individual method or `getSnapshot()`
+		 */
 		function getWorkflowObjectAccessorSnapshot(): WorkflowObjectAccessors {
 			return {
 				id: workflowId,
@@ -335,6 +340,35 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				getParentMainInputNode: workflowDocumentGraph.getParentMainInputNode,
 				getChildNodes: workflowDocumentGraph.getChildNodes,
 				getParentNodesByDepth: workflowDocumentGraph.getParentNodesByDepth,
+			};
+		}
+
+		function getSnapshot(): IWorkflowDb {
+			return {
+				id: workflowId,
+				name: workflowDocumentName.name.value,
+				description: workflowDocumentDescription.description.value,
+				active: workflowDocumentActive.active.value,
+				activeVersionId: workflowDocumentActive.activeVersionId.value,
+				isArchived: workflowDocumentIsArchived.isArchived.value,
+				createdAt: workflowDocumentTimestamps.createdAt.value,
+				updatedAt: workflowDocumentTimestamps.updatedAt.value,
+				nodes: workflowDocumentNodes.allNodes.value,
+				connections: workflowDocumentConnections.connectionsBySourceNode.value,
+				settings: { ...DEFAULT_SETTINGS, ...workflowDocumentSettings.settings.value },
+				tags: [...workflowDocumentTags.tags.value],
+				pinData: workflowDocumentPinData.pinData.value as IPinData,
+				sharedWithProjects: (workflowDocumentSharedWithProjects.sharedWithProjects.value ??
+					[]) as ProjectSharingData[],
+				homeProject: workflowDocumentHomeProject.homeProject.value ?? undefined,
+				scopes: workflowDocumentScopes.scopes.value as Scope[],
+				versionId: workflowDocumentVersionData.versionId.value,
+				usedCredentials: Object.values(
+					workflowDocumentUsedCredentials.usedCredentials.value,
+				) as IUsedCredential[],
+				meta: workflowDocumentMeta.meta.value,
+				parentFolder: workflowDocumentParentFolder.parentFolder.value ?? undefined,
+				checksum: workflowDocumentChecksum.checksum.value,
 			};
 		}
 
@@ -367,6 +401,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			removeAllNodes,
 			hydrate,
 			reset,
+			getSnapshot,
 			getWorkflowObjectAccessorSnapshot,
 			serialize,
 			cloneWorkflowObject,

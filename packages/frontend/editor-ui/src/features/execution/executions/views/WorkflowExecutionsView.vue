@@ -16,9 +16,16 @@ import type { ExecutionSummary } from 'n8n-workflow';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { executionRetryMessage } from '../executions.utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -149,12 +156,13 @@ async function initializeRoute() {
 function fetchWorkflow() {
 	// Skip fetching if it's a new workflow that hasn't been saved yet
 	if (isNewWorkflowRoute.value || !workflowId.value) {
-		workflow.value = workflowsStore.workflow;
+		workflow.value = workflowDocumentStore.value.getSnapshot();
 		return;
 	}
 
 	// Use the workflow from the list store (already loaded by WorkflowLayout)
-	workflow.value = workflowsListStore.workflowsById[workflowId.value] ?? workflowsStore.workflow;
+	workflow.value =
+		workflowsListStore.workflowsById[workflowId.value] ?? workflowDocumentStore.value.getSnapshot();
 }
 
 async function onAutoRefreshToggle(value: boolean) {

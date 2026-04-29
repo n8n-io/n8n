@@ -402,7 +402,7 @@ onMounted(async () => {
 			node.parameters = resolved ?? {};
 		}
 
-		previousWorkflow = { ...workflowsStore.workflow };
+		previousWorkflow = { ...workflowDocumentStore.value.getSnapshot() };
 		const targetDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowData.id));
 		targetDocStore.hydrate(workflowData);
 	} catch (error) {
