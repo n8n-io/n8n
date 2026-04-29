@@ -19,7 +19,7 @@ catalog:
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
   '@langchain/anthropic': 1.1.3
-  '@langchain/community': 1.1.14
+  '@langchain/community': 1.1.18
   '@langchain/core': 1.1.34
   '@langchain/openai': 1.1.3
   '@lezer/common': 1.5.0
