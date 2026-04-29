@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type { INodeTypes, IConnections as N8nIConnections, IDisplayOptions } from 'n8n-workflow';
 import { mapConnectionsByDestination } from 'n8n-workflow';
 
@@ -662,6 +663,16 @@ function validateSubnodeParameters(
 					);
 
 					if (!matches) {
+						// `displayOptions` on `builderHint.inputs[type]` can describe
+						// either subnode-relative params (e.g. ai_vectorStore wants
+						// vector-store mode='retrieve-as-tool') or parent-relative
+						// params (e.g. ai_memory wants chatTrigger mode='hostedChat').
+						// If every mismatched param is absent from the subnode, those
+						// params don't belong to the subnode at all — blaming it is a
+						// false-positive misdirect. Defer to validateParentSupportsInputs.
+						const subnodeOwnsAnyParam = mismatches.some((m) => m.actual !== undefined);
+						if (!subnodeOwnsAnyParam) continue;
+
 						const sdkFn = AI_CONNECTION_TO_SDK_FUNCTION[connectionType] || connectionType;
 
 						// Build error message with actual parameter names from displayOptions
@@ -699,12 +710,37 @@ function buildConditionSummary(
 	const parts: string[] = [];
 	for (const [paramName, expectedValues] of Object.entries(displayOptions.show)) {
 		if (!expectedValues) continue;
-		const actual = parentParams[paramName];
+		// Use lodash get so nested paths (e.g. 'options.loadPreviousSession')
+		// resolve correctly — direct property access would read the literal
+		// dotted key and report 'undefined' even when the nested value is set.
+		const actual = get(parentParams, paramName);
 		const expectedStr = (expectedValues as unknown[]).map((v) => `'${String(v)}'`).join(' or ');
 		parts.push(`${paramName} should be ${expectedStr} (currently '${String(actual)}')`);
 	}
 
 	return parts.length > 0 ? `Required: ${parts.join(', ')}.` : '';
+}
+
+/**
+ * Build a description of which parameters TRIGGERED a requirement.
+ * Used by `MISSING_REQUIRED_INPUT` where the displayOptions conditions are
+ * already satisfied (that's why the requirement applies) — the agent needs
+ * to know which params caused it so it can choose between satisfying the
+ * requirement or backing out by changing those params.
+ */
+function buildTriggeringConditionSummary(
+	displayOptions: IDisplayOptions,
+	parentParams: Record<string, unknown>,
+): string {
+	if (!displayOptions.show) return '';
+
+	const parts: string[] = [];
+	for (const [paramName, _expectedValues] of Object.entries(displayOptions.show)) {
+		const actual = get(parentParams, paramName);
+		parts.push(`${paramName}='${String(actual)}'`);
+	}
+
+	return parts.join(', ');
 }
 
 /**
@@ -775,7 +811,7 @@ function validateParentSupportsInputs(
 					warnings.push(
 						new ValidationWarning(
 							'UNSUPPORTED_SUBNODE_INPUT',
-							`'${subnodeName}' is connected to '${parentNode.name}' as ${subnodeField}, but '${parentNode.name}' does not support ${subnodeField} in its current configuration. ${conditionDetails}`,
+							`'${parentNode.name}' has a ${subnodeField} subnode ('${subnodeName}') connected, but its current configuration does not accept one. ${conditionDetails} These parameters must be set on '${parentNode.name}' itself, NOT on the ${subnodeField} subnode. Alternatively, remove the ${subnodeField} connection if this capability isn't needed.`,
 							parentNode.name,
 							undefined,
 							undefined,
@@ -844,17 +880,20 @@ function validateRequiredInputsConnected(
 			if (hasConnection) continue;
 
 			const subnodeField = AI_CONNECTION_TO_SUBNODE_FIELD[connectionType] || connectionType;
-			const conditionDetails = inputConfig.displayOptions
-				? ` ${buildConditionSummary(
+			const triggerDetails = inputConfig.displayOptions
+				? ` (triggered by ${buildTriggeringConditionSummary(
 						inputConfig.displayOptions,
 						(parentNode.parameters ?? {}) as Record<string, unknown>,
-					)}`
+					)})`
+				: '';
+			const alternative = inputConfig.displayOptions
+				? ` Either connect a ${subnodeField} subnode, or change those parameters to remove the requirement.`
 				: '';
 
 			errors.push(
 				new ValidationError(
 					'MISSING_REQUIRED_INPUT',
-					`'${parentNode.name}' requires a ${subnodeField} subnode connected to its ${connectionType} input, but none is connected.${conditionDetails}`,
+					`'${parentNode.name}' requires a ${subnodeField} subnode connected to its ${connectionType} input${triggerDetails}, but none is connected.${alternative}`,
 					parentNode.name,
 					undefined,
 					'major',

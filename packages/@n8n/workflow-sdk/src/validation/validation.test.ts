@@ -2218,6 +2218,87 @@ describe('Validation', () => {
 			const warnings = result.warnings.filter((w) => w.code === 'UNSUPPORTED_SUBNODE_INPUT');
 			expect(warnings).toHaveLength(0);
 		});
+
+		it('does not also fire SUBNODE_PARAMETER_MISMATCH for parent-relative displayOptions (INS-136)', () => {
+			// Scenario: chat trigger that has loadPreviousSession: memory but no
+			// `mode` set, so the parent fails its own displayOptions. The memory
+			// subnode is connected - but `mode` and `options.loadPreviousSession`
+			// are parent params, not subnode params. Only UNSUPPORTED_SUBNODE_INPUT
+			// should fire (parent-relative); SUBNODE_PARAMETER_MISMATCH is a false
+			// positive when the subnode doesn't even own those params.
+			const provider = {
+				getByNameAndVersion: (type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+						return {
+							description: {
+								inputs: ['main'],
+								builderHint: {
+									inputs: {
+										ai_memory: {
+											required: true,
+											displayOptions: {
+												show: {
+													mode: ['hostedChat', 'webhook'],
+													'options.loadPreviousSession': ['memory'],
+												},
+											},
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { inputs: ['main'] } };
+				},
+				getByName: (type: string) => provider.getByNameAndVersion(type),
+				getKnownTypes: () => ({}),
+			};
+
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						// Parent's own `mode` and `options.loadPreviousSession` not set
+						// -> parent fails displayOptions
+						parameters: {},
+					},
+					{
+						id: 'mem-1',
+						name: 'Session Memory',
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						typeVersion: 1,
+						position: [0, 200] as [number, number],
+						parameters: {}, // memory subnode has no `mode` or `options.loadPreviousSession`
+					},
+				],
+				connections: {
+					'Session Memory': {
+						ai_memory: [[{ node: 'Chat Trigger', type: 'ai_memory', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: provider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const mismatch = result.warnings.filter((w) => w.code === 'SUBNODE_PARAMETER_MISMATCH');
+			const unsupported = result.warnings.filter((w) => w.code === 'UNSUPPORTED_SUBNODE_INPUT');
+
+			expect(mismatch).toHaveLength(0);
+			expect(unsupported).toHaveLength(1);
+			expect(unsupported[0].nodeName).toBe('Chat Trigger');
+			// Message should direct the LLM to set params on the parent
+			expect(unsupported[0].message).toContain("must be set on 'Chat Trigger' itself");
+			expect(unsupported[0].message).toContain('NOT on the memory subnode');
+		});
 	});
 
 	describe('MISSING_REQUIRED_INPUT validation', () => {
@@ -2291,7 +2372,12 @@ describe('Validation', () => {
 			expect(errors).toHaveLength(1);
 			expect(errors[0].nodeName).toBe('Chat Trigger');
 			expect(errors[0].message).toContain('ai_memory');
-			expect(errors[0].message).toContain('loadPreviousSession');
+			// The triggering condition reports the actual nested value via lodash get,
+			// not the literal dotted-key lookup that would resolve to 'undefined'.
+			expect(errors[0].message).toContain("options.loadPreviousSession='memory'");
+			expect(errors[0].message).not.toContain("options.loadPreviousSession='undefined'");
+			// Message offers the alternative path (change the params, don't connect).
+			expect(errors[0].message).toContain('change those parameters to remove the requirement');
 			expect(result.valid).toBe(false);
 		});
 
