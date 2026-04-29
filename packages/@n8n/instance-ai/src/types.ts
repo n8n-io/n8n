@@ -12,7 +12,7 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { GenericValue } from 'n8n-workflow';
+import type { GenericValue, INodeTypes } from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -340,6 +340,7 @@ export interface SearchableNodeDescription {
 	builderHint?: {
 		message?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
+		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
 }
 
@@ -597,6 +598,11 @@ export interface InstanceAiContext {
 	currentUserAttachments?: InstanceAiAttachment[];
 	/** Optional logger for diagnostics from domain tools. */
 	logger?: Logger;
+	/** Synchronous node-types provider used by host-side schema validation
+	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
+	 *  adapter; absent in pure-package contexts where no NodeTypes instance
+	 *  is reachable. */
+	nodeTypesProvider?: INodeTypes;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
