@@ -166,7 +166,6 @@ watch(
 				:class="[
 					$style.item,
 					$style['sub-trigger'],
-					'el-dropdown-menu__item',
 					props.class,
 					{ 'is-disabled': !!disabled },
 					{ [$style.highlighted]: highlighted },
@@ -273,7 +272,6 @@ watch(
 			:data-test-id="testId"
 			:class="[
 				$style.item,
-				'el-dropdown-menu__item',
 				props.class,
 				{ 'is-disabled': !!disabled },
 				{ [$style.highlighted]: highlighted },
