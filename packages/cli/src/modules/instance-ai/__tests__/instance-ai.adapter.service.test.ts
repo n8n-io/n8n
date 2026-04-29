@@ -1970,20 +1970,21 @@ function createRunAdapterForTests(workflow: Record<string, unknown>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
 		{
 			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
 		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[24],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
+		>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
