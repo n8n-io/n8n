@@ -108,7 +108,7 @@ import {
 	N8nInputNumber,
 	N8nOption,
 	N8nSelect,
-	N8nSwitch2,
+	N8nSwitch,
 } from '@n8n/design-system';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -1989,7 +1989,7 @@ onUpdated(async () => {
 				class="switch-droppable-input"
 			>
 				<template #prefix>
-					<N8nSwitch2
+					<N8nSwitch
 						:model-value="Boolean(displayValue)"
 						:label="switchLabel"
 						:disabled="true"
@@ -2006,7 +2006,7 @@ onUpdated(async () => {
 				:title="displayTitle"
 			/>
 
-			<N8nSwitch2
+			<N8nSwitch
 				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled"
 				ref="inputField"
 				:class="{ 'ph-no-capture': shouldRedactValue }"

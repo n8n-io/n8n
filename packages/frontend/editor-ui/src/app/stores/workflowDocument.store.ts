@@ -31,7 +31,6 @@ import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowD
 import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
@@ -138,16 +137,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 	return defineStore(getWorkflowDocumentStoreId(id), () => {
 		const [workflowId, workflowVersion] = id.split('@');
 
-		const workflowsStore = useWorkflowsStore();
 		const nodeTypesStore = useNodeTypesStore();
 		const nodeHelpers = useNodeHelpers();
 
-		const { workflowObject, ...workflowDocumentWorkflowObject } = useWorkflowDocumentWorkflowObject(
-			{
-				workflowId,
-				getNodeTypes: () => workflowsStore.getNodeTypes(),
-			},
-		);
+		const { cloneWorkflowObject, createWorkflowObject, ...workflowDocumentWorkflowObject } =
+			useWorkflowDocumentWorkflowObject({ workflowId });
 
 		const workflowDocumentName = useWorkflowDocumentName({
 			syncWorkflowObject: (name) => workflowDocumentWorkflowObject.syncWorkflowObjectName(name),
@@ -185,8 +179,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 				syncWorkflowObject: (connections) =>
 					workflowDocumentWorkflowObject.syncWorkflowObjectConnections(connections),
 			});
-		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
-		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
+		const workflowDocumentGraph = useWorkflowDocumentGraph(
+			workflowDocumentWorkflowObject.workflowObject,
+		);
+		const workflowDocumentExpression = useWorkflowDocumentExpression(
+			workflowDocumentWorkflowObject.workflowObject,
+		);
 		const workflowDocumentNodesIssues = useWorkflowDocumentNodesIssues({
 			allNodes: workflowDocumentNodes.allNodes,
 			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
@@ -371,6 +369,8 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			reset,
 			getSnapshot,
 			serialize,
+			cloneWorkflowObject,
+			createWorkflowObject,
 		};
 	})();
 }
