@@ -26,7 +26,7 @@ const buildDefaultState = (): PerWorkflowState => ({
 
 /**
  * Per-workflow UI state for the parallel-execution rollout. Visibility of the
- * UI is gated on the `eval_parallel_execution` PostHog flag (FE primary gate).
+ * UI is gated on the `080_eval_parallel_execution` PostHog flag (FE primary gate).
  * Backend has its own safety net that coerces flag-off requests to sequential.
  *
  * State shape: `{ [workflowId]: { parallelEnabled, concurrencyValue } }`.

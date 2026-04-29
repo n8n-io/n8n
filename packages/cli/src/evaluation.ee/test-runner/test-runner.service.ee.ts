@@ -530,11 +530,10 @@ export class TestRunnerService {
 			? evaluationLimit
 			: requestedConcurrency;
 
-		this.logger.debug('Starting new test run', {
-			workflowId,
-			concurrency: effectiveConcurrency,
-			concurrencyLimitedByConfig,
-		});
+		this.logger.info(
+			`[Eval] runTest called: requestedConcurrency=${requestedConcurrency} effectiveConcurrency=${effectiveConcurrency} evaluationLimit=${evaluationLimit} flagEnabledForUser=${flagEnabledForUser}`,
+			{ workflowId },
+		);
 
 		const workflow = await this.workflowRepository.findById(workflowId);
 		assert(workflow, 'Workflow not found');
@@ -623,6 +622,16 @@ export class TestRunnerService {
 			// JS's single-threaded event loop: `++` is synchronous, and there
 			// is no `await` between the read and the write of the counter.
 			const limit = pLimit(effectiveConcurrency);
+
+			// Visibility for parallel fan-out. The `inFlight` counter is mutated
+			// from per-case callbacks but the increments are safe — JS's single-
+			// threaded event loop guarantees no interleaving between read and
+			// write of `++` within a sync block.
+			const fanOutMetrics = { inFlight: 0, peakInFlight: 0, casesStarted: 0 };
+			this.logger.info(
+				`[Eval] Fan-out begin: cases=${testCases.length} concurrency=${effectiveConcurrency}`,
+				{ testRunId: testRun.id, workflowId },
+			);
 
 			const contributionResults = await Promise.all(
 				testCases.map(
@@ -718,7 +727,19 @@ export class TestRunnerService {
 								return [];
 							}
 
-							this.logger.debug('Running test case');
+							// In-flight tracking — increment as we leave the throttle and
+							// decrement in the outer finally. The peak counter shows whether
+							// the runner actually fanned out concurrently.
+							fanOutMetrics.inFlight += 1;
+							fanOutMetrics.casesStarted += 1;
+							if (fanOutMetrics.inFlight > fanOutMetrics.peakInFlight) {
+								fanOutMetrics.peakInFlight = fanOutMetrics.inFlight;
+							}
+							this.logger.info(
+								`[Eval] Case started: case=${caseIndex} inFlight=${fanOutMetrics.inFlight}/${effectiveConcurrency} peak=${fanOutMetrics.peakInFlight}`,
+								{ testRunId: testRun.id },
+							);
+
 							const runAt = new Date();
 
 							try {
@@ -820,10 +841,13 @@ export class TestRunnerService {
 									return [predefinedContribution, userDefinedContribution];
 								} catch (e) {
 									const completedAt = new Date();
-									this.logger.error('Test case execution failed', {
+									this.logger.error('[Eval] Test case execution failed', {
 										workflowId,
 										testRunId: testRun.id,
-										error: e,
+										caseIndex,
+										errorName: e instanceof Error ? e.name : 'Unknown',
+										errorMessage: e instanceof Error ? e.message : String(e),
+										errorStack: e instanceof Error ? e.stack : undefined,
 									});
 
 									telemetryMeta.errored_test_case_count++;
@@ -853,9 +877,19 @@ export class TestRunnerService {
 								// Always release capacity, even when runTestCase throws.
 								// The synthetic id is irrelevant — release dequeues by mode.
 								this.concurrencyControlService.release({ mode: 'evaluation' });
+								fanOutMetrics.inFlight -= 1;
+								this.logger.info(
+									`[Eval] Case finished: case=${caseIndex} inFlight=${fanOutMetrics.inFlight}/${effectiveConcurrency}`,
+									{ testRunId: testRun.id },
+								);
 							}
 						}),
 				),
+			);
+
+			this.logger.info(
+				`[Eval] Fan-out complete: cases=${fanOutMetrics.casesStarted} peakInFlight=${fanOutMetrics.peakInFlight}/${effectiveConcurrency}`,
+				{ testRunId: testRun.id },
 			);
 
 			// Single-threaded merge step. Order is irrelevant for averages

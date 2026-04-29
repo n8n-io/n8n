@@ -22,6 +22,7 @@ import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { HttpRequestConfig } from './configs/http-request.config';
 import { InstanceAiConfig } from './configs/instance-ai.config';
+import { EvaluationConfig } from './configs/evaluation.config';
 import { InstanceSettingsLoaderConfig } from './configs/instance-settings-loader.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
@@ -160,6 +161,9 @@ export class GlobalConfig {
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;
+
+	@Nested
+	evaluation: EvaluationConfig;
 
 	@Nested
 	generic: GenericConfig;

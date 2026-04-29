@@ -191,7 +191,7 @@ describe('TestRunsController', () => {
 		};
 
 		it('flag-on user with concurrency=5 → service called with concurrency=5 and flagEnabledForUser=true', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ eval_parallel_execution: true });
+			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
 
 			await testRunsController.create(
 				buildCreateRequest(),
@@ -221,7 +221,7 @@ describe('TestRunsController', () => {
 		});
 
 		it('flag-on user with no concurrency body → service called with concurrency=1', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ eval_parallel_execution: true });
+			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
 
 			await testRunsController.create(buildCreateRequest(), mockResponse() as any, {} as any);
 
@@ -252,7 +252,7 @@ describe('TestRunsController', () => {
 		});
 
 		it('resolves the feature flag exactly once per request', async () => {
-			mockPostHogClient.getFeatureFlags.mockResolvedValue({ eval_parallel_execution: true });
+			mockPostHogClient.getFeatureFlags.mockResolvedValue({ '080_eval_parallel_execution': true });
 
 			await testRunsController.create(
 				buildCreateRequest(),

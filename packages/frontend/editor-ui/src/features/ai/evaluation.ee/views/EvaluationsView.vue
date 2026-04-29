@@ -8,8 +8,8 @@ import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import { ElSlider, ElSwitch } from 'element-plus';
+import { N8nButton, N8nIcon, N8nSlider, N8nTooltip } from '@n8n/design-system';
+import { ElSwitch } from 'element-plus';
 
 const props = defineProps<{
 	workflowId: string;
@@ -100,9 +100,13 @@ watch(runningTestRun, (run) => {
 				:class="$style.parallelControls"
 				data-test-id="parallel-eval-controls"
 			>
+				<span :class="$style.concurrencyLabel">
+					{{ locale.baseText('evaluation.runInParallel.concurrency.label') }}
+				</span>
 				<ElSwitch
 					v-model="parallelEnabledModel"
 					:aria-label="locale.baseText('evaluation.runInParallel.label')"
+					:class="$style.parallelToggle"
 					data-test-id="run-in-parallel-toggle"
 				/>
 				<N8nTooltip placement="top" :content="locale.baseText('evaluation.runInParallel.tooltip')">
@@ -113,10 +117,7 @@ watch(runningTestRun, (run) => {
 						data-test-id="run-in-parallel-tooltip-icon"
 					/>
 				</N8nTooltip>
-				<span :class="$style.concurrencyLabel">
-					{{ locale.baseText('evaluation.runInParallel.concurrency.label') }}
-				</span>
-				<ElSlider
+				<N8nSlider
 					v-model="concurrencyModel"
 					:min="1"
 					:max="10"
@@ -203,6 +204,12 @@ watch(runningTestRun, (run) => {
 	align-items: center;
 	gap: var(--spacing--xs);
 	margin-right: var(--spacing--md);
+}
+
+.parallelToggle {
+	// Override element-plus's default green active state with n8n's brand
+	// orange so the toggle reads as part of the n8n design system.
+	--el-switch-on-color: var(--color--primary);
 }
 
 .tooltipIcon {
