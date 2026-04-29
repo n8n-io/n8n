@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
-import { computedAsync, useDebounceFn } from '@vueuse/core';
+import { computedAsync, useDebounceFn, useElementSize } from '@vueuse/core';
 
 import get from 'lodash/get';
 
@@ -81,7 +81,6 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useElementSize } from '@vueuse/core';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import {
@@ -189,8 +188,6 @@ const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
-// ESLint: false positive
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
 
@@ -1153,7 +1150,7 @@ function validateJsonPassword(value: string) {
 		return;
 	}
 
-	if (!value || !value.trim()) {
+	if (!value?.trim()) {
 		jsonValidationError.value = null;
 		return;
 	}
@@ -1285,7 +1282,7 @@ onMounted(() => {
 
 	void externalHooks.run('parameterInput.mount', {
 		parameter: props.parameter,
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unnecessary-type-assertion
+
 		inputFieldRef: inputField.value as InstanceType<typeof N8nInput>,
 	});
 });

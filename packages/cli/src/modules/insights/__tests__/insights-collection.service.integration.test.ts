@@ -17,6 +17,7 @@ import {
 	type IRun,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
@@ -95,9 +96,7 @@ describe('workflowExecuteAfterHandler', () => {
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
 
-		if (!metadata) {
-			return fail('expected metadata to exist');
-		}
+		assert(metadata, 'Expected metadata to exist');
 
 		expect(metadata).toMatchObject({
 			workflowId: workflow.id,
@@ -218,9 +217,7 @@ describe('workflowExecuteAfterHandler', () => {
 		// ASSERT
 		const metadata = await insightsMetadataRepository.findOneBy({ workflowId: workflow.id });
 
-		if (!metadata) {
-			return fail('expected metadata to exist');
-		}
+		assert(metadata, 'Expected metadata to exist');
 
 		expect(metadata).toMatchObject({
 			workflowId: workflow.id,
@@ -246,6 +243,50 @@ describe('workflowExecuteAfterHandler', () => {
 				metaId: metadata.metaId,
 				type: 'time_saved_min',
 				value: 3,
+			}),
+		);
+	});
+
+	test('rounds fractional time saved minutes for PostgreSQL BIGINT on insights_raw.value', async () => {
+		const workflowDynamic = await createWorkflow(
+			{
+				settings: {
+					timeSavedMode: 'dynamic',
+				},
+			},
+			project,
+		);
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow: workflowDynamic });
+		const startedAt = DateTime.utc();
+		const stoppedAt = startedAt.plus({ seconds: 5 });
+		ctx.runData = mock<IRun>({
+			mode: 'webhook',
+			status: 'success',
+			startedAt: startedAt.toJSDate(),
+			stoppedAt: stoppedAt.toJSDate(),
+			data: {
+				resultData: {
+					runData: {
+						timeSavedNode: [{ metadata: { timeSaved: { minutes: 5.4 } } }],
+					},
+				},
+			},
+		});
+
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		await insightsCollectionService.flushEvents();
+
+		const metadata = await insightsMetadataRepository.findOneBy({
+			workflowId: workflowDynamic.id,
+		});
+		assert(metadata, 'Expected metadata to exist');
+
+		const allInsights = await insightsRawRepository.find();
+		expect(allInsights).toContainEqual(
+			expect.objectContaining({
+				metaId: metadata.metaId,
+				type: 'time_saved_min',
+				value: 5,
 			}),
 		);
 	});
