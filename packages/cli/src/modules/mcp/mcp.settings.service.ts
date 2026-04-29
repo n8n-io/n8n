@@ -212,12 +212,12 @@ export class McpSettingsService {
 
 		const changesByWorkflowId = new Map(changes.map((change) => [change.workflowId, change]));
 
-		await Promise.allSettled(
+		await Promise.all(
 			openWorkflowIds.map(async (workflowId) => {
-				const change = changesByWorkflowId.get(workflowId);
-				if (!change) return;
-
 				try {
+					const change = changesByWorkflowId.get(workflowId);
+					if (!change) return;
+
 					await this.collaborationService.broadcastWorkflowSettingsUpdated(
 						workflowId,
 						change.settings,
