@@ -53,27 +53,20 @@ Flow: search_nodes → get_node_types → ask_credential (per slot) → write/up
     "nodeTypeVersion": 4,
     "nodeParameters": {
       "method": "GET",
-      "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
-      "toolDescription": "Make an HTTP request to any URL"
+      "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}"
     }
-  },
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "url": { "type": "string", "description": "The URL to request" }
-    },
-    "required": ["url"]
   }
 }
 \`\`\`
 
 Rules for node tools:
 - \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results. Use the tool node ID from search_nodes (usually ending in \`Tool\`, e.g. \`n8n-nodes-base.httpRequestTool\`), not the base node ID.
-- \`nodeParameters\` sets fixed parameters (resource, operation, etc.). For any value the AI should choose at runtime, use the same "Let the AI pick" expression the UI uses: \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('key', 'description', 'type') }}\`.
+- \`nodeParameters\` sets fixed parameters (resource, operation, etc.). For any value the AI should choose at runtime, use \`$fromAI\`: \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('key', 'description', 'type') }}\`.
+- Match the \`$fromAI\` type to the node parameter type from get_node_types: use \`string\`, \`number\`, \`boolean\`, \`json\`, or array forms like \`string[]\`. For repeated/list parameters such as \`string[]\`, the AI must provide a JSON array, never a comma-separated string.
 - Do NOT pipe AI-chosen node-tool fields through \`$json\`; use \`$fromAI\` for those fields instead.
+- Do NOT include \`inputSchema\` for node tools. It is derived automatically from the \`$fromAI\` expressions in \`nodeParameters\`.
+- Do NOT include \`toolDescription\` in \`nodeParameters\`. Use the top-level tool \`description\` only; the runtime derives the node parameter from it.
 - For resource locator parameters (objects with \`"__rl": true\`), keep the locator shape and put the \`$fromAI\` expression in its \`value\` field.
-- When get_node_types shows \`toolDescription\`, set it to the same clear purpose you use in the node tool's top-level \`description\`.
-- \`inputSchema\` must mirror the \`$fromAI\` keys in \`nodeParameters\` (JSON Schema). The backend also derives this schema from \`$fromAI\` placeholders, so keep them in lockstep.
 - For every credential slot the node requires, you MUST first call ask_credential and use the { id, name } returned in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never leave empty values.
 - Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If the user dismisses the picker (returns { skipped: true }), omit that slot entirely and warn the user the tool will fail at runtime until a credential is set.
 - Use search_nodes first, never guess node type names
@@ -167,11 +160,12 @@ export const N8N_EXPRESSIONS_SECTION = `\
 ## n8n expressions
 
 Node tool parameters inside \`nodeParameters\` can use n8n expressions.
-For node tools, prefer \`$fromAI\` whenever the agent should decide a value at runtime; this is the same behavior as the UI's "Let the AI pick" option.
+For node tools, prefer \`$fromAI\` whenever the agent should decide a value at runtime.
 
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\` — let the AI provide a string
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\` — let the AI provide a number
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}\` — let the AI provide a boolean
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('emails', 'Email addresses', 'string[]') }}\` — let the AI provide an array of strings
 - \`={{ $now.toISO() }}\` — current date/time (Luxon DateTime)
 - \`={{ $today }}\` — start of today (Luxon DateTime)
 

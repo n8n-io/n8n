@@ -2,6 +2,7 @@ import { describe, it, expect } from '@jest/globals';
 
 import {
 	buildBuilderPrompt,
+	getSchemaReferenceSection,
 	INTERACTIVE_TOOLS_SECTION,
 	getConfigRulesSection,
 	IMPORTANT_SECTION,
@@ -88,8 +89,26 @@ describe('TOOL_TYPES_SECTION', () => {
 
 	it('instructs node tools to use $fromAI instead of $json for AI-chosen fields', () => {
 		expect(TOOL_TYPES_SECTION).toContain('$fromAI');
+		expect(TOOL_TYPES_SECTION).toContain('string[]');
+		expect(TOOL_TYPES_SECTION).toContain('never a comma-separated string');
 		expect(TOOL_TYPES_SECTION).toContain('Do NOT pipe AI-chosen node-tool fields through `$json`');
 		expect(TOOL_TYPES_SECTION).not.toContain('={{$json.paramName}}');
+	});
+
+	it('instructs the builder to keep toolDescription out of nodeParameters', () => {
+		expect(TOOL_TYPES_SECTION).toContain('Do NOT include `toolDescription` in `nodeParameters`');
+		expect(TOOL_TYPES_SECTION).toContain('Use the top-level tool `description` only');
+	});
+
+	it('does not ask the builder to provide inputSchema for node tools', () => {
+		expect(TOOL_TYPES_SECTION).toContain('Do NOT include `inputSchema` for node tools');
+		expect(TOOL_TYPES_SECTION).toContain('derived automatically from the `$fromAI` expressions');
+	});
+});
+
+describe('getSchemaReferenceSection', () => {
+	it('does not expose inputSchema in the generated config schema', () => {
+		expect(getSchemaReferenceSection()).not.toContain('inputSchema');
 	});
 });
 

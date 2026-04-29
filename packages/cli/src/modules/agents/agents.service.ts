@@ -35,6 +35,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentsToolsService } from './agents-tools.service';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -54,7 +55,7 @@ import {
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
+import { withoutStaticNodeToolDescription } from './tools/node-tool-config-utils';
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -1032,7 +1033,7 @@ export class AgentsService {
 		let config = parsed.data;
 
 		try {
-			config = this.normalizeNodeToolInputSchemas(config);
+			config = this.normalizeNodeToolConfigs(config);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return {
@@ -1049,21 +1050,19 @@ export class AgentsService {
 		return { valid: true, config };
 	}
 
-	private normalizeNodeToolInputSchemas(config: AgentJsonConfig): AgentJsonConfig {
+	private normalizeNodeToolConfigs(config: AgentJsonConfig): AgentJsonConfig {
 		if (!config.tools) return config;
 
 		let changed = false;
 		const tools = config.tools.map((tool) => {
 			if (tool.type !== 'node') return tool;
 
-			const inputSchema = extractFromAIInputSchema(tool.node.nodeParameters ?? {});
-			if (!inputSchema) return tool;
+			const normalizedTool = withoutStaticNodeToolDescription(tool);
+			extractFromAIInputSchema(normalizedTool.node.nodeParameters ?? {});
+			if (normalizedTool === tool) return tool;
 
 			changed = true;
-			return {
-				...tool,
-				inputSchema,
-			};
+			return normalizedTool;
 		});
 
 		return changed ? { ...config, tools } : config;

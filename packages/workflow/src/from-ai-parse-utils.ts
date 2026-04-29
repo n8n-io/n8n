@@ -9,12 +9,20 @@ import { jsonParse } from './utils';
  * This file contains the logic for parsing node parameters and extracting $fromAI calls
  */
 
-export type FromAIArgumentType = 'string' | 'number' | 'boolean' | 'json';
+export type FromAIArgumentType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'json'
+	| 'string[]'
+	| 'number[]'
+	| 'boolean[]'
+	| 'json[]';
 export type FromAIArgument = {
 	key: string;
 	description?: string;
 	type?: FromAIArgumentType;
-	defaultValue?: string | number | boolean | Record<string, unknown>;
+	defaultValue?: string | number | boolean | Record<string, unknown> | unknown[];
 };
 
 class ParseError extends Error {}
@@ -92,6 +100,18 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 			schema = typedSchema;
 			break;
 		}
+		case 'string[]':
+			schema = z.array(z.string());
+			break;
+		case 'number[]':
+			schema = z.array(z.number());
+			break;
+		case 'boolean[]':
+			schema = z.array(z.boolean());
+			break;
+		case 'json[]':
+			schema = z.array(z.record(z.unknown()));
+			break;
 		default:
 			schema = z.string();
 	}
@@ -108,7 +128,16 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 }
 
 function isFromAIArgumentType(value: string): value is FromAIArgumentType {
-	return ['string', 'number', 'boolean', 'json'].includes(value.toLowerCase());
+	return [
+		'string',
+		'number',
+		'boolean',
+		'json',
+		'string[]',
+		'number[]',
+		'boolean[]',
+		'json[]',
+	].includes(value.toLowerCase());
 }
 
 /**
@@ -120,7 +149,7 @@ function isFromAIArgumentType(value: string): value is FromAIArgumentType {
 function parseDefaultValue(
 	value: string | undefined,
 	type: FromAIArgumentType = 'string',
-): string | number | boolean | Record<string, unknown> | undefined {
+): string | number | boolean | Record<string, unknown> | unknown[] | undefined {
 	if (value === undefined) return value;
 
 	const lowerValue = value.toLowerCase();
@@ -132,7 +161,7 @@ function parseDefaultValue(
 		return lowerValue === 'true';
 	if (type === 'number' && !isNaN(Number(value))) return Number(value);
 
-	// For type 'json' or any other case, attempt to parse as JSON
+	// For type 'json', array types, or any other case, attempt to parse as JSON
 	try {
 		return jsonParse(value);
 	} catch {
@@ -332,16 +361,34 @@ export function traverseNodeParameters(payload: unknown, collectedArgs: FromAIAr
 	}
 }
 
-function toJsonSchemaType(raw: FromAIArgument['type']): string {
+function toJsonSchemaProperty(
+	raw: FromAIArgument['type'],
+	description?: string,
+): Record<string, unknown> {
+	const withDescription = (schema: Record<string, unknown>) => ({
+		...schema,
+		...(description ? { description } : {}),
+	});
+
 	switch (raw) {
 		case 'number':
-			return 'number';
+			return withDescription({ type: 'number' });
 		case 'boolean':
-			return 'boolean';
+			return withDescription({ type: 'boolean' });
 		case 'json':
-			return 'object';
+			return withDescription({
+				anyOf: [{ type: 'object' }, { type: 'array' }],
+			});
+		case 'string[]':
+			return withDescription({ type: 'array', items: { type: 'string' } });
+		case 'number[]':
+			return withDescription({ type: 'array', items: { type: 'number' } });
+		case 'boolean[]':
+			return withDescription({ type: 'array', items: { type: 'boolean' } });
+		case 'json[]':
+			return withDescription({ type: 'array', items: { type: 'object' } });
 		default:
-			return 'string';
+			return withDescription({ type: 'string' });
 	}
 }
 
@@ -359,16 +406,13 @@ export function extractFromAIInputSchema(payload: unknown): Record<string, unkno
 
 	if (collectedArgs.length === 0) return null;
 
-	const properties: Record<string, { type: string; description?: string }> = {};
+	const properties: Record<string, Record<string, unknown>> = {};
 	const required: string[] = [];
 
 	for (const argument of collectedArgs) {
 		if (!argument.key || properties[argument.key]) continue;
 
-		properties[argument.key] = {
-			type: toJsonSchemaType(argument.type),
-			...(argument.description ? { description: argument.description } : {}),
-		};
+		properties[argument.key] = toJsonSchemaProperty(argument.type, argument.description);
 		required.push(argument.key);
 	}
 

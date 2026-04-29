@@ -32,20 +32,21 @@ const NodeToolCredentialSchema = z.object({
 	name: z.string(),
 });
 
+const NodeParametersSchema = z.record(z.unknown()).transform((nodeParameters) => {
+	if (!Object.prototype.hasOwnProperty.call(nodeParameters, 'toolDescription'))
+		return nodeParameters;
+
+	return Object.fromEntries(
+		Object.entries(nodeParameters).filter(([key]) => key !== 'toolDescription'),
+	);
+});
+
 export const NodeConfigSchema = z.object({
 	nodeType: z.string().min(1),
 	nodeTypeVersion: z.number(),
-	nodeParameters: z.record(z.unknown()).optional().default({}),
+	nodeParameters: NodeParametersSchema.optional().default({}),
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
-
-const JsonSchemaObjectSchema = z
-	.object({
-		type: z.literal('object').optional(),
-		properties: z.record(z.unknown()).optional(),
-		required: z.array(z.string()).optional(),
-	})
-	.passthrough();
 
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
@@ -72,7 +73,6 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 		name: z.string().min(1),
 		description: z.string().optional(),
 		node: NodeConfigSchema,
-		inputSchema: JsonSchemaObjectSchema,
 		requireApproval: z.boolean().optional(),
 	}),
 ]);

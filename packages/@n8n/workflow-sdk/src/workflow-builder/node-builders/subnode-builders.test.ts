@@ -408,6 +408,17 @@ describe('tool() with fromAi() support', () => {
 		expect(t.config.parameters?.count).toContain("'number'");
 	});
 
+	it('should generate fromAi with array type', () => {
+		const t = subnodeBuilders.tool({
+			type: 'test.tool',
+			version: 1,
+			config: {
+				parameters: { attendees: subnodeBuilders.fromAi('attendees', '', 'string[]') },
+			},
+		});
+		expect(t.config.parameters?.attendees).toContain("'string[]'");
+	});
+
 	it('should generate fromAi with default value', () => {
 		const t = subnodeBuilders.tool({
 			type: 'test.tool',

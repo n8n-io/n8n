@@ -25,11 +25,13 @@ const makeContext = (
 	value: string,
 	path?: string,
 	type: NodePropertyTypes = 'string',
+	typeOptions?: OverrideContext['parameter']['typeOptions'],
 ): OverrideContext => ({
 	parameter: {
 		name: PARAMETER_NAME,
 		displayName: DISPLAY_NAME,
 		type,
+		typeOptions,
 	},
 	value,
 	path: path ?? `parameters.${PARAMETER_NAME}`,
@@ -257,6 +259,24 @@ describe('FromAiOverride', () => {
 		);
 		expect(buildValueFromOverride(override, makeContext(''), false)).toEqual(
 			`={{ $fromAI('${DISPLAY_NAME}', \`${description}\`, 'string') }}`,
+		);
+	});
+
+	it('should build array-typed overrides for multiple value parameters', () => {
+		const override: FromAIOverride = {
+			type: 'fromAI',
+			extraProps: fromAIExtraProps,
+			extraPropValues: {},
+		};
+
+		expect(
+			buildValueFromOverride(
+				override,
+				makeContext('', undefined, 'string', { multipleValues: true }),
+				true,
+			),
+		).toEqual(
+			`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('${DISPLAY_NAME}', \`\`, 'string[]') }}`,
 		);
 	});
 });

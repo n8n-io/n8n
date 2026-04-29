@@ -97,6 +97,50 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
+	describe('validateConfig', () => {
+		it('strips generated-only fields from node tool configs', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				tools: [
+					{
+						type: 'node',
+						name: 'http_request',
+						description: 'Make an HTTP request to any URL',
+						inputSchema: {
+							type: 'object',
+							properties: { url: { type: 'string' } },
+							required: ['url'],
+						},
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequestTool',
+							nodeTypeVersion: 4,
+							nodeParameters: {
+								method: 'GET',
+								url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
+								toolDescription: 'Make an HTTP request to any URL',
+							},
+						},
+					},
+				],
+			});
+
+			expect(result.valid).toBe(true);
+			if (!result.valid) return;
+
+			expect(result.config.tools?.[0]).toMatchObject({
+				node: {
+					nodeParameters: {
+						method: 'GET',
+					},
+				},
+			});
+			expect(result.config.tools?.[0]).not.toHaveProperty('inputSchema');
+			expect(result.config.tools?.[0]).not.toHaveProperty('node.nodeParameters.toolDescription');
+		});
+	});
+
 	describe('updateConfig', () => {
 		const config = {
 			name: 'Test Agent',

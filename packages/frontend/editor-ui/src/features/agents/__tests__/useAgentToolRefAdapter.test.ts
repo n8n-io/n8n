@@ -1,12 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { INode, INodeTypeDescription } from 'n8n-workflow';
+import { extractFromAIInputSchema, type INode, type INodeTypeDescription } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
 import {
 	nodeTypeToNewToolRef,
 	toBaseNodeType,
 	toolRefToNode,
-	extractFromAIInputSchema,
 	updateToolRefFromNode,
 	updateWorkflowToolRef,
 	workflowToNewToolRef,
@@ -397,6 +396,7 @@ describe('useAgentToolRefAdapter', () => {
 				c: "={{ $fromAI('c', 'bool field', 'boolean') }}",
 				d: "={{ $fromAI('d', 'json field', 'json') }}",
 				e: "={{ $fromAI('e', 'no type') }}",
+				f: "={{ $fromAI('f', 'array field', 'string[]') }}",
 			};
 
 			expect(extractFromAIInputSchema(params)).toEqual({
@@ -405,10 +405,14 @@ describe('useAgentToolRefAdapter', () => {
 					a: { type: 'string', description: 'str field' },
 					b: { type: 'number', description: 'num field' },
 					c: { type: 'boolean', description: 'bool field' },
-					d: { type: 'object', description: 'json field' },
+					d: {
+						anyOf: [{ type: 'object' }, { type: 'array' }],
+						description: 'json field',
+					},
 					e: { type: 'string', description: 'no type' },
+					f: { type: 'array', items: { type: 'string' }, description: 'array field' },
 				},
-				required: ['a', 'b', 'c', 'd', 'e'],
+				required: ['a', 'b', 'c', 'd', 'e', 'f'],
 			});
 		});
 

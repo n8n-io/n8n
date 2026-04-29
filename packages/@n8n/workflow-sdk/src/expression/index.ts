@@ -139,7 +139,7 @@ function escapeArg(arg: string): string {
 /**
  * Serialize a default value for inclusion in the $fromAI expression.
  */
-function serializeDefaultValue(value: string | number | boolean | object): string {
+function serializeDefaultValue(value: string | number | boolean | object | unknown[]): string {
 	if (typeof value === 'string') {
 		return escapeArg(value);
 	}
@@ -174,7 +174,7 @@ export function createFromAIExpression(
 	key: string,
 	description?: string,
 	type: FromAIArgumentType = 'string',
-	defaultValue?: string | number | boolean | object,
+	defaultValue?: string | number | boolean | object | unknown[],
 ): string {
 	const args: string[] = [];
 	const marker = FROM_AI_AUTO_GENERATED_MARKER;

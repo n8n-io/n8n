@@ -162,8 +162,6 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 	};
 }
 
-export { extractFromAIInputSchema };
-
 /**
  * Merge edits made to an `INode` back into the original ref (preserving extra
  * fields). `inputSchema` is always regenerated from the `$fromAI` overrides

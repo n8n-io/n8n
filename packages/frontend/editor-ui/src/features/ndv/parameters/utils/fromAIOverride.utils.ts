@@ -14,7 +14,7 @@ export type OverrideContext = {
 		displayName: string;
 		type: NodePropertyTypes;
 		noDataExpression?: boolean;
-		typeOptions?: { editor?: string };
+		typeOptions?: { editor?: string; multipleValues?: boolean };
 	};
 	value: NodeParameterValueType;
 	path: string;
@@ -99,15 +99,23 @@ export function updateFromAIOverrideValues(override: FromAIOverride, expr: strin
 	}
 }
 
-function fieldTypeToFromAiType(propType: NodePropertyTypes) {
-	switch (propType) {
-		case 'boolean':
-		case 'number':
-		case 'json':
-			return propType;
-		default:
-			return 'string';
+function fieldTypeToFromAiType(parameter: OverrideContext['parameter']) {
+	const scalarType = (() => {
+		switch (parameter.type) {
+			case 'boolean':
+			case 'number':
+			case 'json':
+				return parameter.type;
+			default:
+				return 'string';
+		}
+	})();
+
+	if (parameter.typeOptions?.multipleValues === true) {
+		return `${scalarType}[]`;
 	}
+
+	return scalarType;
 }
 
 export function isFromAIOverrideValue(s: string) {
@@ -166,7 +174,7 @@ export function buildValueFromOverride(
 	const sanitizedDescription = description
 		.replaceAll(/\\/g, '\\\\')
 		.replaceAll(quoteChar, `\\${quoteChar}`);
-	const type = fieldTypeToFromAiType(props.parameter.type);
+	const type = fieldTypeToFromAiType(props.parameter);
 
 	return `={{ ${marker}$fromAI('${key}', ${quoteChar}${sanitizedDescription}${quoteChar}, '${type}') }}`;
 }

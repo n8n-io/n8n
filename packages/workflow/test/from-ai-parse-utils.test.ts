@@ -31,6 +31,10 @@ describe('extractFromAICalls', () => {
 		['{{ $fromAI("a", "b", "string", "5") }}', ['a', 'b', 'string', '5']],
 		['{{ $fromAI("a", "b", "string", "true") }}', ['a', 'b', 'string', 'true']],
 		['{{ $fromAI("a", "b", "string", "{}") }}', ['a', 'b', 'string', '{}']],
+		[
+			'{{ $fromAI("a", "b", "string[]", "[\\"x\\",\\"y\\"]") }}',
+			['a', 'b', 'string[]', ['x', 'y']],
+		],
 	])('should parse args as expected for %s', (formula, [key, description, type, defaultValue]) => {
 		expect(extractFromAICalls(formula)).toEqual([
 			{
@@ -113,6 +117,7 @@ describe('extractFromAIInputSchema', () => {
 					score: "={{ $fromAI('score', 'Lead score', 'number') }}",
 					enabled: "={{ $fromAI('enabled', 'Whether to enable sync', 'boolean') }}",
 					payload: "={{ $fromAI('payload', 'Additional JSON payload', 'json') }}",
+					attendees: "={{ $fromAI('attendees', 'Attendee email addresses', 'string[]') }}",
 				},
 			}),
 		).toEqual({
@@ -121,9 +126,17 @@ describe('extractFromAIInputSchema', () => {
 				name: { type: 'string', description: 'Contact name' },
 				score: { type: 'number', description: 'Lead score' },
 				enabled: { type: 'boolean', description: 'Whether to enable sync' },
-				payload: { type: 'object', description: 'Additional JSON payload' },
+				payload: {
+					anyOf: [{ type: 'object' }, { type: 'array' }],
+					description: 'Additional JSON payload',
+				},
+				attendees: {
+					type: 'array',
+					items: { type: 'string' },
+					description: 'Attendee email addresses',
+				},
 			},
-			required: ['name', 'score', 'enabled', 'payload'],
+			required: ['name', 'score', 'enabled', 'payload', 'attendees'],
 		});
 	});
 
@@ -133,6 +146,16 @@ describe('extractFromAIInputSchema', () => {
 });
 
 describe('JSON Type Parsing via generateZodSchema', () => {
+	it('should correctly parse an array of strings', () => {
+		const [arg] = extractFromAICalls(
+			'$fromAI("attendees", "Attendee email addresses", "string[]")',
+		);
+		const schema = generateZodSchema(arg);
+
+		expect(schema.parse(['user@example.com'])).toEqual(['user@example.com']);
+		expect(() => schema.parse('user@example.com')).toThrowError();
+	});
+
 	it('should correctly parse a JSON parameter without default', () => {
 		// Use an actual $fromAI call string via extractFromAICalls:
 		const [arg] = extractFromAICalls(
