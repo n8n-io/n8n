@@ -49,6 +49,7 @@ import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-Chan
 import { ConvertAgentIdToUuid1765804780000 } from './1765804780000-ConvertAgentIdToUuid';
 import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-ExpandInsightsWorkflowIdLength';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
+import { ExpandVariablesValueColumnToText1772800000000 } from './1772800000000-ExpandVariablesValueColumnToText';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -325,6 +326,7 @@ export const postgresMigrations: Migration[] = [
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
 	CreateRoleMappingRuleTable1772800000000,
+	ExpandVariablesValueColumnToText1772800000000,
 	CreateCredentialDependencyTable1773000000000,
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 	CreateInstanceVersionHistoryTable1774854660000,
