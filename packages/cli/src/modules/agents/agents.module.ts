@@ -8,9 +8,15 @@ import { Container } from '@n8n/di';
 export class AgentsModule implements ModuleInterface {
 	async init() {
 		await import('./agents.controller');
+		await import('./builder/agents-builder-settings.controller');
 
 		const { AgentsService } = await import('./agents.service');
 		Container.get(AgentsService);
+
+		const { AgentsBuilderSettingsService } = await import(
+			'./builder/agents-builder-settings.service'
+		);
+		Container.get(AgentsBuilderSettingsService);
 
 		const { AgentExecutionService } = await import('./agent-execution.service');
 		Container.get(AgentExecutionService);

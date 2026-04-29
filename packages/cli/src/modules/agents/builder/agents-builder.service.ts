@@ -4,10 +4,11 @@ import type {
 	StreamChunk,
 	StreamResult,
 } from '@n8n/agents';
-import { Agent, Memory, providerTools } from '@n8n/agents';
+import { Agent, Memory } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse, OperationalError, UserError } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 
 import { AgentsService } from '../agents.service';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -18,18 +19,13 @@ import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 
 const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.BUILDER}${agentId}`;
-}
-
-/** Read an Anthropic key from env, preferring the n8n-specific variable. */
-function readEnvAnthropicKey(): string | null {
-	const key = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
-	return key && key.length > 0 ? key : null;
 }
 
 @Service()
@@ -39,6 +35,7 @@ export class AgentsBuilderService {
 		private readonly agentsService: AgentsService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
+		private readonly builderSettings: AgentsBuilderSettingsService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
 	) {}
@@ -72,13 +69,13 @@ export class AgentsBuilderService {
 		projectId: string,
 		message: string,
 		credentialProvider: CredentialProvider,
-		userId?: string,
+		user: User,
 	): AsyncGenerator<StreamChunk> {
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider);
+		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
 
 		this.logger.debug('Starting builder agent stream', { agentId, projectId });
 
-		const resourceId = userId ?? agentId;
+		const resourceId = user.id;
 		const resultStream = await builder.stream(message, {
 			persistence: { threadId: builderThreadId(agentId), resourceId },
 		});
@@ -103,6 +100,7 @@ export class AgentsBuilderService {
 		toolCallId: string,
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): AsyncGenerator<StreamChunk> {
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus === 'expired') {
@@ -112,7 +110,7 @@ export class AgentsBuilderService {
 			throw new UserError(`Builder checkpoint ${runId} not found`);
 		}
 
-		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider);
+		const builder = await this.createBuilderAgent(agentId, projectId, credentialProvider, user);
 
 		this.logger.debug('Resuming builder agent', { agentId, runId, toolCallId });
 
@@ -141,26 +139,18 @@ export class AgentsBuilderService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		user: User,
 	): Promise<Agent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
-		// The builder is a built-in, system-level agent — it is driven by an
-		// env-var Anthropic key and never uses project credentials. This keeps
-		// the builder usable before any user credential has been configured.
-		const envAnthropicKey = readEnvAnthropicKey();
-		if (!envAnthropicKey) {
-			// Operational: the n8n instance hasn't been provisioned with a
-			// builder API key. Recoverable by the operator (set the env var)
-			// rather than the end user.
-			throw new OperationalError(
-				'Builder agent is not configured. Set N8N_AI_ANTHROPIC_KEY (preferred) or ANTHROPIC_API_KEY to enable it.',
-			);
-		}
+		// Resolve the model the builder should run on. Throws
+		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
+		// env-var fallback is available.
+		const { config: modelConfig } = await this.builderSettings.resolveModelConfig(user);
 
-		// Schema is persisted as JSON — double-cast rehydrates to the typed config.
 		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
 		const toolList =
@@ -179,12 +169,12 @@ export class AgentsBuilderService {
 
 		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
 
+		// Be careful with provider specific options, since user can change model to openai, grok, etc.
 		const builder = new Agent('agent-builder')
-			.model({ id: BUILDER_MODEL, apiKey: envAnthropicKey })
+			.model(modelConfig)
 			.instructions(instructions)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
-			.providerTool(providerTools.anthropicWebSearch({ maxUses: 5 }));
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);

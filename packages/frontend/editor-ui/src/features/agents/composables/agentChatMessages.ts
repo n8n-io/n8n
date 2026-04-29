@@ -258,9 +258,6 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 /**
  * Convert persisted agent messages into the frontend ChatMessage format.
  *
- * Tool results are persisted in separate `role: 'tool'` messages. We walk
- * forward, attaching results back to the matching tool call by `toolCallId`.
- *
  * Whenever a tool call is interactive (one of the ask_* tools), we attach a
  * reconstructed `InteractivePayload` so the UI re-renders the card in either
  * its open (awaiting user) or resolved (disabled) state.
@@ -268,38 +265,8 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatMessage[] {
 	const result: ChatMessage[] = [];
 
-	const applyToolResult = (toolName: string, toolCallId: string | undefined, output: unknown) => {
-		for (let i = result.length - 1; i >= 0; i--) {
-			const tcs = result[i].toolCalls;
-			if (!tcs) continue;
-			const match = tcs.find((t) =>
-				toolCallId ? t.toolCallId === toolCallId : t.tool === toolName && t.output === undefined,
-			);
-			if (match) {
-				match.output = output;
-				match.state = 'done';
-				// If this tool was an interactive one, refresh the parent message's
-				// `interactive` payload so the card flips to its resolved state.
-				if (isInteractiveToolName(match.tool)) {
-					const rebuilt = rebuildInteractiveFromHistory(match);
-					if (rebuilt) result[i].interactive = rebuilt;
-				}
-				return;
-			}
-		}
-	};
-
 	for (const msg of dbMessages) {
 		if (!msg.role || !Array.isArray(msg.content)) continue;
-
-		if (msg.role === 'tool') {
-			for (const part of msg.content) {
-				if (part.type === 'tool-result' && part.toolName) {
-					applyToolResult(part.toolName, part.toolCallId, part.result);
-				}
-			}
-			continue;
-		}
 
 		const role: ChatMessage['role'] | null =
 			msg.role === 'user' ? 'user' : msg.role === 'assistant' ? 'assistant' : null;
@@ -315,18 +282,25 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 			} else if (part.type === 'reasoning' && part.text) {
 				thinking += part.text;
 			} else if (part.type === 'tool-call' && part.toolName) {
+				let state: ToolCallState;
+				let output: unknown;
+				if (part.state === 'resolved') {
+					state = TOOL_CALL_STATE.DONE;
+					output = part.output;
+				} else if (part.state === 'rejected') {
+					state = TOOL_CALL_STATE.ERROR;
+					output = part.error;
+				} else {
+					state = TOOL_CALL_STATE.RUNNING;
+					output = undefined;
+				}
 				toolCalls.push({
 					tool: part.toolName,
 					toolCallId: part.toolCallId ?? '',
 					input: part.input,
-					state: 'running',
+					...(output !== undefined && { output }),
+					state,
 				});
-			} else if (part.type === 'tool-result' && part.toolName) {
-				const existing = toolCalls.find((t) => t.tool === part.toolName && t.output === undefined);
-				if (existing) {
-					existing.output = part.result;
-					existing.state = 'done';
-				}
 			}
 		}
 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -7,15 +7,22 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
 import { createAgent } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
+import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
+import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
+import { useI18n } from '@n8n/i18n';
 
+const locale = useI18n();
 const router = useRouter();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const { showError } = useToast();
+const { isBuilderConfigured, fetchStatus } = useAgentBuilderStatus();
 
 const projectId = computed(() => projectsStore.personalProject?.id ?? '');
 const firstName = computed(() => usersStore.currentUser?.firstName ?? '');
@@ -23,6 +30,13 @@ const firstName = computed(() => usersStore.currentUser?.firstName ?? '');
 const inputText = ref('');
 const isCreating = ref(false);
 
+onMounted(async () => {
+	try {
+		await fetchStatus();
+	} catch (error) {
+		showError(error, locale.baseText('settings.agentBuilder.loadError'));
+	}
+});
 // When set, we've created the agent and the progress overlay is streaming
 // the build. We only route into the builder once the stream reports `done`.
 const building = ref<{ agentId: string; message: string } | null>(null);
@@ -117,73 +131,78 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 <template>
 	<div :class="$style.page">
-		<div v-if="building" :class="$style.buildingOverlay">
-			<AgentBuilderProgress
-				:project-id="projectId"
-				:agent-id="building.agentId"
-				:initial-message="building.message"
-				@done="onBuildDone"
-			/>
-		</div>
-		<div :class="$style.topBar">
-			<N8nText tag="span" bold size="large">New agent</N8nText>
-			<N8nButton
-				label="Start blank"
-				type="secondary"
-				size="medium"
-				icon="file"
-				:loading="isCreating"
-				data-testid="create-blank-agent"
-				@click="createBlank"
-			/>
-		</div>
-
-		<div :class="$style.center">
-			<h1 :class="$style.heading">What should we build{{ firstName ? `, ${firstName}` : '' }}?</h1>
-
-			<div :class="$style.inputWrapper">
-				<ChatInputBase
-					v-model="inputText"
-					placeholder="Describe your agent…"
-					:is-streaming="false"
-					:can-submit="inputText.trim().length > 0 && !isCreating"
-					:show-voice="true"
-					:show-attach="false"
-					@submit="submitDescription"
+		<AgentBuilderUnconfiguredEmptyState v-if="!isBuilderConfigured" />
+		<template v-else>
+			<div v-if="building" :class="$style.buildingOverlay">
+				<AgentBuilderProgress
+					:project-id="projectId"
+					:agent-id="building.agentId"
+					:initial-message="building.message"
+					@done="onBuildDone"
+				/>
+			</div>
+			<div :class="$style.topBar">
+				<N8nText tag="span" bold size="large">New agent</N8nText>
+				<N8nButton
+					label="Start blank"
+					type="secondary"
+					size="medium"
+					icon="file"
+					:loading="isCreating"
+					data-testid="create-blank-agent"
+					@click="createBlank"
 				/>
 			</div>
 
-			<div :class="$style.suggestions">
-				<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
-					Or try a template
-				</N8nText>
+			<div :class="$style.center">
+				<h1 :class="$style.heading">
+					What should we build{{ firstName ? `, ${firstName}` : '' }}?
+				</h1>
 
-				<div :class="$style.suggestionGrid">
-					<div
-						v-for="suggestion in suggestions"
-						:key="suggestion.name"
-						:class="$style.suggestionCard"
-						data-testid="agent-suggestion-card"
-						@click="selectSuggestion(suggestion)"
-					>
-						<div :class="$style.suggestionHeader">
-							<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
-							<N8nText tag="span" bold size="small" :class="$style.suggestionName">
-								{{ suggestion.name }}
+				<div :class="$style.inputWrapper">
+					<ChatInputBase
+						v-model="inputText"
+						placeholder="Describe your agent…"
+						:is-streaming="false"
+						:can-submit="inputText.trim().length > 0 && !isCreating"
+						:show-voice="true"
+						:show-attach="false"
+						@submit="submitDescription"
+					/>
+				</div>
+
+				<div :class="$style.suggestions">
+					<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
+						Or try a template
+					</N8nText>
+
+					<div :class="$style.suggestionGrid">
+						<div
+							v-for="suggestion in suggestions"
+							:key="suggestion.name"
+							:class="$style.suggestionCard"
+							data-testid="agent-suggestion-card"
+							@click="selectSuggestion(suggestion)"
+						>
+							<div :class="$style.suggestionHeader">
+								<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
+								<N8nText tag="span" bold size="small" :class="$style.suggestionName">
+									{{ suggestion.name }}
+								</N8nText>
+							</div>
+							<N8nText
+								tag="span"
+								size="small"
+								color="text-light"
+								:class="$style.suggestionDescription"
+							>
+								{{ suggestion.description }}
 							</N8nText>
 						</div>
-						<N8nText
-							tag="span"
-							size="small"
-							color="text-light"
-							:class="$style.suggestionDescription"
-						>
-							{{ suggestion.description }}
-						</N8nText>
 					</div>
 				</div>
 			</div>
-		</div>
+		</template>
 	</div>
 </template>
 
