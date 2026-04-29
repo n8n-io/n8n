@@ -31,6 +31,7 @@ import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
 import type { IWorkflowErrorData } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -50,6 +51,7 @@ export class WorkflowExecutionService {
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly failedRunFactory: FailedRunFactory,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	async runWorkflow(
@@ -140,9 +142,10 @@ export class WorkflowExecutionService {
 
 		// Case 2: Full execution from a known trigger.
 		if (isFullExecutionFromKnownTrigger(payload)) {
-			// Check if we need a webhook.
+			// We must always register the webhook - even when the Chat Trigger has
+			// pinned data – because the chat SDK will POST the message to it.
 			if (
-				triggerHasNoPinnedData(workflowData, payload) &&
+				(payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) &&
 				(await this.testWebhooks.needsWebhook({
 					userId: user.id,
 					workflowEntity: workflowData,
@@ -210,6 +213,10 @@ export class WorkflowExecutionService {
 		}
 
 		if (data) {
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+			data.projectId = project.id;
+			data.projectName = project.name;
+
 			const offloadingManualExecutionsInQueueMode =
 				this.globalConfig.executions.mode === 'queue' &&
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
@@ -260,7 +267,10 @@ export class WorkflowExecutionService {
 		httpResponse?: Response,
 		streamingEnabled?: boolean,
 		executionMode: WorkflowExecuteMode = 'chat',
+		pushRef?: string,
 	) {
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowData.id);
+
 		const data: IWorkflowExecutionDataProcess = {
 			userId: user.id,
 			executionMode,
@@ -268,6 +278,9 @@ export class WorkflowExecutionService {
 			executionData,
 			streamingEnabled,
 			httpResponse,
+			pushRef,
+			projectId: project.id,
+			projectName: project.name,
 		};
 
 		const executionId = await this.workflowRunner.run(data, undefined, true);
@@ -316,12 +329,17 @@ export class WorkflowExecutionService {
 			}
 
 			const executionMode = 'error';
+
+			// Use published nodes/connections for execution, not the draft.
+			workflowData.nodes = workflowData.activeVersion.nodes;
+			workflowData.connections = workflowData.activeVersion.connections;
+
 			const workflowInstance = new Workflow({
 				id: workflowId,
 				name: workflowData.name,
 				nodeTypes: this.nodeTypes,
-				nodes: workflowData.activeVersion.nodes,
-				connections: workflowData.activeVersion.connections,
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
 				active: true,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,
@@ -430,6 +448,7 @@ export class WorkflowExecutionService {
 				executionData: runExecutionData,
 				workflowData,
 				projectId: runningProject.id,
+				projectName: runningProject.name,
 			};
 
 			const executionId = await this.workflowRunner.run(runData);

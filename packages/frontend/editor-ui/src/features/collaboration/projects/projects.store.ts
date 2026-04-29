@@ -21,6 +21,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import type { CreateProjectDto, UpdateProjectDto, SecretProviderConnection } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { hasRole } from '@/app/utils/rbac/checks';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 export type ResourceCounts = {
 	credentials: number;
@@ -115,6 +116,16 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		}
 	};
 
+	const searchProjects = async (params: {
+		search?: string;
+		take?: number;
+		skip?: number;
+		type?: 'personal' | 'team';
+		activated?: boolean;
+	}) => {
+		return await projectsApi.searchProjects(rootStore.restApiContext, params);
+	};
+
 	const fetchProject = async (id: string) =>
 		await projectsApi.getProject(rootStore.restApiContext, id);
 
@@ -160,6 +171,9 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 			if (nm !== undefined) currentProject.value.name = nm;
 			if (ic !== undefined) currentProject.value.icon = ic;
 			if (desc !== undefined) currentProject.value.description = desc;
+		}
+		if (nm !== undefined) {
+			useFavoritesStore().renameFavorite(id, 'project', nm);
 		}
 	};
 
@@ -327,8 +341,10 @@ export const useProjectsStore = defineStore(STORES.PROJECTS, () => {
 		canViewProjects,
 		hasPermissionToCreateProjects,
 		isTeamProjectFeatureEnabled,
+		globalProjectPermissions,
 		projectNavActiveId,
 		setCurrentProject,
+		searchProjects,
 		getAllProjects,
 		getMyProjects,
 		getPersonalProject,

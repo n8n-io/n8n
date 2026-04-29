@@ -45,6 +45,11 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A numeric input control for entering and stepping through numbers.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

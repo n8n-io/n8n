@@ -9,7 +9,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	return {
 		...actual,
 		useRoute: () => ({
-			params: { name: 'test-workflow-id' },
+			params: { workflowId: 'test-workflow-id' },
 			query: {},
 			meta: {},
 			name: 'workflow',
@@ -33,13 +33,16 @@ vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	useWorkflowState: vi.fn(() => ({
+vi.mock('@/app/composables/useWorkflowState', () => {
+	const mockState = () => ({
 		getNewWorkflowData: vi.fn(),
-		setWorkflowId: vi.fn(),
 		resetState: vi.fn(),
-	})),
-}));
+	});
+	return {
+		useWorkflowState: vi.fn(mockState),
+		injectWorkflowState: vi.fn(mockState),
+	};
+});
 
 vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
@@ -84,6 +87,9 @@ const defaultStubs = {
 	},
 	AskAssistantFloatingButton: {
 		template: '<div data-test-id="ask-assistant-button">Ask Assistant</div>',
+	},
+	CanvasChatOverlay: {
+		template: '<div data-test-id="canvas-chat-overlay" />',
 	},
 	AppChatPanel: {
 		template: '<div data-test-id="app-chat-panel">Chat Panel</div>',

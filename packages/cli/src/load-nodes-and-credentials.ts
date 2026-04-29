@@ -83,6 +83,11 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes.push('n8n-nodes-base.e2eTest');
 		}
 
+		if (process.env.N8N_ENV_FEAT_DYNAMIC_CREDENTIALS !== 'true') {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
+		}
+
 		// Load nodes from `n8n-nodes-base`
 		const basePathsToScan = [
 			// In case "n8n" package is in same node_modules folder.

@@ -104,7 +104,7 @@ export class DynamicCredentialsProxy
 		let credentialContext: { version: 1; identity: string } | undefined;
 
 		if (executionContext?.credentials) {
-			const decrypted = cipher.decrypt(executionContext.credentials);
+			const decrypted = await cipher.decryptV2(executionContext.credentials);
 			credentialContext = toCredentialContext(decrypted) as { version: 1; identity: string };
 		}
 

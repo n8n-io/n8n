@@ -1,4 +1,4 @@
-import { ExecutionsConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -35,6 +35,7 @@ export class ChatHubModule implements ModuleInterface {
 			enabled,
 			providers,
 			semanticSearch,
+			agentUploadMaxSizeMb: Container.get(GlobalConfig).endpoints.formDataFileSizeMax,
 		};
 	}
 

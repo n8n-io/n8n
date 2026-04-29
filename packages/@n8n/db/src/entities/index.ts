@@ -1,10 +1,16 @@
+import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
 import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
+import {
+	CredentialDependency,
+	type CredentialDependencyType,
+} from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { DeploymentKey } from './deployment-key';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -19,6 +25,7 @@ import { ProjectRelation } from './project-relation';
 import { ProjectSecretsProviderAccess } from './project-secrets-provider-access';
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
+import { RoleMappingRule } from './role-mapping-rule';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -40,6 +47,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -51,9 +59,13 @@ export {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	type CredentialDependencyType,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Role,
 	Scope,
 	SharedCredentials,
@@ -84,6 +96,7 @@ export {
 
 export const entities = {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -92,9 +105,12 @@ export const entities = {
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
+	CredentialDependency,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
+	RoleMappingRule,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,

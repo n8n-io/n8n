@@ -4,12 +4,15 @@ import { createTeamProject, randomName, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { mock } from 'jest-mock-extended';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
 	randomString,
 } from 'n8n-workflow';
+
 import { CredentialsService } from '@/credentials/credentials.service';
+import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	affixRoleToSaveCredential,
@@ -55,7 +58,7 @@ async function getDecryptedCredentialData(
 		id: credentialId,
 	});
 	const credentialsService = Container.get(CredentialsService);
-	return credentialsService.decrypt(credential, true);
+	return await credentialsService.decrypt(credential, true);
 }
 
 describe('POST /credentials', () => {
@@ -106,6 +109,79 @@ describe('POST /credentials', () => {
 			const response = await authOwnerAgent.post('/credentials').send(invalidPayload);
 			expect(response.statusCode === 400 || response.statusCode === 415).toBe(true);
 		}
+	});
+
+	test('should create credential in a team project when projectId is provided', async () => {
+		const teamProject = await createTeamProject('project', member);
+		const payload = {
+			name: 'test credential in project',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		const { id, name } = response.body;
+		expect(name).toBe(payload.name);
+
+		const sharedCredential = await Container.get(SharedCredentialsRepository).findOneOrFail({
+			relations: { credentials: true },
+			where: {
+				credentialsId: id,
+				projectId: teamProject.id,
+			},
+		});
+
+		expect(sharedCredential.role).toEqual('credential:owner');
+		expect(sharedCredential.credentials.name).toBe(payload.name);
+	});
+
+	test('should return 404 when projectId does not exist', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: 'non-existing-id',
+		});
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user has no access to the project', async () => {
+		const teamProject = await createTeamProject('project', owner);
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: 'abcdefghijklmnopqrstuvwxyz',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send({
+			...payload,
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
 	});
 
 	test('should create credential with isResolvable set to true', async () => {
@@ -176,6 +252,25 @@ describe('POST /credentials', () => {
 		const credential = await Container.get(CredentialsRepository).findOneByOrFail({ id });
 		expect(credential.isResolvable).toBe(false);
 	});
+
+	test('should return 400 for external secret reference without projectId when permissions are missing', async () => {
+		const payload = {
+			name: 'test credential',
+			type: 'githubApi',
+			data: {
+				accessToken: '={{ $secrets.myApiKey }}',
+				user: 'test',
+				server: 'testServer',
+			},
+		};
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			'Lacking permissions to reference external secrets in credentials',
+		);
+	});
 });
 
 describe('GET /credentials', () => {
@@ -203,13 +298,13 @@ describe('GET /credentials', () => {
 			expect(Array.isArray((item as { shared: unknown }).shared)).toBe(true);
 			(
 				item as {
-					shared: {
+					shared: Array<{
 						id: string;
 						name: string;
 						role: string;
 						createdAt: string;
 						updatedAt: string;
-					}[];
+					}>;
 				}
 			).shared.forEach((entry) => {
 				expect(entry).toHaveProperty('id');
@@ -269,6 +364,92 @@ describe('GET /credentials', () => {
 			.query({ cursor: first.body.nextCursor });
 		expect(second.statusCode).toBe(200);
 		expect(second.body.data.length).toBe(1);
+	});
+});
+
+describe('GET /credentials/:id', () => {
+	test('should return owned credential for owner without credential data', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authOwnerAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should return owned credential for member', async () => {
+		const memberWithReadScope = await createMemberWithApiKey({ scopes: ['credential:read'] });
+		const authMemberWithReadScopeAgent = testServer.publicApiAgentFor(memberWithReadScope);
+		const savedCredential = await saveCredential(dbCredential(), { user: memberWithReadScope });
+
+		const response = await authMemberWithReadScopeAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toMatchObject({
+			id: savedCredential.id,
+			name: savedCredential.name,
+			type: savedCredential.type,
+		});
+		expect(response.body).not.toHaveProperty('data');
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
+	test('should not return non-owned credential for member', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		const response = await authMemberAgent.get(`/credentials/${savedCredential.id}`);
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.get('/credentials/123');
+
+		expect(response.statusCode).toBe(404);
+	});
+});
+
+describe('POST /credentials/:id/test', () => {
+	const mockCredentialsTester = mock<CredentialsTester>();
+	Container.set(CredentialsTester, mockCredentialsTester);
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	test('should test credential with stored data when body is empty', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+
+		const credential = dbCredential();
+		const savedCredential = await saveCredential(credential, { user: owner });
+
+		const response = await authOwnerAgent.post(`/credentials/${savedCredential.id}/test`);
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalledWith(
+			owner.id,
+			savedCredential.type,
+			expect.objectContaining({
+				id: savedCredential.id,
+				type: savedCredential.type,
+				data: credential.data,
+			}),
+		);
+	});
+
+	test('should return 404 if credential does not exist', async () => {
+		const response = await authOwnerAgent.post('/credentials/123/test');
+
+		expect(response.statusCode).toBe(404);
 	});
 });
 
@@ -823,6 +1004,37 @@ describe('PATCH /credentials/:id', () => {
 		expect(unchangedCredential.isGlobal).toBe(true);
 
 		// Restore original implementation
+		isSharingLicensedSpy.mockRestore();
+	});
+
+	test('should allow sending isGlobal with same value when sharing is not licensed', async () => {
+		const savedCredential = await saveCredential(dbCredential(), { user: owner });
+
+		// Credential defaults to isGlobal=false, so sending isGlobal=false should succeed
+		const licenseState = Container.get(LicenseState);
+		const isSharingLicensedSpy = jest
+			.spyOn(licenseState, 'isSharingLicensed')
+			.mockReturnValue(false);
+
+		const updatePayload = {
+			name: 'Updated name',
+			isGlobal: false,
+		};
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(updatePayload);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe('Updated name');
+
+		// Verify credential was updated
+		const updatedCredential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(updatedCredential.name).toBe('Updated name');
+		expect(updatedCredential.isGlobal).toBeFalsy();
+
 		isSharingLicensedSpy.mockRestore();
 	});
 

@@ -1229,6 +1229,24 @@ export class WorkflowDataProxy {
 										if (pinnedData) {
 											return that.returnExecutionData(pinnedData[itemIndex], resolveFullItem);
 										}
+										// The active node has not run yet (e.g. partial execution),
+										// so paired item resolution cannot trace through the chain.
+										// Fall back to reading directly from the referenced node's
+										// run data, which is what first()/last()/all() do.
+										const nodeRunData = that.getNodeExecutionOrPinnedData({
+											nodeName,
+										});
+										if (nodeRunData.length) {
+											// In the UI preview itemIndex is always 0, but guard against
+											// out-of-bounds access in case that assumption ever changes.
+											if (itemIndex >= nodeRunData.length) {
+												throw createExpressionError(
+													`"${nodeName}" node has ${nodeRunData.length} item(s) but expression references item ${itemIndex}`,
+													{ itemIndex },
+												);
+											}
+											return that.returnExecutionData(nodeRunData[itemIndex], resolveFullItem);
+										}
 									}
 
 									const executionData = that.connectionInputData;

@@ -1,4 +1,4 @@
-import type { Locator } from '@playwright/test';
+import { expect, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 import { ROUTES } from '../config/constants';
@@ -13,6 +13,10 @@ import { StickyComponent } from './components/StickyComponent';
 import { TagsManagerModal } from './components/TagsManagerModal';
 
 export class CanvasPage extends BasePage {
+	async goto() {
+		await this.page.goto(ROUTES.NEW_WORKFLOW_PAGE);
+	}
+
 	readonly sticky = new StickyComponent(this.page);
 	readonly logsPanel = new LogsPanel(this.page.getByTestId('logs-panel'));
 	readonly focusPanel = new FocusPanel(this.page.getByTestId('focus-panel'));
@@ -69,6 +73,10 @@ export class CanvasPage extends BasePage {
 
 	getCanvasNodes() {
 		return this.page.getByTestId('canvas-node');
+	}
+
+	getChoicePrompt(): Locator {
+		return this.page.getByTestId('canvas-choice-prompt');
 	}
 
 	async clickNodeCreatorPlusButton(): Promise<void> {
@@ -172,6 +180,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickExecuteWorkflowButton(triggerNodeName?: string): Promise<void> {
+		if (triggerNodeName) {
+			await this.nodeByName(triggerNodeName).hover();
+		}
 		await this.getExecuteWorkflowButton(triggerNodeName).click();
 	}
 
@@ -477,6 +488,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-item-name');
 	}
 
+	nodeCreatorNodeItem(name: string): Locator {
+		return this.nodeCreatorNodeItems().getByText(name, { exact: true });
+	}
+
 	nodeCreatorActionItems(): Locator {
 		return this.page.getByTestId('node-creator-action-item');
 	}
@@ -530,6 +545,13 @@ export class CanvasPage extends BasePage {
 
 	// Actions
 
+	async waitForBlankCanvasReady(): Promise<void> {
+		await expect(this.canvasPane()).toBeVisible();
+		await expect(this.getNodeViewLoader()).toBeHidden();
+		await expect(this.getLoadingMask()).toBeHidden();
+		await expect(this.getChoicePrompt()).toBeVisible();
+	}
+
 	async addInitialNodeToCanvas(nodeName: string): Promise<void> {
 		await this.clickCanvasPlusButton();
 		await this.fillNodeCreatorSearchBar(nodeName);
@@ -542,7 +564,9 @@ export class CanvasPage extends BasePage {
 
 	async executeNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).hover();
-		await this.nodeExecuteButton(nodeName).click();
+		const button = this.nodeExecuteButton(nodeName);
+		await expect(button).toBeVisible();
+		await button.click();
 	}
 
 	async selectAll(): Promise<void> {
@@ -747,6 +771,18 @@ export class CanvasPage extends BasePage {
 	async closeManualChatModal(): Promise<void> {
 		// Same toggle button closes the chat
 		await this.page.getByTestId('workflow-chat-button').click();
+	}
+
+	getOpenChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Open chat' });
+	}
+
+	getHideChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Hide chat' });
+	}
+
+	getChatPanel(): Locator {
+		return this.page.getByTestId('canvas-chat');
 	}
 
 	// Input plus endpoints (to add supplemental nodes to parent inputs)

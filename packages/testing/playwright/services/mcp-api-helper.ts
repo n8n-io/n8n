@@ -119,7 +119,7 @@ export interface WorkflowDetailsResult {
 /** Response from execute_workflow tool */
 export interface ExecuteWorkflowResult {
 	executionId: string | null;
-	status: 'success' | 'error' | 'running' | 'waiting' | 'canceled' | 'crashed' | 'new' | 'unknown';
+	status: 'started' | 'error';
 	error?: string;
 }
 
@@ -948,11 +948,13 @@ export class McpApiHelper {
 		apiKey: string,
 		workflowId: string,
 		executionId: string,
+		options?: { includeData?: boolean; nodeNames?: string[]; truncateData?: number },
 	): Promise<GetExecutionResult> {
 		try {
 			return await this.callInternalMcpTool<GetExecutionResult>(apiKey, 'get_execution', {
 				workflowId,
 				executionId,
+				...options,
 			});
 		} catch (error) {
 			return {

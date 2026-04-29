@@ -280,11 +280,6 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.SAML);
 	}
 
-	/** @deprecated Use `LicenseState.isApiKeyScopesLicensed` instead. */
-	isApiKeyScopesEnabled() {
-		return this.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES);
-	}
-
 	/** @deprecated Use `LicenseState.isAiAssistantLicensed` instead. */
 	isAiAssistantEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.AI_ASSISTANT);

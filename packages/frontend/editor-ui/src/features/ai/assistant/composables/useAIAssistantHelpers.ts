@@ -25,7 +25,6 @@ import {
 	getNodeAuthOptions,
 } from '@/app/utils/nodeTypesUtils';
 import type { AssistantProcessOptions, ChatRequest } from '../assistant.types';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -44,7 +43,6 @@ const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
 export const useAIAssistantHelpers = () => {
 	const ndvStore = useNDVStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
 
 	const workflowHelpers = useWorkflowHelpers();
 	const locale = useI18n();
@@ -224,6 +222,7 @@ export const useAIAssistantHelpers = () => {
 	}
 
 	function getNodeInfoForAssistant(
+		workflowId: string,
 		node: INode,
 		options?: AssistantProcessOptions,
 	): ChatRequest.NodeInfo {
@@ -232,7 +231,11 @@ export const useAIAssistantHelpers = () => {
 		}
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const { schemas } = getNodesSchemas(referencedNodeNames, options?.excludeParameterValues);
+		const { schemas } = getNodesSchemas(
+			workflowId,
+			referencedNodeNames,
+			options?.excludeParameterValues,
+		);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -300,18 +303,16 @@ export const useAIAssistantHelpers = () => {
 	 * @param nodeNames The names of the nodes to get the schema for
 	 * @returns schemas and list of node names whose schema was derived from pin data
 	 */
-	function getNodesSchemas(nodeNames: string[], excludeValues?: boolean) {
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
+	function getNodesSchemas(workflowId: string, nodeNames: string[], excludeValues?: boolean) {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const schemas: ChatRequest.NodeExecutionSchema[] = [];
 		const pinnedNodeNames: string[] = [];
 		for (const name of nodeNames) {
-			const node = workflowsStore.getNodeByName(name);
+			const node = workflowDocumentStore.getNodeByName(name);
 			if (!node) {
 				continue;
 			}
-			if (workflowDocumentStore?.pinData?.[node.name]) {
+			if (workflowDocumentStore.pinData?.[node.name]) {
 				pinnedNodeNames.push(node.name);
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();

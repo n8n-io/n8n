@@ -37,6 +37,8 @@ export class LocalTaskRequester extends TaskRequester {
 	}
 
 	sendMessage(message: RequesterMessage.ToBroker.All) {
-		void this.taskBroker.onRequesterMessage(this.id, message);
+		void this.taskBroker.onRequesterMessage(this.id, message).catch((error) => {
+			this.errorReporter.error(error);
+		});
 	}
 }

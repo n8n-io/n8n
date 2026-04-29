@@ -66,6 +66,7 @@ const meta = {
 	},
 	parameters: {
 		docs: {
+			description: { component: 'A text input field for single-line or multi-line value entry.' },
 			source: { type: 'dynamic' },
 		},
 	},

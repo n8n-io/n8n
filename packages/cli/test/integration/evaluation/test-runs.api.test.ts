@@ -51,17 +51,10 @@ describe('GET /workflows/:workflowId/test-runs', () => {
 		expect(resp.body.data).toEqual([]);
 	});
 
-	// TODO: replace with non existent workflow
-	// test('should return 404 if test definition does not exist', async () => {
-	// 	const resp = await authOwnerAgent.get('/evaluation/test-definitions/123/runs');
-	//
-	// 	expect(resp.statusCode).toBe(404);
-	// });
-
 	test('should return 404 if user does not have access to workflow', async () => {
-		const testRun = await testRunRepository.createTestRun(otherWorkflow.id);
+		await testRunRepository.createTestRun(otherWorkflow.id);
 
-		const resp = await authOwnerAgent.get(`/workflows/${otherWorkflow.id}/test-runs/${testRun.id}`);
+		const resp = await authOwnerAgent.get(`/workflows/${otherWorkflow.id}/test-runs`);
 
 		expect(resp.statusCode).toBe(404);
 	});
@@ -275,6 +268,31 @@ describe('POST /workflows/:workflowId/test-runs/:id/cancel', () => {
 		const resp = await authOwnerAgent.post(
 			`/workflows/${otherWorkflow.id}/test-runs/${testRun.id}/cancel`,
 		);
+
+		expect(resp.statusCode).toBe(404);
+	});
+});
+
+describe('POST /workflows/:workflowId/test-runs/new', () => {
+	test('should create a test run for a workflow the user owns', async () => {
+		const resp = await authOwnerAgent.post(`/workflows/${workflowUnderTest.id}/test-runs/new`);
+
+		expect(resp.statusCode).toBe(202);
+		expect(resp.body).toEqual({ success: true });
+		expect(testRunner.runTest).toHaveBeenCalledWith(
+			expect.objectContaining({ id: ownerShell.id }),
+			workflowUnderTest.id,
+		);
+	});
+
+	test('should return 404 if user does not have access to workflow', async () => {
+		const resp = await authOwnerAgent.post(`/workflows/${otherWorkflow.id}/test-runs/new`);
+
+		expect(resp.statusCode).toBe(404);
+	});
+
+	test('should return 404 if workflow does not exist', async () => {
+		const resp = await authOwnerAgent.post('/workflows/non-existent-id/test-runs/new');
 
 		expect(resp.statusCode).toBe(404);
 	});

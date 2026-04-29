@@ -1,3 +1,5 @@
+import { ExecutionsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type {
 	CreateExecutionPayload,
 	ExecutionDataStorageLocation,
@@ -24,6 +26,7 @@ export class ExecutionPersistence {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly fsStore: FsStore,
 		private readonly storageConfig: StorageConfig,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	/**
@@ -60,6 +63,24 @@ export class ExecutionPersistence {
 			);
 			return executionId;
 		});
+	}
+
+	/**
+	 * Delete an in-flight execution that is not meant to be saved.
+	 *
+	 * - When pruning is enabled, soft-deletes with a backdated `deletedAt` so the
+	 * execution is immediately eligible for the next pruning hard-delete batch.
+	 * - When pruning is disabled, hard-deletes immediately so the execution
+	 * is not persisted indefinitely.
+	 */
+	async deleteInFlightExecution(target: DeletionTarget) {
+		if (this.executionsConfig.pruneData) {
+			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+			const deletedAt = new Date(Date.now() - bufferMs);
+			await this.executionRepository.update(target.executionId, { deletedAt });
+		} else {
+			await this.hardDelete(target);
+		}
 	}
 
 	async hardDelete(target: DeletionTarget | DeletionTarget[]) {

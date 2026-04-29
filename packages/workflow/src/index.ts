@@ -24,6 +24,7 @@ export * from './node-validation';
 export * from './tool-helpers';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
+export * from './highlighted-data';
 export * from './workflow';
 export * from './workflow-checksum';
 export * from './workflow-data-proxy';
@@ -54,9 +55,12 @@ export {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	isDomainAllowed,
+	getCredentialAllowedDomains,
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,
+	sanitizeXmlName,
+	generateSecureToken,
 } from './utils';
 export {
 	isINodeProperties,

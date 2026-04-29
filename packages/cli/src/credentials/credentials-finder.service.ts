@@ -224,6 +224,54 @@ export class CredentialsFinderService {
 		return sharedCredentialsList;
 	}
 
+	/**
+	 * Given a list of credential IDs, return only those the user can access with the given scopes.
+	 */
+	async findCredentialIdsWithScopeForUser(
+		credentialIds: string[],
+		user: User,
+		scopes: Scope[],
+	): Promise<Set<string>> {
+		if (credentialIds.length === 0) return new Set();
+
+		let where: FindOptionsWhere<SharedCredentials> = { credentialsId: In(credentialIds) };
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const [projectRoles, credentialRoles] = await Promise.all([
+				this.roleService.rolesWithScope('project', scopes),
+				this.roleService.rolesWithScope('credential', scopes),
+			]);
+			where = {
+				...where,
+				role: In(credentialRoles),
+				project: {
+					projectRelations: {
+						role: In(projectRoles),
+						userId: user.id,
+					},
+				},
+			};
+		}
+
+		const sharedCredentials = await this.sharedCredentialsRepository.find({
+			select: { credentialsId: true },
+			where,
+		});
+
+		const result = new Set(sharedCredentials.map((sc) => sc.credentialsId));
+
+		// Also include global credentials if scopes allow read-only access
+		if (this.hasGlobalReadOnlyAccess(scopes)) {
+			const globalCreds = await this.credentialsRepository.find({
+				where: { id: In(credentialIds), isGlobal: true },
+				select: ['id'],
+			});
+			for (const gc of globalCreds) result.add(gc.id);
+		}
+
+		return result;
+	}
+
 	async getCredentialIdsByUserAndRole(
 		userIds: string[],
 		options:

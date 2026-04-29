@@ -12,7 +12,7 @@ on:
         description: Version of node to use.
         required: false
         type: string
-        default: 24.13.1
+        default: 24.14.1
 
 env:
   NODE_OPTIONS: --max-old-space-size=7168
@@ -30,7 +30,7 @@ jobs:
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: ''
-          install-command: npm install --prefix=.github/scripts --no-package-lock
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
       - name: Run tests
         id: run-tests

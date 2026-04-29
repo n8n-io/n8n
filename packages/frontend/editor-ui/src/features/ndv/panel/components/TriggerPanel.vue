@@ -67,7 +67,9 @@ const executionsHelpEventBus = createEventBus();
 
 const help = ref<HTMLElement | null>(null);
 
-const node = computed<INodeUi | null>(() => workflowsStore.getNodeByName(props.nodeName));
+const node = computed<INodeUi | null>(
+	() => workflowDocumentStore?.value?.getNodeByName(props.nodeName) ?? null,
+);
 
 const nodeType = computed<INodeTypeDescription | null>(() => {
 	if (node.value) {
@@ -92,12 +94,9 @@ const hideContent = computed(() => {
 	}
 
 	if (node.value) {
-		const hideContentValue = workflowsStore.workflowObject.expression.getSimpleParameterValue(
-			node.value,
-			hideContent,
-			'internal',
-			{},
-		);
+		const hideContentValue = workflowDocumentStore?.value
+			?.getExpressionHandler()
+			.getSimpleParameterValue(node.value, hideContent, 'internal', {});
 
 		if (typeof hideContentValue === 'boolean') {
 			return hideContentValue;
@@ -179,7 +178,7 @@ const isListeningForEvents = computed(() => {
 	const executedNode = workflowsStore.executedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
-		? workflowsStore.workflowObject.getParentNodes(executedNode).includes(props.nodeName)
+		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
 		: false;
 
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;

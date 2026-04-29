@@ -49,7 +49,19 @@ const executions = computed(() =>
 );
 
 const execution = computed(() => {
-	return executions.value.find((e) => e.id === executionId.value) ?? currentExecution.value;
+	const fromList = executions.value.find((e) => e.id === executionId.value);
+	const current = currentExecution.value;
+
+	if (!fromList) {
+		return current;
+	}
+
+	// Keep workflowVersionId from execution details if available
+	if (current?.id === fromList.id && current.workflowVersionId) {
+		return { ...fromList, workflowVersionId: current.workflowVersionId };
+	}
+
+	return fromList;
 });
 
 const currentExecution = ref<ExecutionSummary | undefined>();
@@ -127,7 +139,7 @@ async function initializeRoute() {
 		await router
 			.replace({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.value.id, executionId: executions.value[0].id },
+				params: { workflowId: workflow.value.id, executionId: executions.value[0].id },
 				query: route.query,
 			})
 			.catch(() => {});
@@ -229,14 +241,14 @@ async function onExecutionDelete(id?: string) {
 				await router
 					.replace({
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: workflow.value.id, executionId: nextExecution.id },
+						params: { workflowId: workflow.value.id, executionId: nextExecution.id },
 					})
 					.catch(() => {});
 			} else {
 				// If there are no executions left, show empty state
 				await router.replace({
 					name: VIEWS.EXECUTION_HOME,
-					params: { name: workflow.value.id },
+					params: { workflowId: workflow.value.id },
 				});
 			}
 		}
