@@ -101,6 +101,19 @@ export type StreamChunk = ContentMetadata &
 				/** JSON Schema describing the shape of data to send when resuming. */
 				resumeSchema?: JsonSchema7Type;
 		  }
+		| {
+				/**
+				 * Emitted when a tool calls `ctx.display(payload)` to surface a
+				 * side-effect render (e.g. a chat card) without halting execution.
+				 * Unlike `tool-call-suspended`, the agent run continues immediately
+				 * and the tool returns a normal result.
+				 */
+				type: 'tool-card-display';
+				runId: string;
+				toolCallId: string;
+				toolName: string;
+				payload: unknown;
+		  }
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
 		| { type: 'working-memory-update'; content: string }

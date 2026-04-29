@@ -1124,6 +1124,67 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(finishChunks.length).toBe(1);
 		expect((finishChunks[0] as StreamChunk & { type: 'finish' }).finishReason).toBe('tool-calls');
 	});
+
+	it('emits tool-card-display chunks when handler calls ctx.display() and continues', async () => {
+		const cardPayload = { components: [{ type: 'image', url: 'https://x.gif' }] };
+		const displayTool = makeSuspendingTool('display_tool', async (_input, ctx) => {
+			ctx.display(cardPayload);
+			return await Promise.resolve({ acknowledged: true });
+		});
+
+		const { runtime } = createRuntimeWithTools([displayTool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'showing...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'display_tool',
+									args: { value: 'a' },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'display_tool', input: { value: 'a' } },
+				]),
+			})
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'done' }]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 5, outputTokens: 5, totalTokens: 10 }),
+				response: Promise.resolve({
+					messages: [{ role: 'assistant', content: [{ type: 'text', text: 'done' }] }],
+				}),
+				toolCalls: Promise.resolve([]),
+			});
+
+		const { stream: readableStream } = await runtime.stream('show me');
+		const chunks = await collectChunks(readableStream);
+
+		const displayChunks = chunks.filter((c) => c.type === 'tool-card-display') as Array<
+			StreamChunk & { type: 'tool-card-display' }
+		>;
+		expect(displayChunks).toHaveLength(1);
+		expect(displayChunks[0].toolName).toBe('display_tool');
+		expect(displayChunks[0].toolCallId).toBe('tc-1');
+		expect(displayChunks[0].payload).toEqual(cardPayload);
+
+		const suspendedChunks = chunks.filter((c) => c.type === 'tool-call-suspended');
+		expect(suspendedChunks).toHaveLength(0);
+
+		const toolResults = chunks.filter((c) => c.type === 'tool-result');
+		expect(toolResults).toHaveLength(1);
+	});
 });
 
 // Structured output — generate()

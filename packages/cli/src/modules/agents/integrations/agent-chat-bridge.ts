@@ -361,6 +361,10 @@ export class AgentChatBridge {
 					await this.handleSuspension(chunk, thread);
 					// Don't start new streaming post — wait for next text delta
 					break;
+				case 'tool-card-display':
+					await endStreamingPost();
+					await this.handleCardDisplay(chunk, thread);
+					break;
 				case 'message':
 					await endStreamingPost();
 					await this.handleMessage(chunk, thread);
@@ -419,6 +423,10 @@ export class AgentChatBridge {
 				case 'tool-call-suspended':
 					await flushBuffer();
 					await this.handleSuspension(chunk, thread);
+					break;
+				case 'tool-card-display':
+					await flushBuffer();
+					await this.handleCardDisplay(chunk, thread);
 					break;
 				case 'message':
 					await flushBuffer();
@@ -555,6 +563,59 @@ export class AgentChatBridge {
 			await thread.post({ card });
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post rich interaction card', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	// ---------------------------------------------------------------------------
+	// Display-only card handling (no suspension)
+	// ---------------------------------------------------------------------------
+
+	/**
+	 * Render a card emitted via `ctx.display()` — same payload shape as the
+	 * suspending `rich_interaction` path, but the agent run continues. We pass a
+	 * minimal resume schema because the card has no interactive surface, so no
+	 * resume callback will be invoked.
+	 */
+	private async handleCardDisplay(
+		chunk: Extract<StreamChunk, { type: 'tool-card-display' }>,
+		thread: ChatThread,
+	): Promise<void> {
+		const { runId, toolCallId, payload } = chunk;
+
+		const cardPayload = payload as {
+			title?: string;
+			message?: string;
+			components?: Array<{ type: string; [key: string]: unknown }>;
+		};
+
+		if (!cardPayload?.components?.length) {
+			this.logger.warn('[AgentChatBridge] tool-card-display has no components');
+			return;
+		}
+
+		const displayResumeSchema = {
+			type: 'object',
+			properties: { type: { type: 'string' }, value: { type: 'string' } },
+		};
+
+		try {
+			const card = await this.componentMapper.toCard(
+				cardPayload as {
+					title?: string;
+					message?: string;
+					components: Array<{ type: string; [key: string]: unknown }>;
+				},
+				runId,
+				toolCallId,
+				displayResumeSchema,
+				this.getShortenCallback(),
+				this.integrationType,
+			);
+			await thread.post({ card });
+		} catch (error) {
+			this.logger.error('[AgentChatBridge] Failed to post display card', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}

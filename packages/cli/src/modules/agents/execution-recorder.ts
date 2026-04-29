@@ -112,6 +112,26 @@ export class ExecutionRecorder {
 					timestamp: Date.now(),
 				});
 				break;
+			case 'tool-card-display': {
+				this.flushTextBuffer();
+				const now = Date.now();
+				this.toolCalls.push({
+					name: chunk.toolName,
+					input: chunk.payload,
+					output: { displayed: true },
+				});
+				this.timeline.push({
+					type: 'tool-call',
+					name: chunk.toolName,
+					toolCallId: chunk.toolCallId,
+					input: chunk.payload,
+					output: { displayed: true },
+					startTime: now,
+					endTime: now,
+					success: true,
+				});
+				break;
+			}
 			case 'working-memory-update':
 				this.flushTextBuffer();
 				this.workingMemory = chunk.content;

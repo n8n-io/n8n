@@ -111,8 +111,11 @@ export function createRichInteractionTool(platform?: string) {
 			);
 
 			if (!hasActionable) {
-				const text = [input.title, input.message].filter(Boolean).join('\n');
-				return { type: 'button' as const, value: text || 'No interactive content' };
+				// Display-only: surface the card to the chat without halting the
+				// agent run. The handler returns a synthetic ack so the LLM can
+				// continue in the same turn.
+				ctx.display(input);
+				return { type: 'button' as const, value: 'displayed' };
 			}
 
 			return await ctx.suspend(input);

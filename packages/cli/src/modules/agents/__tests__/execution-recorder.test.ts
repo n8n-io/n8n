@@ -123,6 +123,49 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
+	describe('display-only card', () => {
+		it('records tool-card-display as a closed tool-call timeline event', () => {
+			const recorder = new ExecutionRecorder();
+
+			const cardPayload = {
+				components: [{ type: 'image', url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
+			};
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Here' });
+			recorder.record({
+				type: 'tool-card-display',
+				runId: 'r1',
+				toolCallId: 'tc1',
+				toolName: 'rich_interaction',
+				payload: cardPayload,
+			} as StreamChunk);
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			expect(recorder.suspended).toBe(false);
+			expect(record.timeline).toHaveLength(2);
+			expect(record.timeline[0].type).toBe('text');
+
+			const toolEvent = record.timeline[1];
+			expect(toolEvent.type).toBe('tool-call');
+			if (toolEvent.type === 'tool-call') {
+				expect(toolEvent.name).toBe('rich_interaction');
+				expect(toolEvent.toolCallId).toBe('tc1');
+				expect(toolEvent.input).toEqual(cardPayload);
+				expect(toolEvent.output).toEqual({ displayed: true });
+				expect(toolEvent.success).toBe(true);
+				expect(toolEvent.endTime).toBeGreaterThan(0);
+			}
+
+			expect(record.toolCalls).toHaveLength(1);
+			expect(record.toolCalls[0]).toEqual({
+				name: 'rich_interaction',
+				input: cardPayload,
+				output: { displayed: true },
+			});
+		});
+	});
+
 	describe('backward compat', () => {
 		it('still populates flat toolCalls array', () => {
 			const recorder = new ExecutionRecorder();

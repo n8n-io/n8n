@@ -10,13 +10,20 @@ export interface ToolContext {
 	parentTelemetry?: BuiltTelemetry;
 }
 
-export interface InterruptibleToolContext<S = unknown, R = unknown> {
+export interface InterruptibleToolContext<S = unknown, R = unknown, D = unknown> {
 	/**
 	 * Suspend execution and send a payload to the consumer.
 	 * Must be used with `return await` — the branded return type signals
 	 * the execution engine to halt. Code after `return await ctx.suspend()` is unreachable.
 	 */
 	suspend: (payload: S) => Promise<never>;
+	/**
+	 * Surface a side-effect render to the consumer (e.g. a chat card) without
+	 * halting execution. The runtime emits a `tool-card-display` stream chunk
+	 * carrying the payload, then the handler continues and returns normally.
+	 * Multiple calls in a single handler emit multiple chunks in order.
+	 */
+	display: (payload: D) => void;
 	/** Data from the consumer after resume. Undefined on first invocation. */
 	resumeData: R | undefined;
 	/** Telemetry config from the parent agent, for sub-agent propagation. */

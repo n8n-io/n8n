@@ -132,34 +132,48 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	return result;
 }
 
+export interface ToolExecutionResult {
+	/** Raw return value of the tool's handler (may be a suspend brand). */
+	result: unknown;
+	/** Payloads captured from `ctx.display()` calls during this invocation. */
+	displayPayloads: unknown[];
+}
+
 /**
  * Execute a tool call by finding its handler and running it.
  * For tools with suspend/resume schemas, passes an InterruptibleToolContext
- * that lets the handler call `suspend(payload)`.
+ * that lets the handler call `suspend(payload)` or `display(payload)`.
  */
 export async function executeTool(
 	args: unknown,
 	builtTool: BuiltTool,
 	resumeData?: unknown,
 	parentTelemetry?: BuiltTelemetry,
-): Promise<unknown> {
+): Promise<ToolExecutionResult> {
 	if (!builtTool.handler) {
 		throw new Error(`No handler found for tool "${builtTool.name}"`);
 	}
+
+	const displayPayloads: unknown[] = [];
 
 	if (builtTool.suspendSchema) {
 		const ctx: InterruptibleToolContext = {
 			suspend: async (payload: unknown): Promise<never> => {
 				return await Promise.resolve({ [SUSPEND_BRAND]: true, payload } as never);
 			},
+			display: (payload: unknown): void => {
+				displayPayloads.push(payload);
+			},
 			resumeData,
 			parentTelemetry,
 		};
-		return await builtTool.handler(args, ctx);
+		const result = await builtTool.handler(args, ctx);
+		return { result, displayPayloads };
 	}
 
 	const ctx: ToolContext = { parentTelemetry };
-	return await builtTool.handler(args, ctx);
+	const result = await builtTool.handler(args, ctx);
+	return { result, displayPayloads };
 }
 
 /**
