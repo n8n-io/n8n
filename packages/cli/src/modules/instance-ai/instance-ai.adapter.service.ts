@@ -734,11 +734,21 @@ export class InstanceAiAdapterService {
 					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
 					: findTriggerNode(nodes);
 
+				// Force-save manual successful executions for AI-initiated runs so that
+				// follow-up `executions(list/get)` calls can read the result, regardless
+				// of instance-wide or per-workflow save settings.
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode
 						? getExecutionModeForTrigger(triggerNode)
 						: ('manual' as WorkflowExecuteMode),
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+						},
+					},
 					userId: user.id,
 					pushRef,
 				};
