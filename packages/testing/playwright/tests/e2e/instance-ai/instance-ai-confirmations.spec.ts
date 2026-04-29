@@ -16,6 +16,9 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "approval test" and run it',
 			);
 
+			// Approve the build plan so the orchestrator proceeds to the run step.
+			await n8n.instanceAi.approveBuildPlan();
+
 			await expect(n8n.instanceAi.getConfirmApproveButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmApproveButton().click();
 
@@ -31,6 +34,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "deny test" and run it',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			await expect(n8n.instanceAi.getConfirmDenyButton()).toBeVisible({ timeout: 120_000 });
 			await n8n.instanceAi.getConfirmDenyButton().click();

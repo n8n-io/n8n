@@ -92,26 +92,67 @@ describe('KeyManagerService', () => {
 		});
 	});
 
-	describe('bootstrapLegacyKey()', () => {
-		it('is a no-op when an active key already exists', async () => {
-			repository.findActiveByType.mockResolvedValue(makeKey());
+	describe('bootstrapLegacyCbcKey()', () => {
+		it('is a no-op when a CBC key already exists', async () => {
+			repository.findOne.mockResolvedValue(
+				makeKey({ algorithm: 'aes-256-cbc', status: 'inactive' }),
+			);
 
-			await Container.get(KeyManagerService).bootstrapLegacyKey('legacy-value');
+			await Container.get(KeyManagerService).bootstrapLegacyCbcKey('instance-key');
 
-			expect(repository.findActiveByType).toHaveBeenCalledWith('data_encryption');
-			expect(repository.insertOrIgnore).not.toHaveBeenCalled();
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
+			});
+			expect(repository.save).not.toHaveBeenCalled();
 		});
 
-		it('inserts the legacy CBC key when no active key exists', async () => {
-			repository.findActiveByType.mockResolvedValue(null);
+		it('encrypts the instance key and inserts as inactive when no CBC key exists', async () => {
+			repository.findOne.mockResolvedValue(null);
+			const entity = makeKey({ algorithm: 'aes-256-cbc', status: 'inactive' });
+			repository.create.mockReturnValue(entity);
+			repository.save.mockResolvedValue(entity);
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-instance-key');
 
-			await Container.get(KeyManagerService).bootstrapLegacyKey('legacy-value');
+			await Container.get(KeyManagerService).bootstrapLegacyCbcKey('instance-key');
 
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('instance-key');
+			expect(repository.create).toHaveBeenCalledWith({
+				type: 'data_encryption',
+				value: 'encrypted-instance-key',
+				algorithm: 'aes-256-cbc',
+				status: 'inactive',
+			});
+			expect(repository.save).toHaveBeenCalledWith(entity);
+		});
+	});
+
+	describe('bootstrapGcmKey()', () => {
+		it('is a no-op when an active GCM key already exists', async () => {
+			repository.findOne.mockResolvedValue(makeKey({ algorithm: 'aes-256-gcm', status: 'active' }));
+
+			await Container.get(KeyManagerService).bootstrapGcmKey();
+
+			expect(repository.findOne).toHaveBeenCalledWith({
+				where: { type: 'data_encryption', algorithm: 'aes-256-gcm', status: 'active' },
+			});
+			expect(repository.insertAsActive).not.toHaveBeenCalled();
+		});
+
+		it('generates a 64-char hex key and inserts as active when no active GCM key exists', async () => {
+			repository.findOne.mockResolvedValue(null);
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-gcm-key');
+
+			await Container.get(KeyManagerService).bootstrapGcmKey();
+
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledTimes(1);
+			const [rawKey] = cipher.encryptDEKWithInstanceKey.mock.calls[0];
+			expect(typeof rawKey).toBe('string');
+			expect(rawKey).toHaveLength(64);
 			expect(repository.insertOrIgnore).toHaveBeenCalledWith({
 				type: 'data_encryption',
-				value: 'legacy-value',
+				value: 'encrypted-gcm-key',
+				algorithm: 'aes-256-gcm',
 				status: 'active',
-				algorithm: 'aes-256-cbc',
 			});
 		});
 	});
@@ -121,11 +162,11 @@ describe('KeyManagerService', () => {
 			const saved = makeKey({ id: 'new-key', status: 'inactive' });
 			repository.create.mockReturnValue(saved);
 			repository.save.mockResolvedValue(saved);
-			cipher.encryptWithInstanceKey.mockReturnValue('encrypted-base64');
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm');
 
-			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledWith('secret');
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('secret');
 			expect(repository.insertAsActive).not.toHaveBeenCalled();
 			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -141,11 +182,11 @@ describe('KeyManagerService', () => {
 			const saved = makeKey({ id: 'new-key', status: 'active' });
 			repository.create.mockReturnValue(saved);
 			repository.insertAsActive.mockResolvedValue(saved);
-			cipher.encryptWithInstanceKey.mockReturnValue('encrypted-base64');
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).addKey('secret', 'aes-256-gcm', true);
 
-			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledWith('secret');
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledWith('secret');
 			expect(repository.save).not.toHaveBeenCalled();
 			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -164,14 +205,14 @@ describe('KeyManagerService', () => {
 			const saved = makeKey({ id: 'rotated', status: 'active', algorithm: 'aes-256-gcm' });
 			repository.create.mockReturnValue(saved);
 			repository.insertAsActive.mockResolvedValue(saved);
-			cipher.encryptWithInstanceKey.mockReturnValue('encrypted-base64');
+			cipher.encryptDEKWithInstanceKey.mockReturnValue('encrypted-base64');
 
 			const result = await Container.get(KeyManagerService).rotateKey();
 
-			expect(cipher.encryptWithInstanceKey).toHaveBeenCalledTimes(1);
-			const [rawKey] = cipher.encryptWithInstanceKey.mock.calls[0];
+			expect(cipher.encryptDEKWithInstanceKey).toHaveBeenCalledTimes(1);
+			const [rawKey] = cipher.encryptDEKWithInstanceKey.mock.calls[0];
 			expect(typeof rawKey).toBe('string');
-			expect((rawKey as string).length).toBe(64);
+			expect(rawKey.length).toBe(64);
 
 			expect(repository.create).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -188,15 +229,15 @@ describe('KeyManagerService', () => {
 			const saved = makeKey();
 			repository.create.mockReturnValue(saved);
 			repository.insertAsActive.mockResolvedValue(saved);
-			cipher.encryptWithInstanceKey.mockImplementation(
+			cipher.encryptDEKWithInstanceKey.mockImplementation(
 				(data: string | object) => `enc:${String(data)}`,
 			);
 
 			await Container.get(KeyManagerService).rotateKey();
 			await Container.get(KeyManagerService).rotateKey();
 
-			const [first] = cipher.encryptWithInstanceKey.mock.calls[0];
-			const [second] = cipher.encryptWithInstanceKey.mock.calls[1];
+			const [first] = cipher.encryptDEKWithInstanceKey.mock.calls[0];
+			const [second] = cipher.encryptDEKWithInstanceKey.mock.calls[1];
 			expect(first).not.toBe(second);
 		});
 	});

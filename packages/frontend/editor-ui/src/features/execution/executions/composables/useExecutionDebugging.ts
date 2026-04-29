@@ -39,6 +39,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
+	const { markStateDirty } = uiStore;
 
 	const pageRedirectionHelper = usePageRedirectionHelper();
 
@@ -48,7 +49,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
-		const workflowNodes = workflowDocumentStore.value.getNodes();
+		const workflowNodes = workflowDocumentStore.value.allNodes;
 
 		if (!execution?.data?.resultData) {
 			return;
@@ -131,7 +132,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 		});
 
 		if (pinnings > 0 || matchingPinnedNodeNames.length > 0) {
-			uiStore.markStateDirty();
+			markStateDirty();
 		}
 
 		toast.showToast({

@@ -365,7 +365,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			credentialsEntity.type,
 			credentialsEntity.data,
 		);
-		let decryptedDataOriginal = credentials.getData();
+		let decryptedDataOriginal = await credentials.getData();
 
 		// In manual or internal mode (or when the root execution is manual, e.g. a subworkflow
 		// called from a manual parent), skip dynamic resolution unless a credentials context is
@@ -544,7 +544,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 	): Promise<void> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		credentials.setData(data);
+		await credentials.setData(data);
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 		// Add special database related data
@@ -579,7 +579,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			additionalData.executionContext?.credentials
 		) {
 			const credentials = await this.getCredentials(nodeCredentials, type);
-			const staticData = credentials.getData();
+			const staticData = await credentials.getData();
 
 			await this.dynamicCredentialsProxy.storeOAuthTokenDataIfNeeded(
 				{
@@ -599,7 +599,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 		const credentials = await this.getCredentials(nodeCredentials, type);
 
-		credentials.updateData({ oauthTokenData: data.oauthTokenData });
+		await credentials.updateData({ oauthTokenData: data.oauthTokenData });
 		const newCredentialsData = credentials.getDataToSave() as ICredentialsDb;
 
 		// Add special database related data

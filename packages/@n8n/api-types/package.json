@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -36,6 +36,6 @@
     "@n8n/permissions": "workspace:*"
   },
   "peerDependencies": {
-    "zod": "catalog:"
+    "zod": ">=3.25.0 <4"
   }
 }
