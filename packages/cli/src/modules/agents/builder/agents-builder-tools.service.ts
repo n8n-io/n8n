@@ -1,5 +1,6 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { agentSkillSchema, skillNameToId } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
@@ -213,6 +214,52 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
+			.description(
+				'Create and store an agent skill. Pass the skill name, a short description, and the full skill body. ' +
+					'The description should help the runtime decide when to load it. ' +
+					'The body is stored as the skill instructions and the skill is attached to the agent config. ' +
+					'Returns { ok: true, id, skill } or { ok: false, errors }.',
+			)
+			.input(
+				z.object({
+					name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+					description: agentSkillSchema.shape.description.describe(
+						'Short description of when to load the skill.',
+					),
+					body: agentSkillSchema.shape.instructions.describe('Full skill instructions/body'),
+				}),
+			)
+			.handler(
+				async ({
+					name,
+					description,
+					body,
+				}: {
+					name: string;
+					description: string;
+					body: string;
+				}) => {
+					const id = skillNameToId(name);
+					const skill = { name, description, instructions: body };
+					const validation = agentSkillSchema.safeParse(skill);
+					if (!validation.success) {
+						return { ok: false, errors: formatZodErrors(validation.error) };
+					}
+
+					try {
+						const created = await this.agentsService.createSkill(agentId, projectId, id, skill);
+						return { ok: true, id, skill: created.skill };
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
+			.build();
+
 		const listWorkflowsTool = new Tool('list_workflows')
 			.description(
 				'List the n8n workflows that can be attached as tools via `type: "workflow"` in the agent config. ' +
@@ -262,6 +309,7 @@ export class AgentsBuilderToolsService {
 
 		return [
 			buildCustomToolTool,
+			createSkillTool,
 			listWorkflowsTool,
 			...this.agentsToolsService.getSharedTools(
 				credentialProvider,

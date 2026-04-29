@@ -68,6 +68,7 @@ const STUBS = {
 
 const publishedVersion: AgentPublishedVersion = {
 	schema: null,
+	skills: null,
 	publishedFromVersionId: 'v1',
 	model: null,
 	provider: null,
@@ -90,6 +91,7 @@ function createAgent(overrides: Partial<AgentResource> = {}): AgentResource {
 		updatedAt: '2026-01-01T00:00:00Z',
 		versionId: 'v1',
 		tools: {},
+		skills: {},
 		publishedVersion: null,
 		...overrides,
 	};

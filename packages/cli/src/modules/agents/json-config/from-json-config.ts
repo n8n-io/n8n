@@ -7,10 +7,13 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import { Agent, Memory, wrapToolForApproval } from '@n8n/agents';
+import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
+import type { AgentSkill } from '@n8n/api-types';
+import { z } from 'zod';
 
 import type {
 	AgentJsonConfig,
+	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './agent-json-config';
@@ -35,6 +38,8 @@ export interface BuildFromJsonOptions {
 	credentialProvider: CredentialProvider;
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
 	resolveTool?: ToolResolver;
+	/** Stored skill bodies keyed by skill id. Only refs present in config.skills are attached. */
+	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
 }
@@ -67,7 +72,8 @@ export async function buildFromJson(
 		agent.model(config.model);
 	}
 
-	agent.instructions(config.instructions);
+	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
+	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
 
 	// Tools
 	if (config.tools) {
@@ -77,6 +83,9 @@ export async function buildFromJson(
 				agent.tool(built);
 			}
 		}
+	}
+	if (configuredSkills.length > 0) {
+		agent.tool(createLoadSkillTool(configuredSkills));
 	}
 
 	// Provider tools
@@ -107,6 +116,73 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+type ConfiguredSkill = { id: string; skill: AgentSkill };
+
+function getConfiguredSkills(
+	refs: Array<Extract<AgentJsonConfigRef, { type: 'skill' }>>,
+	skills: Record<string, AgentSkill>,
+): ConfiguredSkill[] {
+	const seen = new Set<string>();
+	const configured: ConfiguredSkill[] = [];
+
+	for (const ref of refs) {
+		if (seen.has(ref.id)) continue;
+		seen.add(ref.id);
+		const skill = skills[ref.id];
+		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
+		configured.push({ id: ref.id, skill });
+	}
+
+	return configured;
+}
+
+function withSkillCatalog(instructions: string, skills: ConfiguredSkill[]): string {
+	if (skills.length === 0) return instructions;
+
+	const catalog = skills
+		.map(({ id, skill }) => `- ${id}: ${skill.name} - ${skill.description}`)
+		.join('\n');
+	const baseInstructions = instructions.trimEnd();
+
+	return `${baseInstructions}${baseInstructions ? '\n\n' : ''}Available skills:
+${catalog}
+
+If the user's task matches a skill description, call load_skill with the skill id and follow the returned instructions. Skill bodies are intentionally not included here; load them only when relevant.`;
+}
+
+function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
+	const skillsById = new Map(skills.map(({ id, skill }) => [id, skill]));
+
+	return new Tool('load_skill')
+		.description(
+			'Load the full instructions for an attached skill when its name or description matches the current task. ' +
+				'Use this before following the skill instructions; available skill ids are listed in the system instructions.',
+		)
+		.input(
+			z.object({
+				skillId: z.string().describe('The skill id from the Available skills list'),
+			}),
+		)
+		.handler(async ({ skillId }: { skillId: string }) => {
+			const skill = skillsById.get(skillId);
+			if (!skill) {
+				return {
+					ok: false,
+					error: `Skill "${skillId}" is not attached to this agent.`,
+				};
+			}
+
+			return {
+				ok: true,
+				skillId,
+				name: skill.name,
+				description: skill.description,
+				instructions: skill.instructions,
+			};
+		})
+		.build();
 }
 
 async function resolveToolRef(

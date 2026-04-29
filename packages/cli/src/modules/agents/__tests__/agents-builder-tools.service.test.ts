@@ -1,0 +1,124 @@
+import type { CredentialProvider } from '@n8n/agents';
+import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH } from '@n8n/api-types';
+import type { WorkflowRepository } from '@n8n/db';
+import { mock } from 'jest-mock-extended';
+
+import type { AgentsToolsService } from '../agents-tools.service';
+import type { AgentsService } from '../agents.service';
+import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
+import { BUILDER_TOOLS } from '../builder/builder-tool-names';
+import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+
+const ctx = {
+	resumeData: undefined,
+	suspend: jest.fn().mockResolvedValue(undefined as never),
+	parentTelemetry: undefined,
+};
+
+function makeService() {
+	const agentsService = mock<AgentsService>();
+	const secureRuntime = mock<AgentSecureRuntime>();
+	const workflowRepository = mock<WorkflowRepository>();
+	const agentsToolsService = mock<AgentsToolsService>();
+	agentsToolsService.getSharedTools.mockReturnValue([]);
+
+	const service = new AgentsBuilderToolsService(
+		agentsService,
+		secureRuntime,
+		workflowRepository,
+		agentsToolsService,
+	);
+
+	return { service, agentsService };
+}
+
+describe('AgentsBuilderToolsService', () => {
+	const agentId = 'agent-1';
+	const projectId = 'project-1';
+	const credentialProvider = mock<CredentialProvider>();
+
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	describe('create_skill tool', () => {
+		function getCreateSkillTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_SKILL)!;
+		}
+
+		it('is available to the builder with attachment guidance', () => {
+			const { service } = makeService();
+
+			const tool = getCreateSkillTool(service);
+
+			expect(tool).toBeDefined();
+			expect(tool.description).toContain('attached to the agent config');
+			expect(tool.description).toContain('when to load it');
+		});
+
+		it('creates a skill and returns the generated skill id', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.createSkill.mockResolvedValue({
+				skill: {
+					name: 'Summarize Meetings',
+					description: 'Use when summarizing meeting notes',
+					instructions: 'Extract decisions and action items.',
+				},
+				versionId: 'v2',
+			});
+
+			const result = await getCreateSkillTool(service).handler!(
+				{
+					name: 'Summarize Meetings',
+					description: 'Use when summarizing meeting notes',
+					body: 'Extract decisions and action items.',
+				},
+				ctx,
+			);
+
+			expect(agentsService.createSkill).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'summarize_meetings',
+				{
+					name: 'Summarize Meetings',
+					description: 'Use when summarizing meeting notes',
+					instructions: 'Extract decisions and action items.',
+				},
+			);
+			expect(result).toEqual({
+				ok: true,
+				id: 'summarize_meetings',
+				skill: {
+					name: 'Summarize Meetings',
+					description: 'Use when summarizing meeting notes',
+					instructions: 'Extract decisions and action items.',
+				},
+			});
+		});
+
+		it('rejects oversized names and skill bodies before creating the skill', async () => {
+			const { service, agentsService } = makeService();
+
+			const result = await getCreateSkillTool(service).handler!(
+				{
+					name: 'a'.repeat(129),
+					description: 'Use when summarizing meeting notes',
+					body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual({
+				ok: false,
+				errors: expect.arrayContaining([
+					expect.objectContaining({ path: 'name' }),
+					expect.objectContaining({ path: 'instructions' }),
+				]),
+			});
+			expect(agentsService.createSkill).not.toHaveBeenCalled();
+		});
+	});
+});

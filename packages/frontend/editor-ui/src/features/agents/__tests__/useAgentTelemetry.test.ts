@@ -28,6 +28,7 @@ describe('useAgentTelemetry', () => {
 		const fingerprint = {
 			instructions: 'hello',
 			tools: ['a'],
+			skills: [],
 			triggers: [],
 			memory: null,
 			model: 'gpt-4',

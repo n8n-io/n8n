@@ -4,6 +4,7 @@ import { DataSource, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import { AgentPublishedVersion } from '../entities/agent-published-version.entity';
+import type { Agent } from '../entities/agent.entity';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 @Service()
@@ -22,6 +23,8 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 		data: {
 			agentId: string;
 			schema: AgentJsonConfig | null;
+			tools: Agent['tools'] | null;
+			skills: Agent['skills'] | null;
 			publishedFromVersionId: string;
 			model: string | null;
 			provider: string | null;

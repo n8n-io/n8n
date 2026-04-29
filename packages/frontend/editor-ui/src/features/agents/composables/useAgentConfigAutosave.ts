@@ -13,7 +13,7 @@ export interface UseAgentConfigAutosaveParams<TSnapshot> {
 	 */
 	save: (snapshot: TSnapshot) => Promise<void>;
 	/** Called after a successful save so the caller can fire telemetry. */
-	onSaved?: () => void;
+	onSaved?: (snapshot: TSnapshot) => void;
 	/** Called when the save throws — caller decides how to surface the error. */
 	onError?: (error: unknown) => void;
 	/** Debounce delay in ms (after `getDebounceTime`). */
@@ -66,7 +66,7 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 				}
 				try {
 					await params.save(target);
-					params.onSaved?.();
+					params.onSaved?.(target);
 					saveStatus.value = 'saved';
 					saveStatusResetTimer = setTimeout(() => {
 						saveStatus.value = 'idle';

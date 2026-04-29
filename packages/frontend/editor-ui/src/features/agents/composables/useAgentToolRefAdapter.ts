@@ -309,7 +309,7 @@ export function getExistingToolNames(
 	tools: AgentJsonToolRef[],
 	exclude?: AgentJsonToolRef,
 ): string[] {
-	return tools.filter((t) => t !== exclude && t.name).map((t) => t.name as string);
+	return tools.filter((t) => t !== exclude && Boolean(t.name)).map((t) => t.name as string);
 }
 
 /** Merge edits from the workflow config form back into the ref. */
