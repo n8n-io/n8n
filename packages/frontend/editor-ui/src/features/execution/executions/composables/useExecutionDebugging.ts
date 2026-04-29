@@ -49,7 +49,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
 		const execution = await workflowsStore.getExecution(executionId);
-		const workflowNodes = workflowDocumentStore.value.getNodes();
+		const workflowNodes = workflowDocumentStore.value.allNodes;
 
 		if (!execution?.data?.resultData) {
 			return;
