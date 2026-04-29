@@ -1,4 +1,8 @@
-import { isAgentCredentialIntegration, type AgentIntegrationStatusResponse } from '@n8n/api-types';
+import {
+	isAgentCredentialIntegration,
+	type AgentCredentialIntegration,
+	type AgentIntegrationStatusResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
@@ -16,6 +20,7 @@ import {
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
 // ---------------------------------------------------------------------------
@@ -191,6 +196,73 @@ export class ChatIntegrationService {
 			const keysToRemove = [...this.connections.keys()].filter((k) => k.startsWith(`${agentId}:`));
 			for (const k of keysToRemove) {
 				await this.disconnectOne(k);
+			}
+		}
+	}
+
+	/**
+	 * Diff the previous and next chat integrations of an agent and reconcile
+	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
+	 * after the builder writes a new integrations array.
+	 *
+	 * Connection failures are logged at the call site — this method propagates
+	 * errors from disconnect but swallows connect errors per integration so a
+	 * single bad credential doesn't block the others.
+	 */
+	async syncToConfig(
+		agent: Agent,
+		previous: AgentCredentialIntegration[],
+		next: AgentCredentialIntegration[],
+	): Promise<void> {
+		const key = (i: AgentCredentialIntegration) => `${i.type}:${i.credentialId}`;
+		const previousKeys = new Set(previous.map(key));
+		const nextKeys = new Set(next.map(key));
+
+		for (const integration of previous) {
+			if (!nextKeys.has(key(integration))) {
+				try {
+					await this.disconnect(agent.id, integration.type, integration.credentialId);
+				} catch (err) {
+					this.logger.warn('[ChatIntegrationService] Disconnect during sync failed', {
+						agentId: agent.id,
+						type: integration.type,
+						err,
+					});
+				}
+			}
+		}
+
+		for (const integration of next) {
+			if (previousKeys.has(key(integration))) continue;
+			const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(
+				agent.projectId,
+			);
+			let connected = false;
+			for (const userId of userIds) {
+				try {
+					await this.connect(
+						agent.id,
+						integration.credentialId,
+						integration.type,
+						userId,
+						agent.projectId,
+					);
+					connected = true;
+					break;
+				} catch (err) {
+					this.logger.debug('[ChatIntegrationService] Connect attempt failed during sync', {
+						agentId: agent.id,
+						userId,
+						type: integration.type,
+						err,
+					});
+				}
+			}
+			if (!connected) {
+				this.logger.warn(
+					'[ChatIntegrationService] Could not connect integration during sync — no project member had credential access',
+					{ agentId: agent.id, type: integration.type, credentialId: integration.credentialId },
+				);
 			}
 		}
 	}

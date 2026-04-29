@@ -159,6 +159,20 @@ export class AgentScheduleService {
 		}
 	}
 
+	/**
+	 * Idempotent apply: read the schedule integration off the agent and reconcile
+	 * the cron job. Used when the JSON config writes a new schedule via the
+	 * builder so the live runtime tracks the persisted config.
+	 */
+	async applyConfig(agent: Agent): Promise<void> {
+		const schedule = this.getScheduleIntegration(agent);
+		if (schedule?.active) {
+			await this.registerOrRefresh(agent);
+		} else {
+			this.deregister(agent.id);
+		}
+	}
+
 	async registerOrRefresh(agent: Agent): Promise<void> {
 		const schedule = this.getScheduleIntegration(agent);
 		if (!schedule?.active) {
