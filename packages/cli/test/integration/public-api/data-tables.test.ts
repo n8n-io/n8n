@@ -394,6 +394,77 @@ describe('POST /data-tables', () => {
 		expect(response.statusCode).toBe(400);
 		expect(response.body).toHaveProperty('message');
 	});
+
+	// Regression tests for N8N-9947: projectId parameter should be respected
+	test('should create data table in specified team project when projectId is provided', async () => {
+		// Create a team project and give owner access
+		const teamProject = await createTeamProject('Test Team');
+		await linkUserToProject(owner, teamProject, 'project:admin');
+
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'team-project-table',
+			columns: [{ name: 'col1', type: 'string' }],
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('id');
+		expect(response.body).toHaveProperty('name', 'team-project-table');
+		expect(response.body).toHaveProperty('projectId', teamProject.id);
+		// Should NOT be in personal project
+		expect(response.body.projectId).not.toBe(ownerPersonalProject.id);
+	});
+
+	test('should create data table in personal project when no projectId is provided', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'personal-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('projectId', ownerPersonalProject.id);
+	});
+
+	test('should fail with 403 when creating data table in team project without access', async () => {
+		// Create a team project but don't give member access
+		const teamProject = await createTeamProject('Restricted Team');
+		await linkUserToProject(owner, teamProject, 'project:admin');
+
+		const response = await authMemberAgent.post('/data-tables').send({
+			name: 'unauthorized-table',
+			columns: [{ name: 'col1', type: 'string' }],
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('should fail with 400 when projectId does not exist', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'invalid-project-table',
+			columns: [{ name: 'col1', type: 'string' }],
+			projectId: 'non-existent-project-id',
+		});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+		expect(response.body.message).toContain('Project with ID "non-existent-project-id" not found');
+	});
+
+	test('should allow member to create data table in team project they have access to', async () => {
+		const teamProject = await createTeamProject('Member Team');
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const response = await authMemberAgent.post('/data-tables').send({
+			name: 'member-team-table',
+			columns: [{ name: 'col1', type: 'string' }],
+			projectId: teamProject.id,
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('projectId', teamProject.id);
+		expect(response.body.projectId).not.toBe(memberPersonalProject.id);
+	});
 });
 
 describe('GET /data-tables/:dataTableId', () => {
