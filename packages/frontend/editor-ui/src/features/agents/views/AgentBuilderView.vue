@@ -32,7 +32,7 @@ import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
-import { useAgentBuilderSettingsStore } from '../agentBuilderSettings.store';
+import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
@@ -78,7 +78,7 @@ const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
-const builderSettingsStore = useAgentBuilderSettingsStore();
+const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const projectId = computed(
@@ -122,7 +122,6 @@ const {
 } = useAgentBuilderSession();
 
 const {
-	builderRef,
 	chatColumnCollapsed,
 	chatColumnWidth,
 	treeColumnWidth,
@@ -136,7 +135,6 @@ const {
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
-const isBuilderConfigured = computed(() => builderSettingsStore.isConfigured);
 const connectedTriggers = ref<string[]>([]);
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
@@ -526,7 +524,7 @@ async function initialize() {
 
 	// Refresh builder readiness so the empty-state CTA reflects the latest
 	// admin configuration. Never blocks the rest of the load.
-	void builderSettingsStore.fetchStatus().catch((error: unknown) => {
+	void fetchBuilderStatus().catch((error: unknown) => {
 		showError(error, locale.baseText('settings.agentBuilder.loadError'));
 	});
 

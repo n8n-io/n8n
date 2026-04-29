@@ -11,17 +11,12 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
 
-/**
- * Admin endpoints for the agent builder model + lightweight per-user
- * readiness endpoint. Lives under its own base path so the FE can talk to it
- * independently of any other AI feature.
- */
 @RestController('/agent-builder')
 export class AgentsBuilderSettingsController {
 	constructor(private readonly settingsService: AgentsBuilderSettingsService) {}
 
 	@Get('/settings')
-	@GlobalScope('agent:read')
+	@GlobalScope('agent:manage')
 	async getAdminSettings(_req: AuthenticatedRequest): Promise<AgentBuilderAdminSettingsResponse> {
 		return await this.settingsService.getAdminSettings();
 	}

@@ -1,3 +1,4 @@
+import { proxyFetch } from '@n8n/ai-utilities';
 import {
 	AGENT_BUILDER_DEFAULT_MODEL,
 	agentBuilderAdminSettingsSchema,
@@ -12,7 +13,6 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import type * as Undici from 'undici';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -42,33 +42,12 @@ function readEnvAnthropicKey(): string | null {
 }
 
 /**
- * Returns a fetch function that routes requests through HTTPS_PROXY/HTTP_PROXY
- * when set (e2e tests with MockServer). Mirrors the helper inside instance-ai
- * but kept local to this module for isolation.
- */
-function getProxyFetch(): typeof globalThis.fetch | undefined {
-	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
-	if (!proxyUrl) return undefined;
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	const { ProxyAgent } = require('undici') as typeof Undici;
-	const dispatcher = new ProxyAgent(proxyUrl);
-	return (async (url: string | URL | Request, init?: RequestInit) =>
-		await globalThis.fetch(url, {
-			...init,
-			// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
-			dispatcher,
-		})) as typeof globalThis.fetch;
-}
-
-/**
  * Admin-instance-wide settings for the agent builder. Decides which model
  * the builder LLM runs on:
  *   1. `mode: 'custom'` — admin-picked credential. Wins regardless of platform.
  *   2. `mode: 'default'` + AI proxy enabled — runs through the n8n AI assistant proxy.
  *   3. `mode: 'default'` + env-var backstop set (`N8N_AI_ANTHROPIC_KEY` /
  *      `ANTHROPIC_API_KEY`) — direct Anthropic API calls.
- *
- * Self-contained: does not import anything from the instance-ai module.
  */
 @Service()
 export class AgentsBuilderSettingsService {
@@ -234,7 +213,6 @@ export class AgentsBuilderSettingsService {
 			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 		});
 
-		const httpProxyFetch = getProxyFetch();
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
 
 		const provider = createAnthropic({
@@ -249,8 +227,7 @@ export class AgentsBuilderSettingsService {
 				for (const [k, v] of Object.entries(PROXY_HEADERS)) {
 					headers.set(k, v);
 				}
-				const baseFetch = httpProxyFetch ?? globalThis.fetch;
-				return await baseFetch(input as string, { ...init, headers });
+				return await proxyFetch(input as string, { ...init, headers });
 			},
 		});
 		const model = provider(AGENT_BUILDER_DEFAULT_MODEL);

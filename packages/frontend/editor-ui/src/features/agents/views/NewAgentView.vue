@@ -10,7 +10,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { createAgent } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
-import { useAgentBuilderSettingsStore } from '../agentBuilderSettings.store';
+import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 import { useI18n } from '@n8n/i18n';
@@ -22,21 +22,20 @@ const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
 const { showError } = useToast();
-const builderSettingsStore = useAgentBuilderSettingsStore();
+const { isBuilderConfigured, fetchStatus } = useAgentBuilderStatus();
 
 const projectId = computed(() => projectsStore.personalProject?.id ?? '');
 const firstName = computed(() => usersStore.currentUser?.firstName ?? '');
-const isBuilderConfigured = computed(() => builderSettingsStore.isConfigured);
 
 const inputText = ref('');
 const isCreating = ref(false);
 
-onMounted(() => {
-	// Refresh the readiness signal so the empty-state CTA reflects the latest
-	// admin configuration. Never blocks the rest of the view.
-	void builderSettingsStore.fetchStatus().catch((error: unknown) => {
+onMounted(async () => {
+	try {
+		await fetchStatus();
+	} catch (error) {
 		showError(error, locale.baseText('settings.agentBuilder.loadError'));
-	});
+	}
 });
 // When set, we've created the agent and the progress overlay is streaming
 // the build. We only route into the builder once the stream reports `done`.

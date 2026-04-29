@@ -110,17 +110,15 @@ function onModelChange(selection: ChatHubConversationModel) {
 }
 
 function onSelectCredential(provider: ChatHubProvider, credentialId: string | null) {
+	if (!credentialId) return;
 	selectCredential(provider, credentialId);
 	const settings = store.effectiveSettings;
 	if (settings.mode !== 'custom') return;
-	const currentChatHubProvider = CATALOG_TO_CHATHUB[settings.provider];
-	if (currentChatHubProvider === provider) {
-		store.setCustomSelection({
-			provider: settings.provider,
-			credentialId: credentialId ?? '',
-			modelName: settings.modelName,
-		});
-	}
+	store.setCustomSelection({
+		provider: settings.provider,
+		credentialId,
+		modelName: settings.modelName,
+	});
 }
 
 const modeOptions = computed(() => [
