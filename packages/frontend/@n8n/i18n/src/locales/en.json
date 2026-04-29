@@ -2786,6 +2786,7 @@
 	"settings.mcp.oauth.table.empty.button": "See connection instructions",
 	"settings.mcp.toggle.disabled.tooltip": "Only instance admins can change this",
 	"settings.mcp.toggle.error": "Error updating MCP access",
+	"settings.mcp.managedByEnv.tooltip": "Managed via environment variables",
 	"settings.mcp.instructions.rotateKey.tooltip": "Generate new token.<br/>This one will be automatically revoked",
 	"settings.mcp.instructions.apiKey.tip": "Use this as an authorization token. May be named differently in different clients",
 	"settings.mcp.error.fetching.apiKey": "Error fetching access token",
