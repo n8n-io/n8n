@@ -767,6 +767,66 @@ describe('pre-persist context establishment', () => {
 		expect(establishSpy).not.toHaveBeenCalled();
 		expect(callOrder).toEqual(['activeExecutions.add']);
 	});
+
+	describe('when establishExecutionContext throws', () => {
+		const lifecycleRunHook = jest.fn().mockResolvedValue(undefined);
+		const responseReject = jest.fn();
+
+		beforeEach(() => {
+			establishSpy.mockReset();
+			establishSpy.mockImplementation(async () => {
+				callOrder.push('establishExecutionContext');
+				throw new Error('hook augmentation failed');
+			});
+
+			addSpy.mockReset();
+			addSpy.mockImplementation(async (data: IWorkflowExecutionDataProcess) => {
+				capturedAddData = data;
+				callOrder.push('activeExecutions.add');
+				return 'exec-1';
+			});
+
+			lifecycleRunHook.mockClear();
+			responseReject.mockClear();
+			jest
+				.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain')
+				.mockReturnValue(mock<core.ExecutionLifecycleHooks>({ runHook: lifecycleRunHook }));
+			jest.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+		});
+
+		it('clears the trigger-item stack so raw headers do not get persisted', async () => {
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			await runner.run(data, undefined, undefined, undefined, {
+				reject: responseReject,
+				resolve: jest.fn(),
+				promise: Promise.resolve() as never,
+			} as never);
+
+			expect(capturedAddData).toBeDefined();
+			expect(capturedAddData!.executionData!.executionData!.nodeExecutionStack).toEqual([]);
+		});
+
+		it('creates a failed-execution record and rejects the responsePromise', async () => {
+			const data = buildRunData(buildExecutionDataWithHeader());
+
+			const executionId = await runner.run(data, undefined, undefined, undefined, {
+				reject: responseReject,
+				resolve: jest.fn(),
+				promise: Promise.resolve() as never,
+			} as never);
+
+			expect(executionId).toBe('exec-1');
+			expect(lifecycleRunHook).toHaveBeenCalledWith('workflowExecuteBefore', [
+				undefined,
+				data.executionData,
+			]);
+			expect(lifecycleRunHook).toHaveBeenCalledWith('workflowExecuteAfter', [expect.any(Object)]);
+			expect(responseReject).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'hook augmentation failed' }),
+			);
+		});
+	});
 });
 
 describe('streaming functionality', () => {
