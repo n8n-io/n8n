@@ -6,6 +6,7 @@ import {
 	PolicyProjectAssignmentRepository,
 	ProjectRepository,
 	SettingsRepository,
+	withTransaction,
 	type EntityManager,
 	type GovernanceDefaultBehavior,
 	type NodeGovernancePolicy,
@@ -335,21 +336,24 @@ export class NodeGovernanceService {
 		},
 		entityManager?: EntityManager,
 	) {
-		const em = entityManager ?? this.policyRepository.manager;
+		// Wrap the policy update + assignment replacement in a single transaction so they
+		// commit or roll back together. If the caller already supplied a transactional
+		// EntityManager we reuse it; otherwise withTransaction opens a new one.
+		await withTransaction(this.policyRepository.manager, entityManager, async (em) => {
+			const updateData: Partial<NodeGovernancePolicy> = {};
+			if (data.policyType) updateData.policyType = data.policyType;
+			if (data.scope) updateData.scope = data.scope;
+			if (data.targetType) updateData.targetType = data.targetType;
+			if (data.targetValue) updateData.targetValue = data.targetValue;
 
-		const updateData: Partial<NodeGovernancePolicy> = {};
-		if (data.policyType) updateData.policyType = data.policyType;
-		if (data.scope) updateData.scope = data.scope;
-		if (data.targetType) updateData.targetType = data.targetType;
-		if (data.targetValue) updateData.targetValue = data.targetValue;
+			if (Object.keys(updateData).length > 0) {
+				await em.update('NodeGovernancePolicy', { id }, updateData);
+			}
 
-		if (Object.keys(updateData).length > 0) {
-			await em.update('NodeGovernancePolicy', { id }, updateData);
-		}
-
-		if (data.projectIds !== undefined) {
-			await this.policyProjectAssignmentRepository.replaceAssignments(id, data.projectIds, em);
-		}
+			if (data.projectIds !== undefined) {
+				await this.policyProjectAssignmentRepository.replaceAssignments(id, data.projectIds, em);
+			}
+		});
 
 		return await this.policyRepository.findOne({
 			where: { id },

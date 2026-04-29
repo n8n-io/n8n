@@ -26,6 +26,9 @@ export class NodeCategoryAssignmentRepository extends Repository<NodeCategoryAss
 	}
 
 	async findByNodeTypes(nodeTypes: string[], entityManager?: EntityManager) {
+		// In([]) generates `nodeType IN ()` which is invalid in SQLite/Postgres; short-circuit
+		// instead of issuing a query that has no possible matches.
+		if (nodeTypes.length === 0) return [];
 		const em = entityManager ?? this.manager;
 		return await em.find(NodeCategoryAssignment, {
 			where: { nodeType: In(nodeTypes) },

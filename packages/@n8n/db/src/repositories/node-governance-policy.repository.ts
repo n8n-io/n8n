@@ -24,6 +24,8 @@ export class NodeGovernancePolicyRepository extends Repository<NodeGovernancePol
 	}
 
 	async findByProjectIds(projectIds: string[], entityManager?: EntityManager) {
+		// In([]) generates `projectId IN ()` which is invalid SQL; short-circuit instead.
+		if (projectIds.length === 0) return [];
 		const em = entityManager ?? this.manager;
 		return await em.find(NodeGovernancePolicy, {
 			where: {

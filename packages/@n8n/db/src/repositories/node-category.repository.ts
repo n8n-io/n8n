@@ -58,7 +58,11 @@ export class NodeCategoryRepository extends Repository<NodeCategory> {
 		entityManager?: EntityManager,
 	) {
 		const em = entityManager ?? this.manager;
-		await em.update(NodeCategory, { id }, data);
+		// Skip the UPDATE entirely when no fields were provided so TypeORM does not throw
+		// UpdateValuesMissingError; callers may still want the latest entity back.
+		if (Object.keys(data).length > 0) {
+			await em.update(NodeCategory, { id }, data);
+		}
 		return await em.findOne(NodeCategory, { where: { id } });
 	}
 }

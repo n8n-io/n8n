@@ -42,6 +42,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import { NodeGovernanceService } from '@/services/node-governance.service';
+import { OwnershipService } from '@/services/ownership.service';
 import type { ScalingService } from '@/scaling/scaling.service';
 import type { Job, JobData } from '@/scaling/scaling.types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -85,6 +86,7 @@ export class WorkflowRunner {
 		private readonly nodeGovernanceService: NodeGovernanceService,
 		private readonly storageConfig: StorageConfig,
 		private readonly externalHooks: ExternalHooks,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/** The process did error */
@@ -184,12 +186,28 @@ export class WorkflowRunner {
 			return executionId;
 		}
 
-		// Check node governance - validate for blocked nodes
-		if (nodes && nodes.length > 0 && data.userId && data.projectId) {
+		// Check node governance - validate for blocked nodes.
+		// data.projectId is not always populated (e.g. internal/scheduled/sub-workflow paths),
+		// so fall back to the workflow's owning project derived from workflowId. We only skip
+		// enforcement when neither is available or no userId is known (system executions).
+		let governanceProjectId = data.projectId;
+		if (!governanceProjectId && workflowId) {
+			try {
+				const owningProject = await this.ownershipService.getWorkflowProjectCached(workflowId);
+				governanceProjectId = owningProject?.id;
+			} catch (error) {
+				this.logger.debug('Could not resolve owning project for governance check', {
+					workflowId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		if (nodes && nodes.length > 0 && data.userId && governanceProjectId) {
 			try {
 				const validation = await this.nodeGovernanceService.validateWorkflowNodes(
 					nodes,
-					data.projectId,
+					governanceProjectId,
 					data.userId,
 				);
 
