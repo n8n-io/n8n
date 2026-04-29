@@ -25,6 +25,7 @@ const makeKey = (overrides: Partial<EncryptionKey> = {}): EncryptionKey => ({
 	algorithm: 'aes-256-gcm',
 	status: 'active',
 	createdAt: '2026-04-21T10:00:00.000Z',
+	updatedAt: '2026-04-21T10:00:00.000Z',
 	...overrides,
 });
 

@@ -80,13 +80,13 @@ const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
 	{
 		title: i18n.baseText('settings.encryptionKeys.column.archived'),
 		key: 'updatedAt',
-		value: (row) => (row.status === 'inactive' ? (row.updatedAt ?? '') : ''),
+		value: (row) => (row.status === 'inactive' ? row.updatedAt : ''),
 		minWidth: 140,
 	},
 ]);
 
 const archiveDate = (key: EncryptionKey): string | null =>
-	key.status === 'inactive' ? (key.updatedAt ?? null) : null;
+	key.status === 'inactive' ? key.updatedAt : null;
 
 const visibleKeys = computed(() => store.visibleKeys);
 

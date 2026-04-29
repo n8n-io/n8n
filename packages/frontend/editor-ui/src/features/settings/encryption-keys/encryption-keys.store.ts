@@ -33,9 +33,9 @@ export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 		if (field === 'updatedAt') {
 			const valueA = a.status === 'inactive' ? a.updatedAt : null;
 			const valueB = b.status === 'inactive' ? b.updatedAt : null;
-			if (!valueA && !valueB) return 0;
-			if (!valueA) return 1;
-			if (!valueB) return -1;
+			if (valueA === null && valueB === null) return 0;
+			if (valueA === null) return 1;
+			if (valueB === null) return -1;
 			return new Date(valueA).getTime() - new Date(valueB).getTime();
 		}
 
