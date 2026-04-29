@@ -590,10 +590,7 @@ describe('useRunWorkflow({ router })', () => {
 					},
 					startNodes: [
 						{
-							name: {
-								name: 'Child node',
-								type: 'nodes.child',
-							},
+							name: 'Child node',
 							sourceData: null,
 						},
 					],
