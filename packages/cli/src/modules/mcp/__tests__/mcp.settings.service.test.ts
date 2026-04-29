@@ -714,7 +714,7 @@ describe('McpSettingsService', () => {
 			await service.broadcastWorkflowMCPAvailabilityChanged([change('wf-1', true)]);
 
 			expect(collaborationService.filterOpenWorkflowIds).toHaveBeenCalledWith(['wf-1']);
-			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(workflowRepository.find).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledTimes(1);
 			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledWith(
 				'wf-1',
@@ -731,7 +731,7 @@ describe('McpSettingsService', () => {
 				change('wf-2', true),
 			]);
 
-			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(workflowRepository.find).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledTimes(1);
 			expect(collaborationService.broadcastWorkflowSettingsUpdated).toHaveBeenCalledWith(
 				'wf-2',
@@ -763,7 +763,7 @@ describe('McpSettingsService', () => {
 			await service.broadcastWorkflowMCPAvailabilityChanged([]);
 
 			expect(collaborationService.filterOpenWorkflowIds).not.toHaveBeenCalled();
-			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(workflowRepository.find).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowSettingsUpdated).not.toHaveBeenCalled();
 		});
 
@@ -772,7 +772,7 @@ describe('McpSettingsService', () => {
 
 			await service.broadcastWorkflowMCPAvailabilityChanged([change('wf-1', true)]);
 
-			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(workflowRepository.find).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowSettingsUpdated).not.toHaveBeenCalled();
 		});
 
@@ -791,7 +791,7 @@ describe('McpSettingsService', () => {
 					cause: 'cache down',
 				},
 			);
-			expect(workflowRepository.findByIds).not.toHaveBeenCalled();
+			expect(workflowRepository.find).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowSettingsUpdated).not.toHaveBeenCalled();
 		});
 	});
