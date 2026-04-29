@@ -203,6 +203,7 @@ export class McpSettingsService {
 		} catch (error) {
 			this.logger.warn('Failed to resolve open workflows for settings update broadcast', {
 				workflowCount: changes.length,
+				workflowIds: workflowIds.slice(0, 10),
 				cause: error instanceof Error ? error.message : String(error),
 			});
 			return;

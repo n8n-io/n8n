@@ -743,6 +743,7 @@ describe('McpSettingsService', () => {
 				'Failed to resolve open workflows for settings update broadcast',
 				{
 					workflowCount: 1,
+					workflowIds: ['wf-1'],
 					cause: 'cache down',
 				},
 			);
