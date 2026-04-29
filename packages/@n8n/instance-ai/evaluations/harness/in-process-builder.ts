@@ -46,6 +46,7 @@ import {
 	type BuilderWorkspace,
 } from '../../src/workspace/builder-sandbox-factory';
 import { getWorkspaceRoot } from '../../src/workspace/sandbox-setup';
+import { selectBuilderToolNames } from './builder-tools';
 import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
 import { normalizeWorkflow } from './normalize-workflow';
 
@@ -54,6 +55,21 @@ import { normalizeWorkflow } from './normalize-workflow';
 // ---------------------------------------------------------------------------
 
 export type BuildErrorClass = 'build_timeout' | 'no_workflow_built' | 'agent_error';
+
+/**
+ * One invocation of the `templates` tool, captured at eval time so the
+ * comparison report can show *what* the agent searched for and *what* came
+ * back — not just that the tool was called.
+ */
+export interface TemplateToolCall {
+	toolCallId: string;
+	/** Full args (action + query / techniques). */
+	args: unknown;
+	/** Tool result (truncated to keep results.jsonl manageable). */
+	result?: unknown;
+	/** Whether the result was truncated. */
+	resultTruncated?: boolean;
+}
 
 export interface InProcessBuildResult {
 	success: boolean;
@@ -68,6 +84,10 @@ export interface InProcessBuildResult {
 		planToolCount: number;
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
+		/** Per-tool invocation counts, keyed by tool name. */
+		toolCallCounts: Record<string, number>;
+		/** Each `templates` invocation with args + (truncated) result. */
+		templateCalls: TemplateToolCall[];
 	};
 }
 
@@ -92,6 +112,12 @@ export interface BuildInProcessOptions {
 	 * is destroyed on completion. Mirrors the production build path.
 	 */
 	sandboxFactory?: BuilderSandboxFactory;
+	/**
+	 * When false, the `templates` domain tool is withheld from the
+	 * builder agent. Used by the with/without-templates A/B eval —
+	 * default `true` keeps existing runs unchanged.
+	 */
+	includeTemplates?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,11 +132,16 @@ export async function buildInProcess(
 	const modelId: ModelConfig = options.modelId ?? 'anthropic/claude-sonnet-4-6';
 	const maxSteps = options.maxSteps ?? 30;
 
-	const interactivity = {
+	const includeTemplates = options.includeTemplates !== false;
+
+	const interactivity: InteractivityState = {
 		askUserCount: 0,
 		planToolCount: 0,
 		autoApprovedSuspensions: 0,
 		mockedCredentialTypes: new Set<string>(),
+		toolCallCounts: {},
+		templateCalls: [],
+		templateCallsByToolCallId: new Map(),
 	};
 
 	const chunkLog = options.logPath ? await openChunkLog(options.logPath) : null;
@@ -150,13 +181,10 @@ export async function buildInProcess(
 		const root = await getWorkspaceRoot(builderWs.workspace);
 		prompt = createSandboxBuilderAgentPrompt(root);
 
-		const sandboxToolNames = [
-			'nodes',
-			'workflows',
-			'credentials',
-			'data-tables',
-			'templates',
-		] as const;
+		const sandboxToolNames = selectBuilderToolNames({
+			mode: 'sandbox',
+			includeTemplates,
+		});
 		for (const name of sandboxToolNames) {
 			const tool = (allTools as Record<string, unknown>)[name];
 			if (tool) builderTools[name] = tool;
@@ -166,13 +194,10 @@ export async function buildInProcess(
 			builderWs.workspace,
 		);
 	} else {
-		const builderToolNames = [
-			'build-workflow',
-			'nodes',
-			'workflows',
-			'data-tables',
-			'templates',
-		] as const;
+		const builderToolNames = selectBuilderToolNames({
+			mode: 'inline',
+			includeTemplates,
+		});
 		for (const name of builderToolNames) {
 			const tool = (allTools as Record<string, unknown>)[name];
 			if (tool) builderTools[name] = tool;
@@ -341,6 +366,8 @@ export async function buildInProcess(
 			planToolCount: interactivity.planToolCount,
 			autoApprovedSuspensions: interactivity.autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(interactivity.mockedCredentialTypes),
+			toolCallCounts: { ...interactivity.toolCallCounts },
+			templateCalls: interactivity.templateCalls.map((c) => ({ ...c })),
 		},
 	};
 }
@@ -354,6 +381,31 @@ interface InteractivityState {
 	planToolCount: number;
 	autoApprovedSuspensions: number;
 	mockedCredentialTypes: Set<string>;
+	/** Per-tool invocation counts, keyed by tool name. */
+	toolCallCounts: Record<string, number>;
+	/** Each `templates` invocation captured for the report. Order matches call order. */
+	templateCalls: TemplateToolCall[];
+	/** toolCallId → index into templateCalls, used to attach results when they arrive. */
+	templateCallsByToolCallId: Map<string, number>;
+}
+
+/** Cap on persisted result size per template call (~4 KB of JSON). */
+const TEMPLATE_RESULT_TRUNCATE_BYTES = 4096;
+
+function captureTemplateResult(raw: unknown): { result: unknown; truncated: boolean } {
+	try {
+		const json = JSON.stringify(raw);
+		if (json.length <= TEMPLATE_RESULT_TRUNCATE_BYTES) {
+			return { result: raw, truncated: false };
+		}
+		// Keep raw JSON string in the truncated form so the report can show it.
+		return {
+			result: json.slice(0, TEMPLATE_RESULT_TRUNCATE_BYTES) + '…',
+			truncated: true,
+		};
+	} catch {
+		return { result: String(raw).slice(0, TEMPLATE_RESULT_TRUNCATE_BYTES), truncated: true };
+	}
 }
 
 function observeEvent(event: InstanceAiEvent, interactivity: InteractivityState): void {
@@ -361,7 +413,16 @@ function observeEvent(event: InstanceAiEvent, interactivity: InteractivityState)
 		const payload: unknown = event.payload;
 		if (!isRecord(payload)) return;
 		const toolName = typeof payload.toolName === 'string' ? payload.toolName : undefined;
+		if (!toolName) return;
+		interactivity.toolCallCounts[toolName] = (interactivity.toolCallCounts[toolName] ?? 0) + 1;
 		if (toolName === 'plan') interactivity.planToolCount++;
+		if (toolName === 'templates') {
+			const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : '';
+			const args = payload.args;
+			const idx = interactivity.templateCalls.length;
+			interactivity.templateCalls.push({ toolCallId, args });
+			if (toolCallId) interactivity.templateCallsByToolCallId.set(toolCallId, idx);
+		}
 	} else if (event.type === 'tool-result') {
 		const payload: unknown = event.payload;
 		if (!isRecord(payload)) return;
@@ -370,6 +431,15 @@ function observeEvent(event: InstanceAiEvent, interactivity: InteractivityState)
 		if (Array.isArray(mocked)) {
 			for (const type of mocked) {
 				if (typeof type === 'string') interactivity.mockedCredentialTypes.add(type);
+			}
+		}
+		const toolCallId = typeof payload.toolCallId === 'string' ? payload.toolCallId : undefined;
+		if (toolCallId) {
+			const idx = interactivity.templateCallsByToolCallId.get(toolCallId);
+			if (idx !== undefined) {
+				const captured = captureTemplateResult(payload.result);
+				interactivity.templateCalls[idx].result = captured.result;
+				if (captured.truncated) interactivity.templateCalls[idx].resultTruncated = true;
 			}
 		}
 	}
@@ -394,6 +464,8 @@ function failResult(
 			planToolCount: interactivity.planToolCount,
 			autoApprovedSuspensions: interactivity.autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(interactivity.mockedCredentialTypes),
+			toolCallCounts: { ...interactivity.toolCallCounts },
+			templateCalls: interactivity.templateCalls.map((c) => ({ ...c })),
 		},
 	};
 }

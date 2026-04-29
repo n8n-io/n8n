@@ -27,6 +27,13 @@ interface FeedbackEntry {
 	comment?: string;
 }
 
+interface TemplateCall {
+	toolCallId: string;
+	args: unknown;
+	result?: unknown;
+	resultTruncated?: boolean;
+}
+
 interface BuilderRecord {
 	prompt: string;
 	dos?: string;
@@ -39,6 +46,10 @@ interface BuilderRecord {
 	feedback: FeedbackEntry[];
 	tokenInput?: number;
 	tokenOutput?: number;
+	/** Per-tool invocation counts. Present only for instance-ai records. */
+	toolCallCounts?: Record<string, number>;
+	/** Detailed `templates` tool invocations. Present only for IA records. */
+	templateCalls?: TemplateCall[];
 }
 
 interface BuilderSummary {
@@ -56,6 +67,10 @@ interface BuilderSummary {
 		avgDiagnostic: number;
 		avgDurationMs: number;
 	};
+	/** Aggregated per-tool call counts across the run. Optional. */
+	toolCallCounts?: Record<string, number>;
+	/** Whether the builder had access to the templates tool. Optional. */
+	templatesEnabled?: boolean;
 }
 
 interface BuilderRun {
@@ -80,6 +95,10 @@ interface IAResultRecord {
 		errorMessage?: string;
 		durationMs: number;
 		tokenUsage?: { input?: number; output?: number };
+		interactivity?: {
+			toolCallCounts?: Record<string, number>;
+			templateCalls?: TemplateCall[];
+		};
 	};
 	feedback: Array<{ metric: string; score: number; kind?: string; comment?: string }>;
 }
@@ -98,6 +117,8 @@ interface IASummary {
 		primaryPassRate: number;
 		avgDiagnostic: number;
 	};
+	interactivity?: { toolCallCounts?: Record<string, number> };
+	tools?: { templates?: boolean };
 }
 
 async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
@@ -127,6 +148,8 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 		feedback: r.feedback,
 		tokenInput: r.build.tokenUsage?.input,
 		tokenOutput: r.build.tokenUsage?.output,
+		toolCallCounts: r.build.interactivity?.toolCallCounts,
+		templateCalls: r.build.interactivity?.templateCalls,
 	}));
 
 	const avgDuration =
@@ -150,6 +173,8 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 				avgDiagnostic: summary.totals.avgDiagnostic,
 				avgDurationMs: avgDuration,
 			},
+			toolCallCounts: summary.interactivity?.toolCallCounts,
+			templatesEnabled: summary.tools?.templates,
 		},
 		records: normalized,
 	};
@@ -485,6 +510,60 @@ function buildHeadline(record: BuilderRecord | undefined): BuilderHeadline {
 	return { statusBadge, statusKind, metaText: metaParts.join(' · ') };
 }
 
+function summarizeTemplateArgs(args: unknown): { action: string; detail: string } {
+	if (!args || typeof args !== 'object') return { action: 'templates', detail: '' };
+	const obj = args as Record<string, unknown>;
+	const action = typeof obj.action === 'string' ? obj.action : 'templates';
+	const detailParts: string[] = [];
+	if (typeof obj.query === 'string' && obj.query.length > 0) {
+		detailParts.push(`query="${obj.query}"`);
+	}
+	if (Array.isArray(obj.techniques) && obj.techniques.length > 0) {
+		detailParts.push(`techniques=[${obj.techniques.join(', ')}]`);
+	}
+	return { action, detail: detailParts.join(' · ') };
+}
+
+function renderTemplateResult(call: TemplateCall): string {
+	if (call.result === undefined) {
+		return '<div class="tpl-result-missing">No result captured (tool errored or run aborted).</div>';
+	}
+	// Truncated results are stored as plain strings; full results are objects/arrays.
+	const formatted =
+		typeof call.result === 'string' ? call.result : JSON.stringify(call.result, null, 2);
+	const truncatedNote = call.resultTruncated
+		? '<div class="tpl-truncated">Result truncated to ~4 KB. Full payload is in the chunk log.</div>'
+		: '';
+	return `${truncatedNote}<pre class="tpl-result">${escapeHtml(formatted)}</pre>`;
+}
+
+function renderTemplateCalls(calls: TemplateCall[] | undefined): string {
+	if (!calls || calls.length === 0) return '';
+	const items = calls
+		.map((call, i) => {
+			const { action, detail } = summarizeTemplateArgs(call.args);
+			const argsJson = JSON.stringify(call.args, null, 2);
+			return `<details class="tpl-call">
+  <summary>
+    <span class="tpl-idx">#${i + 1}</span>
+    <span class="tpl-action">${escapeHtml(action)}</span>
+    ${detail ? `<span class="tpl-detail">${escapeHtml(detail)}</span>` : ''}
+  </summary>
+  <div class="tpl-body">
+    <div class="tpl-section-label">Args</div>
+    <pre class="tpl-args">${escapeHtml(argsJson)}</pre>
+    <div class="tpl-section-label">Result</div>
+    ${renderTemplateResult(call)}
+  </div>
+</details>`;
+		})
+		.join('');
+	return `<div class="tpl-calls">
+  <div class="tpl-calls-label">templates calls (${calls.length})</div>
+  ${items}
+</div>`;
+}
+
 function renderBuilderColumn(label: string, record: BuilderRecord | undefined): string {
 	if (!record) {
 		return `<div class="builder-col missing"><div class="builder-label">${escapeHtml(label)}</div><div class="missing-msg">No record for this prompt.</div></div>`;
@@ -525,15 +604,20 @@ function renderBuilderColumn(label: string, record: BuilderRecord | undefined): 
   ${errorBlock}
   <div class="workflow-wrap">${renderWorkflow(record.workflow)}</div>
   ${renderJudgeRows(record.feedback)}
+  ${renderTemplateCalls(record.templateCalls)}
 </div>`;
 }
 
-function renderRow(row: ComparisonRow, index: number): string {
+function renderRow(
+	row: ComparisonRow,
+	index: number,
+	labels: { aLabel: string; bLabel: string },
+): string {
 	const verdictLabel: Record<ComparisonRow['verdict'], string> = {
 		'both-pass': 'BOTH PASS',
 		'both-fail': 'BOTH FAIL',
-		'ee-only': 'CODE ONLY',
-		'ia-only': 'IA ONLY',
+		'ee-only': `${labels.aLabel.toUpperCase()} ONLY`,
+		'ia-only': `${labels.bLabel.toUpperCase()} ONLY`,
 		neither: '—',
 	};
 	const verdictCls: Record<ComparisonRow['verdict'], string> = {
@@ -555,6 +639,12 @@ function renderRow(row: ComparisonRow, index: number): string {
       <span class="chip-meta">${escapeHtml(head.metaText)}</span>
     </span>`;
 
+	const toolCallChip = (rec: BuilderRecord | undefined): string => {
+		const count = rec?.toolCallCounts?.templates ?? 0;
+		if (count === 0) return '';
+		return `<span class="tool-chip" title="templates tool invocations">tpl ×${count}</span>`;
+	};
+
 	// Heavy content (workflow previews + judge tables) is wrapped in a <template>
 	// so the n8n-demo web component is NOT instantiated until the user expands
 	// the row. The lazy loader script in the document head does the swap.
@@ -563,8 +653,8 @@ function renderRow(row: ComparisonRow, index: number): string {
     <span class="verdict">${verdictLabel[row.verdict]}</span>
     <span class="prompt-preview">${escapeHtml(promptPreview)}</span>
     <span class="builder-chips">
-      ${builderChip('Code', eeHead)}
-      ${builderChip('IA', iaHead)}
+      ${builderChip(labels.aLabel, eeHead)}${toolCallChip(row.ee)}
+      ${builderChip(labels.bLabel, iaHead)}${toolCallChip(row.ia)}
     </span>
   </summary>
   <div class="body">
@@ -579,8 +669,8 @@ function renderRow(row: ComparisonRow, index: number): string {
     <div class="lazy-slot" data-loaded="false">
       <template>
         <div class="builder-grid">
-          ${renderBuilderColumn('Code Builder', row.ee)}
-          ${renderBuilderColumn('instance-ai', row.ia)}
+          ${renderBuilderColumn(labels.aLabel, row.ee)}
+          ${renderBuilderColumn(labels.bLabel, row.ia)}
         </div>
       </template>
       <div class="lazy-placeholder">Click to load workflow previews and judge details…</div>
@@ -625,7 +715,10 @@ function renderMetricsNote(): string {
 </aside>`;
 }
 
-function renderVerdictTotals(rows: ComparisonRow[]): string {
+function renderVerdictTotals(
+	rows: ComparisonRow[],
+	labels: { aLabel: string; bLabel: string },
+): string {
 	const counts: Record<ComparisonRow['verdict'], number> = {
 		'both-pass': 0,
 		'both-fail': 0,
@@ -639,20 +732,91 @@ function renderVerdictTotals(rows: ComparisonRow[]): string {
 	const card = (label: string, n: number, cls: string): string =>
 		`<div class="verdict-card ${cls}"><strong>${n}</strong><span>${escapeHtml(label)}</span><em>${total === 0 ? '0%' : pct(n / total)}</em></div>`;
 
+	const flipped = counts['ee-only'] + counts['ia-only'];
 	return `<div class="verdict-grid">
   ${card('Both pass', counts['both-pass'], 'verdict-both-pass')}
-  ${card('Code Builder only passes', counts['ee-only'], 'verdict-ee-only')}
-  ${card('IA only passes', counts['ia-only'], 'verdict-ia-only')}
+  ${card(`${labels.aLabel} only passes`, counts['ee-only'], 'verdict-ee-only')}
+  ${card(`${labels.bLabel} only passes`, counts['ia-only'], 'verdict-ia-only')}
   ${card('Both fail', counts['both-fail'], 'verdict-both-fail')}
+  ${card('Verdict flipped', flipped, 'verdict-flipped')}
 </div>`;
 }
 
-function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): string {
+function renderToolAnalytics(
+	a: BuilderRun,
+	b: BuilderRun,
+	rows: ComparisonRow[],
+	labels: { aLabel: string; bLabel: string },
+): string {
+	// Only render if at least one side carries per-tool counts. Skip silently
+	// otherwise so EE-vs-IA reports don't show an empty section.
+	const aCounts = a.summary.toolCallCounts;
+	const bCounts = b.summary.toolCallCounts;
+	if (!aCounts && !bCounts) return '';
+
+	const aTpl = aCounts?.templates ?? 0;
+	const bTpl = bCounts?.templates ?? 0;
+	const aEnabled = a.summary.templatesEnabled;
+	const bEnabled = b.summary.templatesEnabled;
+
+	// Among prompts where templates was actually called on side A, how often did
+	// side A pass? Compare to the overall pass rate on side A. Same for B.
+	const aSidePass = (rec: BuilderRecord | undefined): boolean =>
+		!!rec && rec.success && findScore(rec.feedback, 'pairwise_primary') === 1;
+
+	const aTplCalled = rows.filter((r) => (r.ee?.toolCallCounts?.templates ?? 0) > 0);
+	const bTplCalled = rows.filter((r) => (r.ia?.toolCallCounts?.templates ?? 0) > 0);
+	const aTplPassRate =
+		aTplCalled.length === 0
+			? null
+			: aTplCalled.filter((r) => aSidePass(r.ee)).length / aTplCalled.length;
+	const bTplPassRate =
+		bTplCalled.length === 0
+			? null
+			: bTplCalled.filter((r) => aSidePass(r.ia)).length / bTplCalled.length;
+
+	const enabledLabel = (e: boolean | undefined): string =>
+		e === true ? '<em>enabled</em>' : e === false ? '<em>disabled</em>' : '';
+
+	const calloutAvg = (n: number, count: number): string =>
+		count === 0 ? '0' : `${n} (avg ${(n / count).toFixed(2)}/run)`;
+
+	const passRateCell = (rate: number | null, count: number): string =>
+		rate === null
+			? '<span class="muted">no calls</span>'
+			: `${pct(rate)} <span class="muted">(${count} prompts)</span>`;
+
+	return `<section class="tool-analytics">
+  <h2>Tool-call analytics — <code>templates</code></h2>
+  <div class="tool-grid">
+    <div class="tool-card">
+      <h3>${escapeHtml(labels.aLabel)} ${enabledLabel(aEnabled)}</h3>
+      <div class="tool-metric"><strong>${calloutAvg(aTpl, a.records.length)}</strong><span>templates calls</span></div>
+      <div class="tool-metric"><strong>${passRateCell(aTplPassRate, aTplCalled.length)}</strong><span>pass rate when called</span></div>
+      <div class="tool-metric"><strong>${pct(a.summary.totals.primaryPassRate)}</strong><span>overall pass rate</span></div>
+    </div>
+    <div class="tool-card">
+      <h3>${escapeHtml(labels.bLabel)} ${enabledLabel(bEnabled)}</h3>
+      <div class="tool-metric"><strong>${calloutAvg(bTpl, b.records.length)}</strong><span>templates calls</span></div>
+      <div class="tool-metric"><strong>${passRateCell(bTplPassRate, bTplCalled.length)}</strong><span>pass rate when called</span></div>
+      <div class="tool-metric"><strong>${pct(b.summary.totals.primaryPassRate)}</strong><span>overall pass rate</span></div>
+    </div>
+  </div>
+  <p class="tool-note">Per-prompt template-call counts appear as <code>tpl ×N</code> chips on each row above.</p>
+</section>`;
+}
+
+function renderDocument(
+	ee: BuilderRun,
+	ia: BuilderRun,
+	rows: ComparisonRow[],
+	labels: { aLabel: string; bLabel: string },
+): string {
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Pairwise Eval Comparison — Code Builder vs Instance AI</title>
+<title>Pairwise Eval Comparison — ${escapeHtml(labels.aLabel)} vs ${escapeHtml(labels.bLabel)}</title>
 <script defer src="https://cdn.jsdelivr.net/npm/@webcomponents/webcomponentsjs@2.0.0/webcomponents-loader.js"></script>
 <script defer src="https://www.unpkg.com/lit@2.0.0-rc.2/polyfill-support.js"></script>
 <script type="module" src="https://cdn.jsdelivr.net/npm/@n8n_io/n8n-demo-component/n8n-demo.bundled.js"></script>
@@ -686,7 +850,6 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
   .summary-card .metric strong { font-size: 18px; color: var(--accent); }
   .summary-card .metric span { color: var(--muted); }
   .summary-card .meta-row.failures { color: var(--fail); margin-top: 6px; }
-  .verdict-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   .metrics-note {
     background: var(--card);
     border: 1px solid var(--border);
@@ -700,6 +863,7 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
   }
   .metrics-note strong { color: var(--fg); font-size: 12px; }
   .metrics-note b { color: var(--fg); font-weight: 600; }
+  .verdict-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
   .verdict-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
   .verdict-card strong { font-size: 26px; font-weight: 700; }
   .verdict-card span { color: var(--muted); font-size: 12px; }
@@ -708,6 +872,34 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
   .verdict-both-fail strong { color: var(--fail); }
   .verdict-ee-only strong { color: var(--ee); }
   .verdict-ia-only strong { color: var(--ia); }
+  .verdict-flipped strong { color: var(--accent); }
+  .tool-analytics { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .tool-analytics h2 { margin: 0; font-size: 14px; }
+  .tool-analytics h2 code { font-family: ui-monospace, monospace; font-size: 12px; background: #f3f4f6; padding: 2px 6px; border-radius: 3px; }
+  .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tool-card { border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; background: #fcfcfd; display: flex; flex-direction: column; gap: 6px; }
+  .tool-card h3 { margin: 0; font-size: 12px; font-weight: 600; }
+  .tool-card h3 em { color: var(--muted); font-size: 11px; font-weight: 500; margin-left: 4px; font-style: normal; }
+  .tool-metric { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; }
+  .tool-metric strong { font-size: 16px; color: var(--accent); }
+  .tool-metric .muted { color: var(--muted); font-weight: normal; font-size: 11px; }
+  .tool-metric span { color: var(--muted); font-size: 11px; }
+  .tool-note { margin: 0; color: var(--muted); font-size: 11px; }
+  .tool-note code { font-family: ui-monospace, monospace; }
+  .tool-chip { display: inline-block; padding: 2px 6px; margin-left: 4px; font-size: 10px; color: var(--accent); background: rgba(79,70,229,0.08); border: 1px solid rgba(79,70,229,0.18); border-radius: 3px; font-family: ui-monospace, monospace; }
+  .tpl-calls { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; padding: 8px 10px; background: rgba(79,70,229,0.04); border: 1px solid rgba(79,70,229,0.18); border-radius: 4px; }
+  .tpl-calls-label { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.04em; }
+  details.tpl-call { background: #fff; border: 1px solid var(--border); border-radius: 3px; }
+  details.tpl-call > summary { padding: 4px 8px; cursor: pointer; font-size: 11px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; list-style: none; }
+  details.tpl-call > summary::-webkit-details-marker { display: none; }
+  details.tpl-call .tpl-idx { color: var(--muted); font-family: ui-monospace, monospace; font-weight: 700; }
+  details.tpl-call .tpl-action { font-family: ui-monospace, monospace; color: var(--accent); font-weight: 600; }
+  details.tpl-call .tpl-detail { color: var(--muted); font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; }
+  details.tpl-call > .tpl-body { padding: 6px 10px 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+  .tpl-section-label { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.04em; font-weight: 600; }
+  pre.tpl-args, pre.tpl-result { margin: 0; padding: 6px 8px; background: #fafbfc; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; max-height: 240px; overflow-y: auto; }
+  .tpl-truncated { font-size: 10px; color: var(--muted); font-style: italic; }
+  .tpl-result-missing { font-size: 11px; color: var(--muted); font-style: italic; }
   .rows { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   details.row { border-bottom: 1px solid var(--border); }
   details.row:last-child { border-bottom: none; }
@@ -787,18 +979,19 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
 </head>
 <body>
 <header class="top">
-  <h1>Pairwise Eval Comparison — Code Builder vs Instance AI</h1>
-  <div class="subhead">${rows.length} prompt${rows.length === 1 ? '' : 's'} compared. Rows are ordered: Code-only wins, IA-only wins, both fail, both pass.</div>
+  <h1>Pairwise Eval Comparison — ${escapeHtml(labels.aLabel)} vs ${escapeHtml(labels.bLabel)}</h1>
+  <div class="subhead">${rows.length} prompt${rows.length === 1 ? '' : 's'} compared. Rows are ordered: ${escapeHtml(labels.aLabel)}-only wins, ${escapeHtml(labels.bLabel)}-only wins, both fail, both pass.</div>
 </header>
 <main>
   <section class="summary-row">
-    ${renderSummaryCard('Code Builder', ee.summary, ee.records.length, ee.records)}
-    ${renderSummaryCard('instance-ai', ia.summary, ia.records.length, ia.records)}
+    ${renderSummaryCard(labels.aLabel, ee.summary, ee.records.length, ee.records)}
+    ${renderSummaryCard(labels.bLabel, ia.summary, ia.records.length, ia.records)}
   </section>
-  ${renderVerdictTotals(rows)}
+  ${renderVerdictTotals(rows, labels)}
+  ${renderToolAnalytics(ee, ia, rows, labels)}
   ${renderMetricsNote()}
   <section class="rows">
-    ${rows.map((r, i) => renderRow(r, i)).join('\n')}
+    ${rows.map((r, i) => renderRow(r, i, labels)).join('\n')}
   </section>
 </main>
 <script>
@@ -832,8 +1025,11 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
 // ---------------------------------------------------------------------------
 
 interface CliArgs {
-	eeDir: string;
-	iaDir: string;
+	mode: 'ee-vs-ia' | 'ia-vs-ia';
+	aDir: string;
+	bDir: string;
+	aLabel: string;
+	bLabel: string;
 	out: string;
 }
 
@@ -844,34 +1040,78 @@ function parseArgs(argv: string[]): CliArgs {
 		const value = argv[idx + 1];
 		return value && !value.startsWith('--') ? value : undefined;
 	};
+
+	const aDir = get('--a-dir');
+	const bDir = get('--b-dir');
 	const eeDir = get('--ee-dir');
 	const iaDir = get('--ia-dir');
-	if (!eeDir || !iaDir) {
+
+	if ((aDir || bDir) && (eeDir || iaDir)) {
+		throw new Error('Use either --a-dir/--b-dir (IA-vs-IA) or --ee-dir/--ia-dir, not both.');
+	}
+
+	let mode: CliArgs['mode'];
+	let leftDir: string;
+	let rightDir: string;
+	let leftLabel: string;
+	let rightLabel: string;
+
+	if (aDir && bDir) {
+		mode = 'ia-vs-ia';
+		leftDir = aDir;
+		rightDir = bDir;
+		leftLabel = get('--a-label') ?? 'A';
+		rightLabel = get('--b-label') ?? 'B';
+	} else if (eeDir && iaDir) {
+		mode = 'ee-vs-ia';
+		leftDir = eeDir;
+		rightDir = iaDir;
+		leftLabel = 'Code Builder';
+		rightLabel = 'instance-ai';
+	} else {
 		throw new Error(
-			'Usage: tsx evaluations/cli/compare-pairwise.ts --ee-dir <path> --ia-dir <path> [--out <path>]',
+			'Usage:\n' +
+				'  tsx evaluations/cli/compare-pairwise.ts --ee-dir <path> --ia-dir <path> [--out <path>]\n' +
+				'  tsx evaluations/cli/compare-pairwise.ts --a-dir <path> --b-dir <path> [--a-label <name>] [--b-label <name>] [--out <path>]',
 		);
 	}
-	const defaultOut = path.join(path.dirname(path.resolve(iaDir)), 'comparison.html');
+
+	const defaultOut = path.join(
+		path.dirname(path.resolve(rightDir)),
+		mode === 'ia-vs-ia' ? 'comparison-templates.html' : 'comparison.html',
+	);
 	const out = path.resolve(get('--out') ?? defaultOut);
-	return { eeDir: path.resolve(eeDir), iaDir: path.resolve(iaDir), out };
+
+	return {
+		mode,
+		aDir: path.resolve(leftDir),
+		bDir: path.resolve(rightDir),
+		aLabel: leftLabel,
+		bLabel: rightLabel,
+		out,
+	};
 }
 
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
-	const [ee, ia] = await Promise.all([loadEERun(args.eeDir), loadInstanceAiRun(args.iaDir)]);
+
+	const [a, b] =
+		args.mode === 'ee-vs-ia'
+			? await Promise.all([loadEERun(args.aDir), loadInstanceAiRun(args.bDir)])
+			: await Promise.all([loadInstanceAiRun(args.aDir), loadInstanceAiRun(args.bDir)]);
 
 	console.log(
-		`EE records: ${ee.records.length} (pass rate ${pct(ee.summary.totals.primaryPassRate)})`,
+		`${args.aLabel}: ${a.records.length} records (pass rate ${pct(a.summary.totals.primaryPassRate)})`,
 	);
 	console.log(
-		`IA records: ${ia.records.length} (pass rate ${pct(ia.summary.totals.primaryPassRate)})`,
+		`${args.bLabel}: ${b.records.length} records (pass rate ${pct(b.summary.totals.primaryPassRate)})`,
 	);
 
-	const rows = pairRecords(ee.records, ia.records);
+	const rows = pairRecords(a.records, b.records);
 	const matched = rows.filter((r) => r.ee && r.ia).length;
 	console.log(`Joined ${rows.length} prompts (${matched} matched on both sides)`);
 
-	const html = renderDocument(ee, ia, rows);
+	const html = renderDocument(a, b, rows, { aLabel: args.aLabel, bLabel: args.bLabel });
 	await fs.writeFile(args.out, html, 'utf8');
 	console.log(`Wrote comparison report to ${args.out}`);
 }

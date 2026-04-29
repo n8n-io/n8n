@@ -52,6 +52,7 @@ interface PairwiseArgs {
 	experimentName: string;
 	verbose: boolean;
 	sandbox: boolean;
+	includeTemplates: boolean;
 }
 
 function parseArgs(argv: string[]): PairwiseArgs {
@@ -96,6 +97,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
 		sandbox: !has('--no-sandbox'),
+		includeTemplates: !has('--no-templates'),
 	};
 }
 
@@ -255,6 +257,7 @@ async function runExample(
 		timeoutMs: args.timeoutMs,
 		logPath,
 		sandboxFactory,
+		includeTemplates: args.includeTemplates,
 	});
 
 	const record: ExampleRecord = {
@@ -328,8 +331,10 @@ interface Summary {
 		planToolCount: number;
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
+		toolCallCounts: Record<string, number>;
 	};
 	sandbox: { enabled: boolean; provider?: string };
+	tools: { templates: boolean };
 }
 
 async function writeOutputs(
@@ -370,6 +375,7 @@ async function writeOutputs(
 		'durationMs',
 		'askUserCount',
 		'planToolCount',
+		'templatesCalls',
 		'pairwisePrimary',
 		'pairwiseDiagnostic',
 		'pairwiseJudgesPassed',
@@ -384,6 +390,7 @@ async function writeOutputs(
 			r.build.durationMs,
 			r.build.interactivity.askUserCount,
 			r.build.interactivity.planToolCount,
+			r.build.interactivity.toolCallCounts.templates ?? 0,
 			find('pairwise_primary'),
 			find('pairwise_diagnostic'),
 			find('pairwise_judges_passed'),
@@ -404,6 +411,7 @@ async function writeOutputs(
 	let askUserCount = 0;
 	let planToolCount = 0;
 	let autoApprovedSuspensions = 0;
+	const toolCallCounts: Record<string, number> = {};
 
 	for (const record of records) {
 		if (record.build.success) buildSuccess++;
@@ -415,6 +423,9 @@ async function writeOutputs(
 		autoApprovedSuspensions += record.build.interactivity.autoApprovedSuspensions;
 		for (const type of record.build.interactivity.mockedCredentialTypes) {
 			allMockedCreds.add(type);
+		}
+		for (const [name, count] of Object.entries(record.build.interactivity.toolCallCounts)) {
+			toolCallCounts[name] = (toolCallCounts[name] ?? 0) + count;
 		}
 
 		const primary = record.feedback.find((f) => f.metric === 'pairwise_primary')?.score;
@@ -451,10 +462,12 @@ async function writeOutputs(
 			planToolCount,
 			autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(allMockedCreds),
+			toolCallCounts,
 		},
 		sandbox: sandboxConfig.enabled
 			? { enabled: true, provider: sandboxConfig.provider }
 			: { enabled: false },
+		tools: { templates: args.includeTemplates },
 	};
 	await fs.writeFile(
 		path.join(outputDir, 'summary.json'),
@@ -473,7 +486,7 @@ async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
 	logger.info(
-		`pairwise eval: backend=${args.backend} dataset=${args.dataset} judges=${args.judges} iterations=${args.iterations}`,
+		`pairwise eval: backend=${args.backend} dataset=${args.dataset} judges=${args.judges} iterations=${args.iterations} templates=${args.includeTemplates}`,
 	);
 
 	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;

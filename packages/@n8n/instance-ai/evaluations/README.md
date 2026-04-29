@@ -255,6 +255,7 @@ build path. The chosen provider is recorded under `summary.json → sandbox`.
 | `--experiment-name` | `pairwise-evals-instance-ai` | LangSmith experiment label |
 | `--verbose` | `false` | Per-example log lines |
 | `--no-sandbox` | — | Disable Daytona sandbox; use the string-based `build-workflow` tool. Dev-only |
+| `--no-templates` | — | Withhold the `templates` domain tool from the builder. Used for the with/without-templates A/B eval — see [Comparing with/without templates](#comparing-withwithout-templates-instance-ai-ab) |
 
 ### Outputs
 
@@ -317,6 +318,42 @@ The report shows headline metrics, per-prompt verdicts (TIE / IA-only /
 Code-only / both-pass / both-fail), and lazy-loaded workflow previews — rows
 collapse by default and only render the heavy `<n8n-demo>` preview when
 expanded.
+
+### Comparing with/without templates (instance-ai A/B)
+
+The pairwise CLI accepts `--no-templates` to withhold the `templates`
+domain tool from the builder agent. Run the eval twice (with and without)
+and compare the two instance-ai output directories:
+
+```bash
+# 1. With templates (default)
+pnpm eval:pairwise --backend langsmith \
+  --output-dir .output/pairwise/with
+
+# 2. Without templates
+pnpm eval:pairwise:no-templates --backend langsmith \
+  --output-dir .output/pairwise/without
+
+# 3. Side-by-side report (uses --a-dir/--b-dir for IA-vs-IA mode)
+pnpm eval:pairwise:compare \
+  --a-dir .output/pairwise/with    --a-label "with templates" \
+  --b-dir .output/pairwise/without --b-label "without templates" \
+  --out   .output/pairwise/comparison-templates.html
+```
+
+Each `summary.json` records `tools.templates` (true/false) and an
+aggregated `interactivity.toolCallCounts` map. Each `results.jsonl` row
+also captures every `templates` invocation (full args + truncated result)
+on `build.interactivity.templateCalls`, so the agent's exact searches and
+the data it got back are inspectable per-prompt.
+
+The IA-vs-IA report adds a **Verdict flipped** headline KPI, a
+**Tool-call analytics** section showing templates calls per side and the
+pass rate among prompts where the tool was actually invoked, and an
+expandable **templates calls** panel under each builder column listing
+every invocation: action (e.g., `search-structures`), args, and the
+returned payload. Per-prompt template-call counts appear as `tpl ×N`
+chips on each row summary.
 
 ### When pairwise scores wobble
 
