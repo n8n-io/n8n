@@ -66,6 +66,7 @@ catalog:
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
+  cron: 4.4.0
   eslint: 9.29.0
   fast-glob: 3.2.12
   fast-json-patch: ^3.1.1

@@ -17,6 +17,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -537,7 +538,7 @@ async function initialize() {
 		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
 		// will correct it once the user expands the Triggers section.
 		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = integrations.map((i) => i.type);
+		const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
 		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 		if (connected) connectedTriggers.value = connected;
 	})();
@@ -657,6 +658,7 @@ function onOpenAddTriggerModal() {
 		data: {
 			projectId: projectId.value,
 			agentId: agentId.value,
+			isPublished: Boolean(agent.value?.publishedVersion),
 			connectedTriggers: connectedTriggers.value,
 			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
@@ -913,6 +915,7 @@ function onSwitchAgent(nextAgentId: string) {
 										:tools="localConfig?.tools ?? []"
 										:project-id="projectId"
 										:agent-id="agentId"
+										:is-published="Boolean(agent?.publishedVersion)"
 										:connected-triggers="connectedTriggers"
 										@update:tools="onQuickActionAddTool"
 										@update:connected-triggers="onConnectedTriggersUpdate"
@@ -1064,6 +1067,7 @@ function onSwitchAgent(nextAgentId: string) {
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
+							:is-published="Boolean(agent?.publishedVersion)"
 							:focus-type="selectedTriggerType"
 							@update:connected-triggers="onConnectedTriggersUpdate"
 							@trigger-added="onTriggerAdded"
@@ -1076,9 +1080,9 @@ function onSwitchAgent(nextAgentId: string) {
 					>
 						<div :class="$style.triggersHeader">
 							<div :class="$style.triggersHeaderText">
-								<N8nText tag="h3" size="large" :bold="true">{{
-									locale.baseText('agents.builder.triggers.title')
-								}}</N8nText>
+								<N8nText tag="h3" size="large" :bold="true"
+									>{{ locale.baseText('agents.builder.triggers.title') }}
+								</N8nText>
 								<N8nText size="small" color="text-light">
 									{{ locale.baseText('agents.builder.triggers.description') }}
 								</N8nText>
@@ -1089,7 +1093,9 @@ function onSwitchAgent(nextAgentId: string) {
 								data-testid="agent-triggers-add"
 								@click="onOpenAddTriggerModal"
 							>
-								<template #prefix><N8nIcon icon="plus" :size="14" /></template>
+								<template #prefix>
+									<N8nIcon icon="plus" :size="14" />
+								</template>
 								{{ locale.baseText('agents.builder.triggers.add') }}
 							</N8nButton>
 						</div>
@@ -1098,6 +1104,7 @@ function onSwitchAgent(nextAgentId: string) {
 							:project-id="projectId"
 							:agent-id="agentId"
 							:agent-name="agentName"
+							:is-published="Boolean(agent?.publishedVersion)"
 							:only-connected="true"
 							@update:connected-triggers="onConnectedTriggersUpdate"
 							@trigger-added="onTriggerAdded"

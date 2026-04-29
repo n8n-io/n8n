@@ -1,3 +1,4 @@
+import { isAgentCredentialIntegration, type AgentIntegrationStatusResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
@@ -197,12 +198,8 @@ export class ChatIntegrationService {
 	/**
 	 * Return connection status and count for an agent.
 	 */
-	getStatus(agentId: string): {
-		status: 'connected' | 'disconnected';
-		connections: number;
-		integrations: Array<{ type: string; credentialId: string }>;
-	} {
-		const integrations: Array<{ type: string; credentialId: string }> = [];
+	getStatus(agentId: string): AgentIntegrationStatusResponse & { connections: number } {
+		const integrations: AgentIntegrationStatusResponse['integrations'] = [];
 		for (const k of this.connections.keys()) {
 			if (k.startsWith(`${agentId}:`)) {
 				// Key format: agentId:type:credentialId
@@ -257,6 +254,10 @@ export class ChatIntegrationService {
 		for (const agent of agents) {
 			if (!agent.integrations || agent.integrations.length === 0) continue;
 			for (const integration of agent.integrations) {
+				if (!isAgentCredentialIntegration(integration)) {
+					continue;
+				}
+
 				const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(
 					agent.projectId,
 				);

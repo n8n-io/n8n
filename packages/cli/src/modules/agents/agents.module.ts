@@ -42,11 +42,18 @@ export class AgentsModule implements ModuleInterface {
 		await Container.get(NodeCatalogService).initialize();
 
 		// Register Chat integration service and reconnect active integrations
+		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+		const scheduleService = Container.get(AgentScheduleService);
 		const chatService = Container.get(ChatIntegrationService);
 		const logger = Container.get(Logger);
 		void chatService.reconnectAll().catch((error) => {
 			logger.error('[Agents] Failed to reconnect integrations on startup', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		});
+		void scheduleService.reconnectAll().catch((error) => {
+			logger.error('[Agents] Failed to reconnect schedules on startup', {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		});

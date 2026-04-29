@@ -150,6 +150,9 @@ catalogs:
     callsites:
       specifier: 3.1.0
       version: 3.1.0
+    cron:
+      specifier: 4.4.0
+      version: 4.4.0
     eslint:
       specifier: 9.29.0
       version: 9.29.0
@@ -2639,6 +2642,9 @@ importers:
       cookie-parser:
         specifier: 1.4.7
         version: 1.4.7
+      cron:
+        specifier: 'catalog:'
+        version: 4.4.0
       csrf:
         specifier: 3.1.0
         version: 3.1.0
@@ -2992,7 +2998,7 @@ importers:
         specifier: 2.0.0
         version: 2.0.0
       cron:
-        specifier: 4.4.0
+        specifier: 'catalog:'
         version: 4.4.0
       fast-glob:
         specifier: 'catalog:'
@@ -4109,7 +4115,7 @@ importers:
         specifier: 4.0.3
         version: 4.0.3
       cron:
-        specifier: 4.4.0
+        specifier: 'catalog:'
         version: 4.4.0
       csv-parse:
         specifier: 5.5.0

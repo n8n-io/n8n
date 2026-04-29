@@ -16,6 +16,7 @@ const props = defineProps<{
 	tools: AgentJsonToolRef[];
 	projectId: string;
 	agentId: string;
+	isPublished: boolean;
 	connectedTriggers: string[];
 }>();
 
@@ -46,6 +47,7 @@ function onAddTrigger() {
 		data: {
 			projectId: props.projectId,
 			agentId: props.agentId,
+			isPublished: props.isPublished,
 			connectedTriggers: props.connectedTriggers,
 			onConnectedTriggersChange: (triggers: string[]) =>
 				emit('update:connected-triggers', triggers),
