@@ -19,6 +19,22 @@ export class InstanceAiPage extends BasePage {
 		return this.page.getByTestId('instance-ai-container');
 	}
 
+	getSidebarToggle(): Locator {
+		return this.getContainer().getByTestId('instance-ai-sidebar-toggle');
+	}
+
+	/**
+	 * Expand the chat-history sidebar if it isn't already open. The sidebar
+	 * starts collapsed by default, so any test that needs to query thread
+	 * items must open it first. Idempotent — does nothing if already open.
+	 */
+	async openSidebar(): Promise<void> {
+		const toggle = this.getSidebarToggle();
+		if (await toggle.isVisible()) {
+			await toggle.click();
+		}
+	}
+
 	// ── Messages ──────────────────────────────────────────────────────
 
 	getChatInput(): Locator {
