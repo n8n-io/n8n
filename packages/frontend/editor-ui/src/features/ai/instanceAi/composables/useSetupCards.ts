@@ -14,6 +14,10 @@ import {
 	type SetupCard,
 	type SetupCardGroup,
 } from '../instanceAiWorkflowSetup.utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 export function useSetupCards(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]>,
@@ -21,6 +25,9 @@ export function useSetupCards(
 	isCredentialTypeTestable: (name: string) => boolean,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 
@@ -81,7 +88,7 @@ export function useSetupCards(
 		const nodeType = nodeTypesStore.getNodeType(req.node.type, req.node.typeVersion);
 		if (!nodeType?.properties) return false;
 
-		const node = workflowsStore.getNodeByName(req.node.name);
+		const node = workflowDocumentStore.value.getNodeByName(req.node.name);
 		if (!node) return false;
 
 		const tracked =
@@ -190,7 +197,7 @@ export function useSetupCards(
 
 	const displayCards = computed((): DisplayCard[] => {
 		const directSubnodes = new Map<string, Set<string>>();
-		const connectionsByDest = workflowsStore.connectionsByDestinationNode;
+		const connectionsByDest = workflowDocumentStore.value.connectionsByDestinationNode;
 		for (const [destName, conns] of Object.entries(connectionsByDest)) {
 			for (const connType of Object.keys(conns)) {
 				if (connType === NodeConnectionTypes.Main) continue;
@@ -315,7 +322,7 @@ export function useSetupCards(
 		for (const req of card.nodes) {
 			const nodeName = req.node.name;
 			if (trackedParamNames.value.has(nodeName)) return true;
-			const storeNode = workflowsStore.getNodeByName(nodeName);
+			const storeNode = workflowDocumentStore.value.getNodeByName(nodeName);
 			if (storeNode) {
 				const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 				if (Object.keys(liveIssues).length > 0) return true;
@@ -341,7 +348,7 @@ export function useSetupCards(
 
 		if (cardHasParamWork(card)) {
 			for (const req of card.nodes) {
-				const storeNode = workflowsStore.getNodeByName(req.node.name);
+				const storeNode = workflowDocumentStore.value.getNodeByName(req.node.name);
 				if (storeNode) {
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) return false;
@@ -397,7 +404,7 @@ export function useSetupCards(
 			for (const card of cards.value) {
 				for (const req of card.nodes) {
 					const nodeName = req.node.name;
-					const storeNode = workflowsStore.getNodeByName(nodeName);
+					const storeNode = workflowDocumentStore.value.getNodeByName(nodeName);
 					if (!storeNode) continue;
 					const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 					if (Object.keys(liveIssues).length > 0) {

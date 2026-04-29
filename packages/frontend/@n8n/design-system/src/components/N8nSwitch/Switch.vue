@@ -35,6 +35,8 @@ const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 			:name="name"
 			:disabled="disabled"
 			:class="$style.switchRoot"
+			:aria-labelledby="label ? uuid : undefined"
+			:aria-label="!label && 'Toggle'"
 		>
 			<SwitchThumb :class="$style.switchThumb" />
 		</SwitchRoot>
@@ -57,7 +59,7 @@ const rootAttrs = computed(() => reactiveOmit(attrs, ['class']));
 	flex-direction: row;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	cursor: pointer;
+	cursor: default;
 
 	&[data-disabled] {
 		cursor: not-allowed;
