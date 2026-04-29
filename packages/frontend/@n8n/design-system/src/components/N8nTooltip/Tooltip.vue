@@ -117,7 +117,6 @@ const handleOpenChange = (open: boolean) => {
 </template>
 
 <style lang="scss" module>
-
 .buttons {
 	display: flex;
 	align-items: center;
