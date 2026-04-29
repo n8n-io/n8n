@@ -15,6 +15,7 @@ import {
 	extractExecutionResult,
 	extractExecutionDebugInfo,
 	extractNodeOutput,
+	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
@@ -826,7 +827,7 @@ function createDataTableAdapterForTests(overrides?: {
 	};
 
 	const mockDataTableRepository = {
-		findOneByOrFail: jest
+		findOneBy: jest
 			.fn()
 			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
@@ -1544,5 +1545,127 @@ describe('createExecutionAdapter', () => {
 
 		const query = mockExecutionRepository.findManyByRangeQuery.mock.calls[0][0];
 		expect(query).not.toHaveProperty('accessibleWorkflowIds');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolveDataTableByIdOrName
+// ---------------------------------------------------------------------------
+
+describe('resolveDataTableByIdOrName', () => {
+	type TableRecord = { id: string; name: string; projectId: string };
+
+	function makeRepo(tables: TableRecord[]) {
+		return {
+			findOneBy: jest.fn(async (where: { id: string }) => {
+				return tables.find((t) => t.id === where.id) ?? null;
+			}),
+			findBy: jest.fn(async (where: { name: string; projectId?: string }) => {
+				return tables.filter(
+					(t) => t.name === where.name && (!where.projectId || t.projectId === where.projectId),
+				);
+			}),
+		};
+	}
+
+	function makeLogger() {
+		return { warn: jest.fn() };
+	}
+
+	const table = { id: 'dt_uuid_123', name: 'kb_sources', projectId: 'proj_1' };
+
+	it('returns hit on an id match without logging a warning', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'dt_uuid_123');
+
+		expect(result).toEqual({ kind: 'hit', table });
+		expect(repo.findOneBy).toHaveBeenCalledWith({ id: 'dt_uuid_123' });
+		expect(repo.findBy).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('falls back to name lookup when the id lookup misses, and warns', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources');
+
+		expect(result).toEqual({ kind: 'hit', table });
+		expect(repo.findOneBy).toHaveBeenCalledWith({ id: 'kb_sources' });
+		expect(repo.findBy).toHaveBeenCalledWith({ name: 'kb_sources' });
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn.mock.calls[0][0]).toMatch(/called with table name instead of id/);
+		expect(logger.warn.mock.calls[0][1]).toEqual({
+			passedValue: 'kb_sources',
+			resolvedId: 'dt_uuid_123',
+			projectId: 'proj_1',
+		});
+	});
+
+	it('returns miss when neither id nor name matches', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'does_not_exist');
+
+		expect(result).toEqual({ kind: 'miss' });
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('filters id hits that fail the access filter', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'dt_uuid_123', {
+			accessFilter: async () => false,
+		});
+
+		expect(result).toEqual({ kind: 'miss' });
+	});
+
+	it('narrows the name lookup when projectIdFilter is provided', async () => {
+		const repo = makeRepo([table, { id: 'dt_uuid_456', name: 'kb_sources', projectId: 'proj_2' }]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources', {
+			projectIdFilter: 'proj_2',
+		});
+
+		expect(result.kind).toBe('hit');
+		expect(repo.findBy).toHaveBeenCalledWith({ name: 'kb_sources', projectId: 'proj_2' });
+		if (result.kind === 'hit') expect(result.table.id).toBe('dt_uuid_456');
+	});
+
+	it('returns ambiguous when multiple accessible candidates share a name', async () => {
+		const twin = { id: 'dt_uuid_456', name: 'kb_sources', projectId: 'proj_2' };
+		const repo = makeRepo([table, twin]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources', {
+			accessFilter: async () => true,
+		});
+
+		expect(result.kind).toBe('ambiguous');
+		if (result.kind === 'ambiguous') {
+			expect(result.candidates).toHaveLength(2);
+			expect(result.candidates.map((c) => c.projectId).sort()).toEqual(['proj_1', 'proj_2']);
+		}
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('picks the single accessible candidate when ambiguity is resolved by access filter', async () => {
+		const twin = { id: 'dt_uuid_456', name: 'kb_sources', projectId: 'proj_2' };
+		const repo = makeRepo([table, twin]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources', {
+			accessFilter: async (id) => id === 'dt_uuid_123',
+		});
+
+		expect(result.kind).toBe('hit');
+		if (result.kind === 'hit') expect(result.table.id).toBe('dt_uuid_123');
+		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 });

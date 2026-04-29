@@ -7,11 +7,13 @@ import { useI18n } from '@n8n/i18n';
 type Props = {
 	disabled?: boolean;
 	loading?: boolean;
+	managedByEnv?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
 	disabled: false,
 	loading: false,
+	managedByEnv: false,
 });
 
 const emit = defineEmits<{
@@ -35,6 +37,9 @@ const i18n = useI18n();
 		>
 			<template #disabledButtonTooltip>
 				<span v-if="props.loading">{{ i18n.baseText('generic.loading') }}...</span>
+				<span v-else-if="props.managedByEnv">
+					{{ i18n.baseText('settings.mcp.managedByEnv.tooltip') }}
+				</span>
 				<span v-else-if="props.disabled">
 					{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}
 				</span>

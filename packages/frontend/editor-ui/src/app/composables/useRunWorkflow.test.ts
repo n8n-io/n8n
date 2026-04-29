@@ -63,6 +63,7 @@ const { mockDocumentStore } = vi.hoisted(() => {
 		pinData: {},
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		nodesIssuesExist: false,
 		getParametersLastUpdate: vi.fn(),
 		getPinnedDataLastUpdate: vi.fn(),
 		getPinnedDataLastRemovedAt: vi.fn(),

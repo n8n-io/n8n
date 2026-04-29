@@ -1,9 +1,11 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -79,16 +81,19 @@ describe('McpSettingsController', () => {
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
 	const workflowService = mock<WorkflowService>();
+	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
 
 	let controller: McpSettingsController;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		instanceSettingsLoaderConfig.mcpManagedByEnv = false;
 		Container.set(Logger, logger);
 		Container.set(McpSettingsService, mcpSettingsService);
 		Container.set(ModuleRegistry, moduleRegistry);
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
 		Container.set(WorkflowService, workflowService);
+		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
 		controller = Container.get(McpSettingsController);
 	});
 
@@ -142,6 +147,18 @@ describe('McpSettingsController', () => {
 				cause: 'Registry sync failed',
 			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
+		});
+
+		test('rejects updates when MCP settings are managed by env', async () => {
+			instanceSettingsLoaderConfig.mcpManagedByEnv = true;
+			const req = createReq({ mcpAccessEnabled: true });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+
+			await expect(controller.updateSettings(req, createRes(), dto)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
 
 		test('requires boolean mcpAccessEnabled value', () => {
@@ -314,6 +331,18 @@ describe('McpSettingsController', () => {
 				updatedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
+				changedWorkflows: [
+					{
+						workflowId: 'wf-1',
+						settings: { availableInMCP: true },
+						checksum: 'checksum-wf-1',
+					},
+					{
+						workflowId: 'wf-2',
+						settings: { availableInMCP: true },
+						checksum: 'checksum-wf-2',
+					},
+				],
 			};
 			mcpSettingsService.bulkSetAvailableInMCP.mockResolvedValue(bulkResult);
 
@@ -322,7 +351,15 @@ describe('McpSettingsController', () => {
 
 			expect(mcpSettingsService.bulkSetAvailableInMCP).toHaveBeenCalledTimes(1);
 			expect(mcpSettingsService.bulkSetAvailableInMCP).toHaveBeenCalledWith(user, dto);
-			expect(result).toEqual(bulkResult);
+			expect(mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged).toHaveBeenCalledWith(
+				bulkResult.changedWorkflows,
+			);
+			expect(result).toEqual({
+				updatedCount: 2,
+				updatedIds: ['wf-1', 'wf-2'],
+				skippedCount: 0,
+				failedCount: 0,
+			});
 		});
 	});
 

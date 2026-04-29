@@ -70,7 +70,7 @@ export class TaskRunnersConfig {
 	 * Increase on slow hardware where the runner needs more time to start.
 	 */
 	@Env('N8N_RUNNERS_GRANT_TOKEN_TTL', positiveIntSchema)
-	grantTokenTtl: number = 15;
+	grantTokenTtl: number = 30;
 
 	/**
 	 * Whether to disable all security measures in the task runner. **Discouraged for production use.**
