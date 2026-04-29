@@ -135,7 +135,6 @@ const handleOpenChange = (open: boolean) => {
 
 // Global styles for teleported tooltip content
 :global(.n8n-tooltip) {
-	z-index: 99999999; // Above header and other fixed elements
 	max-width: 180px;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	min-height: var(--height--sm);
@@ -167,10 +166,12 @@ const handleOpenChange = (open: boolean) => {
 	from {
 		opacity: 0;
 		filter: blur(2px);
+		transform: scale(0.8);
 	}
 	to {
 		opacity: 1;
 		filter: blur(0px);
+		transform: scale(1);
 	}
 }
 </style>
