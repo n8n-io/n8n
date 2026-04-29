@@ -146,6 +146,7 @@ const handleOpenChange = (open: boolean) => {
 	border-radius: var(--radius--xs);
 	background: var(--color--neutral-black);
 	color: var(--color--neutral-100);
+	box-shadow: var(--shadow--md);
 	word-wrap: break-word;
 	transform-origin: var(--reka-tooltip-content-transform-origin);
 	animation: scaleIn var(--duration--snappy) var(--easing--ease-out);
