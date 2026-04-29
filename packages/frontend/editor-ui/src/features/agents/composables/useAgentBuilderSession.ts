@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { truncate } from '@n8n/utils';
 import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryRaw } from 'vue-router';
 
@@ -7,6 +8,13 @@ import { useAgentSessionsStore } from '../agentSessions.store';
 import { CONTINUE_SESSION_ID_PARAM } from '../constants';
 import { useThreadTitle } from '../utils/thread-title';
 import { useRelativeTimestamp } from '../utils/relative-time';
+
+/**
+ * Max chars for session-name display in the chat-header dropdown trigger and
+ * its menu rows. Long titles otherwise wrap and push the "new chat" button
+ * onto a second line.
+ */
+const SESSION_TITLE_MAX_CHARS = 20;
 
 interface SessionMenuItem {
 	id: string;
@@ -71,7 +79,7 @@ export function useAgentBuilderSession() {
 		if (!id) return '';
 		const thread = (sessionsStore.threads ?? []).find((t) => t.id === id);
 		if (!thread) return i18n.baseText('agents.builder.chat.newChat.label');
-		return threadTitleOf(thread);
+		return truncate(threadTitleOf(thread), SESSION_TITLE_MAX_CHARS);
 	});
 
 	const sessionMenu = computed<SessionMenuItem[]>(() => {
@@ -88,7 +96,7 @@ export function useAgentBuilderSession() {
 		return threads.map((thread) => ({
 			id: thread.id,
 			title: '',
-			label: threadTitleOf(thread),
+			label: truncate(threadTitleOf(thread), SESSION_TITLE_MAX_CHARS),
 			when: relativeTimeOf(thread.updatedAt),
 		}));
 	});
