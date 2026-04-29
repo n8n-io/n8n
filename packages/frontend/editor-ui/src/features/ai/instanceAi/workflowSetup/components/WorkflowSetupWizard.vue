@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import ConfirmationFooter from '../../components/ConfirmationFooter.vue';
 import WorkflowSetupCard from './WorkflowSetupCard.vue';
@@ -59,33 +59,29 @@ const applyLabel = computed(() =>
 		<template #footer>
 			<ConfirmationFooter layout="row-between" bordered>
 				<div :class="$style.nav">
-					<N8nButton
+					<N8nIconButton
 						v-if="showArrows"
 						variant="ghost"
 						size="medium"
-						icon-only
+						icon="chevron-left"
 						:disabled="isPrevDisabled"
 						data-test-id="instance-ai-workflow-setup-prev"
 						aria-label="Previous step"
 						@click="ctx.goToPrev"
-					>
-						<N8nIcon icon="chevron-left" size="xsmall" />
-					</N8nButton>
+					/>
 					<N8nText size="small" color="text-light">
 						{{ ctx.currentStepIndex.value + 1 }} of {{ totalSteps }}
 					</N8nText>
-					<N8nButton
+					<N8nIconButton
 						v-if="showArrows"
 						variant="ghost"
 						size="medium"
-						icon-only
+						icon="chevron-right"
 						:disabled="isNextDisabled"
 						data-test-id="instance-ai-workflow-setup-next"
 						aria-label="Next step"
 						@click="ctx.goToNext"
-					>
-						<N8nIcon icon="chevron-right" size="xsmall" />
-					</N8nButton>
+					/>
 				</div>
 
 				<div :class="$style.actions">

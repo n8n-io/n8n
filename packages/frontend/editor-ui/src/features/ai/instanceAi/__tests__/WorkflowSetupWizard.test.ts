@@ -37,6 +37,11 @@ const renderComponent = createComponentRenderer(WorkflowSetupWizard, {
 				template:
 					'<button :disabled="disabled" @click="$emit(\'click\')">{{ label }}<slot /></button>',
 			},
+			N8nIconButton: {
+				props: ['disabled', 'icon'],
+				emits: ['click'],
+				template: '<button :disabled="disabled" @click="$emit(\'click\')">{{ icon }}</button>',
+			},
 			N8nTooltip: {
 				props: ['content', 'disabled'],
 				template:
