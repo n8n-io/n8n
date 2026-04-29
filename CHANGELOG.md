@@ -1,3 +1,11 @@
+## [1.123.38](https://github.com/n8n-io/n8n/compare/n8n@1.123.37...n8n@1.123.38) (2026-04-29)
+
+
+### Features
+
+* **core:** Add --projectId filter to export:workflow and export:credentials commands ([#29373](https://github.com/n8n-io/n8n/issues/29373)) ([55cad3b](https://github.com/n8n-io/n8n/commit/55cad3babbff79e264f700e83e0a115991cddb76))
+
+
 ## [1.123.37](https://github.com/n8n-io/n8n/compare/n8n@1.123.36...n8n@1.123.37) (2026-04-24)
 
 
