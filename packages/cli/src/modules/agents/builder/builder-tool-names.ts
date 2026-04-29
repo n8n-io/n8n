@@ -7,6 +7,7 @@ export const BUILDER_TOOLS = {
 	PATCH_CONFIG: 'patch_config',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILL: 'create_skill',
+	LIST_INTEGRATION_TYPES: 'list_integration_types',
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];

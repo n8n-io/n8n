@@ -1261,10 +1261,10 @@ export class AgentsService {
 			try {
 				const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
 				await Container.get(AgentScheduleService).applyConfig(agent);
-			} catch (err) {
+			} catch (error) {
 				this.logger.warn('Failed to apply schedule integration during sync', {
 					agentId: agent.id,
-					err,
+					error,
 				});
 			}
 		}
@@ -1278,10 +1278,10 @@ export class AgentsService {
 		try {
 			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 			await Container.get(ChatIntegrationService).syncToConfig(agent, prevChat, nextChat);
-		} catch (err) {
+		} catch (error) {
 			this.logger.warn('Failed to sync chat integrations', {
 				agentId: agent.id,
-				err,
+				error,
 			});
 		}
 	}

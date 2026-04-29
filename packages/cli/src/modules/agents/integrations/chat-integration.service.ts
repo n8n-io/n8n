@@ -222,11 +222,11 @@ export class ChatIntegrationService {
 			if (!nextKeys.has(key(integration))) {
 				try {
 					await this.disconnect(agent.id, integration.type, integration.credentialId);
-				} catch (err) {
+				} catch (error) {
 					this.logger.warn('[ChatIntegrationService] Disconnect during sync failed', {
 						agentId: agent.id,
 						type: integration.type,
-						err,
+						error,
 					});
 				}
 			}
@@ -249,12 +249,12 @@ export class ChatIntegrationService {
 					);
 					connected = true;
 					break;
-				} catch (err) {
+				} catch (error) {
 					this.logger.debug('[ChatIntegrationService] Connect attempt failed during sync', {
 						agentId: agent.id,
 						userId,
 						type: integration.type,
-						err,
+						error,
 					});
 				}
 			}

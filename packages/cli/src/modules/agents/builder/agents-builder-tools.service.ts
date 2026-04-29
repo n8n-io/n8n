@@ -165,9 +165,27 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
+			.description(
+				"List trigger / integration types that can be added to the agent's `integrations` array. " +
+					'Returns the schedule trigger plus every connected chat platform with its credential type(s). ' +
+					'Call this BEFORE asking the user for a credential — pass the returned `credentialTypes` ' +
+					'to `ask_credential` so the user picks a matching credential.',
+			)
+			.input(z.object({}))
+			.handler(async () => {
+				const chat = this.agentsService.listChatIntegrations();
+				return [
+					{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
+					...chat,
+				];
+			})
+			.build();
+
 		return [
 			writeConfigTool,
 			patchConfigTool,
+			listIntegrationTypesTool,
 			buildAskCredentialTool({ credentialProvider }),
 			buildAskLlmTool({ credentialProvider }),
 			buildAskQuestionTool(),
