@@ -1,13 +1,12 @@
 <script setup lang="ts">
 /**
- * Middle column of the agent builder: a list of top-level sections derived
- * from `Object.keys(config)`. Selection is a dot-path — `model`, `tools`, or
- * `skills.<id>` — which the parent uses to pick the editor's slice.
+ * Right column of the agent builder: a curated list of editable sections.
+ * Selection is a dot-path — `tools`, `skills.<id>`, or a synthetic section key
+ * — which the parent uses to pick the editor's slice.
  */
 import { computed } from 'vue';
 import type { ComponentProps } from 'vue-component-type-helpers';
 import { useI18n } from '@n8n/i18n';
-import type { BaseTextKey } from '@n8n/i18n';
 import { N8nBadge, N8nIcon, N8nText } from '@n8n/design-system';
 import type { AgentJsonConfig } from '../types';
 import {
@@ -46,25 +45,6 @@ interface SectionDescriptor {
 	pill?: string;
 }
 
-const KNOWN_SECTIONS: Record<string, { i18nKey: BaseTextKey; icon: IconProp }> = {
-	model: { i18nKey: 'agents.builder.sections.model', icon: 'brain' },
-	instructions: { i18nKey: 'agents.builder.sections.instructions', icon: 'file-text' },
-	triggers: { i18nKey: 'agents.builder.sections.triggers', icon: 'zap' },
-	tools: { i18nKey: 'agents.builder.sections.tools', icon: 'wrench' },
-	skills: { i18nKey: 'agents.builder.sections.skills', icon: 'sparkles' },
-	memory: { i18nKey: 'agents.builder.sections.memory', icon: 'database' },
-	guardrails: { i18nKey: 'agents.builder.sections.guardrails', icon: 'shield' },
-};
-
-// Keys represented by the synthetic "Agent" section — they should not also
-// render as top-level rows.
-const AGENT_KEYS = new Set(['name', 'model', 'credential', 'instructions']);
-
-function humanize(key: string): string {
-	const spaced = key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
-	return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
-}
-
 const sections = computed<SectionDescriptor[]>(() => {
 	const cfg = props.config;
 	if (!cfg) return [];
@@ -94,20 +74,20 @@ const sections = computed<SectionDescriptor[]>(() => {
 	// Triggers, Tools & Skills. Lists live in their own tabs.
 	out.push({
 		key: 'triggers',
-		label: i18n.baseText(KNOWN_SECTIONS.triggers.i18nKey),
-		icon: KNOWN_SECTIONS.triggers.icon,
+		label: i18n.baseText('agents.builder.sections.triggers'),
+		icon: 'zap',
 		count: props.connectedTriggers?.length ?? 0,
 	});
 	out.push({
 		key: 'tools',
-		label: i18n.baseText(KNOWN_SECTIONS.tools.i18nKey),
-		icon: KNOWN_SECTIONS.tools.icon,
+		label: i18n.baseText('agents.builder.sections.tools'),
+		icon: 'wrench',
 		count: toolRefs.length,
 	});
 	out.push({
 		key: 'skills',
-		label: i18n.baseText(KNOWN_SECTIONS.skills.i18nKey),
-		icon: KNOWN_SECTIONS.skills.icon,
+		label: i18n.baseText('agents.builder.sections.skills'),
+		icon: 'sparkles',
 		count: skillCount,
 	});
 	out.push({
@@ -126,24 +106,6 @@ const sections = computed<SectionDescriptor[]>(() => {
 		dividerBefore: true,
 		count: props.executionsCount,
 	});
-
-	// Any remaining top-level keys render as flat rows.
-	for (const key of Object.keys(cfg)) {
-		if (
-			AGENT_KEYS.has(key) ||
-			key === 'tools' ||
-			key === 'skills' ||
-			key === 'memory' ||
-			key === 'triggers'
-		)
-			continue;
-		const known = KNOWN_SECTIONS[key];
-		out.push({
-			key,
-			label: known ? i18n.baseText(known.i18nKey) : humanize(key),
-			icon: (known?.icon ?? 'file') as IconProp,
-		});
-	}
 
 	return out;
 });
