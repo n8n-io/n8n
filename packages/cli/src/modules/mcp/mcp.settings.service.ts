@@ -4,7 +4,11 @@ import type { User } from '@n8n/db';
 import { SettingsRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { calculateWorkflowChecksum, type IWorkflowSettings } from 'n8n-workflow';
+import {
+	calculateWorkflowChecksum,
+	WORKFLOW_CHECKSUM_FIELDS,
+	type IWorkflowSettings,
+} from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -19,19 +23,6 @@ const KEY = 'mcp.access.enabled';
 const BULK_CHUNK_SIZE = 500;
 
 const WORKFLOW_SETTINGS_FIELDS: Array<keyof WorkflowEntity> = ['id', 'settings'];
-
-const WORKFLOW_CHECKSUM_FIELDS: Array<keyof WorkflowEntity> = [
-	'id',
-	'name',
-	'description',
-	'nodes',
-	'connections',
-	'settings',
-	'meta',
-	'pinData',
-	'isArchived',
-	'activeVersionId',
-];
 
 type BulkSetAvailableInMCPResult = {
 	updatedCount: number;
@@ -154,7 +145,7 @@ export class McpSettingsService {
 
 					const rows = await trx.find(WorkflowEntity, {
 						where: { id: In([...nextSettingsByWorkflowId.keys()]), isArchived: false },
-						select: WORKFLOW_CHECKSUM_FIELDS,
+						select: ['id', ...WORKFLOW_CHECKSUM_FIELDS],
 					});
 
 					for (const row of rows) {
