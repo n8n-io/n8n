@@ -11,7 +11,6 @@ import type {
 } from 'ai';
 
 import type { FinishReason } from '../types';
-import { stringifyError } from './runtime-helpers';
 import type {
 	AgentMessage,
 	ContentFile,
@@ -305,7 +304,7 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 				} else if (output.type === 'error-json') {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
 					mutableBlock.state = 'rejected';
-					mutableBlock.error = stringifyError(output.value);
+					mutableBlock.error = JSON.stringify(output.value);
 				} else if (output.type === 'error-text') {
 					const mutableBlock = block as Extract<ContentToolCall, { state: 'rejected' }>;
 					mutableBlock.state = 'rejected';
