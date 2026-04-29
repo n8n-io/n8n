@@ -9,6 +9,8 @@ export interface EnsureEvalDataTableInput {
 	projectId?: string;
 	columns: string[];
 	workflowForSamples: WorkflowJSON;
+	rowCount?: number;
+	targetAgentNodeName?: string;
 }
 
 async function createDataTableWithUniqueName(
@@ -47,7 +49,12 @@ export async function ensureEvalDataTable(
 		input.columns.map((n) => ({ name: n, type: 'string' as const })),
 		input.projectId ? { projectId: input.projectId } : undefined,
 	);
-	const rows = await generateSampleRows(input.workflowForSamples, input.columns);
+	const rows = await generateSampleRows({
+		workflow: input.workflowForSamples,
+		columns: input.columns,
+		rowCount: input.rowCount,
+		targetAgentNodeName: input.targetAgentNodeName,
+	});
 	await ctx.dataTableService.insertRows(dt.id, rows);
 	return { id: dt.id, name: dt.name };
 }

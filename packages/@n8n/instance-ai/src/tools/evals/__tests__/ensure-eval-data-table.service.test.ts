@@ -70,4 +70,62 @@ describe('ensureEvalDataTable', () => {
 
 		expect(ctx.dataTableService.insertRows).toHaveBeenCalledWith('dt-2', rows);
 	});
+
+	it('forwards rowCount and targetAgentNodeName to generateSampleRows', async () => {
+		const ctx = mock<InstanceAiContext>();
+		ctx.dataTableService.create = jest
+			.fn()
+			.mockResolvedValue({ id: 'dt-3', name: 'z', projectId: 'p1' });
+		ctx.dataTableService.insertRows = jest.fn().mockResolvedValue({
+			insertedCount: 1,
+			dataTableId: 'dt-3',
+			tableName: 'z',
+			projectId: 'p1',
+		});
+		mockGenerateSampleRows.mockResolvedValue([{ input: 'q', expected_output: 'a' }]);
+
+		await ensureEvalDataTable(ctx, {
+			workflowName: 'My WF',
+			projectId: 'p1',
+			columns: ['input', 'expected_output'],
+			workflowForSamples: WF,
+			rowCount: 12,
+			targetAgentNodeName: 'My Agent',
+		});
+
+		expect(mockGenerateSampleRows).toHaveBeenCalledWith({
+			workflow: WF,
+			columns: ['input', 'expected_output'],
+			rowCount: 12,
+			targetAgentNodeName: 'My Agent',
+		});
+	});
+
+	it('omits rowCount and targetAgentNodeName when not provided', async () => {
+		const ctx = mock<InstanceAiContext>();
+		ctx.dataTableService.create = jest
+			.fn()
+			.mockResolvedValue({ id: 'dt-4', name: 'w', projectId: 'p1' });
+		ctx.dataTableService.insertRows = jest.fn().mockResolvedValue({
+			insertedCount: 1,
+			dataTableId: 'dt-4',
+			tableName: 'w',
+			projectId: 'p1',
+		});
+		mockGenerateSampleRows.mockResolvedValue([{ input: 'q', expected_output: 'a' }]);
+
+		await ensureEvalDataTable(ctx, {
+			workflowName: 'My WF',
+			projectId: 'p1',
+			columns: ['input', 'expected_output'],
+			workflowForSamples: WF,
+		});
+
+		expect(mockGenerateSampleRows).toHaveBeenCalledWith({
+			workflow: WF,
+			columns: ['input', 'expected_output'],
+			rowCount: undefined,
+			targetAgentNodeName: undefined,
+		});
+	});
 });
