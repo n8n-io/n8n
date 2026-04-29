@@ -185,12 +185,18 @@ export class AgentMessageList {
 	}
 
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
-		return this.all.find(
-			(m) =>
+		// Start from the last message and go backwards to find the host message
+		for (let i = this.all.length - 1; i >= 0; i--) {
+			const m = this.all[i];
+			if (
 				'content' in m &&
 				Array.isArray(m.content) &&
-				m.content.some((c) => c.type === 'tool-call' && c.toolCallId === toolCallId),
-		);
+				m.content.some((c) => c.type === 'tool-call' && c.toolCallId === toolCallId)
+			) {
+				return m;
+			}
+		}
+		return undefined;
 	}
 
 	private findToolCallBlock(host: AgentDbMessage, toolCallId: string): ContentToolCall | undefined {
