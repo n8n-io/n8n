@@ -341,7 +341,7 @@ export class ProxyServer {
 			await fs.mkdir(targetDir, { recursive: true });
 			const seenRequests = new Set<string>();
 
-			for (const [index, expectation] of recordedExpectations.entries()) {
+			for (const expectation of recordedExpectations) {
 				if (
 					!expectation.httpRequest ||
 					!(
@@ -413,8 +413,7 @@ export class ProxyServer {
 					.digest('hex')
 					.substring(0, 8);
 
-				const sequence = String(index).padStart(4, '0');
-				const filename = `${sequence}-${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
+				const filename = `${Date.now()}-${hostName}-${method}-${expectation.httpRequest.path.replace(/[^a-zA-Z0-9]/g, '_')}-${hash}.json`;
 				processedExpectation.id = filename;
 				const filePath = join(targetDir, filename);
 
