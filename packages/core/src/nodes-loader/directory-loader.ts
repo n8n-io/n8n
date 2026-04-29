@@ -15,6 +15,8 @@ import type {
 	INodeTypeNameVersion,
 	IVersionedNodeType,
 	KnownNodesAndCredentials,
+	NodeLoader,
+	NodeLoaderTypes,
 } from 'n8n-workflow';
 import { ApplicationError, isExpression, isSubNodeType, UnexpectedError } from 'n8n-workflow';
 import { realpathSync } from 'node:fs';
@@ -49,16 +51,13 @@ type Codex = {
 	alias: string[];
 };
 
-export type Types = {
-	nodes: INodeTypeDescription[];
-	credentials: ICredentialType[];
-};
+export type Types = NodeLoaderTypes;
 
 /**
  * Base class for loading n8n nodes and credentials from a directory.
  * Handles the common functionality for resolving paths, loading classes, and managing node and credential types.
  */
-export abstract class DirectoryLoader {
+export abstract class DirectoryLoader implements NodeLoader {
 	isLazyLoaded = false;
 
 	// Another way of keeping track of the names and versions of a node. This
