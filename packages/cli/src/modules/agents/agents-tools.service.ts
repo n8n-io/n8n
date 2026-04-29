@@ -30,12 +30,14 @@ export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeT
  * Node IDs the agent builder should surface when configuring node-backed
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
  * mirrored `*Tool` node type; native tool nodes already follow this shape.
+ * HITL tools are excluded because the builder wires regular executable tools,
+ * not approval-gated workflow steps.
  *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
  */
 export const isAgentToolNodeType = (nodeId: string): boolean =>
-	isExecutableNodeType(nodeId) && isToolType(nodeId);
+	isExecutableNodeType(nodeId) && isToolType(nodeId, { includeHitl: false });
 
 const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),

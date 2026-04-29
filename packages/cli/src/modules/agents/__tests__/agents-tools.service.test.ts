@@ -155,10 +155,11 @@ describe('AgentsToolsService', () => {
 	});
 
 	describe('isAgentToolNodeType', () => {
-		it('allows tool node IDs and rejects base or trigger node IDs', () => {
+		it('allows tool node IDs and rejects base, trigger, or HITL tool node IDs', () => {
 			expect(isAgentToolNodeType('n8n-nodes-base.scheduleTrigger')).toBe(false);
 			expect(isAgentToolNodeType('n8n-nodes-base.httpRequest')).toBe(false);
 			expect(isAgentToolNodeType('n8n-nodes-base.httpRequestTool')).toBe(true);
+			expect(isAgentToolNodeType('n8n-nodes-base.slackHitlTool')).toBe(false);
 		});
 	});
 
