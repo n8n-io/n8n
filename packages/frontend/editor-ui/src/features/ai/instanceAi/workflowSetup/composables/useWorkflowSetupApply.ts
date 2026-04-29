@@ -5,6 +5,9 @@ import type { useInstanceAiStore } from '../../instanceAi.store';
 import type { TerminalState } from '../workflowSetup.types';
 
 const APPLY_TIMEOUT_MS = 60_000;
+const WAIT_CANCELLED = Symbol('wait-cancelled');
+
+type WaitForToolResult = Record<string, unknown> | null | typeof WAIT_CANCELLED;
 
 export function useWorkflowSetupApply(deps: {
 	requestId: Ref<string>;
@@ -29,11 +32,12 @@ export function useWorkflowSetupApply(deps: {
 	}
 
 	function waitForToolResult(requestId: string): {
-		promise: Promise<Record<string, unknown> | null>;
+		promise: Promise<WaitForToolResult>;
 		cancel: () => void;
 	} {
 		let stopWatch: (() => void) | null = null;
 		let timeoutId: ReturnType<typeof setTimeout> | null = null;
+		let resolveWait: ((result: WaitForToolResult) => void) | null = null;
 
 		function cleanup() {
 			if (stopWatch) {
@@ -46,10 +50,17 @@ export function useWorkflowSetupApply(deps: {
 			}
 		}
 
-		const promise = new Promise<Record<string, unknown> | null>((resolve) => {
+		function finish(result: WaitForToolResult) {
+			cleanup();
+			resolveWait?.(result);
+			resolveWait = null;
+		}
+
+		const promise = new Promise<WaitForToolResult>((resolve) => {
+			resolveWait = resolve;
 			const existing = deps.store.findToolCallByRequestId(requestId);
 			if (existing?.result !== undefined) {
-				resolve(isToolResult(existing.result) ? existing.result : null);
+				finish(isToolResult(existing.result) ? existing.result : null);
 				return;
 			}
 
@@ -61,19 +72,17 @@ export function useWorkflowSetupApply(deps: {
 				},
 				(result) => {
 					if (result !== undefined) {
-						cleanup();
-						resolve(isToolResult(result) ? result : null);
+						finish(isToolResult(result) ? result : null);
 					}
 				},
 			);
 
 			timeoutId = setTimeout(() => {
-				cleanup();
-				resolve(null);
+				finish(null);
 			}, APPLY_TIMEOUT_MS);
 		});
 
-		return { promise, cancel: cleanup };
+		return { promise, cancel: () => finish(WAIT_CANCELLED) };
 	}
 
 	async function apply(nodeCredentials: Record<string, Record<string, string>>): Promise<void> {
@@ -106,6 +115,10 @@ export function useWorkflowSetupApply(deps: {
 		cancelWait = cancel;
 		const result = await promise;
 		cancelWait = null;
+		if (result === WAIT_CANCELLED) {
+			terminalState.value = null;
+			return;
+		}
 
 		if (result === null) {
 			toast.showError(new Error('Apply timed out — please try again.'), 'Setup failed');

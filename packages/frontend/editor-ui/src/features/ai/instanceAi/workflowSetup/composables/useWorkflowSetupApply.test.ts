@@ -1,4 +1,5 @@
-import { nextTick, ref, type Ref } from 'vue';
+import { defineComponent, nextTick, ref, type Ref } from 'vue';
+import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { useInstanceAiStore } from '../../instanceAi.store';
 import { useWorkflowSetupApply } from './useWorkflowSetupApply';
@@ -37,6 +38,19 @@ function setupHarness(initialResult?: unknown): Harness {
 	});
 
 	return { requestId, result, store, applyMachine };
+}
+
+function setupMountedHarness(initialResult?: unknown): Harness & { unmount: () => void } {
+	let harness!: Harness;
+	const Component = defineComponent({
+		setup() {
+			harness = setupHarness(initialResult);
+			return () => null;
+		},
+	});
+	const wrapper = mount(Component);
+
+	return { ...harness, unmount: () => wrapper.unmount() };
 }
 
 describe('useWorkflowSetupApply', () => {
@@ -171,6 +185,21 @@ describe('useWorkflowSetupApply', () => {
 		expect(h.applyMachine.terminalState.value).toBeNull();
 		expect(toast.showError).toHaveBeenCalledWith(expect.any(Error), 'Setup failed');
 		expect(toast.showError.mock.calls[0][0].message).toBe('Apply timed out — please try again.');
+	});
+
+	it('settles a pending apply when unmounted', async () => {
+		const h = setupMountedHarness();
+
+		const pendingApply = h.applyMachine.apply({});
+		await nextTick();
+		expect(h.applyMachine.terminalState.value).toBe('applying');
+
+		h.unmount();
+		await pendingApply;
+
+		expect(h.applyMachine.terminalState.value).toBeNull();
+		expect(toast.showError).not.toHaveBeenCalled();
+		expect(h.store.resolveConfirmation).not.toHaveBeenCalled();
 	});
 
 	it('ignores defer calls while already applying', async () => {
