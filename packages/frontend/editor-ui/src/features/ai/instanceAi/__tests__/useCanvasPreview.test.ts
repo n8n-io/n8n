@@ -683,7 +683,7 @@ describe('useCanvasPreview', () => {
 				new Map<string, WorkflowExecutionState>([
 					[
 						'wf-1',
-						{ executionId: 'exec-old', workflowId: 'wf-1', status: 'success', eventLog: [] },
+						{ executionId: 'exec-old', workflowId: 'wf-1', status: 'running', eventLog: [] },
 					],
 				]),
 			);

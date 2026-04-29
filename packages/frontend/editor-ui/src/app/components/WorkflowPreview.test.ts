@@ -1,6 +1,7 @@
 import type { Mock, MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
+import { mount } from '@vue/test-utils';
 import { jsonParse, type ExecutionSummary } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
@@ -464,6 +465,27 @@ describe('WorkflowPreview', () => {
 				expect(countCommand('openWorkflow')).toBe(1);
 			});
 			expect(countCommand('resetWorkflow')).toBe(0);
+		});
+
+		it('reloadExecution bypasses the executionId dedup so the same id is re-sent', async () => {
+			const wrapper = mount(WorkflowPreview, {
+				global: { plugins: [pinia] },
+				props: { mode: 'execution' as const, executionId: 'exec-1' },
+			});
+
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+
+			postMessageSpy.mockClear();
+
+			(wrapper.vm as unknown as { reloadExecution: () => void }).reloadExecution();
+
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
 		});
 	});
 });
