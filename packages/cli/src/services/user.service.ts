@@ -416,7 +416,6 @@ export class UserService {
 			}
 		});
 
-		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
 		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);
 	}
 

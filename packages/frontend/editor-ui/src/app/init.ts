@@ -279,5 +279,9 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		settingsStore.reset();
+
+		state.initialized = false;
+		authenticatedFeaturesInitialized = false;
 	});
 }

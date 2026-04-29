@@ -282,4 +282,12 @@ export class NavigationHelper {
 	async toExternalSecrets(): Promise<void> {
 		await this.secretsProviderSettings.goto();
 	}
+
+	/**
+	 * Navigate to Node Governance settings
+	 * URL: /settings/node-governance
+	 */
+	async toNodeGovernance(): Promise<void> {
+		await this.page.goto('/settings/node-governance');
+	}
 }

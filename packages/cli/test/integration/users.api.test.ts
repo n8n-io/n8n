@@ -6,6 +6,7 @@ import {
 	getWorkflowById,
 	shareWorkflowWithUsers,
 	randomCredentialPayload,
+	randomValidPassword,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
@@ -1765,5 +1766,48 @@ describe('PATCH /users/:id/role', () => {
 				.send({ newRoleName: 'global:admin' })
 				.expect(403);
 		});
+	});
+
+	test('should return updated scopes on immediate login after role change from member to admin', async () => {
+		const testMember = await createMember();
+
+		const loginBeforeChange = await testServer.authAgentFor(testMember).get('/login');
+		expect(loginBeforeChange.statusCode).toBe(200);
+		expect(loginBeforeChange.body.data.role).toBe('global:member');
+		const scopesBefore = loginBeforeChange.body.data.globalScopes;
+		expect(scopesBefore).not.toContain('user:create');
+
+		const changeRoleResponse = await ownerAgent.patch(`/users/${testMember.id}/role`).send({
+			newRoleName: 'global:admin',
+		});
+		expect(changeRoleResponse.statusCode).toBe(200);
+
+		const loginAfterChange = await testServer.authAgentFor(testMember).get('/login');
+		expect(loginAfterChange.statusCode).toBe(200);
+		expect(loginAfterChange.body.data.role).toBe('global:admin');
+		const scopesAfter = loginAfterChange.body.data.globalScopes;
+		expect(scopesAfter).toContain('user:create');
+	});
+
+	test('should return updated scopes on immediate POST login after role change from member to admin', async () => {
+		const testPassword = randomValidPassword();
+		const testMember = await createUser({
+			password: testPassword,
+			role: GLOBAL_MEMBER_ROLE,
+		});
+
+		const changeRoleResponse = await ownerAgent.patch(`/users/${testMember.id}/role`).send({
+			newRoleName: 'global:admin',
+		});
+		expect(changeRoleResponse.statusCode).toBe(200);
+
+		const loginResponse = await testServer.authlessAgent.post('/login').send({
+			emailOrLdapLoginId: testMember.email,
+			password: testPassword,
+		});
+		expect(loginResponse.statusCode).toBe(200);
+		expect(loginResponse.body.data.role).toBe('global:admin');
+		const scopesAfter = loginResponse.body.data.globalScopes;
+		expect(scopesAfter).toContain('user:create');
 	});
 });

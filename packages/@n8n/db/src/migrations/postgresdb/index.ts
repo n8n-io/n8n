@@ -136,6 +136,7 @@ import { AddChatMessageIndices1766068346315 } from '../common/1766068346315-AddC
 import { ExpandModelColumnLength1768402473068 } from '../common/1768402473068-ExpandModelColumnLength';
 import { AddStoredAtToExecutionEntity1768557000000 } from '../common/1768557000000-AddStoredAtToExecutionEntity';
 import { AddDynamicCredentialUserEntryTable1768901721000 } from '../common/1768901721000-AddDynamicCredentialUserEntryTable';
+import { AddNodeGovernanceTables1768981346000 } from '../common/1768981346000-AddNodeGovernanceTables';
 import { AddPublishedVersionIdToWorkflowDependency1769000000000 } from '../common/1769000000000-AddPublishedVersionIdToWorkflowDependency';
 import { CreateSecretsProviderConnectionTables1769433700000 } from '../common/1769433700000-CreateSecretsProvidersConnectionTables';
 import { CreateWorkflowPublishedVersionTable1769698710000 } from '../common/1769698710000-CreateWorkflowPublishedVersionTable';
@@ -153,6 +154,7 @@ import { AddRoleColumnToProjectSecretsProviderAccess1772619247761 } from '../com
 import { ChangeWorkflowPublishedVersionFKsToRestrict1772619247762 } from '../common/1772619247762-ChangeWorkflowPublishedVersionFKsToRestrict';
 import { AddTypeToChatHubSessions1772700000000 } from '../common/1772700000000-AddTypeToChatHubSessions';
 import { CreateRoleMappingRuleTable1772800000000 } from '../common/1772800000000-CreateRoleMappingRuleTable';
+import { AddGovernanceDefaultBehavior1772850000000 } from '../common/1772850000000-AddGovernanceDefaultBehavior';
 import { CreateCredentialDependencyTable1773000000000 } from '../common/1773000000000-CreateCredentialDependencyTable';
 import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common/1774280963551-AddRestoreFieldsToWorkflowBuilderSession';
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
@@ -307,6 +309,7 @@ export const postgresMigrations: Migration[] = [
 	ExpandModelColumnLength1768402473068,
 	AddStoredAtToExecutionEntity1768557000000,
 	AddDynamicCredentialUserEntryTable1768901721000,
+	AddNodeGovernanceTables1768981346000,
 	AddPublishedVersionIdToWorkflowDependency1769000000000,
 	CreateSecretsProviderConnectionTables1769433700000,
 	CreateWorkflowPublishedVersionTable1769698710000,
@@ -324,6 +327,7 @@ export const postgresMigrations: Migration[] = [
 	ChangeWorkflowPublishedVersionFKsToRestrict1772619247762,
 	AddTypeToChatHubSessions1772700000000,
 	CreateRoleMappingRuleTable1772800000000,
+	AddGovernanceDefaultBehavior1772850000000,
 	CreateCredentialDependencyTable1773000000000,
 	AddRestoreFieldsToWorkflowBuilderSession1774280963551,
 	CreateInstanceVersionHistoryTable1774854660000,
