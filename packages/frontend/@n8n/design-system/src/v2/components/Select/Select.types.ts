@@ -30,7 +30,7 @@ export type SelectValue = AcceptableValue;
 export type SelectItem = SelectValue | SelectItemProps;
 
 export type SelectVariants = 'default' | 'ghost';
-export type SelectSizes = 'xsmall' | 'small' | 'medium';
+export type SelectSizes = 'mini' | 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge';
 
 export type SelectProps<
 	T extends SelectItem[] = SelectItem[],

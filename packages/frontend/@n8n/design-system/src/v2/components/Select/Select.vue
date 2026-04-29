@@ -48,7 +48,6 @@ const props = withDefaults(defineProps<SelectProps<T, VK, M>>(), {
 	placeholder: 'Select an option',
 	variant: 'default',
 	size: 'small',
-	position: 'item-aligned',
 	side: 'bottom',
 	sideOffset: 4,
 });
@@ -84,9 +83,12 @@ const variants: Record<SelectVariants, string> = {
 const variant = computed(() => variants[props.variant]);
 
 const sizes: Record<SelectSizes, string> = {
+	mini: $style.mini,
 	xsmall: $style.xsmall,
 	small: $style.small,
 	medium: $style.medium,
+	large: $style.large,
+	xlarge: $style.xlarge,
 };
 const size = computed(() => sizes[props.size]);
 
@@ -99,9 +101,12 @@ const strokeWidths = {
 const iconStrokeWidth = computed(() => strokeWidths[props.size]);
 
 const labelSizes: Record<SelectSizes, string> = {
+	mini: $style.selectLabelMini,
 	xsmall: $style.selectLabelXsmall,
 	small: $style.selectLabelSmall,
 	medium: $style.selectLabelMedium,
+	large: $style.selectLabelLarge,
+	xlarge: $style.selectLabelXlarge,
 };
 const labelSize = computed(() => labelSizes[props.size]);
 
@@ -152,7 +157,7 @@ const groups = computed<SelectItemProps[]>(() => {
 		<SelectPortal>
 			<SelectContent
 				:class="[$style.selectContent, contentClass]"
-				:position="position"
+				position="popper"
 				:side="side"
 				:side-offset="sideOffset"
 			>
@@ -204,69 +209,103 @@ const groups = computed<SelectItemProps[]>(() => {
 	</SelectRoot>
 </template>
 
-<style module>
+<style module lang="scss">
+@use '../../../css/mixins/focus';
+
 .selectTrigger {
 	display: inline-flex;
 	align-items: center;
 	justify-content: flex-start;
 
-	border-radius: var(--radius);
-	font-size: var(--font-size--xs);
+	--n8n-select--height: var(--height--md);
+	--n8n-select--radius: var(--radius--3xs);
+	--n8n-select--font-size: var(--font-size--2xs);
+	--n8n-select--padding: var(--spacing--xs);
+
+	--n8n-select--border-color: var(--border-color);
+	--n8n-select--border-color-hover: var(--border-color--strong);
+	--n8n-select--border-color-focus: var(--focus--border-color);
+	--n8n-select--border-shadow: 0 0 0 1px var(--n8n-select--border-color);
+	--n8n-select--border-shadow-hover: 0 0 0 1px var(--n8n-select--border-color-hover);
+	--n8n-select--border-shadow-focus: 0 0 0 1px var(--n8n-select--border-color-focus);
+
+	border-radius: var(--n8n-select--radius);
+	font-size: var(--n8n-select--font-size);
 	font-style: normal;
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--md);
-	border: 1px solid transparent;
-	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
-	height: var(--spacing--lg);
+	border: none;
+	background-color: var(--background--surface);
+	min-height: var(--n8n-select--height);
 	position: relative;
 	gap: var(--spacing--3xs);
+	padding: 0 var(--n8n-select--padding);
 	color: var(--color--text--shade-1);
+	box-shadow: var(--n8n-select--border-shadow);
+	min-width: var(--spacing--4xl);
 
-	&:focus {
-		box-shadow: 0 0 0 2px var(--color--secondary);
-		z-index: 1;
-	}
+	@include focus.focus-within-ring;
 
 	&:not([data-disabled]):hover {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 		cursor: pointer;
+		box-shadow: var(--n8n-select--border-shadow-hover);
+	}
+
+	&:focus-within {
+		box-shadow: var(--n8n-select--border-shadow-focus);
 	}
 
 	&[data-placeholder] {
-		color: var(--color--text);
+		color: var(--text-color--subtler);
 	}
 
 	&[data-disabled] {
-		color: var(--color--text--tint-1);
+		color: var(--text-color--subtler);
 		cursor: not-allowed;
 	}
 }
 
-.default {
-	border: var(--border);
-}
-
-.ghost {
-	/** nothing to see here */
-}
-
 .xsmall {
-	min-height: var(--spacing--lg);
-	padding: 0 var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
+	--n8n-select--height: var(--height--xs);
+	--n8n-select--radius: var(--radius--3xs);
+	--n8n-select--font-size: var(--font-size--2xs);
+	--n8n-select--padding: var(--spacing--2xs);
 }
 
 .small {
-	min-height: 28px;
-	padding: 0 var(--spacing--xs);
-	font-size: var(--font-size--2xs);
+	--n8n-select--height: var(--height--md);
+	--n8n-select--radius: var(--radius--3xs);
+	--n8n-select--font-size: var(--font-size--2xs);
+	--n8n-select--padding: var(--spacing--xs);
 }
 
 .medium {
-	min-height: 36px;
-	padding: 0 var(--spacing--xs);
-	font-size: var(--font-size--sm);
-	line-height: var(--line-height--sm);
+	--n8n-select--height: var(--height--lg);
+	--n8n-select--radius: var(--radius--2xs);
+	--n8n-select--font-size: var(--font-size--sm);
+	--n8n-select--padding: var(--spacing--xs);
+}
+
+.large {
+	--n8n-select--height: var(--height--xl);
+	--n8n-select--radius: var(--radius--2xs);
+	--n8n-select--font-size: var(--font-size--sm);
+	--n8n-select--padding: var(--spacing--sm);
+}
+
+.xlarge {
+	--n8n-select--height: var(--height--2xl);
+	--n8n-select--radius: var(--radius--sm);
+	--n8n-select--font-size: var(--font-size--md);
+	--n8n-select--padding: var(--spacing--sm);
+}
+
+.mini {
+	--n8n-select--height: var(--height--xs);
+	--n8n-select--radius: var(--radius--3xs);
+	--n8n-select--font-size: var(--font-size--2xs);
+	--n8n-select--padding: var(--spacing--2xs);
 }
 
 .selectedIcon {
@@ -276,25 +315,94 @@ const groups = computed<SelectItemProps[]>(() => {
 .trailingIcon {
 	margin-left: auto;
 	flex-shrink: 0;
-	color: var(--color--text--shade-1);
+	color: var(--text-color--subtle);
 }
 
 .selectContent {
-	overflow: hidden;
-	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-2);
-	box-shadow: var(--shadow);
-	/**
-	 * High z-index to ensure select dropdown is above other elements
-	 * TODO: Replace with design system z-index variable when available
-	 */
-	z-index: 999999;
+	--n8n-select-popover--offset--slide-x: 0;
+	--n8n-select-popover--offset--slide-y: 0;
+	--n8n-select-popover--offset--origin-x: center;
+	--n8n-select-popover--offset--origin-y: center;
 
-	/* When in popper mode, match trigger width and constrain height */
-	&[data-side] {
-		min-width: var(--reka-select-trigger-width);
-		max-height: var(--reka-select-content-available-height);
+	width: var(--reka-select-trigger-width);
+	border-radius: var(--radius);
+	background-color: var(--background--surface);
+	border: var(--border);
+	box-shadow:
+		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
+		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+	will-change: transform, opacity;
+	transform-origin: var(--n8n-select-popover--offset--origin-x)
+		var(--n8n-select-popover--offset--origin-y);
+
+	animation-duration: var(--duration--snappy);
+	animation-timing-function: var(--easing--ease-out);
+
+	&[data-state='open'] {
+		animation-name: popoverIn;
+	}
+
+	&[data-state='closed'] {
+		display: none;
+	}
+}
+
+.selectContent[data-state='open'][data-side='top'] {
+	--n8n-select-popover--offset--slide-y: -2px;
+	--n8n-select-popover--offset--origin-y: bottom;
+}
+
+.selectContent[data-state='open'][data-side='right'] {
+	--n8n-select-popover--offset--slide-x: 2px;
+	--n8n-select-popover--offset--origin-x: left;
+}
+
+.selectContent[data-state='open'][data-side='bottom'] {
+	--n8n-select-popover--offset--slide-y: 2px;
+	--n8n-select-popover--offset--origin-y: top;
+}
+
+.selectContent[data-state='open'][data-side='left'] {
+	--n8n-select-popover--offset--slide-x: -2px;
+	--n8n-select-popover--offset--origin-x: right;
+}
+
+.selectContent[data-state='open'][data-side='top'][data-align='start'],
+.selectContent[data-state='open'][data-side='bottom'][data-align='start'] {
+	--n8n-select-popover--offset--slide-x: -2px;
+	--n8n-select-popover--offset--origin-x: left;
+}
+
+.selectContent[data-state='open'][data-side='top'][data-align='end'],
+.selectContent[data-state='open'][data-side='bottom'][data-align='end'] {
+	--n8n-select-popover--offset--slide-x: 2px;
+	--n8n-select-popover--offset--origin-x: right;
+}
+
+.selectContent[data-state='open'][data-side='left'][data-align='start'],
+.selectContent[data-state='open'][data-side='right'][data-align='start'] {
+	--n8n-select-popover--offset--slide-y: -2px;
+	--n8n-select-popover--offset--origin-y: top;
+}
+
+.selectContent[data-state='open'][data-side='left'][data-align='end'],
+.selectContent[data-state='open'][data-side='right'][data-align='end'] {
+	--n8n-select-popover--offset--slide-y: 2px;
+	--n8n-select-popover--offset--origin-y: bottom;
+}
+
+@keyframes popoverIn {
+	from {
+		opacity: 0;
+		transform: translate(
+				var(--n8n-select-popover--offset--slide-x),
+				var(--n8n-select-popover--offset--slide-y)
+			)
+			scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translate(0, 0) scale(1);
 	}
 }
 
@@ -309,13 +417,18 @@ const groups = computed<SelectItemProps[]>(() => {
 }
 
 .selectItem {
-	font-size: var(--font-size--xs);
+	--n8n-select-item--height: var(--height--md);
+	--n8n-select-item--radius: var(--radius--3xs);
+	--n8n-select-item--font-size: var(--font-size--xs);
+	--n8n-select-item--padding: var(--spacing--2xs);
+
+	font-size: var(--n8n-select-item--font-size);
 	line-height: 1;
-	border-radius: var(--radius);
+	border-radius: var(--n8n-select-item--radius);
 	display: flex;
 	align-items: center;
-	height: var(--spacing--lg);
-	padding: 0 var(--spacing--2xs);
+	height: var(--n8n-select-item--height);
+	padding: 0 var(--n8n-select-item--padding);
 	position: relative;
 	user-select: none;
 	color: var(--color--text--shade-1);
@@ -352,6 +465,18 @@ const groups = computed<SelectItemProps[]>(() => {
 	font-size: var(--font-size--2xs);
 }
 
+.selectLabelLarge {
+	font-size: var(--font-size--2xs);
+}
+
+.selectLabelXlarge {
+	font-size: var(--font-size--2xs);
+}
+
+.selectLabelMini {
+	font-size: var(--font-size--2xs);
+}
+
 .selectSeparator {
 	height: 1px;
 	background-color: var(--border-color);
@@ -368,10 +493,12 @@ const groups = computed<SelectItemProps[]>(() => {
 }
 
 .selectScrollButton {
+	--n8n-select-scroll-button--height: var(--height--md);
+
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	height: var(--spacing--lg);
+	height: var(--n8n-select-scroll-button--height);
 	cursor: default;
 }
 </style>

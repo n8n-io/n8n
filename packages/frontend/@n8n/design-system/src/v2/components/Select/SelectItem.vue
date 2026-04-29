@@ -55,6 +55,9 @@ const trailingProps = computed(() => ({
 
 .itemText {
 	flex-grow: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .itemIndicator,
