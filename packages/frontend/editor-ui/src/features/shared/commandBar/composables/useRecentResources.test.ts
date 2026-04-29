@@ -4,6 +4,10 @@ import { useRecentResources } from './useRecentResources';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { VIEWS } from '@/app/constants';
@@ -35,10 +39,10 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	}),
 }));
 
-const mockRouterResolve = vi.fn((route) => ({ fullPath: `/workflow/${route.params.name}` }));
+const mockRouterResolve = vi.fn((route) => ({ fullPath: `/workflow/${route.params.workflowId}` }));
 const mockCurrentRoute = ref({
 	name: VIEWS.WORKFLOW,
-	params: { name: 'workflow-1' },
+	params: { workflowId: 'workflow-1' },
 });
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -71,10 +75,12 @@ describe('useRecentResources', () => {
 		recentNodesRef.value = {};
 
 		mockWorkflowsStore = useWorkflowsStore();
+		mockWorkflowsStore.workflow.id = 'workflow-1';
 		mockWorkflowsListStore = useWorkflowsListStore();
 		mockNodeTypesStore = useNodeTypesStore();
 
-		Object.defineProperty(mockWorkflowsStore, 'findNodeByPartialId', {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
+		Object.defineProperty(workflowDocumentStore, 'findNodeByPartialId', {
 			value: vi.fn((nodeId: string) => {
 				if (nodeId === 'node-1') {
 					return { id: 'node-1', name: 'Test Node 1', type: 'n8n-nodes-base.httpRequest' };
@@ -125,7 +131,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -141,13 +147,13 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-2' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-2' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -166,7 +172,7 @@ describe('useRecentResources', () => {
 			for (let i = 1; i <= 7; i++) {
 				const route = {
 					name: VIEWS.WORKFLOW,
-					params: { name: 'workflow-1', nodeId: `node-${i}` },
+					params: { workflowId: 'workflow-1', nodeId: `node-${i}` },
 					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -183,13 +189,13 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2', nodeId: 'node-2' },
+				params: { workflowId: 'workflow-2', nodeId: 'node-2' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -209,7 +215,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -224,7 +230,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -241,7 +247,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: { new: 'true' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -255,7 +261,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'new' },
+				params: { workflowId: 'new' },
 				query: { new: 'true' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -269,7 +275,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: 'OTHER_VIEW',
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -283,7 +289,7 @@ describe('useRecentResources', () => {
 		beforeEach(() => {
 			mockCurrentRoute.value = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 			};
 		});
 
@@ -292,13 +298,13 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-2' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-2' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -321,13 +327,13 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'nonexistent-node' },
+				params: { workflowId: 'workflow-1', nodeId: 'nonexistent-node' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -346,7 +352,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -367,13 +373,13 @@ describe('useRecentResources', () => {
 			// Track workflows by navigating to them
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
@@ -394,7 +400,7 @@ describe('useRecentResources', () => {
 			for (let i = 1; i <= 5; i++) {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
-					params: { name: `workflow-${i}` },
+					params: { workflowId: `workflow-${i}` },
 					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
@@ -411,13 +417,13 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'nonexistent-workflow' },
+				params: { workflowId: 'nonexistent-workflow' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
@@ -442,7 +448,7 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-unnamed' },
+				params: { workflowId: 'workflow-unnamed' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
@@ -457,7 +463,7 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
@@ -469,7 +475,7 @@ describe('useRecentResources', () => {
 
 			expect(mockRouterResolve).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 			});
 			expect(window.location.href).toBe('/workflow/workflow-1');
 		});
@@ -479,7 +485,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -487,7 +493,7 @@ describe('useRecentResources', () => {
 
 			mockCurrentRoute.value = {
 				name: 'OTHER_VIEW' as unknown as VIEWS,
-				params: { name: '' },
+				params: { workflowId: '' },
 			};
 
 			const items = commands.value;
@@ -501,7 +507,7 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
@@ -509,7 +515,7 @@ describe('useRecentResources', () => {
 
 			mockCurrentRoute.value = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
 			};
 
 			const items = commands.value;
@@ -537,19 +543,19 @@ describe('useRecentResources', () => {
 			// Track workflows via trackResourceOpened
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-4' },
+				params: { workflowId: 'workflow-4' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
@@ -571,7 +577,7 @@ describe('useRecentResources', () => {
 			for (let i = 1; i <= 5; i++) {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
-					params: { name: `workflow-${i}` },
+					params: { workflowId: `workflow-${i}` },
 					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
@@ -595,7 +601,7 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
@@ -608,13 +614,13 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
 				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 

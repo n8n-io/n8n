@@ -32,17 +32,21 @@ export function formatWorkflowLoopGuidance(
 			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
 		case 'rebuild':
 			return (
-				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
-				'Submit a new `plan` with one `build-workflow` task. ' +
-				`In the task spec, explain that workflow "${action.workflowId}" needs structural repair and include these details: ${action.failureDetails}`
+				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
+				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				'(no plan — this is a single-task rebuild, and the `workflowId` parameter is required ' +
+				'so the builder updates the existing workflow instead of creating a duplicate). ' +
+				`In the \`task\` parameter, describe the structural repair and include these details: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Submit a new `plan` with one `build-workflow` task. ' +
-				`In the task spec, set mode "patch", include workflowId "${action.workflowId}", and describe the targeted fix.`
+				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				'(no plan — this is a single-task patch, and the `workflowId` parameter is required ' +
+				'so the builder updates the existing workflow instead of creating a duplicate). ' +
+				'In the `task` parameter, describe the targeted fix to apply.'
 			);
 	}
 }

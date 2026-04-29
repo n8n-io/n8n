@@ -26,4 +26,6 @@ export const ATTR = {
 	NODE_ITEMS_INPUT: 'n8n.node.items.input',
 	NODE_ITEMS_OUTPUT: 'n8n.node.items.output',
 	NODE_TERMINATION_REASON: 'n8n.node.termination_reason',
+
+	CONTINUATION_REASON: 'n8n.continuation.reason',
 } as const;

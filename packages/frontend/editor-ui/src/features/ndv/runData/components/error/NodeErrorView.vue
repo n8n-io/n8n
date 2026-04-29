@@ -417,7 +417,7 @@ const onOpenErrorNodeDetailClick = () => {
 		const link = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
-				name: props.error.workflowId,
+				workflowId: props.error.workflowId,
 				executionId: props.error.executionId,
 				nodeId: props.error.node.id,
 			},

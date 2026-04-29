@@ -47,8 +47,10 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Message in second thread');
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Switch back to first thread by its title (LLM-generated from recording)
-			await n8n.instanceAi.sidebar.getThreadByTitle('First Thread Message').click();
+			// Sidebar is ordered by most recent activity, so the first thread is now second.
+			const firstThread = n8n.instanceAi.sidebar.getThreadItems().nth(1);
+			await expect(firstThread).toBeVisible({ timeout: 10_000 });
+			await firstThread.click();
 
 			// Should show the first thread's user message (messages load async)
 			await expect(n8n.instanceAi.getUserMessages().first()).toContainText(
@@ -86,9 +88,11 @@ test.describe(
 			await n8n.instanceAi.sendMessage('Thread to delete');
 			await n8n.instanceAi.waitForResponseComplete();
 
-			// Verify target thread is visible in the sidebar
-			const targetThread = n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete');
+			// Verify target thread is visible in the sidebar. Its generated title is not part of
+			// the behavior under test, so use the current thread item instead of title text.
+			const targetThread = n8n.instanceAi.sidebar.getThreadItems().first();
 			await expect(targetThread).toBeVisible({ timeout: 10_000 });
+			const threadCountBefore = await n8n.instanceAi.sidebar.getThreadItems().count();
 
 			// Hover the target thread to reveal the three-dots button, then click it
 			await targetThread.hover();
@@ -101,8 +105,8 @@ test.describe(
 			await n8n.instanceAi.sidebar.getDeleteMenuItem().click();
 
 			// Thread should no longer be visible
-			await expect(n8n.instanceAi.sidebar.getThreadByTitle('Thread to Delete')).toBeHidden({
-				timeout: 5_000,
+			await expect(n8n.instanceAi.sidebar.getThreadItems()).toHaveCount(threadCountBefore - 1, {
+				timeout: 10_000,
 			});
 		});
 	},

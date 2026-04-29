@@ -18,6 +18,7 @@ import { SharedWorkflowRepository } from './shared-workflow.repository';
 import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
+	AiBuilderTemporaryWorkflow,
 	TagEntity,
 	WorkflowEntity,
 	WorkflowTagMapping,
@@ -882,6 +883,23 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		this.applyParentFolderFilter(qb, filter);
 		this.applyNodeTypesFilter(qb, filter);
 		this.applyAvailableInMCPFilter(qb, filter);
+		this.applyAiBuilderTemporaryFilter(qb);
+	}
+
+	/**
+	 * Hide workflows the AI builder created and has not yet promoted to the
+	 * main deliverable. The orchestrator clears the marker on the main at
+	 * build-time and reaps the rest at run-finish, but in the window between
+	 * create and reap, marked rows must not surface in the workflows list.
+	 */
+	private applyAiBuilderTemporaryFilter(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		const markerSubquery = qb
+			.subQuery()
+			.select('1')
+			.from(AiBuilderTemporaryWorkflow, 'aitw')
+			.where('aitw."workflowId" = workflow.id')
+			.getQuery();
+		qb.andWhere(`NOT EXISTS ${markerSubquery}`);
 	}
 
 	private applyAvailableInMCPFilter(

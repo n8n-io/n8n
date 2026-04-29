@@ -3,6 +3,10 @@ import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -53,6 +57,9 @@ const credentialsStore = useCredentialsStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const rootStore = useRootStore();
+const workflowDocumentStore = computed(() =>
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+);
 
 // ---------------------------------------------------------------------------
 // Composable wiring — order matters for dependencies
@@ -194,7 +201,7 @@ const {
 
 const currentCardNode = computed<INodeUi | null>(() => {
 	if (!currentCard.value) return null;
-	return workflowsStore.getNodeByName(currentCard.value.nodes[0].node.name) ?? null;
+	return workflowDocumentStore.value.getNodeByName(currentCard.value.nodes[0].node.name) ?? null;
 });
 
 const expressionResolveCtx = useExpressionResolveCtx(currentCardNode);
@@ -204,7 +211,9 @@ provide(ExpressionLocalResolveContextSymbol, expressionResolveCtx);
 const ExpressionContextProvider = defineComponent({
 	props: { nodeName: { type: String, required: true } },
 	setup(providerProps, { slots }) {
-		const node = computed(() => workflowsStore.getNodeByName(providerProps.nodeName) ?? null);
+		const node = computed(
+			() => workflowDocumentStore.value.getNodeByName(providerProps.nodeName) ?? null,
+		);
 		const ctx = useExpressionResolveCtx(node);
 		provide(ExpressionLocalResolveContextSymbol, ctx);
 		return () => slots.default?.();
@@ -245,7 +254,7 @@ function isTriggerTestDisabled(card: SetupCard): boolean {
 	if (testResult !== undefined && !testResult.success) return true;
 	if (cardHasParamWork(card)) {
 		for (const req of card.nodes) {
-			const storeNode = workflowsStore.getNodeByName(req.node.name);
+			const storeNode = workflowDocumentStore.value.getNodeByName(req.node.name);
 			if (storeNode) {
 				const liveIssues = getNodeParametersIssues(nodeTypesStore, storeNode);
 				if (Object.keys(liveIssues).length > 0) return true;
@@ -344,7 +353,8 @@ onUnmounted(() => {
 	stopDeleteListener();
 	stopCreateListener();
 	if (previousWorkflow) {
-		workflowsStore.setWorkflow(previousWorkflow);
+		const prevDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousWorkflow.id));
+		prevDocStore.hydrate(previousWorkflow);
 	}
 });
 
@@ -393,7 +403,8 @@ onMounted(async () => {
 		}
 
 		previousWorkflow = { ...workflowsStore.workflow };
-		workflowsStore.setWorkflow(workflowData);
+		const targetDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowData.id));
+		targetDocStore.hydrate(workflowData);
 	} catch (error) {
 		console.warn('Failed to fetch workflow for Instance AI setup', error);
 	}
@@ -675,6 +686,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						currentCard.isFirstTrigger &&
 						getTriggerResult(currentCard)?.status === 'listening'
 					"
+					data-test-id="instance-ai-workflow-setup-listening-callout"
 					:class="$style.listeningCallout"
 				>
 					<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
@@ -684,7 +696,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 				</div>
 
 				<!-- Error banner (shown when apply fails, user can retry) -->
-				<div v-if="applyError" :class="$style.errorBanner">
+				<div
+					v-if="applyError"
+					data-test-id="instance-ai-workflow-setup-error-banner"
+					:class="$style.errorBanner"
+				>
 					<N8nIcon icon="triangle-alert" size="small" :class="$style.error" />
 					<N8nText size="small" color="text-dark">{{ applyError }}</N8nText>
 				</div>
@@ -704,7 +720,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						>
 							<N8nIcon icon="chevron-left" size="xsmall" />
 						</N8nButton>
-						<N8nText size="small" color="text-light">
+						<N8nText
+							data-test-id="instance-ai-workflow-setup-step-counter"
+							size="small"
+							color="text-light"
+						>
 							{{ currentStepIndex + 1 }} of {{ totalSteps }}
 						</N8nText>
 						<N8nButton
@@ -823,11 +843,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 								:parameters="getCardSimpleParameters(currentDisplayCard.group.parentCard)"
 								:node-values="{
 									parameters:
-										workflowsStore.getNodeByName(currentDisplayCard.group.parentNode.name)
+										workflowDocumentStore.getNodeByName(currentDisplayCard.group.parentNode.name)
 											?.parameters ?? {},
 								}"
 								:node="
-									workflowsStore.getNodeByName(currentDisplayCard.group.parentNode.name) ??
+									workflowDocumentStore.getNodeByName(currentDisplayCard.group.parentNode.name) ??
 									undefined
 								"
 								:hide-delete="true"
@@ -889,9 +909,12 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 								:parameters="getCardSimpleParameters(subnodeCard)"
 								:node-values="{
 									parameters:
-										workflowsStore.getNodeByName(subnodeCard.nodes[0].node.name)?.parameters ?? {},
+										workflowDocumentStore.getNodeByName(subnodeCard.nodes[0].node.name)
+											?.parameters ?? {},
 								}"
-								:node="workflowsStore.getNodeByName(subnodeCard.nodes[0].node.name) ?? undefined"
+								:node="
+									workflowDocumentStore.getNodeByName(subnodeCard.nodes[0].node.name) ?? undefined
+								"
 								:hide-delete="true"
 								:remove-first-parameter-margin="true"
 								path="parameters"
@@ -913,6 +936,7 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						getTriggerResult(getGroupPrimaryTriggerCard(currentDisplayCard.group)!)?.status ===
 							'listening'
 					"
+					data-test-id="instance-ai-workflow-setup-listening-callout"
 					:class="$style.listeningCallout"
 				>
 					<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
@@ -922,7 +946,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 				</div>
 
 				<!-- Error banner -->
-				<div v-if="applyError" :class="$style.errorBanner">
+				<div
+					v-if="applyError"
+					data-test-id="instance-ai-workflow-setup-error-banner"
+					:class="$style.errorBanner"
+				>
 					<N8nIcon icon="triangle-alert" size="small" :class="$style.error" />
 					<N8nText size="small" color="text-dark">{{ applyError }}</N8nText>
 				</div>
@@ -942,7 +970,11 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 						>
 							<N8nIcon icon="chevron-left" size="xsmall" />
 						</N8nButton>
-						<N8nText size="small" color="text-light">
+						<N8nText
+							data-test-id="instance-ai-workflow-setup-step-counter"
+							size="small"
+							color="text-light"
+						>
 							{{ currentStepIndex + 1 }} of {{ totalSteps }}
 						</N8nText>
 						<N8nButton
@@ -1003,22 +1035,41 @@ const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 			</div>
 		</template>
 
-		<div v-else-if="isApplying" :class="$style.submitted">
+		<div
+			v-else-if="isApplying"
+			data-test-id="instance-ai-workflow-setup-applying"
+			:class="$style.submitted"
+		>
 			<N8nIcon icon="spinner" color="primary" spin size="small" :class="$style.loading" />
 			<span>{{ i18n.baseText('instanceAi.workflowSetup.applying') }}</span>
 		</div>
 
 		<div v-else :class="$style.submitted">
 			<template v-if="isDeferred">
-				<N8nIcon icon="arrow-right" size="small" :class="$style.skippedIcon" />
+				<N8nIcon
+					icon="arrow-right"
+					size="small"
+					:class="$style.skippedIcon"
+					data-test-id="instance-ai-workflow-setup-deferred"
+				/>
 				<span>{{ i18n.baseText('instanceAi.workflowSetup.deferred') }}</span>
 			</template>
 			<template v-else-if="isPartial">
-				<N8nIcon icon="check" size="small" :class="$style.partialIcon" />
+				<N8nIcon
+					icon="check"
+					size="small"
+					:class="$style.partialIcon"
+					data-test-id="instance-ai-workflow-setup-partial"
+				/>
 				<span>{{ i18n.baseText('instanceAi.workflowSetup.partiallyApplied') }}</span>
 			</template>
 			<template v-else>
-				<N8nIcon icon="check" size="small" :class="$style.successIcon" />
+				<N8nIcon
+					icon="check"
+					size="small"
+					:class="$style.successIcon"
+					data-test-id="instance-ai-workflow-setup-applied"
+				/>
 				<span>{{ i18n.baseText('instanceAi.workflowSetup.applied') }}</span>
 			</template>
 		</div>

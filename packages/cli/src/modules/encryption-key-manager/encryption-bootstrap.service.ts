@@ -15,7 +15,8 @@ export class EncryptionBootstrapService {
 	}
 
 	async run(): Promise<void> {
-		await this.keyManager.bootstrapLegacyKey(this.instanceSettings.encryptionKey);
+		await this.keyManager.bootstrapLegacyCbcKey(this.instanceSettings.encryptionKey);
+		await this.keyManager.bootstrapGcmKey();
 		this.logger.debug('Encryption key bootstrap complete');
 	}
 }
