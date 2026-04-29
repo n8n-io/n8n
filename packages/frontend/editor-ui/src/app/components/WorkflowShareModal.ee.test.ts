@@ -17,10 +17,18 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRolesStore } from '@/app/stores/roles.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+
+const mockWorkflowDocumentState = reactive({
+	homeProject: null as ProjectSharingData | null,
+	scopes: [] as string[],
+	sharedWithProjects: [] as ProjectSharingData[],
+	name: '',
+});
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	useWorkflowDocumentStore: () => mockWorkflowDocumentState,
+	createWorkflowDocumentId: (id: string) => `${id}@latest`,
+}));
 
 const mockRouteQuery = reactive<Record<string, string>>({});
 vi.mock('vue-router', async (importOriginal) => {
@@ -77,7 +85,6 @@ let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let workflowsEEStore: MockedStore<typeof useWorkflowsEEStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
 let rolesStore: MockedStore<typeof useRolesStore>;
-
 describe('WorkflowShareModal.ee.vue', () => {
 	beforeEach(() => {
 		settingsStore = mockedStore(useSettingsStore);
@@ -88,6 +95,10 @@ describe('WorkflowShareModal.ee.vue', () => {
 
 		// Reset route query
 		Object.keys(mockRouteQuery).forEach((key) => delete mockRouteQuery[key]);
+		mockWorkflowDocumentState.homeProject = null;
+		mockWorkflowDocumentState.sharedWithProjects = [];
+		mockWorkflowDocumentState.scopes = [];
+		mockWorkflowDocumentState.name = '';
 
 		// Set up default store state
 		settingsStore.settings.enterprise = { sharing: true } as FrontendSettings['enterprise'];
@@ -149,8 +160,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 			homeProject,
 		};
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
-		workflowDocumentStore.setHomeProject(homeProject);
+		mockWorkflowDocumentState.homeProject = homeProject;
 
 		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
 
@@ -215,10 +225,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 				homeProject,
 			};
 
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId('workflow-1'),
-			);
-			workflowDocumentStore.setHomeProject(homeProject);
+			mockWorkflowDocumentState.homeProject = homeProject;
 
 			const props = {
 				data: { id: 'workflow-1' },
