@@ -60,6 +60,13 @@ const sidecar: TopologySidecar = {
 	allowNativeTestRunnerSmoke: false,
 };
 
+const sidecarWithoutTargets: TopologySidecar = {
+	targets: [],
+	excludeTargets: [],
+	metrics: ['correctness'],
+	allowNativeTestRunnerSmoke: false,
+};
+
 function makeUpdatedWorkflow(): WorkflowResponse {
 	return {
 		id: 'workflow-1',
@@ -170,6 +177,82 @@ describe('verifyEvalSetupTopology', () => {
 		expect(result.passed).toBe(true);
 		expect(result.findings).toEqual([]);
 		expect(result.targetNodeNames).toEqual(['AI Agent']);
+	});
+
+	it('detects no-sidecar targets from the original workflow when the updated target is missing', () => {
+		const updatedWorkflow = makeUpdatedWorkflow();
+		updatedWorkflow.nodes = updatedWorkflow.nodes.filter((node) => node.name !== 'AI Agent');
+
+		const result = verify(updatedWorkflow, sidecarWithoutTargets);
+
+		expect(result.targetNodeNames).toEqual(['AI Agent']);
+		expect(result.passed).toBe(false);
+		expect(result.findings).toEqual(
+			expect.arrayContaining([expect.objectContaining({ code: 'target_missing' })]),
+		);
+	});
+
+	it('fails no-sidecar topology when setOutputs writes only a wrong column', () => {
+		const updatedWorkflow = makeUpdatedWorkflow();
+		const setOutputs = updatedWorkflow.nodes.find((node) => node.name === 'Set Outputs - AI Agent');
+		setOutputs!.parameters = {
+			operation: 'setOutputs',
+			source: 'dataTable',
+			dataTableId: { mode: 'id', value: 'dt-1' },
+			outputs: {
+				values: [{ outputName: 'wrong_output', outputValue: '={{ $json.output }}' }],
+			},
+		};
+
+		const result = verify(updatedWorkflow, sidecarWithoutTargets);
+
+		expect(result.passed).toBe(false);
+		expect(result.findings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'set_outputs_actual_column_missing' }),
+			]),
+		);
+	});
+
+	it('fails no-sidecar topology when setMetrics uses the input column as expected answer', () => {
+		const updatedWorkflow = makeUpdatedWorkflow();
+		const setMetrics = updatedWorkflow.nodes.find((node) => node.name === 'Set Metrics - AI Agent');
+		setMetrics!.parameters = {
+			operation: 'setMetrics',
+			metric: 'correctness',
+			expectedAnswer: "={{ $('Eval Trigger').item.json.input }}",
+			actualAnswer: '={{ $json.output }}',
+		};
+
+		const result = verify(updatedWorkflow, sidecarWithoutTargets);
+
+		expect(result.passed).toBe(false);
+		expect(result.findings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'set_metrics_expected_column_missing' }),
+			]),
+		);
+	});
+
+	it('fails no-sidecar topology when shape bridge never references an input column', () => {
+		const updatedWorkflow = makeUpdatedWorkflow();
+		const bridge = updatedWorkflow.nodes.find(
+			(node) => node.name === 'Eval Shape Bridge - AI Agent',
+		);
+		bridge!.parameters = {
+			assignments: {
+				assignments: [{ name: 'chatInput', value: '={{ $json.wrong }}', type: 'string' }],
+			},
+		};
+
+		const result = verify(updatedWorkflow, sidecarWithoutTargets);
+
+		expect(result.passed).toBe(false);
+		expect(result.findings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'shape_bridge_input_column_missing' }),
+			]),
+		);
 	});
 
 	it('fails when shape bridge is missing', () => {

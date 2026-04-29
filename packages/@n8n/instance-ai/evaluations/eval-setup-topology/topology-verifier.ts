@@ -20,12 +20,25 @@ const CHECK_IF_EVALUATING_OPERATION = 'checkIfEvaluating';
 const SET_OUTPUTS_OPERATION = 'setOutputs';
 const SET_METRICS_OPERATION = 'setMetrics';
 
+const DEFAULT_EXPECTED_OUTPUT_COLUMN = 'expected_output';
+const DEFAULT_ACTUAL_OUTPUT_COLUMN = 'actual_output';
+
 const METRICS_REQUIRING_LANGUAGE_MODEL = new Set(['correctness', 'helpfulness']);
 const METRICS_REQUIRING_EXPECTED_ANSWER = new Set([
 	'correctness',
 	'stringSimilarity',
 	'categorization',
 ]);
+
+interface EffectiveTargetExpectation {
+	nodeName: string;
+	inputColumns: string[];
+	expectedShape?: Record<string, string>;
+	expectedOutputColumns: string[];
+	actualOutputColumns: string[];
+	sideEffectNodes: string[];
+	hasSidecarExpectedShape: boolean;
+}
 
 function finding(code: string, message: string, nodeName?: string): TopologyFinding {
 	return { severity: 'error', code, message, nodeName };
@@ -139,7 +152,7 @@ function detectTargets(input: TopologyVerifierInput): string[] {
 			.filter((nodeName) => !excludedTargets.has(nodeName));
 	}
 
-	const connections = toWorkflowConnections(input.updatedWorkflow.connections);
+	const connections = toWorkflowConnections(input.originalWorkflow.connections);
 	const mainInputNodeNames = new Set<string>();
 
 	for (const nodeConnections of Object.values(connections)) {
@@ -148,7 +161,7 @@ function detectTargets(input: TopologyVerifierInput): string[] {
 		}
 	}
 
-	return input.updatedWorkflow.nodes
+	return input.originalWorkflow.nodes
 		.filter((node) => mainInputNodeNames.has(node.name))
 		.filter((node) => isLikelyAiRootNode(node))
 		.map((node) => node.name)
@@ -172,6 +185,40 @@ function findTargetExpectation(
 	nodeName: string,
 ): TopologyTargetExpectation | undefined {
 	return sidecarTargets.find((target) => target.nodeName === nodeName);
+}
+
+function resolveEffectiveTargetExpectation(
+	input: TopologyVerifierInput,
+	nodeName: string,
+): EffectiveTargetExpectation {
+	const sidecarTarget = findTargetExpectation(input.sidecar.targets, nodeName);
+
+	if (sidecarTarget) {
+		return {
+			nodeName,
+			inputColumns: sidecarTarget.inputColumns,
+			expectedShape: sidecarTarget.expectedShape,
+			expectedOutputColumns: sidecarTarget.expectedOutputColumns,
+			actualOutputColumns: sidecarTarget.actualOutputColumns,
+			sideEffectNodes: sidecarTarget.sideEffectNodes,
+			hasSidecarExpectedShape: sidecarTarget.expectedShape !== undefined,
+		};
+	}
+
+	const expectedOutputColumns = input.datasetColumns.includes(DEFAULT_EXPECTED_OUTPUT_COLUMN)
+		? [DEFAULT_EXPECTED_OUTPUT_COLUMN]
+		: [];
+	const actualOutputColumns = [DEFAULT_ACTUAL_OUTPUT_COLUMN];
+	const outputColumns = new Set([...expectedOutputColumns, ...actualOutputColumns]);
+
+	return {
+		nodeName,
+		inputColumns: input.datasetColumns.filter((column) => !outputColumns.has(column)),
+		expectedOutputColumns,
+		actualOutputColumns,
+		sideEffectNodes: [],
+		hasSidecarExpectedShape: false,
+	};
 }
 
 function getAssignments(node: WorkflowNodeResponse): Array<{ name: string; value: string }> {
@@ -354,7 +401,7 @@ function verifyGlobalTopology(
 
 function verifyShapeBridge(
 	input: TopologyVerifierInput,
-	target: TopologyTargetExpectation | undefined,
+	target: EffectiveTargetExpectation,
 	targetNodeName: string,
 	evalTrigger: WorkflowNodeResponse | undefined,
 	connections: WorkflowConnections,
@@ -449,12 +496,30 @@ function verifyShapeBridge(
 		}
 	}
 
+	if (
+		!target.hasSidecarExpectedShape &&
+		target.inputColumns.length > 0 &&
+		!assignments.some((assignment) =>
+			target.inputColumns.some((inputColumn) =>
+				referencesCurrentJsonColumn(assignment.value, inputColumn),
+			),
+		)
+	) {
+		findings.push(
+			finding(
+				'shape_bridge_input_column_missing',
+				'Shape bridge should reference at least one dataset input column.',
+				bridge.name,
+			),
+		);
+	}
+
 	return { bridge, findings };
 }
 
 function verifySetOutputs(
 	setOutputsNodes: WorkflowNodeResponse[],
-	target: TopologyTargetExpectation | undefined,
+	target: EffectiveTargetExpectation,
 	expectedDataTableId: string | undefined,
 ): TopologyFinding[] {
 	const findings: TopologyFinding[] = [];
@@ -513,7 +578,7 @@ function verifySetOutputs(
 function verifySetMetrics(
 	input: TopologyVerifierInput,
 	setMetricsNodes: WorkflowNodeResponse[],
-	target: TopologyTargetExpectation | undefined,
+	target: EffectiveTargetExpectation,
 ): TopologyFinding[] {
 	const findings: TopologyFinding[] = [];
 	const presentMetrics = new Set<string>();
@@ -713,7 +778,7 @@ function verifyTargetTopology(
 ): TopologyTargetResult {
 	const findings: TopologyFinding[] = [];
 	const targetNode = getNodeByName(input.updatedWorkflow, targetNodeName);
-	const target = findTargetExpectation(input.sidecar.targets, targetNodeName);
+	const target = resolveEffectiveTargetExpectation(input, targetNodeName);
 	const connections = toWorkflowConnections(input.updatedWorkflow.connections);
 	const originalConnections = toWorkflowConnections(input.originalWorkflow.connections);
 
@@ -825,7 +890,7 @@ function verifyTargetTopology(
 
 	const sideEffectNodeNames = new Set([
 		...originalDownstreamReachableNodeNames,
-		...(target?.sideEffectNodes ?? []),
+		...target.sideEffectNodes,
 	]);
 
 	for (const sideEffectNodeName of sideEffectNodeNames) {
