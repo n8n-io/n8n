@@ -1,5 +1,7 @@
 import { z, type ZodError } from 'zod';
 
+import { AgentIntegrationSchema } from './integration-config';
+
 const SemanticRecallSchema = z.object({
 	topK: z.number().int().min(1).max(100),
 	scope: z.enum(['thread', 'resource']).optional(),
@@ -99,6 +101,7 @@ export const AgentJsonConfigSchema = z.object({
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
 	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
+	integrations: z.array(AgentIntegrationSchema).optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
