@@ -4373,6 +4373,7 @@
 	"projects.menu.forms": "Forms",
 	"forms.list.emptyState.title": "No form workflows",
 	"forms.list.emptyState.description": "Create a workflow with a Form Trigger node to see it here.",
+	"formStep.editForm": "Edit form",
 	"projects.settings": "Project settings",
 	"projects.settings.info": "Project info",
 	"projects.settings.newProjectName": "My project",

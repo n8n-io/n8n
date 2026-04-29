@@ -3,7 +3,12 @@ import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanva
 import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, VIEWS } from '@/app/constants';
+import {
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	FORM_STEP_EDIT_MODAL_KEY,
+	VIEWS,
+} from '@/app/constants';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { useFormsLayout } from '../composables/useFormsLayout';
 import { FORM_STEP_NON_FORM_NODE_SCALE, FORMS_WORKFLOW_VIEW } from '../constants';
@@ -11,11 +16,13 @@ import type { Workflow } from 'n8n-workflow';
 import { N8nButton, N8nLoading } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const route = useRoute();
 const router = useRouter();
 const workflowsListStore = useWorkflowsListStore();
 const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
 
 const loading = ref(true);
 
@@ -62,10 +69,7 @@ function openWorkflow() {
 }
 
 function onNodeActivated(nodeId: string) {
-	void router.push({
-		name: VIEWS.WORKFLOW,
-		params: { name: workflowsStore.workflow.id, nodeId },
-	});
+	uiStore.openModalWithData({ name: FORM_STEP_EDIT_MODAL_KEY, data: { nodeId } });
 }
 </script>
 
