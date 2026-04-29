@@ -85,16 +85,34 @@ const markers = computed<Marker[]>(() => {
 	annotations.value.forEach((annotation, idx) => {
 		const isMulti = annotation.contexts.length > 1;
 		annotation.contexts.forEach((context, ctxIdx) => {
-			const bbox = context.bbox;
-			if (!bbox) return;
-			if (bbox.width === 0 || bbox.height === 0) return;
-			const viewportTop = bbox.isFixed ? bbox.y : bbox.y - window.scrollY;
-			const viewportLeft = bbox.isFixed ? bbox.x : bbox.x - window.scrollX;
+			let viewportTop: number;
+			let viewportLeft: number;
+			let width: number;
+			let height: number;
+
+			const live = annotation.elements[ctxIdx];
+			if (live?.isConnected) {
+				const r = live.getBoundingClientRect();
+				if (r.width === 0 || r.height === 0) return;
+				viewportTop = r.top;
+				viewportLeft = r.left;
+				width = r.width;
+				height = r.height;
+			} else {
+				const bbox = context.bbox;
+				if (!bbox) return;
+				if (bbox.width === 0 || bbox.height === 0) return;
+				viewportTop = bbox.isFixed ? bbox.y : bbox.y - window.scrollY;
+				viewportLeft = bbox.isFixed ? bbox.x : bbox.x - window.scrollX;
+				width = bbox.width;
+				height = bbox.height;
+			}
+
 			result.push({
 				id: `${annotation.id}-${ctxIdx}`,
 				index: idx + 1,
-				top: viewportTop + bbox.height / 2 - MARKER_SIZE / 2,
-				left: viewportLeft + bbox.width / 2 - MARKER_SIZE / 2,
+				top: viewportTop + height / 2 - MARKER_SIZE / 2,
+				left: viewportLeft + width / 2 - MARKER_SIZE / 2,
 				annotation,
 				isMulti,
 			});

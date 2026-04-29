@@ -88,6 +88,13 @@ watch(
 	() => props.anchor,
 	() => updateAnchorRect(),
 );
+
+watch(
+	() => props.initialPrompt,
+	(value) => {
+		prompt.value = value;
+	},
+);
 </script>
 
 <template>

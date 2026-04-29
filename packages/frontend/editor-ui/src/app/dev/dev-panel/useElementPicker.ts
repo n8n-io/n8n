@@ -60,7 +60,15 @@ export function useElementPicker() {
 	let dragSelectHandler: ((els: Element[]) => void) | null = null;
 	let dragStart: { x: number; y: number } | null = null;
 	let dragging = false;
-	let suppressNextClick = false;
+
+	function suppressClickOnce() {
+		const handler = (event: MouseEvent) => {
+			event.preventDefault();
+			event.stopPropagation();
+			document.removeEventListener('click', handler, true);
+		};
+		document.addEventListener('click', handler, true);
+	}
 
 	function handleMouseDown(event: MouseEvent) {
 		if (event.button !== 0) return;
@@ -107,21 +115,15 @@ export function useElementPicker() {
 		dragging = false;
 		dragRect.value = null;
 		if (!wasDrag || !rect) return;
-		suppressNextClick = true;
 		event.preventDefault();
 		event.stopPropagation();
+		suppressClickOnce();
 		if (!dragSelectHandler) return;
 		const els = collectElementsInRect(rect);
 		if (els.length > 0) dragSelectHandler(els);
 	}
 
 	function handleClick(event: MouseEvent) {
-		if (suppressNextClick) {
-			suppressNextClick = false;
-			event.preventDefault();
-			event.stopPropagation();
-			return;
-		}
 		const target = document.elementFromPoint(event.clientX, event.clientY);
 		if (!target || isInsideDevPanel(target)) return;
 		event.preventDefault();
