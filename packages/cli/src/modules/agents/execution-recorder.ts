@@ -1,4 +1,5 @@
 import type { StreamChunk } from '@n8n/agents';
+import type { ToolRegistry } from './tool-registry';
 
 export interface RecordedUsage {
 	promptTokens: number;
@@ -13,9 +14,10 @@ export interface RecordedToolCall {
 }
 
 export type TimelineEvent =
-	| { type: 'text'; content: string; timestamp: number }
+	| { type: 'text'; content: string; timestamp: number; endTime?: number }
 	| {
 			type: 'tool-call';
+			kind: 'tool' | 'workflow' | 'node';
 			name: string;
 			toolCallId: string;
 			input: unknown;
@@ -23,9 +25,20 @@ export type TimelineEvent =
 			startTime: number;
 			endTime: number;
 			success: boolean;
+			workflowId?: string;
+			workflowName?: string;
+			workflowExecutionId?: string;
+			triggerType?: string;
+			nodeType?: string;
+			nodeTypeVersion?: number;
+			nodeDisplayName?: string;
 	  }
 	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+	return typeof v === 'object' && v !== null;
+}
 
 /**
  * Collects execution data from agent stream chunks.
@@ -46,6 +59,12 @@ export interface MessageRecord {
 }
 
 export class ExecutionRecorder {
+	private readonly registry: ToolRegistry;
+
+	constructor(registry?: ToolRegistry) {
+		this.registry = registry ?? new Map();
+	}
+
 	private textParts: string[] = [];
 
 	/** Text buffer for the current segment (flushed to timeline on boundaries). */
@@ -63,6 +82,9 @@ export class ExecutionRecorder {
 
 	private timeline: TimelineEvent[] = [];
 
+	/** Wall-clock when the first text-delta of the current segment arrived. */
+	private textStartTime: number | null = null;
+
 	private _suspended = false;
 
 	private error: string | null = null;
@@ -75,6 +97,7 @@ export class ExecutionRecorder {
 	record(chunk: StreamChunk): void {
 		switch (chunk.type) {
 			case 'text-delta':
+				if (this.textStartTime === null) this.textStartTime = Date.now();
 				this.textParts.push(chunk.delta);
 				this.textBuffer.push(chunk.delta);
 				break;
@@ -120,8 +143,10 @@ export class ExecutionRecorder {
 					input: chunk.payload,
 					output: { displayed: true },
 				});
+				const entry = this.registry.get(chunk.toolName);
 				this.timeline.push({
 					type: 'tool-call',
+					kind: entry?.kind ?? 'tool',
 					name: chunk.toolName,
 					toolCallId: chunk.toolCallId,
 					input: chunk.payload,
@@ -177,9 +202,18 @@ export class ExecutionRecorder {
 		if (this.textBuffer.length === 0) return;
 		const content = this.textBuffer.join('');
 		if (content.trim()) {
-			this.timeline.push({ type: 'text', content, timestamp: Date.now() });
+			const now = Date.now();
+			this.timeline.push({
+				type: 'text',
+				content,
+				// Generation start (first text-delta) → end (now). Falls back to `now`
+				// if no start was recorded (defensive: empty segment shouldn't reach here).
+				timestamp: this.textStartTime ?? now,
+				endTime: now,
+			});
 		}
 		this.textBuffer = [];
+		this.textStartTime = null;
 	}
 
 	/**
@@ -192,8 +226,10 @@ export class ExecutionRecorder {
 
 		this.toolCalls.push({ name, input, output: undefined });
 
+		const entry = this.registry.get(name);
 		this.timeline.push({
 			type: 'tool-call',
+			kind: entry?.kind ?? 'tool',
 			name,
 			toolCallId,
 			input,
@@ -201,6 +237,12 @@ export class ExecutionRecorder {
 			startTime: Date.now(),
 			endTime: 0,
 			success: false,
+			workflowId: entry?.workflowId,
+			workflowName: entry?.workflowName,
+			triggerType: entry?.triggerType,
+			nodeType: entry?.nodeType,
+			nodeTypeVersion: entry?.nodeTypeVersion,
+			nodeDisplayName: entry?.nodeDisplayName,
 		});
 	}
 
@@ -208,6 +250,11 @@ export class ExecutionRecorder {
 	 * Record a discrete `tool-result` chunk from the stream. Closes the
 	 * matching open timeline entry by `toolCallId` (preferred) or by name as
 	 * a fallback.
+	 *
+	 * On HITL/approval resume, the SDK replays the `tool-result` for the
+	 * pending call without a preceding `tool-call`, so there is no open
+	 * timeline entry to close. In that case we synthesize one from the
+	 * registry so workflow rows and execution-log links still render.
 	 */
 	private recordToolResult(
 		toolCallId: string,
@@ -236,6 +283,42 @@ export class ExecutionRecorder {
 			pendingTimeline.output = output;
 			pendingTimeline.endTime = Date.now();
 			pendingTimeline.success = !isError;
+
+			if (pendingTimeline.kind === 'workflow' && isRecord(output)) {
+				const execId = output.executionId;
+				if (typeof execId === 'string') {
+					pendingTimeline.workflowExecutionId = execId;
+				}
+			}
+			return;
 		}
+
+		this.flushTextBuffer();
+		const entry = this.registry.get(name);
+		const now = Date.now();
+		const synthesized: TimelineEvent = {
+			type: 'tool-call',
+			kind: entry?.kind ?? 'tool',
+			name,
+			toolCallId,
+			input: undefined,
+			output,
+			startTime: now,
+			endTime: now,
+			success: !isError,
+			workflowId: entry?.workflowId,
+			workflowName: entry?.workflowName,
+			triggerType: entry?.triggerType,
+			nodeType: entry?.nodeType,
+			nodeTypeVersion: entry?.nodeTypeVersion,
+			nodeDisplayName: entry?.nodeDisplayName,
+		};
+		if (synthesized.kind === 'workflow' && isRecord(output)) {
+			const execId = output.executionId;
+			if (typeof execId === 'string') {
+				synthesized.workflowExecutionId = execId;
+			}
+		}
+		this.timeline.push(synthesized);
 	}
 }

@@ -75,7 +75,6 @@ export type {
 	ContentReasoning,
 	ContentText,
 	ContentToolCall,
-	ContentToolResult,
 	Message,
 	MessageContent,
 	MessageRole,

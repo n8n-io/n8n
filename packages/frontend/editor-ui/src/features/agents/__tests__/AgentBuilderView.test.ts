@@ -1,5 +1,5 @@
-/* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+/* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment -- test-only patterns: @vue/test-utils is a transitive devDep and private-state reads */
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 
@@ -82,6 +82,13 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
 		trackPublished: vi.fn(),
+	}),
+}));
+
+vi.mock('../composables/useAgentBuilderStatus', () => ({
+	useAgentBuilderStatus: () => ({
+		isBuilderConfigured: ref(true),
+		fetchStatus: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
 
@@ -260,6 +267,10 @@ const commonStubs = {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
 	},
+	AgentBuilderUnconfiguredEmptyState: {
+		name: 'AgentBuilderUnconfiguredEmptyState',
+		template: '<div data-testid="stub-agent-builder-unconfigured-empty-state" />',
+	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
 	N8nActionDropdown: { template: '<div />' },
@@ -267,6 +278,12 @@ const commonStubs = {
 };
 
 describe('AgentBuilderView — chat mode toggle', () => {
+	// First Vite transform of this SFC + design-system deps can exceed the default
+	// 5s test timeout; warm the module once so each case measures mount behavior.
+	beforeAll(async () => {
+		await import('../views/AgentBuilderView.vue');
+	}, 30_000);
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		routerPush.mockReset();
@@ -513,7 +530,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 		expect(routerPush).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: 'AgentsListView',
+				name: 'ProjectAgents',
 				params: { projectId: 'p1' },
 			}),
 		);

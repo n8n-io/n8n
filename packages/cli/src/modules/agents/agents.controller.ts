@@ -484,7 +484,7 @@ export class AgentsController {
 					projectId,
 					message,
 					credentialProvider,
-					req.user.id,
+					req.user,
 				),
 				send,
 				makeBuilderToolEvents(send),
@@ -495,7 +495,15 @@ export class AgentsController {
 			}
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Build failed';
-			send({ type: 'error', message: errorMessage });
+			const errorCode =
+				error && typeof error === 'object' && 'code' in error
+					? (error as { code?: unknown }).code
+					: undefined;
+			send({
+				type: 'error',
+				message: errorMessage,
+				...(typeof errorCode === 'string' ? { code: errorCode } : {}),
+			});
 		}
 
 		res.end();
@@ -531,6 +539,7 @@ export class AgentsController {
 					toolCallId,
 					resumeData,
 					credentialProvider,
+					req.user,
 				),
 				send,
 				makeBuilderToolEvents(send),

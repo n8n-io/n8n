@@ -587,7 +587,16 @@ async function buildWorkflowTool(
 				return { status: 'form_link_sent', formUrl, message: reason };
 			});
 
-		return builder.build();
+		const built = builder.build();
+		return {
+			...built,
+			metadata: {
+				kind: 'workflow',
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				triggerType,
+			},
+		};
 	}
 
 	// Standard execution-based tool for all other triggers
@@ -606,7 +615,16 @@ async function buildWorkflowTool(
 			return await executeWorkflow(workflow, triggerNode, triggerType, input, context, allOutputs);
 		});
 
-	return builder.build();
+	const built = builder.build();
+	return {
+		...built,
+		metadata: {
+			kind: 'workflow',
+			workflowId: workflow.id,
+			workflowName: workflow.name,
+			triggerType,
+		},
+	};
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,9 @@
+import { i18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import {
 	AGENTS_LIST_VIEW,
+	AGENT_BUILDER_SETTINGS_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
@@ -24,6 +27,8 @@ const AgentSessionTimelineView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/AgentSessionTimelineView.vue');
 const NewAgentView = async (): Promise<unknown> =>
 	await import('@/features/agents/views/NewAgentView.vue');
+const SettingsAgentBuilderView = async (): Promise<unknown> =>
+	await import('@/features/agents/views/SettingsAgentBuilderView.vue');
 
 export const AgentsModule: FrontendModuleDescription = {
 	id: 'agents',
@@ -122,6 +127,23 @@ export const AgentsModule: FrontendModuleDescription = {
 				},
 			],
 		},
+		{
+			name: AGENT_BUILDER_SETTINGS_VIEW,
+			path: 'agent-builder',
+			component: SettingsAgentBuilderView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'rbac'],
+				middlewareOptions: {
+					rbac: {
+						scope: 'agent:manage',
+					},
+				},
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
 	],
 	projectTabs: {
 		overview: [
@@ -150,6 +172,19 @@ export const AgentsModule: FrontendModuleDescription = {
 		{
 			key: 'agent',
 			displayName: 'Agent',
+		},
+	],
+	settingsPages: [
+		{
+			id: 'settings-agent-builder',
+			icon: 'robot',
+			label: i18n.baseText('settings.agentBuilder.title'),
+			position: 'top',
+			beta: true,
+			route: { to: { name: AGENT_BUILDER_SETTINGS_VIEW } },
+			get available() {
+				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
+			},
 		},
 	],
 };

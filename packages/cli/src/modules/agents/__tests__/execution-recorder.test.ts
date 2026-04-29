@@ -1,5 +1,6 @@
 import { ExecutionRecorder } from '../execution-recorder';
-import type { StreamChunk } from '@n8n/agents';
+import type { BuiltTool, StreamChunk } from '@n8n/agents';
+import { buildToolRegistry } from '../tool-registry';
 
 function makeToolCallChunk(toolName: string, input: unknown, toolCallId = 'tc1'): StreamChunk {
 	return { type: 'tool-call', toolCallId, toolName, input } satisfies StreamChunk;
@@ -196,5 +197,114 @@ describe('ExecutionRecorder', () => {
 			const record = recorder.getMessageRecord();
 			expect(record.assistantResponse).toBe('Hello world');
 		});
+	});
+});
+
+function wfTool(name: string, id: string, wfName: string, trigger = 'manual'): BuiltTool {
+	return {
+		name,
+		metadata: { kind: 'workflow', workflowId: id, workflowName: wfName, triggerType: trigger },
+	} as unknown as BuiltTool;
+}
+
+describe('ExecutionRecorder — workflow-tool timeline tags', () => {
+	it('tags a tool-call entry as kind:tool when no registry is provided', () => {
+		const rec = new ExecutionRecorder();
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'http', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'http',
+			output: { ok: true },
+			isError: false,
+		} as never);
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.kind).toBe('tool');
+		expect(tc.workflowId).toBeUndefined();
+	});
+
+	it('tags a tool-call as kind:workflow and stores workflowId/Name/triggerType when registry matches', () => {
+		const registry = buildToolRegistry([wfTool('run-wf', 'wf-1', 'Run WF')]);
+		const rec = new ExecutionRecorder(registry);
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'run-wf', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'run-wf',
+			output: { executionId: 'e-42', status: 'success' },
+			isError: false,
+		} as never);
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.kind).toBe('workflow');
+		expect(tc.workflowId).toBe('wf-1');
+		expect(tc.workflowName).toBe('Run WF');
+		expect(tc.triggerType).toBe('manual');
+		expect(tc.workflowExecutionId).toBe('e-42');
+	});
+
+	it('leaves workflowExecutionId undefined for form-trigger workflow tools', () => {
+		const registry = buildToolRegistry([wfTool('fill-form', 'wf-2', 'Fill Form', 'form')]);
+		const rec = new ExecutionRecorder(registry);
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'fill-form', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'fill-form',
+			output: { status: 'form_link_sent', formUrl: 'https://x/form' },
+			isError: false,
+		} as never);
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.kind).toBe('workflow');
+		expect(tc.triggerType).toBe('form');
+		expect(tc.workflowExecutionId).toBeUndefined();
+	});
+
+	it('synthesizes a tool-call timeline entry when tool-result arrives without a preceding tool-call', () => {
+		const registry = buildToolRegistry([wfTool('run-wf', 'wf-1', 'Run WF')]);
+		const rec = new ExecutionRecorder(registry);
+
+		// HITL/approval resume: SDK replays the result without a tool-call chunk
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't-resume',
+			toolName: 'run-wf',
+			output: { executionId: 'e-99', status: 'success' },
+			isError: false,
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+		const tc = record.timeline.find((e) => e.type === 'tool-call');
+
+		expect(tc).toBeDefined();
+		expect(tc?.kind).toBe('workflow');
+		expect(tc?.name).toBe('run-wf');
+		expect(tc?.toolCallId).toBe('t-resume');
+		expect(tc?.workflowId).toBe('wf-1');
+		expect(tc?.workflowName).toBe('Run WF');
+		expect(tc?.workflowExecutionId).toBe('e-99');
+		expect(tc?.success).toBe(true);
+		expect(record.toolCalls).toHaveLength(1);
+		expect(record.toolCalls[0]).toEqual({
+			name: 'run-wf',
+			input: undefined,
+			output: { executionId: 'e-99', status: 'success' },
+		});
+	});
+
+	it('leaves workflowExecutionId undefined when the output is an error with no executionId', () => {
+		const registry = buildToolRegistry([wfTool('run-wf', 'wf-1', 'Run WF')]);
+		const rec = new ExecutionRecorder(registry);
+		rec.record({ type: 'tool-call', toolCallId: 't1', toolName: 'run-wf', input: {} } as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'run-wf',
+			output: { error: 'Kaboom' },
+			isError: true,
+		} as never);
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.workflowExecutionId).toBeUndefined();
+		expect(tc.success).toBe(false);
 	});
 });

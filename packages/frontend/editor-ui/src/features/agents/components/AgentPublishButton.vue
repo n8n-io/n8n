@@ -94,6 +94,7 @@ async function onDropdownSelect(action: string) {
 			:loading="publishing"
 			:disabled="!buttonConfig.enabled || isSaving"
 			variant="subtle"
+			size="small"
 			data-testid="publish-agent-button"
 			@click="onPublishClick"
 		>
@@ -121,6 +122,7 @@ async function onDropdownSelect(action: string) {
 				<N8nIconButton
 					:class="$style.groupButtonRight"
 					variant="subtle"
+					size="small"
 					icon="chevron-down"
 					:aria-label="locale.baseText('agents.publish.dropdown.ariaLabel')"
 					data-testid="agent-publish-dropdown-trigger"
