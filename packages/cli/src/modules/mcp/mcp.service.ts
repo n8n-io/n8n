@@ -29,6 +29,7 @@ import {
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
+import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
 import { createSearchProjectsTool } from './tools/search-projects.tool';
@@ -221,6 +222,17 @@ export class McpService {
 			this,
 		);
 		server.registerTool(testWorkflowTool.name, testWorkflowTool.config, testWorkflowTool.handler);
+
+		const listCredentialsTool = createListCredentialsTool(
+			user,
+			this.credentialsService,
+			this.telemetry,
+		);
+		server.registerTool(
+			listCredentialsTool.name,
+			listCredentialsTool.config,
+			listCredentialsTool.handler,
+		);
 
 		// Data table tools
 		const dataTableOps = this.dataTableProxyService.makeDataTableOperationsForUser(user);
