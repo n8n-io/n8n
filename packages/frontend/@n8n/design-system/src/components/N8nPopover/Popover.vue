@@ -186,10 +186,7 @@ watch(
 	border-radius: var(--radius);
 	background-color: var(--color--foreground--tint-2);
 	border: var(--border);
-	// NOTE: In https://github.com/n8n-io/n8n/pull/27429 we'll replace custom shadows with tokens
-	box-shadow:
-		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+	box-shadow: var(--shadow--md), var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 

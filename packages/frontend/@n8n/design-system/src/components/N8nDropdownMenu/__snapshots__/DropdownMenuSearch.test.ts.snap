@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`v2/components/DropdownMenuSearch > rendering > should render correctly 1`] = `
+exports[`N8nDropdownMenuSearch > rendering > should render correctly 1`] = `
 <div
   class="search-container"
 >
@@ -15,7 +15,7 @@ exports[`v2/components/DropdownMenuSearch > rendering > should render correctly 
 </div>
 `;
 
-exports[`v2/components/DropdownMenuSearch > rendering > should render with custom placeholder 1`] = `
+exports[`N8nDropdownMenuSearch > rendering > should render with custom placeholder 1`] = `
 <div
   class="search-container"
 >
@@ -30,7 +30,7 @@ exports[`v2/components/DropdownMenuSearch > rendering > should render with custo
 </div>
 `;
 
-exports[`v2/components/DropdownMenuSearch > rendering > should render with value 1`] = `
+exports[`N8nDropdownMenuSearch > rendering > should render with value 1`] = `
 <div
   class="search-container"
 >

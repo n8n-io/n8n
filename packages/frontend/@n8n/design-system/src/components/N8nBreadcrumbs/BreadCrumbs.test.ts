@@ -157,9 +157,7 @@ describe('Breadcrumbs', async () => {
 		expect(getByTestId('ellipsis')).toBeTruthy();
 		expect(getByTestId('hidden-items-menu')).toBeTruthy();
 		expect(getByTestId('ellipsis')).toHaveClass('disabled');
-		expect(getByTestId('hidden-items-menu').querySelector('.el-dropdown')).toHaveClass(
-			'is-disabled',
-		);
+		expect(getByTestId('hidden-items-menu').querySelector('button')).toHaveAttribute('disabled');
 	});
 
 	it('does not highlight last item for "highlightLastItem = false" ', () => {

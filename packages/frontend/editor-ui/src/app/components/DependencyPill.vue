@@ -4,10 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import {
-	N8nDropdownMenu,
-	type DropdownMenuItemProps,
-} from '@n8n/design-system/v2/components/DropdownMenu';
+import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { VIEWS } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';

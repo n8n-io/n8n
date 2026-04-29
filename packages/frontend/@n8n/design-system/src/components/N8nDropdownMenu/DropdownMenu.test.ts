@@ -22,7 +22,7 @@ async function getDropdownContent() {
 	return { dropdown };
 }
 
-describe('v2/components/DropdownMenu', () => {
+describe('N8nDropdownMenu', () => {
 	describe('rendering', () => {
 		it('should render default trigger button', () => {
 			const { container } = render(DropdownMenu, {

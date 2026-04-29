@@ -42,7 +42,7 @@ let capturedOpenHandler: ((open: boolean) => void) | undefined;
 let capturedItems: unknown[] = [];
 let capturedSearchable: boolean | undefined;
 
-vi.mock('@n8n/design-system/v2/components/DropdownMenu', () => ({
+vi.mock('@n8n/design-system', () => ({
 	N8nDropdownMenu: {
 		name: 'N8nDropdownMenu',
 		props: [

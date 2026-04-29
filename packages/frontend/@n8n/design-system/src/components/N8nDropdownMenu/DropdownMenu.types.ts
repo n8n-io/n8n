@@ -1,6 +1,6 @@
 import type { InjectionKey, Ref } from 'vue';
 
-import type { IconOrEmoji } from '../../../components/N8nIconPicker/types';
+import type { IconOrEmoji } from '../N8nIconPicker/types';
 
 /** Injection key for passing portalTarget to nested DropdownMenuItem sub-menus */
 export const DropdownMenuPortalTargetKey: InjectionKey<Ref<string | HTMLElement | undefined>> =
@@ -58,6 +58,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	subMenuOpen?: boolean;
 	/** extra data useful for rendering leading/trailing slot */
 	data?: D;
+	/** Test ID for the item (for e2e testing) */
+	'data-testid'?: string;
 };
 
 export interface DropdownMenuProps<T = string, D = never> {
@@ -99,9 +101,11 @@ export interface DropdownMenuProps<T = string, D = never> {
 	searchDebounce?: number;
 	/** Text to be shown when no menu item exists */
 	emptyText?: string;
+	/** Test ID for the dropdown content (for e2e testing) */
+	'data-testid'?: string;
 }
 
-export interface DropdownMenuEmits<T = string> {
+export interface DropdownMenuEmits<T = string, D = never> {
 	/** Emitted when dropdown open state changes */
 	(e: 'update:modelValue', open: boolean): void;
 	/** Emitted when a menu item is selected */
@@ -110,6 +114,8 @@ export interface DropdownMenuEmits<T = string> {
 	(e: 'search', searchTerm: string, itemId?: T): void;
 	/** Emitted when a sub-menu opens or closes */
 	(e: 'submenu:toggle', itemId: T, open: boolean): void;
+	/** Emitted on mouseup event for an item (for wrapper compatibility) */
+	(e: 'item-mouseup', item: DropdownMenuItemProps<T, D>): void;
 }
 
 type SlotUiProps = { class: string };

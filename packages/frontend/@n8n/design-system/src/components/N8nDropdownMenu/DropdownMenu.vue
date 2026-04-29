@@ -8,8 +8,8 @@ import {
 } from 'reka-ui';
 import { computed, provide, ref, watch, useCssModule, nextTick, toRef } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nLoading from '@n8n/design-system/v2/components/Loading/Loading.vue';
+import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import N8nLoading from '@n8n/design-system/components/N8nLoading';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import { isAlign, isSide } from './DropdownMenu.typeguards';
@@ -17,6 +17,7 @@ import {
 	DropdownMenuPortalTargetKey,
 	type DropdownMenuProps,
 	type DropdownMenuSlots,
+	type DropdownMenuItemProps,
 } from './DropdownMenu.types';
 import N8nDropdownMenuItem from './DropdownMenuItem.vue';
 import N8nDropdownMenuSearch from './DropdownMenuSearch.vue';
@@ -43,6 +44,7 @@ const emit = defineEmits<{
 	select: [value: T];
 	search: [searchTerm: string, itemId?: T];
 	'submenu:toggle': [itemId: T, open: boolean];
+	'item-mouseup': [item: DropdownMenuItemProps<T, D>];
 }>();
 
 const slots = defineSlots<DropdownMenuSlots<T, D>>();
@@ -56,6 +58,9 @@ provide(
 // Handle controlled/uncontrolled state
 const internalOpen = ref(props.defaultOpen ?? false);
 const isControlled = computed(() => props.modelValue !== undefined);
+
+// For the data-testid prop (kebab-case in props interface)
+const dataTestid = computed(() => (props as unknown as Record<string, string>)['data-testid']);
 
 const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
@@ -185,6 +190,23 @@ const handleItemSearch = (term: string, itemId: T) => {
 	emit('search', term, itemId);
 };
 
+const handleItemMouseUp = (item: DropdownMenuItemProps<T, D>) => {
+	emit('item-mouseup', item);
+};
+
+// Hover trigger support
+const triggerHoverEnter = () => {
+	if (props.trigger === 'hover') {
+		open();
+	}
+};
+
+const triggerHoverLeave = () => {
+	if (props.trigger === 'hover') {
+		// Don't close immediately - let the content handle it via mouseleave
+	}
+};
+
 const open = () => {
 	internalOpen.value = true;
 	emit('update:modelValue', true);
@@ -257,16 +279,22 @@ defineExpose({ open, close });
 
 <template>
 	<DropdownMenuRoot :modal="modal" :open="openState" @update:open="handleOpenChange">
-		<!-- Use as-child only when custom trigger slot is provided -->
-		<DropdownMenuTrigger v-if="slots.trigger" as-child :disabled="disabled">
-			<slot name="trigger" />
-		</DropdownMenuTrigger>
-		<!-- Default trigger without as-child for proper attribute forwarding -->
-		<DropdownMenuTrigger v-else :class="$style.activator" :disabled="disabled">
-			<Icon v-if="activatorIcon?.type === 'icon'" :icon="activatorIcon.value" />
-			<span v-else-if="activatorIcon?.type === 'emoji'" :class="$style['activator-emoji']">
-				{{ activatorIcon.value }}
-			</span>
+		<DropdownMenuTrigger as-child :disabled="disabled">
+			<slot name="trigger" v-if="slots.trigger" />
+			<N8nButton
+				v-else
+				:icon="activatorIcon?.type === 'icon' ? activatorIcon.value : undefined"
+				:disabled="disabled"
+				:icon-only="true"
+				variant="ghost"
+				size="xsmall"
+				@pointerenter="triggerHoverEnter"
+				@pointerleave="triggerHoverLeave"
+			>
+				<template v-if="activatorIcon?.type === 'emoji'" #icon>
+					{{ activatorIcon.value }}
+				</template>
+			</N8nButton>
 		</DropdownMenuTrigger>
 
 		<component
@@ -277,6 +305,7 @@ defineExpose({ open, close });
 				:id="id"
 				ref="contentRef"
 				:class="[$style.content, extraPopperClass]"
+				:data-testid="dataTestid"
 				data-menu-content
 				:side="placementParts.side"
 				:align="placementParts.align"
@@ -336,6 +365,7 @@ defineExpose({ open, close });
 										@select="handleItemSelect"
 										@search="handleItemSearch"
 										@update:sub-menu-open="(open: boolean) => handleSubMenuOpenChange(index, open)"
+										@mouseup="handleItemMouseUp(item)"
 									>
 										<template v-if="slots['item-leading']" #item-leading="slotProps">
 											<slot name="item-leading" v-bind="slotProps" />
@@ -359,53 +389,94 @@ defineExpose({ open, close });
 </template>
 
 <style module lang="scss">
-// According to figma
-$menu_width: 180px;
-
-.activator {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: var(--spacing--xl);
-	height: var(--spacing--xl);
-	padding: 0;
-	border: none;
-	border-radius: var(--radius);
-	background-color: transparent;
-	color: var(--color--text);
-	cursor: pointer;
-	outline: none;
-
-	&:hover {
-		background-color: var(--color--background);
-	}
-
-	&:focus-visible {
-		box-shadow: 0 0 0 var(--spacing--5xs) var(--color--primary);
-	}
-
-	&[data-disabled] {
-		color: var(--color--text--tint-1);
-		cursor: not-allowed;
-	}
-}
-
-.activator-emoji {
-	font-size: var(--font-size--md);
-	line-height: 1;
-}
-
 .content {
+	--n8n--dropdown--offset--slide-x: 0;
+	--n8n--dropdown--offset--slide-y: 0;
+	--n8n--dropdown--offset--origin-x: center;
+	--n8n--dropdown--offset--origin-y: center;
+	--n8n--dropdown-menu-width: 24rem;
+
 	display: flex;
 	flex-direction: column;
-	width: $menu_width;
+	width: fit-content;
+	max-width: var(--n8n--dropdown-menu-width);
 	max-height: var(--reka-dropdown-menu-content-available-height);
 	overflow-y: auto;
-	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-2);
-	box-shadow: var(--shadow);
-	z-index: 9999;
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
+	box-shadow: var(--shadow--md), var(--shadow--outline);
+	will-change: transform, opacity;
+	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
+	z-index: 9998;
+
+	&[data-state='open'] {
+		animation-duration: var(--duration--snappy);
+		animation-timing-function: var(--easing--ease-out);
+		animation-name: dropdownMenuIn;
+	}
+
+	&[data-state='closed'] {
+		display: none;
+	}
+}
+
+.content[data-state='open'][data-side='top'] {
+	--n8n--dropdown--offset--slide-y: -2px;
+	--n8n--dropdown--offset--origin-y: bottom;
+}
+
+.content[data-state='open'][data-side='right'] {
+	--n8n--dropdown--offset--slide-x: 2px;
+	--n8n--dropdown--offset--origin-x: left;
+}
+
+.content[data-state='open'][data-side='bottom'] {
+	--n8n--dropdown--offset--slide-y: 2px;
+	--n8n--dropdown--offset--origin-y: top;
+}
+
+.content[data-state='open'][data-side='left'] {
+	--n8n--dropdown--offset--slide-x: -2px;
+	--n8n--dropdown--offset--origin-x: right;
+}
+
+.content[data-state='open'][data-side='top'][data-align='start'],
+.content[data-state='open'][data-side='bottom'][data-align='start'] {
+	--n8n--dropdown--offset--slide-x: -2px;
+	--n8n--dropdown--offset--origin-x: left;
+}
+
+.content[data-state='open'][data-side='top'][data-align='end'],
+.content[data-state='open'][data-side='bottom'][data-align='end'] {
+	--n8n--dropdown--offset--slide-x: 2px;
+	--n8n--dropdown--offset--origin-x: right;
+}
+
+.content[data-state='open'][data-side='left'][data-align='start'],
+.content[data-state='open'][data-side='right'][data-align='start'] {
+	--n8n--dropdown--offset--slide-y: -2px;
+	--n8n--dropdown--offset--origin-y: top;
+}
+
+.content[data-state='open'][data-side='left'][data-align='end'],
+.content[data-state='open'][data-side='right'][data-align='end'] {
+	--n8n--dropdown--offset--slide-y: 2px;
+	--n8n--dropdown--offset--origin-y: bottom;
+}
+
+@keyframes dropdownMenuIn {
+	from {
+		opacity: 0;
+		transform: translate(
+				var(--n8n--dropdown--offset--slide-x),
+				var(--n8n--dropdown--offset--slide-y)
+			)
+			scale(0.96);
+	}
+	to {
+		opacity: 1;
+		transform: translate(0, 0) scale(1);
+	}
 }
 
 .items-container {

@@ -179,7 +179,8 @@ const handleClick = (event: MouseEvent) => {
 			var(--button--shadow--hover);
 	}
 
-	&:active {
+	&:active,
+	&[aria-expanded='true'] {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),
