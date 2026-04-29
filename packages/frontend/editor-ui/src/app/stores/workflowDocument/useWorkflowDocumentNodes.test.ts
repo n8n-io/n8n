@@ -80,11 +80,11 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(workflowDocumentNodes.getNodeByName('MyNode')?.id).toBe(node.id);
 		});
 
-		it('nodes set via setNodes are readable via getNodes', () => {
+		it('nodes set via setNodes are readable via allNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
 
-			const nodes = workflowDocumentNodes.getNodes();
+			const nodes = workflowDocumentNodes.allNodes.value;
 			expect(nodes).toHaveLength(2);
 		});
 
