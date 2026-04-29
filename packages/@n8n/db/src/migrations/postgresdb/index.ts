@@ -168,6 +168,7 @@ import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
+import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -341,4 +342,5 @@ export const postgresMigrations: Migration[] = [
 	AddTracingContextToExecution1777045000000,
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	CreateEvaluationConfig1778100000000,
+	AddWorkflowVersionToTestRun1778100001000,
 ];
