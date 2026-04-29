@@ -15,7 +15,7 @@ import { builtinToolLabelKey } from '../session-timeline.utils';
 const i18n = useI18n();
 const router = useRouter();
 
-const props = defineProps<{ item: TimelineItem | null; agentName?: string }>();
+const props = defineProps<{ item: TimelineItem | null }>();
 
 const fullExecutionHref = computed((): string => {
 	if (
@@ -128,7 +128,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						i18n.baseText('agentSessions.timeline.user')
 					}}</template>
 					<template v-else-if="item.kind === 'agent'">{{
-						agentName ?? i18n.baseText('agentSessions.timeline.agent')
+						i18n.baseText('agentSessions.timeline.agent')
 					}}</template>
 					<template v-else>{{ i18n.baseText('agentSessions.timeline.suspended') }}</template>
 				</span>
@@ -161,6 +161,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 			<template v-if="item.kind === 'workflow'">
 				<WorkflowExecutionLogViewer
 					v-if="item.workflowExecutionId && item.workflowId"
+					:key="`${item.workflowId}:${item.workflowExecutionId}`"
 					:workflow-id="item.workflowId"
 					:workflow-execution-id="item.workflowExecutionId"
 				/>
@@ -223,7 +224,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 			</template>
 
 			<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
-				<VueMarkdown :source="item.content ?? ''" class="agent-markdown" />
+				<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
 			</template>
 		</template>
 
@@ -319,5 +320,107 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	color: var(--color--text--tint-1);
 	text-align: center;
 	padding: var(--spacing--sm);
+}
+
+/*
+ * Markdown rendering for User/Agent message content. Surrounding global resets
+ * zero out list padding, which collapsed nested bullets to the same x-position
+ * as their parents — restore sensible spacing and indents for lists, headings,
+ * paragraphs, and inline code so multi-level bullet output reads correctly.
+ */
+.markdown {
+	color: inherit;
+	font-size: var(--font-size--xs);
+	line-height: var(--line-height--xl);
+
+	p,
+	ul,
+	ol,
+	pre,
+	blockquote {
+		margin: var(--spacing--2xs) 0;
+
+		&:first-child {
+			margin-top: 0;
+		}
+
+		&:last-child {
+			margin-bottom: 0;
+		}
+	}
+
+	ul,
+	ol {
+		padding-left: var(--spacing--md);
+		list-style-position: outside;
+	}
+
+	ul {
+		list-style-type: disc;
+	}
+
+	ol {
+		list-style-type: decimal;
+	}
+
+	li {
+		margin: var(--spacing--5xs) 0;
+	}
+
+	ul ul,
+	ol ol,
+	ul ol,
+	ol ul {
+		margin-top: var(--spacing--5xs);
+		margin-bottom: 0;
+		padding-left: var(--spacing--sm);
+	}
+
+	ul ul {
+		list-style-type: circle;
+	}
+
+	ul ul ul {
+		list-style-type: square;
+	}
+
+	strong,
+	b {
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text--shade-1);
+	}
+
+	a {
+		color: var(--color--primary);
+		text-decoration: underline;
+	}
+
+	code {
+		font-family: monospace;
+		font-size: var(--font-size--2xs);
+		padding: 0 var(--spacing--5xs);
+		background-color: var(--color--foreground--tint-2);
+		border-radius: var(--radius--sm);
+	}
+
+	pre {
+		font-family: monospace;
+		font-size: var(--font-size--2xs);
+		padding: var(--spacing--2xs);
+		background-color: var(--color--foreground--tint-2);
+		border-radius: var(--radius);
+		overflow-x: auto;
+
+		code {
+			padding: 0;
+			background: none;
+		}
+	}
+
+	blockquote {
+		border-left: 2px solid var(--color--foreground--shade-1);
+		padding-left: var(--spacing--2xs);
+		color: var(--color--text--tint-1);
+	}
 }
 </style>

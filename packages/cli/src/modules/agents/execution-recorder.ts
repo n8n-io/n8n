@@ -228,6 +228,11 @@ export class ExecutionRecorder {
 	 * Record a discrete `tool-result` chunk from the stream. Closes the
 	 * matching open timeline entry by `toolCallId` (preferred) or by name as
 	 * a fallback.
+	 *
+	 * On HITL/approval resume, the SDK replays the `tool-result` for the
+	 * pending call without a preceding `tool-call`, so there is no open
+	 * timeline entry to close. In that case we synthesize one from the
+	 * registry so workflow rows and execution-log links still render.
 	 */
 	private recordToolResult(
 		toolCallId: string,
@@ -263,6 +268,35 @@ export class ExecutionRecorder {
 					pendingTimeline.workflowExecutionId = execId;
 				}
 			}
+			return;
 		}
+
+		this.flushTextBuffer();
+		const entry = this.registry.get(name);
+		const now = Date.now();
+		const synthesized: TimelineEvent = {
+			type: 'tool-call',
+			kind: entry?.kind ?? 'tool',
+			name,
+			toolCallId,
+			input: undefined,
+			output,
+			startTime: now,
+			endTime: now,
+			success: !isError,
+			workflowId: entry?.workflowId,
+			workflowName: entry?.workflowName,
+			triggerType: entry?.triggerType,
+			nodeType: entry?.nodeType,
+			nodeTypeVersion: entry?.nodeTypeVersion,
+			nodeDisplayName: entry?.nodeDisplayName,
+		};
+		if (synthesized.kind === 'workflow' && isRecord(output)) {
+			const execId = output.executionId;
+			if (typeof execId === 'string') {
+				synthesized.workflowExecutionId = execId;
+			}
+		}
+		this.timeline.push(synthesized);
 	}
 }

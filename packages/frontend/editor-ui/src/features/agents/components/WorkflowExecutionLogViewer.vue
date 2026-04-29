@@ -152,6 +152,7 @@ const selectedError = computed((): NodeErrorViewError | null => {
 // Snapshot of the workflowsStore's execution data before we hijack it on mount.
 // We restore it on unmount so navigating back to the editor doesn't surprise the user.
 let previousWorkflowExecutionData: typeof workflowsStore.workflowExecutionData | null = null;
+let unmounted = false;
 
 onMounted(async () => {
 	previousWorkflowExecutionData = workflowsStore.workflowExecutionData;
@@ -159,7 +160,12 @@ onMounted(async () => {
 		// RunData / NodeErrorView need node-type metadata to render properly — load
 		// before fetching the execution so the panes are ready when data arrives.
 		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+		if (unmounted) return;
 		const result = await executionsStore.fetchExecution(props.workflowExecutionId);
+		// If the user closed the panel or selected another row while the fetch
+		// was in flight, the unmount hook has already restored the previous
+		// execution data — writing it now would clobber the real workflow state.
+		if (unmounted) return;
 		if (!result) {
 			errorMessage.value = i18n.baseText('agentSessions.workflowLog.unavailable');
 		} else {
@@ -174,13 +180,15 @@ onMounted(async () => {
 			if (first) selected.value = first;
 		}
 	} catch {
+		if (unmounted) return;
 		errorMessage.value = i18n.baseText('agentSessions.workflowLog.unavailable');
 	} finally {
-		loading.value = false;
+		if (!unmounted) loading.value = false;
 	}
 });
 
 onBeforeUnmount(() => {
+	unmounted = true;
 	// Restore whatever execution data was in the store before we hijacked it.
 	workflowState.setWorkflowExecutionData(previousWorkflowExecutionData);
 });

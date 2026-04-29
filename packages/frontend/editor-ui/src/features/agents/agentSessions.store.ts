@@ -10,7 +10,7 @@ import {
 } from './composables/useAgentThreadsApi';
 
 const ITEMS_PER_PAGE = 20;
-const AUTO_REFRESH_INTERVAL_MS = 4_000;
+const AUTO_REFRESH_INTERVAL_MS = 2_000;
 
 export const useAgentSessionsStore = defineStore('agentSessions', () => {
 	const threads = ref<ExecutionThread[]>([]);
@@ -54,6 +54,44 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		}
 	}
 
+	/**
+	 * Background refresh used by the polling timer and visibility-change
+	 * handler. Unlike `fetchThreads` it:
+	 *   - Does not flip `loading` (avoids flashing the "Load more" button's
+	 *     spinner on every tick).
+	 *   - Merges the latest first page into the existing list by id rather
+	 *     than replacing it, so threads loaded via "Load more" are preserved
+	 *     across ticks.
+	 *   - Leaves `nextCursor` untouched once the user has paginated — the
+	 *     existing cursor still points past everything we've loaded, while
+	 *     the cursor returned by a fresh first-page fetch would rewind us.
+	 */
+	async function refreshThreads(projectId: string, agentId?: string) {
+		const key = keyFor(projectId, agentId ?? null);
+		if (latestKey !== null && latestKey !== key) return;
+		try {
+			const rootStore = useRootStore();
+			const page = await listThreads(
+				rootStore.restApiContext,
+				projectId,
+				ITEMS_PER_PAGE,
+				undefined,
+				agentId,
+			);
+			if (latestKey !== key) return;
+			const seen = new Set(page.threads.map((t) => t.id));
+			const tail = threads.value.filter((t) => !seen.has(t.id));
+			threads.value = [...page.threads, ...tail];
+			// Only adopt the new cursor if we hadn't paginated yet — otherwise
+			// the existing cursor already points past what we've loaded.
+			if (tail.length === 0) {
+				nextCursor.value = page.nextCursor;
+			}
+		} catch {
+			// Swallow refresh errors — the next tick will retry
+		}
+	}
+
 	async function loadMore(projectId: string, agentId?: string) {
 		if (!nextCursor.value || loading.value) return;
 		const key = keyFor(projectId, agentId ?? null);
@@ -71,7 +109,14 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 				agentId,
 			);
 			if (latestKey !== key) return;
-			threads.value.push(...page.threads);
+			// Dedupe by id when appending: the server's cursor can be
+			// inclusive of the boundary, returning the last item of the
+			// previous page as the first item of the next one. Without this
+			// the duplicate flashes in the table until the next refresh tick
+			// merges it away.
+			const seen = new Set(threads.value.map((t) => t.id));
+			const fresh = page.threads.filter((t) => !seen.has(t.id));
+			threads.value.push(...fresh);
 			nextCursor.value = page.nextCursor;
 		} finally {
 			if (latestKey === key) loading.value = false;
@@ -97,12 +142,8 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		stopAutoRefresh();
 		if (!autoRefresh.value || !currentProjectId) return;
 		refreshTimer = setTimeout(async () => {
-			try {
-				if (currentProjectId) {
-					await fetchThreads(currentProjectId, currentAgentId ?? undefined);
-				}
-			} catch {
-				// Swallow refresh errors so the cycle continues
+			if (currentProjectId) {
+				await refreshThreads(currentProjectId, currentAgentId ?? undefined);
 			}
 			startAutoRefresh();
 		}, AUTO_REFRESH_INTERVAL_MS);
@@ -131,6 +172,7 @@ export const useAgentSessionsStore = defineStore('agentSessions', () => {
 		loading,
 		autoRefresh,
 		fetchThreads,
+		refreshThreads,
 		loadMore,
 		getThreadDetail,
 		deleteThread,

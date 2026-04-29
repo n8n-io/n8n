@@ -60,7 +60,7 @@ describe('computeIdleRanges', () => {
 });
 
 describe('itemFilterKey', () => {
-	it('returns literal kind for non-tool events', () => {
+	it('returns the literal kind for every event', () => {
 		expect(itemFilterKey(item({ kind: 'user' }))).toBe('user');
 		expect(itemFilterKey(item({ kind: 'agent' }))).toBe('agent');
 		expect(itemFilterKey(item({ kind: 'working-memory' }))).toBe('working-memory');
@@ -71,12 +71,10 @@ describe('itemFilterKey', () => {
 		expect(itemFilterKey(item({ kind: 'workflow', toolName: 'run-wf' }))).toBe('workflow');
 	});
 
-	it('returns `tool:<name>` for generic tool events', () => {
-		expect(itemFilterKey(item({ kind: 'tool', toolName: 'http' }))).toBe('tool:http');
-	});
-
-	it('uses "unknown" for a tool event missing toolName', () => {
-		expect(itemFilterKey(item({ kind: 'tool' }))).toBe('tool:unknown');
+	it('groups all generic tool events under a single "tool" key', () => {
+		expect(itemFilterKey(item({ kind: 'tool', toolName: 'http' }))).toBe('tool');
+		expect(itemFilterKey(item({ kind: 'tool', toolName: 'search' }))).toBe('tool');
+		expect(itemFilterKey(item({ kind: 'tool' }))).toBe('tool');
 	});
 });
 

@@ -22,7 +22,6 @@ import {
 	sessionBounds,
 	itemFilterKey,
 	kindColorToken,
-	builtinToolLabelKey,
 } from '@/features/agents/session-timeline.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
@@ -53,16 +52,13 @@ const idleRanges = computed(() => computeIdleRanges(items.value));
 const bounds = computed(() => sessionBounds(items.value));
 
 function labelForKey(key: string): string {
-	if (key.startsWith('tool:')) {
-		const toolName = key.slice('tool:'.length);
-		const builtinKey = builtinToolLabelKey(toolName);
-		return builtinKey ? i18n.baseText(builtinKey) : toolName;
-	}
 	switch (key) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
 		case 'agent':
 			return i18n.baseText('agentSessions.timeline.agent');
+		case 'tool':
+			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
@@ -243,11 +239,7 @@ function continueChat() {
 				/>
 			</div>
 			<div v-if="selectedItem" :class="$style.detailPanel">
-				<SessionDetailPanel
-					:item="selectedItem"
-					:agent-name="thread?.agentName"
-					@close="selectedIndex = null"
-				/>
+				<SessionDetailPanel :item="selectedItem" @close="selectedIndex = null" />
 			</div>
 		</div>
 	</div>

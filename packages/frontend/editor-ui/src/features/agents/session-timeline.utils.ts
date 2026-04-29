@@ -23,9 +23,9 @@ export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
 }
 
 export function itemFilterKey(item: TimelineItem): string {
-	if (item.kind === 'workflow') return 'workflow';
-	if (item.kind === 'node') return 'node';
-	if (item.kind === 'tool') return `tool:${item.toolName ?? 'unknown'}`;
+	// All tool-call kinds collapse to one filter entry per kind so the dropdown
+	// stays compact regardless of how many distinct tools the agent uses; the
+	// search input handles per-tool drill-down.
 	return item.kind;
 }
 

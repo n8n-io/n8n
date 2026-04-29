@@ -216,6 +216,39 @@ describe('ExecutionRecorder — workflow-tool timeline tags', () => {
 		expect(tc.workflowExecutionId).toBeUndefined();
 	});
 
+	it('synthesizes a tool-call timeline entry when tool-result arrives without a preceding tool-call', () => {
+		const registry = buildToolRegistry([wfTool('run-wf', 'wf-1', 'Run WF')]);
+		const rec = new ExecutionRecorder(registry);
+
+		// HITL/approval resume: SDK replays the result without a tool-call chunk
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't-resume',
+			toolName: 'run-wf',
+			output: { executionId: 'e-99', status: 'success' },
+			isError: false,
+		} as never);
+		rec.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+		const record = rec.getMessageRecord();
+		const tc = record.timeline.find((e) => e.type === 'tool-call');
+
+		expect(tc).toBeDefined();
+		expect(tc?.kind).toBe('workflow');
+		expect(tc?.name).toBe('run-wf');
+		expect(tc?.toolCallId).toBe('t-resume');
+		expect(tc?.workflowId).toBe('wf-1');
+		expect(tc?.workflowName).toBe('Run WF');
+		expect(tc?.workflowExecutionId).toBe('e-99');
+		expect(tc?.success).toBe(true);
+		expect(record.toolCalls).toHaveLength(1);
+		expect(record.toolCalls[0]).toEqual({
+			name: 'run-wf',
+			input: undefined,
+			output: { executionId: 'e-99', status: 'success' },
+		});
+	});
+
 	it('leaves workflowExecutionId undefined when the output is an error with no executionId', () => {
 		const registry = buildToolRegistry([wfTool('run-wf', 'wf-1', 'Run WF')]);
 		const rec = new ExecutionRecorder(registry);
