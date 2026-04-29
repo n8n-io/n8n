@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
-import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import type { ExecuteOpBindParam } from '../helpers/interfaces';
 import {
@@ -258,7 +258,7 @@ describe('configureQueryRunner', () => {
 				constructExecutionMetaData,
 			},
 		} as unknown as IExecuteFunctions;
-		const node = {} as any;
+		const node = {} as unknown as INode;
 		const queryRunner = configureQueryRunner.call(context, node, false, pool);
 
 		const queries = [
@@ -298,7 +298,7 @@ describe('configureQueryRunner', () => {
 				constructExecutionMetaData,
 			},
 		} as unknown as IExecuteFunctions;
-		const node = {} as any;
+		const node = {} as unknown as INode;
 		const queryRunner = configureQueryRunner.call(context, node, false, pool);
 
 		const queries = [
