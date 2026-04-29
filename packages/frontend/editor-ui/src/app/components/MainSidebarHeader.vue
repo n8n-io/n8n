@@ -100,6 +100,8 @@ const {
 			ref="createBtn"
 			data-test-id="universal-add"
 			:menu="menu"
+			:teleport="true"
+			:submenu-class="$style.createMenu"
 			@select="handleMenuSelect"
 		>
 			<N8nIconButton
@@ -241,5 +243,9 @@ const {
 
 .upgradeButton {
 	margin-left: auto;
+}
+
+.createMenu {
+	z-index: var(--floating-ui--z) !important;
 }
 </style>

@@ -68,6 +68,8 @@ onMounted(() => {
 
 .sidebar {
 	grid-area: sidebar;
+	position: relative;
+	z-index: var(--app-sidebar--z);
 }
 
 .aside {
