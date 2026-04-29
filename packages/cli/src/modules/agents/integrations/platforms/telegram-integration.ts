@@ -36,11 +36,6 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
 
-	readonly description =
-		'Use this tool when you need to present rich interactive UI in Telegram. Available: buttons, text sections, ' +
-		'dividers, key-value fields. For multiple choices, use one button per option. ' +
-		"The user's response (button click) is returned to you.";
-
 	readonly needsShortCallbackData = true;
 
 	readonly disableStreaming = true;

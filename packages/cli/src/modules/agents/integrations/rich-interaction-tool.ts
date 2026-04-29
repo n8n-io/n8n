@@ -7,10 +7,48 @@ import { ChatIntegrationRegistry } from './agent-chat-integration';
 // Conservative default — works on every platform that supports buttons.
 // Used when the tool is constructed without a platform hint.
 const DEFAULT_SUPPORTED_COMPONENTS = ['section', 'button', 'divider', 'fields'];
-const DEFAULT_DESCRIPTION =
-	'Present rich interactive UI to the user in chat. Available: buttons, ' +
-	'text sections, dividers, key-value fields. For choices, use one button per option. ' +
-	"The user's response (button click) is returned to you.";
+
+/**
+ * System-prompt directive paired with the tool. Tool descriptions answer
+ * "what does this tool do?" but the LLM weights system instructions much
+ * more strongly when deciding "should I use this tool over plain text?".
+ * The injection point in `agents.service.ts` wraps this in a `<built_in_rules>`
+ * block so it's clearly delineated from the user's own agent instructions.
+ */
+export const RICH_INTERACTION_INSTRUCTION_FRAGMENT =
+	'When you have an image URL, gif, or content that benefits from visual ' +
+	'structure (key-value summaries, info cards, choice options), call the ' +
+	'rich_interaction tool to render it as a card instead of pasting URLs or ' +
+	'text directly. With no buttons or selects, the card simply displays and ' +
+	'you continue immediately — no need to wait for a user response.';
+
+/**
+ * Compose the tool description from the supported components. The same
+ * behavioural wording is used everywhere — only the available component
+ * list is platform-specific. This keeps the LLM-facing contract identical
+ * regardless of which integration injects the tool.
+ */
+function buildDescription(supportedComponents: string[]): string {
+	const componentList = supportedComponents.join(', ');
+	return [
+		'Render a card to the user in chat. Use this whenever you want the user to ',
+		'SEE rich content rather than read plain text — images and gifs, formatted ',
+		'info cards, key-value summaries, or sets of choices.',
+		'\n\n',
+		`Available components: ${componentList}.`,
+		'\n\n',
+		'Behavior depends on which components you include:',
+		'\n',
+		' • Display-only (no button, select, or radio_select): the card renders in chat ',
+		'and you continue immediately. Use this for posting gifs, screenshots, summary cards.',
+		'\n',
+		' • Interactive (any button, select, or radio_select): the card renders and the ',
+		"run pauses; the user's click/selection is returned as your tool result.",
+		'\n\n',
+		'Prefer this tool over plain text whenever you have an image URL, a gif, or ',
+		'content that benefits from visual structure.',
+	].join('');
+}
 
 // ---------------------------------------------------------------------------
 // Shared schemas
@@ -78,7 +116,7 @@ function buildComponentSchema(supportedComponents: string[]) {
 export function createRichInteractionTool(platform?: string) {
 	const integration = platform ? Container.get(ChatIntegrationRegistry).get(platform) : undefined;
 	const supportedComponents = integration?.supportedComponents ?? DEFAULT_SUPPORTED_COMPONENTS;
-	const description = integration?.description ?? DEFAULT_DESCRIPTION;
+	const description = buildDescription(supportedComponents);
 	const componentSchema = buildComponentSchema(supportedComponents);
 
 	const inputSchema = z.object({

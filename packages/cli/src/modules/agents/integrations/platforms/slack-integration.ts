@@ -30,11 +30,6 @@ export class SlackIntegration extends AgentChatIntegration {
 		'fields',
 	];
 
-	readonly description =
-		'Present rich interactive UI to the user in Slack. Use buttons, ' +
-		'dropdown selects, radio buttons, images, or formatted content cards. ' +
-		"The user's response (button click or selection) is returned to you.";
-
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
