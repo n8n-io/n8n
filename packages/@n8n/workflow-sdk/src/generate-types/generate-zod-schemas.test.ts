@@ -490,6 +490,71 @@ describe('extractDefaultsForDisplayOptions', () => {
 	});
 });
 
+describe('mapPropertyToZodSchema for multipleValues', () => {
+	it('wraps repeatable string fields in an array schema', () => {
+		const prop: NodeProperty = {
+			name: 'attendees',
+			displayName: 'Attendees',
+			type: 'string',
+			default: '',
+			typeOptions: {
+				multipleValues: true,
+			},
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('z.array(stringOrExpression)');
+	});
+
+	it('applies noDataExpression to repeatable fields before wrapping the array schema', () => {
+		const prop: NodeProperty = {
+			name: 'resource',
+			displayName: 'Resource',
+			type: 'string',
+			default: '',
+			noDataExpression: true,
+			typeOptions: {
+				multipleValues: true,
+			},
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('z.array(z.string())');
+	});
+
+	it('wraps nested repeatable string fields in an array schema', () => {
+		const prop: NodeProperty = {
+			name: 'attendeesUi',
+			displayName: 'Attendees',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'values',
+					displayName: 'Values',
+					values: [
+						{
+							name: 'attendees',
+							displayName: 'Attendees',
+							type: 'string',
+							default: '',
+							typeOptions: {
+								multipleValues: true,
+							},
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toContain('attendees: z.array(stringOrExpression).optional()');
+	});
+});
+
 describe('stripDiscriminatorKeysFromDisplayOptions', () => {
 	it('removes discriminator keys from show conditions', () => {
 		const result = stripDiscriminatorKeysFromDisplayOptions(
