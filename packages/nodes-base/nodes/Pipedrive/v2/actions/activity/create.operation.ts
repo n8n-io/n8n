@@ -91,8 +91,8 @@ const properties: INodeProperties[] = [
 				description: 'ID of the person this activity will be associated with',
 			},
 			{
-				displayName: 'User Name or ID',
-				name: 'user_id',
+				displayName: 'Owner Name or ID',
+				name: 'owner_id',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUserIds',
