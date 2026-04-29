@@ -14,7 +14,11 @@ import { z } from 'zod';
 export interface CliArgs {
 	/** TimeoutMs is defined per iteration, not as the total timeout for all iterations */
 	timeoutMs: number;
-	baseUrl: string;
+	/** One or more n8n base URLs. Multiple URLs partition test cases across
+	 *  parallel lanes — each lane keeps its own MAX_CONCURRENT_BUILDS=4 cap, so
+	 *  total system throughput scales linearly with lane count. Pass via
+	 *  comma-separated `--base-url`. */
+	baseUrls: string[];
 	email?: string;
 	password?: string;
 	verbose: boolean;
@@ -41,7 +45,7 @@ export interface CliArgs {
 
 const cliArgsSchema = z.object({
 	timeoutMs: z.number().int().positive().default(600_000),
-	baseUrl: z.string().url().default('http://localhost:5678'),
+	baseUrls: z.array(z.string().url()).min(1).default(['http://localhost:5678']),
 	email: z.string().optional(),
 	password: z.string().optional(),
 	verbose: z.boolean().default(false),
@@ -64,7 +68,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 
 	return {
 		timeoutMs: validated.timeoutMs,
-		baseUrl: validated.baseUrl,
+		baseUrls: validated.baseUrls,
 		email: validated.email,
 		password: validated.password,
 		verbose: validated.verbose,
@@ -84,7 +88,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 
 interface RawArgs {
 	timeoutMs: number;
-	baseUrl: string;
+	baseUrls: string[];
 	email?: string;
 	password?: string;
 	verbose: boolean;
@@ -100,7 +104,7 @@ interface RawArgs {
 function parseRawArgs(argv: string[]): RawArgs {
 	const result: RawArgs = {
 		timeoutMs: 600_000,
-		baseUrl: 'http://localhost:5678',
+		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
 		outputDir: undefined,
@@ -119,10 +123,15 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 
-			case '--base-url':
-				result.baseUrl = nextArg(argv, i, '--base-url');
+			case '--base-url': {
+				const raw = nextArg(argv, i, '--base-url');
+				result.baseUrls = raw
+					.split(',')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0);
 				i++;
 				break;
+			}
 
 			case '--email':
 				result.email = nextArg(argv, i, '--email');
