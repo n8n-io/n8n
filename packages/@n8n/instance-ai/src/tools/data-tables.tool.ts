@@ -66,19 +66,32 @@ function isNameConflictError(error: unknown): boolean {
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
+const projectIdDescribe =
+	'Project ID. For list/create, scopes the operation to this project (defaults to personal). For id-based actions (schema, query, delete, add-column, delete-column, rename-column, insert/update/delete-rows), disambiguates when `dataTableId` is a name that exists in multiple accessible projects. Ignored when `dataTableId` is a UUID; rejected when the UUID belongs to a different project.';
+
 const listAction = z.object({
 	action: z.literal('list').describe('List data tables in a project'),
-	projectId: z.string().optional().describe('Project ID. Defaults to personal project.'),
+	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
 const schemaAction = z.object({
 	action: z.literal('schema').describe('Get column definitions for a data table'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
 const queryAction = z.object({
 	action: z.literal('query').describe('Query rows from a data table with optional filtering'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.optional().describe('Row filter conditions'),
 	limit: z
 		.number()
@@ -93,7 +106,7 @@ const queryAction = z.object({
 const createAction = z.object({
 	action: z.literal('create').describe('Create a new data table with typed columns'),
 	name: z.string().min(1).max(128).describe('Table name'),
-	projectId: z.string().optional().describe('Project ID. Defaults to personal project.'),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	columns: z
 		.array(
 			z.object({
@@ -107,32 +120,57 @@ const createAction = z.object({
 
 const deleteAction = z.object({
 	action: z.literal('delete').describe('Permanently delete a data table and all its rows'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 });
 
 const addColumnAction = z.object({
 	action: z.literal('add-column').describe('Add a new column to an existing data table'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	columnName: z.string().describe('Column name (alphanumeric + underscores)'),
 	type: columnTypeSchema.describe('Column data type'),
 });
 
 const deleteColumnAction = z.object({
 	action: z.literal('delete-column').describe('Remove a column from a data table'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
 });
 
 const renameColumnAction = z.object({
 	action: z.literal('rename-column').describe('Rename a column in a data table'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	columnId: z.string().describe('ID of the column'),
 	newName: z.string().describe('New column name'),
 });
 
 const insertRowsAction = z.object({
 	action: z.literal('insert-rows').describe('Insert rows into a data table'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	rows: z
 		.array(z.record(z.unknown()))
 		.min(1)
@@ -142,7 +180,12 @@ const insertRowsAction = z.object({
 
 const updateRowsAction = z.object({
 	action: z.literal('update-rows').describe('Update rows matching a filter in a data table'),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchema.describe('Row filter conditions'),
 	data: z.record(z.unknown()).describe('Column values to set on matching rows'),
 });
@@ -153,7 +196,12 @@ const deleteRowsAction = z.object({
 		.describe(
 			'Delete rows matching a filter from a data table. At least one filter condition is required.',
 		),
-	dataTableId: z.string().describe('ID of the data table'),
+	dataTableId: z
+		.string()
+		.describe(
+			'ID (UUID) of the data table. A name also works as a fallback, but pass an id when possible.',
+		),
+	projectId: z.string().optional().describe(projectIdDescribe),
 	filter: filterSchemaWithMinOne.describe('Row filter conditions'),
 });
 
@@ -190,7 +238,9 @@ async function handleSchema(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'schema' }>,
 ) {
-	const columns = await context.dataTableService.getSchema(input.dataTableId);
+	const columns = await context.dataTableService.getSchema(input.dataTableId, {
+		projectId: input.projectId,
+	});
 	return { columns };
 }
 
@@ -202,6 +252,7 @@ async function handleQuery(
 		filter: input.filter,
 		limit: input.limit,
 		offset: input.offset,
+		projectId: input.projectId,
 	});
 
 	const returnedRows = result.data.length;
@@ -301,7 +352,7 @@ async function handleDelete(
 	}
 
 	// State 3: Approved or always_allow — execute
-	await context.dataTableService.delete(input.dataTableId);
+	await context.dataTableService.delete(input.dataTableId, { projectId: input.projectId });
 	return { success: true };
 }
 
@@ -335,10 +386,11 @@ async function handleAddColumn(
 	}
 
 	// State 3: Approved or always_allow — execute
-	const column = await context.dataTableService.addColumn(input.dataTableId, {
-		name: input.columnName,
-		type: input.type,
-	});
+	const column = await context.dataTableService.addColumn(
+		input.dataTableId,
+		{ name: input.columnName, type: input.type },
+		{ projectId: input.projectId },
+	);
 	return { column };
 }
 
@@ -372,7 +424,9 @@ async function handleDeleteColumn(
 	}
 
 	// State 3: Approved or always_allow — execute
-	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId);
+	await context.dataTableService.deleteColumn(input.dataTableId, input.columnId, {
+		projectId: input.projectId,
+	});
 	return { success: true };
 }
 
@@ -406,7 +460,9 @@ async function handleRenameColumn(
 	}
 
 	// State 3: Approved or always_allow — execute
-	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName);
+	await context.dataTableService.renameColumn(input.dataTableId, input.columnId, input.newName, {
+		projectId: input.projectId,
+	});
 	return { success: true };
 }
 
@@ -440,7 +496,9 @@ async function handleInsertRows(
 	}
 
 	// State 3: Approved or always_allow — execute
-	return await context.dataTableService.insertRows(input.dataTableId, input.rows);
+	return await context.dataTableService.insertRows(input.dataTableId, input.rows, {
+		projectId: input.projectId,
+	});
 }
 
 async function handleUpdateRows(
@@ -473,7 +531,9 @@ async function handleUpdateRows(
 	}
 
 	// State 3: Approved or always_allow — execute
-	return await context.dataTableService.updateRows(input.dataTableId, input.filter, input.data);
+	return await context.dataTableService.updateRows(input.dataTableId, input.filter, input.data, {
+		projectId: input.projectId,
+	});
 }
 
 async function handleDeleteRows(
@@ -515,7 +575,9 @@ async function handleDeleteRows(
 	}
 
 	// State 3: Approved or always_allow — execute
-	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter);
+	const result = await context.dataTableService.deleteRows(input.dataTableId, input.filter, {
+		projectId: input.projectId,
+	});
 	return {
 		success: true,
 		deletedCount: result.deletedCount,

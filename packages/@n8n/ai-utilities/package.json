@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -43,7 +43,7 @@
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/classic": "1.0.5",
+    "@langchain/classic": "1.0.27",
     "@langchain/community": "catalog:",
     "@langchain/textsplitters": "1.0.1",
     "@langchain/openai": "catalog:",

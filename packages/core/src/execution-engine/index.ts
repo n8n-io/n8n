@@ -92,4 +92,5 @@ export * from './otel-execution-context';
 export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
 export { ExecutionContextService } from './execution-context.service';
+export { establishExecutionContext } from './execution-context';
 export { isEngineRequest } from './requests-response';
