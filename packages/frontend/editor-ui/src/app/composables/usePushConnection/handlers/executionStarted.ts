@@ -1,4 +1,10 @@
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
+import {
+	createExecutionDataId,
+	disposeExecutionDataStore,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	createWorkflowDocumentId,
@@ -6,7 +12,10 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { parse } from 'flatted';
 import { createRunExecutionData } from 'n8n-workflow';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	syncWorkflowExecutionDataFromExecutionStore,
+	type WorkflowState,
+} from '@/app/composables/useWorkflowState';
 
 /**
  * Handles the 'executionStarted' event, which happens when a workflow is executed.
@@ -35,9 +44,31 @@ export async function executionStarted(
 		options.workflowState.setActiveExecutionId(data.executionId);
 	}
 
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(data.executionId));
+	const inProgressExecutionDataStore = useExecutionDataStore(
+		createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+	);
+	const inProgressExecution = inProgressExecutionDataStore.execution;
+	if (data.executionId !== IN_PROGRESS_EXECUTION_ID && inProgressExecution) {
+		executionDataStore.setExecution({
+			...inProgressExecution,
+			id: data.executionId,
+		});
+		inProgressExecutionDataStore.resetExecutionData();
+		disposeExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID));
+		syncWorkflowExecutionDataFromExecutionStore(data.executionId);
+	} else if (
+		!executionDataStore.execution?.data &&
+		workflowsStore.workflowExecutionData?.id === data.executionId &&
+		workflowsStore.workflowExecutionData.data
+	) {
+		executionDataStore.setExecution(workflowsStore.workflowExecutionData);
+		syncWorkflowExecutionDataFromExecutionStore(data.executionId);
+	}
+
 	// Initialize or reinitialize workflowExecutionData to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
-	if (!workflowsStore.workflowExecutionData?.data || needsInit) {
+	if (!executionDataStore.execution?.data || (needsInit && !inProgressExecution)) {
 		const wf = workflowsStore.workflow;
 		const workflowDocumentStore = workflowsStore.workflowId
 			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
@@ -65,7 +96,14 @@ export async function executionStarted(
 		});
 	}
 
-	if (workflowsStore.workflowExecutionData?.data && data.flattedRunData) {
-		workflowsStore.workflowExecutionData.data.resultData.runData = parse(data.flattedRunData);
+	if (executionDataStore.execution?.data && data.flattedRunData) {
+		executionDataStore.setExecutionRunData({
+			...executionDataStore.execution.data,
+			resultData: {
+				...executionDataStore.execution.data.resultData,
+				runData: parse(data.flattedRunData),
+			},
+		});
+		syncWorkflowExecutionDataFromExecutionStore(data.executionId);
 	}
 }

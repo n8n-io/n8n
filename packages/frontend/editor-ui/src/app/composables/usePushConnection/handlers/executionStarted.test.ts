@@ -8,9 +8,14 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { mockedStore } from '@/__tests__/utils';
 import type { ExecutionStarted } from '@n8n/api-types/push/execution';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { mock } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
+import { createRunExecutionData } from 'n8n-workflow';
+import { stringify } from 'flatted';
+import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
 describe('executionStarted', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
@@ -60,6 +65,66 @@ describe('executionStarted', () => {
 				workflowData: expect.objectContaining({ id: 'wf-123', name: 'My Workflow' }),
 			}),
 		);
+	});
+
+	it('should initialize execution data in the matching execution data store', async () => {
+		workflowsStore.activeExecutionId = null;
+		workflowsStore.workflow.id = 'wf-123';
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
+		workflowDocumentStore.setName('My Workflow');
+		const workflowState = useWorkflowState();
+
+		await executionStarted(makeEvent('exec-1'), { workflowState });
+
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		expect(executionDataStore.execution).toEqual(
+			expect.objectContaining({
+				id: 'exec-1',
+				status: 'running',
+				workflowData: expect.objectContaining({ id: 'wf-123', name: 'My Workflow' }),
+			}),
+		);
+		expect(workflowsStore.workflowExecutionData).toBe(executionDataStore.execution);
+	});
+
+	it('should copy in-progress execution data to the backend execution id', async () => {
+		workflowsStore.activeExecutionId = null;
+		const inProgressExecutionDataStore = useExecutionDataStore(
+			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+		);
+		inProgressExecutionDataStore.setExecution(
+			createTestWorkflowExecutionResponse({
+				id: IN_PROGRESS_EXECUTION_ID,
+				data: createRunExecutionData({
+					resultData: {
+						runData: { Existing: [createTestTaskData({ startTime: 1, executionIndex: 0 })] },
+					},
+				}),
+			}),
+		);
+
+		await executionStarted(makeEvent('exec-1'), { workflowState: useWorkflowState() });
+
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		expect(executionDataStore.execution?.id).toBe('exec-1');
+		expect(executionDataStore.executionRunData?.Existing).toHaveLength(1);
+		expect(
+			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution,
+		).toBeNull();
+	});
+
+	it('should write flatted run data to the execution data store', async () => {
+		workflowsStore.activeExecutionId = null;
+		const event = makeEvent('exec-1');
+		event.data.flattedRunData = stringify({
+			Node1: [createTestTaskData({ startTime: 1, executionIndex: 0 })],
+		});
+
+		await executionStarted(event, { workflowState: useWorkflowState() });
+
+		expect(
+			useExecutionDataStore(createExecutionDataId('exec-1')).executionRunData?.Node1,
+		).toHaveLength(1);
 	});
 
 	it('should not reinitialize when same execution ID arrives', async () => {

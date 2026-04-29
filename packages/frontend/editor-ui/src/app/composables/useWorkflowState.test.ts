@@ -3,6 +3,7 @@ import { useWorkflowState, type WorkflowState } from './useWorkflowState';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { createRunExecutionData } from 'n8n-workflow';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -14,38 +15,71 @@ describe('useWorkflowState', () => {
 		workflowState = useWorkflowState();
 	});
 
+	describe('setWorkflowExecutionData', () => {
+		it('writes execution data to the execution data store and mirrors legacy fields', () => {
+			const execution = createTestWorkflowExecutionResponse({ id: 'exec-1' });
+
+			workflowState.setWorkflowExecutionData(execution);
+
+			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+			expect(executionDataStore.execution).toEqual(execution);
+			expect(workflowsStore.workflowExecutionData).toEqual(execution);
+			expect(workflowsStore.workflowExecutionPairedItemMappings).toEqual(
+				executionDataStore.executionPairedItemMappings,
+			);
+		});
+
+		it('clears the active execution data store when setting execution data to null', () => {
+			const execution = createTestWorkflowExecutionResponse({ id: 'exec-1' });
+			workflowState.setWorkflowExecutionData(execution);
+
+			workflowState.setWorkflowExecutionData(null);
+
+			expect(useExecutionDataStore(createExecutionDataId('exec-1')).execution).toBeNull();
+			expect(workflowsStore.workflowExecutionData).toBeNull();
+			expect(workflowsStore.workflowExecutionPairedItemMappings).toEqual({});
+		});
+	});
+
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
-			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-				status: 'running',
-				startedAt: new Date('2023-01-01T09:00:00Z'),
-				stoppedAt: undefined,
-				data: createRunExecutionData({
-					resultData: {
-						runData: {
-							node1: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'error' }),
-								createTestTaskData({ executionStatus: 'running' }),
-							],
-							node2: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'waiting' }),
-							],
+			workflowState.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					id: 'exec-1',
+					status: 'running',
+					startedAt: new Date('2023-01-01T09:00:00Z'),
+					stoppedAt: undefined,
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'error' }),
+									createTestTaskData({ executionStatus: 'running' }),
+								],
+								node2: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'waiting' }),
+								],
+							},
 						},
-					},
+					}),
 				}),
-			});
+			);
 		});
 
 		it('should remove non successful node runs', () => {
 			workflowState.markExecutionAsStopped();
 
 			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+			const executionRunData = useExecutionDataStore(
+				createExecutionDataId('exec-1'),
+			).executionRunData;
 			expect(runData?.node1).toHaveLength(1);
 			expect(runData?.node1[0].executionStatus).toBe('success');
 			expect(runData?.node2).toHaveLength(1);
 			expect(runData?.node2[0].executionStatus).toBe('success');
+			expect(executionRunData?.node1).toHaveLength(1);
 		});
 
 		it('should update execution status, startedAt and stoppedAt when data is provided', () => {

@@ -1,11 +1,14 @@
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
-import type { WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	syncWorkflowExecutionDataFromExecutionStore,
+	type WorkflowState,
+} from '@/app/composables/useWorkflowState';
 
 /**
  * Handles the 'nodeExecuteAfter' event, which happens after a node is executed.
@@ -14,7 +17,6 @@ export async function nodeExecuteAfter(
 	{ data: pushData }: NodeExecuteAfter,
 	{ workflowState }: { workflowState: WorkflowState },
 ) {
-	const workflowsStore = useWorkflowsStore();
 	const assistantStore = useAssistantStore();
 
 	/**
@@ -50,7 +52,10 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	workflowsStore.updateNodeExecutionStatus(pushDataWithPlaceholderOutputData);
+	useExecutionDataStore(createExecutionDataId(pushData.executionId)).updateNodeExecutionStatus(
+		pushDataWithPlaceholderOutputData,
+	);
+	syncWorkflowExecutionDataFromExecutionStore(pushData.executionId);
 	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);

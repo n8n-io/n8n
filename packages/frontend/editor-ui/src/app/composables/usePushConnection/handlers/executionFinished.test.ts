@@ -6,10 +6,11 @@ import {
 	getRunExecutionData,
 	handleExecutionFinishedWithSuccessOrOther,
 	handleExecutionFinishedWithErrorOrCanceled,
+	setRunExecutionData,
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { IRunExecutionData, ITaskData, INodeTypeDescription } from 'n8n-workflow';
-import { EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { createRunExecutionData, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import type { Router } from 'vue-router';
@@ -23,6 +24,9 @@ import { mockedStore } from '@/__tests__/utils';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowState } from '@/app/composables/useWorkflowState';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 
 const opts = {
 	workflowState: mock<WorkflowState>(),
@@ -39,6 +43,18 @@ vi.mock('@/app/composables/useToast', () => ({
 vi.mock('@/app/composables/useDocumentTitle', () => ({
 	useDocumentTitle: () => ({
 		setDocumentTitle: vi.fn(),
+	}),
+}));
+
+vi.mock('@/app/composables/useExternalHooks', () => ({
+	useExternalHooks: () => ({
+		run: vi.fn(),
+	}),
+}));
+
+vi.mock('@/app/composables/useNodeHelpers', () => ({
+	useNodeHelpers: () => ({
+		updateNodesExecutionIssues: vi.fn(),
 	}),
 }));
 
@@ -235,6 +251,42 @@ describe('getRunExecutionData()', () => {
 		const result = getRunExecutionData(execution);
 
 		expect(result.pushRef).toBeUndefined();
+	});
+});
+
+describe('setRunExecutionData()', () => {
+	it('writes final run data to the execution data store and mirrors legacy fields', () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		const workflowState = useWorkflowState();
+		const initialExecution = createTestWorkflowExecutionResponse({
+			id: 'exec-1',
+			status: 'running',
+		});
+		workflowState.setWorkflowExecutionData(initialExecution);
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				lastNodeExecuted: 'Node 1',
+				runData: {
+					'Node 1': [createTestTaskData({ executionStatus: 'success' })],
+				},
+			},
+		});
+
+		setRunExecutionData(
+			{
+				...initialExecution,
+				id: 'exec-1',
+				status: 'success',
+				stoppedAt: new Date('2026-04-29T10:00:00.000Z'),
+			},
+			runExecutionData,
+			workflowState,
+		);
+
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		expect(executionDataStore.execution?.status).toBe('success');
+		expect(executionDataStore.executionRunData?.['Node 1']).toHaveLength(1);
+		expect(useWorkflowsStore().workflowExecutionData).toBe(executionDataStore.execution);
 	});
 });
 

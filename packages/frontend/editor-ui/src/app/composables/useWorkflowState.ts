@@ -1,5 +1,10 @@
 import * as workflowsApi from '@/app/api/workflows';
-import { DEFAULT_NEW_WORKFLOW_NAME, WorkflowStateKey } from '@/app/constants';
+import {
+	DEFAULT_NEW_WORKFLOW_NAME,
+	IN_PROGRESS_EXECUTION_ID,
+	WorkflowStateKey,
+} from '@/app/constants';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -7,7 +12,6 @@ import {
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
-import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
@@ -21,6 +25,16 @@ import { type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { inject } from 'vue';
 import { useDocumentTitle } from './useDocumentTitle';
 
+export function syncWorkflowExecutionDataFromExecutionStore(executionId: string) {
+	const ws = useWorkflowsStore();
+	const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
+
+	ws.workflowExecutionData = executionDataStore.execution;
+	ws.workflowExecutionPairedItemMappings = executionDataStore.executionPairedItemMappings;
+	ws.workflowExecutionResultDataLastUpdate = executionDataStore.executionResultDataLastUpdate;
+	ws.workflowExecutionStartedData = executionDataStore.executionStartedData;
+}
+
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
 	const workflowStateStore = useWorkflowStateStore();
@@ -31,15 +45,20 @@ export function useWorkflowState() {
 	////
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		if (workflowResultData?.data?.waitTill) {
-			delete workflowResultData.data.resultData.runData[
-				workflowResultData.data.resultData.lastNodeExecuted as string
-			];
+		if (!workflowResultData) {
+			const executionId =
+				ws.activeExecutionId ?? ws.workflowExecutionData?.id ?? IN_PROGRESS_EXECUTION_ID;
+			useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
+			ws.workflowExecutionData = null;
+			ws.workflowExecutionPairedItemMappings = {};
+			ws.workflowExecutionResultDataLastUpdate = Date.now();
+			ws.workflowExecutionStartedData = undefined;
+			return;
 		}
-		ws.workflowExecutionData = workflowResultData;
-		ws.workflowExecutionPairedItemMappings = getPairedItemsMapping(workflowResultData);
-		ws.workflowExecutionResultDataLastUpdate = Date.now();
-		ws.workflowExecutionStartedData = undefined;
+
+		const executionDataStore = useExecutionDataStore(createExecutionDataId(workflowResultData.id));
+		executionDataStore.setExecution(workflowResultData);
+		syncWorkflowExecutionDataFromExecutionStore(workflowResultData.id);
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
@@ -88,16 +107,29 @@ export function useWorkflowState() {
 			createWorkflowDocumentId(ws.workflow.id),
 		);
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-		ws.workflowExecutionStartedData = undefined;
+		const executionId = ws.activeExecutionId ?? ws.workflowExecutionData?.id;
+		if (executionId) {
+			const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
+			executionDataStore.clearExecutionStartedData();
+			syncWorkflowExecutionDataFromExecutionStore(executionId);
+		} else {
+			ws.workflowExecutionStartedData = undefined;
+		}
 
 		// TODO(ckolb): confirm this works across files?
 		clearPopupWindowState();
 
-		if (!ws.workflowExecutionData) {
+		if (!ws.workflowExecutionData?.id) {
 			return;
 		}
 
-		const runData = ws.workflowExecutionData.data?.resultData.runData ?? {};
+		const executionDataStore = useExecutionDataStore(
+			createExecutionDataId(ws.workflowExecutionData.id),
+		);
+		const execution = executionDataStore.execution;
+		if (!execution) return;
+
+		const runData = execution.data?.resultData.runData ?? {};
 
 		for (const nodeName in runData) {
 			runData[nodeName] = runData[nodeName].filter(
@@ -106,10 +138,13 @@ export function useWorkflowState() {
 		}
 
 		if (stopData) {
-			ws.workflowExecutionData.status = stopData.status;
-			ws.workflowExecutionData.startedAt = stopData.startedAt;
-			ws.workflowExecutionData.stoppedAt = stopData.stoppedAt;
+			execution.status = stopData.status;
+			execution.startedAt = stopData.startedAt;
+			execution.stoppedAt = stopData.stoppedAt;
 		}
+
+		executionDataStore.setExecution(execution);
+		syncWorkflowExecutionDataFromExecutionStore(execution.id);
 	}
 
 	function resetState() {

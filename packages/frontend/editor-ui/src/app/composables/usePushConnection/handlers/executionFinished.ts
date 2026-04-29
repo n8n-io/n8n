@@ -14,6 +14,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -45,7 +46,10 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
-import { type WorkflowState } from '@/app/composables/useWorkflowState';
+import {
+	syncWorkflowExecutionDataFromExecutionStore,
+	type WorkflowState,
+} from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 export type SimplifiedExecution = Pick<
@@ -487,7 +491,8 @@ export function setRunExecutionData(
 		id: execution.id,
 		stoppedAt: execution.stoppedAt,
 	});
-	workflowsStore.setWorkflowExecutionRunData(runExecutionData);
+	useExecutionDataStore(createExecutionDataId(execution.id)).setExecutionRunData(runExecutionData);
+	syncWorkflowExecutionDataFromExecutionStore(execution.id);
 	workflowState.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that
