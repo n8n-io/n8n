@@ -2399,6 +2399,60 @@ describe('generate-types', () => {
 	});
 
 	// =========================================================================
+	// UX-fork variant collapse
+	// =========================================================================
+
+	describe('tryMergeUxForkVariants', () => {
+		it('collapses a clean partition (BigQuery sqlQuery shape) by dropping the constraint', () => {
+			// hide: useLegacySql=[true]  ⊕  show: useLegacySql=[true]  ⇒  always visible
+			const a = { hide: { useLegacySql: [true] } };
+			const b = { show: { useLegacySql: [true] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({});
+			expect(generateTypes.tryMergeUxForkVariants(b, a)).toEqual({});
+		});
+
+		it('reduces hide values to the set difference when show is a subset', () => {
+			// hide: K=[a,b,c]  ⊕  show: K=[a]  ⇒  hide: K=[b,c]
+			const a = { hide: { mode: ['a', 'b', 'c'] } };
+			const b = { show: { mode: ['a'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				hide: { mode: ['b', 'c'] },
+			});
+		});
+
+		it('preserves shared show/hide entries while collapsing the fork key', () => {
+			const a = {
+				show: { resource: ['data'] },
+				hide: { useLegacySql: [true] },
+			};
+			const b = {
+				show: { resource: ['data'], useLegacySql: [true] },
+			};
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				show: { resource: ['data'] },
+			});
+		});
+
+		it('returns null for a multi-key fork (Cortex-shape)', () => {
+			// Two keys differ — too complex to collapse safely.
+			const a = { show: { mode: ['a'], extra: ['x'] } };
+			const b = { show: { mode: ['b'], extra: ['y'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+
+		it('returns null when one side is missing displayOptions', () => {
+			expect(generateTypes.tryMergeUxForkVariants(undefined, { show: { mode: ['a'] } })).toBeNull();
+			expect(generateTypes.tryMergeUxForkVariants({ show: { mode: ['a'] } }, undefined)).toBeNull();
+		});
+
+		it('returns null when the fork key appears in both show clauses (no clean partition)', () => {
+			const a = { show: { mode: ['a'] } };
+			const b = { show: { mode: ['b'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+	});
+
+	// =========================================================================
 	// Edge Case Tests
 	// =========================================================================
 
