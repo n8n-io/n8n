@@ -27,10 +27,8 @@ export class SidebarPage {
 		return this.visibleNavigationMenu.getByTestId('navigation-submenu').filter({ hasText: label });
 	}
 
-	getVisibleNavigationSubmenuItem(label: string): Locator {
-		return this.visibleNavigationMenu
-			.getByTestId('navigation-submenu-item')
-			.filter({ hasText: label });
+	getVisibleNavigationLink(label: string, hrefPart: string): Locator {
+		return this.visibleNavigationMenu.locator(`a[href*="${hrefPart}"]`).filter({ hasText: label });
 	}
 
 	async clickHomeMenuItem() {
@@ -58,13 +56,13 @@ export class SidebarPage {
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
 		await this.getVisibleNavigationSubmenu('Workflow').hover();
-		await this.getVisibleNavigationSubmenuItem(projectName).click();
+		await this.getVisibleNavigationLink(projectName, '/workflow/new').click();
 	}
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
 		await this.getVisibleNavigationSubmenu('Credential').hover();
-		await this.getVisibleNavigationSubmenuItem(projectName).click();
+		await this.getVisibleNavigationLink(projectName, '/credentials/create').click();
 	}
 
 	getProjectMenuItems(): Locator {
