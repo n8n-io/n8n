@@ -189,9 +189,6 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
-		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, restartExecutionId);
-
 		// Establish the execution context before persisting to the DB.
 		// activeExecutions.add() -> executionPersistence.create() writes
 		// data.executionData to the DB; any header masking or runtimeData
@@ -203,7 +200,7 @@ export class WorkflowRunner {
 		// the outer IRunExecutionData is created with `executionData: null`
 		// so the trigger-item stack is undefined here; nothing to mask yet,
 		// the worker will establish context once it populates the stack.
-
+		let establishContextError: (ExecutionError & { node?: INode }) | undefined;
 		if (data.executionData?.executionData) {
 			// Deliberately lightweight: no pinData, no staticData loading,
 			// no additionalData. establishExecutionContext only needs the
@@ -232,9 +229,16 @@ export class WorkflowRunner {
 				// stack can still contain raw header data. Drop it before
 				// activeExecutions.add() persists the execution row.
 				data.executionData.executionData.nodeExecutionStack = [];
-				await this.failExecution(data, executionId, error, responsePromise);
-				return executionId;
+				establishContextError = error as ExecutionError & { node?: INode };
 			}
+		}
+
+		// Register a new execution
+		const executionId = await this.activeExecutions.add(data, restartExecutionId);
+
+		if (establishContextError) {
+			await this.failExecution(data, executionId, establishContextError, responsePromise);
+			return executionId;
 		}
 
 		const { id: workflowId, nodes } = data.workflowData;
