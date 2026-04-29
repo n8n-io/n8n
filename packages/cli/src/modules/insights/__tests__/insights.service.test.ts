@@ -6,6 +6,8 @@ import type { InstanceSettings } from 'n8n-core';
 
 import { TypeToNumber } from '../database/entities/insights-shared';
 import type { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
+import type { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
+import { InsightsRaw } from '../database/entities/insights-raw';
 import type { InsightsCompactionService } from '../insights-compaction.service';
 import type { InsightsPruningService } from '../insights-pruning.service';
 import { InsightsService } from '../insights.service';
@@ -14,6 +16,7 @@ describe('InsightsService', () => {
 	let insightsService: InsightsService;
 
 	let mockInsightsByPeriodRepository: MockProxy<InsightsByPeriodRepository>;
+	let mockInsightsRawRepository: MockProxy<InsightsRawRepository>;
 	let mockCompactionService: MockProxy<InsightsCompactionService>;
 	let mockPruningService: MockProxy<InsightsPruningService>;
 	let mockLicenseState: MockProxy<LicenseState>;
@@ -23,13 +26,18 @@ describe('InsightsService', () => {
 		jest.clearAllMocks();
 
 		mockInsightsByPeriodRepository = mock<InsightsByPeriodRepository>();
+		mockInsightsRawRepository = mock<InsightsRawRepository>();
 		mockCompactionService = mock<InsightsCompactionService>();
 		mockPruningService = mock<InsightsPruningService>();
 		mockLicenseState = mock<LicenseState>();
 		mockInstanceSettings = mock<InstanceSettings>();
 
+		// Default: no uncompacted raw data
+		mockInsightsRawRepository.find.mockResolvedValue([]);
+
 		insightsService = new InsightsService(
 			mockInsightsByPeriodRepository,
+			mockInsightsRawRepository,
 			mockCompactionService,
 			mockPruningService,
 			mockLicenseState,
@@ -731,6 +739,31 @@ describe('InsightsService', () => {
 						unit: 'minute',
 						deviation: 50,
 					});
+				});
+
+				it('should include uncompacted raw insights within the date range', async () => {
+					mockInsightsByPeriodRepository.getPreviousAndCurrentPeriodTypeAggregates.mockResolvedValue(
+						createMockAggregates({
+							currentSuccess: 5,
+							currentTimeSaved: 30,
+							previousSuccess: 3,
+							previousTimeSaved: 15,
+						}),
+					);
+
+					mockInsightsRawRepository.find.mockResolvedValue([
+						Object.assign(new InsightsRaw(), {
+							type: 'time_saved_min' as const,
+							value: 5,
+							timestamp: new Date('2024-01-04T10:00:00Z'),
+						}),
+					]);
+
+					const result = await insightsService.getInsightsSummary({ startDate, endDate });
+
+					// 30 compacted + 5 raw = 35
+					expect(result.timeSaved.value).toBe(35);
+					expect(result.timeSaved.unit).toBe('minute');
 				});
 
 				it('should calculate deviation with previous period data', async () => {

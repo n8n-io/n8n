@@ -9,6 +9,7 @@ import { UserError } from 'n8n-workflow';
 import type { PeriodUnit, TypeUnit } from './database/entities/insights-shared';
 import { NumberToType, TypeToNumber } from './database/entities/insights-shared';
 import { InsightsByPeriodRepository } from './database/repositories/insights-by-period.repository';
+import { InsightsRawRepository } from './database/repositories/insights-raw.repository';
 import { InsightsCompactionService } from './insights-compaction.service';
 import { InsightsPruningService } from './insights-pruning.service';
 
@@ -16,6 +17,7 @@ import { InsightsPruningService } from './insights-pruning.service';
 export class InsightsService {
 	constructor(
 		private readonly insightsByPeriodRepository: InsightsByPeriodRepository,
+		private readonly insightsRawRepository: InsightsRawRepository,
 		private readonly compactionService: InsightsCompactionService,
 		private readonly pruningService: InsightsPruningService,
 		private readonly licenseState: LicenseState,
@@ -96,6 +98,17 @@ export class InsightsService {
 
 			data[period].byType[NumberToType[type]] = total_value ? Number(total_value) : 0;
 		});
+
+		// Union in uncompacted raw data so dashboard reflects executions
+		// within the flush interval (~30s) instead of waiting 60min for compaction
+		const rawInsights = await this.insightsRawRepository.find();
+		for (const row of rawInsights) {
+			const rowDate = new Date(row.timestamp);
+			if (rowDate >= startDate && rowDate < endDate) {
+				const type = row.type;
+				data.current.byType[type] = (data.current.byType[type] ?? 0) + row.value;
+			}
+		}
 
 		// Get values with defaults for missing data
 		const getValueByType = (period: 'current' | 'previous', type: TypeUnit) =>
