@@ -32,9 +32,7 @@ jobs:
     env:
       # Each port hosts an independent n8n container; the eval CLI partitions
       # test cases across them, multiplying total throughput by the lane count.
-      # 5 lanes / 9 test cases → distribution 2-2-2-2-1 (slowest lane gets 6
-      # builds vs 9 with 3 or 4 lanes — first meaningful wall-clock win).
-      LANE_PORTS: '5678,5679,5680,5681,5682'
+      LANE_PORTS: '5678,5679,5680'
     permissions:
       contents: read
       pull-requests: write
