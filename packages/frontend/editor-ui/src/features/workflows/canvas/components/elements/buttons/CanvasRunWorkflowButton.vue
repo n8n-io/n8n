@@ -37,7 +37,7 @@ const props = withDefaults(
 	{ embedded: false },
 );
 
-const buttonVariant = computed(() => (props.embedded ? 'ghost' : 'solid'));
+const buttonVariant = computed(() => (props.embedded ? 'subtle' : 'solid'));
 
 const i18n = useI18n();
 
