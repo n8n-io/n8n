@@ -9,7 +9,6 @@ import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
 import { N8nButton, N8nIcon, N8nSlider, N8nTooltip } from '@n8n/design-system';
-import { ElSwitch } from 'element-plus';
 
 const props = defineProps<{
 	workflowId: string;
@@ -26,24 +25,31 @@ const cancellingTestRun = ref<boolean>(false);
 
 const runningTestRun = computed(() => runs.value.find((run) => run.status === 'running'));
 
-const parallelEnabledModel = computed({
-	get: () => parallelEvalStore.isParallel(props.workflowId),
-	set: (value: boolean) => parallelEvalStore.setParallel(props.workflowId, value),
-});
-
 const concurrencyModel = computed({
 	get: () => parallelEvalStore.concurrencyValue(props.workflowId),
 	set: (value: number) => parallelEvalStore.setConcurrencyValue(props.workflowId, value),
 });
 
+// Slider value 1 = sequential, > 1 = concurrent. The slider is the single
+// source of truth — no separate toggle. The current count is folded into
+// the label ("Concurrent · 3") so the standalone numeric readout can be
+// dropped from the layout.
+const concurrencyLabel = computed(() =>
+	concurrencyModel.value > 1
+		? locale.baseText('evaluation.runInParallel.label.concurrent', {
+				interpolate: { count: String(concurrencyModel.value) },
+			})
+		: locale.baseText('evaluation.runInParallel.label.sequential'),
+);
+
 async function runTest() {
 	try {
 		// When the rollout flag is off, omit `concurrency` entirely so the BE
 		// safety net is a no-op and behaviour matches the legacy sequential
-		// path. Flag-on cohort sends an explicit value derived from the per-
-		// workflow checkbox + input state.
+		// path. Flag-on cohort sends the slider value (1 = sequential, >1 =
+		// concurrent fan-out).
 		const options = parallelEvalStore.isFeatureEnabled
-			? { concurrency: parallelEvalStore.effectiveConcurrency(props.workflowId) }
+			? { concurrency: concurrencyModel.value }
 			: undefined;
 		await evaluationStore.startTestRun(props.workflowId, options);
 	} catch (error) {
@@ -100,15 +106,9 @@ watch(runningTestRun, (run) => {
 				:class="$style.parallelControls"
 				data-test-id="parallel-eval-controls"
 			>
-				<span :class="$style.concurrencyLabel">
-					{{ locale.baseText('evaluation.runInParallel.concurrency.label') }}
+				<span :class="$style.concurrencyLabel" data-test-id="run-in-parallel-mode-label">
+					{{ concurrencyLabel }}
 				</span>
-				<ElSwitch
-					v-model="parallelEnabledModel"
-					:aria-label="locale.baseText('evaluation.runInParallel.label')"
-					:class="$style.parallelToggle"
-					data-test-id="run-in-parallel-toggle"
-				/>
 				<N8nTooltip placement="top" :content="locale.baseText('evaluation.runInParallel.tooltip')">
 					<N8nIcon
 						icon="circle-help"
@@ -122,14 +122,10 @@ watch(runningTestRun, (run) => {
 					:min="1"
 					:max="10"
 					:step="1"
-					:disabled="!parallelEnabledModel"
 					show-stops
 					:class="$style.concurrencySlider"
 					data-test-id="run-in-parallel-concurrency"
 				/>
-				<span :class="$style.concurrencyValue" data-test-id="run-in-parallel-concurrency-value">
-					{{ concurrencyModel }}
-				</span>
 			</div>
 			<N8nButton
 				variant="subtle"
@@ -206,12 +202,6 @@ watch(runningTestRun, (run) => {
 	margin-right: var(--spacing--md);
 }
 
-.parallelToggle {
-	// Override element-plus's default green active state with n8n's brand
-	// orange so the toggle reads as part of the n8n design system.
-	--el-switch-on-color: var(--color--primary);
-}
-
 .tooltipIcon {
 	color: var(--color--text--tint-1);
 	cursor: help;
@@ -220,20 +210,20 @@ watch(runningTestRun, (run) => {
 .concurrencyLabel {
 	color: var(--color--text);
 	font-size: var(--font-size--sm);
+	// Tabular numerals so the width doesn't jitter as the user drags the
+	// slider through different digits.
+	font-variant-numeric: tabular-nums;
+	// Reserve enough room for the longest variant ("Concurrent · 10") so
+	// the slider doesn't shift left/right as the label content changes.
+	min-width: 100px;
 }
 
 .concurrencySlider {
-	width: 140px;
+	// `flex: 0 0 160px` (basis 160px, no grow/shrink) wins over element-plus's
+	// default `.el-slider { width: 100% }` because flex-basis is what the flex
+	// algorithm uses for sizing. Plain `width: 160px` would lose the cascade.
+	flex: 0 0 160px;
 	margin: 0 var(--spacing--2xs);
-}
-
-.concurrencyValue {
-	display: inline-block;
-	min-width: 14px;
-	color: var(--color--text);
-	font-size: var(--font-size--sm);
-	font-variant-numeric: tabular-nums;
-	text-align: right;
 }
 
 .runs {
