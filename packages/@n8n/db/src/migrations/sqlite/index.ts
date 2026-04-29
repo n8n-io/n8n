@@ -162,6 +162,7 @@ import { AddTracingContextToExecution1777045000000 } from '../common/17770450000
 import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
+import { AddPendingAccessRequestUniqueIndex1778500000000 } from '../common/1778500000000-AddPendingAccessRequestUniqueIndex';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -329,6 +330,7 @@ const sqliteMigrations: Migration[] = [
 	AddExecutionDeduplicationKey1778000000000,
 	AddTracingContextToExecution1777045000000,
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
+	AddPendingAccessRequestUniqueIndex1778500000000,
 ];
 
 export { sqliteMigrations };

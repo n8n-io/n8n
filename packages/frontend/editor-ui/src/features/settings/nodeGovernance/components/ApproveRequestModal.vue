@@ -212,52 +212,52 @@ function onPolicySelectionChange(value: string | null) {
 .content {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: var(--spacing--sm);
 }
 
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	gap: var(--spacing--2xs);
 }
 
 .detailsCard {
 	background: var(--color--background--light-3);
 	border: 1px solid var(--color--foreground);
-	border-radius: 8px;
-	padding: 16px;
+	border-radius: var(--radius--xs);
+	padding: var(--spacing--sm);
 }
 
 .detailRow {
 	display: flex;
-	gap: 10px;
-	margin-bottom: 6px;
-	font-size: 13px;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--3xs);
+	font-size: var(--font-size--xs);
 }
 
 .detailLabel {
 	color: var(--color--text--tint-1);
-	min-width: 100px;
+	min-width: 6.25rem;
 }
 
 .detailValue {
 	color: var(--color--text);
-	font-weight: 500;
+	font-weight: var(--font-weight--medium);
 }
 
 .justificationRow {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
-	margin-top: 10px;
-	padding-top: 10px;
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--2xs);
+	padding-top: var(--spacing--2xs);
 	border-top: 1px solid var(--color--foreground);
 }
 
 .justificationText {
 	color: var(--color--text);
-	font-size: 13px;
-	line-height: 1.5;
+	font-size: var(--font-size--xs);
+	line-height: var(--line-height--xl);
 	margin: 0;
 }
 
@@ -268,6 +268,6 @@ function onPolicySelectionChange(value: string | null) {
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	gap: 10px;
+	gap: var(--spacing--2xs);
 }
 </style>

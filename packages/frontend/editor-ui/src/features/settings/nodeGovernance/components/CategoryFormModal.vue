@@ -25,7 +25,13 @@ const modalState = computed(() => uiStore.modalsById[CATEGORY_FORM_MODAL_KEY]);
 const isOpen = computed(() => modalState.value?.open ?? false);
 const modalData = computed(() => (modalState.value?.data ?? {}) as Record<string, any>);
 const isEdit = computed(() => modalData.value.category !== undefined);
-const modalTitle = computed(() => (isEdit.value ? 'Edit Category' : 'Create Category'));
+const modalTitle = computed(() =>
+	i18n.baseText(
+		isEdit.value
+			? 'nodeGovernance.categories.form.editTitle'
+			: 'nodeGovernance.categories.form.createTitle',
+	),
+);
 
 // Watch when modal opens and populate form data
 // Use immediate: true because the component is only mounted when the modal is already open
@@ -120,28 +126,44 @@ function closeModal() {
 		<template #content>
 			<div :class="$style.form">
 				<div :class="$style.field">
-					<label :class="$style.label">Display Name</label>
-					<N8nInput v-model="displayName" :class="$style.input" placeholder="e.g., External APIs" />
+					<label :class="$style.label">{{
+						i18n.baseText('nodeGovernance.categories.form.displayName')
+					}}</label>
+					<N8nInput
+						v-model="displayName"
+						:class="$style.input"
+						:placeholder="i18n.baseText('nodeGovernance.categories.form.displayNamePlaceholder')"
+					/>
 				</div>
 
 				<div :class="$style.field">
-					<label :class="$style.label">Slug</label>
-					<N8nInput v-model="slug" :class="$style.input" placeholder="e.g., external-api" />
+					<label :class="$style.label">{{
+						i18n.baseText('nodeGovernance.categories.form.slug')
+					}}</label>
+					<N8nInput
+						v-model="slug"
+						:class="$style.input"
+						:placeholder="i18n.baseText('nodeGovernance.categories.form.slugPlaceholder')"
+					/>
 				</div>
 
 				<div :class="$style.field">
-					<label :class="$style.label">Description</label>
+					<label :class="$style.label">{{
+						i18n.baseText('nodeGovernance.categories.form.description')
+					}}</label>
 					<N8nInput
 						v-model="description"
 						:class="$style.input"
 						type="textarea"
 						:rows="3"
-						placeholder="Optional description..."
+						:placeholder="i18n.baseText('nodeGovernance.categories.form.descriptionPlaceholder')"
 					/>
 				</div>
 
 				<div :class="$style.field">
-					<label :class="$style.label">Color</label>
+					<label :class="$style.label">{{
+						i18n.baseText('nodeGovernance.categories.form.color')
+					}}</label>
 					<div :class="$style.colorField">
 						<input v-model="color" type="color" :class="$style.colorPicker" />
 						<N8nInput v-model="color" :class="$style.colorInput" placeholder="#22C55E" />
@@ -152,9 +174,15 @@ function closeModal() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" :disabled="loading" @click="closeModal"> Cancel </N8nButton>
+				<N8nButton type="secondary" :disabled="loading" @click="closeModal">
+					{{ i18n.baseText('generic.cancel') }}
+				</N8nButton>
 				<N8nButton :loading="loading" @click="onSubmit">
-					{{ isEdit ? 'Save' : 'Create' }}
+					{{
+						isEdit
+							? i18n.baseText('nodeGovernance.categories.form.save')
+							: i18n.baseText('nodeGovernance.categories.form.create')
+					}}
 				</N8nButton>
 			</div>
 		</template>
@@ -165,18 +193,18 @@ function closeModal() {
 .form {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: var(--spacing--sm);
 }
 
 .field {
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: var(--spacing--3xs);
 }
 
 .label {
-	font-weight: 500;
-	font-size: 13px;
+	font-weight: var(--font-weight--medium);
+	font-size: var(--font-size--xs);
 	color: var(--color--text--shade-1);
 }
 
@@ -186,14 +214,14 @@ function closeModal() {
 
 .colorField {
 	display: flex;
-	gap: 10px;
+	gap: var(--spacing--2xs);
 	align-items: center;
 }
 
 .colorPicker {
-	width: 44px;
-	height: 36px;
-	padding: 2px;
+	width: 2.75rem;
+	height: 2.25rem;
+	padding: var(--spacing--5xs);
 	border: 1px solid var(--color--foreground);
 	border-radius: var(--radius--lg);
 	cursor: pointer;
@@ -205,7 +233,7 @@ function closeModal() {
 
 	&::-webkit-color-swatch {
 		border: none;
-		border-radius: 4px;
+		border-radius: var(--radius--3xs);
 	}
 }
 
@@ -216,6 +244,6 @@ function closeModal() {
 .footer {
 	display: flex;
 	justify-content: flex-end;
-	gap: 10px;
+	gap: var(--spacing--2xs);
 }
 </style>

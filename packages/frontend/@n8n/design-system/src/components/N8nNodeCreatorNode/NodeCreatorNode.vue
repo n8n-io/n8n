@@ -46,7 +46,6 @@ const { t } = useI18n();
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
 				<N8nActionPill v-if="tag?.pill" size="small" :text="tag.text" />
-				<slot name="afterTitle" />
 				<ElTag
 					v-else-if="tag"
 					:class="$style.tag"
@@ -57,6 +56,7 @@ const { t } = useI18n();
 				>
 					{{ tag.text }}
 				</ElTag>
+				<slot name="afterTitle" />
 				<N8nBadge v-if="isNew" theme="success">{{ t('nodeCreatorNode.new') }}</N8nBadge>
 				<N8nIcon
 					v-if="isTrigger"

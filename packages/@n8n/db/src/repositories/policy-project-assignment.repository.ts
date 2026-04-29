@@ -40,16 +40,19 @@ export class PolicyProjectAssignmentRepository extends Repository<PolicyProjectA
 	}
 
 	async replaceAssignments(policyId: string, projectIds: string[], entityManager?: EntityManager) {
-		const em = entityManager ?? this.manager;
+		const run = async (em: EntityManager) => {
+			await em.delete(PolicyProjectAssignment, { policyId });
 
-		// Delete existing assignments
-		await em.delete(PolicyProjectAssignment, { policyId });
+			if (projectIds.length > 0) {
+				return await this.createAssignments(policyId, projectIds, em);
+			}
 
-		// Create new assignments if any
-		if (projectIds.length > 0) {
-			return await this.createAssignments(policyId, projectIds, em);
-		}
+			return [];
+		};
 
-		return [];
+		// If a transactional EntityManager is supplied, run within the caller's transaction.
+		// Otherwise wrap delete+create in our own transaction so a partial failure doesn't
+		// leave the policy with no assignments.
+		return entityManager ? await run(entityManager) : await this.manager.transaction(run);
 	}
 }

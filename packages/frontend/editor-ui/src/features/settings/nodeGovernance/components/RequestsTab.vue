@@ -59,6 +59,15 @@ watch(searchQuery, () => {
 	currentPage.value = 1;
 });
 
+// Clamp currentPage when the filtered list shrinks (e.g. after approval/rejection or filtering)
+// or when itemsPerPage changes, so we never show an out-of-range empty page.
+watch([() => filteredRequests.value.length, itemsPerPage], () => {
+	const totalPages = Math.max(1, Math.ceil(filteredRequests.value.length / itemsPerPage.value));
+	if (currentPage.value > totalPages) {
+		currentPage.value = totalPages;
+	}
+});
+
 // Auto-scroll to top when page changes
 watch(currentPage, () => {
 	void nextTick(() => {

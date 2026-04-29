@@ -15,6 +15,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { QueryFailedError } from '@n8n/typeorm';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -579,7 +580,7 @@ export class NodeGovernanceService {
 		user: User,
 		entityManager?: EntityManager,
 	) {
-		// Check for existing pending request
+		// Optimistic pre-check to short-circuit the common path without throwing.
 		const existingRequest = await this.accessRequestRepository.findPendingByUserAndNode(
 			user.id,
 			data.nodeType,
@@ -591,12 +592,29 @@ export class NodeGovernanceService {
 			return { alreadyExists: true, request: existingRequest };
 		}
 
-		const request = await this.accessRequestRepository.createRequest(
-			{ ...data, requestedById: user.id },
-			entityManager,
-		);
-
-		return { alreadyExists: false, request };
+		try {
+			const request = await this.accessRequestRepository.createRequest(
+				{ ...data, requestedById: user.id },
+				entityManager,
+			);
+			return { alreadyExists: false, request };
+		} catch (error) {
+			// Race fallback: the partial unique index on
+			// (requestedById, nodeType, projectId) WHERE status = 'pending'
+			// catches concurrent inserts between the pre-check and the create.
+			if (error instanceof QueryFailedError) {
+				const conflicting = await this.accessRequestRepository.findPendingByUserAndNode(
+					user.id,
+					data.nodeType,
+					data.projectId,
+					entityManager,
+				);
+				if (conflicting) {
+					return { alreadyExists: true, request: conflicting };
+				}
+			}
+			throw error;
+		}
 	}
 
 	async approveRequest(
@@ -818,7 +836,7 @@ export class NodeGovernanceService {
 
 		for (const node of nodes) {
 			const governance = governanceMap.get(node.type);
-			if (governance?.status === 'blocked') {
+			if (governance?.status === 'blocked' || governance?.status === 'pending_request') {
 				blockedNodes.push({
 					nodeType: node.type,
 					nodeName: node.name,

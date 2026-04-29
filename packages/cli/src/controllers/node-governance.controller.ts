@@ -221,6 +221,10 @@ export class NodeGovernanceController {
 		@Param('id') id: string,
 		@Body payload: UpdatePolicyDto,
 	) {
+		if (payload.scope === 'projects' && (!payload.projectIds || payload.projectIds.length === 0)) {
+			throw new BadRequestError('Project IDs are required for project-scoped policies');
+		}
+
 		const policy = await this.nodeGovernanceService.updatePolicy(id, payload);
 		if (!policy) {
 			throw new NotFoundError(`Policy with ID ${id} not found`);

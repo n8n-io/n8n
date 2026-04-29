@@ -14,7 +14,7 @@ const hexColorSchema = z
 
 export class CreateCategoryDto extends Z.class({
 	slug: slugSchema,
-	displayName: z.string().min(1).max(255),
-	description: z.string().max(1000).optional(),
+	displayName: z.string().trim().min(1).max(255),
+	description: z.string().trim().max(1000).optional(),
 	color: hexColorSchema,
 }) {}

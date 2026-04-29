@@ -331,6 +331,10 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+
+	&.dimmed {
+		opacity: 0.5;
+	}
 }
 
 .nodeIcon {
@@ -385,15 +389,6 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 .blocked {
 	opacity: 0.6;
 	cursor: not-allowed;
-}
-
-.iconWrapper {
-	position: relative;
-	display: inline-flex;
-
-	&.dimmed {
-		opacity: 0.5;
-	}
 }
 
 .lockIcon {

@@ -5,17 +5,18 @@ export class AddGovernanceDefaultBehavior1772850000000 implements ReversibleMigr
 		schemaBuilder: { addColumns, column },
 		runQuery,
 		escape,
+		tablePrefix,
 		isSqlite,
 	}: MigrationContext) {
-		const tableName = escape.tableName('project');
-		const columnName = escape.columnName('governanceDefaultBehavior');
+		const projectTableLiteral = `${tablePrefix}project`;
+		const settingsTable = escape.tableName('settings');
 
 		const columnExists = isSqlite
 			? await runQuery<Array<{ name: string }>>(
-					`SELECT name FROM pragma_table_info('project') WHERE name = 'governanceDefaultBehavior'`,
+					`SELECT name FROM pragma_table_info('${projectTableLiteral}') WHERE name = 'governanceDefaultBehavior'`,
 				).then((rows) => rows.length > 0)
 			: await runQuery<Array<{ column_name: string }>>(
-					`SELECT column_name FROM information_schema.columns WHERE table_name = 'project' AND column_name = 'governanceDefaultBehavior'`,
+					`SELECT column_name FROM information_schema.columns WHERE table_name = '${projectTableLiteral}' AND column_name = 'governanceDefaultBehavior' AND table_schema = current_schema()`,
 				).then((rows) => rows.length > 0);
 
 		if (!columnExists) {
@@ -25,12 +26,15 @@ export class AddGovernanceDefaultBehavior1772850000000 implements ReversibleMigr
 		}
 
 		await runQuery(
-			`INSERT INTO settings ("key", "value", "loadOnStartup") VALUES ('governance.defaultBehavior', '"allow"', true) ON CONFLICT ("key") DO NOTHING`,
+			`INSERT INTO ${settingsTable} (${escape.columnName('key')}, ${escape.columnName('value')}, ${escape.columnName('loadOnStartup')}) VALUES ('governance.defaultBehavior', '"allow"', true) ON CONFLICT (${escape.columnName('key')}) DO NOTHING`,
 		);
 	}
 
-	async down({ schemaBuilder: { dropColumns }, runQuery }: MigrationContext) {
+	async down({ schemaBuilder: { dropColumns }, runQuery, escape }: MigrationContext) {
+		const settingsTable = escape.tableName('settings');
 		await dropColumns('project', ['governanceDefaultBehavior']);
-		await runQuery(`DELETE FROM settings WHERE "key" = 'governance.defaultBehavior'`);
+		await runQuery(
+			`DELETE FROM ${settingsTable} WHERE ${escape.columnName('key')} = 'governance.defaultBehavior'`,
+		);
 	}
 }

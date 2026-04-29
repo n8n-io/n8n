@@ -227,44 +227,71 @@ export const useNodeGovernanceStore = defineStore('nodeGovernance', () => {
 	/**
 	 * Fetch all governance data needed for local resolution.
 	 * This fetches global policies, project policies, categories, and user's pending requests.
+	 *
+	 * Concurrent calls for the same projectId share a single in-flight promise to avoid
+	 * duplicate requests, and a sequence number ensures only the latest response is applied
+	 * (preventing response-order races when the project changes mid-flight).
 	 */
+	let inFlightFetch: { projectId: string; promise: Promise<void> } | null = null;
+	let fetchSeq = 0;
+
 	async function fetchGovernanceData(projectId: string) {
 		if (!projectId) {
 			return;
 		}
 
-		try {
-			const [
-				globalPoliciesResponse,
-				projectPoliciesResponse,
-				categoriesResponse,
-				myRequestsResponse,
-				settingsResponse,
-				projectSettingsResponse,
-			] = await Promise.all([
-				nodeGovernanceApi.getGlobalPolicies(rootStore.restApiContext),
-				nodeGovernanceApi.getProjectPolicies(rootStore.restApiContext, projectId),
-				nodeGovernanceApi.getCategories(rootStore.restApiContext),
-				nodeGovernanceApi.getMyRequests(rootStore.restApiContext),
-				nodeGovernanceApi.getGovernanceSettings(rootStore.restApiContext),
-				nodeGovernanceApi.getProjectGovernanceSettings(rootStore.restApiContext, projectId),
-			]);
-
-			cachedGlobalPolicies.value = globalPoliciesResponse.policies;
-			cachedProjectPolicies.value = projectPoliciesResponse.policies;
-			categories.value = categoriesResponse.categories;
-			myRequests.value = myRequestsResponse.requests;
-			governanceSettings.value = settingsResponse;
-			globalDefaultBehavior.value = settingsResponse.globalDefault;
-			projectDefaultOverride.value = projectSettingsResponse.defaultBehavior;
-			currentProjectId.value = projectId;
-			governanceDataLoaded.value = true;
-
-			nodeGovernanceStatus.value = {};
-			governanceStatusLoaded.value = true;
-		} catch (e) {
-			console.warn('Failed to fetch governance data:', e);
+		if (inFlightFetch && inFlightFetch.projectId === projectId) {
+			return await inFlightFetch.promise;
 		}
+
+		const seq = ++fetchSeq;
+
+		const promise = (async () => {
+			try {
+				const [
+					globalPoliciesResponse,
+					projectPoliciesResponse,
+					categoriesResponse,
+					myRequestsResponse,
+					settingsResponse,
+					projectSettingsResponse,
+				] = await Promise.all([
+					nodeGovernanceApi.getGlobalPolicies(rootStore.restApiContext),
+					nodeGovernanceApi.getProjectPolicies(rootStore.restApiContext, projectId),
+					nodeGovernanceApi.getCategories(rootStore.restApiContext),
+					nodeGovernanceApi.getMyRequests(rootStore.restApiContext),
+					nodeGovernanceApi.getGovernanceSettings(rootStore.restApiContext),
+					nodeGovernanceApi.getProjectGovernanceSettings(rootStore.restApiContext, projectId),
+				]);
+
+				// Drop stale response if a newer fetch has been started.
+				if (seq !== fetchSeq) {
+					return;
+				}
+
+				cachedGlobalPolicies.value = globalPoliciesResponse.policies;
+				cachedProjectPolicies.value = projectPoliciesResponse.policies;
+				categories.value = categoriesResponse.categories;
+				myRequests.value = myRequestsResponse.requests;
+				governanceSettings.value = settingsResponse;
+				globalDefaultBehavior.value = settingsResponse.globalDefault;
+				projectDefaultOverride.value = projectSettingsResponse.defaultBehavior;
+				currentProjectId.value = projectId;
+				governanceDataLoaded.value = true;
+
+				nodeGovernanceStatus.value = {};
+				governanceStatusLoaded.value = true;
+			} catch (e) {
+				console.warn('Failed to fetch governance data:', e);
+			} finally {
+				if (inFlightFetch?.projectId === projectId) {
+					inFlightFetch = null;
+				}
+			}
+		})();
+
+		inFlightFetch = { projectId, promise };
+		return await promise;
 	}
 
 	/**

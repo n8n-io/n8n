@@ -157,28 +157,43 @@ async function addSelectedNodes() {
 
 	loading.value = true;
 	const nodesToAdd = Array.from(selectedNodes.value);
-	let successCount = 0;
+	const succeeded = new Set<string>();
+	let lastError: unknown = null;
+
+	for (const nodeType of nodesToAdd) {
+		try {
+			await nodeGovernanceStore.assignNodeToCategory(category.value.id, nodeType);
+			succeeded.add(nodeType);
+		} catch (e) {
+			lastError = e;
+		}
+	}
 
 	try {
-		for (const nodeType of nodesToAdd) {
-			await nodeGovernanceStore.assignNodeToCategory(category.value.id, nodeType);
-			successCount++;
+		// Refresh categories once at the end to reflect actual server state.
+		await nodeGovernanceStore.fetchCategories();
+
+		// Keep only the nodes that failed in the selection so the user can see/retry them
+		// without re-attempting already-assigned nodes.
+		selectedNodes.value = new Set(
+			[...selectedNodes.value].filter((nodeType) => !succeeded.has(nodeType)),
+		);
+
+		if (succeeded.size > 0) {
+			showMessage({
+				title: i18n.baseText('nodeGovernance.categories.manageNodes.addMultipleSuccess', {
+					interpolate: { count: succeeded.size },
+					adjustToNumber: succeeded.size,
+				}),
+				type: lastError ? 'warning' : 'success',
+			});
 		}
-		// Refresh categories to get updated assignments
-		await nodeGovernanceStore.fetchCategories();
-		showMessage({
-			title: i18n.baseText('nodeGovernance.categories.manageNodes.addMultipleSuccess', {
-				interpolate: { count: successCount },
-				adjustToNumber: successCount,
-			}),
-			type: 'success',
-		});
-		selectedNodes.value = new Set();
-		searchQuery.value = '';
-	} catch (e) {
-		// Refresh anyway to show partial progress
-		await nodeGovernanceStore.fetchCategories();
-		showError(e, i18n.baseText('nodeGovernance.categories.manageNodes.addError'));
+
+		if (lastError) {
+			showError(lastError, i18n.baseText('nodeGovernance.categories.manageNodes.addError'));
+		} else {
+			searchQuery.value = '';
+		}
 	} finally {
 		loading.value = false;
 	}
@@ -454,7 +469,7 @@ function closeModal() {
 	min-width: 0;
 	display: flex;
 	flex-direction: column;
-	gap: 2px;
+	gap: var(--spacing--5xs);
 }
 
 .nodeTypeName {

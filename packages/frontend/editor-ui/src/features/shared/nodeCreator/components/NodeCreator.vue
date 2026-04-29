@@ -130,11 +130,12 @@ watch(
 		if (!isActive) {
 			resetViewStacks();
 		} else {
-			// Fetch governance data when node creator opens
+			// Fetch governance data when node creator opens.
+			// fetchGovernanceData dedupes concurrent calls for the same projectId
+			// and drops stale responses, so we don't need to clear cached data first
+			// (which would cause an empty-state flicker and create response-order races).
 			const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? null;
 			if (projectId) {
-				// Clear previous status and fetch fresh governance data
-				nodeGovernanceStore.clearGovernanceData();
 				await nodeGovernanceStore.fetchGovernanceData(projectId);
 			}
 		}

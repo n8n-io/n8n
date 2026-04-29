@@ -198,6 +198,16 @@ watch([searchQuery, filterProject, filterStatus, filterType], () => {
 	page.value = 0;
 });
 
+// Clamp page when the filtered list shrinks (e.g. after deletion)
+// or when itemsPerPage changes, so we never show an out-of-range empty page.
+// Using 0-indexed page; total page count is at least 1.
+watch([() => filteredPolicies.value.length, itemsPerPage], () => {
+	const lastPage = Math.max(0, Math.ceil(filteredPolicies.value.length / itemsPerPage.value) - 1);
+	if (page.value > lastPage) {
+		page.value = lastPage;
+	}
+});
+
 // Auto-scroll to top when page changes
 watch(page, () => {
 	void nextTick(() => {

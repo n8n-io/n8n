@@ -399,28 +399,24 @@ export class WorkflowService {
 			}
 		}
 
-		// Validate node governance - check for blocked nodes
-		if (workflowUpdateData.nodes && workflowUpdateData.nodes.length > 0) {
-			const sharedWorkflow = await this.sharedWorkflowRepository.findOne({
-				where: { workflowId },
-				select: ['projectId'],
-			});
-			const projectId = sharedWorkflow?.projectId;
-			if (projectId) {
-				const validation = await this.nodeGovernanceService.validateWorkflowNodes(
-					workflowUpdateData.nodes,
-					projectId,
-					user.id,
-				);
+		// Validate node governance - check for blocked or pending-approval nodes.
+		// Use the workflow's owning project (deterministic) rather than a non-deterministic
+		// shared-workflow lookup, to ensure project-scoped policies resolve correctly when
+		// the workflow is shared across multiple projects.
+		if (workflowUpdateData.nodes && workflowUpdateData.nodes.length > 0 && ownerProject?.id) {
+			const validation = await this.nodeGovernanceService.validateWorkflowNodes(
+				workflowUpdateData.nodes,
+				ownerProject.id,
+				user.id,
+			);
 
-				if (validation.hasBlockedNodes) {
-					const blockedNodeNames = validation.blockedNodes
-						.map((n) => n.nodeName || n.nodeType)
-						.join(', ');
-					throw new BadRequestError(
-						`Cannot save workflow: The following nodes are blocked by governance policies: ${blockedNodeNames}. Please remove these nodes or request access.`,
-					);
-				}
+			if (validation.hasBlockedNodes) {
+				const blockedNodeNames = validation.blockedNodes
+					.map((n) => n.nodeName || n.nodeType)
+					.join(', ');
+				throw new BadRequestError(
+					`Cannot save workflow: The following nodes are blocked or pending approval by governance policies: ${blockedNodeNames}. Please remove these nodes or wait for the access request to be approved.`,
+				);
 			}
 		}
 
