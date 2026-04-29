@@ -715,10 +715,8 @@ function mapNestedPropertyType(
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
 	const result = mapNestedPropertyTypeInner(prop, discriminatorContext);
-	if (prop.noDataExpression) {
-		return stripExpressionFromType(result);
-	}
-	return result;
+	const expressionAwareResult = prop.noDataExpression ? stripExpressionFromType(result) : result;
+	return wrapMultipleValuesType(prop, expressionAwareResult);
 }
 
 function mapNestedPropertyTypeInner(
@@ -1275,10 +1273,16 @@ export function mapPropertyType(
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
 	const result = mapPropertyTypeInner(prop, discriminatorContext);
-	if (prop.noDataExpression) {
-		return stripExpressionFromType(result);
+	const expressionAwareResult = prop.noDataExpression ? stripExpressionFromType(result) : result;
+	return wrapMultipleValuesType(prop, expressionAwareResult);
+}
+
+function wrapMultipleValuesType(prop: NodeProperty, typeStr: string): string {
+	if (!typeStr || prop.type === 'fixedCollection' || prop.type === 'multiOptions') {
+		return typeStr;
 	}
-	return result;
+
+	return prop.typeOptions?.multipleValues === true ? `Array<${typeStr}>` : typeStr;
 }
 
 function mapPropertyTypeInner(

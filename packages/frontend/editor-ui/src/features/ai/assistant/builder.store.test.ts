@@ -2254,16 +2254,16 @@ describe('AI Builder store', () => {
 			it('should switch to plan mode when nodes become empty and plan mode is available', async () => {
 				enablePlanModeExperiment();
 				const builderStore = useBuilderStore();
-				const docStore = useWorkflowDocumentStore(
+				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
 				);
 
 				// Start with nodes, then clear them (simulates workflow load sequence)
-				docStore.setNodes([createTestNode({ name: 'Node1' })]);
+				workflowDocumentStore.setNodes([createTestNode({ name: 'Node1' })]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('build');
 
-				docStore.setNodes([]);
+				workflowDocumentStore.setNodes([]);
 				await nextTick();
 				expect(builderStore.builderMode).toBe('plan');
 			});

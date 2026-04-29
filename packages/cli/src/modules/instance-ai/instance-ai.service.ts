@@ -12,6 +12,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { ErrorReporter } from 'n8n-core';
 import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
@@ -229,6 +230,7 @@ export class InstanceAiService {
 		private readonly telemetry: Telemetry,
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -293,6 +295,7 @@ export class InstanceAiService {
 				daytonaApiUrl: daytonaApiUrl || undefined,
 				daytonaApiKey: daytonaApiKey || undefined,
 				image: sandboxImage || undefined,
+				n8nVersion: N8N_VERSION || undefined,
 				timeout: sandboxTimeout,
 			};
 		}
@@ -363,8 +366,9 @@ export class InstanceAiService {
 		if (config.provider === 'daytona') {
 			return new BuilderSandboxFactory(
 				config,
-				new SnapshotManager(config.image, this.logger),
+				new SnapshotManager(config.image, this.logger, config.n8nVersion, this.errorReporter),
 				this.logger,
+				this.errorReporter,
 			);
 		}
 
