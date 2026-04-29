@@ -124,6 +124,45 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
+	describe('file emission', () => {
+		it('records tool-file-display as a closed tool-call timeline event with metadata only', () => {
+			const recorder = new ExecutionRecorder();
+
+			const fileBytes = new Uint8Array([1, 2, 3, 4, 5]);
+			recorder.record({ type: 'text-delta', id: 't1', delta: 'Sending' });
+			recorder.record({
+				type: 'tool-file-display',
+				runId: 'r1',
+				toolCallId: 'tc1',
+				toolName: 'send_files',
+				files: [{ data: fileBytes, filename: 'chart.png', mimeType: 'image/png' }],
+				message: 'Here you go',
+			} as StreamChunk);
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			expect(recorder.suspended).toBe(false);
+			const toolEvent = record.timeline.find((e) => e.type === 'tool-call');
+			expect(toolEvent).toBeDefined();
+			if (toolEvent && toolEvent.type === 'tool-call') {
+				expect(toolEvent.name).toBe('send_files');
+				expect(toolEvent.success).toBe(true);
+				// Input should carry metadata, not raw bytes.
+				const input = toolEvent.input as {
+					files: Array<{ filename: string; mimeType?: string; size: number }>;
+					message?: string;
+				};
+				expect(input.files[0].filename).toBe('chart.png');
+				expect(input.files[0].mimeType).toBe('image/png');
+				expect(input.files[0].size).toBe(5);
+				expect(input.message).toBe('Here you go');
+				// Recorded input must not contain the raw byte buffer.
+				expect((input.files[0] as Record<string, unknown>).data).toBeUndefined();
+			}
+		});
+	});
+
 	describe('display-only card', () => {
 		it('records tool-card-display as a closed tool-call timeline event', () => {
 			const recorder = new ExecutionRecorder();

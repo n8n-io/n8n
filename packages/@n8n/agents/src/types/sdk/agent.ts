@@ -114,6 +114,25 @@ export type StreamChunk = ContentMetadata &
 				toolName: string;
 				payload: unknown;
 		  }
+		| {
+				/**
+				 * Emitted when a tool calls `ctx.sendFiles(files, message?)` to send
+				 * binary attachments (images, documents, etc.) to the consumer
+				 * without halting execution. Distinct from `tool-card-display` so
+				 * integrations can route to file-upload paths (e.g. `thread.post({
+				 * files })` in Chat SDK) rather than render as cards.
+				 */
+				type: 'tool-file-display';
+				runId: string;
+				toolCallId: string;
+				toolName: string;
+				files: Array<{
+					data: Uint8Array | ArrayBuffer | Buffer | string;
+					filename: string;
+					mimeType?: string;
+				}>;
+				message?: string;
+		  }
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
 		| { type: 'working-memory-update'; content: string }

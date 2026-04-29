@@ -135,26 +135,25 @@ export class ExecutionRecorder {
 					timestamp: Date.now(),
 				});
 				break;
-			case 'tool-card-display': {
-				this.flushTextBuffer();
-				const now = Date.now();
-				this.toolCalls.push({
-					name: chunk.toolName,
-					input: chunk.payload,
-					output: { displayed: true },
+			case 'tool-card-display':
+				this.recordSyntheticToolCall(chunk.toolName, chunk.toolCallId, chunk.payload, {
+					displayed: true,
 				});
-				const entry = this.registry.get(chunk.toolName);
-				this.timeline.push({
-					type: 'tool-call',
-					kind: entry?.kind ?? 'tool',
-					name: chunk.toolName,
-					toolCallId: chunk.toolCallId,
-					input: chunk.payload,
-					output: { displayed: true },
-					startTime: now,
-					endTime: now,
-					success: true,
-				});
+				break;
+			case 'tool-file-display': {
+				// Don't record raw bytes — they're often large and not useful in the
+				// timeline. Capture metadata only (filename, mimeType, byte length).
+				const fileMeta = chunk.files.map((f) => ({
+					filename: f.filename,
+					mimeType: f.mimeType,
+					size: typeof f.data === 'string' ? f.data.length : (f.data as Uint8Array).byteLength,
+				}));
+				this.recordSyntheticToolCall(
+					chunk.toolName,
+					chunk.toolCallId,
+					{ files: fileMeta, message: chunk.message },
+					{ sent: fileMeta.length },
+				);
 				break;
 			}
 			case 'working-memory-update':
@@ -214,6 +213,34 @@ export class ExecutionRecorder {
 		}
 		this.textBuffer = [];
 		this.textStartTime = null;
+	}
+
+	/**
+	 * Record a side-effect tool emission (display-only card, file upload) as
+	 * a closed tool-call timeline event. Used by `tool-card-display` and
+	 * `tool-file-display`, neither of which produce a paired `tool-result`.
+	 */
+	private recordSyntheticToolCall(
+		name: string,
+		toolCallId: string,
+		input: unknown,
+		output: unknown,
+	): void {
+		this.flushTextBuffer();
+		const now = Date.now();
+		this.toolCalls.push({ name, input, output });
+		const entry = this.registry.get(name);
+		this.timeline.push({
+			type: 'tool-call',
+			kind: entry?.kind ?? 'tool',
+			name,
+			toolCallId,
+			input,
+			output,
+			startTime: now,
+			endTime: now,
+			success: true,
+		});
 	}
 
 	/**

@@ -52,6 +52,7 @@ import {
 	isSuspendedToolResult,
 	toAiSdkProviderTools,
 	toAiSdkTools,
+	type ToolFileEmission,
 } from './tool-adapter';
 import { buildWorkingMemoryTool } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
@@ -129,6 +130,8 @@ type ToolCallOutcome =
 			customMessage?: AgentMessage;
 			/** Payloads from `ctx.display()` calls — emitted as `tool-card-display` chunks. */
 			displayPayloads?: unknown[];
+			/** Batches from `ctx.sendFiles()` calls — emitted as `tool-file-display` chunks. */
+			fileEmissions?: ToolFileEmission[];
 	  }
 	| {
 			outcome: 'suspended';
@@ -136,6 +139,8 @@ type ToolCallOutcome =
 			resumeSchema: JsonSchema7Type;
 			/** Payloads from `ctx.display()` calls made before suspension. */
 			displayPayloads?: unknown[];
+			/** Batches from `ctx.sendFiles()` calls made before suspension. */
+			fileEmissions?: ToolFileEmission[];
 	  }
 	| { outcome: 'error'; error: unknown }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
@@ -150,6 +155,7 @@ interface ToolCallSuccess {
 	subAgentUsage?: SubAgentUsage[];
 	customMessage?: AgentMessage;
 	displayPayloads?: unknown[];
+	fileEmissions?: ToolFileEmission[];
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -162,6 +168,8 @@ interface ToolCallSuspension {
 	resumeSchema: JsonSchema7Type;
 	/** Payloads from `ctx.display()` calls made before the suspension. */
 	displayPayloads?: unknown[];
+	/** Batches from `ctx.sendFiles()` calls made before the suspension. */
+	fileEmissions?: ToolFileEmission[];
 }
 
 /** Info about a tool call that failed — carries enough data for stream chunks. */
@@ -903,6 +911,18 @@ export class AgentRuntime {
 							});
 						}
 					}
+					if (r.fileEmissions) {
+						for (const batchOfFiles of r.fileEmissions) {
+							await writer.write({
+								type: 'tool-file-display',
+								runId,
+								toolCallId: r.toolCallId,
+								toolName: r.toolName,
+								files: batchOfFiles.files,
+								message: batchOfFiles.message,
+							});
+						}
+					}
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: r.toolCallId,
@@ -941,6 +961,18 @@ export class AgentRuntime {
 									toolCallId: s.toolCallId,
 									toolName: s.toolName,
 									payload,
+								});
+							}
+						}
+						if (s.fileEmissions) {
+							for (const batchOfFiles of s.fileEmissions) {
+								await writer.write({
+									type: 'tool-file-display',
+									runId: suspendRunId,
+									toolCallId: s.toolCallId,
+									toolName: s.toolName,
+									files: batchOfFiles.files,
+									message: batchOfFiles.message,
 								});
 							}
 						}
@@ -1048,6 +1080,18 @@ export class AgentRuntime {
 							});
 						}
 					}
+					if (r.fileEmissions) {
+						for (const batchOfFiles of r.fileEmissions) {
+							await writer.write({
+								type: 'tool-file-display',
+								runId,
+								toolCallId: r.toolCallId,
+								toolName: r.toolName,
+								files: batchOfFiles.files,
+								message: batchOfFiles.message,
+							});
+						}
+					}
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: r.toolCallId,
@@ -1086,6 +1130,18 @@ export class AgentRuntime {
 									toolCallId: s.toolCallId,
 									toolName: s.toolName,
 									payload,
+								});
+							}
+						}
+						if (s.fileEmissions) {
+							for (const batchOfFiles of s.fileEmissions) {
+								await writer.write({
+									type: 'tool-file-display',
+									runId: suspendRunId,
+									toolCallId: s.toolCallId,
+									toolName: s.toolName,
+									files: batchOfFiles.files,
+									message: batchOfFiles.message,
 								});
 							}
 						}
@@ -1374,6 +1430,7 @@ export class AgentRuntime {
 						payload: result.value.payload,
 						resumeSchema: result.value.resumeSchema,
 						displayPayloads: result.value.displayPayloads,
+						fileEmissions: result.value.fileEmissions,
 					});
 					pending[tc.toolCallId] = {
 						suspended: true,
@@ -1394,6 +1451,7 @@ export class AgentRuntime {
 						subAgentUsage: result.value.subAgentUsage,
 						customMessage: result.value.customMessage,
 						displayPayloads: result.value.displayPayloads,
+						fileEmissions: result.value.fileEmissions,
 					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
@@ -1476,6 +1534,7 @@ export class AgentRuntime {
 				payload: processResult.payload,
 				resumeSchema: processResult.resumeSchema,
 				displayPayloads: processResult.displayPayloads,
+				fileEmissions: processResult.fileEmissions,
 			});
 		} else if (processResult.outcome === 'success') {
 			results.push({
@@ -1487,6 +1546,7 @@ export class AgentRuntime {
 				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
 				displayPayloads: processResult.displayPayloads,
+				fileEmissions: processResult.fileEmissions,
 			});
 		} else if (processResult.outcome === 'error') {
 			errors.push({
@@ -1627,10 +1687,12 @@ export class AgentRuntime {
 
 		let toolResult: unknown;
 		let displayPayloads: unknown[] = [];
+		let fileEmissions: ToolFileEmission[] = [];
 		try {
 			const execResult = await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry);
 			toolResult = execResult.result;
 			displayPayloads = execResult.displayPayloads;
+			fileEmissions = execResult.fileEmissions;
 		} catch (error) {
 			return makeToolError(error as Error);
 		}
@@ -1658,6 +1720,7 @@ export class AgentRuntime {
 				payload: toolResult.payload,
 				resumeSchema,
 				displayPayloads: displayPayloads.length > 0 ? displayPayloads : undefined,
+				fileEmissions: fileEmissions.length > 0 ? fileEmissions : undefined,
 			};
 		}
 
@@ -1701,6 +1764,7 @@ export class AgentRuntime {
 			subAgentUsage: extractedSubAgentUsage,
 			customMessage,
 			displayPayloads: displayPayloads.length > 0 ? displayPayloads : undefined,
+			fileEmissions: fileEmissions.length > 0 ? fileEmissions : undefined,
 		};
 	}
 

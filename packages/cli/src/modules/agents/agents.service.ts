@@ -1,4 +1,5 @@
 import type {
+	AgentMessage,
 	BuiltAgent,
 	BuiltTool,
 	CredentialProvider,
@@ -71,6 +72,28 @@ interface InjectRuntimeDependenciesParams {
 /** Derive a stable thread ID for the test-chat of a given agent. */
 export function chatThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
+}
+
+/**
+ * Reduce a multimodal chat input to a plain-text representation suitable for
+ * the execution record / `pendingUserMessages` stash. File content parts are
+ * summarised as `[file: <name or mime>]`; the LLM still sees the raw bytes
+ * via the original input passed to `agent.stream(...)`.
+ */
+function chatInputToText(input: string | AgentMessage[]): string {
+	if (typeof input === 'string') return input;
+	const parts: string[] = [];
+	for (const msg of input) {
+		if (msg.type === 'custom' || !('content' in msg) || !Array.isArray(msg.content)) continue;
+		for (const block of msg.content) {
+			if (block.type === 'text') {
+				parts.push(block.text);
+			} else if (block.type === 'file') {
+				parts.push(`[file: ${block.mediaType ?? 'application/octet-stream'}]`);
+			}
+		}
+	}
+	return parts.join(' ');
 }
 
 export interface ExecuteAgentData {
@@ -486,6 +509,18 @@ export class AgentsService {
 			}
 		}
 
+		if (integration) {
+			try {
+				const { createSendFilesTool } = await import('./integrations/send-files-tool');
+				agent.tool(createSendFilesTool());
+			} catch (toolError) {
+				this.logger.warn('Failed to inject send_files tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
+		}
+
 		if (nodeToolsEnabled) {
 			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
@@ -649,7 +684,7 @@ export class AgentsService {
 	 */
 	async *executeForChat(
 		agentId: string,
-		message: string,
+		message: string | AgentMessage[],
 		threadId: string,
 		userId: string,
 		projectId: string,
@@ -725,7 +760,7 @@ export class AgentsService {
 	 */
 	async *executeForChatPublished(
 		agentId: string,
-		message: string,
+		message: string | AgentMessage[],
 		threadId: string,
 		userId: string,
 		projectId: string,
@@ -837,7 +872,7 @@ export class AgentsService {
 		agentInstance: agents.Agent,
 		toolRegistry: ToolRegistry,
 		agentId: string,
-		message: string,
+		message: string | AgentMessage[],
 		threadId: string,
 		userId: string,
 		projectId: string,
@@ -848,6 +883,10 @@ export class AgentsService {
 	): AsyncGenerator<StreamChunk> {
 		const recorder = new ExecutionRecorder(toolRegistry);
 		const resourceId = options?.resourceId ?? userId;
+		// Stash a text-only view of the input for the execution record and the
+		// pending-user-messages map. Multimodal content (file parts) flows
+		// directly into the agent runtime via `agent.stream(message, ...)`.
+		const messageText = chatInputToText(message);
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
@@ -875,7 +914,7 @@ export class AgentsService {
 		// Always record — even if suspended, the pre-suspension response text
 		// and tool calls are valuable. Usage/model will be null for suspended runs.
 		if (recorder.suspended) {
-			this.pendingUserMessages.set(agentId, message);
+			this.pendingUserMessages.set(agentId, messageText);
 		}
 
 		const messageRecord = recorder.getMessageRecord();
@@ -886,7 +925,7 @@ export class AgentsService {
 				agentName: agentInstance.name,
 				projectId,
 				userId,
-				userMessage: message,
+				userMessage: messageText,
 				record: messageRecord,
 				hitlStatus: recorder.suspended ? 'suspended' : undefined,
 				source: options?.source,

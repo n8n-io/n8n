@@ -8,6 +8,7 @@ import {
 	type BuiltTelemetry,
 	type InterruptibleToolContext,
 	type ToolContext,
+	type ToolFileAttachment,
 } from '../types';
 import type { SubAgentUsage } from '../types/sdk/agent';
 import { isZodSchema } from '../utils/zod';
@@ -132,11 +133,19 @@ export function toAiSdkTools(tools?: BuiltTool[]): Record<string, AiSdkTool> {
 	return result;
 }
 
+/** A single batch of files emitted via `ctx.sendFiles()`. */
+export interface ToolFileEmission {
+	files: ToolFileAttachment[];
+	message?: string;
+}
+
 export interface ToolExecutionResult {
 	/** Raw return value of the tool's handler (may be a suspend brand). */
 	result: unknown;
 	/** Payloads captured from `ctx.display()` calls during this invocation. */
 	displayPayloads: unknown[];
+	/** Batches captured from `ctx.sendFiles()` calls during this invocation. */
+	fileEmissions: ToolFileEmission[];
 }
 
 /**
@@ -155,25 +164,33 @@ export async function executeTool(
 	}
 
 	const displayPayloads: unknown[] = [];
+	const fileEmissions: ToolFileEmission[] = [];
+
+	const display = (payload: unknown): void => {
+		displayPayloads.push(payload);
+	};
+	const sendFiles = (files: ToolFileAttachment[], message?: string): void => {
+		if (files.length === 0) return;
+		fileEmissions.push({ files, message });
+	};
 
 	if (builtTool.suspendSchema) {
 		const ctx: InterruptibleToolContext = {
 			suspend: async (payload: unknown): Promise<never> => {
 				return await Promise.resolve({ [SUSPEND_BRAND]: true, payload } as never);
 			},
-			display: (payload: unknown): void => {
-				displayPayloads.push(payload);
-			},
+			display,
+			sendFiles,
 			resumeData,
 			parentTelemetry,
 		};
 		const result = await builtTool.handler(args, ctx);
-		return { result, displayPayloads };
+		return { result, displayPayloads, fileEmissions };
 	}
 
-	const ctx: ToolContext = { parentTelemetry };
+	const ctx: ToolContext = { display, sendFiles, parentTelemetry };
 	const result = await builtTool.handler(args, ctx);
-	return { result, displayPayloads };
+	return { result, displayPayloads, fileEmissions };
 }
 
 /**

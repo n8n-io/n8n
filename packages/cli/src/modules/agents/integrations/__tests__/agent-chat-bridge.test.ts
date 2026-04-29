@@ -236,4 +236,141 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(received).toBe('Hello world');
 		});
 	});
+
+	describe('inbound attachments', () => {
+		it('builds an AgentMessage[] with file content parts when message has attachments', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const fetched = Buffer.from('image-bytes');
+			const captured: unknown[] = [];
+
+			const agentExecutor = {
+				executeForChatPublished: (
+					_agentId: string,
+					message: unknown,
+					..._rest: unknown[]
+				): AsyncGenerator<StreamChunk> => {
+					captured.push(message);
+					return toStream([{ type: 'finish', finishReason: 'stop' }]);
+				},
+				resumeForChat: () => toStream([]),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				credentialProvider,
+				componentMapper,
+				logger,
+				'user-1',
+				'project-1',
+				'test-streaming',
+			);
+
+			await handlers.mention!(thread, {
+				text: 'check this out',
+				author: { userId: 'u1' },
+				attachments: [
+					{
+						name: 'photo.png',
+						mimeType: 'image/png',
+						fetchData: async () => await Promise.resolve(fetched),
+					},
+				],
+			});
+
+			expect(captured).toHaveLength(1);
+			const passed = captured[0] as Array<{
+				role: string;
+				content: Array<{ type: string; text?: string; data?: unknown; mediaType?: string }>;
+			}>;
+			expect(Array.isArray(passed)).toBe(true);
+			expect(passed[0].role).toBe('user');
+			const textPart = passed[0].content.find((c) => c.type === 'text');
+			const filePart = passed[0].content.find((c) => c.type === 'file');
+			expect(textPart?.text).toBe('check this out');
+			expect(filePart?.data).toBe(fetched);
+			expect(filePart?.mediaType).toBe('image/png');
+		});
+
+		it('falls back to a plain string when there are no attachments', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const captured: unknown[] = [];
+
+			const agentExecutor = {
+				executeForChatPublished: (
+					_agentId: string,
+					message: unknown,
+					..._rest: unknown[]
+				): AsyncGenerator<StreamChunk> => {
+					captured.push(message);
+					return toStream([{ type: 'finish', finishReason: 'stop' }]);
+				},
+				resumeForChat: () => toStream([]),
+			};
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				credentialProvider,
+				componentMapper,
+				logger,
+				'user-1',
+				'project-1',
+				'test-streaming',
+			);
+
+			await handlers.mention!(thread, { text: 'plain text', author: { userId: 'u1' } });
+
+			expect(captured[0]).toBe('plain text');
+		});
+	});
+
+	describe('outbound tool-file-display', () => {
+		it('posts files via thread.post({ markdown, files }) when a tool emits tool-file-display', async () => {
+			const { bot, handlers } = makeBot();
+			const thread = makeThread();
+			const fileBytes = Buffer.from('chart-bytes');
+
+			const agentExecutor = makeAgentExecutor([
+				{
+					type: 'tool-file-display',
+					runId: 'run-1',
+					toolCallId: 'tc-1',
+					toolName: 'send_files',
+					files: [{ data: fileBytes, filename: 'chart.png', mimeType: 'image/png' }],
+					message: 'here',
+				},
+				{ type: 'finish', finishReason: 'stop' },
+			]);
+
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				credentialProvider,
+				componentMapper,
+				logger,
+				'user-1',
+				'project-1',
+				'test-buffered',
+			);
+
+			await handlers.mention!(thread, { text: 'send it', author: { userId: 'u1' } });
+
+			expect(thread.post).toHaveBeenCalledWith({
+				markdown: 'here',
+				files: [
+					expect.objectContaining({
+						filename: 'chart.png',
+						mimeType: 'image/png',
+						data: fileBytes,
+					}),
+				],
+			});
+		});
+	});
 });

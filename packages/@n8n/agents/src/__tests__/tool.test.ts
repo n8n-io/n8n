@@ -26,6 +26,7 @@ function makeCtx(resumeData?: unknown): { ctx: InterruptibleToolContext; suspend
 	const ctx: InterruptibleToolContext = {
 		suspend: suspendMock as unknown as InterruptibleToolContext['suspend'],
 		display: jest.fn(),
+		sendFiles: jest.fn(),
 		resumeData,
 	};
 	return { ctx, suspendMock };

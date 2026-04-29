@@ -19,6 +19,7 @@ describe('createRichInteractionTool', () => {
 			resumeData: undefined,
 			suspend: jest.fn().mockResolvedValue(undefined as never),
 			display: jest.fn(),
+			sendFiles: jest.fn(),
 			parentTelemetry: undefined,
 		};
 	}

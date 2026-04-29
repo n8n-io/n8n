@@ -244,7 +244,7 @@ describe('asTool()', () => {
 		const agent = createSimpleAgent();
 		const tool = agent.asTool('A helpful assistant tool');
 
-		const result = await tool.handler!({ input: 'Say "pong"' }, {});
+		const result = await tool.handler!({ input: 'Say "pong"' }, {} as never);
 
 		expect(result).toHaveProperty('result');
 		expect(typeof (result as { result: string }).result).toBe('string');

@@ -1127,6 +1127,71 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect((finishChunks[0] as StreamChunk & { type: 'finish' }).finishReason).toBe('tool-calls');
 	});
 
+	it('emits tool-file-display chunks when handler calls ctx.sendFiles() and continues', async () => {
+		const fileBytes = Buffer.from('binary-data');
+		const sendFilesTool = makeSuspendingTool('send_files_tool', async (_input, ctx) => {
+			ctx.sendFiles(
+				[{ data: fileBytes, filename: 'chart.png', mimeType: 'image/png' }],
+				'Here is the chart',
+			);
+			return await Promise.resolve({ acknowledged: true });
+		});
+
+		const { runtime } = createRuntimeWithTools([sendFilesTool], 1);
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'sending...' }]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-1',
+									toolName: 'send_files_tool',
+									args: { value: 'a' },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-1', toolName: 'send_files_tool', input: { value: 'a' } },
+				]),
+			})
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'done' }]),
+				finishReason: Promise.resolve('stop'),
+				usage: Promise.resolve({ inputTokens: 5, outputTokens: 5, totalTokens: 10 }),
+				response: Promise.resolve({
+					messages: [{ role: 'assistant', content: [{ type: 'text', text: 'done' }] }],
+				}),
+				toolCalls: Promise.resolve([]),
+			});
+
+		const { stream: readableStream } = await runtime.stream('send a file');
+		const chunks = await collectChunks(readableStream);
+
+		const fileChunks = chunks.filter((c) => c.type === 'tool-file-display') as Array<
+			StreamChunk & { type: 'tool-file-display' }
+		>;
+		expect(fileChunks).toHaveLength(1);
+		expect(fileChunks[0].toolName).toBe('send_files_tool');
+		expect(fileChunks[0].toolCallId).toBe('tc-1');
+		expect(fileChunks[0].message).toBe('Here is the chart');
+		expect(fileChunks[0].files).toHaveLength(1);
+		expect(fileChunks[0].files[0].filename).toBe('chart.png');
+		expect(fileChunks[0].files[0].mimeType).toBe('image/png');
+		expect(fileChunks[0].files[0].data).toBe(fileBytes);
+
+		// File emission does not suspend.
+		expect(chunks.filter((c) => c.type === 'tool-call-suspended')).toHaveLength(0);
+	});
+
 	it('emits tool-card-display chunks when handler calls ctx.display() and continues', async () => {
 		const cardPayload = { components: [{ type: 'image', url: 'https://x.gif' }] };
 		const displayTool = makeSuspendingTool('display_tool', async (_input, ctx) => {

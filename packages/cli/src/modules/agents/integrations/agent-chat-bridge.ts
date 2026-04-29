@@ -15,7 +15,7 @@ import type { ComponentMapper } from './component-mapper';
 interface AgentExecutor {
 	executeForChat(
 		agentId: string,
-		message: string,
+		message: string | AgentMessage[],
 		threadId: string,
 		userId: string,
 		projectId: string,
@@ -25,7 +25,7 @@ interface AgentExecutor {
 
 	executeForChatPublished(
 		agentId: string,
-		message: string,
+		message: string | AgentMessage[],
 		threadId: string,
 		userId: string,
 		projectId: string,
@@ -65,9 +65,21 @@ interface ChatThread {
 	post: (content: unknown) => Promise<unknown>;
 }
 
+interface ChatAttachment {
+	type?: string;
+	url?: string;
+	name?: string;
+	mimeType?: string;
+	size?: number;
+	width?: number;
+	height?: number;
+	fetchData?: () => Promise<Buffer>;
+}
+
 interface ChatMessage {
 	text: string;
 	author: { userId: string };
+	attachments?: ChatAttachment[];
 }
 
 interface ChatActionEvent {
@@ -219,14 +231,23 @@ export class AgentChatBridge {
 
 	private async executeAndStream(thread: ChatThread, message: ChatMessage): Promise<void> {
 		const text = message.text?.trim();
-		if (!text) return;
+		const attachments = message.attachments ?? [];
+		if (!text && attachments.length === 0) return;
+
+		// If the user attached files, build a multimodal AgentMessage so vision
+		// models see them as inline file parts. Plain text is forwarded as a
+		// string for backwards compatibility with the existing path.
+		const input =
+			attachments.length > 0
+				? await this.buildUserMessageWithAttachments(text ?? '', attachments)
+				: (text ?? '');
 
 		// Use the n8n user ID (who connected the integration) for agent compilation
 		// and RBAC, and the platform user ID for memory/thread context.
 		// Always run the published snapshot — integrations are production traffic.
 		const stream = this.agentService.executeForChatPublished(
 			this.agentId,
-			text,
+			input,
 			thread.id,
 			this.n8nUserId,
 			this.n8nProjectId,
@@ -235,6 +256,46 @@ export class AgentChatBridge {
 		);
 
 		await this.consumeStream(stream, thread);
+	}
+
+	/**
+	 * Convert Chat SDK attachments into an `AgentMessage` with text + file
+	 * content parts. Attachments without `fetchData` (and no public URL) are
+	 * skipped — the agent can't see them, but the user's text still flows
+	 * through.
+	 */
+	private async buildUserMessageWithAttachments(
+		text: string,
+		attachments: ChatAttachment[],
+	): Promise<AgentMessage[]> {
+		const content: Array<
+			{ type: 'text'; text: string } | { type: 'file'; data: Buffer | string; mediaType?: string }
+		> = [];
+
+		if (text.trim()) content.push({ type: 'text', text });
+
+		for (const att of attachments) {
+			let data: Buffer | string | undefined;
+			if (att.fetchData) {
+				try {
+					data = await att.fetchData();
+				} catch (error) {
+					this.logger.warn('[AgentChatBridge] Failed to fetch attachment data', {
+						name: att.name,
+						error: error instanceof Error ? error.message : String(error),
+					});
+					continue;
+				}
+			} else if (att.url) {
+				// Pass the URL through as a string — the AI SDK accepts URLs as
+				// file part data and will fetch them at request time.
+				data = att.url;
+			}
+			if (data === undefined) continue;
+			content.push({ type: 'file', data, mediaType: att.mimeType });
+		}
+
+		return [{ role: 'user', content }];
 	}
 
 	// ---------------------------------------------------------------------------
@@ -365,6 +426,10 @@ export class AgentChatBridge {
 					await endStreamingPost();
 					await this.handleCardDisplay(chunk, thread);
 					break;
+				case 'tool-file-display':
+					await endStreamingPost();
+					await this.handleFileDisplay(chunk, thread);
+					break;
 				case 'message':
 					await endStreamingPost();
 					await this.handleMessage(chunk, thread);
@@ -427,6 +492,10 @@ export class AgentChatBridge {
 				case 'tool-card-display':
 					await flushBuffer();
 					await this.handleCardDisplay(chunk, thread);
+					break;
+				case 'tool-file-display':
+					await flushBuffer();
+					await this.handleFileDisplay(chunk, thread);
 					break;
 				case 'message':
 					await flushBuffer();
@@ -619,6 +688,51 @@ export class AgentChatBridge {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+
+	// ---------------------------------------------------------------------------
+	// File-attachment handling (no suspension)
+	// ---------------------------------------------------------------------------
+
+	/**
+	 * Render a file batch emitted via `ctx.sendFiles()`. Translates the
+	 * runtime's `ToolFileAttachment` shape (data may be string/ArrayBuffer)
+	 * into Chat SDK's `{ data: Buffer, filename, mimeType }` shape and posts
+	 * via `thread.post({ markdown, files })`.
+	 */
+	private async handleFileDisplay(
+		chunk: Extract<StreamChunk, { type: 'tool-file-display' }>,
+		thread: ChatThread,
+	): Promise<void> {
+		if (!chunk.files?.length) {
+			this.logger.warn('[AgentChatBridge] tool-file-display has no files');
+			return;
+		}
+
+		const files = chunk.files.map((file) => ({
+			data: this.toBuffer(file.data),
+			filename: file.filename,
+			mimeType: file.mimeType,
+		}));
+
+		try {
+			await thread.post({ markdown: chunk.message ?? '', files });
+		} catch (error) {
+			this.logger.error('[AgentChatBridge] Failed to post files', {
+				count: files.length,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private toBuffer(data: Uint8Array | ArrayBuffer | Buffer | string): Buffer {
+		if (Buffer.isBuffer(data)) return data;
+		if (typeof data === 'string') {
+			// Base64-encoded — Chat SDK expects raw bytes.
+			return Buffer.from(data, 'base64');
+		}
+		if (data instanceof ArrayBuffer) return Buffer.from(data);
+		return Buffer.from(data);
 	}
 
 	// ---------------------------------------------------------------------------

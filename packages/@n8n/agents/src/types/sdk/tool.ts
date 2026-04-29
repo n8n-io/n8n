@@ -5,29 +5,42 @@ import type { AgentMessage } from './message';
 import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject } from '../utils/json';
 
-export interface ToolContext {
+/** Single file attachment payload accepted by `ctx.sendFiles`. */
+export interface ToolFileAttachment {
+	data: Uint8Array | ArrayBuffer | Buffer | string;
+	filename: string;
+	mimeType?: string;
+}
+
+export interface ToolContext<D = unknown> {
+	/**
+	 * Surface a side-effect render to the consumer (e.g. a chat card) without
+	 * halting execution. The runtime emits a `tool-card-display` stream chunk
+	 * carrying the payload. Multiple calls in a single handler emit multiple
+	 * chunks in order. Available on every tool regardless of suspend support.
+	 */
+	display: (payload: D) => void;
+	/**
+	 * Send binary file attachments to the consumer (e.g. uploaded as
+	 * Slack/Telegram file messages) without halting execution. The runtime
+	 * emits a `tool-file-display` stream chunk; the integration layer is
+	 * responsible for actually uploading the bytes.
+	 */
+	sendFiles: (files: ToolFileAttachment[], message?: string) => void;
 	/** Telemetry config from the parent agent, for sub-agent propagation. */
 	parentTelemetry?: BuiltTelemetry;
 }
 
-export interface InterruptibleToolContext<S = unknown, R = unknown, D = unknown> {
+export interface InterruptibleToolContext<S = unknown, R = unknown, D = unknown>
+	extends ToolContext<D> {
 	/**
 	 * Suspend execution and send a payload to the consumer.
 	 * Must be used with `return await` — the branded return type signals
 	 * the execution engine to halt. Code after `return await ctx.suspend()` is unreachable.
 	 */
 	suspend: (payload: S) => Promise<never>;
-	/**
-	 * Surface a side-effect render to the consumer (e.g. a chat card) without
-	 * halting execution. The runtime emits a `tool-card-display` stream chunk
-	 * carrying the payload, then the handler continues and returns normally.
-	 * Multiple calls in a single handler emit multiple chunks in order.
-	 */
-	display: (payload: D) => void;
 	/** Data from the consumer after resume. Undefined on first invocation. */
 	resumeData: R | undefined;
-	/** Telemetry config from the parent agent, for sub-agent propagation. */
-	parentTelemetry?: BuiltTelemetry;
 }
 
 export interface BuiltTool {
