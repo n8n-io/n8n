@@ -76,8 +76,15 @@ export function useCredentialTestInBackground() {
 		}
 	}
 
+	function hydrateCredentialTestResults(results: Array<{ id: string; success: boolean }>) {
+		for (const { id, success } of results) {
+			credentialsStore.credentialTestResults.set(id, success ? 'success' : 'error');
+		}
+	}
+
 	return {
 		isCredentialTypeTestable,
 		testCredentialInBackground,
+		hydrateCredentialTestResults,
 	};
 }

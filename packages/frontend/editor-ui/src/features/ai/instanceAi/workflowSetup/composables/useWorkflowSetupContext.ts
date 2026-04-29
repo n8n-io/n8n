@@ -10,6 +10,7 @@ import {
 	type Ref,
 } from 'vue';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import type { TerminalState, WorkflowSetupCard } from '../workflowSetup.types';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
@@ -56,6 +57,16 @@ interface ProvideOptions {
 
 export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetupContext {
 	const store = useInstanceAiStore();
+	const { hydrateCredentialTestResults } = useCredentialTestInBackground();
+
+	hydrateCredentialTestResults(
+		opts.setupRequests.value.flatMap((req) => {
+			const credType = req.credentialType;
+			const credId = credType ? req.node.credentials?.[credType]?.id : undefined;
+			const result = req.credentialTestResult;
+			return credId && result ? [{ id: credId, success: result.success }] : [];
+		}),
+	);
 
 	const { cards } = useWorkflowSetupCards(opts.setupRequests);
 	const bootstrap = useWorkflowSetupBootstrap(opts.workflowId);
