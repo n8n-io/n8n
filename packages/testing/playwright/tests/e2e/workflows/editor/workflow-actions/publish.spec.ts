@@ -59,6 +59,34 @@ test.describe(
 			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 		});
 
+		// N8N-9909: Can't unpublish published workflow from the canvas
+		test('should be able to unpublish workflow from version menu when no changes made', async ({
+			n8n,
+			page,
+		}) => {
+			// Create and publish a workflow
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await n8n.canvas.publishWorkflow();
+
+			// Verify workflow is published
+			await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
+
+			// Get the version menu button (chevron dropdown)
+			const versionMenuButton = page.getByTestId('version-menu-button');
+
+			// The version menu button should be enabled even when no changes are made
+			await expect(versionMenuButton).toBeEnabled();
+
+			// Click the version menu to open the dropdown
+			await versionMenuButton.click();
+
+			// The unpublish option should be visible and enabled in the dropdown
+			const unpublishOption = page.getByRole('menuitem', { name: /unpublish/i });
+			await expect(unpublishOption).toBeVisible();
+			await expect(unpublishOption).not.toHaveAttribute('aria-disabled', 'true');
+		});
+
 		test.describe('Webhook conflict validation', () => {
 			const cleanupWorkflowIds: string[] = [];
 
