@@ -476,11 +476,8 @@ export class AgentsService {
 			: undefined;
 		if (integration && integration.supportedComponents !== undefined) {
 			try {
-				const { createRichInteractionTool, RICH_INTERACTION_INSTRUCTION_FRAGMENT } = await import(
-					'./integrations/rich-interaction-tool'
-				);
+				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
-				this.appendBuiltInInstructions(agent, RICH_INTERACTION_INSTRUCTION_FRAGMENT);
 			} catch (toolError) {
 				this.logger.warn('Failed to inject rich_interaction tool', {
 					agentId,
@@ -511,39 +508,6 @@ export class AgentsService {
 		projectId: string,
 	): void {
 		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
-	}
-
-	/**
-	 * Append a built-in directive to the agent's system instructions, wrapped
-	 * in a `<built_in_rules>` block so it's clearly delineated from the user's
-	 * own agent instructions. Used by tool injection paths (e.g.
-	 * rich_interaction) where the LLM needs a behavioural nudge that tool
-	 * descriptions alone don't reliably enforce.
-	 *
-	 * Idempotent: subsequent rules are appended inside the existing block
-	 * rather than wrapping the previous block.
-	 */
-	private appendBuiltInInstructions(agent: agents.Agent, rule: string): void {
-		const OPEN = '<built_in_rules>';
-		const CLOSE = '</built_in_rules>';
-		const current = agent.snapshot.instructions ?? '';
-
-		const existingOpen = current.indexOf(OPEN);
-		const existingClose = current.indexOf(CLOSE);
-
-		let next: string;
-		if (existingOpen !== -1 && existingClose !== -1) {
-			// Append the rule inside the existing block.
-			const before = current.slice(0, existingClose);
-			const after = current.slice(existingClose);
-			next = `${before}- ${rule}\n${after}`;
-		} else {
-			// Prepend a fresh block above the user's instructions.
-			const block = `${OPEN}\n- ${rule}\n${CLOSE}`;
-			next = current ? `${block}\n\n${current}` : block;
-		}
-
-		agent.instructions(next);
 	}
 
 	/**

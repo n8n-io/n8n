@@ -12,10 +12,10 @@ const DEFAULT_SUPPORTED_COMPONENTS = ['section', 'button', 'divider', 'fields'];
  * System-prompt directive paired with the tool. Tool descriptions answer
  * "what does this tool do?" but the LLM weights system instructions much
  * more strongly when deciding "should I use this tool over plain text?".
- * The injection point in `agents.service.ts` wraps this in a `<built_in_rules>`
- * block so it's clearly delineated from the user's own agent instructions.
+ * The runtime collects every tool's `systemInstruction` and wraps them in a
+ * single `<built_in_rules>` block above the user's agent instructions.
  */
-export const RICH_INTERACTION_INSTRUCTION_FRAGMENT =
+const RICH_INTERACTION_INSTRUCTION_FRAGMENT =
 	'When you have an image URL, gif, or content that benefits from visual ' +
 	'structure (key-value summaries, info cards, choice options), call the ' +
 	'rich_interaction tool to render it as a card instead of pasting URLs or ' +
@@ -130,6 +130,7 @@ export function createRichInteractionTool(platform?: string) {
 
 	return new Tool('rich_interaction')
 		.description(description)
+		.systemInstruction(RICH_INTERACTION_INSTRUCTION_FRAGMENT)
 		.input(inputSchema)
 		.suspend(suspendSchema)
 		.resume(

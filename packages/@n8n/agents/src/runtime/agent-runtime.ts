@@ -631,8 +631,15 @@ export class AgentRuntime {
 	/** Core generate loop using generateText (non-streaming). */
 	private async runGenerateLoop(ctx: LoopContext): Promise<GenerateResult> {
 		const { list, options, runId, pendingResume } = ctx;
-		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
-			this.buildLoopContext({ ...options, persistence: options?.persistence });
+		const {
+			model,
+			toolMap,
+			aiTools,
+			providerOptions,
+			hasTools,
+			outputSpec,
+			effectiveInstructions,
+		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
 
 		let totalUsage: TokenUsage | undefined;
 		let lastFinishReason: FinishReason = 'stop';
@@ -688,7 +695,7 @@ export class AgentRuntime {
 
 			const result = await generateText({
 				model,
-				messages: list.forLlm(this.config.instructions, this.config.instructionProviderOptions),
+				messages: list.forLlm(effectiveInstructions, this.config.instructionProviderOptions),
 				abortSignal: this.eventBus.signal,
 				...(hasTools ? { tools: aiTools } : {}),
 				...(providerOptions
@@ -839,8 +846,15 @@ export class AgentRuntime {
 		ctx: LoopContext & { writer: WritableStreamDefaultWriter<StreamChunk> },
 	): Promise<void> {
 		const { list, options, runId, pendingResume, writer } = ctx;
-		const { model, toolMap, aiTools, providerOptions, hasTools, outputSpec } =
-			this.buildLoopContext({ ...options, persistence: options?.persistence });
+		const {
+			model,
+			toolMap,
+			aiTools,
+			providerOptions,
+			hasTools,
+			outputSpec,
+			effectiveInstructions,
+		} = this.buildLoopContext({ ...options, persistence: options?.persistence });
 
 		const writeChunk = async (chunk: StreamChunk): Promise<void> => {
 			await writer.write(chunk);
@@ -955,10 +969,7 @@ export class AgentRuntime {
 			if (await handleAbort()) return;
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
-			const messages = list.forLlm(
-				this.config.instructions,
-				this.config.instructionProviderOptions,
-			);
+			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
 			const result = streamText({
 				model,
 				messages,
@@ -1714,7 +1725,27 @@ export class AgentRuntime {
 			outputSpec: this.config.structuredOutput
 				? Output.object({ schema: this.config.structuredOutput })
 				: undefined,
+			effectiveInstructions: this.composeEffectiveInstructions(allUserTools),
 		};
+	}
+
+	/**
+	 * Merge tool-attached `systemInstruction` fragments into the agent's
+	 * configured instructions. Fragments are wrapped in a single
+	 * `<built_in_rules>` block, prepended above the user's instructions so
+	 * the user's text remains the dominant tail of the prompt and can still
+	 * override defaults if needed.
+	 */
+	private composeEffectiveInstructions(tools: BuiltTool[]): string {
+		const fragments = tools
+			.map((t) => t.systemInstruction)
+			.filter((s): s is string => typeof s === 'string' && s.trim().length > 0);
+
+		const userInstructions = this.config.instructions;
+		if (fragments.length === 0) return userInstructions;
+
+		const block = `<built_in_rules>\n${fragments.map((f) => `- ${f}`).join('\n')}\n</built_in_rules>`;
+		return userInstructions ? `${block}\n\n${userInstructions}` : block;
 	}
 
 	/**

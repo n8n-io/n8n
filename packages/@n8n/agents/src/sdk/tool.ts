@@ -129,6 +129,8 @@ export class Tool<
 
 	private needsApprovalFnValue?: (args: unknown) => Promise<boolean> | boolean;
 
+	private systemInstructionText?: string;
+
 	constructor(name: string) {
 		this.name = name;
 	}
@@ -136,6 +138,20 @@ export class Tool<
 	/** Set the tool description. Required before building. */
 	description(desc: string): this {
 		this.desc = desc;
+		return this;
+	}
+
+	/**
+	 * Attach a behavioural directive to this tool. When the tool is registered
+	 * with an agent, the runtime injects this text into the agent's system
+	 * prompt under a `<built_in_rules>` block, where the LLM weighs it heavily
+	 * for "should I call this tool?" decisions.
+	 *
+	 * Use sparingly — only for guidance the description alone doesn't reliably
+	 * convey (e.g. "prefer this tool over plain text when X").
+	 */
+	systemInstruction(text: string): this {
+		this.systemInstructionText = text;
 		return this;
 	}
 
@@ -262,6 +278,7 @@ export class Tool<
 		const built: BuiltTool = {
 			name: this.name,
 			description: this.desc,
+			systemInstruction: this.systemInstructionText,
 			suspendSchema: this.suspendSchemaValue,
 			resumeSchema: this.resumeSchemaValue,
 			toMessage: this.toMessageFn as (output: unknown) => AgentMessage | undefined,
