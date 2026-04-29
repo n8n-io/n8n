@@ -54,6 +54,7 @@ export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
 export interface AgentCredentialIntegration {
 	type: string;
 	credentialId: string;
+	credentialName: string;
 }
 
 export interface AgentScheduleIntegration {
@@ -176,6 +177,12 @@ export interface AgentJsonConfig {
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
 	providerTools?: Record<string, Record<string, unknown>>;
+	/**
+	 * Triggers (scheduled execution + chat integrations) attached to this agent.
+	 * Mirrors the contents of `agent.integrations` storage column so the builder
+	 * can read and modify triggers through the same JSON config flow as tools.
+	 */
+	integrations?: AgentIntegration[];
 	config?: {
 		thinking?: {
 			provider: 'anthropic' | 'openai';
