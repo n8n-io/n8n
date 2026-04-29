@@ -169,7 +169,7 @@ const handleOpenChange = (open: boolean) => {
 	}
 	to {
 		opacity: 1;
-		filter: blur(0px);
+		filter: blur(0);
 	}
 }
 </style>
