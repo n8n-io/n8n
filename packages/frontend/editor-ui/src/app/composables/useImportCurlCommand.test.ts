@@ -46,6 +46,7 @@ describe('useImportCurlCommand', () => {
 			const parameters = toHttpNodeParameters(curl);
 			expect(parameters.url).toBe('https://reqbin.com/echo/post/json');
 			expect(parameters.sendBody).toBe(true);
+			expect(parameters.specifyBody).toBe('keypair');
 			expect(parameters.bodyParameters?.parameters[0].name).toBe('login');
 			expect(parameters.bodyParameters?.parameters[0].value).toBe('my_login');
 			expect(parameters.bodyParameters?.parameters[1].name).toBe('password');
@@ -53,6 +54,42 @@ describe('useImportCurlCommand', () => {
 			expect(parameters.contentType).toBe('json');
 			expect(parameters.sendHeaders).toBe(false);
 			expect(parameters.sendQuery).toBe(false);
+		});
+
+		test('Should preserve integer values in JSON body via raw JSON mode', () => {
+			const curl =
+				"curl -X POST https://reqbin.com/echo/post/json -H 'Content-Type: application/json' --data-raw '{\"size\":100}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.url).toBe('https://reqbin.com/echo/post/json');
+			expect(parameters.sendBody).toBe(true);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ size: 100 }, null, 2));
+			expect(parameters.bodyParameters).toBeUndefined();
+		});
+
+		test('Should preserve boolean values in JSON body via raw JSON mode', () => {
+			const curl =
+				"curl -X POST https://reqbin.com/echo/post/json -H 'Content-Type: application/json' --data-raw '{\"flag\":true}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ flag: true }, null, 2));
+		});
+
+		test('Should preserve null values in JSON body via raw JSON mode', () => {
+			const curl =
+				"curl -X POST https://reqbin.com/echo/post/json -H 'Content-Type: application/json' --data-raw '{\"value\":null}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ value: null }, null, 2));
+		});
+
+		test('Should use raw JSON mode when JSON body mixes strings and numbers', () => {
+			const curl =
+				'curl -X POST https://reqbin.com/echo/post/json -H \'Content-Type: application/json\' --data-raw \'{"size":100,"name":"alice"}\'';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.specifyBody).toBe('json');
+			expect(parameters.jsonBody).toBe(JSON.stringify({ size: 100, name: 'alice' }, null, 2));
 		});
 
 		test('Should parse multipart-form-data content type correctly', () => {

@@ -200,8 +200,8 @@ const lowerCaseContentTypeKey = (obj: JSONOutput['headers']): void => {
 
 const encodeBasicAuthentication = (username: string, password: string) =>
 	btoa(`${username}:${password}`);
-const jsonHasNestedObjects = (json: { [key: string]: string | number | object }) =>
-	Object.values(json).some((e) => typeof e === 'object');
+const jsonHasNonStringValues = (json: Record<string, unknown>) =>
+	Object.values(json).some((value) => typeof value !== 'string');
 
 const mapCookies = (cookies: JSONOutput['cookies']): { cookie: string } | {} => {
 	if (!cookies) return {};
@@ -350,14 +350,13 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 		if (curlJson.data) {
 			const json = curlJson.data;
 
-			if (jsonHasNestedObjects(json)) {
-				// json body
+			if (typeof json !== 'string' && jsonHasNonStringValues(json)) {
+				// Keypair mode would stringify non-string values via toString().
 				Object.assign(httpNodeParameters, {
 					specifyBody: 'json',
 					jsonBody: JSON.stringify(json, null, 2),
 				});
 			} else {
-				// key-value body
 				Object.assign(httpNodeParameters, {
 					specifyBody: 'keypair',
 					bodyParameters: {
