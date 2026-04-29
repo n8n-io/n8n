@@ -11,7 +11,7 @@ import { useToast } from '@/app/composables/useToast';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nInputNumber, N8nTooltip } from '@n8n/design-system';
 
 const props = defineProps<{
-	name: string;
+	workflowId: string;
 }>();
 
 const locale = useI18n();
@@ -26,13 +26,13 @@ const cancellingTestRun = ref<boolean>(false);
 const runningTestRun = computed(() => runs.value.find((run) => run.status === 'running'));
 
 const parallelEnabledModel = computed({
-	get: () => parallelEvalStore.isParallel(props.name),
-	set: (value: boolean) => parallelEvalStore.setParallel(props.name, value),
+	get: () => parallelEvalStore.isParallel(props.workflowId),
+	set: (value: boolean) => parallelEvalStore.setParallel(props.workflowId, value),
 });
 
 const concurrencyModel = computed({
-	get: () => parallelEvalStore.concurrencyValue(props.name),
-	set: (value: number) => parallelEvalStore.setConcurrencyValue(props.name, value),
+	get: () => parallelEvalStore.concurrencyValue(props.workflowId),
+	set: (value: number) => parallelEvalStore.setConcurrencyValue(props.workflowId, value),
 });
 
 async function runTest() {
@@ -42,15 +42,15 @@ async function runTest() {
 		// path. Flag-on cohort sends an explicit value derived from the per-
 		// workflow checkbox + input state.
 		const options = parallelEvalStore.isFeatureEnabled
-			? { concurrency: parallelEvalStore.effectiveConcurrency(props.name) }
+			? { concurrency: parallelEvalStore.effectiveConcurrency(props.workflowId) }
 			: undefined;
-		await evaluationStore.startTestRun(props.name, options);
+		await evaluationStore.startTestRun(props.workflowId, options);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
 
 	try {
-		await evaluationStore.fetchTestRuns(props.name);
+		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
@@ -74,7 +74,7 @@ async function stopTest() {
 
 const runs = computed(() => {
 	const testRuns = Object.values(evaluationStore.testRunsById ?? {}).filter(
-		({ workflowId }) => workflowId === props.name,
+		({ workflowId }) => workflowId === props.workflowId,
 	);
 
 	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) => ({
@@ -150,7 +150,7 @@ watch(runningTestRun, (run) => {
 					v-model:selected-metric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
-					:workflow-id="props.name"
+					:workflow-id="props.workflowId"
 				/>
 			</div>
 		</div>
