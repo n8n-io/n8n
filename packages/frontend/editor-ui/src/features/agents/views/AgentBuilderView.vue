@@ -26,9 +26,15 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
-import { getAgent, deleteAgent, publishAgent } from '../composables/useAgentApi';
+import {
+	getAgent,
+	deleteAgent,
+	publishAgent,
+	updateAgentSkill,
+	createAgentSkill,
+} from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
-import type { AgentResource, AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentResource, AgentJsonConfig, AgentJsonToolRef, AgentSkill } from '../types';
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
@@ -50,6 +56,7 @@ import {
 	CONFIG_JSON_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
+	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
@@ -59,10 +66,12 @@ import AgentChatPanel from '../components/AgentChatPanel.vue';
 import AgentConfigTree from '../components/AgentConfigTree.vue';
 import AgentSectionEditor from '../components/AgentSectionEditor.vue';
 import AgentCustomToolViewer from '../components/AgentCustomToolViewer.vue';
+import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import AgentSessionsListView from './AgentSessionsListView.vue';
 import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
 import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
+import AgentSkillsListPanel from '../components/AgentSkillsListPanel.vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
@@ -300,13 +309,22 @@ function onOpenBuildFromChat() {
 	chatMode.value = 'build';
 }
 
-interface AutosaveSnapshot {
+interface ConfigAutosaveSnapshot {
+	type: 'config';
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
 }
 
-async function saveConfig(snapshot: AutosaveSnapshot): Promise<void> {
+interface SkillAutosaveSnapshot {
+	type: 'skill';
+	projectId: string;
+	agentId: string;
+	skillId: string;
+	skill: AgentSkill;
+}
+
+async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// Drop the response if the user has switched to a different agent in the
 	// meantime — both `config` (handled inside useAgentConfig) and
@@ -318,10 +336,29 @@ async function saveConfig(snapshot: AutosaveSnapshot): Promise<void> {
 	}
 }
 
+async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
+	const result = await updateAgentSkill(
+		rootStore.restApiContext,
+		snapshot.projectId,
+		snapshot.agentId,
+		snapshot.skillId,
+		snapshot.skill,
+	);
+	if (agent.value?.id !== snapshot.agentId) return;
+	agent.value = {
+		...agent.value,
+		versionId: result.versionId,
+		skills: {
+			...(agent.value.skills ?? {}),
+			[snapshot.skillId]: result.skill,
+		},
+	};
+}
+
 // Debounce shorter than the workflow canvas' 1500ms — the publish button's
 // "enabled" state is gated on the save landing, so a longer wait makes the
 // UI feel laggy right after an edit.
-const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave<AutosaveSnapshot>({
+const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	save: saveConfig,
 	onSaved: () => {
 		telemetry.track('User saved agent settings', { agent_id: agentId.value });
@@ -336,14 +373,37 @@ const { saveStatus, scheduleAutosave, settleAutosave } = useAgentConfigAutosave<
 		showError(error, locale.baseText('agents.builder.saveError'));
 	},
 });
+const skillAutosave = useAgentConfigAutosave<SkillAutosaveSnapshot>({
+	save: saveSkill,
+	onSaved: () => {
+		telemetry.track('User saved agent settings', { agent_id: agentId.value });
+	},
+	onError: (error: unknown) => {
+		showError(error, locale.baseText('agents.builder.saveError'));
+	},
+});
+const saveStatus = computed(() => {
+	if (configAutosave.saveStatus.value === 'saving' || skillAutosave.saveStatus.value === 'saving') {
+		return 'saving';
+	}
+	if (configAutosave.saveStatus.value === 'saved' || skillAutosave.saveStatus.value === 'saved') {
+		return 'saved';
+	}
+	return 'idle';
+});
+
+async function settleAutosave() {
+	await Promise.all([configAutosave.settleAutosave(), skillAutosave.settleAutosave()]);
+}
 
 function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
 	if (!localConfig.value) return;
 	builderTelemetry.recordConfigEdit(nextConfig);
 	localConfig.value = nextConfig;
-	scheduleAutosave({
+	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
+		type: 'config',
 		config: deepCopy(localConfig.value),
 	});
 }
@@ -359,9 +419,10 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 		agentName.value = updates.name;
 		if (agent.value) agent.value = { ...agent.value, name: updates.name };
 	}
-	scheduleAutosave({
+	configAutosave.scheduleAutosave({
 		projectId: projectId.value,
 		agentId: agentId.value,
+		type: 'config',
 		config: deepCopy(localConfig.value),
 	});
 }
@@ -467,6 +528,7 @@ async function guardUnpublishedChanges(
 			await settleAutosave();
 			if (!localConfig.value) return;
 			await saveConfig({
+				type: 'config',
 				projectId: leavingProjectId,
 				agentId: leavingAgentId,
 				config: deepCopy(localConfig.value),
@@ -637,6 +699,61 @@ function onOpenToolFromList(index: number) {
 	selectedSection.value = `tools.${index}`;
 }
 
+function onOpenSkillFromList(id: string) {
+	selectedSection.value = `skills.${id}`;
+}
+
+function onOpenAddSkillModal() {
+	const existingSkillIds = new Set(Object.keys(agent.value?.skills ?? {}));
+	for (const ref of localConfig.value?.skills ?? []) {
+		if (ref.id) existingSkillIds.add(ref.id);
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_SKILL_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingSkillIds: [...existingSkillIds],
+			onConfirm: ({ id, skill }: { id: string; skill: AgentSkill }) => {
+				const targetProjectId = projectId.value;
+				const targetAgentId = agentId.value;
+				void (async () => {
+					let created: AgentSkill;
+					let versionId: string | null;
+					try {
+						const result = await createAgentSkill(
+							rootStore.restApiContext,
+							targetProjectId,
+							targetAgentId,
+							id,
+							skill,
+						);
+						created = result.skill;
+						versionId = result.versionId;
+					} catch (error) {
+						showError(error, locale.baseText('agents.builder.skills.create.error'));
+						return;
+					}
+					if (agent.value?.id !== targetAgentId) return;
+					agent.value = {
+						...agent.value,
+						versionId,
+						skills: {
+							...(agent.value.skills ?? {}),
+							[id]: created,
+						},
+					};
+					onConfigFieldUpdate({
+						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
+					});
+					selectedSection.value = `skills.${id}`;
+				})();
+			},
+		},
+	});
+}
+
 function onRemoveTool(index: number) {
 	const currentTools = localConfig.value?.tools ?? [];
 	if (index < 0 || index >= currentTools.length) return;
@@ -646,6 +763,40 @@ function onRemoveTool(index: number) {
 	if (selectedSection.value === `tools.${index}`) {
 		selectedSection.value = 'tools';
 	}
+}
+
+function onRemoveSkill(id: string) {
+	const currentSkills = localConfig.value?.skills ?? [];
+	const nextSkills = currentSkills.filter((ref) => ref.id !== id);
+	if (nextSkills.length === currentSkills.length) return;
+
+	onConfigFieldUpdate({ skills: nextSkills });
+
+	if (selectedSection.value === `skills.${id}`) {
+		selectedSection.value = 'skills';
+	}
+}
+
+function onSkillUpdate(updates: Partial<AgentSkill>) {
+	const selected = selectedSkill.value;
+	if (!selected || !agent.value) return;
+
+	const updatedSkill = { ...selected.skill, ...updates };
+	agent.value = {
+		...agent.value,
+		skills: {
+			...(agent.value.skills ?? {}),
+			[selected.id]: updatedSkill,
+		},
+	};
+
+	skillAutosave.scheduleAutosave({
+		type: 'skill',
+		projectId: projectId.value,
+		agentId: agentId.value,
+		skillId: selected.id,
+		skill: deepCopy(updatedSkill),
+	});
 }
 
 function onOpenAddToolModal() {
@@ -690,6 +841,38 @@ const selectedTriggerType = computed<string | null>(() => {
 /** True when a tree selection points at a specific tool slice (tools.<i>). */
 const isToolSliceSelection = computed(() => selectedSection.value?.startsWith('tools.') ?? false);
 
+/** True when a tree selection points at a specific skill slice (skills.<id>). */
+const isSkillSliceSelection = computed(() => selectedSection.value?.startsWith('skills.') ?? false);
+
+const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
+	const refs = localConfig.value?.skills ?? [];
+	const seen = new Set<string>();
+	const out: Array<{ id: string; skill: AgentSkill }> = [];
+
+	for (const ref of refs) {
+		if (!ref.id || seen.has(ref.id)) continue;
+		seen.add(ref.id);
+		out.push({
+			id: ref.id,
+			skill: agent.value?.skills?.[ref.id] ?? {
+				name: ref.id,
+				description: '',
+				instructions: '',
+			},
+		});
+	}
+
+	return out;
+});
+
+const selectedSkill = computed<{ id: string; skill: AgentSkill } | null>(() => {
+	const key = selectedSection.value;
+	if (!key?.startsWith('skills.')) return null;
+	const id = key.slice('skills.'.length);
+	if (!id) return null;
+	return appliedSkills.value.find((entry) => entry.id === id) ?? null;
+});
+
 /** Filename-like label for the currently-open tool. */
 const toolHeaderTitle = computed(() => {
 	const key = selectedSection.value;
@@ -705,6 +888,10 @@ const toolHeaderTitle = computed(() => {
 	}
 	return name || `${ref.type ?? 'tool'}-${idx + 1}`;
 });
+
+const skillHeaderTitle = computed(
+	() => selectedSkill.value?.skill.name || selectedSkill.value?.id || '',
+);
 
 const customToolSelection = computed<{ code: string } | null>(() => {
 	const key = selectedSection.value;
@@ -986,24 +1173,28 @@ function onSwitchAgent(nextAgentId: string) {
 			>
 				<div :class="$style.panelArea">
 					<div
-						v-if="isToolSliceSelection"
+						v-if="isToolSliceSelection || isSkillSliceSelection"
 						:class="$style.panelToolbar"
 						data-testid="agent-tool-header"
 					>
 						<button
 							type="button"
 							:class="$style.backBtn"
-							aria-label="Back to tools"
+							:aria-label="
+								isSkillSliceSelection
+									? locale.baseText('agents.builder.skills.back')
+									: locale.baseText('agents.builder.tools.back')
+							"
 							data-testid="agent-tool-back"
-							@click="selectedSection = 'tools'"
+							@click="selectedSection = isSkillSliceSelection ? 'skills' : 'tools'"
 						>
 							<N8nIcon icon="arrow-left" :size="16" />
 						</button>
 						<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
-							{{ toolHeaderTitle }}
+							{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
 						</span>
 						<button
-							v-if="canToggleRaw"
+							v-if="canToggleRaw && isToolSliceSelection"
 							type="button"
 							:class="[
 								$style.rawToggle,
@@ -1041,6 +1232,12 @@ function onSwitchAgent(nextAgentId: string) {
 						@update:config="onSectionEditorUpdate"
 					/>
 					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
+					<AgentSkillViewer
+						v-else-if="selectedSkill"
+						:skill="selectedSkill.skill"
+						:disabled="isBuildChatStreaming"
+						@update:skill="onSkillUpdate"
+					/>
 					<AgentAdvancedPanel
 						v-else-if="selectedSection === ADVANCED_SECTION_KEY"
 						:config="localConfig"
@@ -1067,6 +1264,14 @@ function onSwitchAgent(nextAgentId: string) {
 						@add-tool="onOpenAddToolModal"
 						@remove-tool="onRemoveTool"
 						@update:config="onConfigFieldUpdate"
+					/>
+					<AgentSkillsListPanel
+						v-else-if="selectedSection === 'skills'"
+						:skills="appliedSkills"
+						:disabled="isBuildChatStreaming"
+						@open-skill="onOpenSkillFromList"
+						@add-skill="onOpenAddSkillModal"
+						@remove-skill="onRemoveSkill"
 					/>
 					<div
 						v-else-if="selectedTriggerType"
@@ -1416,13 +1621,14 @@ function onSwitchAgent(nextAgentId: string) {
 .panelToolbar {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--sm);
 	border-bottom: var(--border);
 	/* Overrides `.panelArea > *` which sets flex:1. The toolbar should size to
 	   its content, not share height with the panel below. */
-	flex: 0 0 auto !important;
-	min-height: auto !important;
+	flex: 0 0 36px !important;
+	height: 36px !important;
+	min-height: 36px !important;
 }
 
 .panelToolbarTitle {
@@ -1432,7 +1638,7 @@ function onSwitchAgent(nextAgentId: string) {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-family: var(--font-family--monospace, monospace);
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text);
 }
 
@@ -1440,8 +1646,8 @@ function onSwitchAgent(nextAgentId: string) {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 28px;
-	height: 28px;
+	width: 24px;
+	height: 24px;
 	padding: 0;
 	background: transparent;
 	border: var(--border);

@@ -112,6 +112,95 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
 	});
 
+	it('injects attached skill names and descriptions, but not bodies, into instructions', async () => {
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+				},
+			},
+		);
+
+		const instructions = agent.snapshot.instructions ?? '';
+		expect(instructions).toContain('summarize_notes: Summarize notes');
+		expect(instructions).toContain('Use for meeting notes and transcripts');
+		expect(instructions).toContain('load_skill');
+		expect(instructions).not.toContain('Extract decisions and action items.');
+	});
+
+	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+					unused_skill: {
+						name: 'Unused skill',
+						description: 'This is not attached',
+						instructions: 'This should not load.',
+					},
+				},
+			},
+		);
+
+		const loadSkill = agent.declaredTools.find((t) => t.name === 'load_skill');
+		expect(loadSkill).toBeDefined();
+
+		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			ok: true,
+			skillId: 'summarize_notes',
+			instructions: 'Extract decisions and action items.',
+		});
+
+		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
+			ok: false,
+		});
+	});
+
+	it('throws when a configured skill ref is missing its stored body', async () => {
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'missing_skill' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					skills: {},
+				},
+			),
+		).rejects.toThrow('Skill "missing_skill" not found in stored skill bodies');
+	});
+
 	it('throws when custom tool id is not found in descriptors', async () => {
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
 

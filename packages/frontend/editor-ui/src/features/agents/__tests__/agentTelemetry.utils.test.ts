@@ -14,6 +14,7 @@ describe('buildAgentConfigFingerprint', () => {
 			{ type: 'node', name: 'zulu' },
 			{ type: 'custom', id: 'alpha' },
 		],
+		skills: [{ type: 'skill', id: 'summarize_notes' }],
 		memory: { enabled: true, storage: 'n8n' },
 	};
 
@@ -26,6 +27,7 @@ describe('buildAgentConfigFingerprint', () => {
 	it('sorts tools and triggers alphabetically', async () => {
 		const fp = await buildAgentConfigFingerprint(baseConfig, ['telegram', 'slack']);
 		expect(fp.tools).toEqual(['alpha', 'zulu']);
+		expect(fp.skills).toEqual(['summarize_notes']);
 		expect(fp.triggers).toEqual(['slack', 'telegram']);
 	});
 
@@ -52,6 +54,17 @@ describe('buildAgentConfigFingerprint', () => {
 		);
 	});
 
+	it('changes config_version when a skill is added', async () => {
+		const a = await buildAgentConfigFingerprint(baseConfig, []);
+		const withExtra: AgentJsonConfig = {
+			...baseConfig,
+			skills: [...(baseConfig.skills ?? []), { type: 'skill', id: 'write_like_brand' }],
+		};
+		expect((await buildAgentConfigFingerprint(withExtra, [])).config_version).not.toBe(
+			a.config_version,
+		);
+	});
+
 	it('changes config_version when the model changes', async () => {
 		const a = await buildAgentConfigFingerprint(baseConfig, []);
 		const b = await buildAgentConfigFingerprint({ ...baseConfig, model: 'gpt-5' }, []);
@@ -67,6 +80,7 @@ describe('buildAgentConfigFingerprint', () => {
 		const fp = await buildAgentConfigFingerprint(null, []);
 		expect(fp.instructions).toBe('');
 		expect(fp.tools).toEqual([]);
+		expect(fp.skills).toEqual([]);
 		expect(fp.model).toBeNull();
 	});
 });

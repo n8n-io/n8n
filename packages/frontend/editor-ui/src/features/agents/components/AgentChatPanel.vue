@@ -72,6 +72,13 @@ const {
 });
 
 function humaniseMissingField(field: string): string {
+	// `skill:<id>` is a parameterised token — render it through a single i18n
+	// entry so a new id doesn't require a translations change.
+	if (field.startsWith('skill:')) {
+		return locale.baseText('agents.chat.misconfigured.missing.skill', {
+			interpolate: { id: field.slice('skill:'.length) },
+		});
+	}
 	// Map backend-emitted field ids onto i18n keys. Unknown fields fall back to
 	// their raw id so a new backend-side value still renders something useful.
 	const key = `agents.chat.misconfigured.missing.${field}`;

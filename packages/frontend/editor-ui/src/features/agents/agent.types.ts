@@ -15,7 +15,7 @@ export interface CustomToolEntry {
 	descriptor: ToolDescriptor;
 }
 
-import type { AgentPublishedVersionDto } from '@n8n/api-types';
+import type { AgentPublishedVersionDto, AgentSkill } from '@n8n/api-types';
 
 export type AgentPublishedVersion = AgentPublishedVersionDto;
 
@@ -32,5 +32,6 @@ export type Agent = {
 	updatedAt: string;
 	versionId: string | null;
 	tools: Record<string, CustomToolEntry>;
+	skills: Record<string, AgentSkill>;
 	publishedVersion: AgentPublishedVersion | null;
 };

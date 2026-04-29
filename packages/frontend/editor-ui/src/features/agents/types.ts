@@ -1,7 +1,8 @@
 import type { BaseResource } from '@/Interface';
+import type { AgentSkill } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
-export type { ToolDescriptor, CustomToolEntry };
+export type { ToolDescriptor, CustomToolEntry, AgentSkill };
 
 /**
  * Agent resource type definition.
@@ -118,4 +119,10 @@ export interface ThinkingSchema {
 	reasoningEffort?: string;
 }
 
-export type { NodeToolConfig, AgentJsonToolRef, AgentJsonConfig } from '@n8n/api-types';
+export type {
+	NodeToolConfig,
+	AgentJsonToolRef,
+	AgentJsonSkillRef,
+	AgentJsonConfigRef,
+	AgentJsonConfig,
+} from '@n8n/api-types';

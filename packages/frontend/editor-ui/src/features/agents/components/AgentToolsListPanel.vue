@@ -86,6 +86,9 @@ interface CustomRow {
 	description?: string;
 }
 
+type WorkflowToolRef = AgentJsonToolRef & { type: 'workflow' };
+type CustomToolRef = AgentJsonToolRef & { type: 'custom' };
+
 const nodeRows = computed<NodeRow[]>(() => {
 	const out: NodeRow[] = [];
 	props.tools.forEach((ref, index) => {
@@ -108,7 +111,7 @@ const nodeRows = computed<NodeRow[]>(() => {
 const workflowRows = computed<WorkflowRow[]>(() =>
 	props.tools
 		.map((ref, index) => ({ ref, index }))
-		.filter(({ ref }) => ref.type === 'workflow')
+		.filter((item): item is { ref: WorkflowToolRef; index: number } => item.ref.type === 'workflow')
 		.map(({ ref, index }) => ({
 			index,
 			name: ref.name ?? (ref.workflow as string),
@@ -119,7 +122,7 @@ const workflowRows = computed<WorkflowRow[]>(() =>
 const customRows = computed<CustomRow[]>(() =>
 	props.tools
 		.map((ref, index) => ({ ref, index }))
-		.filter(({ ref }) => ref.type === 'custom')
+		.filter((item): item is { ref: CustomToolRef; index: number } => item.ref.type === 'custom')
 		.map(({ ref, index }) => ({
 			index,
 			label: ref.name?.trim() || ref.id || `Custom tool ${index + 1}`,

@@ -182,9 +182,11 @@ interface ConfiguredWorkflowView {
 	description?: string;
 }
 
+type WorkflowToolRef = AgentJsonToolRef & { type: 'workflow' };
+
 const configuredWorkflows = computed<ConfiguredWorkflowView[]>(() =>
 	workingTools.value
-		.filter((t) => t.type === 'workflow')
+		.filter((t): t is WorkflowToolRef => t.type === 'workflow')
 		.map((ref) => ({
 			ref,
 			name: ref.name ?? (ref.workflow as string),
