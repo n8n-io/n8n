@@ -83,7 +83,7 @@ const handleOpenChange = (open: boolean) => {
 			:disable-hoverable-content="disableHoverableContent"
 			@update:open="handleOpenChange"
 		>
-			<TooltipTrigger as="span" :class="{ [$style.disabledTrigger]: disabled }">
+			<TooltipTrigger as-child :class="{ [$style.disabledTrigger]: disabled }">
 				<slot />
 			</TooltipTrigger>
 			<TooltipPortal :to="teleported ? appendTo : undefined" :disabled="!teleported">
@@ -139,18 +139,18 @@ const handleOpenChange = (open: boolean) => {
 	min-height: var(--height--sm);
 	max-height: var(--reka-tooltip-content-available-height);
 	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--md);
 	border-radius: var(--radius--xs);
 	background: var(--color--neutral-black);
 	color: var(--color--neutral-100);
-	box-shadow: var(--shadow--md);
+	box-shadow: var(--shadow--sm);
 	word-wrap: break-word;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	flex-direction: column;
 	transform-origin: var(--reka-tooltip-content-transform-origin);
-	animation: scaleIn var(--duration--snappy) var(--easing--ease-out);
 
 	svg {
 		fill: currentColor;
@@ -160,16 +160,5 @@ const handleOpenChange = (open: boolean) => {
 
 :global(.n8n-tooltip[data-state='closed']) {
 	animation: none;
-}
-
-@keyframes scaleIn {
-	from {
-		opacity: 0;
-		filter: blur(2px);
-	}
-	to {
-		opacity: 1;
-		filter: blur(0);
-	}
 }
 </style>
