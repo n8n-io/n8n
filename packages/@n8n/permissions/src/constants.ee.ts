@@ -86,8 +86,8 @@ export const API_KEY_RESOURCES = {
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,
 	dataTable: ['create', 'read', 'update', 'delete', 'list'] as const,
 	dataTableRow: ['create', 'read', 'update', 'delete', 'upsert'] as const,
+	dataTableColumn: ['create', 'read', 'delete', 'update'] as const,
 	folder: ['create', 'delete', 'read', 'update', 'list'] as const,
-	dataTableColumn: ['create', 'read', 'delete'] as const,
 	insights: ['read'] as const,
 } as const;
 

@@ -26,6 +26,7 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { WebhookResponse } from './webhook-response';
 
 import { authAllowlistedNodes } from './constants';
 import { matchesExpectedNodeType } from './node-type-matcher';
@@ -70,7 +71,7 @@ export class TestWebhooks implements IWebhookManager {
 		request: WebhookRequest,
 		response: express.Response,
 		expectedNodeType?: ExpectedWebhookNodeType,
-	): Promise<IWebhookResponseCallbackData> {
+	): Promise<IWebhookResponseCallbackData | WebhookResponse> {
 		const httpMethod = request.method;
 
 		let path = removeTrailingSlash(request.params.path);
@@ -158,7 +159,7 @@ export class TestWebhooks implements IWebhookManager {
 						undefined, // executionId
 						request,
 						response,
-						(error: Error | null, data: IWebhookResponseCallbackData) => {
+						(error: Error | null, data: IWebhookResponseCallbackData | WebhookResponse) => {
 							if (error !== null) reject(error);
 							else resolve(data);
 						},

@@ -1,4 +1,4 @@
-import { ExecutionsConfig } from '@n8n/config';
+import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
 	CreateExecutionPayload,
@@ -12,6 +12,7 @@ import { BinaryDataService, StorageConfig } from 'n8n-core';
 
 import { FsStore } from './execution-data/fs-store';
 import type { ExecutionRef, WorkflowSnapshot } from './execution-data/types';
+import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 
 type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
@@ -27,6 +28,7 @@ export class ExecutionPersistence {
 		private readonly fsStore: FsStore,
 		private readonly storageConfig: StorageConfig,
 		private readonly executionsConfig: ExecutionsConfig,
+		private readonly databaseConfig: DatabaseConfig,
 	) {}
 
 	/**
@@ -43,26 +45,60 @@ export class ExecutionPersistence {
 		const data = stringify(rawData);
 		const workflowVersionId = workflowData.versionId ?? null;
 
-		return await this.executionRepository.manager.transaction(async (tx) => {
-			const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
-			const executionId = String(identifiers[0].id);
+		try {
+			return await this.executionRepository.manager.transaction(async (tx) => {
+				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
+				const executionId = String(identifiers[0].id);
 
-			if (storedAt === 'db') {
-				await tx.insert(ExecutionData, {
-					executionId,
-					workflowData: workflowSnapshot,
-					data,
-					workflowVersionId,
-				});
+				if (storedAt === 'db') {
+					await tx.insert(ExecutionData, {
+						executionId,
+						workflowData: workflowSnapshot,
+						data,
+						workflowVersionId,
+					});
+					return executionId;
+				}
+
+				await this.fsStore.write(
+					{ workflowId: id, executionId },
+					{ data, workflowData: workflowSnapshot, workflowVersionId },
+				);
 				return executionId;
+			});
+		} catch (error) {
+			if (executionEntity.deduplicationKey && this.isDuplicateExecutionError(error)) {
+				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
 			}
+			throw error;
+		}
+	}
 
-			await this.fsStore.write(
-				{ workflowId: id, executionId },
-				{ data, workflowData: workflowSnapshot, workflowVersionId },
-			);
-			return executionId;
-		});
+	/**
+	 * Detect whether the DB rejected the insert because of the unique index on
+	 * `execution_entity.deduplicationKey`. We expect TypeORM to surface the
+	 * driver's error code at `error.driverError.code` as a string, with the
+	 * code's exact value depending on the configured DB.
+	 */
+	private isDuplicateExecutionError(error: unknown): error is Error {
+		if (!(error instanceof Error) || !('driverError' in error)) return false;
+		const { driverError } = error;
+		if (typeof driverError !== 'object' || driverError === null || !('code' in driverError)) {
+			return false;
+		}
+		const { code } = driverError;
+		if (typeof code !== 'string') return false;
+		if (!error.message.includes('deduplicationKey')) return false;
+
+		if (this.databaseConfig.type === 'postgresdb') {
+			return code === '23505';
+		}
+		// SQLite reports `SQLITE_CONSTRAINT_UNIQUE` when extended result codes are
+		// enabled, and falls back to the base `SQLITE_CONSTRAINT` otherwise.
+		return (
+			code === 'SQLITE_CONSTRAINT_UNIQUE' ||
+			(code === 'SQLITE_CONSTRAINT' && error.message.includes('UNIQUE constraint failed'))
+		);
 	}
 
 	/**

@@ -238,14 +238,16 @@ class WebhookRequestHandler {
 export function createWebhookHandlerFor(
 	webhookManager: IWebhookManager,
 	expectedNodeType?: ExpectedWebhookNodeType,
-) {
+): express.RequestHandler {
 	const handler = new WebhookRequestHandler(webhookManager, expectedNodeType);
 
-	return async (req: WebhookRequest | WebhookOptionsRequest, res: express.Response) => {
-		const { params } = req;
+	return async (req, res) => {
+		const webhookRequest = req as WebhookRequest | WebhookOptionsRequest;
+
+		const { params } = webhookRequest;
 		if (Array.isArray(params.path)) {
 			params.path = params.path.join('/');
 		}
-		await handler.handleRequest(req, res);
+		await handler.handleRequest(webhookRequest, res);
 	};
 }

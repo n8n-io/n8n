@@ -23,6 +23,8 @@ import { Push } from '@/push';
 import type { OnPushMessage } from '@/push/types';
 import { AccessService } from '@/services/access.service';
 
+const OPEN_WORKFLOW_CHECK_BATCH_SIZE = 100;
+
 /**
  * Service for managing collaboration feature between users. E.g. keeping
  * track of active users for a workflow.
@@ -256,6 +258,40 @@ export class CollaborationService {
 		};
 
 		this.push.sendToUsers({ type: 'workflowUpdated', data: msgData }, userIds);
+	}
+
+	async filterOpenWorkflowIds(workflowIds: Array<Workflow['id']>): Promise<Array<Workflow['id']>> {
+		const uniqueWorkflowIds = [...new Set(workflowIds)];
+		const openWorkflowIds: Array<Workflow['id']> = [];
+
+		for (let start = 0; start < uniqueWorkflowIds.length; start += OPEN_WORKFLOW_CHECK_BATCH_SIZE) {
+			const chunk = uniqueWorkflowIds.slice(start, start + OPEN_WORKFLOW_CHECK_BATCH_SIZE);
+			const collaboratorLookups = await Promise.allSettled(
+				chunk.map(async (workflowId) => {
+					const collaborators = await this.state.getCollaborators(workflowId);
+					return { workflowId, isOpen: collaborators.length > 0 };
+				}),
+			);
+			const failedWorkflowIds: Array<Workflow['id']> = [];
+
+			for (const [index, result] of collaboratorLookups.entries()) {
+				if (result.status === 'fulfilled') {
+					if (result.value.isOpen) openWorkflowIds.push(result.value.workflowId);
+				} else {
+					const workflowId = chunk[index];
+					if (workflowId) failedWorkflowIds.push(workflowId);
+				}
+			}
+
+			if (failedWorkflowIds.length > 0) {
+				this.logger.warn('Failed to resolve collaborators while filtering open workflows', {
+					workflowCount: failedWorkflowIds.length,
+					workflowIds: failedWorkflowIds.slice(0, 10),
+				});
+			}
+		}
+
+		return openWorkflowIds;
 	}
 
 	/**

@@ -257,10 +257,19 @@ async function handleArchiveWorkflow() {
 	}
 
 	uiStore.markStateClean();
-	toast.showMessage({
+	const archivedWorkflowId = props.id;
+	const archivedWorkflowName = props.name;
+	toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-			interpolate: { workflowName: props.name },
+			interpolate: { workflowName: archivedWorkflowName },
 		}),
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void deleteArchivedWorkflow(archivedWorkflowId, archivedWorkflowName);
+			}
+		},
 		type: 'success',
 	});
 
@@ -274,6 +283,42 @@ async function handleArchiveWorkflow() {
 	} else {
 		await router.push({ name: VIEWS.WORKFLOWS });
 	}
+}
+
+async function deleteArchivedWorkflow(id: IWorkflowDb['id'], name: IWorkflowDb['name']) {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
+			interpolate: { workflowName: name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsListStore.deleteWorkflow(id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: name },
+		}),
+		type: 'success',
+	});
 }
 
 async function handleUnarchiveWorkflow() {

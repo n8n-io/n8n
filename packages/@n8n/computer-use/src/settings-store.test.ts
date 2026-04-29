@@ -24,7 +24,6 @@ function parseJson<T>(raw: string): T {
 
 const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
-	port: 7655,
 	allowedOrigins: [],
 	filesystem: { dir: process.cwd() },
 	computer: { shell: { timeout: 30_000 } },

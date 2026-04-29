@@ -15,6 +15,7 @@ import {
 	extractExecutionResult,
 	extractExecutionDebugInfo,
 	extractNodeOutput,
+	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
 } from '../instance-ai.adapter.service';
@@ -684,6 +685,7 @@ jest.mock('@/permissions.ee/check-access', () => ({
 }));
 
 import type {
+	AiBuilderTemporaryWorkflowRepository,
 	User,
 	ExecutionRepository,
 	ProjectRepository,
@@ -746,6 +748,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 	);
 
 	(
@@ -824,7 +827,7 @@ function createDataTableAdapterForTests(overrides?: {
 	};
 
 	const mockDataTableRepository = {
-		findOneByOrFail: jest
+		findOneBy: jest
 			.fn()
 			.mockResolvedValue({ id: 'dt-1', name: 'Orders', projectId: 'team-project-id' }),
 	};
@@ -874,6 +877,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 	);
 
 	const adapter = service.createContext(mockUser).dataTableService;
@@ -1063,14 +1067,38 @@ function createWorkflowAdapterForTests(overrides?: {
 	const mockWorkflowRepository = {
 		create: jest.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: jest.fn().mockResolvedValue(savedWorkflow),
+		update: jest.fn().mockResolvedValue(undefined),
+		manager: {
+			transaction: jest.fn(
+				async (
+					fn: (transactionManager: { save: jest.Mock }) => Promise<unknown>,
+				): Promise<unknown> => {
+					return await fn({
+						save: jest.fn().mockResolvedValue(savedWorkflow),
+					});
+				},
+			),
+		},
+	};
+
+	const mockWorkflowFinderService = {
+		findWorkflowForUser: jest.fn().mockResolvedValue(savedWorkflow),
 	};
 
 	const mockSharedWorkflowRepository = {
 		create: jest.fn().mockImplementation((data: Record<string, unknown>) => data),
 		save: jest.fn().mockResolvedValue(undefined),
+		makeOwner: jest.fn().mockResolvedValue(undefined),
+	};
+
+	const mockAiBuilderTemporaryWorkflowRepository = {
+		mark: jest.fn().mockResolvedValue(undefined),
+		unmark: jest.fn().mockResolvedValue(undefined),
+		existsForWorkflow: jest.fn().mockResolvedValue(false),
 	};
 
 	const mockWorkflowService = {
+		archive: jest.fn().mockResolvedValue(undefined),
 		update: jest.fn().mockResolvedValue(savedWorkflow),
 	};
 
@@ -1084,7 +1112,9 @@ function createWorkflowAdapterForTests(overrides?: {
 			typeof InstanceAiAdapterService
 		>[1],
 		mockWorkflowService as unknown as WorkflowService,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
+		mockWorkflowFinderService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[3],
 		mockWorkflowRepository as unknown as WorkflowRepository,
 		mockSharedWorkflowRepository as unknown as SharedWorkflowRepository,
 		mockProjectRepository as unknown as ProjectRepository,
@@ -1122,10 +1152,11 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		{ track: jest.fn() } as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
 	);
 
-	const context = service.createContext(mockUser);
+	const context = service.createContext(mockUser, { threadId: 'thread-1' });
 	const adapter = context.workflowService;
 
 	return {
@@ -1133,7 +1164,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		context,
 		mockProjectRepository,
 		mockWorkflowRepository,
+		mockWorkflowFinderService,
 		mockSharedWorkflowRepository,
+		mockAiBuilderTemporaryWorkflowRepository,
 		mockWorkflowService,
 		mockUser,
 	};
@@ -1158,8 +1191,10 @@ describe('createWorkflowAdapter', () => {
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
 		expect(mockProjectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith('user-1');
-		expect(mockSharedWorkflowRepository.create).toHaveBeenCalledWith(
-			expect.objectContaining({ projectId: 'personal-project-id' }),
+		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
+			['wf-new'],
+			'personal-project-id',
+			expect.any(Object),
 		);
 	});
 
@@ -1172,8 +1207,10 @@ describe('createWorkflowAdapter', () => {
 		});
 
 		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
-		expect(mockSharedWorkflowRepository.create).toHaveBeenCalledWith(
-			expect.objectContaining({ projectId: 'team-project-id' }),
+		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
+			['wf-new'],
+			'team-project-id',
+			expect.any(Object),
 		);
 	});
 
@@ -1186,6 +1223,89 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'restricted-project-id',
 			}),
 		).rejects.toThrow('User does not have the required permissions in this project');
+	});
+
+	it('marks the workflow as AI-builder temporary when markAsAiTemporary is true', async () => {
+		const {
+			adapter,
+			mockWorkflowRepository,
+			mockSharedWorkflowRepository,
+			mockAiBuilderTemporaryWorkflowRepository,
+		} = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
+			markAsAiTemporary: true,
+		});
+
+		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
+			expect.not.objectContaining({ meta: expect.anything() }),
+		);
+		expect(mockWorkflowRepository.manager.transaction).toHaveBeenCalled();
+		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
+			['wf-new'],
+			'personal-project-id',
+			expect.any(Object),
+		);
+		expect(mockAiBuilderTemporaryWorkflowRepository.mark).toHaveBeenCalledWith(
+			'wf-new',
+			'thread-1',
+			expect.any(Object),
+		);
+	});
+
+	it('does not mark the workflow as AI-builder temporary when markAsAiTemporary is omitted', async () => {
+		const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+		expect(mockWorkflowRepository.create).toHaveBeenCalledWith(
+			expect.not.objectContaining({ meta: expect.anything() }),
+		);
+	});
+
+	it('clears the AI-builder temporary marker when promoting the main workflow', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowRepository } =
+			createWorkflowAdapterForTests();
+		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+
+		await adapter.clearAiTemporary('wf-new');
+
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+		expect(mockWorkflowRepository.update).not.toHaveBeenCalled();
+	});
+
+	it('archives and unmarks an unpromoted AI-builder temporary workflow', async () => {
+		const { adapter, mockAiBuilderTemporaryWorkflowRepository, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+
+		await expect(adapter.archiveIfAiTemporary('wf-new')).resolves.toBe(true);
+
+		expect(mockWorkflowService.archive).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			'wf-new',
+			{ skipArchived: true },
+		);
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-new');
+	});
+
+	it('unmarks already-archived temporary workflows without archiving again', async () => {
+		const {
+			adapter,
+			mockAiBuilderTemporaryWorkflowRepository,
+			mockWorkflowFinderService,
+			mockWorkflowService,
+		} = createWorkflowAdapterForTests();
+		mockAiBuilderTemporaryWorkflowRepository.existsForWorkflow.mockResolvedValue(true);
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-archived',
+			isArchived: true,
+		});
+
+		await expect(adapter.archiveIfAiTemporary('wf-archived')).resolves.toBe(false);
+
+		expect(mockWorkflowService.archive).not.toHaveBeenCalled();
+		expect(mockAiBuilderTemporaryWorkflowRepository.unmark).toHaveBeenCalledWith('wf-archived');
 	});
 
 	describe('instance read-only mode', () => {
@@ -1360,6 +1480,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
 		mockRoleService as unknown as RoleService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -1424,5 +1545,127 @@ describe('createExecutionAdapter', () => {
 
 		const query = mockExecutionRepository.findManyByRangeQuery.mock.calls[0][0];
 		expect(query).not.toHaveProperty('accessibleWorkflowIds');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolveDataTableByIdOrName
+// ---------------------------------------------------------------------------
+
+describe('resolveDataTableByIdOrName', () => {
+	type TableRecord = { id: string; name: string; projectId: string };
+
+	function makeRepo(tables: TableRecord[]) {
+		return {
+			findOneBy: jest.fn(async (where: { id: string }) => {
+				return tables.find((t) => t.id === where.id) ?? null;
+			}),
+			findBy: jest.fn(async (where: { name: string; projectId?: string }) => {
+				return tables.filter(
+					(t) => t.name === where.name && (!where.projectId || t.projectId === where.projectId),
+				);
+			}),
+		};
+	}
+
+	function makeLogger() {
+		return { warn: jest.fn() };
+	}
+
+	const table = { id: 'dt_uuid_123', name: 'kb_sources', projectId: 'proj_1' };
+
+	it('returns hit on an id match without logging a warning', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'dt_uuid_123');
+
+		expect(result).toEqual({ kind: 'hit', table });
+		expect(repo.findOneBy).toHaveBeenCalledWith({ id: 'dt_uuid_123' });
+		expect(repo.findBy).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('falls back to name lookup when the id lookup misses, and warns', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources');
+
+		expect(result).toEqual({ kind: 'hit', table });
+		expect(repo.findOneBy).toHaveBeenCalledWith({ id: 'kb_sources' });
+		expect(repo.findBy).toHaveBeenCalledWith({ name: 'kb_sources' });
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn.mock.calls[0][0]).toMatch(/called with table name instead of id/);
+		expect(logger.warn.mock.calls[0][1]).toEqual({
+			passedValue: 'kb_sources',
+			resolvedId: 'dt_uuid_123',
+			projectId: 'proj_1',
+		});
+	});
+
+	it('returns miss when neither id nor name matches', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'does_not_exist');
+
+		expect(result).toEqual({ kind: 'miss' });
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('filters id hits that fail the access filter', async () => {
+		const repo = makeRepo([table]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'dt_uuid_123', {
+			accessFilter: async () => false,
+		});
+
+		expect(result).toEqual({ kind: 'miss' });
+	});
+
+	it('narrows the name lookup when projectIdFilter is provided', async () => {
+		const repo = makeRepo([table, { id: 'dt_uuid_456', name: 'kb_sources', projectId: 'proj_2' }]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources', {
+			projectIdFilter: 'proj_2',
+		});
+
+		expect(result.kind).toBe('hit');
+		expect(repo.findBy).toHaveBeenCalledWith({ name: 'kb_sources', projectId: 'proj_2' });
+		if (result.kind === 'hit') expect(result.table.id).toBe('dt_uuid_456');
+	});
+
+	it('returns ambiguous when multiple accessible candidates share a name', async () => {
+		const twin = { id: 'dt_uuid_456', name: 'kb_sources', projectId: 'proj_2' };
+		const repo = makeRepo([table, twin]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources', {
+			accessFilter: async () => true,
+		});
+
+		expect(result.kind).toBe('ambiguous');
+		if (result.kind === 'ambiguous') {
+			expect(result.candidates).toHaveLength(2);
+			expect(result.candidates.map((c) => c.projectId).sort()).toEqual(['proj_1', 'proj_2']);
+		}
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('picks the single accessible candidate when ambiguity is resolved by access filter', async () => {
+		const twin = { id: 'dt_uuid_456', name: 'kb_sources', projectId: 'proj_2' };
+		const repo = makeRepo([table, twin]);
+		const logger = makeLogger();
+
+		const result = await resolveDataTableByIdOrName(repo, logger, 'kb_sources', {
+			accessFilter: async (id) => id === 'dt_uuid_123',
+		});
+
+		expect(result.kind).toBe('hit');
+		if (result.kind === 'hit') expect(result.table.id).toBe('dt_uuid_123');
+		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 });

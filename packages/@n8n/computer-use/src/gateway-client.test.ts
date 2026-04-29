@@ -53,7 +53,6 @@ import { INSTANCE_RESOURCE_DECISION_KEYS } from './tools/types';
 function makeConfig(permissionConfirmation: 'client' | 'instance' = 'client'): GatewayConfig {
 	return {
 		logLevel: 'silent',
-		port: 0,
 		allowedOrigins: [],
 		filesystem: { dir: '/' },
 		computer: { shell: { timeout: 30_000 } },

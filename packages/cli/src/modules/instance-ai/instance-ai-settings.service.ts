@@ -313,7 +313,7 @@ export class InstanceAiSettingsService {
 		if (!credential) {
 			return {};
 		}
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		return {
 			apiUrl: typeof data.apiUrl === 'string' ? data.apiUrl : undefined,
 			apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
@@ -342,7 +342,7 @@ export class InstanceAiSettingsService {
 			};
 		}
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		const headerName = typeof data.name === 'string' ? data.name.trim().toLowerCase() : '';
 		const apiKey = typeof data.value === 'string' ? data.value : undefined;
 		return {
@@ -370,7 +370,7 @@ export class InstanceAiSettingsService {
 		if (!credential) {
 			return {};
 		}
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		if (credential.type === 'braveSearchApi') {
 			return { braveApiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined };
 		}
@@ -439,7 +439,7 @@ export class InstanceAiSettingsService {
 			return this.envVarModelConfig();
 		}
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
 		const urlField = URL_FIELD_MAP[credential.type];
 		const rawUrl = urlField ? data[urlField] : undefined;

@@ -102,9 +102,16 @@ jobs:
         run: npx tsx packages/testing/containers/pull-test-images.ts ${{ matrix.images }} || true
 
       - name: Run Tests
-        # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
-        run: ${{ inputs.test-command }} --workers=${{ env.PLAYWRIGHT_WORKERS }} ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+        run: |
+          # shellcheck disable=SC2086
+          $TEST_COMMAND --workers="$WORKERS" $SHARD_ARGS
         env:
+          # Protect args from template injections
+          TEST_COMMAND: ${{ inputs.test-command }}
+          # Uses pre-distributed specs if orchestration enabled, otherwise falls back to Playwright sharding
+          WORKERS: ${{ env.PLAYWRIGHT_WORKERS }}
+          SHARD_ARGS: ${{ matrix.specs || format('--shard={0}/{1}', matrix.shard, strategy.job-total) }}
+          # Args for actual test command runner
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_METRICS_WEBHOOK_URL: ${{ secrets.QA_METRICS_WEBHOOK_URL }}
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}

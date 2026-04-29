@@ -9,7 +9,7 @@ vi.mock('vue-router', async (importOriginal) => {
 	return {
 		...actual,
 		useRoute: () => ({
-			params: { name: 'test-workflow-id' },
+			params: { workflowId: 'test-workflow-id' },
 			query: {},
 			meta: {},
 			name: 'workflow',
