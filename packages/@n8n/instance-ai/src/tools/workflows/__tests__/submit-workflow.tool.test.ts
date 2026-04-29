@@ -1,7 +1,11 @@
 import type { Workspace } from '@mastra/core/workspace';
 
 import type { InstanceAiContext } from '../../../types';
-import { isTriggerNodeType, type SubmitWorkflowAttempt } from '../submit-workflow.tool';
+import {
+	classifySubmitFailure,
+	isTriggerNodeType,
+	type SubmitWorkflowAttempt,
+} from '../submit-workflow.tool';
 
 jest.mock('@mastra/core/tools', () => ({
 	createTool: jest.fn((config: Record<string, unknown>) => config),
@@ -115,5 +119,21 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 			success: false,
 			errors: ['Action blocked by admin'],
 		});
+	});
+});
+
+describe('classifySubmitFailure', () => {
+	it('treats workflow save failures as terminal blockers', () => {
+		const remediation = classifySubmitFailure(
+			['Workflow save failed: database unavailable'],
+			'workflow_save_failed',
+		);
+
+		expect(remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'workflow_save_failed',
+		});
+		expect(remediation.guidance).toContain('Stop editing');
 	});
 });

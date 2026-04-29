@@ -66,7 +66,7 @@ export function handleBuildOutcome(
 ): TransitionResult {
 	const normalizedState = normalizeRunState(state, outcome.runId);
 	const attempt = makeAttempt(normalizedState, 'build', attempts);
-	const isRepairSubmit = Boolean(normalizedState.successfulSubmitSeen) && outcome.submitted;
+	const isRepairSubmit = Boolean(normalizedState.successfulSubmitSeen);
 	const postSubmitRemediationSubmitsUsed = isRepairSubmit
 		? (normalizedState.postSubmitRemediationSubmitsUsed ?? 0) + 1
 		: (normalizedState.postSubmitRemediationSubmitsUsed ?? 0);
@@ -84,18 +84,31 @@ export function handleBuildOutcome(
 		const preSaveBudgetExhausted =
 			!normalizedState.successfulSubmitSeen &&
 			preSaveSubmitFailures >= MAX_PRE_SAVE_SUBMIT_FAILURES;
-		const terminalRemediation =
-			preSaveBudgetExhausted && remediation?.shouldEdit !== false
-				? createRemediation({
-						category: 'blocked',
-						shouldEdit: false,
-						reason: 'pre_save_submit_budget_exhausted',
-						attemptCount: preSaveSubmitFailures,
-						remainingSubmitFixes: 0,
-						guidance:
-							'The workflow could not be saved after three submit attempts. Stop editing and explain the blocker to the user.',
-					})
-				: remediation;
+		const postSubmitBudgetExhausted =
+			normalizedState.successfulSubmitSeen &&
+			postSubmitRemediationSubmitsUsed >= MAX_POST_SUBMIT_REMEDIATION_SUBMITS;
+		let terminalRemediation = remediation;
+		if (preSaveBudgetExhausted && remediation?.shouldEdit !== false) {
+			terminalRemediation = createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'pre_save_submit_budget_exhausted',
+				attemptCount: preSaveSubmitFailures,
+				remainingSubmitFixes: 0,
+				guidance:
+					'The workflow could not be saved after three submit attempts. Stop editing and explain the blocker to the user.',
+			});
+		} else if (postSubmitBudgetExhausted && remediation?.shouldEdit !== false) {
+			terminalRemediation = createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+				attemptCount: postSubmitRemediationSubmitsUsed,
+				remainingSubmitFixes: 0,
+				guidance:
+					'The workflow was saved, but the automatic repair budget is exhausted. Stop editing and explain the blocker to the user.',
+			});
+		}
 		applyRemediationToAttempt(attempt, terminalRemediation);
 		attempt.result =
 			outcome.needsUserInput || terminalRemediation?.shouldEdit === false ? 'blocked' : 'failure';

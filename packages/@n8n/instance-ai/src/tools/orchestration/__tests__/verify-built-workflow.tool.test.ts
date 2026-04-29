@@ -112,6 +112,52 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(reported.remediation).toMatchObject({ category: 'needs_setup' });
 	});
 
+	it('returns terminal remediation even when verdict persistence and telemetry fail', async () => {
+		const trackTelemetry = jest.fn(() => {
+			throw new Error('telemetry unavailable');
+		});
+		const context = createContext({ trackTelemetry });
+		jest
+			.mocked(context.workflowTaskService!.reportVerificationVerdict)
+			.mockRejectedValue(new Error('storage unavailable'));
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			mockedCredentialTypes: ['gmailOAuth2'],
+			mockedNodeNames: ['Gmail'],
+			summary: 'Built',
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Gmail credentials are mocked',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalled();
+		expect(trackTelemetry).toHaveBeenCalled();
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: failed to persist terminal verdict',
+			expect.objectContaining({ error: 'storage unavailable' }),
+		);
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: failed to emit remediation telemetry',
+			expect.objectContaining({ error: 'telemetry unavailable' }),
+		);
+	});
+
 	it('does not execute or report another verdict when the persisted guard is terminal', async () => {
 		const context = createContext();
 		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({

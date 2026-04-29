@@ -231,7 +231,20 @@ export function resolveSandboxWorkflowFilePath(
 	return rawFilePath;
 }
 
-function classifySubmitFailure(errors: string[], reason = 'submit_failed'): RemediationMetadata {
+export function classifySubmitFailure(
+	errors: string[],
+	reason = 'submit_failed',
+): RemediationMetadata {
+	if (reason === 'workflow_save_failed') {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason,
+			guidance:
+				'Workflow submission failed due to an internal or service error. Stop editing and ask the user to retry or check instance health.',
+		});
+	}
+
 	const text = errors.join('\n').toLowerCase();
 	if (
 		text.includes('blocked by admin') ||

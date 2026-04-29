@@ -501,26 +501,43 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			}
 
 			if (remediation && !remediation.shouldEdit) {
-				await context.workflowTaskService.reportVerificationVerdict({
-					workItemId: input.workItemId,
-					runId: context.runId,
-					workflowId: input.workflowId,
-					executionId: result.executionId || undefined,
-					verdict: remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
-					failureSignature: remediation.reason,
-					diagnosis: remediation.guidance,
-					remediation,
-					summary: remediation.guidance,
-				});
-				context.trackTelemetry?.('Builder remediation guard fired', {
-					thread_id: context.threadId,
-					run_id: context.runId,
-					work_item_id: input.workItemId,
-					workflow_id: input.workflowId,
-					category: remediation.category,
-					attempt_count: remediation.attemptCount,
-					reason: remediation.reason,
-				});
+				try {
+					await context.workflowTaskService.reportVerificationVerdict({
+						workItemId: input.workItemId,
+						runId: context.runId,
+						workflowId: input.workflowId,
+						executionId: result.executionId || undefined,
+						verdict:
+							remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
+						failureSignature: remediation.reason,
+						diagnosis: remediation.guidance,
+						remediation,
+						summary: remediation.guidance,
+					});
+				} catch (error) {
+					context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
+						workItemId: input.workItemId,
+						workflowId: input.workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+				try {
+					context.trackTelemetry?.('Builder remediation guard fired', {
+						thread_id: context.threadId,
+						run_id: context.runId,
+						work_item_id: input.workItemId,
+						workflow_id: input.workflowId,
+						category: remediation.category,
+						attempt_count: remediation.attemptCount,
+						reason: remediation.reason,
+					});
+				} catch (error) {
+					context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
+						workItemId: input.workItemId,
+						workflowId: input.workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
 			}
 
 			return {

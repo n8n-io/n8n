@@ -288,6 +288,40 @@ describe('handleBuildOutcome', () => {
 		expect(result.state.phase).toBe('verifying');
 	});
 
+	it('counts failed post-submit repair submits and blocks when the budget is exhausted', () => {
+		const state = makeState({
+			runId: 'run_1',
+			phase: 'repairing',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 0,
+		});
+		const failedRepair = makeOutcome({
+			runId: 'run_1',
+			submitted: false,
+			failureSignature: 'validation failed',
+			remediation: createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				guidance: 'Fix code and resubmit.',
+			}),
+		});
+
+		const first = handleBuildOutcome(state, [], failedRepair);
+		const second = handleBuildOutcome(first.state, [first.attempt], failedRepair);
+
+		expect(first.state.postSubmitRemediationSubmitsUsed).toBe(1);
+		expect(first.action.type).toBe('continue_building');
+		expect(second.state.postSubmitRemediationSubmitsUsed).toBe(2);
+		expect(second.state.status).toBe('blocked');
+		expect(second.state.lastRemediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'post_submit_budget_exhausted',
+		});
+		expect(second.action.type).toBe('blocked');
+	});
+
 	it('does not set hasUnresolvedPlaceholders when not present in outcome', () => {
 		const state = makeState();
 		const outcome = makeOutcome({
