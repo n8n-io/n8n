@@ -117,6 +117,57 @@ describe('toAiMessages + fromAiMessages — round-trip', () => {
 		expect(content[0].type).toBe('text');
 	});
 
+	it('emits nothing for an assistant message whose only blocks are all pending', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-1',
+						toolName: 'do_it',
+						input: {},
+						state: 'pending',
+					},
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-2',
+						toolName: 'do_more',
+						input: {},
+						state: 'pending',
+					},
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+
+		// No empty-content assistant message — the whole message is suppressed
+		expect(aiMessages).toHaveLength(0);
+	});
+
+	it('skips legacy tool-call blocks that have no state field and emits nothing when they are the only content', () => {
+		const input: Message[] = [
+			{
+				role: 'assistant',
+				content: [
+					// Simulate a DB row written before the state field was introduced
+					{
+						type: 'tool-call',
+						toolCallId: 'tc-legacy',
+						toolName: 'old_tool',
+						input: {},
+					} as unknown as Message['content'][number],
+				],
+			},
+		];
+
+		const aiMessages = toAiMessages(input);
+
+		// No empty-content assistant message and no spurious error-json tool message
+		expect(aiMessages).toHaveLength(0);
+	});
+
 	it('emits one tool ModelMessage per settled block in the same assistant turn', () => {
 		const input: Message[] = [
 			{

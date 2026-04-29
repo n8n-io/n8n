@@ -212,6 +212,10 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 
 			for (const block of msg.content) {
 				if (block.type === 'tool-call') {
+					if (!('state' in block)) {
+						// Legacy DB block - skip it
+						continue;
+					}
 					if (block.state === 'pending') {
 						// Skip pending blocks — defense-in-depth (strip step removes them first)
 						continue;
@@ -233,16 +237,25 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 				}
 			}
 
-			const assistantBase: ModelMessage = {
-				role: 'assistant',
-				content: assistantParts as Array<
-					TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart
-				>,
-			};
-			const assistantMsg: ModelMessage = msg.providerOptions
-				? { ...assistantBase, providerOptions: msg.providerOptions }
-				: assistantBase;
-			return [assistantMsg, ...resultMessages];
+			const transformedMessages: ModelMessage[] = [];
+
+			if (assistantParts.length > 0) {
+				const assistantBase: ModelMessage = {
+					role: 'assistant',
+					content: assistantParts as Array<
+						TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart
+					>,
+				};
+				const assistantMsg: ModelMessage = msg.providerOptions
+					? { ...assistantBase, providerOptions: msg.providerOptions }
+					: assistantBase;
+				transformedMessages.push(assistantMsg);
+			}
+			if (resultMessages.length > 0) {
+				transformedMessages.push(...resultMessages);
+			}
+
+			return transformedMessages;
 		}
 
 		case 'tool': {
