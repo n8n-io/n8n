@@ -55,11 +55,7 @@ export class TaskBrokerWsServer {
 	 * connection-loss recovery path.
 	 */
 	private onRunnerUnresponsive = ({ runnerId }: { runnerId: string }) => {
-		void this.removeConnection(
-			runnerId,
-			'failed-heartbeat-check',
-			WsStatusCodes.CloseProtocolError,
-		);
+		void this.removeConnection(runnerId, 'runner-unresponsive', WsStatusCodes.CloseProtocolError);
 	};
 
 	private startHeartbeatChecks() {

@@ -583,13 +583,14 @@ export class TaskBroker {
 
 	async acceptOffer(offer: TaskOffer, request: TaskRequest): Promise<void> {
 		const taskId = nanoid(8);
+		let acceptTimer: NodeJS.Timeout | undefined;
 
 		try {
 			const acceptPromise = new Promise((resolve, reject) => {
 				this.runnerAcceptRejects.set(taskId, { accept: resolve as () => void, reject });
 
 				// TODO: customisable timeout
-				setTimeout(() => {
+				acceptTimer = setTimeout(() => {
 					reject(new TaskRunnerAcceptTimeoutError(taskId, offer.runnerId));
 				}, 2000);
 			});
@@ -620,6 +621,9 @@ export class TaskBroker {
 				return;
 			}
 			throw e;
+		} finally {
+			if (acceptTimer !== undefined) clearTimeout(acceptTimer);
+			this.runnerAcceptRejects.delete(taskId);
 		}
 
 		clearTimeout(request.timeout);
