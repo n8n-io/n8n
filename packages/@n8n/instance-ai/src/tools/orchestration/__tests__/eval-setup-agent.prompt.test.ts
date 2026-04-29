@@ -45,6 +45,11 @@ describe('EVAL_SETUP_AGENT_PROMPT', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('side-effect');
 	});
 
+	it('keeps EvaluationTrigger wiring guidance on the regular Set shape bridge', () => {
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('EvaluationTrigger] ──→ [Set: reshape');
+		expect(EVAL_SETUP_AGENT_PROMPT).not.toContain('EvaluationTrigger → `Evaluation(setInputs)`');
+	});
+
 	it('includes validation instructions after patching', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('re-read');
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('validate');

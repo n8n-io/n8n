@@ -97,9 +97,16 @@ export function createEvalsTool(context: InstanceAiContext) {
 			proposalCache.delete(input.workflowId);
 
 			// Filter metrics by user selection.
-			const enabledMetrics = shape.suggestedMetrics.filter((m) =>
-				(resumeData.enabledMetricIds ?? []).includes(m.id),
-			);
+			const fallbackMetricIds = shape.suggestedMetrics
+				.filter((m) => m.defaultEnabled)
+				.map((m) => m.id);
+			const selectedMetricIds =
+				resumeData.enabledMetricIds && resumeData.enabledMetricIds.length > 0
+					? resumeData.enabledMetricIds
+					: fallbackMetricIds.length > 0
+						? fallbackMetricIds
+						: shape.suggestedMetrics.map((m) => m.id);
+			const enabledMetrics = shape.suggestedMetrics.filter((m) => selectedMetricIds.includes(m.id));
 
 			// DataTable prep (deterministic). When datasetChoice='generate', create
 			// a new DataTable and populate it with Haiku-designed sample rows right

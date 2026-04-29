@@ -57,7 +57,7 @@ Required parameters (all three are necessary — missing any one makes the trigg
 
 The \`dataTableId\` field is a resourceLocator (\`__rl: true\` flag). The \`mode: "id"\` + \`value\` shape is what gets the trigger to actually pull rows. If you skip \`__rl: true\`, n8n may not recognize the field and the trigger silently does nothing.
 
-Wiring: connect the EvaluationTrigger → \`Evaluation(setInputs)\` → same node the main trigger feeds into (slot 0 of the first processing node). Both triggers feed the same entry point; only one fires per run.
+Wiring: connect the EvaluationTrigger → regular \`n8n-nodes-base.set\` shape bridge → same node the main trigger feeds into (slot 0 of the first processing node). Both triggers feed the same entry point; only one fires per run.
 
 ### n8n-nodes-base.evaluation (4 operations)
 

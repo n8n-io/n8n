@@ -2,6 +2,7 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
+import { ensureEvalDataTable } from '../ensure-eval-data-table.service';
 import { createEvalsTool } from '../evals.tool';
 import { inferEvalShape, DEFAULT_EVAL_SHAPE } from '../infer-eval-shape.service';
 
@@ -27,7 +28,6 @@ jest.mock('../infer-eval-shape.service', () => ({
 const mockInfer = inferEvalShape as jest.MockedFunction<typeof inferEvalShape>;
 
 jest.mock('../ensure-eval-data-table.service', () => ({ ensureEvalDataTable: jest.fn() }));
-import { ensureEvalDataTable } from '../ensure-eval-data-table.service';
 const mockEnsureDataTable = ensureEvalDataTable as jest.MockedFunction<typeof ensureEvalDataTable>;
 
 function aiWf(): WorkflowJSON {
@@ -288,4 +288,47 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 		expect(task).toContain('Metric B');
 		expect(task).not.toContain('Metric A');
 	});
+
+	it.each([{ enabledMetricIds: undefined }, { enabledMetricIds: [] }])(
+		'falls back to default metrics when enabledMetricIds is $enabledMetricIds',
+		async ({ enabledMetricIds }) => {
+			const ctx = makeCtx(aiWf());
+			mockInfer.mockResolvedValue({
+				suggestedInputColumns: ['input'],
+				suggestedOutputColumns: ['expected_output'],
+				suggestedMetrics: [
+					{
+						id: 'a',
+						name: 'Metric A',
+						kind: 'llm-judge',
+						description: 'd',
+						prompt: 'p',
+						defaultEnabled: true,
+					},
+					{
+						id: 'b',
+						name: 'Metric B',
+						kind: 'exact-match',
+						description: 'd',
+						defaultEnabled: false,
+					},
+				],
+			});
+			const tool = createEvalsTool(ctx);
+
+			const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+				agent: {
+					resumeData: {
+						approved: true,
+						datasetChoice: 'later',
+						...(enabledMetricIds !== undefined ? { enabledMetricIds } : {}),
+					},
+				},
+			} as never)) as Record<string, unknown>;
+
+			const task = result.task as string;
+			expect(task).toContain('Metric A');
+			expect(task).not.toContain('Metric B');
+		},
+	);
 });

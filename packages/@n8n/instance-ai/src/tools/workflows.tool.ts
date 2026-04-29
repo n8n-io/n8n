@@ -618,7 +618,31 @@ async function handleUpdateVersion(
 async function handleUpdate(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'update' }>,
+	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
 ) {
+	const resumeData = ctx?.agent?.resumeData as { approved: boolean } | undefined;
+	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+
+	if (context.permissions?.updateWorkflow === 'blocked') {
+		return { success: false, denied: true, reason: 'Action blocked by admin' };
+	}
+
+	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
+
+	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		const workflowName = await resolveWorkflowName(context, input.workflowId);
+		await suspend?.({
+			requestId: nanoid(),
+			message: `Update workflow "${workflowName}" (ID: ${input.workflowId})?`,
+			severity: 'warning' as const,
+		});
+		return { success: false };
+	}
+
+	if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+		return { success: false, denied: true, reason: 'User denied the action' };
+	}
+
 	try {
 		await context.workflowService.updateFromWorkflowJSON(
 			input.workflowId,
@@ -669,7 +693,7 @@ export function createWorkflowsTool(
 				case 'setup':
 					return await handleSetup(context, input, ctx, setupState);
 				case 'update':
-					return await handleUpdate(context, input);
+					return await handleUpdate(context, input, ctx);
 				case 'publish':
 					return await handlePublish(context, input, ctx);
 				case 'unpublish':

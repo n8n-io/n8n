@@ -1,7 +1,7 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 jest.mock('../../../utils/eval-agents', () => {
-	const actual = jest.requireActual('../../../utils/eval-agents') as object;
+	const actual: object = jest.requireActual('../../../utils/eval-agents');
 	return { ...actual, createEvalAgent: jest.fn(), extractText: jest.fn() };
 });
 

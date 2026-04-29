@@ -23,12 +23,12 @@ function formatDatasetSection(input: FormatEvalSetupTaskInput): string {
 		// Defensive fallback — the orchestrator normally pre-creates the DataTable
 		// and passes 'link-existing'. If something upstream bypassed that, instruct
 		// the sub-agent to leave dataTableId empty rather than trying to create.
-		return `Do not create a DataTable yourself. Leave the EvaluationTrigger's dataTableId empty — the upstream orchestrator will handle dataset population.`;
+		return "Do not create a DataTable yourself. Leave the EvaluationTrigger's dataTableId empty — the upstream orchestrator will handle dataset population.";
 	}
 	if (input.datasetChoice === 'link-existing') {
 		return `Wire the EvaluationTrigger to DataTable id \`${input.existingDataTableId}\`. This table is already created and populated with sample rows — do not modify its rows or schema.`;
 	}
-	return `Do not create a DataTable. Leave the EvaluationTrigger's dataTableId empty — the user will wire it manually later.`;
+	return "Do not create a DataTable. Leave the EvaluationTrigger's dataTableId empty — the user will wire it manually later.";
 }
 
 export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {

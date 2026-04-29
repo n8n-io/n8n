@@ -1,11 +1,11 @@
-import { mock } from 'jest-mock-extended';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
 import { ensureEvalDataTable } from '../ensure-eval-data-table.service';
+import { generateSampleRows } from '../generate-sample-rows.service';
 
 jest.mock('../generate-sample-rows.service', () => ({ generateSampleRows: jest.fn() }));
-import { generateSampleRows } from '../generate-sample-rows.service';
 const mockGenerateSampleRows = generateSampleRows as jest.MockedFunction<typeof generateSampleRows>;
 
 const WF: WorkflowJSON = { name: 'Test', nodes: [], connections: {} } as unknown as WorkflowJSON;
@@ -18,14 +18,12 @@ describe('ensureEvalDataTable', () => {
 		ctx.dataTableService.create = jest
 			.fn()
 			.mockResolvedValue({ id: 'dt-1', name: 'x', projectId: 'p1' });
-		ctx.dataTableService.insertRows = jest
-			.fn()
-			.mockResolvedValue({
-				insertedCount: 1,
-				dataTableId: 'dt-1',
-				tableName: 'x',
-				projectId: 'p1',
-			});
+		ctx.dataTableService.insertRows = jest.fn().mockResolvedValue({
+			insertedCount: 1,
+			dataTableId: 'dt-1',
+			tableName: 'x',
+			projectId: 'p1',
+		});
 		mockGenerateSampleRows.mockResolvedValue([{ input: 'q', expected_output: 'a' }]);
 
 		const result = await ensureEvalDataTable(ctx, {
@@ -51,14 +49,12 @@ describe('ensureEvalDataTable', () => {
 		ctx.dataTableService.create = jest
 			.fn()
 			.mockResolvedValue({ id: 'dt-2', name: 'y', projectId: 'p1' });
-		ctx.dataTableService.insertRows = jest
-			.fn()
-			.mockResolvedValue({
-				insertedCount: 3,
-				dataTableId: 'dt-2',
-				tableName: 'y',
-				projectId: 'p1',
-			});
+		ctx.dataTableService.insertRows = jest.fn().mockResolvedValue({
+			insertedCount: 3,
+			dataTableId: 'dt-2',
+			tableName: 'y',
+			projectId: 'p1',
+		});
 		const rows = [
 			{ input: 'q1', expected_output: 'a1' },
 			{ input: 'q2', expected_output: 'a2' },
