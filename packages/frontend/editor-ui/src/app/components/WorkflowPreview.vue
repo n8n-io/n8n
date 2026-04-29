@@ -253,10 +253,14 @@ watch(
 	},
 );
 
+// Gate on `ready.value`: if we send before the iframe signals n8nReady the
+// postMessage is silently lost but `lastSent*` gets updated, and the dedup then
+// blocks the showPreview-triggered retry. The showPreview watcher above
+// handles the not-yet-ready case once n8nReady arrives.
 watch(
 	() => props.executionId,
 	() => {
-		if (props.mode === 'execution' && props.executionId) {
+		if (props.mode === 'execution' && props.executionId && ready.value) {
 			loadExecution();
 		}
 	},
@@ -265,6 +269,7 @@ watch(
 watch(
 	() => props.workflow,
 	(newWorkflow, oldWorkflow) => {
+		if (!ready.value) return;
 		if (oldWorkflow && oldWorkflow !== newWorkflow) {
 			sendResetWorkflow();
 		}

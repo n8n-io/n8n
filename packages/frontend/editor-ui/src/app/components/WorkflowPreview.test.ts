@@ -467,6 +467,26 @@ describe('WorkflowPreview', () => {
 			expect(countCommand('resetWorkflow')).toBe(0);
 		});
 
+		it('should send openWorkflow when the workflow is set before the iframe is ready', async () => {
+			const workflowA = { nodes: [{ name: 'A' }] } as unknown as IWorkflowDb;
+			const workflowB = { nodes: [{ name: 'B' }] } as unknown as IWorkflowDb;
+
+			// Workflow arrives BEFORE n8nReady — the message would be silently lost
+			// if the dedup cache were updated eagerly.
+			const { rerender } = renderComponent({ pinia, props: { workflow: workflowA } });
+
+			// Switching to a different workflow while still not ready must not
+			// poison the cache either.
+			await rerender({ workflow: workflowB });
+			expect(countCommand('openWorkflow')).toBe(0);
+
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
 		it('reloadExecution bypasses the executionId dedup so the same id is re-sent', async () => {
 			const wrapper = mount(WorkflowPreview, {
 				global: { plugins: [pinia] },
