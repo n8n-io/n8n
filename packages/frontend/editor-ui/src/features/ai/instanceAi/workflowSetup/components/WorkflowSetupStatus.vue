@@ -1,40 +1,54 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
 import type { TerminalState } from '../workflowSetup.types';
 
-defineProps<{ state: TerminalState }>();
+const props = defineProps<{ state: TerminalState }>();
+
+type IconClass = 'iconLoading' | 'iconSuccess' | 'iconWarning' | 'iconMuted';
+
+const STATUS_BY_STATE = {
+	applying: {
+		icon: 'spinner',
+		iconClass: 'iconLoading',
+		labelKey: 'instanceAi.workflowSetup.applying',
+		spin: true,
+	},
+	applied: {
+		icon: 'check',
+		iconClass: 'iconSuccess',
+		labelKey: 'instanceAi.workflowSetup.applied',
+	},
+	partial: {
+		icon: 'triangle-alert',
+		iconClass: 'iconWarning',
+		labelKey: 'instanceAi.workflowSetup.partiallyApplied',
+	},
+	deferred: {
+		icon: 'arrow-right',
+		iconClass: 'iconMuted',
+		labelKey: 'instanceAi.workflowSetup.deferred',
+	},
+} satisfies Record<
+	TerminalState,
+	{ icon: string; iconClass: IconClass; labelKey: string; spin?: boolean }
+>;
+
+const statusView = computed(() => STATUS_BY_STATE[props.state]);
 </script>
 
 <template>
 	<div :class="$style.status" :data-test-id="`instance-ai-workflow-setup-status-${state}`">
-		<template v-if="state === 'applying'">
-			<N8nIcon icon="spinner" size="small" spin :class="$style.iconLoading" />
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('instanceAi.workflowSetup.applying') }}
-			</N8nText>
-		</template>
-
-		<template v-else-if="state === 'applied'">
-			<N8nIcon icon="check" size="small" :class="$style.iconSuccess" />
-			<N8nText size="small" color="text-light">{{
-				i18n.baseText('instanceAi.workflowSetup.applied')
-			}}</N8nText>
-		</template>
-
-		<template v-else-if="state === 'partial'">
-			<N8nIcon icon="triangle-alert" size="small" :class="$style.iconWarning" />
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('instanceAi.workflowSetup.partiallyApplied') }}
-			</N8nText>
-		</template>
-
-		<template v-else-if="state === 'deferred'">
-			<N8nIcon icon="arrow-right" size="small" :class="$style.iconMuted" />
-			<N8nText size="small" color="text-light">{{
-				i18n.baseText('instanceAi.workflowSetup.deferred')
-			}}</N8nText>
-		</template>
+		<N8nIcon
+			:icon="statusView.icon"
+			size="small"
+			:spin="!!statusView.spin"
+			:class="$style[statusView.iconClass]"
+		/>
+		<N8nText size="small" color="text-light">
+			{{ i18n.baseText(statusView.labelKey) }}
+		</N8nText>
 	</div>
 </template>
 
