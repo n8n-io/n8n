@@ -16,17 +16,19 @@
  * `SnapshotManager.createSnapshot` so the runtime (direct mode) and CI
  * share a single implementation.
  *
+ * CommonJS so Node resolves the package via `main: dist/index.js` instead
+ * of the bundler-only `module: src/index.ts` entry.
+ *
  * Required env vars:
  *   DAYTONA_API_KEY   admin key with snapshot.create permissions
  *   DAYTONA_API_URL   Daytona API base URL (optional — SDK default used if absent)
  *
  * Usage:
- *   node packages/@n8n/instance-ai/scripts/build-snapshot.mjs --version 1.123.0
+ *   node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version 1.123.0
  */
 
-import { Daytona } from '@daytonaio/sdk';
-
-import { SnapshotManager } from '@n8n/instance-ai';
+const { Daytona } = require('@daytonaio/sdk');
+const { SnapshotManager } = require('@n8n/instance-ai');
 
 function parseVersion(argv) {
 	const flagIdx = argv.indexOf('--version');

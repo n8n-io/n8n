@@ -40,4 +40,4 @@ jobs:
           N8N_VERSION: ${{ inputs.n8n_version }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
           DAYTONA_API_URL: ${{ secrets.DAYTONA_API_URL }}
-        run: node packages/@n8n/instance-ai/scripts/build-snapshot.mjs --version "$N8N_VERSION"
+        run: node packages/@n8n/instance-ai/scripts/build-snapshot.cjs --version "$N8N_VERSION"
