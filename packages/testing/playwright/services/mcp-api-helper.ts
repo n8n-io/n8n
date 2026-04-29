@@ -2,6 +2,7 @@ import type { APIResponse } from '@playwright/test';
 import * as http from 'http';
 import * as https from 'https';
 import { nanoid } from 'nanoid';
+import { setTimeout as wait } from 'node:timers/promises';
 
 import type { ApiHelpers } from './api-helper';
 import { N8N_AUTH_COOKIE } from '../config/constants';
@@ -192,7 +193,7 @@ export class McpApiHelper {
 			} catch (error) {
 				const isNotFound = error instanceof Error && 'isSseNotFound' in error;
 				if (!isNotFound || attempt === maxNotFoundRetries) throw error;
-				await new Promise((resolve) => setTimeout(resolve, notFoundRetryDelayMs));
+				await wait(notFoundRetryDelayMs);
 			}
 		}
 		throw new Error('SSE setup: retry loop exhausted');
