@@ -2,46 +2,17 @@ import { configure, logger } from '@n8n/computer-use/logger';
 import { app } from 'electron';
 import * as path from 'node:path';
 
+import {
+	DEEP_LINK_PROTOCOL,
+	parseConnectPayload,
+	parseConnectPayloadFromArgv,
+} from './connect-payload';
 import { DaemonController } from './daemon-controller';
 import { registerIpcHandlers } from './ipc-handlers';
 import { SettingsStore } from './settings-store';
 import { openSettingsWindow, notifySettingsWindow } from './settings-window';
 import { createTray } from './tray';
 import type { ConnectPayload } from '../shared/types';
-
-const DEEP_LINK_PROTOCOL = 'n8n-gateway';
-
-function parseConnectPayload(value: string): ConnectPayload | null {
-	let parsed: URL;
-	try {
-		parsed = new URL(value);
-	} catch {
-		return null;
-	}
-
-	if (parsed.protocol !== `${DEEP_LINK_PROTOCOL}:`) return null;
-	if (parsed.hostname !== 'connect') return null;
-
-	const url = parsed.searchParams.get('url') ?? '';
-	const rawToken = parsed.searchParams.get('token');
-	const apiKey = rawToken === null || rawToken.trim().length === 0 ? undefined : rawToken.trim();
-	if (!url) return null;
-	try {
-		new URL(url);
-	} catch {
-		return null;
-	}
-
-	return { url, apiKey };
-}
-
-function parseConnectPayloadFromArgv(argv: string[]): ConnectPayload | null {
-	for (const arg of argv) {
-		const payload = parseConnectPayload(arg);
-		if (payload) return payload;
-	}
-	return null;
-}
 
 // Windows: required for proper taskbar/notification grouping
 if (process.platform === 'win32') {

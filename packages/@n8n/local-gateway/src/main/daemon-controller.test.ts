@@ -5,6 +5,15 @@ const mockGetCurrentGatewayKey = jest.fn();
 const mockGetDefaults = jest.fn();
 const mockSessionFlush = jest.fn();
 
+type GatewayClientOptions = {
+	url: string;
+	apiKey: string;
+	onPersistentFailure?: () => void;
+	onDisconnected?: () => void;
+};
+
+let lastGatewayOptions: GatewayClientOptions | undefined;
+
 jest.mock('@n8n/computer-use/settings-store', () => ({
 	['SettingsStore']: {
 		create: jest.fn(
@@ -23,12 +32,15 @@ jest.mock('@n8n/computer-use/gateway-session', () => ({
 }));
 
 jest.mock('@n8n/computer-use/gateway-client', () => ({
-	['GatewayClient']: jest.fn().mockImplementation(() => ({
-		start: mockStart,
-		disconnect: mockDisconnect,
-		stop: mockStop,
-		getCurrentGatewayKey: mockGetCurrentGatewayKey,
-	})),
+	['GatewayClient']: jest.fn().mockImplementation((options: GatewayClientOptions) => {
+		lastGatewayOptions = options;
+		return {
+			start: mockStart,
+			disconnect: mockDisconnect,
+			stop: mockStop,
+			getCurrentGatewayKey: mockGetCurrentGatewayKey,
+		};
+	}),
 }));
 
 jest.mock('@n8n/computer-use/logger', () => ({
@@ -57,6 +69,7 @@ const BASE_CONFIG: GatewayConfig = {
 describe('DaemonController', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		lastGatewayOptions = undefined;
 		mockGetDefaults.mockReturnValue({
 			dir: '/',
 			permissions: {
@@ -85,6 +98,12 @@ describe('DaemonController', () => {
 		expect(result.apiKey).toBe('sess_token');
 	});
 
+	it('normalizes trailing slash on URL', async () => {
+		const controller = new DaemonController();
+		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud/', 'gw_token');
+		expect(controller.getSnapshot().connectedUrl).toBe('https://example.n8n.cloud');
+	});
+
 	it('sets error state when connect fails', async () => {
 		const controller = new DaemonController();
 		mockStart.mockRejectedValueOnce(new Error('connect failed'));
@@ -99,6 +118,16 @@ describe('DaemonController', () => {
 		expect(snapshot.lastError).toBe('connect failed');
 	});
 
+	it('formats non-Error rejection for lastError', async () => {
+		const controller = new DaemonController();
+		mockStart.mockRejectedValueOnce('string failure');
+
+		await expect(
+			controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token'),
+		).rejects.toThrow('string failure');
+		expect(controller.getSnapshot().lastError).toBe('string failure');
+	});
+
 	it('disconnects and clears connected state', async () => {
 		const controller = new DaemonController();
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
@@ -110,5 +139,46 @@ describe('DaemonController', () => {
 		expect(snapshot.connectedAt).toBeNull();
 		expect(mockDisconnect).toHaveBeenCalled();
 		expect(mockSessionFlush).toHaveBeenCalled();
+	});
+
+	it('calls stop on previous client when connecting again', async () => {
+		const controller = new DaemonController();
+		await controller.connect(BASE_CONFIG, 'https://a.example', 't1');
+		await controller.connect(BASE_CONFIG, 'https://b.example', 't2');
+		expect(mockStop).toHaveBeenCalled();
+		expect(mockStart).toHaveBeenCalledTimes(2);
+	});
+
+	it('reconnect is a no-op when nothing was connected before', async () => {
+		const controller = new DaemonController();
+		await controller.reconnect(BASE_CONFIG);
+		expect(mockStart).not.toHaveBeenCalled();
+	});
+
+	it('reconnect reuses last credentials', async () => {
+		const controller = new DaemonController();
+		await controller.connect(BASE_CONFIG, 'https://x.example', 'k1');
+		await controller.reconnect(BASE_CONFIG);
+		expect(mockStart).toHaveBeenCalledTimes(2);
+		expect(lastGatewayOptions?.url).toBe('https://x.example');
+		expect(lastGatewayOptions?.apiKey).toBe('sess_token');
+	});
+
+	it('sets error state when gateway signals persistent auth failure', async () => {
+		const controller = new DaemonController();
+		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
+		lastGatewayOptions?.onPersistentFailure?.();
+
+		const snapshot = controller.getSnapshot();
+		expect(snapshot.status).toBe('error');
+		expect(snapshot.lastError).toBe('Gateway authentication failed repeatedly');
+	});
+
+	it('sets disconnected state when gateway signals disconnect', async () => {
+		const controller = new DaemonController();
+		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
+		lastGatewayOptions?.onDisconnected?.();
+
+		expect(controller.getSnapshot().status).toBe('disconnected');
 	});
 });
