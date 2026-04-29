@@ -266,16 +266,29 @@ export class CollaborationService {
 
 		for (let start = 0; start < uniqueWorkflowIds.length; start += OPEN_WORKFLOW_CHECK_BATCH_SIZE) {
 			const chunk = uniqueWorkflowIds.slice(start, start + OPEN_WORKFLOW_CHECK_BATCH_SIZE);
-			const openIdsInChunk = await Promise.all(
+			const collaboratorLookups = await Promise.allSettled(
 				chunk.map(async (workflowId) => {
 					const collaborators = await this.state.getCollaborators(workflowId);
-					return collaborators.length > 0 ? workflowId : undefined;
+					return { workflowId, isOpen: collaborators.length > 0 };
 				}),
 			);
+			const failedWorkflowIds: Array<Workflow['id']> = [];
 
-			openWorkflowIds.push(
-				...openIdsInChunk.filter((id): id is Workflow['id'] => id !== undefined),
-			);
+			for (const [index, result] of collaboratorLookups.entries()) {
+				if (result.status === 'fulfilled') {
+					if (result.value.isOpen) openWorkflowIds.push(result.value.workflowId);
+				} else {
+					const workflowId = chunk[index];
+					if (workflowId) failedWorkflowIds.push(workflowId);
+				}
+			}
+
+			if (failedWorkflowIds.length > 0) {
+				this.logger.warn('Failed to resolve collaborators while filtering open workflows', {
+					workflowCount: failedWorkflowIds.length,
+					workflowIds: failedWorkflowIds.slice(0, 10),
+				});
+			}
 		}
 
 		return openWorkflowIds;
