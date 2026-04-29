@@ -308,8 +308,13 @@ export function createSubmitWorkflowTool(
 				nodeName: w.nodeName,
 			}));
 
-			// Server-side schema validation (Zod checks against node type definitions)
-			const schemaValidation = validateWorkflow(buildOutput.workflow);
+			// Server-side schema validation (Zod checks against node type definitions).
+			// strictMode is hardcoded on at AI-builder call sites — we want every
+			// catchable bug surfaced as a blocking error so the agent can self-correct.
+			const schemaValidation = validateWorkflow(buildOutput.workflow, {
+				nodeTypesProvider: context.nodeTypesProvider,
+				strictMode: true,
+			});
 			for (const issue of [...schemaValidation.errors, ...schemaValidation.warnings]) {
 				allWarnings.push({
 					code: issue.code,
