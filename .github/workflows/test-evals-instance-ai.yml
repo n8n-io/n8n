@@ -45,7 +45,14 @@ jobs:
         with:
           build-command: 'pnpm build'
 
-      - name: Build Docker image
+      # Cache populated by prepare-docker; fallback covers PRs that only touch this workflow file.
+      - name: Load n8n Docker image
+        id: load-image
+        continue-on-error: true
+        uses: ./.github/actions/load-n8n-docker
+
+      - name: Build Docker image (fallback on cache miss)
+        if: steps.load-image.outcome == 'failure'
         run: pnpm build:docker
         env:
           INCLUDE_TEST_CONTROLLER: 'true'
