@@ -153,6 +153,7 @@ function onSwitcherSelect(id: string) {
 			<N8nActionDropdown
 				:items="headerActions"
 				activator-icon="ellipsis-vertical"
+				activator-size="small"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"
 			/>
@@ -167,7 +168,9 @@ function onSwitcherSelect(id: string) {
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-bottom: var(--border);
-	min-height: 44px;
+	flex-shrink: 0;
+	box-sizing: content-box;
+	height: var(--height--sm);
 }
 
 .crumbSeparator {

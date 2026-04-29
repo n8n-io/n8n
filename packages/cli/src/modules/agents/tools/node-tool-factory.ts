@@ -180,7 +180,7 @@ export async function resolveNodeTool(
 	// uses (see `create-node-as-tool.ts:101`).
 	const sanitizedName = nodeNameToToolName(toolSchema.name);
 
-	return new Tool(sanitizedName)
+	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${toolSchema.node.nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
 		.handler(async (input: Record<string, unknown>) => {
@@ -194,4 +194,14 @@ export async function resolveNodeTool(
 			});
 		})
 		.build();
+
+	return {
+		...built,
+		metadata: {
+			kind: 'node',
+			nodeType: toolSchema.node.nodeType,
+			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
+			displayName: toolSchema.name,
+		},
+	};
 }
