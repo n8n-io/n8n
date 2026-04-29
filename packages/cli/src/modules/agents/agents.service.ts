@@ -5,14 +5,15 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type {
-	AgentSkill,
-	AgentSkillMutationResponse,
-	ChatIntegrationDescriptor,
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	agentSkillSchema,
+	isAgentScheduleIntegration,
+	type AgentSkill,
+	type AgentSkillMutationResponse,
+	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
-import { agentSkillSchema } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
-import { AGENT_SCHEDULE_TRIGGER_TYPE, isAgentScheduleIntegration } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
