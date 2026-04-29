@@ -26,6 +26,16 @@ const sessionsStore = useAgentSessionsStore();
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
 
+function onVisibilityChange() {
+	// Refresh as soon as the user returns to the tab — auto-refresh is
+	// throttled while the document is hidden, so a silent merge-refresh on
+	// return closes the gap before the next interval tick without flashing
+	// the load-more button or dropping paginated pages.
+	if (document.visibilityState !== 'visible') return;
+	if (!projectId.value || !agentId.value) return;
+	void sessionsStore.refreshThreads(projectId.value, agentId.value);
+}
+
 onMounted(async () => {
 	if (projectId.value && agentId.value) {
 		try {
@@ -35,9 +45,11 @@ onMounted(async () => {
 			toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 		}
 	}
+	document.addEventListener('visibilitychange', onVisibilityChange);
 });
 
 onBeforeUnmount(() => {
+	document.removeEventListener('visibilitychange', onVisibilityChange);
 	sessionsStore.stopAutoRefresh();
 });
 

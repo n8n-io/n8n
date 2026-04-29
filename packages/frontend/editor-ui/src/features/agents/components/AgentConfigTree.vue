@@ -23,7 +23,6 @@ const props = defineProps<{
 	config: AgentJsonConfig | null;
 	selectedKey: string | null;
 	connectedTriggers?: string[];
-	executionsCount?: number;
 	evaluationsCount?: number;
 }>();
 
@@ -98,13 +97,14 @@ const sections = computed<SectionDescriptor[]>(() => {
 		pill: i18n.baseText('agents.builder.sections.evaluations.comingSoon'),
 	});
 
-	// Divider + Executions row sits below the config primitives.
+	// Divider + Executions row sits below the config primitives. The count is
+	// intentionally omitted — it would only reflect the locally-loaded page
+	// (e.g. "20" until "Load more" is clicked), which misrepresents the total.
 	out.push({
 		key: EXECUTIONS_SECTION_KEY,
 		label: i18n.baseText('agents.builder.sections.executions'),
 		icon: 'clock',
 		dividerBefore: true,
-		count: props.executionsCount,
 	});
 
 	return out;
