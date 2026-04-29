@@ -66,6 +66,11 @@ const BASE_CONFIG: GatewayConfig = {
 	permissionConfirmation: 'instance',
 };
 
+/** Fire-and-forget `void closeCurrentConnection()` chains multiple async steps; flush past microtasks */
+async function settleNextTurn(): Promise<void> {
+	await new Promise<void>((resolve) => setImmediate(resolve));
+}
+
 describe('DaemonController', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -169,9 +174,7 @@ describe('DaemonController', () => {
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
 		lastGatewayOptions?.onPersistentFailure?.();
 
-		// Callback uses fire-and-forget async teardown; flush microtasks so mock stop/flush run.
-		await Promise.resolve();
-		await Promise.resolve();
+		await settleNextTurn();
 
 		const snapshot = controller.getSnapshot();
 		expect(snapshot.status).toBe('error');
@@ -185,9 +188,7 @@ describe('DaemonController', () => {
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
 		lastGatewayOptions?.onDisconnected?.();
 
-		// Callback uses fire-and-forget async teardown; flush microtasks so mock stop/flush run.
-		await Promise.resolve();
-		await Promise.resolve();
+		await settleNextTurn();
 
 		expect(controller.getSnapshot().status).toBe('disconnected');
 		expect(mockStop).toHaveBeenCalled();
