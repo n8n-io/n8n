@@ -29,6 +29,16 @@ export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 		if (field === 'status') {
 			return a.status.localeCompare(b.status);
 		}
+
+		if (field === 'updatedAt') {
+			const valueA = a.status === 'inactive' ? a.updatedAt : null;
+			const valueB = b.status === 'inactive' ? b.updatedAt : null;
+			if (!valueA && !valueB) return 0;
+			if (!valueA) return 1;
+			if (!valueB) return -1;
+			return new Date(valueA).getTime() - new Date(valueB).getTime();
+		}
+
 		return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
 	};
 

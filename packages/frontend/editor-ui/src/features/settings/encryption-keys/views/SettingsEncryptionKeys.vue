@@ -36,6 +36,7 @@ const isConfirmRotateOpen = ref(false);
 
 const sortOptions = computed<Array<{ value: EncryptionKeySortField; label: string }>>(() => [
 	{ value: 'createdAt', label: i18n.baseText('settings.encryptionKeys.sortBy.activated') },
+	{ value: 'updatedAt', label: i18n.baseText('settings.encryptionKeys.sortBy.archived') },
 	{ value: 'status', label: i18n.baseText('settings.encryptionKeys.sortBy.type') },
 ]);
 
@@ -76,7 +77,16 @@ const headers = computed<Array<TableHeader<EncryptionKey>>>(() => [
 		value: (row) => row.createdAt,
 		minWidth: 140,
 	},
+	{
+		title: i18n.baseText('settings.encryptionKeys.column.archived'),
+		key: 'updatedAt',
+		value: (row) => (row.status === 'inactive' ? (row.updatedAt ?? '') : ''),
+		minWidth: 140,
+	},
 ]);
+
+const archiveDate = (key: EncryptionKey): string | null =>
+	key.status === 'inactive' ? (key.updatedAt ?? null) : null;
 
 const visibleKeys = computed(() => store.visibleKeys);
 
@@ -270,6 +280,10 @@ onMounted(async () => {
 
 				<template #[`item.createdAt`]="{ item }">
 					{{ formatDate(item.createdAt) }}
+				</template>
+
+				<template #[`item.updatedAt`]="{ item }">
+					{{ formatDate(archiveDate(item)) }}
 				</template>
 			</N8nDataTableServer>
 
