@@ -89,7 +89,6 @@ const applyLabel = computed(() =>
 						v-if="showSkipButton"
 						variant="outline"
 						size="medium"
-						:class="$style.actionButton"
 						:label="skipLabel"
 						:disabled="ctx.isActionPending.value"
 						data-test-id="instance-ai-workflow-setup-later"
@@ -102,7 +101,6 @@ const applyLabel = computed(() =>
 					>
 						<N8nButton
 							size="medium"
-							:class="$style.actionButton"
 							:label="i18n.baseText('instanceAi.credential.continueButton')"
 							:disabled="isPrimaryActionDisabled"
 							data-test-id="instance-ai-workflow-setup-continue"
@@ -116,7 +114,6 @@ const applyLabel = computed(() =>
 					>
 						<N8nButton
 							size="medium"
-							:class="$style.actionButton"
 							:label="applyLabel"
 							:disabled="isPrimaryActionDisabled"
 							data-test-id="instance-ai-workflow-setup-apply"
@@ -141,9 +138,5 @@ const applyLabel = computed(() =>
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-
-.actionButton {
-	--button--font-size: var(--font-size--2xs);
 }
 </style>
