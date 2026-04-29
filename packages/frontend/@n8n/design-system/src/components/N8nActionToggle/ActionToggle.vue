@@ -3,11 +3,18 @@ import { computed, ref } from 'vue';
 
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import N8nIcon from '../N8nIcon';
 import N8nIconButton from '../N8nIconButton';
 import N8nLoading from '../N8nLoading';
 
+type ActionToggleItem<T extends string> = {
+	label: string;
+	disabled?: boolean;
+	type?: 'external-link';
+} & ({ id: T; value?: T } | { id?: T; value: T });
+
 interface ActionToggleProps {
-	actions?: Array<DropdownMenuItemProps<T>>;
+	actions?: Array<ActionToggleItem<T>>;
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
@@ -35,16 +42,31 @@ const props = withDefaults(defineProps<ActionToggleProps>(), {
 const emit = defineEmits<{
 	action: [value: ActionValue];
 	'update:modelValue': [open: boolean];
-	'item-mouseup': [action: DropdownMenuItemProps<T>];
+	'item-mouseup': [action: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>];
 }>();
 
 const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
 
-const items = computed(() => props.actions);
+const items = computed((): Array<DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>> => {
+	return props.actions.map((action) => ({
+		id: (action.id ?? action.value) as ActionValue,
+		label: action.label,
+		disabled: action.disabled,
+		data: action,
+	}));
+});
 
-const onAction = (value: T) => emit('action', value);
+const onAction = (value: ActionValue) => emit('action', value);
 const onOpenChange = (open: boolean) => emit('update:modelValue', open);
-const onItemMouseUp = (item: DropdownMenuItemProps<T>) => emit('item-mouseup', item);
+const onItemMouseUp = (item: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>) => {
+	const action =
+		item.data ?? props.actions.find((candidate) => (candidate.id ?? candidate.value) === item.id);
+
+	if (action) {
+		emit('item-mouseup', item);
+	}
+	dropdownRef.value?.close();
+};
 
 const openActionToggle = (isOpen: boolean) => {
 	if (isOpen) {
@@ -92,6 +114,14 @@ defineExpose({
 					:class="$style['loading-item']"
 					animated
 					variant="text"
+				/>
+			</template>
+			<template #item-trailing="slotProps">
+				<N8nIcon
+					v-if="slotProps.item.data?.type === 'external-link'"
+					icon="external-link"
+					size="xsmall"
+					color="text-base"
 				/>
 			</template>
 		</N8nDropdownMenu>

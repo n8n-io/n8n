@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string">
-import { computed, useCssModule } from 'vue';
+import { computed, ref, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
@@ -65,6 +65,12 @@ const onSelect = (action: T) => emit('select', action);
 const onOpenChange = (open: boolean) => emit('visibleChange', open);
 const onBadgeClick = (action: T) => emit('badge-click', action);
 
+const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
+
+const open = () => dropdownRef.value?.open();
+const close = () => dropdownRef.value?.close();
+defineExpose({ open, close });
+
 const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
@@ -78,6 +84,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
 		<N8nDropdownMenu
+			ref="dropdownRef"
 			:items="items"
 			:placement="placement"
 			:trigger="trigger"

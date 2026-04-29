@@ -147,7 +147,7 @@ const emitItemHover = (id: string) => {
 	emit('itemHover', item);
 };
 
-const onHiddenItemMouseUp = (item: DropdownMenuItemProps<string>) => {
+const onHiddenItemMouseUp = (item: DropdownMenuItemProps<string, unknown>) => {
 	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.id);
 	if (!pathItem || !props.dragActive) {
 		return;

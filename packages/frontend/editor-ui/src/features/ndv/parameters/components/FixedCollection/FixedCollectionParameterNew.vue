@@ -567,13 +567,13 @@ const onHeaderAddClick = async () => {
 	}
 
 	if (hasSingleOption.value && dropdownOptions.value[0]) {
-		optionSelected(dropdownOptions.value[0].value);
+		optionSelected(dropdownOptions.value[0].id);
 	}
 };
 
 const onAddButtonClick = () => {
 	if (hasSingleOption.value && dropdownOptions.value[0]) {
-		optionSelected(dropdownOptions.value[0].value);
+		optionSelected(dropdownOptions.value[0].id);
 	}
 };
 </script>
