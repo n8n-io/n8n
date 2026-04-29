@@ -188,7 +188,7 @@ describe('ActiveWorkflows', () => {
 					],
 				};
 
-				await expect(addWorkflow({ pollNodes: [pollNode], pollTimes })).resolves.not.toThrow();
+				await expect(addWorkflow({ pollNodes: [pollNode], pollTimes })).resolves.toBeUndefined();
 
 				expect(scheduledTaskManager.registerCron).toHaveBeenCalled();
 			});
