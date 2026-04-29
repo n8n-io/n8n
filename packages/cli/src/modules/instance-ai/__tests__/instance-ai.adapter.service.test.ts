@@ -1746,13 +1746,14 @@ describe('createExecutionAdapter run()', () => {
 		jest.clearAllMocks();
 	});
 
-	it('forces saveManualExecutions and saveDataSuccessExecution so the agent can read the result back', async () => {
+	it('forces save settings so the agent can read the result back', async () => {
 		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 			id: 'wf-1',
 			nodes: [],
 			settings: {
 				saveManualExecutions: false,
 				saveDataSuccessExecution: 'none',
+				saveDataErrorExecution: 'none',
 				executionOrder: 'v1',
 			},
 		});
@@ -1765,6 +1766,7 @@ describe('createExecutionAdapter run()', () => {
 			executionOrder: 'v1',
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
 		});
 	});
 
@@ -1780,6 +1782,7 @@ describe('createExecutionAdapter run()', () => {
 		expect(runData.workflowData.settings).toEqual({
 			saveManualExecutions: true,
 			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
 		});
 	});
 });

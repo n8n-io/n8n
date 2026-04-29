@@ -734,9 +734,11 @@ export class InstanceAiAdapterService {
 					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
 					: findTriggerNode(nodes);
 
-				// Force-save manual successful executions for AI-initiated runs so that
-				// follow-up `executions(list/get)` calls can read the result, regardless
-				// of instance-wide or per-workflow save settings.
+				// Force-save AI-initiated executions so that follow-up
+				// `executions(list/get/debug)` calls can read the result, regardless of
+				// instance-wide or per-workflow save settings. Manual mode is gated by
+				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
+				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode
 						? getExecutionModeForTrigger(triggerNode)
@@ -747,6 +749,7 @@ export class InstanceAiAdapterService {
 							...workflow.settings,
 							saveManualExecutions: true,
 							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
 						},
 					},
 					userId: user.id,
