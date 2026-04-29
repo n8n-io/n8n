@@ -33,7 +33,10 @@ jest.mock('../../memory/memory-config', () => ({
 
 jest.mock('../../tools', () => ({
 	createAllTools: jest.fn((context: { runLabel?: string }) => ({
-		'list-workflows': { id: `list-${context.runLabel ?? 'unknown'}` },
+		workflows: { id: `workflows-${context.runLabel ?? 'unknown'}` },
+	})),
+	createOrchestratorDomainTools: jest.fn((context: { runLabel?: string }) => ({
+		workflows: { id: `workflows-${context.runLabel ?? 'unknown'}` },
 	})),
 	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
 		plan: { id: `plan-${context.runId}` },
@@ -58,10 +61,6 @@ jest.mock('../system-prompt', () => ({
 	getSystemPrompt: jest.fn().mockReturnValue('system prompt'),
 }));
 
-jest.mock('../tool-access', () => ({
-	getOrchestratorDomainTools: jest.fn((tools: Record<string, unknown>) => tools),
-}));
-
 const { createInstanceAgent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../instance-agent') as typeof import('../instance-agent');
@@ -70,6 +69,9 @@ const { ToolSearchProcessor } =
 	require('@mastra/core/processors') as {
 		ToolSearchProcessor: jest.Mock;
 	};
+const { Agent } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('@mastra/core/agent') as { Agent: jest.Mock };
 
 describe('createInstanceAgent', () => {
 	it('creates a fresh deferred tool processor for each run-scoped toolset', async () => {
@@ -106,5 +108,35 @@ describe('createInstanceAgent', () => {
 		expect(toolSearchCalls[1]?.[0]?.tools).toMatchObject({
 			'build-workflow-with-agent': { id: 'build-run-2' },
 		});
+	});
+
+	it('does not attach a workspace to the orchestrator Agent', async () => {
+		Agent.mockClear();
+		const memoryConfig = { storage: { id: 'memory-store' } } as never;
+		const fakeWorkspace = { id: 'should-be-ignored' } as never;
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'ws-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'ws-test',
+				browserMcpConfig: undefined,
+				workspace: fakeWorkspace,
+			},
+			memoryConfig,
+			// Exercise the deprecated field to confirm it is ignored.
+			workspace: fakeWorkspace,
+		} as never);
+
+		expect(Agent).toHaveBeenCalledTimes(1);
+		const calls = Agent.mock.calls as Array<[Record<string, unknown>]>;
+		const firstCall = calls[0];
+		expect(firstCall).toBeDefined();
+		expect(firstCall[0]).not.toHaveProperty('workspace');
 	});
 });

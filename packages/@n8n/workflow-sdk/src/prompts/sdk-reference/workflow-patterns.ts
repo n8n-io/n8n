@@ -96,49 +96,62 @@ export default workflow('id', 'name')
 </independent_sources>
 
 <zero_item_safety>
-Nodes that fetch or filter data may return 0 items, which stops the entire downstream chain.
-Use \`alwaysOutputData: true\` on data-fetching nodes to ensure the chain continues with an empty item \`{json: {}}\`.
+When a node returns 0 items, downstream nodes are skipped for that execution. **This is usually the correct behavior** — the scheduler / trigger fires again later, and when there is data, the chain runs normally. Don't paper over an empty result with \`alwaysOutputData: true\` by default.
 
+**\`alwaysOutputData: true\` forces a synthetic \`{json: {}}\` item downstream.** This is a footgun: downstream nodes will try to read fields that don't exist, HTTP requests will hit \`GET undefined\`, and loops will run once on a fake item. Use it *only* when the empty case has its own dedicated branch that you want to execute.
+
+**Correct pattern — no \`alwaysOutputData\`:**
 \`\`\`javascript
-// Data Table might be empty (fresh table, no matching rows)
-const getReflections = node({
-  type: 'n8n-nodes-base.dataTable',
-  version: 1.1,
+// Scheduler that processes pending work
+workflow('ingest', 'Ingest Worker')
+  .add(scheduleTrigger)                     // fires every 5 min
+  .to(getPending)                           // returns 0..N rows; no alwaysOutputData
+  .to(splitInBatches({version: 3, config: {parameters: {batchSize: 1}}})
+    .onEachBatch(fetchUrl.to(embed).to(saveChunk))
+  );
+// On runs where getPending returns 0 items, the loop simply doesn't execute.
+// On runs where it returns rows, the loop iterates. No gate, no filter needed.
+\`\`\`
+
+**Correct pattern — empty case needs its own branch:**
+\`\`\`javascript
+// "No matches found" deserves a notification
+const search = node({
+  type: 'n8n-nodes-base.httpRequest',
+  version: 4.4,
   config: {
-    name: 'Get Reflections',
-    alwaysOutputData: true,  // Chain continues even if table is empty
-    parameters: { resource: 'row', operation: 'get', returnAll: true }
+    name: 'Search',
+    alwaysOutputData: true,              // empty-case branch below needs to execute
+    parameters: { /* ... */ }
   }
 });
-
-// Downstream Code node handles the empty case
-const processData = node({
-  type: 'n8n-nodes-base.code',
-  version: 2,
+const hasResults = ifElse({
+  version: 2.2,
   config: {
-    name: 'Process Data',
+    name: 'Has Results?',
     parameters: {
-      mode: 'runOnceForAllItems',
-      jsCode: \\\`
-const items = $input.all();
-// items will be [{json: {}}] if upstream had no data
-const hasData = items.length > 0 && Object.keys(items[0].json).length > 0;
-// ... handle both cases
-\\\`.trim()
+      conditions: {
+        options: { caseSensitive: true, typeValidation: 'loose' },
+        conditions: [{ leftValue: '={{ $json.results }}', operator: { type: 'array', operation: 'notEmpty' } }],
+        combinator: 'and'
+      }
     }
   }
 });
+workflow('search', 'Search').add(trigger).to(search).to(
+  hasResults.onTrue(processResults).onFalse(notifyNoMatches)
+);
 \`\`\`
 
-**When to use \`alwaysOutputData: true\`:**
-- Data Table with \`operation: 'get'\` (table may be empty or freshly created)
-- Any lookup/search/filter node whose result feeds into downstream processing
-- HTTP Request that may return an empty array
+**When to use \`alwaysOutputData: true\`:** only when you've paired it with an explicit empty-case branch, AND the downstream branch doesn't blindly read item fields.
 
 **When NOT to use it:**
-- Trigger nodes (they always produce output)
-- Code nodes (handle empty input in your code logic instead)
-- Nodes at the end of the chain (no downstream to protect)
+- Scheduled/polling triggers where the "no work" case should silently skip
+- Before a \`splitInBatches\` loop — loops already no-op on empty input
+- Before a \`filter\` — the filter already no-ops on empty input
+- When all you'd do on the empty case is "nothing"
+
+**Don't gate loops with an \`IF\`.** \`ifElse.onTrue(splitInBatches)\` to check "are there items?" is redundant — the loop already does the right thing with 0 items. Drop the IF.
 
 </zero_item_safety>
 

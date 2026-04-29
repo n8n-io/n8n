@@ -1,4 +1,5 @@
 import { type User, type ProjectRepository, WorkflowEntity } from '@n8n/db';
+import { layoutWorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
@@ -13,6 +14,7 @@ import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 import { resolveNodeWebhookIds } from '@/workflow-helpers';
 import type { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = {
 	code: z
@@ -56,6 +58,7 @@ const outputSchema = {
 			z.object({
 				nodeName: z.string().describe('The name of the node that had credentials auto-assigned'),
 				credentialName: z.string().describe('The name of the credential that was auto-assigned'),
+				credentialType: z.string().describe('The credential type that was auto-assigned'),
 			}),
 		)
 		.describe('List of credentials that were automatically assigned to nodes'),
@@ -80,6 +83,7 @@ const outputSchema = {
 export const createCreateWorkflowFromCodeTool = (
 	user: User,
 	workflowCreationService: WorkflowCreationService,
+	workflowFinderService: WorkflowFinderService,
 	urlService: UrlService,
 	telemetry: Telemetry,
 	nodeTypes: NodeTypes,
@@ -134,6 +138,8 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 		}
 
+		let newWorkflow: WorkflowEntity | undefined;
+
 		try {
 			const { ParseValidateHandler, stripImportStatements } = await import(
 				'@n8n/ai-workflow-builder'
@@ -142,9 +148,10 @@ export const createCreateWorkflowFromCodeTool = (
 			const handler = new ParseValidateHandler({ generatePinData: false });
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
-			const workflowJson = result.workflow;
 
-			const newWorkflow = new WorkflowEntity();
+			const workflowJson = layoutWorkflowJSON(result.workflow);
+
+			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
 				name: name ?? workflowJson.name ?? 'Untitled Workflow',
 				...(description ? { description } : {}),
@@ -152,7 +159,7 @@ export const createCreateWorkflowFromCodeTool = (
 				connections: workflowJson.connections,
 				settings: { ...workflowJson.settings, executionOrder: 'v1', availableInMCP: true },
 				pinData: workflowJson.pinData,
-				meta: { ...workflowJson.meta, aiBuilderAssisted: true },
+				meta: { ...workflowJson.meta, aiBuilderAssisted: true, builderVariant: 'mcp' },
 			});
 
 			resolveNodeWebhookIds(newWorkflow, nodeTypes);
@@ -178,6 +185,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const savedWorkflow = await workflowCreationService.createWorkflow(user, newWorkflow, {
 				projectId,
 				parentFolderId: folderId,
+				source: 'n8n-mcp',
 			});
 
 			const baseUrl = urlService.getInstanceBaseUrl();
@@ -209,6 +217,51 @@ export const createCreateWorkflowFromCodeTool = (
 			};
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
+
+			// Check whether the workflow was actually persisted despite the error.
+			// TypeORM sets the entity id during save(), even inside a transaction that
+			// may later roll back, so newWorkflow.id alone is not a reliable signal.
+			// A DB lookup confirms the row truly exists before we report success.
+			if (newWorkflow?.id) {
+				let persisted: Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>> | null =
+					null;
+				try {
+					persisted = await workflowFinderService.findWorkflowForUser(newWorkflow.id, user, [
+						'workflow:read',
+					]);
+				} catch {
+					// Verification lookup failed — fall through and report the original error.
+				}
+
+				if (persisted) {
+					const baseUrl = urlService.getInstanceBaseUrl();
+					const workflowUrl = `${baseUrl}/workflow/${persisted.id}`;
+
+					telemetryPayload.results = {
+						success: true,
+						data: {
+							workflowId: persisted.id,
+							nodeCount: persisted.nodes.length,
+							postSaveError: errorMessage,
+						},
+					};
+					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+					const output = {
+						workflowId: persisted.id,
+						name: persisted.name,
+						nodeCount: persisted.nodes.length,
+						url: workflowUrl,
+						autoAssignedCredentials: [],
+						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
+					};
+
+					return {
+						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
+						structuredContent: output,
+					};
+				}
+			}
 
 			telemetryPayload.results = {
 				success: false,

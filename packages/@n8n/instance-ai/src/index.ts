@@ -10,8 +10,10 @@ export {
 	createTraceReplayOnlyContext,
 	continueInstanceAiTraceContext,
 	releaseTraceClient,
+	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } from './tracing/langsmith-tracing';
+export type { SubmitLangsmithUserFeedbackOptions } from './tracing/langsmith-tracing';
 export {
 	IdRemapper,
 	TraceIndex,
@@ -27,8 +29,11 @@ export type {
 	TraceToolResume,
 } from './tracing/trace-replay';
 export { createInstanceAgent } from './agent/instance-agent';
+export { createSubAgent } from './agent/sub-agent-factory';
+export type { SubAgentOptions } from './agent/sub-agent-factory';
 export { createAllTools, createOrchestrationTools } from './tools';
 export { startBuildWorkflowAgentTask } from './tools/orchestration/build-workflow-agent.tool';
+export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent.prompt';
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
 export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
 export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
@@ -50,7 +55,7 @@ export type {
 	ThreadPatch,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
-export { truncateToTitle, generateThreadTitle } from './memory/title-utils';
+export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
 export { McpClientManager } from './mcp/mcp-client-manager';
 export { mapMastraChunkToEvent } from './stream/map-chunk';
 export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
@@ -120,7 +125,10 @@ export type {
 } from './workflow-loop';
 export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';
-export { applyPlannedTaskPermissions } from './planned-tasks/planned-task-permissions';
+export {
+	applyPlannedTaskPermissions,
+	PLANNED_TASK_PERMISSION_OVERRIDES,
+} from './planned-tasks/planned-task-permissions';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -147,6 +155,7 @@ export type {
 	PlannedTaskService,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,

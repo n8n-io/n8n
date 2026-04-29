@@ -240,6 +240,8 @@ export type {
 } from './schemas/secrets-provider.schema';
 
 export {
+	SECRETS_PROVIDER_KEY_PATTERN,
+	SECRETS_PROVIDER_KEY_REGEX,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
 } from './schemas/secrets-provider.schema';
@@ -250,9 +252,9 @@ export {
 } from './schemas/community-package.schema';
 
 export {
-	publicApiCreatedCredentialSchema,
-	type PublicApiCreatedCredential,
-} from './schemas/credential-created.schema';
+	publicApiCredentialResponseSchema,
+	type PublicApiCredentialResponse,
+} from './schemas/credential-response.schema';
 
 export {
 	instanceAiEventTypeSchema,
@@ -278,8 +280,6 @@ export {
 	workflowSetupNodeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
-	instanceAiFilesystemResponseSchema,
-	instanceAiGatewayCapabilitiesSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
 	mcpToolCallResultSchema,
@@ -294,6 +294,7 @@ export {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	InstanceAiSendMessageRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalSubAgentRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
 	InstanceAiEventsQuery,
@@ -302,6 +303,8 @@ export {
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiFilesystemResponseDto,
 	applyBranchReadOnlyOverrides,
 } from './schemas/instance-ai.schema';
 
@@ -372,6 +375,9 @@ export type {
 	InstanceAiEvalNodeResult,
 	InstanceAiEvalMockHints,
 	InstanceAiEvalExecutionResult,
+	InstanceAiEvalToolCall,
+	InstanceAiEvalToolResult,
+	InstanceAiEvalSubAgentResponse,
 } from './schemas/instance-ai.schema';
 
 export {
@@ -384,3 +390,12 @@ export {
 export type { AgentRunState, AgentNode } from './schemas/agent-run-reducer';
 
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
+
+export {
+	X_N8N_FEATURE_HEADER,
+	X_N8N_VERSION_HEADER,
+	N8N_PROXY_FEATURES,
+	buildProxyHeaders,
+	type N8nProxyFeature,
+	type ProxyHeaderInput,
+} from './constants/proxy-feature';

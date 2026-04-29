@@ -1,7 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 //https://api.slack.com/authentication/oauth-v2
-const userScopes = [
+export const userScopes = [
 	'channels:read',
 	'channels:write',
 	'channels:history',
@@ -54,18 +54,49 @@ export class SlackOAuth2Api implements ICredentialType {
 			type: 'hidden',
 			default: 'https://slack.com/api/oauth.v2.access',
 		},
-		//https://api.slack.com/scopes
 		{
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default: 'chat:write',
+			default: '',
 		},
+		{
+			displayName: 'Custom Scopes',
+			name: 'customScopes',
+			type: 'boolean',
+			default: false,
+			description: 'Define custom scopes',
+		},
+		{
+			displayName:
+				'The default scopes needed for the node to work are already set. If you change these the node may not function correctly.',
+			name: 'customScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+		},
+		{
+			displayName: 'User Scope',
+			name: 'userScope',
+			type: 'string',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+				},
+			},
+			default: userScopes.join(' '),
+			description: 'Space-separated user-level scopes for your Slack app',
+		},
+		//https://api.slack.com/scopes
 		{
 			displayName: 'Auth URI Query Parameters',
 			name: 'authQueryParameters',
 			type: 'hidden',
-			default: `user_scope=${userScopes.join(' ')}`,
+			default: `={{$self["customScopes"] ? "user_scope=" + $self["userScope"] : "user_scope=${userScopes.join(' ')}"}}`,
 		},
 		{
 			displayName: 'Authentication',

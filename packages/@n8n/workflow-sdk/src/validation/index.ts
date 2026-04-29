@@ -34,6 +34,7 @@ export type ValidationErrorCode =
 	| 'SUBNODE_NOT_CONNECTED'
 	| 'SUBNODE_PARAMETER_MISMATCH'
 	| 'UNSUPPORTED_SUBNODE_INPUT'
+	| 'MISSING_REQUIRED_INPUT'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
@@ -491,13 +492,66 @@ export function validateWorkflow(
 		validateSubnodeParameters(json, options.nodeTypesProvider, warnings);
 		// Validate parent nodes actually support their connected AI input types
 		validateParentSupportsInputs(json, options.nodeTypesProvider, warnings);
+		// Validate required AI inputs on parent nodes are actually connected
+		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
 	}
+
+	// Merge node input-count consistency
+	checkMergeNodeInputCount(json, warnings);
 
 	return {
 		valid: errors.length === 0,
 		errors,
 		warnings,
 	};
+}
+
+/**
+ * Validate that the Merge node's `numberInputs` parameter is consistent with
+ * the input indices actually used by incoming connections.
+ *
+ * The Merge node has expression-based inputs (count derived from
+ * `numberInputs`, default 2), so checkNodeInputIndices can't resolve the count
+ * statically. Without this check, a workflow with three branches wired into a
+ * Merge node that still has `numberInputs=2` passes validation and silently
+ * drops the third branch at runtime.
+ */
+function checkMergeNodeInputCount(json: WorkflowJSON, warnings: ValidationWarning[]): void {
+	const connectionsByDest = mapConnectionsByDestination(
+		json.connections as unknown as N8nIConnections,
+	);
+
+	for (const node of json.nodes) {
+		if (!node.name) continue;
+		if (node.type !== 'n8n-nodes-base.merge') continue;
+
+		const numberInputsParam = node.parameters?.numberInputs;
+		const declaredInputs = typeof numberInputsParam === 'number' ? numberInputsParam : 2;
+
+		const incomingMain = connectionsByDest[node.name]?.main;
+		if (!incomingMain) continue;
+
+		let maxConnectedIndex = -1;
+		for (let i = 0; i < incomingMain.length; i++) {
+			const slot = incomingMain[i];
+			if (Array.isArray(slot) && slot.length > 0) {
+				maxConnectedIndex = i;
+			}
+		}
+
+		if (maxConnectedIndex >= declaredInputs) {
+			warnings.push(
+				new ValidationWarning(
+					'INVALID_INPUT_INDEX',
+					`Merge node '${node.name}' has a connection to input index ${maxConnectedIndex} but 'numberInputs' is ${declaredInputs}. Set 'numberInputs' to ${maxConnectedIndex + 1} so every branch is accepted.`,
+					node.name,
+					'numberInputs',
+					undefined,
+					'major',
+				),
+			);
+		}
+	}
 }
 
 /**
@@ -730,6 +784,82 @@ function validateParentSupportsInputs(
 					);
 				}
 			}
+		}
+	}
+}
+
+/**
+ * Validate that required AI inputs declared in a parent node's builderHint.inputs
+ * are actually connected.
+ *
+ * For each parent node with a builderHint.inputs entry that has `required: true`,
+ * check whether its displayOptions (if any) match the parent's current parameters;
+ * if so, require that a connection of that AI type terminates at the parent.
+ * Emits a fatal error when the connection is missing — without it, the workflow
+ * silently passes validation but breaks at runtime (see INS-136: chat trigger
+ * with `loadPreviousSession: 'memory'` but no memory subnode connected).
+ */
+function validateRequiredInputsConnected(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	errors: ValidationError[],
+): void {
+	const connectionsByDest = mapConnectionsByDestination(
+		json.connections as unknown as N8nIConnections,
+	);
+
+	for (const parentNode of json.nodes) {
+		if (!parentNode.name) continue;
+
+		const version =
+			typeof parentNode.typeVersion === 'string'
+				? parseFloat(parentNode.typeVersion)
+				: (parentNode.typeVersion ?? 1);
+
+		const parentNodeType = nodeTypesProvider.getByNameAndVersion(parentNode.type, version);
+		const builderHintInputs = parentNodeType?.description?.builderHint?.inputs;
+		if (!builderHintInputs) continue;
+
+		const parentContext: DisplayOptionsContext = {
+			parameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+			nodeVersion: version,
+			rootParameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+		};
+
+		for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
+			if (!connectionType.startsWith('ai_')) continue;
+			if (!inputConfig?.required) continue;
+
+			if (inputConfig.displayOptions) {
+				const conditionsMet = matchesDisplayOptions(
+					parentContext,
+					inputConfig.displayOptions as DisplayOptions,
+				);
+				if (!conditionsMet) continue;
+			}
+
+			const incoming = connectionsByDest[parentNode.name]?.[connectionType];
+			const hasConnection =
+				Array.isArray(incoming) && incoming.some((slot) => Array.isArray(slot) && slot.length > 0);
+			if (hasConnection) continue;
+
+			const subnodeField = AI_CONNECTION_TO_SUBNODE_FIELD[connectionType] || connectionType;
+			const conditionDetails = inputConfig.displayOptions
+				? ` ${buildConditionSummary(
+						inputConfig.displayOptions,
+						(parentNode.parameters ?? {}) as Record<string, unknown>,
+					)}`
+				: '';
+
+			errors.push(
+				new ValidationError(
+					'MISSING_REQUIRED_INPUT',
+					`'${parentNode.name}' requires a ${subnodeField} subnode connected to its ${connectionType} input, but none is connected.${conditionDetails}`,
+					parentNode.name,
+					undefined,
+					'major',
+				),
+			);
 		}
 	}
 }

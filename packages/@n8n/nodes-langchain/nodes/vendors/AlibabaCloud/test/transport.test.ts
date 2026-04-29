@@ -2,7 +2,7 @@ import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { apiRequest, getBaseUrl, pollTaskResult } from '../transport';
+import { apiRequest, pollTaskResult } from '../transport';
 
 jest.mock('n8n-workflow', () => {
 	const actual = jest.requireActual('n8n-workflow');
@@ -19,7 +19,7 @@ describe('AlicloudModelStudio Transport', () => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockExecuteFunctions.getCredentials.mockResolvedValue({
 			apiKey: 'test-key',
-			region: 'ap-southeast-1',
+			url: 'https://dashscope-intl.aliyuncs.com',
 		});
 		mockExecuteFunctions.getNode.mockReturnValue({
 			id: 'test-node-id',
@@ -92,7 +92,7 @@ describe('AlicloudModelStudio Transport', () => {
 		it('should resolve US (Virginia) region to correct base URL', async () => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				apiKey: 'test-key',
-				region: 'us-east-1',
+				url: 'https://dashscope-us.aliyuncs.com',
 			});
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
@@ -109,8 +109,7 @@ describe('AlicloudModelStudio Transport', () => {
 		it('should resolve EU (Frankfurt) region with workspaceId to correct base URL', async () => {
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				apiKey: 'test-key',
-				region: 'eu-central-1',
-				workspaceId: 'ws123',
+				url: 'https://ws123.eu-central-1.maas.aliyuncs.com',
 			});
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
@@ -123,30 +122,22 @@ describe('AlicloudModelStudio Transport', () => {
 				}),
 			);
 		});
-	});
 
-	describe('getBaseUrl', () => {
-		it('should default to Singapore when no region is provided', () => {
-			expect(getBaseUrl({})).toBe('https://dashscope-intl.aliyuncs.com');
-		});
+		it('should use gateway URL when provided via credentials', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				apiKey: 'gateway-jwt-token',
+				url: 'https://gateway.example.com/v1/gateway/alibaba',
+			});
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue({});
 
-		it.each([
-			['ap-southeast-1', 'https://dashscope-intl.aliyuncs.com'],
-			['us-east-1', 'https://dashscope-us.aliyuncs.com'],
-			['cn-beijing', 'https://dashscope.aliyuncs.com'],
-			['cn-hongkong', 'https://cn-hongkong.dashscope.aliyuncs.com'],
-		])('should return correct URL for region %s', (region, expectedUrl) => {
-			expect(getBaseUrl({ region })).toBe(expectedUrl);
-		});
+			await apiRequest.call(mockExecuteFunctions, 'GET', '/api/v1/tasks/789');
 
-		it('should construct Frankfurt URL with workspaceId', () => {
-			expect(getBaseUrl({ region: 'eu-central-1', workspaceId: 'ws123' })).toBe(
-				'https://ws123.eu-central-1.maas.aliyuncs.com',
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'alibabaCloudApi',
+				expect.objectContaining({
+					url: 'https://gateway.example.com/v1/gateway/alibaba/api/v1/tasks/789',
+				}),
 			);
-		});
-
-		it('should throw when eu-central-1 is selected without workspaceId', () => {
-			expect(() => getBaseUrl({ region: 'eu-central-1' })).toThrow('Workspace ID');
 		});
 	});
 
@@ -158,7 +149,7 @@ describe('AlicloudModelStudio Transport', () => {
 			};
 			mockExecuteFunctions.getCredentials.mockResolvedValue({
 				apiKey: 'test-key',
-				region: 'ap-southeast-1',
+				url: 'https://dashscope-intl.aliyuncs.com',
 			});
 			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValue(
 				succeededResponse,

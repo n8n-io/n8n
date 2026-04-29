@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { DatabaseConfig } from '../src/index';
-import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
+import { ExecutionsConfig, GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
 
 jest.mock('fs');
 const mockFs = mock<typeof fs>();
@@ -162,6 +162,8 @@ describe('GlobalConfig', () => {
 				keepLogCount: 3,
 				logBaseName: 'n8nEventLog',
 				maxFileSizeInKB: 10240,
+				maxMessagesPerParse: 10_000,
+				maxTotalMessagesPerFile: 500_000,
 			},
 		},
 		externalHooks: {
@@ -254,6 +256,9 @@ describe('GlobalConfig', () => {
 				ttl: 3600000,
 			},
 		},
+		chatTrigger: {
+			disablePublicChat: false,
+		},
 		chatHub: {
 			executionContextTtl: 3600,
 			maxBufferedChunks: 1000,
@@ -333,6 +338,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
+			grantTokenTtl: 30,
 			insecureMode: false,
 		},
 		sentry: {
@@ -419,14 +425,15 @@ describe('GlobalConfig', () => {
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
 			saveDataManualExecutions: true,
+			scheduledExecutionDeduplicationEnabled: false,
 		},
 		diagnostics: {
 			enabled: true,
 			frontendConfig: '1zPn9bgWPzlQc0p8Gj1uiK6DOTn;https://telemetry.n8n.io',
 			backendConfig: '1zPn7YoGC3ZXE9zLeTKLuQCB4F6;https://telemetry.n8n.io',
 			posthogConfig: {
-				apiKey: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
-				apiHost: 'https://us.i.posthog.com',
+				apiKey: 'phc_kMstNfAgBcBkWSh6KdsgN09heqqNe5VNmalHP1Ni9Q4',
+				apiHost: 'https://ph.n8n.io',
 			},
 		},
 		aiAssistant: {
@@ -471,6 +478,10 @@ describe('GlobalConfig', () => {
 			allowedHostnames: [],
 			dnsCacheMaxSize: 1024 * 1024,
 		},
+		httpRequest: {
+			enforceGlobalUserAgent: false,
+			globalUserAgentValue: '',
+		},
 		redis: {
 			prefix: 'n8n',
 		},
@@ -496,6 +507,10 @@ describe('GlobalConfig', () => {
 			maxCodeCacheSize: 1024,
 			bridgeTimeout: 5000,
 			bridgeMemoryLimit: 128,
+			observabilityEnabled: true,
+			tracesEnabled: true,
+			slowEvaluationThresholdMs: 50,
+			tracesSampleRate: 0.0,
 		},
 		instanceSettingsLoader: {
 			ownerManagedByEnv: false,
@@ -515,6 +530,13 @@ describe('GlobalConfig', () => {
 			mfaEnforcedEnabled: false,
 			personalSpacePublishingEnabled: true,
 			personalSpaceSharingEnabled: true,
+			samlMetadata: '',
+			samlMetadataUrl: '',
+			samlLoginEnabled: false,
+			logStreamingManagedByEnv: false,
+			logStreamingDestinations: '',
+			mcpManagedByEnv: false,
+			mcpAccessEnabled: false,
 		},
 	} satisfies GlobalConfigShape;
 
@@ -542,6 +564,8 @@ describe('GlobalConfig', () => {
 			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
 			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 			N8N_PASSWORD_MIN_LENGTH: '12',
+			N8N_ENFORCE_GLOBAL_USER_AGENT: 'true',
+			N8N_GLOBAL_USER_AGENT_VALUE: 'AcmeCorp/1.0',
 		};
 		const config = Container.get(GlobalConfig);
 
@@ -584,6 +608,10 @@ describe('GlobalConfig', () => {
 				password: {
 					minLength: 12,
 				},
+			},
+			httpRequest: {
+				enforceGlobalUserAgent: true,
+				globalUserAgentValue: 'AcmeCorp/1.0',
 			},
 		});
 		expect(mockFs.readFileSync).not.toHaveBeenCalled();
@@ -718,6 +746,22 @@ describe('GlobalConfig', () => {
 
 			const config = Container.get(GlobalConfig);
 			expect(config.endpoints.health).toEqual('/api/v1/health');
+		});
+	});
+
+	describe('ExecutionsConfig', () => {
+		it('should default scheduledExecutionDeduplicationEnabled to false', () => {
+			process.env = {};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(false);
+		});
+
+		it('should enable scheduledExecutionDeduplicationEnabled when env var is set to true', () => {
+			process.env = {
+				N8N_SCHEDULED_EXECUTION_DEDUPLICATION_ENABLED: 'true',
+			};
+			const config = Container.get(ExecutionsConfig);
+			expect(config.scheduledExecutionDeduplicationEnabled).toBe(true);
 		});
 	});
 });

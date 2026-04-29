@@ -32,12 +32,26 @@ export function useExecutionPushEvents() {
 			const { executionId, workflowId } = event.data;
 			executionToWorkflow.set(executionId, workflowId);
 			const next = new Map(workflowExecutions.value);
-			next.set(workflowId, {
-				executionId,
-				workflowId,
-				status: 'running',
-				eventLog: [event],
-			});
+			const existing = workflowExecutions.value.get(workflowId);
+
+			// When the same execution resumes (e.g. after a Wait node timer fires),
+			// the server sends a second executionStarted with the same executionId.
+			// Append to the existing eventLog so the relay cursor stays valid —
+			// creating a fresh log would desync with the relay's relayedCount.
+			if (existing?.executionId === executionId) {
+				next.set(workflowId, {
+					...existing,
+					status: 'running',
+					eventLog: [...existing.eventLog, event],
+				});
+			} else {
+				next.set(workflowId, {
+					executionId,
+					workflowId,
+					status: 'running',
+					eventLog: [event],
+				});
+			}
 			workflowExecutions.value = next;
 
 			return;

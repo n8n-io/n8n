@@ -1,10 +1,12 @@
-# Node class description must have an `icon` property defined (`@n8n/community-nodes/node-class-description-icon-missing`)
+# Node class description must have an `icon` property defined. Deprecated: use `require-node-description-fields` instead (`@n8n/community-nodes/node-class-description-icon-missing`)
 
-❌ This rule is **deprecated**. Use [`require-node-description-fields`](require-node-description-fields.md) instead.
+❌ This rule is deprecated.
 
 💡 This rule is manually fixable by [editor suggestions](https://eslint.org/docs/latest/use/core-concepts#rule-suggestions).
 
 <!-- end auto-generated rule header -->
+
+> **Deprecated:** Use [`require-node-description-fields`](require-node-description-fields.md) instead.
 
 ## Rule Details
 

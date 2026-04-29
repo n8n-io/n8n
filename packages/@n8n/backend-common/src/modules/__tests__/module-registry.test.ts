@@ -42,6 +42,8 @@ describe('eligibleModules', () => {
 			'otel',
 			'token-exchange',
 			'instance-version-history',
+			'encryption-key-manager',
+			'oauth-jwe',
 		]);
 	});
 
@@ -70,6 +72,8 @@ describe('eligibleModules', () => {
 			'otel',
 			'token-exchange',
 			'instance-version-history',
+			'encryption-key-manager',
+			'oauth-jwe',
 			'instance-ai',
 		]);
 	});

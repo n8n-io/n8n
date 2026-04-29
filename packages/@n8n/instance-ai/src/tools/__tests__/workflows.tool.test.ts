@@ -1,7 +1,7 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../types';
-import { analyzeWorkflow } from '../workflows/setup-workflow.service';
+import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
 import { createWorkflowsTool } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -202,19 +202,40 @@ describe('workflows tool', () => {
 			});
 		});
 
-		it('should suspend for confirmation when no resumeData', async () => {
+		it('should suspend for confirmation using the looked-up workflow name', async () => {
 			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'My WF',
+			});
 			const suspend = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await tool.execute!({ action: 'delete', workflowId: 'wf1', workflowName: 'My WF' }, {
+			await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: expect.stringContaining('My WF'),
+				severity: 'warning',
+			});
+		});
+
+		it('should fall back to workflowId in message when lookup fails', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockRejectedValue(new Error('not found'));
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0]).toMatchObject({
-				message: expect.stringContaining('My WF'),
-				severity: 'warning',
+				message: expect.stringContaining('"wf1"'),
 			});
 		});
 
@@ -278,6 +299,27 @@ describe('workflows tool', () => {
 			});
 			expect(result).toEqual({ success: true, activeVersionId: 'v2' });
 		});
+
+		it('should suspend for confirmation using the looked-up workflow name', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'My WF',
+			});
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: 'Publish workflow "My WF" (ID: wf1)?',
+				severity: 'warning',
+			});
+		});
 	});
 
 	describe('setup action', () => {
@@ -321,6 +363,46 @@ describe('workflows tool', () => {
 
 			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
 		});
+
+		it('forwards resumeData.nodeParameters to applyNodeChanges on apply', async () => {
+			// Regression: even though the FE sends `nodeParameters` in the confirm
+			// POST, the e2e test showed the workflow's parameter was empty after
+			// apply. This pins down the tool-layer contract between the resume
+			// payload and the service call — if this ever drifts we catch it here.
+			(analyzeWorkflow as jest.Mock).mockResolvedValue([]);
+			(applyNodeChanges as jest.Mock).mockResolvedValue({ applied: ['HTTP Request'], failed: [] });
+
+			const context = createMockContext();
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue({
+				name: 'Test WF',
+				nodes: [
+					{
+						id: 'http',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0],
+						parameters: { method: 'GET', url: '', authentication: 'none' },
+					},
+				],
+				connections: {},
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+				agent: {
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
+					},
+				},
+			} as never);
+
+			expect(applyNodeChanges).toHaveBeenCalledWith(context, 'wf1', undefined, {
+				'HTTP Request': { url: 'https://example.com/api' },
+			});
+		});
 	});
 
 	describe('unpublish action', () => {
@@ -334,6 +416,27 @@ describe('workflows tool', () => {
 
 			expect(context.workflowService.unpublish).toHaveBeenCalledWith('wf1');
 			expect(result).toEqual({ success: true });
+		});
+
+		it('should suspend for confirmation using the looked-up workflow name', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as jest.Mock).mockResolvedValue({
+				id: 'wf1',
+				name: 'My WF',
+			});
+			const suspend = jest.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await tool.execute!({ action: 'unpublish', workflowId: 'wf1' }, {
+				agent: { suspend, resumeData: undefined },
+			} as never);
+
+			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
+			expect(suspend).toHaveBeenCalled();
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				message: 'Unpublish workflow "My WF" (ID: wf1)?',
+				severity: 'warning',
+			});
 		});
 	});
 });

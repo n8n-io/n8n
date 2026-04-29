@@ -178,7 +178,7 @@ const isListeningForEvents = computed(() => {
 	const executedNode = workflowsStore.executedNode;
 	const isCurrentNodeExecuted = executedNode === props.nodeName;
 	const isChildNodeExecuted = executedNode
-		? workflowsStore.workflowObject.getParentNodes(executedNode).includes(props.nodeName)
+		? (workflowDocumentStore?.value?.getParentNodes(executedNode).includes(props.nodeName) ?? false)
 		: false;
 
 	return !executedNode || isCurrentNodeExecuted || isChildNodeExecuted;

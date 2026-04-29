@@ -92,7 +92,7 @@ describe('report-verification-verdict tool', () => {
 		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('VERIFY');
-		expect((result as { guidance: string }).guidance).toContain('run-workflow');
+		expect((result as { guidance: string }).guidance).toContain('executions(action="run")');
 	});
 
 	it('returns patch guidance when needs_patch produces patch action', async () => {
@@ -142,8 +142,8 @@ describe('report-verification-verdict tool', () => {
 		)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('plan');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow');
+		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('workflowId: "wf-123"');
 	});
 
 	it('returns blocked guidance when action is blocked', async () => {
