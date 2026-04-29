@@ -196,7 +196,6 @@ describe('McpSettingsService', () => {
 				// wf-unauthorized was in the request but filtered out — counts as skipped.
 				skippedCount: 1,
 				failedCount: 0,
-				changedIds: ['wf-1', 'wf-2'],
 				changedWorkflows: [
 					{
 						workflowId: 'wf-1',
@@ -240,7 +239,6 @@ describe('McpSettingsService', () => {
 				updatedIds: ['wf-1'],
 				skippedCount: 1,
 				failedCount: 0,
-				changedIds: ['wf-1'],
 				changedWorkflows: [
 					{
 						workflowId: 'wf-1',
@@ -282,7 +280,6 @@ describe('McpSettingsService', () => {
 				updatedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: ['wf-1'],
 				changedWorkflows: [
 					{
 						workflowId: 'wf-1',
@@ -317,7 +314,6 @@ describe('McpSettingsService', () => {
 				updatedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: [],
 				changedWorkflows: [],
 			});
 		});
@@ -366,7 +362,6 @@ describe('McpSettingsService', () => {
 				updatedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: [],
 				changedWorkflows: [],
 			});
 		});
@@ -389,7 +384,6 @@ describe('McpSettingsService', () => {
 				updatedCount: 2,
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: ['wf-1', 'wf-2'],
 				changedWorkflows: [
 					{
 						workflowId: 'wf-1',
@@ -421,7 +415,6 @@ describe('McpSettingsService', () => {
 				updatedCount: 1,
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: ['wf-1'],
 				changedWorkflows: [
 					{
 						workflowId: 'wf-1',
@@ -476,7 +469,6 @@ describe('McpSettingsService', () => {
 				updatedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: [],
 				changedWorkflows: [],
 			});
 		});
@@ -497,7 +489,6 @@ describe('McpSettingsService', () => {
 				updatedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: [],
 				changedWorkflows: [],
 			});
 			expect(result).not.toHaveProperty('updatedIds');
@@ -518,7 +509,6 @@ describe('McpSettingsService', () => {
 				updatedCount: 0,
 				skippedCount: 2,
 				failedCount: 0,
-				changedIds: [],
 				changedWorkflows: [],
 				updatedIds: [],
 			});
@@ -610,7 +600,6 @@ describe('McpSettingsService', () => {
 				updatedCount: 0,
 				skippedCount: 0,
 				failedCount: 1,
-				changedIds: [],
 				changedWorkflows: [],
 				updatedIds: [],
 			});

@@ -314,7 +314,6 @@ describe('McpSettingsController', () => {
 				updatedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
-				changedIds: ['wf-1', 'wf-2'],
 				changedWorkflows: [
 					{
 						workflowId: 'wf-1',

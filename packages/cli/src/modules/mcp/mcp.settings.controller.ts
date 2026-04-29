@@ -82,11 +82,10 @@ export class McpSettingsController {
 		_res: Response,
 		@Body dto: UpdateWorkflowsAvailabilityDto,
 	) {
-		const {
-			changedIds: _changedIds,
-			changedWorkflows,
-			...result
-		} = await this.mcpSettingsService.bulkSetAvailableInMCP(req.user, dto);
+		const { changedWorkflows, ...result } = await this.mcpSettingsService.bulkSetAvailableInMCP(
+			req.user,
+			dto,
+		);
 
 		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
 

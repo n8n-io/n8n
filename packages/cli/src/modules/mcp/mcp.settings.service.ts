@@ -37,7 +37,6 @@ type BulkSetAvailableInMCPResult = {
 	updatedCount: number;
 	skippedCount: number;
 	failedCount: number;
-	changedIds: string[];
 	changedWorkflows: WorkflowMCPAvailabilityChange[];
 	updatedIds?: string[];
 };
@@ -110,7 +109,6 @@ export class McpSettingsService {
 				updatedCount: 0,
 				skippedCount: baselineSize,
 				failedCount: 0,
-				changedIds: [],
 				changedWorkflows: [],
 				...(isWorkflowIdsScope ? { updatedIds: [] } : {}),
 			};
@@ -203,7 +201,6 @@ export class McpSettingsService {
 			updatedCount: confirmedIds.length,
 			skippedCount: Math.max(0, baselineSize - confirmedIds.length - failedCount),
 			failedCount,
-			changedIds: writtenIds,
 			changedWorkflows,
 			...(isWorkflowIdsScope ? { updatedIds: confirmedIds } : {}),
 		};
