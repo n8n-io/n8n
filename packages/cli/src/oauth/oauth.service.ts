@@ -439,20 +439,24 @@ export class OauthService {
 			const pathComponent = issuerUrl.pathname.replace(/\/$/, ''); // Remove trailing slash
 
 			// Build discovery URLs in priority order per MCP specification
-			const discoveryUrls = pathComponent
-				? [
-						// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
-						`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
-						// 2. OpenID Connect Discovery 1.0 (path insertion)
-						`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
-						// 3. OpenID Connect Discovery 1.0 (path appending)
-						`${authorizationServerUrl}/.well-known/openid-configuration`,
-					]
-				: [
-						// For root-level issuers (no path)
-						`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
-						`${issuerUrl.origin}/.well-known/openid-configuration`,
-					];
+			// If the path already contains /.well-known/, skip path-insertion variants to avoid
+			// double well-known paths (e.g. /.well-known/openid-configuration/.well-known/openid-configuration)
+			const pathIsWellKnown = pathComponent.startsWith('/.well-known');
+			const discoveryUrls =
+				pathComponent && !pathIsWellKnown
+					? [
+							// 1. RFC 8414: OAuth 2.0 Authorization Server Metadata (path insertion)
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server${pathComponent}`,
+							// 2. OpenID Connect Discovery 1.0 (path insertion)
+							`${issuerUrl.origin}/.well-known/openid-configuration${pathComponent}`,
+							// 3. OpenID Connect Discovery 1.0 (path appending)
+							`${authorizationServerUrl}/.well-known/openid-configuration`,
+						]
+					: [
+							// For root-level issuers or already-well-known paths
+							`${issuerUrl.origin}/.well-known/oauth-authorization-server`,
+							`${issuerUrl.origin}/.well-known/openid-configuration`,
+						];
 
 			let data: unknown;
 			let lastError: Error | undefined;
@@ -758,7 +762,7 @@ export class OauthService {
 		tokenEndpointAuthMethods: string[],
 		codeChallengeMethods: string[],
 	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
-		if (grantTypes.includes('authorization_code') && grantTypes.includes('refresh_token')) {
+		if (grantTypes.includes('authorization_code')) {
 			if (codeChallengeMethods.includes('S256')) {
 				return { grantType: 'pkce' };
 			}

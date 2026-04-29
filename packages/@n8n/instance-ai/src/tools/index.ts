@@ -8,6 +8,7 @@ import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mc
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
+import { createCompleteCheckpointTool } from './orchestration/complete-checkpoint.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
 import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
@@ -75,6 +76,7 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 		'task-control': createTaskControlTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
+		'complete-checkpoint': createCompleteCheckpointTool(context),
 		...(context.browserMcpConfig || hasGatewayBrowserTools(context)
 			? {
 					'browser-credential-setup': createBrowserCredentialSetupTool(context),
