@@ -320,6 +320,9 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 			const includeProperties = include.filter((property) =>
 				this.isCredentialPropertyImportable(property),
 			);
+			if (includeProperties.length === 0) {
+				throw new UserError('No importable properties found. Please check the --include flag.');
+			}
 			return pick(credential, includeProperties);
 		}
 

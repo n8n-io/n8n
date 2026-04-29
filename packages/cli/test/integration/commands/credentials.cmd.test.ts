@@ -1,5 +1,6 @@
 import { getPersonalProject, mockInstance, testDb } from '@n8n/backend-test-utils';
 import * as fs from 'fs';
+import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import * as path from 'path';
 
@@ -10,7 +11,6 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 
 import { getAllCredentials, getAllSharedCredentials } from '../shared/db/credentials';
 import { createMember, createOwner } from '../shared/db/users';
-import { jsonParse } from 'n8n-workflow';
 
 type CredentialFixture = {
 	createdAt: string;
@@ -18,7 +18,7 @@ type CredentialFixture = {
 };
 
 const credentialsFixturePath = path.resolve(__dirname, 'import-credentials/credentials.json');
-const [credentialsFixture] = jsonParse<Array<CredentialFixture>>(
+const [credentialsFixture] = jsonParse<CredentialFixture[]>(
 	fs.readFileSync(credentialsFixturePath, { encoding: 'utf8' }),
 );
 
@@ -195,6 +195,15 @@ test('import:credentials should exclude selected credential properties', async (
 	});
 	expect(after.credentials[0].createdAt.toISOString()).not.toBe(credentialsFixture.createdAt);
 	expect(after.credentials[0].updatedAt.toISOString()).not.toBe(credentialsFixture.updatedAt);
+});
+
+test('`import:credentials --include ...` should fail when no importable properties remain after filtering', async () => {
+	await expect(
+		command.run([
+			'--input=./test/integration/commands/import-credentials/credentials.json',
+			'--include=unknownProperty',
+		]),
+	).rejects.toThrowError('No importable properties found. Please check the --include flag.');
 });
 
 test('`import:credentials --include ... --exclude ...` should fail explaining that only one option can be used', async () => {
