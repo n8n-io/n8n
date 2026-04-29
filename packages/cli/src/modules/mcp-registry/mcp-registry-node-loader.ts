@@ -62,7 +62,10 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			const bareName = bareNodeNameFromSlug(server.slug);
 
 			this.types.nodes.push(description);
-			this.nodeTypes[bareName] = { type: baseNode, sourcePath };
+			const syntheticNode: INodeType = Object.create(baseNode, {
+				description: { value: description, enumerable: true },
+			});
+			this.nodeTypes[bareName] = { type: syntheticNode, sourcePath };
 			this.known.nodes[bareName] = {
 				className: 'McpRegistryClientTool',
 				sourcePath,

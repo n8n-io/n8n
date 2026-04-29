@@ -69,15 +69,16 @@ export function serverToNodeDescription(
 	const remote = pickRemote(server);
 	if (!remote) return null;
 
+	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
 
 	delete description.hidden;
-	description.displayName = server.title;
+	description.displayName = displayName;
 	description.name = bareNodeNameFromSlug(server.slug);
 	description.iconUrl = server.icons[0]?.src;
 	description.description = server.description;
-	description.defaults = { name: server.title };
-	description.codex?.alias?.push(server.title);
+	description.defaults = { name: displayName };
+	description.codex?.alias?.push(server.title, displayName);
 	if (server.websiteUrl && description.codex) {
 		description.codex.resources = { primaryDocumentation: [{ url: server.websiteUrl }] };
 	}
