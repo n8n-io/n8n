@@ -791,7 +791,8 @@ export type IfElseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>;
 
 /**
  * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
@@ -805,7 +806,24 @@ export type SwitchCaseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>;
+
+/**
+ * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,
+ * chain, null, plain array (fan-out), or nested control-flow builder.
+ */
+export type SplitInBatchesTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| Array<
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	  >
+	| IfElseBuilder<unknown>
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>;
 
 /**
  * Fluent builder for IF nodes with onTrue/onFalse methods.
@@ -848,10 +866,14 @@ export interface IfElseBuilder<TOutput = unknown> {
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
 
 	/**
-	 * Set the target for the error branch (output 2).
-	 * Only applicable when the IF node has onError: 'continueErrorOutput'.
+	 * Set the target for the IF node's own error output (output 2).
 	 *
-	 * @param target - The node or chain to execute on error
+	 * This wires the IF node's error branch — it is NOT a generic per-node
+	 * "on-error" output. Only applicable when the IF node's config sets
+	 * `onError: 'continueErrorOutput'`. For wiring a regular node's error
+	 * output, use `node.onError(handler)` on the source node instead.
+	 *
+	 * @param target - The node or chain to execute when the IF condition errors
 	 */
 	onError(target: IfElseTarget): IfElseBuilder<TOutput>;
 
@@ -938,16 +960,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onEachBatch(processNode.to(sibNode))
 	 *   .onDone(finalizeNode)
 	 */
-	onEachBatch(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onEachBatch(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 
 	/**
 	 * Fluent API: Set the "done" branch target (output 0).
@@ -959,16 +972,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onDone(finalizeNode)
 	 *   .onEachBatch(processNode.to(sibNode))
 	 */
-	onDone(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onDone(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 }
 
 // =============================================================================

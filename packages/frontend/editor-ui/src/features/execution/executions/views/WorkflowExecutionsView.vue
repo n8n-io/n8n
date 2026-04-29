@@ -302,11 +302,14 @@ async function onLoadMore(): Promise<void> {
 	}
 }
 
+const hasMore = computed(
+	() =>
+		!executionsStore.executionsFilters.status?.includes('running') &&
+		executions.value.length < executionsStore.executionsCount,
+);
+
 async function loadMore(): Promise<void> {
-	if (
-		!!executionsStore.executionsFilters.status?.includes('running') ||
-		executions.value.length >= executionsStore.executionsCount
-	) {
+	if (!hasMore.value) {
 		return;
 	}
 
@@ -337,6 +340,7 @@ async function loadMore(): Promise<void> {
 		:workflow="workflow"
 		:loading="loading"
 		:loading-more="loadingMore"
+		:has-more="hasMore"
 		@execution:stop="onExecutionStop"
 		@execution:delete="onExecutionDelete"
 		@execution:retry="onExecutionRetry"
