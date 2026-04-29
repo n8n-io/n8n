@@ -10,7 +10,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { AgentsService } from '../agents.service';
+import { AgentsService, composeJsonConfig } from '../agents.service';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
@@ -151,7 +151,7 @@ export class AgentsBuilderService {
 		// env-var fallback is available.
 		const { config: modelConfig } = await this.builderSettings.resolveModelConfig(user);
 
-		const currentConfig = agent.schema as unknown as AgentJsonConfig | null;
+		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
 		const toolList =
 			Object.entries(currentToolsMap)
