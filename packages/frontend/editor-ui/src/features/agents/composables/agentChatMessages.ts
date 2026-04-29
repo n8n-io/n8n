@@ -1,13 +1,18 @@
 import {
+	AGENT_APPROVAL_INTERACTION_TYPE,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	agentApprovalInputSchema,
+	agentApprovalResumeSchema,
 	askCredentialInputSchema,
 	askCredentialResumeSchema,
 	askLlmInputSchema,
 	askLlmResumeSchema,
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
+	type AgentApprovalInput,
+	type AgentApprovalResume,
 	type AgentBuilderOpenSuspension,
 	type AgentPersistedMessageDto,
 	type AskCredentialInput,
@@ -62,24 +67,33 @@ interface InteractivePayloadBase {
 
 /**
  * Discriminated union describing the interactive card that a suspended builder
- * tool call renders in the chat. `toolName` is the discriminant (one of the
- * three canonical interactive tool names from `@n8n/api-types`).
+ * tool call renders in the chat. `interactionType` is the UI discriminator;
+ * `toolName` remains the actual tool name from the SDK stream.
  */
 export type InteractivePayload =
 	| (InteractivePayloadBase & {
+			interactionType: typeof ASK_CREDENTIAL_TOOL_NAME;
 			toolName: typeof ASK_CREDENTIAL_TOOL_NAME;
 			input: AskCredentialInput;
 			resolvedValue?: AskCredentialResume;
 	  })
 	| (InteractivePayloadBase & {
+			interactionType: typeof ASK_LLM_TOOL_NAME;
 			toolName: typeof ASK_LLM_TOOL_NAME;
 			input: AskLlmInput;
 			resolvedValue?: AskLlmResume;
 	  })
 	| (InteractivePayloadBase & {
+			interactionType: typeof ASK_QUESTION_TOOL_NAME;
 			toolName: typeof ASK_QUESTION_TOOL_NAME;
 			input: AskQuestionInput;
 			resolvedValue?: AskQuestionResume;
+	  })
+	| (InteractivePayloadBase & {
+			interactionType: typeof AGENT_APPROVAL_INTERACTION_TYPE;
+			toolName: string;
+			input: AgentApprovalInput;
+			resolvedValue?: AgentApprovalResume;
 	  });
 
 const INTERACTIVE_TOOL_NAMES = [
@@ -205,14 +219,27 @@ export function buildDisplayGroups(messages: ChatMessage[]): DisplayGroup[] {
  * Returns `undefined` when the tool name isn't interactive or input parsing fails.
  */
 export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload | undefined {
-	if (!isInteractiveToolName(tc.tool)) return undefined;
-
 	const base: InteractivePayloadBase = {
 		toolCallId: tc.toolCallId,
 		// `resolvedAt` is a boolean-ish flag for the UI's disabled state — the
 		// exact timestamp doesn't matter, only its presence.
 		...(tc.output !== undefined && { resolvedAt: 1 }),
 	};
+
+	const approvalInput = agentApprovalInputSchema.safeParse(tc.input);
+	if (approvalInput.success) {
+		const resolved =
+			tc.output !== undefined ? agentApprovalResumeSchema.safeParse(tc.output) : null;
+		return {
+			...base,
+			interactionType: AGENT_APPROVAL_INTERACTION_TYPE,
+			toolName: tc.tool,
+			input: approvalInput.data,
+			...(resolved?.success && { resolvedValue: resolved.data }),
+		};
+	}
+
+	if (!isInteractiveToolName(tc.tool)) return undefined;
 
 	if (tc.tool === ASK_CREDENTIAL_TOOL_NAME) {
 		const input = askCredentialInputSchema.safeParse(tc.input);
@@ -221,6 +248,7 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 			tc.output !== undefined ? askCredentialResumeSchema.safeParse(tc.output) : null;
 		return {
 			...base,
+			interactionType: ASK_CREDENTIAL_TOOL_NAME,
 			toolName: ASK_CREDENTIAL_TOOL_NAME,
 			input: input.data,
 			...(resolved?.success && { resolvedValue: resolved.data }),
@@ -233,6 +261,7 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 		const resolved = tc.output !== undefined ? askLlmResumeSchema.safeParse(tc.output) : null;
 		return {
 			...base,
+			interactionType: ASK_LLM_TOOL_NAME,
 			toolName: ASK_LLM_TOOL_NAME,
 			input: input.data,
 			...(resolved?.success && { resolvedValue: resolved.data }),
@@ -245,6 +274,7 @@ export function rebuildInteractiveFromHistory(tc: ToolCall): InteractivePayload 
 	const resolved = tc.output !== undefined ? askQuestionResumeSchema.safeParse(tc.output) : null;
 	return {
 		...base,
+		interactionType: ASK_QUESTION_TOOL_NAME,
 		toolName: ASK_QUESTION_TOOL_NAME,
 		input: input.data,
 		...(resolved?.success && { resolvedValue: resolved.data }),
@@ -378,11 +408,25 @@ export function applyOpenSuspensions(
 	suspensions: AgentBuilderOpenSuspension[],
 ): ChatMessage[] {
 	if (suspensions.length === 0) return chat;
-	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s.runId]));
+	const byToolCallId = new Map(suspensions.map((s) => [s.toolCallId, s]));
 	for (const msg of chat) {
-		if (!msg.interactive) continue;
-		const runId = byToolCallId.get(msg.interactive.toolCallId);
-		if (runId) msg.interactive.runId = runId;
+		const toolCalls = msg.toolCalls ?? [];
+		for (const tc of toolCalls) {
+			const suspension = byToolCallId.get(tc.toolCallId);
+			if (!suspension) continue;
+			const existingInteractive =
+				msg.interactive?.toolCallId === tc.toolCallId ? msg.interactive : undefined;
+			if (suspension.input !== undefined) tc.input = suspension.input;
+			const interactive = rebuildInteractiveFromHistory(tc);
+			tc.state = TOOL_CALL_STATE.SUSPENDED;
+			msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
+			if (interactive) {
+				interactive.runId = suspension.runId;
+				msg.interactive = interactive;
+			} else if (existingInteractive) {
+				existingInteractive.runId = suspension.runId;
+			}
+		}
 	}
 	return chat;
 }

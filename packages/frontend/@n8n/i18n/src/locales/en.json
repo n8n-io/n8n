@@ -5629,6 +5629,8 @@
 	"agents.chat.misconfigured.missing.agent": "Agent",
 	"agents.chat.misconfigured.openBuild": "Finish setup in Build",
 	"agents.chat.misconfigured.dismiss": "Dismiss",
+	"agents.chat.approval.message": "Approve running \"{tool}\"?",
+	"agents.chat.approval.messageWithArgs": "Approve running \"{tool}\" with:\n{args}",
 	"agents.list.published": "Published",
 	"agents.list.noDescription": "No description",
 	"agents.list.updatedAt": "Updated {date}",

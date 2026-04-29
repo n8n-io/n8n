@@ -7,15 +7,14 @@ import { computed, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
-import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
-import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import InstanceAiApprovalCard from './InstanceAiApprovalCard.vue';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -450,41 +449,15 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						/>
 
 						<!-- Generic approval -->
-						<div v-else>
-							<div :class="$style.approvalRow">
-								<div :class="$style.approvalRowBody">
-									<N8nText size="medium" bold>
-										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
-									</N8nText>
-									<ConfirmationPreview>{{
-										item.toolCall.confirmation!.message
-									}}</ConfirmationPreview>
-								</div>
-
-								<ConfirmationFooter>
-									<N8nButton
-										data-test-id="instance-ai-panel-confirm-deny"
-										size="medium"
-										variant="outline"
-										@click="handleConfirm(item, false)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.deny') }}
-									</N8nButton>
-									<N8nButton
-										:variant="
-											item.toolCall.confirmation.severity === 'destructive'
-												? 'destructive'
-												: 'solid'
-										"
-										data-test-id="instance-ai-panel-confirm-approve"
-										size="medium"
-										@click="handleConfirm(item, true)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.approve') }}
-									</N8nButton>
-								</ConfirmationFooter>
-							</div>
-						</div>
+						<InstanceAiApprovalCard
+							v-else
+							:with-panel="false"
+							:title="getToolLabel(item.toolCall.toolName, item.toolCall.args)"
+							:message="item.toolCall.confirmation!.message"
+							:severity="item.toolCall.confirmation.severity"
+							@deny="handleConfirm(item, false)"
+							@approve="handleConfirm(item, true)"
+						/>
 					</div>
 				</div>
 			</div>
@@ -517,20 +490,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 
 .itemBordered {
 	// Only applies when there are multiple items — visual grouping
-}
-
-.approvalRow {
-	display: flex;
-	flex-direction: column;
-	padding: var(--spacing--4xs) 0;
-	font-size: var(--font-size--2xs);
-}
-
-.approvalRowBody {
-	padding: var(--spacing--sm) var(--spacing--sm) 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
 }
 
 .textInputRow {

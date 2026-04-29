@@ -1,7 +1,9 @@
 import {
+	AGENT_APPROVAL_INTERACTION_TYPE,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	agentApprovalResumeSchema,
 	type AskCredentialResume,
 	type AskLlmResume,
 	type AskQuestionInput,
@@ -51,6 +53,16 @@ export function summariseInteractiveOutput(
 		if (!resume.provider || !resume.model) return undefined;
 		const slug = `${resume.provider}/${resume.model}`;
 		return resume.credentialName ? `${slug} · ${resume.credentialName}` : slug;
+	}
+
+	if (
+		isPlainObject(input) &&
+		input.type === AGENT_APPROVAL_INTERACTION_TYPE &&
+		typeof input.toolName === 'string'
+	) {
+		const resume = agentApprovalResumeSchema.safeParse(output);
+		if (!resume.success) return undefined;
+		return resume.data.approved ? 'Approved' : 'Denied';
 	}
 
 	return undefined;

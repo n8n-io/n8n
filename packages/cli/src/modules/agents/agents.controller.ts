@@ -410,6 +410,7 @@ export class AgentsController {
 			.map((tc) => ({
 				toolCallId: tc.toolCallId,
 				runId: tc.runId,
+				input: tc.suspendPayload,
 			}));
 
 		let messages: AgentPersistedMessageDto[];

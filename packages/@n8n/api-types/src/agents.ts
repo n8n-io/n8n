@@ -213,6 +213,12 @@ export interface AgentPersistedMessageDto {
 export interface AgentBuilderOpenSuspension {
 	toolCallId: string;
 	runId: string;
+	/**
+	 * Suspend payload for the open tool call. This can differ from the original
+	 * tool-call input, for example generic approval wraps the original args in
+	 * an approval payload.
+	 */
+	input?: unknown;
 }
 
 /**

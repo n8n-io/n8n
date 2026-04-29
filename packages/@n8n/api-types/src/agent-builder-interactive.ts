@@ -11,6 +11,7 @@ import { z } from 'zod';
 export const ASK_LLM_TOOL_NAME = 'ask_llm' as const;
 export const ASK_CREDENTIAL_TOOL_NAME = 'ask_credential' as const;
 export const ASK_QUESTION_TOOL_NAME = 'ask_question' as const;
+export const AGENT_APPROVAL_INTERACTION_TYPE = 'approval' as const;
 
 export const interactiveToolNameSchema = z.union([
 	z.literal(ASK_LLM_TOOL_NAME),
@@ -102,6 +103,23 @@ export type AskQuestionInput = z.infer<typeof askQuestionInputSchema>;
 export type AskQuestionResume = z.infer<typeof askQuestionResumeSchema>;
 
 // ---------------------------------------------------------------------------
+// Generic tool approval
+// ---------------------------------------------------------------------------
+
+export const agentApprovalInputSchema = z.object({
+	type: z.literal(AGENT_APPROVAL_INTERACTION_TYPE),
+	toolName: z.string(),
+	args: z.unknown(),
+});
+
+export const agentApprovalResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
+export type AgentApprovalInput = z.infer<typeof agentApprovalInputSchema>;
+export type AgentApprovalResume = z.infer<typeof agentApprovalResumeSchema>;
+
+// ---------------------------------------------------------------------------
 // Discriminated union of all resume payloads (used by AgentBuildResumeDto)
 // ---------------------------------------------------------------------------
 
@@ -109,6 +127,7 @@ export const interactiveResumeDataSchema = z.union([
 	askLlmResumeSchema,
 	askCredentialResumeSchema,
 	askQuestionResumeSchema,
+	agentApprovalResumeSchema,
 ]);
 
 export type InteractiveResumeData = z.infer<typeof interactiveResumeDataSchema>;

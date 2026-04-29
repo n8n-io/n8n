@@ -1,7 +1,12 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ref, nextTick } from 'vue';
-import { ASK_CREDENTIAL_TOOL_NAME, ASK_LLM_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
+import {
+	AGENT_APPROVAL_INTERACTION_TYPE,
+	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_LLM_TOOL_NAME,
+	type AgentSseEvent,
+} from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: 'http://localhost:5678' } }),
@@ -83,6 +88,36 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.interactive?.runId).toBe('run-42');
 		expect(assistant.interactive?.resolvedValue).toBeUndefined();
 		expect(assistant.interactive?.resolvedAt).toBeUndefined();
+	});
+
+	it('renders a generic approval card and stamps the runId from the suspended event', async () => {
+		const events: AgentSseEvent[] = [
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-approval',
+					runId: 'run-approval',
+					toolName: 'delete_file',
+					input: {
+						type: AGENT_APPROVAL_INTERACTION_TYPE,
+						toolName: 'delete_file',
+						args: { path: '/tmp/file.txt' },
+					},
+				},
+			},
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('remove a file');
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.status).toBe('awaitingUser');
+		expect(assistant.toolCalls?.[0].state).toBe('suspended');
+		expect(assistant.interactive?.interactionType).toBe(AGENT_APPROVAL_INTERACTION_TYPE);
+		expect(assistant.interactive?.runId).toBe('run-approval');
 	});
 
 	it('flips the card to resolved state when a follow-up `tool-result` carries the matching toolCallId', async () => {

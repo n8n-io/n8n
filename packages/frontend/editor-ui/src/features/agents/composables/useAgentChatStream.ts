@@ -1,10 +1,11 @@
 import { ref, reactive, computed, type Ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import type {
-	AgentBuilderOpenSuspension,
-	AgentPersistedMessageDto,
-	AgentSseEvent,
+import {
+	AGENT_APPROVAL_INTERACTION_TYPE,
+	type AgentBuilderOpenSuspension,
+	type AgentPersistedMessageDto,
+	type AgentSseEvent,
 } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import {
@@ -20,6 +21,7 @@ import {
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
 	type ChatMessage,
+	type InteractivePayload,
 	type ToolCall,
 } from './agentChatMessages';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
@@ -186,6 +188,15 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 		return null;
 	}
 
+	function isApprovalInteractive(
+		payload: InteractivePayload | undefined,
+	): payload is Extract<
+		InteractivePayload,
+		{ interactionType: typeof AGENT_APPROVAL_INTERACTION_TYPE }
+	> {
+		return payload?.interactionType === AGENT_APPROVAL_INTERACTION_TYPE;
+	}
+
 	function handleEvent(
 		event: AgentSseEvent,
 		session: StreamSession,
@@ -269,6 +280,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			case 'tool-result': {
 				const found = findToolCallById(event.toolCallId);
 				if (found) {
+					const previousInteractive = found.msg.interactive;
+					const previousApprovalInteractive = isApprovalInteractive(previousInteractive)
+						? previousInteractive
+						: undefined;
+					const previousApprovalResume = previousApprovalInteractive?.resolvedValue;
 					found.tc.output = event.output;
 					found.tc.state = event.isError ? TOOL_CALL_STATE.ERROR : TOOL_CALL_STATE.DONE;
 					found.tc.displaySummary = summariseInteractiveOutput(
@@ -276,10 +292,19 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 						event.output,
 						found.tc.input,
 					);
+					if (!found.tc.displaySummary && previousApprovalResume) {
+						found.tc.displaySummary = previousApprovalResume.approved ? 'Approved' : 'Denied';
+					}
 					// If this was an interactive tool call, the result IS the user's
 					// resume payload — refresh the card so it flips to its resolved
 					// (disabled) state immediately. No separate "resumed" event needed.
-					if (found.msg.interactive) {
+					if (previousApprovalResume && previousApprovalInteractive) {
+						found.msg.interactive = {
+							...previousApprovalInteractive,
+							resolvedAt: previousApprovalInteractive.resolvedAt ?? 1,
+							resolvedValue: previousApprovalResume,
+						};
+					} else if (found.msg.interactive) {
 						const updated = rebuildInteractiveFromHistory(found.tc);
 						if (updated) found.msg.interactive = updated;
 					}

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+	AGENT_APPROVAL_INTERACTION_TYPE,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
@@ -75,6 +76,23 @@ describe('rebuildInteractiveFromHistory', () => {
 			state: 'done',
 		});
 		expect(result).toBeUndefined();
+	});
+
+	it('rebuilds an OPEN generic approval card from an approval suspend payload', () => {
+		const result = rebuildInteractiveFromHistory({
+			tool: 'delete_file',
+			toolCallId: 'call-4',
+			input: {
+				type: AGENT_APPROVAL_INTERACTION_TYPE,
+				toolName: 'delete_file',
+				args: { path: '/tmp/file.txt' },
+			},
+			state: 'suspended',
+		});
+
+		expect(result?.interactionType).toBe(AGENT_APPROVAL_INTERACTION_TYPE);
+		expect(result?.toolName).toBe('delete_file');
+		expect(result?.resolvedAt).toBeUndefined();
 	});
 });
 
@@ -163,6 +181,7 @@ describe('isGroupable', () => {
 			content: '',
 			toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'suspended' }],
 			interactive: {
+				interactionType: ASK_LLM_TOOL_NAME,
 				toolName: ASK_LLM_TOOL_NAME,
 				toolCallId: 'c1',
 				input: {},
@@ -195,6 +214,7 @@ describe('buildDisplayGroups — interactive payloads', () => {
 				content: '',
 				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c1', state: 'done' }],
 				interactive: {
+					interactionType: ASK_LLM_TOOL_NAME,
 					toolName: ASK_LLM_TOOL_NAME,
 					toolCallId: 'c1',
 					input: {},
@@ -223,6 +243,7 @@ describe('buildDisplayGroups — interactive payloads', () => {
 				content: '',
 				toolCalls: [{ tool: ASK_CREDENTIAL_TOOL_NAME, toolCallId: 'c3', state: 'suspended' }],
 				interactive: {
+					interactionType: ASK_CREDENTIAL_TOOL_NAME,
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c3',
 					input: { purpose: 'Slack', credentialType: 'slackApi' },
@@ -253,6 +274,7 @@ describe('applyOpenSuspensions', () => {
 				content: '',
 				toolCalls: [{ tool: ASK_CREDENTIAL_TOOL_NAME, toolCallId: 'c-open', state: 'suspended' }],
 				interactive: {
+					interactionType: ASK_CREDENTIAL_TOOL_NAME,
 					toolName: ASK_CREDENTIAL_TOOL_NAME,
 					toolCallId: 'c-open',
 					input: { purpose: 'Slack', credentialType: 'slackApi' },
@@ -265,6 +287,7 @@ describe('applyOpenSuspensions', () => {
 				content: '',
 				toolCalls: [{ tool: ASK_LLM_TOOL_NAME, toolCallId: 'c-resolved', state: 'done' }],
 				interactive: {
+					interactionType: ASK_LLM_TOOL_NAME,
 					toolName: ASK_LLM_TOOL_NAME,
 					toolCallId: 'c-resolved',
 					input: { purpose: 'main' },
@@ -287,6 +310,42 @@ describe('applyOpenSuspensions', () => {
 		expect(result[1].interactive?.runId).toBeUndefined();
 	});
 
+	it('rebuilds an approval card from an open suspension payload after history reload', () => {
+		const chat: ChatMessage[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: '',
+				toolCalls: [
+					{
+						tool: 'delete_file',
+						toolCallId: 'c-approval',
+						input: { path: '/tmp/file.txt' },
+						state: 'running',
+					},
+				],
+				status: 'success',
+			},
+		];
+
+		const result = applyOpenSuspensions(chat, [
+			{
+				toolCallId: 'c-approval',
+				runId: 'run-approval',
+				input: {
+					type: AGENT_APPROVAL_INTERACTION_TYPE,
+					toolName: 'delete_file',
+					args: { path: '/tmp/file.txt' },
+				},
+			},
+		]);
+
+		expect(result[0].status).toBe('awaitingUser');
+		expect(result[0].toolCalls?.[0].state).toBe('suspended');
+		expect(result[0].interactive?.interactionType).toBe(AGENT_APPROVAL_INTERACTION_TYPE);
+		expect(result[0].interactive?.runId).toBe('run-approval');
+	});
+
 	it('returns chat unchanged when the suspension list is empty', () => {
 		const chat: ChatMessage[] = [
 			{
@@ -294,6 +353,7 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
+					interactionType: ASK_LLM_TOOL_NAME,
 					toolName: ASK_LLM_TOOL_NAME,
 					toolCallId: 'c1',
 					input: { purpose: 'main' },
@@ -312,6 +372,7 @@ describe('applyOpenSuspensions', () => {
 				role: 'assistant',
 				content: '',
 				interactive: {
+					interactionType: ASK_LLM_TOOL_NAME,
 					toolName: ASK_LLM_TOOL_NAME,
 					toolCallId: 'c1',
 					input: { purpose: 'main' },

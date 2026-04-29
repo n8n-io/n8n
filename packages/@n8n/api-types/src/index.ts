@@ -14,6 +14,7 @@ export {
 	ASK_LLM_TOOL_NAME,
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	AGENT_APPROVAL_INTERACTION_TYPE,
 	interactiveToolNameSchema,
 	askLlmInputSchema,
 	askLlmResumeSchema,
@@ -22,6 +23,8 @@ export {
 	askQuestionOptionSchema,
 	askQuestionInputSchema,
 	askQuestionResumeSchema,
+	agentApprovalInputSchema,
+	agentApprovalResumeSchema,
 	interactiveResumeDataSchema,
 	type InteractiveToolName,
 	type AskLlmInput,
@@ -31,6 +34,8 @@ export {
 	type AskQuestionOption,
 	type AskQuestionInput,
 	type AskQuestionResume,
+	type AgentApprovalInput,
+	type AgentApprovalResume,
 	type InteractiveResumeData,
 } from './agent-builder-interactive';
 export * from './instance-registry-types';
