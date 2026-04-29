@@ -79,7 +79,6 @@ export class UserService {
 			}
 			return;
 		}
-		// Instance-wide listing is authorized by `user:list` on the REST and Public API routes.
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
