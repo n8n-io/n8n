@@ -702,6 +702,11 @@ function onRenameNode(value: string) {
 				align-items: normal;
 				font-size: var(--font-size--2xs);
 
+				textarea {
+					height: 100%;
+					resize: none;
+				}
+
 				:global(.cm-editor) {
 					background-color: var(--code--color--background);
 					width: 100%;
