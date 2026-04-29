@@ -50,8 +50,12 @@ const groupedThreads = computed(() => {
 	const now = new Date();
 	const groups = new Map<string, typeof store.threads>();
 
+	// Group by last activity, not creation date — a thread created weeks ago
+	// but messaged today belongs under "Today", matching the backend ordering
+	// (memory.service returns threads sorted by updatedAt desc) and the
+	// chatHub sidebar's `groupConversationsByDate` behaviour.
 	for (const thread of store.threads) {
-		const group = getRelativeDate(now, thread.createdAt);
+		const group = getRelativeDate(now, thread.updatedAt ?? thread.createdAt);
 		if (!groups.has(group)) {
 			groups.set(group, []);
 		}
