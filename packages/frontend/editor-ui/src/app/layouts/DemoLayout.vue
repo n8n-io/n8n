@@ -84,7 +84,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<BaseLayout>
-		<RouterView v-if="currentNDVStore" />
+		<RouterView v-if="currentWorkflowDocumentStore && currentNDVStore" />
 		<template #footer>
 			<DemoFooter />
 		</template>

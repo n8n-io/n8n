@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import DemoLayout from './DemoLayout.vue';
-import { computed, ref, shallowRef } from 'vue';
+import { computed, ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 
 const demoLayoutMocks = vi.hoisted(() => ({
@@ -10,6 +10,8 @@ const demoLayoutMocks = vi.hoisted(() => ({
 	cleanupInitialization: vi.fn(),
 	setupPostMessages: vi.fn(),
 	cleanupPostMessages: vi.fn(),
+	currentWorkflowDocumentStore: { value: {} as object | null, __v_isRef: true as const },
+	currentNDVStore: { value: {} as object | null, __v_isRef: true as const },
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -45,8 +47,8 @@ vi.mock('@/app/composables/useWorkflowInitialization', () => ({
 	useWorkflowInitialization: vi.fn(() => ({
 		isLoading: ref(false),
 		workflowId: computed(() => 'demo'),
-		currentWorkflowDocumentStore: shallowRef(null),
-		currentNDVStore: shallowRef({}),
+		currentWorkflowDocumentStore: demoLayoutMocks.currentWorkflowDocumentStore,
+		currentNDVStore: demoLayoutMocks.currentNDVStore,
 		initializeData: demoLayoutMocks.initializeData,
 		initializeWorkflow: demoLayoutMocks.initializeWorkflow,
 		cleanup: demoLayoutMocks.cleanupInitialization,
@@ -91,6 +93,8 @@ describe('DemoLayout', () => {
 		vi.clearAllMocks();
 		demoLayoutMocks.initializeData.mockResolvedValue(undefined);
 		demoLayoutMocks.initializeWorkflow.mockResolvedValue(undefined);
+		demoLayoutMocks.currentWorkflowDocumentStore.value = {};
+		demoLayoutMocks.currentNDVStore.value = {};
 	});
 
 	it('should render the layout without throwing', () => {
@@ -120,6 +124,22 @@ describe('DemoLayout', () => {
 			},
 		});
 		expect(getByText('Demo Layout Content')).toBeInTheDocument();
+	});
+
+	it('should not render RouterView content until both scoped stores exist', () => {
+		demoLayoutMocks.currentWorkflowDocumentStore.value = null;
+
+		const { queryByText } = renderComponent({
+			global: {
+				stubs: {
+					RouterView: {
+						template: '<div>Demo Layout Content</div>',
+					},
+				},
+			},
+		});
+
+		expect(queryByText('Demo Layout Content')).not.toBeInTheDocument();
 	});
 
 	it('should render DemoFooter component in footer slot', () => {
