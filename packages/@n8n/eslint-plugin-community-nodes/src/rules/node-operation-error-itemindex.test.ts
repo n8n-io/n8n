@@ -119,7 +119,7 @@ export class RegularClass {
 			`),
 		},
 		{
-			name: 'NodeOperationError with spread in options (cannot statically verify — skip)',
+			name: 'NodeOperationError with spread plus explicit itemIndex in options',
 			...createNodeWithExecute(`
 				const items = this.getInputData();
 				for (let i = 0; i < items.length; i++) {
@@ -252,6 +252,16 @@ export class TestNode implements INodeType {
 				const items = this.getInputData();
 				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 					throw new NodeOperationError(this.getNode(), 'error', { description: 'oops' });
+				}
+			`),
+			errors: [{ messageId: 'missingItemIndex', data: { errorClass: 'NodeOperationError' } }],
+		},
+		{
+			name: 'NodeOperationError with spread-only options (spread does not guarantee itemIndex)',
+			...createNodeWithExecute(`
+				const items = this.getInputData();
+				for (let i = 0; i < items.length; i++) {
+					throw new NodeOperationError(this.getNode(), 'error', { ...opts });
 				}
 			`),
 			errors: [{ messageId: 'missingItemIndex', data: { errorClass: 'NodeOperationError' } }],

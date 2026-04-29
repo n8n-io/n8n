@@ -77,17 +77,14 @@ function hasItemIndexOption(node: TSESTree.NewExpression): boolean {
 
 	const optionsArg = args[2];
 
-	// Non-object-literal (variable reference, spread) — can't statically check, assume OK.
+	// Non-object-literal (bare variable reference) — can't statically check, assume OK.
 	if (!optionsArg || optionsArg.type !== AST_NODE_TYPES.ObjectExpression) {
 		return true;
 	}
 
-	// Also allow spread elements inside the options object (e.g. { ...opts, itemIndex }).
-	const hasSpread = optionsArg.properties.some(
-		(prop) => prop.type === AST_NODE_TYPES.SpreadElement,
-	);
-	if (hasSpread) return true;
-
+	// itemIndex must be an explicit own property of the options object.
+	// Spread elements (e.g. { ...opts }) are not sufficient — they may not
+	// include itemIndex and would silently bypass this requirement.
 	return findObjectProperty(optionsArg, 'itemIndex') !== null;
 }
 
