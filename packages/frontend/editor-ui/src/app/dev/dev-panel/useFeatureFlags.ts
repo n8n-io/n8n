@@ -21,15 +21,10 @@ type PostHogSDK = {
 	getFeatureFlags?: () => Record<string, FlagValue> | null | undefined;
 };
 
-type EvaluatedFlagsAPI = {
-	getAll?: () => Record<string, FlagValue | undefined> | null | undefined;
-};
-
 function readEvaluatedFlags(): Record<string, FlagValue> {
 	const out: Record<string, FlagValue> = {};
 	try {
-		const api = (window as unknown as { featureFlags?: EvaluatedFlagsAPI }).featureFlags;
-		const all = api?.getAll?.();
+		const all = window.featureFlags?.getAll?.();
 		if (all) {
 			for (const key of Object.keys(all)) {
 				const value = all[key];
