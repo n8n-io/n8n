@@ -9,6 +9,7 @@ test.use({
 		...instanceAiTestConfig.capability,
 		env: {
 			...instanceAiTestConfig.capability.env,
+			N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN: 'false',
 			N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
 			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'local',
 			N8N_INSTANCE_AI_SANDBOX_TIMEOUT: '600000',
@@ -16,20 +17,12 @@ test.use({
 	},
 });
 
-const RUN_REMEDIATION_REPLAY = process.env.N8N_INSTANCE_AI_RECORD_REMEDIATION_REPLAY === 'true';
-
-// This is a real UI/proxy replay scaffold, not a synthetic trace contract test.
-// Keep it opt-in until a sandbox-backed recording exists for this exact flow.
-test.skip(
-	!RUN_REMEDIATION_REPLAY,
-	'Real sandbox-backed remediation replay is opt-in until its recorded fixture is available',
-);
-
 type TraceEvent = {
 	kind?: string;
 	stepId?: number;
 	agentRole?: string;
 	toolName?: string;
+	input?: Record<string, unknown>;
 	output?: Record<string, unknown>;
 };
 
@@ -61,6 +54,10 @@ function getStringArray(value: unknown): string[] {
 	return Array.isArray(value) ? value.filter((item) => typeof item === 'string') : [];
 }
 
+function includesMockedSlackSetup(value: unknown): boolean {
+	return typeof value === 'string' && value.includes('slackApi') && value.includes('mocked');
+}
+
 function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummary {
 	const submitCalls = getToolCalls(events, 'submit-workflow');
 	const firstSuccessfulSubmitIndex = submitCalls.findIndex(
@@ -78,14 +75,38 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			remediation.reason === 'mocked_credentials_or_placeholders'
 		);
 	});
+	const terminalSetupReportIndex = events.findIndex((event) => {
+		return (
+			event.kind === 'tool-call' &&
+			event.toolName === 'report-verification-verdict' &&
+			event.input?.verdict === 'needs_user_input' &&
+			(includesMockedSlackSetup(event.input.diagnosis) ||
+				includesMockedSlackSetup(event.input.summary) ||
+				includesMockedSlackSetup(event.output?.guidance))
+		);
+	});
+	const terminalWorkflowSetupIndex = events.findIndex((event) => {
+		return (
+			event.kind === 'tool-call' &&
+			event.toolName === 'workflows' &&
+			event.input?.action === 'setup' &&
+			event.input.workflowId === firstSuccessfulSubmit?.workflowId
+		);
+	});
+	const terminalSetupIndex =
+		terminalSetupVerifyIndex >= 0
+			? terminalSetupVerifyIndex
+			: terminalSetupReportIndex >= 0
+				? terminalSetupReportIndex
+				: terminalWorkflowSetupIndex;
 	const remediation =
 		terminalSetupVerifyIndex >= 0
 			? (events[terminalSetupVerifyIndex].output?.remediation as Record<string, unknown>)
 			: undefined;
 	const submitCallsAfterTerminalSetup =
-		terminalSetupVerifyIndex >= 0
+		terminalSetupIndex >= 0
 			? events
-					.slice(terminalSetupVerifyIndex + 1)
+					.slice(terminalSetupIndex + 1)
 					.filter((event) => event.kind === 'tool-call' && event.toolName === 'submit-workflow')
 					.length
 			: 0;
@@ -97,9 +118,11 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 				? firstSuccessfulSubmit.workflowId
 				: undefined,
 		needsUserInput:
-			remediation?.category === 'needs_setup' &&
-			remediation.shouldEdit === false &&
-			remediation.reason === 'mocked_credentials_or_placeholders',
+			(remediation?.category === 'needs_setup' &&
+				remediation.shouldEdit === false &&
+				remediation.reason === 'mocked_credentials_or_placeholders') ||
+			terminalSetupReportIndex >= 0 ||
+			terminalWorkflowSetupIndex >= 0,
 		mockedSlackCredential: getStringArray(firstSuccessfulSubmit?.mockedCredentialTypes).includes(
 			'slackApi',
 		),
@@ -132,8 +155,10 @@ test.describe(
 			await n8n.navigate.toInstanceAi();
 			await n8n.instanceAi.sendMessage(
 				'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
-					'connected to a Slack node that posts a message using a new slackApi credential placeholder. ' +
-					'Submit it, verify it with verify-built-workflow, and if verification says setup or credentials are needed, stop editing.',
+					'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
+					'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
+					'The builder agent must submit it and verify it with verify-built-workflow. ' +
+					'After verification reports the mocked credential setup state, open the workflow setup card with workflows(action="setup") and stop editing.',
 			);
 
 			await expect(n8n.instanceAi.getWorkflowSetupCard()).toBeVisible({ timeout: 540_000 });
@@ -151,11 +176,11 @@ test.describe(
 				submitCallsAfterTerminalSetup: 0,
 			});
 			expect(summary.postSubmitRemediationSubmitsUsed).toBeLessThanOrEqual(2);
-			expect(submitCalls[0]).toMatchObject({
+			expect(submitCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
 				agentRole: 'workflow-builder',
 				stepId: expect.any(Number),
 			});
-			expect(verifyCalls[0]).toMatchObject({
+			expect(verifyCalls.find((event) => event.agentRole === 'workflow-builder')).toMatchObject({
 				agentRole: 'workflow-builder',
 				stepId: expect.any(Number),
 			});

@@ -244,6 +244,38 @@ function hashContent(content: string | null): string {
 		.digest('hex');
 }
 
+function deterministicSuffix(seed: string, label: string, length: number): string {
+	return createHash('sha256')
+		.update(label)
+		.update('\0')
+		.update(seed)
+		.digest('hex')
+		.slice(0, length);
+}
+
+function shouldUseDeterministicBuilderIds(context: OrchestrationContext): boolean {
+	return process.env.E2E_TESTS === 'true' && context.tracing?.replayMode !== 'off';
+}
+
+function createDeterministicBuilderIds(input: StartBuildWorkflowAgentInput): {
+	subAgentId: string;
+	taskId: string;
+	workItemId: string;
+} {
+	const seed = JSON.stringify({
+		task: input.task,
+		workflowId: input.workflowId ?? '',
+		plannedTaskId: input.plannedTaskId ?? '',
+		conversationContext: input.conversationContext ?? '',
+	});
+
+	return {
+		subAgentId: `agent-builder-${deterministicSuffix(seed, 'agent', 6)}`,
+		taskId: `build-${deterministicSuffix(seed, 'task', 8)}`,
+		workItemId: `wi_${deterministicSuffix(seed, 'work-item', 8)}`,
+	};
+}
+
 /**
  * When the builder's stream errors mid-run, recover a successful-submit outcome
  * from the submit-attempt history so the orchestrator doesn't redo a build that
@@ -358,10 +390,15 @@ export async function startBuildWorkflowAgentTask(
 		}
 	}
 
-	const subAgentId = input.agentId ?? `agent-builder-${nanoid(6)}`;
-	const taskId = input.taskId ?? `build-${nanoid(8)}`;
+	const deterministicIds = shouldUseDeterministicBuilderIds(context)
+		? createDeterministicBuilderIds(input)
+		: undefined;
+	const subAgentId = input.agentId ?? deterministicIds?.subAgentId ?? `agent-builder-${nanoid(6)}`;
+	const taskId = input.taskId ?? deterministicIds?.taskId ?? `build-${nanoid(8)}`;
 	const workItemId =
-		input.workItemId ?? (input.workflowId ? `${context.runId}:default` : `wi_${nanoid(8)}`);
+		input.workItemId ??
+		deterministicIds?.workItemId ??
+		(input.workflowId ? `${context.runId}:default` : `wi_${nanoid(8)}`);
 
 	const { workflowId } = input;
 
