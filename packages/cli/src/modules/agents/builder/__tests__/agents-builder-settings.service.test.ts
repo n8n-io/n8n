@@ -59,7 +59,7 @@ describe('AgentsBuilderSettingsService', () => {
 			id: 'cred-1',
 			type: opts.credentialType ?? 'anthropicApi',
 		});
-		credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+		credentialsFinderService.findCredentialById.mockResolvedValue(credential);
 		credentialsService.decrypt.mockReturnValue({
 			apiKey: opts.apiKey ?? 'sk-test',
 			...(opts.url ? { url: opts.url } : {}),
@@ -80,10 +80,8 @@ describe('AgentsBuilderSettingsService', () => {
 
 			const result = await service.resolveModelConfig(user);
 
-			// Proxy branch returns a LanguageModel instance (object with provider methods),
-			// not a config object — assert by shape.
-			expect(typeof result).toBe('object');
-			expect(result).not.toBeNull();
+			expect(result.isProxied).toBe(true);
+			expect(result.config).toBeDefined();
 		});
 
 		it('mode=default + proxy disabled + env set → returns env-var anthropic config', async () => {
@@ -94,8 +92,11 @@ describe('AgentsBuilderSettingsService', () => {
 			const result = await service.resolveModelConfig(user);
 
 			expect(result).toEqual({
-				id: 'anthropic/claude-sonnet-4-5',
-				apiKey: 'sk-env',
+				config: {
+					id: 'anthropic/claude-sonnet-4-5',
+					apiKey: 'sk-env',
+				},
+				isProxied: false,
 			});
 		});
 
@@ -124,8 +125,11 @@ describe('AgentsBuilderSettingsService', () => {
 			const result = await service.resolveModelConfig(user);
 
 			expect(result).toEqual({
-				id: 'anthropic/claude-3-5-sonnet',
-				apiKey: 'sk-user',
+				config: {
+					id: 'anthropic/claude-3-5-sonnet',
+					apiKey: 'sk-user',
+				},
+				isProxied: false,
 			});
 		});
 
@@ -146,9 +150,12 @@ describe('AgentsBuilderSettingsService', () => {
 			const result = await service.resolveModelConfig(user);
 
 			expect(result).toEqual({
-				id: 'openai/gpt-4o',
-				apiKey: 'sk-user',
-				baseURL: 'https://custom.example/v1',
+				config: {
+					id: 'openai/gpt-4o',
+					apiKey: 'sk-user',
+					baseURL: 'https://custom.example/v1',
+				},
+				isProxied: false,
 			});
 		});
 
@@ -160,7 +167,7 @@ describe('AgentsBuilderSettingsService', () => {
 				modelName: 'anthropic.claude-3-5-sonnet-20240620-v1:0',
 			});
 			aiService.isProxyEnabled.mockReturnValue(false);
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			credentialsFinderService.findCredentialById.mockResolvedValue(
 				mock<CredentialsEntity>({ id: 'cred-1', type: 'aws' }),
 			);
 			credentialsService.decrypt.mockReturnValue({
@@ -172,10 +179,13 @@ describe('AgentsBuilderSettingsService', () => {
 			const result = await service.resolveModelConfig(user);
 
 			expect(result).toEqual({
-				id: 'aws-bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0',
-				region: 'us-east-1',
-				accessKeyId: 'AKIA...',
-				secretAccessKey: 'secret',
+				config: {
+					id: 'aws-bedrock/anthropic.claude-3-5-sonnet-20240620-v1:0',
+					region: 'us-east-1',
+					accessKeyId: 'AKIA...',
+					secretAccessKey: 'secret',
+				},
+				isProxied: false,
 			});
 		});
 
@@ -192,7 +202,10 @@ describe('AgentsBuilderSettingsService', () => {
 			const result = await service.resolveModelConfig(user);
 
 			expect(logger.warn).toHaveBeenCalled();
-			expect(result).toEqual({ id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-env' });
+			expect(result).toEqual({
+				config: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-env' },
+				isProxied: false,
+			});
 		});
 
 		it('mode=custom with deleted credential → falls through to env-var fallback and warns', async () => {
@@ -202,14 +215,17 @@ describe('AgentsBuilderSettingsService', () => {
 				credentialId: 'cred-deleted',
 				modelName: 'claude-3-5-sonnet',
 			});
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			credentialsFinderService.findCredentialById.mockResolvedValue(null);
 			aiService.isProxyEnabled.mockReturnValue(false);
 			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
 
 			const result = await service.resolveModelConfig(user);
 
 			expect(logger.warn).toHaveBeenCalled();
-			expect(result).toEqual({ id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-env' });
+			expect(result).toEqual({
+				config: { id: 'anthropic/claude-sonnet-4-5', apiKey: 'sk-env' },
+				isProxied: false,
+			});
 		});
 	});
 
@@ -221,11 +237,11 @@ describe('AgentsBuilderSettingsService', () => {
 				credentialId: 'cred-1',
 				modelName: 'claude-3-5-sonnet',
 			});
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(
+			credentialsFinderService.findCredentialById.mockResolvedValue(
 				mock<CredentialsEntity>({ id: 'cred-1', type: 'anthropicApi' }),
 			);
 
-			await expect(service.getStatus(user)).resolves.toEqual({ isConfigured: true });
+			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
 		});
 
 		it('mode=custom + missing credential → isConfigured: false', async () => {
@@ -235,16 +251,16 @@ describe('AgentsBuilderSettingsService', () => {
 				credentialId: 'cred-1',
 				modelName: 'claude-3-5-sonnet',
 			});
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			credentialsFinderService.findCredentialById.mockResolvedValue(null);
 
-			await expect(service.getStatus(user)).resolves.toEqual({ isConfigured: false });
+			await expect(service.getStatus()).resolves.toEqual({ isConfigured: false });
 		});
 
 		it('mode=default + proxy enabled → isConfigured: true', async () => {
 			mockPersistedSettings({ mode: 'default' });
 			aiService.isProxyEnabled.mockReturnValue(true);
 
-			await expect(service.getStatus(user)).resolves.toEqual({ isConfigured: true });
+			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
 		});
 
 		it('mode=default + proxy disabled + env set → isConfigured: true (env-var backstop counts)', async () => {
@@ -252,7 +268,7 @@ describe('AgentsBuilderSettingsService', () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			process.env.N8N_AI_ANTHROPIC_KEY = 'sk-env';
 
-			await expect(service.getStatus(user)).resolves.toEqual({ isConfigured: true });
+			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
 		});
 
 		it('mode=default + proxy disabled + ANTHROPIC_API_KEY set → isConfigured: true', async () => {
@@ -260,21 +276,21 @@ describe('AgentsBuilderSettingsService', () => {
 			aiService.isProxyEnabled.mockReturnValue(false);
 			process.env.ANTHROPIC_API_KEY = 'sk-env';
 
-			await expect(service.getStatus(user)).resolves.toEqual({ isConfigured: true });
+			await expect(service.getStatus()).resolves.toEqual({ isConfigured: true });
 		});
 
 		it('mode=default + proxy disabled + env empty → isConfigured: false', async () => {
 			mockPersistedSettings({ mode: 'default' });
 			aiService.isProxyEnabled.mockReturnValue(false);
 
-			await expect(service.getStatus(user)).resolves.toEqual({ isConfigured: false });
+			await expect(service.getStatus()).resolves.toEqual({ isConfigured: false });
 		});
 
 		it('no persisted settings → defaults to mode=default', async () => {
 			mockPersistedSettings(null);
 			aiService.isProxyEnabled.mockReturnValue(true);
 
-			const status = await service.getStatus(user);
+			const status = await service.getStatus();
 			expect(status).toEqual({ isConfigured: true });
 		});
 	});
