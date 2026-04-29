@@ -203,5 +203,14 @@ export class OAuth2Api implements ICredentialType {
 				'HTTP status code that indicates the token has expired. Some APIs return 403 instead of 401.',
 			doNotInherit: true,
 		},
+		{
+			displayName: 'Encrypted Tokens (JWE)',
+			name: 'jweEnabled',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected.',
+			doNotInherit: true,
+		},
 	];
 }
