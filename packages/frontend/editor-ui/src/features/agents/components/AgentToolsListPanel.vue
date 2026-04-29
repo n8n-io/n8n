@@ -29,7 +29,7 @@ import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 import shared from '../styles/agent-panel.module.scss';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
-import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentJsonConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 
 const props = withDefaults(
 	defineProps<{
@@ -86,7 +86,6 @@ interface CustomRow {
 	description?: string;
 }
 
-type WorkflowToolRef = AgentJsonToolRef & { type: 'workflow' };
 type CustomToolRef = AgentJsonToolRef & { type: 'custom' };
 
 const nodeRows = computed<NodeRow[]>(() => {

@@ -149,7 +149,7 @@ function withSkillCatalog(instructions: string, skills: ConfiguredSkill[]): stri
 	return `${baseInstructions}${baseInstructions ? '\n\n' : ''}Available skills:
 ${catalog}
 
-If the user's task matches a skill description, call load_skill with the skill id before applying that skill. Skill bodies are intentionally not included here; load them only when relevant.`;
+If the user's task matches a skill description, call load_skill with the skill id and follow the returned instructions. Skill bodies are intentionally not included here; load them only when relevant.`;
 }
 
 function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
@@ -158,7 +158,7 @@ function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
 	return new Tool('load_skill')
 		.description(
 			'Load the full instructions for an attached skill when its name or description matches the current task. ' +
-				'Use this before applying a skill; available skill ids are listed in the system instructions.',
+				'Use this before following the skill instructions; available skill ids are listed in the system instructions.',
 		)
 		.input(
 			z.object({

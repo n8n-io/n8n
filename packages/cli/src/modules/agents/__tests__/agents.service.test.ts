@@ -6,6 +6,7 @@ import { mock } from 'jest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { AgentSkillsService } from '../agent-skills.service';
 import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 import type { Agent } from '../entities/agent.entity';
@@ -74,9 +75,10 @@ describe('AgentsService', () => {
 		agentPublishedVersionRepository = mock<AgentPublishedVersionRepository>();
 		n8nMemory = mock<N8nMemory>();
 		scheduleService = mock<AgentScheduleService>();
+		const logger = mockLogger();
 
 		service = new AgentsService(
-			mockLogger(),
+			logger,
 			agentRepository,
 			mock(),
 			mock(),
@@ -93,6 +95,7 @@ describe('AgentsService', () => {
 			n8nMemory,
 			mock(),
 			agentPublishedVersionRepository,
+			new AgentSkillsService(logger, agentRepository),
 		);
 	});
 
@@ -164,85 +167,6 @@ describe('AgentsService', () => {
 				service.updateConfig(agentId, projectId, configWithMissingSkill),
 			).rejects.toThrow('Invalid agent config: Missing skill bodies: missing_skill');
 			expect(agentRepository.save).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('skills', () => {
-		const skill = {
-			name: 'Summarize Notes',
-			description: 'Summarizes a meeting transcript',
-			instructions: 'Extract decisions and action items.',
-		};
-
-		beforeEach(() => {
-			agentRepository.save.mockImplementation(async (a) => a as Agent);
-		});
-
-		it('creates a skill on the agent', async () => {
-			const agent = makeAgent({
-				schema: {
-					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Be helpful',
-				},
-			});
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			const result = await service.createSkill(agentId, projectId, 'summarize_notes', skill);
-
-			expect(result).toEqual({ skill, versionId: agent.versionId });
-			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
-				summarize_notes: skill,
-			});
-			expect(agent.schema?.skills).toEqual([{ type: 'skill', id: 'summarize_notes' }]);
-		});
-
-		it('loads one skill from the agent', async () => {
-			agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({ skills: { summarize_notes: skill } }),
-			);
-
-			await expect(service.getSkill(agentId, projectId, 'summarize_notes')).resolves.toEqual(skill);
-		});
-
-		it('updates an existing skill on the agent', async () => {
-			const agent = makeAgent({ skills: { summarize_notes: skill } });
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			const result = await service.updateSkill(agentId, projectId, 'summarize_notes', {
-				description: 'Summarizes support notes',
-			});
-
-			expect(result).toEqual({
-				skill: {
-					...skill,
-					description: 'Summarizes support notes',
-				},
-				versionId: agent.versionId,
-			});
-			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
-				summarize_notes: result.skill,
-			});
-		});
-
-		it('deletes a skill and removes its config ref', async () => {
-			const agent = makeAgent({
-				skills: { summarize_notes: skill },
-				schema: {
-					name: 'Test Agent',
-					model: 'anthropic/claude-sonnet-4-5',
-					instructions: 'Be helpful',
-					tools: [{ type: 'custom', id: 'custom_tool' }],
-					skills: [{ type: 'skill', id: 'summarize_notes' }],
-				},
-			});
-			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
-
-			await service.deleteSkill(agentId, projectId, 'summarize_notes');
-
-			expect(agentRepository.save.mock.calls[0][0].skills).toEqual({});
-			expect(agent.schema?.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
-			expect(agent.schema?.skills).toEqual([]);
 		});
 	});
 
