@@ -19,6 +19,20 @@ export class SidebarPage {
 		await this.container.getByTestId('universal-add').click();
 	}
 
+	get visibleNavigationMenu() {
+		return this.page.locator('.el-popper:visible');
+	}
+
+	getVisibleNavigationSubmenu(label: string): Locator {
+		return this.visibleNavigationMenu.getByTestId('navigation-submenu').filter({ hasText: label });
+	}
+
+	getVisibleNavigationSubmenuItem(label: string): Locator {
+		return this.visibleNavigationMenu
+			.getByTestId('navigation-submenu-item')
+			.filter({ hasText: label });
+	}
+
 	async clickHomeMenuItem() {
 		await this.container.getByTestId('project-home-menu-item').click();
 	}
@@ -36,19 +50,21 @@ export class SidebarPage {
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
-		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' });
+		return this.visibleNavigationMenu
+			.getByTestId('navigation-menu-item')
+			.filter({ hasText: 'Project' });
 	}
 
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
-		await this.page.getByTestId('universal-add').getByText('Workflow').click();
-		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
+		await this.getVisibleNavigationSubmenu('Workflow').hover();
+		await this.getVisibleNavigationSubmenuItem(projectName).click();
 	}
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
-		await this.page.getByTestId('universal-add').getByText('Credential', { exact: true }).click();
-		await this.page.getByTestId('universal-add').getByRole('link', { name: projectName }).click();
+		await this.getVisibleNavigationSubmenu('Credential').hover();
+		await this.getVisibleNavigationSubmenuItem(projectName).click();
 	}
 
 	getProjectMenuItems(): Locator {
