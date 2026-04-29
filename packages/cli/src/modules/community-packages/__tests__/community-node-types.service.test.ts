@@ -625,6 +625,78 @@ describe('CommunityNodeTypesService', () => {
 			expect(result.find((n) => n.name === 'n8n-nodes-test3.test3Tool')).toBeUndefined();
 		});
 
+		it('should not create AI tool version for nodes with trigger group', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-wcrm.wCRMTrigger',
+					packageName: 'n8n-nodes-wcrm',
+					nodeDescription: {
+						name: 'n8n-nodes-wcrm.wCRMTrigger',
+						displayName: 'wCRM Trigger',
+						group: ['trigger'],
+						inputs: [],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original, no tool version
+			expect(result.find((n) => n.name === 'n8n-nodes-wcrm.wCRMTriggerTool')).toBeUndefined();
+		});
+
+		it('should not create AI tool version for nodes with "trigger" in the type name', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-apify.apifyTrigger',
+					packageName: 'n8n-nodes-apify',
+					nodeDescription: {
+						name: 'n8n-nodes-apify.apifyTrigger',
+						displayName: 'Apify Trigger',
+						group: [],
+						inputs: [],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original, no tool version
+			expect(result.find((n) => n.name === 'n8n-nodes-apify.apifyTriggerTool')).toBeUndefined();
+		});
+
+		it('should not create AI tool version for nodes with "Trigger" in the type name (case-insensitive)', async () => {
+			const mockNodeTypes = [
+				{
+					name: 'n8n-nodes-triggercmd.triggerCmd',
+					packageName: 'n8n-nodes-triggercmd',
+					nodeDescription: {
+						name: 'n8n-nodes-triggercmd.triggerCmd',
+						displayName: 'TriggerCMD',
+						group: [],
+						inputs: [],
+						outputs: ['main'],
+						usableAsTool: true,
+					},
+				},
+			];
+
+			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
+
+			const result = await service.getCommunityNodeTypes();
+
+			expect(result.length).toBe(1); // only original, no tool version
+			expect(result.find((n) => n.name === 'n8n-nodes-triggercmd.triggerCmdTool')).toBeUndefined();
+		});
+
 		it('should not mutate original node type when creating tool version', async () => {
 			const mockNodeTypes = [
 				{
