@@ -1,3 +1,4 @@
+import { camelCase } from 'change-case';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import {
 	NodeHelpers,
@@ -19,7 +20,6 @@ import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
-	bareNodeNameFromSlug,
 	serverToNodeDescription,
 } from './node-description-transform';
 import type { McpRegistryService } from './registry/mcp-registry.service';
@@ -59,7 +59,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			const description = serverToNodeDescription(server, baseDescription);
 			if (!description) continue;
 
-			const bareName = bareNodeNameFromSlug(server.slug);
+			const bareName = camelCase(server.slug);
 
 			this.types.nodes.push(description);
 			const syntheticNode: INodeType = Object.create(baseNode, {

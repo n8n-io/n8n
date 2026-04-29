@@ -20,15 +20,9 @@ import {
 import type { McpServerTransport } from '../shared/types';
 
 /**
- * Bare class name used to register the runtime in the package directory loader.
- * Per-entry synthetic descriptions (built by the cli's `mcp-registry` module)
- * alias this class under `mcpRegistryClientTool_<slug>` so each registry server
- * appears as its own node in the panel while sharing this single runtime.
+ * Nodes from the MCP registry are saved as `@n8n/mcp-registry.<slug>`
  *
- * Per-entry transport + endpoint values land on the synthetic descriptions as
- * `default`s on the hidden `endpointUrl` / `serverTransport` properties — the
- * runtime reads them via `getNodeParameter` like any other node, so this class
- * stays unaware of the registry concept entirely.
+ * This class is the shared runtime for all of them
  */
 export class McpRegistryClientTool implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,8 +38,7 @@ export class McpRegistryClientTool implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Tools'],
-				Tools: ['Recommended Tools'],
+				AI: ['Model Context Protocol'],
 			},
 			alias: ['MCP', 'Model Context Protocol'],
 		},
