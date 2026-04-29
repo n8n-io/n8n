@@ -112,6 +112,24 @@ describe('parallelEval.store', () => {
 			store.setConcurrencyValue('wf-a', 4.7);
 			expect(store.concurrencyValue('wf-a')).toBe(4);
 		});
+
+		it('setConcurrencyValue falls back to the default for non-finite input', () => {
+			const store = useParallelEvalStore();
+
+			// NaN propagates unchanged through Math.floor/min/max, so without a
+			// guard a cleared N8nInputNumber would persist NaN and break the
+			// 1-10 contract. Verify it lands at the parallel default instead.
+			store.setConcurrencyValue('wf-a', Number.NaN);
+			expect(store.concurrencyValue('wf-a')).toBe(DEFAULT_PARALLEL_CONCURRENCY);
+
+			// Positive Infinity already clamps to 10 via Math.min, but pin the
+			// behaviour explicitly so future refactors don't regress it.
+			store.setConcurrencyValue('wf-b', Number.POSITIVE_INFINITY);
+			expect(store.concurrencyValue('wf-b')).toBe(DEFAULT_PARALLEL_CONCURRENCY);
+
+			store.setConcurrencyValue('wf-c', Number.NEGATIVE_INFINITY);
+			expect(store.concurrencyValue('wf-c')).toBe(DEFAULT_PARALLEL_CONCURRENCY);
+		});
 	});
 
 	describe('effectiveConcurrency', () => {

@@ -73,7 +73,14 @@ export const useParallelEvalStore = defineStore('parallelEval', () => {
 	};
 
 	const setConcurrencyValue = (workflowId: string | undefined, value: number): void => {
-		const clamped = Math.max(1, Math.min(10, Math.floor(value)));
+		// Guard against non-finite inputs (NaN from a cleared N8nInputNumber,
+		// Infinity from edge-case maths). NaN would propagate through the
+		// floor/min/max chain unchanged and persist a broken state, silently
+		// violating the 1-10 contract. Fall back to the parallel default so
+		// the checked-but-cleared UX feels natural rather than dropping to
+		// sequential behind the user's back.
+		const safe = Number.isFinite(value) ? value : DEFAULT_PARALLEL_CONCURRENCY;
+		const clamped = Math.max(1, Math.min(10, Math.floor(safe)));
 		ensureEntry(resolveKey(workflowId)).concurrencyValue = clamped;
 	};
 
