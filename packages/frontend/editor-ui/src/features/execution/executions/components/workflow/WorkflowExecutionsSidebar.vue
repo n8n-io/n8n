@@ -67,8 +67,8 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 // This handles tall screens where the sentinel may already be visible and the previous
 // observer has disconnected itself after firing once.
 watch(
-	[loadMoreSentinel, () => props.executions.length, () => props.hasMore, () => props.loadingMore],
-	([sentinel, , hasMore, loadingMore]) => {
+	[loadMoreSentinel, () => props.hasMore, () => props.loadingMore, () => props.executions.length],
+	([sentinel, hasMore, loadingMore]) => {
 		if (sentinel && hasMore && !loadingMore) {
 			observeForLoadMore(sentinel);
 		}
