@@ -762,9 +762,10 @@ async function maybeDecryptOAuth2TokenData<T extends Record<string, unknown> | u
 	tokenData: T,
 	jweEnabled: boolean,
 ): Promise<T | IDataObject> {
+	if (!jweEnabled) return tokenData;
 	const proxy = additionalData['oauth-jwe']?.oauthJweProxyProvider;
 	if (!proxy) return tokenData;
-	return await proxy.decryptOAuth2TokenData(tokenData as unknown as IDataObject, { jweEnabled });
+	return await proxy.decryptOAuth2TokenData(tokenData as unknown as IDataObject);
 }
 
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {

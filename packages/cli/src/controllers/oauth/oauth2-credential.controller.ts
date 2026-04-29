@@ -93,10 +93,11 @@ export class OAuth2CredentialController {
 				set(oauthToken.data, 'callbackQueryString', omit(req.query, 'state', 'code'));
 			}
 
-			const tokenResponse: IDataObject = await this.oauthJweServiceProxy.decryptOAuth2TokenData(
-				oauthToken.data as unknown as IDataObject,
-				{ jweEnabled: oauthCredentials.jweEnabled === true },
-			);
+			const rawTokenResponse = oauthToken.data as unknown as IDataObject;
+			const tokenResponse: IDataObject =
+				oauthCredentials.jweEnabled === true
+					? await this.oauthJweServiceProxy.decryptOAuth2TokenData(rawTokenResponse)
+					: rawTokenResponse;
 
 			// Only overwrite supplied data as some providers do for example just return the
 			// refresh_token on the very first request and not on subsequent ones.

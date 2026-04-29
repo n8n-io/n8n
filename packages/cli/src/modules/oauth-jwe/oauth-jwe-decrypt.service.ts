@@ -9,19 +9,15 @@ const JWE_TOKEN_FIELDS = ['access_token', 'id_token'] as const;
 
 /**
  * Decrypts JWE-wrapped OAuth2 token responses using the active instance
- * private key. When `jweEnabled` is true, plaintext tokens are rejected so
- * a misconfigured IdP cannot silently downgrade the channel.
+ * private key. Callers must already have decided that the credential
+ * expects JWE — this service rejects responses with no JWE tokens at all
+ * so a misconfigured IdP cannot silently downgrade the channel.
  */
 @Service()
 export class OAuthJweDecryptService {
 	constructor(private readonly keyService: OAuthJweKeyService) {}
 
-	async decryptOAuth2TokenData(
-		tokenData: IDataObject,
-		opts: { jweEnabled: boolean },
-	): Promise<IDataObject> {
-		if (!opts.jweEnabled) return tokenData;
-
+	async decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject> {
 		const { privateKey } = await this.keyService.getKeyPair();
 		const result: IDataObject = { ...tokenData };
 		let presentAny = false;

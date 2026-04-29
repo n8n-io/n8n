@@ -30,7 +30,6 @@ describe('OAuth2CredentialController', () => {
 	beforeEach(() => {
 		jest.setSystemTime(new Date(timestamp));
 		jest.clearAllMocks();
-		oauthJweServiceProxy.decryptOAuth2TokenData.mockImplementation(async (tokenData) => tokenData);
 	});
 
 	describe('getAuthUri', () => {
@@ -779,7 +778,6 @@ describe('OAuth2CredentialController', () => {
 
 				expect(oauthJweServiceProxy.decryptOAuth2TokenData).toHaveBeenCalledWith(
 					expect.objectContaining({ access_token: 'jwe-blob' }),
-					{ jweEnabled: true },
 				);
 				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
 					mockResolvedCredential,
@@ -811,10 +809,7 @@ describe('OAuth2CredentialController', () => {
 				expect(oauthService.encryptAndSaveData).not.toHaveBeenCalled();
 			});
 
-			it('persists the unchanged response when the proxy is a no-op', async () => {
-				oauthJweServiceProxy.decryptOAuth2TokenData.mockImplementation(
-					async (tokenData) => tokenData,
-				);
+			it('skips the proxy entirely when the credential opts out', async () => {
 				const { mockResolvedCredential } = await setupCallback(false, {
 					access_token: 'plaintext',
 				});
@@ -826,10 +821,7 @@ describe('OAuth2CredentialController', () => {
 
 				await controller.handleCallback(req, res);
 
-				expect(oauthJweServiceProxy.decryptOAuth2TokenData).toHaveBeenCalledWith(
-					expect.objectContaining({ access_token: 'plaintext' }),
-					{ jweEnabled: false },
-				);
+				expect(oauthJweServiceProxy.decryptOAuth2TokenData).not.toHaveBeenCalled();
 				expect(oauthService.encryptAndSaveData).toHaveBeenCalledWith(
 					mockResolvedCredential,
 					expect.objectContaining({

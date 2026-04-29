@@ -1,13 +1,8 @@
 import { Service } from '@n8n/di';
 import type { IDataObject, OauthJweProxyProvider } from 'n8n-workflow';
 
-import { isOAuth2JweEnabled } from '@/modules/oauth-jwe/oauth-jwe.constants';
-
 export interface OAuthJweDecryptHandler {
-	decryptOAuth2TokenData(
-		tokenData: IDataObject,
-		opts: { jweEnabled: boolean },
-	): Promise<IDataObject>;
+	decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject>;
 }
 
 /**
@@ -16,7 +11,8 @@ export interface OAuthJweDecryptHandler {
  * execution engine (via `additionalData['oauth-jwe']`) consume it without
  * importing module internals. The module wires the real handler at init time
  * via {@link setHandler}; if the module never inits or the env flag is off,
- * decryption is a no-op and `tokenData` is returned unchanged.
+ * decryption is a no-op and `tokenData` is returned unchanged. Callers are
+ * responsible for the per-credential `jweEnabled` opt-in.
  *
  * Mirrors the redaction proxy pattern in `execution-redaction-proxy.service.ts`.
  */
@@ -28,12 +24,8 @@ export class OAuthJweServiceProxy implements OauthJweProxyProvider {
 		this.handler = handler;
 	}
 
-	async decryptOAuth2TokenData(
-		tokenData: IDataObject,
-		opts: { jweEnabled: boolean },
-	): Promise<IDataObject> {
-		if (!isOAuth2JweEnabled()) return tokenData;
+	async decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject> {
 		if (!this.handler) return tokenData;
-		return await this.handler.decryptOAuth2TokenData(tokenData, opts);
+		return await this.handler.decryptOAuth2TokenData(tokenData);
 	}
 }

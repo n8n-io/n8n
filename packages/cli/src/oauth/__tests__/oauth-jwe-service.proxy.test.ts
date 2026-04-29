@@ -21,7 +21,7 @@ describe('OAuthJweServiceProxy', () => {
 		proxy.setHandler(handler);
 		const input = { access_token: 'a' };
 
-		const result = await proxy.decryptOAuth2TokenData(input, { jweEnabled: true });
+		const result = await proxy.decryptOAuth2TokenData(input);
 
 		expect(result).toBe(input);
 		expect(handler.decryptOAuth2TokenData).not.toHaveBeenCalled();
@@ -33,7 +33,7 @@ describe('OAuthJweServiceProxy', () => {
 		const proxy = new OAuthJweServiceProxy();
 		const input = { access_token: 'a' };
 
-		const result = await proxy.decryptOAuth2TokenData(input, { jweEnabled: true });
+		const result = await proxy.decryptOAuth2TokenData(input);
 
 		expect(result).toBe(input);
 	});
@@ -46,12 +46,9 @@ describe('OAuthJweServiceProxy', () => {
 		const proxy = new OAuthJweServiceProxy();
 		proxy.setHandler(handler);
 
-		const result = await proxy.decryptOAuth2TokenData({ access_token: 'a' }, { jweEnabled: true });
+		const result = await proxy.decryptOAuth2TokenData({ access_token: 'a' });
 
-		expect(handler.decryptOAuth2TokenData).toHaveBeenCalledWith(
-			{ access_token: 'a' },
-			{ jweEnabled: true },
-		);
+		expect(handler.decryptOAuth2TokenData).toHaveBeenCalledWith({ access_token: 'a' });
 		expect(result).toEqual({ access_token: 'decrypted' });
 	});
 
@@ -63,8 +60,8 @@ describe('OAuthJweServiceProxy', () => {
 		const proxy = new OAuthJweServiceProxy();
 		proxy.setHandler(handler);
 
-		await expect(
-			proxy.decryptOAuth2TokenData({ access_token: 'a' }, { jweEnabled: true }),
-		).rejects.toThrow('decrypt failed');
+		await expect(proxy.decryptOAuth2TokenData({ access_token: 'a' })).rejects.toThrow(
+			'decrypt failed',
+		);
 	});
 });

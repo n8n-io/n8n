@@ -1377,7 +1377,6 @@ describe('Request Helper Functions', () => {
 
 				expect(oauthJweProxyProvider.decryptOAuth2TokenData).toHaveBeenCalledWith(
 					expect.objectContaining({ access_token: 'jwe-blob' }),
-					{ jweEnabled: true },
 				);
 				expect(
 					additionalDataWithProxy.credentialsHelper.updateCredentialsOauthTokenData,
