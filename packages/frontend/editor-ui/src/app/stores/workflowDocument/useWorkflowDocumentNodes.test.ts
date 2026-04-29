@@ -514,20 +514,6 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(dirtySpy).not.toHaveBeenCalled();
 		});
 
-		it('setNodeParameters clears execution issue when parameters change', () => {
-			const node = createNode({
-				name: 'Target',
-				parameters: { old: 'value' },
-				issues: { execution: true },
-			});
-
-			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
-			workflowDocumentNodes.setNodes([node]);
-			workflowDocumentNodes.setNodeParameters({ name: 'Target', value: { new: 'value' } });
-
-			expect(workflowDocumentNodes.getNodeByName('Target')?.issues?.execution).toBeUndefined();
-		});
-
 		it('setNodeParameters fires onStateDirty when parameters change', () => {
 			const dirtySpy = vi.fn();
 			const node = createNode({ name: 'Target', parameters: { old: 'value' } });

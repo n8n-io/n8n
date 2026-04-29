@@ -248,10 +248,6 @@ export function useWorkflowDocumentNodes(deps: WorkflowDocumentNodesDeps) {
 		if (changed) {
 			void onStateDirty.trigger();
 			deps.nodeMetadata.touchParametersLastUpdatedAt(name);
-
-			// Clear stale execution error — the node was edited so
-			// the old execution result may no longer apply.
-			setNodeIssue({ node: name, type: 'execution', value: null });
 		}
 	}
 
