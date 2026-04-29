@@ -269,7 +269,7 @@ describe('McpOAuthConsentService', () => {
 			);
 		});
 
-		it('should reject approval when user has reached the per-user client limit', async () => {
+		it('should reject approval and roll back when user has exceeded the per-user client limit', async () => {
 			const sessionToken = 'valid-session-token';
 			const userId = 'user-123';
 			const sessionPayload = {
@@ -281,16 +281,22 @@ describe('McpOAuthConsentService', () => {
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			userConsentRepository.findOneBy.mockResolvedValue(null);
-			userConsentRepository.countByUserId.mockResolvedValue(200);
+			userConsentRepository.upsert.mockResolvedValue(mock());
+			// 201 means our just-inserted row pushed the count over the configured limit (200).
+			userConsentRepository.countByUserId.mockResolvedValue(201);
 
 			await expect(service.handleConsentDecision(sessionToken, userId, true)).rejects.toThrow(
 				McpClientLimitReachedError,
 			);
-			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(userConsentRepository.upsert).toHaveBeenCalledTimes(1);
+			expect(userConsentRepository.delete).toHaveBeenCalledWith({
+				userId,
+				clientId: 'new-client',
+			});
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
 		});
 
-		it('should allow re-consent for an existing client even at the limit', async () => {
+		it('should allow re-consent for an existing client without re-checking the limit', async () => {
 			const sessionToken = 'valid-session-token';
 			const userId = 'user-123';
 			const sessionPayload = {
@@ -305,7 +311,6 @@ describe('McpOAuthConsentService', () => {
 			userConsentRepository.findOneBy.mockResolvedValue(
 				mock<UserConsent>({ userId, clientId: 'existing-client' }),
 			);
-			userConsentRepository.countByUserId.mockResolvedValue(200);
 			userConsentRepository.upsert.mockResolvedValue(mock());
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
@@ -314,6 +319,7 @@ describe('McpOAuthConsentService', () => {
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(userConsentRepository.upsert).toHaveBeenCalledTimes(1);
 			expect(userConsentRepository.countByUserId).not.toHaveBeenCalled();
+			expect(userConsentRepository.delete).not.toHaveBeenCalled();
 		});
 
 		it('should handle denial without state parameter', async () => {

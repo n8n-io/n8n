@@ -71,7 +71,7 @@ export class McpConsentController {
 				this.logger.info('Consent rejected: per-user MCP client limit reached', {
 					limit: error.limit,
 				});
-				res.status(409).json({
+				res.status(429).json({
 					status: 'error',
 					message: error.message,
 					meta: {

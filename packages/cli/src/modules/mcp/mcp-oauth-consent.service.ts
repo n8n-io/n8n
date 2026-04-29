@@ -91,14 +91,6 @@ export class McpOAuthConsentService {
 			clientId: sessionPayload.clientId,
 		});
 
-		if (!existingConsent) {
-			const consentCount = await this.userConsentRepository.countByUserId(userId);
-			const limit = this.globalConfig.endpoints.mcpMaxClientsPerUser;
-			if (consentCount >= limit) {
-				throw new McpClientLimitReachedError(limit);
-			}
-		}
-
 		await this.userConsentRepository.upsert(
 			{
 				userId,
@@ -107,6 +99,22 @@ export class McpOAuthConsentService {
 			},
 			['userId', 'clientId'],
 		);
+
+		// Insert-then-rollback to keep the per-user cap race-tolerant: counting
+		// before the upsert allows two concurrent first-time consents at limit-1
+		// to both pass. Counting after means each one observes the post-write
+		// state and at least one will roll back its own row.
+		if (!existingConsent) {
+			const consentCount = await this.userConsentRepository.countByUserId(userId);
+			const limit = this.globalConfig.endpoints.mcpMaxClientsPerUser;
+			if (consentCount > limit) {
+				await this.userConsentRepository.delete({
+					userId,
+					clientId: sessionPayload.clientId,
+				});
+				throw new McpClientLimitReachedError(limit);
+			}
+		}
 
 		const code = await this.authorizationCodeService.createAuthorizationCode(
 			sessionPayload.clientId,

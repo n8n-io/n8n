@@ -29,7 +29,7 @@ const handleAllow = async () => {
 		waitingForRedirect.value = true;
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		if (err instanceof ResponseError && (err.meta?.code as string) === 'mcp_client_limit_reached') {
+		if (err instanceof ResponseError && err.meta?.code === 'mcp_client_limit_reached') {
 			const limit = err.meta?.limit;
 			consentStore.error = i18n.baseText('oauth.consentView.error.limitReached', {
 				interpolate: { limit: typeof limit === 'number' ? String(limit) : '' },

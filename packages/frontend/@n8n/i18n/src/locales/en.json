@@ -2774,6 +2774,7 @@
 	"settings.mcp.tabs.workflows": "Workflows",
 	"settings.mcp.tabs.oauth": "Connected clients",
 	"settings.mcp.tabs.oauth.withCount": "{label} ({count}/{limit})",
+	"settings.mcp.oAuthClients.limit.warning": "You've reached the limit of {limit} connected MCP clients. Revoke an existing client to free up a slot.",
 	"settings.mcp.access.token.notice": "Make sure to copy your access token, you won't be able to see it again",
 	"settings.mcp.workflows.table.action.removeMCPAccess": "Remove access",
 	"settings.mcp.workflows.table.action.updateDescription": "Edit description",
