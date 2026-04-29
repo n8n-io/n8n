@@ -375,11 +375,14 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 });
 const skillAutosave = useAgentConfigAutosave<SkillAutosaveSnapshot>({
 	save: saveSkill,
-	onSaved: () => {
-		telemetry.track('User saved agent settings', { agent_id: agentId.value });
+	onSaved: (snapshot) => {
+		telemetry.track('User saved agent skill', {
+			agent_id: snapshot.agentId,
+			skill_id: snapshot.skillId,
+		});
 	},
 	onError: (error: unknown) => {
-		showError(error, locale.baseText('agents.builder.saveError'));
+		showError(error, locale.baseText('agents.builder.skills.saveError'));
 	},
 });
 const saveStatus = computed(() => {

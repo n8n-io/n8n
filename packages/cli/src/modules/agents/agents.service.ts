@@ -7,7 +7,6 @@ import type {
 } from '@n8n/agents';
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
-	agentSkillSchema,
 	isAgentScheduleIntegration,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
@@ -39,7 +38,9 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
@@ -64,7 +65,6 @@ import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 
 type AgentToolEntries = Agent['tools'];
-type AgentSkillEntries = Agent['skills'];
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -125,20 +125,6 @@ export class AgentsService {
 		}
 	}
 
-	/**
-	 * Start a new draft if the agent is currently in sync with the published snapshot.
-	 * Any mutation that changes how the agent would run must call this so that
-	 * `hasUnpublishedChanges` (derived from versionId vs publishedFromVersionId) stays accurate.
-	 */
-	private markDraftDirty(agent: Agent): void {
-		if (
-			agent.versionId !== null &&
-			agent.versionId === agent.publishedVersion?.publishedFromVersionId
-		) {
-			agent.versionId = uuid();
-		}
-	}
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
@@ -157,6 +143,7 @@ export class AgentsService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
+		private readonly agentSkillsService: AgentSkillsService,
 	) {}
 
 	/**
@@ -222,7 +209,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, name };
 		}
-		this.markDraftDirty(agent);
+		markAgentDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
 		return saved;
@@ -248,7 +235,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, description };
 		}
-		this.markDraftDirty(agent);
+		markAgentDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;
@@ -284,7 +271,10 @@ export class AgentsService {
 					agentId: agent.id,
 					schema: agent.schema,
 					tools: this.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
-					skills: this.snapshotConfiguredSkills(agent.schema, agent.skills ?? {}),
+					skills: this.agentSkillsService.snapshotConfiguredSkills(
+						agent.schema,
+						agent.skills ?? {},
+					),
 					publishedFromVersionId: agent.versionId,
 					model: agent.model,
 					provider: agent.provider,
@@ -648,12 +638,11 @@ export class AgentsService {
 			}
 		}
 
-		const storedSkills = agentEntity.skills ?? {};
-		for (const ref of config.skills ?? []) {
-			if (ref.id && !storedSkills[ref.id]) {
-				missing.push(`skill:${ref.id}`);
-			}
-		}
+		missing.push(
+			...this.agentSkillsService
+				.getMissingSkillIds(config, agentEntity.skills ?? {})
+				.map((skillId) => `skill:${skillId}`),
+		);
 
 		return { missing };
 	}
@@ -1089,7 +1078,7 @@ export class AgentsService {
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(
@@ -1106,17 +1095,7 @@ export class AgentsService {
 			entity.tools = tools;
 		}
 
-		const referencedSkillIds = new Set((result.config.skills ?? []).map((t) => t.id));
-		const orphanSkillIds = Object.keys(entity.skills ?? {}).filter(
-			(id) => !referencedSkillIds.has(id),
-		);
-		if (orphanSkillIds.length > 0) {
-			const skills = { ...(entity.skills ?? {}) };
-			for (const id of orphanSkillIds) {
-				delete skills[id];
-			}
-			entity.skills = skills;
-		}
+		this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
 
 		// Invalidate runtime caches
 		this.clearRuntimes(agentId);
@@ -1155,7 +1134,7 @@ export class AgentsService {
 			[toolId]: { code, descriptor },
 		};
 
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
@@ -1165,18 +1144,11 @@ export class AgentsService {
 	}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
-
-		return entity.skills ?? {};
+		return await this.agentSkillsService.listSkills(agentId, projectId);
 	}
 
 	async getSkill(agentId: string, projectId: string, skillId: string): Promise<AgentSkill> {
-		const skills = await this.listSkills(agentId, projectId);
-		const skill = skills[skillId];
-		if (!skill) throw new NotFoundError('Skill not found');
-
-		return skill;
+		return await this.agentSkillsService.getSkill(agentId, projectId, skillId);
 	}
 
 	async createSkill(
@@ -1185,29 +1157,9 @@ export class AgentsService {
 		skillId: string,
 		skill: AgentSkill,
 	): Promise<AgentSkillMutationResponse> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
-		if (entity.skills?.[skillId]) throw new ConflictError('Skill already exists');
-		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
-
-		this.validateSkill(skill);
-
-		entity.skills = {
-			...(entity.skills ?? {}),
-			[skillId]: skill,
-		};
-		entity.schema.skills = [
-			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
-			{ type: 'skill', id: skillId },
-		];
-
-		this.markDraftDirty(entity);
+		const result = await this.agentSkillsService.createSkill(agentId, projectId, skillId, skill);
 		this.clearRuntimes(agentId);
-		const saved = await this.agentRepository.save(entity);
-
-		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
-
-		return { skill, versionId: saved.versionId };
+		return result;
 	}
 
 	async updateSkill(
@@ -1216,36 +1168,9 @@ export class AgentsService {
 		skillId: string,
 		updates: Partial<AgentSkill>,
 	): Promise<AgentSkillMutationResponse> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
-
-		const existing = entity.skills?.[skillId];
-		if (!existing) throw new NotFoundError('Skill not found');
-
-		const updated = { ...existing, ...updates };
-		this.validateSkill(updated);
-
-		entity.skills = {
-			...(entity.skills ?? {}),
-			[skillId]: updated,
-		};
-
-		this.markDraftDirty(entity);
+		const result = await this.agentSkillsService.updateSkill(agentId, projectId, skillId, updates);
 		this.clearRuntimes(agentId);
-		const saved = await this.agentRepository.save(entity);
-
-		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
-
-		return { skill: updated, versionId: saved.versionId };
-	}
-
-	private validateSkill(skill: AgentSkill): void {
-		const result = agentSkillSchema.safeParse(skill);
-		if (!result.success) {
-			throw new UserError(
-				`Invalid agent skill: ${result.error.issues[0]?.message ?? 'Invalid skill'}`,
-			);
-		}
+		return result;
 	}
 
 	/**
@@ -1266,7 +1191,7 @@ export class AgentsService {
 			);
 		}
 
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
@@ -1274,24 +1199,8 @@ export class AgentsService {
 	}
 
 	async deleteSkill(agentId: string, projectId: string, skillId: string): Promise<void> {
-		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!entity) throw new NotFoundError('Agent not found');
-
-		const skills = { ...(entity.skills ?? {}) };
-		if (!skills[skillId]) throw new NotFoundError('Skill not found');
-
-		delete skills[skillId];
-		entity.skills = skills;
-
-		if (entity.schema?.skills) {
-			entity.schema.skills = entity.schema.skills.filter((t) => t.id !== skillId);
-		}
-
-		this.markDraftDirty(entity);
+		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId);
 		this.clearRuntimes(agentId);
-		await this.agentRepository.save(entity);
-
-		this.logger.debug('Deleted agent skill', { agentId, projectId, skillId });
 	}
 
 	/**
@@ -1342,7 +1251,7 @@ export class AgentsService {
 	}
 
 	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
-		const missingSkillIds = this.getMissingSkillIds(config, entity.skills ?? {});
+		const missingSkillIds = this.agentSkillsService.getMissingSkillIds(config, entity.skills ?? {});
 		if (missingSkillIds.length > 0) {
 			throw new UserError(
 				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
@@ -1355,20 +1264,6 @@ export class AgentsService {
 				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
 			);
 		}
-	}
-
-	private getMissingSkillIds(config: AgentJsonConfig | null, skills: AgentSkillEntries): string[] {
-		const refs = config?.skills ?? [];
-		const seen = new Set<string>();
-		const missing: string[] = [];
-
-		for (const ref of refs) {
-			if (seen.has(ref.id)) continue;
-			seen.add(ref.id);
-			if (!skills[ref.id]) missing.push(ref.id);
-		}
-
-		return missing;
 	}
 
 	private getMissingCustomToolIds(
@@ -1388,24 +1283,6 @@ export class AgentsService {
 		}
 
 		return missing;
-	}
-
-	private snapshotConfiguredSkills(
-		config: AgentJsonConfig | null,
-		skills: AgentSkillEntries,
-	): AgentSkillEntries | null {
-		if (!config) return null;
-		const missing = this.getMissingSkillIds(config, skills);
-		if (missing.length > 0) {
-			throw new UserError(`Cannot publish agent with missing skill bodies: ${missing.join(', ')}`);
-		}
-
-		const snapshot: AgentSkillEntries = {};
-		for (const ref of config.skills ?? []) {
-			const skill = skills[ref.id];
-			if (skill) snapshot[ref.id] = { ...skill };
-		}
-		return snapshot;
 	}
 
 	private snapshotConfiguredTools(
