@@ -9,7 +9,6 @@ export type {
 	ContentReasoning,
 	ContentFile,
 	ContentToolCall,
-	ContentToolResult,
 	ContentInvalidToolCall,
 	ContentProvider,
 	Message,

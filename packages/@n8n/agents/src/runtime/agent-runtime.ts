@@ -38,10 +38,8 @@ import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
 	applySubAgentUsage,
-	extractToolResults,
+	extractSettledToolCalls,
 	makeErrorStream,
-	makeErrorToolResultMessage,
-	makeToolResultMessage,
 	normalizeInput,
 } from './runtime-helpers';
 import { convertChunk } from './stream';
@@ -65,12 +63,7 @@ import type {
 	PersistedExecutionOptions,
 	ToolResultEntry,
 } from '../types/sdk/agent';
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	ContentToolResult,
-	Message,
-} from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage, ContentToolCall, Message } from '../types/sdk/message';
 import type { JSONObject, JSONValue } from '../types/utils/json';
 import { parseWithSchema } from '../utils/parse';
 import { isZodSchema } from '../utils/zod';
@@ -136,7 +129,7 @@ type ToolCallOutcome =
 			customMessage?: AgentMessage;
 	  }
 	| { outcome: 'suspended'; payload: unknown; resumeSchema: JsonSchema7Type }
-	| { outcome: 'error'; error: unknown; message: AgentMessage }
+	| { outcome: 'error'; error: unknown }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
 
 /** A tool call that completed successfully. */
@@ -166,7 +159,6 @@ interface ToolCallError {
 	toolName: string;
 	input: JSONValue;
 	error: unknown;
-	message: AgentMessage;
 }
 
 /** Result of executing a batch of tool calls (before persistence). */
@@ -708,7 +700,7 @@ export class AgentRuntime {
 				if (outputSpec) {
 					structuredOutput = result.output;
 				}
-				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
+				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
 				break;
 			}
 
@@ -747,7 +739,7 @@ export class AgentRuntime {
 			}
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
-			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
+			this.emitTurnEnd(newMessages, extractSettledToolCalls(list.responseDelta()));
 		}
 
 		if (lastFinishReason === 'tool-calls') {
@@ -985,7 +977,7 @@ export class AgentRuntime {
 				if (outputSpec) {
 					structuredOutput = await result.output;
 				}
-				this.emitTurnEnd(newMessages, extractToolResults(newMessages));
+				this.emitTurnEnd(newMessages, extractSettledToolCalls(newMessages));
 				break;
 			}
 
@@ -1049,7 +1041,7 @@ export class AgentRuntime {
 			}
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
-			this.emitTurnEnd(newMessages, extractToolResults(list.responseDelta()));
+			this.emitTurnEnd(newMessages, extractSettledToolCalls(list.responseDelta()));
 		}
 
 		const costUsage = this.applyCost(totalUsage);
@@ -1297,12 +1289,12 @@ export class AgentRuntime {
 				const toolInput = tc.input as JSONValue;
 
 				if (result.status === 'rejected') {
+					list.setToolCallError(tc.toolCallId, result.reason);
 					errors.push({
 						toolCallId: tc.toolCallId,
 						toolName: tc.toolName,
 						input: toolInput,
 						error: result.reason,
-						message: makeErrorToolResultMessage(tc.toolCallId, tc.toolName, result.reason),
 					});
 				} else if (result.value.outcome === 'suspended') {
 					hasSuspension = true;
@@ -1338,7 +1330,6 @@ export class AgentRuntime {
 						toolName: tc.toolName,
 						input: toolInput,
 						error: result.value.error,
-						message: result.value.message,
 					});
 				} else if (result.value.outcome === 'noop') {
 					// noop
@@ -1430,7 +1421,6 @@ export class AgentRuntime {
 				toolName: resumedToolName,
 				input: resumedEntry.input,
 				error: processResult.error,
-				message: processResult.message,
 			});
 		} else if (processResult.outcome === 'noop') {
 			// noop
@@ -1518,30 +1508,38 @@ export class AgentRuntime {
 				result: error,
 				isError: true,
 			});
-			const errorMsg = makeErrorToolResultMessage(toolCallId, toolName, error);
-			list.addResponse([errorMsg]);
-			return { outcome: 'error', error, message: errorMsg };
+			list.setToolCallError(toolCallId, error);
+			return { outcome: 'error', error };
 		};
 
 		if (!builtTool) {
 			return makeToolError(new Error(`Tool ${toolName} not found`));
 		}
 
-		// AI SDK automatically parses tool input and creates a tool-result message for it.
-		// If the tool-result message is an error, we don't need to execute the tool again.
-		const existingToolResults = list
+		// Check if this tool-call block was already settled (e.g. by provider-executed tools).
+		// If so, emit ToolExecutionEnd and skip re-execution.
+		type SettledToolCall = ContentToolCall & { state: 'resolved' | 'rejected' };
+		const settledBlock = list
 			.responseDelta()
-			.filter((m) => isLlmMessage(m) && m.role === 'tool')
-			.flatMap((m) => (m as Message).content.filter((content) => content.type === 'tool-result'));
-		const existingToolResult = existingToolResults.find((r) => r.toolCallId === toolCallId);
+			.flatMap((m) => (isLlmMessage(m) && 'content' in m ? (m as Message).content : []))
+			.find(
+				(c): c is SettledToolCall =>
+					c.type === 'tool-call' && c.toolCallId === toolCallId && c.state !== 'pending',
+			);
 
-		if (existingToolResult) {
+		if (settledBlock) {
+			let settledResult: unknown;
+			if (settledBlock.state === 'resolved') {
+				settledResult = settledBlock.output;
+			} else {
+				settledResult = settledBlock.error;
+			}
 			this.eventBus.emit({
 				type: AgentEvent.ToolExecutionEnd,
 				toolCallId,
 				toolName,
-				result: existingToolResult.result,
-				isError: !!existingToolResult.isError,
+				result: settledResult,
+				isError: settledBlock.state === 'rejected',
 			});
 			return { outcome: 'noop' };
 		}
@@ -1603,8 +1601,7 @@ export class AgentRuntime {
 			? builtTool.toModelOutput(actualResult)
 			: actualResult;
 
-		const toolResultMsg = makeToolResultMessage(toolCallId, toolName, modelResult);
-		list.addResponse([toolResultMsg]);
+		list.setToolCallResult(toolCallId, modelResult as JSONValue);
 
 		const customMessage = builtTool?.toMessage?.(actualResult);
 		if (customMessage) {
@@ -1702,7 +1699,7 @@ export class AgentRuntime {
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */
-	private emitTurnEnd(newMessages: AgentMessage[], toolResults: ContentToolResult[]): void {
+	private emitTurnEnd(newMessages: AgentMessage[], toolResults: ContentToolCall[]): void {
 		const assistantMsg = newMessages.find((m) => 'role' in m && m.role === 'assistant');
 		if (assistantMsg) {
 			this.eventBus.emit({ type: AgentEvent.TurnEnd, message: assistantMsg, toolResults });
