@@ -377,9 +377,9 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
 	},
-	[ACTION_TYPES.AGENT]: (_projectId, source) => {
+	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		agentTelemetry.trackClickedNewAgent(source);
-		void router.push({ name: NEW_AGENT_VIEW });
+		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
 	},
 } as const;
 

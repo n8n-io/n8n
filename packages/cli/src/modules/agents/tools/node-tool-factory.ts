@@ -196,7 +196,7 @@ export async function resolveNodeTool(
 		normalizedToolSchema.node.nodeTypeVersion,
 	);
 
-	return new Tool(sanitizedName)
+	const built = new Tool(sanitizedName)
 		.description(normalizedToolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(normalizedToolSchema, ctx))
 		.handler(async (input: Record<string, unknown>) => {
@@ -210,4 +210,14 @@ export async function resolveNodeTool(
 			});
 		})
 		.build();
+
+	return {
+		...built,
+		metadata: {
+			kind: 'node',
+			nodeType: toolSchema.node.nodeType,
+			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
+			displayName: toolSchema.name,
+		},
+	};
 }

@@ -43,7 +43,6 @@ import { useAgentSectionNav } from '../composables/useAgentSectionNav';
 import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
-	AGENTS_LIST_VIEW,
 	AGENT_BUILDER_VIEW,
 	AGENT_SECTION_KEY,
 	ADVANCED_SECTION_KEY,
@@ -53,6 +52,7 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
+	PROJECT_AGENTS,
 } from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -755,7 +755,7 @@ function onContinueLoaded(count: number) {
 
 function onHeaderBack() {
 	void router.push({
-		name: AGENTS_LIST_VIEW,
+		name: PROJECT_AGENTS,
 		params: { projectId: projectId.value },
 	});
 }
@@ -1154,7 +1154,6 @@ function onSwitchAgent(nextAgentId: string) {
 						:config="localConfig"
 						:selected-key="selectedSection"
 						:connected-triggers="connectedTriggers"
-						:executions-count="sessionsStore.threads.length"
 						@select="onTreeSelect"
 					/>
 				</aside>

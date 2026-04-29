@@ -1,5 +1,6 @@
 import type {
 	BuiltAgent,
+	BuiltTool,
 	CredentialProvider,
 	GenerateResult,
 	StreamChunk,
@@ -55,6 +56,7 @@ import {
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { withoutStaticNodeToolDescription } from './tools/node-tool-config-utils';
 
 interface InjectRuntimeDependenciesParams {
@@ -89,7 +91,7 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: agents.Agent; agentId: string; userId?: string }
+		{ agent: agents.Agent; agentId: string; userId?: string; toolRegistry: ToolRegistry }
 	>(30 * Time.minutes.toMilliseconds);
 
 	/**
@@ -379,7 +381,9 @@ export class AgentsService {
 	/** Find any cached runtime for an agent (regardless of user). */
 	private findRuntimeForAgent(
 		agentId: string,
-	): { agent: agents.Agent; agentId: string; userId?: string } | undefined {
+	):
+		| { agent: agents.Agent; agentId: string; userId?: string; toolRegistry: ToolRegistry }
+		| undefined {
 		for (const [key, runtime] of this.runtimes) {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
 				return runtime;
@@ -537,7 +541,7 @@ export class AgentsService {
 			throw new UserError(`Checkpoint ${runId} not found and cannot be resumed`);
 		}
 
-		const recorder = new ExecutionRecorder();
+		const recorder = new ExecutionRecorder(runtime.toolRegistry);
 
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
@@ -661,7 +665,7 @@ export class AgentsService {
 			const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 			if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
 
-			const reconstructed = await this.reconstructFromConfig(
+			const { agent: reconstructed, toolRegistry } = await this.reconstructFromConfig(
 				agentEntity,
 				credentialProvider,
 				userId,
@@ -669,15 +673,24 @@ export class AgentsService {
 			);
 
 			// Cache the runtime for subsequent calls
-			this.runtimes.set(key, { agent: reconstructed, agentId, userId });
+			this.runtimes.set(key, { agent: reconstructed, agentId, userId, toolRegistry });
 			runtime = this.runtimes.get(key);
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId, projectId, {
-			source: integrationType,
-			resourceId: userId,
-		});
+		yield* this.streamChatResponse(
+			runtime.agent,
+			runtime.toolRegistry,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			{
+				source: integrationType,
+				resourceId: userId,
+			},
+		);
 	}
 
 	/**
@@ -736,21 +749,30 @@ export class AgentsService {
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
 			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
-			const agentInstance = await this.reconstructFromConfig(
+			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
 				publishedAgentData,
 				credentialProvider,
 				userId,
 				integrationType,
 			);
-			this.runtimes.set(key, { agent: agentInstance, agentId, userId });
+			this.runtimes.set(key, { agent: agentInstance, agentId, userId, toolRegistry });
 			runtime = this.runtimes.get(key);
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId, projectId, {
-			source: integrationType,
-			resourceId: userId,
-		});
+		yield* this.streamChatResponse(
+			runtime.agent,
+			runtime.toolRegistry,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			{
+				source: integrationType,
+				resourceId: userId,
+			},
+		);
 	}
 
 	/**
@@ -780,21 +802,30 @@ export class AgentsService {
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
 			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
-			const agentInstance = await this.reconstructFromConfig(
+			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
 				publishedAgentData,
 				credentialProvider,
 				userId,
 				AGENT_SCHEDULE_TRIGGER_TYPE,
 			);
-			this.runtimes.set(key, { agent: agentInstance, agentId, userId });
+			this.runtimes.set(key, { agent: agentInstance, agentId, userId, toolRegistry });
 			runtime = this.runtimes.get(key);
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId, projectId, {
-			source: AGENT_SCHEDULE_TRIGGER_TYPE,
-			resourceId,
-		});
+		yield* this.streamChatResponse(
+			runtime.agent,
+			runtime.toolRegistry,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			{
+				source: AGENT_SCHEDULE_TRIGGER_TYPE,
+				resourceId,
+			},
+		);
 	}
 
 	/**
@@ -805,6 +836,7 @@ export class AgentsService {
 	 */
 	private async *streamChatResponse(
 		agentInstance: agents.Agent,
+		toolRegistry: ToolRegistry,
 		agentId: string,
 		message: string,
 		threadId: string,
@@ -815,7 +847,7 @@ export class AgentsService {
 			resourceId?: string;
 		},
 	): AsyncGenerator<StreamChunk> {
-		const recorder = new ExecutionRecorder();
+		const recorder = new ExecutionRecorder(toolRegistry);
 		const resourceId = options?.resourceId ?? userId;
 
 		const resultStream = await agentInstance.stream(message, {
@@ -884,7 +916,7 @@ export class AgentsService {
 		}
 
 		try {
-			const reconstructed = await this.reconstructFromConfig(
+			const { agent: reconstructed } = await this.reconstructFromConfig(
 				agentEntity,
 				credentialProvider,
 				userId,
@@ -1231,7 +1263,7 @@ export class AgentsService {
 		credentialProvider: CredentialProvider,
 		userId?: string,
 		integrationType?: string,
-	): Promise<agents.Agent> {
+	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -1253,11 +1285,15 @@ export class AgentsService {
 
 		const toolResolver = this.makeToolResolver(agentEntity.projectId, userId);
 
+		const resolvedTools: BuiltTool[] = [];
+
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
-				return await toolResolver(ref);
+				const resolved = await toolResolver(ref);
+				if (resolved) resolvedTools.push(resolved);
+				return resolved;
 			},
 			memoryFactory: this.getMemoryFactory(),
 		});
@@ -1271,6 +1307,7 @@ export class AgentsService {
 			integrationType,
 		});
 
-		return reconstructed;
+		const toolRegistry = buildToolRegistry(resolvedTools);
+		return { agent: reconstructed, toolRegistry };
 	}
 }
