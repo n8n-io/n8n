@@ -157,7 +157,11 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 			storedHasProjectRules.value = false;
 		}
 
-		return { configChanged };
+		// `shouldDeleteProjectRules` is enough to trigger a server call (to wipe
+		// stale project rules) even when dropdown values haven't changed. The
+		// caller relies on this flag to fire telemetry whenever a save actually
+		// hit the backend.
+		return { configChanged: configChanged || shouldDeleteProjectRules };
 	};
 
 	const roleAssignmentTransition = computed<RoleAssignmentTransitionType>(() => {
