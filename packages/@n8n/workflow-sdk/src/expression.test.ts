@@ -61,15 +61,6 @@ describe('Expression System', () => {
 			const result = createFromAIExpression('foo@bar');
 			expect(result).toContain("$fromAI('foo_bar')");
 		});
-
-		it('should support array types', () => {
-			const result = createFromAIExpression('emails', 'Email addresses', 'string[]', [
-				'user@example.com',
-			]);
-
-			expect(result).toContain("'string[]'");
-			expect(result).toContain('["user@example.com"]');
-		});
 	});
 
 	describe('parseExpression()', () => {

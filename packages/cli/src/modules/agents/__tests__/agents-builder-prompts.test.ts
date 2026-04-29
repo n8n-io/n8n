@@ -89,8 +89,6 @@ describe('TOOL_TYPES_SECTION', () => {
 
 	it('instructs node tools to use $fromAI instead of $json for AI-chosen fields', () => {
 		expect(TOOL_TYPES_SECTION).toContain('$fromAI');
-		expect(TOOL_TYPES_SECTION).toContain('string[]');
-		expect(TOOL_TYPES_SECTION).toContain('never a comma-separated string');
 		expect(TOOL_TYPES_SECTION).toContain('Do NOT pipe AI-chosen node-tool fields through `$json`');
 		expect(TOOL_TYPES_SECTION).not.toContain('={{$json.paramName}}');
 	});

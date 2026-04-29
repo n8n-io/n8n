@@ -62,7 +62,7 @@ Flow: search_nodes → get_node_types → ask_credential (per slot) → write/up
 Rules for node tools:
 - \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results. Use the tool node ID from search_nodes (usually ending in \`Tool\`, e.g. \`n8n-nodes-base.httpRequestTool\`), not the base node ID.
 - \`nodeParameters\` sets fixed parameters (resource, operation, etc.). For any value the AI should choose at runtime, use \`$fromAI\`: \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('key', 'description', 'type') }}\`.
-- Match the \`$fromAI\` type to the node parameter type from get_node_types: use \`string\`, \`number\`, \`boolean\`, \`json\`, or array forms like \`string[]\`. For repeated/list parameters such as \`string[]\`, the AI must provide a JSON array, never a comma-separated string.
+- Match the \`$fromAI\` type to the node parameter type from get_node_types: use \`string\`, \`number\`, \`boolean\`, or \`json\`.
 - Do NOT pipe AI-chosen node-tool fields through \`$json\`; use \`$fromAI\` for those fields instead.
 - Do NOT include \`inputSchema\` for node tools. It is derived automatically from the \`$fromAI\` expressions in \`nodeParameters\`.
 - Do NOT include \`toolDescription\` in \`nodeParameters\`. Use the top-level tool \`description\` only; the runtime derives the node parameter from it.
@@ -165,7 +165,6 @@ For node tools, prefer \`$fromAI\` whenever the agent should decide a value at r
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\` — let the AI provide a string
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\` — let the AI provide a number
 - \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}\` — let the AI provide a boolean
-- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('emails', 'Email addresses', 'string[]') }}\` — let the AI provide an array of strings
 - \`={{ $now.toISO() }}\` — current date/time (Luxon DateTime)
 - \`={{ $today }}\` — start of today (Luxon DateTime)
 

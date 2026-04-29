@@ -9,20 +9,12 @@ import { jsonParse } from './utils';
  * This file contains the logic for parsing node parameters and extracting $fromAI calls
  */
 
-export type FromAIArgumentType =
-	| 'string'
-	| 'number'
-	| 'boolean'
-	| 'json'
-	| 'string[]'
-	| 'number[]'
-	| 'boolean[]'
-	| 'json[]';
+export type FromAIArgumentType = 'string' | 'number' | 'boolean' | 'json';
 export type FromAIArgument = {
 	key: string;
 	description?: string;
 	type?: FromAIArgumentType;
-	defaultValue?: string | number | boolean | Record<string, unknown> | unknown[];
+	defaultValue?: string | number | boolean | Record<string, unknown>;
 };
 
 class ParseError extends Error {}
@@ -100,18 +92,6 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 			schema = typedSchema;
 			break;
 		}
-		case 'string[]':
-			schema = z.array(z.string());
-			break;
-		case 'number[]':
-			schema = z.array(z.number());
-			break;
-		case 'boolean[]':
-			schema = z.array(z.boolean());
-			break;
-		case 'json[]':
-			schema = z.array(z.record(z.unknown()));
-			break;
 		default:
 			schema = z.string();
 	}
@@ -128,16 +108,7 @@ export function generateZodSchema(placeholder: FromAIArgument): z.ZodTypeAny {
 }
 
 function isFromAIArgumentType(value: string): value is FromAIArgumentType {
-	return [
-		'string',
-		'number',
-		'boolean',
-		'json',
-		'string[]',
-		'number[]',
-		'boolean[]',
-		'json[]',
-	].includes(value.toLowerCase());
+	return ['string', 'number', 'boolean', 'json'].includes(value.toLowerCase());
 }
 
 /**
@@ -149,7 +120,7 @@ function isFromAIArgumentType(value: string): value is FromAIArgumentType {
 function parseDefaultValue(
 	value: string | undefined,
 	type: FromAIArgumentType = 'string',
-): string | number | boolean | Record<string, unknown> | unknown[] | undefined {
+): string | number | boolean | Record<string, unknown> | undefined {
 	if (value === undefined) return value;
 
 	const lowerValue = value.toLowerCase();
@@ -161,7 +132,7 @@ function parseDefaultValue(
 		return lowerValue === 'true';
 	if (type === 'number' && !isNaN(Number(value))) return Number(value);
 
-	// For type 'json', array types, or any other case, attempt to parse as JSON
+	// For type 'json' or any other case, attempt to parse as JSON
 	try {
 		return jsonParse(value);
 	} catch {
@@ -376,17 +347,7 @@ function toJsonSchemaProperty(
 		case 'boolean':
 			return withDescription({ type: 'boolean' });
 		case 'json':
-			return withDescription({
-				anyOf: [{ type: 'object' }, { type: 'array' }],
-			});
-		case 'string[]':
-			return withDescription({ type: 'array', items: { type: 'string' } });
-		case 'number[]':
-			return withDescription({ type: 'array', items: { type: 'number' } });
-		case 'boolean[]':
-			return withDescription({ type: 'array', items: { type: 'boolean' } });
-		case 'json[]':
-			return withDescription({ type: 'array', items: { type: 'object' } });
+			return withDescription({ type: 'object' });
 		default:
 			return withDescription({ type: 'string' });
 	}

@@ -104,36 +104,6 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		});
 	});
 
-	it('derives array inputSchema from array-typed $fromAI node parameters', async () => {
-		const tool = await resolveNodeTool(
-			{
-				...baseToolSchema,
-				node: {
-					...baseToolSchema.node,
-					nodeParameters: {
-						additionalFields: {
-							attendees:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('attendees', 'Attendee email addresses', 'string[]') }}",
-						},
-					},
-				},
-			},
-			mockCtx,
-		);
-
-		expect(tool.inputSchema).toEqual({
-			type: 'object',
-			properties: {
-				attendees: {
-					type: 'array',
-					items: { type: 'string' },
-					description: 'Attendee email addresses',
-				},
-			},
-			required: ['attendees'],
-		});
-	});
-
 	it('injects toolDescription from the top-level node tool description at execution time', async () => {
 		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
 		const tool = await resolveNodeTool(

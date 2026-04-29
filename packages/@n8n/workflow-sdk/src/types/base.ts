@@ -1248,12 +1248,4 @@ export type RunOnceForEachItemFn = <T = unknown>(
 /**
  * Valid types for $fromAI parameter values
  */
-export type FromAIArgumentType =
-	| 'string'
-	| 'number'
-	| 'boolean'
-	| 'json'
-	| 'string[]'
-	| 'number[]'
-	| 'boolean[]'
-	| 'json[]';
+export type FromAIArgumentType = 'string' | 'number' | 'boolean' | 'json';
