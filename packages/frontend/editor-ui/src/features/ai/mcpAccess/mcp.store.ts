@@ -37,6 +37,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	const connectPopoverOpen = ref(false);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
+	const mcpManagedByEnv = computed(() => !!settingsStore.moduleSettings.mcp?.mcpManagedByEnv);
 
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
@@ -60,6 +61,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			enabled,
 		);
 		settingsStore.moduleSettings.mcp = {
+			mcpManagedByEnv: false,
 			...(settingsStore.moduleSettings.mcp ?? {}),
 			mcpAccessEnabled: updated,
 		};
@@ -175,6 +177,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 
 	return {
 		mcpAccessEnabled,
+		mcpManagedByEnv,
 		fetchWorkflowsAvailableForMCP,
 		setMcpAccessEnabled,
 		toggleWorkflowMcpAccess,

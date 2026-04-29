@@ -339,7 +339,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
-			grantTokenTtl: 15,
+			grantTokenTtl: 30,
 			insecureMode: false,
 		},
 		sentry: {
@@ -536,6 +536,8 @@ describe('GlobalConfig', () => {
 			samlLoginEnabled: false,
 			logStreamingManagedByEnv: false,
 			logStreamingDestinations: '',
+			mcpManagedByEnv: false,
+			mcpAccessEnabled: false,
 		},
 	} satisfies GlobalConfigShape;
 
