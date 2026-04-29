@@ -916,7 +916,7 @@ function onSwitchAgent(nextAgentId: string) {
 										:project-id="projectId"
 										:agent-id="agentId"
 										:is-published="Boolean(agent?.publishedVersion)"
-									:connected-triggers="connectedTriggers"
+										:connected-triggers="connectedTriggers"
 										@update:tools="onQuickActionAddTool"
 										@update:connected-triggers="onConnectedTriggersUpdate"
 										@trigger-added="onTriggerAdded"
@@ -1080,9 +1080,9 @@ function onSwitchAgent(nextAgentId: string) {
 					>
 						<div :class="$style.triggersHeader">
 							<div :class="$style.triggersHeaderText">
-								<N8nText tag="h3" size="large" :bold="true">{{
-									locale.baseText('agents.builder.triggers.title')
-								}}</N8nText>
+								<N8nText tag="h3" size="large" :bold="true"
+									>{{ locale.baseText('agents.builder.triggers.title') }}
+								</N8nText>
 								<N8nText size="small" color="text-light">
 									{{ locale.baseText('agents.builder.triggers.description') }}
 								</N8nText>
@@ -1093,7 +1093,9 @@ function onSwitchAgent(nextAgentId: string) {
 								data-testid="agent-triggers-add"
 								@click="onOpenAddTriggerModal"
 							>
-								<template #prefix><N8nIcon icon="plus" :size="14" /></template>
+								<template #prefix>
+									<N8nIcon icon="plus" :size="14" />
+								</template>
 								{{ locale.baseText('agents.builder.triggers.add') }}
 							</N8nButton>
 						</div>
