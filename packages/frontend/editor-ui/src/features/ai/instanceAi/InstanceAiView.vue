@@ -91,17 +91,20 @@ const displayedMessages = computed(() => store.messages.filter(messageHasVisible
 const executionTracking = useExecutionPushEvents();
 
 // --- Header title ---
-const currentThreadTitle = computed(() => {
+// Returns the resolved title once we have one, or undefined while we're still
+// figuring out which thread to show. Rendering only on a defined value avoids
+// the "New conversation" \u2192 real title flash when resuming a recent thread.
+const currentThreadTitle = computed<string | undefined>(() => {
 	const thread = store.threads.find((t) => t.id === store.currentThreadId);
-	if (!thread || thread.title === NEW_CONVERSATION_TITLE) {
-		const firstUserMsg = store.messages.find((m) => m.role === 'user');
-		if (firstUserMsg?.content) {
-			const text = firstUserMsg.content.trim();
-			return text.length > 60 ? text.slice(0, 60) + '\u2026' : text;
-		}
-		return NEW_CONVERSATION_TITLE;
+	if (thread && thread.title && thread.title !== NEW_CONVERSATION_TITLE) {
+		return thread.title;
 	}
-	return thread.title;
+	const firstUserMsg = store.messages.find((m) => m.role === 'user');
+	if (firstUserMsg?.content) {
+		const text = firstUserMsg.content.trim();
+		return text.length > 60 ? text.slice(0, 60) + '\u2026' : text;
+	}
+	return undefined;
 });
 
 // --- Canvas / data table preview ---
@@ -130,31 +133,11 @@ watch(
 const showCreditBanner = computed(() => store.isLowCredits && !creditBannerDismissed.value);
 const showEmptyStateLayout = computed(() => !props.threadId);
 
-// If the user re-enters the AI view within this window of the most recent
-// thread's last activity, jump back into that thread instead of the empty
-// state. Beyond this, a fresh entry feels like a new task — show empty state.
-const RESUME_RECENT_THREAD_WINDOW_MS = 6 * 60 * 60 * 1000;
-
 // Load persisted threads from Mastra storage on mount
 onMounted(() => {
 	void store.loadThreads().then((loaded) => {
 		if (!loaded) return;
-		if (!props.threadId) {
-			// No deep-link: optionally resume the most recently active thread.
-			const mostRecent = [...store.threads].sort((a, b) =>
-				(b.updatedAt ?? b.createdAt).localeCompare(a.updatedAt ?? a.createdAt),
-			)[0];
-			if (mostRecent) {
-				const lastTouchedMs = new Date(mostRecent.updatedAt ?? mostRecent.createdAt).getTime();
-				if (Date.now() - lastTouchedMs <= RESUME_RECENT_THREAD_WINDOW_MS) {
-					void router.replace({
-						name: INSTANCE_AI_THREAD_VIEW,
-						params: { threadId: mostRecent.id },
-					});
-				}
-			}
-			return;
-		}
+		if (!props.threadId) return;
 		// After threads load, validate deep-link: redirect if thread doesn't exist
 		if (!store.threads.some((t) => t.id === props.threadId)) {
 			void router.replace({ name: INSTANCE_AI_VIEW });
@@ -369,10 +352,10 @@ watch(
 	() => props.threadId,
 	(threadId) => {
 		if (!threadId) {
-			// /instance-ai base route (no :threadId) — reset to a clean empty
-			// state. Without this, `currentThreadId` keeps pointing at the
-			// last thread and the sidebar highlights it alongside the empty
-			// main view (AI-2408). A new thread is created on the first
+			// /instance-ai base route (no :threadId): always show the empty
+			// state. Without this, `currentThreadId` keeps pointing at the last
+			// thread and the sidebar highlights it alongside the empty main
+			// view (AI-2408). A new thread is created on the first
 			// `sendMessage` via `syncThread`.
 			store.clearCurrentThread();
 			return;
@@ -458,22 +441,26 @@ function handleStop() {
 		<div :class="$style.chatArea">
 			<!-- Header -->
 			<div :class="$style.header">
-				<N8nTooltip
-					v-if="sidebarCollapsed"
-					:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
-					placement="bottom"
-					:show-after="TOOLTIP_DELAY_MS"
-				>
-					<N8nIconButton
-						icon="history"
-						variant="ghost"
-						size="medium"
-						data-test-id="instance-ai-sidebar-toggle"
-						:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
-						@click="toggleSidebarCollapse"
-					/>
-				</N8nTooltip>
-				<N8nHeading tag="h2" size="small" :class="$style.headerTitle">
+				<Transition name="sidebar-toggle-fade">
+					<span v-if="sidebarCollapsed" :class="$style.sidebarToggle">
+						<N8nTooltip
+							:content="i18n.baseText('instanceAi.sidebar.chatHistory')"
+							placement="bottom"
+							:show-after="TOOLTIP_DELAY_MS"
+						>
+							<N8nIconButton
+								icon="history"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								data-test-id="instance-ai-sidebar-toggle"
+								:aria-label="i18n.baseText('instanceAi.sidebar.chatHistory')"
+								@click="toggleSidebarCollapse"
+							/>
+						</N8nTooltip>
+					</span>
+				</Transition>
+				<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
 					{{ currentThreadTitle }}
 				</N8nHeading>
 				<N8nText
@@ -495,8 +482,8 @@ function handleStop() {
 					<N8nIconButton
 						icon="cog"
 						variant="ghost"
-						size="medium"
-						:class="$style.settingsButton"
+						size="small"
+						icon-size="large"
 						data-test-id="instance-ai-settings-button"
 						@click="goToSettings"
 					/>
@@ -504,7 +491,8 @@ function handleStop() {
 						v-if="isDebugEnabled"
 						icon="bug"
 						variant="ghost"
-						size="medium"
+						size="small"
+						icon-size="large"
 						:class="{ [$style.activeButton]: showDebugPanel }"
 						@click="
 							showDebugPanel = !showDebugPanel;
@@ -515,7 +503,8 @@ function handleStop() {
 						v-if="!preview.isPreviewVisible.value"
 						icon="panel-right"
 						variant="ghost"
-						size="medium"
+						size="small"
+						icon-size="large"
 						@click="showArtifactsPanel = !showArtifactsPanel"
 					/>
 				</div>
@@ -757,11 +746,11 @@ function handleStop() {
 }
 
 .header {
-	padding: var(--spacing--xs) var(--spacing--lg) var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--xs);
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	background-color: var(--color--background--light-2);
 }
 
@@ -780,8 +769,8 @@ function handleStop() {
 	gap: var(--spacing--4xs);
 }
 
-.settingsButton {
-	padding: var(--spacing--xs);
+.sidebarToggle {
+	display: inline-flex;
 }
 
 .activeButton {
@@ -932,5 +921,21 @@ function handleStop() {
 	width: 0 !important;
 	min-width: 0 !important;
 	opacity: 0;
+}
+
+// Entry-point icon button: fade in slightly after the sidebar has begun
+// collapsing, fade out quickly when the sidebar starts opening — so the
+// crossover feels intentional rather than abrupt.
+.sidebar-toggle-fade-enter-from,
+.sidebar-toggle-fade-leave-to {
+	opacity: 0;
+}
+
+.sidebar-toggle-fade-enter-active {
+	transition: opacity 0.15s ease;
+}
+
+.sidebar-toggle-fade-leave-active {
+	transition: opacity 0.1s ease;
 }
 </style>

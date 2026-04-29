@@ -132,7 +132,8 @@ function handleThreadAction(action: string, threadId: string) {
 					<N8nIconButton
 						icon="chevrons-left"
 						variant="ghost"
-						size="medium"
+						size="small"
+						icon-size="large"
 						:aria-label="i18n.baseText('instanceAi.sidebar.collapse')"
 						data-test-id="instance-ai-sidebar-collapse"
 						@click="emit('collapse')"
@@ -146,7 +147,8 @@ function handleThreadAction(action: string, threadId: string) {
 					<N8nIconButton
 						icon="plus"
 						variant="ghost"
-						size="medium"
+						size="small"
+						icon-size="large"
 						:aria-label="i18n.baseText('instanceAi.thread.new')"
 						data-test-id="instance-ai-new-thread-button"
 						@click="handleNewThread"
@@ -231,7 +233,7 @@ function handleThreadAction(action: string, threadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	padding: var(--spacing--xs) var(--spacing--3xs) var(--spacing--xs) var(--spacing--sm);
+	padding: var(--spacing--2xs) var(--spacing--3xs) var(--spacing--2xs) var(--spacing--sm);
 	min-height: 40px;
 }
 
