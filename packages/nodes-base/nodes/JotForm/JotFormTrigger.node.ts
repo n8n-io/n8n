@@ -20,14 +20,14 @@ interface IQuestionData {
 
 export class JotFormTrigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Jotform Trigger',
+		displayName: 'Jotform',
 		name: 'jotFormTrigger',
 		icon: { light: 'file:jotform.svg', dark: 'file:jotform.dark.svg' },
 		group: ['trigger'],
 		version: 1,
 		description: 'Handle Jotform events via webhooks',
 		defaults: {
-			name: 'Jotform Trigger',
+			name: 'Jotform',
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
