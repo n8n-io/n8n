@@ -197,6 +197,7 @@ export class McpApiHelper {
 				await wait(notFoundRetryDelayMs);
 			}
 		}
+		// unreachable: the catch above rethrows on the final attempt. Here to satisfy TS.
 		throw new Error('SSE setup: retry loop exhausted');
 	}
 
