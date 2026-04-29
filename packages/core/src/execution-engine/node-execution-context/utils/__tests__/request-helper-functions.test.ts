@@ -1157,7 +1157,7 @@ describe('Request Helper Functions', () => {
 		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
 		// mockDeep auto-creates a proxy for module-augmented keys; the OAuth2
 		// flow tests must opt out of the JWE proxy unless they wire one in.
-		(mockAdditionalData as any)['oauth-jwe'] = undefined;
+		(mockAdditionalData as Record<string, unknown>)['oauth-jwe'] = undefined;
 		const mockCredentialData = {
 			clientId: 'test-client-id',
 			clientSecret: 'test-client-secret',
@@ -1453,7 +1453,7 @@ describe('Request Helper Functions', () => {
 		const mockThis = mockDeep<IAllExecuteFunctions>();
 		const mockNode = mockDeep<INode>();
 		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
-		(mockAdditionalData as any)['oauth-jwe'] = undefined;
+		(mockAdditionalData as Record<string, unknown>)['oauth-jwe'] = undefined;
 
 		const makeCredentialData = (overrides?: Record<string, unknown>) => ({
 			clientId: 'test-client-id',
@@ -1647,7 +1647,7 @@ describe('Request Helper Functions', () => {
 		const mockThis = mockDeep<IAllExecuteFunctions>();
 		const mockNode = mockDeep<INode>();
 		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
-		(mockAdditionalData as any)['oauth-jwe'] = undefined;
+		(mockAdditionalData as Record<string, unknown>)['oauth-jwe'] = undefined;
 
 		beforeEach(() => {
 			nock.cleanAll();
