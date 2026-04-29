@@ -13,8 +13,13 @@ import {
 	coerceToBoolean,
 	toRfc3339,
 	addFieldsToBody,
+	applyCustomFieldsMapping,
 } from '../../helpers';
-import { customFieldsCollection, rawCustomFieldKeysOption } from '../common.description';
+import {
+	customFieldsCollection,
+	customFieldsMappingProperty,
+	rawCustomFieldKeysOption,
+} from '../common.description';
 
 const properties: INodeProperties[] = [
 	{
@@ -125,6 +130,7 @@ const properties: INodeProperties[] = [
 			customFieldsCollection,
 		],
 	},
+	customFieldsMappingProperty,
 	rawCustomFieldKeysOption,
 ];
 
@@ -154,6 +160,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const updateFields = this.getNodeParameter('updateFields', i);
 			addFieldsToBody(body, updateFields);
+
+			const mapping = this.getNodeParameter('customFieldsMapping', i, {}) as {
+				value?: IDataObject | null;
+			};
+			applyCustomFieldsMapping(body, mapping?.value);
 
 			// Coerce done to boolean for v2 API
 			if (body.done !== undefined) {

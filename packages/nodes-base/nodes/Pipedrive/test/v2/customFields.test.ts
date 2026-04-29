@@ -1,6 +1,10 @@
 import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import { encodeCustomFieldsV2, resolveCustomFieldsV2 } from '../../v2/helpers/customFields';
+import {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	applyCustomFieldsMapping,
+} from '../../v2/helpers/customFields';
 import { addFieldsToBody } from '../../v2/helpers/fields';
 import { coerceToBoolean, coerceToNumber, toRfc3339 } from '../../v2/helpers/typeCoercion';
 import type { ICustomProperties } from '../../v2/transport';
@@ -386,6 +390,41 @@ describe('Pipedrive v2 Type Coercion', () => {
 		});
 		it('should pass through date-only format unchanged', () => {
 			expect(toRfc3339('2024-01-15')).toBe('2024-01-15');
+		});
+	});
+
+	describe('applyCustomFieldsMapping', () => {
+		it('is a no-op when mappingValue is null/undefined/empty', () => {
+			const a: IDataObject = { foo: 1 };
+			applyCustomFieldsMapping(a, null);
+			applyCustomFieldsMapping(a, undefined);
+			applyCustomFieldsMapping(a, {});
+			expect(a).toEqual({ foo: 1 });
+		});
+
+		it('initialises body.custom_fields when missing', () => {
+			const body: IDataObject = {};
+			applyCustomFieldsMapping(body, { abc123_text: 'Hello' });
+			expect(body.custom_fields).toEqual({ abc123_text: 'Hello' });
+		});
+
+		it('mapper values override legacy custom_fields entries on key conflict', () => {
+			const body: IDataObject = {
+				custom_fields: { abc123_text: 'from-legacy' },
+			};
+			applyCustomFieldsMapping(body, { abc123_text: 'from-mapper' });
+			expect(body.custom_fields).toEqual({ abc123_text: 'from-mapper' });
+		});
+
+		it('merges non-conflicting keys from both sources', () => {
+			const body: IDataObject = {
+				custom_fields: { abc123_text: 'A' },
+			};
+			applyCustomFieldsMapping(body, { def456_enum: 20 });
+			expect(body.custom_fields).toEqual({
+				abc123_text: 'A',
+				def456_enum: 20,
+			});
 		});
 	});
 });

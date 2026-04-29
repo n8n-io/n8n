@@ -1,7 +1,35 @@
 import type { INodeProperties } from 'n8n-workflow';
 
-export const customFieldsCollection: INodeProperties = {
+export const customFieldsMappingProperty: INodeProperties = {
 	displayName: 'Custom Fields',
+	name: 'customFieldsMapping',
+	type: 'resourceMapper',
+	default: {
+		mappingMode: 'defineBelow',
+		value: null,
+	},
+	noDataExpression: true,
+	description:
+		'Pick custom fields loaded from Pipedrive and enter values with the right input type for each field',
+	typeOptions: {
+		loadOptionsDependsOn: ['resource'],
+		resourceMapper: {
+			resourceMapperMethod: 'getCustomFieldsMappingColumns',
+			mode: 'add',
+			valuesLabel: 'Custom Fields to Send',
+			fieldWords: {
+				singular: 'custom field',
+				plural: 'custom fields',
+			},
+			addAllFields: false,
+			multiKeyMatch: false,
+			supportAutoMap: false,
+		},
+	},
+};
+
+export const customFieldsCollection: INodeProperties = {
+	displayName: 'Custom Fields (Manual Entry)',
 	name: 'customFields',
 	type: 'fixedCollection',
 	typeOptions: {
@@ -9,6 +37,8 @@ export const customFieldsCollection: INodeProperties = {
 	},
 	default: {},
 	placeholder: 'Add Custom Field',
+	description:
+		'Reference custom fields by display name or hex field_code. Use this for fields not yet visible in the picker above (e.g. just-created fields). If the same field appears in both, the picker takes precedence.',
 	options: [
 		{
 			displayName: 'Property',

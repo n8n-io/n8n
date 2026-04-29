@@ -1,4 +1,4 @@
-import type { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import type { FieldType, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import type { ICustomProperties, ICustomInterface } from '../transport';
 
@@ -149,4 +149,47 @@ export function resolveCustomFieldsV2(
 
 	json.custom_fields = resolved;
 	item.json = json;
+}
+
+const PIPEDRIVE_FIELD_TYPE_TO_N8N: Record<string, FieldType> = {
+	varchar: 'string',
+	varchar_auto: 'string',
+	text: 'string',
+	phone: 'string',
+	address: 'string',
+	int: 'number',
+	double: 'number',
+	monetary: 'number',
+	boolean: 'boolean',
+	date: 'dateTime',
+	daterange: 'dateTime',
+	time: 'time',
+	timerange: 'time',
+	enum: 'options',
+	visible_to: 'options',
+	set: 'string',
+	org: 'number',
+	people: 'number',
+	person: 'number',
+	user: 'number',
+	deal: 'number',
+	product: 'number',
+};
+
+export function mapPipedriveFieldType(fieldType: string | undefined): FieldType {
+	if (!fieldType) return 'string';
+	return PIPEDRIVE_FIELD_TYPE_TO_N8N[fieldType] ?? 'string';
+}
+
+export function applyCustomFieldsMapping(
+	body: IDataObject,
+	mappingValue: IDataObject | null | undefined,
+): void {
+	if (!mappingValue || typeof mappingValue !== 'object') return;
+	if (Object.keys(mappingValue).length === 0) return;
+
+	body.custom_fields = {
+		...((body.custom_fields as IDataObject) ?? {}),
+		...mappingValue,
+	};
 }

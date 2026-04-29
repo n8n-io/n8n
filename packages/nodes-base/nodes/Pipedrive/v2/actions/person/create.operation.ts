@@ -7,9 +7,15 @@ import type {
 
 import { updateDisplayOptions } from '../../../../../utils/utilities';
 import { pipedriveApiRequest, pipedriveGetCustomProperties } from '../../transport';
-import { encodeCustomFieldsV2, resolveCustomFieldsV2, addFieldsToBody } from '../../helpers';
+import {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	addFieldsToBody,
+	applyCustomFieldsMapping,
+} from '../../helpers';
 import {
 	customFieldsCollection,
+	customFieldsMappingProperty,
 	rawCustomFieldKeysOption,
 	visibleToOption,
 } from '../common.description';
@@ -149,6 +155,7 @@ const properties: INodeProperties[] = [
 			customFieldsCollection,
 		],
 	},
+	customFieldsMappingProperty,
 	rawCustomFieldKeysOption,
 ];
 
@@ -179,6 +186,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 			addFieldsToBody(body, additionalFields);
+
+			const mapping = this.getNodeParameter('customFieldsMapping', i, {}) as {
+				value?: IDataObject | null;
+			};
+			applyCustomFieldsMapping(body, mapping?.value);
 
 			// Transform fixedCollection emails to API array format
 			if (body.emails && (body.emails as IDataObject).emailProperties) {

@@ -1,4 +1,9 @@
-export { encodeCustomFieldsV2, resolveCustomFieldsV2 } from './customFields';
+export {
+	encodeCustomFieldsV2,
+	resolveCustomFieldsV2,
+	mapPipedriveFieldType,
+	applyCustomFieldsMapping,
+} from './customFields';
 
 export { coerceToBoolean, coerceToNumber, toRfc3339 } from './typeCoercion';
 
