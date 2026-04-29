@@ -388,7 +388,7 @@ export class ActiveWorkflowManager {
 								deduplicationKey: error.deduplicationKey,
 							};
 							this.logger.warn('Scheduled execution skipped: duplicate deduplication key', context);
-							this.errorReporter.warn(error, { extra: context });
+							this.errorReporter.warn(error, { extra: context, shouldBeLogged: false });
 							return undefined;
 						}
 						throw error;

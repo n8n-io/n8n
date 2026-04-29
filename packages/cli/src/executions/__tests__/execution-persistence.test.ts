@@ -1,7 +1,7 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import type { ExecutionsConfig } from '@n8n/config';
+import type { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import {
 	ExecutionData,
 	ExecutionEntity,
@@ -56,13 +56,17 @@ describe('ExecutionPersistence', () => {
 	const createMockTx = (tx: EntityManager) =>
 		jest.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
-	const createPersistenceService = (modeTag: 'db' | 'fs') =>
+	const createPersistenceService = (
+		modeTag: 'db' | 'fs',
+		dbType: DatabaseConfig['type'] = 'postgresdb',
+	) =>
 		new ExecutionPersistence(
 			executionRepository,
 			binaryDataService,
 			fsStore,
 			mock<StorageConfig>({ modeTag }),
 			executionsConfig,
+			mock<DatabaseConfig>({ type: dbType }),
 		);
 
 	describe('create', () => {
@@ -229,6 +233,39 @@ describe('ExecutionPersistence', () => {
 					otherUniqueViolation,
 				);
 			});
+
+			it.each([
+				{
+					name: 'extended code',
+					code: 'SQLITE_CONSTRAINT_UNIQUE',
+					message: 'UNIQUE constraint failed: execution_entity.deduplicationKey',
+				},
+				{
+					name: 'base code',
+					code: 'SQLITE_CONSTRAINT',
+					message: 'SQLITE_CONSTRAINT: UNIQUE constraint failed: execution_entity.deduplicationKey',
+				},
+			])(
+				'converts SQLite unique-violation ($name) into DuplicateExecutionError',
+				async ({ code, message }) => {
+					const sqlitePersistence = createPersistenceService('db', 'sqlite');
+					const sqliteError = new QueryFailedError(
+						'Query',
+						[],
+						Object.assign(new Error(message), { code }),
+					);
+					executionRepository.manager.transaction = jest.fn().mockRejectedValue(sqliteError);
+
+					const payloadWithKey: CreateExecutionPayload = {
+						...createPayload,
+						deduplicationKey: 'wf-1:node-1:1700000000000',
+					};
+
+					await expect(sqlitePersistence.create(payloadWithKey)).rejects.toBeInstanceOf(
+						DuplicateExecutionError,
+					);
+				},
+			);
 
 			it('returns executionId on happy path when deduplicationKey is provided', async () => {
 				const mockTx = createMockTransaction();
