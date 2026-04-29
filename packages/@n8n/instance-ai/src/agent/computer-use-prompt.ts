@@ -23,6 +23,18 @@ This instance support "Computer Use", which allows connecting to user's computer
 
 Users have control over this functionality and can enable only the tools they want to provide.
 Users can reconnect Computer Use with different set of functionality, so always rely on Computer Use status and the available tools and not the conversation history.
+
+### When to suggest or use Computer Use
+
+Proactively suggest Computer Use (or use it directly if connected) when you detect these signals:
+
+- **Credential / OAuth setup** — user needs to set up, create, configure, or connect credentials for any service that requires OAuth or API key generation through a web portal (Slack, Google, Microsoft, HubSpot, Notion, Stripe, Twilio, etc.) → *browser*
+- **Local file as context** — user mentions a file, PDF, CSV, spec, or requirements doc they want to use as reference while building a workflow → *filesystem*
+- **Documentation / output to files** — user asks to document, write up, export, or save a workflow description, runbook, or handover doc → *filesystem*
+- **Authenticated web research** — user wants to check something on a site they're logged into, or gather data from a web-based tool → *browser*
+- **Form / frontend testing** — user is building n8n forms or a web app with n8n as backend and wants end-to-end testing → *browser*
+- **Shell / environment** — user asks to run a command (curl, CLI, DB query), automate something locally, or debug connectivity → *shell*
+- **Platform migration** — user wants to migrate from Make, Zapier, or another automation platform, or replicate an existing workflow from it → *browser* + *filesystem*
 `);
 
 		promptParts.push(`
@@ -66,7 +78,6 @@ After the user confirms they're done, take a snapshot to verify before continuin
 If a browser_* tool call fails because the browser is unreachable (e.g. connection lost, extension not responding), ask the user to verify the **n8n Browser Use** Chrome extension is installed and connected. If needed, they can reinstall from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);
 					} else {
 						promptParts.push(`
-
 ### Browser Automation (Disabled in Computer Use)
 
 Browser tools are not enabled in the user's Computer Use configuration. If the user asks for browser automation, tell them to (1) enable browser tools in their Computer Use config, and (2) install the n8n Browser Use Chrome extension from the Chrome Web Store: ${BROWSER_USE_EXTENSION_URL}`);

@@ -24,7 +24,7 @@ describe('getComputerUsePrompt', () => {
 		it('includes the Computer Use intro section', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
-				localGateway: { status: 'disabled', capabilities: [] },
+				localGateway: { status: 'disabled' },
 			});
 
 			expect(result).toContain('## Computer Use');
@@ -33,7 +33,7 @@ describe('getComputerUsePrompt', () => {
 		it('tells the agent not to use Computer Use tools', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
-				localGateway: { status: 'disabled', capabilities: [] },
+				localGateway: { status: 'disabled' },
 			});
 
 			expect(result).toContain('Do NOT attempt to use Computer Use tools');
@@ -42,7 +42,7 @@ describe('getComputerUsePrompt', () => {
 		it('provides UI setup instructions', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
-				localGateway: { status: 'disabled', capabilities: [] },
+				localGateway: { status: 'disabled' },
 			});
 
 			expect(result).toContain('Setup computer use');
@@ -53,7 +53,7 @@ describe('getComputerUsePrompt', () => {
 		it('includes the Computer Use intro section', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
-				localGateway: { status: 'disconnected', capabilities: [] },
+				localGateway: { status: 'disconnected' },
 			});
 
 			expect(result).toContain('## Computer Use');
@@ -62,7 +62,7 @@ describe('getComputerUsePrompt', () => {
 		it('tells the agent not to use Computer Use tools', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
-				localGateway: { status: 'disconnected', capabilities: [] },
+				localGateway: { status: 'disconnected' },
 			});
 
 			expect(result).toContain('Do NOT attempt to use Computer Use tools');
@@ -71,7 +71,7 @@ describe('getComputerUsePrompt', () => {
 		it('provides UI connection instructions', () => {
 			const result = getComputerUsePrompt({
 				browserAvailable: undefined,
-				localGateway: { status: 'disconnected', capabilities: [] },
+				localGateway: { status: 'disconnected' },
 			});
 
 			expect(result).toContain('"Connect"');
@@ -183,6 +183,65 @@ describe('getComputerUsePrompt', () => {
 
 			expect(result).toContain('Filesystem Exploration');
 			expect(result).toContain('Browser Automation rules');
+		});
+	});
+
+	describe('proactive suggestion guidance', () => {
+		it('is included for a connected gateway', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).toContain('When to suggest or use Computer Use');
+		});
+
+		it('is included for a disconnected gateway', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disconnected' },
+			});
+
+			expect(result).toContain('When to suggest or use Computer Use');
+		});
+
+		it('is included for a disabled (not set up) gateway', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disabled' },
+			});
+
+			expect(result).toContain('When to suggest or use Computer Use');
+		});
+
+		it('is absent when localGateway is undefined', () => {
+			const result = getComputerUsePrompt({ browserAvailable: undefined, localGateway: undefined });
+
+			expect(result).not.toContain('When to suggest or use Computer Use');
+		});
+
+		it('is absent when Computer Use is disabled globally', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disabledGlobally' },
+			});
+
+			expect(result).not.toContain('When to suggest or use Computer Use');
+		});
+
+		it('lists all 7 use-case categories', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: undefined,
+				localGateway: { status: 'disconnected' },
+			});
+
+			expect(result).toContain('Credential / OAuth setup');
+			expect(result).toContain('Local file as context');
+			expect(result).toContain('Documentation / output to files');
+			expect(result).toContain('Authenticated web research');
+			expect(result).toContain('Form / frontend testing');
+			expect(result).toContain('Shell / environment');
+			expect(result).toContain('Platform migration');
 		});
 	});
 });
