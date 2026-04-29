@@ -20,7 +20,6 @@ describe('TaskBrokerServer', () => {
 			mock(),
 			mock<GlobalConfig>({
 				taskRunners: { path: '/runners', authToken: 'token' },
-				endpoints: { health: '/health' },
 				sentry: { backendDsn: '' },
 			}),
 			authController,
