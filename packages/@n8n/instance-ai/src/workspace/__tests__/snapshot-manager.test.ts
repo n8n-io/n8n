@@ -39,9 +39,14 @@ const NOOP_LOGGER: Logger = {
 	debug: () => {},
 };
 
+interface CreateSnapshotParams {
+	name: string;
+	image: { dockerfile: string };
+}
+
 interface FakeSnapshotApi {
-	get: jest.Mock;
-	create: jest.Mock;
+	get: jest.Mock<Promise<{ name: string }>, [string]>;
+	create: jest.Mock<Promise<{ name: string }>, [CreateSnapshotParams, unknown?]>;
 }
 
 interface FakeDaytona {
@@ -51,8 +56,8 @@ interface FakeDaytona {
 function makeFakeDaytona(): FakeDaytona {
 	return {
 		snapshot: {
-			get: jest.fn(),
-			create: jest.fn(),
+			get: jest.fn<Promise<{ name: string }>, [string]>(),
+			create: jest.fn<Promise<{ name: string }>, [CreateSnapshotParams, unknown?]>(),
 		},
 	};
 }
@@ -224,7 +229,7 @@ describe('SnapshotManager.ensureSnapshot', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				error,
 				expect.objectContaining({
-					tags: expect.objectContaining({ component: 'snapshot-manager' }),
+					tags: expect.objectContaining({ component: 'snapshot-manager' }) as unknown,
 				}),
 			);
 		});

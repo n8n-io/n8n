@@ -2,8 +2,23 @@
 // end-to-end in Jest without touching real sandboxes, filesystems, or the
 // Mastra runtime.
 
-const daytonaCreateMock = jest.fn();
-const daytonaDeleteMock = jest.fn().mockResolvedValue(undefined);
+interface DaytonaCreateParams {
+	snapshot?: string;
+	image?: { dockerfile: string };
+	language?: string;
+	ephemeral?: boolean;
+	labels?: Record<string, string>;
+}
+
+interface DaytonaCreateOptions {
+	timeout?: number;
+}
+
+const daytonaCreateMock = jest.fn<
+	Promise<{ id: string }>,
+	[DaytonaCreateParams, DaytonaCreateOptions?]
+>();
+const daytonaDeleteMock = jest.fn<Promise<void>, [unknown]>().mockResolvedValue(undefined);
 
 jest.mock('@daytonaio/sdk', () => {
 	class Daytona {
@@ -123,11 +138,10 @@ jest.mock('../sandbox-fs', () => ({
 	}),
 }));
 
-import type { SandboxConfig } from '../create-workspace';
 import type { Logger } from '../../logger';
 import type { InstanceAiContext } from '../../types';
-
 import { BuilderSandboxFactory } from '../builder-sandbox-factory';
+import type { SandboxConfig } from '../create-workspace';
 import { SnapshotManager } from '../snapshot-manager';
 
 const NOOP_LOGGER: Logger = {
@@ -277,7 +291,7 @@ describe('BuilderSandboxFactory createDaytona error reporting', () => {
 				tags: expect.objectContaining({
 					component: 'builder-sandbox-factory',
 					strategy: 'snapshot',
-				}),
+				}) as unknown,
 			}),
 		);
 	});
@@ -302,7 +316,7 @@ describe('BuilderSandboxFactory createDaytona error reporting', () => {
 				tags: expect.objectContaining({
 					component: 'builder-sandbox-factory',
 					strategy: 'image',
-				}),
+				}) as unknown,
 			}),
 		);
 	});
@@ -322,12 +336,16 @@ describe('BuilderSandboxFactory createDaytona error reporting', () => {
 		expect(errorReporter.error).toHaveBeenNthCalledWith(
 			1,
 			snapshotError,
-			expect.objectContaining({ tags: expect.objectContaining({ strategy: 'snapshot' }) }),
+			expect.objectContaining({
+				tags: expect.objectContaining({ strategy: 'snapshot' }) as unknown,
+			}),
 		);
 		expect(errorReporter.error).toHaveBeenNthCalledWith(
 			2,
 			imageError,
-			expect.objectContaining({ tags: expect.objectContaining({ strategy: 'image' }) }),
+			expect.objectContaining({
+				tags: expect.objectContaining({ strategy: 'image' }) as unknown,
+			}),
 		);
 	});
 });
