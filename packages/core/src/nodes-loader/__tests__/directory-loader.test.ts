@@ -826,7 +826,7 @@ describe('DirectoryLoader', () => {
 
 			const nodeWithExprIcon = createNode('nodeWithExprIcon');
 			// Expression icons start with '=' per isExpression() check
-			nodeWithExprIcon.description.icon = '=file:{{$parameter.icon}}.svg';
+			nodeWithExprIcon.description.icon = '={{"file:" + $parameter.icon + ".svg"}}';
 			nodeWithExprIcon.description.iconBasePath = undefined;
 
 			jest.spyOn(classLoader, 'loadClassInIsolation').mockReturnValueOnce(nodeWithExprIcon);

@@ -139,6 +139,14 @@ describe('LoadNodesAndCredentials', () => {
 				expect(result).toBe(`${dirCustom}/icon.png`);
 			});
 
+			it('should resolve new relative-path custom icon URL correctly', () => {
+				const result = instanceCustom.resolveIcon(
+					packageNameCustom,
+					`${pathPrefixCustom}/node_modules/some-pkg/dist/nodes/MyNode/icon.svg`,
+				);
+				expect(result).toBe(`${dirCustom}/node_modules/some-pkg/dist/nodes/MyNode/icon.svg`);
+			});
+
 			it('should return file path if url contains "C:" with absolute custom windows file path', () => {
 				const winIconPath = `${dirCustomWin}/icon.png`;
 				const result = instanceCustomWin.resolveIcon(
