@@ -130,13 +130,13 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 
 	private afterGatewayPersistentFailure(): void {
 		this._lastError = 'Gateway authentication failed repeatedly';
-		void this.closeCurrentConnection({ preserveServerSession: true }).then(() => {
+		void this.closeCurrentConnection({ preserveServerSession: true }).finally(() => {
 			this.setStatus('error');
 		});
 	}
 
 	private afterGatewayDisconnected(): void {
-		void this.closeCurrentConnection({ preserveServerSession: true }).then(() => {
+		void this.closeCurrentConnection({ preserveServerSession: true }).finally(() => {
 			this.setStatus('disconnected');
 		});
 	}
