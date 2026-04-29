@@ -86,6 +86,12 @@ const {
 const initialized = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
+/**
+ * Bumped whenever the builder LLM persists a config change so child panels
+ * that fetch their own state (integrations, schedule trigger card) can
+ * refetch instead of staying out of sync until the user navigates away.
+ */
+const integrationsReloadToken = ref(0);
 const {
 	activeChatSessionId,
 	continueSessionId,
@@ -416,6 +422,7 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+	integrationsReloadToken.value += 1;
 	builderTelemetry.trackToolsAdded();
 }
 
