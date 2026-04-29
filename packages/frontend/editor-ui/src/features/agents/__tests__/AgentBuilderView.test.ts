@@ -530,7 +530,7 @@ describe('AgentBuilderView — three-column shell', () => {
 		await flushPromises();
 		expect(routerPush).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: 'AgentsListView',
+				name: 'ProjectAgents',
 				params: { projectId: 'p1' },
 			}),
 		);
