@@ -243,6 +243,7 @@ export class McpApiHelper {
 				},
 				(res) => {
 					if (res.statusCode === 404) {
+						// Drain the response so the socket is released back to the pool across retries.
 						res.resume();
 						clearTimeout(timeout);
 						reject(new SseNotFoundError(`SSE setup got 404 for ${path}`));
