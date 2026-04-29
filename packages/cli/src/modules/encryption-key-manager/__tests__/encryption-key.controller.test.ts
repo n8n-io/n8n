@@ -41,6 +41,7 @@ describe('EncryptionKeyController', () => {
 					algorithm: 'aes-256-cbc',
 					status: 'inactive',
 					createdAt: '2026-01-15T00:00:00.000Z',
+					updatedAt: '2026-01-15T00:00:00.000Z',
 				},
 				{
 					id: 'k2',
@@ -48,6 +49,7 @@ describe('EncryptionKeyController', () => {
 					algorithm: 'aes-256-gcm',
 					status: 'active',
 					createdAt: '2026-01-15T00:00:00.000Z',
+					updatedAt: '2026-01-15T00:00:00.000Z',
 				},
 			]);
 		});
@@ -114,6 +116,7 @@ describe('EncryptionKeyController', () => {
 				algorithm: 'aes-256-gcm',
 				status: 'active',
 				createdAt: '2026-01-15T00:00:00.000Z',
+				updatedAt: '2026-01-15T00:00:00.000Z',
 			});
 			expect(result).not.toHaveProperty('value');
 		});
