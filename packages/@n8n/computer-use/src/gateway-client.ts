@@ -101,6 +101,11 @@ export class GatewayClient {
 
 	constructor(private readonly options: GatewayClientOptions) {}
 
+	/** Returns the currently active gateway key (session key when available). */
+	getCurrentGatewayKey(): string {
+		return this.apiKey;
+	}
+
 	/** Return the active API key — session key if available, otherwise the original key. */
 	private get apiKey(): string {
 		return this.sessionKey ?? this.options.apiKey;

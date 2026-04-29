@@ -15,14 +15,14 @@
 			<div class="header">
 				<span class="header-title">n8n Gateway</span>
 				<div id="statusBadge" class="status-badge">
-					<span id="statusDot" class="status-dot stopped"></span>
-					<span id="statusText">Stopped</span>
+					<span id="statusDot" class="status-dot idle"></span>
+					<span id="statusText">Idle</span>
 				</div>
 			</div>
 
 			<div class="restart-notice" id="restartNotice" style="display: none">
 				<span class="restart-notice-icon">⚠</span>
-				<span>Saving will apply changes. Port and capability changes will restart the daemon.</span>
+				<span>Saving applies changes. Capability updates reconnect the gateway when active.</span>
 			</div>
 
 			<form class="form" id="settingsForm">
@@ -31,28 +31,25 @@
 					<div class="form-section-title">Connection</div>
 
 					<div class="form-row">
-						<label class="form-label" for="port">Port</label>
-						<input
-							class="form-input"
-							type="number"
-							id="port"
-							name="port"
-							min="1024"
-							max="65535"
-							placeholder="7655"
-						/>
+						<label class="form-label" for="instanceUrl">n8n URL</label>
+						<input class="form-input" type="text" id="instanceUrl" name="instanceUrl" />
 					</div>
 
-					<div class="form-row">
-						<label class="form-label">Allowed Origins</label>
-						<textarea
-							class="textarea"
-							id="allowedOrigins"
-							name="allowedOrigins"
-							rows="3"
-							placeholder="https://my-n8n.com&#10;https://another-n8n.example.com"
-						></textarea>
-						<div class="form-hint">URLs that can connect without confirmation (one per line)</div>
+					<div class="form-row" id="gatewayTokenRow">
+						<label class="form-label" for="gatewayKey">Gateway token</label>
+						<input
+							class="form-input"
+							type="password"
+							id="gatewayKey"
+							name="gatewayKey"
+							autocomplete="off"
+						/>
+						<div class="form-hint">One-time token from n8n</div>
+					</div>
+
+					<div class="inline-actions">
+						<button type="button" class="btn btn-secondary" id="connectBtn">Connect</button>
+						<button type="button" class="btn btn-secondary" id="disconnectBtn">Disconnect</button>
 					</div>
 				</div>
 

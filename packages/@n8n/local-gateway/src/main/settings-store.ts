@@ -10,20 +10,20 @@ import type { AppSettings } from '../shared/types';
 export type { AppSettings };
 
 const DEFAULTS: AppSettings = {
-	port: 7655,
+	instanceUrl: '',
 	filesystemDir: os.homedir(),
 	filesystemEnabled: true,
 	shellEnabled: false, // disabled by default for security
 	screenshotEnabled: true,
 	mouseKeyboardEnabled: true,
 	browserEnabled: true,
-	allowedOrigins: [],
 	logLevel: 'info',
 };
 
 /** Full shape of what's persisted — includes internal state not exposed as AppSettings. */
 interface StoredData extends AppSettings {
 	lastConnectedUrl: string | null;
+	reconnectKey: string | null;
 }
 
 export class SettingsStore {
@@ -32,20 +32,19 @@ export class SettingsStore {
 	constructor() {
 		this.store = new Store<StoredData>({
 			name: 'settings',
-			defaults: { ...DEFAULTS, lastConnectedUrl: null },
+			defaults: { ...DEFAULTS, lastConnectedUrl: null, reconnectKey: null },
 		});
 	}
 
 	get(): AppSettings {
 		return {
-			port: this.store.get('port'),
+			instanceUrl: this.store.get('instanceUrl'),
 			filesystemDir: this.store.get('filesystemDir'),
 			filesystemEnabled: this.store.get('filesystemEnabled'),
 			shellEnabled: this.store.get('shellEnabled'),
 			screenshotEnabled: this.store.get('screenshotEnabled'),
 			mouseKeyboardEnabled: this.store.get('mouseKeyboardEnabled'),
 			browserEnabled: this.store.get('browserEnabled'),
-			allowedOrigins: this.store.get('allowedOrigins'),
 			logLevel: this.store.get('logLevel'),
 		};
 	}
@@ -68,12 +67,37 @@ export class SettingsStore {
 		logger.debug('Last connected URL updated', { url });
 	}
 
+	getReconnectKey(): string | null {
+		return this.store.get('reconnectKey');
+	}
+
+	setReconnectKey(key: string | null): void {
+		this.store.set('reconnectKey', key);
+	}
+
+	/** Origin derived from the configured n8n URL for `GatewayConfig.allowedOrigins`. */
+	private allowedOriginsForN8nInstance(settings: AppSettings): string[] {
+		const fromSettings = settings.instanceUrl.trim();
+		const fromLast = this.getLastConnectedUrl()?.trim() ?? '';
+		const candidate = fromSettings.length > 0 ? fromSettings : fromLast.length > 0 ? fromLast : '';
+		if (candidate.length === 0) {
+			return ['https://*.app.n8n.cloud'];
+		}
+		try {
+			return [new URL(candidate).origin];
+		} catch {
+			logger.warn('Invalid n8n instance URL; using default allowedOrigins', {
+				url: candidate,
+			});
+			return ['https://*.app.n8n.cloud'];
+		}
+	}
+
 	toGatewayConfig(): GatewayConfig {
 		const s = this.get();
 		return {
 			logLevel: s.logLevel,
-			port: s.port,
-			allowedOrigins: s.allowedOrigins,
+			allowedOrigins: this.allowedOriginsForN8nInstance(s),
 			filesystem: { dir: s.filesystemDir },
 			computer: { shell: { timeout: 30_000 } },
 			browser: {
