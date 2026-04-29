@@ -78,16 +78,19 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 	const { fetchParentFolder } = useParentFolder();
 
 	function disposeCurrentWorkflowDocumentStore() {
-		if (currentWorkflowDocumentStore.value) {
-			const storeId = createWorkflowDocumentId(
-				currentWorkflowDocumentStore.value.workflowId,
-				currentWorkflowDocumentStore.value.workflowVersion,
-			);
-			disposeNDVStore(storeId);
-			disposeWorkflowDocumentStore(storeId);
-			currentWorkflowDocumentStore.value = null;
-			currentNDVStore.value = null;
+		const ndvStore = currentNDVStore.value;
+		const workflowDocumentStore = currentWorkflowDocumentStore.value;
+
+		if (ndvStore) {
+			disposeNDVStore(ndvStore);
 		}
+
+		if (workflowDocumentStore) {
+			disposeWorkflowDocumentStore(workflowDocumentStore);
+		}
+
+		currentWorkflowDocumentStore.value = null;
+		currentNDVStore.value = null;
 	}
 
 	const isNewWorkflowRoute = computed(() => route.query.new === 'true');

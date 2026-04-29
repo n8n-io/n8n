@@ -18,7 +18,7 @@ import {
 import { STORES } from '@n8n/stores';
 import type { INodeIssues } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { defineStore, getActivePinia, type Pinia, type StoreGeneric } from 'pinia';
+import { defineStore, getActivePinia, type Pinia } from 'pinia';
 import { v4 as uuid } from 'uuid';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
@@ -28,10 +28,6 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
-
-type PiniaInternal = ReturnType<typeof getActivePinia> & {
-	_s: Map<string, StoreGeneric>;
-};
 
 export type NDVStoreId = WorkflowDocumentId;
 
@@ -484,18 +480,11 @@ export function useNDVStore(idOrPinia?: NDVStoreId | Pinia): NDVStore {
 	return defineNDVStore(storeId, !isExplicitStoreId)(pinia);
 }
 
-export function disposeNDVStore(id: NDVStoreId) {
-	const pinia = getActivePinia() as PiniaInternal;
-	if (!pinia) return;
+export function disposeNDVStore(store: NDVStore) {
+	const pinia = getActivePinia();
+	store.$dispose();
 
-	const storeId = getNDVStoreId(id);
-
-	if (pinia.state.value[storeId]) {
-		const store = pinia._s.get(storeId);
-		if (store) {
-			store.$dispose();
-		}
-
-		delete pinia.state.value[storeId];
+	if (pinia) {
+		delete pinia.state.value[store.$id];
 	}
 }
