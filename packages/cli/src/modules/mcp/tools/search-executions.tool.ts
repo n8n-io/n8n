@@ -129,18 +129,23 @@ export const createSearchExecutionsTool = (
 
 			return {
 				structuredContent: payload,
-				content: [{ type: 'text', text: jsonStringify(payload) }],
+				content: [{ type: 'text', text: JSON.stringify(payload) }],
 			};
-		} catch (er) {
-			const error = ensureError(er);
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : String(error);
 
 			telemetryPayload.results = {
 				success: false,
-				error: error.message ?? String(error),
+				error: errorMessage,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			throw error;
+			const output = { data: [], count: 0, estimated: false, error: errorMessage };
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+				isError: true,
+			};
 		}
 	},
 });
