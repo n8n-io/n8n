@@ -136,10 +136,10 @@ describe('WorkflowShareModal.ee.vue', () => {
 		// Set route query to indicate new workflow
 		mockRouteQuery.new = 'true';
 
-		const homeProject = {
+		const homeProject: ProjectSharingData = {
 			id: 'personal-project-id',
 			name: 'Personal Project',
-			type: ProjectTypes.Personal as const,
+			type: ProjectTypes.Personal,
 			icon: null,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
@@ -201,10 +201,10 @@ describe('WorkflowShareModal.ee.vue', () => {
 				type: ProjectTypes.Personal,
 			});
 
-			const homeProject = {
+			const homeProject: ProjectSharingData = {
 				id: 'personal-project-id',
 				name: 'Personal Project',
-				type: ProjectTypes.Personal as const,
+				type: ProjectTypes.Personal,
 				icon: null,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
