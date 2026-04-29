@@ -87,7 +87,7 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -748,6 +748,10 @@ function onOpenAddSkillModal() {
 						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
 					});
 					selectedSection.value = `skills.${id}`;
+					showMessage({
+						title: locale.baseText('agents.builder.skills.added'),
+						type: 'success',
+					});
 				})();
 			},
 		},

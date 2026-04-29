@@ -9,6 +9,7 @@ const routerReplace = vi.fn();
 const routeQuery: Record<string, string | undefined> = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
+const showMessageMock = vi.fn();
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, replace: routerReplace }),
 	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: routeQuery }),
@@ -45,7 +46,7 @@ vi.mock('@/app/composables/useMessage', () => ({
 }));
 
 vi.mock('@/app/composables/useToast', () => ({
-	useToast: () => ({ showError: vi.fn() }),
+	useToast: () => ({ showError: vi.fn(), showMessage: showMessageMock }),
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
@@ -698,6 +699,10 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
 		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'summarize_meetings' }]);
 		expect(wrapper.findComponent({ name: 'AgentSkillViewer' }).props('skill')).toEqual(skill);
+		expect(showMessageMock).toHaveBeenCalledWith({
+			title: 'agents.builder.skills.added',
+			type: 'success',
+		});
 	});
 
 	it('autosaves skill detail edits from the detail view', async () => {

@@ -5786,6 +5786,7 @@
 	"agents.builder.skills.create.cancel": "Cancel",
 	"agents.builder.skills.create.save": "Save skill",
 	"agents.builder.skills.create.error": "Could not create skill",
+	"agents.builder.skills.added": "Skill added",
 	"agents.builder.skills.validation.nameRequired": "Enter a title.",
 	"agents.builder.skills.validation.nameMaxLength": "Title must be 128 characters or fewer.",
 	"agents.builder.skills.validation.descriptionRequired": "Enter a description.",
