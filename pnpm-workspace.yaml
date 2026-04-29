@@ -96,7 +96,7 @@ catalog:
   tsdown: ^0.16.5
   tsx: ^4.19.3
   typescript: 6.0.2
-  uuid: 10.0.0
+  uuid: 14.0.0
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
   vitest: ^4.1.1
@@ -184,3 +184,5 @@ minimumReleaseAgeExclude:
   - follow-redirects
   # Renovate security update: zod@3.25.76
   - zod@3.25.76
+  # Renovate security update: uuid@14.0.0
+  - uuid@14.0.0

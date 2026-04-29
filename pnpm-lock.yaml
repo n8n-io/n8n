@@ -220,8 +220,8 @@ catalogs:
       specifier: ^4.19.3
       version: 4.19.3
     uuid:
-      specifier: 10.0.0
-      version: 10.0.0
+      specifier: 14.0.0
+      version: 14.0.0
     vite:
       specifier: ^8.0.2
       version: 8.0.2
@@ -915,7 +915,7 @@ importers:
         version: 0.2.2
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1266,7 +1266,7 @@ importers:
         version: 0.2.2
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       xss:
         specifier: 'catalog:'
         version: 1.0.15
@@ -2442,7 +2442,7 @@ importers:
         version: link:../../workflow
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       zod:
         specifier: 3.25.67
         version: 3.25.67
@@ -2785,7 +2785,7 @@ importers:
         version: 7.24.6
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       validator:
         specifier: 13.15.26
         version: 13.15.26
@@ -3023,7 +3023,7 @@ importers:
         version: 1.15.0
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       winston:
         specifier: 3.14.2
         version: 3.14.2
@@ -3115,7 +3115,7 @@ importers:
         version: 4.0.1
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       vue:
         specifier: catalog:frontend
         version: 3.5.26(typescript@6.0.2)
@@ -3838,7 +3838,7 @@ importers:
         version: 6.0.2
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       v-code-diff:
         specifier: ^1.13.1
         version: 1.13.1(patch_hash=21588de80e591bbc1e5a068d9bce311db5254686443652945d2c7887fdafe9d9)(vue@3.5.26(typescript@6.0.2))
@@ -4257,7 +4257,7 @@ importers:
         version: 1.2.2(date-fns@2.30.0)(lodash@4.18.1)(zod@3.25.67)
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       vm2:
         specifier: 'catalog:'
         version: 3.10.5
@@ -4640,7 +4640,7 @@ importers:
         version: 2.3.5
       uuid:
         specifier: 'catalog:'
-        version: 10.0.0
+        version: 14.0.0
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
@@ -21401,14 +21401,6 @@ packages:
   unique-slug@2.0.2:
     resolution: {integrity: sha512-zoWr9ObaxALD3DOPfjPSqxt4fnZiWblxHIgeWqW8x7UqDzEtHEQLzji2cuJYQFCU6KmoJikOYAZlrTHHebjx2w==}
 
-  unique-slug@3.0.0:
-    resolution: {integrity: sha512-8EyMynh679x/0gqE9fT9oilG+qEt+ibFyqjuVTsZn1+CMxH+XLlpvr2UZx4nVcCwTpx81nICr2JQFkM+HPLq4w==}
-    engines: {node: ^12.13.0 || ^14.15.0 || >=16.0.0}
-
-  unique-slug@5.0.0:
-    resolution: {integrity: sha512-9OdaqO5kwqR+1kVgHAhsp5vPNU0hnxRa26rBFNfNgM7M6pNtgzeBn3s/xbyCQL3dcjzOatcef6UUHpB/6MaETg==}
-    engines: {node: ^18.17.0 || >=20.5.0}
-
   unist-util-is@6.0.1:
     resolution: {integrity: sha512-LsiILbtBETkDz8I9p1dQ0uyRUWuaQzd/cuEeS1hoRSyW5E5XGmTzlwY1OrNzzakGowI9Dr/I8HVaw4hTtnxy8g==}
 
@@ -21420,6 +21412,7 @@ packages:
 
   unist-util-visit@5.1.0:
     resolution: {integrity: sha512-m+vIdyeCOpdr/QeQCu2EzxX/ohgS8KbnPDgFni4dQsfSCtpz8UqDyY5GjRru8PDKuYn7Fq19j1CQ+nJSsGKOzg==}
+
   universal-user-agent@6.0.1:
     resolution: {integrity: sha512-yCzhz6FN2wU1NiiQRogkTQszlQSlpWaw8SvVegAc+bDxbzHgh1vX8uIe8OYyMH6DwH+sdTJsgMl36+mSMdRJIQ==}
 
@@ -21609,6 +21602,10 @@ packages:
 
   uuid@13.0.0:
     resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
+    hasBin: true
+
+  uuid@14.0.0:
+    resolution: {integrity: sha512-Qo+uWgilfSmAhXCMav1uYFynlQO7fMFiMVZsQqZRMIXp0O7rR7qjkj+cPvBHLgBqi960QCoo/PH2/6ZtVqKvrg==}
     hasBin: true
 
   uuid@8.3.2:
@@ -44511,14 +44508,6 @@ snapshots:
       imurmurhash: 0.1.4
     optional: true
 
-  unique-slug@3.0.0:
-    dependencies:
-      imurmurhash: 0.1.4
-
-  unique-slug@5.0.0:
-    dependencies:
-      imurmurhash: 0.1.4
-
   unist-util-is@6.0.1:
     dependencies:
       '@types/unist': 3.0.3
@@ -44537,6 +44526,7 @@ snapshots:
       '@types/unist': 3.0.3
       unist-util-is: 6.0.1
       unist-util-visit-parents: 6.0.2
+
   universal-user-agent@6.0.1: {}
 
   universalify@0.1.2: {}
@@ -44742,6 +44732,8 @@ snapshots:
   uuid@11.1.0: {}
 
   uuid@13.0.0: {}
+
+  uuid@14.0.0: {}
 
   uuid@8.3.2: {}
 
