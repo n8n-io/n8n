@@ -250,4 +250,30 @@ describe('useExecutionDebugging()', () => {
 
 		expect(uiStore.markStateDirty).toHaveBeenCalledTimes(1);
 	});
+
+	it('should not mark workflow state dirty when nothing is pinned or unpinned', async () => {
+		const mockExecution = {
+			data: {
+				resultData: {
+					runData: {
+						RenamedNode: [
+							{
+								data: {},
+							},
+						],
+					},
+				},
+			},
+		} as unknown as IExecutionResponse;
+
+		const workflowStore = mockedStore(useWorkflowsStore);
+		const uiStore = mockedStore(useUIStore);
+		mockWorkflowDocumentStore.getNodes.mockReturnValue([{ name: 'CurrentNode' }] as INodeUi[]);
+		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
+
+		await executionDebugging.applyExecutionData('1');
+
+		expect(mockWorkflowDocumentStore.pinNodeData).not.toHaveBeenCalled();
+		expect(uiStore.markStateDirty).not.toHaveBeenCalled();
+	});
 });

@@ -581,6 +581,27 @@ function extractNodesFromTarget(target: unknown): Array<NodeInstance<string, str
 		return nodes;
 	}
 
+	// Handle SplitInBatchesBuilder (fluent API) - the sibNode plus any recorded
+	// done/each branch targets. Recurses so nested builders inside either branch
+	// are collected too.
+	if (isSplitInBatchesBuilder(target)) {
+		const builder = extractSplitInBatchesBuilder(target);
+		const nodes: Array<NodeInstance<string, string, unknown>> = [builder.sibNode];
+		for (const doneTarget of builder._doneBatches) {
+			nodes.push(...extractNodesFromTarget(doneTarget));
+		}
+		for (const eachTarget of builder._eachBatches) {
+			nodes.push(...extractNodesFromTarget(eachTarget));
+		}
+		if (builder._doneTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._doneTarget));
+		}
+		if (builder._eachTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._eachTarget));
+		}
+		return nodes;
+	}
+
 	// Check if it's a node-like object with type, version, config
 	if (
 		target !== null &&

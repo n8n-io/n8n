@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
-import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import { ElCheckbox } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
@@ -186,9 +186,15 @@ onMounted(() => {
 				<div :class="$style.footer">
 					<N8nText size="small" color="text-light" :class="$style.disclaimer">
 						{{ i18n.baseText('instanceAi.welcomeModal.disclaimer') }}
-						<span :class="$style.readMore">{{
-							i18n.baseText('instanceAi.welcomeModal.readMore')
-						}}</span>
+						<N8nLink
+							href="https://n8n.io/legal/ai-terms/"
+							target="_blank"
+							theme="text"
+							size="small"
+							:underline="true"
+							:class="$style.readMore"
+							>{{ i18n.baseText('instanceAi.welcomeModal.readMore') }}</N8nLink
+						>.
 					</N8nText>
 					<N8nButton
 						variant="solid"
@@ -396,7 +402,11 @@ onMounted(() => {
 }
 
 .readMore {
-	text-decoration: underline;
+	span {
+		&:hover {
+			color: var(--color--text);
+		}
+	}
 }
 
 .continueButton {

@@ -1,5 +1,6 @@
 import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
+import oxlint from 'eslint-plugin-oxlint';
 
 export default defineConfig(
 	frontendConfig,
@@ -179,4 +180,5 @@ export default defineConfig(
 			'no-restricted-syntax': 'off',
 		},
 	},
+	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

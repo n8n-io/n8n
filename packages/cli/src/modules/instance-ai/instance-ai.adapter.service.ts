@@ -972,7 +972,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: credentialsService.decrypt(credential, true),
+					data: await credentialsService.decrypt(credential, true),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
@@ -1136,7 +1136,7 @@ export class InstanceAiAdapterService {
 					// Use redacted decryption first — accountIdentifier is not a
 					// password field so it survives redaction. This avoids exposing
 					// the full secret payload (tokens, keys) in memory.
-					const redacted = credentialsService.decrypt(credential, false);
+					const redacted = await credentialsService.decrypt(credential, false);
 
 					if (typeof redacted.accountIdentifier === 'string' && redacted.accountIdentifier) {
 						return { accountIdentifier: mask(redacted.accountIdentifier) };
@@ -1151,7 +1151,7 @@ export class InstanceAiAdapterService {
 
 					// Fallback for legacy credentials: oauthTokenData is blanked by
 					// redaction, so we need unredacted access here only.
-					const raw = credentialsService.decrypt(credential, true);
+					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
 						const { OauthService } = await import('@/oauth/oauth.service');
@@ -1177,24 +1177,65 @@ export class InstanceAiAdapterService {
 
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
-		// Check scope for a data table and return its projectId for downstream service calls
-		const resolveProjectIdForTable = async (scopes: Scope[], dataTableId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
-			if (!allowed) {
+		const logger = this.logger;
+
+		/**
+		 * Resolve a data-table identifier (UUID or name) to a concrete row the
+		 * caller can access. Returns the resolved `id`, `name`, and `projectId`.
+		 * Throws on not-found, ambiguous-name (when multiple accessible projects
+		 * share the name and no `projectId` disambiguator was given), or
+		 * UUID+projectId mismatch (when both are provided but the UUID's actual
+		 * project differs from the one passed).
+		 */
+		const resolveAccessibleTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		): Promise<DataTableRecord> => {
+			const projectIdFilter = disambiguator?.projectId;
+			const result = await resolveDataTableByIdOrName(dataTableRepository, logger, dataTableId, {
+				projectIdFilter,
+				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
+			});
+			if (result.kind === 'miss') {
 				throw new Error(`Data table "${dataTableId}" not found`);
 			}
-			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
-			return table.projectId;
+			if (result.kind === 'ambiguous') {
+				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
+				throw new Error(
+					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
+						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
+				);
+			}
+			// UUID + projectId mismatch: the id hit resolved, but the caller's
+			// disambiguator points at a different project. Never silently drop
+			// the projectId — return mismatch so the caller fixes the call.
+			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
+				throw new Error(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				);
+			}
+			return result.table;
 		};
 
-		// Like resolveProjectIdForTable but also returns the table name for artifact display
-		const resolveTableMeta = async (scopes: Scope[], dataTableId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
-			if (!allowed) {
-				throw new Error(`Data table "${dataTableId}" not found`);
-			}
-			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
-			return { projectId: table.projectId, tableName: table.name };
+		// Check scope and return projectId + resolved UUID for downstream service calls
+		const resolveProjectIdForTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
+			return { projectId: table.projectId, resolvedId: table.id };
+		};
+
+		// Like resolveProjectIdForTable but also returns the table name
+		const resolveTableMeta = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
+			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
 		return {
@@ -1231,15 +1272,23 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async delete(dataTableId) {
+			async delete(dataTableId, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:delete'], dataTableId);
-				await dataTableService.deleteDataTable(dataTableId, projectId);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:delete'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteDataTable(resolvedId, projectId);
 			},
 
-			async getSchema(dataTableId) {
-				const projectId = await resolveProjectIdForTable(['dataTable:read'], dataTableId);
-				const columns = await dataTableService.getColumns(dataTableId, projectId);
+			async getSchema(dataTableId, options) {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:read'],
+					dataTableId,
+					options,
+				);
+				const columns = await dataTableService.getColumns(resolvedId, projectId);
 				return columns.map(
 					(c, index): DataTableColumnInfo => ({
 						id: c.id,
@@ -1250,10 +1299,14 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async addColumn(dataTableId, column) {
+			async addColumn(dataTableId, column, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				const result = await dataTableService.addColumn(dataTableId, projectId, column);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				const result = await dataTableService.addColumn(resolvedId, projectId, column);
 				return {
 					id: result.id,
 					name: result.name,
@@ -1262,84 +1315,99 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async deleteColumn(dataTableId, columnId) {
+			async deleteColumn(dataTableId, columnId, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.deleteColumn(dataTableId, projectId, columnId);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteColumn(resolvedId, projectId, columnId);
 			},
 
-			async renameColumn(dataTableId, columnId, newName) {
+			async renameColumn(dataTableId, columnId, newName, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.renameColumn(dataTableId, projectId, columnId, {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.renameColumn(resolvedId, projectId, columnId, {
 					name: newName,
 				});
 			},
 
 			async queryRows(dataTableId, options) {
-				const projectId = await resolveProjectIdForTable(['dataTable:readRow'], dataTableId);
-				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:readRow'],
+					dataTableId,
+					options,
+				);
+				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
 					take: options?.limit ?? 50,
 					skip: options?.offset ?? 0,
 					filter: options?.filter as DataTableFilter | undefined,
 				});
 			},
 
-			async insertRows(dataTableId, rows) {
+			async insertRows(dataTableId, rows, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.insertRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					rows as DataTableRows,
 					'count',
 				);
 				return {
 					insertedCount: typeof result === 'number' ? result : rows.length,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
 			},
 
-			async updateRows(dataTableId, filter, data) {
+			async updateRows(dataTableId, filter, data, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.updateRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter, data: data as DataTableRow },
 					true,
 				);
 				return {
 					updatedCount: Array.isArray(result) ? result.length : 0,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
 			},
 
-			async deleteRows(dataTableId, filter) {
+			async deleteRows(dataTableId, filter, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.deleteRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter },
 					true,
 				);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
@@ -2159,6 +2227,83 @@ const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_CHARS = 1_000;
 
 /**
+ * Minimal DataTable shape the resolver needs. Kept narrow so tests can mock
+ * the repository without depending on the full TypeORM entity.
+ */
+interface DataTableRecord {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
+interface DataTableIdOrNameRepository {
+	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;
+	findBy: (where: { name: string; projectId?: string }) => Promise<DataTableRecord[]>;
+}
+
+interface DataTableResolverLogger {
+	warn: (message: string, meta?: Record<string, unknown>) => void;
+}
+
+export type ResolveDataTableResult =
+	| { kind: 'hit'; table: DataTableRecord }
+	| { kind: 'miss' }
+	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
+
+/**
+ * Look up a data table by the orchestrator-supplied identifier. Tries `id`
+ * first; if that misses, tries `name`. The name fallback exists because the
+ * orchestrator occasionally passes the human-readable table name it saw in a
+ * `data-tables list` response instead of the numeric id.
+ *
+ * When the caller provides an `accessFilter`, candidates the user cannot
+ * access are filtered out BEFORE the ambiguity check — so a collision across
+ * projects the caller can't see still resolves cleanly to the one they can.
+ * `projectIdFilter` narrows the name lookup at the database level when the
+ * caller already knows the target project (table names are unique per
+ * project).
+ */
+export async function resolveDataTableByIdOrName(
+	repository: DataTableIdOrNameRepository,
+	logger: DataTableResolverLogger,
+	idOrName: string,
+	options?: {
+		projectIdFilter?: string;
+		accessFilter?: (id: string) => Promise<boolean>;
+	},
+): Promise<ResolveDataTableResult> {
+	const byId = await repository.findOneBy({ id: idOrName });
+	if (byId) {
+		if (options?.accessFilter && !(await options.accessFilter(byId.id))) {
+			return { kind: 'miss' };
+		}
+		return { kind: 'hit', table: byId };
+	}
+
+	const candidates = await repository.findBy({
+		name: idOrName,
+		...(options?.projectIdFilter ? { projectId: options.projectIdFilter } : {}),
+	});
+	let filtered = candidates;
+	if (options?.accessFilter) {
+		filtered = [];
+		for (const c of candidates) {
+			if (await options.accessFilter(c.id)) filtered.push(c);
+		}
+	}
+	if (filtered.length === 0) return { kind: 'miss' };
+	if (filtered.length > 1) return { kind: 'ambiguous', candidates: filtered };
+
+	const hit = filtered[0];
+	logger.warn('data-tables tool called with table name instead of id — resolved by name fallback', {
+		passedValue: idOrName,
+		resolvedId: hit.id,
+		projectId: hit.projectId,
+	});
+	return { kind: 'hit', table: hit };
+}
+
+/**
  * Find the `builderHint.message` of the property that references a given
  * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
  * Returns undefined if no matching property is found.
@@ -2463,8 +2608,39 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 	}
 }
 
+/**
+ * Validate that `inputData` matches the shape the caller of `verify-built-workflow`
+ * is expected to pass for this trigger. Throws a descriptive error when the shape
+ * is wrong — this is surfaced to the orchestrator via the execution result and
+ * prevents the common "null downstream values" misdiagnosis where the orchestrator
+ * would otherwise patch the workflow's expressions (breaking it in production).
+ */
+function validateInputDataShape(node: INode, inputData: Record<string, unknown>): void {
+	if (node.type === FORM_TRIGGER_NODE_TYPE) {
+		// Production Form Trigger emits field values FLAT on `json` alongside
+		// `submittedAt` and `formMode`. Callers that place fields under `formFields`
+		// (whether pure-wrap `{formFields: {...}}` or mixed-key `{formFields: {...},
+		// other: ...}`) produce pin data where `$json.<field>` resolves to null and
+		// downstream expressions look broken. Any top-level `formFields` object is
+		// treated as a mistake — real Form Trigger fields are scalars and would not
+		// surface as a nested object here.
+		const formFieldsValue = inputData.formFields;
+		const looksWrapped = typeof formFieldsValue === 'object' && formFieldsValue !== null;
+		if (looksWrapped) {
+			throw new Error(
+				'verify-built-workflow: inputData for a Form Trigger must be a flat field map ' +
+					'(e.g. {name: "Alice", email: "a@b.c"}), NOT wrapped in `formFields`. ' +
+					'The production Form Trigger emits fields directly on $json, so downstream ' +
+					'expressions like $json.name are correct. Re-run with the flat shape.',
+			);
+		}
+	}
+}
+
 /** Construct proper pin data per trigger type. */
 function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): IPinData {
+	validateInputDataShape(node, inputData);
+
 	switch (node.type) {
 		case CHAT_TRIGGER_NODE_TYPE:
 			return {
@@ -2495,18 +2671,39 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 				],
 			};
 
-		case WEBHOOK_NODE_TYPE:
+		case WEBHOOK_NODE_TYPE: {
+			// Allow callers that already wrap the payload as an envelope
+			// (`{body, headers?, query?}`) — unwrap once so the adapter's outer
+			// `body: inputData` wrapper doesn't create double nesting. But only
+			// treat `inputData` as an envelope when ALL top-level keys look like
+			// envelope fields; otherwise a flat payload that happens to contain a
+			// `body` field (e.g. `{event: 'signup', body: {...}}`) would have its
+			// sibling fields silently dropped, producing the same "null downstream
+			// values" failure the Form Trigger validator exists to prevent.
+			const envelopeKeys = new Set(['body', 'headers', 'query']);
+			const inputKeys = Object.keys(inputData);
+			const looksLikeEnvelope =
+				inputKeys.length > 0 &&
+				inputKeys.every((k) => envelopeKeys.has(k)) &&
+				typeof inputData.body === 'object' &&
+				inputData.body !== null;
+			const body = looksLikeEnvelope ? (inputData.body as Record<string, unknown>) : inputData;
+			const headers =
+				looksLikeEnvelope && typeof inputData.headers === 'object' && inputData.headers !== null
+					? (inputData.headers as Record<string, unknown>)
+					: {};
+			const query =
+				looksLikeEnvelope && typeof inputData.query === 'object' && inputData.query !== null
+					? (inputData.query as Record<string, unknown>)
+					: {};
 			return {
 				[node.name]: [
 					{
-						json: {
-							headers: {},
-							query: {},
-							body: inputData,
-						},
+						json: { headers, query, body },
 					},
 				],
 			};
+		}
 
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
 			const now = new Date();
