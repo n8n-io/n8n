@@ -17,6 +17,10 @@ import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+<<<<<<< HEAD
+=======
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+>>>>>>> 484cb2efba (feat(core): Fix user access control logic (#29481))
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
@@ -649,4 +653,37 @@ describe('UserService', () => {
 			expect(result).toEqual(samlIdentity);
 		});
 	});
+<<<<<<< HEAD
+=======
+
+	describe('assertGetUsersAccess', () => {
+		it('should allow global member to list all users without project filter', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+
+			await expect(userService.assertGetUsersAccess(member)).resolves.toBeUndefined();
+
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		});
+
+		it('should allow non-admin members to list users by projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(mock<Project>());
+
+			await expect(userService.assertGetUsersAccess(member, 'project-1')).resolves.toBeUndefined();
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(member, 'project-1', [
+				'project:list',
+			]);
+		});
+
+		it('should throw NotFoundError when filtering by unknown projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(null);
+
+			await expect(userService.assertGetUsersAccess(member, 'unknown-project')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+>>>>>>> 484cb2efba (feat(core): Fix user access control logic (#29481))
 });

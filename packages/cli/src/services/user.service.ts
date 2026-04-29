@@ -66,6 +66,21 @@ export class UserService {
 		return this.userRepository.manager;
 	}
 
+<<<<<<< HEAD
+=======
+	async assertGetUsersAccess(user: User, projectId?: string): Promise<void> {
+		if (projectId) {
+			const project = await this.projectService.getProjectWithScope(user, projectId, [
+				'project:list',
+			]);
+			if (!project) {
+				throw new NotFoundError('Project not found');
+			}
+			return;
+		}
+	}
+
+>>>>>>> 484cb2efba (feat(core): Fix user access control logic (#29481))
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
 		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
