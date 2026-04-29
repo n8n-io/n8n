@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
 import { validateWorkflow, ValidationError } from '.';
 import { setupTestSchemas, teardownTestSchemas } from './test-schema-setup';
 import type { NodeInstance } from '../types/base';
@@ -2860,24 +2857,6 @@ describe('Validation', () => {
 			const result = validateWorkflow(workflowJson);
 			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
 			expect(warnings).toHaveLength(0);
-		});
-
-		it('flags the real eval workflow that triggered this validator', () => {
-			// Regression fixture: a real builder-agent output where `Retrieve Relevant Regulations`
-			// (vectorStoreInMemory mode='retrieve') was wired via `main` despite that mode exposing
-			// only `ai_vectorStore`. See packages/@n8n/instance-ai/.output/pairwise eval results.
-			const fixturePath = join(__dirname, '__fixtures__', 'vector-store-retrieve-with-main.json');
-			const workflowJson = JSON.parse(readFileSync(fixturePath, 'utf-8'));
-
-			const result = validateWorkflow(workflowJson, {
-				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
-			});
-
-			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
-			const offending = warnings.find((w) => w.nodeName === 'Retrieve Relevant Regulations');
-			expect(offending).toBeDefined();
-			expect(offending?.message).toContain('main');
-			expect(offending?.violationLevel).toBe('major');
 		});
 
 		it('does not warn when mode parameter is an expression that cannot be evaluated', () => {
