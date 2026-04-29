@@ -1,6 +1,9 @@
 import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
 	type AgentBuilderMessagesResponse,
+	type AgentIntegrationStatusResponse,
 	type AgentPersistedMessageDto,
+	type AgentScheduleConfig,
 	type AgentSseEvent,
 	type ChatIntegrationDescriptor,
 	AgentBuildResumeDto,
@@ -8,7 +11,9 @@ import {
 	AgentIntegrationDto,
 	CreateAgentDto,
 	UpdateAgentConfigDto,
+	UpdateAgentScheduleDto,
 	UpdateAgentDto,
+	isAgentCredentialIntegration,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -41,6 +46,7 @@ import {
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
 import { BUILDER_TOOLS } from './builder/builder-tool-names';
+import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -83,6 +89,7 @@ export class AgentsController {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
 		private readonly agentExecutionService: AgentExecutionService,
 	) {}
@@ -566,7 +573,9 @@ export class AgentsController {
 
 		// Persist the integration reference on the agent
 		const existing = agent.integrations ?? [];
-		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
+		const alreadyExists = existing.some(
+			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+		);
 		if (!alreadyExists) {
 			agent.integrations = [...existing, { type, credentialId }];
 			await this.agentRepository.save(agent);
@@ -591,11 +600,68 @@ export class AgentsController {
 
 		// Remove the integration reference from the agent
 		agent.integrations = (agent.integrations ?? []).filter(
-			(i) => !(i.type === type && i.credentialId === credentialId),
+			(i) => !isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
 		);
 		await this.agentRepository.save(agent);
 
 		return { status: 'disconnected' };
+	}
+
+	@Get('/:agentId/integrations/schedule')
+	@ProjectScope('agent:read')
+	async getScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return this.agentScheduleService.getConfig(agent);
+	}
+
+	@Put('/:agentId/integrations/schedule')
+	@ProjectScope('agent:update')
+	async updateScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: UpdateAgentScheduleDto,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return await this.agentScheduleService.saveConfig(
+			agent,
+			payload.cronExpression,
+			payload.wakeUpPrompt,
+		);
+	}
+
+	@Post('/:agentId/integrations/schedule/activate')
+	@ProjectScope('agent:update')
+	async activateScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return await this.agentScheduleService.activate(agent);
+	}
+
+	@Post('/:agentId/integrations/schedule/deactivate')
+	@ProjectScope('agent:update')
+	async deactivateScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return await this.agentScheduleService.deactivate(agent);
 	}
 
 	@Get('/:agentId/integrations/status')
@@ -604,11 +670,19 @@ export class AgentsController {
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	) {
+	): Promise<AgentIntegrationStatusResponse> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		return this.chatIntegrationService.getStatus(agentId);
+		const chatStatus = this.chatIntegrationService.getStatus(agentId);
+		const schedule = this.agentScheduleService.getConfig(agent);
+		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
+		const connectedIntegrations = [...chatStatus.integrations, ...scheduleIntegrations];
+
+		return {
+			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',
+			integrations: connectedIntegrations,
+		};
 	}
 
 	// Third-party webhook callback: do not add @ProjectScope. Auth happens

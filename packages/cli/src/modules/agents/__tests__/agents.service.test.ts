@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method, id-denylist -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
-import { mockLogger } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegration } from '@n8n/api-types';
+import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -8,6 +9,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsService, chatThreadId } from '../agents.service';
 import type { AgentPublishedVersion } from '../entities/agent-published-version.entity';
 import type { Agent } from '../entities/agent.entity';
+import { AgentScheduleService } from '../integrations/agent-schedule.service';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import {
 	AgentChatIntegration,
@@ -33,6 +35,7 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 		provider: 'anthropic',
 		credentialId: 'cred-1',
 		publishedVersion: null,
+		integrations: [],
 		tools: {},
 		updatedAt: new Date(),
 		...overrides,
@@ -59,6 +62,7 @@ describe('AgentsService', () => {
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentPublishedVersionRepository: jest.Mocked<AgentPublishedVersionRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
+	let scheduleService: jest.Mocked<AgentScheduleService>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -66,6 +70,7 @@ describe('AgentsService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentPublishedVersionRepository = mock<AgentPublishedVersionRepository>();
 		n8nMemory = mock<N8nMemory>();
+		scheduleService = mock<AgentScheduleService>();
 
 		service = new AgentsService(
 			mockLogger(),
@@ -86,6 +91,10 @@ describe('AgentsService', () => {
 			mock(),
 			agentPublishedVersionRepository,
 		);
+	});
+
+	afterEach(() => {
+		Container.reset();
 	});
 
 	describe('updateConfig', () => {
@@ -224,10 +233,7 @@ describe('AgentsService', () => {
 			// DI container — register a mock so Container.get doesn't try to construct the real
 			// service (which would fail resolving DataSource in unit tests).
 			Container.set(ChatIntegrationService, mock<ChatIntegrationService>());
-		});
-
-		afterEach(() => {
-			Container.reset();
+			Container.set(AgentScheduleService, scheduleService);
 		});
 
 		it('throws NotFoundError when the agent does not exist', async () => {
@@ -247,6 +253,36 @@ describe('AgentsService', () => {
 				mockTrx,
 			);
 			expect(agent.publishedVersion).toBeNull();
+		});
+
+		it('deactivates the persisted schedule and stops the local cron job when unpublishing', async () => {
+			const integrations: AgentIntegration[] = [
+				{
+					type: 'schedule',
+					active: true,
+					cronExpression: '* * * * *',
+					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+				},
+			];
+			const agent = makeAgent({
+				publishedVersion: makePublishedVersion(),
+				integrations,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.unpublishAgent(agentId, projectId);
+
+			expect(mockTrx.save).toHaveBeenCalledWith(
+				expect.objectContaining({
+					integrations: [
+						expect.objectContaining({
+							type: 'schedule',
+							active: false,
+						}),
+					],
+				}),
+			);
+			expect(scheduleService.deregister).toHaveBeenCalledWith(agentId);
 		});
 
 		it('returns the agent with publishedVersion cleared', async () => {
@@ -342,6 +378,10 @@ describe('AgentsService', () => {
 	});
 
 	describe('delete — chat cleanup', () => {
+		beforeEach(() => {
+			Container.set(AgentScheduleService, scheduleService);
+		});
+
 		it('removes the test-chat thread + messages after removing the agent', async () => {
 			const agent = makeAgent();
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -351,6 +391,15 @@ describe('AgentsService', () => {
 			expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 			expect(n8nMemory.deleteMessagesByThread).toHaveBeenCalledWith(chatThreadId(agentId));
 			expect(n8nMemory.deleteThread).toHaveBeenCalledWith(chatThreadId(agentId));
+		});
+
+		it('stops the local schedule when deleting the agent', async () => {
+			const agent = makeAgent();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.delete(agentId, projectId);
+
+			expect(scheduleService.deregister).toHaveBeenCalledWith(agentId);
 		});
 
 		it('still returns true when chat cleanup fails — agent removal is the primary intent', async () => {

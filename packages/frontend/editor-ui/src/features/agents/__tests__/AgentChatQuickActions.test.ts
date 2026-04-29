@@ -29,6 +29,7 @@ const defaultProps = {
 	tools: [] as AgentJsonToolRef[],
 	projectId: 'p1',
 	agentId: 'a1',
+	isPublished: true,
 	connectedTriggers: [] as string[],
 };
 
@@ -113,6 +114,7 @@ describe('AgentChatQuickActions', () => {
 		expect(call.name).toBe('agentAddTriggerModal');
 		expect(call.data.projectId).toBe('p1');
 		expect(call.data.agentId).toBe('a1');
+		expect(call.data.isPublished).toBe(true);
 		expect(call.data.connectedTriggers).toEqual(connectedTriggers);
 		expect(typeof call.data.onConnectedTriggersChange).toBe('function');
 		expect(typeof call.data.onTriggerAdded).toBe('function');

@@ -52,6 +52,59 @@ export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
 	'n8n-nodes-base.respondToWebhook',
 ] as const;
 
+export const AGENT_SCHEDULE_TRIGGER_TYPE = 'schedule';
+
+export const DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT =
+	'Automated message: you were triggered on schedule.';
+
+export interface AgentCredentialIntegration {
+	type: string;
+	credentialId: string;
+}
+
+export interface AgentScheduleIntegration {
+	type: typeof AGENT_SCHEDULE_TRIGGER_TYPE;
+	active: boolean;
+	cronExpression: string;
+	wakeUpPrompt: string;
+}
+
+export type AgentIntegration = AgentCredentialIntegration | AgentScheduleIntegration;
+
+export interface AgentScheduleConfig {
+	active: boolean;
+	cronExpression: string;
+	wakeUpPrompt: string;
+}
+
+export interface AgentIntegrationStatusEntry {
+	type: string;
+	credentialId?: string;
+}
+
+export interface AgentIntegrationStatusResponse {
+	status: 'connected' | 'disconnected';
+	integrations: AgentIntegrationStatusEntry[];
+}
+
+export function isAgentScheduleIntegration(
+	integration: AgentIntegration | null | undefined,
+): integration is AgentScheduleIntegration {
+	return integration?.type === AGENT_SCHEDULE_TRIGGER_TYPE;
+}
+
+export function isAgentCredentialIntegration(
+	integration: AgentIntegration | null | undefined,
+): integration is AgentCredentialIntegration {
+	return (
+		integration !== null &&
+		integration !== undefined &&
+		integration.type !== AGENT_SCHEDULE_TRIGGER_TYPE &&
+		'credentialId' in integration &&
+		typeof integration.credentialId === 'string'
+	);
+}
+
 export interface NodeToolConfig {
 	nodeType: string;
 	nodeTypeVersion: number;

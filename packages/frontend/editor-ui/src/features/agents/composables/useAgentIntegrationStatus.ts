@@ -65,7 +65,8 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 				}
 				for (const integration of result.integrations ?? []) {
 					state.statuses.value[integration.type] = 'connected';
-					state.connectedCredentials.value[integration.type] = integration.credentialId;
+					state.connectedCredentials.value[integration.type] =
+						typeof integration.credentialId === 'string' ? integration.credentialId : '';
 				}
 			} catch {
 				// Mark only types we don't already have a confirmed answer for as

@@ -223,6 +223,7 @@ export { VersionQueryDto } from './instance-version-history/version-query.dto';
 export { CreateAgentDto } from './agents/create-agent.dto';
 export { UpdateAgentDto } from './agents/update-agent.dto';
 export { UpdateAgentConfigDto } from './agents/update-agent-config.dto';
+export { UpdateAgentScheduleDto } from './agents/update-agent-schedule.dto';
 export { AgentIntegrationDto } from './agents/agent-integration.dto';
 export { AgentChatMessageDto } from './agents/agent-chat-message.dto';
 export { AgentBuildResumeDto } from './agents/agent-build-resume.dto';
