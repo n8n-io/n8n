@@ -50,7 +50,9 @@ const workflowDocumentStore = computed(() =>
 
 const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
-const workflowObject = computed(() => workflowDocumentStore.value.getSnapshot());
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
 
 const nodes = computed(() => {
 	return props.showFallbackNodes

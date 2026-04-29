@@ -189,7 +189,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				workflowDocumentStore.value.getSnapshot(),
+				workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 			);
 
 			const { startNodeNames } = consolidatedData;

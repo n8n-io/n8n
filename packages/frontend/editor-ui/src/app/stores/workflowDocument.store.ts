@@ -323,7 +323,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		}
 
-		function getSnapshot(): WorkflowObjectAccessors {
+		function getWorkflowObjectAccessorSnapshot(): WorkflowObjectAccessors {
 			return {
 				id: workflowId,
 				connectionsBySourceNode: workflowDocumentConnections.connectionsBySourceNode.value,
@@ -367,7 +367,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			removeAllNodes,
 			hydrate,
 			reset,
-			getSnapshot,
+			getWorkflowObjectAccessorSnapshot,
 			serialize,
 			cloneWorkflowObject,
 			createWorkflowObject,

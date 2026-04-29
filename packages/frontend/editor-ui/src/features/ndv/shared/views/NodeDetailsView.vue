@@ -98,7 +98,9 @@ const isPairedItemHoveringEnabled = ref(true);
 
 const pushRef = computed(() => ndvStore.pushRef);
 
-const workflowObject = computed(() => workflowDocumentStore?.value?.getSnapshot());
+const workflowObject = computed(() =>
+	workflowDocumentStore?.value?.getWorkflowObjectAccessorSnapshot(),
+);
 
 const activeNodeType = computed(() => {
 	if (activeNode.value) {
