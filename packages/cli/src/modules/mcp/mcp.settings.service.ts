@@ -166,8 +166,8 @@ export class McpSettingsService {
 							{ id: row.id },
 							{ settings: nextSettings, updatedAt: now },
 						);
-						// Matches this settings update
-						// Later concurrent writes may supersede it but acceptable for a settings-toggle use case,
+						// Checksum reflects this transaction's post-commit state.
+						// A concurrent write after commit may make it stale, which is acceptable for a settings-only toggle.
 						const checksum = await calculateWorkflowChecksum({
 							...row,
 							settings: nextSettings,
