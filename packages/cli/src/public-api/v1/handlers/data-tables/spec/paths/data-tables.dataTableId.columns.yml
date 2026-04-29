@@ -1,0 +1,62 @@
+get:
+  x-eov-operation-id: listDataTableColumns
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.columns.handler
+  tags:
+    - DataTable
+  summary: List columns of a data table
+  description: Retrieve all columns for a specific data table.
+  operationId: list-data-table-columns
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  responses:
+    '200':
+      description: Successfully retrieved columns
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '../schemas/dataTableColumn.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+  security:
+    - ApiKeyAuth: []
+
+post:
+  x-eov-operation-id: createDataTableColumn
+  x-eov-operation-handler: v1/handlers/data-tables/data-tables.columns.handler
+  tags:
+    - DataTable
+  summary: Add a column to a data table
+  description: Add a new column to an existing data table.
+  operationId: create-data-table-column
+  parameters:
+    - $ref: '../schemas/parameters/dataTableId.yml'
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../schemas/createColumnRequest.yml'
+        example:
+          name: 'email'
+          type: 'string'
+  responses:
+    '201':
+      description: Column created successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/dataTableColumn.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'
+    '409':
+      $ref: '../../../../shared/spec/responses/conflict.yml'
+  security:
+    - ApiKeyAuth: []

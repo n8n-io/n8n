@@ -105,6 +105,15 @@ jobs:
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
     secrets: inherit
 
+  build-daytona-snapshot:
+    name: Build Daytona snapshot
+    needs: [determine-version-info]
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/release-build-daytona-snapshot.yml
+    with:
+      n8n_version: ${{ needs.determine-version-info.outputs.version }}
+    secrets: inherit
+
   create-github-release:
     name: Create GitHub Release
     needs: [determine-version-info, publish-to-npm, publish-to-docker-hub]
@@ -183,11 +192,13 @@ jobs:
         create-github-release,
         move-track-tag,
         promote-stable-tag,
+        build-daytona-snapshot,
       ]
     if: |
       always() &&
       needs.publish-to-npm.result == 'success' &&
       needs.create-github-release.result == 'success' &&
+      needs.build-daytona-snapshot.result == 'success' &&
       (needs.move-track-tag.result == 'success' || needs.move-track-tag.result == 'skipped') &&
       (needs.promote-stable-tag.result == 'success' || needs.promote-stable-tag.result == 'skipped')
     uses: ./.github/workflows/release-publish-post-release.yml

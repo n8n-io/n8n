@@ -30,15 +30,14 @@ const BASE_ENV: Record<string, string> = {
 
 // Port 5678 must match N8N_PORT / QUEUE_HEALTH_CHECK_PORT defaults.
 // If those defaults change, update the port here too.
-const MAIN_WAIT_STRATEGY = Wait.forAll([
-	Wait.forListeningPorts(),
-	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(60_000),
-]);
-
-const WORKER_WAIT_STRATEGY = Wait.forAll([
-	Wait.forListeningPorts(),
-	Wait.forHttp('/healthz/readiness', 5678).forStatusCode(200).withStartupTimeout(60_000),
-]);
+// /healthz/readiness implies the port is listening, so a separate forListeningPorts is redundant.
+// withReadTimeout doubles as the poll interval (testcontainers IntervalRetry); the default of 1000ms
+// means we sit on a stale poll for up to a second after the process is actually ready. 250ms is
+// tight enough to reclaim that latency without firing too many requests.
+const N8N_WAIT_STRATEGY = Wait.forHttp('/healthz/readiness', 5678)
+	.forStatusCode(200)
+	.withStartupTimeout(60_000)
+	.withReadTimeout(250);
 
 export interface N8NInstancesOptions {
 	mains: number;
@@ -153,7 +152,6 @@ async function createContainer(
 		container = container.withNetworkAliases(networkAlias);
 	}
 
-	const waitStrategy = isWorker ? WORKER_WAIT_STRATEGY : MAIN_WAIT_STRATEGY;
 	const ports: PortWithOptionalBinding[] = hostPort
 		? [{ container: 5678, host: hostPort }]
 		: [5678];
@@ -161,7 +159,7 @@ async function createContainer(
 		ports.push(5679);
 	}
 
-	container = container.withExposedPorts(...ports).withWaitStrategy(waitStrategy);
+	container = container.withExposedPorts(...ports).withWaitStrategy(N8N_WAIT_STRATEGY);
 
 	if (isWorker) {
 		container = container.withCommand(['worker']);

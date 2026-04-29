@@ -174,7 +174,7 @@ describe('DependencyPill', () => {
 
 		expect(router.resolve).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
-			params: { name: 'wf-1' },
+			params: { workflowId: 'wf-1' },
 		});
 		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
 	});
@@ -190,7 +190,7 @@ describe('DependencyPill', () => {
 
 		expect(router.resolve).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
-			params: { name: 'wf-2' },
+			params: { workflowId: 'wf-2' },
 		});
 		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
 	});
@@ -328,7 +328,7 @@ describe('DependencyPill', () => {
 
 		expect(router.resolve).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
-			params: { name: 'err-wf-1' },
+			params: { workflowId: 'err-wf-1' },
 		});
 		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
 	});
@@ -346,7 +346,7 @@ describe('DependencyPill', () => {
 
 		expect(router.resolve).toHaveBeenCalledWith({
 			name: VIEWS.WORKFLOW,
-			params: { name: 'parent-wf-1' },
+			params: { workflowId: 'parent-wf-1' },
 		});
 		expect(windowOpenSpy).toHaveBeenCalledWith('/mock-href', '_blank');
 	});

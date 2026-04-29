@@ -24,6 +24,7 @@ import { RequireContinueOnFailRule } from './require-continue-on-fail.js';
 import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
+import { ValidPeerDependenciesRule } from './valid-peer-dependencies.js';
 import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
 export const rules = {
@@ -51,5 +52,6 @@ export const rules = {
 	'require-continue-on-fail': RequireContinueOnFailRule,
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
+	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
 } satisfies Record<string, AnyRuleModule>;

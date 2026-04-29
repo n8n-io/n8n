@@ -70,6 +70,23 @@
 			"id": 4,
 			"name": "Unknown nodes with connections",
 			"success": true
+		},
+		{
+			"id": 5,
+			"name": "Chat trigger with loadPreviousSession=memory but no memory subnode (INS-136)",
+			"success": true,
+			"expectedErrors": [
+				{ "code": "MISSING_REQUIRED_INPUT", "nodeName": "Chat Trigger" },
+				{ "code": "MISSING_REQUIRED_INPUT", "nodeName": "Agent" }
+			]
+		},
+		{
+			"id": 6,
+			"name": "Vector store in retrieve mode wired via main edges (real eval failure)",
+			"success": true,
+			"expectedValidationWarnings": [
+				{ "code": "INVALID_OUTPUT_FOR_MODE", "nodeName": "Retrieve Relevant Regulations" }
+			]
 		}
 	]
 }

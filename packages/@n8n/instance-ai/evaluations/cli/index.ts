@@ -240,6 +240,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 				execArgs.scenario,
 				execArgs.workflowJsons,
 				logger,
+				args.timeoutMs,
 			),
 		{ name: 'scenario_execution', run_type: 'chain', client: lsClient },
 	);
@@ -358,9 +359,11 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		`Starting evaluate() with concurrency=${String(args.concurrency)}, builds limited to ${String(MAX_CONCURRENT_BUILDS)}, iterations=${String(args.iterations)}`,
 	);
 
-	const sourceExamples = args.filter
-		? filteredExamplesIterable(lsClient, datasetName, args.filter, logger)
-		: lsClient.listExamples({ datasetName });
+	// Always filter the LangSmith dataset by the local file slugs. The local
+	// JSON files are the source of truth; the dataset accumulates orphans (the
+	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
+	// run scenarios whose JSON file no longer exists.
+	const sourceExamples = filteredExamplesIterable(lsClient, datasetName, args.filter, logger);
 	const evaluateData =
 		args.iterations > 1
 			? expandExamplesForIterations(sourceExamples, args.iterations)
@@ -453,15 +456,16 @@ async function* expandExamplesForIterations(
 function filteredExamplesIterable(
 	lsClient: Client,
 	datasetName: string,
-	filter: string,
+	filter: string | undefined,
 	logger: EvalLogger,
 ): AsyncIterable<Example> {
 	const slugs = loadWorkflowTestCasesWithFiles(filter).map((tc) => tc.fileSlug);
+	const label = filter ? `Filter "${filter}"` : 'Local test cases';
 	if (slugs.length === 0) {
-		logger.info(`Filter "${filter}" matched no local test case files`);
+		logger.info(`${label} matched no local test case files`);
 		return (async function* () {})();
 	}
-	logger.info(`Filter "${filter}" matched ${String(slugs.length)} split(s): ${slugs.join(', ')}`);
+	logger.info(`${label} matched ${String(slugs.length)} split(s): ${slugs.join(', ')}`);
 	return lsClient.listExamples({ datasetName, splits: slugs });
 }
 

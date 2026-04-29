@@ -42,7 +42,7 @@ type ListSearchMethod = (
 type LoadOptionsMethod = (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 type ActionHandlerMethod = (
 	this: ILoadOptionsFunctions,
-	payload?: string,
+	payload?: string | IDataObject,
 ) => Promise<NodeParameterValueType>;
 type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 
@@ -137,7 +137,7 @@ export class DynamicNodeParametersService {
 		// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
 		// enabled in `tsconfig.json`
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return await method.call(thisArgs);
 	}
 
 	/** Returns the available options via a loadOptions param */
@@ -238,7 +238,7 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs, filter, paginationToken);
+		return await method.call(thisArgs, filter, paginationToken);
 	}
 
 	/** Returns the available mapping fields for the ResourceMapper component */
@@ -254,9 +254,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return this.removeDuplicateResourceMappingFields(
-			(await method.call(thisArgs)) as ResourceMapperFields,
-		);
+		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
 	}
 
 	/** Returns the available workflow input mapping fields for the ResourceMapper component */
@@ -269,9 +267,7 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
 		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
-		return this.removeDuplicateResourceMappingFields(
-			(await method.call(thisArgs)) as ResourceMapperFields,
-		);
+		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
 	}
 
 	/** Returns the result of the action handler */
@@ -289,7 +285,7 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs, payload);
+		return await method.call(thisArgs, payload);
 	}
 
 	private getMethod(
