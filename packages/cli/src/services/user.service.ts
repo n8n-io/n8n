@@ -23,7 +23,6 @@ import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
@@ -80,17 +79,7 @@ export class UserService {
 			}
 			return;
 		}
-		const isInstanceAdmin = ['global:owner', 'global:admin'].includes(user.role.slug);
-		if (isInstanceAdmin) {
-			return;
-		}
-		const hasProjectUpdateScope =
-			(await this.projectService.getProjectIdsWithScope(user, ['project:update'])).length > 0;
-		if (!hasProjectUpdateScope) {
-			throw new ForbiddenError(
-				'Listing all users is limited to instance administrators and project admins. Filter by project to list project members.',
-			);
-		}
+		// Instance-wide listing is authorized by `user:list` on the REST and Public API routes.
 	}
 
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
