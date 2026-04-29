@@ -1714,6 +1714,7 @@
 	"ndv.redacted.description.sentence1": "Execution data has been redacted.",
 	"ndv.redacted.description.sentence2": "Adjust redaction rules in {link}.",
 	"ndv.redacted.description.link": "workflow settings",
+	"ndv.redacted.noPermission.description": "Execution data has been redacted. You do not have the permissions to reveal it.",
 	"ndv.redacted.dynamicCredentials.description": "This execution used dynamic credentials. Data from dynamic credential executions cannot be revealed.",
 	"ndv.redacted.revealButton": "Reveal data",
 	"ndv.redacted.revealModal.title": "Reveal redacted data",
