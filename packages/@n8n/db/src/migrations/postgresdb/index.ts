@@ -169,6 +169,7 @@ import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/17
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateEvaluationConfig1778100000000 } from '../common/1778100000000-CreateEvaluationConfig';
 import { AddWorkflowVersionToTestRun1778100001000 } from '../common/1778100001000-AddWorkflowVersionToTestRun';
+import { AddEvaluationConfigColumnsToTestRun1778100002000 } from '../common/1778100002000-AddEvaluationConfigColumnsToTestRun';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -343,4 +344,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	CreateEvaluationConfig1778100000000,
 	AddWorkflowVersionToTestRun1778100001000,
+	AddEvaluationConfigColumnsToTestRun1778100002000,
 ];
