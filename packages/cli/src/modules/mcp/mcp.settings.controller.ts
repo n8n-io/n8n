@@ -2,7 +2,6 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
-
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -83,6 +82,13 @@ export class McpSettingsController {
 		_res: Response,
 		@Body dto: UpdateWorkflowsAvailabilityDto,
 	) {
-		return await this.mcpSettingsService.bulkSetAvailableInMCP(req.user, dto);
+		const { changedWorkflows, ...result } = await this.mcpSettingsService.bulkSetAvailableInMCP(
+			req.user,
+			dto,
+		);
+
+		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
+
+		return result;
 	}
 }
