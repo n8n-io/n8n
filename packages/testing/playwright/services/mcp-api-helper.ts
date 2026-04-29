@@ -9,6 +9,8 @@ import { N8N_AUTH_COOKIE } from '../config/constants';
 
 type HttpMethod = 'GET' | 'POST' | 'DELETE';
 
+class SseNotFoundError extends Error {}
+
 interface SseConnection {
 	sessionId: string;
 	postUrl: string;
@@ -191,8 +193,7 @@ export class McpApiHelper {
 			try {
 				return await this.attemptSseSetup(path, options);
 			} catch (error) {
-				const isNotFound = error instanceof Error && 'isSseNotFound' in error;
-				if (!isNotFound || attempt === maxNotFoundRetries) throw error;
+				if (!(error instanceof SseNotFoundError) || attempt === maxNotFoundRetries) throw error;
 				await wait(notFoundRetryDelayMs);
 			}
 		}
@@ -243,11 +244,7 @@ export class McpApiHelper {
 					if (res.statusCode === 404) {
 						res.resume();
 						clearTimeout(timeout);
-						const notFound = new Error(`SSE setup got 404 for ${path}`) as Error & {
-							isSseNotFound: true;
-						};
-						notFound.isSseNotFound = true;
-						reject(notFound);
+						reject(new SseNotFoundError(`SSE setup got 404 for ${path}`));
 						return;
 					}
 
