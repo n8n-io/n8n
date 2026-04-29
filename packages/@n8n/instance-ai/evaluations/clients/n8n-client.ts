@@ -19,12 +19,19 @@ import type {
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
+	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
+}
+
+export interface WorkflowTag {
+	id: string;
+	name: string;
 }
 
 /** A workflow as returned by GET /rest/workflows/:id. */
@@ -34,7 +41,65 @@ export interface WorkflowResponse {
 	active: boolean;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
+	settings?: Record<string, unknown>;
+	staticData?: Record<string, unknown>;
+	meta?: Record<string, unknown>;
 	pinData?: Record<string, unknown>;
+	tags?: WorkflowTag[];
+	projectId?: string;
+}
+
+export interface WorkflowCreatePayload {
+	id?: string;
+	name: string;
+	description?: string | null;
+	hash?: string;
+	nodes: Array<WorkflowNodeResponse & Record<string, unknown>>;
+	connections: Record<string, unknown>;
+	settings?: Record<string, unknown> | null;
+	staticData?: Record<string, unknown> | null;
+	meta?: Record<string, unknown> | null;
+	pinData?: Record<string, unknown> | null;
+	tags?: string[] | WorkflowTag[];
+	projectId?: string;
+	parentFolderId?: string;
+	parentFolder?: { id: string; name: string } | null;
+	uiContext?: string;
+	aiBuilderAssisted?: boolean;
+	expectedChecksum?: string;
+	autosaved?: boolean;
+}
+
+export interface DataTableCreateColumn {
+	name: string;
+	type: 'string' | 'number' | 'boolean' | 'date';
+}
+
+export interface DataTableCreatePayload {
+	name: string;
+	columns: DataTableCreateColumn[];
+}
+
+export interface DataTableResponse {
+	id: string;
+	name: string;
+	columns?: Array<{ id?: string; name: string; type: string }>;
+}
+
+export type DataTableRowInput = Record<string, string | number | boolean | null>;
+
+export interface TestRunSummary {
+	id: string;
+	status: string;
+	errorCode?: string | null;
+}
+
+export interface ConfirmationOptions {
+	mockCredentials?: boolean;
+	credentialId?: string;
+	datasetChoice?: 'generate' | 'link-existing' | 'later';
+	existingDataTableId?: string;
+	enabledMetricIds?: string[];
 }
 
 interface WorkflowListItem {
@@ -126,7 +191,7 @@ export class N8nClient {
 	async confirmAction(
 		requestId: string,
 		approved: boolean,
-		options?: { mockCredentials?: boolean },
+		options?: ConfirmationOptions,
 	): Promise<void> {
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
@@ -185,6 +250,18 @@ export class N8nClient {
 	 */
 	async listWorkflows(): Promise<WorkflowListItem[]> {
 		const result = (await this.fetch('/rest/workflows')) as { data: WorkflowListItem[] };
+		return result.data;
+	}
+
+	/**
+	 * Create a workflow from an imported fixture.
+	 * POST /rest/workflows
+	 */
+	async createWorkflow(workflow: WorkflowCreatePayload): Promise<WorkflowResponse> {
+		const result = (await this.fetch('/rest/workflows', {
+			method: 'POST',
+			body: workflow,
+		})) as { data: WorkflowResponse };
 		return result.data;
 	}
 
@@ -379,6 +456,36 @@ export class N8nClient {
 	}
 
 	/**
+	 * Create a data table in a project.
+	 * POST /rest/projects/:projectId/data-tables
+	 */
+	async createDataTable(
+		projectId: string,
+		payload: DataTableCreatePayload,
+	): Promise<DataTableResponse> {
+		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`, {
+			method: 'POST',
+			body: payload,
+		})) as { data: DataTableResponse };
+		return result.data;
+	}
+
+	/**
+	 * Insert rows into a data table.
+	 * POST /rest/projects/:projectId/data-tables/:dataTableId/insert
+	 */
+	async insertDataTableRows(
+		projectId: string,
+		dataTableId: string,
+		rows: DataTableRowInput[],
+	): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}/insert`, {
+			method: 'POST',
+			body: { data: rows, returnType: 'count' },
+		});
+	}
+
+	/**
 	 * Delete a data table by ID.
 	 * DELETE /rest/projects/:projectId/data-tables/:dataTableId
 	 */
@@ -386,6 +493,27 @@ export class N8nClient {
 		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}`, {
 			method: 'DELETE',
 		});
+	}
+
+	/**
+	 * Start a native test run for a workflow.
+	 * POST /rest/workflows/:workflowId/test-runs/new
+	 */
+	async startNativeTestRun(workflowId: string): Promise<void> {
+		await this.fetch(`/rest/workflows/${workflowId}/test-runs/new`, {
+			method: 'POST',
+		});
+	}
+
+	/**
+	 * List native test runs for a workflow.
+	 * GET /rest/workflows/:workflowId/test-runs
+	 */
+	async listNativeTestRuns(workflowId: string): Promise<TestRunSummary[]> {
+		const result = (await this.fetch(`/rest/workflows/${workflowId}/test-runs`)) as {
+			data: TestRunSummary[] | { results: TestRunSummary[] };
+		};
+		return Array.isArray(result.data) ? result.data : result.data.results;
 	}
 
 	// -- Eval mock execution -------------------------------------------------
