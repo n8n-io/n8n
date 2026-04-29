@@ -269,7 +269,7 @@ describe('useExecutionDebugging()', () => {
 
 		const workflowStore = mockedStore(useWorkflowsStore);
 		const uiStore = mockedStore(useUIStore);
-		mockWorkflowDocumentStore.getNodes.mockReturnValue([{ name: 'CurrentNode' }] as INodeUi[]);
+		mockWorkflowDocumentStore.allNodes = [{ name: 'CurrentNode' }] as INodeUi[];
 		workflowStore.getExecution.mockResolvedValueOnce(mockExecution);
 
 		await executionDebugging.applyExecutionData('1');
