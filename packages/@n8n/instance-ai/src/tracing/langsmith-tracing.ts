@@ -1012,10 +1012,12 @@ function replayWrapTool(
 		resumeSchema: tool.resumeSchema,
 		requestContextSchema: tool.requestContextSchema,
 		execute: async (input, context) => {
-			const event = traceIndex.next(agentRole, tool.id);
-			const remappedInput = idRemapper.remapInput(input);
+			const event = traceIndex.nextMatching(agentRole, tool.id);
+			const remappedInput: unknown = event ? idRemapper.remapInput(input) : input;
 			const realOutput = await tool.execute!(remappedInput, context);
-			idRemapper.learn(event.output, realOutput as Record<string, unknown>);
+			if (event) {
+				idRemapper.learn(event.output, realOutput as Record<string, unknown>);
+			}
 			return realOutput;
 		},
 		mastra: tool.mastra,
@@ -1049,7 +1051,12 @@ function pureReplayWrapTool(
 		resumeSchema: tool.resumeSchema,
 		requestContextSchema: tool.requestContextSchema,
 		execute: async (_input, _context) => {
-			const event = traceIndex.next(agentRole, tool.id);
+			const event = traceIndex.nextMatching(agentRole, tool.id);
+			if (!event) {
+				throw new Error(
+					`No recorded output for pure-replay tool "${tool.id}" in role "${agentRole}"`,
+				);
+			}
 			return await Promise.resolve(idRemapper.remapOutput(event.output));
 		},
 		mastra: tool.mastra,

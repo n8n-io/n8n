@@ -5459,6 +5459,7 @@
 	"instanceAi.tools.update-tasks": "Updating tasks",
 	"instanceAi.tools.report-verification-verdict": "Verifying workflow",
 	"instanceAi.tools.verify-built-workflow": "Verifying workflow",
+	"instanceAi.tools.complete-checkpoint": "Completing checkpoint",
 	"instanceAi.tools.updateWorkingMemory": "Updating memory",
 	"instanceAi.tools.apply-workflow-credentials": "Applying credentials",
 	"instanceAi.tools.setup-workflow": "Setting up workflow",
