@@ -1,13 +1,8 @@
 import type { GlobalConfig } from '@n8n/config';
 import { mock } from 'jest-mock-extended';
-<<<<<<< HEAD
-import { ServerResponse } from 'node:http';
-import type WebSocket from 'ws';
-=======
 import type { Socket } from 'node:net';
 import request from 'supertest';
 import type { Server as WSServer, WebSocket } from 'ws';
->>>>>>> 28d63fa081 (fix(core): Fix task runner hanging when connection attempt fails (#26848))
 
 import type { TaskBrokerAuthController } from '@/task-runners/task-broker/auth/task-broker-auth.controller';
 import { TaskBrokerServer } from '@/task-runners/task-broker/task-broker-server';
@@ -15,8 +10,6 @@ import type { TaskBrokerServerInitRequest } from '@/task-runners/task-broker/tas
 import type { TaskBrokerWsServer } from '@/task-runners/task-broker/task-broker-ws-server';
 
 describe('TaskBrokerServer', () => {
-<<<<<<< HEAD
-=======
 	const createServer = (overrides?: {
 		authController?: TaskBrokerAuthController;
 	}) => {
@@ -51,7 +44,6 @@ describe('TaskBrokerServer', () => {
 		});
 	});
 
->>>>>>> 28d63fa081 (fix(core): Fix task runner hanging when connection attempt fails (#26848))
 	describe('handleUpgradeRequest', () => {
 		const createSocket = () => {
 			const socket = mock<Socket>();

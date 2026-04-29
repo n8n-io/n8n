@@ -338,20 +338,6 @@ describe('TestRunner', () => {
 			expect(runner.nodeTypesRequests.size).toBe(0);
 		});
 	});
-<<<<<<< HEAD
-=======
-
-	describe('drain', () => {
-		it('should stop sending offers on drain message', () => {
-			runner = newTestRunner();
-			runner.onMessage({ type: 'broker:runnerregistered' });
-			expect(runner.canSendOffers).toBe(true);
-
-			runner.onMessage({ type: 'broker:drain' });
-
-			expect(runner.canSendOffers).toBe(false);
-		});
-	});
 
 	describe('connection close', () => {
 		let processExitSpy: jest.SpyInstance;
@@ -397,5 +383,4 @@ describe('TestRunner', () => {
 			expect(processExitSpy).not.toHaveBeenCalled();
 		});
 	});
->>>>>>> 28d63fa081 (fix(core): Fix task runner hanging when connection attempt fails (#26848))
 });
