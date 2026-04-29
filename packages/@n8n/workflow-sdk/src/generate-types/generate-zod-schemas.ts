@@ -419,10 +419,10 @@ function generateResourceLocatorZodSchema(prop: NodeProperty): string {
  */
 function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
 	const result = mapNestedPropertyToZodSchemaInner(prop);
-	if (prop.noDataExpression) {
-		return stripExpressionFromZodSchema(result);
-	}
-	return result;
+	const expressionAwareResult = prop.noDataExpression
+		? stripExpressionFromZodSchema(result)
+		: result;
+	return wrapMultipleValuesZodSchema(prop, expressionAwareResult);
 }
 
 function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
@@ -626,10 +626,10 @@ function generateCollectionZodSchema(prop: NodeProperty): string {
  */
 export function mapPropertyToZodSchema(prop: NodeProperty): string {
 	const result = mapPropertyToZodSchemaInner(prop);
-	if (prop.noDataExpression) {
-		return stripExpressionFromZodSchema(result);
-	}
-	return result;
+	const expressionAwareResult = prop.noDataExpression
+		? stripExpressionFromZodSchema(result)
+		: result;
+	return wrapMultipleValuesZodSchema(prop, expressionAwareResult);
 }
 
 /**
@@ -643,6 +643,14 @@ function stripExpressionFromZodSchema(schema: string): string {
 	if (schema === 'booleanOrExpression') return 'z.boolean()';
 	// Remove expressionSchema from z.union([..., expressionSchema])
 	return schema.replace(/,\s*expressionSchema/g, '');
+}
+
+function wrapMultipleValuesZodSchema(prop: NodeProperty, schema: string): string {
+	if (!schema || prop.type === 'fixedCollection' || prop.type === 'multiOptions') {
+		return schema;
+	}
+
+	return prop.typeOptions?.multipleValues === true ? `z.array(${schema})` : schema;
 }
 
 function mapPropertyToZodSchemaInner(prop: NodeProperty): string {

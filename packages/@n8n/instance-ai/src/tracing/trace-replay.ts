@@ -92,6 +92,30 @@ export class TraceIndex {
 		this.cursors.set(agentRole, cursor + 1);
 		return event;
 	}
+
+	nextMatching(agentRole: string, expectedToolName: string): ToolTraceEvent | null {
+		const events = this.byRole.get(agentRole);
+		const cursor = this.cursors.get(agentRole) ?? 0;
+
+		if (!events || cursor >= events.length) {
+			return null;
+		}
+
+		const event = events[cursor];
+		if (event.toolName === expectedToolName) {
+			this.cursors.set(agentRole, cursor + 1);
+			return event;
+		}
+
+		for (let i = cursor + 1; i < events.length; i++) {
+			if (events[i].toolName === expectedToolName) {
+				this.cursors.set(agentRole, i + 1);
+				return events[i];
+			}
+		}
+
+		return null;
+	}
 }
 
 // ── IdRemapper ──────────────────────────────────────────────────────────────

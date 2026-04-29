@@ -30,7 +30,7 @@ describe('BackgroundTaskManager', () => {
 		it('spawns a task and tracks it as running', () => {
 			const result = manager.spawn(makeSpawnOptions());
 
-			expect(result).toBe(true);
+			expect(result.status).toBe('started');
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
 			expect(manager.getRunningTasks('thread-1')[0].taskId).toBe('task-1');
 		});
@@ -50,7 +50,7 @@ describe('BackgroundTaskManager', () => {
 
 			const result = manager.spawn(makeSpawnOptions({ taskId: 't4', onLimitReached }));
 
-			expect(result).toBe(false);
+			expect(result.status).toBe('limit-reached');
 			expect(onLimitReached).toHaveBeenCalledWith(expect.stringContaining('limit of 3'));
 		});
 
@@ -167,6 +167,177 @@ describe('BackgroundTaskManager', () => {
 			await flushPromises();
 
 			expect(manager.getTaskSnapshots('thread-1')).toHaveLength(0);
+		});
+	});
+
+	describe('single-flight dedupe', () => {
+		it('returns duplicate when plannedTaskId matches a running task', () => {
+			const first = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'first',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+				}),
+			);
+			expect(first.status).toBe('started');
+
+			const run = jest.fn(async (): Promise<string> => await new Promise(() => {}));
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'second',
+					run,
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-1' },
+				}),
+			);
+
+			expect(second.status).toBe('duplicate');
+			if (second.status === 'duplicate') {
+				expect(second.existing.taskId).toBe('first');
+			}
+			expect(run).not.toHaveBeenCalled();
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(1);
+		});
+
+		it('allows a new spawn once the first planned-task settles', async () => {
+			const { promise, resolve } = createDeferred<string>();
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'first',
+					run: async () => await promise,
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-2' },
+				}),
+			);
+
+			resolve('done');
+			await flushPromises();
+
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'second',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-2' },
+				}),
+			);
+			expect(second.status).toBe('started');
+		});
+
+		it('returns duplicate when workflowId + role matches a running task without plannedTaskId', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'first',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
+				}),
+			);
+
+			const run = jest.fn(async (): Promise<string> => await new Promise(() => {}));
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'second',
+					run,
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
+				}),
+			);
+
+			expect(second.status).toBe('duplicate');
+			expect(run).not.toHaveBeenCalled();
+		});
+
+		it('does not collapse two distinct plannedTaskIds that target the same workflowId', () => {
+			// A planner may emit two work items for the same workflow — e.g., initial
+			// build (planned-A) followed by a patch (planned-B). They are distinct
+			// planned tasks and must both run; collapsing them on workflowId would
+			// skip work the user approved.
+			const first = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'task-A',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: {
+						role: 'workflow-builder',
+						plannedTaskId: 'planned-A',
+						workflowId: 'wf-shared',
+					},
+				}),
+			);
+			expect(first.status).toBe('started');
+
+			const run = jest.fn(async (): Promise<string> => await new Promise(() => {}));
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'task-B',
+					run,
+					dedupeKey: {
+						role: 'workflow-builder',
+						plannedTaskId: 'planned-B',
+						workflowId: 'wf-shared',
+					},
+				}),
+			);
+
+			expect(second.status).toBe('started');
+			expect(run).toHaveBeenCalledTimes(1);
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(2);
+		});
+
+		it('does not dedupe across roles for the same workflowId', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'builder',
+					role: 'workflow-builder',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', workflowId: 'wf-1' },
+				}),
+			);
+
+			const other = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'researcher',
+					role: 'web-researcher',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'web-researcher', workflowId: 'wf-1' },
+				}),
+			);
+
+			expect(other.status).toBe('started');
+			expect(manager.getRunningTasks('thread-1')).toHaveLength(2);
+		});
+
+		it('limit-reached still fires even when dedupe would have passed', () => {
+			const filler = makeSpawnOptions({ run: async () => await new Promise(() => {}) });
+			manager.spawn({ ...filler, taskId: 't1' });
+			manager.spawn({ ...filler, taskId: 't2' });
+			manager.spawn({ ...filler, taskId: 't3' });
+
+			const onLimitReached = jest.fn();
+			const result = manager.spawn(
+				makeSpawnOptions({
+					taskId: 't4',
+					onLimitReached,
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-fresh' },
+				}),
+			);
+			expect(result.status).toBe('limit-reached');
+			expect(onLimitReached).toHaveBeenCalled();
+		});
+
+		it('cancelTask releases dedupe indices so a fresh spawn is allowed', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'first',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-3' },
+				}),
+			);
+			manager.cancelTask('thread-1', 'first');
+
+			const second = manager.spawn(
+				makeSpawnOptions({
+					taskId: 'second',
+					run: async () => await new Promise(() => {}),
+					dedupeKey: { role: 'workflow-builder', plannedTaskId: 'planned-3' },
+				}),
+			);
+			expect(second.status).toBe('started');
 		});
 	});
 
@@ -372,6 +543,70 @@ describe('BackgroundTaskManager', () => {
 			await flushPromises();
 
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
+		});
+	});
+
+	describe('getRunningTasksByParentCheckpoint', () => {
+		it('returns running tasks tagged with the given checkpoint id', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-1',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-verify-1',
+				}),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-2',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-verify-1',
+				}),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'unrelated',
+					run: async () => await new Promise(() => {}),
+				}),
+			);
+
+			const children = manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-verify-1');
+			expect(children.map((c) => c.taskId).sort()).toEqual(['child-1', 'child-2']);
+		});
+
+		it('excludes tasks tagged under a different checkpoint', () => {
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-a',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-A',
+				}),
+			);
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-b',
+					run: async () => await new Promise(() => {}),
+					parentCheckpointId: 'cp-B',
+				}),
+			);
+
+			const childrenA = manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-A');
+			expect(childrenA.map((c) => c.taskId)).toEqual(['child-a']);
+		});
+
+		it('excludes tasks that have already settled', async () => {
+			const { promise, resolve } = createDeferred<string>();
+			manager.spawn(
+				makeSpawnOptions({
+					taskId: 'child-done',
+					parentCheckpointId: 'cp-verify-1',
+					run: async () => await promise,
+				}),
+			);
+
+			resolve('done');
+			await flushPromises();
+
+			expect(manager.getRunningTasksByParentCheckpoint('thread-1', 'cp-verify-1')).toHaveLength(0);
 		});
 	});
 });
