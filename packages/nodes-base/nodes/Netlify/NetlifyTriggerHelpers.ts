@@ -34,7 +34,7 @@ export function verifySignature(this: IWebhookFunctions): boolean {
 		skipIfNoExpectedSignature: !secret || typeof secret !== 'string',
 		getActualSignature: () => {
 			const token = req.header('x-webhook-signature');
-			if (typeof token !== 'string' || !token) {
+			if (typeof token !== 'string' || !token || typeof secret !== 'string') {
 				return null;
 			}
 			try {
