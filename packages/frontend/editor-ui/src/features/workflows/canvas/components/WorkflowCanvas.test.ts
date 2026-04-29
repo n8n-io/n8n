@@ -7,7 +7,6 @@ import { STICKY_NODE_TYPE } from '@/app/constants';
 import { CanvasNodeRenderType } from '../canvas.types';
 import { createTestNode, createTestWorkflow, defaultNodeDescriptions } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -23,17 +22,7 @@ vi.mock('@vueuse/core', async () => {
 	};
 });
 
-const defaultWorkflow = createTestWorkflow({
-	id: '1',
-	name: 'Test Workflow',
-	nodes: [],
-	connections: {},
-});
-
 function setupWorkflow(workflow: IWorkflowDb) {
-	const workflowsStore = useWorkflowsStore();
-	workflowsStore.workflow = workflow;
-
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
 }
@@ -52,7 +41,14 @@ beforeEach(() => {
 	const nodeTypesStore = useNodeTypesStore();
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 
-	setupWorkflow(defaultWorkflow);
+	setupWorkflow(
+		createTestWorkflow({
+			id: '1',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+		}),
+	);
 });
 
 afterEach(() => {
