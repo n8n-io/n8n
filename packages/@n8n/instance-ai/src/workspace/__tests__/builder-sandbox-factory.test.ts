@@ -155,14 +155,14 @@ describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 	it('passes { snapshot } when ensureSnapshot returns a name', async () => {
 		const config = makeDaytonaConfig();
 		const snapshotManager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
-		jest.spyOn(snapshotManager, 'ensureSnapshot').mockResolvedValue('n8n-instance-ai-1.123.0');
+		jest.spyOn(snapshotManager, 'ensureSnapshot').mockResolvedValue('n8n/instance-ai:1.123.0');
 
 		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER);
 		await factory.create('builder-1', makeContext());
 
 		expect(daytonaCreateMock).toHaveBeenCalledTimes(1);
 		const [params] = daytonaCreateMock.mock.calls[0];
-		expect(params.snapshot).toBe('n8n-instance-ai-1.123.0');
+		expect(params.snapshot).toBe('n8n/instance-ai:1.123.0');
 		expect(params.image).toBeUndefined();
 	});
 
@@ -215,7 +215,7 @@ describe('BuilderSandboxFactory createDaytona error reporting', () => {
 
 	function makeManager(): SnapshotManager {
 		const manager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
-		jest.spyOn(manager, 'ensureSnapshot').mockResolvedValue('n8n-instance-ai-1.123.0');
+		jest.spyOn(manager, 'ensureSnapshot').mockResolvedValue('n8n/instance-ai:1.123.0');
 		jest.spyOn(manager, 'ensureImage').mockReturnValue({ dockerfile: 'FROM node:20' } as never);
 		return manager;
 	}
@@ -226,7 +226,7 @@ describe('BuilderSandboxFactory createDaytona error reporting', () => {
 		const errorReporter = { error: jest.fn() };
 		daytonaCreateMock
 			.mockRejectedValueOnce(
-				Object.assign(new Error('Snapshot n8n-instance-ai-1.123.0 not found'), {
+				Object.assign(new Error('Snapshot n8n/instance-ai:1.123.0 not found'), {
 					statusCode: 400,
 				}),
 			)
@@ -236,7 +236,7 @@ describe('BuilderSandboxFactory createDaytona error reporting', () => {
 		await factory.create('builder-1', makeContext());
 
 		expect(daytonaCreateMock).toHaveBeenCalledTimes(2);
-		expect(daytonaCreateMock.mock.calls[0][0].snapshot).toBe('n8n-instance-ai-1.123.0');
+		expect(daytonaCreateMock.mock.calls[0][0].snapshot).toBe('n8n/instance-ai:1.123.0');
 		expect(daytonaCreateMock.mock.calls[1][0].image).toBeDefined();
 		expect(daytonaCreateMock.mock.calls[1][0].snapshot).toBeUndefined();
 	});

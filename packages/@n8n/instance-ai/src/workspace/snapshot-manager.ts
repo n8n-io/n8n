@@ -1,7 +1,7 @@
 /**
  * Prepares and caches a Daytona Image descriptor with config files and
  * node_modules pre-installed, and resolves a versioned named snapshot
- * (`n8n-instance-ai-<n8nVersion>`) for sandbox creation.
+ * (`n8n/instance-ai:<n8nVersion>`) for sandbox creation.
  *
  * Two strategies for `ensureSnapshot`:
  * - 'direct' mode (self-hosted): optimistic create via `snapshot.create`.
@@ -143,7 +143,7 @@ export class SnapshotManager {
 		if (!this.n8nVersion) {
 			throw new Error('SnapshotManager: n8nVersion is required to derive a snapshot name');
 		}
-		return `n8n-instance-ai-${this.n8nVersion}`;
+		return `n8n/instance-ai:${this.n8nVersion}`;
 	}
 
 	/** Invalidate cached image (e.g., when base image changes). */
