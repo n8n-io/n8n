@@ -89,6 +89,22 @@ export async function configurePostgres(
 			// prevent spam in console "WARNING: Creating a duplicate database object for the same connection."
 			// duplicate connections created when auto loading parameters, they are closed immediately after, but several could be open at the same time
 			noWarnings: true,
+			// Use per-instance receive event instead of pgp.pg.types.setTypeParser, which mutates
+			// global pg state and would affect all pools regardless of their largeNumbersOutput setting
+			receive(e) {
+				if (options.largeNumbersOutput !== 'numbers' || !e.result) return;
+				for (const field of e.result.fields) {
+					if (field.dataTypeID !== 20 && field.dataTypeID !== 1700) continue;
+					const isInt = field.dataTypeID === 20;
+					for (const row of e.data as Array<Record<string, unknown>>) {
+						if (typeof row[field.name] === 'string') {
+							row[field.name] = isInt
+								? parseInt(row[field.name] as string, 10)
+								: parseFloat(row[field.name] as string);
+						}
+					}
+				}
+			},
 		});
 
 		if (typeof options.nodeVersion === 'number' && options.nodeVersion >= 2.1) {
@@ -103,15 +119,6 @@ export async function configurePostgres(
 
 					return parsedDate.toISOString();
 				});
-			});
-		}
-
-		if (options.largeNumbersOutput === 'numbers') {
-			pgp.pg.types.setTypeParser(20, (value: string) => {
-				return parseInt(value, 10);
-			});
-			pgp.pg.types.setTypeParser(1700, (value: string) => {
-				return parseFloat(value);
 			});
 		}
 
@@ -180,6 +187,7 @@ export async function configurePostgres(
 		credentials,
 		nodeType: 'postgres',
 		nodeVersion: options.nodeVersion as unknown as string,
+		poolKeyExtras: { largeNumbersOutput: options.largeNumbersOutput ?? 'text' },
 		fallBackHandler,
 		wasUsed: ({ sshClient }) => {
 			if (sshClient) {
