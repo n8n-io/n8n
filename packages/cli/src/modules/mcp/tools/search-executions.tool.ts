@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { jsonStringify, ensureError, type ExecutionStatus } from 'n8n-workflow';
+import { ExecutionStatusList, WorkflowExecuteModeList, type ExecutionStatus } from 'n8n-workflow';
 import z from 'zod';
 
 import type { ExecutionService } from '@/executions/execution.service';
@@ -12,22 +12,13 @@ import { createLimitSchema } from './schemas';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const MAX_RESULTS = 200;
-const DEFAULT_LIMIT = 100;
-
-const executionStatusEnum = z.enum([
-	'canceled',
-	'crashed',
-	'error',
-	'new',
-	'running',
-	'success',
-	'unknown',
-	'waiting',
-]);
 
 const inputSchema = {
 	workflowId: z.string().optional().describe('Filter executions by workflow ID'),
-	status: z.array(executionStatusEnum).optional().describe('Filter by execution status(es)'),
+	status: z
+		.array(z.enum(ExecutionStatusList))
+		.optional()
+		.describe('Filter by execution status(es)'),
 	limit: createLimitSchema(MAX_RESULTS),
 	lastId: z
 		.string()
@@ -41,8 +32,8 @@ const outputSchema = {
 			z.object({
 				id: z.string().describe('The unique identifier of the execution'),
 				workflowId: z.string().describe('The workflow this execution belongs to'),
-				status: z.string().describe('The execution status'),
-				mode: z.string().describe('How the execution was triggered'),
+				status: z.enum(ExecutionStatusList).describe('The execution status'),
+				mode: z.enum(WorkflowExecuteModeList).describe('How the execution was triggered'),
 				startedAt: z.string().nullable().describe('ISO timestamp when the execution started'),
 				stoppedAt: z.string().nullable().describe('ISO timestamp when the execution stopped'),
 				waitTill: z
@@ -79,7 +70,7 @@ export const createSearchExecutionsTool = (
 	handler: async ({
 		workflowId,
 		status,
-		limit = DEFAULT_LIMIT,
+		limit = MAX_RESULTS,
 		lastId,
 	}: {
 		workflowId?: string;

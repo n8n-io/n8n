@@ -142,7 +142,7 @@ describe('search-executions MCP tool', () => {
 		await createTool().handler({} as never, {} as never);
 
 		const query = (executionService.findMcpRangeWithCount as jest.Mock).mock.calls[0][0];
-		expect(query.range.limit).toBe(100);
+		expect(query.range.limit).toBe(200);
 	});
 
 	test('handles pagination with lastId', async () => {
@@ -187,14 +187,20 @@ describe('search-executions MCP tool', () => {
 		);
 	});
 
-	test('tracks telemetry on failure', async () => {
+	test('tracks telemetry on failure and returns error response', async () => {
 		(executionService.findMcpRangeWithCount as jest.Mock).mockRejectedValue(
 			new Error('DB connection lost'),
 		);
 
-		await expect(createTool().handler({} as never, {} as never)).rejects.toThrow(
-			'DB connection lost',
-		);
+		const result = await createTool().handler({} as never, {} as never);
+
+		expect(result.isError).toBe(true);
+		expect(result.structuredContent).toEqual({
+			data: [],
+			count: 0,
+			estimated: false,
+			error: 'DB connection lost',
+		});
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'User called mcp tool',
