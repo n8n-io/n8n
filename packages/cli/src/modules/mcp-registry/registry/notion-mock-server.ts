@@ -5,9 +5,10 @@ export const notionMockServer: McpRegistryServer = {
 	name: 'com.notion/mcp',
 	slug: 'notion',
 	title: 'Notion',
-	description: 'Official Notion MCP server',
-	version: '1.0.1',
-	icons: [{ src: 'https://cdn.n8n.io/mcp/notion.svg', mimeType: 'image/svg+xml' }],
+	description:
+		"Notion's official MCP server lets you use your Notion workspace as a system of record for knowledge work and software development. Search questions about the codebase and business, fetch links to pages such as tech specs and PRDs, and track tasks with your team.",
+	version: '1.2.0',
+	icons: [{ src: 'https://mcp.notion.com/notion-logo-block-main.svg', mimeType: 'image/svg+xml' }],
 	websiteUrl: 'https://developers.notion.com/docs/mcp',
 	authType: 'oauth2',
 	remotes: [
@@ -16,22 +17,25 @@ export const notionMockServer: McpRegistryServer = {
 	],
 	tools: [
 		{
-			name: 'search',
-			title: 'Search Notion',
-			description: 'Full-text search across pages and databases.',
+			name: 'notion-search',
+			title: 'Search Notion and connected sources',
+			description:
+				'Semantic search over a Notion workspace and connected sources (Slack, Google Drive, GitHub, Jira, Microsoft Teams, SharePoint, OneDrive, Linear), or search for users by name or email.',
 			annotations: { readOnlyHint: true, destructiveHint: false },
 		},
 		{
-			name: 'create-pages',
-			title: 'Create Page',
-			description: 'Create one or more pages under a given parent.',
+			name: 'notion-fetch',
+			title: 'Fetch Notion entities',
+			description:
+				'Retrieve details about a Notion entity (page, database, or data source) by URL or ID.',
+			annotations: { readOnlyHint: true, destructiveHint: false },
+		},
+		{
+			name: 'notion-create-pages',
+			title: 'Create pages in Markdown',
+			description:
+				'Create one or more Notion pages under a shared parent (page, database, or data source) with specified properties and content.',
 			annotations: { readOnlyHint: false, destructiveHint: false },
-		},
-		{
-			name: 'fetch',
-			title: 'Fetch',
-			description: 'Read a page or database by ID.',
-			annotations: { readOnlyHint: true, destructiveHint: false },
 		},
 	],
 	isOfficial: true,
