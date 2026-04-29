@@ -43,12 +43,21 @@ export async function verifySignature(this: IWebhookFunctions): Promise<boolean>
 			return false;
 		}
 
-		const sinkUrl = this.getNodeWebhookUrl('default');
+		let sinkUrl = this.getNodeWebhookUrl('default');
 		if (!sinkUrl) {
 			return false;
 		}
 
 		const originalUrl: string = req.originalUrl ?? req.url ?? '';
+
+		// getNodeWebhookUrl always returns the production path (/webhook/...).
+		// In test mode the request arrives at /webhook-test/..., so adjust
+		// the base URL to match what was actually signed against.
+		const originalPath = originalUrl.split('?')[0];
+		if (originalPath.includes('/webhook-test/')) {
+			sinkUrl = sinkUrl.replace('/webhook/', '/webhook-test/');
+		}
+
 		const queryIdx = originalUrl.indexOf('?');
 		const queryString = queryIdx === -1 ? '' : originalUrl.substring(queryIdx + 1);
 		const signedUrl = queryString ? `${sinkUrl}?${queryString}` : sinkUrl;

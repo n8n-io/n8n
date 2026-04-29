@@ -168,6 +168,35 @@ describe('TwilioTriggerHelpers', () => {
 			expect(result).toBe(false);
 		});
 
+		it('should return true in test mode when signature matches test URL', async () => {
+			const testSinkUrl = 'https://n8n.example.com/webhook-test/abc/webhook';
+			const testSignedUrl = `${testSinkUrl}?${queryString}`;
+			const testModeSignature = createHmac('sha1', testAuthToken)
+				.update(testSignedUrl)
+				.digest('base64');
+
+			mockWebhookFunctions.getCredentials.mockResolvedValue({
+				authType: 'authToken',
+				authToken: testAuthToken,
+			});
+			// getNodeWebhookUrl returns the production URL
+			mockWebhookFunctions.getNodeWebhookUrl.mockReturnValue(sinkUrl);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				header: jest.fn().mockImplementation((name: string) => {
+					if (name === 'x-twilio-signature') return testModeSignature;
+					return null;
+				}),
+				query: { bodySHA256: testBodyHash },
+				rawBody: Buffer.from(testBody),
+				// Request arrives at the test URL
+				originalUrl: `/webhook-test/abc/webhook?${queryString}`,
+			});
+
+			const result = await verifySignature.call(mockWebhookFunctions);
+
+			expect(result).toBe(true);
+		});
+
 		it('should accept rawBody as a string', async () => {
 			mockWebhookFunctions.getCredentials.mockResolvedValue({
 				authType: 'authToken',
