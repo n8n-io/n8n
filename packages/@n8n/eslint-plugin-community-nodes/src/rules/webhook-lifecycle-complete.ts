@@ -91,6 +91,18 @@ export const WebhookLifecycleCompleteRule = createRule({
 					return;
 				}
 
+				if (webhookMethodsProperty.value.properties.length === 0) {
+					context.report({
+						node: webhookMethodsProperty.value,
+						messageId: 'missingLifecycleMethod',
+						data: {
+							group: 'default',
+							missing: REQUIRED_METHODS.map((m) => `\`${m}\``).join(', '),
+						},
+					});
+					return;
+				}
+
 				for (const groupProperty of webhookMethodsProperty.value.properties) {
 					if (groupProperty.type !== AST_NODE_TYPES.Property) continue;
 					if (groupProperty.value.type !== AST_NODE_TYPES.ObjectExpression) continue;

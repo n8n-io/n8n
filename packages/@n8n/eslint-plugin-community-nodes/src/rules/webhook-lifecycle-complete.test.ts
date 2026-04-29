@@ -108,6 +108,19 @@ export class RegularClass {
 			errors: [{ messageId: 'missingWebhookMethods' }],
 		},
 		{
+			name: 'trigger node with empty webhookMethods object (no lifecycle groups)',
+			code: createTriggerNode({ webhookMethods: '{}' }),
+			errors: [
+				{
+					messageId: 'missingLifecycleMethod',
+					data: {
+						group: 'default',
+						missing: '`checkExists`, `create`, `delete`',
+					},
+				},
+			],
+		},
+		{
 			name: 'trigger node with empty webhookMethods group (all three missing)',
 			code: createTriggerNode({
 				webhookMethods: `{
