@@ -951,6 +951,136 @@ describe('TaskBroker', () => {
 
 			jest.useRealTimers();
 		});
+
+		it('should emit `runner:unresponsive` after 3 consecutive accept timeouts on the same runner', async () => {
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+			const messageCallback = jest.fn();
+			const lifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+
+			taskBroker = new TaskBroker(mock(), mock(), lifecycleEvents, mock());
+			taskBroker.registerRunner(runner, messageCallback);
+
+			jest.useFakeTimers();
+
+			const buildOfferAndRequest = (i: number) => ({
+				offer: {
+					offerId: `offer${i}`,
+					runnerId,
+					taskType: 'taskType1',
+					validFor: 1000,
+					validUntil: createValidUntil(1000),
+				} satisfies TaskOffer,
+				request: {
+					requestId: `request${i}`,
+					requesterId: 'requester1',
+					taskType: 'taskType1',
+				} satisfies TaskRequest,
+			});
+
+			for (let i = 1; i <= 3; i++) {
+				const { offer, request } = buildOfferAndRequest(i);
+				const acceptPromise = taskBroker.acceptOffer(offer, request);
+				jest.advanceTimersByTime(2100);
+				await acceptPromise;
+			}
+
+			expect(lifecycleEvents.emit).toHaveBeenCalledWith('runner:unresponsive', { runnerId });
+
+			jest.useRealTimers();
+		});
+
+		it('should reset the consecutive accept-timeout counter when the runner is deregistered', async () => {
+			const runnerId = 'runner1';
+			const runner = mock<TaskRunner>({ id: runnerId });
+			const messageCallback = jest.fn();
+			const lifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+
+			taskBroker = new TaskBroker(mock(), mock(), lifecycleEvents, mock());
+			taskBroker.registerRunner(runner, messageCallback);
+
+			jest.useFakeTimers();
+
+			const buildOfferAndRequest = (i: number) => ({
+				offer: {
+					offerId: `offer${i}`,
+					runnerId,
+					taskType: 'taskType1',
+					validFor: 1000,
+					validUntil: createValidUntil(1000),
+				} satisfies TaskOffer,
+				request: {
+					requestId: `request${i}`,
+					requesterId: 'requester1',
+					taskType: 'taskType1',
+				} satisfies TaskRequest,
+			});
+
+			// Two failed accepts → counter at 2.
+			for (let i = 1; i <= 2; i++) {
+				const { offer, request } = buildOfferAndRequest(i);
+				const acceptPromise = taskBroker.acceptOffer(offer, request);
+				jest.advanceTimersByTime(2100);
+				await acceptPromise;
+			}
+
+			// Deregister the runner, then re-register and time out twice more.
+			// If the counter persisted across the deregister/register cycle, the
+			// second of these two timeouts would trip the threshold and emit. It
+			// must not — deregister clears the slate.
+			taskBroker.deregisterRunner(runnerId, new Error('test'));
+			taskBroker.registerRunner(runner, messageCallback);
+
+			for (let i = 3; i <= 4; i++) {
+				const { offer, request } = buildOfferAndRequest(i);
+				const acceptPromise = taskBroker.acceptOffer(offer, request);
+				jest.advanceTimersByTime(2100);
+				await acceptPromise;
+			}
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalledWith(
+				'runner:unresponsive',
+				expect.anything(),
+			);
+
+			jest.useRealTimers();
+		});
+
+		it('should not emit `runner:unresponsive` when timeouts are spread across different runners', async () => {
+			const lifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+			taskBroker = new TaskBroker(mock(), mock(), lifecycleEvents, mock());
+
+			jest.useFakeTimers();
+
+			// Three timeouts, each on a different runner.
+			for (let i = 1; i <= 3; i++) {
+				const runnerId = `runner${i}`;
+				const runner = mock<TaskRunner>({ id: runnerId });
+				taskBroker.registerRunner(runner, jest.fn());
+				const offer: TaskOffer = {
+					offerId: `offer${i}`,
+					runnerId,
+					taskType: 'taskType1',
+					validFor: 1000,
+					validUntil: createValidUntil(1000),
+				};
+				const request: TaskRequest = {
+					requestId: `request${i}`,
+					requesterId: 'requester1',
+					taskType: 'taskType1',
+				};
+				const acceptPromise = taskBroker.acceptOffer(offer, request);
+				jest.advanceTimersByTime(2100);
+				await acceptPromise;
+			}
+
+			expect(lifecycleEvents.emit).not.toHaveBeenCalledWith(
+				'runner:unresponsive',
+				expect.anything(),
+			);
+
+			jest.useRealTimers();
+		});
 	});
 
 	describe('request timeout', () => {

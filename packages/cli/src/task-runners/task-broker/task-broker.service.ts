@@ -91,6 +91,24 @@ export class TaskBroker {
 
 	private pendingTaskRequests: TaskRequest[] = [];
 
+	/**
+	 * Per-runner count of consecutive `TaskRunnerAcceptTimeoutError`s. Reset on
+	 * a successful accept or on runner deregistration. When a runner reaches
+	 * {@link STUCK_RUNNER_ACCEPT_TIMEOUT_THRESHOLD}, the broker considers its
+	 * task channel stuck (transport-level heartbeat passes but the runner is
+	 * not processing application messages) and emits `runner:unresponsive` so
+	 * the WebSocket layer can disconnect it. The launcher then restarts the
+	 * runner via the existing recovery path.
+	 */
+	private runnerConsecutiveAcceptTimeouts: Map<TaskRunner['id'], number> = new Map();
+
+	/**
+	 * Number of consecutive accept timeouts on a single runner that mark its
+	 * task channel as stuck. At the default 2s accept timeout this gives ~6s
+	 * detection latency for the bug described in n8n-io/n8n#29372.
+	 */
+	private static readonly STUCK_RUNNER_ACCEPT_TIMEOUT_THRESHOLD = 3;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
@@ -106,6 +124,31 @@ export class TaskBroker {
 		return setTimeout(() => {
 			this.handleRequestTimeout(requestId);
 		}, this.taskRunnersConfig.taskRequestTimeout * Time.seconds.toMilliseconds);
+	}
+
+	/**
+	 * Increment the consecutive accept-timeout counter for a runner; when the
+	 * configured threshold is reached, emit `runner:unresponsive` so the
+	 * WebSocket server can disconnect it. The runner's launcher then restarts
+	 * the process via the existing connection-loss recovery path.
+	 *
+	 * Background: the WebSocket-level heartbeat (ping/pong) only verifies
+	 * transport liveness. A runner can pass heartbeat while its application
+	 * message channel is stuck — see n8n-io/n8n#29372. Counting per-runner
+	 * accept timeouts surfaces real application-level health on an existing
+	 * signal, in line with the precedent set by n8n-io/n8n#25959.
+	 */
+	private recordAcceptTimeoutFor(runnerId: TaskRunner['id']) {
+		const count = (this.runnerConsecutiveAcceptTimeouts.get(runnerId) ?? 0) + 1;
+		this.runnerConsecutiveAcceptTimeouts.set(runnerId, count);
+
+		if (count >= TaskBroker.STUCK_RUNNER_ACCEPT_TIMEOUT_THRESHOLD) {
+			this.logger.warn(
+				`Runner (${runnerId}) failed to acknowledge ${count} consecutive task offers; treating as unresponsive`,
+			);
+			this.runnerConsecutiveAcceptTimeouts.delete(runnerId);
+			this.taskRunnerLifecycleEvents.emit('runner:unresponsive', { runnerId });
+		}
 	}
 
 	private handleRequestTimeout(requestId: string) {
@@ -142,6 +185,7 @@ export class TaskBroker {
 
 	deregisterRunner(runnerId: string, error: Error) {
 		this.knownRunners.delete(runnerId);
+		this.runnerConsecutiveAcceptTimeouts.delete(runnerId);
 
 		// Remove any pending offers
 		for (let i = this.pendingTaskOffers.length - 1; i >= 0; i--) {
@@ -572,12 +616,16 @@ export class TaskBroker {
 			}
 			if (e instanceof TaskRunnerAcceptTimeoutError) {
 				this.logger.warn(e.message);
+				this.recordAcceptTimeoutFor(offer.runnerId);
 				return;
 			}
 			throw e;
 		}
 
 		clearTimeout(request.timeout);
+
+		// Successful acceptance — clear the runner's consecutive-failure streak.
+		this.runnerConsecutiveAcceptTimeouts.delete(offer.runnerId);
 
 		const task: Task = {
 			id: taskId,
