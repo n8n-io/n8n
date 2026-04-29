@@ -32,7 +32,9 @@ jobs:
     env:
       # Each port hosts an independent n8n container; the eval CLI partitions
       # test cases across them, multiplying total throughput by the lane count.
-      LANE_PORTS: '5678,5679,5680'
+      # 5 lanes / 9 test cases → distribution 2-2-2-2-1 (slowest lane gets 6
+      # builds vs 9 with 3 or 4 lanes — first meaningful wall-clock win).
+      LANE_PORTS: '5678,5679,5680,5681,5682'
     permissions:
       contents: read
       pull-requests: write
@@ -82,9 +84,12 @@ jobs:
               -p "$port:5678" \
               n8nio/n8n:local
           done
+          # 120s budget per port: containers booting in parallel on a shared
+          # 4vcpu runner contend for CPU/disk during n8n's startup (DB migrations,
+          # license init), so each takes longer than a solo boot.
           for port in "${PORTS[@]}"; do
             ready=false
-            for i in $(seq 1 60); do
+            for i in $(seq 1 120); do
               if curl -s "http://localhost:$port/healthz/readiness" -o /dev/null -w "%{http_code}" | grep -q 200; then
                 echo "n8n on port $port ready after ${i}s"
                 ready=true
@@ -93,7 +98,7 @@ jobs:
               sleep 1
             done
             if [ "$ready" != "true" ]; then
-              echo "::error::n8n on port $port failed to start within 60s"
+              echo "::error::n8n on port $port failed to start within 120s"
               for n in $(docker ps -aq --filter "name=n8n-eval-"); do
                 echo "Logs for $n:"
                 docker logs "$n" --tail 30 || true

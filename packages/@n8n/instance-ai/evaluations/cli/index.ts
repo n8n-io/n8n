@@ -21,6 +21,7 @@ import { z } from 'zod';
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
+import { partitionRoundRobin } from './lanes';
 import { N8nClient } from '../clients/n8n-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
@@ -213,48 +214,65 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 
 	// Traceable wraps the actual build call *inside* the limiter — otherwise the
 	// LangSmith span would include queue-wait time, which accumulates across
-	// iterations as later builds queue behind earlier ones.
-	const laneStates: LaneState[] = lanes.map((lane) => ({
-		lane,
-		buildLimiter: pLimit(MAX_CONCURRENT_BUILDS),
-		buildCache: new Map<string, Promise<BuildResult>>(),
-		buildDurations: new Map<string, number>(),
-		tracedBuild: traceable(
-			async (prompt: string) =>
-				await buildWorkflow({
-					client: lane.client,
-					prompt,
-					timeoutMs: args.timeoutMs,
-					preRunWorkflowIds: lane.preRunWorkflowIds,
-					claimedWorkflowIds: lane.claimedWorkflowIds,
-					logger,
-				}),
-			{ name: 'workflow_build', run_type: 'chain', client: lsClient },
-		),
-		tracedExecute: traceable(
-			async (execArgs: {
-				workflowId: string;
-				scenario: TestScenario;
-				workflowJsons: BuildResult['workflowJsons'];
-			}) =>
-				await executeScenario(
-					lane.client,
-					execArgs.workflowId,
-					execArgs.scenario,
-					execArgs.workflowJsons,
-					logger,
-					args.timeoutMs,
-				),
-			{ name: 'scenario_execution', run_type: 'chain', client: lsClient },
-		),
-	}));
+	// iterations as later builds queue behind earlier ones. Lane metadata makes
+	// it possible to filter spans by lane in the LangSmith UI.
+	const laneStates: LaneState[] = lanes.map((lane, idx) => {
+		const laneNum = idx + 1;
+		return {
+			lane,
+			buildLimiter: pLimit(MAX_CONCURRENT_BUILDS),
+			buildCache: new Map<string, Promise<BuildResult>>(),
+			buildDurations: new Map<string, number>(),
+			tracedBuild: traceable(
+				async (prompt: string) =>
+					await buildWorkflow({
+						client: lane.client,
+						prompt,
+						timeoutMs: args.timeoutMs,
+						preRunWorkflowIds: lane.preRunWorkflowIds,
+						claimedWorkflowIds: lane.claimedWorkflowIds,
+						logger,
+					}),
+				{
+					name: 'workflow_build',
+					run_type: 'chain',
+					client: lsClient,
+					metadata: { lane: laneNum },
+				},
+			),
+			tracedExecute: traceable(
+				async (execArgs: {
+					workflowId: string;
+					scenario: TestScenario;
+					workflowJsons: BuildResult['workflowJsons'];
+				}) =>
+					await executeScenario(
+						lane.client,
+						execArgs.workflowId,
+						execArgs.scenario,
+						execArgs.workflowJsons,
+						logger,
+						args.timeoutMs,
+					),
+				{
+					name: 'scenario_execution',
+					run_type: 'chain',
+					client: lsClient,
+					metadata: { lane: laneNum },
+				},
+			),
+		};
+	});
 
-	// Map each test case file to a lane (round-robin in source order). Stable
-	// across calls so all scenarios + iterations of a given test case share the
-	// build cache on a single lane.
+	// Map each test case file to a lane (round-robin in source order via
+	// partitionRoundRobin). Stable across calls so all scenarios + iterations of
+	// a given test case share the build cache on a single lane.
 	const laneByFile = new Map<string, LaneState>();
-	testCasesWithFiles.forEach((tc, i) => {
-		laneByFile.set(tc.fileSlug, laneStates[i % laneStates.length]);
+	const laneBuckets = partitionRoundRobin(testCasesWithFiles, laneStates.length);
+	laneBuckets.forEach((bucket, laneIdx) => {
+		for (const tc of bucket) {
+			laneByFile.set(tc.fileSlug, laneStates[laneIdx]);
+		}
 	});
 
 	async function getOrBuild(
@@ -715,11 +733,8 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 	// Distribute test cases across lanes by source-order index. Each bucket carries
 	// the original index so we can re-sort lane outputs back to source order — the
 	// aggregator indexes per-iteration results positionally.
-	const buckets = lanes.map((_, laneIdx) =>
-		testCasesWithFiles
-			.map((tc, origIdx) => ({ tc, origIdx }))
-			.filter(({ origIdx }) => origIdx % lanes.length === laneIdx),
-	);
+	const indexed = testCasesWithFiles.map((tc, origIdx) => ({ tc, origIdx }));
+	const buckets = partitionRoundRobin(indexed, lanes.length);
 
 	const allRunResults: WorkflowTestCaseResult[][] = [];
 	for (let iter = 0; iter < args.iterations; iter++) {

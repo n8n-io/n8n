@@ -656,6 +656,12 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 
 	config.logger.verbose('Sub-agent(s) detected -- waiting for background tasks...');
 
+	// Log on count change, plus a heartbeat every 20s so a long stable wait still
+	// emits a liveness signal without spamming every poll interval.
+	const HEARTBEAT_MS = 20_000;
+	let lastLoggedKey = '';
+	let lastLogAt = 0;
+
 	while (Date.now() < deadline) {
 		await processConfirmationRequests(config);
 
@@ -673,9 +679,15 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 			return;
 		}
 
-		config.logger.verbose(
-			`Waiting for ${String(restRunning.length)} REST task(s), ${String(ssePending.length)} SSE agent(s)`,
-		);
+		const key = `${String(restRunning.length)}/${String(ssePending.length)}`;
+		const now = Date.now();
+		if (key !== lastLoggedKey || now - lastLogAt >= HEARTBEAT_MS) {
+			config.logger.verbose(
+				`Waiting for ${String(restRunning.length)} REST task(s), ${String(ssePending.length)} SSE agent(s)`,
+			);
+			lastLoggedKey = key;
+			lastLogAt = now;
+		}
 
 		await delay(BACKGROUND_TASK_POLL_INTERVAL_MS);
 	}
