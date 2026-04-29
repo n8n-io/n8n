@@ -129,12 +129,14 @@ export interface AgentPublishedVersionDto {
  * introduce additional kinds.
  */
 export interface AgentPersistedMessageContentPart {
-	type: 'text' | 'reasoning' | 'tool-call' | 'tool-result' | (string & {});
+	type: 'text' | 'reasoning' | 'tool-call' | (string & {});
 	text?: string;
 	toolName?: string;
 	toolCallId?: string;
 	input?: unknown;
-	result?: unknown;
+	state?: string;
+	output?: unknown;
+	error?: string;
 }
 
 /**
@@ -148,7 +150,7 @@ export interface AgentPersistedMessageContentPart {
  */
 export interface AgentPersistedMessageDto {
 	id: string;
-	role: 'user' | 'assistant' | 'tool' | (string & {});
+	role: 'user' | 'assistant' | (string & {});
 	content: AgentPersistedMessageContentPart[];
 }
 
