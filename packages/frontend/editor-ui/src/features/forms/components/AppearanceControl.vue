@@ -103,7 +103,7 @@ const opacityValue = computed({
 
 .control {
 	flex-shrink: 0;
-	width: 130px;
+	width: 200px;
 	display: flex;
 	align-items: center;
 

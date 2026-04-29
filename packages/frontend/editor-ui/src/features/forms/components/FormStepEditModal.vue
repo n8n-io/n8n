@@ -84,12 +84,6 @@ function onReset() {
 					<div :class="$style.controlsPane">
 						<div :class="$style.headerRow">
 							<span :class="$style.nodeName">{{ node?.name }}</span>
-							<div :class="$style.scopeControl">
-								<span :class="$style.scopeLabel">{{
-									i18n.baseText('formStep.appearance.applyToAll')
-								}}</span>
-								<N8nSwitch2 v-model="applyToAll" size="large" />
-							</div>
 						</div>
 						<AppearanceTab
 							:model-value="appearance.localOverrides.value"
@@ -98,20 +92,28 @@ function onReset() {
 							@update:append-attribution="(v) => (appearance.localAppendAttribution.value = v)"
 						/>
 						<div :class="$style.footer">
-							<N8nButton
-								variant="subtle"
-								:label="i18n.baseText('formStep.appearance.reset')"
-								@click="onReset"
-							/>
-							<N8nButton variant="solid" :class="$style.saveButton" @click="onSave">
-								<span :class="$style.saveContent">
-									<span :class="$style.saveSide">
-										<span v-if="appearance.hasUnsavedChanges.value" :class="$style.unsavedDot" />
+							<div :class="$style.scopeControl">
+								<span :class="$style.scopeLabel">{{
+									i18n.baseText('formStep.appearance.applyToAll')
+								}}</span>
+								<N8nSwitch2 v-model="applyToAll" size="small" />
+							</div>
+							<div :class="$style.footerButtons">
+								<N8nButton
+									variant="subtle"
+									:label="i18n.baseText('formStep.appearance.reset')"
+									@click="onReset"
+								/>
+								<N8nButton variant="solid" :class="$style.saveButton" @click="onSave">
+									<span :class="$style.saveContent">
+										<span :class="$style.saveSide">
+											<span v-if="appearance.hasUnsavedChanges.value" :class="$style.unsavedDot" />
+										</span>
+										<span>{{ i18n.baseText('formStep.appearance.save') }}</span>
+										<span :class="$style.saveSide" />
 									</span>
-									<span>{{ i18n.baseText('formStep.appearance.save') }}</span>
-									<span :class="$style.saveSide" />
-								</span>
-							</N8nButton>
+								</N8nButton>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -130,14 +132,12 @@ function onReset() {
 .headerRow {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
 	padding: var(--spacing--3xs) 0;
 	margin-bottom: var(--spacing--sm);
-	border-bottom: var(--border);
 }
 
 .nodeName {
-	font-size: var(--font-size--md);
+	font-size: var(--font-size--xl);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text--shade-1);
 }
@@ -149,7 +149,7 @@ function onReset() {
 }
 
 .scopeLabel {
-	font-size: var(--font-size--sm);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 }
 
@@ -216,10 +216,16 @@ function onReset() {
 
 .footer {
 	display: flex;
-	justify-content: flex-end;
-	gap: var(--spacing--xs);
+	align-items: center;
+	justify-content: space-between;
 	padding-top: var(--spacing--sm);
 	margin-top: auto;
+	border-top: var(--border);
+}
+
+.footerButtons {
+	display: flex;
+	gap: var(--spacing--xs);
 }
 
 .saveButton {
