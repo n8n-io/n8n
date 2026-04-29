@@ -6,7 +6,7 @@ exports[`N8nDropdownMenu > disabled state > should render trigger with disabled 
   aria-expanded="false"
   aria-haspopup="menu"
   aria-live="polite"
-  class="button button ghost xsmall iconOnly disabled"
+  class="button button ghost xsmall iconOnly disabled is-disabled"
   data-disabled=""
   data-icon-only="true"
   data-state="closed"

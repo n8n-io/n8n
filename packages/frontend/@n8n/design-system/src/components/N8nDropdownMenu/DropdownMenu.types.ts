@@ -30,6 +30,8 @@ export type DropdownMenuTrigger = 'click' | 'hover';
 export type DropdownMenuItemProps<T = string, D = never> = {
 	/** Unique identifier for the item */
 	id: T;
+	/** Test id rendered on the menu item element */
+	testId?: string;
 	/** Display text for the item */
 	label: string;
 	/** Icon or emoji displayed before the label */
@@ -63,6 +65,8 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 export interface DropdownMenuProps<T = string, D = never> {
 	/** Unique identifier for the dropdown */
 	id?: string;
+	/** Test id rendered on the dropdown content element */
+	contentTestId?: string;
 	/** Portal target element (e.g. pop-out window's document.body). When set, portals content to the specified element. Use with `modal: false` in cross-window contexts. */
 	portalTarget?: string | HTMLElement;
 	/** When true (default), blocks interaction with the rest of the page while open (reka-ui sets pointer-events:none on body and locks scroll). */
@@ -91,6 +95,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	loadingItemCount?: number;
 	/** Additional CSS class for the dropdown popper */
 	extraPopperClass?: string;
+	/** Test id rendered on the dropdown trigger element */
+	dataTestId?: string;
 	/** Enable search functionality */
 	searchable?: boolean;
 	/** Search input placeholder */

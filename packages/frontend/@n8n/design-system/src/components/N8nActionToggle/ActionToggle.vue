@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string">
-import { computed, ref } from 'vue';
+import { computed, getCurrentInstance, ref } from 'vue';
 
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
@@ -46,10 +46,12 @@ const emit = defineEmits<{
 }>();
 
 const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
+const dropdownId = `n8n-action-toggle-dropdown-${getCurrentInstance()?.uid ?? 0}`;
 
 const items = computed((): Array<DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>> => {
 	return props.actions.map((action) => ({
 		id: (action.id ?? action.value) as ActionValue,
+		testId: `action-${String(action.id ?? action.value)}`,
 		label: action.label,
 		disabled: action.disabled,
 		data: action,
@@ -69,11 +71,19 @@ const onItemMouseUp = (item: DropdownMenuItemProps<ActionValue, ActionToggleItem
 };
 
 const openActionToggle = (isOpen: boolean) => {
+	if (props.disabled) {
+		return;
+	}
+
 	if (isOpen) {
 		dropdownRef.value?.open();
 	} else {
 		dropdownRef.value?.close();
 	}
+};
+
+const onContainerClick = () => {
+	openActionToggle(true);
 };
 
 defineExpose({
@@ -82,10 +92,17 @@ defineExpose({
 </script>
 
 <template>
-	<span class="action-toggle" :class="$style.container" data-test-id="action-toggle">
+	<span
+		class="action-toggle"
+		:class="$style.container"
+		data-test-id="action-toggle"
+		@click="onContainerClick"
+	>
 		<N8nDropdownMenu
 			ref="dropdownRef"
+			:id="dropdownId"
 			:items="items"
+			content-test-id="action-toggle-dropdown"
 			:placement="placement"
 			:disabled="disabled"
 			:trigger="trigger"
@@ -103,6 +120,9 @@ defineExpose({
 							variant="ghost"
 							:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
 							size="small"
+							:disabled="disabled"
+							role="button"
+							:aria-controls="dropdownId"
 						/>
 					</span>
 				</slot>

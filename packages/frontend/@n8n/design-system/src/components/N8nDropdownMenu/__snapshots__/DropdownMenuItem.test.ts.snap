@@ -2,7 +2,7 @@
 
 exports[`N8nDropdownMenuItem > rendering > should render checked item with checkmark 1`] = `
 <div
-  class="item"
+  class="item el-dropdown-menu__item"
   data-reka-collection-item=""
   role="menuitem"
   tabindex="-1"
@@ -52,7 +52,7 @@ exports[`N8nDropdownMenuItem > rendering > should render checked item with check
 exports[`N8nDropdownMenuItem > rendering > should render disabled item 1`] = `
 <div
   aria-disabled="true"
-  class="item"
+  class="item el-dropdown-menu__item is-disabled"
   data-disabled=""
   data-reka-collection-item=""
   role="menuitem"
@@ -84,7 +84,7 @@ exports[`N8nDropdownMenuItem > rendering > should render disabled item 1`] = `
 
 exports[`N8nDropdownMenuItem > rendering > should render highlighted item 1`] = `
 <div
-  class="item highlighted"
+  class="item el-dropdown-menu__item highlighted"
   data-reka-collection-item=""
   role="menuitem"
   tabindex="-1"
@@ -115,7 +115,7 @@ exports[`N8nDropdownMenuItem > rendering > should render highlighted item 1`] = 
 
 exports[`N8nDropdownMenuItem > rendering > should render item with emoji 1`] = `
 <div
-  class="item"
+  class="item el-dropdown-menu__item"
   data-reka-collection-item=""
   role="menuitem"
   tabindex="-1"
@@ -150,7 +150,7 @@ exports[`N8nDropdownMenuItem > rendering > should render item with emoji 1`] = `
 
 exports[`N8nDropdownMenuItem > rendering > should render item with icon 1`] = `
 <div
-  class="item"
+  class="item el-dropdown-menu__item"
   data-reka-collection-item=""
   role="menuitem"
   tabindex="-1"
@@ -207,7 +207,7 @@ exports[`N8nDropdownMenuItem > rendering > should render item with icon 1`] = `
 
 exports[`N8nDropdownMenuItem > rendering > should render item with label 1`] = `
 <div
-  class="item"
+  class="item el-dropdown-menu__item"
   data-reka-collection-item=""
   role="menuitem"
   tabindex="-1"
@@ -251,7 +251,7 @@ exports[`N8nDropdownMenuItem > rendering > should render separator when divided 
   
   <!-- Regular item without children -->
   <div
-    class="item"
+    class="item el-dropdown-menu__item"
     data-reka-collection-item=""
     role="menuitem"
     tabindex="-1"
@@ -287,7 +287,7 @@ exports[`N8nDropdownMenuItem > rendering > should render sub-menu trigger when h
   aria-controls=""
   aria-expanded="false"
   aria-haspopup="menu"
-  class="item sub-trigger"
+  class="item sub-trigger el-dropdown-menu__item"
   data-reka-collection-item=""
   data-state="closed"
   id="reka-menu-sub-trigger-v-1"

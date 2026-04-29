@@ -61,6 +61,7 @@ const classes = computed(() =>
 		props.loading && $style.loading,
 		props.iconOnly && $style.iconOnly,
 		props.disabled && $style.disabled,
+		isDisabled.value && 'is-disabled',
 		props.class,
 	),
 );

@@ -162,10 +162,13 @@ watch(
 		>
 			<DropdownMenuSubTrigger
 				:disabled="disabled"
+				:data-test-id="testId"
 				:class="[
 					$style.item,
 					$style['sub-trigger'],
+					'el-dropdown-menu__item',
 					props.class,
+					{ 'is-disabled': !!disabled },
 					{ [$style.highlighted]: highlighted },
 				]"
 			>
@@ -267,7 +270,14 @@ watch(
 		<DropdownMenuItem
 			v-else
 			:disabled="disabled"
-			:class="[$style.item, props.class, { [$style.highlighted]: highlighted }]"
+			:data-test-id="testId"
+			:class="[
+				$style.item,
+				'el-dropdown-menu__item',
+				props.class,
+				{ 'is-disabled': !!disabled },
+				{ [$style.highlighted]: highlighted },
+			]"
 			@select="handleItemSelect"
 		>
 			<slot name="item-leading" :item="props" :ui="leadingProps">

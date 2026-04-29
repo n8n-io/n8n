@@ -1,11 +1,11 @@
 <script setup lang="ts" generic="T extends string">
-import { computed, ref, useCssModule } from 'vue';
+import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
 import N8nBadge from '../N8nBadge';
-import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
@@ -42,15 +42,30 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 });
 
 const $style = useCssModule();
+const attrs = useAttrs();
+
+const dropdownTestId = computed(() => {
+	const testId = attrs['data-test-id'];
+	return typeof testId === 'string' ? testId : undefined;
+});
+
+const getItemTestId = (id: T): string => {
+	if (dropdownTestId.value) {
+		return `${dropdownTestId.value}-item-${id}`;
+	}
+
+	return `action-dropdown-item-${id}`;
+};
 
 const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
 	return props.items.map((item) => ({
 		id: item.id,
+		testId: getItemTestId(item.id),
 		label: item.label,
-		icon: item.icon ? { type: 'icon' as const, value: item.icon as IconName } : undefined,
+		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
 		disabled: item.disabled,
 		divided: item.divided,
-		checked: item.checked,
+		class: getItemClasses(item),
 		data: item,
 	}));
 });
@@ -66,10 +81,19 @@ const onOpenChange = (open: boolean) => emit('visibleChange', open);
 const onBadgeClick = (action: T) => emit('badge-click', action);
 
 const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
+const dropdownId = `n8n-action-dropdown-${getCurrentInstance()?.uid ?? 0}`;
 
 const open = () => dropdownRef.value?.open();
 const close = () => dropdownRef.value?.close();
 defineExpose({ open, close });
+
+const onContainerClick = () => {
+	if (props.disabled) {
+		return;
+	}
+
+	open();
+};
 
 const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
 	return {
@@ -82,9 +106,13 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 </script>
 
 <template>
-	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
+	<div
+		:class="['action-dropdown-container', $style.actionDropdownContainer]"
+		@click="onContainerClick"
+	>
 		<N8nDropdownMenu
 			ref="dropdownRef"
+			:id="dropdownId"
 			:items="items"
 			:placement="placement"
 			:trigger="trigger"
@@ -102,44 +130,49 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					:class="$style.activator"
 					:size="activatorSize"
 					:icon="activatorIcon"
+					:disabled="disabled"
 					:aria-label="t('actionDropdown.activator')"
+					:aria-controls="dropdownId"
 				/>
 			</template>
-			<template #item="slotProps">
-				<div
-					v-if="slotProps.item.data"
-					:class="getItemClasses(slotProps.item.data as ActionDropdownItem<T>)"
-					:data-test-id="`action-dropdown-item-${slotProps.item.id}`"
+			<template #item-leading="slotProps">
+				<span
+					v-if="slotProps.item.icon?.type === 'icon'"
+					:class="[slotProps.ui.class, $style.icon]"
 				>
-					<span v-if="slotProps.item.icon" :class="$style.icon">
-						<N8nIcon :icon="slotProps.item.icon.value as IconName" :size="iconSize" />
-					</span>
-					<span :class="$style.label">
-						<slot name="menuItem" v-bind="slotProps.item.data">
-							{{ slotProps.item.data.label }}
-						</slot>
-					</span>
+					<N8nIcon :icon="slotProps.item.icon.value" :size="iconSize" />
+				</span>
+			</template>
+			<template #item-label="slotProps">
+				<span :class="[slotProps.ui.class, $style.label]">
+					<slot name="menuItem" v-bind="slotProps.item.data as ActionDropdownItem<T>">
+						{{ slotProps.item.data?.label ?? slotProps.item.label }}
+					</slot>
+				</span>
+			</template>
+			<template #item-trailing="slotProps">
+				<span :class="slotProps.ui.class">
 					<N8nIcon
-						v-if="slotProps.item.checked"
+						v-if="slotProps.item.data?.checked"
 						:class="$style.checkIcon"
 						icon="check"
 						:size="iconSize"
 					/>
 					<span
-						v-if="slotProps.item.data.badge"
-						:class="{ [$style.clickableBadge]: slotProps.item.data.disabled }"
-						@click.stop="slotProps.item.data.disabled && onBadgeClick(slotProps.item.id)"
+						v-if="slotProps.item.data?.badge"
+						:class="{ [$style.clickableBadge]: !!slotProps.item.data?.disabled }"
+						@click.stop="slotProps.item.data?.disabled && onBadgeClick(slotProps.item.id)"
 					>
 						<N8nBadge theme="primary" size="xsmall" v-bind="slotProps.item.data.badgeProps">
 							{{ slotProps.item.data.badge }}
 						</N8nBadge>
 					</span>
 					<N8nKeyboardShortcut
-						v-if="slotProps.item.data.shortcut"
+						v-if="slotProps.item.data?.shortcut"
 						v-bind="slotProps.item.data.shortcut"
 						:class="$style.shortcut"
 					/>
-				</div>
+				</span>
 			</template>
 		</N8nDropdownMenu>
 	</div>

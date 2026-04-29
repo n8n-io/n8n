@@ -277,10 +277,19 @@ defineExpose({ open, close });
 <template>
 	<DropdownMenuRoot :modal="modal" :open="openState" @update:open="handleOpenChange">
 		<DropdownMenuTrigger as-child :disabled="disabled">
-			<slot name="trigger" v-if="slots.trigger" />
+			<span
+				v-if="slots.trigger"
+				:class="$style.trigger"
+				:data-test-id="dataTestId"
+				@pointerenter="triggerHoverEnter"
+				@pointerleave="triggerHoverLeave"
+			>
+				<slot name="trigger" />
+			</span>
 			<N8nButton
 				v-else
 				:icon="activatorIcon?.type === 'icon' ? activatorIcon.value : undefined"
+				:data-test-id="dataTestId"
 				:disabled="disabled"
 				:icon-only="true"
 				variant="ghost"
@@ -299,7 +308,8 @@ defineExpose({ open, close });
 			v-bind="portalTarget ? { to: portalTarget } : {}"
 		>
 			<DropdownMenuContent
-				:id="id"
+				v-bind="id ? { id } : {}"
+				:data-test-id="contentTestId"
 				ref="contentRef"
 				:class="[$style.content, extraPopperClass]"
 				data-menu-content
@@ -493,5 +503,9 @@ defineExpose({ open, close });
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--sm);
 	text-align: center;
+}
+
+.trigger {
+	display: inline-flex;
 }
 </style>

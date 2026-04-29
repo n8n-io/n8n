@@ -2,8 +2,8 @@
 import { computed, ref, watch } from 'vue';
 
 import type { IUser } from '../../types';
-import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nActionToggle from '../N8nActionToggle';
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nLink from '../N8nLink';
 import N8nLoading from '../N8nLoading';
 import N8nText from '../N8nText';

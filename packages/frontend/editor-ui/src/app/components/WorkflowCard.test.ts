@@ -178,7 +178,7 @@ describe('WorkflowCard', () => {
 		if (!actions) {
 			throw new Error('Actions menu not found');
 		}
-		await userEvent.click(actions.querySelectorAll('li')[0]);
+		await userEvent.click(within(actions).getByTestId('action-open'));
 		expect(actions).not.toHaveTextContent('Move');
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
