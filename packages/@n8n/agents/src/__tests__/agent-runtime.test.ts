@@ -6,7 +6,7 @@ import { isLlmMessage } from '../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
-import type { ContentToolResult, Message } from '../types/sdk/message';
+import type { ContentToolCall, Message } from '../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext } from '../types/sdk/tool';
 import type { BuiltTelemetry } from '../types/telemetry';
 
@@ -903,7 +903,7 @@ describe('AgentRuntime — concurrent tool execution', () => {
 	it('tool error produces an error tool-result in the message list and loop continues', async () => {
 		type ToolOutputContent = {
 			type: string;
-			output?: { type: string; value?: { error?: string } };
+			output?: { type: string; value?: unknown };
 		};
 		type ToolMessage = { role: string; content: ToolOutputContent[] };
 		const receivedMessages: unknown[] = [];
@@ -930,13 +930,15 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect(result.finishReason).toBe('stop');
 		// LLM was called a second time — it saw the error tool result and continued
 		expect(generateText).toHaveBeenCalledTimes(2);
-		// The second LLM call received a tool message whose output carries the error description
+		// The second LLM call received a tool message whose output carries the error description.
 		const toolMsg = receivedMessages.find(
 			(m): m is ToolMessage =>
 				typeof m === 'object' && m !== null && (m as ToolMessage).role === 'tool',
 		);
 		expect(toolMsg).toBeDefined();
-		const hasErrorOutput = toolMsg!.content.some((c) => !!c.output?.value?.error);
+		const hasErrorOutput = toolMsg!.content.some(
+			(c) => c.output?.type === 'error-text' || c.output?.type === 'error-json',
+		);
 		expect(hasErrorOutput).toBe(true);
 	});
 
@@ -1552,17 +1554,14 @@ describe('AgentRuntime — runtime input schema validation', () => {
 		// the LLM responds with 'done' on the next turn.
 		expect(result.finishReason).toBe('stop');
 
-		const toolErrorMessage = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool' && m.content[0].type === 'tool-result',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		expect(toolErrorMessage).toBeDefined();
-		const content = toolErrorMessage.content[0] as ContentToolResult;
-		expect(content.result).toEqual(
-			expect.objectContaining({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				error: expect.stringContaining('Expected string, received number'),
-			}),
-		);
+		expect(assistantMsg).toBeDefined();
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Expected string, received number');
 	});
 });
 
@@ -1601,13 +1600,14 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		const result = await runtime.generate('go');
 		expect(result.finishReason).toBe('stop');
 
-		// No tool-result error — the tool ran successfully
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		// No error — the tool ran successfully
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		expect(toolResultMsg).toBeDefined();
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBeFalsy();
+		expect(assistantMsg).toBeDefined();
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('resolved');
 	});
 
 	it('surfaces a validation error as a tool error outcome when LLM provides the wrong type', async () => {
@@ -1637,13 +1637,14 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		const result = await runtime.generate('go');
 		expect(result.finishReason).toBe('stop');
 
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		expect(toolResultMsg).toBeDefined();
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBe(true);
-		expect(JSON.stringify(content.result)).toContain('Invalid tool input');
+		expect(assistantMsg).toBeDefined();
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Invalid tool input');
 	});
 
 	it('surfaces a validation error when a required property is missing', async () => {
@@ -1676,12 +1677,13 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		const result = await runtime.generate('go');
 		expect(result.finishReason).toBe('stop');
 
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBe(true);
-		expect(JSON.stringify(content.result)).toContain('Invalid tool input');
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Invalid tool input');
 	});
 
 	it('does not invoke the handler when JSON Schema validation fails', async () => {
@@ -1758,11 +1760,12 @@ describe('AgentRuntime — Tool builder with JSON Schema input', () => {
 			expect.anything(),
 		);
 
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBeFalsy();
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('resolved');
 	});
 
 	it('produces a tool error when the LLM sends input that fails JSON Schema validation', async () => {
@@ -1799,12 +1802,13 @@ describe('AgentRuntime — Tool builder with JSON Schema input', () => {
 		// Handler must not be called — validation should block execution
 		expect(handlerFn).not.toHaveBeenCalled();
 
-		const toolResultMsg = result.messages.find(
-			(m) => isLlmMessage(m) && m.role === 'tool',
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
 		) as Message;
-		const content = toolResultMsg.content[0] as ContentToolResult;
-		expect(content.isError).toBe(true);
-		expect(JSON.stringify(content.result)).toContain('Invalid tool input');
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state).toBe('rejected');
+		expect(call.state === 'rejected' && call.error).toContain('Invalid tool input');
 	});
 
 	it('validates enum and pattern constraints defined in JSON Schema', async () => {

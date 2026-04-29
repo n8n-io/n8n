@@ -9,7 +9,9 @@ export function contentPartToDto(part: MessageContent): AgentPersistedMessageCon
 		dto.toolCallId = part.toolCallId;
 	}
 	if ('input' in part) dto.input = part.input;
-	if ('result' in part) dto.result = part.result;
+	if ('state' in part && typeof part.state === 'string') dto.state = part.state;
+	if ('output' in part) dto.output = part.output;
+	if ('error' in part && typeof part.error === 'string') dto.error = part.error;
 	return dto;
 }
 

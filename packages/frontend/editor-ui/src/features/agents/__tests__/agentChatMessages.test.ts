@@ -79,7 +79,7 @@ describe('rebuildInteractiveFromHistory', () => {
 });
 
 describe('convertDbMessages — interactive turn synthesis', () => {
-	it('reconstructs an OPEN interactive card when only the assistant message is persisted (suspended turn from checkpoint)', () => {
+	it('reconstructs an OPEN interactive card when tool-call block has state:pending', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
 				id: 'm1',
@@ -95,6 +95,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 						toolName: ASK_LLM_TOOL_NAME,
 						toolCallId: 'call-llm-1',
 						input: { purpose: 'main' },
+						state: 'pending',
 					},
 				],
 			},
@@ -110,7 +111,7 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('suspended');
 	});
 
-	it('reconstructs a RESOLVED interactive card when both assistant + tool-result are persisted', () => {
+	it('reconstructs a RESOLVED interactive card when tool-call block has state:resolved', () => {
 		const dbMessages: AgentPersistedMessageDto[] = [
 			{
 				id: 'm1',
@@ -127,31 +128,71 @@ describe('convertDbMessages — interactive turn synthesis', () => {
 								{ label: 'Discord', value: 'discord' },
 							],
 						},
-					},
-				],
-			},
-			{
-				id: 'm2',
-				role: 'tool',
-				content: [
-					{
-						type: 'tool-result',
-						toolName: ASK_QUESTION_TOOL_NAME,
-						toolCallId: 'q-1',
-						result: { values: ['slack'] },
+						state: 'resolved',
+						output: { values: ['slack'] },
 					},
 				],
 			},
 		];
 
 		const chat = convertDbMessages(dbMessages);
-		// Tool messages don't produce their own ChatMessage — they patch the assistant.
 		expect(chat).toHaveLength(1);
 		const assistant = chat[0];
 		expect(assistant.toolCalls?.[0].state).toBe('done');
+		expect(assistant.toolCalls?.[0].output).toEqual({ values: ['slack'] });
 		expect(assistant.interactive?.toolName).toBe(ASK_QUESTION_TOOL_NAME);
 		expect(assistant.interactive?.resolvedAt).toBeDefined();
 		expect(assistant.interactive?.resolvedValue).toEqual({ values: ['slack'] });
+	});
+
+	it('sets state:error when tool-call block is rejected', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'delete_file',
+						toolCallId: 'tc-1',
+						input: { path: '/tmp/foo.txt' },
+						state: 'rejected',
+						error: 'Error: permission denied',
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat).toHaveLength(1);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('error');
+		expect(tc?.output).toBe('Error: permission denied');
+	});
+
+	it('treats state:resolved non-interactive tool call as done with output', () => {
+		const dbMessages: AgentPersistedMessageDto[] = [
+			{
+				id: 'm1',
+				role: 'assistant',
+				content: [
+					{
+						type: 'tool-call',
+						toolName: 'search_nodes',
+						toolCallId: 'tc-2',
+						input: { query: 'Slack' },
+						state: 'resolved',
+						output: [{ name: 'Slack' }],
+					},
+				],
+			},
+		];
+
+		const chat = convertDbMessages(dbMessages);
+		expect(chat).toHaveLength(1);
+		const tc = chat[0].toolCalls?.[0];
+		expect(tc?.state).toBe('done');
+		expect(tc?.output).toEqual([{ name: 'Slack' }]);
 	});
 });
 

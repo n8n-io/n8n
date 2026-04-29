@@ -8,8 +8,9 @@ import type {
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { LessThan } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentMessageEntity } from '../entities/agent-message.entity';
+import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
@@ -114,20 +115,27 @@ export class N8nMemory implements BuiltMemory {
 	}): Promise<void> {
 		if (args.messages.length === 0) return;
 
+		// Upsert by id — bulk INSERT … ON CONFLICT (id) DO UPDATE avoids the
+		// per-row SELECT that save() performs. createdAt is passed explicitly so
+		// the column is preserved on conflict; updatedAt is set manually because
+		// the @BeforeUpdate hook does not fire during upsert.
+		const now = new Date();
 		const entities = args.messages.map((dbMsg) => {
 			const role = 'role' in dbMsg ? (dbMsg.role as string) : 'custom';
 			const type = 'type' in dbMsg ? (dbMsg.type as string) : null;
-			return this.messageRepository.create({
+			return {
 				id: dbMsg.id,
 				threadId: args.threadId,
 				resourceId: args.resourceId,
 				role,
 				type: type ?? null,
 				content: dbMsg as unknown as Record<string, unknown>,
-			});
+				createdAt: dbMsg.createdAt,
+				updatedAt: now,
+			} as QueryDeepPartialEntity<AgentMessageEntity>;
 		});
 
-		await this.messageRepository.save(entities);
+		await this.messageRepository.upsert(entities, ['id']);
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {
