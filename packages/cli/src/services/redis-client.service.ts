@@ -7,7 +7,6 @@ import dns from 'dns';
 import { readFileSync } from 'fs';
 import ioRedis from 'ioredis';
 import type { Cluster, ClusterOptions, DNSLookupFunction, RedisOptions } from 'ioredis';
-import { InstanceSettings } from 'n8n-core';
 import { isAbsolute } from 'path';
 
 import { TypedEmitter } from '@/typed-emitter';
@@ -91,7 +90,6 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	constructor(
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
-		private readonly instanceSettings: InstanceSettings,
 	) {
 		super();
 
