@@ -24,9 +24,8 @@ import {
 	N8nInput,
 	N8nLink,
 	N8nLoading,
-	N8nOption,
 	N8nRecycleScroller,
-	N8nSelect,
+	N8nSelect2 as N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
 type UIConfig = {
@@ -351,6 +350,14 @@ const hasOnlyFiltersThatShowMoreResults = computed(() => {
 	});
 });
 
+const sortItems = computed(() =>
+	props.sortOptions.map((sortOption) => ({
+		value: sortOption,
+		label: getResourceText(`sort.${sortOption}`, `sort.${sortOption}`),
+		'data-test-id': 'resources-list-sort-item',
+	})),
+);
+
 const hasAppliedFilters = (): boolean => {
 	return !!filterKeys.value.find(isFilterApplied);
 };
@@ -645,17 +652,10 @@ defineExpose({
 									v-model="sortBy"
 									size="small"
 									:class="$style.resourceList"
+									:items="sortItems"
 									data-test-id="resources-list-sort"
-									@change="setSorting(sortBy)"
-								>
-									<N8nOption
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
-									/>
-								</N8nSelect>
+									@update:model-value="setSorting(String($event))"
+								/>
 							</div>
 							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
 								<ResourceFiltersDropdown

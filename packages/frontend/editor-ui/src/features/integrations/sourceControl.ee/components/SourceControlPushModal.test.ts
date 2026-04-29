@@ -1393,7 +1393,9 @@ describe('SourceControlPushModal', () => {
 
 			expect(getByTestId('source-control-status-filter')).toBeVisible();
 
-			await userEvent.click(getByTestId('source-control-status-filter'));
+			await userEvent.click(
+				within(getByTestId('source-control-status-filter')).getByRole('combobox'),
+			);
 
 			const menu = getAllByTestId('source-control-status-filter-option')[0]
 				.parentElement as HTMLElement;

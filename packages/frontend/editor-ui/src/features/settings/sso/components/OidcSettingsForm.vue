@@ -4,7 +4,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
-import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nSelect2 as N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -66,6 +66,18 @@ const promptDescriptions: PromptDescription[] = [
 		value: 'select_account',
 	},
 	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
+];
+
+const promptItems = computed(() =>
+	promptDescriptions.map((option) => ({
+		...option,
+		'data-test-id': 'oidc-prompt-filter-option',
+	})),
+);
+
+const ssoToggleItems = [
+	{ value: 'enabled', label: 'Enabled' },
+	{ value: 'disabled', label: 'Disabled' },
 ];
 
 const authenticationContextClassReference = ref('');
@@ -296,17 +308,10 @@ onMounted(async () => {
 				<N8nSelect
 					:model-value="prompt"
 					:disabled="isSsoManagedByEnv"
+					:items="promptItems"
 					data-test-id="oidc-prompt"
 					@update:model-value="handlePromptChange"
-				>
-					<N8nOption
-						v-for="option in promptDescriptions"
-						:key="option.value"
-						:label="option.label"
-						data-test-id="oidc-prompt-filter-option"
-						:value="option.value"
-					/>
-				</N8nSelect>
+				/>
 				<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 			</div>
 		</div>
@@ -360,6 +365,7 @@ onMounted(async () => {
 					<N8nSelect
 						:model-value="ssoStore.isOidcLoginEnabled ? 'enabled' : 'disabled'"
 						size="medium"
+						:items="ssoToggleItems"
 						data-test-id="sso-oidc-toggle"
 						:disabled="isSsoManagedByEnv"
 						@update:model-value="ssoStore.isOidcLoginEnabled = $event === 'enabled'"
@@ -367,8 +373,6 @@ onMounted(async () => {
 						<template #prefix>
 							<span v-if="ssoStore.isOidcLoginEnabled" :class="$style.greenDot" />
 						</template>
-						<N8nOption value="enabled" label="Enabled" />
-						<N8nOption value="disabled" label="Disabled" />
 					</N8nSelect>
 				</div>
 			</div>

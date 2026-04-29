@@ -96,8 +96,7 @@ import {
 	N8nInputLabel,
 	N8nLink,
 	N8nLoading,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2 as N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -389,14 +388,17 @@ const statusFilterOptions = computed(() => [
 	{
 		label: i18n.baseText('workflows.filters.status.all'),
 		value: StatusFilter.ALL,
+		'data-test-id': 'status',
 	},
 	{
 		label: i18n.baseText('workflows.filters.status.active'),
 		value: StatusFilter.ACTIVE,
+		'data-test-id': 'status',
 	},
 	{
 		label: i18n.baseText('workflows.filters.status.deactivated'),
 		value: StatusFilter.DEACTIVATED,
+		'data-test-id': 'status',
 	},
 ]);
 
@@ -2099,18 +2101,10 @@ const onNameSubmit = async (name: string) => {
 				/>
 				<N8nSelect
 					data-test-id="status-dropdown"
-					:model-value="filters.status"
-					@update:model-value="setKeyValue('status', $event)"
-				>
-					<N8nOption
-						v-for="option in statusFilterOptions"
-						:key="option.label"
-						:label="option.label"
-						:value="option.value"
-						data-test-id="status"
-					>
-					</N8nOption>
-				</N8nSelect>
+					:model-value="String(filters.status ?? '')"
+					:items="statusFilterOptions"
+					@update:model-value="setKeyValue('status', String($event))"
+				/>
 			</div>
 			<div class="mb-s">
 				<N8nCheckbox

@@ -10,7 +10,13 @@ import {
 	type ChatHubSemanticSearchSettings,
 	type ChatHubVectorStoreProvider,
 } from '@n8n/api-types';
-import { N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nIcon,
+	N8nSelect2 as N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, watch } from 'vue';
@@ -60,6 +66,20 @@ const vectorStoreCredentialType = computed(() => {
 
 const embeddingProviderOptions = computed(() =>
 	chatHubLLMProviderSchema.options.filter((provider) => provider in EMBEDDINGS_NODE_TYPE_MAP),
+);
+
+const vectorStoreProviderItems = computed(() =>
+	chatHubVectorStoreProviderSchema.options.map((provider) => ({
+		value: provider,
+		label: vectorStoreProviderDisplayNames[provider],
+	})),
+);
+
+const embeddingProviderItems = computed(() =>
+	embeddingProviderOptions.value.map((provider) => ({
+		value: provider,
+		label: providerDisplayNames[provider],
+	})),
 );
 
 const vectorStoreTooltip = computed(() => {
@@ -246,15 +266,9 @@ watch(
 								settings.vectorStore.provider ?? chatHubVectorStoreProviderSchema.options[0]
 							"
 							size="small"
+							:items="vectorStoreProviderItems"
 							@update:model-value="onVectorStoreProviderChange"
-						>
-							<N8nOption
-								v-for="option in chatHubVectorStoreProviderSchema.options"
-								:key="option"
-								:value="option"
-								:label="vectorStoreProviderDisplayNames[option]"
-							/>
-						</N8nSelect>
+						/>
 					</div>
 					<div :class="$style.labeledControl">
 						<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">
@@ -296,15 +310,9 @@ watch(
 							:model-value="settings.embeddingModel.provider ?? embeddingProviderOptions[0]"
 							size="small"
 							:class="$style.typeSelect"
+							:items="embeddingProviderItems"
 							@update:model-value="onEmbeddingModelProviderChange"
-						>
-							<N8nOption
-								v-for="option in embeddingProviderOptions"
-								:key="option"
-								:value="option"
-								:label="providerDisplayNames[option]"
-							/>
-						</N8nSelect>
+						/>
 					</div>
 					<div :class="$style.labeledControl">
 						<N8nText size="small" color="text-light" tag="span" :class="$style.controlLabel">

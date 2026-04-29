@@ -2,12 +2,11 @@
 import { ref, computed, onMounted } from 'vue';
 import {
 	N8nIconButton,
-	N8nSelect,
-	N8nOption,
 	N8nMenuItem,
 	N8nText,
 	N8nInlineTextEdit,
 	N8nCallout,
+	N8nSelect2 as N8nSelect,
 	type IMenuItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -54,7 +53,7 @@ const isSaving = ref(false);
 const resolverName = ref('');
 const resolverType = ref('');
 const resolverConfig = ref<Record<string, unknown>>({});
-const clearCredentials = ref<boolean | null>(null);
+const clearCredentials = ref<boolean | undefined>(undefined);
 const hasUnsavedChanges = ref(false);
 const errorMessage = ref<string>('');
 const mainContentRef = ref<HTMLElement>();
@@ -118,6 +117,24 @@ const toCredentialData = (config: Record<string, unknown>): ICredentialDataDecry
 const selectedType = computed(() => {
 	return availableTypes.value.find((t) => t.name === resolverType.value);
 });
+
+const clearCredentialItems = computed(() => [
+	{
+		label: i18n.baseText('credentialResolverEdit.clearCredentials.yes'),
+		value: true,
+	},
+	{
+		label: i18n.baseText('credentialResolverEdit.clearCredentials.no'),
+		value: false,
+	},
+]);
+
+const resolverTypeItems = computed(() =>
+	availableTypes.value.map((type) => ({
+		label: type.displayName,
+		value: type.name,
+	})),
+);
 
 // Helper function to convert resolver option to INodeProperties
 // The explicit return type provides type narrowing from unknown to INodeProperties
@@ -199,7 +216,7 @@ const hasNonNameChanges = computed(() => {
 const canSave = computed(() => {
 	const baseCheck = resolverName.value.trim() !== '' && resolverType.value !== '';
 	if (isEditMode.value && hasNonNameChanges.value) {
-		return baseCheck && clearCredentials.value !== null;
+		return baseCheck && clearCredentials.value !== undefined;
 	}
 	return baseCheck;
 });
@@ -233,7 +250,7 @@ const loadResolver = async () => {
 
 		// Reset the flag when loading a resolver
 		hasEverMadeNonNameChange.value = false;
-		clearCredentials.value = null;
+		clearCredentials.value = undefined;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('credentialResolverEdit.error.save'));
 	}
@@ -258,7 +275,7 @@ const save = async () => {
 		return;
 	}
 
-	if (isEditMode.value && hasNonNameChanges.value && clearCredentials.value === null) {
+	if (isEditMode.value && hasNonNameChanges.value && clearCredentials.value === undefined) {
 		errorMessage.value = i18n.baseText('credentialResolverEdit.clearCredentials.error.required');
 		isSaving.value = false;
 		return;
@@ -278,7 +295,7 @@ const save = async () => {
 
 		// Include clearCredentials if non-name fields changed, otherwise default to false
 		if (isEditMode.value) {
-			if (hasNonNameChanges.value && clearCredentials.value !== null) {
+			if (hasNonNameChanges.value && clearCredentials.value !== undefined) {
 				payload.clearCredentials = clearCredentials.value;
 			} else if (!hasNonNameChanges.value) {
 				// Only name changed, default to false
@@ -328,7 +345,7 @@ const onConfigUpdate = (updateData: IUpdateInformation) => {
 	errorMessage.value = '';
 	// Reset clearCredentials when config changes to force user to make a choice
 	if (isEditMode.value) {
-		clearCredentials.value = null;
+		clearCredentials.value = undefined;
 	}
 };
 
@@ -374,7 +391,7 @@ onMounted(async () => {
 	} else {
 		// Set default name for new resolvers
 		resolverName.value = i18n.baseText('credentialResolverEdit.defaultName');
-		clearCredentials.value = null;
+		clearCredentials.value = undefined;
 	}
 	isLoading.value = false;
 });
@@ -463,6 +480,7 @@ onMounted(async () => {
 						<N8nSelect
 							v-model="clearCredentials"
 							:placeholder="i18n.baseText('credentialResolverEdit.clearCredentials.placeholder')"
+							:items="clearCredentialItems"
 							data-test-id="credential-resolver-clear-credentials-select"
 							@update:model-value="
 								() => {
@@ -470,18 +488,7 @@ onMounted(async () => {
 									errorMessage = '';
 								}
 							"
-						>
-							<N8nOption
-								:label="i18n.baseText('credentialResolverEdit.clearCredentials.yes')"
-								:value="true"
-							>
-							</N8nOption>
-							<N8nOption
-								:label="i18n.baseText('credentialResolverEdit.clearCredentials.no')"
-								:value="false"
-							>
-							</N8nOption>
-						</N8nSelect>
+						/>
 					</div>
 
 					<N8nCallout
@@ -500,23 +507,16 @@ onMounted(async () => {
 						<N8nSelect
 							v-model="resolverType"
 							:placeholder="i18n.baseText('credentialResolverEdit.type.placeholder')"
+							:items="resolverTypeItems"
 							data-test-id="credential-resolver-type-select"
 							@update:model-value="
 								() => {
 									hasUnsavedChanges = true;
 									errorMessage = '';
-									clearCredentials = null;
+									clearCredentials = undefined;
 								}
 							"
-						>
-							<N8nOption
-								v-for="type in availableTypes"
-								:key="type.name"
-								:label="type.displayName"
-								:value="type.name"
-							>
-							</N8nOption>
-						</N8nSelect>
+						/>
 					</div>
 
 					<div v-if="resolverProperties.length > 0" :class="$style.configSection">

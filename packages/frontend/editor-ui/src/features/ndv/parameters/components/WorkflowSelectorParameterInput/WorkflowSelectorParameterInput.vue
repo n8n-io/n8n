@@ -36,8 +36,7 @@ import {
 	N8nIcon,
 	N8nInput,
 	N8nLink,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2 as N8nSelect,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -96,6 +95,18 @@ const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getMode
 		computed(() => props.modelValue),
 		router,
 	);
+
+const modeSelectItems = computed(() =>
+	supportedModes.value.map((mode) => ({
+		value: mode.name,
+		label: getModeLabel(mode),
+		disabled: props.isValueExpression && mode.name === 'list',
+		title:
+			props.isValueExpression && mode.name === 'list'
+				? i18n.baseText('resourceLocator.mode.list.disabled.title')
+				: '',
+	})),
+);
 const { hideDropdown, isDropdownVisible, showDropdown } = useWorkflowResourceLocatorDropdown(
 	isListMode,
 	inputRef,
@@ -380,24 +391,10 @@ const onAddResourceClicked = async () => {
 						:size="inputSize"
 						:disabled="isReadOnly"
 						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
+						:items="modeSelectItems"
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSwitched"
-					>
-						<N8nOption
-							v-for="mode in supportedModes"
-							:key="mode.name"
-							:value="mode.name"
-							:label="getModeLabel(mode)"
-							:disabled="isValueExpression && mode.name === 'list'"
-							:title="
-								isValueExpression && mode.name === 'list'
-									? i18n.baseText('resourceLocator.mode.list.disabled.title')
-									: ''
-							"
-						>
-							{{ getModeLabel(mode) }}
-						</N8nOption>
-					</N8nSelect>
+					/>
 				</div>
 
 				<div :class="$style.inputContainer" data-test-id="rlc-input-container">

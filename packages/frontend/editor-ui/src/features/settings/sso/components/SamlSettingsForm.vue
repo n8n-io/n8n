@@ -4,7 +4,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { N8nButton, N8nInput, N8nOption, N8nRadioButtons, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nRadioButtons, N8nSelect2 as N8nSelect } from '@n8n/design-system';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
@@ -61,6 +61,17 @@ const ipsOptions = ref([
 	},
 ]);
 const ipsType = ref(IdentityProviderSettingsType.URL);
+
+const ssoToggleItems = computed(() => [
+	{
+		value: 'enabled',
+		label: i18n.baseText('settings.sso.settings.ssoToggle.enabled'),
+	},
+	{
+		value: 'disabled',
+		label: i18n.baseText('settings.sso.settings.ssoToggle.disabled'),
+	},
+]);
 
 const metadataUrl = ref();
 const metadata = ref();
@@ -446,6 +457,7 @@ onMounted(async () => {
 					<N8nSelect
 						:model-value="samlLoginEnabled ? 'enabled' : 'disabled'"
 						size="medium"
+						:items="ssoToggleItems"
 						:disabled="isSsoManagedByEnv"
 						data-test-id="sso-toggle"
 						@update:model-value="samlLoginEnabled = $event === 'enabled'"
@@ -453,14 +465,6 @@ onMounted(async () => {
 						<template #prefix>
 							<span v-if="samlLoginEnabled" :class="$style.greenDot" />
 						</template>
-						<N8nOption
-							value="enabled"
-							:label="i18n.baseText('settings.sso.settings.ssoToggle.enabled')"
-						/>
-						<N8nOption
-							value="disabled"
-							:label="i18n.baseText('settings.sso.settings.ssoToggle.disabled')"
-						/>
 					</N8nSelect>
 				</div>
 			</div>

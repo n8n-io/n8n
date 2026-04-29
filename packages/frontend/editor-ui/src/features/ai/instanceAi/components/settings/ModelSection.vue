@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nHeading, N8nInput, N8nSelect, N8nOption, N8nInputLabel } from '@n8n/design-system';
+import { N8nHeading, N8nInput, N8nInputLabel, N8nSelect2 as N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsField } from './useSettingsField';
 
@@ -16,6 +16,14 @@ const selectedCredentialId = computed(() => {
 function handleCredentialChange(value: string | number | boolean | null) {
 	store.setPreferenceField('credentialId', value ? String(value) : null);
 }
+
+const credentialItems = computed(() => [
+	{ value: '', label: i18n.baseText('instanceAi.settings.credential.none') },
+	...store.credentials.map((credential) => ({
+		value: credential.id,
+		label: `${credential.name} (${credential.provider})`,
+	})),
+]);
 </script>
 
 <template>
@@ -33,16 +41,9 @@ function handleCredentialChange(value: string | number | boolean | null) {
 				:model-value="selectedCredentialId"
 				size="small"
 				:placeholder="i18n.baseText('instanceAi.settings.credential.placeholder')"
+				:items="credentialItems"
 				@update:model-value="handleCredentialChange"
-			>
-				<N8nOption value="" :label="i18n.baseText('instanceAi.settings.credential.none')" />
-				<N8nOption
-					v-for="cred in store.credentials"
-					:key="cred.id"
-					:value="cred.id"
-					:label="`${cred.name} (${cred.provider})`"
-				/>
-			</N8nSelect>
+			/>
 		</N8nInputLabel>
 
 		<N8nInputLabel

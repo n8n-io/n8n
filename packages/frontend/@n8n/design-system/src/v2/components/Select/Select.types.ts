@@ -83,13 +83,19 @@ export type SelectProps<
 
 	/** Additional CSS class(es) applied to the dropdown content container (portaled). */
 	contentClass?: string;
+
+	/** Whether the value can be cleared from the trigger. */
+	clearable?: boolean;
 };
 
 export type SelectEmits<
 	A extends SelectItem[],
 	VK extends GetItemKeys<A> | undefined,
 	M extends boolean,
-> = Omit<SelectRootEmits, 'update:modelValue'> & GetModelValueEmits<A, VK, M>;
+> = Omit<SelectRootEmits, 'update:modelValue'> &
+	GetModelValueEmits<A, VK, M> & {
+		clear: [];
+	};
 
 type SlotProps = (props: { item: SelectItemProps; ui: Record<string, unknown> }) => unknown;
 
@@ -104,6 +110,7 @@ export type SelectSlots<
 	['item-leading']: SlotProps;
 	['item-label']: (props: { item: SelectItemProps }) => unknown;
 	['item-trailing']: SlotProps;
+	prefix?: () => unknown;
 	header?: () => unknown;
 	footer?: () => unknown;
 };

@@ -92,10 +92,13 @@ const sizes: Record<SelectSizes, string> = {
 };
 const size = computed(() => sizes[props.size]);
 
-const strokeWidths = {
+const strokeWidths: Record<SelectSizes, number> = {
+	mini: 1,
 	xsmall: 1,
 	small: 1,
 	medium: 1.5,
+	large: 1.5,
+	xlarge: 1.5,
 };
 
 const iconStrokeWidth = computed(() => strokeWidths[props.size]);
@@ -128,6 +131,34 @@ const groups = computed<SelectItemProps[]>(() => {
 				};
 	});
 });
+
+const hasSelectedValue = computed(() => {
+	if (Array.isArray(props.modelValue)) {
+		return props.modelValue.length > 0;
+	}
+
+	return props.modelValue !== undefined && props.modelValue !== null && props.modelValue !== '';
+});
+
+const showClearButton = computed(
+	() => props.clearable && hasSelectedValue.value && !props.disabled,
+);
+
+function clearValue() {
+	if (props.multiple) {
+		emit('update:modelValue', [] as GetModelValue<T, VK, M>);
+	} else {
+		emit('update:modelValue', undefined as GetModelValue<T, VK, M>);
+	}
+
+	emit('clear');
+}
+
+function onClearClick(event: MouseEvent) {
+	event.preventDefault();
+	event.stopPropagation();
+	clearValue();
+}
 </script>
 
 <template>
@@ -148,10 +179,23 @@ const groups = computed<SelectItemProps[]>(() => {
 			:aria-label="$attrs['aria-label'] ?? placeholder"
 		>
 			<Icon v-if="icon" :icon="icon" :class="$style.selectedIcon" :stroke-width="iconStrokeWidth" />
+			<slot name="prefix" />
 			<RSelectValue :placeholder="placeholder" :class="$style.selectValue">
 				<slot :model-value="modelValue" :open="open" />
 			</RSelectValue>
-			<Icon icon="chevron-down" :class="$style.trailingIcon" />
+			<button
+				v-if="showClearButton"
+				type="button"
+				:class="$style.clearButton"
+				aria-label="Clear selection"
+				@click="onClearClick"
+			>
+				<Icon icon="x" size="xsmall" />
+			</button>
+			<Icon
+				icon="chevron-down"
+				:class="[$style.trailingIcon, { [$style.trailingIconWithAuto]: !showClearButton }]"
+			/>
 		</SelectTrigger>
 
 		<SelectPortal>
@@ -312,10 +356,28 @@ const groups = computed<SelectItemProps[]>(() => {
 	flex-shrink: 0;
 }
 
-.trailingIcon {
+.clearButton {
 	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: var(--text-color--subtle);
+
+	&:not([disabled]) {
+		cursor: pointer;
+	}
+}
+
+.trailingIcon {
 	flex-shrink: 0;
 	color: var(--text-color--subtle);
+}
+
+.trailingIconWithAuto {
+	margin-left: auto;
 }
 
 .selectContent {

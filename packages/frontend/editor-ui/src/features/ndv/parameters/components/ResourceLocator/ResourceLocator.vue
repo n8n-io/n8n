@@ -67,8 +67,7 @@ import {
 	N8nInput,
 	N8nLink,
 	N8nNotice,
-	N8nOption,
-	N8nSelect,
+	N8nSelect2 as N8nSelect,
 	N8nText,
 } from '@n8n/design-system';
 /**
@@ -239,6 +238,19 @@ const currentMode = computed<INodePropertyMode>(
 const hasMultipleModes = computed(() => {
 	return props.parameter.modes && props.parameter.modes.length > 1;
 });
+
+const modeSelectItems = computed(() =>
+	(props.parameter.modes ?? []).map((mode) => ({
+		value: mode.name,
+		label: getModeLabel(mode) ?? mode.name,
+		disabled: props.isValueExpression && mode.name === 'list',
+		title:
+			props.isValueExpression && mode.name === 'list'
+				? i18n.baseText('resourceLocator.mode.list.disabled.title')
+				: '',
+		'data-test-id': `mode-${mode.name}`,
+	})),
+);
 
 const hasOnlyListMode = computed(() => hasOnlyListModeUtil(props.parameter));
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
@@ -1098,25 +1110,10 @@ function removeOverride() {
 						:size="inputSize"
 						:disabled="isReadOnly"
 						:placeholder="i18n.baseText('resourceLocator.modeSelector.placeholder')"
+						:items="modeSelectItems"
 						data-test-id="rlc-mode-selector"
 						@update:model-value="onModeSelected"
-					>
-						<N8nOption
-							v-for="mode in parameter.modes"
-							:key="mode.name"
-							:data-test-id="`mode-${mode.name}`"
-							:value="mode.name"
-							:label="getModeLabel(mode)"
-							:disabled="isValueExpression && mode.name === 'list'"
-							:title="
-								isValueExpression && mode.name === 'list'
-									? i18n.baseText('resourceLocator.mode.list.disabled.title')
-									: ''
-							"
-						>
-							{{ getModeLabel(mode) }}
-						</N8nOption>
-					</N8nSelect>
+					/>
 				</div>
 
 				<div
