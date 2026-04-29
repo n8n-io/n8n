@@ -2,7 +2,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository, User, WorkflowRepository } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
-import type { EntityManager } from '@n8n/typeorm';
+import type { EntityManager, FindOperator } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -108,9 +108,9 @@ describe('McpSettingsService', () => {
 			const find = jest.fn(
 				async (
 					_entity: unknown,
-					options: { where: { id: { _value: string[] }; isArchived: boolean } },
+					options: { where: { id: FindOperator<string[]>; isArchived: boolean } },
 				) => {
-					const ids = options.where.id._value;
+					const ids = options.where.id.value;
 					return ids
 						.map((id) => storage.get(id))
 						.filter(
