@@ -138,6 +138,7 @@ describe('Pipedrive v2 Resource Mapping', () => {
 			expect(byId.hex_date.type).toBe('dateTime');
 			expect(byId.hex_enum.type).toBe('options');
 			expect(byId.hex_enum.options).toEqual([
+				{ name: '— Clear value —', value: '' },
 				{ name: 'Low', value: 1 },
 				{ name: 'High', value: 2 },
 			]);

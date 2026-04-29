@@ -175,6 +175,44 @@ describe('Pipedrive v2 Custom Fields', () => {
 
 			expect(item.custom_fields).toEqual({ unknown_key: 'some value' });
 		});
+
+		describe('clearing enum/set fields', () => {
+			it('encodes empty string to null for enum', () => {
+				const item: IDataObject = { custom_fields: { def456_enum: '' } };
+				encodeCustomFieldsV2(customProperties, item);
+				expect(item.custom_fields).toEqual({ def456_enum: null });
+			});
+
+			it('encodes null to null for enum', () => {
+				const item: IDataObject = { custom_fields: { def456_enum: null } };
+				encodeCustomFieldsV2(customProperties, item);
+				expect(item.custom_fields).toEqual({ def456_enum: null });
+			});
+
+			it('encodes empty string to null for visible_to', () => {
+				const item: IDataObject = { custom_fields: { jkl012_visible: '' } };
+				encodeCustomFieldsV2(customProperties, item);
+				expect(item.custom_fields).toEqual({ jkl012_visible: null });
+			});
+
+			it('encodes empty string to [] for set', () => {
+				const item: IDataObject = { custom_fields: { ghi789_set: '' } };
+				encodeCustomFieldsV2(customProperties, item);
+				expect(item.custom_fields).toEqual({ ghi789_set: [] });
+			});
+
+			it('encodes null to [] for set', () => {
+				const item: IDataObject = { custom_fields: { ghi789_set: null } };
+				encodeCustomFieldsV2(customProperties, item);
+				expect(item.custom_fields).toEqual({ ghi789_set: [] });
+			});
+
+			it('drops trailing empty entries from set CSV', () => {
+				const item: IDataObject = { custom_fields: { ghi789_set: 'Tag One,, Tag Three,' } };
+				encodeCustomFieldsV2(customProperties, item);
+				expect(item.custom_fields).toEqual({ ghi789_set: [1, 3] });
+			});
+		});
 	});
 
 	describe('resolveCustomFieldsV2', () => {

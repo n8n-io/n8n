@@ -43,19 +43,30 @@ export function encodeCustomFieldsV2(customProperties: ICustomProperties, item: 
 		const customPropertyData = nameMap.get(key) ?? customProperties[key];
 
 		if (customPropertyData !== undefined) {
+			const isSet = customPropertyData.field_type === 'set';
+			const isEnumLike = ['enum', 'visible_to'].includes(customPropertyData.field_type);
+
+			// Empty/null normalization: send [] for set, null for enum-like
+			if ((isSet || isEnumLike) && (value === null || value === undefined || value === '')) {
+				resolved[customPropertyData.key] = isSet ? [] : null;
+				continue;
+			}
+
 			if (
 				value !== null &&
 				value !== undefined &&
 				customPropertyData.options !== undefined &&
 				Array.isArray(customPropertyData.options)
 			) {
-				if (customPropertyData.field_type === 'set') {
-					// Set fields: resolve each label to its option ID
-					const labels: string[] = Array.isArray(value)
-						? (value as string[]).map(String)
-						: String(value)
-								.split(',')
-								.map((s) => s.trim());
+				if (isSet) {
+					// Set fields: resolve each label to its option ID, skip empty entries
+					const labels: string[] = (
+						Array.isArray(value)
+							? (value as string[]).map(String)
+							: String(value)
+									.split(',')
+									.map((s) => s.trim())
+					).filter((s) => s !== '');
 					const ids = labels.map((label) => {
 						const opt = customPropertyData.options!.find(
 							(option) => option.label.toString() === label,

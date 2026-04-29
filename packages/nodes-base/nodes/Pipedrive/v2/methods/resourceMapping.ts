@@ -95,10 +95,15 @@ export async function getCustomFieldsMappingColumns(
 		};
 
 		if (type === 'options' && Array.isArray(raw.options)) {
-			field.options = raw.options.map((option) => ({
-				name: String(option.label),
-				value: option.id,
-			}));
+			// Prepend a synthetic "Clear value" option so users can null-out
+			// enum/visible_to fields. encodeCustomFieldsV2 maps '' → null.
+			field.options = [
+				{ name: '— Clear value —', value: '' },
+				...raw.options.map((option) => ({
+					name: String(option.label),
+					value: option.id,
+				})),
+			];
 		}
 
 		fields.push(field);
