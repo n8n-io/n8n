@@ -1,11 +1,10 @@
 <script setup lang="ts" generic="T extends string">
 import { computed, ref } from 'vue';
 
+import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIconButton from '../N8nIconButton';
 import N8nLoading from '../N8nLoading';
-
-import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
 
 interface ActionToggleProps {
 	actions?: Array<DropdownMenuItemProps<T>>;
@@ -39,7 +38,7 @@ const emit = defineEmits<{
 	'item-mouseup': [action: DropdownMenuItemProps<T>];
 }>();
 
-const dropdownRef = ref<any | null>(null);
+const dropdownRef = ref<{ open: () => void; close: () => void } | null>(null);
 
 const items = computed(() => props.actions);
 

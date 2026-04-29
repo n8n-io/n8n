@@ -58,8 +58,6 @@ export type DropdownMenuItemProps<T = string, D = never> = {
 	subMenuOpen?: boolean;
 	/** extra data useful for rendering leading/trailing slot */
 	data?: D;
-	/** Test ID for the item (for e2e testing) */
-	'data-testid'?: string;
 };
 
 export interface DropdownMenuProps<T = string, D = never> {
@@ -101,8 +99,6 @@ export interface DropdownMenuProps<T = string, D = never> {
 	searchDebounce?: number;
 	/** Text to be shown when no menu item exists */
 	emptyText?: string;
-	/** Test ID for the dropdown content (for e2e testing) */
-	'data-testid'?: string;
 }
 
 export interface DropdownMenuEmits<T = string, D = never> {

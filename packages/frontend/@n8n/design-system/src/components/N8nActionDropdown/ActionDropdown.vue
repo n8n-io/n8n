@@ -4,12 +4,12 @@ import { computed, useCssModule } from 'vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
 import N8nBadge from '../N8nBadge';
-import N8nIcon from '../N8nIcon';
-import N8nIconButton from '../N8nIconButton';
-import { type IconName } from '../N8nIcon/icons';
-import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.types';
+import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
+import N8nIconButton from '../N8nIconButton';
+import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const { t } = useI18n();
 
@@ -47,7 +47,7 @@ const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>
 	return props.items.map((item) => ({
 		id: item.id,
 		label: item.label,
-		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
+		icon: item.icon ? { type: 'icon' as const, value: item.icon as IconName } : undefined,
 		disabled: item.disabled,
 		divided: item.divided,
 		checked: item.checked,
@@ -105,7 +105,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 					:data-test-id="`action-dropdown-item-${slotProps.item.id}`"
 				>
 					<span v-if="slotProps.item.icon" :class="$style.icon">
-						<N8nIcon :icon="slotProps.item.icon.value" :size="iconSize" />
+						<N8nIcon :icon="slotProps.item.icon.value as IconName" :size="iconSize" />
 					</span>
 					<span :class="$style.label">
 						<slot name="menuItem" v-bind="slotProps.item.data">

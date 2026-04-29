@@ -59,9 +59,6 @@ provide(
 const internalOpen = ref(props.defaultOpen ?? false);
 const isControlled = computed(() => props.modelValue !== undefined);
 
-// For the data-testid prop (kebab-case in props interface)
-const dataTestid = computed(() => (props as unknown as Record<string, string>)['data-testid']);
-
 const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const searchTerm = ref('');
@@ -305,7 +302,6 @@ defineExpose({ open, close });
 				:id="id"
 				ref="contentRef"
 				:class="[$style.content, extraPopperClass]"
-				:data-testid="dataTestid"
 				data-menu-content
 				:side="placementParts.side"
 				:align="placementParts.align"
@@ -399,6 +395,7 @@ defineExpose({ open, close });
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
+	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
 	max-width: var(--n8n--dropdown-menu-width);
 	max-height: var(--reka-dropdown-menu-content-available-height);
 	overflow-y: auto;
@@ -408,6 +405,7 @@ defineExpose({ open, close });
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
 	z-index: 9998;
+	scrollbar-width: none;
 
 	&[data-state='open'] {
 		animation-duration: var(--duration--snappy);

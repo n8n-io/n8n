@@ -39,7 +39,7 @@ export const Basic: Story = {
 		},
 		template: `
 		<div style="padding: 40px;">
-			<DropdownMenu :items="args.items" @select="handleSelect" />
+			<DropdownMenu placement="bottom-start" :items="args.items" @select="handleSelect" />
 		</div>
 		`,
 	}),

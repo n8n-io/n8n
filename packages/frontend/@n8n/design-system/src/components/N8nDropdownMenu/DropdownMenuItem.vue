@@ -10,8 +10,8 @@ import {
 import { computed, inject, ref, useCssModule, watch, toRef } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 import N8nLoading from '@n8n/design-system/components/N8nLoading';
+import N8nText from '@n8n/design-system/components/N8nText/Text.vue';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
 import {
@@ -394,7 +394,7 @@ watch(
 .separator {
 	height: 1px;
 	background-color: var(--border-color);
-	margin: var(--spacing--5xs) 0;
+	margin: var(--spacing--5xs) calc(var(--spacing--4xs) * -1);
 }
 
 .loading-container {
