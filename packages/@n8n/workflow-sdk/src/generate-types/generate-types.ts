@@ -1152,9 +1152,89 @@ export function narrowDisplayOptionsByDisabled(prop: NodeProperty): {
 }
 
 /**
- * Merge properties with the same name for collection/fixedCollection types.
- * When multiple properties have the same name (e.g., multiple 'options' collections
- * with different displayOptions), their nested options should be merged.
+ * Compute the OR-simplified displayOptions for two same-named declarations
+ * that form a "UX fork" — variants A and B differ only in a single key K,
+ * one gating it on hide and the other on show.
+ *
+ * With H = A.hide[K], S = B.show[K], the OR is:
+ *   K ∈ S  OR  K ∉ H   ≡   K ∉ (H \ S)
+ *
+ * - H \ S empty (S ⊇ H, e.g. BigQuery `show:[true]` + `hide:[true]`):
+ *   drop K — no constraint.
+ * - H \ S non-empty (e.g. Pushbullet `show:[device_iden]` +
+ *   `hide:[default, device_iden]`): keep `hide: K = [default]`.
+ *
+ * Returns `undefined` when the shape doesn't fit (other show/hide entries
+ * differ between variants, more than two variants, etc.); callers fall
+ * back to "first declaration wins".
+ */
+function tryMergeUxForkVariants(
+	a: NodeProperty,
+	b: NodeProperty,
+): NonNullable<NodeProperty['displayOptions']> | undefined {
+	const aDO = a.displayOptions;
+	const bDO = b.displayOptions;
+	if (!aDO || !bDO) return undefined;
+
+	const stripKey = (
+		dispOpts: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> },
+		key: string,
+	): { show: Record<string, unknown[]>; hide: Record<string, unknown[]> } => {
+		const showRest = dispOpts.show ? { ...dispOpts.show } : {};
+		const hideRest = dispOpts.hide ? { ...dispOpts.hide } : {};
+		delete showRest[key];
+		delete hideRest[key];
+		return { show: showRest, hide: hideRest };
+	};
+
+	const setDifference = (a: unknown[], b: unknown[]): unknown[] => {
+		const bSet = new Set(b.map((v) => JSON.stringify(v)));
+		return a.filter((v) => !bSet.has(JSON.stringify(v)));
+	};
+
+	// Try both directions: A may hide-K while B shows-K, or vice versa.
+	for (const [first, second] of [
+		[aDO, bDO],
+		[bDO, aDO],
+	] as const) {
+		const firstHide = first.hide ?? {};
+		const secondShow = second.show ?? {};
+		for (const k of Object.keys(firstHide)) {
+			const secondShowVals = secondShow[k];
+			if (!secondShowVals) continue;
+
+			const firstStripped = stripKey(first, k);
+			const secondStripped = stripKey(second, k);
+			if (
+				JSON.stringify(firstStripped.show) !== JSON.stringify(secondStripped.show) ||
+				JSON.stringify(firstStripped.hide) !== JSON.stringify(secondStripped.hide)
+			) {
+				continue;
+			}
+
+			const remainingHide = setDifference(firstHide[k], secondShowVals);
+
+			const mergedShow: Record<string, unknown[]> = { ...firstStripped.show };
+			const mergedHide: Record<string, unknown[]> = { ...firstStripped.hide };
+			if (remainingHide.length > 0) {
+				mergedHide[k] = remainingHide;
+			}
+
+			const merged: NonNullable<NodeProperty['displayOptions']> = {};
+			if (Object.keys(mergedShow).length > 0) merged.show = mergedShow;
+			if (Object.keys(mergedHide).length > 0) merged.hide = mergedHide;
+			return merged;
+		}
+	}
+
+	return undefined;
+}
+
+/**
+ * Merge properties with the same name. Nested options of collection /
+ * fixedCollection types are union-merged; displayOptions are
+ * UX-fork-simplified when applicable (see tryMergeUxForkVariants), otherwise
+ * the first declaration's displayOptions wins.
  *
  * @param properties - Array of node properties, possibly with duplicates
  * @returns Array of properties with duplicates merged
@@ -1196,7 +1276,14 @@ function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 					}
 				}
 			}
-			// Don't add duplicate to output - we've merged into existing
+
+			// If the two declarations form a UX fork, replace the surviving
+			// displayOptions with the OR-simplified predicate.
+			const simplified = tryMergeUxForkVariants(existingProp, normalizedProp);
+			if (simplified !== undefined) {
+				existingProp.displayOptions = Object.keys(simplified).length > 0 ? simplified : undefined;
+			}
+
 			continue;
 		}
 
@@ -1728,13 +1815,10 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 			}
 		}
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Route through mergeCollectionProperties so duplicate-named
+		// declarations get UX-fork-simplified instead of silently dropped.
+		const mergedProps = mergeCollectionProperties(props);
+		for (const prop of mergedProps) {
 			// Pass combo as discriminator context to filter redundant displayOptions
 			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {
@@ -2391,11 +2475,10 @@ export function generateDiscriminatorFile(
 		}
 	}
 
-	// Add properties
-	const seenNames = new Set<string>();
-	for (const prop of props) {
-		if (seenNames.has(prop.name)) continue;
-		seenNames.add(prop.name);
+	// Route through mergeCollectionProperties so duplicate-named declarations
+	// get UX-fork-simplified instead of silently dropped.
+	const mergedProps = mergeCollectionProperties(props);
+	for (const prop of mergedProps) {
 		// Pass combo as discriminator context to filter redundant displayOptions
 		const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 		if (propLine) {
@@ -3249,13 +3332,10 @@ function generateDiscriminatedUnionForEntry(
 			}
 		}
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Route through mergeCollectionProperties so duplicate-named
+		// declarations get UX-fork-simplified instead of silently dropped.
+		const mergedProps = mergeCollectionProperties(props);
+		for (const prop of mergedProps) {
 			// Pass combo as discriminator context to filter redundant displayOptions
 			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {

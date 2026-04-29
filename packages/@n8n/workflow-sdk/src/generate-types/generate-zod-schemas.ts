@@ -878,33 +878,18 @@ export function mergeDisplayOptions(
 /**
  * Group properties by name and resolve duplicate declarations.
  *
- * In n8n, multiple property declarations sharing a name represent OR
- * alternatives (only one is "active" at a time, depending on the user's other
- * parameter values). Wherever the alternatives have *compatible* visibility
- * predicates, this function union-merges them into a single declaration —
- * preserving the historical merge behaviour that existing tests and downstream
- * consumers expect (e.g. the Agent node's three `text` declarations differ
- * only in `promptType` show-values and merge cleanly to
- * `show: { promptType: ['guardrails', 'auto', 'define'] }`).
+ * Multiple declarations sharing a name represent OR alternatives — only one
+ * is active at a time. The codegen treats them with OR semantics via
+ * `resolveOneOfSchemas`, so this function does NOT try to union-merge
+ * displayOptions across variants (see collapseDeclarations for why).
  *
- * When the alternatives have *incompatible* predicates — typical example:
- * BigQuery's two `sqlQuery` declarations, one shown when `useLegacySql=true`
- * and one hidden when `useLegacySql=true` — the naive union-merge produces a
- * self-contradicting `{show, hide}` that rejects every configuration. In
- * those cases the declarations are kept as separate entries in the returned
- * array so the codegen can emit a `resolveOneOfSchemas(...)` call that
- * OR-evaluates the variants at runtime.
- *
- * Properties whose displayOptions are fully covered by disabledOptions (the
- * field is rendered read-only in all its visible states, e.g. the
- * expression-prefilled variant of a sessionKey) contribute no settable states
- * and are skipped, so the generated schema only accepts values in states
+ * Fully disabledOptions-covered variants are dropped — they contribute no
+ * settable states, so the generated schema only accepts values in states
  * where the field is actually user-editable.
  *
- * @param properties - Array of node properties, possibly with duplicates
  * @returns Map of property name to its declaration group. Single-element
- *   arrays are the common case (one declaration, or several that merged
- *   cleanly). Multi-element arrays are mutually-exclusive variants.
+ *   arrays are the common case; multi-element arrays are
+ *   mutually-exclusive variants kept for the runtime resolver.
  */
 export function mergePropertiesByName(properties: NodeProperty[]): Map<string, NodeProperty[]> {
 	// Pass 1: bucket the raw declarations by name, after dropping
@@ -941,28 +926,20 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 }
 
 /**
- * Resolve a list of same-named declarations into the form the codegen will
- * emit:
+ * Resolve same-named declarations into the form the codegen will emit:
+ * - 1 declaration → as-is.
+ * - Any unconditional declaration → single unconditional (OR short-circuits
+ *   to "always visible").
+ * - 2+ conditional declarations → kept split as variants for
+ *   `resolveOneOfSchemas`. We deliberately do NOT union-merge their
+ *   `{show, hide}` — that's only equivalent to OR in narrow cases and
+ *   silently produces a more restrictive predicate otherwise (e.g.
+ *   CoinGecko's `show: searchBy=[coinId]` + `hide: searchBy=[contractAddress]`
+ *   collapses to `searchBy=coinId`, dropping every other value).
  *
- * - 1 declaration: returned as-is (codegen emits a single `resolveSchema`).
- * - Any declaration is unconditional (no displayOptions): the OR short-circuits
- *   to "always visible" — emit a single declaration without displayOptions.
- *   Inner options (for collection/fixedCollection) are unioned across all
- *   declarations so the schema accepts any inner option from any variant.
- * - All declarations are conditional and there are 2+ of them: keep them as
- *   separate variants (codegen emits `resolveOneOfSchemas`). We deliberately
- *   do NOT union-merge them into a single show/hide object — the merge is
- *   only equivalent to OR in narrow cases, and silently produces a *more
- *   restrictive* predicate the rest of the time (e.g. CoinGecko's
- *   `show: searchBy=['coinId']` + `hide: searchBy=['contractAddress']`
- *   collapses to "searchBy=coinId" instead of the intended
- *   "searchBy≠contractAddress").
- *
- *   Inner options for collection/fixedCollection variants are still unioned
- *   onto the *first* variant — at runtime the parameter has a single key/value
- *   slot, so the schema must accept any inner option from any variant. The
- *   first variant carries the merged inner options; later variants share the
- *   same `options` reference for emit consistency.
+ * Inner options of collection/fixedCollection variants are unioned across
+ * declarations — at runtime the parameter has one key/value slot, so the
+ * schema must accept any inner option from any variant.
  */
 function collapseDeclarations(decls: NodeProperty[]): NodeProperty[] {
 	if (decls.length === 1) return decls;

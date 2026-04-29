@@ -1581,10 +1581,8 @@ describe('mergePropertiesByName with disabledOptions', () => {
 });
 
 describe('mergePropertiesByName with multi-declaration variants', () => {
-	// Real-world repro: BigQuery v2 declares `sqlQuery` twice — one variant for
-	// standard SQL (`hide: useLegacySql=[true]`) and one for legacy SQL
-	// (`show: useLegacySql=[true]`). The two predicates are mutually exclusive,
-	// so the variants must reach codegen as separate entries to be OR-evaluated.
+	// BigQuery declares `sqlQuery` twice — `hide: useLegacySql=[true]` (standard)
+	// and `show: useLegacySql=[true]` (legacy). Mutually exclusive predicates.
 	const standardSql: NodeProperty = {
 		name: 'sqlQuery',
 		displayName: 'SQL Query',
@@ -1666,10 +1664,9 @@ describe('mergePropertiesByName with multi-declaration variants', () => {
 		const { resolveOneOfSchemas } = await import('../validation/resolve-schema');
 		const { z } = await import('zod');
 
-		// Hypothetical: variantA is required when mode=a, variantB is optional
-		// when mode=b. With OR-of-resolveSchema, the inactive variant's
-		// "must-be-undefined" branch would silently mask the required check —
-		// resolveOneOfSchemas must instead use the active variant's required flag.
+		// A naive z.union of resolveSchema calls would let the inactive variant's
+		// "must-be-undefined" branch mask the active variant's required flag —
+		// resolveOneOfSchemas must use the visible variant's required flag.
 		const variants = [
 			{
 				schema: z.string(),
@@ -1739,9 +1736,6 @@ describe('mergePropertiesByName with multi-declaration variants', () => {
 				{
 					schema: z.string(),
 					required: false,
-					// Also not visible because hide checks against actual value 'maybe'
-					// but actual value is 'maybe' so hide doesn't fire — still visible.
-					// Adjust: make this also impossible.
 					displayOptions: { show: { '/options.useLegacySql': [false] } },
 				},
 			],
@@ -1755,11 +1749,10 @@ describe('mergePropertiesByName with multi-declaration variants', () => {
 		}
 	});
 
+	// Agent-style: three `text` declarations differing only in promptType
+	// show-values. Each lands as its own variant; the runtime resolver picks
+	// whichever matches.
 	it('OR alternatives still merge cleanly when the existing union behaviour suffices', () => {
-		// Three Agent-style text declarations differing only in promptType show
-		// values. Each variant lands as its own group entry; the runtime
-		// resolver picks whichever matches, so the visible behaviour matches
-		// the historical "show: { promptType: [a, b, c] }" merge.
 		const a: NodeProperty = {
 			name: 'text',
 			displayName: 'Text',
@@ -1792,16 +1785,10 @@ describe('mergePropertiesByName with multi-declaration variants', () => {
 		]);
 	});
 
+	// CoinGecko-shape: `show: K=[a]` + `hide: K=[b]`, distinct values. Naive
+	// union-merge would collapse to "K=a", silently dropping every other value
+	// from settable. Variants must stay split for the runtime to OR them.
 	it('preserves OR semantics for show-on-one-value + hide-on-another-value (CoinGecko shape)', async () => {
-		// Real-world repro: CoinGecko v1 declares this shape on a coin/market
-		// chart parameter — `show: searchBy=['coinId']` and
-		// `hide: searchBy=['contractAddress']`. The two predicates aren't
-		// literally contradictory (no value overlap), but the naive union-merge
-		// produces `searchBy='coinId' AND searchBy≠'contractAddress'`, which
-		// equals just "searchBy='coinId'" — wrong, since the OR semantic is
-		// "searchBy='coinId' OR searchBy≠'contractAddress'" = "searchBy ≠
-		// 'contractAddress'". With the fix in place the variants stay separate
-		// and the runtime resolver evaluates OR.
 		const showOnA: NodeProperty = {
 			name: 'tickerField',
 			displayName: 'Ticker Field',
@@ -1837,23 +1824,18 @@ describe('mergePropertiesByName with multi-declaration variants', () => {
 			},
 		];
 
-		// searchBy='coinId': variantA visible (variantB also visible since hide
-		// doesn't fire) → settable. The naive merge would also accept this.
+		// searchBy='coinId': variantA visible → settable.
 		expect(
 			resolveOneOfSchemas({ parameters: { searchBy: 'coinId' }, variants }).safeParse('AAPL')
 				.success,
 		).toBe(true);
-
 		// searchBy='other': variantA hidden, variantB visible → settable. The
-		// naive merge would have REJECTED this — that's the bug the OR fix
-		// addresses.
+		// naive merge would have rejected this — the bug the OR fix addresses.
 		expect(
 			resolveOneOfSchemas({ parameters: { searchBy: 'other' }, variants }).safeParse('AAPL')
 				.success,
 		).toBe(true);
-
-		// searchBy='contractAddress': variantA hidden, variantB hidden by its
-		// own `hide` rule → field must be unset.
+		// searchBy='contractAddress': both variants hidden → must be unset.
 		expect(
 			resolveOneOfSchemas({
 				parameters: { searchBy: 'contractAddress' },

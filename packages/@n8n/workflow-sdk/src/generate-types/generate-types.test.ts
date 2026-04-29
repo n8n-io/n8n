@@ -1983,6 +1983,191 @@ describe('generate-types', () => {
 			expect(result).toMatch(/fieldToSplitOut:\s*string\s*\|/);
 			expect(result).not.toMatch(/fieldToSplitOut\?:/);
 		});
+
+		// BigQuery declares `sqlQuery` twice — show iff useLegacySql=true and
+		// hide iff useLegacySql=true. The two together cover every value of
+		// useLegacySql, so the JSDoc must drop the key entirely.
+		it('collapses BigQuery-style UX-fork sqlQuery variants into a single honest predicate', () => {
+			const bigQueryShape: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleBigQuery',
+				displayName: 'Google BigQuery',
+				description: 'Run BigQuery queries',
+				group: ['transform'],
+				version: 2.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: { resource: ['database'], operation: ['executeQuery'] },
+							hide: { '/options.useLegacySql': [true] },
+						},
+					},
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								resource: ['database'],
+								operation: ['executeQuery'],
+								'/options.useLegacySql': [true],
+							},
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(bigQueryShape);
+
+			// The simplified JSDoc must keep the resource/operation guard but
+			// not mention useLegacySql — the two variants partition that key.
+			expect(result).toMatch(
+				/@displayOptions\.show \{ resource: \["database"\], operation: \["executeQuery"\] \}/,
+			);
+			expect(result).not.toMatch(/@displayOptions\.hide.*useLegacySql/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*useLegacySql/);
+		});
+
+		// Pushbullet's `value` declares variant A `hide: target=[default,
+		// device_iden]` and variant B `show: target=[device_iden]`. OR-semantics
+		// = target ≠ default; the JSDoc must drop `device_iden` from the hide.
+		it('simplifies Pushbullet-style "show ⊆ hide" to drop the rescued values', () => {
+			const pushbulletShape: NodeTypeDescription = {
+				name: 'n8n-nodes-base.pushbullet',
+				displayName: 'Pushbullet',
+				description: 'Send pushes',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'resource',
+						displayName: 'Resource',
+						type: 'options',
+						default: 'push',
+						options: [{ name: 'Push', value: 'push' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'operation',
+						displayName: 'Operation',
+						type: 'options',
+						default: 'create',
+						displayOptions: { show: { resource: ['push'] } },
+						options: [{ name: 'Create', value: 'create' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'value',
+						displayName: 'Value',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'] },
+							hide: { target: ['default', 'device_iden'] },
+						},
+					},
+					{
+						name: 'value',
+						displayName: 'Value Name or ID',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'], target: ['device_iden'] },
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(pushbulletShape);
+
+			// Hide line should keep only `default`; `device_iden` is rescued
+			// by variant B's show.
+			expect(result).toMatch(/@displayOptions\.hide \{ target: \["default"\] \}/);
+			expect(result).not.toMatch(/@displayOptions\.hide \{[^}]*device_iden/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*target.*device_iden/);
+		});
+
+		// `show: K=[a]` + `hide: K=[b]` (a ≠ b) collapses to `hide: K=[b]` —
+		// the second clause already covers the first.
+		it('also simplifies CoinGecko-style "show K=[a] + hide K=[b]" to the OR predicate', () => {
+			const coinGeckoShape: NodeTypeDescription = {
+				name: 'n8n-nodes-base.coinGecko',
+				displayName: 'CoinGecko',
+				description: 'Coin data',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'tickerField',
+						displayName: 'Ticker Field',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { searchBy: ['coinId'] } },
+					},
+					{
+						name: 'tickerField',
+						displayName: 'Ticker Field',
+						type: 'string',
+						default: '',
+						displayOptions: { hide: { searchBy: ['contractAddress'] } },
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(coinGeckoShape);
+
+			expect(result).toMatch(/@displayOptions\.hide \{ searchBy: \["contractAddress"\] \}/);
+			expect(result).not.toMatch(/@displayOptions\.show \{ searchBy:/);
+		});
+
+		// Two variants gating on different keys aren't a fork — no single key
+		// is partitioned, so the simplifier bails and "first wins" stands.
+		it('falls back to first-declaration-wins when the variants are not a UX fork', () => {
+			const unrelatedShape: NodeTypeDescription = {
+				name: 'n8n-nodes-base.dummy',
+				displayName: 'Dummy',
+				description: 'Dummy',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'field',
+						displayName: 'Field',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { mode: ['a'] } },
+					},
+					{
+						name: 'field',
+						displayName: 'Field',
+						type: 'string',
+						default: '',
+						displayOptions: { show: { resource: ['x'] } },
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(unrelatedShape);
+
+			// First declaration's displayOptions still appear; second is
+			// dropped (existing behaviour, no regression).
+			expect(result).toMatch(/@displayOptions\.show \{ mode: \["a"\] \}/);
+			expect(result).not.toMatch(/@displayOptions\.show \{ resource:/);
+		});
 	});
 
 	describe('generateIndexFile', () => {
