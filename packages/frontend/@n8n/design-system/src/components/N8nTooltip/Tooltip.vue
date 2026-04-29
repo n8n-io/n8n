@@ -139,7 +139,6 @@ const handleOpenChange = (open: boolean) => {
 	max-width: 180px;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 	min-height: var(--height--sm);
-	width: var(--reka-tooltip-trigger-width);
 	max-height: var(--reka-tooltip-content-available-height);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
@@ -148,6 +147,9 @@ const handleOpenChange = (open: boolean) => {
 	color: var(--color--neutral-100);
 	box-shadow: var(--shadow--md);
 	word-wrap: break-word;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	transform-origin: var(--reka-tooltip-content-transform-origin);
 	animation: scaleIn var(--duration--snappy) var(--easing--ease-out);
 
@@ -165,12 +167,10 @@ const handleOpenChange = (open: boolean) => {
 	from {
 		opacity: 0;
 		filter: blur(2px);
-		transform: scale(0);
 	}
 	to {
 		opacity: 1;
 		filter: blur(0px);
-		transform: scale(1);
 	}
 }
 </style>
