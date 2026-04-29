@@ -275,8 +275,8 @@ describe('configureQueryRunner', () => {
 		});
 
 		expect(result).toHaveLength(chunkSize);
-		expect(result[0]?.json.COL1).toEqual(42);
-		expect(result[chunkSize - 1]?.json.COL1).toEqual(42);
+		expect(result[0]?.json).toMatchObject({ COL1: 42 });
+		expect(result[chunkSize - 1]?.json).toMatchObject({ COL1: 42 });
 		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
 		expect(getConnection).toHaveBeenCalledTimes(1);
 		expect(close).toHaveBeenCalledTimes(1);
@@ -313,8 +313,8 @@ describe('configureQueryRunner', () => {
 		});
 
 		expect(result).toHaveLength(chunkSize);
-		expect(result[0]?.json.COL1).toEqual(0);
-		expect(result[chunkSize - 1]?.json.COL1).toEqual(chunkSize - 1);
+		expect(result[0]?.json).toMatchObject({ COL1: 0 });
+		expect(result[chunkSize - 1]?.json).toMatchObject({ COL1: chunkSize - 1 });
 		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
 		expect(getConnection).toHaveBeenCalledTimes(1);
 		expect(close).toHaveBeenCalledTimes(1);
