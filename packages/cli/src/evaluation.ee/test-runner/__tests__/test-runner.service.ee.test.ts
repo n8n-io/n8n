@@ -2038,6 +2038,10 @@ describe('TestRunnerService', () => {
 			const workflow = buildWorkflow();
 			workflowRepository.findById.mockResolvedValue(workflow as never);
 
+			// Default: throttle resolves immediately (capacity always available).
+			// Tests that exercise abort-during-throttle override this.
+			concurrencyControlService.throttle.mockResolvedValue(undefined as never);
+
 			testRunRepository.markAsRunning.mockResolvedValue(undefined as never);
 			testRunRepository.markAsCompleted.mockResolvedValue(undefined as never);
 			testRunRepository.markAsCancelled.mockResolvedValue(undefined as never);
@@ -2304,6 +2308,52 @@ describe('TestRunnerService', () => {
 					concurrency_limited_by_config: true,
 				}),
 			);
+		});
+
+		test('abort during throttle wait evicts the queue entry and short-circuits without an UNKNOWN_ERROR row', async () => {
+			setupHappyPathMocks(3);
+
+			// Hold throttle indefinitely so all per-case tasks are stuck in the
+			// queue when we fire the abort.
+			concurrencyControlService.throttle.mockImplementation(
+				async () =>
+					await new Promise<void>(() => {
+						/* never resolves */
+					}),
+			);
+
+			// Kick off the run, then abort while cases are queued in throttle.
+			const runPromise = testRunnerService.runTest(USER as never, WORKFLOW_ID, 3);
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			// Reach into the service's abort controllers map and trip it.
+			// `cancelTestRunLocally` is the path the public cancel API takes.
+			const cancelled = (
+				testRunnerService as never as {
+					cancelTestRunLocally: (id: string) => boolean;
+				}
+			).cancelTestRunLocally('test-run-id');
+			expect(cancelled).toBe(true);
+
+			await runPromise;
+
+			// Each queued case should have been evicted via remove().
+			expect(concurrencyControlService.remove).toHaveBeenCalledWith({
+				mode: 'evaluation',
+				executionId: expect.stringContaining('test-run-id-case-'),
+			});
+
+			// And no test-case row should have been written for the evicted
+			// cases — they short-circuit before touching the DB. The legacy
+			// path would have produced UNKNOWN_ERROR rows here.
+			const errorRows = testCaseExecutionRepository.createTestCaseExecution.mock.calls.filter(
+				([row]) => row.errorCode === 'UNKNOWN_ERROR',
+			);
+			expect(errorRows).toHaveLength(0);
+
+			// Run is marked cancelled, not completed.
+			expect(testRunRepository.markAsCancelled).toHaveBeenCalled();
+			expect(testRunRepository.markAsCompleted).not.toHaveBeenCalled();
 		});
 
 		test('multi-main DB cancel flag flipped mid-run aborts the controller', async () => {
