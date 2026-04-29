@@ -18,7 +18,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { extractFromAIInputSchema, OperationalError, UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -1029,7 +1029,17 @@ export class AgentsService {
 			return { valid: false, error: parsed.error.message };
 		}
 
-		const config = parsed.data;
+		let config = parsed.data;
+
+		try {
+			config = this.normalizeNodeToolInputSchemas(config);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				valid: false,
+				error: `Invalid $fromAI expression in node tool config: ${message}`,
+			};
+		}
 
 		const nodeError = await this.validateNodeToolConfigs(config);
 		if (nodeError) {
@@ -1037,6 +1047,26 @@ export class AgentsService {
 		}
 
 		return { valid: true, config };
+	}
+
+	private normalizeNodeToolInputSchemas(config: AgentJsonConfig): AgentJsonConfig {
+		if (!config.tools) return config;
+
+		let changed = false;
+		const tools = config.tools.map((tool) => {
+			if (tool.type !== 'node') return tool;
+
+			const inputSchema = extractFromAIInputSchema(tool.node.nodeParameters ?? {});
+			if (!inputSchema) return tool;
+
+			changed = true;
+			return {
+				...tool,
+				inputSchema,
+			};
+		});
+
+		return changed ? { ...config, tools } : config;
 	}
 
 	/**

@@ -81,6 +81,34 @@ describe('resolveNodeTool → tool name sanitization', () => {
 			expect.objectContaining({ nodeType: 'n8n-nodes-base.httpRequestTool' }),
 		);
 	});
+
+	it('derives inputSchema from $fromAI node parameters', async () => {
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				inputSchema: {
+					type: 'object',
+					properties: { stale: { type: 'string' } },
+					required: ['stale'],
+				},
+				node: {
+					...baseToolSchema.node,
+					nodeParameters: {
+						url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
+					},
+				},
+			},
+			mockCtx,
+		);
+
+		expect(tool.inputSchema).toEqual({
+			type: 'object',
+			properties: {
+				url: { type: 'string', description: 'The URL to request' },
+			},
+			required: ['url'],
+		});
+	});
 });
 
 describe('normalizeToObjectSchema', () => {

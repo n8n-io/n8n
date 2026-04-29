@@ -85,6 +85,12 @@ describe('TOOL_TYPES_SECTION', () => {
 	it('no longer tells the model to fill credentials with empty values', () => {
 		expect(TOOL_TYPES_SECTION).not.toContain('fill them with empty values');
 	});
+
+	it('instructs node tools to use $fromAI instead of $json for AI-chosen fields', () => {
+		expect(TOOL_TYPES_SECTION).toContain('$fromAI');
+		expect(TOOL_TYPES_SECTION).toContain('Do NOT pipe AI-chosen node-tool fields through `$json`');
+		expect(TOOL_TYPES_SECTION).not.toContain('={{$json.paramName}}');
+	});
 });
 
 describe('IMPORTANT_SECTION', () => {

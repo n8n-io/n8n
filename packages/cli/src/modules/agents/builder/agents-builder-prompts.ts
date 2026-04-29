@@ -52,16 +52,15 @@ Flow: search_nodes → get_node_types → ask_credential (per slot) → write/up
     "nodeType": "n8n-nodes-base.httpRequestTool",
     "nodeTypeVersion": 4,
     "nodeParameters": {
-      "method": "={{$json.method || 'GET'}}",
-      "url": "={{$json.url}}",
+      "method": "GET",
+      "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
       "toolDescription": "Make an HTTP request to any URL"
     }
   },
   "inputSchema": {
     "type": "object",
     "properties": {
-      "url": { "type": "string", "description": "The URL to request" },
-      "method": { "type": "string", "description": "HTTP method (GET, POST, PUT, DELETE)" }
+      "url": { "type": "string", "description": "The URL to request" }
     },
     "required": ["url"]
   }
@@ -70,9 +69,11 @@ Flow: search_nodes → get_node_types → ask_credential (per slot) → write/up
 
 Rules for node tools:
 - \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results. Use the tool node ID from search_nodes (usually ending in \`Tool\`, e.g. \`n8n-nodes-base.httpRequestTool\`), not the base node ID.
-- \`nodeParameters\` sets fixed parameters (resource, operation, etc.) and pipes parameters from inputSchema using expressions "={{$json.paramName}}" where paramName must match parameter name in inputSchema.
+- \`nodeParameters\` sets fixed parameters (resource, operation, etc.). For any value the AI should choose at runtime, use the same "Let the AI pick" expression the UI uses: \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('key', 'description', 'type') }}\`.
+- Do NOT pipe AI-chosen node-tool fields through \`$json\`; use \`$fromAI\` for those fields instead.
+- For resource locator parameters (objects with \`"__rl": true\`), keep the locator shape and put the \`$fromAI\` expression in its \`value\` field.
 - When get_node_types shows \`toolDescription\`, set it to the same clear purpose you use in the node tool's top-level \`description\`.
-- \`inputSchema\` defines what the LLM passes at runtime (JSON Schema)
+- \`inputSchema\` must mirror the \`$fromAI\` keys in \`nodeParameters\` (JSON Schema). The backend also derives this schema from \`$fromAI\` placeholders, so keep them in lockstep.
 - For every credential slot the node requires, you MUST first call ask_credential and use the { id, name } returned in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never leave empty values.
 - Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If the user dismisses the picker (returns { skipped: true }), omit that slot entirely and warn the user the tool will fail at runtime until a credential is set.
 - Use search_nodes first, never guess node type names
@@ -165,12 +166,12 @@ ask in prose for that.
 export const N8N_EXPRESSIONS_SECTION = `\
 ## n8n expressions
 
-Node tool parameters inside \`nodeParameters\` can use n8n expressions to reference dynamic input.
-The LLM input is available as \`$json\` — each key matches a property from \`inputSchema\`.
+Node tool parameters inside \`nodeParameters\` can use n8n expressions.
+For node tools, prefer \`$fromAI\` whenever the agent should decide a value at runtime; this is the same behavior as the UI's "Let the AI pick" option.
 
-- \`={{ $json.fieldName }}\` — reference a field from the tool's input
-- \`={{ $json.count > 0 ? 'yes' : 'no' }}\` — inline ternary
-- \`={{ $json.items.join(', ') }}\` — call JS methods on input values
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\` — let the AI provide a string
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\` — let the AI provide a number
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}\` — let the AI provide a boolean
 - \`={{ $now.toISO() }}\` — current date/time (Luxon DateTime)
 - \`={{ $today }}\` — start of today (Luxon DateTime)
 
@@ -311,9 +312,9 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    → { provider: "anthropic", model: "claude-sonnet-4-5",
        credentialId: "abc", credentialName: "My Anthropic" }
 2. search_nodes({ query: "slack" }) → ...
-3. get_node_types({ nodeType: "n8n-nodes-base.slack" }) → ...
+3. get_node_types({ nodeType: "n8n-nodes-base.slackTool" }) → ...
 4. ask_credential({ purpose: "Slack workspace to read/post messages",
-       nodeType: "n8n-nodes-base.slack", credentialType: "slackApi",
+       nodeType: "n8n-nodes-base.slackTool", credentialType: "slackApi",
        slot: "slackApi" })
    → { credentialId: "xyz", credentialName: "Acme Slack" }
 5. write_config({ ...

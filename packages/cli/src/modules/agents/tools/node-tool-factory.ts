@@ -2,7 +2,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { Tool, isZodSchema } from '@n8n/agents';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
-import { isToolType, nodeNameToToolName } from 'n8n-workflow';
+import { extractFromAIInputSchema, isToolType, nodeNameToToolName } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -121,15 +121,20 @@ export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
  * the LLM is told one shape and the tool validates a different one.
  *
  * Strategy:
- *   1. If the config carries a non-empty schema, trust it.
- *   2. Otherwise, ask the executor to instantiate the LangChain tool and
+ *   1. If nodeParameters contain `$fromAI(...)`, derive the schema from those
+ *      placeholders so persisted configs cannot drift from runtime params.
+ *   2. If the config carries a non-empty schema, trust it.
+ *   3. Otherwise, ask the executor to instantiate the LangChain tool and
  *      report its `.schema`. If it's a Zod schema, convert to JSON Schema.
- *   3. Fall back to the `{ input: string }` shape for plain `Tool` nodes.
+ *   4. Fall back to the `{ input: string }` shape for plain `Tool` nodes.
  */
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
 ): Promise<JSONSchema7> {
+	const fromAISchema = extractFromAIInputSchema(toolSchema.node.nodeParameters ?? {});
+	if (fromAISchema) return fromAISchema as JSONSchema7;
+
 	const configured = toolSchema.inputSchema as JSONSchema7 | undefined;
 	const properties = (configured?.properties ?? {}) as Record<string, unknown>;
 	const hasProps = Object.keys(properties).length > 0;

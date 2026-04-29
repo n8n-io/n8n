@@ -1,5 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
-import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow';
+import {
+	extractFromAIInputSchema,
+	type INode,
+	type INodeCredentials,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
 import type { AgentJsonToolRef, NodeToolConfig } from '../types';
@@ -157,82 +162,7 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 	};
 }
 
-/**
- * Walk `nodeParameters` (recursively, including arrays + objects) and collect
- * every `$fromAI(key, description?, type?)` expression the user has planted via
- * the "Let AI define this parameter" override. Returns the JSON Schema the LLM
- * should receive for the tool — or `null` if no overrides are present.
- *
- * The override is written into the parameter as an n8n expression, e.g.
- * `={{ $fromAI('channel', 'Slack channel id', 'string') }}`. At runtime the
- * LangChain side parses that same form; we parse it at config-save time so
- * `ref.inputSchema` stays in lockstep with `ref.node.nodeParameters` and the
- * model is told the exact arg shape it's expected to supply.
- */
-export function extractFromAIInputSchema(
-	nodeParameters: Record<string, unknown>,
-): Record<string, unknown> | null {
-	type Prop = { type: string; description?: string };
-	const properties: Record<string, Prop> = {};
-	const required: string[] = [];
-
-	// $fromAI('key', 'description', 'type', default?)
-	//  - key is required, must be a bare identifier (JSON property name)
-	//  - description + type + default are optional
-	//  - type is one of string | number | boolean | json; maps to JSON Schema types
-	// Allows either single or double quotes, and extra whitespace.
-	const FROM_AI_REGEX =
-		/\$fromAI\s*\(\s*['"]([^'"]+)['"](?:\s*,\s*['"]([^'"]*)['"])?(?:\s*,\s*['"]?(string|number|boolean|json)['"]?)?/g;
-
-	function toJsonSchemaType(raw: string | undefined): string {
-		switch (raw) {
-			case 'number':
-				return 'number';
-			case 'boolean':
-				return 'boolean';
-			case 'json':
-				return 'object';
-			default:
-				return 'string';
-		}
-	}
-
-	function walk(value: unknown): void {
-		if (typeof value === 'string' && value.includes('$fromAI')) {
-			// `lastIndex` must reset per string to avoid the regex skipping matches
-			// after prior invocations.
-			FROM_AI_REGEX.lastIndex = 0;
-			let match: RegExpExecArray | null;
-			while ((match = FROM_AI_REGEX.exec(value)) !== null) {
-				const [, key, description, type] = match;
-				if (!key || properties[key]) continue;
-				properties[key] = {
-					type: toJsonSchemaType(type),
-					...(description ? { description } : {}),
-				};
-				required.push(key);
-			}
-			return;
-		}
-		if (Array.isArray(value)) {
-			for (const item of value) walk(item);
-			return;
-		}
-		if (value !== null && typeof value === 'object') {
-			for (const v of Object.values(value)) walk(v);
-		}
-	}
-
-	walk(nodeParameters);
-
-	if (required.length === 0) return null;
-
-	return {
-		type: 'object',
-		properties,
-		required,
-	};
-}
+export { extractFromAIInputSchema };
 
 /**
  * Merge edits made to an `INode` back into the original ref (preserving extra
