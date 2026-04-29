@@ -2079,7 +2079,7 @@ describe('TestRunnerService', () => {
 				// Yield to the event loop so other queued tasks observably overlap.
 				await new Promise((resolve) => setTimeout(resolve, 5));
 				inFlightTracker.inFlight--;
-				const score = parseInt((executionId as string).replace('case-exec-', ''), 10) / 10;
+				const score = parseInt(executionId.replace('case-exec-', ''), 10) / 10;
 				return buildCaseExecution(score);
 			});
 

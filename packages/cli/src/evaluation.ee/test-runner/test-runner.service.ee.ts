@@ -625,235 +625,236 @@ export class TestRunnerService {
 			const limit = pLimit(effectiveConcurrency);
 
 			const contributionResults = await Promise.all(
-				testCases.map((testCase, caseIndex) =>
-					limit(async (): Promise<MetricContribution[]> => {
-						if (abortSignal.aborted) {
-							return [];
-						}
-
-						// Multi-main DB cancellation poll, run per case as a defensive
-						// fallback for the rare case a foreign main flips the cancel
-						// flag but the pubsub broadcast doesn't reach this instance.
-						// Cheap (~1ms indexed PK lookup); kept as-is rather than
-						// optimised to once-per-run to preserve the existing safety net.
-						if (
-							this.instanceSettings.isMultiMain &&
-							(await this.testRunRepository.isCancellationRequested(testRun.id))
-						) {
-							this.logger.debug('Test run cancellation requested via database flag', {
-								workflowId,
-								testRunId: testRun.id,
-							});
-							abortController.abort();
-							return [];
-						}
-
-						// Layer onto the existing instance-wide concurrency control. The
-						// service is a no-op in queue mode (BullMQ governs there) and when
-						// `evaluationLimit` is unset (-1). pLimit and the eval queue cap
-						// the in-flight count at *the same number* by design — pLimit is
-						// per-run, the queue is shared across all test runs from all users
-						// on the instance, so they're complementary, not redundant.
-						//
-						// Abort-aware acquisition: if Stop is clicked while we're queued
-						// behind another evaluation's capacity, we evict ourselves from the
-						// queue so the slot returns to circulation and our task short-
-						// circuits promptly instead of waiting for an unrelated run to
-						// release. Without this, queued cases would block until they drained
-						// through the queue — and then `runTestCase` would return undefined
-						// (abort observed at its top), tripping the assert below and landing
-						// a misleading UNKNOWN_ERROR test-case row.
-						const caseTrackingId = `${testRun.id}-case-${caseIndex}`;
-						let abortHandler: (() => void) | undefined;
-						let throttleAcquired = false;
-						const abortRace = new Promise<'aborted'>((resolve) => {
-							abortHandler = () => resolve('aborted');
-							abortSignal.addEventListener('abort', abortHandler, { once: true });
-						});
-						const acquireRace = this.concurrencyControlService
-							.throttle({ mode: 'evaluation', executionId: caseTrackingId })
-							.then(() => {
-								throttleAcquired = true;
-								return 'acquired' as const;
-							});
-						const acquired = await Promise.race([acquireRace, abortRace]);
-
-						if (acquired === 'aborted') {
-							// Two abort sub-cases handled defensively, distinguished by
-							// whether throttle's `.then` microtask managed to set
-							// `throttleAcquired` before abort won the race:
-							//
-							// 1. throttleAcquired = true — the eval queue had immediate
-							//    capacity (no queue push, slot synchronously consumed),
-							//    and the `.then` microtask fired before abort. Race
-							//    *should* have picked 'acquired' in this ordering, but
-							//    handle defensively against scheduler quirks: release
-							//    the slot back to the queue.
-							// 2. throttleAcquired = false — we were either still queued
-							//    (capacity wasn't available) or the immediate-acquire's
-							//    microtask hadn't fired yet. Either way, remove() splices
-							//    a queued entry (frees the slot via internal capacity++)
-							//    and is a no-op for non-queued entries. The unawaited
-							//    acquireRace becomes garbage.
-							if (throttleAcquired) {
-								this.concurrencyControlService.release({ mode: 'evaluation' });
-							} else {
-								this.concurrencyControlService.remove({
-									mode: 'evaluation',
-									executionId: caseTrackingId,
-								});
+				testCases.map(
+					async (testCase, caseIndex) =>
+						await limit(async (): Promise<MetricContribution[]> => {
+							if (abortSignal.aborted) {
+								return [];
 							}
-							return [];
-						}
 
-						if (abortHandler) {
-							abortSignal.removeEventListener('abort', abortHandler);
-						}
-
-						// Narrow window: abort could fire between `throttle` resolving and
-						// here. We have the capacity slot; release it and bail.
-						if (abortSignal.aborted) {
-							this.concurrencyControlService.release({ mode: 'evaluation' });
-							return [];
-						}
-
-						this.logger.debug('Running test case');
-						const runAt = new Date();
-
-						try {
-							try {
-								const testCaseMetadata = { ...testRunMetadata };
-
-								const testCaseResult = await this.runTestCase(
-									workflow,
-									testCaseMetadata,
-									testCase,
-									abortSignal,
-								);
-
-								// `runTestCase` returns undefined only when `abortSignal.aborted`
-								// is true at entry (see method body). Skip silently so the outer
-								// reconciliation can mark the run as cancelled — landing an
-								// UNKNOWN_ERROR test-case row here would be misleading. Asserting
-								// the abort invariant catches future regressions where the
-								// undefined return path widens.
-								if (!testCaseResult) {
-									assert(
-										abortSignal.aborted,
-										'runTestCase returned undefined without abort being set',
-									);
-									return [];
-								}
-
-								const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
-									testCaseResult;
-
-								assert(testCaseExecution);
-								assert(testCaseExecutionId);
-
-								this.logger.debug('Test case execution finished');
-
-								if (!testCaseExecution || testCaseExecution.data.resultData.error) {
-									await this.testCaseExecutionRepository.createTestCaseExecution({
-										executionId: testCaseExecutionId,
-										testRun: { id: testRun.id },
-										status: 'error',
-										errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
-										metrics: {},
-									});
-									telemetryMeta.errored_test_case_count++;
-									return [];
-								}
-								const completedAt = new Date();
-
-								const predefinedContribution = EvaluationMetrics.buildContribution(
-									this.extractPredefinedMetrics(testCaseExecution),
-								);
-								this.logger.debug(
-									'Test case common metrics extracted',
-									predefinedContribution.addedMetrics,
-								);
-
-								const userDefinedContribution = EvaluationMetrics.buildContribution(
-									this.extractUserDefinedMetrics(testCaseExecution, workflow),
-								);
-
-								if (Object.keys(userDefinedContribution.addedMetrics).length === 0) {
-									await this.testCaseExecutionRepository.createTestCaseExecution({
-										executionId: testCaseExecutionId,
-										testRun: { id: testRun.id },
-										runAt,
-										completedAt,
-										status: 'error',
-										errorCode: 'NO_METRICS_COLLECTED',
-									});
-									telemetryMeta.errored_test_case_count++;
-									// Predefined metrics still merge — the case ran, just had no user metrics.
-									return [predefinedContribution];
-								}
-
-								const combinedMetrics = {
-									...userDefinedContribution.addedMetrics,
-									...predefinedContribution.addedMetrics,
-								};
-
-								const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
-								const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
-
-								this.logger.debug(
-									'Test case metrics extracted (user-defined)',
-									userDefinedContribution.addedMetrics,
-								);
-
-								await this.testCaseExecutionRepository.createTestCaseExecution({
-									executionId: testCaseExecutionId,
-									testRun: { id: testRun.id },
-									runAt,
-									completedAt,
-									status: 'success',
-									metrics: combinedMetrics,
-									inputs,
-									outputs,
-								});
-
-								return [predefinedContribution, userDefinedContribution];
-							} catch (e) {
-								const completedAt = new Date();
-								this.logger.error('Test case execution failed', {
+							// Multi-main DB cancellation poll, run per case as a defensive
+							// fallback for the rare case a foreign main flips the cancel
+							// flag but the pubsub broadcast doesn't reach this instance.
+							// Cheap (~1ms indexed PK lookup); kept as-is rather than
+							// optimised to once-per-run to preserve the existing safety net.
+							if (
+								this.instanceSettings.isMultiMain &&
+								(await this.testRunRepository.isCancellationRequested(testRun.id))
+							) {
+								this.logger.debug('Test run cancellation requested via database flag', {
 									workflowId,
 									testRunId: testRun.id,
-									error: e,
 								});
+								abortController.abort();
+								return [];
+							}
 
-								telemetryMeta.errored_test_case_count++;
+							// Layer onto the existing instance-wide concurrency control. The
+							// service is a no-op in queue mode (BullMQ governs there) and when
+							// `evaluationLimit` is unset (-1). pLimit and the eval queue cap
+							// the in-flight count at *the same number* by design — pLimit is
+							// per-run, the queue is shared across all test runs from all users
+							// on the instance, so they're complementary, not redundant.
+							//
+							// Abort-aware acquisition: if Stop is clicked while we're queued
+							// behind another evaluation's capacity, we evict ourselves from the
+							// queue so the slot returns to circulation and our task short-
+							// circuits promptly instead of waiting for an unrelated run to
+							// release. Without this, queued cases would block until they drained
+							// through the queue — and then `runTestCase` would return undefined
+							// (abort observed at its top), tripping the assert below and landing
+							// a misleading UNKNOWN_ERROR test-case row.
+							const caseTrackingId = `${testRun.id}-case-${caseIndex}`;
+							let abortHandler: (() => void) | undefined;
+							let throttleAcquired = false;
+							const abortRace = new Promise<'aborted'>((resolve) => {
+								abortHandler = () => resolve('aborted');
+								abortSignal.addEventListener('abort', abortHandler, { once: true });
+							});
+							const acquireRace = this.concurrencyControlService
+								.throttle({ mode: 'evaluation', executionId: caseTrackingId })
+								.then(() => {
+									throttleAcquired = true;
+									return 'acquired' as const;
+								});
+							const acquired = await Promise.race([acquireRace, abortRace]);
 
-								if (e instanceof TestCaseExecutionError) {
-									await this.testCaseExecutionRepository.createTestCaseExecution({
-										testRun: { id: testRun.id },
-										runAt,
-										completedAt,
-										status: 'error',
-										errorCode: e.code,
-										errorDetails: e.extra as IDataObject,
-									});
+							if (acquired === 'aborted') {
+								// Two abort sub-cases handled defensively, distinguished by
+								// whether throttle's `.then` microtask managed to set
+								// `throttleAcquired` before abort won the race:
+								//
+								// 1. throttleAcquired = true — the eval queue had immediate
+								//    capacity (no queue push, slot synchronously consumed),
+								//    and the `.then` microtask fired before abort. Race
+								//    *should* have picked 'acquired' in this ordering, but
+								//    handle defensively against scheduler quirks: release
+								//    the slot back to the queue.
+								// 2. throttleAcquired = false — we were either still queued
+								//    (capacity wasn't available) or the immediate-acquire's
+								//    microtask hadn't fired yet. Either way, remove() splices
+								//    a queued entry (frees the slot via internal capacity++)
+								//    and is a no-op for non-queued entries. The unawaited
+								//    acquireRace becomes garbage.
+								if (throttleAcquired) {
+									this.concurrencyControlService.release({ mode: 'evaluation' });
 								} else {
-									await this.testCaseExecutionRepository.createTestCaseExecution({
-										testRun: { id: testRun.id },
-										runAt,
-										completedAt,
-										status: 'error',
-										errorCode: 'UNKNOWN_ERROR',
+									this.concurrencyControlService.remove({
+										mode: 'evaluation',
+										executionId: caseTrackingId,
 									});
-									this.errorReporter.error(e);
 								}
 								return [];
 							}
-						} finally {
-							// Always release capacity, even when runTestCase throws.
-							// The synthetic id is irrelevant — release dequeues by mode.
-							this.concurrencyControlService.release({ mode: 'evaluation' });
-						}
-					}),
+
+							if (abortHandler) {
+								abortSignal.removeEventListener('abort', abortHandler);
+							}
+
+							// Narrow window: abort could fire between `throttle` resolving and
+							// here. We have the capacity slot; release it and bail.
+							if (abortSignal.aborted) {
+								this.concurrencyControlService.release({ mode: 'evaluation' });
+								return [];
+							}
+
+							this.logger.debug('Running test case');
+							const runAt = new Date();
+
+							try {
+								try {
+									const testCaseMetadata = { ...testRunMetadata };
+
+									const testCaseResult = await this.runTestCase(
+										workflow,
+										testCaseMetadata,
+										testCase,
+										abortSignal,
+									);
+
+									// `runTestCase` returns undefined only when `abortSignal.aborted`
+									// is true at entry (see method body). Skip silently so the outer
+									// reconciliation can mark the run as cancelled — landing an
+									// UNKNOWN_ERROR test-case row here would be misleading. Asserting
+									// the abort invariant catches future regressions where the
+									// undefined return path widens.
+									if (!testCaseResult) {
+										assert(
+											abortSignal.aborted,
+											'runTestCase returned undefined without abort being set',
+										);
+										return [];
+									}
+
+									const { executionId: testCaseExecutionId, executionData: testCaseExecution } =
+										testCaseResult;
+
+									assert(testCaseExecution);
+									assert(testCaseExecutionId);
+
+									this.logger.debug('Test case execution finished');
+
+									if (!testCaseExecution || testCaseExecution.data.resultData.error) {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
+											executionId: testCaseExecutionId,
+											testRun: { id: testRun.id },
+											status: 'error',
+											errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
+											metrics: {},
+										});
+										telemetryMeta.errored_test_case_count++;
+										return [];
+									}
+									const completedAt = new Date();
+
+									const predefinedContribution = EvaluationMetrics.buildContribution(
+										this.extractPredefinedMetrics(testCaseExecution),
+									);
+									this.logger.debug(
+										'Test case common metrics extracted',
+										predefinedContribution.addedMetrics,
+									);
+
+									const userDefinedContribution = EvaluationMetrics.buildContribution(
+										this.extractUserDefinedMetrics(testCaseExecution, workflow),
+									);
+
+									if (Object.keys(userDefinedContribution.addedMetrics).length === 0) {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
+											executionId: testCaseExecutionId,
+											testRun: { id: testRun.id },
+											runAt,
+											completedAt,
+											status: 'error',
+											errorCode: 'NO_METRICS_COLLECTED',
+										});
+										telemetryMeta.errored_test_case_count++;
+										// Predefined metrics still merge — the case ran, just had no user metrics.
+										return [predefinedContribution];
+									}
+
+									const combinedMetrics = {
+										...userDefinedContribution.addedMetrics,
+										...predefinedContribution.addedMetrics,
+									};
+
+									const inputs = this.getEvaluationData(testCaseExecution, workflow, 'setInputs');
+									const outputs = this.getEvaluationData(testCaseExecution, workflow, 'setOutputs');
+
+									this.logger.debug(
+										'Test case metrics extracted (user-defined)',
+										userDefinedContribution.addedMetrics,
+									);
+
+									await this.testCaseExecutionRepository.createTestCaseExecution({
+										executionId: testCaseExecutionId,
+										testRun: { id: testRun.id },
+										runAt,
+										completedAt,
+										status: 'success',
+										metrics: combinedMetrics,
+										inputs,
+										outputs,
+									});
+
+									return [predefinedContribution, userDefinedContribution];
+								} catch (e) {
+									const completedAt = new Date();
+									this.logger.error('Test case execution failed', {
+										workflowId,
+										testRunId: testRun.id,
+										error: e,
+									});
+
+									telemetryMeta.errored_test_case_count++;
+
+									if (e instanceof TestCaseExecutionError) {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
+											testRun: { id: testRun.id },
+											runAt,
+											completedAt,
+											status: 'error',
+											errorCode: e.code,
+											errorDetails: e.extra as IDataObject,
+										});
+									} else {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
+											testRun: { id: testRun.id },
+											runAt,
+											completedAt,
+											status: 'error',
+											errorCode: 'UNKNOWN_ERROR',
+										});
+										this.errorReporter.error(e);
+									}
+									return [];
+								}
+							} finally {
+								// Always release capacity, even when runTestCase throws.
+								// The synthetic id is irrelevant — release dequeues by mode.
+								this.concurrencyControlService.release({ mode: 'evaluation' });
+							}
+						}),
 				),
 			);
 
