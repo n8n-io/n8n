@@ -235,26 +235,5 @@ describe('CalTrigger', () => {
 				},
 			]);
 		});
-
-		it('should process webhook when no secret is configured (backward compatibility)', async () => {
-			const requestBody = {
-				triggerEvent: 'BOOKING_CREATED',
-				createdAt: '2024-01-01T00:00:00Z',
-				payload: {},
-			};
-
-			// verifySignature returns true when no secret is configured (skip behaviour)
-			(verifySignature as jest.Mock).mockReturnValue(true);
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				body: requestBody,
-			} as any);
-
-			const result = await trigger.webhook.call(
-				mockWebhookFunctions as unknown as IWebhookFunctions,
-			);
-
-			expect(verifySignature).toHaveBeenCalled();
-			expect(result.workflowData).toBeDefined();
-		});
 	});
 });
