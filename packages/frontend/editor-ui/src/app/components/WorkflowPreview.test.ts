@@ -487,6 +487,66 @@ describe('WorkflowPreview', () => {
 			});
 		});
 
+		it('should resend openWorkflow when toggling back to workflow mode for the same workflow', async () => {
+			const workflow = { nodes: [{ name: 'Start' }] } as unknown as IWorkflowDb;
+			const executionId = 'exec-1';
+
+			const { rerender } = renderComponent({
+				pinia,
+				props: { mode: 'workflow' as const, workflow },
+			});
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+
+			// Switch to execution view — iframe now renders execution content.
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'execution' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+
+			// Switch back to workflow with the SAME workflow reference. Without
+			// invalidating the dedup cache, the workflow ref-equality check
+			// would skip the openWorkflow postMessage and leave the iframe
+			// stuck in execution mode.
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'workflow' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+		});
+
+		it('should resend openExecution when toggling back to execution mode for the same id', async () => {
+			const workflow = { nodes: [{ name: 'Start' }] } as unknown as IWorkflowDb;
+			const executionId = 'exec-1';
+
+			const { rerender } = renderComponent({
+				pinia,
+				props: { mode: 'execution' as const, workflow, executionId },
+			});
+			sendPostMessageCommand('n8nReady');
+
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'workflow' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openWorkflow')).toBe(1);
+			});
+
+			// Same executionId — must still resend after the mode round-trip.
+			postMessageSpy.mockClear();
+			await rerender({ mode: 'execution' as const, workflow, executionId });
+			await waitFor(() => {
+				expect(countCommand('openExecution')).toBe(1);
+			});
+		});
+
 		it('reloadExecution bypasses the executionId dedup so the same id is re-sent', async () => {
 			const wrapper = mount(WorkflowPreview, {
 				global: { plugins: [pinia] },

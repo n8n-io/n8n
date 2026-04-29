@@ -243,6 +243,12 @@ watch(
 watch(
 	() => props.mode,
 	() => {
+		// Mode change swaps what the iframe is rendering, so neither dedup
+		// cache is accurate anymore — clear both so the load* call below
+		// fires its postMessage even when the workflow / executionId ref
+		// hasn't changed.
+		lastSentWorkflow = undefined;
+		lastSentExecutionId = undefined;
 		if (showPreview.value) {
 			if (props.mode === 'workflow') {
 				loadWorkflow();
