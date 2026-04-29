@@ -543,6 +543,20 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
+		it('should map string type with multipleValues to an array type', () => {
+			const prop: NodeProperty = {
+				name: 'attendees',
+				displayName: 'Attendees',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('Array<string | Expression<string> | PlaceholderValue>');
+		});
+
 		it('should map fixedCollection type to proper nested interface', () => {
 			const prop: NodeProperty = {
 				name: 'queryParameters',
@@ -565,6 +579,34 @@ describe('generate-types', () => {
 			expect(result).toContain('parameters?:');
 			expect(result).toContain('name?:');
 			expect(result).toContain('value?:');
+		});
+
+		it('should map nested string fields with multipleValues to array types', () => {
+			const prop: NodeProperty = {
+				name: 'attendeesUi',
+				displayName: 'Attendees',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Attendees',
+								name: 'attendees',
+								type: 'string',
+								default: '',
+								typeOptions: {
+									multipleValues: true,
+								},
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('attendees?: Array<string | Expression<string> | PlaceholderValue>');
 		});
 
 		it('should map fixedCollection with multipleValues to array type', () => {

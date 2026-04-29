@@ -900,7 +900,7 @@ th.isCollapsingColumn + th {
 	align-items: center;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
 
-	span {
+	> :first-child {
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
@@ -1024,7 +1024,6 @@ th.isCollapsingColumn + th {
 	}
 
 	opacity: 0;
-	margin-block: calc(-2 * var(--spacing--2xs));
 
 	.isCollapsingColumn &,
 	th.isHoveredColumn &,

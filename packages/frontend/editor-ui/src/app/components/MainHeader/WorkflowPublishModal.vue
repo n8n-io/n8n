@@ -22,6 +22,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
@@ -39,6 +40,7 @@ const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 const credentialsStore = useCredentialsStore();
+const settingsStore = useSettingsStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const publishing = ref(false);
@@ -62,7 +64,11 @@ const wfHasAnyChanges = computed(() => {
 	);
 });
 
-const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
+const nodesWithValidationIssues = computed(
+	() => workflowDocumentStore.value.nodesWithValidationIssues,
+);
+
+const hasNodeIssues = computed(() => workflowDocumentStore.value.hasNodeValidationIssues);
 
 const inputsDisabled = computed(() => {
 	return (
@@ -155,6 +161,19 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 		managedOpenAiCredentialId,
 	);
 });
+
+const aiGatewayWarningNodes = computed((): INodeUi[] => {
+	if (!settingsStore.isAiGatewayEnabled) return [];
+	return (workflowDocumentStore.value?.allNodes ?? []).filter(
+		(node) =>
+			!node.disabled &&
+			Object.values(node.credentials ?? {}).some((cred) => cred.__aiGatewayManaged === true),
+	);
+});
+
+const aiGatewayWarningNodeNames = computed(() =>
+	aiGatewayWarningNodes.value.map((n) => n.name).join(', '),
+);
 
 async function displayActivationError() {
 	let errorMessage: string | VNode;
@@ -250,18 +269,36 @@ async function handlePublish() {
 		</template>
 		<template #content>
 			<div :class="$style.content">
+				<N8nCallout
+					v-if="aiGatewayWarningNodes.length > 0"
+					theme="warning"
+					:iconless="true"
+					data-test-id="workflow-publish-ai-gateway-warning"
+				>
+					{{
+						i18n.baseText('workflows.publishModal.aiGatewayWarning.header', {
+							adjustToNumber: aiGatewayWarningNodes.length,
+						})
+					}}
+					<strong>{{ aiGatewayWarningNodeNames }}</strong>
+					{{
+						i18n.baseText('workflows.publishModal.aiGatewayWarning.body', {
+							adjustToNumber: aiGatewayWarningNodes.length,
+						})
+					}}
+				</N8nCallout>
 				<N8nCallout v-if="activeCalloutId === 'noTrigger'" theme="danger" icon="status-error">
 					{{ i18n.baseText('workflows.publishModal.noTriggerMessage') }}
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
 					{{
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: workflowsStore.nodesWithIssues.length },
-							adjustToNumber: workflowsStore.nodesWithIssues.length,
+							interpolate: { count: nodesWithValidationIssues.length },
+							adjustToNumber: nodesWithValidationIssues.length,
 						})
 					}}
 					<ul :class="$style.nodeLinks">
-						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
+						<li v-for="node in nodesWithValidationIssues" :key="node.id">
 							<N8nLink
 								size="small"
 								:to="`/workflow/${workflowsStore.workflowId}/${node.id}`"

@@ -270,6 +270,9 @@ export class FrontendService {
 					callbackUrl: `${instanceBaseUrl}/${restEndpoint}/sso/oidc/callback`,
 				},
 			},
+			logStreaming: {
+				managedByEnv: this.globalConfig.instanceSettingsLoader.logStreamingManagedByEnv,
+			},
 			dataTables: {
 				maxSize: this.globalConfig.dataTable.maxSize,
 			},
