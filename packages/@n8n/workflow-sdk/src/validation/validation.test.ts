@@ -2694,8 +2694,11 @@ describe('Validation', () => {
 			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
 			expect(warnings).toHaveLength(1);
 			expect(warnings[0].nodeName).toBe('Retrieve Relevant Regulations');
-			expect(warnings[0].message).toContain('main');
-			expect(warnings[0].message).toContain('retrieve');
+			// Message uses SDK vocabulary, not raw connection types
+			expect(warnings[0].message).toContain('.to()');
+			expect(warnings[0].message).toContain("currently 'retrieve'");
+			// Suggests the alternative wiring that IS enabled in the current mode
+			expect(warnings[0].message).toContain('subnodes.vectorStore');
 			expect(warnings[0].violationLevel).toBe('major');
 		});
 
@@ -2780,7 +2783,9 @@ describe('Validation', () => {
 			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
 			expect(warnings).toHaveLength(1);
 			expect(warnings[0].nodeName).toBe('Vector Store');
-			expect(warnings[0].message).toContain('retrieve-as-tool');
+			expect(warnings[0].message).toContain("currently 'retrieve-as-tool'");
+			expect(warnings[0].message).toContain('.to()');
+			expect(warnings[0].message).toContain('subnodes.tools');
 		});
 
 		it('does not warn for load mode with main connections', () => {

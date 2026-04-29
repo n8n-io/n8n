@@ -868,6 +868,42 @@ function validateRequiredInputsConnected(
 }
 
 /**
+ * Render an outgoing connection type as the SDK syntax that produces it, so warning
+ * messages speak the LLM agent's vocabulary instead of raw `main` / `ai_*` types.
+ *
+ * `target` flips the phrasing between describing the wiring already used by the source
+ * (e.g. `wired with .to()`) and describing where the source SHOULD attach instead
+ * (e.g. `subnodes.tools`).
+ */
+function describeOutputWiring(connectionType: string, target = false): string {
+	if (connectionType === 'main') return target ? '.to(...)' : 'wired with .to()';
+	const field = AI_CONNECTION_TO_SUBNODE_FIELD[connectionType];
+	if (field) return target ? `subnodes.${field}` : `attached as subnodes.${field}`;
+	return target ? connectionType : `connected via ${connectionType}`;
+}
+
+/**
+ * Return the connection type from `outputsHint` whose displayOptions match the source
+ * node's current parameters — i.e. the output the node actually exposes given how it's
+ * configured. Used to suggest the correct wiring fix in `INVALID_OUTPUT_FOR_MODE`.
+ */
+function findEnabledAlternativeOutput(
+	outputsHint: Record<string, { displayOptions?: IDisplayOptions } | undefined>,
+	ctx: DisplayOptionsContext,
+	excludeType: string,
+): string | undefined {
+	for (const [type, cfg] of Object.entries(outputsHint)) {
+		if (type === excludeType) continue;
+		if (!cfg) continue;
+		if (cfg.displayOptions && !matchesDisplayOptions(ctx, cfg.displayOptions as DisplayOptions)) {
+			continue;
+		}
+		return type;
+	}
+	return undefined;
+}
+
+/**
  * Validate that connections leaving a node use connection types the node's current
  * parameters actually expose. Driven by `builderHint.outputs` declared on the source node.
  *
@@ -917,11 +953,16 @@ function validateOutputUsage(
 				cfg.displayOptions,
 				(sourceNode.parameters ?? {}) as Record<string, unknown>,
 			);
+			const usedWiring = describeOutputWiring(connectionType);
+			const enabledAlt = findEnabledAlternativeOutput(outputsHint, ctx, connectionType);
+			const altSuggestion = enabledAlt
+				? ` To use this node as-is, attach it as ${describeOutputWiring(enabledAlt, true)} of a parent (it exposes ${enabledAlt} in this configuration).`
+				: '';
 
 			warnings.push(
 				new ValidationWarning(
 					'INVALID_OUTPUT_FOR_MODE',
-					`'${sourceNode.name}' has a ${connectionType} connection but its current parameters disable that output. ${conditionDetails}`,
+					`'${sourceNode.name}' is ${usedWiring} but its current parameters disable that output. ${conditionDetails}${altSuggestion}`,
 					sourceNode.name,
 					undefined,
 					undefined,
