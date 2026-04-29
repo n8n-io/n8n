@@ -68,6 +68,7 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 
 describe('RunData', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowDocumentStore: MockedStore<() => ReturnType<typeof useWorkflowDocumentStore>>;
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
 	let ndvStore: MockedStore<typeof useNDVStore>;
@@ -1403,19 +1404,17 @@ describe('RunData', () => {
 		ndvStore = mockedStore(useNDVStore);
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		workflowsStore.getNodeByName.mockReturnValue(workflowNodes[0]);
+		const testWorkflowId = workflowId ?? 'test-workflow';
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
+		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(workflowNodes[0]);
 
 		// Mock ndvStore methods
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		const testWorkflowId = workflowId ?? 'test-workflow';
 		workflowsStore.workflow.id = testWorkflowId;
 
 		if (pinnedData) {
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(testWorkflowId),
-			);
 			workflowDocumentStore.pinNodeData('Test Node', pinnedData);
 		}
 
