@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nTabs } from '@n8n/design-system';
+import { N8nButton, N8nRadioButtons, N8nSwitch2 } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { FORM_STEP_EDIT_MODAL_KEY } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -19,7 +19,12 @@ const workflowsStore = useWorkflowsStore();
 const nodeId = props.data?.nodeId as string;
 
 const node = computed(() => workflowsStore.workflow.nodes.find((n) => n.id === nodeId));
-const title = computed(() => node.value?.name ?? i18n.baseText('formStep.editForm'));
+const title = i18n.baseText('formStep.editForm');
+
+const applyToAll = computed({
+	get: () => appearance.scope.value === 'all',
+	set: (v) => (appearance.scope.value = v ? 'all' : 'current'),
+});
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -53,7 +58,7 @@ function onReset() {
 		<template #content>
 			<div :class="$style.modalBody">
 				<div :class="$style.tabsRow">
-					<N8nTabs v-model="activeTab" :options="tabs" />
+					<N8nRadioButtons v-model="activeTab" :options="tabs" size="medium" />
 				</div>
 
 				<!-- Fields tab (placeholder) -->
@@ -77,32 +82,39 @@ function onReset() {
 
 					<!-- Right: controls -->
 					<div :class="$style.controlsPane">
+						<div :class="$style.headerRow">
+							<span :class="$style.nodeName">{{ node?.name }}</span>
+							<div :class="$style.scopeControl">
+								<span :class="$style.scopeLabel">{{
+									i18n.baseText('formStep.appearance.applyToAll')
+								}}</span>
+								<N8nSwitch2 v-model="applyToAll" size="large" />
+							</div>
+						</div>
 						<AppearanceTab
 							:model-value="appearance.localOverrides.value"
 							:append-attribution="appearance.localAppendAttribution.value"
-							:scope="appearance.scope.value"
 							@update:model-value="(v) => (appearance.localOverrides.value = v)"
 							@update:append-attribution="(v) => (appearance.localAppendAttribution.value = v)"
-							@update:scope="(v) => (appearance.scope.value = v)"
 						/>
+						<div :class="$style.footer">
+							<N8nButton
+								variant="subtle"
+								:label="i18n.baseText('formStep.appearance.reset')"
+								@click="onReset"
+							/>
+							<N8nButton variant="solid" :class="$style.saveButton" @click="onSave">
+								<span :class="$style.saveContent">
+									<span :class="$style.saveSide">
+										<span v-if="appearance.hasUnsavedChanges.value" :class="$style.unsavedDot" />
+									</span>
+									<span>{{ i18n.baseText('formStep.appearance.save') }}</span>
+									<span :class="$style.saveSide" />
+								</span>
+							</N8nButton>
+						</div>
 					</div>
 				</div>
-			</div>
-		</template>
-
-		<template v-if="activeTab === 'appearance'" #footer>
-			<div :class="$style.footer">
-				<N8nButton
-					type="secondary"
-					:label="i18n.baseText('formStep.appearance.reset')"
-					@click="onReset"
-				/>
-				<N8nButton
-					type="primary"
-					:label="i18n.baseText('formStep.appearance.save')"
-					:loading="appearance.isSaving.value"
-					@click="onSave"
-				/>
 			</div>
 		</template>
 	</Modal>
@@ -115,8 +127,36 @@ function onReset() {
 	height: 100%;
 }
 
+.headerRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--3xs) 0;
+	margin-bottom: var(--spacing--sm);
+	border-bottom: var(--border);
+}
+
+.nodeName {
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text--shade-1);
+}
+
+.scopeControl {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.scopeLabel {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+}
+
 .tabsRow {
 	flex-shrink: 0;
+	display: flex;
+	justify-content: center;
 	margin-bottom: var(--spacing--sm);
 }
 
@@ -135,9 +175,8 @@ function onReset() {
 
 .previewPane {
 	overflow-y: auto;
-	background: var(--color--background--shade-1);
 	border-radius: var(--radius--lg);
-	padding: var(--spacing--lg);
+	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
 }
 
 .previewIframe {
@@ -179,5 +218,32 @@ function onReset() {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
+	padding-top: var(--spacing--sm);
+	margin-top: auto;
+}
+
+.saveButton {
+	min-width: 96px;
+}
+
+.saveContent {
+	display: grid;
+	grid-template-columns: 16px 1fr 16px;
+	align-items: center;
+	width: 100%;
+}
+
+.saveSide {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.unsavedDot {
+	width: 6px;
+	height: 6px;
+	border-radius: 50%;
+	background: currentColor;
+	opacity: 0.8;
 }
 </style>

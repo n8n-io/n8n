@@ -10,18 +10,14 @@ import {
 } from '../constants/cssVariableMap';
 import type { CssVarGroup } from '../constants/cssVariableMap';
 
-type Scope = 'current' | 'all';
-
 const props = defineProps<{
 	modelValue: Record<string, string>;
 	appendAttribution: boolean;
-	scope: Scope;
 }>();
 
 const emit = defineEmits<{
 	'update:modelValue': [value: Record<string, string>];
 	'update:appendAttribution': [value: boolean];
-	'update:scope': [value: Scope];
 }>();
 
 const i18n = useI18n();
@@ -55,31 +51,6 @@ function onControlUpdate(variable: string, value: string) {
 
 <template>
 	<div :class="$style.container">
-		<div :class="$style.scopeToggle">
-			<button
-				:class="[$style.scopeBtn, scope === 'current' && $style.scopeBtnActive]"
-				@click="emit('update:scope', 'current')"
-			>
-				{{ i18n.baseText('formStep.appearance.scope.current') }}
-			</button>
-			<button
-				:class="[$style.scopeBtn, scope === 'all' && $style.scopeBtnActive]"
-				@click="emit('update:scope', 'all')"
-			>
-				{{ i18n.baseText('formStep.appearance.scope.all') }}
-			</button>
-		</div>
-
-		<div :class="$style.attributionRow">
-			<span :class="$style.attributionLabel">
-				{{ i18n.baseText('formStep.appearance.control.appendAttribution') }}
-			</span>
-			<ElSwitch
-				:model-value="appendAttribution"
-				@update:model-value="(v) => emit('update:appendAttribution', Boolean(v))"
-			/>
-		</div>
-
 		<div :class="$style.groups">
 			<section v-for="group in CSS_VARIABLE_GROUPS" :key="group.key" :class="$style.group">
 				<h4 :class="$style.groupTitle">{{ i18n.baseText(group.labelKey) }}</h4>
@@ -90,6 +61,15 @@ function onControlUpdate(variable: string, value: string) {
 					:model-value="effectiveValue(control.variable)"
 					@update:model-value="(v) => onControlUpdate(control.variable, v)"
 				/>
+				<div v-if="group.key === 'page'" :class="$style.row">
+					<span :class="$style.controlLabel">
+						{{ i18n.baseText('formStep.appearance.control.appendAttribution') }}
+					</span>
+					<ElSwitch
+						:model-value="appendAttribution"
+						@update:model-value="(v) => emit('update:appendAttribution', Boolean(v))"
+					/>
+				</div>
 			</section>
 		</div>
 	</div>
@@ -101,54 +81,6 @@ function onControlUpdate(variable: string, value: string) {
 	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
-}
-
-.scopeToggle {
-	display: flex;
-	align-items: center;
-	gap: 0;
-	align-self: flex-end;
-	margin-bottom: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius);
-	overflow: hidden;
-}
-
-.scopeBtn {
-	padding: var(--spacing--4xs) var(--spacing--xs);
-	background: none;
-	border: none;
-	cursor: pointer;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	font-family: var(--font-family);
-	transition:
-		background 0.1s,
-		color 0.1s;
-
-	&:hover {
-		background: var(--color--foreground--tint-2);
-	}
-}
-
-.scopeBtnActive {
-	background: var(--color--foreground);
-	color: var(--color--text--shade-1);
-	font-weight: var(--font-weight--bold);
-}
-
-.attributionRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--3xs) 0;
-	margin-bottom: var(--spacing--sm);
-	border-bottom: var(--border);
-}
-
-.attributionLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
 }
 
 .groups {
@@ -165,8 +97,26 @@ function onControlUpdate(variable: string, value: string) {
 	margin: 0 0 var(--spacing--3xs);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
+}
+
+.row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--5xs) 0;
+}
+
+.controlLabel {
+	flex: 1;
+	min-width: 0;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 </style>

@@ -25,13 +25,13 @@ const numericValue = computed({
 	},
 });
 
-// For `opacity` controls the stored value is a decimal string like "0.5".
+// For `opacity` controls the stored value is a decimal like "0.5". Display as 0–100%.
 const opacityValue = computed({
 	get() {
-		return parseFloat(props.modelValue) || 0;
+		return Math.round((parseFloat(props.modelValue) || 0) * 100);
 	},
 	set(n: number) {
-		emit('update:modelValue', String(n));
+		emit('update:modelValue', String(n / 100));
 	},
 });
 </script>
@@ -43,6 +43,7 @@ const opacityValue = computed({
 			<N8nColorPicker
 				v-if="control.type === 'color'"
 				:model-value="modelValue"
+				size="small"
 				color-format="hex"
 				popper-class="appearance-color-picker-panel"
 				@active-change="(v) => v && emit('update:modelValue', v)"
@@ -62,17 +63,19 @@ const opacityValue = computed({
 				<N8nInputNumber
 					v-model="opacityValue"
 					:min="0"
-					:max="1"
-					:step="0.05"
-					:precision="2"
+					:max="100"
+					:step="5"
+					:precision="0"
 					size="small"
 					controls-position="right"
 				/>
+				<span :class="$style.unit">%</span>
 			</div>
 			<N8nInput
 				v-else-if="control.type === 'text'"
 				:model-value="modelValue"
 				size="small"
+				:class="$style.fullWidth"
 				@update:model-value="(v) => emit('update:modelValue', v)"
 			/>
 		</div>
@@ -85,14 +88,14 @@ const opacityValue = computed({
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--4xs) 0;
+	padding: var(--spacing--5xs) 0;
 }
 
 .label {
 	flex: 1;
 	min-width: 0;
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--color--text--tint-1);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -100,15 +103,33 @@ const opacityValue = computed({
 
 .control {
 	flex-shrink: 0;
+	width: 130px;
+	display: flex;
+	align-items: center;
+
+	:global(.n8n-color-picker) {
+		width: 100%;
+	}
+
+	:global(.n8n-color-picker .n8n-input) {
+		flex: 1;
+		min-width: 0;
+	}
+}
+
+.fullWidth {
+	width: 100%;
 }
 
 .pxControl {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+	width: 100%;
 
 	:global(.n8n-input-number) {
-		width: 72px;
+		flex: 1;
+		min-width: 0;
 	}
 }
 

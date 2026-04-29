@@ -99,6 +99,22 @@ export function useFormAppearance(nodeId: string) {
 
 	const assembledCss = computed(() => assembleCss(localOverrides.value));
 
+	const savedCss = computed(() => {
+		const options = node.value?.parameters?.options as INodeParameters | undefined;
+		return (options?.customCss as string | undefined) ?? '';
+	});
+
+	const savedAppendAttribution = computed(() => {
+		const options = node.value?.parameters?.options as INodeParameters | undefined;
+		return (options?.appendAttribution as boolean | undefined) ?? true;
+	});
+
+	const hasUnsavedChanges = computed(
+		() =>
+			assembledCss.value !== savedCss.value ||
+			localAppendAttribution.value !== savedAppendAttribution.value,
+	);
+
 	const scope = globalScope;
 
 	function reset() {
@@ -169,7 +185,13 @@ export function useFormAppearance(nodeId: string) {
 		getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
 	);
 
-	watch(previewParams, () => void debouncedFetchPreview(), { immediate: true, deep: true });
+	watch(
+		previewParams,
+		() => {
+			void debouncedFetchPreview();
+		},
+		{ immediate: true, deep: true },
+	);
 
 	// -------------------------------------------------------------------------
 	// Save
@@ -236,6 +258,7 @@ export function useFormAppearance(nodeId: string) {
 		previewHtml,
 		iframeEl,
 		isSaving,
+		hasUnsavedChanges,
 		reset,
 		save,
 		onIframeLoad,
