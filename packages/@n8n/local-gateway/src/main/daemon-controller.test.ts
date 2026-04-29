@@ -169,9 +169,15 @@ describe('DaemonController', () => {
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
 		lastGatewayOptions?.onPersistentFailure?.();
 
+		// Callback uses fire-and-forget async teardown; flush microtasks so mock stop/flush run.
+		await Promise.resolve();
+		await Promise.resolve();
+
 		const snapshot = controller.getSnapshot();
 		expect(snapshot.status).toBe('error');
 		expect(snapshot.lastError).toBe('Gateway authentication failed repeatedly');
+		expect(mockStop).toHaveBeenCalled();
+		expect(mockSessionFlush).toHaveBeenCalled();
 	});
 
 	it('sets disconnected state when gateway signals disconnect', async () => {
@@ -179,6 +185,12 @@ describe('DaemonController', () => {
 		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
 		lastGatewayOptions?.onDisconnected?.();
 
+		// Callback uses fire-and-forget async teardown; flush microtasks so mock stop/flush run.
+		await Promise.resolve();
+		await Promise.resolve();
+
 		expect(controller.getSnapshot().status).toBe('disconnected');
+		expect(mockStop).toHaveBeenCalled();
+		expect(mockSessionFlush).toHaveBeenCalled();
 	});
 });

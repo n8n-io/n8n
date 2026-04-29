@@ -67,6 +67,10 @@ export class SettingsStore {
 		logger.debug('Last connected URL updated', { url });
 	}
 
+	/**
+	 * Persisted session key for reconnecting without re-entering a token.
+	 * Sensitive: stored in electron-store JSON — follow-up: OS-backed secret or `safeStorage`.
+	 */
 	getReconnectKey(): string | null {
 		return this.store.get('reconnectKey');
 	}

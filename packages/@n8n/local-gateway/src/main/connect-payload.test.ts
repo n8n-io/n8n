@@ -1,4 +1,5 @@
 import {
+	argvContainsDeepLinkAttempt,
 	DEEP_LINK_PROTOCOL,
 	parseConnectPayload,
 	parseConnectPayloadFromArgv,
@@ -23,11 +24,25 @@ describe('parseConnectPayload', () => {
 		expect(parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?token=abc`)).toBeNull();
 	});
 
+	it('returns null when token param is missing', () => {
+		expect(parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=https://n.example`)).toBeNull();
+	});
+
+	it('returns null when token param is empty or whitespace-only', () => {
+		expect(
+			parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=https://n.example&token=%20%20`),
+		).toBeNull();
+
+		expect(
+			parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=https://n.example&token=+%09`),
+		).toBeNull();
+	});
+
 	it('returns null when url param is not a valid absolute URL', () => {
 		expect(parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=not-a-url&token=t`)).toBeNull();
 	});
 
-	it('parses url and optional token', () => {
+	it('parses url and token', () => {
 		expect(
 			parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=https://n.example&token=gw_abc`),
 		).toEqual({
@@ -36,23 +51,7 @@ describe('parseConnectPayload', () => {
 		});
 	});
 
-	it('trims token and treats whitespace-only token as absent', () => {
-		expect(
-			parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=https://n.example&token=%20%20`),
-		).toEqual({
-			url: 'https://n.example',
-			apiKey: undefined,
-		});
-
-		expect(
-			parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=https://n.example&token=+%09`),
-		).toEqual({
-			url: 'https://n.example',
-			apiKey: undefined,
-		});
-	});
-
-	it('parses token with surrounding whitespace', () => {
+	it('trims token with surrounding whitespace', () => {
 		expect(
 			parseConnectPayload(`${DEEP_LINK_PROTOCOL}://connect?url=https://n.example&token=%20gw_x%20`),
 		).toEqual({
@@ -74,5 +73,20 @@ describe('parseConnectPayloadFromArgv', () => {
 			url: 'https://a.example',
 			apiKey: '1',
 		});
+	});
+});
+
+describe('argvContainsDeepLinkAttempt', () => {
+	it('returns false when argv has no deep-link string', () => {
+		expect(argvContainsDeepLinkAttempt(['electron', '/app/main.js'])).toBe(false);
+	});
+
+	it('returns true when argv includes our scheme even if parse fails', () => {
+		expect(
+			argvContainsDeepLinkAttempt([
+				'electron',
+				`${DEEP_LINK_PROTOCOL}://connect?url=https://x.example`,
+			]),
+		).toBe(true);
 	});
 });

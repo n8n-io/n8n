@@ -94,11 +94,10 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 			session,
 			confirmResourceAccess: () => 'denyOnce',
 			onPersistentFailure: () => {
-				this._lastError = 'Gateway authentication failed repeatedly';
-				this.clearConnectionState('error');
+				this.afterGatewayPersistentFailure();
 			},
 			onDisconnected: () => {
-				this.clearConnectionState('disconnected');
+				this.afterGatewayDisconnected();
 			},
 		});
 
@@ -127,6 +126,19 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 	async disconnect(): Promise<void> {
 		await this.closeCurrentConnection({ preserveServerSession: false });
 		this.setStatus('disconnected');
+	}
+
+	private afterGatewayPersistentFailure(): void {
+		this._lastError = 'Gateway authentication failed repeatedly';
+		void this.closeCurrentConnection({ preserveServerSession: true }).then(() => {
+			this.setStatus('error');
+		});
+	}
+
+	private afterGatewayDisconnected(): void {
+		void this.closeCurrentConnection({ preserveServerSession: true }).then(() => {
+			this.setStatus('disconnected');
+		});
 	}
 
 	private clearConnectionState(status: DaemonStatus): void {

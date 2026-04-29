@@ -103,7 +103,7 @@ export class SettingsStore {
 		};
 
 		const dir = path.dirname(filePath);
-		await fs.mkdir(dir, { recursive: true, mode: 0o700 });
+		await fs.mkdir(dir, { recursive: true });
 		await fs.writeFile(filePath, JSON.stringify(initialSettings, null, 2), {
 			encoding: 'utf-8',
 			mode: 0o600,

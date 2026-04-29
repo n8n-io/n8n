@@ -3,6 +3,7 @@ import { app } from 'electron';
 import * as path from 'node:path';
 
 import {
+	argvContainsDeepLinkAttempt,
 	DEEP_LINK_PROTOCOL,
 	parseConnectPayload,
 	parseConnectPayloadFromArgv,
@@ -52,9 +53,10 @@ app
 
 		async function connect(payload: ConnectPayload): Promise<void> {
 			const config = settingsStore.toGatewayConfig();
-			const inlineKey = payload.apiKey?.trim();
-			const reconnectKey = settingsStore.getReconnectKey() ?? undefined;
-			const effectiveKey = inlineKey && inlineKey.length > 0 ? inlineKey : reconnectKey;
+			const inline = payload.apiKey?.trim();
+			const stored = settingsStore.getReconnectKey()?.trim();
+			const effectiveKey =
+				inline && inline.length > 0 ? inline : stored && stored.length > 0 ? stored : undefined;
 			if (!effectiveKey) {
 				throw new Error('No saved session key. Use a fresh token from n8n to connect.');
 			}
@@ -136,9 +138,16 @@ app
 			},
 			() => {
 				logger.info('n8n Gateway quitting');
-				void controller.disconnect().then(() => {
-					app.quit();
-				});
+				void controller
+					.disconnect()
+					.catch((error: unknown) => {
+						logger.error('Disconnect failed during quit', {
+							error: error instanceof Error ? error.message : String(error),
+						});
+					})
+					.finally(() => {
+						app.quit();
+					});
 			},
 			() => {
 				void disconnectGateway();
@@ -148,7 +157,7 @@ app
 		const payloadFromArgs = parseConnectPayloadFromArgv(process.argv);
 		if (payloadFromArgs) {
 			handleConnectPayload(payloadFromArgs);
-		} else {
+		} else if (!argvContainsDeepLinkAttempt(process.argv)) {
 			void reconnectStoredCredentials();
 		}
 
