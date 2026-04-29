@@ -259,33 +259,44 @@ export class BuilderSandboxFactory {
 			dockerfile,
 		});
 
-		const workspace = new Workspace({
-			sandbox,
-			filesystem: new N8nSandboxFilesystem(sandbox),
-		});
-
-		await workspace.init();
-
-		const root = await getWorkspaceRoot(workspace);
-		if (workspace.filesystem) {
-			await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
-		} else {
-			await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
-		}
-
-		await this.linkWorkspaceSdkIfEnabled(workspace, root);
-
-		return {
-			workspace,
-			cleanup: async () => {
-				await cleanupTrackedSandboxProcesses(workspace);
-				try {
-					await sandbox.destroy();
-				} catch {
-					// Best-effort cleanup
-				}
-			},
+		const destroySandbox = async (): Promise<void> => {
+			try {
+				await sandbox.destroy();
+			} catch {
+				// Best-effort cleanup
+			}
 		};
+
+		try {
+			const workspace = new Workspace({
+				sandbox,
+				filesystem: new N8nSandboxFilesystem(sandbox),
+			});
+
+			await workspace.init();
+
+			const root = await getWorkspaceRoot(workspace);
+			if (workspace.filesystem) {
+				await workspace.filesystem.writeFile(`${root}/node-types/index.txt`, catalog);
+			} else {
+				await writeFileViaSandbox(workspace, `${root}/node-types/index.txt`, catalog);
+			}
+
+			await this.linkWorkspaceSdkIfEnabled(workspace, root);
+
+			return {
+				workspace,
+				cleanup: async () => {
+					await cleanupTrackedSandboxProcesses(workspace);
+					await destroySandbox();
+				},
+			};
+		} catch (error) {
+			// If any step after sandbox creation throws (workspace init, catalog
+			// write, SDK link), destroy the remote sandbox so it isn't orphaned.
+			await destroySandbox();
+			throw error;
+		}
 	}
 
 	private assertIsDaytona(): Extract<SandboxConfig, { enabled: true; provider: 'daytona' }> {

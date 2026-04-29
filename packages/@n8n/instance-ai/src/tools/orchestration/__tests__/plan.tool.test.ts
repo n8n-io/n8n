@@ -20,6 +20,8 @@ function makePlannedTaskService(overrides: Partial<PlannedTaskService> = {}): Pl
 	return {
 		createPlan: jest.fn().mockResolvedValue(undefined),
 		getGraph: jest.fn().mockResolvedValue(null),
+		approvePlan: jest.fn().mockResolvedValue(undefined),
+		clear: jest.fn().mockResolvedValue(undefined),
 		...overrides,
 	} as unknown as PlannedTaskService;
 }
@@ -229,5 +231,121 @@ describe('createPlanTool — replan-only guard', () => {
 
 		expect(out.result).toContain('Plan approved');
 		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+	});
+
+	it('flips graph to active via approvePlan before scheduling on approval', async () => {
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		await tool.execute({ tasks: validTasks() }, { agent: { resumeData: { approved: true } } });
+
+		expect(context.plannedTaskService!.approvePlan).toHaveBeenCalledWith('test-thread');
+		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+	});
+
+	it('returns the rejection result even when taskStorage.save fails so the revision flow can proceed', async () => {
+		// The persisted graph stays in awaiting_approval regardless of UI cleanup
+		// — the next createPlan overwrites it. A storage flake here must not abort
+		// the rejection path or strand the user without a "User requested changes"
+		// message and a chance to revise.
+		const context = createMockContext({
+			currentUserMessage: 'ordinary message',
+			taskStorage: {
+				get: jest.fn(),
+				save: jest.fn().mockRejectedValue(new Error('storage flake')),
+			} as TaskStorage,
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		const out = await tool.execute(
+			{ tasks: validTasks() },
+			{ agent: { resumeData: { approved: false, userInput: 'try again' } } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User requested changes');
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'Failed to clear rejected plan checklist',
+			expect.objectContaining({ error: expect.anything() as unknown }),
+		);
+	});
+
+	it('keeps the awaiting_approval graph on rejection so a same-turn revision can pass the guard', async () => {
+		// The rejected plan stays in `awaiting_approval` (scoped to runId) so the
+		// LLM's next create-tasks call — which the tool result tells it to make —
+		// is treated as a revision and bypasses planner-discovery guard. The
+		// scheduler ignores `awaiting_approval`, so leaving it in place can't
+		// dispatch a rejected plan.
+		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		const out = await tool.execute(
+			{ tasks: validTasks() },
+			{ agent: { resumeData: { approved: false, userInput: 'not what I wanted' } } },
+		);
+
+		expect(out.taskCount).toBe(0);
+		expect(out.result).toContain('User requested changes');
+		expect(context.plannedTaskService!.clear).not.toHaveBeenCalled();
+		expect(context.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(context.plannedTaskService!.approvePlan).not.toHaveBeenCalled();
+		// UI checklist still resets so the rejected todos don't linger on screen
+		expect(context.taskStorage.save).toHaveBeenCalledWith('test-thread', { tasks: [] });
+		expect(context.eventBus.publish).toHaveBeenCalledWith(
+			'test-thread',
+			expect.objectContaining({
+				type: 'tasks-update',
+				payload: { tasks: { tasks: [] }, planItems: [] },
+			}),
+		);
+	});
+
+	it('allows a same-turn revision after rejection (awaiting_approval with same runId)', async () => {
+		// After rejection, the graph stays in awaiting_approval with planRunId ===
+		// context.runId. The next create-tasks call must pass threadHasExistingPlan
+		// so the revision flow advertised by the tool result works.
+		const context = createMockContext({
+			currentUserMessage: 'revise the plan',
+			runId: 'run-1',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'awaiting_approval',
+					planRunId: 'run-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+		const suspend = jest.fn().mockResolvedValue(undefined);
+
+		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend } });
+
+		expect(out.result).toBe('Awaiting approval');
+		expect(context.plannedTaskService!.createPlan).toHaveBeenCalled();
+	});
+
+	it('rejects a fresh request when an orphan awaiting_approval graph exists from a previous run', async () => {
+		// LLM rejected a prior plan and never revised; the graph orphans in
+		// awaiting_approval with a stale planRunId. A new turn must still go
+		// through planner discovery, not silently bypass the guard.
+		const context = createMockContext({
+			currentUserMessage: 'unrelated new request',
+			runId: 'run-2',
+			plannedTaskService: makePlannedTaskService({
+				getGraph: jest.fn().mockResolvedValue({
+					threadId: 'test-thread',
+					status: 'awaiting_approval',
+					planRunId: 'run-1',
+					tasks: [],
+				} as unknown as Awaited<ReturnType<PlannedTaskService['getGraph']>>),
+			}),
+		});
+		const tool = createPlanTool(context) as unknown as Executable;
+
+		const out = await tool.execute({ tasks: validTasks() }, { agent: { suspend: jest.fn() } });
+
+		expect(out.result).toMatch(/^Error: `create-tasks` is for replanning only/);
+		expect(context.plannedTaskService!.createPlan).not.toHaveBeenCalled();
 	});
 });
