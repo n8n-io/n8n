@@ -26,7 +26,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
-import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 
 @Service()
 export class ImportService {
@@ -694,7 +694,7 @@ export class ImportService {
 		const columnsByDataTableId = new Map<string, DataTableColumn[]>();
 		for (const row of columnRows) {
 			const list = columnsByDataTableId.get(row.dataTableId) ?? [];
-			list.push(row as unknown as DataTableColumn);
+			list.push(transactionManager.create(DataTableColumn, row));
 			columnsByDataTableId.set(row.dataTableId, list);
 		}
 
