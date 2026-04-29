@@ -130,9 +130,7 @@ function onRangeAfterChange(event: Event) {
 					data-testid="agent-memory-storage-select"
 					@update:model-value="onStorageChange"
 				>
-					<N8nOption value="n8n" label="n8n (in-process)" />
-					<N8nOption value="sqlite" label="SQLite (persistent)" />
-					<N8nOption value="postgres" label="Postgres (persistent)" />
+					<N8nOption value="n8n" label="n8n" />
 				</N8nSelect>
 			</div>
 

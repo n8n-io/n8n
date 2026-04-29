@@ -1,10 +1,3 @@
-/**
- * JSON shape of an agent's configuration, as stored on the backend and
- * consumed by the UI. The backend has a Zod schema that produces a
- * structurally-compatible type (see `agent-json-config.ts` in the CLI module);
- * keep this interface in sync when the schema changes.
- */
-
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
@@ -12,6 +5,7 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 /**
  * Describes a chat platform integration that agents can connect to.
@@ -204,6 +198,54 @@ export interface AgentPersistedMessageDto {
 	role: 'user' | 'assistant' | 'tool' | (string & {});
 	content: AgentPersistedMessageContentPart[];
 }
+// ─── Agent builder admin settings ─────────────────────────────────────────
+// The agent builder uses a model picked by the instance admin. By default it
+// runs through the n8n AI assistant proxy; admins can switch to a custom
+// provider + credential at any time.
+
+/** Default model name used when the builder runs through the proxy or the env-var backstop. */
+export const AGENT_BUILDER_DEFAULT_MODEL = 'claude-sonnet-4-5' as const;
+
+export const agentBuilderModeSchema = z.enum(['default', 'custom']);
+export type AgentBuilderMode = z.infer<typeof agentBuilderModeSchema>;
+
+/**
+ * Discriminated union of the persisted admin settings.
+ *
+ * The builder defaults to the n8n AI assistant proxy. An admin can switch to
+ * a custom provider/credential at any time. Provider id values must come from
+ * the agent runtime's supported list (see `mapCredentialForProvider` on the
+ * backend) — the schema accepts any non-empty string here so the api-types
+ * package doesn't need to know the runtime list; the backend validates the
+ * provider against the runtime mapper.
+ */
+export const agentBuilderAdminSettingsSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('default') }),
+	z.object({
+		mode: z.literal('custom'),
+		provider: z.string().min(1),
+		credentialId: z.string().min(1),
+		modelName: z.string().min(1),
+	}),
+]);
+export type AgentBuilderAdminSettings = z.infer<typeof agentBuilderAdminSettingsSchema>;
+
+export const agentBuilderAdminSettingsResponseSchema = z.object({
+	settings: agentBuilderAdminSettingsSchema,
+	isConfigured: z.boolean(),
+});
+export type AgentBuilderAdminSettingsResponse = z.infer<
+	typeof agentBuilderAdminSettingsResponseSchema
+>;
+
+/** Body schema for the PATCH /agent-builder/settings endpoint. */
+export const AgentBuilderAdminSettingsUpdateDto = agentBuilderAdminSettingsSchema;
+export type AgentBuilderAdminSettingsUpdateRequest = AgentBuilderAdminSettings;
+
+export const agentBuilderStatusResponseSchema = z.object({
+	isConfigured: z.boolean(),
+});
+export type AgentBuilderStatusResponse = z.infer<typeof agentBuilderStatusResponseSchema>;
 
 /**
  * One still-open interactive tool call, surfaced alongside persisted messages

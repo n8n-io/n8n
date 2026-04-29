@@ -33,6 +33,7 @@ import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
 import { useAgentBuilderTelemetry } from '../composables/useAgentBuilderTelemetry';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentConfig } from '../composables/useAgentConfig';
+import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentSessionsStore } from '../agentSessions.store';
 import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
@@ -66,6 +67,7 @@ import AgentInfoPanel from '../components/AgentInfoPanel.vue';
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
+import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -77,6 +79,7 @@ const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const { showError } = useToast();
+const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
 const projectId = computed(
@@ -120,7 +123,6 @@ const {
 } = useAgentBuilderSession();
 
 const {
-	builderRef,
 	chatColumnCollapsed,
 	chatColumnWidth,
 	treeColumnWidth,
@@ -521,6 +523,12 @@ async function initialize() {
 	localConfig.value = null;
 	connectedTriggers.value = [];
 
+	// Refresh builder readiness so the empty-state CTA reflects the latest
+	// admin configuration. Never blocks the rest of the load.
+	void fetchBuilderStatus().catch((error: unknown) => {
+		showError(error, locale.baseText('settings.agentBuilder.loadError'));
+	});
+
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
@@ -897,7 +905,7 @@ function onSwitchAgent(nextAgentId: string) {
 						</AgentChatPanel>
 						<AgentChatPanel
 							v-if="initialized && chatModeOpened.build"
-							v-show="chatMode === 'build'"
+							v-show="chatMode === 'build' && isBuilderConfigured"
 							:project-id="projectId"
 							:agent-id="agentId"
 							mode="inline"
@@ -963,6 +971,9 @@ function onSwitchAgent(nextAgentId: string) {
 								</div>
 							</template>
 						</AgentChatPanel>
+						<AgentBuilderUnconfiguredEmptyState
+							v-if="chatModeOpened.build && !isBuilderConfigured"
+						/>
 					</div>
 				</aside>
 			</N8nResizeWrapper>
