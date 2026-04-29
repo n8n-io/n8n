@@ -1,5 +1,7 @@
 import { createHmac } from 'crypto';
 
+import type { IWebhookFunctions } from 'n8n-workflow';
+
 import { verifySignature } from '../CalendlyTriggerHelpers';
 
 describe('CalendlyTriggerHelpers', () => {
@@ -32,7 +34,7 @@ describe('CalendlyTriggerHelpers', () => {
 					),
 				rawBody: opts.rawBody,
 			}),
-		};
+		} as unknown as IWebhookFunctions;
 	}
 
 	describe('verifySignature', () => {
