@@ -85,9 +85,9 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 	}),
 }));
 
-vi.mock('../agentBuilderSettings.store', () => ({
-	useAgentBuilderSettingsStore: () => ({
-		isConfigured: true,
+vi.mock('../composables/useAgentBuilderStatus', () => ({
+	useAgentBuilderStatus: () => ({
+		isBuilderConfigured: ref(true),
 		fetchStatus: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
@@ -266,6 +266,10 @@ const commonStubs = {
 	AgentSessionsListView: {
 		name: 'AgentSessionsListView',
 		template: '<div data-testid="stub-agent-sessions-list-view" />',
+	},
+	AgentBuilderUnconfiguredEmptyState: {
+		name: 'AgentBuilderUnconfiguredEmptyState',
+		template: '<div data-testid="stub-agent-builder-unconfigured-empty-state" />',
 	},
 	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
 	N8nText: { template: '<span v-bind="$attrs"><slot/></span>' },
