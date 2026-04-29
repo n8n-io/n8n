@@ -4,6 +4,7 @@ import {
 	createWorkflowWithTriggerAndHistory,
 	setActiveVersion,
 	createWorkflowHistory,
+	createTeamProject,
 } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -53,6 +54,44 @@ test('should reject --version with --all flag', async () => {
 	await command.run(['--all', `--version=${workflow.versionId}`, `--output=${outputFile}`]);
 
 	expect(fs.existsSync(outputFile)).toBe(false);
+});
+
+test('should reject --all with --projectId', async () => {
+	const project = await createTeamProject();
+	const outputFile = path.join(testOutputDir, 'output.json');
+
+	await command.run(['--all', `--projectId=${project.id}`, `--output=${outputFile}`]);
+
+	expect(fs.existsSync(outputFile)).toBe(false);
+});
+
+test('should reject --id with --projectId', async () => {
+	const project = await createTeamProject();
+	const workflow = await createWorkflowWithTriggerAndHistory();
+	const outputFile = path.join(testOutputDir, 'output.json');
+
+	await command.run([`--id=${workflow.id}`, `--projectId=${project.id}`, `--output=${outputFile}`]);
+
+	expect(fs.existsSync(outputFile)).toBe(false);
+});
+
+test('should export workflows by project with --projectId', async () => {
+	const projectA = await createTeamProject();
+	const projectB = await createTeamProject();
+	const workflowInProjectA = await createWorkflowWithTriggerAndHistory(
+		{ name: 'Project A workflow' },
+		projectA,
+	);
+	await createWorkflowWithTriggerAndHistory({ name: 'Project B workflow' }, projectB);
+
+	const outputFile = path.join(testOutputDir, 'output.json');
+	await command.run([`--projectId=${projectA.id}`, `--output=${outputFile}`]);
+
+	const exportedData = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+
+	expect(exportedData).toHaveLength(1);
+	expect(exportedData[0].id).toBe(workflowInProjectA.id);
+	expect(exportedData[0].name).toBe('Project A workflow');
 });
 
 test('should export current draft version when no flags set', async () => {

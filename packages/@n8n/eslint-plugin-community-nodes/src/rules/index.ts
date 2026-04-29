@@ -25,6 +25,7 @@ import { RequireNodeApiErrorRule } from './require-node-api-error.js';
 import { RequireNodeDescriptionFieldsRule } from './require-node-description-fields.js';
 import { ResourceOperationPatternRule } from './resource-operation-pattern.js';
 import { ValidCredentialReferencesRule } from './valid-credential-references.js';
+import { ValidPeerDependenciesRule } from './valid-peer-dependencies.js';
 import { WebhookLifecycleCompleteRule } from './webhook-lifecycle-complete.js';
 
 export const rules = {
@@ -53,5 +54,6 @@ export const rules = {
 	'require-node-api-error': RequireNodeApiErrorRule,
 	'require-node-description-fields': RequireNodeDescriptionFieldsRule,
 	'valid-credential-references': ValidCredentialReferencesRule,
+	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
 } satisfies Record<string, AnyRuleModule>;

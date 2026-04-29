@@ -91,6 +91,7 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 					:name="resolveArtifactName(artifact)"
 					:resource-id="artifact.resourceId"
 					:project-id="artifact.projectId"
+					:archived="store.producedArtifacts.get(artifact.resourceId)?.archived"
 					:class="$style.artifactCard"
 				/>
 			</template>
@@ -114,6 +115,11 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 
 .artifactCard {
 	max-width: 90%;
+	margin: var(--spacing--sm) 0;
+
+	+ .artifactCard {
+		margin-top: 0;
+	}
 }
 
 .reasoningContent {

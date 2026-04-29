@@ -93,6 +93,12 @@ const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
 });
 
+const nodesWithValidationIssues = computed(
+	() => workflowDocumentStore.value.nodesWithValidationIssues,
+);
+
+const hasNodeIssues = computed(() => workflowDocumentStore.value.hasNodeValidationIssues);
+
 type WorkflowPublishState =
 	| 'not-published-not-eligible' // No trigger nodes or has errors
 	| 'not-published-eligible' // Can be published for first time
@@ -109,7 +115,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 
 	// Not published states
 	if (!hasBeenPublished) {
-		const canPublish = containsTrigger.value && !workflowsStore.nodesIssuesExist;
+		const canPublish = containsTrigger.value && !hasNodeIssues.value;
 		return canPublish ? 'not-published-eligible' : 'not-published-not-eligible';
 	}
 
@@ -118,7 +124,7 @@ const workflowPublishState = computed((): WorkflowPublishState => {
 		return 'published-invalid-trigger';
 	}
 
-	if (workflowsStore.nodesIssuesExist) {
+	if (hasNodeIssues.value) {
 		return 'published-node-issues';
 	}
 
@@ -207,15 +213,15 @@ const publishButtonConfig = computed(() => {
 	if (props.isNewWorkflow) {
 		return {
 			text: i18n.baseText('workflows.publish'),
-			enabled: containsTrigger.value && !workflowsStore.nodesIssuesExist,
+			enabled: containsTrigger.value && !hasNodeIssues.value,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: !containsTrigger.value
 				? i18n.baseText('workflows.publishModal.noTriggerMessage')
-				: workflowsStore.nodesIssuesExist
+				: hasNodeIssues.value
 					? i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: workflowsStore.nodesWithIssues.length },
-							adjustToNumber: workflowsStore.nodesWithIssues.length,
+							interpolate: { count: nodesWithValidationIssues.value.length },
+							adjustToNumber: nodesWithValidationIssues.value.length,
 						})
 					: '',
 			showVersionInfo: false,
@@ -232,8 +238,8 @@ const publishButtonConfig = computed(() => {
 			tooltip: !containsTrigger.value
 				? i18n.baseText('workflows.publishModal.noTriggerMessage')
 				: i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-						interpolate: { count: workflowsStore.nodesWithIssues.length },
-						adjustToNumber: workflowsStore.nodesWithIssues.length,
+						interpolate: { count: nodesWithValidationIssues.value.length },
+						adjustToNumber: nodesWithValidationIssues.value.length,
 					}),
 			showVersionInfo: false,
 		},
@@ -269,8 +275,8 @@ const publishButtonConfig = computed(() => {
 			tooltip: i18n.baseText(
 				'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
 				{
-					interpolate: { count: workflowsStore.nodesWithIssues.length },
-					adjustToNumber: workflowsStore.nodesWithIssues.length,
+					interpolate: { count: nodesWithValidationIssues.value.length },
+					adjustToNumber: nodesWithValidationIssues.value.length,
 				},
 			),
 			showVersionInfo: true,
@@ -350,6 +356,14 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 	});
 
 	return actions;
+});
+
+const shouldDisableActionDropdown = computed(() => {
+	if (activeVersion.value) {
+		return false;
+	}
+
+	return versionMenuActions.value.every((action) => action.disabled);
 });
 
 const onNameVersion = async () => {
@@ -560,7 +574,7 @@ defineExpose({
 							:class="$style.groupButtonRight"
 							variant="ghost"
 							icon="chevron-down"
-							:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
+							:disabled="shouldDisableActionDropdown"
 							:aria-label="i18n.baseText('node.moreActions')"
 							data-test-id="version-menu-button"
 						/>

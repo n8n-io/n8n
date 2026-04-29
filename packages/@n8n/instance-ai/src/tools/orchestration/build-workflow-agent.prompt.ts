@@ -274,17 +274,24 @@ const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating work
    - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
    - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
 
-2. **Handle empty outputs with \`alwaysOutputData: true\`**
-   - Nodes that query data (Data Table get, Google Sheets lookup, HTTP Request, etc.) may return 0 items
-   - When a node returns 0 items, all downstream nodes are SKIPPED — the workflow chain breaks silently
-   - Set \`alwaysOutputData: true\` on any node whose output feeds downstream nodes and might return empty results
-   - Common cases: fresh/empty Data Tables, filtered queries, conditional lookups, API searches with no matches
-   - Example: \`config: { ..., alwaysOutputData: true }\`
+2. **Trust empty item lists — don't synthesize fake items**
+   - When a query returns 0 items, downstream nodes simply don't run for that execution. For scheduled or polling triggers this is the correct "nothing to do this round" signal — the next run will execute normally when data appears.
+   - DO NOT add \`alwaysOutputData: true\` just to "keep the chain alive." Forcing an empty \`{}\` item downstream is what causes \`undefined\` reads, failed HTTP calls to \`GET undefined\`, and Code-node crashes on missing fields.
+   - DO NOT add an IF gate before a loop to check "has items?" — loops (\`splitInBatches\`, per-item nodes, \`filter\`) already no-op on empty input. The gate is redundant and adds a failure surface.
+   - \`alwaysOutputData: true\` is only correct when you specifically need a downstream branch to run on the "empty" case — e.g. a dedicated "no matches found" notification path. In that case, pair it with an \`IF\` that explicitly checks for the empty case and routes accordingly. Never use it as a default.
+   - To drop invalid items mid-pipeline, use a \`filter\` node. A \`filter\` that rejects everything emits 0 items and the chain correctly stops — no \`IF\` + \`splitInBatches\` composition needed.
 
 3. **Use \`executeOnce: true\` for single-execution nodes**
    - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
    - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
-   - Example: \`config: { ..., executeOnce: true }\``;
+   - Example: \`config: { ..., executeOnce: true }\`
+
+4. **Pick the right control-flow primitive**
+   - **Per-item loop with side effects (fetch, embed, write)** → \`splitInBatches\` with \`batchSize: 1\` feeding the per-item work, loop back via \`nextBatch\`. No \`IF\` gate before it.
+   - **Drop items that don't match a predicate** → \`filter\`. It emits 0 items when nothing matches, and the chain stops cleanly.
+   - **Two mutually exclusive paths that both do real work** → \`IF\` (\`onTrue\` / \`onFalse\`).
+   - **Many mutually exclusive paths keyed off a value** → \`switch\` (\`onCase\`).
+   - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.`;
 
 function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	// Shared WORKFLOW_SDK_PATTERNS uses `newCredential('X')` throughout. That
@@ -599,6 +606,7 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
    - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
+   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.

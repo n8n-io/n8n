@@ -28,13 +28,17 @@ import { useWorkflowDocumentExpression } from './workflowDocument/useWorkflowDoc
 import { useWorkflowDocumentName } from './workflowDocument/useWorkflowDocumentName';
 import { useWorkflowDocumentWorkflowObject } from './workflowDocument/useWorkflowDocumentWorkflowObject';
 import { useWorkflowDocumentNodeMetadata } from './workflowDocument/useWorkflowDocumentNodeMetadata';
+import { useWorkflowDocumentNodesIssues } from './workflowDocument/useWorkflowDocumentNodesIssues';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import type { IWorkflowDb } from '@/Interface';
+import { serializeNode } from '@/app/utils/nodes/nodeTransforms';
 import type { WorkflowObjectAccessors } from '../types';
-import type { IPinData } from 'n8n-workflow';
+import type { IWorkflowDb } from '@/Interface';
+import type { INode, IPinData } from 'n8n-workflow';
+import { deepCopy } from 'n8n-workflow';
+import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 
 export {
 	getPinDataSize,
@@ -76,6 +80,7 @@ type MetaReturn = ReturnType<typeof useWorkflowDocumentMeta>;
 type PinDataReturn = ReturnType<typeof useWorkflowDocumentPinData>;
 type SettingsReturn = ReturnType<typeof useWorkflowDocumentSettings>;
 type NodeMetadataReturn = ReturnType<typeof useWorkflowDocumentNodeMetadata>;
+type NodesIssuesReturn = ReturnType<typeof useWorkflowDocumentNodesIssues>;
 
 // Pairwise collision checks — add new composables here when they are created.
 // If any pair shares a key, the corresponding tuple slot becomes an error type
@@ -98,6 +103,9 @@ void (0 as unknown as [
 	AssertNoOverlap<NodeMetadataReturn, PinDataReturn>,
 	AssertNoOverlap<NodeMetadataReturn, MetaReturn>,
 	AssertNoOverlap<NodeMetadataReturn, SettingsReturn>,
+	AssertNoOverlap<NodesIssuesReturn, NodesReturn>,
+	AssertNoOverlap<NodesIssuesReturn, ConnectionsReturn>,
+	AssertNoOverlap<NodesIssuesReturn, GraphReturn>,
 ]);
 
 export type WorkflowDocumentId = `${string}@${string}`;
@@ -179,6 +187,11 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			});
 		const workflowDocumentGraph = useWorkflowDocumentGraph(workflowObject);
 		const workflowDocumentExpression = useWorkflowDocumentExpression(workflowObject);
+		const workflowDocumentNodesIssues = useWorkflowDocumentNodesIssues({
+			allNodes: workflowDocumentNodes.allNodes,
+			outgoingConnectionsByNodeName: workflowDocumentConnections.outgoingConnectionsByNodeName,
+			incomingConnectionsByNodeName: workflowDocumentConnections.incomingConnectionsByNodeName,
+		});
 
 		// --- Cross-cut orchestration ---
 		// Each composable is self-contained and unaware of its siblings. This
@@ -193,6 +206,36 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentNodes.removeAllNodes();
 			workflowDocumentConnections.removeAllConnections();
 			workflowDocumentPinData.setPinData({});
+		}
+
+		function serialize(): WorkflowData {
+			const nodes: INode[] = workflowDocumentNodes.allNodes.value.map((node) =>
+				serializeNode(nodeTypesStore, node),
+			);
+
+			// Deep-copy connections to create an in-time snapshot consistent with nodes.
+			// Without this, connections is a reference to the reactive store object, so
+			// mutations between now and request serialization can include connections to
+			// nodes not present in the nodes snapshot, violating a BE invariant.
+			const connections = deepCopy(workflowDocumentConnections.connectionsBySourceNode.value);
+
+			const data: WorkflowData = {
+				name: workflowDocumentName.name.value,
+				nodes,
+				pinData: workflowDocumentPinData.getPinDataSnapshot() as IPinData,
+				connections,
+				active: workflowDocumentActive.active.value,
+				settings: workflowDocumentSettings.settings.value,
+				tags: [...workflowDocumentTags.tags.value],
+				versionId: workflowDocumentVersionData.versionId.value,
+				meta: workflowDocumentMeta.meta.value,
+			};
+
+			if (workflowId) {
+				data.id = workflowId;
+			}
+
+			return data;
 		}
 
 		function hydrate(workflow: IWorkflowDb) {
@@ -322,10 +365,12 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			...workflowDocumentGraph,
 			...workflowDocumentExpression,
 			...workflowDocumentNodeMetadata,
+			...workflowDocumentNodesIssues,
 			removeAllNodes,
 			hydrate,
 			reset,
 			getSnapshot,
+			serialize,
 		};
 	})();
 }
