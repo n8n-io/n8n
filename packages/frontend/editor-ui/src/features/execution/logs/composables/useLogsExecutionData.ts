@@ -21,6 +21,7 @@ import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 interface UseLogsExecutionDataOptions {
 	/**
@@ -33,6 +34,7 @@ interface UseLogsExecutionDataOptions {
 export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionDataOptions = {}) {
 	const nodeHelpers = useNodeHelpers();
 	const workflowsStore = useWorkflowsStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
@@ -133,7 +135,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			subWorkflowExecData.value[locator.executionId] = data;
 			subWorkflows.value[locator.workflowId] = new Workflow({
 				...subExecution.workflowData,
-				nodeTypes: workflowsStore.getNodeTypes(),
+				nodeTypes: nodeTypesStore.getAllNodeTypes(),
 			});
 		} catch (e) {
 			toast.showError(e, 'Unable to load sub execution');
@@ -185,7 +187,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 		throttledWorkflowData,
 		(data) => {
 			workflow.value = data
-				? new Workflow({ ...data, nodeTypes: workflowsStore.getNodeTypes() })
+				? new Workflow({ ...data, nodeTypes: nodeTypesStore.getAllNodeTypes() })
 				: undefined;
 		},
 		{ immediate: true },
