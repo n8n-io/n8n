@@ -47,11 +47,7 @@ const displayNode = computed<INodeUi>(() => {
 
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	const data = update.properties.credentials?.[credentialType.value];
-	if (!data) {
-		ctx.setSelection(card.value.targetNodeName, credentialType.value, null);
-		return;
-	}
-	ctx.setSelection(card.value.targetNodeName, credentialType.value, data.id);
+	ctx.setSelection(card.value.targetNodeName, credentialType.value, data?.id ?? null);
 }
 </script>
 
