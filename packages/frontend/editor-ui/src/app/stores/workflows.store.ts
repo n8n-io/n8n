@@ -108,13 +108,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	});
 
-	const currentWorkflowHasWebhookNode = computed(
-		() =>
-			!!useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)).allNodes.find(
-				(node: INodeUi) => !!node.webhookId,
-			),
-	);
-
 	const getWorkflowRunData = computed<IRunData | null>(() => {
 		if (!workflowExecutionData.value?.data?.resultData) {
 			return null;
@@ -917,7 +910,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowId,
 		isNewWorkflow,
 		isWorkflowSaved,
-		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
 		isWorkflowRunning,
