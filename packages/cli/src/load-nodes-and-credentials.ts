@@ -30,7 +30,7 @@ import type {
 	LoadedNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ensureError, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
@@ -112,8 +112,15 @@ export class LoadNodesAndCredentials {
 					picocolors.red(`Node loader ${loader.packageName} is already registered.`),
 				);
 			}
-			await loader.loadAll();
-			this.loaders[loader.packageName] = loader;
+			try {
+				await loader.loadAll();
+				this.loaders[loader.packageName] = loader;
+			} catch (error) {
+				this.logger.error(`Failed to load package "${loader.packageName}"`, {
+					error: ensureError(error),
+				});
+				this.errorReporter.error(error, { extra: { packageName: loader.packageName } });
+			}
 		}
 
 		await this.postProcessLoaders();
