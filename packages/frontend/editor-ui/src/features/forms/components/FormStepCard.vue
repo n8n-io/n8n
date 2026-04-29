@@ -66,6 +66,10 @@ const previewParams = computed(() => {
 	if (!node.value) return null;
 	const params = resolvedParameters.value;
 
+	const options = params.options as INodeParameters | undefined;
+	const customCss = (options?.customCss as string | undefined) || undefined;
+	const appendAttribution = (options?.appendAttribution as boolean | undefined) ?? true;
+
 	if (isCompletion.value) {
 		return {
 			formTitle: (params.completionTitle as string) || '',
@@ -73,10 +77,11 @@ const previewParams = computed(() => {
 			formFields: [],
 			isCompletion: true,
 			nodeVersion: node.value.typeVersion,
+			customCss,
+			appendAttribution,
 		};
 	}
 
-	const options = params.options as INodeParameters | undefined;
 	const defaults = optionsCollectionDefaults.value;
 	return {
 		formTitle: isTrigger.value
@@ -88,6 +93,8 @@ const previewParams = computed(() => {
 		buttonLabel: (options?.buttonLabel as string) || (defaults.buttonLabel as string) || undefined,
 		formFields: (params.formFields as { values?: INodeParameters[] })?.values ?? [],
 		nodeVersion: node.value.typeVersion,
+		customCss,
+		appendAttribution,
 	};
 });
 

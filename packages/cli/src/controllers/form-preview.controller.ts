@@ -15,15 +15,21 @@ export class FormPreviewController {
 		if (body.isCompletion) {
 			const instanceId = this.instanceSettings.instanceId;
 			const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
+			const completionCss = [
+				body.customCss,
+				'.container { padding-bottom: var(--padding-container-top); }',
+			]
+				.filter(Boolean)
+				.join('\n');
 			res.render('form-trigger-completion', {
 				title: body.formTitle,
 				message: body.formDescription,
 				formTitle: body.formTitle,
-				appendAttribution: true,
+				appendAttribution: body.appendAttribution ?? true,
 				n8nWebsiteLink: `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`,
 				responseText: '',
 				responseBinary: encodeURIComponent(JSON.stringify('')),
-				dangerousCustomCss: '.container { padding-bottom: var(--padding-container-top); }',
+				dangerousCustomCss: completionCss,
 				redirectUrl: undefined,
 			});
 			return;
@@ -40,6 +46,7 @@ export class FormPreviewController {
 			buttonLabel: body.buttonLabel,
 			nodeVersion: body.nodeVersion,
 			customCss: body.customCss,
+			appendAttribution: body.appendAttribution ?? true,
 			formSubmittedText: undefined,
 			redirectUrl: undefined,
 		});

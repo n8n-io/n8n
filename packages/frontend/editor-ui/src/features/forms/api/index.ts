@@ -9,6 +9,7 @@ export async function fetchFormPreview(
 		buttonLabel?: string;
 		nodeVersion?: number;
 		customCss?: string;
+		appendAttribution?: boolean;
 		isCompletion?: boolean;
 	},
 ): Promise<string | null> {

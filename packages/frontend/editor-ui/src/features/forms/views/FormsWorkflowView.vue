@@ -14,7 +14,7 @@ import { useFormsLayout } from '../composables/useFormsLayout';
 import { FORM_STEP_NON_FORM_NODE_SCALE, FORMS_WORKFLOW_VIEW } from '../constants';
 import type { Workflow } from 'n8n-workflow';
 import { N8nButton, N8nLoading } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUIStore } from '@/app/stores/ui.store';
 
@@ -27,7 +27,7 @@ const uiStore = useUIStore();
 const loading = ref(true);
 
 const containerId = `forms-canvas-${Math.random().toString(36).slice(2)}`;
-const { layoutReady } = useFormsLayout(containerId);
+const { layoutReady, refreshLayout } = useFormsLayout(containerId);
 
 const FORM_NODE_TYPES = new Set([FORM_TRIGGER_NODE_TYPE, FORM_NODE_TYPE]);
 
@@ -44,6 +44,15 @@ onMounted(async () => {
 	}
 	loading.value = false;
 });
+
+watch(
+	() => uiStore.modalsById[FORM_STEP_EDIT_MODAL_KEY]?.open,
+	(isOpen, wasOpen) => {
+		if (wasOpen && !isOpen) {
+			void nextTick(() => refreshLayout());
+		}
+	},
+);
 
 const showOpenWorkflowButton = computed(() => route.name === FORMS_WORKFLOW_VIEW);
 
