@@ -136,11 +136,11 @@ describe('EvaluationsView', () => {
 				await waitFor(() => expect(getByTestId('run-test-button')).toBeInTheDocument());
 
 				expect(queryByTestId('parallel-eval-controls')).toBeNull();
-				expect(queryByTestId('run-in-parallel-checkbox')).toBeNull();
+				expect(queryByTestId('run-in-parallel-toggle')).toBeNull();
 				expect(queryByTestId('run-in-parallel-concurrency')).toBeNull();
 			});
 
-			it('renders the checkbox + tooltip + concurrency input when the flag is on', async () => {
+			it('renders the toggle + tooltip + concurrency slider when the flag is on', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);
@@ -151,7 +151,7 @@ describe('EvaluationsView', () => {
 				const { getByTestId } = renderComponent();
 
 				await waitFor(() => expect(getByTestId('parallel-eval-controls')).toBeInTheDocument());
-				expect(getByTestId('run-in-parallel-checkbox')).toBeInTheDocument();
+				expect(getByTestId('run-in-parallel-toggle')).toBeInTheDocument();
 				expect(getByTestId('run-in-parallel-tooltip-icon')).toBeInTheDocument();
 				expect(getByTestId('run-in-parallel-concurrency')).toBeInTheDocument();
 			});
@@ -170,7 +170,7 @@ describe('EvaluationsView', () => {
 				expect(evaluationStore.startTestRun).toHaveBeenCalledWith('workflow-id', undefined);
 			});
 
-			it('sends concurrency=3 by default when the flag is on (checkbox checked)', async () => {
+			it('sends concurrency=3 by default when the flag is on (toggle on)', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);
@@ -189,7 +189,7 @@ describe('EvaluationsView', () => {
 				});
 			});
 
-			it('sends concurrency=1 when the user has unchecked the parallel checkbox', async () => {
+			it('sends concurrency=1 when the user has switched the parallel toggle off', async () => {
 				const evaluationStore = mockedStore(useEvaluationStore);
 				evaluationStore.testRunsById = {};
 				const parallelEvalStore = mockedStore(useParallelEvalStore);

@@ -8,7 +8,8 @@ import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nButton, N8nCheckbox, N8nIcon, N8nInputNumber, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { ElSlider, ElSwitch } from 'element-plus';
 
 const props = defineProps<{
 	workflowId: string;
@@ -99,10 +100,10 @@ watch(runningTestRun, (run) => {
 				:class="$style.parallelControls"
 				data-test-id="parallel-eval-controls"
 			>
-				<N8nCheckbox
+				<ElSwitch
 					v-model="parallelEnabledModel"
-					:label="locale.baseText('evaluation.runInParallel.label')"
-					data-test-id="run-in-parallel-checkbox"
+					:aria-label="locale.baseText('evaluation.runInParallel.label')"
+					data-test-id="run-in-parallel-toggle"
 				/>
 				<N8nTooltip placement="top" :content="locale.baseText('evaluation.runInParallel.tooltip')">
 					<N8nIcon
@@ -115,14 +116,19 @@ watch(runningTestRun, (run) => {
 				<span :class="$style.concurrencyLabel">
 					{{ locale.baseText('evaluation.runInParallel.concurrency.label') }}
 				</span>
-				<N8nInputNumber
+				<ElSlider
 					v-model="concurrencyModel"
 					:min="1"
 					:max="10"
+					:step="1"
 					:disabled="!parallelEnabledModel"
-					size="small"
+					show-stops
+					:class="$style.concurrencySlider"
 					data-test-id="run-in-parallel-concurrency"
 				/>
+				<span :class="$style.concurrencyValue" data-test-id="run-in-parallel-concurrency-value">
+					{{ concurrencyModel }}
+				</span>
 			</div>
 			<N8nButton
 				variant="subtle"
@@ -195,7 +201,7 @@ watch(runningTestRun, (run) => {
 .parallelControls {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	margin-right: var(--spacing--md);
 }
 
@@ -205,8 +211,22 @@ watch(runningTestRun, (run) => {
 }
 
 .concurrencyLabel {
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
 	font-size: var(--font-size--sm);
+}
+
+.concurrencySlider {
+	width: 140px;
+	margin: 0 var(--spacing--2xs);
+}
+
+.concurrencyValue {
+	display: inline-block;
+	min-width: 14px;
+	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	font-variant-numeric: tabular-nums;
+	text-align: right;
 }
 
 .runs {
