@@ -1,70 +1,117 @@
 import type { Memory } from '@mastra/memory';
 
-import type { PlannedTaskGraph } from '../../types';
-import { PlannedTaskStorage } from '../planned-task-storage';
-
 jest.mock('../thread-patch', () => ({
-	patchThread: jest.fn(
-		(
-			_memory: Memory,
-			opts: {
-				threadId: string;
-				update: (thread: { metadata?: Record<string, unknown> }) => {
-					metadata: Record<string, unknown>;
-				};
-			},
-		) => {
-			const currentMetadata = metadataByThread.get(opts.threadId) ?? {};
-			const next = opts.update({ metadata: currentMetadata });
-			metadataByThread.set(opts.threadId, next.metadata);
-		},
-	),
+	patchThread: jest.fn(),
 }));
 
-const metadataByThread = new Map<string, Record<string, unknown>>();
+import type { PlannedTaskGraph } from '../../types';
+import { PlannedTaskStorage } from '../planned-task-storage';
+import { patchThread } from '../thread-patch';
+
+const mockedPatchThread = jest.mocked(patchThread);
 
 function makeMemory(): Memory {
 	return {
-		getThreadById: jest.fn(({ threadId }: { threadId: string }) => ({
-			id: threadId,
-			title: 'Test',
-			metadata: metadataByThread.get(threadId),
-			resourceId: 'res-1',
-			createdAt: new Date(),
-			updatedAt: new Date(),
-		})),
+		getThreadById: jest.fn(),
 	} as unknown as Memory;
 }
 
-function baseGraph(): PlannedTaskGraph {
+function makeGraph(overrides: Partial<PlannedTaskGraph> = {}): PlannedTaskGraph {
 	return {
 		planRunId: 'run-1',
 		status: 'active',
 		tasks: [
 			{
-				id: 'task-1',
-				title: 'Build',
+				id: 'build-1',
+				title: 'Build workflow',
 				kind: 'build-workflow',
-				spec: 'spec',
+				spec: 'Build it',
 				deps: [],
-				status: 'running',
+				status: 'planned',
+			},
+			{
+				id: 'verify-1',
+				title: "Verify 'build-1' workflow runs successfully",
+				kind: 'checkpoint',
+				spec: 'Call verify-built-workflow with the build outcome.',
+				deps: ['build-1'],
+				status: 'planned',
 			},
 		],
+		...overrides,
 	};
 }
 
 describe('PlannedTaskStorage', () => {
+	let memory: Memory;
+	let storage: PlannedTaskStorage;
+
 	beforeEach(() => {
-		metadataByThread.clear();
+		jest.clearAllMocks();
+		memory = makeMemory();
+		storage = new PlannedTaskStorage(memory);
 	});
 
-	it('round-trips a graph through save -> get', async () => {
-		const storage = new PlannedTaskStorage(makeMemory());
-		const graph = baseGraph();
+	describe('get() kind parsing', () => {
+		it('round-trips a graph containing a checkpoint task', async () => {
+			const graph = makeGraph();
+			(memory.getThreadById as jest.Mock).mockResolvedValue({
+				metadata: { instanceAiPlannedTasks: graph },
+			});
 
-		await storage.save('thread-1', graph);
-		const loaded = await storage.get('thread-1');
+			const loaded = await storage.get('thread-1');
 
-		expect(loaded?.tasks[0].id).toBe('task-1');
+			expect(loaded).not.toBeNull();
+			expect(loaded?.tasks.map((t) => t.kind)).toEqual(['build-workflow', 'checkpoint']);
+			const checkpoint = loaded?.tasks.find((t) => t.id === 'verify-1');
+			expect(checkpoint?.kind).toBe('checkpoint');
+			expect(checkpoint?.deps).toEqual(['build-1']);
+		});
+
+		it('returns null when the stored graph has an unknown kind', async () => {
+			(memory.getThreadById as jest.Mock).mockResolvedValue({
+				metadata: {
+					instanceAiPlannedTasks: {
+						...makeGraph(),
+						tasks: [
+							{
+								id: 'x',
+								title: 'x',
+								kind: 'not-a-kind',
+								spec: '',
+								deps: [],
+								status: 'planned',
+							},
+						],
+					},
+				},
+			});
+
+			const loaded = await storage.get('thread-1');
+			expect(loaded).toBeNull();
+		});
+	});
+
+	describe('update() kind parsing', () => {
+		it('persists updates that include checkpoint kind', async () => {
+			const graph = makeGraph();
+			mockedPatchThread.mockImplementation(async (_mem, opts) => {
+				await Promise.resolve();
+				opts.update({
+					metadata: { instanceAiPlannedTasks: graph },
+				} as unknown as Parameters<typeof opts.update>[0]);
+				return null;
+			});
+
+			const result = await storage.update('thread-1', (g) => ({
+				...g,
+				tasks: g.tasks.map((t) => (t.id === 'verify-1' ? { ...t, status: 'running' as const } : t)),
+			}));
+
+			expect(result).not.toBeNull();
+			const checkpoint = result?.tasks.find((t) => t.id === 'verify-1');
+			expect(checkpoint?.status).toBe('running');
+			expect(checkpoint?.kind).toBe('checkpoint');
+		});
 	});
 });

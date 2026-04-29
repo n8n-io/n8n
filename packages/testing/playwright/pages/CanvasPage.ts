@@ -488,6 +488,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-item-name');
 	}
 
+	nodeCreatorNodeItem(name: string): Locator {
+		return this.nodeCreatorNodeItems().getByText(name, { exact: true });
+	}
+
 	nodeCreatorActionItems(): Locator {
 		return this.page.getByTestId('node-creator-action-item');
 	}
