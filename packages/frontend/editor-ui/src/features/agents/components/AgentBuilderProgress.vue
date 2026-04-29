@@ -236,7 +236,8 @@ onMounted(() => {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
-	color: var(--color--text--tint-2);
+	color: var(--color--text);
+	text-align: center;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
