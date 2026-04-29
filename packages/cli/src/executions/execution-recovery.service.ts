@@ -149,7 +149,7 @@ export class ExecutionRecoveryService {
 			return null;
 		}
 
-		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
+		const runExecutionData = execution.data ?? createEmptyRunExecutionData();
 
 		let lastNodeRunTimestamp: DateTime | undefined;
 
