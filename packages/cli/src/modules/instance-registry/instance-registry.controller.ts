@@ -19,39 +19,43 @@ export class InstanceRegistryController {
 			this.checkService.runChecks(),
 		]);
 
+		const now = Date.now();
+
 		const checks = results.reduce((acc, cur) => {
-			if (!acc[cur.checkName]) {
-				acc[cur.checkName] = {
+			const { checkName, result, failed } = cur;
+
+			if (!acc[checkName]) {
+				acc[checkName] = {
 					status: 'succeeded',
 					check: cur.checkName,
-					executedAt: new Date().getTime(),
+					executedAt: now,
 					warnings: [],
 				};
 			}
 
-			const curWarnings = cur.result?.warnings ?? [];
-			if (curWarnings.length > 0) {
-				acc[cur.checkName].status = 'failed';
-				acc[cur.checkName].warnings = curWarnings.map((warning) => ({
-					check: cur.checkName,
-					code: warning.code,
-					message: warning.message,
-					severity: warning.severity,
-					context: warning.context,
-				}));
+			const entry = acc[checkName];
+
+			const newWarnings =
+				result?.warnings?.map((w) => ({
+					check: checkName,
+					...w, // Assuming the warning object structure matches
+				})) ?? [];
+
+			if (newWarnings.length > 0) {
+				entry.status = 'failed';
+				entry.warnings.push(...newWarnings);
 			}
 
-			if (cur.failed === true) {
-				acc[cur.checkName].status = 'failed';
-				acc[cur.checkName].warnings = [
-					{
-						check: cur.checkName,
-						code: 'cluster.check-execution-failed',
-						message: 'Failed to execute cluster check, please check error logs for details',
-						severity: 'warning',
-					},
-				];
+			if (failed) {
+				entry.status = 'failed';
+				entry.warnings.push({
+					check: cur.checkName,
+					code: 'cluster.check-execution-failed',
+					message: 'Failed to execute cluster check, please check error logs for details',
+					severity: 'warning',
+				});
 			}
+
 			return acc;
 		}, {} as ClusterCheckSummary);
 

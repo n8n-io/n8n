@@ -34,7 +34,8 @@ import { REGISTRY_CONSTANTS } from '../instance-registry.types';
  */
 @Service()
 export class CheckService {
-	private reconcileInterval: NodeJS.Timeout | undefined;
+	private reconcileController?: AbortController;
+	private reconcileTimer: NodeJS.Timeout | undefined;
 
 	private isShuttingDown = false;
 
@@ -60,29 +61,36 @@ export class CheckService {
 
 	@OnLeaderTakeover()
 	startReconciliation() {
-		if (this.isShuttingDown) return;
-		if (this.reconcileInterval) return;
+		if (this.isShuttingDown || this.reconcileController) return;
+		this.reconcileController = new AbortController();
+		const { signal } = this.reconcileController;
 
-		void this.runReconcileSafely();
-
-		this.reconcileInterval = setInterval(
-			async () => await this.runReconcileSafely(),
-			REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS,
-		);
+		void this.runReconcileSafely(signal);
+		this.scheduleNextReconcile(signal);
 
 		this.logger.debug('Cluster check reconciliation scheduled');
 	}
 
 	@OnLeaderStepdown()
 	stopReconciliation() {
-		clearInterval(this.reconcileInterval);
-		this.reconcileInterval = undefined;
+		this.reconcileController?.abort();
+		this.reconcileController = undefined;
+		clearTimeout(this.reconcileTimer);
+		this.reconcileTimer = undefined;
 	}
 
 	@OnShutdown()
 	shutdown() {
 		this.isShuttingDown = true;
 		this.stopReconciliation();
+	}
+
+	private scheduleNextReconcile(signal: AbortSignal) {
+		if (signal.aborted) return;
+		this.reconcileTimer = setTimeout(async () => {
+			await this.runReconcileSafely(signal);
+			this.scheduleNextReconcile(signal);
+		}, REGISTRY_CONSTANTS.RECONCILIATION_INTERVAL_MS);
 	}
 
 	private discoverChecks() {
@@ -104,9 +112,9 @@ export class CheckService {
 		});
 	}
 
-	private async runReconcileSafely() {
+	private async runReconcileSafely(signal: AbortSignal) {
 		try {
-			await this.reconcile();
+			await this.reconcile(signal);
 		} catch (error) {
 			this.logger.warn('Reconciliation cycle failed', { error });
 		}
@@ -158,39 +166,45 @@ export class CheckService {
 		for (let i = 0; i < settled.length; i++) {
 			const outcome = settled[i];
 			const check = this.checks[i];
+			const checkResult: {
+				checkName: string;
+				checkDisplayName?: string;
+				result?: ClusterCheckResult;
+				failed?: true;
+			} = {
+				checkName: check.checkDescription.name,
+				checkDisplayName: check.checkDescription.displayName,
+			};
 			if (outcome.status === 'fulfilled') {
-				results.push({
-					checkName: check.checkDescription.name,
-					checkDisplayName: check.checkDescription.displayName,
-					result: outcome.value,
-				});
+				checkResult.result = outcome.value;
 			} else {
 				this.logger.error('Cluster check failed', {
-					checkName: check.checkDescription.name,
-					checkDisplayName: check.checkDescription.displayName,
+					...checkResult,
 					error: outcome.reason,
 				});
-				results.push({
-					checkName: check.checkDescription.name,
-					checkDisplayName: check.checkDescription.displayName,
-					failed: true,
-				});
+				checkResult.failed = true;
 			}
+			results.push(checkResult);
 		}
 
 		return { currentState, results };
 	}
 
-	private async reconcile() {
+	private async reconcile(signal: AbortSignal) {
 		if (this.checks.length === 0) return;
 
+		if (signal.aborted) return;
+
 		const { currentState, results } = await this.runChecks();
+
+		if (signal.aborted) return;
 
 		for (const { checkName, result } of results) {
 			this.processResult(checkName, result);
 		}
 
 		try {
+			if (signal.aborted) return;
 			await this.instanceRegistryService.saveLastKnownState(currentState);
 		} catch (error) {
 			this.logger.warn('Failed to persist last known cluster state', { error });
