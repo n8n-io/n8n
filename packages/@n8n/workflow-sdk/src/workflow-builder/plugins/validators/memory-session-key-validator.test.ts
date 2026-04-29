@@ -66,7 +66,7 @@ describe('memorySessionKeyValidator', () => {
 			expect(issues).toContainEqual(
 				expect.objectContaining({
 					code: 'UNSAFE_MEMORY_SESSION_KEY_EXPRESSION',
-					severity: 'warning',
+					severity: 'error',
 					violationLevel: 'major',
 					nodeName: 'Conversation Memory',
 					parameterPath: 'sessionKey',
