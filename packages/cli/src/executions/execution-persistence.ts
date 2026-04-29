@@ -80,7 +80,7 @@ export class ExecutionPersistence {
 	 * driver's error code at `error.driverError.code` as a string, with the
 	 * code's exact value depending on the configured DB.
 	 */
-	private isDuplicateExecutionError(error: unknown): boolean {
+	private isDuplicateExecutionError(error: unknown): error is Error {
 		if (!(error instanceof Error) || !('driverError' in error)) return false;
 		const { driverError } = error;
 		if (typeof driverError !== 'object' || driverError === null || !('code' in driverError)) {
