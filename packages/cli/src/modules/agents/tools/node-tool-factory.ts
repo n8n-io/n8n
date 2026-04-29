@@ -2,7 +2,7 @@ import type { BuiltTool } from '@n8n/agents';
 import { Tool, isZodSchema } from '@n8n/agents';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
-import { nodeNameToToolName } from 'n8n-workflow';
+import { isToolType, nodeNameToToolName } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
@@ -49,6 +49,18 @@ function mergeAllOfObjects(members: JSONSchema7[]): JSONSchema7 {
 		properties,
 		...(required.length > 0 && { required: Array.from(new Set(required)) }),
 	};
+}
+
+function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string {
+	if (isToolType(nodeType)) return nodeType;
+
+	const toolNodeType = `${nodeType}Tool`;
+	try {
+		Container.get(NodeTypes).getByNameAndVersion(toolNodeType, nodeTypeVersion);
+		return toolNodeType;
+	} catch {
+		return nodeType;
+	}
 }
 
 /**
@@ -124,9 +136,13 @@ async function resolveInputSchema(
 	if (hasProps) return configured as JSONSchema7;
 
 	let nodeType;
+	const nodeTypeName = resolveToolNodeType(
+		toolSchema.node.nodeType,
+		toolSchema.node.nodeTypeVersion,
+	);
 	try {
 		nodeType = Container.get(NodeTypes).getByNameAndVersion(
-			toolSchema.node.nodeType,
+			nodeTypeName,
 			toolSchema.node.nodeTypeVersion,
 		);
 	} catch {
@@ -138,7 +154,7 @@ async function resolveInputSchema(
 	if (typeof nodeType.supplyData === 'function') {
 		const introspected = await ctx.executor.introspectSupplyDataToolSchema({
 			projectId: ctx.projectId,
-			nodeType: toolSchema.node.nodeType,
+			nodeType: nodeTypeName,
 			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
@@ -179,13 +195,14 @@ export async function resolveNodeTool(
 	// Drive") so we normalize it here — same helper the LangChain canvas path
 	// uses (see `create-node-as-tool.ts:101`).
 	const sanitizedName = nodeNameToToolName(toolSchema.name);
+	const nodeType = resolveToolNodeType(toolSchema.node.nodeType, toolSchema.node.nodeTypeVersion);
 
 	return new Tool(sanitizedName)
-		.description(toolSchema.description ?? `Execute the ${toolSchema.node.nodeType} node`)
+		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
 		.handler(async (input: Record<string, unknown>) => {
 			return await ctx.executor.executeInline({
-				nodeType: toolSchema.node.nodeType,
+				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),

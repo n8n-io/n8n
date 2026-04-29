@@ -1,6 +1,8 @@
+import { Container } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
+import { NodeTypes } from '@/node-types';
 
 import { normalizeToObjectSchema, resolveNodeTool } from '../node-tool-factory';
 
@@ -27,6 +29,10 @@ const baseToolSchema = {
 	inputSchema: { type: 'object' as const, properties: {} },
 };
 
+afterEach(() => {
+	Container.reset();
+});
+
 describe('resolveNodeTool → tool name sanitization', () => {
 	it('replaces whitespace with underscores so Anthropic accepts the identifier', async () => {
 		// Anthropic rejects names that don't match ^[a-zA-Z0-9_-]{1,128}$.
@@ -44,6 +50,36 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		const tool = await resolveNodeTool({ ...baseToolSchema, name: 'Foo / Bar:  (v2)' }, mockCtx);
 		// `nodeNameToToolName` collapses any run of disallowed characters into a single `_`.
 		expect(tool.name).toBe('Foo_Bar_v2_');
+	});
+
+	it('executes the mirrored tool node when config stores the base node type', async () => {
+		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
+		const getByNameAndVersion = jest.fn().mockReturnValue({
+			description: { description: 'HTTP Request Tool' },
+		});
+		Container.set(NodeTypes, { getByNameAndVersion } as unknown as NodeTypes);
+
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				node: {
+					nodeType: 'n8n-nodes-base.httpRequest',
+					nodeTypeVersion: 4,
+					nodeParameters: {},
+				},
+			},
+			{
+				executor: { executeInline } as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+
+		await tool.handler!({ url: 'https://example.com' }, {} as never);
+
+		expect(getByNameAndVersion).toHaveBeenCalledWith('n8n-nodes-base.httpRequestTool', 4);
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({ nodeType: 'n8n-nodes-base.httpRequestTool' }),
+		);
 	});
 });
 

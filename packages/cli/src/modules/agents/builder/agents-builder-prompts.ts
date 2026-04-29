@@ -49,11 +49,12 @@ Flow: search_nodes → get_node_types → ask_credential (per slot) → write/up
   "name": "http_request",
   "description": "Make an HTTP request to any URL",
   "node": {
-    "nodeType": "n8n-nodes-base.httpRequest",
+    "nodeType": "n8n-nodes-base.httpRequestTool",
     "nodeTypeVersion": 4,
     "nodeParameters": {
       "method": "={{$json.method || 'GET'}}",
-      "url": "={{$json.url}}"
+      "url": "={{$json.url}}",
+      "toolDescription": "Make an HTTP request to any URL"
     }
   },
   "inputSchema": {
@@ -68,8 +69,9 @@ Flow: search_nodes → get_node_types → ask_credential (per slot) → write/up
 \`\`\`
 
 Rules for node tools:
-- \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results
+- \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results. Use the tool node ID from search_nodes (usually ending in \`Tool\`, e.g. \`n8n-nodes-base.httpRequestTool\`), not the base node ID.
 - \`nodeParameters\` sets fixed parameters (resource, operation, etc.) and pipes parameters from inputSchema using expressions "={{$json.paramName}}" where paramName must match parameter name in inputSchema.
+- When get_node_types shows \`toolDescription\`, set it to the same clear purpose you use in the node tool's top-level \`description\`.
 - \`inputSchema\` defines what the LLM passes at runtime (JSON Schema)
 - For every credential slot the node requires, you MUST first call ask_credential and use the { id, name } returned in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never leave empty values.
 - Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If the user dismisses the picker (returns { skipped: true }), omit that slot entirely and warn the user the tool will fail at runtime until a credential is set.

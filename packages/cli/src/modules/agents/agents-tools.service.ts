@@ -21,18 +21,27 @@ type NodeRequest =
 	  };
 
 /**
- * Nodes the agent runtime should never surface as executable node tools.
+ * Nodes the agent runtime can execute directly. Triggers are workflow entry
+ * points, so they are never valid as standalone agent tools.
+ */
+export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeType(nodeId);
+
+/**
+ * Node IDs the agent builder should surface when configuring node-backed
+ * tools. For regular nodes marked `usableAsTool`, the loader creates a
+ * mirrored `*Tool` node type; native tool nodes already follow this shape.
+ *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
  */
-export const isExecutableNodeType = (nodeId: string): boolean =>
-	!isTriggerNodeType(nodeId) && !isToolType(nodeId);
+export const isAgentToolNodeType = (nodeId: string): boolean =>
+	isExecutableNodeType(nodeId) && isToolType(nodeId);
 
 const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),
 });
 
-const nodeVersionSchema = z.number().describe('Node type version from search_nodes');
+const nodeVersionSchema = z.number().describe('Tool node type version from search_nodes');
 
 const getNodeTypesInputSchema = z.object({
 	nodeIds: z
@@ -49,7 +58,7 @@ const getNodeTypesInputSchema = z.object({
 			]),
 		)
 		.min(1)
-		.describe('Node IDs from search_nodes (e.g., ["n8n-nodes-base.gmail"])'),
+		.describe('Tool node IDs from search_nodes (e.g., ["n8n-nodes-base.gmailTool"])'),
 });
 
 const listCredentialsInputSchema = z.object({
@@ -64,7 +73,7 @@ const listCredentialsInputSchema = z.object({
 });
 
 const runNodeInputSchema = z.object({
-	nodeType: z.string().describe('Node type identifier from search_nodes'),
+	nodeType: z.string().describe('Tool node type identifier from search_nodes'),
 	nodeTypeVersion: nodeVersionSchema,
 	nodeParameters: z
 		.record(z.unknown())
@@ -123,13 +132,13 @@ export class AgentsToolsService {
 		return new Tool('search_nodes')
 			.description(
 				'Search for n8n nodes by name or service. Use this to find nodes that can be executed. ' +
-					'Returns node IDs, display names, versions, and descriptions. ' +
+					'Returns tool node IDs (including mirrored *Tool variants), display names, versions, and descriptions. ' +
 					'After finding a node, call get_node_types to get its parameter schema.',
 			)
 			.input(searchNodesInputSchema)
 			.handler(async ({ queries }: { queries: string[] }) => {
 				const results = await this.nodeCatalogService.searchNodes(queries, {
-					nodeFilter: isExecutableNodeType,
+					nodeFilter: isAgentToolNodeType,
 				});
 				return { results };
 			})
@@ -141,6 +150,7 @@ export class AgentsToolsService {
 			.description(
 				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
 					'by search_nodes. Returns parameter definitions needed to configure a node for execution. ' +
+					'Use the tool node IDs from search_nodes, not base node IDs. ' +
 					'You can optionally filter by resource/operation/mode.',
 			)
 			.input(getNodeTypesInputSchema)
@@ -177,7 +187,7 @@ export class AgentsToolsService {
 		return new Tool('run_node_tool')
 			.description(
 				'Execute an n8n node for the current request. ' +
-					'Use nodeType and nodeTypeVersion from search_nodes. ' +
+					'Use the tool nodeType and nodeTypeVersion from search_nodes. ' +
 					'Call get_node_types first to understand what nodeParameters the node accepts. ' +
 					'nodeParameters holds static node config; use n8n expressions like ={{ $json.url }} to map inputData fields. ' +
 					'credentials maps slot names to { id, name } — copy from the list_credentials results. ' +
@@ -189,14 +199,19 @@ export class AgentsToolsService {
 				if (!isExecutableNodeType(nodeType)) {
 					return {
 						status: 'error',
-						message: `Node type "${nodeType}" cannot be executed directly — triggers and tool-type nodes are not supported here.`,
+						message: `Node type "${nodeType}" cannot be executed directly — trigger nodes are not supported here.`,
 					};
 				}
 
 				if (nodeParameters) {
-					const { valid, errors } = validateNodeConfig(nodeType, nodeTypeVersion, {
-						parameters: nodeParameters,
-					});
+					const { valid, errors } = validateNodeConfig(
+						nodeType,
+						nodeTypeVersion,
+						{
+							parameters: nodeParameters,
+						},
+						{ isToolNode: true },
+					);
 					if (!valid) {
 						return {
 							status: 'error',

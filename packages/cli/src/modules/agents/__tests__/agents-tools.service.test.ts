@@ -6,7 +6,11 @@ import { validateNodeConfig } from '@n8n/workflow-sdk';
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import type { NodeCatalogService } from '@/node-catalog';
 
-import { AgentsToolsService, isExecutableNodeType } from '../agents-tools.service';
+import {
+	AgentsToolsService,
+	isAgentToolNodeType,
+	isExecutableNodeType,
+} from '../agents-tools.service';
 
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateNodeConfig: jest.fn().mockReturnValue({ valid: true, errors: [] }),
@@ -130,22 +134,31 @@ describe('AgentsToolsService', () => {
 				.find((t) => t.name === 'search_nodes')!;
 		}
 
-		it('delegates to the node catalog with the executable-node filter', async () => {
+		it('delegates to the node catalog with the agent tool-node filter', async () => {
 			const { service, nodeCatalogService } = makeService();
 
 			const result = await getSearchTool(service).handler!({ queries: ['gmail'] }, ctx);
 
 			expect(nodeCatalogService.searchNodes).toHaveBeenCalledWith(['gmail'], {
-				nodeFilter: isExecutableNodeType,
+				nodeFilter: isAgentToolNodeType,
 			});
 			expect(result).toEqual({ results: 'search-result' });
 		});
 	});
 
 	describe('isExecutableNodeType', () => {
-		it('rejects trigger and tool-type nodes', () => {
+		it('rejects trigger nodes only', () => {
 			expect(isExecutableNodeType('n8n-nodes-base.scheduleTrigger')).toBe(false);
 			expect(isExecutableNodeType('n8n-nodes-base.httpRequest')).toBe(true);
+			expect(isExecutableNodeType('n8n-nodes-base.httpRequestTool')).toBe(true);
+		});
+	});
+
+	describe('isAgentToolNodeType', () => {
+		it('allows tool node IDs and rejects base or trigger node IDs', () => {
+			expect(isAgentToolNodeType('n8n-nodes-base.scheduleTrigger')).toBe(false);
+			expect(isAgentToolNodeType('n8n-nodes-base.httpRequest')).toBe(false);
+			expect(isAgentToolNodeType('n8n-nodes-base.httpRequestTool')).toBe(true);
 		});
 	});
 
@@ -189,7 +202,7 @@ describe('AgentsToolsService', () => {
 			jest.mocked(validateNodeConfig).mockReturnValue({ valid: true, errors: [] });
 		});
 
-		it('refuses to run trigger and tool-type nodes', async () => {
+		it('refuses to run trigger nodes', async () => {
 			const { service, ephemeralNodeExecutor } = makeService();
 
 			const result = await getRunTool(service).handler!(
@@ -230,9 +243,14 @@ describe('AgentsToolsService', () => {
 				ctx,
 			);
 
-			expect(validateNodeConfig).toHaveBeenCalledWith('n8n-nodes-base.httpRequest', 4, {
-				parameters: { url: 'https://example.com' },
-			});
+			expect(validateNodeConfig).toHaveBeenCalledWith(
+				'n8n-nodes-base.httpRequest',
+				4,
+				{
+					parameters: { url: 'https://example.com' },
+				},
+				{ isToolNode: true },
+			);
 			expect(ephemeralNodeExecutor.executeInline).toHaveBeenCalled();
 		});
 
