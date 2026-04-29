@@ -93,7 +93,10 @@ jobs:
 
       - name: Generate shard matrix
         id: generate
-        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix ${{ inputs.shards }} ${{ inputs.use-custom-orchestration && '--orchestrate' || '' }})" >> "$GITHUB_OUTPUT"
+        env:
+          SHARDS: ${{ inputs.shards }}
+          ORCHESTRATE_FLAG: ${{ inputs.use-custom-orchestration && '--orchestrate' || '' }}
+        run: echo "matrix=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix "$SHARDS" ${ORCHESTRATE_FLAG:+$ORCHESTRATE_FLAG})" >> "$GITHUB_OUTPUT"
 
   test:
     needs: matrix
