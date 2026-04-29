@@ -370,6 +370,6 @@ export class AgentScheduleService {
 			return publishedById;
 		}
 
-		return userIds[0];
+		return undefined;
 	}
 }
