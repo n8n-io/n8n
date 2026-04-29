@@ -1676,6 +1676,21 @@ export class InstanceAiAdapterService {
 							}
 							result.builderHint.inputs = inputs;
 						}
+						if (n.builderHint.outputs) {
+							const outputs: Record<
+								string,
+								{ required?: boolean; displayOptions?: Record<string, unknown> }
+							> = {};
+							for (const [key, config] of Object.entries(n.builderHint.outputs)) {
+								outputs[key] = {
+									...(config.required !== undefined ? { required: config.required } : {}),
+									...(config.displayOptions
+										? { displayOptions: config.displayOptions as Record<string, unknown> }
+										: {}),
+								};
+							}
+							result.builderHint.outputs = outputs;
+						}
 					}
 					return result;
 				});

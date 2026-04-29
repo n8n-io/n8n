@@ -36,6 +36,7 @@ export type ValidationErrorCode =
 	| 'SUBNODE_PARAMETER_MISMATCH'
 	| 'UNSUPPORTED_SUBNODE_INPUT'
 	| 'MISSING_REQUIRED_INPUT'
+	| 'INVALID_OUTPUT_FOR_MODE'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
@@ -495,6 +496,8 @@ export function validateWorkflow(
 		validateParentSupportsInputs(json, options.nodeTypesProvider, warnings);
 		// Validate required AI inputs on parent nodes are actually connected
 		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
+		// Validate that emitted connection types are actually exposed by the source node's mode
+		validateOutputUsage(json, options.nodeTypesProvider, warnings);
 	}
 
 	// Merge node input-count consistency
@@ -895,6 +898,112 @@ function validateRequiredInputsConnected(
 					'MISSING_REQUIRED_INPUT',
 					`'${parentNode.name}' requires a ${subnodeField} subnode connected to its ${connectionType} input${triggerDetails}, but none is connected.${alternative}`,
 					parentNode.name,
+					undefined,
+					'major',
+				),
+			);
+		}
+	}
+}
+
+/**
+ * Render an outgoing connection type as the SDK syntax that produces it, so warning
+ * messages speak the LLM agent's vocabulary instead of raw `main` / `ai_*` types.
+ *
+ * `target` flips the phrasing between describing the wiring already used by the source
+ * (e.g. `wired with .to()`) and describing where the source SHOULD attach instead
+ * (e.g. `subnodes.tools`).
+ */
+function describeOutputWiring(connectionType: string, target = false): string {
+	if (connectionType === 'main') return target ? '.to(...)' : 'wired with .to()';
+	const field = AI_CONNECTION_TO_SUBNODE_FIELD[connectionType];
+	if (field) return target ? `subnodes.${field}` : `attached as subnodes.${field}`;
+	return target ? connectionType : `connected via ${connectionType}`;
+}
+
+/**
+ * Return the connection type from `outputsHint` whose displayOptions match the source
+ * node's current parameters — i.e. the output the node actually exposes given how it's
+ * configured. Used to suggest the correct wiring fix in `INVALID_OUTPUT_FOR_MODE`.
+ */
+function findEnabledAlternativeOutput(
+	outputsHint: Record<string, { displayOptions?: IDisplayOptions } | undefined>,
+	ctx: DisplayOptionsContext,
+	excludeType: string,
+): string | undefined {
+	for (const [type, cfg] of Object.entries(outputsHint)) {
+		if (type === excludeType) continue;
+		if (!cfg) continue;
+		if (cfg.displayOptions && !matchesDisplayOptions(ctx, cfg.displayOptions as DisplayOptions)) {
+			continue;
+		}
+		return type;
+	}
+	return undefined;
+}
+
+/**
+ * Validate that connections leaving a node use connection types the node's current
+ * parameters actually expose. Driven by `builderHint.outputs` declared on the source node.
+ *
+ * Example: a vector store in `mode: 'retrieve'` exposes only `ai_vectorStore`. If the workflow
+ * has a `main` connection out of that node, this emits `INVALID_OUTPUT_FOR_MODE` because
+ * `builderHint.outputs.main.displayOptions` requires `mode` ∈ ['insert', 'load', 'update'].
+ */
+function validateOutputUsage(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	warnings: ValidationWarning[],
+): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name) continue;
+
+		const outgoing = json.connections[sourceNode.name];
+		if (!outgoing) continue;
+
+		const version =
+			typeof sourceNode.typeVersion === 'string'
+				? parseFloat(sourceNode.typeVersion)
+				: (sourceNode.typeVersion ?? 1);
+
+		const nodeType = nodeTypesProvider.getByNameAndVersion(sourceNode.type, version);
+		const outputsHint = nodeType?.description?.builderHint?.outputs;
+		if (!outputsHint) continue;
+
+		const ctx: DisplayOptionsContext = {
+			parameters: (sourceNode.parameters ?? {}) as Record<string, unknown>,
+			nodeVersion: version,
+			rootParameters: (sourceNode.parameters ?? {}) as Record<string, unknown>,
+		};
+
+		for (const [connectionType, cfg] of Object.entries(outputsHint)) {
+			// No displayOptions => assume the node always emits this connection type.
+			if (!cfg?.displayOptions) continue;
+
+			const edges = outgoing[connectionType];
+			if (!edges) continue;
+			const hasEdges = edges.some((slot) => Array.isArray(slot) && slot.length > 0);
+			if (!hasEdges) continue;
+
+			const enabled = matchesDisplayOptions(ctx, cfg.displayOptions as DisplayOptions);
+			if (enabled) continue;
+
+			const conditionDetails = buildConditionSummary(
+				cfg.displayOptions,
+				(sourceNode.parameters ?? {}) as Record<string, unknown>,
+			);
+			const usedWiring = describeOutputWiring(connectionType);
+			const enabledAlt = findEnabledAlternativeOutput(outputsHint, ctx, connectionType);
+			const altSuggestion = enabledAlt
+				? ` To use this node as-is, attach it as ${describeOutputWiring(enabledAlt, true)} of a parent (it exposes ${enabledAlt} in this configuration).`
+				: '';
+
+			warnings.push(
+				new ValidationWarning(
+					'INVALID_OUTPUT_FOR_MODE',
+					`'${sourceNode.name}' is ${usedWiring} but its current parameters disable that output. ${conditionDetails}${altSuggestion}`,
+					sourceNode.name,
+					undefined,
 					undefined,
 					'major',
 				),
