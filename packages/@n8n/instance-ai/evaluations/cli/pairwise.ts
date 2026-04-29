@@ -221,21 +221,22 @@ interface ExampleRecord {
 
 /**
  * Eval-only suffix appended to every dataset prompt. Pushes the agent past
- * its production "ask before assuming / set up credentials first" instinct
- * — there is no human in the loop, so a clarification turn is a guaranteed
- * `no_workflow_built`. Lives in the harness, not the production builder
- * prompt, so production behavior is unaffected.
+ * its production "ask before assuming" instinct — there is no human in
+ * the loop, so a clarification turn is a guaranteed `no_workflow_built`.
+ * Lives in the harness, not the production builder prompt, so production
+ * behavior is unaffected.
  *
- * Strictly describes the eval environment and the required terminal action
- * (call `submit-workflow`). Does not name SDK helpers or otherwise lead the
- * agent toward specific implementation choices — those are what the eval
- * measures.
+ * Strictly describes the eval environment. Does not name tools or SDK
+ * helpers, and does not prescribe a terminal action — those are what the
+ * eval measures, so leading the agent here would make pass rates less
+ * realistic. The agent's own system prompt already tells it how to
+ * persist a workflow.
  */
 const EVAL_PROMPT_SUFFIX =
 	'\n\n---\n' +
 	'You are running inside an automated, non-interactive evaluation. ' +
 	'There is no human to answer follow-up questions. ' +
-	'Build a single workflow that best satisfies the request above and call `submit-workflow` before you finish. ' +
+	'Build a single workflow that best satisfies the request above. ' +
 	'Do not call `ask-user` and do not ask for clarification — pick reasonable defaults and proceed.';
 
 async function runExample(
