@@ -27,6 +27,7 @@ interface RawPipedriveField {
 	name?: string;
 	field_type?: string;
 	is_custom_field?: boolean;
+	edit_flag?: boolean;
 	options?: Array<{ id: number; label: string }>;
 }
 
@@ -73,7 +74,9 @@ export async function getCustomFieldsMappingColumns(
 	const fields: ResourceMapperField[] = [];
 
 	for (const raw of rawFields as RawPipedriveField[]) {
-		if (raw.is_custom_field !== true) continue;
+		// v2 endpoints set `is_custom_field`; older v1 leadFields responses
+		// only set `edit_flag`. Treat either as the custom-field marker.
+		if (raw.is_custom_field !== true && raw.edit_flag !== true) continue;
 
 		const id = raw.field_code ?? raw.key;
 		const displayName = raw.field_name ?? raw.name;

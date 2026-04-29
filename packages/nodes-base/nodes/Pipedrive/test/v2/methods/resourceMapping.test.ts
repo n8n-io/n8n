@@ -144,6 +144,23 @@ describe('Pipedrive v2 Resource Mapping', () => {
 			expect(byId.hex_set.type).toBe('string');
 		});
 
+		it('falls back to edit_flag when is_custom_field is absent (legacy v1)', async () => {
+			const ctx = makeLoadOptionsMock('lead');
+			ctx.helpers.requestWithAuthentication.mockResolvedValue({
+				success: true,
+				data: [
+					{ key: 'builtin', name: 'Built-in', field_type: 'text', edit_flag: false },
+					{ key: 'legacy_custom', name: 'Legacy Custom', field_type: 'text', edit_flag: true },
+				],
+				additional_data: { pagination: { more_items_in_collection: false } },
+			});
+
+			const result = await getCustomFieldsMappingColumns.call(ctx);
+
+			expect(result.fields).toHaveLength(1);
+			expect(result.fields[0].id).toBe('legacy_custom');
+		});
+
 		it('uses v1 key/name when v2 field_code/field_name is missing (lead)', async () => {
 			const ctx = makeLoadOptionsMock('lead');
 			ctx.helpers.requestWithAuthentication.mockResolvedValue({
