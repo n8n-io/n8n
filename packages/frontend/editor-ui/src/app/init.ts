@@ -279,5 +279,10 @@ function registerAuthenticationHooks() {
 		telemetry.reset();
 		RBACStore.setGlobalScopes([]);
 		favoritesStore.reset();
+		settingsStore.reset();
+		// Do NOT reset state.initialized / authenticatedFeaturesInitialized here:
+		// initializeCore() would re-run and re-register login/logout hooks, double-firing
+		// every per-session side effect on the next login. The login hook below already
+		// re-fetches settings and module settings, so a fresh init is unnecessary.
 	});
 }

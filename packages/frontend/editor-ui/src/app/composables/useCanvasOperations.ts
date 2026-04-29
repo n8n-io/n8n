@@ -119,6 +119,7 @@ import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useNodeGovernanceStore } from '@/features/settings/nodeGovernance/nodeGovernance.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
 import { useLogsStore } from '@/app/stores/logs.store';
@@ -186,6 +187,7 @@ export function useCanvasOperations() {
 	const nodeCreatorStore = useNodeCreatorStore();
 	const executionsStore = useExecutionsStore();
 	const projectsStore = useProjectsStore();
+	const nodeGovernanceStore = useNodeGovernanceStore();
 	const logsStore = useLogsStore();
 	const experimentalNdvStore = useExperimentalNdvStore();
 	const templatesStore = useTemplatesStore();
@@ -2428,6 +2430,45 @@ export function useCanvasOperations() {
 		await nodeHelpers.loadNodesProperties(
 			data.nodes.map((node) => ({ name: node.type, version: node.typeVersion })),
 		);
+
+		const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id ?? null;
+		const blockedNodeNames: string[] = [];
+		if (projectId) {
+			if (
+				!nodeGovernanceStore.governanceDataLoaded ||
+				nodeGovernanceStore.currentProjectId !== projectId
+			) {
+				try {
+					await nodeGovernanceStore.fetchGovernanceData(projectId);
+				} catch (error) {
+					console.warn('Failed to fetch node governance data during import:', error);
+				}
+			}
+
+			data.nodes = data.nodes.filter((node) => {
+				const governance = nodeGovernanceStore.resolveGovernanceForNode(node.type, projectId);
+				if (governance?.status === 'blocked') {
+					blockedNodeNames.push(node.name || node.type);
+					return false;
+				}
+				return true;
+			});
+		}
+
+		if (blockedNodeNames.length > 0) {
+			toast.showMessage({
+				title: i18n.baseText('nodeView.showMessage.blockedNodesRemoved.title', {
+					interpolate: { count: String(blockedNodeNames.length) },
+				}),
+				message: blockedNodeNames.join(', '),
+				type: 'warning',
+				duration: 8000,
+			});
+		}
+
+		if (!data.nodes.length) {
+			return { nodes: [], connections: {} };
+		}
 
 		data.nodes.forEach((node) => {
 			if (nodeTypesCount[node.type] !== undefined) {

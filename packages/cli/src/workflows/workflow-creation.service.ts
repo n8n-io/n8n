@@ -25,6 +25,7 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
+import { NodeGovernanceService } from '@/services/node-governance.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowFinderService } from './workflow-finder.service';
@@ -50,6 +51,7 @@ export class WorkflowCreationService {
 		private readonly folderService: FolderService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly nodeGovernanceService: NodeGovernanceService,
 	) {}
 
 	async createWorkflow(
@@ -103,6 +105,23 @@ export class WorkflowCreationService {
 				throw new ForbiddenError(message);
 			}
 			throw new BadRequestError(message);
+		}
+
+		if (newWorkflow.nodes && newWorkflow.nodes.length > 0) {
+			const validation = await this.nodeGovernanceService.validateWorkflowNodes(
+				newWorkflow.nodes,
+				effectiveProjectId,
+				user.id,
+			);
+
+			if (validation.hasBlockedNodes) {
+				const blockedNodeNames = validation.blockedNodes
+					.map((n) => n.nodeName || n.nodeType)
+					.join(', ');
+				throw new BadRequestError(
+					`Cannot save workflow: The following nodes are blocked by governance policies: ${blockedNodeNames}. Please remove these nodes or request access.`,
+				);
+			}
 		}
 
 		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow, effectiveProjectId);

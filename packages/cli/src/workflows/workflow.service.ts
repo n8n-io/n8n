@@ -58,6 +58,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { NodeGovernanceService } from '@/services/node-governance.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
 
@@ -89,6 +90,7 @@ export class WorkflowService {
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowValidationService: WorkflowValidationService,
 		private readonly nodeTypes: NodeTypes,
+		private readonly nodeGovernanceService: NodeGovernanceService,
 		private readonly webhookService: WebhookService,
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
@@ -394,6 +396,27 @@ export class WorkflowService {
 			});
 			if (!canUpdate) {
 				delete workflowUpdateData.settings.redactionPolicy;
+			}
+		}
+
+		// Validate node governance - check for blocked or pending-approval nodes.
+		// Use the workflow's owning project (deterministic) rather than a non-deterministic
+		// shared-workflow lookup, to ensure project-scoped policies resolve correctly when
+		// the workflow is shared across multiple projects.
+		if (workflowUpdateData.nodes && workflowUpdateData.nodes.length > 0 && ownerProject?.id) {
+			const validation = await this.nodeGovernanceService.validateWorkflowNodes(
+				workflowUpdateData.nodes,
+				ownerProject.id,
+				user.id,
+			);
+
+			if (validation.hasBlockedNodes) {
+				const blockedNodeNames = validation.blockedNodes
+					.map((n) => n.nodeName || n.nodeType)
+					.join(', ');
+				throw new BadRequestError(
+					`Cannot save workflow: The following nodes are blocked or pending approval by governance policies: ${blockedNodeNames}. Please remove these nodes or wait for the access request to be approved.`,
+				);
 			}
 		}
 

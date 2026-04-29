@@ -33,6 +33,23 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	userAgent?: string;
 	redactionPolicy?: WorkflowSettings.RedactionPolicy;
 	rejectionReason?: string;
+	policyId?: string;
+	policyType?: string;
+	policyScope?: string;
+	targetType?: string;
+	targetValue?: string;
+	projectIds?: string[];
+	categoryId?: string;
+	categorySlug?: string;
+	categoryDisplayName?: string;
+	nodeType?: string;
+	requestId?: string;
+	requestStatus?: string;
+	requestedById?: string;
+	reviewComment?: string;
+	importCreated?: number;
+	importUpdated?: number;
+	importUnchanged?: number;
 }
 
 export interface EventMessageAuditOptions extends AbstractEventMessageOptions {

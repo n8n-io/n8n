@@ -53,6 +53,7 @@ import '@/controllers/users.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
+import '@/controllers/node-governance.controller';
 import '@/controllers/security-settings.controller';
 import '@/credentials/credentials.controller';
 import '@/events/events.controller';

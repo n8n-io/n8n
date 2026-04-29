@@ -27,6 +27,7 @@ import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
+import { NodeGovernancePage } from './NodeGovernancePage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
 import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
@@ -102,6 +103,7 @@ export class n8nPage {
 	readonly sideBar: SidebarPage;
 	readonly dataTable: DataTableView;
 	readonly dataTableDetails: DataTableDetails;
+	readonly nodeGovernance: NodeGovernancePage;
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
@@ -184,6 +186,7 @@ export class n8nPage {
 		this.workflowSharingModal = new WorkflowSharingModal(page);
 		this.dataTable = new DataTableView(page);
 		this.dataTableDetails = new DataTableDetails(page);
+		this.nodeGovernance = new NodeGovernancePage(page);
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 
