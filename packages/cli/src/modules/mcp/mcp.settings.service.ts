@@ -166,6 +166,8 @@ export class McpSettingsService {
 							{ id: row.id },
 							{ settings: nextSettings, updatedAt: now },
 						);
+						// Matches this settings update
+						// Later concurrent writes may supersede it but acceptable for a settings-toggle use case,
 						const checksum = await calculateWorkflowChecksum({
 							...row,
 							settings: nextSettings,
