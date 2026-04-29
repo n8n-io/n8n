@@ -41,8 +41,6 @@ const MAX_CONCURRENT_SCENARIOS = 99;
 // Workflow test case runner — build once, run scenarios against it
 // ---------------------------------------------------------------------------
 
-const SCENARIO_BG_TASK_TIMEOUT_MS = 240_000;
-
 interface WorkflowTestCaseConfig {
 	client: N8nClient;
 	testCase: WorkflowTestCase;
@@ -100,6 +98,7 @@ export async function runWorkflowTestCase(
 					scenario,
 					build.workflowJsons,
 					logger,
+					timeoutMs,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -181,7 +180,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			events,
 			approvedRequests,
 			startTime,
-			timeoutMs: Math.min(timeoutMs, SCENARIO_BG_TASK_TIMEOUT_MS),
+			timeoutMs,
 			logger,
 		});
 
@@ -288,8 +287,9 @@ export async function executeScenario(
 	scenario: TestScenario,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
+	timeoutMs?: number,
 ): Promise<ScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger);
+	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
 }
 
 /**
@@ -335,9 +335,10 @@ async function runScenario(
 	workflowId: string,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
+	timeoutMs?: number,
 ): Promise<ScenarioResult> {
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup);
+	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
 	const execMs = Date.now() - execStart;
 
 	logger.info(

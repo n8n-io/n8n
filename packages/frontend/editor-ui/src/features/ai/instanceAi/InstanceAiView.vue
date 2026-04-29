@@ -46,6 +46,8 @@ import InstanceAiArtifactsPanel from './components/InstanceAiArtifactsPanel.vue'
 import InstanceAiStatusBar from './components/InstanceAiStatusBar.vue';
 import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import AgentSection from './components/AgentSection.vue';
+import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
 import CreditsSettingsDropdown from '@/features/ai/assistant/components/Agent/CreditsSettingsDropdown.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -73,6 +75,16 @@ function goToSettings() {
 }
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
+
+// Running builders render in a dedicated bottom section of the conversation.
+// Once a builder finishes it falls out of this list and AgentTimeline renders
+// it in its natural chronological slot.
+const builderAgents = computed(() => collectActiveBuilderAgents(store.messages));
+
+// Assistant messages whose only content has been extracted to the bottom
+// builder section (or which haven't produced anything renderable yet) would
+// otherwise leave an empty wrapper in the list — filter them out.
+const displayedMessages = computed(() => store.messages.filter(messageHasVisibleContent));
 
 // --- Execution tracking via push events ---
 const executionTracking = useExecutionPushEvents();
@@ -513,11 +525,21 @@ function handleStop() {
 							>
 								<TransitionGroup name="message-slide">
 									<InstanceAiMessage
-										v-for="message in store.messages"
+										v-for="message in displayedMessages"
 										:key="message.id"
 										:message="message"
 									/>
 								</TransitionGroup>
+								<!-- Builder sub-agents are extracted from their parent assistant
+									 messages and rendered here so they always sit at the bottom
+									 of the conversation. -->
+								<div v-if="builderAgents.length" :class="$style.builderAgents">
+									<AgentSection
+										v-for="builder in builderAgents"
+										:key="builder.agentId"
+										:agent-node="builder"
+									/>
+								</div>
 								<InstanceAiConfirmationPanel />
 							</div>
 						</N8nScrollArea>
@@ -636,6 +658,8 @@ function handleStop() {
 	width: 100%;
 	min-width: 900px;
 	overflow: hidden;
+	position: relative;
+	z-index: 0;
 }
 
 .sidebar {
@@ -771,6 +795,13 @@ function handleStop() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.builderAgents {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
 }
 
 .scrollButtonContainer {

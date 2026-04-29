@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.18.0",
+  "version": "2.19.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -54,7 +54,7 @@
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/expression-runtime": "workspace:*",
-    "@n8n/tournament": "catalog:",
+    "@n8n/tournament": "workspace:*",
     "ast-types": "0.16.1",
     "callsites": "catalog:",
     "esprima-next": "5.8.4",
@@ -73,6 +73,6 @@
     "jsonrepair": "catalog:"
   },
   "peerDependencies": {
-    "zod": "catalog:"
+    "zod": ">=3.25.0 <4"
   }
 }

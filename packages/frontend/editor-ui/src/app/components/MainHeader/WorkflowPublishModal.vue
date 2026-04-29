@@ -64,7 +64,11 @@ const wfHasAnyChanges = computed(() => {
 	);
 });
 
-const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
+const nodesWithValidationIssues = computed(
+	() => workflowDocumentStore.value.nodesWithValidationIssues,
+);
+
+const hasNodeIssues = computed(() => workflowDocumentStore.value.hasNodeValidationIssues);
 
 const inputsDisabled = computed(() => {
 	return (
@@ -160,7 +164,7 @@ const shouldShowFreeAiCreditsWarning = computed((): boolean => {
 
 const aiGatewayWarningNodes = computed((): INodeUi[] => {
 	if (!settingsStore.isAiGatewayEnabled) return [];
-	return workflowsStore.allNodes.filter(
+	return (workflowDocumentStore.value?.allNodes ?? []).filter(
 		(node) =>
 			!node.disabled &&
 			Object.values(node.credentials ?? {}).some((cred) => cred.__aiGatewayManaged === true),
@@ -289,12 +293,12 @@ async function handlePublish() {
 				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
 					{{
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
-							interpolate: { count: workflowsStore.nodesWithIssues.length },
-							adjustToNumber: workflowsStore.nodesWithIssues.length,
+							interpolate: { count: nodesWithValidationIssues.length },
+							adjustToNumber: nodesWithValidationIssues.length,
 						})
 					}}
 					<ul :class="$style.nodeLinks">
-						<li v-for="node in workflowsStore.nodesWithIssues" :key="node.id">
+						<li v-for="node in nodesWithValidationIssues" :key="node.id">
 							<N8nLink
 								size="small"
 								:to="`/workflow/${workflowsStore.workflowId}/${node.id}`"

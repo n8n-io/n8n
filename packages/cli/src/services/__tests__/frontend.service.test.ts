@@ -221,6 +221,28 @@ describe('FrontendService', () => {
 				}),
 			);
 		});
+
+		it('should surface logStreaming.managedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: true });
+		});
+
+		it('should default logStreaming.managedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: false });
+		});
 	});
 
 	describe('getPublicSettings', () => {

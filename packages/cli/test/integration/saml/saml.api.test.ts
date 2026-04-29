@@ -586,7 +586,7 @@ describe('Signing key configuration via API', () => {
 
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			const decryptedKey = await samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
 		});
 
@@ -604,7 +604,7 @@ describe('Signing key configuration via API', () => {
 
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			const decryptedKey = await samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(EC_TEST_PRIVATE_KEY);
 		});
 
@@ -624,7 +624,7 @@ describe('Signing key configuration via API', () => {
 			// Verify key is stored
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			expect(samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
+			expect(await samlService.getDecryptedSigningPrivateKey()).toBe(RSA_TEST_PRIVATE_KEY);
 
 			// Clear both fields
 			await authOwnerAgent
@@ -638,7 +638,7 @@ describe('Signing key configuration via API', () => {
 
 			// Key should be cleared
 			// @ts-expect-error -- accessing private method for testing
-			expect(samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
+			expect(await samlService.getDecryptedSigningPrivateKey()).toBeUndefined();
 			expect(samlService.samlPreferences.signingCertificate).toBeUndefined();
 
 			// GET should not return signing fields
@@ -673,7 +673,7 @@ describe('Signing key configuration via API', () => {
 			// Key should still be decryptable to original value
 			const samlService = Container.get(SamlService);
 			// @ts-expect-error -- accessing private method for testing
-			const decryptedKey = samlService.getDecryptedSigningPrivateKey();
+			const decryptedKey = await samlService.getDecryptedSigningPrivateKey();
 			expect(decryptedKey).toBe(RSA_TEST_PRIVATE_KEY);
 		});
 	});
@@ -783,7 +783,6 @@ describe('SAML SSO provisioning', () => {
 	let roleMappingRuleRepository: RoleMappingRuleRepository;
 	let roleRepository: RoleRepository;
 	let userRepository: UserRepository;
-	let originalEnvFlag: string | undefined;
 	let savedProvisioningConfig: unknown;
 
 	beforeAll(async () => {
@@ -795,9 +794,6 @@ describe('SAML SSO provisioning', () => {
 	});
 
 	beforeEach(() => {
-		originalEnvFlag = process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
-		process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = 'true';
-
 		const provisioningService = Container.get(ProvisioningService);
 		// @ts-expect-error - provisioningConfig is private
 		savedProvisioningConfig = { ...provisioningService.provisioningConfig };
@@ -806,12 +802,6 @@ describe('SAML SSO provisioning', () => {
 	});
 
 	afterEach(async () => {
-		if (originalEnvFlag === undefined) {
-			delete process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING;
-		} else {
-			process.env.N8N_ENV_FEAT_EXPRESSION_ROLE_MAPPING = originalEnvFlag;
-		}
-
 		const provisioningService = Container.get(ProvisioningService);
 		// @ts-expect-error - provisioningConfig is private
 		provisioningService.provisioningConfig = { ...savedProvisioningConfig };

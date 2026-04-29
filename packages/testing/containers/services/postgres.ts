@@ -1,6 +1,7 @@
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedNetwork } from 'testcontainers';
 
+import { createSilentLogConsumer } from '../helpers/utils';
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
 
@@ -19,13 +20,14 @@ export const postgres: Service<PostgresResult> = {
 	shouldStart: (ctx) => ctx.usePostgres,
 
 	async start(network: StartedNetwork, projectName: string): Promise<PostgresResult> {
-		const container = await new PostgreSqlContainer(TEST_CONTAINER_IMAGES.postgres)
+		const { consumer, throwWithLogs } = createSilentLogConsumer();
+		const builder = new PostgreSqlContainer(TEST_CONTAINER_IMAGES.postgres)
 			.withNetwork(network)
 			.withNetworkAliases(HOSTNAME)
 			.withDatabase('n8n_db')
 			.withUsername('n8n_user')
 			.withPassword('test_password')
-			.withStartupTimeout(40000)
+			.withStartupTimeout(60000)
 			.withLabels({
 				'com.docker.compose.project': projectName,
 				'com.docker.compose.service': HOSTNAME,
@@ -45,16 +47,21 @@ export const postgres: Service<PostgresResult> = {
 				'max_connections=200',
 			])
 			.withReuse()
-			.start();
+			.withLogConsumer(consumer);
 
-		return {
-			container,
-			meta: {
-				database: container.getDatabase(),
-				username: container.getUsername(),
-				password: container.getPassword(),
-			},
-		};
+		try {
+			const container = await builder.start();
+			return {
+				container,
+				meta: {
+					database: container.getDatabase(),
+					username: container.getUsername(),
+					password: container.getPassword(),
+				},
+			};
+		} catch (error: unknown) {
+			return throwWithLogs(error);
+		}
 	},
 
 	env(result: PostgresResult, external?: boolean): Record<string, string> {

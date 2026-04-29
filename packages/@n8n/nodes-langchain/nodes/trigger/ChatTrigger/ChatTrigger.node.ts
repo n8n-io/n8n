@@ -141,7 +141,10 @@ const commonOptionsFields: INodeProperties[] = [
 		],
 		default: 'notSupported',
 		description: 'If loading messages of a previous session should be enabled',
-		builderHint: { message: "Set to 'memory' to persist conversation history across sessions" },
+		builderHint: {
+			message:
+				"This ONLY rehydrates the chat widget UI when the user reopens it — it does NOT give the Agent memory. The Agent gets memory from its own memory subnode regardless of this setting. Only set to 'memory' if the user wants the widget to restore visible history on reload; if so, you MUST also attach a memory subnode to this trigger (use the same memory node as the Agent so widget history matches what the Agent remembers). Otherwise leave as 'notSupported'.",
+		},
 	},
 	{
 		displayName: 'Require Button Click to Start Chat',
