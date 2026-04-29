@@ -15,6 +15,7 @@ jest.mock('@n8n/workflow-sdk', () => ({
 const ctx = {
 	resumeData: undefined,
 	suspend: jest.fn().mockResolvedValue(undefined as never),
+	display: jest.fn(),
 	parentTelemetry: undefined,
 };
 

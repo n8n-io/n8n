@@ -68,7 +68,7 @@ describe('createRichInteractionTool', () => {
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
 		expect(ctx.display).toHaveBeenCalledWith(input);
-		expect(result).toEqual({ type: 'button', value: 'displayed' });
+		expect(result).toEqual({ displayed: true });
 	});
 
 	it('should display when only an image component is present', async () => {
@@ -82,7 +82,7 @@ describe('createRichInteractionTool', () => {
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
 		expect(ctx.display).toHaveBeenCalledWith(input);
-		expect(result).toEqual({ type: 'button', value: 'displayed' });
+		expect(result).toEqual({ displayed: true });
 	});
 
 	it('should suspend for select components', async () => {

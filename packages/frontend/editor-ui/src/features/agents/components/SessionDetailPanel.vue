@@ -93,7 +93,7 @@ function highlightJson(value: unknown, indent = 0): string {
 
 const toolDisplayName = computed((): string => {
 	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
-	const key = builtinToolLabelKey(props.item.toolName);
+	const key = builtinToolLabelKey(props.item.toolName, props.item.toolOutput);
 	return key ? i18n.baseText(key) : (props.item.toolName ?? '');
 });
 

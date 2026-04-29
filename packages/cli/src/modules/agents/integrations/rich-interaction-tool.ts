@@ -151,10 +151,13 @@ export function createRichInteractionTool(platform?: string) {
 
 			if (!hasActionable) {
 				// Display-only: surface the card to the chat without halting the
-				// agent run. The handler returns a synthetic ack so the LLM can
-				// continue in the same turn.
+				// agent run. The handler returns a confirmation ack so the LLM
+				// knows the card was rendered. The runtime emits a separate
+				// `tool-card-display` chunk for the integration layer; the
+				// recorder uses that as the canonical timeline entry and drops
+				// this ack so it doesn't surface as "User selected: displayed".
 				ctx.display(input);
-				return { type: 'button' as const, value: 'displayed' };
+				return { displayed: true };
 			}
 
 			return await ctx.suspend(input);

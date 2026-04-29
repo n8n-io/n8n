@@ -39,7 +39,7 @@ const infoText = computed((): string => {
 		case 'agent':
 			return truncate(it.content ?? '', 120);
 		case 'tool': {
-			const key = builtinToolLabelKey(it.toolName);
+			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
 			return key ? i18n.baseText(key) : (it.toolName ?? '');
 		}
 		case 'workflow':

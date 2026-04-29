@@ -57,7 +57,7 @@ function searchableText(item: TimelineItem): string {
 	parts.push(item.content, item.toolName, item.workflowName, item.nodeDisplayName);
 
 	// Built-in tool friendly label
-	const toolKey = builtinToolLabelKey(item.toolName);
+	const toolKey = builtinToolLabelKey(item.toolName, item.toolOutput);
 	if (toolKey) parts.push(i18n.baseText(toolKey));
 
 	return parts

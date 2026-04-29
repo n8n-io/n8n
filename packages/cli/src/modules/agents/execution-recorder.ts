@@ -82,6 +82,15 @@ export class ExecutionRecorder {
 
 	private timeline: TimelineEvent[] = [];
 
+	/**
+	 * toolCallIds whose timeline entry has been settled by a `tool-card-display`
+	 * chunk. The runtime emits both the side-effect chunk AND a regular
+	 * `tool-result` for the same toolCallId; without this set the recorder
+	 * would create a duplicate timeline entry plus stash the synthetic
+	 * LLM-visible ack as the canonical output.
+	 */
+	private settledByDisplay = new Set<string>();
+
 	/** Wall-clock when the first text-delta of the current segment arrived. */
 	private textStartTime: number | null = null;
 
@@ -135,28 +144,11 @@ export class ExecutionRecorder {
 					timestamp: Date.now(),
 				});
 				break;
-			case 'tool-card-display': {
-				this.flushTextBuffer();
-				const now = Date.now();
-				this.toolCalls.push({
-					name: chunk.toolName,
-					input: chunk.payload,
-					output: { displayed: true },
-				});
-				const entry = this.registry.get(chunk.toolName);
-				this.timeline.push({
-					type: 'tool-call',
-					kind: entry?.kind ?? 'tool',
-					name: chunk.toolName,
-					toolCallId: chunk.toolCallId,
-					input: chunk.payload,
-					output: { displayed: true },
-					startTime: now,
-					endTime: now,
-					success: true,
+			case 'tool-card-display':
+				this.settleDisplayChunk(chunk.toolName, chunk.toolCallId, chunk.payload, {
+					displayed: true,
 				});
 				break;
-			}
 			case 'working-memory-update':
 				this.flushTextBuffer();
 				this.workingMemory = chunk.content;
@@ -217,6 +209,68 @@ export class ExecutionRecorder {
 	}
 
 	/**
+	 * Settle the timeline entry for a tool that emitted a side-effect chunk
+	 * (`tool-card-display`) instead of a normal result. The runtime emits the
+	 * side-effect chunk *and* a regular `tool-result` for the same toolCallId
+	 * — without this dedup the timeline ends up with one duplicated row whose
+	 * output is the LLM-visible synthetic ack, plus a second row from the
+	 * side-effect chunk.
+	 *
+	 * Strategy: find the open `tool-call` timeline entry (created by the
+	 * preceding `tool-call` chunk), update it in-place with the canonical
+	 * input/output of the side-effect, and mark the toolCallId so the later
+	 * `tool-result` is a no-op for both flat and timeline tracking.
+	 */
+	private settleDisplayChunk(
+		name: string,
+		toolCallId: string,
+		input: unknown,
+		output: unknown,
+	): void {
+		this.flushTextBuffer();
+		this.settledByDisplay.add(toolCallId);
+
+		const open = [...this.timeline]
+			.reverse()
+			.find(
+				(e): e is TimelineEvent & { type: 'tool-call' } =>
+					e.type === 'tool-call' && e.toolCallId === toolCallId && e.endTime === 0,
+			);
+		const now = Date.now();
+		if (open) {
+			open.input = input;
+			open.output = output;
+			open.endTime = now;
+			open.success = true;
+		} else {
+			// Defensive: no preceding `tool-call` chunk was recorded (e.g. on
+			// HITL resume the SDK doesn't replay it). Synthesize a fresh entry.
+			const entry = this.registry.get(name);
+			this.timeline.push({
+				type: 'tool-call',
+				kind: entry?.kind ?? 'tool',
+				name,
+				toolCallId,
+				input,
+				output,
+				startTime: now,
+				endTime: now,
+				success: true,
+			});
+		}
+
+		const flatOpen = [...this.toolCalls]
+			.reverse()
+			.find((tc) => tc.name === name && tc.output === undefined);
+		if (flatOpen) {
+			flatOpen.input = input;
+			flatOpen.output = output;
+		} else {
+			this.toolCalls.push({ name, input, output });
+		}
+	}
+
+	/**
 	 * Record a discrete `tool-call` chunk from the stream. Maintains both the
 	 * flat `toolCalls` array (backward compat) and the ordered timeline. The
 	 * matching `tool-result` chunk closes the timeline entry.
@@ -262,6 +316,13 @@ export class ExecutionRecorder {
 		output: unknown,
 		isError: boolean,
 	): void {
+		// If this toolCallId already settled via a `tool-card-display` chunk,
+		// drop the synthetic ack the LLM saw — the display payload is the
+		// canonical record.
+		if (this.settledByDisplay.has(toolCallId)) {
+			return;
+		}
+
 		const pendingFlat = [...this.toolCalls]
 			.reverse()
 			.find((tc) => tc.name === name && tc.output === undefined);

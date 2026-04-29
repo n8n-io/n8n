@@ -61,15 +61,39 @@ export function kindColorToken(kind: EventKind): string {
  * than their raw machine name. Returns `null` for any tool not in the map so
  * callers fall back to the raw `toolName`.
  */
-export type BuiltinToolLabelKey = 'agentSessions.timeline.tool.richInteraction';
+export type BuiltinToolLabelKey =
+	| 'agentSessions.timeline.tool.richInteraction'
+	| 'agentSessions.timeline.tool.richInteractionDisplay';
 
-export function builtinToolLabelKey(toolName: string | undefined): BuiltinToolLabelKey | null {
+/**
+ * Resolve the i18n label for a tool entry. Some built-in tools (currently
+ * `rich_interaction`) have two semantically distinct modes — interactive
+ * (suspends, awaits user input) vs display-only (renders a card and the
+ * agent continues). We pick the label based on the recorded output: the
+ * runtime stamps `{ displayed: true }` for display-only calls and a button/
+ * select payload for interactive ones.
+ */
+export function builtinToolLabelKey(
+	toolName: string | undefined,
+	output?: unknown,
+): BuiltinToolLabelKey | null {
 	switch (toolName) {
 		case 'rich_interaction':
-			return 'agentSessions.timeline.tool.richInteraction';
+			return isDisplayOutput(output)
+				? 'agentSessions.timeline.tool.richInteractionDisplay'
+				: 'agentSessions.timeline.tool.richInteraction';
 		default:
 			return null;
 	}
+}
+
+function isDisplayOutput(output: unknown): boolean {
+	return (
+		typeof output === 'object' &&
+		output !== null &&
+		'displayed' in output &&
+		(output as { displayed: unknown }).displayed === true
+	);
 }
 
 export function formatDuration(ms: number): string {

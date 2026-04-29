@@ -165,6 +165,43 @@ describe('ExecutionRecorder', () => {
 				output: { displayed: true },
 			});
 		});
+
+		it('produces a single timeline entry when tool-call, tool-card-display, and tool-result all fire for the same toolCallId', () => {
+			const recorder = new ExecutionRecorder();
+
+			const cardPayload = {
+				components: [{ type: 'image', url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
+			};
+
+			// Realistic stream order: tool-call (LLM picks the tool) → handler
+			// runs and calls ctx.display() → runtime emits tool-card-display →
+			// handler returns synthetic ack → runtime emits tool-result.
+			recorder.record(makeToolCallChunk('rich_interaction', cardPayload, 'tc1'));
+			recorder.record({
+				type: 'tool-card-display',
+				runId: 'r1',
+				toolCallId: 'tc1',
+				toolName: 'rich_interaction',
+				payload: cardPayload,
+			} as StreamChunk);
+			recorder.record(makeToolResultChunk('rich_interaction', { displayed: true }, 'tc1'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			// Exactly one timeline entry — display chunk settled the open
+			// tool-call entry; the subsequent tool-result was a no-op.
+			const toolEvents = record.timeline.filter((e) => e.type === 'tool-call');
+			expect(toolEvents).toHaveLength(1);
+			if (toolEvents[0].type === 'tool-call') {
+				expect(toolEvents[0].toolCallId).toBe('tc1');
+				expect(toolEvents[0].output).toEqual({ displayed: true });
+			}
+
+			// Exactly one flat entry — same dedup applied.
+			expect(record.toolCalls).toHaveLength(1);
+			expect(record.toolCalls[0].output).toEqual({ displayed: true });
+		});
 	});
 
 	describe('backward compat', () => {
