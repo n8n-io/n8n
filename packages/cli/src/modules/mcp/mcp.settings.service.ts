@@ -18,6 +18,8 @@ const KEY = 'mcp.access.enabled';
 
 const BULK_CHUNK_SIZE = 500;
 
+const WORKFLOW_SETTINGS_FIELDS: Array<keyof WorkflowEntity> = ['id', 'settings'];
+
 const WORKFLOW_CHECKSUM_FIELDS: Array<keyof WorkflowEntity> = [
 	'id',
 	'name',
@@ -128,12 +130,13 @@ export class McpSettingsService {
 					const chunkNoOp: string[] = [];
 					const now = new Date();
 
-					const rows = await trx.find(WorkflowEntity, {
+					const settingsRows = await trx.find(WorkflowEntity, {
 						where: { id: In(chunk), isArchived: false },
-						select: WORKFLOW_CHECKSUM_FIELDS,
+						select: WORKFLOW_SETTINGS_FIELDS,
 					});
+					const nextSettingsByWorkflowId = new Map<string, IWorkflowSettings>();
 
-					for (const row of rows) {
+					for (const row of settingsRows) {
 						if (row.settings?.availableInMCP === availableInMCP) {
 							chunkNoOp.push(row.id);
 							continue;
@@ -143,6 +146,22 @@ export class McpSettingsService {
 							{ ...(row.settings ?? {}), availableInMCP },
 							this.globalConfig.executions.timeout,
 						);
+
+						nextSettingsByWorkflowId.set(row.id, nextSettings);
+					}
+
+					if (nextSettingsByWorkflowId.size === 0) {
+						return { written: chunkWritten, noOp: chunkNoOp };
+					}
+
+					const rows = await trx.find(WorkflowEntity, {
+						where: { id: In([...nextSettingsByWorkflowId.keys()]), isArchived: false },
+						select: WORKFLOW_CHECKSUM_FIELDS,
+					});
+
+					for (const row of rows) {
+						const nextSettings = nextSettingsByWorkflowId.get(row.id);
+						if (nextSettings === undefined) continue;
 
 						await trx.update(
 							WorkflowEntity,

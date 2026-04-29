@@ -108,7 +108,10 @@ describe('McpSettingsService', () => {
 			const find = jest.fn(
 				async (
 					_entity: unknown,
-					options: { where: { id: FindOperator<string[]>; isArchived: boolean } },
+					options: {
+						where: { id: FindOperator<string[]>; isArchived: boolean };
+						select?: Array<keyof WorkflowEntity>;
+					},
 				) => {
 					const ids = options.where.id.value;
 					return ids
@@ -269,6 +272,9 @@ describe('McpSettingsService', () => {
 
 			// Only wf-1 needed a real write. wf-2 was already in the target state.
 			expect(stubs.update).toHaveBeenCalledTimes(1);
+			expect(stubs.find).toHaveBeenCalledTimes(2);
+			expect(stubs.find.mock.calls[0][1].select).toEqual(['id', 'settings']);
+			expect(stubs.find.mock.calls[1][1].where.id.value).toEqual(['wf-1']);
 			// Both ids are reported as updated (the DB is in the requested state
 			// for both). No-ops go last in the list.
 			expect(result).toEqual({
@@ -305,6 +311,7 @@ describe('McpSettingsService', () => {
 			const result = await service.bulkSetAvailableInMCP(user, dto);
 
 			expect(stubs.update).not.toHaveBeenCalled();
+			expect(stubs.find).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
@@ -534,9 +541,9 @@ describe('McpSettingsService', () => {
 
 			const result = await service.bulkSetAvailableInMCP(user, dto);
 
-			// Two transactions (one per chunk), each with its own find call.
+			// Two transactions (one per chunk), each with a settings pass and checksum pass.
 			expect(stubs.manager.transaction).toHaveBeenCalledTimes(2);
-			expect(stubs.find).toHaveBeenCalledTimes(2);
+			expect(stubs.find).toHaveBeenCalledTimes(4);
 			expect(result.updatedCount).toBe(600);
 			expect(result.failedCount).toBe(0);
 		});
