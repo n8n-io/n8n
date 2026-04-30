@@ -21,26 +21,23 @@ packages/@n8n/workflow-sdk/                             @n8n-io/catalysts
 packages/@n8n/task-runner/                              @n8n-io/catalysts
 packages/@n8n/task-runner-python/                       @n8n-io/catalysts
 packages/@n8n/expression-runtime/                       @n8n-io/catalysts
-packages/@n8n/codemirror-lang/                          @n8n-io/catalysts
-packages/@n8n/codemirror-lang-html/                     @n8n-io/catalysts
-packages/@n8n/codemirror-lang-sql/                      @n8n-io/catalysts
 packages/@n8n/db/                                       @n8n-io/catalysts
 packages/@n8n/json-schema-to-zod/                       @n8n-io/catalysts
 packages/@n8n/crdt/                                     @n8n-io/catalysts
 packages/@n8n/extension-sdk/                            @n8n-io/catalysts
-packages/@n8n/eslint-config/                            @n8n-io/catalysts
-packages/@n8n/typescript-config/                        @n8n-io/catalysts
+packages/@n8n/eslint-config/                            @n8n-io/qa-dx
+packages/@n8n/typescript-config/                        @n8n-io/qa-dx
 
 packages/@n8n/db/src/migrations/                        @n8n-io/migrations-review
 
 # Top-level paths
-scripts/                                                @n8n-io/ci-admins
-patches/                                                @n8n-io/catalysts
+scripts/                                                @n8n-io/qa-dx
+patches/                                                @n8n-io/qa-dx
 assets/                                                 @n8n-io/adore
-security/                                               @n8n-io/ci-admins
+security/                                               @n8n-io/qa-dx
 
-# @n8n/cli (default: Catalysts)
-packages/@n8n/cli/                                      @n8n-io/catalysts
+# @n8n/cli
+packages/@n8n/cli/                                      @n8n-io/adore
 packages/@n8n/cli/src/commands/credential/              @n8n-io/iam
 packages/@n8n/cli/src/commands/user/                    @n8n-io/iam
 packages/@n8n/cli/src/commands/data-table/              @n8n-io/adore
@@ -50,7 +47,7 @@ packages/@n8n/cli/src/commands/source-control/          @n8n-io/ligo
 packages/@n8n/cli/src/commands/variable/                @n8n-io/ligo
 packages/@n8n/cli/src/commands/skill/                   @n8n-io/ai
 
-# packages/cli (default: Catalysts)
+# packages/cli
 packages/cli/                                           @n8n-io/catalysts
 packages/cli/src/scaling/                               @n8n-io/catalysts
 packages/cli/src/concurrency/                           @n8n-io/catalysts
@@ -92,8 +89,8 @@ packages/cli/src/modules/source-control.ee/             @n8n-io/ligo
 packages/cli/src/modules/external-secrets.ee/           @n8n-io/ligo
 packages/cli/src/modules/insights/                      @n8n-io/ligo
 
-packages/cli/src/collaboration/                         @n8n-io/adore
-packages/cli/src/binary-data/                           @n8n-io/adore
+packages/cli/src/collaboration/                         @n8n-io/catalysts
+packages/cli/src/binary-data/                           @n8n-io/catalysts
 packages/cli/src/posthog/                               @n8n-io/adore
 packages/cli/src/modules/data-table/                    @n8n-io/adore
 
@@ -103,38 +100,37 @@ packages/cli/src/tool-generation/                       @n8n-io/ai
 packages/cli/src/modules/workflow-builder/              @n8n-io/ai
 packages/cli/src/modules/mcp/                           @n8n-io/ai
 packages/cli/src/modules/quick-connect/                 @n8n-io/ai
-
-packages/cli/src/modules/chat-hub/                      @n8n-io/ai # Suggesting a new @n8n-io/chat team
+packages/cli/src/modules/chat-hub/                      @n8n-io/ai
 
 packages/cli/src/modules/community-packages/            @n8n-io/nodes
 
 # CLI controllers
-packages/cli/src/controllers/auth.controller.ts         @n8n-io/iam
-packages/cli/src/controllers/invitation.controller.ts   @n8n-io/iam
-packages/cli/src/controllers/me.controller.ts           @n8n-io/iam
-packages/cli/src/controllers/mfa.controller.ts          @n8n-io/iam
-packages/cli/src/controllers/owner.controller.ts        @n8n-io/iam
-packages/cli/src/controllers/password-reset.controller.ts @n8n-io/iam
-packages/cli/src/controllers/role.controller.ts         @n8n-io/iam
-packages/cli/src/controllers/users.controller.ts        @n8n-io/iam
-packages/cli/src/controllers/user-settings.controller.ts @n8n-io/iam
-packages/cli/src/controllers/api-keys.controller.ts     @n8n-io/iam
-packages/cli/src/controllers/security-settings.controller.ts @n8n-io/iam
-packages/cli/src/controllers/oauth/                     @n8n-io/iam
-packages/cli/src/controllers/ai.controller.ts           @n8n-io/ai
-packages/cli/src/controllers/annotation-tags.controller.ee.ts @n8n-io/ai
-packages/cli/src/controllers/cta.controller.ts          @n8n-io/adore
-packages/cli/src/controllers/folder.controller.ts       @n8n-io/adore
-packages/cli/src/controllers/tags.controller.ts         @n8n-io/adore
-packages/cli/src/controllers/binary-data.controller.ts  @n8n-io/adore
-packages/cli/src/controllers/dynamic-templates.controller.ts @n8n-io/adore
-packages/cli/src/controllers/posthog.controller.ts      @n8n-io/adore
-packages/cli/src/controllers/translation.controller.ts  @n8n-io/adore
-packages/cli/src/controllers/project.controller.ts      @n8n-io/ligo
-packages/cli/src/controllers/workflow-statistics.controller.ts @n8n-io/ligo
-packages/cli/src/controllers/node-types.controller.ts   @n8n-io/nodes
-packages/cli/src/controllers/dynamic-node-parameters.controller.ts @n8n-io/nodes
-packages/cli/src/controllers/e2e.controller.ts          @n8n-io/qa
+packages/cli/src/controllers/auth.controller.ts         						@n8n-io/iam
+packages/cli/src/controllers/invitation.controller.ts   						@n8n-io/iam
+packages/cli/src/controllers/me.controller.ts           						@n8n-io/iam
+packages/cli/src/controllers/mfa.controller.ts          						@n8n-io/iam
+packages/cli/src/controllers/owner.controller.ts        						@n8n-io/iam
+packages/cli/src/controllers/password-reset.controller.ts 					@n8n-io/iam
+packages/cli/src/controllers/role.controller.ts         						@n8n-io/iam
+packages/cli/src/controllers/users.controller.ts        						@n8n-io/iam
+packages/cli/src/controllers/user-settings.controller.ts 						@n8n-io/iam
+packages/cli/src/controllers/api-keys.controller.ts     						@n8n-io/iam
+packages/cli/src/controllers/security-settings.controller.ts 				@n8n-io/iam
+packages/cli/src/controllers/oauth/                     						@n8n-io/iam
+packages/cli/src/controllers/ai.controller.ts           						@n8n-io/ai
+packages/cli/src/controllers/annotation-tags.controller.ee.ts 			@n8n-io/ai
+packages/cli/src/controllers/cta.controller.ts         							@n8n-io/adore
+packages/cli/src/controllers/folder.controller.ts       						@n8n-io/adore
+packages/cli/src/controllers/tags.controller.ts         						@n8n-io/adore
+packages/cli/src/controllers/binary-data.controller.ts  						@n8n-io/adore
+packages/cli/src/controllers/dynamic-templates.controller.ts 				@n8n-io/adore
+packages/cli/src/controllers/posthog.controller.ts      						@n8n-io/adore
+packages/cli/src/controllers/translation.controller.ts  						@n8n-io/adore
+packages/cli/src/controllers/project.controller.ts      						@n8n-io/ligo
+packages/cli/src/controllers/workflow-statistics.controller.ts 			@n8n-io/ligo
+packages/cli/src/controllers/node-types.controller.ts   						@n8n-io/nodes
+packages/cli/src/controllers/dynamic-node-parameters.controller.ts 	@n8n-io/nodes
+packages/cli/src/controllers/e2e.controller.ts          						@n8n-io/qa-dx
 
 # CLI services
 packages/cli/src/services/jwt.service.ts                @n8n-io/iam
@@ -166,18 +162,18 @@ packages/cli/src/services/dynamic-node-parameters.service.ts @n8n-io/nodes
 
 # Adore
 
-packages/frontend/editor-ui/                            @n8n-io/adore
+packages/frontend/editor-ui/                            @n8n-io/frontend
 packages/frontend/editor-ui/src/features/ai/            @n8n-io/ai
 packages/frontend/editor-ui/src/features/credentials/   @n8n-io/iam
 packages/frontend/editor-ui/src/features/execution/     @n8n-io/ligo
 packages/frontend/editor-ui/src/features/project-roles/ @n8n-io/iam
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/nodes
 
-packages/frontend/@n8n/design-system/                   @n8n-io/adore
-packages/frontend/@n8n/stores/                          @n8n-io/adore
-packages/frontend/@n8n/composables/                     @n8n-io/adore
-packages/frontend/@n8n/rest-api-client/                 @n8n-io/adore
-packages/frontend/@n8n/storybook/                       @n8n-io/adore
+packages/frontend/@n8n/design-system/                   @n8n-io/design
+packages/frontend/@n8n/stores/                          @n8n-io/design
+packages/frontend/@n8n/composables/                     @n8n-io/design
+packages/frontend/@n8n/rest-api-client/                 @n8n-io/design
+packages/frontend/@n8n/storybook/                       @n8n-io/design
 packages/frontend/@n8n/i18n/                            @n8n-io/adore
 packages/@n8n/stylelint-config/                         @n8n-io/adore
 
@@ -192,17 +188,20 @@ packages/frontend/@n8n/chat/                            @n8n-io/ai
 
 # Chat
 
-packages/@n8n/chat-hub/                                 @n8n-io/ai # Suggesting a new @n8n-io/chat team
+packages/@n8n/chat-hub/                                 @n8n-io/ai
 
 # Nodes
 
+packages/@n8n/codemirror-lang/                          @n8n-io/nodes
+packages/@n8n/codemirror-lang-html/                     @n8n-io/nodes
+packages/@n8n/codemirror-lang-sql/                      @n8n-io/nodes
 packages/nodes-base/                                    @n8n-io/nodes
 packages/@n8n/decorators/                               @n8n-io/nodes
 packages/node-dev/                                      @n8n-io/nodes
-packages/@n8n/create-node/                              @n8n-io/nodes
-packages/@n8n/node-cli/                                 @n8n-io/nodes
-packages/@n8n/imap/                                     @n8n-io/nodes
-packages/@n8n/syslog-client/                            @n8n-io/nodes
+packages/@n8n/create-node/                              @n8n-io/iam
+packages/@n8n/node-cli/                                 @n8n-io/iam
+packages/@n8n/imap/                                     @n8n-io/iam
+packages/@n8n/syslog-client/                            @n8n-io/iam
 packages/@n8n/scan-community-package/                   @n8n-io/nodes
 packages/@n8n/eslint-plugin-community-nodes/            @n8n-io/nodes
 
@@ -217,14 +216,11 @@ packages/extensions/insights/                           @n8n-io/ligo
 
 # CI/CD
 
-.github/workflows                                       @n8n-io/ci-admins
-.github/scripts                                         @n8n-io/ci-admins
-.github/actions                                         @n8n-io/ci-admins
-.github/poutine-rules                                   @n8n-io/ci-admins
-docker/                                                 @n8n-io/ci-admins
+.github/                                       					@n8n-io/qa-dx
+docker/                                                 @n8n-io/qa-dx
 
 # QA
 
-packages/testing/                                       @n8n-io/qa
-packages/@n8n/benchmark/                                @n8n-io/qa
-packages/@n8n/vitest-config/                            @n8n-io/qa
+packages/testing/                                       @n8n-io/qa-dx
+packages/@n8n/benchmark/                                @n8n-io/qa-dx
+packages/@n8n/vitest-config/                            @n8n-io/qa-dx
