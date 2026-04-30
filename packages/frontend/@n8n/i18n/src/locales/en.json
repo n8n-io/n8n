@@ -3957,6 +3957,8 @@
 	"workflows.concurrentChanges.confirmMessage.message": "Someone saved this workflow while you were editing it. You can <a href=\"{url}\" target=\"_blank\">view their version</a> (in new tab).<br/><br/>Overwrite their changes with yours?",
 	"workflows.concurrentChanges.confirmMessage.cancelButtonText": "Cancel",
 	"workflows.concurrentChanges.confirmMessage.confirmButtonText": "Overwrite and Save",
+	"workflows.remoteUpdateBlocked.title": "Workflow updated elsewhere",
+	"workflows.remoteUpdateBlocked.message": "This workflow was updated in another tab or by another user. We kept your unsaved changes, so the latest version was not applied here. Save to overwrite, or reload to get the latest version.",
 	"workflows.autodeactivated": "Workflow auto-deactivated",
 	"workflows.ai.starter.collection.callout": "Learn how to build AI Agents in n8n",
 	"workflows.ai.starter.collection.card": "Learn how to build AI Agents",
