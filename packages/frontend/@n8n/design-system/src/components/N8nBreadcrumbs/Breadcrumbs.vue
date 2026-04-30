@@ -246,7 +246,7 @@ const handleTooltipClose = () => {
 					:class="{
 						[$style.item]: true,
 						[$style.current]:
-							props.highlightLastItem && index.length > 1 && index === items.length - 1,
+							props.highlightLastItem && items.length > 1 && index === items.length - 1,
 						[$style.dragging]: props.dragActive,
 					}"
 					:title="item.label"

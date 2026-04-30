@@ -167,7 +167,7 @@ function onBreadcrumbSelect(item: PathItem) {
 }
 
 .crumbSeparator {
-	color: var(--text-color--subtler);
+	color: var(--border-color);
 	margin: 0 var(--spacing--4xs);
 	user-select: none;
 }
