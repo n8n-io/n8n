@@ -24,15 +24,10 @@ import {
 	packWorkspaceSdk,
 	type WorkspaceSdkTarball,
 } from './pack-workspace-sdk';
-import { escapeSingleQuotes, runInSandbox, writeFileViaSandbox } from './sandbox-fs';
+import { runInSandbox, writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
 import type { InstanceAiContext } from '../types';
-import {
-	formatNodeCatalogLine,
-	getWorkspaceRoot,
-	SANDBOX_SDK_VERSION,
-	setupSandboxWorkspace,
-} from './sandbox-setup';
+import { formatNodeCatalogLine, getWorkspaceRoot, setupSandboxWorkspace } from './sandbox-setup';
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -44,10 +39,6 @@ const NOOP_LOGGER: Logger = {
 export interface BuilderWorkspace {
 	workspace: Workspace;
 	cleanup: () => Promise<void>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
 }
 
 async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<void> {
@@ -73,61 +64,6 @@ async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<voi
 		} catch {
 			// Best-effort cleanup
 		}
-	}
-}
-
-async function ensureWorkflowSdkAvailable(
-	workspace: Workspace,
-	root: string,
-	logger: Logger,
-): Promise<void> {
-	const resolveCommand =
-		'node -e "const p=require.resolve(\'@n8n/workflow-sdk/package.json\'); const pkg=require(p); console.log(JSON.stringify({version: pkg.version, resolvedPath: p}));"';
-	const resolveCheck = await runInSandbox(workspace, resolveCommand, root);
-	if (resolveCheck.exitCode === 0) return;
-
-	logger.warn('Workflow SDK is not resolvable in builder sandbox; repairing install', {
-		exitCode: resolveCheck.exitCode,
-		stderr: resolveCheck.stderr,
-		stdout: resolveCheck.stdout,
-	});
-
-	const pinnedInstall = await runInSandbox(
-		workspace,
-		`npm install '@n8n/workflow-sdk@${escapeSingleQuotes(SANDBOX_SDK_VERSION)}' --ignore-scripts`,
-		root,
-	);
-	const isUnpublishedPinnedVersion =
-		pinnedInstall.exitCode !== 0 &&
-		(pinnedInstall.stderr.includes('ETARGET') ||
-			pinnedInstall.stderr.includes('No matching version found'));
-	const install = isUnpublishedPinnedVersion
-		? await runInSandbox(workspace, "npm install '@n8n/workflow-sdk' --ignore-scripts", root)
-		: pinnedInstall;
-	if (isUnpublishedPinnedVersion) {
-		logger.warn('Pinned workflow SDK version is unavailable on npm; installed registry default', {
-			pinnedVersion: SANDBOX_SDK_VERSION,
-			stderr: pinnedInstall.stderr,
-			stdout: pinnedInstall.stdout,
-		});
-	}
-	if (install.exitCode !== 0) {
-		logger.error('Failed to repair workflow SDK install in builder sandbox', {
-			exitCode: install.exitCode,
-			stderr: install.stderr,
-			stdout: install.stdout,
-		});
-		throw new Error(`Failed to install @n8n/workflow-sdk in sandbox: ${install.stderr}`);
-	}
-
-	const repairedCheck = await runInSandbox(workspace, resolveCommand, root);
-	if (repairedCheck.exitCode !== 0) {
-		logger.error('Workflow SDK is still not resolvable after repair', {
-			exitCode: repairedCheck.exitCode,
-			stderr: repairedCheck.stderr,
-			stdout: repairedCheck.stdout,
-		});
-		throw new Error(`@n8n/workflow-sdk is not resolvable in sandbox: ${repairedCheck.stderr}`);
 	}
 }
 
@@ -173,7 +109,7 @@ export class BuilderSandboxFactory {
 
 		const install = await runInSandbox(
 			workspace,
-			`npm install ${remotePath} --ignore-scripts --force`,
+			`npm install ${remotePath} --no-save --ignore-scripts --force`,
 			root,
 		);
 		if (install.exitCode !== 0) {
@@ -184,36 +120,8 @@ export class BuilderSandboxFactory {
 			throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
 		}
 
-		const resolveCheck = await runInSandbox(
-			workspace,
-			'node -e "const p=require.resolve(\'@n8n/workflow-sdk/package.json\'); const pkg=require(p); console.log(JSON.stringify({version: pkg.version, resolvedPath: p}));"',
-			root,
-		);
-		let resolvedVersion: string | undefined;
-		let resolvedPath: string | undefined;
-		try {
-			const parsed: unknown = JSON.parse(resolveCheck.stdout.trim());
-			if (isRecord(parsed)) {
-				resolvedVersion = typeof parsed.version === 'string' ? parsed.version : undefined;
-				resolvedPath = typeof parsed.resolvedPath === 'string' ? parsed.resolvedPath : undefined;
-			}
-		} catch {
-			// Keep the raw command output in the debug log below.
-		}
-
-		if (resolveCheck.exitCode !== 0) {
-			this.logger.error('Linked workspace SDK is not resolvable in sandbox', {
-				exitCode: resolveCheck.exitCode,
-				stderr: resolveCheck.stderr,
-				stdout: resolveCheck.stdout,
-			});
-			throw new Error(`Linked workspace SDK is not resolvable: ${resolveCheck.stderr}`);
-		}
-
 		this.logger.info('Linked workspace SDK into sandbox', {
 			version: packed.version,
-			resolvedVersion,
-			resolvedPath,
 			sdkPath: packed.sdkPath,
 		});
 	}
@@ -360,7 +268,6 @@ export class BuilderSandboxFactory {
 			}
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
-			await ensureWorkflowSdkAvailable(workspace, root, this.logger);
 
 			return {
 				workspace,
@@ -415,7 +322,6 @@ export class BuilderSandboxFactory {
 			}
 
 			await this.linkWorkspaceSdkIfEnabled(workspace, root);
-			await ensureWorkflowSdkAvailable(workspace, root, this.logger);
 
 			return {
 				workspace,
@@ -460,8 +366,6 @@ export class BuilderSandboxFactory {
 		});
 		await workspace.init();
 		await setupSandboxWorkspace(workspace, context);
-		const root = await getWorkspaceRoot(workspace);
-		await ensureWorkflowSdkAvailable(workspace, root, this.logger);
 
 		return {
 			workspace,

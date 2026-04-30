@@ -66,7 +66,7 @@ function resolveHostDepVersion(name: string): string {
  *      rebuilds the image. Floating `'*'` never changes the bytes, so stale
  *      images are reused indefinitely.
  */
-export const SANDBOX_SDK_VERSION = resolveHostDepVersion('@n8n/workflow-sdk');
+const SANDBOX_SDK_VERSION = resolveHostDepVersion('@n8n/workflow-sdk');
 const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
 
 /**
