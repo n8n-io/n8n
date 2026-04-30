@@ -119,6 +119,13 @@ export const CSS_VARIABLE_CONTROLS: CssVarControl[] = [
 	// ── Input fields ──────────────────────────────────────────────────────────
 	// Colors
 	{
+		variable: '--color-input-bg',
+		labelKey: 'formStep.appearance.control.colorInputBg',
+		type: 'color',
+		group: 'input',
+		default: '#ffffff',
+	},
+	{
 		variable: '--color-label',
 		labelKey: 'formStep.appearance.control.colorLabel',
 		type: 'color',
@@ -248,6 +255,13 @@ export const CSS_VARIABLE_CONTROLS: CssVarControl[] = [
 		type: 'px',
 		group: 'button',
 		default: '48px',
+	},
+	{
+		variable: '--font-size-submit-btn',
+		labelKey: 'formStep.appearance.control.fontSizeSubmitBtn',
+		type: 'px',
+		group: 'button',
+		default: '14px',
 	},
 	{
 		variable: '--font-size-link',

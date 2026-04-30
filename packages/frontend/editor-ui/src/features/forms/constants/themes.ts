@@ -10,6 +10,7 @@ const DARK_OVERRIDES: Record<string, string> = {
 	'--color-header': '#e4e5e7',
 	'--color-header-subtext': '#9b9da3',
 	'--color-label': '#c8c9cb',
+	'--color-input-bg': '#232428',
 	'--color-input-border': '#4a4b50',
 	'--color-input-text': '#b0b2b7',
 	'--color-focus-border': '#7c6ce0',

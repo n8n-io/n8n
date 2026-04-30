@@ -167,13 +167,13 @@ function onReset() {
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--3xs) 0;
+	padding: var(--spacing--3xs) var(--spacing--3xs) var(--spacing--3xs) 0;
 	margin-bottom: var(--spacing--sm);
 }
 
 .themeSelect {
 	flex-shrink: 0;
-	width: 140px;
+	width: 200px;
 }
 
 .nodeName {
