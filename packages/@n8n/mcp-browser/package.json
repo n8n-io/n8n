@@ -4,9 +4,6 @@
   "description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "bin": {
-    "mcp-browser": "dist/server.js"
-  },
   "files": [
     "dist/**/*"
   ],

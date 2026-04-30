@@ -2,9 +2,6 @@
   "name": "@n8n/computer-use",
   "version": "0.5.0",
   "description": "Local AI gateway for n8n AI Assistant — filesystem, shell, screenshots, mouse/keyboard, and browser automation",
-  "bin": {
-    "n8n-computer-use": "dist/cli.js"
-  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/cli.js http://localhost:5678 --allowed-origins http://localhost:5678",
