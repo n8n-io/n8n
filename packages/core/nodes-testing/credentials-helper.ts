@@ -50,6 +50,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return undefined;
 	}
 
+	async runPreAuthentication(
+		_helpers: IHttpRequestHelper,
+		_credentials: ICredentialDataDecryptedObject,
+		_typeName: string,
+	): Promise<ICredentialDataDecryptedObject | undefined> {
+		return undefined;
+	}
+
 	getParentTypes(_name: string): string[] {
 		return [];
 	}
