@@ -615,6 +615,11 @@ const sectionViewOptions = [
 	{ label: 'Raw', value: 'raw' as const, icon: 'json' },
 ];
 
+const sectionViewOptionIcons = {
+	form: 'list',
+	raw: 'json',
+} as const;
+
 /** Path passed to AgentSectionEditor when `showRawSection` is on. */
 const rawSectionPath = computed<string | null>(() => {
 	const key = selectedSection.value;
@@ -1181,7 +1186,7 @@ function onSwitchAgent(nextAgentId: string) {
 							>
 								<template #option="option">
 									<span :class="$style.viewModeOption">
-										<N8nIcon :icon="option.icon" :size="14" />
+										<N8nIcon :icon="sectionViewOptionIcons[option.value]" :size="14" />
 										<span>{{ option.label }}</span>
 									</span>
 								</template>
@@ -1197,7 +1202,7 @@ function onSwitchAgent(nextAgentId: string) {
 						>
 							<template #option="option">
 								<span :class="$style.viewModeOption">
-									<N8nIcon :icon="option.icon" :size="14" />
+									<N8nIcon :icon="sectionViewOptionIcons[option.value]" :size="14" />
 									<span>{{ option.label }}</span>
 								</span>
 							</template>

@@ -1,6 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
@@ -60,6 +60,19 @@ vi.mock('@n8n/design-system', () => ({
 }));
 
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
+
+type DropdownStubWrapper = VueWrapper<{
+	options: Array<{ value: string; label?: string; disabled?: boolean }>;
+	$options: unknown;
+	$emit: (event: 'select', value: string) => void;
+}>;
+
+function getSwitcherOptions(wrapper: ReturnType<typeof mountHeader>) {
+	const switcher = wrapper.findComponent(
+		'[data-testid="agent-header-switcher"]',
+	) as DropdownStubWrapper;
+	return switcher.vm.options;
+}
 
 const baseAgent = {
 	id: 'a1',
@@ -165,8 +178,7 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
 		const wrapper = mountHeader();
 		await flushPromises();
-		const nav = wrapper.findComponent('[data-testid="agent-header-switcher"]');
-		const options = nav.props('options') as Array<{ value: string; disabled?: boolean }>;
+		const options = getSwitcherOptions(wrapper);
 		expect(options.map((option) => option.value)).toEqual(['a2']);
 	});
 
@@ -175,12 +187,7 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
 		const wrapper = mountHeader();
 		await flushPromises();
-		const nav = wrapper.findComponent('[data-testid="agent-header-switcher"]');
-		const options = nav.props('options') as Array<{
-			value: string;
-			label: string;
-			disabled?: boolean;
-		}>;
+		const options = getSwitcherOptions(wrapper);
 		expect(options).toHaveLength(1);
 		expect(options[0].disabled).toBe(true);
 		expect(options[0].label).toBe('agents.builder.header.switcher.empty');
@@ -209,7 +216,9 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
 		const wrapper = mountHeader();
 		await flushPromises();
-		const nav = wrapper.findComponent('[data-testid="agent-header-switcher"]');
+		const nav = wrapper.findComponent(
+			'[data-testid="agent-header-switcher"]',
+		) as DropdownStubWrapper;
 		nav.vm.$emit('select', 'a2');
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});

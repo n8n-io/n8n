@@ -33,7 +33,7 @@ defineProps<{
 				</N8nTooltip>
 				<N8nIcon v-else icon="spinner" size="large" :spin="true" :class="$style.toolStepLoading" />
 			</div>
-			<span :class="[$style.toolStepLabel, { [$style.shimmer]: tc.state === 'loading' }]">
+			<span :class="[$style.toolStepLabel, { [$style.shimmer]: tc.state === 'running' }]">
 				{{ formatToolNameForDisplay(tc.tool) }}
 			</span>
 			<span
