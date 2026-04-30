@@ -33,10 +33,9 @@ export function formatCallToolResult(data: Record<string, unknown>): CallToolRes
 export function formatImageResponse(
 	base64Data: string,
 	metadata?: Record<string, unknown>,
+	mimeType: 'image/png' | 'image/jpeg' = 'image/png',
 ): CallToolResult {
-	const content: CallToolResult['content'] = [
-		{ type: 'image', data: base64Data, mimeType: 'image/png' },
-	];
+	const content: CallToolResult['content'] = [{ type: 'image', data: base64Data, mimeType }];
 	if (metadata) {
 		content.push({ type: 'text', text: JSON.stringify(metadata, null, 2) });
 	}

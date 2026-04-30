@@ -54,8 +54,11 @@ CLI flags take precedence over environment variables.
 
 ## Prerequisites
 
-1. **Chrome** (or Brave/Edge) installed
-2. **n8n AI Browser Bridge** extension loaded in Chrome:
+1. **[agent-browser](https://agent-browser.dev/)** CLI on your `PATH` (or set `AGENT_BROWSER_PATH` to the binary).
+   - macOS: `brew install agent-browser`
+   - npm: `npm install -g agent-browser`
+2. **Chrome** (or Brave/Edge) installed
+3. **n8n AI Browser Bridge** extension loaded in Chrome:
    - Open `chrome://extensions`
    - Enable Developer mode
    - Click "Load unpacked" and select the `mcp-browser-extension` directory

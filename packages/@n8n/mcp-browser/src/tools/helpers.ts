@@ -113,7 +113,7 @@ export function createConnectedTool<
 
 				return result;
 			} catch (error) {
-				// Playwright throws TargetClosedError when browser/page dies mid-operation.
+				// Browser automation throws TargetClosedError when browser/page dies mid-operation (legacy).
 				// Re-throw as our typed error so the AI gets a clear message + hint.
 				if (error instanceof Error && error.name === 'TargetClosedError') {
 					return await buildErrorResponse(
@@ -138,7 +138,7 @@ export function createConnectedTool<
 function getConnectionResource(connection: BrowserConnection): string {
 	try {
 		const state = connection.getConnection();
-		// Get live URL from Playwright (not the stale pages map)
+		// Get live URL from the browser adapter when available (not the stale pages map)
 		const liveUrl = state.adapter.getPageUrl(state.activePageId);
 		if (liveUrl) return extractDomain(liveUrl);
 		// Fallback to cached pages map

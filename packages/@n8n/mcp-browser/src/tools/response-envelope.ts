@@ -42,7 +42,7 @@ export async function enrichResponse(
 
 	if (options.autoSnapshot) {
 		try {
-			const snap = await state.adapter.snapshot(pageId);
+			const snap = await state.adapter.snapshot(pageId, undefined, { forEnrichment: true });
 			record.snapshot = snap.tree;
 		} catch {
 			// Snapshot failure shouldn't break the tool response
@@ -113,7 +113,7 @@ export async function buildErrorResponse(
 
 		if (options.autoSnapshot) {
 			try {
-				const snap = await state.adapter.snapshot(pageId);
+				const snap = await state.adapter.snapshot(pageId, undefined, { forEnrichment: true });
 				errorData.snapshot = snap.tree;
 			} catch {
 				// Snapshot failure on error path is expected

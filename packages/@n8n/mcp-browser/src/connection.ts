@@ -89,9 +89,9 @@ export class BrowserConnection {
 
 		await adapter.launch(connectConfig);
 
-		// Two-tier model: listTabs() returns metadata from the relay (no
-		// debugger attachment). Playwright page objects are created lazily
-		// when a tool first interacts with a specific tab.
+		// Two-tier model: listTabs() returns metadata from the relay (no debugger
+		// attachment on every tab). The adapter activates a tab when a tool first
+		// targets that tab ID.
 		const pages = await adapter.listTabs();
 		const pageMap = new Map(pages.map((p) => [p.id, p]));
 
@@ -160,7 +160,7 @@ export class BrowserConnection {
 	}
 
 	private async createAdapter() {
-		const { PlaywrightAdapter } = await import('./adapters/playwright');
-		return new PlaywrightAdapter(this.config);
+		const { AgentBrowserAdapter } = await import('./adapters/agent-browser');
+		return new AgentBrowserAdapter(this.config);
 	}
 }

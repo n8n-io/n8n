@@ -1,5 +1,5 @@
 /**
- * WebSocket server that bridges Playwright MCP and the Chrome extension.
+ * WebSocket server that bridges a CDP automation client (e.g. agent-browser) and the Chrome extension.
  *
  * Near-stateless pass-through: the extension owns all tab state.
  * The relay only caches tab metadata (title/url) for Target.attachedToTarget
@@ -36,7 +36,7 @@ const log = createLogger('relay');
 // Restricted target filtering
 // ---------------------------------------------------------------------------
 
-/** Targets that should not be exposed to Playwright (extension pages, service workers, etc.). */
+/** Targets that should not be exposed to the automation CDP client (extension pages, service workers, etc.). */
 function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolean {
 	const { type, url } = targetInfo;
 	// Only allow page and iframe targets
@@ -67,19 +67,19 @@ export class CDPRelayServer {
 	private readonly cdpPath: string;
 	private readonly extensionPath: string;
 
-	private playwrightWs: WebSocket | null = null;
+	private automationClientWs: WebSocket | null = null;
 	private extensionConn: ExtensionConnection | null = null;
 
 	// ---- Lightweight cache (populated from extension responses) ----
 	/** Cached tab metadata: CDP targetId → { title, url }. Source of truth is extension. */
 	private readonly tabCache = new Map<string, { title: string; url: string }>();
-	/** Tabs that have had Target.attachedToTarget sent to Playwright. */
+	/** Tabs that have had Target.attachedToTarget sent to the automation CDP client. */
 	private readonly activatedTabs = new Set<string>();
 	/** The primary tab ID (first seen). */
 	private primaryTabId: string | undefined;
 	/** The most recently created tab ID (for adapter.newPage() to pick up). */
 	private lastCreatedTabId: string | undefined;
-	/** Browser context ID returned to Playwright (required in targetInfo). */
+	/** Browser context ID returned to the automation CDP client (required in targetInfo). */
 	private browserContextId = 'n8n-default-context';
 
 	private extensionConnectedResolve?: () => void;
@@ -91,7 +91,7 @@ export class CDPRelayServer {
 
 	private readonly connectionTimeoutMs: number;
 
-	/** Grace period allowing the extension to reconnect before tearing down Playwright. */
+	/** Grace period allowing the extension to reconnect before tearing down the CDP client. */
 	private readonly RECONNECT_WINDOW_MS = 15_000;
 	private reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -132,7 +132,7 @@ export class CDPRelayServer {
 		});
 	}
 
-	/** The WebSocket URL Playwright should connectOverCDP to. */
+	/** The WebSocket URL the automation client should connectOverCDP to. */
 	cdpEndpoint(port: number): string {
 		return `ws://127.0.0.1:${port}${this.cdpPath}`;
 	}
@@ -177,7 +177,7 @@ export class CDPRelayServer {
 			clearTimeout(this.reconnectTimer);
 			this.reconnectTimer = undefined;
 		}
-		this.closePlaywrightConnection('Server stopped');
+		this.closeAutomationClientConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
 		this.wss.close();
 		this.httpServer.close();
@@ -197,19 +197,25 @@ export class CDPRelayServer {
 		return this.tabCache.has(id);
 	}
 
+	/** Cached title/url for a tab (sync; used between snapshots). */
+	getCachedTabMeta(id: string): { title: string; url: string } | undefined {
+		return this.tabCache.get(id);
+	}
+
+	/** All known CDP target IDs (sync snapshot of cache keys). */
+	getRegisteredTabIds(): string[] {
+		return [...this.tabCache.keys()];
+	}
+
 	/** List all known tabs, fetching fresh metadata from the extension. */
 	async listTabs(): Promise<Array<{ id: string; title: string; url: string }>> {
 		if (this.extensionConn) {
 			const result = (await this.extensionConn.send('listTabs', {})) as {
 				tabs: Array<{ id: string; title: string; url: string }>;
 			};
-			// Refresh cache with fresh data from extension
 			for (const tab of result.tabs) {
-				const cached = this.tabCache.get(tab.id);
-				if (cached) {
-					cached.title = tab.title;
-					cached.url = tab.url;
-				}
+				this.tabCache.set(tab.id, { title: tab.title, url: tab.url });
+				this.primaryTabId ??= tab.id;
 			}
 			return result.tabs;
 		}
@@ -223,7 +229,7 @@ export class CDPRelayServer {
 
 	/**
 	 * Activate a tab: tell the extension to ensure the debugger is attached and
-	 * notify Playwright via Target.attachedToTarget. Idempotent.
+	 * notify the automation CDP client via Target.attachedToTarget. Idempotent.
 	 */
 	async activateTab(id: string): Promise<void> {
 		if (this.activatedTabs.has(id)) {
@@ -244,9 +250,9 @@ export class CDPRelayServer {
 		await this.extensionConn.send('attachTab', { id });
 		log.debug('activateTab: extension confirmed attach for', id);
 
-		// Tell Playwright about the new target
-		log.debug('activateTab: sending Target.attachedToTarget to Playwright for', id);
-		this.sendToPlaywright({
+		// Tell the automation CDP client about the new target
+		log.debug('activateTab: sending Target.attachedToTarget to CDP client for', id);
+		this.sendToAutomationClient({
 			method: 'Target.attachedToTarget',
 			params: {
 				sessionId: id,
@@ -265,7 +271,7 @@ export class CDPRelayServer {
 
 	/**
 	 * Remove a tab from the activated set so it can be re-activated later.
-	 * Called by the adapter when Playwright loses a page (close event).
+	 * Called by the adapter when the CDP client loses a page (close event).
 	 */
 	deactivateTab(id: string): void {
 		const removed = this.activatedTabs.delete(id);
@@ -283,7 +289,7 @@ export class CDPRelayServer {
 		log.debug('new WebSocket connection:', url.pathname);
 
 		if (url.pathname === this.cdpPath) {
-			this.handlePlaywrightConnection(ws);
+			this.handleAutomationClientConnection(ws);
 		} else if (url.pathname === this.extensionPath) {
 			this.handleExtensionConnection(ws);
 		} else {
@@ -293,18 +299,18 @@ export class CDPRelayServer {
 	}
 
 	// =========================================================================
-	// Playwright (CDP client) side
+	// Automation CDP client side
 	// =========================================================================
 
-	private handlePlaywrightConnection(ws: WebSocket): void {
-		if (this.playwrightWs) {
-			log.debug('rejected duplicate Playwright connection');
+	private handleAutomationClientConnection(ws: WebSocket): void {
+		if (this.automationClientWs) {
+			log.debug('rejected duplicate CDP automation client connection');
 			ws.close(1000, 'Another CDP client already connected');
 			return;
 		}
 
-		log.debug('Playwright connected');
-		this.playwrightWs = ws;
+		log.debug('CDP automation client connected');
+		this.automationClientWs = ws;
 
 		ws.on('message', (data) => {
 			try {
@@ -312,29 +318,34 @@ export class CDPRelayServer {
 					? data.toString('utf8')
 					: Buffer.from(data as ArrayBuffer).toString('utf8');
 				const message = JSON.parse(raw) as CDPCommand;
-				void this.handlePlaywrightMessage(message);
+				void this.handleAutomationClientMessage(message);
 			} catch {
 				// Malformed JSON — ignore
 			}
 		});
 
 		ws.on('close', () => {
-			if (this.playwrightWs !== ws) return;
-			log.debug('Playwright disconnected');
-			this.playwrightWs = null;
-			this.closeExtensionConnection('Playwright client disconnected');
+			this.onAutomationClientDisconnected(ws);
 		});
 	}
 
-	private async handlePlaywrightMessage(message: CDPCommand): Promise<void> {
+	/** Ephemeral agent-browser exits close the CDP socket; keep the extension session and cache. */
+	private onAutomationClientDisconnected(ws: WebSocket): void {
+		if (this.automationClientWs !== ws) return;
+		log.debug('CDP automation client disconnected');
+		this.automationClientWs = null;
+		this.activatedTabs.clear();
+	}
+
+	private async handleAutomationClientMessage(message: CDPCommand): Promise<void> {
 		const { id, sessionId, method, params } = message;
-		log.debug('← PW:', method, 'id=' + String(id), sessionId ? 'session=' + sessionId : '');
+		log.debug('← CDP:', method, 'id=' + String(id), sessionId ? 'session=' + sessionId : '');
 		try {
 			const result = await this.handleCDPCommand(method, params, sessionId);
-			this.sendToPlaywright({ id, sessionId, result });
+			this.sendToAutomationClient({ id, sessionId, result });
 		} catch (e) {
 			log.debug('CDP command error:', method, e instanceof Error ? e.message : e);
-			this.sendToPlaywright({
+			this.sendToAutomationClient({
 				id,
 				sessionId,
 				error: { message: e instanceof Error ? e.message : String(e) },
@@ -395,8 +406,8 @@ export class CDPRelayServer {
 				}
 
 				// Wait for Chrome to emit executionContextCreated (default context) before
-				// returning, so Playwright's context cache is populated. Without this there's
-				// a race where Playwright tries to use the context before it's announced.
+				// returning, so the automation client's context cache is populated. Without this there's
+				// a race where the client tries to use the context before it's announced.
 				const contextCreatedPromise = new Promise<void>((resolve) => {
 					const handler = (event: {
 						method: string;
@@ -518,7 +529,7 @@ export class CDPRelayServer {
 
 		// Agent-created tabs are eagerly activated
 		this.activatedTabs.add(result.id);
-		this.sendToPlaywright({
+		this.sendToAutomationClient({
 			method: 'Target.attachedToTarget',
 			params: {
 				sessionId: result.id,
@@ -552,7 +563,7 @@ export class CDPRelayServer {
 		}
 
 		if (wasActivated) {
-			this.sendToPlaywright({
+			this.sendToAutomationClient({
 				method: 'Target.detachedFromTarget',
 				params: { sessionId: id },
 			});
@@ -582,24 +593,24 @@ export class CDPRelayServer {
 		}
 
 		if (wasActivated) {
-			this.sendToPlaywright({
+			this.sendToAutomationClient({
 				method: 'Target.detachedFromTarget',
 				params: { sessionId: id },
 			});
 		}
 	}
 
-	private sendToPlaywright(message: CDPResponse): void {
-		if (this.playwrightWs?.readyState === WebSocket.OPEN) {
+	private sendToAutomationClient(message: CDPResponse): void {
+		if (this.automationClientWs?.readyState === WebSocket.OPEN) {
 			const json = JSON.stringify(message);
-			log.debug('→ PW:', json.length > 200 ? json.slice(0, 200) + '…' : json);
+			log.debug('→ CDP:', json.length > 200 ? json.slice(0, 200) + '…' : json);
 			try {
-				this.playwrightWs.send(json);
+				this.automationClientWs.send(json);
 			} catch {
-				log.debug('sendToPlaywright: send failed (connection closing)');
+				log.debug('sendToAutomationClient: send failed (connection closing)');
 			}
 		} else {
-			log.debug('sendToPlaywright: no Playwright connection');
+			log.debug('sendToAutomationClient: no CDP automation client connection');
 		}
 	}
 
@@ -633,17 +644,17 @@ export class CDPRelayServer {
 			log.debug('extension disconnected, reason:', rawReason ?? '(none)');
 			this.onExtensionDisconnect?.(asConnectionLostReason(rawReason));
 
-			// Clear extension ref but KEEP tabCache, activatedTabs, and Playwright connection.
+			// Clear extension ref but KEEP tabCache, activatedTabs, and CDP client connection.
 			// Pending requests are already rejected by ExtensionConnection.handleClose.
 			this.extensionConn = null;
 
 			// Start a grace period: if the extension reconnects in time, we rebind
-			// without tearing down Playwright. If not, we close everything.
+			// without tearing down the CDP client. If not, we close everything.
 			this.reconnectTimer = setTimeout(() => {
 				this.reconnectTimer = undefined;
-				log.debug('reconnection window expired, closing Playwright');
+				log.debug('reconnection window expired, closing CDP automation client');
 				this.resetState();
-				this.closePlaywrightConnection('Extension did not reconnect');
+				this.closeAutomationClientConnection('Extension did not reconnect');
 			}, this.RECONNECT_WINDOW_MS);
 
 			// Re-create the promise so waitForExtension() works for the next connection
@@ -656,8 +667,8 @@ export class CDPRelayServer {
 
 		this.setupExtensionEventHandlers();
 
-		// Re-sync tab state from extension after reconnect (if Playwright is still alive)
-		if (this.playwrightWs) {
+		// Re-sync tab state from extension after reconnect (if CDP client is still alive)
+		if (this.automationClientWs) {
 			void this.resyncTabsFromExtension();
 		}
 
@@ -676,7 +687,7 @@ export class CDPRelayServer {
 			if (method === 'forwardCDPEvent') {
 				const eventParams = params as ExtensionEvents['forwardCDPEvent']['params'];
 
-				// Use the CDP targetId as Playwright's sessionId
+				// Use the CDP targetId as the automation client's sessionId
 				const sessionId = eventParams.id ?? this.primaryTabId;
 
 				// --- Restricted target filtering (second line of defense after extension) ---
@@ -717,7 +728,7 @@ export class CDPRelayServer {
 							this.primaryTabId = remaining.length > 0 ? remaining[0] : undefined;
 						}
 						if (wasActivated) {
-							this.sendToPlaywright({
+							this.sendToAutomationClient({
 								method: 'Target.targetCrashed',
 								params: { targetId },
 								sessionId: targetId,
@@ -741,7 +752,7 @@ export class CDPRelayServer {
 					}
 				}
 
-				this.sendToPlaywright({
+				this.sendToAutomationClient({
 					sessionId,
 					method: eventParams.method,
 					params: eventParams.params,
@@ -783,7 +794,7 @@ export class CDPRelayServer {
 				if (!currentIds.has(id)) {
 					this.tabCache.delete(id);
 					if (this.activatedTabs.delete(id)) {
-						this.sendToPlaywright({
+						this.sendToAutomationClient({
 							method: 'Target.detachedFromTarget',
 							params: { sessionId: id },
 						});
@@ -818,12 +829,12 @@ export class CDPRelayServer {
 		this.extensionConnectedPromise.catch(() => {});
 	}
 
-	private closePlaywrightConnection(reason: string): void {
-		if (this.playwrightWs?.readyState === WebSocket.OPEN) {
-			log.debug('closing Playwright connection:', reason);
-			this.playwrightWs.close(1000, reason);
+	private closeAutomationClientConnection(reason: string): void {
+		if (this.automationClientWs?.readyState === WebSocket.OPEN) {
+			log.debug('closing CDP automation client connection:', reason);
+			this.automationClientWs.close(1000, reason);
 		}
-		this.playwrightWs = null;
+		this.automationClientWs = null;
 	}
 }
 

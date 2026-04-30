@@ -11,6 +11,10 @@ export function createTabTools(connection: BrowserConnection): ToolDefinition[] 
 
 const tabOpenSchema = z.object({
 	url: z.string().optional().describe('URL to navigate to (default: about:blank)'),
+	label: z
+		.string()
+		.optional()
+		.describe('Stable label for the tab (e.g. docs, app) — maps to agent-browser tab labels'),
 });
 
 const tabOpenOutputSchema = withSnapshotEnvelope({
@@ -26,7 +30,7 @@ function tabOpen(connection: BrowserConnection): ToolDefinition {
 		'Open a new tab. Optionally navigate to a URL.',
 		tabOpenSchema,
 		async (state, input) => {
-			const pageInfo = await state.adapter.newPage(input.url);
+			const pageInfo = await state.adapter.newPage(input.url, input.label);
 			state.pages.set(pageInfo.id, pageInfo);
 			state.activePageId = pageInfo.id;
 			return formatCallToolResult({
@@ -62,7 +66,7 @@ function tabList(connection: BrowserConnection): ToolDefinition {
 		tabListSchema,
 		async (state) => {
 			// Two-tier model: listTabs() returns metadata from the relay (all tabs,
-			// including those without Playwright page objects yet).
+			// including those not yet selected in the automation session).
 			const pages = await state.adapter.listTabs();
 			return formatCallToolResult({
 				pages: pages.map((p) => ({
@@ -91,7 +95,7 @@ function tabFocus(connection: BrowserConnection): ToolDefinition {
 		tabFocusSchema,
 		async (state, input) => {
 			// Verify page exists — use listTabs() to include relay-known tabs
-			// that may not have Playwright page objects yet
+			// that may not be the active automation target yet
 			const pages = await state.adapter.listTabs();
 			const target = pages.find((p) => p.id === input.pageId);
 			if (!target) {

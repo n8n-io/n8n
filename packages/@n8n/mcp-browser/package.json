@@ -1,7 +1,7 @@
 {
   "name": "@n8n/mcp-browser",
   "version": "0.4.0",
-  "description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",
+  "description": "Browser automation MCP tools using agent-browser and the n8n Chrome extension CDP bridge",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
@@ -31,8 +31,6 @@
     "@mozilla/readability": "^0.6.0",
     "jsdom": "^23.0.1",
     "nanoid": "catalog:",
-    "playwright-core": "catalog:",
-    "selenium-webdriver": "4.39.0",
     "turndown": "^7.2.0",
     "ws": "8.17.1",
     "picocolors": "catalog:",

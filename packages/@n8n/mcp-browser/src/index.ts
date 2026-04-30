@@ -5,6 +5,7 @@ export type { LogLevel } from './logger';
 export { parseServerOptions } from './server-config';
 export type { ServerOptions } from './server-config';
 export type {
+	BrowserAdapter,
 	BrowserName,
 	BrowserToolkit,
 	Config,

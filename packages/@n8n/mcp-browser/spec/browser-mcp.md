@@ -30,7 +30,7 @@ via the `browser_connect` tool and torn down via `browser_disconnect`.
 ### Connection Flow
 
 1. AI calls `browser_connect`
-2. Server launches Playwright, which connects over CDP to the relay server
+2. Server starts the CDP relay and the **agent-browser** CLI session, which connects over CDP WebSocket to the relay
 3. Relay server waits for the Browser Bridge extension to connect via WebSocket
 4. Extension reports its registered (user-selected) tabs to the relay —
    debugger is **not** attached yet
@@ -47,7 +47,7 @@ relay server. Each tab gets a unique page ID that tools accept via the
 optional `pageId` parameter. Omitting `pageId` targets the active page.
 
 The relay maintains a lightweight metadata cache (title, URL) for all known
-tabs. Playwright only sees a tab after it has been **activated** (debugger
+tabs. The automation client only drives a tab after it has been **activated** (debugger
 attached). Activation is lazy — triggered on first tool interaction with that
 tab. Agent-created tabs (via `browser_tab_open`) are eagerly activated.
 
@@ -70,7 +70,7 @@ tab; the default is the active page.
 
 | Tool | Description |
 |------|-------------|
-| `browser_tab_open` | Open a new tab (optionally with a URL) |
+| `browser_tab_open` | Open a new tab (optional URL; optional stable `label` for agent-browser) |
 | `browser_tab_list` | List all controlled tabs |
 | `browser_tab_focus` | Switch the active tab |
 | `browser_tab_close` | Close a tab |
@@ -102,8 +102,11 @@ tab; the default is the active page.
 
 | Tool | Description |
 |------|-------------|
-| `browser_snapshot` | Get an accessibility tree snapshot of the page |
-| `browser_screenshot` | Capture a screenshot (PNG, base64) |
+| `browser_snapshot` | Accessibility tree snapshot (@eN refs; options: interactive, compact, depth, diff modes) |
+| `browser_screenshot` | Screenshot (PNG/JPEG base64; annotate, pixel diff vs baseline) |
+| `browser_diff_urls` | Compare two URLs (snapshot + optional screenshot diff) |
+| `browser_frame` | Switch iframe context or return to `main` |
+| `browser_highlight` | Highlight an element (debug) |
 | `browser_content` | Extract page content as structured Markdown |
 | `browser_evaluate` | Execute JavaScript in the page context |
 | `browser_console` | Read console messages and page errors (filter by level) |
@@ -114,7 +117,7 @@ tab; the default is the active page.
 
 | Tool | Description |
 |------|-------------|
-| `browser_wait` | Wait for a condition (selector, URL, load state, text, or JS predicate) |
+| `browser_wait` | Wait for a condition (selector, URL, load state, text, JS predicate, or download) |
 
 ### State
 

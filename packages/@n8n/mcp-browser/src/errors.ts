@@ -105,6 +105,22 @@ export class BrowserExecutableNotFoundError extends McpBrowserError {
 
 export type ExtensionNotConnectedPhase = 'browser_not_launched' | 'extension_missing' | 'unknown';
 
+export class AgentBrowserNotFoundError extends McpBrowserError {
+	constructor(readonly binary: string) {
+		super(
+			`agent-browser CLI not found: ${binary}`,
+			'Install agent-browser (e.g. `brew install agent-browser` or `npm install -g agent-browser`) ' +
+				'or set AGENT_BROWSER_PATH to the binary, then retry browser_connect.',
+		);
+	}
+}
+
+export class AgentBrowserCommandError extends McpBrowserError {
+	constructor(message: string, hint?: string) {
+		super(message, hint);
+	}
+}
+
 export class ExtensionNotConnectedError extends McpBrowserError {
 	constructor(
 		readonly timeoutMs: number,

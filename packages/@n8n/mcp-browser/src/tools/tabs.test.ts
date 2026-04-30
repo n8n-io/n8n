@@ -43,7 +43,10 @@ describe('createTabTools', () => {
 				const result = await getTool().execute({ url: 'http://example.com' }, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(mockConnection.adapter.newPage).toHaveBeenCalledWith('http://example.com');
+				expect(mockConnection.adapter.newPage).toHaveBeenCalledWith(
+					'http://example.com',
+					undefined,
+				);
 				expect(data.pageId).toBe('page2');
 				expect(data.title).toBe('New Page');
 				expect(data.url).toBe('about:blank');
@@ -63,7 +66,11 @@ describe('createTabTools', () => {
 				const data = structuredOf(result);
 
 				expect(data.snapshot).toBe('<snapshot-tree>');
-				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page2');
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith(
+					'page2',
+					undefined,
+					expect.objectContaining({ forEnrichment: true }),
+				);
 			});
 		});
 	});

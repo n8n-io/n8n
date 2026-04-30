@@ -18,6 +18,10 @@ const browserWaitSchema = z.object({
 		.describe('Wait for load state'),
 	predicate: z.string().optional().describe('JavaScript expression that must return truthy'),
 	text: z.string().optional().describe('Text content to wait for on the page'),
+	downloadPath: z
+		.string()
+		.optional()
+		.describe('Wait for a file download to complete (optional directory/file path to save)'),
 	timeoutMs: z.number().optional().describe('Timeout in ms (default: 30000)'),
 	pageId: pageIdField,
 });
@@ -40,6 +44,7 @@ function browserWait(connection: BrowserConnection): ToolDefinition {
 				loadState: input.loadState,
 				predicate: input.predicate,
 				text: input.text,
+				downloadPath: input.downloadPath,
 				timeoutMs: input.timeoutMs,
 			});
 			return formatCallToolResult({ waited: true, elapsedMs });

@@ -189,9 +189,6 @@ catalogs:
     picocolors:
       specifier: 1.0.1
       version: 1.0.1
-    playwright-core:
-      specifier: 1.58.0
-      version: 1.58.0
     reflect-metadata:
       specifier: 0.2.2
       version: 0.2.2
@@ -1764,12 +1761,6 @@ importers:
       picocolors:
         specifier: 'catalog:'
         version: 1.0.1
-      playwright-core:
-        specifier: 'catalog:'
-        version: 1.58.0
-      selenium-webdriver:
-        specifier: 4.39.0
-        version: 4.39.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       turndown:
         specifier: ^7.2.0
         version: 7.2.2

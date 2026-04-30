@@ -23,7 +23,7 @@ function connectExtension(): WebSocket {
 	return new WebSocket(relay.extensionEndpoint(port));
 }
 
-function connectPlaywright(): WebSocket {
+function connectAutomationClient(): WebSocket {
 	return new WebSocket(relay.cdpEndpoint(port));
 }
 
@@ -123,7 +123,7 @@ describe('CDPRelayServer', () => {
 		createFakeExtension(ext);
 		await relay.waitForExtension();
 
-		const pw = connectPlaywright();
+		const pw = connectAutomationClient();
 		await waitForOpen(pw);
 
 		// Send Browser.getVersion (handled by relay itself, no extension roundtrip)
@@ -171,6 +171,49 @@ describe('CDPRelayServer', () => {
 
 		// Restore real timers before afterEach cleanup (ws.close uses setTimeout)
 		jest.useRealTimers();
+	});
+
+	it('should keep extension connected when ephemeral CDP client disconnects', async () => {
+		const ext = connectExtension();
+		await waitForOpen(ext);
+		createFakeExtension(ext);
+		await relay.waitForExtension();
+
+		const pw = connectAutomationClient();
+		await waitForOpen(pw);
+
+		await new Promise<void>((resolve) => {
+			pw.once('close', () => resolve());
+			pw.close();
+		});
+
+		const tabs = await relay.listTabs();
+		expect(tabs).toEqual([{ id: 'tab-1', title: 'Test Page', url: 'https://example.com' }]);
+
+		ext.close();
+	});
+
+	it('should populate tab cache from listTabs ids not seen via tabOpened', async () => {
+		const freshId = 'tab-only-from-listTabs';
+		const ext = connectExtension();
+		await waitForOpen(ext);
+		const fake = createFakeExtension(ext);
+		fake.handlers.listTabs = () => ({
+			tabs: [{ id: freshId, title: 'Listed', url: 'https://listed.example/' }],
+		});
+		await relay.waitForExtension();
+
+		expect(relay.hasTab(freshId)).toBe(false);
+
+		await relay.listTabs();
+
+		expect(relay.hasTab(freshId)).toBe(true);
+		expect(relay.getCachedTabMeta(freshId)).toEqual({
+			title: 'Listed',
+			url: 'https://listed.example/',
+		});
+
+		ext.close();
 	});
 
 	it('should allow extension to reconnect within grace window', async () => {

@@ -56,14 +56,22 @@ describe('createInspectionTools', () => {
 				const result = await getTool().execute({}, TOOL_CONTEXT);
 				const data = structuredOf(result);
 
-				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', undefined);
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith(
+					'page1',
+					undefined,
+					expect.any(Object),
+				);
 				expect(data.snapshot).toBe('- heading "Test" [ref=e1]\n- button "Click" [ref=e2]');
 			});
 
 			it('passes scope to adapter', async () => {
 				await getTool().execute({ scope: { ref: 'e3' } }, TOOL_CONTEXT);
 
-				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith('page1', { ref: 'e3' });
+				expect(mockConnection.adapter.snapshot).toHaveBeenCalledWith(
+					'page1',
+					{ ref: 'e3' },
+					expect.any(Object),
+				);
 			});
 		});
 	});
@@ -110,7 +118,7 @@ describe('createInspectionTools', () => {
 				expect(mockConnection.adapter.screenshot).toHaveBeenCalledWith(
 					'page1',
 					{ selector: '#chart' },
-					{ fullPage: true },
+					expect.objectContaining({ fullPage: true }),
 				);
 			});
 		});

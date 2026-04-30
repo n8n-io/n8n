@@ -31,9 +31,11 @@ export function findTool(tools: ToolDefinition[], name: string): ToolDefinition 
 /** Default ToolContext for tests. */
 export const TOOL_CONTEXT: ToolContext = { dir: '/test' };
 
-/** Create a mock PlaywrightAdapter with all methods stubbed. */
+/** Create a mock BrowserAdapter with all methods stubbed. */
 export function createMockAdapter() {
 	return {
+		name: 'mock',
+
 		// Session
 		launch: jest.fn().mockResolvedValue(undefined),
 		close: jest.fn().mockResolvedValue(undefined),
@@ -103,6 +105,10 @@ export function createMockAdapter() {
 		waitForCompletion: jest
 			.fn()
 			.mockImplementation(async (_pageId: string, fn: () => Promise<unknown>) => await fn()),
+
+		diffUrls: jest.fn().mockResolvedValue({ snapshotDiff: '' }),
+		setFrameContext: jest.fn().mockResolvedValue(undefined),
+		highlight: jest.fn().mockResolvedValue(undefined),
 	};
 }
 
