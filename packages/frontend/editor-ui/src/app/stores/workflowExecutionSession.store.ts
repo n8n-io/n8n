@@ -218,13 +218,17 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 
 			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
 			lastSuccessfulExecutionId.value = execution.id;
-			displayedExecutionId.value = execution.id;
 			triggerExecutionSessionChange(CHANGE_ACTION.UPDATE);
 		}
 
 		function setLastSuccessfulExecutionId(executionId: string | null) {
 			lastSuccessfulExecutionId.value = executionId;
 			triggerExecutionSessionChange(CHANGE_ACTION.UPDATE);
+		}
+
+		function clearDisplayedExecution() {
+			displayedExecutionId.value = undefined;
+			triggerExecutionSessionChange(CHANGE_ACTION.DELETE);
 		}
 
 		function filterCurrentWorkflowExecutions(executions: ExecutionSummary[]) {
@@ -361,6 +365,7 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 			setChatPartialExecutionDestinationNode,
 			setLastSuccessfulExecution,
 			setLastSuccessfulExecutionId,
+			clearDisplayedExecution,
 			setCurrentWorkflowExecutions,
 			clearCurrentWorkflowExecutions,
 			deleteExecution,

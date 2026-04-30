@@ -237,7 +237,7 @@ describe('workflowExecutionSession.store', () => {
 		expect(store.currentWorkflowExecutions.map(({ id }) => id)).toEqual(['exec-3', 'exec-4']);
 	});
 
-	it('stores only the last successful execution id in the session store', () => {
+	it('stores last successful execution separately from active execution state', () => {
 		const store = useWorkflowExecutionSessionStore('workflow-1');
 		const execution = createExecution('successful-execution', {
 			status: 'success',
@@ -251,13 +251,62 @@ describe('workflowExecutionSession.store', () => {
 		expect(useExecutionDataStore(createExecutionDataId('successful-execution')).execution).toEqual(
 			execution,
 		);
+		expect(store.activeExecution).toBeNull();
+		expect(store.activeExecutionRunData).toBeNull();
+		expect(store.getActiveExecutionDataStore()).toBeNull();
 
 		store.setLastSuccessfulExecution(null);
 		expect(store.lastSuccessfulExecutionId).toBeNull();
 		expect(store.lastSuccessfulExecution).toBeNull();
+		expect(store.activeExecution).toBeNull();
 		expect(useExecutionDataStore(createExecutionDataId('successful-execution')).execution).toEqual(
 			execution,
 		);
+	});
+
+	it('keeps a displayed manual execution visible after active execution id is cleared', () => {
+		const store = useWorkflowExecutionSessionStore('workflow-1');
+		const execution = createExecution('manual-execution');
+		useExecutionDataStore(createExecutionDataId('manual-execution')).setExecution(execution);
+
+		store.setActiveExecutionId('manual-execution');
+		expect(store.activeExecution).toEqual(execution);
+		expect(store.activeExecutionRunData).toEqual({});
+
+		store.setActiveExecutionId(undefined);
+
+		expect(store.activeExecutionId).toBeUndefined();
+		expect(store.displayedExecutionId).toBe('manual-execution');
+		expect(store.activeExecution).toEqual(execution);
+		expect(store.activeExecutionRunData).toEqual({});
+	});
+
+	it('clears displayed execution without clearing last successful execution', () => {
+		const store = useWorkflowExecutionSessionStore('workflow-1');
+		const displayedExecution = createExecution('manual-execution');
+		const lastSuccessfulExecution = createExecution('successful-execution', {
+			status: 'success',
+			finished: true,
+		});
+
+		useExecutionDataStore(createExecutionDataId('manual-execution')).setExecution(
+			displayedExecution,
+		);
+		store.setActiveExecutionId('manual-execution');
+		store.setActiveExecutionId(undefined);
+		store.setLastSuccessfulExecution(lastSuccessfulExecution);
+
+		expect(store.activeExecution).toEqual(displayedExecution);
+		expect(store.lastSuccessfulExecution).toEqual(lastSuccessfulExecution);
+
+		store.clearDisplayedExecution();
+
+		expect(store.displayedExecutionId).toBeUndefined();
+		expect(store.activeExecution).toBeNull();
+		expect(store.activeExecutionRunData).toBeNull();
+		expect(store.getActiveExecutionDataStore()).toBeNull();
+		expect(store.lastSuccessfulExecutionId).toBe('successful-execution');
+		expect(store.lastSuccessfulExecution).toEqual(lastSuccessfulExecution);
 	});
 
 	it('resets and disposes only the targeted workflow session store', () => {

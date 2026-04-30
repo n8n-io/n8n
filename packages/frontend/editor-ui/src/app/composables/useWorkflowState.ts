@@ -50,6 +50,7 @@ export function useWorkflowState() {
 				useExecutionDataStore(createExecutionDataId(activeExecutionId)).resetExecutionData();
 			}
 			workflowExecutionSession.setPendingExecution(null);
+			workflowExecutionSession.clearDisplayedExecution();
 			return;
 		}
 

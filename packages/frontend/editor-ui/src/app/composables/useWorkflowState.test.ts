@@ -39,6 +39,21 @@ describe('useWorkflowState', () => {
 			expect(workflowsStore.workflowExecutionData).toBeNull();
 			expect(workflowsStore.workflowExecutionPairedItemMappings).toEqual({});
 		});
+
+		it('clears displayed execution data when setting execution data to null', () => {
+			const execution = createTestWorkflowExecutionResponse({ id: 'exec-1' });
+			workflowState.setWorkflowExecutionData(execution);
+			workflowState.setActiveExecutionId(undefined);
+
+			expect(workflowsStore.workflowExecutionData).toEqual(execution);
+
+			workflowState.setWorkflowExecutionData(null);
+
+			expect(useExecutionDataStore(createExecutionDataId('exec-1')).execution).toEqual(execution);
+			expect(workflowsStore.workflowExecutionData).toBeNull();
+			expect(workflowsStore.getWorkflowRunData).toBeNull();
+			expect(workflowsStore.workflowExecutionPairedItemMappings).toEqual({});
+		});
 	});
 
 	describe('markExecutionAsStopped', () => {
