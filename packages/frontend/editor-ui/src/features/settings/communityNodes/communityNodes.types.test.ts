@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { fromBrowsePackage, fromInstalledPackage } from './communityNodes.types';
-import type { CommunityPackageSummary, CommunityPackageRowData } from './communityNodes.types';
+import {
+	fromBrowsePackage,
+	fromInstalledPackage,
+	mergeVettedAndInstalled,
+} from './communityNodes.types';
+import type { CommunityPackageSummary } from './communityNodes.types';
 import type {
 	INodeTypeDescription,
 	PublicInstalledNode,
@@ -173,8 +177,6 @@ describe('fromInstalledPackage', () => {
 	});
 });
 
-import { mergeVettedAndInstalled } from './communityNodes.types';
-
 describe('mergeVettedAndInstalled', () => {
 	const mockGetNodeType = (name: string) =>
 		name === 'n8n-nodes-test.testNode' ? makeNodeDescription('Test Node') : null;
@@ -246,5 +248,33 @@ describe('mergeVettedAndInstalled', () => {
 		expect(result.nodeCount).toBe(0);
 		expect(result.nodeDescription).toBeNull();
 		expect(result.installNodeName).toBe('');
+	});
+
+	it('should prefer vetted nodes for installNodeName and nodeDescription when both sides have nodes', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage(),
+			makeInstalledPackage({
+				installedNodes: [{ name: 'InstalledNode', type: 'something-else' } as PublicInstalledNode],
+			}),
+			mockGetNodeType,
+		);
+
+		expect(result.installNodeName).toBe('n8n-nodes-test.testNode');
+		expect(result.nodeDescription?.displayName).toBe('Test Node');
+	});
+
+	it('should fall back nodeCount to installed nodes count when vetted is empty', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage({ nodes: [] }),
+			makeInstalledPackage({
+				installedNodes: [
+					{ name: 'A', type: 'a' } as PublicInstalledNode,
+					{ name: 'B', type: 'b' } as PublicInstalledNode,
+				],
+			}),
+			mockGetNodeType,
+		);
+
+		expect(result.nodeCount).toBe(2);
 	});
 });
