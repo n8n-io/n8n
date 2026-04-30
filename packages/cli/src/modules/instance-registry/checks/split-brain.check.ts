@@ -11,10 +11,11 @@ const AUDIT_DETECTED = 'n8n.audit.cluster.split-brain.detected';
 const AUDIT_RESOLVED = 'n8n.audit.cluster.split-brain.resolved';
 
 /**
- * Returns the sorted list of leaders as a deterministic fingerprint.
- * Empty fingerprint means "no split-brain" (0 or 1 leader is healthy).
+ * Analyzes leadership state. `fingerprint` is a deterministic identity for the
+ * current leader set, used to deduplicate `detected` audit events across runs.
  */
 function computeFingerprint(instances: Iterable<InstanceRegistration>): {
+	splitBrain: boolean;
 	fingerprint: string;
 	leaders: Array<{ instanceKey: string; hostId: string; instanceType: string }>;
 } {
@@ -27,8 +28,11 @@ function computeFingerprint(instances: Iterable<InstanceRegistration>): {
 		}))
 		.sort((a, b) => a.instanceKey.localeCompare(b.instanceKey));
 
+	const splitBrain = leaders.length > 1;
+
 	return {
-		fingerprint: leaders.length > 1 ? leaders.map((l) => l.instanceKey).join('|') : '',
+		splitBrain,
+		fingerprint: splitBrain ? leaders.map((l) => l.instanceKey).join('|') : '',
 		leaders,
 	};
 }
@@ -44,8 +48,8 @@ export class SplitBrainCheck implements IClusterCheck {
 		const current = computeFingerprint(context.currentState.values());
 		const previous = computeFingerprint(context.previousState.values());
 
-		if (current.fingerprint === '') {
-			if (previous.fingerprint !== '') {
+		if (!current.splitBrain) {
+			if (previous.splitBrain) {
 				return { auditEvents: [{ eventName: AUDIT_RESOLVED, payload: {} }] };
 			}
 			return {};

@@ -11,14 +11,15 @@ const AUDIT_DETECTED = 'n8n.audit.cluster.hostid-clash.detected';
 const AUDIT_RESOLVED = 'n8n.audit.cluster.hostid-clash.resolved';
 
 /**
- * Returns the set of hostIds that are shared by more than one instance, as a
- * deterministic fingerprint (sorted, pipe-joined). Returns an empty string
- * when no hostId is shared, indicating "no clash".
+ * Analyzes hostId collisions. `fingerprint` is a deterministic identity for the
+ * current set of clashing hostIds, used to deduplicate `detected` audit events
+ * across runs.
  *
  * Fingerprints on hostIds (not instance keys) because instance keys rotate on
  * restart; the operator-relevant signal is which *hosts* are misconfigured.
  */
 function computeFingerprint(instances: Iterable<InstanceRegistration>): {
+	hasClash: boolean;
 	fingerprint: string;
 	clashing: Array<{ hostId: string; instanceKeys: string[] }>;
 } {
@@ -29,15 +30,13 @@ function computeFingerprint(instances: Iterable<InstanceRegistration>): {
 		byHost.set(instance.hostId, keys);
 	}
 
-	const clashing: Array<{ hostId: string; instanceKeys: string[] }> = [];
-	for (const [hostId, instanceKeys] of byHost) {
-		if (instanceKeys.length > 1) {
-			clashing.push({ hostId, instanceKeys: [...instanceKeys].sort() });
-		}
-	}
-	clashing.sort((a, b) => a.hostId.localeCompare(b.hostId));
+	const clashing = Array.from(byHost.entries())
+		.filter(([, keys]) => keys.length > 1)
+		.map(([hostId, keys]) => ({ hostId, instanceKeys: [...keys].sort() }))
+		.sort((a, b) => a.hostId.localeCompare(b.hostId));
 
 	return {
+		hasClash: clashing.length > 0,
 		fingerprint: clashing.map((c) => c.hostId).join('|'),
 		clashing,
 	};
@@ -54,8 +53,8 @@ export class HostIdClashCheck implements IClusterCheck {
 		const current = computeFingerprint(context.currentState.values());
 		const previous = computeFingerprint(context.previousState.values());
 
-		if (current.fingerprint === '') {
-			if (previous.fingerprint !== '') {
+		if (!current.hasClash) {
+			if (previous.hasClash) {
 				return { auditEvents: [{ eventName: AUDIT_RESOLVED, payload: {} }] };
 			}
 			return {};
