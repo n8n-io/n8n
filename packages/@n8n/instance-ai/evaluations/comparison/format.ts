@@ -59,7 +59,12 @@ export function formatComparisonMarkdown(
 		}
 		if (soft.length > 0) {
 			lines.push(
-				...renderScenarioSection('Soft regressions', '— likely natural variance', soft, true),
+				...renderScenarioSection(
+					'Soft regressions',
+					'— investigate if related to your changes',
+					soft,
+					true,
+				),
 			);
 		}
 		if (watch.length > 0) {
@@ -181,9 +186,11 @@ function formatAggregateBlock(
 		partial > 0
 			? `\n_Partial: ${[
 					comparison.baselineOnly.length > 0
-						? `${comparison.baselineOnly.length} in baseline not run by PR`
+						? `${comparison.baselineOnly.length} baseline scenarios not run by PR`
 						: null,
-					comparison.prOnly.length > 0 ? `${comparison.prOnly.length} new in PR` : null,
+					comparison.prOnly.length > 0
+						? `${comparison.prOnly.length} PR scenarios have no baseline data (added since baseline captured)`
+						: null,
 				]
 					.filter((s) => s !== null)
 					.join(', ')}._`
@@ -577,8 +584,9 @@ function formatTerminalAggregate(
 	if (comparison.baselineOnly.length > 0 || comparison.prOnly.length > 0) {
 		const partialParts: string[] = [];
 		if (comparison.baselineOnly.length > 0)
-			partialParts.push(`${comparison.baselineOnly.length} baseline-only`);
-		if (comparison.prOnly.length > 0) partialParts.push(`${comparison.prOnly.length} new in PR`);
+			partialParts.push(`${comparison.baselineOnly.length} baseline scenarios not run by PR`);
+		if (comparison.prOnly.length > 0)
+			partialParts.push(`${comparison.prOnly.length} PR scenarios have no baseline data`);
 		lines.push(TERMINAL_INDENT + `  partial: ${partialParts.join(', ')}`);
 	}
 

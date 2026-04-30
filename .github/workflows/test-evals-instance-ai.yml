@@ -143,7 +143,7 @@ jobs:
             --base-url "$BASE_URLS" \
             --concurrency 32 \
             --verbose \
-            --iterations 3 \
+            --iterations 5 \
             ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
 
       - name: Stop n8n containers

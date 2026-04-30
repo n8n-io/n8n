@@ -206,6 +206,6 @@ describe('formatComparisonTerminal', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10), s('b', 'happy', 5, 10)]);
 		const out = formatComparisonTerminal(evalFixture, compareBuckets(pr, base));
-		expect(out).toMatch(/partial: 1 baseline-only/);
+		expect(out).toMatch(/partial: 1 baseline scenarios not run by PR/);
 	});
 });
