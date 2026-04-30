@@ -5,7 +5,6 @@ import type { Response } from 'express';
 
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { McpOAuthConsentService } from './mcp-oauth-consent.service';
-import { McpClientLimitReachedError } from './mcp.errors';
 import { OAuthSessionService } from './oauth-session.service';
 
 @RestController('/consent')
@@ -67,21 +66,6 @@ export class McpConsentController {
 				},
 			});
 		} catch (error) {
-			if (error instanceof McpClientLimitReachedError) {
-				this.logger.info('Consent rejected: per-user MCP client limit reached', {
-					limit: error.limit,
-				});
-				res.status(429).json({
-					status: 'error',
-					message: error.message,
-					meta: {
-						code: 'mcp_client_limit_reached',
-						limit: error.limit,
-					},
-				});
-				return;
-			}
-
 			this.logger.error('Failed to process consent', { error });
 			this.oauthSessionService.clearSession(res);
 			const message = error instanceof Error ? error.message : 'Failed to process authorization';

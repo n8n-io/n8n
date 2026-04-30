@@ -7,7 +7,6 @@ import {
 	N8nButton,
 	N8nDataTableServer,
 	N8nLoading,
-	N8nNotice,
 	N8nText,
 } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
@@ -21,14 +20,9 @@ const mcpStore = useMCPStore();
 type Props = {
 	clients: OAuthClientResponseDto[];
 	loading: boolean;
-	limit?: number | null;
 };
 
 const props = defineProps<Props>();
-
-const limitReached = computed(
-	() => typeof props.limit === 'number' && props.clients.length >= props.limit,
-);
 
 const page = ref(0);
 const itemsPerPage = ref(10);
@@ -104,16 +98,6 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
-			<N8nNotice
-				v-if="limitReached"
-				theme="warning"
-				data-test-id="oauth-clients-limit-notice"
-				:content="
-					i18n.baseText('settings.mcp.oAuthClients.limit.warning', {
-						interpolate: { limit: String(props.limit) },
-					})
-				"
-			/>
 			<N8nDataTableServer
 				v-model:page="page"
 				v-model:items-per-page="itemsPerPage"

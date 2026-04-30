@@ -27,7 +27,7 @@ afterEach(async () => {
 });
 
 describe('GET /rest/mcp/oauth-clients', () => {
-	test('should return only the requesting user clients along with the per-user limit', async () => {
+	test('should return only the requesting user clients', async () => {
 		const ownerClient = await oauthClientRepository.save({
 			id: 'owner-list-client',
 			name: 'Owner Client',
@@ -59,7 +59,6 @@ describe('GET /rest/mcp/oauth-clients', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toMatchObject({
 			count: 1,
-			limit: expect.any(Number),
 		});
 		expect(response.body.data.data).toHaveLength(1);
 		expect(response.body.data.data[0].id).toBe(ownerClient.id);

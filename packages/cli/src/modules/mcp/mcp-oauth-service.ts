@@ -92,12 +92,8 @@ export class McpOAuthService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Instance-wide ceiling on registered OAuth clients. The user-facing quota
-	 * is enforced per user at consent time; this cap is an anti-abuse safety
-	 * net for the unauthenticated dynamic client registration endpoint.
-	 *
-	 * Counts after insert to avoid a race between count() and insert(). If over
-	 * the limit, rolls back by deleting the just-inserted client.
+	 * Check count after insert to avoid race condition between count() and insert().
+	 * If over limit, rolls back by deleting the just-inserted client.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
 		const clientCount = await this.oauthClientRepository.count();
@@ -200,7 +196,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		return {
 			access_token: accessToken,
 			token_type: 'Bearer',
-			expires_in: 3600,
+			expires_in: this.tokenService.getAccessTokenExpirySeconds(),
 			refresh_token: refreshToken,
 		};
 	}

@@ -46,37 +46,22 @@ const uiStore = useUIStore();
 const mcpStatusLoading = ref(false);
 const selectedTab = ref<MCPTabs>('workflows');
 
-const workflowsLoading = ref(false);
-const availableWorkflows = ref<WorkflowListItem[]>([]);
-
-const oAuthClientsLoading = ref(false);
-const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
-
-const oAuthTabLabel = computed(() => {
-	const baseLabel = i18n.baseText('settings.mcp.tabs.oauth');
-	const limit = mcpStore.oauthClientsLimit;
-	if (limit === null) {
-		return baseLabel;
-	}
-	return i18n.baseText('settings.mcp.tabs.oauth.withCount', {
-		interpolate: {
-			label: baseLabel,
-			count: connectedOAuthClients.value.length,
-			limit,
-		},
-	});
-});
-
-const tabs = computed<Array<TabOptions<MCPTabs>>>(() => [
+const tabs = ref<Array<TabOptions<MCPTabs>>>([
 	{
 		label: i18n.baseText('settings.mcp.tabs.workflows'),
 		value: 'workflows',
 	},
 	{
-		label: oAuthTabLabel.value,
+		label: i18n.baseText('settings.mcp.tabs.oauth'),
 		value: 'oauth',
 	},
 ]);
+
+const workflowsLoading = ref(false);
+const availableWorkflows = ref<WorkflowListItem[]>([]);
+
+const oAuthClientsLoading = ref(false);
+const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
@@ -308,7 +293,6 @@ onMounted(async () => {
 					v-else-if="selectedTab === 'oauth'"
 					:data-test-id="'mcp-oauth-clients-table'"
 					:clients="connectedOAuthClients"
-					:limit="mcpStore.oauthClientsLimit"
 					:loading="oAuthClientsLoading"
 					@revoke-client="revokeClientAccess"
 					@refresh="onTableRefresh"

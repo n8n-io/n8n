@@ -4,7 +4,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { onMounted, computed, ref } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
-import { ResponseError } from '@n8n/rest-api-client';
 import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
@@ -29,13 +28,6 @@ const handleAllow = async () => {
 		waitingForRedirect.value = true;
 		window.location.href = response.redirectUrl;
 	} catch (err) {
-		if (err instanceof ResponseError && err.meta?.code === 'mcp_client_limit_reached') {
-			const limit = err.meta?.limit;
-			consentStore.error = i18n.baseText('oauth.consentView.error.limitReached', {
-				interpolate: { limit: typeof limit === 'number' ? String(limit) : '' },
-			});
-			return;
-		}
 		toast.showError(err, i18n.baseText('oauth.consentView.error.allow'));
 	}
 };

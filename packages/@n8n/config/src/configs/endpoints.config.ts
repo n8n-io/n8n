@@ -134,17 +134,9 @@ export class EndpointsConfig {
 	@Env('N8N_MCP_BUILDER_ENABLED')
 	mcpBuilderEnabled: boolean = true;
 
-	/**
-	 * Instance-wide ceiling on registered OAuth clients for MCP. This is an
-	 * anti-abuse safety net for the unauthenticated dynamic client registration
-	 * endpoint — the user-facing quota is `mcpMaxClientsPerUser`.
-	 */
+	/** Maximum number of OAuth clients that can be registered for MCP. */
 	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
 	mcpMaxRegisteredClients: number = 10000;
-
-	/** Maximum number of MCP OAuth clients a single user can have connected at once. */
-	@Env('N8N_MCP_MAX_CLIENTS_PER_USER')
-	mcpMaxClientsPerUser: number = 200;
 
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')

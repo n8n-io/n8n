@@ -236,7 +236,6 @@ describe('GlobalConfig', () => {
 			mcp: 'mcp',
 			mcpBuilderEnabled: true,
 			mcpMaxRegisteredClients: 10000,
-			mcpMaxClientsPerUser: 200,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,

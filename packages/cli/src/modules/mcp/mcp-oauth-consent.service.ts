@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
@@ -7,7 +6,6 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthHelpers } from './mcp-oauth.helpers';
-import { McpClientLimitReachedError } from './mcp.errors';
 import { OAuthSessionService, type OAuthSessionPayload } from './oauth-session.service';
 
 /**
@@ -22,7 +20,6 @@ export class McpOAuthConsentService {
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	/**
@@ -86,30 +83,6 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		const [client, existingConsent] = await Promise.all([
-			this.oauthClientRepository.findOneBy({ id: sessionPayload.clientId }),
-			this.userConsentRepository.findOneBy({
-				userId,
-				clientId: sessionPayload.clientId,
-			}),
-		]);
-
-		const priorSameNameClientIds = client
-			? await this.userConsentRepository.findClientIdsForUserByName(
-					userId,
-					client.name,
-					sessionPayload.clientId,
-				)
-			: [];
-
-		this.logger.info('Linking MCP client to user', {
-			userId,
-			clientId: sessionPayload.clientId,
-			clientName: client?.name,
-			action: existingConsent ? 'refresh' : 'new',
-			priorSameNameClientIds,
-		});
-
 		await this.userConsentRepository.upsert(
 			{
 				userId,
@@ -118,29 +91,6 @@ export class McpOAuthConsentService {
 			},
 			['userId', 'clientId'],
 		);
-
-		// Insert-then-rollback to keep the per-user cap race-tolerant: counting
-		// before the upsert allows two concurrent first-time consents at limit-1
-		// to both pass. Counting after means each one observes the post-write
-		// state and at least one will roll back its own row.
-		if (!existingConsent) {
-			const consentCount = await this.userConsentRepository.countByUserId(userId);
-			const limit = this.globalConfig.endpoints.mcpMaxClientsPerUser;
-			if (consentCount > limit) {
-				await this.userConsentRepository.delete({
-					userId,
-					clientId: sessionPayload.clientId,
-				});
-				this.logger.info('Rolled back MCP client link: per-user limit reached', {
-					userId,
-					clientId: sessionPayload.clientId,
-					clientName: client?.name,
-					limit,
-					priorSameNameClientIds,
-				});
-				throw new McpClientLimitReachedError(limit);
-			}
-		}
 
 		const code = await this.authorizationCodeService.createAuthorizationCode(
 			sessionPayload.clientId,
@@ -156,12 +106,9 @@ export class McpOAuthConsentService {
 			sessionPayload.state,
 		);
 
-		this.logger.info('MCP client linked to user', {
-			userId,
+		this.logger.info('Consent approved', {
 			clientId: sessionPayload.clientId,
-			clientName: client?.name,
-			action: existingConsent ? 'refresh' : 'new',
-			priorSameNameClientIds,
+			userId,
 		});
 
 		return { redirectUrl: successRedirectUrl };
