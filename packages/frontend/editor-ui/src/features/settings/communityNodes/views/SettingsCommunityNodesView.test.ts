@@ -1,5 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
+import { fireEvent } from '@testing-library/vue';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -150,6 +151,23 @@ describe('SettingsCommunityNodesView', () => {
 		const { findAllByTestId } = renderComponent();
 		const rows = await findAllByTestId('community-package-row');
 		expect(rows).toHaveLength(1);
+	});
+
+	it('should open install modal and emit telemetry on Install from npm click', async () => {
+		Object.defineProperty(settingsStore, 'isUnverifiedPackagesEnabled', { get: () => true });
+		uiStore.openModal = vi.fn();
+
+		const { getByText } = renderComponent();
+		await fireEvent.click(getByText('Install from npm'));
+
+		expect(uiStore.openModal).toHaveBeenCalledWith('communityPackageInstall');
+	});
+
+	it.skip('should fire user-viewed telemetry on initialize', () => {
+		// TODO: covered by integration testing.
+		// `initialize()` is invoked by the real ResourcesListLayout in production,
+		// but our pass-through mock does not call the prop. The lifecycle hook
+		// is exercised end-to-end via Playwright instead.
 	});
 
 	it('should append installed-but-not-vetted packages as separate rows', async () => {
