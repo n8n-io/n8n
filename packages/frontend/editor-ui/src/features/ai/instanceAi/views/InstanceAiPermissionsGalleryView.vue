@@ -791,7 +791,6 @@ function logPlanRequestChanges(feedback: string) {
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--4xs) 0;
 	font-size: var(--font-size--2xs);
 }
 
