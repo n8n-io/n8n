@@ -105,7 +105,7 @@ describe('InsightsPruningService', () => {
 		{ config: 730, result: 730 },
 		{ config: 2000, result: 730 },
 	])(
-		'pruningMaxAgeInDays uses N8N_INSIGHTS_MAX_AGE_DAYS: -1 maps to cap, invalid uses default, finite values capped at 730',
+		'pruningMaxAgeInDays uses N8N_INSIGHTS_MAX_AGE_DAYS: -1 maps to cap, other values below 1 use default, finite values capped at 730',
 		async ({ config, result }) => {
 			const insightsPruningService = new InsightsPruningService(
 				insightsByPeriodRepository,

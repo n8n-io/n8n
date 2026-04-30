@@ -48,7 +48,7 @@ export class InsightsConfig {
 
 	/**
 	 * How old (days) insights data must be to qualify for regular deletion.
-	 * Default: 365. Values are capped at 730 (two years). Legacy `-1` uses that maximum. Values below 1 (other than `-1`) use the default.
+	 * Default: 365. Values are capped at 730 (two years).
 	 */
 	@Env('N8N_INSIGHTS_MAX_AGE_DAYS')
 	maxAgeDays: number = INSIGHTS_MAX_AGE_DAYS_DEFAULT;
