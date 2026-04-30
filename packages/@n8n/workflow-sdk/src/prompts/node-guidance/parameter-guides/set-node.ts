@@ -7,6 +7,40 @@ export const SET_NODE_GUIDE: NodeTypeGuide = {
 
 The Set node uses assignments to create or modify data fields. Each assignment has a specific type that determines how the value is formatted and processed.
 
+#### Canonical Set/Edit Fields v3.4 Shape
+Use Set/Edit Fields for simple reshaping, renaming, adding fields, and mapping data between nodes. Prefer it over a Code node unless the workflow needs loops, complex algorithms, or multi-item custom logic.
+
+\`\`\`javascript
+{
+  type: "n8n-nodes-base.set",
+  version: 3.4,
+  config: {
+    name: "Edit Fields",
+    parameters: {
+      mode: "manual",
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          {
+            id: "caption",
+            name: "caption",
+            value: "={{ $json.title }}",
+            type: "string"
+          }
+        ]
+      }
+    }
+  }
+}
+\`\`\`
+
+- Use \`mode: "manual"\` for normal field mapping.
+- Use \`includeOtherFields: true\` when the user asks to keep existing/input fields.
+- Do NOT use \`mode: "keepAllExistingFields"\`; that is not a valid Set/Edit Fields mode.
+- Expression values must start with \`=\`, for example \`"={{ $json.title }}"\`. Raw \`"{{ $json.title }}"\` is a literal string, not an expression.
+- Each v3.4 assignment must include \`id\`, \`name\`, \`value\`, and \`type\`.
+- Use \`mode: "raw"\` only when the user explicitly needs custom JSON output.
+
 #### Assignment Structure
 \`\`\`json
 {
