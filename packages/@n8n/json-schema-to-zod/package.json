@@ -60,7 +60,7 @@
     "url": "https://github.com/n8n-io/n8n"
   },
   "peerDependencies": {
-    "zod": "^3.25.76"
+    "zod": "^4.4.1"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",

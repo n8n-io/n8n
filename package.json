@@ -125,7 +125,7 @@
       "tmp": "0.2.4",
       "nodemailer": "7.0.11",
       "validator": "13.15.26",
-      "zod": "3.25.67",
+      "zod": "4.4.1",
       "js-yaml": "4.1.1",
       "node-forge": "1.4.0",
       "body-parser": "2.2.1",
