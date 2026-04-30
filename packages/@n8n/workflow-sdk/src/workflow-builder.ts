@@ -1182,12 +1182,21 @@ function createWorkflow(
 	name: string,
 	options?: WorkflowSettings | WorkflowBuilderOptions,
 ): WorkflowBuilder {
-	if (typeof id !== 'string' || typeof name !== 'string') {
+	if (typeof id !== 'string') {
 		const receivedId = Array.isArray(id) ? 'an array' : typeof id;
+		throw new TypeError(
+			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+			'workflow() requires (id: string, name: string). ' +
+				`workflow() requires a string id as first argument, but received ${receivedId}. ` +
+				"Example: workflow('my-workflow-id', 'My Workflow Name')",
+		);
+	}
+	if (typeof name !== 'string') {
 		const receivedName = Array.isArray(name) ? 'an array' : typeof name;
 		throw new TypeError(
 			// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
-			`workflow() requires (id: string, name: string), but received (${receivedId}, ${receivedName}). ` +
+			'workflow() requires (id: string, name: string). ' +
+				`workflow() requires a string name as second argument, but received ${receivedName}. ` +
 				"Example: workflow('my-workflow-id', 'My Workflow Name')",
 		);
 	}

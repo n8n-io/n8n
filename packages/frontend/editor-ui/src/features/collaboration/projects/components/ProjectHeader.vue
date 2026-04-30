@@ -385,6 +385,8 @@ const projectDescription = computed(() => {
 	return null;
 });
 
+const favoriteIcon = computed(() => (isProjectFavorited.value ? 'star-filled' : 'star'));
+
 const projectHeaderRef = ref<HTMLElement | null>(null);
 const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
 
@@ -451,27 +453,15 @@ const onSelect = (action: string) => {
 						</div>
 					</template>
 				</div>
-				<N8nTooltip
+				<N8nIconButton
 					v-if="isTeamProject"
-					:content="
-						isProjectFavorited ? i18n.baseText('favorites.remove') : i18n.baseText('favorites.add')
-					"
-				>
-					<N8nIconButton
-						:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
-						icon="star"
-						variant="ghost"
-						size="small"
-						:aria-label="
-							isProjectFavorited
-								? i18n.baseText('favorites.remove')
-								: i18n.baseText('favorites.add')
-						"
-						:aria-pressed="isProjectFavorited"
-						data-test-id="project-favorite-btn"
-						@click.stop="onToggleProjectFavorite"
-					/>
-				</N8nTooltip>
+					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
+					:icon="favoriteIcon"
+					variant="ghost"
+					size="medium"
+					data-test-id="project-favorite-btn"
+					@click.stop="onToggleProjectFavorite"
+				/>
 			</div>
 			<div
 				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
@@ -553,19 +543,14 @@ const onSelect = (action: string) => {
 }
 
 .favoriteBtn {
+	cursor: pointer;
 	color: var(--color--text--tint-2);
-	margin-left: var(--spacing--2xs);
-	opacity: 0;
-	transition:
-		opacity 0.15s ease,
-		color 0.15s ease;
+	margin-top: var(--spacing--5xs);
+	margin-left: var(--spacing--3xs);
+	opacity: 0.8;
 
 	&.favoriteBtnActive {
-		color: var(--color--warning);
-	}
-
-	&:hover {
-		color: var(--color--text);
+		color: var(--color--yellow-500);
 	}
 }
 

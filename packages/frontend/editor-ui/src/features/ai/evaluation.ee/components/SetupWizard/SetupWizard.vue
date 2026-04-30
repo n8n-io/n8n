@@ -78,7 +78,7 @@ function navigateToWorkflow(
 
 	void router.push({
 		name: VIEWS.WORKFLOW,
-		params: { name: routeWorkflowId },
+		params: { workflowId: routeWorkflowId },
 		query: action ? { action } : undefined,
 	});
 }

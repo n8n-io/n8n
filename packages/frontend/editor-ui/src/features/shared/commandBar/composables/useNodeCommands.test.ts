@@ -85,6 +85,8 @@ describe('useNodeCommands', () => {
 	});
 
 	beforeEach(() => {
+		vi.clearAllMocks();
+
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		mockGetResourcePermissions = vi.mocked(getResourcePermissions);
@@ -113,7 +115,7 @@ describe('useNodeCommands', () => {
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'workflow', {
-			value: { isArchived: false, scopes: [] },
+			value: { isArchived: false, scopes: [], nodes: [] },
 		});
 
 		Object.defineProperty(mockWorkflowsStore, 'isNewWorkflow', {
@@ -133,8 +135,6 @@ describe('useNodeCommands', () => {
 		mockAddNodes.mockResolvedValue([{ id: 'node-1' }]);
 
 		mockEditableWorkflow.value.nodes = [];
-
-		vi.clearAllMocks();
 	});
 
 	describe('add node command', () => {

@@ -12,7 +12,6 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
-import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import {
 	DUPLICATE_MODAL_KEY,
 	EXECUTE_WORKFLOW_NODE_TYPE,
@@ -71,7 +70,6 @@ export function useWorkflowCommands(): CommandGroup {
 
 	const runWorkflow = useRunWorkflow({ router });
 
-	const workflowHelpers = useWorkflowHelpers();
 	const telemetry = useTelemetry();
 
 	const isReadOnly = computed(
@@ -330,7 +328,7 @@ export function useWorkflowCommands(): CommandGroup {
 						handler: () => {
 							const { href } = router.resolve({
 								name: VIEWS.WORKFLOW,
-								params: { name: workflow.id },
+								params: { workflowId: workflow.id },
 							});
 							window.open(href, '_blank', 'noreferrer');
 						},
@@ -353,7 +351,7 @@ export function useWorkflowCommands(): CommandGroup {
 				title: i18n.baseText('commandBar.workflow.download'),
 				section: i18n.baseText('commandBar.sections.workflow'),
 				handler: async () => {
-					const workflowData = await workflowHelpers.getWorkflowDataToSave();
+					const workflowData = workflowDocumentStore.value.serialize();
 					const { tags, ...data } = workflowData;
 					const exportData: IWorkflowToShare = {
 						...data,
