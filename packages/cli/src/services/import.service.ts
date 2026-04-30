@@ -17,7 +17,7 @@ import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8
 import { v4 as uuid } from 'uuid';
 import { readdir, readFile } from 'fs/promises';
 
-import { replaceInvalidCredentials } from '@/workflow-helpers';
+import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
@@ -101,6 +101,7 @@ export class ImportService {
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
+			validateWorkflowStructure(workflow);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			// Only remove if the workflow already exists in the database and is active

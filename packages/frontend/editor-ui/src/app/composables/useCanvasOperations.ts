@@ -2334,7 +2334,11 @@ export function useCanvasOperations() {
 	async function initializeWorkspace(data: IWorkflowDb) {
 		const { workflowDocumentStore: initializedDocumentStore } =
 			await workflowHelpers.initState(data);
-		data.nodes.forEach((node) => {
+
+		// Filter out nodes with missing type to prevent canvas rendering crashes
+		const validNodes = data.nodes.filter((node) => !!node.type);
+
+		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			const isInstalledNode = nodeTypesStore.getIsNodeInstalled(node.type);
 			nodeHelpers.matchCredentials(node);
@@ -2345,7 +2349,7 @@ export function useCanvasOperations() {
 			}
 		});
 
-		initializedDocumentStore.setNodes(data.nodes);
+		initializedDocumentStore.setNodes(validNodes);
 		initializedDocumentStore.setConnections(data.connections);
 
 		return { workflowDocumentStore: initializedDocumentStore };
@@ -2618,6 +2622,22 @@ export function useCanvasOperations() {
 		// If it is JSON check if it looks on the first look like data we can use
 		if (!workflowData.hasOwnProperty('nodes') || !workflowData.hasOwnProperty('connections')) {
 			return {};
+		}
+
+		// Filter out nodes with missing type to prevent crashes
+		if (workflowData.nodes) {
+			const invalidNodes = workflowData.nodes.filter((node) => !node.type);
+			if (invalidNodes.length > 0) {
+				toast.showError(
+					new Error(
+						i18n.baseText('nodeView.showError.importWorkflowData.invalidNodes', {
+							interpolate: { count: String(invalidNodes.length) },
+						}),
+					),
+					i18n.baseText('nodeView.showError.importWorkflowData.title'),
+				);
+				workflowData.nodes = workflowData.nodes.filter((node) => !!node.type);
+			}
 		}
 
 		try {
