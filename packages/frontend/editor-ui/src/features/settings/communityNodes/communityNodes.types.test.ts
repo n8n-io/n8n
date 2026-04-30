@@ -172,3 +172,79 @@ describe('fromInstalledPackage', () => {
 		expect(result.isVerified).toBe(false);
 	});
 });
+
+import { mergeVettedAndInstalled } from './communityNodes.types';
+
+describe('mergeVettedAndInstalled', () => {
+	const mockGetNodeType = (name: string) =>
+		name === 'n8n-nodes-test.testNode' ? makeNodeDescription('Test Node') : null;
+
+	it('should prefer browse-side metadata for description, downloads, author', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage({
+				description: 'Browse description',
+				authorName: 'Browse Author',
+				numberOfDownloads: 9999,
+			}),
+			makeInstalledPackage({ authorName: 'Installed Author' }),
+			mockGetNodeType,
+		);
+
+		expect(result.description).toBe('Browse description');
+		expect(result.authorName).toBe('Browse Author');
+		expect(result.numberOfDownloads).toBe(9999);
+	});
+
+	it('should pull install state from installed-side', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage(),
+			makeInstalledPackage({
+				installedVersion: '3.1.0',
+				updateAvailable: '4.0.0',
+				failedLoading: true,
+			}),
+			mockGetNodeType,
+		);
+
+		expect(result.isInstalled).toBe(true);
+		expect(result.installedVersion).toBe('3.1.0');
+		expect(result.updateAvailable).toBe('4.0.0');
+		expect(result.failedLoading).toBe(true);
+	});
+
+	it('should always set isVerified to true', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage(),
+			makeInstalledPackage(),
+			mockGetNodeType,
+		);
+
+		expect(result.isVerified).toBe(true);
+	});
+
+	it('should fall back installNodeName from vetted to installed when vetted nodes are empty', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage({ nodes: [] }),
+			makeInstalledPackage({
+				installedNodes: [
+					{ name: 'InstalledNode', type: 'n8n-nodes-test.testNode' } as PublicInstalledNode,
+				],
+			}),
+			mockGetNodeType,
+		);
+
+		expect(result.installNodeName).toBe('InstalledNode');
+	});
+
+	it('should default nodeCount and nodeDescription when both sides have no nodes', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage({ nodes: [] }),
+			makeInstalledPackage({ installedNodes: [] }),
+			mockGetNodeType,
+		);
+
+		expect(result.nodeCount).toBe(0);
+		expect(result.nodeDescription).toBeNull();
+		expect(result.installNodeName).toBe('');
+	});
+});

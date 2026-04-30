@@ -68,3 +68,30 @@ export function fromInstalledPackage(
 		failedLoading: pkg.failedLoading,
 	};
 }
+
+export function mergeVettedAndInstalled(
+	pkg: CommunityPackageSummary,
+	installed: PublicInstalledPackage,
+	getNodeType: (name: string) => INodeTypeDescription | null,
+): CommunityPackageRowData {
+	const installNodeName = pkg.nodes[0]?.name ?? installed.installedNodes[0]?.name ?? '';
+	const nodeDescription =
+		pkg.nodes[0]?.nodeDescription ??
+		(installed.installedNodes[0]?.type ? getNodeType(installed.installedNodes[0].type) : null);
+
+	return {
+		packageName: pkg.packageName,
+		authorName: pkg.authorName,
+		description: pkg.description,
+		isOfficialNode: pkg.isOfficialNode,
+		isVerified: true,
+		numberOfDownloads: pkg.numberOfDownloads,
+		nodeCount: pkg.nodes.length || installed.installedNodes.length,
+		nodeDescription,
+		installNodeName,
+		isInstalled: true,
+		installedVersion: installed.installedVersion,
+		updateAvailable: installed.updateAvailable,
+		failedLoading: installed.failedLoading,
+	};
+}
