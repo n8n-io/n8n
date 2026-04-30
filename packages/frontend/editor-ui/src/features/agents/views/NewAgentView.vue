@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -40,6 +40,7 @@ const heading = computed(() =>
 const inputText = ref('');
 const isCreating = ref(false);
 const statusLoaded = ref(false);
+const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 
 onMounted(async () => {
 	try {
@@ -48,6 +49,10 @@ onMounted(async () => {
 		showError(error, i18n.baseText('settings.agentBuilder.loadError'));
 	} finally {
 		statusLoaded.value = true;
+		await nextTick();
+		if (isBuilderConfigured.value) {
+			chatInputRef.value?.focus();
+		}
 	}
 });
 // When set, we've created the agent and the progress overlay is streaming
@@ -273,6 +278,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 				<div :class="$style.inputWrapper">
 					<ChatInputBase
+						ref="chatInputRef"
 						v-model="inputText"
 						:placeholder="i18n.baseText('agents.new.description.placeholder')"
 						:is-streaming="false"
