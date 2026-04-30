@@ -41,11 +41,7 @@ import { useI18n } from '@n8n/i18n';
 import { getNodeIconSource } from '@/app/utils/nodeIcon';
 
 import { useActions } from '../../composables/useActions';
-import {
-	type INodeParameters,
-	isCommunityPackageName,
-	type NodeConnectionType,
-} from 'n8n-workflow';
+import { type INodeParameters, isCommunityPackageName } from 'n8n-workflow';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
@@ -76,14 +72,6 @@ const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const communityNodesAndActions = computed(() => useNodeTypesStore().communityNodesAndActions);
 
-const AI_PANEL_CLASS_PREFIX = 'nodes-list-panel-';
-
-const activeAiConnectionType = computed<NodeConnectionType | undefined>(() => {
-	const panelClass = activeViewStack.value.panelClass;
-	if (!panelClass?.startsWith(AI_PANEL_CLASS_PREFIX)) return undefined;
-	return panelClass.slice(AI_PANEL_CLASS_PREFIX.length) as NodeConnectionType;
-});
-
 const moreFromCommunity = computed(() => {
 	return filterAndSearchNodes(
 		communityNodesAndActions.value.mergedNodes,
@@ -91,7 +79,7 @@ const moreFromCommunity = computed(() => {
 		{
 			isAiSubcategory: isAiSubcategoryView(activeViewStack.value),
 			isHitlSubcategory: isHitlSubcategoryView(activeViewStack.value),
-			aiConnectionType: activeAiConnectionType.value,
+			aiConnectionType: activeViewStack.value.connectionType,
 		},
 	);
 });
@@ -140,6 +128,7 @@ function onSelected(item: INodeCreateElement) {
 			nodeIcon,
 			...extendedInfo,
 			...(item.properties.panelClass ? { panelClass: item.properties.panelClass } : {}),
+			...(item.properties.connectionType ? { connectionType: item.properties.connectionType } : {}),
 			rootView: activeViewStack.value.rootView,
 			forceIncludeNodes: item.properties.forceIncludeNodes,
 			baseFilter: baseSubcategoriesFilter,
