@@ -212,27 +212,6 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 	height: 100%;
 }
 
-/* CodeMirror's inner scroller has its own chrome — match the slim style so
-   vertical scrolling inside the editor looks the same as the chat + tree. */
-.editor :global(.cm-scroller) {
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-}
-
-.editor :global(.cm-scroller)::-webkit-scrollbar {
-	width: 6px;
-	height: 6px;
-}
-
-.editor :global(.cm-scroller)::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.editor :global(.cm-scroller)::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
-}
-
 .error {
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	color: var(--color--text--danger);

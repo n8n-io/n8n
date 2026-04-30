@@ -3,7 +3,6 @@ import { computed } from 'vue';
 import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentSkill } from '../types';
-import shared from '../styles/agent-panel.module.scss';
 
 const props = withDefaults(
 	defineProps<{
@@ -26,7 +25,7 @@ const totalCount = computed(() => props.skills.length);
 
 <template>
 	<div
-		:class="[$style.panel, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:class="[$style.panel, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 		data-testid="agent-skills-list-panel"
 	>

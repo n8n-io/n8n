@@ -46,7 +46,6 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentSectionNav } from '../composables/useAgentSectionNav';
-import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	AGENT_BUILDER_VIEW,
@@ -1273,7 +1272,7 @@ function onSwitchAgent(nextAgentId: string) {
 					/>
 					<div
 						v-else-if="selectedTriggerType"
-						:class="[$style.triggersTab, shared.scrollbarThin]"
+						:class="$style.triggersTab"
 						data-testid="agent-triggers-tab"
 					>
 						<AgentIntegrationsPanel
@@ -1289,7 +1288,7 @@ function onSwitchAgent(nextAgentId: string) {
 					</div>
 					<div
 						v-else-if="selectedSection === 'triggers'"
-						:class="[$style.triggersTab, shared.scrollbarThin]"
+						:class="$style.triggersTab"
 						data-testid="agent-triggers-tab"
 					>
 						<div :class="$style.triggersHeader">
@@ -1349,10 +1348,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:supported-directions="['left']"
 				@resize="onTreeColumnResize"
 			>
-				<aside
-					:class="[$style.treeColumn, shared.scrollbarThin]"
-					data-testid="agent-builder-tree-column"
-				>
+				<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
 					<AgentConfigTree
 						:config="localConfig"
 						:selected-key="selectedSection"
@@ -1482,8 +1478,6 @@ function onSwitchAgent(nextAgentId: string) {
 	max-width: 360px;
 	min-width: 280px;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
 }
 
 /* Each row is title (truncated) + right-aligned timestamp. We render both
@@ -1520,15 +1514,6 @@ function onSwitchAgent(nextAgentId: string) {
 	flex-shrink: 0;
 	color: var(--color--text--tint-2);
 	font-size: var(--font-size--2xs);
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar {
-	width: 6px;
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
 }
 
 .chatModeToggle {

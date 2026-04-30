@@ -8,7 +8,6 @@ import { useI18n } from '@n8n/i18n';
 
 import type { Rule, RuleGroup } from '@/Interface';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
-import shared from '../styles/agent-panel.module.scss';
 import type { AgentSkill } from '../types';
 
 const props = withDefaults(
@@ -211,11 +210,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 
 <template>
 	<div
-		:class="[
-			$style.panel,
-			props.scrollable && $style.scrollable,
-			props.scrollable && shared.scrollbarThin,
-		]"
+		:class="[$style.panel, props.scrollable && $style.scrollable]"
 		data-testid="agent-skill-viewer"
 	>
 		<div :class="$style.field">

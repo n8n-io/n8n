@@ -27,7 +27,6 @@ import type { INodeUi } from '@/Interface';
 
 import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
-import shared from '../styles/agent-panel.module.scss';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 
@@ -134,7 +133,7 @@ const totalCount = computed(() => props.tools.length);
 
 <template>
 	<div
-		:class="[$style.panel, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:class="[$style.panel, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 		data-testid="agent-tools-list-panel"
 	>

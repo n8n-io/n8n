@@ -4,7 +4,6 @@ import { N8nText, N8nButton, N8nSelect } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { ElSwitch } from 'element-plus';
 import type { AgentJsonConfig } from '../types';
-import shared from '../styles/agent-panel.module.scss';
 
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
 type StorageType = MemoryConfig['storage'];
@@ -111,7 +110,7 @@ function onRangeAfterChange(event: Event) {
 
 <template>
 	<div
-		:class="[$style.container, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:class="[$style.container, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
 		<div :class="$style.header">

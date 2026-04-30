@@ -11,7 +11,6 @@ import {
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import { CHAT_MESSAGE_STATUS } from '../constants';
-import shared from '../styles/agent-panel.module.scss';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -123,7 +122,7 @@ watch(
 </script>
 
 <template>
-	<div ref="scrollRef" :class="[$style.messages, shared.scrollbarThin]" @scroll.passive="onScroll">
+	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
 			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
