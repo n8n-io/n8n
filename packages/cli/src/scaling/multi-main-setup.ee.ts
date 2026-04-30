@@ -116,9 +116,10 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 				`[Instance ID ${hostId}] Leadership vacant, attempting to become leader...`,
 			);
 
-			this.instanceSettings.markAsFollower();
-
-			this.emit('leader-stepdown');
+			if (this.instanceSettings.isLeader) {
+				this.instanceSettings.markAsFollower();
+				this.emit('leader-stepdown');
+			}
 
 			await this.tryBecomeLeader();
 		}

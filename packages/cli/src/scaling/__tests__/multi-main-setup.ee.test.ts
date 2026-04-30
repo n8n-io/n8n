@@ -93,9 +93,23 @@ describe('MultiMainSetup', () => {
 			expect(emit).not.toHaveBeenCalledWith('leader-stepdown');
 		});
 
-		it('should attempt to become leader when leadership is vacant', async () => {
+		it('should attempt to become leader when leadership is vacant and instance is follower', async () => {
 			publisher.get.mockResolvedValue(null);
 			publisher.setIfNotExists.mockResolvedValue(true);
+			const emit = jest.spyOn(multiMainSetup, 'emit');
+
+			// @ts-expect-error - private method
+			await multiMainSetup.checkLeader();
+
+			expect(emit).not.toHaveBeenCalledWith('leader-stepdown');
+			expect(emit).toHaveBeenCalledWith('leader-takeover');
+			expect(instanceSettings.markAsLeader).toHaveBeenCalled();
+		});
+
+		it('should step down and re-acquire leadership when leadership is vacant and instance is leader', async () => {
+			publisher.get.mockResolvedValue(null);
+			publisher.setIfNotExists.mockResolvedValue(true);
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => true });
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
