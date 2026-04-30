@@ -261,6 +261,10 @@ defineExpose({
 		margin-top: auto;
 	}
 
+	:global(.el-sub-menu__icon-arrow) {
+		transform: none !important;
+	}
+
 	& hr {
 		border-top: none;
 		border-bottom: var(--border);
