@@ -264,14 +264,22 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		};
 	});
 
-	// Map each test case file to a lane (round-robin in source order via
-	// partitionRoundRobin). Stable across calls so all scenarios + iterations of
-	// a given test case share the build cache on a single lane.
-	const laneByFile = new Map<string, LaneState>();
-	const laneBuckets = partitionRoundRobin(testCasesWithFiles, laneStates.length);
+	// Map each (testCaseFile, iteration) pair to a lane via flat round-robin.
+	// Iterations of the same test case land on DIFFERENT lanes so no single
+	// n8n container ever sees concurrent builds for the same prompt — the
+	// failure mode we hit when iterations were interleaved against the
+	// previous file-only mapping (see project memory `eval_iteration_interleave_regression`).
+	const fileIterPairs: Array<{ fileSlug: string; iter: number }> = [];
+	for (const tc of testCasesWithFiles) {
+		for (let iter = 0; iter < args.iterations; iter++) {
+			fileIterPairs.push({ fileSlug: tc.fileSlug, iter });
+		}
+	}
+	const laneByFileIter = new Map<string, LaneState>();
+	const laneBuckets = partitionRoundRobin(fileIterPairs, laneStates.length);
 	laneBuckets.forEach((bucket, laneIdx) => {
-		for (const tc of bucket) {
-			laneByFile.set(tc.fileSlug, laneStates[laneIdx]);
+		for (const pair of bucket) {
+			laneByFileIter.set(`${pair.fileSlug}:${String(pair.iter)}`, laneStates[laneIdx]);
 		}
 	});
 
@@ -303,15 +311,16 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			successCriteria: inputs.successCriteria,
 		};
 
-		const st = laneByFile.get(inputs.testCaseFile);
+		const st = laneByFileIter.get(`${inputs.testCaseFile}:${String(iteration)}`);
 		if (!st) {
-			// Defensive: a stale dataset example referencing a deleted local file.
-			// Surface as a framework_issue so it doesn't get classified as a builder regression.
+			// Defensive: a stale dataset example referencing a deleted local file
+			// or an unexpected iteration index. Surface as a framework_issue so it
+			// doesn't get classified as a builder regression.
 			return {
 				buildSuccess: false,
 				passed: false,
 				score: 0,
-				reasoning: `No lane for testCaseFile: ${inputs.testCaseFile}`,
+				reasoning: `No lane for testCaseFile=${inputs.testCaseFile} iter=${String(iteration)}`,
 				failureCategory: 'framework_issue',
 				execErrors: [],
 				execDurationMs: 0,
@@ -429,9 +438,13 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
 	// run scenarios whose JSON file no longer exists.
 	const sourceExamples = filteredExamplesIterable(lsClient, datasetName, args.filter, logger);
+	// Interleave iterations only when we have multiple lanes to distribute them
+	// across. With a single lane, the in-flight set would concentrate
+	// same-prompt builds on one container — the regression we just reverted.
+	const interleaveIters = lanes.length > 1;
 	const evaluateData =
 		args.iterations > 1
-			? expandExamplesForIterations(sourceExamples, args.iterations)
+			? expandExamplesForIterations(sourceExamples, args.iterations, interleaveIters)
 			: sourceExamples;
 
 	try {
@@ -512,12 +525,14 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
  * the source example's id, so LangSmith's UI groups them naturally by
  * `reference_example_id` — useful for pass@k visualization.
  *
- * Yields all examples of iteration N before moving to iteration N+1. We tried
- * the inverted order (all iterations of one example before the next) to widen
- * the build-phase fan-out, but it concentrated same-prompt builds on the same
- * lane and the agent started failing at higher load (build_failure rate
- * jumped from 0% to 33%). Keeping iteration-outer order until we have a
- * lane-aware iteration distribution.
+ * `interleave` controls iteration ordering:
+ *   - false (default): yield all examples of iter 0, then iter 1, ... — safe
+ *     for single-lane runs because no lane ever sees concurrent same-prompt
+ *     builds.
+ *   - true: yield all iterations of one example before moving to the next —
+ *     widens the in-flight set across iterations. Only safe when paired with
+ *     `laneByFileIter` distributing (file, iter) pairs across multiple lanes
+ *     so the same prompt never lands on one container concurrently.
  *
  * The source is buffered into memory once before the first yield: we need to
  * emit each example N times, and an AsyncIterable can only be consumed once.
@@ -525,12 +540,21 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 async function* expandExamplesForIterations(
 	source: AsyncIterable<Example>,
 	iterations: number,
+	interleave: boolean,
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
-	for (let i = 0; i < iterations; i++) {
+	if (interleave) {
 		for (const ex of cached) {
-			yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+			for (let i = 0; i < iterations; i++) {
+				yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+			}
+		}
+	} else {
+		for (let i = 0; i < iterations; i++) {
+			for (const ex of cached) {
+				yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+			}
 		}
 	}
 }
