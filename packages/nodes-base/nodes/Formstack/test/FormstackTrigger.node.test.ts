@@ -51,7 +51,7 @@ describe('FormstackTrigger', () => {
 	});
 
 	describe('webhookMethods.default.create', () => {
-		it('should create webhook with hmac_secret and persist secret in static data', async () => {
+		it('should create webhook with hmac_key and persist secret in static data', async () => {
 			const webhookUrl = 'https://example.com/webhook';
 			const formId = 'form-123';
 			const webhookId = 'webhook-456';
@@ -79,7 +79,7 @@ describe('FormstackTrigger', () => {
 				standardize_field_values: true,
 				include_field_type: true,
 				content_type: 'json',
-				hmac_secret: webhookSecret,
+				hmac_key: webhookSecret,
 			});
 			expect(webhookData.webhookId).toBe(webhookId);
 			expect(webhookData.webhookSecret).toBe(webhookSecret);

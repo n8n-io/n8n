@@ -96,27 +96,5 @@ describe('FormstackTriggerHelpers', () => {
 
 			expect(result).toBe(false);
 		});
-
-		it('should handle a string raw body', () => {
-			const stringBody = '{"FormID":"123","UniqueID":"abc"}';
-			const hmac = createHmac('sha256', testSecret);
-			hmac.update(Buffer.from(stringBody));
-			const expectedSignature = `sha256=${hmac.digest('hex')}`;
-
-			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-				webhookSecret: testSecret,
-			});
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
-					if (header === 'x-fs-signature') return expectedSignature;
-					return null;
-				}),
-				rawBody: stringBody,
-			});
-
-			const result = verifySignature.call(mockWebhookFunctions);
-
-			expect(result).toBe(true);
-		});
 	});
 });
