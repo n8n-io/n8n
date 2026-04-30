@@ -177,6 +177,13 @@ jobs:
             "\n</details>"
           ' "$RESULTS_FILE" > /tmp/eval-comment.md
 
+          # Append the comparison block from the sibling .md file when present.
+          COMPARISON_FILE="$(dirname "$RESULTS_FILE")/eval-comparison.md"
+          if [ -f "$COMPARISON_FILE" ]; then
+            printf '\n\n' >> /tmp/eval-comment.md
+            cat "$COMPARISON_FILE" >> /tmp/eval-comment.md
+          fi
+
           # Find and update existing eval comment, or create new one
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
             --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval")) | .id' | tail -1)
