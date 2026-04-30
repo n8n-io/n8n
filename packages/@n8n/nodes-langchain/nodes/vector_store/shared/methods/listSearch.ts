@@ -78,10 +78,11 @@ export async function milvusCollectionsSearch(this: ILoadOptionsFunctions) {
 		databaseName: string;
 	}>('milvusApi');
 
+	const database = credentials.databaseName?.trim() || 'default';
 	const client = new MilvusClient({
 		address: credentials.baseUrl,
 		token: `${credentials.username}:${credentials.password}`,
-		database: credentials.databaseName ?? 'default',
+		database,
 	});
 
 	const response = await client.listCollections();
