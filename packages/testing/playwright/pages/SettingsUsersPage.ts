@@ -73,7 +73,7 @@ export class SettingsUsersPage extends BasePage {
 	}
 
 	async openActions(email: string) {
-		await this.getRow(email).getByTestId('action-toggle').click();
+		await this.getRow(email).getByTestId('action-toggle').getByRole('button').click();
 	}
 
 	async clickDeleteUser(email: string) {

@@ -200,7 +200,7 @@ const triggerHoverEnter = () => {
 
 const triggerHoverLeave = () => {
 	if (props.trigger === 'hover') {
-		close();
+		// Don't close immediately - let the content handle it via mouseleave
 	}
 };
 

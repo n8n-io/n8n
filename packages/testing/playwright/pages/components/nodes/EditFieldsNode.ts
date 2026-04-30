@@ -61,8 +61,7 @@ export class EditFieldsNode extends BasePage {
 		await typeSelect.waitFor({ state: 'visible' });
 		await typeSelect.click();
 
-		const typeOptionText = this.getTypeOptionText(type);
-		const option = this.page.getByRole('menuitem', { name: typeOptionText });
+		const option = this.page.getByTestId(`action-${type}`);
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}
@@ -80,17 +79,6 @@ export class EditFieldsNode extends BasePage {
 		} else {
 			await this.setTextValue(valueContainer, String(value));
 		}
-	}
-
-	private getTypeOptionText(type: string): string {
-		const typeMap = new Map([
-			['string', 'String'],
-			['number', 'Number'],
-			['boolean', 'Boolean'],
-			['array', 'Array'],
-			['object', 'Object'],
-		]);
-		return typeMap.get(type) ?? 'String';
 	}
 
 	private async setTextValue(valueContainer: Locator, value: string): Promise<void> {
