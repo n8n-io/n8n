@@ -10,6 +10,7 @@
 // https://github.com/n8n-io/n8n-demo-webcomponent
 // ---------------------------------------------------------------------------
 
+import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -91,23 +92,43 @@ async function loadRuns(rootDir: string): Promise<Run[]> {
 		const dir = path.join(rootDir, entry.name);
 		const summaryPath = path.join(dir, 'summary.json');
 		const resultsPath = path.join(dir, 'results.jsonl');
+		let summaryRaw: string;
+		let resultsRaw: string;
 		try {
-			const [summaryRaw, resultsRaw] = await Promise.all([
+			[summaryRaw, resultsRaw] = await Promise.all([
 				fs.readFile(summaryPath, 'utf8'),
 				fs.readFile(resultsPath, 'utf8'),
 			]);
-			const summary = JSON.parse(summaryRaw) as SummaryJson;
-			const results = resultsRaw
-				.split('\n')
-				.filter((line) => line.trim().length > 0)
-				.map((line) => JSON.parse(line) as ResultRecord);
-			runs.push({ dirName: entry.name, summary, results });
-		} catch {
-			// Skip dirs that don't have both files — incomplete/aborted runs.
+		} catch (error) {
+			// Incomplete/aborted runs lack one of the two files — skip those
+			// silently. Any other read failure (permissions, I/O) should surface.
+			if (isMissingFileError(error)) continue;
+			throw error;
 		}
+		const summary = jsonParse<SummaryJson>(summaryRaw, {
+			errorMessage: `Failed to parse ${summaryPath}`,
+		});
+		const results = resultsRaw
+			.split('\n')
+			.filter((line) => line.trim().length > 0)
+			.map((line) =>
+				jsonParse<ResultRecord>(line, {
+					errorMessage: `Failed to parse a line in ${resultsPath}`,
+				}),
+			);
+		runs.push({ dirName: entry.name, summary, results });
 	}
 	runs.sort((a, b) => b.summary.startedAt.localeCompare(a.summary.startedAt));
 	return runs;
+}
+
+function isMissingFileError(error: unknown): boolean {
+	return (
+		typeof error === 'object' &&
+		error !== null &&
+		'code' in error &&
+		(error as { code: unknown }).code === 'ENOENT'
+	);
 }
 
 // ---------------------------------------------------------------------------

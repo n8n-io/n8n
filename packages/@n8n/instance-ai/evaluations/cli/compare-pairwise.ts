@@ -134,6 +134,27 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 			? 0
 			: normalized.reduce((sum, r) => sum + r.durationMs, 0) / normalized.length;
 
+	// Recompute totals from the filtered set so the comparison summary stays
+	// consistent with the rendered records (1:1 across builders, iter 1 only).
+	const buildSuccess = normalized.filter((r) => r.success).length;
+	const buildFailures: Record<string, number> = {};
+	for (const r of normalized) {
+		if (r.success) continue;
+		const key = r.errorClass ?? 'error';
+		buildFailures[key] = (buildFailures[key] ?? 0) + 1;
+	}
+	const primaryPasses = normalized.filter(
+		(r) => findScore(r.feedback, 'pairwise_primary') === 1,
+	).length;
+	const primaryPassRate = normalized.length === 0 ? 0 : primaryPasses / normalized.length;
+	const diagnosticScores = normalized
+		.map((r) => findScore(r.feedback, 'pairwise_diagnostic'))
+		.filter((v): v is number => v !== undefined && Number.isFinite(v));
+	const avgDiagnostic =
+		diagnosticScores.length === 0
+			? 0
+			: diagnosticScores.reduce((a, b) => a + b, 0) / diagnosticScores.length;
+
 	return {
 		summary: {
 			label: `${summary.builder} (instance-ai)`,
@@ -143,11 +164,11 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 			startedAt: summary.startedAt,
 			finishedAt: summary.finishedAt,
 			totals: {
-				examples: summary.totals.examples,
-				buildSuccess: summary.totals.buildSuccess,
-				buildFailures: summary.totals.buildFailures,
-				primaryPassRate: summary.totals.primaryPassRate,
-				avgDiagnostic: summary.totals.avgDiagnostic,
+				examples: normalized.length,
+				buildSuccess,
+				buildFailures,
+				primaryPassRate,
+				avgDiagnostic,
 				avgDurationMs: avgDuration,
 			},
 		},

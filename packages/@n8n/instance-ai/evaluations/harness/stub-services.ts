@@ -108,7 +108,12 @@ export async function createStubServices(
 				displayName: node.displayName,
 				description: node.description,
 				group: [],
-				version: Array.isArray(node.version) ? (node.version[0] ?? 1) : node.version,
+				// Version arrays list supported versions in ascending order; the
+				// latest is the last entry. Returning [0] would surface a stale
+				// version to the agent.
+				version: Array.isArray(node.version)
+					? (node.version[node.version.length - 1] ?? 1)
+					: node.version,
 			}));
 		},
 		async getDescription(nodeType: string) {
@@ -265,6 +270,9 @@ function coerceSearchableNode(entry: unknown): SearchableNodeDescription {
 		throw new Error(`Node entry missing name: ${JSON.stringify(entry)}`);
 	}
 
+	const codex = coerceCodex(entry.codex);
+	const builderHint = coerceBuilderHint(entry.builderHint);
+
 	return {
 		name,
 		displayName,
@@ -272,7 +280,45 @@ function coerceSearchableNode(entry: unknown): SearchableNodeDescription {
 		version,
 		inputs,
 		outputs,
+		// Preserve fields used by NodeSearchEngine relevance scoring and
+		// builder hints so eval runs see the same metadata as production.
+		...(codex ? { codex } : {}),
+		...(builderHint ? { builderHint } : {}),
 	};
+}
+
+function coerceCodex(value: unknown): SearchableNodeDescription['codex'] | undefined {
+	if (!isRecord(value)) return undefined;
+	const aliases = coerceStringList(value.alias);
+	if (!aliases) return undefined;
+	return { alias: aliases };
+}
+
+function coerceBuilderHint(value: unknown): SearchableNodeDescription['builderHint'] | undefined {
+	if (!isRecord(value)) return undefined;
+	const hint: NonNullable<SearchableNodeDescription['builderHint']> = {};
+	if (typeof value.message === 'string') hint.message = value.message;
+	const inputs = coerceHintPortMap(value.inputs);
+	if (inputs) hint.inputs = inputs;
+	const outputs = coerceHintPortMap(value.outputs);
+	if (outputs) hint.outputs = outputs;
+	return Object.keys(hint).length > 0 ? hint : undefined;
+}
+
+function coerceHintPortMap(
+	value: unknown,
+): Record<string, { required: boolean; displayOptions?: Record<string, unknown> }> | undefined {
+	if (!isRecord(value)) return undefined;
+	const result: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }> =
+		{};
+	for (const [key, raw] of Object.entries(value)) {
+		if (!isRecord(raw)) continue;
+		const required = typeof raw.required === 'boolean' ? raw.required : false;
+		const entry: { required: boolean; displayOptions?: Record<string, unknown> } = { required };
+		if (isRecord(raw.displayOptions)) entry.displayOptions = raw.displayOptions;
+		result[key] = entry;
+	}
+	return Object.keys(result).length > 0 ? result : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

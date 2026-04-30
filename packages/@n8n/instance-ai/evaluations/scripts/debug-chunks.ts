@@ -82,7 +82,10 @@ async function main(): Promise<void> {
 
 	const bus = createBus();
 	const abort = new AbortController();
-	setTimeout(() => abort.abort(), 10 * 60 * 1000);
+	const abortTimer = setTimeout(() => abort.abort(), 10 * 60 * 1000);
+	// Don't keep Node alive after a successful run — finishing main()
+	// should let the script exit immediately.
+	abortTimer.unref();
 
 	const counts = new Map<string, number>();
 	const originalPublish = bus.publish.bind(bus);

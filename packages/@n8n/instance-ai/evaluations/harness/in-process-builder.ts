@@ -147,7 +147,27 @@ export async function buildInProcess(
 			await chunkLog?.close();
 			return failResult(started, 'agent_error', error, interactivity);
 		}
-		const root = await getWorkspaceRoot(builderWs.workspace);
+		let root: string;
+		try {
+			root = await getWorkspaceRoot(builderWs.workspace);
+		} catch (error) {
+			chunkLog?.write({
+				kind: 'error',
+				stage: 'sandbox-resolve-root',
+				message: error instanceof Error ? error.message : String(error),
+			});
+			try {
+				await builderWs.cleanup();
+			} catch (cleanupError) {
+				chunkLog?.write({
+					kind: 'error',
+					stage: 'sandbox-cleanup',
+					message: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+				});
+			}
+			await chunkLog?.close();
+			return failResult(started, 'agent_error', error, interactivity);
+		}
 		prompt = createSandboxBuilderAgentPrompt(root);
 
 		const sandboxToolNames = [
@@ -486,8 +506,13 @@ interface ChunkLog {
 async function openChunkLog(filePath: string): Promise<ChunkLog> {
 	await mkdir(path.dirname(filePath), { recursive: true });
 	const stream: WriteStream = createWriteStream(filePath, { flags: 'w' });
+	// Without a listener, an EIO/disk-full error event would crash the
+	// process. Failed log I/O must never abort an in-flight eval.
+	stream.on('error', () => {});
 
+	let closed = false;
 	const emit = (obj: Record<string, unknown>): void => {
+		if (closed) return;
 		stream.write(JSON.stringify({ t: new Date().toISOString(), ...obj }) + '\n');
 	};
 
@@ -614,6 +639,7 @@ async function openChunkLog(filePath: string): Promise<ChunkLog> {
 			emit(record);
 		},
 		async close() {
+			if (closed) return;
 			flushText();
 			// Any tool calls still unpaired at close are logged so a silent
 			// mid-stream drop doesn't leave `toolCallStarts` ghosts invisible.
@@ -626,6 +652,7 @@ async function openChunkLog(filePath: string): Promise<ChunkLog> {
 				});
 			}
 			emit({ kind: 'log-end', totalToolCalls: toolCallIdx });
+			closed = true;
 			await new Promise<void>((resolve) => stream.end(() => resolve()));
 		},
 	};
