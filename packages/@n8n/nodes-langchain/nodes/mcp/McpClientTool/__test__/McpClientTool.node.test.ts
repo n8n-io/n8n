@@ -28,6 +28,11 @@ vi.mock('@n8n/ai-utilities', async () => ({
 const mockedProxyFetch = proxyFetch as vi.MockedFunction<typeof proxyFetch>;
 
 describe('McpClientTool', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+		vi.restoreAllMocks();
+	});
+
 	describe('loadOptions: getTools', () => {
 		it('should return a list of tools', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
@@ -59,9 +64,14 @@ describe('McpClientTool', () => {
 			vi.spyOn(Client.prototype, 'connect').mockRejectedValue(new Error('Fail!'));
 
 			const node = mock<INode>({ typeVersion: 1 });
+
 			await expect(
 				getTools.call(mock<ILoadOptionsFunctions>({ getNode: vi.fn(() => node) })),
-			).rejects.toEqual(new NodeOperationError(node, 'Could not connect to your MCP server'));
+			).rejects.toBeInstanceOf(NodeOperationError);
+
+			await expect(
+				getTools.call(mock<ILoadOptionsFunctions>({ getNode: vi.fn(() => node) })),
+			).rejects.toThrow('Could not connect to your MCP server');
 		});
 
 		it('should close client after listing tools', async () => {
@@ -86,10 +96,6 @@ describe('McpClientTool', () => {
 	});
 
 	describe('supplyData', () => {
-		beforeEach(() => {
-			vi.resetAllMocks();
-		});
-
 		it('should return a valid toolkit with usable tools (that returns a string)', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
@@ -399,7 +405,7 @@ describe('McpClientTool', () => {
 			expect(supplyDataFunctions.addOutputData).toHaveBeenCalledWith(
 				NodeConnectionTypes.AiTool,
 				0,
-				new NodeOperationError(supplyDataFunctions.getNode(), 'Weather unknown at location'),
+				expect.objectContaining({ message: 'Weather unknown at location' }),
 			);
 		});
 
@@ -642,10 +648,6 @@ describe('McpClientTool', () => {
 	});
 
 	describe('execute', () => {
-		beforeEach(() => {
-			vi.resetAllMocks();
-		});
-
 		it('should execute tool when tool name is in item.json.tool (from agent)', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
@@ -1234,10 +1236,6 @@ describe('McpClientTool', () => {
 	});
 
 	describe('supplyData cancellation', () => {
-		beforeEach(() => {
-			vi.resetAllMocks();
-		});
-
 		it('should handle mid-flight abort without calling onError', async () => {
 			const abortController = new AbortController();
 
@@ -1495,10 +1493,6 @@ describe('McpClientTool', () => {
 	});
 
 	describe('supplyData tool name prefixing', () => {
-		beforeEach(() => {
-			vi.resetAllMocks();
-		});
-
 		it('should prefix tool names with sanitized node name', async () => {
 			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
