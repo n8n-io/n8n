@@ -50,7 +50,7 @@ defineProps<{
 <style module>
 .toolSteps {
 	list-style: none;
-	margin: 0 0 var(--spacing--xs);
+	margin: 0 0 var(--spacing--sm);
 	padding: 0;
 	display: flex;
 	flex-direction: column;
@@ -106,12 +106,12 @@ defineProps<{
 .toolStepLabel {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 	line-height: var(--line-height--sm);
 }
 
 .toolStepSummary {
-	color: var(--text-color--subtle);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--sm);
 	overflow: hidden;

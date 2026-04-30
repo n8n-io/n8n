@@ -293,7 +293,7 @@ watch(
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--background--surface);
+	background-color: var(--background--subtle);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
