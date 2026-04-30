@@ -14,13 +14,13 @@ import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult } from 'langsmith/evaluation';
 import type { Example, Run } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
-import pLimit from 'p-limit';
 import { join } from 'path';
 import { z } from 'zod';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
+import { LaneAllocator } from './lane-allocator';
 import { partitionRoundRobin } from './lanes';
 import { N8nClient } from '../clients/n8n-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
@@ -195,15 +195,12 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter);
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
 
-	// Per-lane build state. Each lane keeps its own MAX_CONCURRENT_BUILDS=4 cap;
-	// total system throughput = 4 × lanes.length. Build cache keys are
-	// `${iteration}:${prompt}` so the same prompt gets a fresh build per
-	// iteration — pass@k captures real builder variance.
+	// LaneState carries the allocator-managed counters (activeBuilds,
+	// inflightPrompts) plus the lane's own traced LangSmith wrappers.
 	interface LaneState {
 		lane: Lane;
-		buildLimiter: ReturnType<typeof pLimit>;
-		buildCache: Map<string, Promise<BuildResult>>;
-		buildDurations: Map<string, number>;
+		activeBuilds: number;
+		inflightPrompts: Set<string>;
 		tracedBuild: (prompt: string) => Promise<BuildResult>;
 		tracedExecute: (execArgs: {
 			workflowId: string;
@@ -212,18 +209,13 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
 	}
 
-	// Traceable wraps the actual build call *inside* the limiter — otherwise the
-	// LangSmith span would include queue-wait time, which accumulates across
-	// iterations as later builds queue behind earlier ones. Lane metadata makes
-	// it possible to filter spans by lane in the LangSmith UI.
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
 		const laneNum = idx + 1;
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
 		return {
 			lane,
-			buildLimiter: pLimit(MAX_CONCURRENT_BUILDS),
-			buildCache: new Map<string, Promise<BuildResult>>(),
-			buildDurations: new Map<string, number>(),
+			activeBuilds: 0,
+			inflightPrompts: new Set<string>(),
 			tracedBuild: traceable(
 				async (prompt: string) =>
 					await buildWorkflow({
@@ -266,67 +258,37 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		};
 	});
 
-	// Distribute work to lanes. Two modes, gated on whether we have enough lanes
-	// to spread iterations of the same test case across distinct containers:
-	//
-	//   useDistributedIters = lanes.length >= args.iterations
-	//
-	// True (CI default at 9 lanes × 3 iters): map (file, iter) → lane via flat
-	// round-robin so the same prompt never lands on one container twice. Pairs
-	// with iter-interleave below for max parallelism.
-	//
-	// False (e.g. local 1 lane × 3 iters, or any lanes < iters case): map file
-	// → lane only. Fall back to iter-sequential at the iterator so each lane
-	// processes one iteration phase at a time, never concurrent same-prompt.
-	const useDistributedIters = laneStates.length >= args.iterations;
-
-	const laneByFile = new Map<string, LaneState>();
-	const laneByFileIter = new Map<string, LaneState>();
-	if (useDistributedIters) {
-		const fileIterPairs: Array<{ fileSlug: string; iter: number }> = [];
-		for (const tc of testCasesWithFiles) {
-			for (let iter = 0; iter < args.iterations; iter++) {
-				fileIterPairs.push({ fileSlug: tc.fileSlug, iter });
-			}
-		}
-		const buckets = partitionRoundRobin(fileIterPairs, laneStates.length);
-		buckets.forEach((bucket, laneIdx) => {
-			for (const pair of bucket) {
-				laneByFileIter.set(`${pair.fileSlug}:${String(pair.iter)}`, laneStates[laneIdx]);
-			}
-		});
-	} else {
-		const buckets = partitionRoundRobin(testCasesWithFiles, laneStates.length);
-		buckets.forEach((bucket, laneIdx) => {
-			for (const tc of bucket) {
-				laneByFile.set(tc.fileSlug, laneStates[laneIdx]);
-			}
-		});
-	}
-
-	function laneFor(fileSlug: string, iter: number): LaneState | undefined {
-		return useDistributedIters
-			? laneByFileIter.get(`${fileSlug}:${String(iter)}`)
-			: laneByFile.get(fileSlug);
-	}
+	// Work-stealing: each build acquires a lane that isn't already running its
+	// prompt, runs there (capped per-lane), then releases. Scenarios re-use the
+	// lane that built their workflow.
+	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
+	const buildCache = new Map<
+		string,
+		Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }>
+	>();
+	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
 		prompt: string,
 		iteration: number,
-		st: LaneState,
-	): Promise<{ build: BuildResult; buildDurationMs?: number }> {
+	): Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }> {
 		const key = `${String(iteration)}:${prompt}`;
-		const existing = st.buildCache.get(key);
-		if (existing) return { build: await existing };
-		const promise = st.buildLimiter(async () => {
-			const start = Date.now();
-			const build = await st.tracedBuild(prompt);
-			st.buildDurations.set(key, Date.now() - start);
-			return build;
-		});
-		st.buildCache.set(key, promise);
-		const build = await promise;
-		return { build, buildDurationMs: st.buildDurations.get(key) };
+		const existing = buildCache.get(key);
+		if (existing) return await existing;
+		const promise = (async () => {
+			const lane = await allocator.acquire(prompt);
+			try {
+				const start = Date.now();
+				const build = await lane.tracedBuild(prompt);
+				const buildDurationMs = Date.now() - start;
+				buildDurations.set(key, buildDurationMs);
+				return { build, lane, buildDurationMs };
+			} finally {
+				allocator.release(lane, prompt);
+			}
+		})();
+		buildCache.set(key, promise);
+		return await promise;
 	}
 
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
@@ -338,24 +300,11 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			successCriteria: inputs.successCriteria,
 		};
 
-		const st = laneFor(inputs.testCaseFile, iteration);
-		if (!st) {
-			// Defensive: a stale dataset example referencing a deleted local file
-			// or an unexpected iteration index. Surface as framework_issue so it
-			// doesn't get classified as a builder regression.
-			return {
-				buildSuccess: false,
-				passed: false,
-				score: 0,
-				reasoning: `No lane for testCaseFile=${inputs.testCaseFile} iter=${String(iteration)}`,
-				failureCategory: 'framework_issue',
-				execErrors: [],
-				execDurationMs: 0,
-				nodeCount: 0,
-			};
-		}
-
-		const { build, buildDurationMs } = await getOrBuild(inputs.prompt, iteration, st);
+		const {
+			build,
+			lane: builtOnLane,
+			buildDurationMs,
+		} = await getOrBuild(inputs.prompt, iteration);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -375,7 +324,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
 		let result;
 		try {
-			result = await st.tracedExecute({
+			result = await builtOnLane.tracedExecute({
 				workflowId: build.workflowId,
 				scenario,
 				workflowJsons: build.workflowJsons,
@@ -465,12 +414,9 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
 	// run scenarios whose JSON file no longer exists.
 	const sourceExamples = filteredExamplesIterable(lsClient, datasetName, args.filter, logger);
-	// Interleave iterations only when (file, iter) distribution is active.
-	// Otherwise iter-interleave would concentrate same-prompt builds on the
-	// lanes that handle each test case — the regression we already saw.
 	const evaluateData =
 		args.iterations > 1
-			? expandExamplesForIterations(sourceExamples, args.iterations, useDistributedIters)
+			? expandExamplesForIterations(sourceExamples, args.iterations)
 			: sourceExamples;
 
 	try {
@@ -502,19 +448,12 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
-		const allBuildDurations = new Map<string, number>();
-		for (const st of laneStates) {
-			for (const [k, v] of st.buildDurations) {
-				allBuildDurations.set(k, v);
-			}
-		}
-
 		await updateExperimentAggregates({
 			lsClient,
 			experimentName: experimentResults.experimentName,
 			runs: experimentResults.results,
 			evaluation,
-			buildDurations: allBuildDurations,
+			buildDurations,
 			totalDurationMs,
 			logger,
 		});
@@ -529,49 +468,28 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	} finally {
 		if (!args.keepWorkflows) {
 			await Promise.all(
-				laneStates.flatMap((st) =>
-					[...st.buildCache.values()].map(async (buildPromise) => {
-						try {
-							const build = await buildPromise;
-							await cleanupBuild(st.lane.client, build, logger);
-						} catch {
-							// Best-effort
-						}
-					}),
-				),
+				[...buildCache.values()].map(async (promise) => {
+					try {
+						const { build, lane } = await promise;
+						await cleanupBuild(lane.lane.client, build, logger);
+					} catch {
+						// Best-effort
+					}
+				}),
 			);
 		}
 	}
 }
 
 /**
- * Expand a source example stream into N copies, tagging each with `_iteration`
- * so the target function can key its build cache by iteration and we can
- * reshape runs back into per-iteration groups afterwards. All N copies share
- * the source example's id, so LangSmith's UI groups them naturally by
- * `reference_example_id` — useful for pass@k visualization.
- *
- * Always round-robins scenarios across test cases (groups by `testCaseFile`,
- * then yields one scenario per group per "round"). This keeps multi-lane
- * setups busy by fanning the in-flight set across distinct test cases.
- *
- * `interleaveIters` controls iteration ordering:
- *   - true: yield all iterations of each example before moving to the next
- *     example. Maximizes build-phase parallelism by exposing all 3 distinct
- *     `(iter, prompt)` build keys per scenario at once. **Only safe when
- *     iterations of the same test case land on different lanes** — pair with
- *     `laneByFileIter` distribution. Otherwise concentrates same-prompt builds
- *     on a single container.
- *   - false: yield iter 0 of every example before iter 1, then iter 2. Safe
- *     for any lane count; only one iteration phase is in flight at a time.
- *
- * The source is buffered into memory once before the first yield: we need to
- * emit each example N times, and an AsyncIterable can only be consumed once.
+ * Expand a source example stream into N copies, tagging each with `_iteration`.
+ * Round-robins scenarios across test cases (groups by `testCaseFile`) and
+ * iter-interleaves per scenario so the in-flight set spans both dimensions.
+ * Concentration is handled by the work-stealing allocator at build time.
  */
 async function* expandExamplesForIterations(
 	source: AsyncIterable<Example>,
 	iterations: number,
-	interleaveIters: boolean,
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
@@ -590,29 +508,12 @@ async function* expandExamplesForIterations(
 	const groups = [...byFile.values()];
 	const maxScenarios = groups.reduce((m, g) => Math.max(m, g.length), 0);
 
-	if (interleaveIters) {
-		// (scenario_round, group, iteration) — iter-interleave inside each example.
-		for (let s = 0; s < maxScenarios; s++) {
-			for (const group of groups) {
-				if (s < group.length) {
-					const ex = group[s];
-					for (let i = 0; i < iterations; i++) {
-						yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
-					}
-				}
-			}
-		}
-	} else {
-		// (iteration, scenario_round, group) — iter-sequential, scenarios still
-		// round-robin across test cases so multi-lane setups stay busy within
-		// each iteration phase.
-		for (let i = 0; i < iterations; i++) {
-			for (let s = 0; s < maxScenarios; s++) {
-				for (const group of groups) {
-					if (s < group.length) {
-						const ex = group[s];
-						yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
-					}
+	for (let s = 0; s < maxScenarios; s++) {
+		for (const group of groups) {
+			if (s < group.length) {
+				const ex = group[s];
+				for (let i = 0; i < iterations; i++) {
+					yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
 				}
 			}
 		}
