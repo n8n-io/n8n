@@ -27,13 +27,13 @@ on:
 jobs:
   run-evals:
     name: 'Run Evals'
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 45
     env:
       # Each port hosts an independent n8n container; the eval CLI partitions
       # test cases across them, multiplying total throughput by the lane count.
-      # 9 lanes / 9 test cases → 1 test case per lane. Paired with the 8vcpu
-      # runner so the additional containers have CPU headroom.
+      # 9 lanes on 4vcpu — builds are LLM-bound so CPU headroom is sufficient
+      # at cap=4 per lane × 9 lanes; bump back to 8vcpu if contention shows up.
       LANE_PORTS: '5678,5679,5680,5681,5682,5683,5684,5685,5686'
     permissions:
       contents: read
