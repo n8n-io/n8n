@@ -797,16 +797,14 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 
 	credentials.oauthTokenData = newToken.data;
 
-	// Re-run preAuthentication so custom credential types extending oAuth2Api can transform
+	// Apply preAuthentication so custom credential types extending oAuth2Api can transform
 	// refreshed token data (e.g. extracting a claim from a decrypted JWE/JWT) before signing.
-	// credentialsExpired=true bypasses the expirable-property guard since the transformation
-	// must run on every refresh, not only when the cached value is empty.
-	const preAuthData = await additionalData.credentialsHelper.preAuthentication(
+	// runPreAuthentication runs on every refresh without persisting — the transformed
+	// oauthTokenData is persisted by the updateCredentialsOauthTokenData call below.
+	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
 		{ helpers },
 		credentials as unknown as ICredentialDataDecryptedObject,
 		credentialsType,
-		node,
-		true,
 	);
 	let signingToken = newToken;
 	if (preAuthData) {
@@ -905,16 +903,13 @@ export async function requestOAuth2(
 		oauthTokenData = data;
 	}
 
-	// Support preAuthentication for custom OAuth2 credential types extending oAuth2Api.
+	// Apply preAuthentication for custom OAuth2 credential types extending oAuth2Api.
 	// Enables transforming token data on every request (e.g. extracting a claim from a
-	// decrypted JWE/JWT). credentialsExpired=true bypasses the expirable-property guard,
-	// which would otherwise skip the call once the cached value is populated.
-	const preAuthData = await additionalData.credentialsHelper.preAuthentication(
+	// decrypted JWE/JWT) as a pure in-memory transform — no DB write per request.
+	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
 		{ helpers: this.helpers },
 		credentials as unknown as ICredentialDataDecryptedObject,
 		credentialsType,
-		node,
-		true,
 	);
 	if (preAuthData) {
 		Object.assign(credentials, preAuthData);

@@ -1691,7 +1691,7 @@ describe('Request Helper Functions', () => {
 
 		test('initial path: signs request with token transformed by preAuthentication', async () => {
 			mockThis.getCredentials.mockResolvedValue(credentialData());
-			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue({
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue({
 				oauthTokenData: {
 					access_token: 'transformed-token',
 					token_type: 'bearer',
@@ -1710,10 +1710,11 @@ describe('Request Helper Functions', () => {
 				true,
 			);
 
-			expect(mockAdditionalData.credentialsHelper.preAuthentication).toHaveBeenCalled();
-			const preAuthCall = mockAdditionalData.credentialsHelper.preAuthentication.mock.calls[0];
+			expect(mockAdditionalData.credentialsHelper.runPreAuthentication).toHaveBeenCalled();
+			const preAuthCall = mockAdditionalData.credentialsHelper.runPreAuthentication.mock.calls[0];
 			expect(preAuthCall[2]).toBe('testOAuth2');
-			expect(preAuthCall[4]).toBe(true);
+			// runPreAuthentication is the non-persisting variant — must not call updateCredentials
+			expect(mockAdditionalData.credentialsHelper.updateCredentials).not.toHaveBeenCalled();
 			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					headers: expect.objectContaining({ Authorization: 'Bearer transformed-token' }),
@@ -1723,7 +1724,7 @@ describe('Request Helper Functions', () => {
 
 		test('initial path: undefined preAuthentication leaves request untouched', async () => {
 			mockThis.getCredentials.mockResolvedValue(credentialData());
-			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue(undefined);
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue(undefined);
 			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
 
 			await requestOAuth2.call(
@@ -1748,7 +1749,7 @@ describe('Request Helper Functions', () => {
 
 			// preAuthentication is called twice (initial + refresh). Initial returns undefined
 			// so the 401 fires; refresh returns a transformed token.
-			mockAdditionalData.credentialsHelper.preAuthentication
+			mockAdditionalData.credentialsHelper.runPreAuthentication
 				.mockResolvedValueOnce(undefined)
 				.mockResolvedValueOnce({
 					oauthTokenData: {
@@ -1802,7 +1803,7 @@ describe('Request Helper Functions', () => {
 
 		test('refresh path: undefined preAuthentication signs retry with raw refreshed token', async () => {
 			mockThis.getCredentials.mockResolvedValue(credentialData());
-			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue(undefined);
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue(undefined);
 
 			nock(tokenUrl).post('/token').reply(200, {
 				access_token: 'raw-refreshed',
@@ -1834,7 +1835,7 @@ describe('Request Helper Functions', () => {
 
 		test('refreshOAuth2Token: returns transformed data after preAuthentication', async () => {
 			mockThis.getCredentials.mockResolvedValue(credentialData());
-			mockAdditionalData.credentialsHelper.preAuthentication.mockResolvedValue({
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue({
 				oauthTokenData: {
 					access_token: 'transformed-refreshed',
 					refresh_token: 'new-refresh',
