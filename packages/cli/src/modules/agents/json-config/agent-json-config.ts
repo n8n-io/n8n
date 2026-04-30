@@ -47,6 +47,14 @@ const JsonSchemaObjectSchema = z
 	})
 	.passthrough();
 
+const AgentJsonSkillConfigSchema = z.object({
+	type: z.literal('skill'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[a-z0-9_-]+$/),
+});
+
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
@@ -83,17 +91,31 @@ export const AgentJsonConfigSchema = z.object({
 	model: z
 		.string()
 		.min(1)
-		.regex(/^[a-z0-9-]+\/[a-z0-9._-]+$/i, 'Model must be "provider/model-name" format'),
+		.regex(
+			/**
+			 * [a-z0-9-]+: Provider name (e.g. "anthropic")
+			 * (?:[a-z0-9._-]+\/)*: Zero or more sub-providers (e.g. "openrouter/amazon/nova-micro-v1")
+			 * [a-z0-9._-]+: Model name (e.g. "claude-sonnet-4-5")
+			 */
+			/^[a-z0-9-]+\/(?:[a-z0-9._-]+\/)*[a-z0-9._-]+$/i,
+			'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
+		),
 	credential: z.string().optional(),
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
+	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(20).optional(),
 			requireToolApproval: z.boolean().optional(),
+			nodeTools: z
+				.object({
+					enabled: z.boolean(),
+				})
+				.optional(),
 		})
 		.optional(),
 });
@@ -102,6 +124,8 @@ export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
+export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonConfigRef = AgentJsonToolConfig | AgentJsonSkillConfig;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 
 export interface ConfigValidationError {
@@ -129,4 +153,15 @@ export function formatZodErrors(error: ZodError): ConfigValidationError[] {
 		expected: 'expected' in issue ? String(issue.expected) : undefined,
 		received: 'received' in issue ? String(issue.received) : undefined,
 	}));
+}
+
+/**
+ * Returns whether the built-in node tool chain (search_nodes, get_node_types,
+ * list_credentials, run_node_tool) should be attached to an agent runtime.
+ *
+ * Absent or partial config defaults to disabled — only an explicit
+ * `nodeTools: { enabled: true }` opts an agent in.
+ */
+export function isNodeToolsEnabled(config: AgentJsonConfig['config']): boolean {
+	return config?.nodeTools?.enabled === true;
 }

@@ -28,6 +28,14 @@ export async function loadSlackAdapter() {
 	return await esmImport<typeof import('@chat-adapter/slack')>('@chat-adapter/slack');
 }
 
+export async function loadTelegramAdapter() {
+	return await esmImport<typeof import('@chat-adapter/telegram')>('@chat-adapter/telegram');
+}
+
+export async function loadLinearAdapter() {
+	return await esmImport<typeof import('@chat-adapter/linear')>('@chat-adapter/linear');
+}
+
 export async function loadMemoryState() {
 	return await esmImport<typeof import('@chat-adapter/state-memory')>('@chat-adapter/state-memory');
 }

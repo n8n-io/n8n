@@ -1,3 +1,4 @@
+import type { AgentIntegration, AgentSkill } from '@n8n/api-types';
 import type { ToolDescriptor } from '@n8n/agents';
 import { JsonColumn, Project, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, OneToOne, type Relation } from '@n8n/typeorm';
@@ -33,10 +34,7 @@ export class Agent extends WithTimestampsAndStringId {
 	schema: AgentJsonConfig | null;
 
 	@JsonColumn({ default: '[]' })
-	integrations: Array<{
-		type: string;
-		credentialId: string;
-	}>;
+	integrations: AgentIntegration[];
 
 	@JsonColumn({ default: '{}' })
 	tools: Record<
@@ -46,6 +44,9 @@ export class Agent extends WithTimestampsAndStringId {
 			descriptor: ToolDescriptor;
 		}
 	>;
+
+	@JsonColumn({ default: '{}' })
+	skills: Record<string, AgentSkill>;
 
 	/** UUID identifying the current draft; bumped on the first config save after each publish. */
 	@Column({ type: 'varchar', length: 36, nullable: true })

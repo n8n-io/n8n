@@ -8,7 +8,31 @@ export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
-export type * from './agents';
+export * from './agents';
+export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from './agent-sse';
+export {
+	ASK_LLM_TOOL_NAME,
+	ASK_CREDENTIAL_TOOL_NAME,
+	ASK_QUESTION_TOOL_NAME,
+	interactiveToolNameSchema,
+	askLlmInputSchema,
+	askLlmResumeSchema,
+	askCredentialInputSchema,
+	askCredentialResumeSchema,
+	askQuestionOptionSchema,
+	askQuestionInputSchema,
+	askQuestionResumeSchema,
+	interactiveResumeDataSchema,
+	type InteractiveToolName,
+	type AskLlmInput,
+	type AskLlmResume,
+	type AskCredentialInput,
+	type AskCredentialResume,
+	type AskQuestionOption,
+	type AskQuestionInput,
+	type AskQuestionResume,
+	type InteractiveResumeData,
+} from './agent-builder-interactive';
 export * from './instance-registry-types';
 export {
 	chatHubConversationModelSchema,
@@ -241,6 +265,8 @@ export type {
 } from './schemas/secrets-provider.schema';
 
 export {
+	SECRETS_PROVIDER_KEY_PATTERN,
+	SECRETS_PROVIDER_KEY_REGEX,
 	testSecretProviderConnectionResponseSchema,
 	reloadSecretProviderConnectionResponseSchema,
 } from './schemas/secrets-provider.schema';
@@ -251,9 +277,9 @@ export {
 } from './schemas/community-package.schema';
 
 export {
-	publicApiCreatedCredentialSchema,
-	type PublicApiCreatedCredential,
-} from './schemas/credential-created.schema';
+	publicApiCredentialResponseSchema,
+	type PublicApiCredentialResponse,
+} from './schemas/credential-response.schema';
 
 export {
 	instanceAiEventTypeSchema,

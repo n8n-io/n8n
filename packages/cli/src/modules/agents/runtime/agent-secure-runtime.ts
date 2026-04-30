@@ -1,21 +1,32 @@
 import type { ToolDescriptor } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { readFileSync } from 'fs';
 import type ivm from 'isolated-vm';
+import path from 'path';
+import { transform as sucraseTransform } from 'sucrase';
 
 import { AgentIsolatePool, type AgentIsolateSlot } from './agent-isolate-pool';
 import type { ToolExecutor } from '../json-config/from-json-config';
 
 /**
+ * Location of the pre-built library bundle (see scripts/bundle-agent-library.mjs).
+ *
+ * This path resolves the same way whether the current file is running from
+ * `src/modules/agents/runtime/` (ts-jest) or `dist/modules/agents/runtime/`
+ * (production), because both trees have the same depth under the cli package.
+ */
+const LIBRARY_BUNDLE_PATH = path.resolve(__dirname, '../../../../dist/agent-library-bundle.js');
+
+/**
  * Sandboxed execution runtime for agent user code.
  *
  * Uses `isolated-vm` (V8 isolates) to run untrusted TypeScript in a confined
- * environment. Libraries (`@n8n/agents`, `zod`) are pre-bundled into a single
- * JS string at startup and loaded into each isolate context as source code.
- * This avoids module resolution issues with pnpm workspace symlinks.
- *
- * Pattern inspired by Budibase's jsRunner:
- * https://github.com/Budibase/budibase/tree/master/packages/server/src/jsRunner
+ * environment. Libraries (`@n8n/agents`, `zod`) are pre-bundled at build time
+ * (scripts/bundle-agent-library.mjs) into `dist/agent-library-bundle.js` and
+ * loaded into each isolate context as source code. This avoids module
+ * resolution issues with pnpm workspace symlinks and keeps esbuild off the
+ * runtime path.
  *
  * The runtime maintains a pool of V8 isolates (`AgentIsolatePool`) to handle
  * concurrent requests without sharing heap memory. Each public method acquires
@@ -37,8 +48,9 @@ export class AgentSecureRuntime {
 
 	/**
 	 * Pre-bundled JS string containing @n8n/agents + zod for injection into
-	 * isolates. Cached here at the runtime level so it is never cleared on OOM
-	 * (the bundle is a plain string, not bound to any isolate instance).
+	 * isolates. Read from disk on first use and cached here at the runtime
+	 * level so it is never cleared on OOM (the bundle is a plain string,
+	 * not bound to any isolate instance).
 	 */
 	private libraryBundle: string | null = null;
 
@@ -51,7 +63,7 @@ export class AgentSecureRuntime {
 		this.poolInitPromise ??= (async () => {
 			try {
 				const ivmModule = (await import('isolated-vm')).default;
-				const libraryBundle = await this.getLibraryBundle();
+				const libraryBundle = this.getLibraryBundle();
 				const pool = new AgentIsolatePool(ivmModule, libraryBundle, {
 					logger: this.logger,
 				});
@@ -111,108 +123,42 @@ export class AgentSecureRuntime {
 	}
 
 	/**
-	 * Pre-bundle @n8n/agents and zod into a single CJS string using esbuild.
-	 * This runs once and is cached — subsequent calls return the cached bundle.
+	 * Load the pre-built `@n8n/agents` + `zod` CJS bundle from disk.
 	 *
-	 * The bundle is loaded into each isolate context as source code, making
+	 * The bundle is produced at build time by `scripts/bundle-agent-library.mjs`
+	 * and loaded into each isolate context as source code, making
 	 * `require('@n8n/agents')` and `require('zod')` work inside the sandbox
 	 * without needing filesystem access or module resolution.
+	 *
+	 * Cached after the first read so repeated pool initialisations (e.g. after
+	 * dispose + re-init) don't re-hit the disk.
 	 */
-	private async getLibraryBundle(): Promise<string> {
+	private getLibraryBundle(): string {
 		if (this.libraryBundle) return this.libraryBundle;
 
-		const esbuild = await import('esbuild');
-
-		// Build a shim that only imports the builder classes needed for
-		// describe() and handler execution — NOT the full runtime (which pulls
-		// in MCP SDK, AI provider SDKs, database drivers, etc.).
-		// We import from the specific source files to avoid the barrel export
-		// that drags in everything.
-		// Normalize to forward slashes so paths are valid JS string literals on Windows.
-		// Windows backslashes (e.g. C:\Users\...) would be misread as escape sequences
-		// (\U → U, \n → newline, etc.) when esbuild parses the shim as JavaScript.
-		const toSlash = (p: string) => p.replace(/\\/g, '/');
-
-		const agentsPath = toSlash(require.resolve('@n8n/agents'));
-		const agentsSrcDir = agentsPath.replace(/dist\/index\.js$/, 'dist/');
-
-		const shim = `
-			const { Tool } = require('${agentsSrcDir}sdk/tool');
-			const zod = require('zod');
-
-			globalThis.__modules = {
-				'@n8n/agents': { Tool },
-				'zod': zod,
-			};
-		`;
-
-		const result = await esbuild.build({
-			stdin: { contents: shim, loader: 'js', resolveDir: process.cwd() },
-			bundle: true,
-			format: 'cjs',
-			target: 'es2022',
-			platform: 'node',
-			write: false,
-			// Tree-shake: only include what's reachable from the shim
-			treeShaking: true,
-			// Stub out Node built-ins, native modules, and packages that need
-			// runtime capabilities (network, filesystem, child processes) which
-			// don't exist in the V8 isolate.
-			external: [
-				'node:*',
-				'pg',
-				'better-sqlite3',
-				'@libsql/client',
-				'ajv',
-				'child_process',
-				'fs',
-				'path',
-				'os',
-				'net',
-				'http',
-				'https',
-				'tls',
-				'stream',
-				'crypto',
-				'events',
-				'util',
-				'buffer',
-				'url',
-				'querystring',
-				'cross-spawn',
-				'@modelcontextprotocol/*',
-				'@ai-sdk/*',
-				'@opentelemetry/*',
-				'langsmith/*',
-			],
-			define: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				'process.env.NODE_ENV': '"production"',
-			},
-		});
-
-		if (result.errors.length > 0) {
-			throw new Error(`Failed to bundle libraries: ${result.errors.map((e) => e.text).join('\n')}`);
+		try {
+			this.libraryBundle = readFileSync(LIBRARY_BUNDLE_PATH, 'utf8');
+		} catch (e) {
+			throw new Error(
+				`Agent library bundle not found at ${LIBRARY_BUNDLE_PATH}. ` +
+					"Run 'pnpm build' in packages/cli to generate it.",
+				{ cause: e instanceof Error ? e : undefined },
+			);
 		}
-
-		this.libraryBundle = result.outputFiles[0].text;
-		const sizeKB = (this.libraryBundle.length / 1024).toFixed(1);
-		const sizeMB = (this.libraryBundle.length / (1024 * 1024)).toFixed(2);
-		this.logger.info(`[AgentSecureRuntime] Library bundle built: ${sizeKB} KB (${sizeMB} MB)`);
 		return this.libraryBundle;
 	}
 
 	/**
-	 * Compile TypeScript to CommonJS JavaScript via esbuild.
+	 * Strip TypeScript types and convert ESM imports to CommonJS using sucrase.
+	 *
+	 * sucrase is a pure-JS transpiler (no native binary), so it works in the
+	 * Docker image where esbuild's platform-specific binary is absent.
 	 */
-	private async compileTs(tsCode: string): Promise<string> {
-		const esbuild = await import('esbuild');
-		const result = await esbuild.transform(tsCode, {
-			loader: 'ts',
-			format: 'cjs',
-			target: 'es2022',
+	private compileTs(tsCode: string): string {
+		const { code } = sucraseTransform(tsCode, {
+			transforms: ['typescript', 'imports'],
 		});
-		return result.code;
+		return code;
 	}
 
 	/**
@@ -249,7 +195,6 @@ export class AgentSecureRuntime {
 
 	/**
 	 * Run code in the isolate and return the result.
-	 * Uses the Budibase pattern: set result on a global, then copy it out.
 	 */
 	private runInContext<T>(context: ivm.Context, slot: AgentIsolateSlot, code: string): T {
 		// Set up module.exports
@@ -280,7 +225,7 @@ export class AgentSecureRuntime {
 	 * Expects `export default new Tool(...)` pattern (no .build() call needed).
 	 */
 	async describeToolSecurely(tsCode: string): Promise<ToolDescriptor> {
-		const jsCode = await this.compileTs(tsCode);
+		const jsCode = this.compileTs(tsCode);
 
 		return await this.withIsolate(
 			// eslint-disable-next-line @typescript-eslint/require-await -- `withIsolate` expects a Promise-returning callback
@@ -317,7 +262,7 @@ export class AgentSecureRuntime {
 	 * The tool code must follow `export default new Tool(...)` pattern.
 	 */
 	async executeToolInIsolate(toolCode: string, input: unknown, ctx: unknown): Promise<unknown> {
-		const jsCode = await this.compileTs(toolCode);
+		const jsCode = this.compileTs(toolCode);
 
 		return await this.withIsolate(async (slot) => {
 			const context = slot.createContext();

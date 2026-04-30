@@ -119,6 +119,8 @@ export interface TitleGenerationConfig {
 	model?: ModelConfig;
 	/** Custom instructions for the title generation prompt. Replaces the defaults entirely. */
 	instructions?: string;
+	/** When true, title generation is awaited before returning the result. Default: false (fire-and-forget). */
+	sync?: boolean;
 }
 
 /** Full memory configuration bundle passed from builder to runtime. */

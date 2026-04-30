@@ -1,6 +1,36 @@
-import type { AgentMessage, StreamChunk } from '@n8n/agents';
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	type AgentBuilderMessagesResponse,
+	type AgentIntegrationStatusResponse,
+	type AgentPersistedMessageDto,
+	type AgentSkill,
+	type AgentScheduleConfig,
+	type AgentSseEvent,
+	type ChatIntegrationDescriptor,
+	AgentBuildResumeDto,
+	AgentChatMessageDto,
+	CreateAgentSkillDto,
+	AgentIntegrationDto,
+	CreateAgentDto,
+	UpdateAgentSkillDto,
+	UpdateAgentConfigDto,
+	UpdateAgentScheduleDto,
+	UpdateAgentDto,
+	isAgentCredentialIntegration,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Patch, Post, Put, RestController } from '@n8n/decorators';
+import {
+	Body,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	ProjectScope,
+	Put,
+	RestController,
+} from '@n8n/decorators';
+import { randomUUID } from 'crypto';
 import type { Request, Response } from 'express';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -8,54 +38,54 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { AgentExecutionService, threadBelongsTo } from './agent-execution.service';
+import { messagesToDto } from './agent-message-mapper';
 import {
-	AgentChatMessageDto,
-	AgentIntegrationDto,
-	CreateAgentDto,
-	UpdateAgentConfigDto,
-	UpdateAgentDto,
-} from './agents.dto';
+	type FlushableResponse,
+	initSseStream,
+	pumpChunks,
+	type ToolEventCallbacks,
+} from './agent-sse-stream';
 import { AgentsService } from './agents.service';
 import { AgentsBuilderService } from './builder/agents-builder.service';
+import { BUILDER_TOOLS } from './builder/builder-tool-names';
+import { AgentScheduleService } from './integrations/agent-schedule.service';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 
-type FlushableResponse = Response & { flush?: () => void };
-
 /**
- * Extract SSE-sendable events from AgentMessage content parts.
- * Returns an array of event objects suitable for `send()`.
+ * Builder side-effects: when the LLM streams arguments for `build_custom_tool`
+ * we re-emit each delta as a `code-delta` event so the FE editor can render
+ * incrementally; on tool completion we emit `config-updated` / `tool-updated`
+ * so the FE refreshes the corresponding panel. State is local to one request:
+ * `streamingToolName` tracks the tool whose arguments are currently streaming
+ * (replaces the old per-message-id heuristic).
  */
-function extractMessageEvents(message: AgentMessage): Array<Record<string, unknown>> {
-	if (!('content' in message) || !Array.isArray(message.content)) return [];
-
-	const events: Array<Record<string, unknown>> = [];
-	for (const part of message.content) {
-		if (part.type === 'text' && 'text' in part) {
-			events.push({ text: part.text });
-		} else if (part.type === 'tool-call' && 'toolName' in part) {
-			events.push({ toolCall: { tool: part.toolName, input: part.input } });
-		} else if (part.type === 'tool-result' && 'toolName' in part) {
-			events.push({ toolResult: { tool: part.toolName, output: part.result } });
-		}
-	}
-	return events;
-}
-
-/**
- * Set up SSE headers and return a send helper for streaming responses.
- */
-function initSseResponse(res: FlushableResponse): (data: Record<string, unknown>) => void {
-	res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-	res.setHeader('Cache-Control', 'no-cache');
-	res.setHeader('Connection', 'keep-alive');
-	res.setHeader('X-Accel-Buffering', 'no');
-	res.flushHeaders();
-	(res.socket as { setNoDelay?: (v: boolean) => void })?.setNoDelay?.(true);
-
-	return (data: Record<string, unknown>) => {
-		res.write(`data: ${JSON.stringify(data)}\n\n`);
-		res.flush?.();
+function makeBuilderToolEvents(send: (e: AgentSseEvent) => void): ToolEventCallbacks {
+	let streamingToolName: string | undefined;
+	return {
+		toolInputStart: (name) => {
+			streamingToolName = name;
+		},
+		toolInputDelta: (_toolCallId, delta) => {
+			if (streamingToolName === BUILDER_TOOLS.BUILD_CUSTOM_TOOL) {
+				send({ type: 'code-delta', delta });
+			}
+		},
+		toolResult: (name) => {
+			if (name === BUILDER_TOOLS.WRITE_CONFIG || name === BUILDER_TOOLS.PATCH_CONFIG) {
+				send({ type: 'config-updated' });
+				streamingToolName = undefined;
+			}
+			if (name === BUILDER_TOOLS.CREATE_SKILL) {
+				send({ type: 'config-updated' });
+				streamingToolName = undefined;
+			}
+			if (name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL) {
+				send({ type: 'tool-updated' });
+				streamingToolName = undefined;
+			}
+		},
 	};
 }
 
@@ -66,10 +96,13 @@ export class AgentsController {
 		private readonly agentsBuilderService: AgentsBuilderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly chatIntegrationService: ChatIntegrationService,
+		private readonly agentScheduleService: AgentScheduleService,
 		private readonly agentRepository: AgentRepository,
+		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
 	@Post('/')
+	@ProjectScope('agent:create')
 	async create(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -81,6 +114,7 @@ export class AgentsController {
 	}
 
 	@Get('/')
+	@ProjectScope('agent:list')
 	async list(req: AuthenticatedRequest<{ projectId: string }, unknown, unknown, { all?: string }>) {
 		// ?all=true returns all agents for this user (cross-project, for Instance AI switcher)
 		if (req.query.all === 'true') {
@@ -90,12 +124,14 @@ export class AgentsController {
 	}
 
 	@Get('/:agentId/config')
+	@ProjectScope('agent:read')
 	async getConfig(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		return await this.agentsService.getConfig(agentId, projectId);
 	}
 
 	@Put('/:agentId/config')
+	@ProjectScope('agent:update')
 	async putConfig(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
 		_res: Response,
@@ -108,6 +144,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId/tools/:toolId')
+	@ProjectScope('agent:update')
 	async deleteTool(
 		req: AuthenticatedRequest<{ projectId: string; agentId: string; toolId: string }>,
 		_res: Response,
@@ -119,7 +156,71 @@ export class AgentsController {
 		return { ok: true };
 	}
 
+	@Get('/:agentId/skills')
+	@ProjectScope('agent:read')
+	async listSkills(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		return await this.agentsService.listSkills(agentId, projectId);
+	}
+
+	@Get('/:agentId/skills/:skillId')
+	@ProjectScope('agent:read')
+	async getSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+	) {
+		const { projectId } = req.params;
+		return await this.agentsService.getSkill(agentId, projectId, skillId);
+	}
+
+	@Post('/:agentId/skills')
+	@ProjectScope('agent:update')
+	async createSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: CreateAgentSkillDto,
+	) {
+		const { projectId } = req.params;
+		const skill: AgentSkill = {
+			name: payload.name,
+			description: payload.description,
+			instructions: payload.instructions,
+		};
+
+		return await this.agentsService.createSkill(agentId, projectId, payload.id, skill);
+	}
+
+	@Patch('/:agentId/skills/:skillId')
+	@ProjectScope('agent:update')
+	async updateSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+		@Body payload: UpdateAgentSkillDto,
+	) {
+		const { projectId } = req.params;
+		return await this.agentsService.updateSkill(agentId, projectId, skillId, payload);
+	}
+
+	@Delete('/:agentId/skills/:skillId')
+	@ProjectScope('agent:update')
+	async deleteSkill(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; skillId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Param('skillId') skillId: string,
+	) {
+		const { projectId } = req.params;
+		await this.agentsService.deleteSkill(agentId, projectId, skillId);
+		return { ok: true };
+	}
+
 	@Get('/:agentId/credentials')
+	@ProjectScope('agent:read')
 	async listCredentials(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId } = req.params;
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
@@ -127,12 +228,71 @@ export class AgentsController {
 	}
 
 	@Get('/catalog/models')
+	@ProjectScope('agent:read')
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
 		return await fetchProviderCatalog();
 	}
 
+	@Get('/catalog/integrations')
+	@ProjectScope('agent:read')
+	listIntegrations(): ChatIntegrationDescriptor[] {
+		return this.agentsService.listChatIntegrations();
+	}
+
+	@Get('/threads')
+	@ProjectScope('agent:read')
+	async listThreads(
+		req: AuthenticatedRequest<
+			{ projectId: string },
+			{},
+			{},
+			{ cursor?: string; limit?: string; agentId?: string }
+		>,
+	) {
+		const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
+		return await this.agentExecutionService.getThreads(
+			req.params.projectId,
+			limit,
+			req.query.cursor,
+			req.query.agentId,
+		);
+	}
+
+	@Get('/threads/:threadId')
+	@ProjectScope('agent:read')
+	async getThread(
+		req: AuthenticatedRequest<
+			{ projectId: string; threadId: string },
+			{},
+			{},
+			{ agentId?: string }
+		>,
+	) {
+		const result = await this.agentExecutionService.getThreadDetail(
+			req.params.threadId,
+			req.params.projectId,
+			req.query.agentId,
+		);
+		if (!result) {
+			throw new NotFoundError(`Thread "${req.params.threadId}" not found`);
+		}
+		return result;
+	}
+
+	@Delete('/threads/:threadId')
+	@ProjectScope('agent:update')
+	async deleteThread(req: AuthenticatedRequest<{ projectId: string; threadId: string }>) {
+		const { projectId, threadId } = req.params;
+		const deleted = await this.agentExecutionService.deleteThread(projectId, threadId);
+		if (!deleted) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return { success: true };
+	}
+
 	@Get('/:agentId')
+	@ProjectScope('agent:read')
 	async get(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -148,6 +308,7 @@ export class AgentsController {
 	}
 
 	@Patch('/:agentId')
+	@ProjectScope('agent:update')
 	async update(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -182,6 +343,7 @@ export class AgentsController {
 	}
 
 	@Delete('/:agentId')
+	@ProjectScope('agent:delete')
 	async delete(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -197,6 +359,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/publish')
+	@ProjectScope('agent:publish')
 	async publish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -206,6 +369,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/unpublish')
+	@ProjectScope('agent:unpublish')
 	async unpublish(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -215,6 +379,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
+	@ProjectScope('agent:execute')
 	async chat(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
@@ -222,41 +387,115 @@ export class AgentsController {
 		@Body payload: AgentChatMessageDto,
 	) {
 		const { projectId } = req.params;
-		const { message } = payload;
+		const { message, sessionId } = payload;
 
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const send = initSseResponse(res);
+		const { send } = initSseStream(res);
+
+		// If the client supplied a sessionId and a thread already exists under that id,
+		// the thread must belong to this (project, agent). Otherwise a caller could
+		// append messages to another user's thread. A non-existent id is fine —
+		// executeForChat will create the thread on first persisted message.
+		if (sessionId) {
+			const existing = await this.agentExecutionService.findThreadById(sessionId);
+			if (existing && !threadBelongsTo(existing, projectId, agentId)) {
+				send({ type: 'error', message: 'Session not found' });
+				res.end();
+				return;
+			}
+		}
+
+		const threadId = sessionId ?? randomUUID();
+
+		const { missing } = await this.agentsService.validateAgentIsRunnable(
+			agentId,
+			projectId,
+			credentialProvider,
+		);
+		if (missing.length > 0) {
+			send({
+				type: 'error',
+				message: 'This agent is not ready to run yet.',
+				errorCode: 'agent_misconfigured',
+				missing,
+			});
+			res.end();
+			return;
+		}
 
 		try {
-			for await (const chunk of this.agentsService.executeForChat(
-				agentId,
-				message,
-				`test-${agentId}`,
-				req.user.id,
-				projectId,
-				credentialProvider,
-			)) {
-				this.sendStreamChunk(chunk, send);
-			}
-			send({ done: true });
+			await pumpChunks(
+				this.agentsService.executeForChat(
+					agentId,
+					message,
+					threadId,
+					req.user.id,
+					projectId,
+					credentialProvider,
+					'chat',
+				),
+				send,
+			);
+			send({ type: 'done', sessionId: threadId });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Chat failed';
-			send({ error: errorMessage });
+			send({ type: 'error', message: errorMessage });
 		}
 
 		res.end();
 	}
 
+	@Get('/:agentId/chat/:threadId/messages')
+	@ProjectScope('agent:read')
+	async getChatMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		if (!thread || !threadBelongsTo(thread, projectId, agentId)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		return await this.agentsService.getChatMessages(threadId);
+	}
+
 	@Get('/:agentId/build/messages')
-	async getBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+	@ProjectScope('agent:read')
+	async getBuilderMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentBuilderMessagesResponse> {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
-		return await this.agentsBuilderService.getBuilderMessages(agentId);
+
+		// Merge persisted thread memory with any open suspension's checkpoint
+		// so a refresh during a suspended turn still returns the suspended
+		// assistant message (the SDK only saveToMemory's on completion).
+		const memory = await this.agentsBuilderService.getBuilderMessages(agentId);
+		const checkpoint = await this.agentsBuilderService.findOpenCheckpoint(agentId);
+		const openSuspensions = Object.values(checkpoint?.pendingToolCalls ?? {})
+			.filter((tc) => tc.suspended)
+			.map((tc) => ({
+				toolCallId: tc.toolCallId,
+				runId: tc.runId,
+			}));
+
+		let messages: AgentPersistedMessageDto[];
+		if (!checkpoint) {
+			messages = messagesToDto(memory);
+		} else {
+			const memoryIds = new Set(memory.map((m) => m.id));
+			const newFromCheckpoint = checkpoint.messageList.messages.filter((m) => !memoryIds.has(m.id));
+			messages = messagesToDto([...memory, ...newFromCheckpoint]);
+		}
+
+		return { messages, openSuspensions };
 	}
 
 	@Delete('/:agentId/build/messages')
+	@ProjectScope('agent:update')
 	async clearBuilderMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
 		const { projectId, agentId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -265,7 +504,30 @@ export class AgentsController {
 		return { ok: true };
 	}
 
+	@Get('/:agentId/chat/messages')
+	@ProjectScope('agent:read')
+	async getTestChatMessages(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string }>,
+	): Promise<AgentPersistedMessageDto[]> {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const messages = await this.agentsService.getTestChatMessages(agentId, req.user.id);
+		return messagesToDto(messages);
+	}
+
+	@Delete('/:agentId/chat/messages')
+	@ProjectScope('agent:update')
+	async clearTestChatMessages(req: AuthenticatedRequest<{ projectId: string; agentId: string }>) {
+		const { projectId, agentId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		await this.agentsService.clearTestChatMessages(agentId, req.user.id);
+		return { ok: true };
+	}
+
 	@Post('/:agentId/build', { usesTemplates: true })
+	@ProjectScope('agent:update')
 	async build(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		res: FlushableResponse,
@@ -275,61 +537,97 @@ export class AgentsController {
 		const { projectId } = req.params;
 		const { message } = payload;
 
+		// Validate the agent exists before opening the SSE stream so a malformed
+		// id surfaces as a typed 404 instead of a generic 500 from the builder
+		// service's internal lookup.
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
 		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
 
-		const send = initSseResponse(res);
+		const { send } = initSseStream(res);
 
 		try {
-			// Track streaming tool call input for set_code eager input streaming
-			let streamingToolName: string | undefined;
+			const suspended = await pumpChunks(
+				this.agentsBuilderService.buildAgent(
+					agentId,
+					projectId,
+					message,
+					credentialProvider,
+					req.user,
+				),
+				send,
+				makeBuilderToolEvents(send),
+			);
 
-			for await (const chunk of this.agentsBuilderService.buildAgent(
-				agentId,
-				projectId,
-				message,
-				credentialProvider,
-				req.user.id,
-			)) {
-				if (chunk.type === 'tool-call-delta') {
-					// Track which tool is streaming
-					if (chunk.name) {
-						streamingToolName = chunk.name;
-					}
-					// Stream tool code deltas for build_custom_tool
-					if (streamingToolName === 'build_custom_tool' && chunk.argumentsDelta) {
-						send({ toolCodeDelta: chunk.argumentsDelta });
-					}
-				} else if (chunk.type === 'message' && 'message' in chunk) {
-					const events = extractMessageEvents(chunk.message);
-					for (const event of events) {
-						send(event);
-						if ('toolResult' in event) {
-							const toolResult = event.toolResult as { tool?: string };
-							if (toolResult.tool === 'write_config' || toolResult.tool === 'patch_config') {
-								send({ configUpdated: true });
-								streamingToolName = undefined;
-							}
-							if (toolResult.tool === 'build_custom_tool') {
-								send({ toolUpdated: true });
-								streamingToolName = undefined;
-							}
-						}
-					}
-				} else {
-					this.sendStreamChunk(chunk, send);
-				}
+			if (!suspended) {
+				send({ type: 'done' });
 			}
-
-			send({ done: true });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : 'Build failed';
-			send({ error: errorMessage });
+			const errorCode =
+				error && typeof error === 'object' && 'code' in error
+					? (error as { code?: unknown }).code
+					: undefined;
+			send({
+				type: 'error',
+				message: errorMessage,
+				...(typeof errorCode === 'string' ? { code: errorCode } : {}),
+			});
+		}
+
+		res.end();
+	}
+
+	@Post('/:agentId/build/resume', { usesTemplates: true })
+	@ProjectScope('agent:update')
+	async buildResume(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		res: FlushableResponse,
+		@Param('agentId') agentId: string,
+		@Body payload: AgentBuildResumeDto,
+	) {
+		const { projectId } = req.params;
+		const { runId, toolCallId, resumeData } = payload;
+
+		// Validate the agent exists before opening the SSE stream so a malformed
+		// id surfaces as a typed 404 instead of a generic 500 from the builder
+		// service's internal lookup.
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
+
+		const { send } = initSseStream(res);
+
+		try {
+			const suspended = await pumpChunks(
+				this.agentsBuilderService.resumeBuild(
+					agentId,
+					projectId,
+					runId,
+					toolCallId,
+					resumeData,
+					credentialProvider,
+					req.user,
+				),
+				send,
+				makeBuilderToolEvents(send),
+			);
+
+			if (!suspended) {
+				send({ type: 'done' });
+			}
+		} catch (error) {
+			const errorMessage = error instanceof Error ? error.message : 'Resume failed';
+			send({ type: 'error', message: errorMessage });
 		}
 
 		res.end();
 	}
 
 	@Post('/:agentId/integrations/connect')
+	@ProjectScope('agent:update')
 	async connectIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -354,7 +652,9 @@ export class AgentsController {
 
 		// Persist the integration reference on the agent
 		const existing = agent.integrations ?? [];
-		const alreadyExists = existing.some((i) => i.type === type && i.credentialId === credentialId);
+		const alreadyExists = existing.some(
+			(i) => isAgentCredentialIntegration(i) && i.type === type && i.credentialId === credentialId,
+		);
 		if (!alreadyExists) {
 			agent.integrations = [...existing, { type, credentialId }];
 			await this.agentRepository.save(agent);
@@ -364,6 +664,7 @@ export class AgentsController {
 	}
 
 	@Post('/:agentId/integrations/disconnect')
+	@ProjectScope('agent:update')
 	async disconnectIntegration(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
@@ -378,25 +679,93 @@ export class AgentsController {
 
 		// Remove the integration reference from the agent
 		agent.integrations = (agent.integrations ?? []).filter(
-			(i) => !(i.type === type && i.credentialId === credentialId),
+			(i) => !isAgentCredentialIntegration(i) || i.type !== type || i.credentialId !== credentialId,
 		);
 		await this.agentRepository.save(agent);
 
 		return { status: 'disconnected' };
 	}
 
+	@Get('/:agentId/integrations/schedule')
+	@ProjectScope('agent:read')
+	async getScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return this.agentScheduleService.getConfig(agent);
+	}
+
+	@Put('/:agentId/integrations/schedule')
+	@ProjectScope('agent:update')
+	async updateScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+		@Body payload: UpdateAgentScheduleDto,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return await this.agentScheduleService.saveConfig(
+			agent,
+			payload.cronExpression,
+			payload.wakeUpPrompt,
+		);
+	}
+
+	@Post('/:agentId/integrations/schedule/activate')
+	@ProjectScope('agent:update')
+	async activateScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return await this.agentScheduleService.activate(agent);
+	}
+
+	@Post('/:agentId/integrations/schedule/deactivate')
+	@ProjectScope('agent:update')
+	async deactivateScheduleIntegration(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	): Promise<AgentScheduleConfig> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+
+		return await this.agentScheduleService.deactivate(agent);
+	}
+
 	@Get('/:agentId/integrations/status')
+	@ProjectScope('agent:read')
 	async integrationStatus(
 		req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-	) {
+	): Promise<AgentIntegrationStatusResponse> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		return this.chatIntegrationService.getStatus(agentId);
+		const chatStatus = this.chatIntegrationService.getStatus(agentId);
+		const schedule = this.agentScheduleService.getConfig(agent);
+		const scheduleIntegrations = schedule.active ? [{ type: AGENT_SCHEDULE_TRIGGER_TYPE }] : [];
+		const connectedIntegrations = [...chatStatus.integrations, ...scheduleIntegrations];
+
+		return {
+			status: connectedIntegrations.length > 0 ? 'connected' : 'disconnected',
+			integrations: connectedIntegrations,
+		};
 	}
 
+	// Third-party webhook callback: do not add @ProjectScope. Auth happens
+	// via per-platform signature verification inside webhookHandler.
 	@Post('/:agentId/webhooks/:platform', { skipAuth: true, allowBots: true })
 	async handleWebhook(
 		req: Request<{ projectId: string; agentId: string; platform: string }>,
@@ -433,6 +802,7 @@ export class AgentsController {
 			interface RequestWithRawBody {
 				rawBody?: Buffer;
 			}
+
 			const rawBody = (req as RequestWithRawBody).rawBody;
 			if (rawBody) {
 				requestBody = rawBody.toString('utf-8');
@@ -482,36 +852,5 @@ export class AgentsController {
 		});
 		const body = await webResponse.text();
 		res.send(body);
-	}
-
-	// ---------------------------------------------------------------------------
-	// Private helpers
-	// ---------------------------------------------------------------------------
-
-	/**
-	 * Map a single StreamChunk to an SSE event and send it.
-	 * Handles text-delta, reasoning-delta, message, and error chunk types.
-	 */
-	private sendStreamChunk(chunk: StreamChunk, send: (data: Record<string, unknown>) => void): void {
-		switch (chunk.type) {
-			case 'text-delta':
-				if (chunk.delta) send({ text: chunk.delta });
-				break;
-			case 'reasoning-delta':
-				if (chunk.delta) send({ thinking: chunk.delta });
-				break;
-			case 'message':
-				for (const event of extractMessageEvents(chunk.message)) {
-					send(event);
-				}
-				break;
-			case 'error': {
-				const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
-				send({ error: errMsg });
-				break;
-			}
-			default:
-				break;
-		}
 	}
 }

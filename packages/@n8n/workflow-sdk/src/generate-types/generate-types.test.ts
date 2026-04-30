@@ -368,6 +368,18 @@ describe('generate-types', () => {
 			expect(result).toBe('string | Expression<string> | PlaceholderValue');
 		});
 
+		it('should map string type with multipleValues to array type', () => {
+			const prop: NodeProperty = {
+				name: 'attendees',
+				displayName: 'Attendees',
+				type: 'string',
+				typeOptions: { multipleValues: true },
+				default: '',
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('string[] | Expression<string>');
+		});
+
 		it('should map number type with Expression wrapper', () => {
 			const prop: NodeProperty = {
 				name: 'timeout',
@@ -608,6 +620,69 @@ describe('generate-types', () => {
 			expect(result).toContain("'seconds'");
 			expect(result).toContain("'minutes'");
 			expect(result).toContain('secondsInterval?:');
+		});
+
+		it('should emit a tuple type and required group key when minRequiredFields is set', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, minRequiredFields: 1 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('conditions: [');
+			expect(result).not.toContain('conditions?:');
+			expect(result).toContain('...Array<');
+			expect(result).toContain('@minItems 1');
+		});
+
+		it('should emit @maxItems JSDoc when maxAllowedFields is set', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, maxAllowedFields: 3 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('@maxItems 3');
+			// maxAllowed alone does not force the key to be required
+			expect(result).toContain('conditions?:');
+		});
+
+		it('should not add tuple or required key when minRequiredFields is 0', () => {
+			const prop: NodeProperty = {
+				name: 'filters',
+				displayName: 'Filters',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true, minRequiredFields: 0 },
+				default: {},
+				options: [
+					{
+						displayName: 'Conditions',
+						name: 'conditions',
+						values: [{ displayName: 'Key', name: 'keyName', type: 'string', default: '' }],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('conditions?: Array<');
+			expect(result).not.toContain('@minItems');
 		});
 
 		it('should map collection type without options to Record<string, unknown>', () => {

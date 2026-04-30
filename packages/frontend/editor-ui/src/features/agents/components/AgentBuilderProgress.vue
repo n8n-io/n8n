@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import type { AgentSseEvent } from '@n8n/api-types';
 
 const props = defineProps<{
 	projectId: string;
@@ -15,6 +17,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 }>();
 
+const i18n = useI18n();
 const rootStore = useRootStore();
 
 const MAX_LINES = 7;
@@ -31,6 +34,50 @@ function pushLine(line: string) {
 	}
 }
 
+interface StreamState {
+	textBuffer: string;
+	doneSeen: boolean;
+}
+
+function handleEvent(event: AgentSseEvent, state: StreamState): void {
+	switch (event.type) {
+		case 'text-delta': {
+			state.textBuffer += event.delta;
+			while (state.textBuffer.includes('\n')) {
+				const idx = state.textBuffer.indexOf('\n');
+				pushLine(state.textBuffer.slice(0, idx));
+				state.textBuffer = state.textBuffer.slice(idx + 1);
+			}
+			break;
+		}
+		case 'tool-call': {
+			if (state.textBuffer) {
+				pushLine(state.textBuffer);
+				state.textBuffer = '';
+			}
+			pushLine(`→ ${event.toolName}`);
+			break;
+		}
+		case 'tool-result': {
+			pushLine(`${event.isError ? '✗' : '✓'} ${event.toolName}`);
+			break;
+		}
+		case 'config-updated':
+		case 'tool-updated':
+			emit('configUpdated');
+			break;
+		case 'error':
+			hasError.value = true;
+			pushLine(`Error: ${event.message}`);
+			break;
+		case 'done':
+			state.doneSeen = true;
+			break;
+		default:
+			break;
+	}
+}
+
 async function streamBuild(message: string) {
 	isStreaming.value = true;
 	emit('update:streaming', true);
@@ -38,6 +85,7 @@ async function streamBuild(message: string) {
 	const { baseUrl } = rootStore.restApiContext;
 	const browserId = localStorage.getItem('n8n-browserId') ?? '';
 	const url = `${baseUrl}/projects/${props.projectId}/agents/v2/${props.agentId}/build`;
+	const state: StreamState = { textBuffer: '', doneSeen: false };
 
 	try {
 		const response = await fetch(url, {
@@ -56,9 +104,8 @@ async function streamBuild(message: string) {
 		const reader = response.body.getReader();
 		const decoder = new TextDecoder();
 		let buffer = '';
-		let textBuffer = '';
 
-		while (true) {
+		readerLoop: while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
 
@@ -68,55 +115,28 @@ async function streamBuild(message: string) {
 
 			for (const line of lines) {
 				if (!line.startsWith('data: ')) continue;
-				let data: Record<string, unknown>;
+				let event: AgentSseEvent;
 				try {
-					data = JSON.parse(line.slice(6)) as Record<string, unknown>;
+					event = JSON.parse(line.slice(6)) as AgentSseEvent;
 				} catch {
 					continue;
 				}
-				if (data.done) continue;
-
-				if (typeof data.text === 'string') {
-					textBuffer += data.text;
-					while (textBuffer.includes('\n')) {
-						const idx = textBuffer.indexOf('\n');
-						pushLine(textBuffer.slice(0, idx));
-						textBuffer = textBuffer.slice(idx + 1);
-					}
-				}
-
-				if (data.toolCall && typeof data.toolCall === 'object') {
-					if (textBuffer) {
-						pushLine(textBuffer);
-						textBuffer = '';
-					}
-					const tc = data.toolCall as { tool: string };
-					pushLine(`→ ${tc.tool}`);
-				}
-
-				if (data.toolResult && typeof data.toolResult === 'object') {
-					const tr = data.toolResult as { tool: string };
-					pushLine(`✓ ${tr.tool}`);
-				}
-
-				if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
-					emit('configUpdated');
-				}
-
-				if (typeof data.error === 'string') {
-					hasError.value = true;
-					pushLine(`Error: ${data.error}`);
-				}
+				handleEvent(event, state);
+				if (state.doneSeen) break readerLoop;
 			}
 		}
 
-		if (textBuffer.trim()) pushLine(textBuffer);
+		if (state.textBuffer.trim()) pushLine(state.textBuffer);
 	} catch (e) {
 		hasError.value = true;
 		pushLine(`Error: ${e instanceof Error ? e.message : 'Unknown error'}`);
 	} finally {
 		isStreaming.value = false;
 		emit('update:streaming', false);
+		// Always hand off to the parent so suspended-tool streams (which close
+		// without a final `done`) still route into the builder where the
+		// interactive card can actually be answered. Distinguishing genuine
+		// failure from suspension needs more thought — tracking separately.
 		emit('done');
 	}
 }
@@ -137,13 +157,17 @@ onMounted(() => {
 				/>
 			</div>
 			<N8nText tag="p" bold size="large" :class="$style.heading">
-				{{ hasError ? 'Something went wrong' : 'Building your agent...' }}
+				{{
+					hasError
+						? i18n.baseText('agents.builder.progress.error.title')
+						: i18n.baseText('agents.builder.progress.building.title')
+				}}
 			</N8nText>
 			<N8nText size="small" color="text-light" :class="$style.subheading">
 				{{
 					hasError
-						? 'Check the log below and try again.'
-						: 'This usually takes 30–60 seconds. Sit tight.'
+						? i18n.baseText('agents.builder.progress.error.hint')
+						: i18n.baseText('agents.builder.progress.building.hint')
 				}}
 			</N8nText>
 

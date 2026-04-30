@@ -4,11 +4,12 @@ import { ProjectRelationRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import type { Response } from 'express';
-
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
 import { EventService } from '@/events/event.service';
 import type { UserRequest } from '@/requests';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
 import {
@@ -18,6 +19,7 @@ import {
 	validLicenseWithUserQuota,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 type Create = AuthenticatedRequest<{}, {}, InviteUsersRequestDto>;
 type Delete = UserRequest.Delete;
@@ -53,6 +55,21 @@ export = {
 		validCursor,
 		async (req: UserRequest.Get, res: express.Response) => {
 			const { offset = 0, limit = 100, includeRole = false, projectId } = req.query;
+
+			if (projectId) {
+				const project = await Container.get(ProjectService).getProjectWithScope(
+					req.user,
+					projectId,
+					['project:list'],
+				);
+				if (!project) {
+					throw new NotFoundError('Project not found');
+				}
+			} else if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
+				throw new ForbiddenError(
+					'Listing all users is limited to instance administrators. Filter by project to list project members.',
+				);
+			}
 
 			const _in = projectId
 				? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(projectId)

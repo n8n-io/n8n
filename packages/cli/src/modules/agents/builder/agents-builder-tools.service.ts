@@ -1,25 +1,36 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
+import { agentSkillSchema, skillNameToId } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
-import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { WorkflowBuilderToolsService } from '@/modules/mcp/tools/workflow-builder/workflow-builder-tools.service';
-
+import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig, ConfigValidationError } from '../json-config/agent-json-config';
 import {
 	AgentJsonConfigSchema,
 	formatZodErrors,
 	tryParseConfigJson,
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import { buildAskCredentialTool, buildAskLlmTool, buildAskQuestionTool } from './interactive';
+import { BUILDER_TOOLS } from './builder-tool-names';
 
-interface InvokableTool<TInput> {
-	invoke(input: TInput): Promise<string>;
+const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
+	path: '/instructions',
+	message:
+		'Refusing to write an agent with empty instructions. Ask the user what the agent should do before calling write_config or patch_config again.',
+};
+
+function rejectIfEmptyInstructions(
+	config: AgentJsonConfig,
+): { errors: ConfigValidationError[] } | null {
+	if (!config.instructions.trim()) {
+		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
+	}
+	return null;
 }
 
 export interface BuilderTools {
@@ -27,56 +38,14 @@ export interface BuilderTools {
 	shared: BuiltTool[];
 }
 
-/** Nodes the agent builder should never surface as selectable node tools. */
-function isExcludedNodeType(nodeId: string): boolean {
-	return isTriggerNodeType(nodeId) || isToolType(nodeId);
-}
-
 @Service()
 export class AgentsBuilderToolsService {
-	/** Lazily initialized filtered search tool — invalidated on node-type refresh. */
-	private builderSearchTool: InvokableTool<{ queries: string[] }> | undefined;
-
-	/** Result cache for the filtered search tool, keyed by sorted query list. */
-	private readonly builderSearchCache = new Map<string, string>();
-
 	constructor(
 		private readonly agentsService: AgentsService,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowBuilderToolsService: WorkflowBuilderToolsService,
-		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
-	) {
-		this.loadNodesAndCredentials.addPostProcessor(async () => await this.refreshNodeTypes());
-	}
-
-	// eslint-disable-next-line @typescript-eslint/require-await -- registered as an async postProcessor hook
-	async refreshNodeTypes(): Promise<void> {
-		this.builderSearchTool = undefined;
-		this.builderSearchCache.clear();
-	}
-
-	async initialize(): Promise<void> {
-		await this.workflowBuilderToolsService.initialize();
-	}
-
-	private async invokeBuilderSearch(queries: string[]): Promise<string> {
-		const cacheKey = JSON.stringify([...queries].sort());
-		const cached = this.builderSearchCache.get(cacheKey);
-		if (cached) return cached;
-
-		if (!this.builderSearchTool) {
-			const { createCodeBuilderSearchTool } = await import('@n8n/ai-workflow-builder');
-			this.builderSearchTool = createCodeBuilderSearchTool(
-				this.workflowBuilderToolsService.getNodeTypeParser(),
-				{ nodeFilter: (nodeId) => !isExcludedNodeType(nodeId) },
-			);
-		}
-
-		const result = await this.builderSearchTool.invoke({ queries });
-		this.builderSearchCache.set(cacheKey, result);
-		return result;
-	}
+		private readonly agentsToolsService: AgentsToolsService,
+	) {}
 
 	getTools(
 		agentId: string,
@@ -84,13 +53,17 @@ export class AgentsBuilderToolsService {
 		credentialProvider: CredentialProvider,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId),
+			json: this.getJsonTools(agentId, projectId, credentialProvider),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider),
 		};
 	}
 
-	private getJsonTools(agentId: string, projectId: string): BuiltTool[] {
-		const writeConfigTool = new Tool('write_config')
+	private getJsonTools(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): BuiltTool[] {
+		const writeConfigTool = new Tool(BUILDER_TOOLS.WRITE_CONFIG)
 			.description(
 				'Create or replace the agent configuration by writing a complete JSON string. ' +
 					'Returns { ok: true } on success or { ok: false, errors } with path, message, ' +
@@ -110,6 +83,10 @@ export class AgentsBuilderToolsService {
 				if (!zodResult.success) {
 					return { ok: false, errors: formatZodErrors(zodResult.error) };
 				}
+				const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+				if (emptyInstructions) {
+					return { ok: false, errors: emptyInstructions.errors };
+				}
 				try {
 					await this.agentsService.updateConfig(agentId, projectId, zodResult.data);
 					return { ok: true };
@@ -122,7 +99,7 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		const patchConfigTool = new Tool('patch_config')
+		const patchConfigTool = new Tool(BUILDER_TOOLS.PATCH_CONFIG)
 			.description(
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
 					'Pass an array of patch operations as a JSON string. ' +
@@ -170,6 +147,10 @@ export class AgentsBuilderToolsService {
 				if (!zodResult.success) {
 					return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 				}
+				const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+				if (emptyInstructions) {
+					return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
+				}
 
 				try {
 					const result = await this.agentsService.updateConfig(agentId, projectId, zodResult.data);
@@ -184,7 +165,13 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		return [writeConfigTool, patchConfigTool];
+		return [
+			writeConfigTool,
+			patchConfigTool,
+			buildAskCredentialTool({ credentialProvider }),
+			buildAskLlmTool({ credentialProvider }),
+			buildAskQuestionTool(),
+		];
 	}
 
 	private getSharedTools(
@@ -192,11 +179,13 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 	): BuiltTool[] {
-		const buildCustomToolTool = new Tool('build_custom_tool')
+		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
-				'Create or update a custom tool. Pass the tool ID and complete TypeScript source ' +
+				'Compile and store a custom tool. Pass the tool ID and complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
-					'sandbox. On success the tool is added to the agent config automatically. ' +
+					'sandbox and saved against the agent, but this does NOT register the tool in the ' +
+					'agent config — follow up with patch_config (or write_config) to add a ' +
+					'`{ type: "custom", id }` entry to `tools` so the agent actually uses it. ' +
 					'Returns { ok: true, descriptor } or { ok: false, errors }.',
 			)
 			.input(
@@ -225,16 +214,50 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		const listCredentialsTool = new Tool('list_credentials')
+		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
 			.description(
-				'List the credentials available to the user. Returns an array of credential names and types. ' +
-					'Call this BEFORE generating code to know which .credential() value to use.',
+				'Create and store an agent skill. Pass the skill name, a short description, and the full skill body. ' +
+					'The description should help the runtime decide when to load it. ' +
+					'The body is stored as the skill instructions and the skill is attached to the agent config. ' +
+					'Returns { ok: true, id, skill } or { ok: false, errors }.',
 			)
-			.input(z.object({}))
-			.handler(async () => {
-				const creds = await credentialProvider.list();
-				return { credentials: creds };
-			})
+			.input(
+				z.object({
+					name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+					description: agentSkillSchema.shape.description.describe(
+						'Short description of when to load the skill.',
+					),
+					body: agentSkillSchema.shape.instructions.describe('Full skill instructions/body'),
+				}),
+			)
+			.handler(
+				async ({
+					name,
+					description,
+					body,
+				}: {
+					name: string;
+					description: string;
+					body: string;
+				}) => {
+					const id = skillNameToId(name);
+					const skill = { name, description, instructions: body };
+					const validation = agentSkillSchema.safeParse(skill);
+					if (!validation.success) {
+						return { ok: false, errors: formatZodErrors(validation.error) };
+					}
+
+					try {
+						const created = await this.agentsService.createSkill(agentId, projectId, id, skill);
+						return { ok: true, id, skill: created.skill };
+					} catch (e) {
+						return {
+							ok: false,
+							errors: [{ message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
 			.build();
 
 		const listWorkflowsTool = new Tool('list_workflows')
@@ -284,78 +307,16 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
-		const searchNodesTool = new Tool('search_nodes')
-			.description(
-				'Search for n8n nodes by name or service. Use this to find nodes that can be added ' +
-					'as node tools. Returns node IDs, display names, versions, and descriptions. ' +
-					'After finding a node, call get_node_types to get its parameter schema.',
-			)
-			.input(
-				z.object({
-					queries: z
-						.array(z.string())
-						.min(1)
-						.describe('Search queries (e.g., ["gmail", "slack", "http"])'),
-				}),
-			)
-			.handler(async ({ queries }: { queries: string[] }) => {
-				const results = await this.invokeBuilderSearch(queries);
-				return { results };
-			})
-			.build();
-
-		const getNodeTypesTool = new Tool('get_node_types')
-			.description(
-				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
-					'by search_nodes. Returns parameter definitions needed to configure node tools. ' +
-					'You can optionally filter by resource/operation/mode.',
-			)
-			.input(
-				z.object({
-					nodeIds: z
-						.array(
-							z.union([
-								z.string(),
-								z.object({
-									nodeId: z.string(),
-									version: z.string().optional(),
-									resource: z.string().optional(),
-									operation: z.string().optional(),
-									mode: z.string().optional(),
-								}),
-							]),
-						)
-						.min(1)
-						.describe('Node IDs from search_nodes (e.g., ["n8n-nodes-base.gmail"])'),
-				}),
-			)
-			.handler(
-				async ({
-					nodeIds,
-				}: {
-					nodeIds: Array<
-						| string
-						| {
-								nodeId: string;
-								version?: string;
-								resource?: string;
-								operation?: string;
-								mode?: string;
-						  }
-					>;
-				}) => {
-					const results = await this.workflowBuilderToolsService.getNodeTypes(nodeIds);
-					return { results };
-				},
-			)
-			.build();
-
 		return [
 			buildCustomToolTool,
-			listCredentialsTool,
+			createSkillTool,
 			listWorkflowsTool,
-			searchNodesTool,
-			getNodeTypesTool,
+			...this.agentsToolsService.getSharedTools(
+				credentialProvider,
+				'Read-only inspection of available credentials. Use ask_credential to let the user ' +
+					'pick the credential to wire into a node tool — never copy ids from this list directly ' +
+					'into the config.',
+			),
 		];
 	}
 }

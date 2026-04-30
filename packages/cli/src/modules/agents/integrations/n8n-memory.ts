@@ -8,8 +8,9 @@ import type {
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import { LessThan } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
-import { AgentMessageEntity } from '../entities/agent-message.entity';
+import type { AgentMessageEntity } from '../entities/agent-message.entity';
 import { AgentThreadEntity } from '../entities/agent-thread.entity';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
@@ -40,7 +41,13 @@ export class N8nMemory implements BuiltMemory {
 		const existing = await this.threadRepository.findOneBy({ id: thread.id });
 
 		if (existing) {
-			existing.resourceId = thread.resourceId;
+			// `resourceId` is treated as immutable on existing threads. Some
+			// threads (e.g. the shared test-chat thread keyed by agentId) are
+			// written to by multiple users; overwriting the column on each save
+			// would make "who owns this thread" depend on the last writer and
+			// break any future read-side authorization that keys off it.
+			// Per-user scoping is enforced at the message level via
+			// AgentMessageEntity.resourceId instead.
 			if (thread.title !== undefined) existing.title = thread.title;
 			if (thread.metadata !== undefined) {
 				existing.metadata = thread.metadata ? JSON.stringify(thread.metadata) : null;
@@ -76,11 +83,17 @@ export class N8nMemory implements BuiltMemory {
 
 	async getMessages(
 		threadId: string,
-		opts?: { limit?: number; before?: Date },
+		opts?: { limit?: number; before?: Date; resourceId?: string },
 	): Promise<AgentDbMessage[]> {
-		const where: FindOptionsWhere<AgentMessageEntity> = opts?.before
-			? { threadId, createdAt: LessThan(opts.before) }
-			: { threadId };
+		// `resourceId` is the per-user scope for shared threads (e.g. the test-chat
+		// thread is keyed by agentId but each message carries the originating user's
+		// id). Use an explicit `!== undefined` check — a falsy (empty-string) value
+		// would otherwise drop the filter and leak other users' messages.
+		const where: FindOptionsWhere<AgentMessageEntity> = {
+			threadId,
+			...(opts?.before && { createdAt: LessThan(opts.before) }),
+			...(opts?.resourceId !== undefined && { resourceId: opts.resourceId }),
+		};
 
 		const entities = await this.messageRepository.find({
 			where,
@@ -102,25 +115,42 @@ export class N8nMemory implements BuiltMemory {
 	}): Promise<void> {
 		if (args.messages.length === 0) return;
 
+		// Upsert by id — bulk INSERT … ON CONFLICT (id) DO UPDATE avoids the
+		// per-row SELECT that save() performs. createdAt is passed explicitly so
+		// the column is preserved on conflict; updatedAt is set manually because
+		// the @BeforeUpdate hook does not fire during upsert.
+		const now = new Date();
 		const entities = args.messages.map((dbMsg) => {
 			const role = 'role' in dbMsg ? (dbMsg.role as string) : 'custom';
 			const type = 'type' in dbMsg ? (dbMsg.type as string) : null;
-			return this.messageRepository.create({
+			return {
 				id: dbMsg.id,
 				threadId: args.threadId,
 				resourceId: args.resourceId,
 				role,
 				type: type ?? null,
 				content: dbMsg as unknown as Record<string, unknown>,
-			});
+				createdAt: dbMsg.createdAt,
+				updatedAt: now,
+			} as QueryDeepPartialEntity<AgentMessageEntity>;
 		});
 
-		await this.messageRepository.save(entities);
+		await this.messageRepository.upsert(entities, ['id']);
 	}
 
 	async deleteMessages(messageIds: string[]): Promise<void> {
 		if (messageIds.length === 0) return;
 		await this.messageRepository.delete(messageIds);
+	}
+
+	async deleteMessagesByThread(threadId: string, resourceId?: string): Promise<void> {
+		// Mirrors `getMessages`: explicit `!== undefined` check so that a falsy
+		// (empty-string) `resourceId` cannot accidentally delete every user's
+		// messages on a shared thread.
+		await this.messageRepository.delete({
+			threadId,
+			...(resourceId !== undefined && { resourceId }),
+		});
 	}
 
 	// ── Working memory ───────────────────────────────────────────────────

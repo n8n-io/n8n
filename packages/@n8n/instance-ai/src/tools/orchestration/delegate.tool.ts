@@ -184,6 +184,7 @@ export async function startDetachedDelegateTask(
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,
+					timeZone: context.timeZone,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
@@ -226,7 +227,7 @@ export async function startDetachedDelegateTask(
 	});
 
 	return {
-		result: `Delegation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
+		result: `Delegation started (task: ${taskId}). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};
@@ -293,6 +294,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun,
+					timeZone: context.timeZone,
 				});
 
 				registerWithMastra(subAgentId, subAgent, context.storage);

@@ -1,0 +1,280 @@
+import { ref, type Ref } from 'vue';
+import isEqual from 'lodash/isEqual';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { getIntegrationStatus } from './useAgentApi';
+import {
+	buildAgentConfigFingerprint,
+	deriveAgentStatus,
+	toolIdentifiersFromConfig,
+	type AgentTelemetryStatus,
+} from './agentTelemetry.utils';
+import { useAgentTelemetry, type AgentConfigPart } from './useAgentTelemetry';
+import type { AgentResource, AgentJsonConfig } from '../types';
+
+/**
+ * All agent-builder telemetry state and emission lives here so the view stays
+ * focused on user-facing behavior. The view hands over its reactive refs and
+ * then only calls narrow `track*`/`record*` methods at event sites.
+ */
+export interface AgentBuilderTelemetryDeps {
+	agentId: Ref<string>;
+	projectId: Ref<string>;
+	agent: Ref<AgentResource | null>;
+	/** Local (unsaved) config — used for diffing incoming edits. */
+	localConfig: Ref<AgentJsonConfig | null>;
+	/** Server-saved config — used as the fingerprint source for flushed edits. */
+	savedConfig: Ref<AgentJsonConfig | null>;
+	connectedTriggers: Ref<string[]>;
+}
+
+interface EditSnapshot {
+	agentId: string;
+	status: AgentTelemetryStatus;
+	config: AgentJsonConfig | null;
+	connectedTriggers: string[];
+}
+
+// Config keys that map directly to a same-named telemetry part. `credential`
+// is handled separately (maps to `model`) because a credential change is
+// conceptually part of a model selection — the sidebar emits
+// `{ model, credential }` together.
+const TRACKED_CONFIG_KEYS = [
+	'instructions',
+	'model',
+	'memory',
+	'tools',
+	'skills',
+	'name',
+	'description',
+] as const satisfies ReadonlyArray<keyof AgentJsonConfig & AgentConfigPart>;
+
+/**
+ * Returns every telemetry part whose value actually changed between `current`
+ * and `updates`. A single update payload can touch multiple parts (e.g. the
+ * JSON editor broadcasts the whole config, or model-change emits
+ * `{ model, credential }`), and we want one event per genuinely-changed part
+ * rather than coalescing to the first match.
+ */
+function deriveChangedParts(
+	updates: Partial<AgentJsonConfig>,
+	current: AgentJsonConfig | null,
+): AgentConfigPart[] {
+	const parts = new Set<AgentConfigPart>();
+	const changed = <K extends keyof AgentJsonConfig>(key: K) =>
+		key in updates && (!current || !isEqual(current[key], updates[key]));
+
+	for (const key of TRACKED_CONFIG_KEYS) {
+		if (changed(key)) parts.add(key);
+	}
+	if (changed('credential')) parts.add('model');
+	return Array.from(parts);
+}
+
+export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
+	const rootStore = useRootStore();
+	const agentTelemetry = useAgentTelemetry();
+
+	// Parts accumulated between autosave flushes. `recordConfigEdit` adds to
+	// this set; `flushConfigEdits` drains it after a successful save and emits
+	// one `User edited agent config` event per part. Edits that never persist
+	// (save error, agent deletion, etc.) are dropped via `discardConfigEdits`.
+	// Triggers/name/description use their own endpoints and fire telemetry
+	// immediately from the corresponding track* methods instead of via this set.
+	const pendingEditedConfigParts = new Set<AgentConfigPart>();
+
+	// Baseline used to detect real trigger changes. The integrations panel emits
+	// its current connected list whenever it runs `fetchStatus()`, which includes
+	// the harmless panel-mount refresh. We only want to fire `User edited agent
+	// config` (part: 'triggers') when the list actually differs.
+	const triggersBaseline = ref<string[]>([]);
+
+	// Snapshot of tool identifiers at last observed config state. Used by
+	// `trackToolsAdded` to compute the diff against the new config.
+	let previousTools: string[] = [];
+
+	function snapshot(): EditSnapshot {
+		return {
+			agentId: deps.agentId.value,
+			status: deriveAgentStatus(deps.agent.value),
+			config: deps.localConfig.value,
+			connectedTriggers: deps.connectedTriggers.value,
+		};
+	}
+
+	/**
+	 * Compute the agent's `config_version` fingerprint asynchronously, then hand
+	 * it to `emit`. Centralizes the async-IIFE + try/catch boilerplate that
+	 * every fingerprint-bearing event would otherwise duplicate. `crypto.subtle`
+	 * can throw in insecure contexts, so failures are swallowed — individual
+	 * track calls are already wrapped inside `useAgentTelemetry`.
+	 */
+	function withFingerprint(
+		config: AgentJsonConfig | null,
+		triggers: string[],
+		emit: (configVersion: string) => void,
+	) {
+		void (async () => {
+			try {
+				const fp = await buildAgentConfigFingerprint(config, triggers);
+				emit(fp.config_version);
+			} catch {
+				// Swallow — telemetry is best-effort.
+			}
+		})();
+	}
+
+	function emitEditedEvents(parts: AgentConfigPart[], s: EditSnapshot) {
+		if (parts.length === 0) return;
+		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
+			for (const part of parts) {
+				agentTelemetry.trackEditedConfig({
+					agentId: s.agentId,
+					part,
+					configVersion,
+					status: s.status,
+				});
+			}
+		});
+	}
+
+	function recordConfigEdit(updates: Partial<AgentJsonConfig>) {
+		const parts = deriveChangedParts(updates, deps.localConfig.value);
+		for (const part of parts) pendingEditedConfigParts.add(part);
+	}
+
+	/**
+	 * Emit accumulated config-edit events after a successful save. Uses the
+	 * server-saved config so `config_version` reflects what was actually
+	 * persisted, not a mid-debounce local snapshot.
+	 */
+	function flushConfigEdits() {
+		if (pendingEditedConfigParts.size === 0) return;
+		const parts = Array.from(pendingEditedConfigParts);
+		pendingEditedConfigParts.clear();
+		emitEditedEvents(parts, {
+			agentId: deps.agentId.value,
+			status: deriveAgentStatus(deps.agent.value),
+			config: deps.savedConfig.value,
+			connectedTriggers: deps.connectedTriggers.value,
+		});
+	}
+
+	function trackTriggerListChanged(list: string[]) {
+		const changed = !isEqual(triggersBaseline.value, list);
+		triggersBaseline.value = list;
+		if (!changed) return;
+		emitEditedEvents(['triggers'], snapshot());
+	}
+
+	function trackTriggerAdded(payload: { triggerType: string; triggers: string[] }) {
+		const s = snapshot();
+		withFingerprint(s.config, payload.triggers, (configVersion) => {
+			agentTelemetry.trackAddedTrigger({
+				agentId: s.agentId,
+				triggerType: payload.triggerType,
+				triggers: payload.triggers,
+				configVersion,
+				status: s.status,
+			});
+		});
+	}
+
+	/** Capture the current tool list as the baseline for future `trackToolsAdded` diffs. */
+	function captureToolsBaseline() {
+		previousTools = toolIdentifiersFromConfig(deps.savedConfig.value);
+	}
+
+	/**
+	 * Diff the current saved tool list against the last observed baseline and
+	 * emit `User added tools to agent` for each newly added tool. Updates the
+	 * baseline so the next call only reports further additions.
+	 */
+	function trackToolsAdded() {
+		const current = toolIdentifiersFromConfig(deps.savedConfig.value);
+		const added = current.filter((t) => !previousTools.includes(t));
+		previousTools = current;
+		if (added.length === 0) return;
+		const s = snapshot();
+		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
+			for (const toolAdded of added) {
+				agentTelemetry.trackAddedTools({
+					agentId: s.agentId,
+					toolAdded,
+					tools: current,
+					configVersion,
+					status: s.status,
+				});
+			}
+		});
+	}
+
+	function trackNameEdited() {
+		emitEditedEvents(['name'], snapshot());
+	}
+
+	function trackDescriptionEdited() {
+		emitEditedEvents(['description'], snapshot());
+	}
+
+	/**
+	 * Emit `User published agent` using the server's published schema as the
+	 * fingerprint source. Used by the route-leave publish path, which calls
+	 * `publishAgent` directly instead of going through `useAgentPublish`.
+	 */
+	function trackPublished(publishedSchema: AgentJsonConfig | null | undefined) {
+		withFingerprint(publishedSchema ?? null, [], (configVersion) => {
+			agentTelemetry.trackPublishedAgent({
+				agentId: deps.agentId.value,
+				configVersion,
+			});
+		});
+	}
+
+	/**
+	 * Eagerly fetch connected trigger types so telemetry fingerprints are
+	 * accurate even if the user never opens the Triggers section of the
+	 * settings sidebar. Returns the fetched list (or `null` on failure) so the
+	 * view can sync its own `connectedTriggers` ref — the list is also used as
+	 * a prop for the chat panels.
+	 */
+	async function fetchInitialTriggersBaseline(
+		knownTriggerTypes: readonly string[],
+	): Promise<string[] | null> {
+		try {
+			const result = await getIntegrationStatus(
+				rootStore.restApiContext,
+				deps.projectId.value,
+				deps.agentId.value,
+			);
+			const connected = (result.integrations ?? [])
+				.map((i) => i.type)
+				.filter((t) => knownTriggerTypes.includes(t))
+				.sort();
+			triggersBaseline.value = connected;
+			return connected;
+		} catch {
+			return null;
+		}
+	}
+
+	/** Reset all per-agent telemetry state when switching agents. */
+	function resetForAgentSwitch() {
+		pendingEditedConfigParts.clear();
+		triggersBaseline.value = [];
+		previousTools = [];
+	}
+
+	return {
+		recordConfigEdit,
+		flushConfigEdits,
+		trackTriggerListChanged,
+		trackTriggerAdded,
+		trackToolsAdded,
+		trackNameEdited,
+		trackDescriptionEdited,
+		trackPublished,
+		captureToolsBaseline,
+		fetchInitialTriggersBaseline,
+		resetForAgentSwitch,
+	};
+}

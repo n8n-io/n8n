@@ -3,16 +3,22 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
 	ToolDescriptor,
 	JSONObject,
 } from '@n8n/agents';
-import { Agent, Memory, wrapToolForApproval } from '@n8n/agents';
+import { Agent, Memory, Tool, wrapToolForApproval } from '@n8n/agents';
+import type { AgentSkill } from '@n8n/api-types';
+import { z } from 'zod';
 
 import type {
 	AgentJsonConfig,
+	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './agent-json-config';
+import { mapCredentialForProvider } from './credential-field-mapping';
+import { resolveProviderToolName } from './provider-tool-aliases';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -29,9 +35,11 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
 export interface BuildFromJsonOptions {
 	/** Executes custom tool handlers inside isolates. */
 	toolExecutor: ToolExecutor;
-	credentialProvider?: CredentialProvider;
+	credentialProvider: CredentialProvider;
 	/** Resolves workflow/node tool refs into BuiltTool instances. */
 	resolveTool?: ToolResolver;
+	/** Stored skill bodies keyed by skill id. Only refs present in config.skills are attached. */
+	skills?: Record<string, AgentSkill>;
 	/** Memory backend factories keyed by storage preset name. */
 	memoryFactory: MemoryFactory;
 }
@@ -50,28 +58,22 @@ export async function buildFromJson(
 ): Promise<Agent> {
 	const agent = new Agent(config.name);
 
-	// Model: supports both "provider/model-name" string format and
-	// { provider, name } object format (from AgentSchema)
-	const modelValue = config.model as string | { provider?: string | null; name?: string | null };
-	if (typeof modelValue === 'object' && modelValue !== null) {
-		const provider = modelValue.provider ?? '';
-		const name = modelValue.name ?? '';
-		agent.model(provider ? `${provider}/${name}` : name);
+	// Derive the provider prefix for credential field remapping.
+	const slashIdx = config.model.indexOf('/');
+	const providerPrefix = slashIdx !== -1 ? config.model.slice(0, slashIdx) : '';
+
+	// Resolve credentials upfront and embed them directly in the model config
+	// object so createModel() receives the full set of fields it needs.
+	if (config.credential) {
+		const raw = await options.credentialProvider.resolve(config.credential);
+		const mapped = mapCredentialForProvider(providerPrefix, raw);
+		agent.model({ id: config.model, ...mapped } as ModelConfig);
 	} else {
-		const slashIdx = modelValue.indexOf('/');
-		if (slashIdx !== -1) {
-			agent.model(modelValue.slice(0, slashIdx), modelValue.slice(slashIdx + 1));
-		} else {
-			agent.model(modelValue);
-		}
+		agent.model(config.model);
 	}
 
-	if (config.credential) agent.credential(config.credential);
-	agent.instructions(config.instructions);
-
-	if (options.credentialProvider) {
-		agent.credentialProvider(options.credentialProvider);
-	}
+	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
+	agent.instructions(withSkillCatalog(config.instructions, configuredSkills));
 
 	// Tools
 	if (config.tools) {
@@ -82,11 +84,15 @@ export async function buildFromJson(
 			}
 		}
 	}
+	if (configuredSkills.length > 0) {
+		agent.tool(createLoadSkillTool(configuredSkills));
+	}
 
 	// Provider tools
 	if (config.providerTools) {
 		for (const [name, args] of Object.entries(config.providerTools)) {
-			agent.providerTool({ name: name as `${string}.${string}`, args });
+			const resolved = resolveProviderToolName(name);
+			agent.providerTool({ name: resolved as `${string}.${string}`, args });
 		}
 	}
 
@@ -110,6 +116,73 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+type ConfiguredSkill = { id: string; skill: AgentSkill };
+
+function getConfiguredSkills(
+	refs: Array<Extract<AgentJsonConfigRef, { type: 'skill' }>>,
+	skills: Record<string, AgentSkill>,
+): ConfiguredSkill[] {
+	const seen = new Set<string>();
+	const configured: ConfiguredSkill[] = [];
+
+	for (const ref of refs) {
+		if (seen.has(ref.id)) continue;
+		seen.add(ref.id);
+		const skill = skills[ref.id];
+		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
+		configured.push({ id: ref.id, skill });
+	}
+
+	return configured;
+}
+
+function withSkillCatalog(instructions: string, skills: ConfiguredSkill[]): string {
+	if (skills.length === 0) return instructions;
+
+	const catalog = skills
+		.map(({ id, skill }) => `- ${id}: ${skill.name} - ${skill.description}`)
+		.join('\n');
+	const baseInstructions = instructions.trimEnd();
+
+	return `${baseInstructions}${baseInstructions ? '\n\n' : ''}Available skills:
+${catalog}
+
+If the user's task matches a skill description, call load_skill with the skill id and follow the returned instructions. Skill bodies are intentionally not included here; load them only when relevant.`;
+}
+
+function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
+	const skillsById = new Map(skills.map(({ id, skill }) => [id, skill]));
+
+	return new Tool('load_skill')
+		.description(
+			'Load the full instructions for an attached skill when its name or description matches the current task. ' +
+				'Use this before following the skill instructions; available skill ids are listed in the system instructions.',
+		)
+		.input(
+			z.object({
+				skillId: z.string().describe('The skill id from the Available skills list'),
+			}),
+		)
+		.handler(async ({ skillId }: { skillId: string }) => {
+			const skill = skillsById.get(skillId);
+			if (!skill) {
+				return {
+					ok: false,
+					error: `Skill "${skillId}" is not attached to this agent.`,
+				};
+			}
+
+			return {
+				ok: true,
+				skillId,
+				name: skill.name,
+				description: skill.description,
+				instructions: skill.instructions,
+			};
+		})
+		.build();
 }
 
 async function resolveToolRef(
@@ -194,6 +267,8 @@ async function applyMemoryFromConfig(
 	if (memoryConfig.semanticRecall) {
 		memory.semanticRecall(memoryConfig.semanticRecall);
 	}
+
+	memory.titleGeneration({ sync: true });
 
 	agent.memory(memory);
 }

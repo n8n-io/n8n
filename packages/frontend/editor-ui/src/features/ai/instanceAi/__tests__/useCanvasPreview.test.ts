@@ -62,13 +62,15 @@ function makeMessage(overrides: Partial<InstanceAiMessage> = {}): InstanceAiMess
 function createMockStore() {
 	const messages = ref<InstanceAiMessage[]>([]) as Ref<InstanceAiMessage[]>;
 	const isStreaming = ref(false);
-	const resourceRegistry = ref(new Map<string, ResourceEntry>());
+	const producedArtifacts = ref(new Map<string, ResourceEntry>());
+	const resourceNameIndex = ref(new Map<string, ResourceEntry>());
 	const threadMetadata = new Map<string, Record<string, unknown>>();
 
 	return reactive({
 		messages,
 		isStreaming,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
 		currentThreadId: 'thread-1',
 		getThreadMetadata: (threadId: string) => threadMetadata.get(threadId),
 		updateThreadMetadata: async (threadId: string, metadata: Record<string, unknown>) => {
@@ -80,20 +82,28 @@ function createMockStore() {
 type MockStore = ReturnType<typeof createMockStore>;
 
 // ---------------------------------------------------------------------------
-// Registry helpers — populate the store's resourceRegistry so computed
+// Registry helpers — populate the store's producedArtifacts so computed
 // activeWorkflowId / activeDataTableId can derive values from tabs.
 // ---------------------------------------------------------------------------
 
 function registerWorkflow(store: MockStore, id: string, name = `Workflow ${id}`) {
-	const next = new Map(store.resourceRegistry);
-	next.set(name.toLowerCase(), { type: 'workflow', id, name });
-	store.resourceRegistry = next;
+	const entry: ResourceEntry = { type: 'workflow', id, name };
+	const nextProduced = new Map(store.producedArtifacts);
+	nextProduced.set(id, entry);
+	store.producedArtifacts = nextProduced;
+	const nextByName = new Map(store.resourceNameIndex);
+	nextByName.set(name.toLowerCase(), entry);
+	store.resourceNameIndex = nextByName;
 }
 
 function registerDataTable(store: MockStore, id: string, name = `Table ${id}`, projectId?: string) {
-	const next = new Map(store.resourceRegistry);
-	next.set(name.toLowerCase(), { type: 'data-table', id, name, projectId });
-	store.resourceRegistry = next;
+	const entry: ResourceEntry = { type: 'data-table', id, name, projectId };
+	const nextProduced = new Map(store.producedArtifacts);
+	nextProduced.set(id, entry);
+	store.producedArtifacts = nextProduced;
+	const nextByName = new Map(store.resourceNameIndex);
+	nextByName.set(name.toLowerCase(), entry);
+	store.resourceNameIndex = nextByName;
 }
 
 // ---------------------------------------------------------------------------
@@ -270,9 +280,9 @@ describe('useCanvasPreview', () => {
 		test('excludes credential entries', () => {
 			const ctx = setup();
 			const registry = new Map<string, ResourceEntry>();
-			registry.set('wf', { type: 'workflow', id: 'wf-1', name: 'WF' });
-			registry.set('cred', { type: 'credential', id: 'cred-1', name: 'Cred' });
-			ctx.store.resourceRegistry = registry;
+			registry.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'WF' });
+			registry.set('cred-1', { type: 'credential', id: 'cred-1', name: 'Cred' });
+			ctx.store.producedArtifacts = registry;
 
 			expect(ctx.allArtifactTabs.value).toHaveLength(1);
 			expect(ctx.allArtifactTabs.value[0].type).toBe('workflow');
@@ -686,7 +696,7 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeDataTableId.value).toBeNull();
 		});
 
-		test('looks up projectId from resourceRegistry', async () => {
+		test('looks up projectId from producedArtifacts', async () => {
 			const ctx = setup();
 			ctx.store.isStreaming = true;
 			registerDataTable(ctx.store, 'dt-1', 'Test Table', 'proj-42');
@@ -914,8 +924,8 @@ describe('useCanvasPreview', () => {
 
 			// Remove wf-2 from registry, keeping wf-1
 			const next = new Map<string, ResourceEntry>();
-			next.set('workflow wf-1', { type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' });
-			ctx.store.resourceRegistry = next;
+			next.set('wf-1', { type: 'workflow', id: 'wf-1', name: 'Workflow wf-1' });
+			ctx.store.producedArtifacts = next;
 			await nextTick();
 
 			expect(ctx.activeTabId.value).toBe('wf-1');
@@ -928,7 +938,7 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			// Temporarily empty registry (simulates race where registry hasn't been populated yet)
-			ctx.store.resourceRegistry = new Map();
+			ctx.store.producedArtifacts = new Map();
 			await nextTick();
 
 			// Tab should remain set — guard skips when tabs are empty

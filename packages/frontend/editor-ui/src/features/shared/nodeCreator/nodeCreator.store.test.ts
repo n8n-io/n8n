@@ -91,16 +91,6 @@ describe('useNodeCreatorStore', () => {
 			return id ? ({ id, name: 'Test Node', type: 'test-type' } as INodeUi) : undefined;
 		});
 		mockUseWorkflowsStore.workflowId = 'dummy-workflow-id';
-		mockUseWorkflowsStore.workflowObject = {
-			...mockUseWorkflowsStore.workflowObject,
-			getNode: vi.fn(
-				() =>
-					({
-						type: 'n8n-node.example',
-						typeVersion: 1,
-					}) as INodeUi,
-			),
-		};
 
 		mockedPrepareCommunityNodeDetailsViewStack.mockReturnValue({
 			title: 'Test Node',

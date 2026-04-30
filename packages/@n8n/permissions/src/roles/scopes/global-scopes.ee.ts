@@ -1,6 +1,15 @@
 import type { Scope } from '../../types.ee';
 
 export const GLOBAL_OWNER_SCOPES: Scope[] = [
+	'agent:create',
+	'agent:read',
+	'agent:update',
+	'agent:delete',
+	'agent:list',
+	'agent:execute',
+	'agent:publish',
+	'agent:unpublish',
+	'agent:manage',
 	'aiAssistant:manage',
 	'annotationTag:create',
 	'annotationTag:read',
@@ -123,6 +132,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'breakingChanges:list',
 	'execution:reveal',
 	'apiKey:manage',
+	'encryptionKey:manage',
 	'credentialResolver:create',
 	'credentialResolver:read',
 	'credentialResolver:update',

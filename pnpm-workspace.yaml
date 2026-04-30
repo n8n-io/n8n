@@ -6,6 +6,13 @@ packages:
   - packages/testing/**
 
 catalog:
+  '@ai-sdk/amazon-bedrock': ^4.0.95
+  '@ai-sdk/azure': ^3.0.54
+  '@ai-sdk/cohere': ^3.0.30
+  '@ai-sdk/deepseek': ^2.0.29
+  '@ai-sdk/gateway': ^3.0.104
+  '@ai-sdk/groq': ^3.0.35
+  '@ai-sdk/mistral': ^3.0.30
   '@azure/identity': 4.13.0
   '@codemirror/autocomplete': 6.20.0
   '@codemirror/commands': 6.10.1
@@ -36,8 +43,10 @@ catalog:
   '@mastra/mcp': 1.3.1
   '@mastra/memory': 1.10.0
   '@mastra/pg': 1.8.3
+  '@n8n/tournament': 1.0.7
   '@n8n/typeorm': 0.3.20-16
   '@n8n_io/ai-assistant-sdk': 1.21.0
+  '@openrouter/ai-sdk-provider': ^2.8.0
   '@sentry/node': ^10.36.0
   '@testcontainers/k3s': ^11.13.0
   '@testcontainers/kafka': ^11.13.0
@@ -57,6 +66,7 @@ catalog:
   basic-auth: 2.0.1
   callsites: 3.1.0
   chokidar: 4.0.3
+  cron: 4.4.0
   eslint: 9.29.0
   fast-glob: 3.2.12
   fast-json-patch: ^3.1.1
@@ -101,7 +111,7 @@ catalog:
   vm2: ^3.10.5
   xml2js: 0.6.2
   xss: 1.0.15
-  yaml: 2.8.2
+  yaml: 2.8.3
   zod: 3.25.67
   zod-to-json-schema: 3.23.3
 
@@ -177,3 +187,5 @@ minimumReleaseAgeExclude:
   - multer
   - simple-git
   - underscore
+  - protobufjs
+  - follow-redirects

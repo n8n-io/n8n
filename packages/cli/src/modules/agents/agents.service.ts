@@ -1,10 +1,18 @@
 import type {
 	BuiltAgent,
+	BuiltTool,
 	CredentialProvider,
 	GenerateResult,
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	isAgentScheduleIntegration,
+	type AgentSkill,
+	type AgentSkillMutationResponse,
+	type ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import * as agents from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
@@ -32,12 +40,19 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { AgentExecutionService } from './agent-execution.service';
+import { AgentSkillsService } from './agent-skills.service';
+import { AgentsToolsService } from './agents-tools.service';
 import { Agent } from './entities/agent.entity';
+import { ExecutionRecorder } from './execution-recorder';
+import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { AgentJsonConfigSchema } from './json-config/agent-json-config';
+import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
+	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './json-config/agent-json-config';
@@ -49,6 +64,25 @@ import {
 import { AgentPublishedVersionRepository } from './repositories/agent-published-version.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
+
+type AgentToolEntries = Agent['tools'];
+
+interface InjectRuntimeDependenciesParams {
+	agent: agents.Agent;
+	agentId: string;
+	projectId: string;
+	credentialProvider: CredentialProvider;
+	nodeToolsEnabled: boolean;
+	/** Chat platform the runtime is being reconstructed for — drives the rich_interaction tool's capability profile. */
+	integrationType?: string;
+}
+
+/** Derive a stable thread ID for the test-chat of a given agent. */
+export function chatThreadId(agentId: string): string {
+	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
+}
 
 @Service()
 export class AgentsService {
@@ -59,12 +93,22 @@ export class AgentsService {
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: agents.Agent; agentId: string; userId?: string }
+		{ agent: agents.Agent; agentId: string; userId?: string; toolRegistry: ToolRegistry }
 	>(30 * Time.minutes.toMilliseconds);
 
-	/** Cache key for draft/builder executions. */
-	private runtimeKey(agentId: string, userId?: string): string {
-		return userId ? `${agentId}:${userId}` : agentId;
+	/**
+	 * Stash of user messages for suspended tool calls.
+	 * When executeForChat suspends, we store the original message here so
+	 * resumeForChat can record it against the execution.
+	 */
+	private readonly pendingUserMessages = new Map<string, string>();
+
+	/** Build a cache key that includes the user and integration type so different contexts get isolated runtimes. */
+	private runtimeKey(agentId: string, userId?: string, integrationType?: string): string {
+		const parts = [agentId];
+		if (userId) parts.push(userId);
+		if (integrationType) parts.push(integrationType);
+		return parts.join(':');
 	}
 
 	/** Remove all cached draft runtimes for an agent (all users). */
@@ -73,20 +117,6 @@ export class AgentsService {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
 				this.runtimes.delete(key);
 			}
-		}
-	}
-
-	/**
-	 * Start a new draft if the agent is currently in sync with the published snapshot.
-	 * Any mutation that changes how the agent would run must call this so that
-	 * `hasUnpublishedChanges` (derived from versionId vs publishedFromVersionId) stays accurate.
-	 */
-	private markDraftDirty(agent: Agent): void {
-		if (
-			agent.versionId !== null &&
-			agent.versionId === agent.publishedVersion?.publishedFromVersionId
-		) {
-			agent.versionId = uuid();
 		}
 	}
 
@@ -104,9 +134,27 @@ export class AgentsService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
+		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
+		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
+		private readonly agentSkillsService: AgentSkillsService,
 	) {}
+
+	/**
+	 * Return the list of registered chat platform integrations with their
+	 * FE display metadata. Used by `GET /agents/integrations`.
+	 */
+	listChatIntegrations(): ChatIntegrationDescriptor[] {
+		return Container.get(ChatIntegrationRegistry)
+			.list()
+			.map((i) => ({
+				type: i.type,
+				label: i.displayLabel,
+				icon: i.displayIcon,
+				credentialTypes: i.credentialTypes,
+			}));
+	}
 
 	async create(projectId: string, name: string): Promise<Agent> {
 		// New agents start with no instructions so the home screen routes the
@@ -117,6 +165,8 @@ export class AgentsService {
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: '',
 			instructions: '',
+			tools: [],
+			skills: [],
 		};
 
 		const agent = this.agentRepository.create({
@@ -154,7 +204,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, name };
 		}
-		this.markDraftDirty(agent);
+		markAgentDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
 		return saved;
@@ -180,7 +230,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, description };
 		}
-		this.markDraftDirty(agent);
+		markAgentDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;
@@ -215,6 +265,11 @@ export class AgentsService {
 				{
 					agentId: agent.id,
 					schema: agent.schema,
+					tools: this.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
+					skills: this.agentSkillsService.snapshotConfiguredSkills(
+						agent.schema,
+						agent.skills ?? {},
+					),
 					publishedFromVersionId: agent.versionId,
 					model: agent.model,
 					provider: agent.provider,
@@ -243,6 +298,17 @@ export class AgentsService {
 		await this.agentRepository.manager.transaction(async (trx) => {
 			await this.agentPublishedVersionRepository.deleteByAgentId(agentId, trx);
 			agent.publishedVersion = null;
+
+			const hasActiveSchedule = (agent.integrations ?? []).some(
+				(integration) => isAgentScheduleIntegration(integration) && integration.active,
+			);
+
+			if (hasActiveSchedule) {
+				agent.integrations = (agent.integrations ?? []).map((integration) =>
+					isAgentScheduleIntegration(integration) ? { ...integration, active: false } : integration,
+				);
+				await trx.save(agent);
+			}
 		});
 
 		this.clearRuntimes(agentId);
@@ -253,6 +319,9 @@ export class AgentsService {
 		// eslint-disable-next-line import-x/no-cycle
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		await Container.get(ChatIntegrationService).disconnect(agentId);
+
+		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
+		Container.get(AgentScheduleService).deregister(agentId);
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
 		return agent;
@@ -268,6 +337,29 @@ export class AgentsService {
 		await this.agentRepository.remove(agent);
 
 		this.clearRuntimes(agentId);
+
+		try {
+			const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
+			Container.get(AgentScheduleService).deregister(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to stop schedule on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
+
+		// Remove the test-chat thread + its messages so deleting an agent
+		// doesn't leave orphaned rows in agents_threads / agents_messages.
+		// Swallow errors — the agent is already gone; best-effort cleanup.
+		// Log at warn level so orphaned rows are observable in production.
+		try {
+			await this.clearAllTestChatMessages(agentId);
+		} catch (error) {
+			this.logger.warn('Failed to clear test chat on agent delete', {
+				agentId,
+				error: error instanceof Error ? error.message : error,
+			});
+		}
 
 		this.logger.debug('Deleted SDK agent', { agentId, projectId });
 
@@ -285,13 +377,20 @@ export class AgentsService {
 	/** Find any cached runtime for an agent (regardless of user). */
 	private findRuntimeForAgent(
 		agentId: string,
-	): { agent: agents.Agent; agentId: string; userId?: string } | undefined {
+	):
+		| { agent: agents.Agent; agentId: string; userId?: string; toolRegistry: ToolRegistry }
+		| undefined {
 		for (const [key, runtime] of this.runtimes) {
 			if (key === agentId || key.startsWith(`${agentId}:`)) {
 				return runtime;
 			}
 		}
 		return undefined;
+	}
+
+	/** Return persisted chat messages for a given session/thread. */
+	async getChatMessages(threadId: string) {
+		return await this.n8nMemory.getMessages(threadId);
 	}
 
 	private getMemoryFactory(): MemoryFactory {
@@ -336,7 +435,10 @@ export class AgentsService {
 
 			if (ref.type === 'node') {
 				const { resolveNodeTool } = await import('./tools/node-tool-factory');
-				return resolveNodeTool(ref, { executor: this.ephemeralNodeExecutor, projectId });
+				return await resolveNodeTool(ref, {
+					executor: this.ephemeralNodeExecutor,
+					projectId,
+				});
 			}
 
 			return null;
@@ -347,23 +449,62 @@ export class AgentsService {
 	 * Inject platform-level tools and storage into an agent instance.
 	 * Workflow and node tools are resolved earlier via `makeToolResolver()` inside
 	 * `fromSchema()`, so this method only handles host-side singletons.
+	 *
+	 * `nodeToolsEnabled` comes from the agent's `config.nodeTools.enabled` flag
+	 * (opt-in, defaults to false) — see {@link isNodeToolsEnabled}.
 	 */
-	private async injectRuntimeDependencies(agent: agents.Agent, agentId: string): Promise<void> {
-		// Inject the rich_interaction tool for ad-hoc UI in chat integrations.
-		try {
-			const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
-			agent.tool(createRichInteractionTool());
-		} catch (toolError) {
-			this.logger.warn('Failed to inject rich_interaction tool', {
-				agentId,
-				error: toolError instanceof Error ? toolError.message : String(toolError),
-			});
+	private async injectRuntimeDependencies(params: InjectRuntimeDependenciesParams): Promise<void> {
+		const { agent, agentId, projectId, credentialProvider, nodeToolsEnabled, integrationType } =
+			params;
+
+		// Inject the rich_interaction tool only for platforms that can actually
+		// render its suspend/resume HITL cards. Two gates:
+		//   - A registered integration in ChatIntegrationRegistry. The in-app
+		//     test chat uses `integrationType = 'chat'`, which isn't registered,
+		//     and the compile/validate path passes no integrationType at all —
+		//     neither has a bridge to render the card or resume the suspended
+		//     turn, so letting the model call the tool there would hang the
+		//     agent.
+		//   - The integration must declare `supportedComponents`. Platforms
+		//     that omit it (e.g. Linear) have explicitly opted out of
+		//     rich_interaction.
+		const integration = integrationType
+			? Container.get(ChatIntegrationRegistry).get(integrationType)
+			: undefined;
+		if (integration && integration.supportedComponents !== undefined) {
+			try {
+				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
+				agent.tool(createRichInteractionTool(integrationType));
+			} catch (toolError) {
+				this.logger.warn('Failed to inject rich_interaction tool', {
+					agentId,
+					error: toolError instanceof Error ? toolError.message : String(toolError),
+				});
+			}
+		}
+
+		if (nodeToolsEnabled) {
+			this.attachNodeToolChain(agent, credentialProvider, projectId);
 		}
 
 		// Inject checkpoint storage
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage);
 		}
+	}
+
+	/**
+	 * Attaches the built-in node tool chain (search_nodes, get_node_types,
+	 * list_credentials, run_node_tool) so the agent can discover and execute
+	 * n8n nodes on demand. Sourced from {@link AgentsToolsService}, which in
+	 * turn delegates to `NodeCatalogService`.
+	 */
+	private attachNodeToolChain(
+		agent: agents.Agent,
+		credentialProvider: CredentialProvider,
+		projectId: string,
+	): void {
+		agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
 	}
 
 	/**
@@ -376,6 +517,9 @@ export class AgentsService {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		threadId?: string,
+		userId?: string,
+		projectId?: string,
 	): AsyncGenerator<StreamChunk> {
 		const runtime = this.findRuntimeForAgent(agentId);
 		if (!runtime) {
@@ -393,6 +537,8 @@ export class AgentsService {
 			throw new UserError(`Checkpoint ${runId} not found and cannot be resumed`);
 		}
 
+		const recorder = new ExecutionRecorder(runtime.toolRegistry);
+
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
 			toolCallId,
@@ -403,11 +549,99 @@ export class AgentsService {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
+				recorder.record(value);
 				yield value;
 			}
 		} finally {
 			reader.releaseLock();
 		}
+
+		// Always record resumed executions — even if they suspend again (chained HITL).
+		// Don't repeat the original user message — the pre-suspension execution already has it.
+		if (threadId && userId && projectId) {
+			if (!recorder.suspended) {
+				this.pendingUserMessages.delete(agentId);
+			}
+			const messageRecord = recorder.getMessageRecord();
+			void this.agentExecutionService
+				.recordMessage({
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userId,
+					userMessage: '',
+					record: messageRecord,
+					hitlStatus: 'resumed',
+				})
+				.catch((error) => {
+					this.logger.warn('Failed to record resumed agent execution', {
+						agentId,
+						threadId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+		}
+	}
+
+	/**
+	 * Check whether an agent has the minimum config it needs to be run.
+	 * Returns the list of missing/invalid fields, if any.
+	 *
+	 * `missing` items correspond to user-facing concepts:
+	 *   - "instructions": empty or whitespace-only instructions string
+	 *   - "model":        missing model or one that fails the provider/model regex
+	 *   - "credential":   credential name is set in config but doesn't resolve to
+	 *                     a real credential in the project
+	 *   - "skill:<id>":   config references a skill id with no stored body
+	 */
+	async validateAgentIsRunnable(
+		agentId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+	): Promise<{ missing: string[] }> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) {
+			return { missing: ['agent'] };
+		}
+		// Schema is persisted as JSON — double-cast rehydrates to the typed config.
+		const config = agentEntity.schema as unknown as AgentJsonConfig | null;
+		const missing: string[] = [];
+
+		if (!config) {
+			return { missing: ['instructions', 'model'] };
+		}
+
+		if (!config.instructions || !config.instructions.trim()) {
+			missing.push('instructions');
+		}
+
+		const modelSchema = AgentJsonConfigSchema.shape.model;
+		if (!config.model || !modelSchema.safeParse(config.model).success) {
+			missing.push('model');
+		}
+
+		if (config.credential) {
+			try {
+				const credentialName = config.credential;
+				const creds = await credentialProvider.list();
+				const exists = creds.some(
+					(c) => c.id === credentialName || c.name.toLowerCase() === credentialName.toLowerCase(),
+				);
+				if (!exists) missing.push('credential');
+			} catch {
+				// If listing fails (e.g. permissions), don't flag as misconfigured —
+				// the runtime will surface the real error path on execute.
+			}
+		}
+
+		missing.push(
+			...this.agentSkillsService
+				.getMissingSkillIds(config, agentEntity.skills ?? {})
+				.map((skillId) => `skill:${skillId}`),
+		);
+
+		return { missing };
 	}
 
 	/**
@@ -424,8 +658,9 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk> {
-		const key = this.runtimeKey(agentId, userId);
+		const key = this.runtimeKey(agentId, userId, integrationType);
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
 			// Scope the lookup to the project so an agent from a different project
@@ -433,19 +668,57 @@ export class AgentsService {
 			const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 			if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
 
-			const reconstructed = await this.reconstructFromConfig(
+			const { agent: reconstructed, toolRegistry } = await this.reconstructFromConfig(
 				agentEntity,
 				credentialProvider,
 				userId,
+				integrationType,
 			);
 
 			// Cache the runtime for subsequent calls
-			this.runtimes.set(key, { agent: reconstructed, agentId, userId });
+			this.runtimes.set(key, { agent: reconstructed, agentId, userId, toolRegistry });
 			runtime = this.runtimes.get(key);
 			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
 		}
 
-		yield* this.streamChatResponse(runtime.agent, agentId, message, threadId, userId);
+		yield* this.streamChatResponse(
+			runtime.agent,
+			runtime.toolRegistry,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			{
+				source: integrationType,
+				resourceId: userId,
+			},
+		);
+	}
+
+	/**
+	 * Return persisted test-chat messages for an agent scoped to the current
+	 * user. The test-chat thread is shared across users (keyed on agentId) but
+	 * each message is tagged with the originating user's id as resourceId, so
+	 * we filter here to give every user their own private conversation view.
+	 */
+	async getTestChatMessages(agentId: string, userId: string) {
+		return await this.n8nMemory.getMessages(chatThreadId(agentId), { resourceId: userId });
+	}
+
+	/**
+	 * Clear the current user's test-chat messages for an agent. The thread row
+	 * stays so other users' histories on the same thread are preserved.
+	 */
+	async clearTestChatMessages(agentId: string, userId: string) {
+		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId), userId);
+	}
+
+	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
+	async clearAllTestChatMessages(agentId: string) {
+		const threadId = chatThreadId(agentId);
+		await this.n8nMemory.deleteMessagesByThread(threadId);
+		await this.n8nMemory.deleteThread(threadId);
 	}
 
 	/**
@@ -461,6 +734,71 @@ export class AgentsService {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
+	): AsyncGenerator<StreamChunk> {
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+
+		const publishedSchema = agentEntity.publishedVersion?.schema;
+		if (!publishedSchema) {
+			throw new NotFoundError(`Agent ${agentId} is not published`);
+		}
+		const publishedTools = agentEntity.publishedVersion?.tools ?? agentEntity.tools;
+		const publishedSkills = agentEntity.publishedVersion?.skills ?? agentEntity.skills;
+
+		// Reconstruct from the published snapshot and cache the runtime so that
+		// a follow-up `resumeForChat` (HITL button click) can find it via
+		// `findRuntimeForAgent`. Integration traffic only ever runs the published
+		// version — drafts stay in their own cache under different keys.
+		const key = this.runtimeKey(agentId, userId, integrationType);
+		let runtime = this.runtimes.get(key);
+		if (!runtime) {
+			const publishedAgentData = {
+				...agentEntity,
+				schema: publishedSchema,
+				tools: publishedTools ?? {},
+				skills: publishedSkills ?? {},
+			} as Agent;
+			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
+				publishedAgentData,
+				credentialProvider,
+				userId,
+				integrationType,
+			);
+			this.runtimes.set(key, { agent: agentInstance, agentId, userId, toolRegistry });
+			runtime = this.runtimes.get(key);
+			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
+		}
+
+		yield* this.streamChatResponse(
+			runtime.agent,
+			runtime.toolRegistry,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			{
+				source: integrationType,
+				resourceId: userId,
+			},
+		);
+	}
+
+	/**
+	 * Execute a published agent for the local schedule trigger.
+	 *
+	 * Scheduled runs compile with a project user identity for RBAC/tool access,
+	 * but persist against a per-run resourceId so no memory is shared across runs.
+	 */
+	async *executeForSchedulePublished(
+		agentId: string,
+		message: string,
+		threadId: string,
+		userId: string,
+		projectId: string,
+		credentialProvider: CredentialProvider,
+		resourceId: string,
 	): AsyncGenerator<StreamChunk> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
@@ -470,31 +808,60 @@ export class AgentsService {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
 
-		// Always reconstruct from the published snapshot — no caching.
-		// Integration traffic must always run the published version, never a cached draft.
-		const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
-		const agentInstance = await this.reconstructFromConfig(
-			publishedAgentData,
-			credentialProvider,
-			userId,
-		);
+		const key = this.runtimeKey(agentId, userId, AGENT_SCHEDULE_TRIGGER_TYPE);
+		let runtime = this.runtimes.get(key);
+		if (!runtime) {
+			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
+				publishedAgentData,
+				credentialProvider,
+				userId,
+				AGENT_SCHEDULE_TRIGGER_TYPE,
+			);
+			this.runtimes.set(key, { agent: agentInstance, agentId, userId, toolRegistry });
+			runtime = this.runtimes.get(key);
+			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
+		}
 
-		yield* this.streamChatResponse(agentInstance, agentId, message, threadId, userId);
+		yield* this.streamChatResponse(
+			runtime.agent,
+			runtime.toolRegistry,
+			agentId,
+			message,
+			threadId,
+			userId,
+			projectId,
+			{
+				source: AGENT_SCHEDULE_TRIGGER_TYPE,
+				resourceId,
+			},
+		);
 	}
 
 	/**
-	 * Read from an agent's streaming response and yield each chunk.
-	 * Logs `tool-call-suspended` chunks so we can observe human-in-the-loop pauses.
+	 * Read from an agent's streaming response, record it, and yield each chunk.
+	 * Logs `tool-call-suspended` chunks so we can observe human-in-the-loop pauses,
+	 * and persists the full message record via `AgentExecutionService` so chat
+	 * history shows up in the executions view.
 	 */
 	private async *streamChatResponse(
 		agentInstance: agents.Agent,
+		toolRegistry: ToolRegistry,
 		agentId: string,
 		message: string,
 		threadId: string,
 		userId: string,
+		projectId: string,
+		options?: {
+			source?: string;
+			resourceId?: string;
+		},
 	): AsyncGenerator<StreamChunk> {
+		const recorder = new ExecutionRecorder(toolRegistry);
+		const resourceId = options?.resourceId ?? userId;
+
 		const resultStream = await agentInstance.stream(message, {
-			persistence: { threadId, resourceId: userId },
+			persistence: { threadId, resourceId },
 		});
 
 		const reader = resultStream.stream.getReader();
@@ -502,6 +869,7 @@ export class AgentsService {
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
+				recorder.record(value);
 				if (value.type === 'tool-call-suspended') {
 					this.logger.info('Chat: tool-call-suspended chunk received', {
 						agentId,
@@ -514,6 +882,33 @@ export class AgentsService {
 		} finally {
 			reader.releaseLock();
 		}
+
+		// Always record — even if suspended, the pre-suspension response text
+		// and tool calls are valuable. Usage/model will be null for suspended runs.
+		if (recorder.suspended) {
+			this.pendingUserMessages.set(agentId, message);
+		}
+
+		const messageRecord = recorder.getMessageRecord();
+		void this.agentExecutionService
+			.recordMessage({
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userId,
+				userMessage: message,
+				record: messageRecord,
+				hitlStatus: recorder.suspended ? 'suspended' : undefined,
+				source: options?.source,
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record agent execution', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	/**
@@ -531,7 +926,7 @@ export class AgentsService {
 		}
 
 		try {
-			const reconstructed = await this.reconstructFromConfig(
+			const { agent: reconstructed } = await this.reconstructFromConfig(
 				agentEntity,
 				credentialProvider,
 				userId,
@@ -703,15 +1098,17 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
+		this.validateConfigRefs(result.config, entity);
+
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(
 			(result.config.tools ?? [])
-				.filter((t): t is { type: 'custom'; id: string } => t.type === 'custom')
+				.filter((t): t is Extract<AgentJsonConfigRef, { type: 'custom' }> => t.type === 'custom')
 				.map((t) => t.id),
 		);
 		const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
@@ -722,6 +1119,8 @@ export class AgentsService {
 			}
 			entity.tools = tools;
 		}
+
+		this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
 
 		// Invalidate runtime caches
 		this.clearRuntimes(agentId);
@@ -751,30 +1150,52 @@ export class AgentsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		// Store tool code + descriptor
+		// Store tool code + descriptor. Registering the tool in the agent config
+		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
+		// responsibility — typically via a follow-up patch_config / write_config —
+		// so this method does not touch `entity.schema`.
 		entity.tools = {
 			...entity.tools,
 			[toolId]: { code, descriptor },
 		};
 
-		// Add to config tools array if not already present
-		if (entity.schema) {
-			const tools = entity.schema.tools ?? [];
-			const alreadyLinked = tools.some(
-				(t: AgentJsonToolConfig) => t.type === 'custom' && 'id' in t && t.id === toolId,
-			);
-			if (!alreadyLinked) {
-				entity.schema.tools = [...tools, { type: 'custom' as const, id: toolId }];
-			}
-		}
-
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
 		return { ok: true, descriptor };
+	}
+
+	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
+		return await this.agentSkillsService.listSkills(agentId, projectId);
+	}
+
+	async getSkill(agentId: string, projectId: string, skillId: string): Promise<AgentSkill> {
+		return await this.agentSkillsService.getSkill(agentId, projectId, skillId);
+	}
+
+	async createSkill(
+		agentId: string,
+		projectId: string,
+		skillId: string,
+		skill: AgentSkill,
+	): Promise<AgentSkillMutationResponse> {
+		const result = await this.agentSkillsService.createSkill(agentId, projectId, skillId, skill);
+		this.clearRuntimes(agentId);
+		return result;
+	}
+
+	async updateSkill(
+		agentId: string,
+		projectId: string,
+		skillId: string,
+		updates: Partial<AgentSkill>,
+	): Promise<AgentSkillMutationResponse> {
+		const result = await this.agentSkillsService.updateSkill(agentId, projectId, skillId, updates);
+		this.clearRuntimes(agentId);
+		return result;
 	}
 
 	/**
@@ -791,15 +1212,20 @@ export class AgentsService {
 		// Remove from config tools array
 		if (entity.schema?.tools) {
 			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonToolConfig) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
+				(t: AgentJsonConfigRef) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
 			);
 		}
 
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
+	}
+
+	async deleteSkill(agentId: string, projectId: string, skillId: string): Promise<void> {
+		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId);
+		this.clearRuntimes(agentId);
 	}
 
 	/**
@@ -849,6 +1275,60 @@ export class AgentsService {
 		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
+	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
+		const missingSkillIds = this.agentSkillsService.getMissingSkillIds(config, entity.skills ?? {});
+		if (missingSkillIds.length > 0) {
+			throw new UserError(
+				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
+			);
+		}
+
+		const missingToolIds = this.getMissingCustomToolIds(config, entity.tools ?? {});
+		if (missingToolIds.length > 0) {
+			throw new UserError(
+				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
+			);
+		}
+	}
+
+	private getMissingCustomToolIds(
+		config: AgentJsonConfig | null,
+		tools: AgentToolEntries,
+	): string[] {
+		const refs = (config?.tools ?? []).filter(
+			(ref): ref is Extract<AgentJsonConfigRef, { type: 'custom' }> => ref.type === 'custom',
+		);
+		const seen = new Set<string>();
+		const missing: string[] = [];
+
+		for (const ref of refs) {
+			if (seen.has(ref.id)) continue;
+			seen.add(ref.id);
+			if (!tools[ref.id]) missing.push(ref.id);
+		}
+
+		return missing;
+	}
+
+	private snapshotConfiguredTools(
+		config: AgentJsonConfig | null,
+		tools: AgentToolEntries,
+	): AgentToolEntries | null {
+		if (!config) return null;
+		const missing = this.getMissingCustomToolIds(config, tools);
+		if (missing.length > 0) {
+			throw new UserError(`Cannot publish agent with missing custom tools: ${missing.join(', ')}`);
+		}
+
+		const snapshot: AgentToolEntries = {};
+		for (const ref of config.tools ?? []) {
+			if (ref.type !== 'custom') continue;
+			const tool = tools[ref.id];
+			if (tool) snapshot[ref.id] = tool;
+		}
+		return snapshot;
+	}
+
 	/**
 	 * Reconstruct an agent from its JSON config using buildFromJson().
 	 * This is the new execution path for JSON-config agents.
@@ -857,7 +1337,8 @@ export class AgentsService {
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
 		userId?: string,
-	): Promise<agents.Agent> {
+		integrationType?: string,
+	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
 		if (!config) {
 			throw new UserError('Agent has no JSON config.');
@@ -879,17 +1360,30 @@ export class AgentsService {
 
 		const toolResolver = this.makeToolResolver(agentEntity.projectId, userId);
 
+		const resolvedTools: BuiltTool[] = [];
+
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
 			toolExecutor,
 			credentialProvider,
 			resolveTool: async (ref) => {
-				return await toolResolver(ref);
+				const resolved = await toolResolver(ref);
+				if (resolved) resolvedTools.push(resolved);
+				return resolved;
 			},
+			skills: agentEntity.skills ?? {},
 			memoryFactory: this.getMemoryFactory(),
 		});
 
-		await this.injectRuntimeDependencies(reconstructed, agentEntity.id);
+		await this.injectRuntimeDependencies({
+			agent: reconstructed,
+			agentId: agentEntity.id,
+			projectId: agentEntity.projectId,
+			credentialProvider,
+			nodeToolsEnabled: isNodeToolsEnabled(config.config),
+			integrationType,
+		});
 
-		return reconstructed;
+		const toolRegistry = buildToolRegistry(resolvedTools);
+		return { agent: reconstructed, toolRegistry };
 	}
 }

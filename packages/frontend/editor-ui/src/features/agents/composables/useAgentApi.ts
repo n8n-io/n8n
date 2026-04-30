@@ -1,3 +1,12 @@
+import type {
+	AgentBuilderMessagesResponse,
+	AgentIntegrationStatusResponse,
+	AgentPersistedMessageDto,
+	AgentSkill,
+	AgentSkillMutationResponse,
+	AgentScheduleConfig,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type { AgentResource, AgentJsonConfig } from '../types';
@@ -60,45 +69,114 @@ export const deleteAgent = async (
 	await makeRestApiRequest(context, 'DELETE', `/projects/${projectId}/agents/v2/${agentId}`);
 };
 
-export const connectSlack = async (
+export const connectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	type: string,
 	credentialId: string,
 ): Promise<{ status: string }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/connect`,
-		{ type: 'slack', credentialId },
+		{ type, credentialId },
 	);
 };
 
-export const disconnectSlack = async (
+export const disconnectIntegration = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
+	type: string,
 	credentialId: string,
 ): Promise<{ status: string }> => {
 	return await makeRestApiRequest(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/disconnect`,
-		{ type: 'slack', credentialId },
+		{ type, credentialId },
 	);
 };
 
-export const getSlackStatus = async (
+export const getIntegrationStatus = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<{ status: string; integrations?: Array<{ type: string; credentialId: string }> }> => {
-	return await makeRestApiRequest(
+): Promise<AgentIntegrationStatusResponse> => {
+	return await makeRestApiRequest<AgentIntegrationStatusResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/integrations/status`,
 	);
 };
+
+export const getScheduleIntegration = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentScheduleConfig> => {
+	return await makeRestApiRequest<AgentScheduleConfig>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
+	);
+};
+
+export const updateScheduleIntegration = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	data: { cronExpression: string; wakeUpPrompt?: string },
+): Promise<AgentScheduleConfig> => {
+	return await makeRestApiRequest<AgentScheduleConfig>(
+		context,
+		'PUT',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule`,
+		data,
+	);
+};
+
+export const activateScheduleIntegration = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentScheduleConfig> => {
+	return await makeRestApiRequest<AgentScheduleConfig>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/activate`,
+	);
+};
+
+export const deactivateScheduleIntegration = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentScheduleConfig> => {
+	return await makeRestApiRequest<AgentScheduleConfig>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/integrations/schedule/deactivate`,
+	);
+};
+
+// Backward-compatible aliases
+export const connectSlack = async (
+	ctx: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+) => await connectIntegration(ctx, projectId, agentId, 'slack', credentialId);
+
+export const disconnectSlack = async (
+	ctx: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	credentialId: string,
+) => await disconnectIntegration(ctx, projectId, agentId, 'slack', credentialId);
+
+export const getSlackStatus = getIntegrationStatus;
 
 export const listAllAgents = async (
 	context: IRestApiContext,
@@ -199,12 +277,42 @@ export const updateAgentConfig = async (
 	);
 };
 
+export const createAgentSkill = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+	skill: AgentSkill,
+): Promise<AgentSkillMutationResponse> => {
+	return await makeRestApiRequest<AgentSkillMutationResponse>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/skills`,
+		{ id: skillId, ...skill },
+	);
+};
+
+export const updateAgentSkill = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+	updates: Partial<AgentSkill>,
+): Promise<AgentSkillMutationResponse> => {
+	return await makeRestApiRequest<AgentSkillMutationResponse>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
+		updates,
+	);
+};
+
 export const getBuilderMessages = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-): Promise<unknown[]> => {
-	return await makeRestApiRequest<unknown[]>(
+): Promise<AgentBuilderMessagesResponse> => {
+	return await makeRestApiRequest<AgentBuilderMessagesResponse>(
 		context,
 		'GET',
 		`/projects/${projectId}/agents/v2/${agentId}/build/messages`,
@@ -223,6 +331,43 @@ export const clearBuilderMessages = async (
 	);
 };
 
+export const getChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentPersistedMessageDto[]> => {
+	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/${threadId}/messages`,
+	);
+};
+
+export const getTestChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentPersistedMessageDto[]> => {
+	return await makeRestApiRequest<AgentPersistedMessageDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
+export const clearTestChatMessages = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/chat/messages`,
+	);
+};
+
 export const deleteCustomTool = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -233,5 +378,16 @@ export const deleteCustomTool = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/tools/${toolId}`,
+	);
+};
+
+export const listAgentIntegrations = async (
+	context: IRestApiContext,
+	projectId: string,
+): Promise<ChatIntegrationDescriptor[]> => {
+	return await makeRestApiRequest<ChatIntegrationDescriptor[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/catalog/integrations`,
 	);
 };

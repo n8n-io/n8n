@@ -1,32 +1,45 @@
 <script setup lang="ts">
+/**
+ * Read-only evaluations list. Evaluations are declared in the agent's TS
+ * source via `.eval(new Eval(...))` — not in the JSON config — so this
+ * panel is populated from `AgentSchema.evaluations` returned by a runtime
+ * inspection endpoint.
+ *
+ * TODO: wire this to a backend endpoint that returns `AgentSchema`. Until
+ * then `schema` is always `null` and the panel renders the empty state.
+ */
 import { computed } from 'vue';
 import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
 import type { AgentSchema } from '../types';
+import shared from '../styles/agent-panel.module.scss';
 
-const props = defineProps<{ schema: AgentSchema | null }>();
+const props = withDefaults(defineProps<{ schema?: AgentSchema | null }>(), {
+	schema: null,
+});
 
 const evals = computed(() => props.schema?.evaluations ?? []);
 </script>
 
 <template>
-	<div :class="$style.panel">
-		<N8nText tag="h3" bold>Evaluations</N8nText>
-		<N8nText size="small" color="text-light">
-			{{ evals.length }} evaluation{{ evals.length === 1 ? '' : 's' }} configured in code
-		</N8nText>
+	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-evals-panel">
+		<div :class="$style.header">
+			<N8nText tag="h3" size="large" :bold="true">Evaluations</N8nText>
+			<N8nText size="small" color="text-light">
+				{{ evals.length }} evaluation{{ evals.length === 1 ? '' : 's' }} configured in code
+			</N8nText>
+		</div>
 
-		<!-- Eval cards -->
 		<template v-if="evals.length > 0">
 			<N8nCard v-for="evalItem in evals" :key="evalItem.name" :class="$style.evalCard">
 				<div :class="$style.evalHeader">
-					<N8nText bold size="small">{{ evalItem.name }}</N8nText>
+					<N8nText :bold="true" size="small">{{ evalItem.name }}</N8nText>
 					<span
 						:class="[
 							$style.typeBadge,
 							evalItem.type === 'check' ? $style.badgeCheck : $style.badgeJudge,
 						]"
 					>
-						<N8nText size="xsmall" bold>{{
+						<N8nText size="xsmall" :bold="true">{{
 							evalItem.type === 'check' ? 'Check' : 'Judge'
 						}}</N8nText>
 					</span>
@@ -45,19 +58,10 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 			</N8nCard>
 		</template>
 
-		<!-- Empty state -->
 		<div v-else :class="$style.dashedCard">
 			<N8nText size="small" color="text-light">
 				No evaluations configured — add evaluations in code using
 				<code :class="$style.code">.eval(new Eval()...)</code>
-			</N8nText>
-		</div>
-
-		<!-- Future runner placeholder -->
-		<div :class="$style.dashedCard">
-			<N8nText bold size="small">Evaluation Runner</N8nText>
-			<N8nText size="small" color="text-light">
-				Run evaluations against datasets and view results — coming soon
 			</N8nText>
 		</div>
 	</div>
@@ -72,6 +76,13 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+.header {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	margin-bottom: var(--spacing--2xs);
 }
 
 .evalCard {

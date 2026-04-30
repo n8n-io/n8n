@@ -4,11 +4,14 @@ import { N8nText, N8nButton, N8nSelect } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { ElSwitch } from 'element-plus';
 import type { AgentJsonConfig } from '../types';
+import shared from '../styles/agent-panel.module.scss';
 
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
 type StorageType = MemoryConfig['storage'];
 
-const props = defineProps<{ config: AgentJsonConfig | null }>();
+const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
+	disabled: false,
+});
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
@@ -107,14 +110,16 @@ function onRangeAfterChange(event: Event) {
 </script>
 
 <template>
-	<div :class="$style.container">
+	<div
+		:class="[$style.container, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:inert="props.disabled || undefined"
+	>
+		<div :class="$style.header">
+			<N8nText tag="h3" size="large" :bold="true">Memory</N8nText>
+			<N8nText size="small" color="text-light">Conversation memory configuration</N8nText>
+		</div>
 		<!-- Configured + enabled state -->
 		<template v-if="memory !== null">
-			<div :class="$style.header">
-				<N8nText tag="h3" size="large" :bold="true">Memory</N8nText>
-				<N8nText size="small" color="text-light">Conversation memory configuration</N8nText>
-			</div>
-
 			<!-- Storage type -->
 			<div :class="$style.row">
 				<N8nText size="small" :bold="true">Storage</N8nText>
@@ -125,9 +130,7 @@ function onRangeAfterChange(event: Event) {
 					data-testid="agent-memory-storage-select"
 					@update:model-value="onStorageChange"
 				>
-					<N8nOption value="n8n" label="n8n (in-process)" />
-					<N8nOption value="sqlite" label="SQLite (persistent)" />
-					<N8nOption value="postgres" label="Postgres (persistent)" />
+					<N8nOption value="n8n" label="n8n" />
 				</N8nSelect>
 			</div>
 
@@ -200,7 +203,6 @@ function onRangeAfterChange(event: Event) {
 		<template v-else>
 			<div :class="$style.emptyState">
 				<div :class="$style.emptyCard">
-					<N8nText tag="h3" size="large" :bold="true">No memory configured</N8nText>
 					<N8nText size="small" color="text-light">
 						Enable memory to give the agent conversation history across turns.
 					</N8nText>
@@ -220,6 +222,14 @@ function onRangeAfterChange(event: Event) {
 	padding: var(--spacing--lg);
 	gap: var(--spacing--xs);
 	width: 100%;
+	height: 100%;
+	overflow-y: auto;
+}
+
+/* Scoped overlay — header stays interactive so the heading and toggle can render. */
+.container.disabled > :not(.header) {
+	pointer-events: none;
+	opacity: 0.6;
 }
 
 .header {

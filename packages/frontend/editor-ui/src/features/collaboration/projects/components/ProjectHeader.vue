@@ -26,6 +26,7 @@ import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyTo
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 
@@ -37,6 +38,7 @@ const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
+const agentTelemetry = useAgentTelemetry();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
 
@@ -337,7 +339,9 @@ function getUIContext(routeName: string) {
 	}
 }
 
-const actions: Record<ActionTypes, (projectId: string) => void> = {
+type CreateSource = 'button' | 'dropdown';
+
+const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => void> = {
 	[ACTION_TYPES.WORKFLOW]: (projectId: string) => {
 		void router.push({
 			name: VIEWS.NEW_WORKFLOW,
@@ -373,8 +377,9 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
 	},
-	[ACTION_TYPES.AGENT]: () => {
-		void router.push({ name: NEW_AGENT_VIEW });
+	[ACTION_TYPES.AGENT]: (projectId, source) => {
+		agentTelemetry.trackClickedNewAgent(source);
+		void router.push({ name: NEW_AGENT_VIEW, query: { projectId } });
 	},
 } as const;
 
@@ -449,13 +454,13 @@ const projectDescriptionTruncated = computed(() => {
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
-const onSelect = (action: string) => {
+const onSelect = (action: string, source: CreateSource) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
 		return;
 	}
 
-	executableAction(homeProject.value.id);
+	executableAction(homeProject.value.id, source);
 };
 </script>
 
@@ -519,13 +524,13 @@ const onSelect = (action: string) => {
 							data-test-id="add-resource-buttons"
 							:actions="menu"
 							:disabled="sourceControlStore.preferences.branchReadOnly"
-							@action="onSelect"
+							@action="(action: string) => onSelect(action, 'dropdown')"
 						>
 							<N8nButton
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
 								size="medium"
-								@click="onSelect(selectedMainButtonType)"
+								@click="onSelect(selectedMainButtonType, 'button')"
 							/>
 						</ProjectCreateResource>
 					</div>

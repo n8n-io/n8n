@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick, useTemplateRef, watch } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { getBuilderMessages, clearBuilderMessages } from '../composables/useAgentApi';
+import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
-import ChatMarkdownChunk from '@/features/ai/chatHub/components/ChatMarkdownChunk.vue';
-import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
+import { useAgentChatStream } from '../composables/useAgentChatStream';
+import AgentChatEmptyState from './AgentChatEmptyState.vue';
+import AgentChatMessageList from './AgentChatMessageList.vue';
+import type { AgentJsonConfig } from '../types';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -15,12 +18,17 @@ const props = withDefaults(
 		mode?: 'panel' | 'inline';
 		endpoint?: 'build' | 'chat';
 		initialMessage?: string;
+		continueSessionId?: string;
+		agentConfig: AgentJsonConfig | null;
+		agentStatus: 'draft' | 'production';
+		connectedTriggers: string[];
 	}>(),
 	{
 		visible: true,
 		mode: 'panel',
 		endpoint: 'chat',
 		initialMessage: undefined,
+		continueSessionId: undefined,
 	},
 );
 
@@ -29,421 +37,187 @@ const emit = defineEmits<{
 	codeDelta: [delta: string];
 	configUpdated: [];
 	'update:streaming': [streaming: boolean];
+	'continue-loaded': [count: number];
+	'initial-consumed': [];
+	back: [];
+	'open-build': [];
 }>();
 
-const rootStore = useRootStore();
+const locale = useI18n();
+const agentTelemetry = useAgentTelemetry();
 
-interface ChatMessage {
-	id: string;
-	role: 'user' | 'assistant';
-	content: string;
-	thinking?: string;
-	toolCalls?: Array<{ tool: string; input?: unknown; output?: unknown }>;
-	status?: 'streaming' | 'success' | 'error';
+const inputText = ref('');
+
+const {
+	messages,
+	isStreaming,
+	messagingState,
+	fatalError,
+	loadHistory,
+	sendMessage,
+	stopGenerating,
+	resume,
+	dismissFatalError,
+} = useAgentChatStream({
+	projectId: toRef(props, 'projectId'),
+	agentId: toRef(props, 'agentId'),
+	endpoint: toRef(props, 'endpoint'),
+	continueSessionId: toRef(props, 'continueSessionId'),
+	onCodeUpdated: () => emit('codeUpdated'),
+	onCodeDelta: (d) => emit('codeDelta', d),
+	onConfigUpdated: () => emit('configUpdated'),
+	onHistoryLoaded: (count) => {
+		if (props.continueSessionId) emit('continue-loaded', count);
+	},
+});
+
+function humaniseMissingField(field: string): string {
+	// `skill:<id>` is a parameterised token — render it through a single i18n
+	// entry so a new id doesn't require a translations change.
+	if (field.startsWith('skill:')) {
+		return locale.baseText('agents.chat.misconfigured.missing.skill', {
+			interpolate: { id: field.slice('skill:'.length) },
+		});
+	}
+	// Map backend-emitted field ids onto i18n keys. Unknown fields fall back to
+	// their raw id so a new backend-side value still renders something useful.
+	const key = `agents.chat.misconfigured.missing.${field}`;
+	const translated = locale.baseText(key as never);
+	return translated === key ? field : translated;
 }
 
-const messages = ref<ChatMessage[]>([]);
-const inputText = ref('');
-const isStreaming = ref(false);
-const abortController = ref<AbortController | null>(null);
-const builderHistoryLoaded = ref(false);
-const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
-
-const messagingState = computed<'idle' | 'waitingFirstChunk' | 'receiving'>(() => {
-	if (!isStreaming.value) return 'idle';
-	const lastMsg = messages.value[messages.value.length - 1];
-	if (!lastMsg || lastMsg.role === 'user') return 'waitingFirstChunk';
-	return 'receiving';
+const missingFields = computed(() => {
+	if (!fatalError.value) return '';
+	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
+
+function onOpenBuild() {
+	dismissFatalError();
+	emit('open-build');
+}
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 
-function scrollToBottom() {
-	void nextTick(() => {
-		if (scrollRef.value) {
-			scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
-		}
-	});
-}
-
-/** Convert persisted agent messages into the frontend ChatMessage format. */
-function convertDbMessages(dbMessages: unknown[]): ChatMessage[] {
-	const result: ChatMessage[] = [];
-	for (const raw of dbMessages) {
-		const msg = raw as {
-			id?: string;
-			role?: string;
-			content?: Array<{
-				type: string;
-				text?: string;
-				toolName?: string;
-				input?: unknown;
-				result?: unknown;
-			}>;
-		};
-		if (!msg.role || !Array.isArray(msg.content)) continue;
-		if (msg.role !== 'user' && msg.role !== 'assistant') continue;
-
-		let text = '';
-		let thinking = '';
-		const toolCalls: Array<{ tool: string; input?: unknown; output?: unknown }> = [];
-
-		for (const part of msg.content) {
-			if (part.type === 'text' && part.text) {
-				text += part.text;
-			} else if (part.type === 'reasoning' && part.text) {
-				thinking += part.text;
-			} else if (part.type === 'tool-call' && part.toolName) {
-				toolCalls.push({ tool: part.toolName, input: part.input });
-			} else if (part.type === 'tool-result' && part.toolName) {
-				const existing = toolCalls.find((t) => t.tool === part.toolName && t.output === undefined);
-				if (existing) {
-					existing.output = part.result;
-				}
-			}
-		}
-
-		result.push({
-			id: msg.id ?? crypto.randomUUID(),
-			role: msg.role,
-			content: text,
-			thinking: thinking || undefined,
-			toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-		});
-	}
-	return result;
-}
-
-async function loadBuilderHistory() {
-	if (builderHistoryLoaded.value) return;
-	try {
-		const dbMessages = await getBuilderMessages(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
-		if (dbMessages.length > 0) {
-			messages.value = convertDbMessages(dbMessages);
-		}
-	} catch {
-		// Silently ignore — just start with empty chat
-	} finally {
-		builderHistoryLoaded.value = true;
-	}
-}
-
-async function onClearHistory() {
-	if (props.endpoint !== 'build') {
-		messages.value = [];
-		return;
-	}
-	try {
-		await clearBuilderMessages(rootStore.restApiContext, props.projectId, props.agentId);
-		messages.value = [];
-	} catch {
-		// ignore
-	}
-}
-
-async function streamFromEndpoint(endpoint: 'build' | 'chat', message: string) {
-	isStreaming.value = true;
-	let builderMutated = false;
-	const assistantMsg = reactive<ChatMessage>({
-		id: crypto.randomUUID(),
-		role: 'assistant',
-		content: '',
-		thinking: '',
-		toolCalls: [],
-		status: 'streaming',
-	});
-	let msgAdded = false;
-
-	const ensureMsg = () => {
-		if (!msgAdded) {
-			messages.value.push(assistantMsg);
-			msgAdded = true;
-			scrollToBottom();
-		}
-	};
-
-	const controller = new AbortController();
-	abortController.value = controller;
-
-	try {
-		const { baseUrl } = rootStore.restApiContext;
-		const browserId = localStorage.getItem('n8n-browserId') ?? '';
-		const url = `${baseUrl}/projects/${props.projectId}/agents/v2/${props.agentId}/${endpoint}`;
-		const response = await fetch(url, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'browser-id': browserId,
-			},
-			credentials: 'include',
-			body: JSON.stringify({ message }),
-			signal: controller.signal,
-		});
-
-		if (!response.ok || !response.body) {
-			assistantMsg.content = `Error: ${response.statusText || 'Failed to reach agent'}`;
-			assistantMsg.status = 'error';
-			messages.value.push(assistantMsg);
-			return;
-		}
-
-		const reader = response.body.getReader();
-		const decoder = new TextDecoder();
-		let buffer = '';
-
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			buffer += decoder.decode(value, { stream: true });
-			const lines = buffer.split('\n');
-			buffer = lines.pop() ?? '';
-
-			for (const line of lines) {
-				if (!line.startsWith('data: ')) continue;
-				const raw = line.slice(6);
-
-				let data: Record<string, unknown>;
-				try {
-					data = JSON.parse(raw) as Record<string, unknown>;
-				} catch {
-					continue;
-				}
-
-				if (data.done) continue;
-
-				if (typeof data.text === 'string') {
-					ensureMsg();
-					assistantMsg.content += data.text;
-					scrollToBottom();
-				}
-
-				if (typeof data.thinking === 'string') {
-					ensureMsg();
-					assistantMsg.thinking = (assistantMsg.thinking ?? '') + data.thinking;
-				}
-
-				if (typeof data.codeDelta === 'string') {
-					emit('codeDelta', data.codeDelta);
-				}
-
-				if (typeof data.code === 'string') {
-					emit('codeUpdated');
-				}
-
-				if (data.configUpdated !== undefined || data.toolUpdated !== undefined) {
-					builderMutated = true;
-					emit('configUpdated');
-				}
-
-				if (data.toolCall && typeof data.toolCall === 'object') {
-					ensureMsg();
-					if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
-						assistantMsg.content += '\n';
-					}
-					const tc = data.toolCall as { tool: string; input?: unknown };
-					assistantMsg.toolCalls = assistantMsg.toolCalls ?? [];
-					assistantMsg.toolCalls.push({ tool: tc.tool, input: tc.input });
-				}
-
-				if (data.toolResult && typeof data.toolResult === 'object') {
-					const tr = data.toolResult as { tool: string; output?: unknown };
-					const existing = assistantMsg.toolCalls?.find(
-						(t) => t.tool === tr.tool && t.output === undefined,
-					);
-					if (existing) {
-						existing.output = tr.output;
-					}
-					if (assistantMsg.content && !assistantMsg.content.endsWith('\n')) {
-						assistantMsg.content += '\n';
-					}
-				}
-
-				if (typeof data.error === 'string') {
-					ensureMsg();
-					assistantMsg.content += `\n\nError: ${data.error}`;
-					assistantMsg.status = 'error';
-				}
-			}
-		}
-
-		assistantMsg.status = 'success';
-	} catch (e) {
-		if (e instanceof DOMException && e.name === 'AbortError') {
-			assistantMsg.status = 'success';
-		} else {
-			if (!msgAdded) {
-				messages.value.push(assistantMsg);
-			}
-			assistantMsg.content = `Error: ${e instanceof Error ? e.message : 'Unknown error'}`;
-			assistantMsg.status = 'error';
-		}
-	} finally {
-		abortController.value = null;
-		isStreaming.value = false;
-		scrollToBottom();
-		if (endpoint === 'build' && builderMutated) {
-			emit('configUpdated');
-		}
-	}
-}
-
-async function sendMessage() {
+async function onSubmit() {
 	const text = inputText.value.trim();
 	if (!text || isStreaming.value) return;
-
-	messages.value.push({
-		id: crypto.randomUUID(),
-		role: 'user',
-		content: text,
-		status: 'success',
-	});
 	inputText.value = '';
-	scrollToBottom();
 
-	await streamFromEndpoint(props.endpoint, text);
+	const fingerprint = await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers);
+	// Raw `message` is sent intentionally — matches the text-to-workflow
+	// builder's `User submitted builder message` event, which also sends the
+	// raw prompt. Revisit if the product-wide privacy posture tightens.
+	agentTelemetry.trackSubmittedMessage({
+		agentId: props.agentId,
+		message: text,
+		mode: props.endpoint === 'build' ? 'build' : 'test',
+		status: props.agentStatus,
+		agentConfig: fingerprint,
+	});
+
+	await sendMessage(text);
 }
 
 function sendMessageFromOutside(message: string) {
 	inputText.value = message;
-	void sendMessage();
-}
-
-function stopGenerating() {
-	abortController.value?.abort();
-}
-
-function onSubmit() {
-	void sendMessage();
+	void onSubmit();
 }
 
 defineExpose({ sendMessageFromOutside });
 
+// Capture the seed message locally so later clearing of `props.initialMessage`
+// by the parent (which does so on `nextTick` to prevent the same prompt
+// bleeding into the other chat panel) can't race the `onMounted` guard below.
+const seedMessage = props.initialMessage;
+
+// Seed the initial message synchronously during setup (not onMounted) so the
+// user bubble is in `messages` before Vue performs the first render. Without
+// this, the panel renders once with an empty message list and THEN the user
+// message appears — visible as a 1-frame flash of the blank/centered layout.
+//
+// `sendMessage` is an async function but the push to `messages` happens
+// before any await, so calling it here runs the sync prefix (push + set
+// `isStreaming = true` inside streamFromEndpoint) before setup returns. The
+// fetch itself continues to run async in the background.
+if (seedMessage) {
+	void sendMessage(seedMessage);
+}
+
 onMounted(() => {
-	if (props.endpoint === 'build') {
-		void loadBuilderHistory();
+	// A supplied `initialMessage` means the parent just minted a fresh session
+	// and wants us to seed it with the first message — there's no thread to
+	// load yet, and hitting the history endpoint would 404. The seed was
+	// already sent synchronously during setup (see the `seedMessage` block
+	// above) — here we just emit `initial-consumed` so the parent can clear
+	// its source ref. This guards against re-sending on HMR / any re-mount
+	// where the parent's prompt ref is still populated.
+	if (seedMessage) {
+		emit('initial-consumed');
+		return;
 	}
-	if (props.initialMessage) {
-		sendMessageFromOutside(props.initialMessage);
-	}
+	void loadHistory();
+});
+
+// Abort any in-flight stream when the panel unmounts (e.g. route change,
+// chat mode reset). Without this the fetch keeps running and its reader
+// accumulates bytes until the browser gc's it.
+onBeforeUnmount(() => {
+	stopGenerating();
 });
 </script>
 
 <template>
 	<aside v-if="visible" :class="[mode === 'inline' ? $style.inlinePanel : $style.panel]">
-		<div v-if="messages.length > 0" :class="$style.topBar">
-			<button
-				:class="$style.clearBtn"
-				title="Clear chat history"
-				data-testid="chat-clear"
-				@click="onClearHistory"
-			>
-				<N8nIcon icon="trash-2" :size="14" />
-			</button>
-		</div>
-
-		<!-- Messages -->
-		<div ref="scrollRef" :class="$style.messages">
-			<div v-if="messages.length === 0 && !isStreaming" :class="$style.emptyState">
-				<N8nIcon :icon="endpoint === 'build' ? 'wand-sparkles' : 'message-square'" :size="32" />
-				<N8nText tag="p" bold>
-					{{ endpoint === 'build' ? 'Build your agent' : 'Chat with your agent' }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{
-						endpoint === 'build'
-							? 'Describe what you want your agent to do'
-							: 'Send a message to start a conversation'
-					}}
-				</N8nText>
+		<N8nCallout v-if="fatalError" theme="danger" :class="$style.errorBanner" slim>
+			<div :class="$style.errorBannerBody">
+				<span :class="$style.errorBannerTitle">
+					{{ locale.baseText('agents.chat.misconfigured.title') }}
+				</span>
+				<span v-if="missingFields" :class="$style.errorBannerDetail">
+					{{ locale.baseText('agents.chat.misconfigured.missingPrefix') }} {{ missingFields }}
+				</span>
 			</div>
-			<template v-else>
-				<div
-					v-for="msg in messages"
-					:key="msg.id"
-					:class="[$style.message, msg.role === 'user' ? $style.user : $style.assistant]"
+			<template #trailingContent>
+				<N8nButton
+					variant="outline"
+					size="xsmall"
+					data-testid="agent-misconfigured-open-build"
+					@click="onOpenBuild"
 				>
-					<!-- Avatar -->
-					<div :class="$style.avatar">
-						<N8nIcon v-if="msg.role === 'user'" icon="user" width="20" height="20" />
-						<N8nIcon v-else icon="robot" width="20" height="20" />
-					</div>
-
-					<!-- Content -->
-					<div :class="$style.content">
-						<!-- Thinking -->
-						<details v-if="msg.thinking" :class="$style.thinkingBlock">
-							<summary :class="$style.thinkingSummary">
-								<N8nIcon icon="brain" :size="12" />
-								Thinking...
-							</summary>
-							<div :class="$style.thinkingContent">{{ msg.thinking }}</div>
-						</details>
-
-						<!-- Tool calls -->
-						<div v-if="msg.toolCalls?.length" :class="$style.toolCalls">
-							<div v-for="(tc, i) in msg.toolCalls" :key="i" :class="$style.toolCall">
-								<N8nIcon icon="wrench" :size="12" />
-								<span :class="$style.toolName">{{ tc.tool }}</span>
-								<N8nIcon
-									v-if="tc.output !== undefined"
-									icon="check"
-									:size="12"
-									:class="$style.toolDone"
-								/>
-								<ChatTypingIndicator v-else />
-							</div>
-						</div>
-
-						<!-- User message -->
-						<div v-if="msg.role === 'user'" :class="[$style.chatMessage, $style.chatMessageUser]">
-							{{ msg.content }}
-						</div>
-
-						<!-- Assistant message -->
-						<div
-							v-else-if="msg.content"
-							:class="[$style.chatMessage, { [$style.chatMessageError]: msg.status === 'error' }]"
-						>
-							<div :class="$style.markdownContent">
-								<ChatMarkdownChunk
-									:source="{ type: 'text', content: msg.content }"
-									@open-artifact="() => {}"
-								/>
-							</div>
-						</div>
-
-						<!-- Typing indicator for assistant still streaming with no content -->
-						<ChatTypingIndicator
-							v-if="
-								msg.role === 'assistant' &&
-								msg.status === 'streaming' &&
-								!msg.content &&
-								!msg.toolCalls?.length
-							"
-							:class="$style.typingIndicator"
-						/>
-					</div>
-				</div>
-
-				<!-- Waiting for first chunk indicator -->
-				<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
-					<div :class="$style.avatar">
-						<N8nIcon icon="robot" width="20" height="20" />
-					</div>
-					<div :class="$style.content">
-						<ChatTypingIndicator :class="$style.typingIndicator" />
-					</div>
-				</div>
+					{{ locale.baseText('agents.chat.misconfigured.openBuild') }}
+				</N8nButton>
+				<N8nIconButton
+					icon="x"
+					variant="ghost"
+					size="xsmall"
+					:aria-label="locale.baseText('agents.chat.misconfigured.dismiss')"
+					:title="locale.baseText('agents.chat.misconfigured.dismiss')"
+					@click="dismissFatalError"
+				/>
 			</template>
-		</div>
+		</N8nCallout>
 
-		<!-- Input -->
+		<!--
+			Suppress the centered empty state when we have an `initialMessage` to
+			seed. Without this, the panel briefly renders the empty view before
+			the seedMessage push (during setup) lands in `messages` — visible as
+			a flicker of the centered layout under the mode transition.
+		-->
+		<AgentChatEmptyState
+			v-if="messages.length === 0 && !isStreaming && !initialMessage"
+			:endpoint="endpoint"
+		/>
+		<AgentChatMessageList
+			v-else
+			:messages="messages"
+			:messaging-state="messagingState"
+			:project-id="projectId"
+			:agent-id="agentId"
+			@resume="resume"
+		/>
+
 		<div :class="$style.inputArea">
+			<slot name="above-input" />
 			<ChatInputBase
 				v-model="inputText"
 				placeholder="Type a message..."
@@ -460,6 +234,7 @@ onMounted(() => {
 
 <style lang="scss" module>
 .panel {
+	position: relative;
 	width: 400px;
 	min-width: 400px;
 	border-left: var(--border-width) var(--border-style) var(--color--foreground);
@@ -468,6 +243,7 @@ onMounted(() => {
 }
 
 .inlinePanel {
+	position: relative;
 	flex: 1;
 	min-height: 0;
 	display: flex;
@@ -475,172 +251,33 @@ onMounted(() => {
 	min-width: 0;
 }
 
-.topBar {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
-}
-
-.clearBtn {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	border: none;
-	background: none;
-	cursor: pointer;
-	color: var(--color--text--tint-2);
-	padding: var(--spacing--4xs);
-	border-radius: var(--radius);
-}
-
-.clearBtn:hover {
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--danger);
-}
-
-/* Messages area — matches ChatHub layout */
-.messages {
-	flex: 1;
-	min-height: 0;
-	overflow-y: auto;
-	padding: var(--spacing--lg) var(--spacing--xl);
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-}
-
-.emptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	height: 100%;
-	gap: var(--spacing--3xs);
-	color: var(--color--text--tint-2);
-}
-
-/* Message layout — mirrors ChatMessage.vue styles */
-.message {
-	position: relative;
-	padding-left: 40px;
-}
-
-.avatar {
-	position: absolute;
-	left: 0;
-	top: 0;
-	display: grid;
-	place-items: center;
-	width: 28px;
-	height: 28px;
-	border-radius: 50%;
-	background: var(--color--background);
-	color: var(--color--text--tint-1);
-}
-
-.content {
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-}
-
-.chatMessage {
-	overflow-wrap: break-word;
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
-}
-
-.chatMessageUser {
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-radius: var(--radius--xl);
-	background-color: var(--color--background);
-	white-space: pre-wrap;
-	width: fit-content;
-	max-width: 100%;
-}
-
-.chatMessageError {
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-radius: var(--radius--lg);
-	background-color: var(--color--danger--tint-4);
-	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
-	color: var(--color--danger);
-}
-
-.markdownContent {
-	color: var(--color--text--shade-1);
-	font-size: var(--font-size--md);
-	line-height: var(--line-height--xl);
-
-	> *:last-child > *:last-child {
-		margin-bottom: 0;
-	}
-
-	> *:first-child > *:first-child {
-		margin-top: 0;
-	}
-}
-
-/* Thinking block */
-.thinkingBlock {
-	margin-bottom: var(--spacing--2xs);
-	font-size: var(--font-size--2xs);
-}
-
-.thinkingSummary {
-	cursor: pointer;
-	color: var(--color--text--tint-2);
-	font-style: italic;
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.thinkingContent {
-	margin: var(--spacing--4xs) 0 0;
-	white-space: pre-wrap;
-	font-family: inherit;
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	max-height: 150px;
-	overflow-y: auto;
-}
-
-/* Tool calls */
-.toolCalls {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.toolCall {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background-color: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	width: fit-content;
-}
-
-.toolName {
-	font-family: monospace;
-}
-
-.toolDone {
-	color: var(--color--success);
-}
-
-.typingIndicator {
-	margin-top: var(--spacing--xs);
-}
-
 .inputArea {
-	padding: var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
+	border-top: var(--border);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.errorBanner {
+	margin: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.errorBannerBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+	min-width: 0;
+}
+
+.errorBannerTitle {
+	font-weight: var(--font-weight--bold);
+}
+
+.errorBannerDetail {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 </style>

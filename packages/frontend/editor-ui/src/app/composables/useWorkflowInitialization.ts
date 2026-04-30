@@ -253,14 +253,13 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
-		workflowState.setWorkflowId(workflowId.value);
+		workflowsStore.setWorkflowId(workflowId.value);
 
 		const workflowDocumentId = createWorkflowDocumentId(workflowId.value);
 		currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 
-		// Sync document store name → workflowObject + list cache (mirrors initializeWorkflowDocument)
+		// Sync document store name → list cache (mirrors initializeWorkflowDocument)
 		currentWorkflowDocumentStore.value.onNameChange(({ payload }) => {
-			workflowsStore.workflowObject.name = payload.name;
 			workflowsListStore.updateWorkflowInCache(workflowId.value, { name: payload.name });
 		});
 

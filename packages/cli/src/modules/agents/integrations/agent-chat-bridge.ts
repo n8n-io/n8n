@@ -1,8 +1,11 @@
 import type { AgentMessage, CredentialProvider, StreamChunk } from '@n8n/agents';
+import { Container } from '@n8n/di';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
+import { ChatIntegrationRegistry } from './agent-chat-integration';
+import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
 
 /**
@@ -17,6 +20,7 @@ interface AgentExecutor {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk>;
 
 	executeForChatPublished(
@@ -26,6 +30,7 @@ interface AgentExecutor {
 		userId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		integrationType?: string,
 	): AsyncGenerator<StreamChunk>;
 
 	resumeForChat(
@@ -33,6 +38,9 @@ interface AgentExecutor {
 		runId: string,
 		toolCallId: string,
 		resumeData: unknown,
+		threadId?: string,
+		userId?: string,
+		projectId?: string,
 	): AsyncGenerator<StreamChunk>;
 }
 
@@ -85,14 +93,27 @@ type TextEndFn = () => void;
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
  * 3. `onAction` — button clicks for HITL resume flow
  *
- * Streaming strategy (Phase 1 — collect-and-post):
- * Text chunks are accumulated in a buffer. When a non-text event arrives
- * (suspension, message, error, finish), the buffer is flushed as a markdown
- * post. This sacrifices real-time streaming but ensures correct ordering.
+ * Stream consumption has two strategies, selected per integration via the
+ * `disableStreaming` flag on `AgentChatIntegration`:
+ *   • streaming (default, e.g. Slack): text deltas are piped as an
+ *     AsyncIterable<string> into `thread.post()` so Chat SDK can render
+ *     incrementally (post-and-edit).
+ *   • buffered (Telegram): deltas accumulate into a string and are posted as
+ *     a single message per flush event, so the platform adapter only ever
+ *     sees well-formed Markdown (streaming edits ship half-formed markup).
+ *
+ * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
+ * `error`) flush any pending text before being handled, preserving ordering.
  */
 export class AgentChatBridge {
 	/** Short-lived set of run IDs that have been resumed to prevent double resumption */
 	private readonly activeResumedRuns = new Set<string>();
+
+	/** Store for shortening callback data on platforms with size limits (Telegram) */
+	private readonly callbackStore?: CallbackStore;
+
+	/** When true, buffer deltas and post as a single message (see integration flag). */
+	private readonly disableStreaming: boolean;
 
 	constructor(
 		private readonly bot: ChatBot,
@@ -103,7 +124,13 @@ export class AgentChatBridge {
 		private readonly logger: Logger,
 		private readonly n8nUserId: string,
 		private readonly n8nProjectId: string,
+		private readonly integrationType: string,
 	) {
+		const integration = Container.get(ChatIntegrationRegistry).get(integrationType);
+		if (integration?.needsShortCallbackData) {
+			this.callbackStore = new CallbackStore();
+		}
+		this.disableStreaming = integration?.disableStreaming ?? false;
 		this.registerHandlers();
 	}
 
@@ -120,6 +147,7 @@ export class AgentChatBridge {
 		logger: Logger,
 		n8nUserId: string,
 		n8nProjectId: string,
+		integrationType: string,
 	): AgentChatBridge {
 		return new AgentChatBridge(
 			bot as ChatBot,
@@ -130,6 +158,7 @@ export class AgentChatBridge {
 			logger,
 			n8nUserId,
 			n8nProjectId,
+			integrationType,
 		);
 	}
 
@@ -164,6 +193,26 @@ export class AgentChatBridge {
 		});
 	}
 
+	/** Release long-lived resources (callback store timer). */
+	dispose(): void {
+		this.callbackStore?.dispose();
+	}
+
+	/**
+	 * Returns a callback shortener function for platforms with short callback
+	 * data limits (Telegram). Returns undefined for other platforms.
+	 */
+	private getShortenCallback():
+		| ((actionId: string, value: string) => Promise<{ id: string; value: string }>)
+		| undefined {
+		if (!this.callbackStore) return undefined;
+		const store = this.callbackStore;
+		return async (actionId: string, value: string) => {
+			const key = await store.store(actionId, value);
+			return { id: key, value: '' };
+		};
+	}
+
 	// ---------------------------------------------------------------------------
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
@@ -182,29 +231,37 @@ export class AgentChatBridge {
 			this.n8nUserId,
 			this.n8nProjectId,
 			this.credentialProvider,
+			this.integrationType,
 		);
 
 		await this.consumeStream(stream, thread);
 	}
 
 	// ---------------------------------------------------------------------------
-	// Stream consumer — collect-and-post strategy
+	// Stream consumer
 	// ---------------------------------------------------------------------------
 
 	/**
-	 * Consume the agent stream and post to the thread with real-time streaming.
+	 * Consume the agent stream and post to the thread.
 	 *
-	 * Text deltas are piped as an AsyncIterable<string> to thread.post(),
-	 * which Chat SDK renders incrementally (post-and-edit pattern).
+	 * Default: pipe text deltas as an AsyncIterable<string> to `thread.post()`
+	 * so Chat SDK can render incrementally (post-and-edit). Integrations that
+	 * set `disableStreaming` short-circuit to `consumeStreamBuffered`, which
+	 * accumulates deltas into a string and posts them as a single message per
+	 * flush event (used by Telegram to avoid Markdown streaming issues).
 	 *
-	 * When a non-text event arrives (suspension, custom message, error),
-	 * the current text stream is terminated, the event is handled, and a
-	 * new text stream starts for subsequent text deltas.
+	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
+	 * `error`) flush any pending text first, then get handled in order.
 	 */
 	private async consumeStream(
 		stream: AsyncGenerator<StreamChunk>,
 		thread: ChatThread,
 	): Promise<void> {
+		if (this.disableStreaming) {
+			await this.consumeStreamBuffered(stream, thread);
+			return;
+		}
+
 		// Controller for the text stream iterable that Chat SDK consumes.
 		// These are reassigned inside `createTextIterable()` (called transitively
 		// by `ensureStreamingPost()`). TypeScript cannot track mutations through
@@ -313,12 +370,70 @@ export class AgentChatBridge {
 					await this.postErrorToThread(thread, chunk.error);
 					break;
 				default:
-					// Ignore other chunk types (finish, tool-call-delta, etc.)
+					// Ignore other chunk types (finish, tool-input-*, tool-call,
+					// tool-result, start-step, finish-step, etc.)
 					break;
 			}
 		}
 
 		await endStreamingPost();
+	}
+
+	/**
+	 * Buffered consumer — accumulates text/reasoning deltas and posts them as a
+	 * single message per flush. Used when the integration disables streaming
+	 * (e.g. Telegram).
+	 */
+	private async consumeStreamBuffered(
+		stream: AsyncGenerator<StreamChunk>,
+		thread: ChatThread,
+	): Promise<void> {
+		let buffer = '';
+
+		const flushBuffer = async () => {
+			const text = buffer;
+			buffer = '';
+			if (!text.trim()) return;
+			try {
+				// Chat SDK's streaming path wraps accumulated deltas as `{ markdown }`
+				// so the platform adapter applies its markdown parse-mode (Telegram:
+				// sendMessage with parse_mode=Markdown). A raw string bypasses that
+				// and renders as plain text, so we post the buffered message the same
+				// shape the streaming path uses under the hood.
+				await thread.post({ markdown: text });
+			} catch (postError: unknown) {
+				this.logger.error('[AgentChatBridge] Buffered post failed', {
+					error: postError instanceof Error ? postError.message : String(postError),
+				});
+			}
+		};
+
+		for await (const chunk of stream) {
+			switch (chunk.type) {
+				case 'text-delta':
+					buffer += chunk.delta;
+					break;
+				case 'reasoning-delta':
+					buffer += `_${chunk.delta}_`;
+					break;
+				case 'tool-call-suspended':
+					await flushBuffer();
+					await this.handleSuspension(chunk, thread);
+					break;
+				case 'message':
+					await flushBuffer();
+					await this.handleMessage(chunk, thread);
+					break;
+				case 'error':
+					await flushBuffer();
+					await this.postErrorToThread(thread, chunk.error);
+					break;
+				default:
+					break;
+			}
+		}
+
+		await flushBuffer();
 	}
 
 	// ---------------------------------------------------------------------------
@@ -379,6 +494,8 @@ export class AgentChatBridge {
 				runId,
 				toolCallId,
 				chunk.resumeSchema,
+				this.getShortenCallback(),
+				this.integrationType,
 			);
 			await thread.post({ card });
 		} catch (error) {
@@ -429,9 +546,11 @@ export class AgentChatBridge {
 					message?: string;
 					components: Array<{ type: string; [key: string]: unknown }>;
 				},
-				runId!,
-				toolCallId!,
+				runId,
+				toolCallId,
 				riResumeSchema,
+				this.getShortenCallback(),
+				this.integrationType,
 			);
 			await thread.post({ card });
 		} catch (error) {
@@ -488,7 +607,26 @@ export class AgentChatBridge {
 	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
 	 */
 	private async handleAction(event: ChatActionEvent): Promise<void> {
-		const { actionId, value, thread } = event;
+		let { actionId, value } = event;
+		const { thread } = event;
+
+		// Resolve short callback keys back to full action data. If the key is
+		// missing the action was already handled or the entry expired — let the
+		// user know rather than silently swallowing the click.
+		if (this.callbackStore) {
+			const resolved = await this.callbackStore.resolve(actionId);
+			if (!resolved) {
+				this.logger.warn('[AgentChatBridge] Callback key not found or expired', {
+					actionId,
+				});
+				await thread.post(
+					'This action is no longer available. The link may have expired or already been used.',
+				);
+				return;
+			}
+			actionId = resolved.actionId;
+			value = resolved.value;
+		}
 
 		let runId: string;
 		let toolCallId: string;
@@ -573,7 +711,15 @@ export class AgentChatBridge {
 			}
 
 			// Resume the agent and stream the response
-			const stream = this.agentService.resumeForChat(this.agentId, runId, toolCallId, resumeData);
+			const stream = this.agentService.resumeForChat(
+				this.agentId,
+				runId,
+				toolCallId,
+				resumeData,
+				thread.id,
+				this.n8nUserId,
+				this.n8nProjectId,
+			);
 			await this.consumeStream(stream, thread);
 		} finally {
 			this.activeResumedRuns.delete(runId);

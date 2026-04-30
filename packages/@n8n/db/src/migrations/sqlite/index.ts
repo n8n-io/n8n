@@ -158,9 +158,13 @@ import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-Cre
 import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
 import { CreateAgentMemoryTables1777000000000 } from '../common/1777000000000-CreateAgentMemoryTables';
 import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
+import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
 import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-AddToolsColumnToAgents';
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import { AddAgentPublishVersionSupport1780000000000 } from '../common/1780000000000-AddAgentPublishVersionSupport';
+import { CreateExecutionThreads1780000000000 } from '../common/1780000000000-CreateExecutionThreads';
+import { AddSkillsColumnToAgents1781000000000 } from '../common/1781000000000-AddSkillsColumnToAgents';
+import { AddSnapshotsToAgentPublishedVersion1782000000000 } from '../common/1782000000000-AddSnapshotsToAgentPublishedVersion';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -324,9 +328,13 @@ const sqliteMigrations: Migration[] = [
 	CreateFavoritesTable1776150756000,
 	CreateAgentMemoryTables1777000000000,
 	CreateDeploymentKeyTable1777000000000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
 	AddToolsColumnToAgents1778000000000,
 	DropAgentCodeColumn1779000000000,
 	AddAgentPublishVersionSupport1780000000000,
+	CreateExecutionThreads1780000000000,
+	AddSkillsColumnToAgents1781000000000,
+	AddSnapshotsToAgentPublishedVersion1782000000000,
 ];
 
 export { sqliteMigrations };

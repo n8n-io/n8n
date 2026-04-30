@@ -22,6 +22,7 @@ import Resolver from './custom/resolver.svg';
 import Retry from './custom/retry.svg';
 import RunOnce from './custom/run-once.svg';
 import Schema from './custom/schema.svg';
+import Slack from './custom/slack.svg';
 import Spinner from './custom/spinner.svg';
 import StatusCanceled from './custom/status-canceled.svg';
 import StatusCompleted from './custom/status-completed.svg';
@@ -277,6 +278,7 @@ export const deprecatedIconSet = {
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
+	slack: Slack,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -492,6 +494,7 @@ export const updatedIconSet = {
 	binary: Binary,
 	text: Text,
 	toolbox: Toolbox,
+	slack: Slack,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,

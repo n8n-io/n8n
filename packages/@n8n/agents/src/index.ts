@@ -75,7 +75,6 @@ export type {
 	ContentReasoning,
 	ContentText,
 	ContentToolCall,
-	ContentToolResult,
 	Message,
 	MessageContent,
 	MessageRole,
@@ -111,6 +110,9 @@ export type {
 } from './storage/postgres-memory';
 export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
+
+export { createModel } from './runtime/model-factory';
+export { generateTitleFromMessage } from './runtime/title-generation';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';
@@ -148,3 +150,5 @@ export type {
 } from './workspace';
 
 export type { JSONObject, JSONArray, JSONValue } from './types/utils/json';
+
+export { isZodSchema, zodToJsonSchema } from './utils/zod';
