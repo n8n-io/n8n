@@ -4595,6 +4595,7 @@
 	"projects.header.shared.subtitle": "Workflows and credentials other users have shared with you",
 	"projects.header.create.workflow": "Create workflow",
 	"projects.header.create.credential": "Create credential",
+	"projects.header.create.agent": "Create agent",
 	"projects.header.create.folder": "Create folder",
 	"projects.create": "Create",
 	"projects.create.personal": "Create in personal",
