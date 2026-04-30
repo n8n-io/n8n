@@ -1112,35 +1112,49 @@ function onSwitchAgent(nextAgentId: string) {
 				data-testid="agent-builder-editor-column"
 			>
 				<div :class="$style.panelArea">
-					<div
-						v-if="isToolSliceSelection || isSkillSliceSelection"
-						:class="$style.panelToolbar"
-						data-testid="agent-tool-header"
-					>
-						<button
-							type="button"
-							:class="$style.backBtn"
-							:aria-label="
-								isSkillSliceSelection
-									? locale.baseText('agents.builder.skills.back')
-									: locale.baseText('agents.builder.tools.back')
-							"
-							data-testid="agent-tool-back"
-							@click="selectedSection = isSkillSliceSelection ? 'skills' : 'tools'"
+					<div :class="$style.panelAreaContainer">
+						<div
+							v-if="isToolSliceSelection || isSkillSliceSelection"
+							:class="$style.panelToolbar"
+							data-testid="agent-tool-header"
 						>
-							<N8nIcon icon="arrow-left" :size="16" />
-						</button>
-						<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
-							{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
-						</span>
+							<button
+								type="button"
+								:class="$style.backBtn"
+								:aria-label="
+									isSkillSliceSelection
+										? locale.baseText('agents.builder.skills.back')
+										: locale.baseText('agents.builder.tools.back')
+								"
+								data-testid="agent-tool-back"
+								@click="selectedSection = isSkillSliceSelection ? 'skills' : 'tools'"
+							>
+								<N8nIcon icon="arrow-left" :size="16" />
+							</button>
+							<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
+								{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
+							</span>
+							<button
+								v-if="canToggleRaw && isToolSliceSelection"
+								type="button"
+								:class="[
+									$style.rawToggle,
+									$style.rawToggleInline,
+									showRawSection && $style.rawToggleActive,
+								]"
+								:aria-pressed="showRawSection"
+								:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
+								data-testid="agent-section-raw-toggle"
+								@click="toggleRawSection"
+							>
+								<N8nIcon icon="code" :size="12" />
+								<span>Raw</span>
+							</button>
+						</div>
 						<button
-							v-if="canToggleRaw && isToolSliceSelection"
+							v-if="canToggleRaw && !isToolSliceSelection"
 							type="button"
-							:class="[
-								$style.rawToggle,
-								$style.rawToggleInline,
-								showRawSection && $style.rawToggleActive,
-							]"
+							:class="[$style.rawToggle, showRawSection && $style.rawToggleActive]"
 							:aria-pressed="showRawSection"
 							:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
 							data-testid="agent-section-raw-toggle"
@@ -1149,136 +1163,127 @@ function onSwitchAgent(nextAgentId: string) {
 							<N8nIcon icon="code" :size="12" />
 							<span>Raw</span>
 						</button>
-					</div>
-					<button
-						v-if="canToggleRaw && !isToolSliceSelection"
-						type="button"
-						:class="[$style.rawToggle, showRawSection && $style.rawToggleActive]"
-						:aria-pressed="showRawSection"
-						:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
-						data-testid="agent-section-raw-toggle"
-						@click="toggleRawSection"
-					>
-						<N8nIcon icon="code" :size="12" />
-						<span>Raw</span>
-					</button>
-					<AgentSectionEditor
-						v-if="showRawSection && canToggleRaw"
-						:config="localConfig"
-						:section-path="rawSectionPath"
-						:pick-keys="rawPickKeys"
-						:offset-copy-for-toggle="true"
-						:read-only="isBuildChatStreaming"
-						@update:config="onSectionEditorUpdate"
-					/>
-					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
-					<AgentSkillViewer
-						v-else-if="selectedSkill"
-						:skill="selectedSkill.skill"
-						:disabled="isBuildChatStreaming"
-						@update:skill="onSkillUpdate"
-					/>
-					<AgentAdvancedPanel
-						v-else-if="selectedSection === ADVANCED_SECTION_KEY"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentEvalsPanel v-else-if="selectedSection === EVALS_SECTION_KEY" />
-					<AgentInfoPanel
-						v-else-if="selectedSection === AGENT_SECTION_KEY"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentSessionsListView
-						v-else-if="selectedSection === EXECUTIONS_SECTION_KEY"
-						data-testid="agent-executions-panel"
-					/>
-					<AgentToolsListPanel
-						v-else-if="selectedSection === 'tools'"
-						:tools="localConfig?.tools ?? []"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@open-tool="onOpenToolFromList"
-						@add-tool="onOpenAddToolModal"
-						@remove-tool="onRemoveTool"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentSkillsListPanel
-						v-else-if="selectedSection === 'skills'"
-						:skills="appliedSkills"
-						:disabled="isBuildChatStreaming"
-						@open-skill="onOpenSkillFromList"
-						@add-skill="onOpenAddSkillModal"
-						@remove-skill="onRemoveSkill"
-					/>
-					<div
-						v-else-if="selectedTriggerType"
-						:class="$style.triggersTab"
-						data-testid="agent-triggers-tab"
-					>
-						<AgentIntegrationsPanel
-							:key="`integrations-focus-${agentId}`"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:agent-name="agentName"
-							:is-published="Boolean(agent?.publishedVersion)"
-							:focus-type="selectedTriggerType"
-							@update:connected-triggers="onConnectedTriggersUpdate"
-							@trigger-added="onTriggerAdded"
+						<AgentSectionEditor
+							v-if="showRawSection && canToggleRaw"
+							:config="localConfig"
+							:section-path="rawSectionPath"
+							:pick-keys="rawPickKeys"
+							:offset-copy-for-toggle="true"
+							:read-only="isBuildChatStreaming"
+							@update:config="onSectionEditorUpdate"
 						/>
-					</div>
-					<div
-						v-else-if="selectedSection === 'triggers'"
-						:class="$style.triggersTab"
-						data-testid="agent-triggers-tab"
-					>
-						<div :class="$style.triggersHeader">
-							<div :class="$style.triggersHeaderText">
-								<N8nText tag="h3" size="large" :bold="true"
-									>{{ locale.baseText('agents.builder.triggers.title') }}
-								</N8nText>
-								<N8nText size="small" color="text-light">
-									{{ locale.baseText('agents.builder.triggers.description') }}
-								</N8nText>
-							</div>
-							<N8nButton
-								type="primary"
-								size="small"
-								data-testid="agent-triggers-add"
-								@click="onOpenAddTriggerModal"
-							>
-								<template #prefix>
-									<N8nIcon icon="plus" :size="14" />
-								</template>
-								{{ locale.baseText('agents.builder.triggers.add') }}
-							</N8nButton>
+						<AgentCustomToolViewer
+							v-else-if="customToolSelection"
+							:code="customToolSelection.code"
+						/>
+						<AgentSkillViewer
+							v-else-if="selectedSkill"
+							:skill="selectedSkill.skill"
+							:disabled="isBuildChatStreaming"
+							@update:skill="onSkillUpdate"
+						/>
+						<AgentAdvancedPanel
+							v-else-if="selectedSection === ADVANCED_SECTION_KEY"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentEvalsPanel v-else-if="selectedSection === EVALS_SECTION_KEY" />
+						<AgentInfoPanel
+							v-else-if="selectedSection === AGENT_SECTION_KEY"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentSessionsListView
+							v-else-if="selectedSection === EXECUTIONS_SECTION_KEY"
+							data-testid="agent-executions-panel"
+						/>
+						<AgentToolsListPanel
+							v-else-if="selectedSection === 'tools'"
+							:tools="localConfig?.tools ?? []"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@open-tool="onOpenToolFromList"
+							@add-tool="onOpenAddToolModal"
+							@remove-tool="onRemoveTool"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentSkillsListPanel
+							v-else-if="selectedSection === 'skills'"
+							:skills="appliedSkills"
+							:disabled="isBuildChatStreaming"
+							@open-skill="onOpenSkillFromList"
+							@add-skill="onOpenAddSkillModal"
+							@remove-skill="onRemoveSkill"
+						/>
+						<div
+							v-else-if="selectedTriggerType"
+							:class="$style.triggersTab"
+							data-testid="agent-triggers-tab"
+						>
+							<AgentIntegrationsPanel
+								:key="`integrations-focus-${agentId}`"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:agent-name="agentName"
+								:is-published="Boolean(agent?.publishedVersion)"
+								:focus-type="selectedTriggerType"
+								@update:connected-triggers="onConnectedTriggersUpdate"
+								@trigger-added="onTriggerAdded"
+							/>
 						</div>
-						<AgentIntegrationsPanel
-							:key="`integrations-connected-${agentId}`"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:agent-name="agentName"
-							:is-published="Boolean(agent?.publishedVersion)"
-							:only-connected="true"
-							@update:connected-triggers="onConnectedTriggersUpdate"
-							@trigger-added="onTriggerAdded"
+						<div
+							v-else-if="selectedSection === 'triggers'"
+							:class="$style.triggersTab"
+							data-testid="agent-triggers-tab"
+						>
+							<div :class="$style.triggersHeader">
+								<div :class="$style.triggersHeaderText">
+									<N8nText tag="h3" size="large" :bold="true"
+										>{{ locale.baseText('agents.builder.triggers.title') }}
+									</N8nText>
+									<N8nText size="small" color="text-light">
+										{{ locale.baseText('agents.builder.triggers.description') }}
+									</N8nText>
+								</div>
+								<N8nButton
+									type="primary"
+									size="small"
+									data-testid="agent-triggers-add"
+									@click="onOpenAddTriggerModal"
+								>
+									<template #prefix>
+										<N8nIcon icon="plus" :size="14" />
+									</template>
+									{{ locale.baseText('agents.builder.triggers.add') }}
+								</N8nButton>
+							</div>
+							<AgentIntegrationsPanel
+								:key="`integrations-connected-${agentId}`"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:agent-name="agentName"
+								:is-published="Boolean(agent?.publishedVersion)"
+								:only-connected="true"
+								@update:connected-triggers="onConnectedTriggersUpdate"
+								@trigger-added="onTriggerAdded"
+							/>
+						</div>
+						<AgentMemoryPanel
+							v-else-if="selectedSection === 'memory'"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentSectionEditor
+							v-else
+							:config="localConfig"
+							:section-path="selectedSection === CONFIG_JSON_SECTION_KEY ? null : selectedSection"
+							:read-only="isBuildChatStreaming"
+							@update:config="onSectionEditorUpdate"
 						/>
 					</div>
-					<AgentMemoryPanel
-						v-else-if="selectedSection === 'memory'"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentSectionEditor
-						v-else
-						:config="localConfig"
-						:section-path="selectedSection === CONFIG_JSON_SECTION_KEY ? null : selectedSection"
-						:read-only="isBuildChatStreaming"
-						@update:config="onSectionEditorUpdate"
-					/>
 				</div>
 			</section>
 
@@ -1530,6 +1535,18 @@ function onSwitchAgent(nextAgentId: string) {
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
+	background-color: light-dark(
+		var(--color--background--light-1),
+		var(--color--background--light-2)
+	);
+}
+
+.panelAreaContainer {
+	position: relative;
+	max-width: 56rem;
+	width: 100%;
+	padding: var(--spacing--sm);
+	margin: 0 auto;
 }
 
 .panelArea > * {
@@ -1589,8 +1606,8 @@ function onSwitchAgent(nextAgentId: string) {
 
 .rawToggle {
 	position: absolute;
-	top: var(--spacing--sm);
-	right: var(--spacing--md);
+	top: var(--spacing--2xl);
+	right: var(--spacing--xl);
 	z-index: 1;
 	display: inline-flex;
 	align-items: center;
