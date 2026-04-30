@@ -11,6 +11,7 @@ import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
+import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
 
 const ITEM_ID = {
 	CHAT_HUB: 'chat-hub',
@@ -35,6 +36,7 @@ export function useGenericCommands(): CommandGroup {
 	const settingsStore = useSettingsStore();
 	const projectsStore = useProjectsStore();
 	const templatesStore = useTemplatesStore();
+	const instanceRegistryStore = useInstanceRegistryStore();
 	const { getReportingURL } = useBugReporting();
 
 	const genericCommands = computed<CommandBarItem[]>(() => [
@@ -200,7 +202,8 @@ export function useGenericCommands(): CommandGroup {
 			id: ITEM_ID.REPORT_BUG,
 			title: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
 			section: i18n.baseText('mainSidebar.help'),
-			handler: () => {
+			handler: async () => {
+				await instanceRegistryStore.fetchClusterInfo();
 				window.open(getReportingURL(), '_blank', 'noreferrer');
 			},
 			icon: {

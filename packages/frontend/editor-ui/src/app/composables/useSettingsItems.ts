@@ -9,7 +9,6 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -18,7 +17,6 @@ export function useSettingsItems() {
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
 	const { balance } = useAiGateway();
-	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -144,16 +142,6 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 				route: { to: { name: VIEWS.LDAP_SETTINGS } },
-			},
-			{
-				id: 'settings-instance-registry',
-				icon: 'server',
-				label: i18n.baseText('settings.instanceRegistry'),
-				position: 'top',
-				available:
-					envFeatureFlagCheck.value('INSTANCE_REGISTRY') &&
-					canUserAccessRouteByName(VIEWS.INSTANCE_REGISTRY),
-				route: { to: { name: VIEWS.INSTANCE_REGISTRY } },
 			},
 			{
 				id: 'settings-workersview',
