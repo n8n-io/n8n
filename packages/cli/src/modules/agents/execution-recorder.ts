@@ -32,6 +32,13 @@ export type TimelineEvent =
 			nodeType?: string;
 			nodeTypeVersion?: number;
 			nodeDisplayName?: string;
+			/**
+			 * Configured node parameters from the agent's JSON config (only set
+			 * for `kind: 'node'`). The LLM's runtime args go into `input`; this
+			 * field carries the node's actual configuration so the session-
+			 * detail viewer can show what the node was set up to do.
+			 */
+			nodeParameters?: Record<string, unknown>;
 	  }
 	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
@@ -221,6 +228,7 @@ export class ExecutionRecorder {
 			nodeType: entry?.nodeType,
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
+			nodeParameters: entry?.nodeParameters,
 		});
 	}
 
@@ -290,6 +298,7 @@ export class ExecutionRecorder {
 			nodeType: entry?.nodeType,
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
+			nodeParameters: entry?.nodeParameters,
 		};
 		if (synthesized.kind === 'workflow' && isRecord(output)) {
 			const execId = output.executionId;

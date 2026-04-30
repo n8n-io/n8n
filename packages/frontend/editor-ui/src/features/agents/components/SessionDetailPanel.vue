@@ -216,6 +216,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					:output="item.toolOutput"
 					:node-type="item.nodeType"
 					:node-type-version="item.nodeTypeVersion"
+					:node-parameters="item.nodeParameters"
 				/>
 			</template>
 

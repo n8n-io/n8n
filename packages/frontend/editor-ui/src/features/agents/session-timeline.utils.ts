@@ -126,6 +126,7 @@ interface RawToolCallEvent {
 	nodeType?: string;
 	nodeTypeVersion?: number;
 	nodeDisplayName?: string;
+	nodeParameters?: Record<string, unknown>;
 }
 
 interface RawTextEvent {
@@ -215,6 +216,7 @@ export function flattenExecutionsToTimelineItems(executions: ThreadExecution[]):
 					nodeType: isNode ? event.nodeType : undefined,
 					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
 					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
+					nodeParameters: isNode ? event.nodeParameters : undefined,
 				});
 			} else if (event.type === 'working-memory') {
 				items.push({

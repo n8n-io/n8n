@@ -155,6 +155,12 @@ export async function resolveNodeTool(
 			nodeType: toolSchema.node.nodeType,
 			nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 			displayName: toolSchema.name,
+			// Preserve the configured node parameters (channel, operation,
+			// `$fromAI(...)` templates, etc.) so the session-detail timeline
+			// can render the real node config alongside the LLM's runtime
+			// input. Without this the synthetic execution viewer shows empty
+			// parameters and input/output read as the same thing.
+			nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
 		},
 	};
 }
