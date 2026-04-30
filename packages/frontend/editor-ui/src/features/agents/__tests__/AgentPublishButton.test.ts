@@ -7,6 +7,7 @@ import type { AgentPublishedVersion } from '../agent.types';
 vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
 	unpublishAgent: vi.fn(),
+	revertAgentToPublished: vi.fn(),
 }));
 
 vi.mock('../composables/useAgentTelemetry', () => ({
@@ -101,6 +102,7 @@ interface RenderProps {
 	agent?: AgentResource | null;
 	projectId?: string;
 	agentId?: string;
+	beforeRevertToPublished?: () => Promise<void> | void;
 }
 
 function getModalCallbacks() {
@@ -263,6 +265,45 @@ describe('AgentPublishButton', () => {
 
 		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
+	});
+
+	it('calls revertAgentToPublished and emits reverted from the dropdown action', async () => {
+		const { revertAgentToPublished } = await import('../composables/useAgentApi');
+		const beforeRevertToPublished = vi.fn();
+		const updatedAgent = createAgent({
+			versionId: 'v1',
+			publishedVersion,
+		});
+		vi.mocked(revertAgentToPublished).mockResolvedValue(updatedAgent);
+
+		const agent = createAgent({ versionId: 'v2', publishedVersion });
+		const wrapper = await renderComponent({ agent, beforeRevertToPublished });
+		await wrapper.find('[data-action="revert-to-published"]').trigger('click');
+		await getModalCallbacks().onConfirm();
+		await flushPromises();
+
+		expect(beforeRevertToPublished).toHaveBeenCalled();
+		expect(revertAgentToPublished).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(wrapper.emitted('reverted')?.[0]).toEqual([updatedAgent]);
+	});
+
+	it('does not show the revert action when the agent is not published', async () => {
+		const wrapper = await renderComponent({ agent: createAgent({ publishedVersion: null }) });
+
+		expect(wrapper.find('[data-action="revert-to-published"]').exists()).toBe(false);
+	});
+
+	it('does not revert when the confirmation modal is cancelled', async () => {
+		const { revertAgentToPublished } = await import('../composables/useAgentApi');
+
+		const agent = createAgent({ versionId: 'v2', publishedVersion });
+		const wrapper = await renderComponent({ agent });
+		await wrapper.find('[data-action="revert-to-published"]').trigger('click');
+		await getModalCallbacks().onCancel();
+		await flushPromises();
+
+		expect(revertAgentToPublished).not.toHaveBeenCalled();
+		expect(wrapper.emitted('reverted')).toBeUndefined();
 	});
 
 	// Dropdown — unpublish action

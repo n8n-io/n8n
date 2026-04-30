@@ -161,7 +161,7 @@ function onInstructionsInput(value: string) {
 </script>
 
 <template>
-	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-info-panel">
+	<div :class="$style.panel" data-testid="agent-info-panel">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">{{
 				i18n.baseText('agents.builder.agent.title')

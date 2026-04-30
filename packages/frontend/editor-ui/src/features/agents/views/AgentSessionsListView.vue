@@ -6,7 +6,6 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
-import shared from '@/features/agents/styles/agent-panel.module.scss';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
@@ -114,7 +113,7 @@ async function loadMore() {
 </script>
 
 <template>
-	<div :class="[$style.wrapper, shared.scrollbarThin]">
+	<div :class="$style.wrapper">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">Executions</N8nText>
 			<N8nText size="small" color="text-light">

@@ -248,6 +248,11 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 				workingTools.value = [...workingTools.value, savedRef];
 				toolTelemetry.trackAdded(savedRef);
 				commit();
+				uiStore.closeModal(props.modalName);
+				toast.showMessage({
+					title: i18n.baseText('agents.tools.added'),
+					type: 'success',
+				});
 			},
 		},
 	});

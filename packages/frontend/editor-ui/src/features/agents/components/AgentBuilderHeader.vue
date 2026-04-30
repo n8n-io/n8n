@@ -1,23 +1,24 @@
 <script setup lang="ts">
 /**
  * Top header bar for the agent builder. Hosts breadcrumb navigation,
- * agent switcher, chat-column collapse toggle, publish button, and the
- * existing action-menu dropdown.
+ * agent switcher, publish button, and the existing action-menu dropdown.
  *
- * Navigation intents are emitted as events — the parent view owns routing.
+ * Navigation intents are emitted as events, except for the project breadcrumb
+ * which links back to the owning project/personal page.
  */
 import { computed, onMounted } from 'vue';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
 import {
 	N8nActionDropdown,
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nIcon,
-	N8nIconButton,
 	N8nNavigationDropdown,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -29,20 +30,20 @@ const props = defineProps<{
 	agentId: string;
 	projectName: string | null;
 	headerActions: Array<ActionDropdownItem<string>>;
-	chatColumnCollapsed: boolean;
 	saveStatus?: 'idle' | 'saving' | 'saved';
+	beforeRevertToPublished?: () => Promise<void> | void;
 }>();
 
 const emit = defineEmits<{
-	back: [];
-	'toggle-chat-column': [];
 	'header-action': [item: string];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
+	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 
@@ -50,10 +51,16 @@ onMounted(() => {
 	void ensureLoaded();
 });
 
+const projectRoute = computed<RouteLocationRaw>(() => ({
+	name: VIEWS.PROJECTS_WORKFLOWS,
+	params: { projectId: props.projectId },
+}));
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
+		href: router.resolve(projectRoute.value).href,
 	},
 ]);
 
@@ -88,28 +95,16 @@ function onSwitcherSelect(id: string) {
 	if (id === '__empty__') return;
 	emit('switch-agent', id);
 }
+
+function onBreadcrumbSelect(item: PathItem) {
+	if (item.id !== props.projectId) return;
+	void router.push(projectRoute.value);
+}
 </script>
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
-		<N8nIconButton
-			icon="arrow-left"
-			variant="ghost"
-			size="small"
-			:aria-label="i18n.baseText('agents.builder.header.backToAgents')"
-			data-testid="agent-header-back"
-			@click="emit('back')"
-		/>
-		<N8nIconButton
-			icon="panel-left"
-			:variant="chatColumnCollapsed ? 'subtle' : 'ghost'"
-			size="small"
-			:aria-label="i18n.baseText('agents.builder.header.toggleChat')"
-			:aria-pressed="chatColumnCollapsed"
-			data-testid="agent-header-toggle-chat"
-			@click="emit('toggle-chat-column')"
-		/>
-		<N8nBreadcrumbs :items="breadcrumbItems" theme="small">
+		<N8nBreadcrumbs :items="breadcrumbItems" theme="small" @item-selected="onBreadcrumbSelect">
 			<template #append>
 				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 				<N8nNavigationDropdown
@@ -147,12 +142,14 @@ function onSwitcherSelect(id: string) {
 				:project-id="projectId"
 				:agent-id="agentId"
 				:is-saving="saveStatus === 'saving'"
+				:before-revert-to-published="beforeRevertToPublished"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
+				@reverted="(a: AgentResource) => emit('reverted', a)"
 			/>
 			<N8nActionDropdown
 				:items="headerActions"
-				activator-icon="ellipsis-vertical"
+				activator-icon="ellipsis"
 				activator-size="small"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"
@@ -167,6 +164,7 @@ function onSwitcherSelect(id: string) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
+	background-color: var(--color--background--light-3);
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	box-sizing: content-box;
@@ -182,6 +180,9 @@ function onSwitcherSelect(id: string) {
 /* N8nButton owns chrome/hover/focus; we just override the breadcrumb-bold weight
    and add gap between the label and chevron. */
 .switcherButton {
+	--button--height: auto;
+	--button--padding: 0;
+
 	gap: var(--spacing--4xs);
 	font-weight: var(--font-weight--bold);
 }
@@ -208,20 +209,9 @@ function onSwitcherSelect(id: string) {
 
 /* Scope the scroll behavior to the inner el-menu — element-plus renders the
    popper as `.agent-header-switcher-menu > .el-menu`. Putting overflow on the
-   outer popper produced a second scrollbar nested inside el-menu's own. */
+   outer popper produced a second nested scroll area. */
 :global(.agent-header-switcher-menu) :global(.el-menu) {
 	max-height: calc(5 * 36px);
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-}
-
-:global(.agent-header-switcher-menu) :global(.el-menu)::-webkit-scrollbar {
-	width: 6px;
-}
-
-:global(.agent-header-switcher-menu) :global(.el-menu)::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
 }
 </style>

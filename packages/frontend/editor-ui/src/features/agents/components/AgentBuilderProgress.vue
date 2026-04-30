@@ -4,6 +4,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentSseEvent } from '@n8n/api-types';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const props = defineProps<{
 	projectId: string;
@@ -55,11 +56,11 @@ function handleEvent(event: AgentSseEvent, state: StreamState): void {
 				pushLine(state.textBuffer);
 				state.textBuffer = '';
 			}
-			pushLine(`→ ${event.toolName}`);
+			pushLine(`→ ${formatToolNameForDisplay(event.toolName)}`);
 			break;
 		}
 		case 'tool-result': {
-			pushLine(`${event.isError ? '✗' : '✓'} ${event.toolName}`);
+			pushLine(`${event.isError ? '✗' : '✓'} ${formatToolNameForDisplay(event.toolName)}`);
 			break;
 		}
 		case 'config-updated':
@@ -217,7 +218,8 @@ onMounted(() => {
 }
 
 .logBox {
-	width: 100%;
+	width: 42ch;
+	max-width: 100%;
 	max-height: 140px;
 	overflow: hidden;
 	position: relative;
@@ -236,7 +238,9 @@ onMounted(() => {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
-	color: var(--color--text--tint-2);
+	color: var(--color--text);
+	text-align: center;
+	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;

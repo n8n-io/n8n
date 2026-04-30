@@ -11,6 +11,7 @@ import WorkflowExecutionLogViewer from './WorkflowExecutionLogViewer.vue';
 import ToolIoView from './ToolIoView.vue';
 import type { TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey } from '../session-timeline.utils';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const i18n = useI18n();
 const router = useRouter();
@@ -94,7 +95,7 @@ function highlightJson(value: unknown, indent = 0): string {
 const toolDisplayName = computed((): string => {
 	if (!props.item || (props.item.kind !== 'tool' && props.item.kind !== 'suspension')) return '';
 	const key = builtinToolLabelKey(props.item.toolName, props.item.toolOutput);
-	return key ? i18n.baseText(key) : (props.item.toolName ?? '');
+	return key ? i18n.baseText(key) : formatToolNameForDisplay(props.item.toolName);
 });
 
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
@@ -115,11 +116,11 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 			<div :class="$style.header">
 				<span>
 					<template v-if="item.kind === 'workflow'">{{
-						item.workflowName ?? item.toolName
+						item.workflowName ?? formatToolNameForDisplay(item.toolName)
 					}}</template>
 					<template v-else-if="item.kind === 'tool'">{{ toolDisplayName }}</template>
 					<template v-else-if="item.kind === 'node'">{{
-						item.nodeDisplayName ?? item.toolName
+						item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)
 					}}</template>
 					<template v-else-if="item.kind === 'working-memory'">{{
 						i18n.baseText('agentSessions.timeline.memory')
@@ -211,7 +212,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 
 			<template v-else-if="item.kind === 'node'">
 				<ToolIoView
-					:name="item.nodeDisplayName ?? item.toolName ?? 'node'"
+					:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
 					:input="item.toolInput"
 					:output="item.toolOutput"
 					:node-type="item.nodeType"

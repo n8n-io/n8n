@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
-import {
-	onBeforeRouteLeave,
-	onBeforeRouteUpdate,
-	useRoute,
-	useRouter,
-	type RouteLocationNormalized,
-} from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nButton,
 	N8nIcon,
@@ -24,12 +18,11 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
 	deleteAgent,
-	publishAgent,
 	updateAgentSkill,
 	createAgentSkill,
 } from '../composables/useAgentApi';
@@ -46,7 +39,6 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentSectionNav } from '../composables/useAgentSectionNav';
-import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	AGENT_BUILDER_VIEW,
@@ -59,7 +51,6 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
-	PROJECT_AGENTS,
 } from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -87,7 +78,7 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -132,15 +123,16 @@ const {
 } = useAgentBuilderSession();
 
 const {
+	builderRef,
 	chatColumnCollapsed,
 	chatColumnWidth,
 	treeColumnWidth,
 	gridColumns,
 	onChatColumnResize,
 	onTreeColumnResize,
-	onToggleChatColumn,
 	resizeGridSize,
 } = useAgentBuilderLayout();
+chatColumnCollapsed.value = false;
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -176,6 +168,9 @@ watch(
 );
 
 const projectName = computed<string | null>(() => {
+	if (projectsStore.personalProject?.id === projectId.value) {
+		return locale.baseText('projects.menu.personal');
+	}
 	const current = projectsStore.currentProject;
 	if (current && current.id === projectId.value) return current.name ?? null;
 	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
@@ -233,6 +228,13 @@ function onPublished(updated: AgentResource) {
 
 function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
+}
+
+async function onReverted(updated: AgentResource) {
+	agent.value = updated;
+	agentName.value = updated.name;
+	await fetchConfig(projectId.value, agentId.value);
+	builderTelemetry.captureToolsBaseline();
 }
 
 /**
@@ -463,9 +465,8 @@ async function onHeaderAction(action: string) {
 			return;
 		}
 
-		// Clear local agent state BEFORE router.replace so `hasUnpublishedChanges`
-		// is false and the route-leave guard doesn't intercept the navigation to
-		// ask about publishing a now-deleted agent.
+		// Clear local agent state before router.replace so the component teardown
+		// doesn't keep rendering data for an agent that no longer exists.
 		agent.value = null;
 		localConfig.value = null;
 		agentsEventBus.emit('agentUpdated');
@@ -494,79 +495,6 @@ async function onHeaderAction(action: string) {
 		}
 	}
 }
-
-const hasUnpublishedChanges = computed(
-	() =>
-		!!agent.value?.publishedVersion &&
-		agent.value.versionId !== agent.value.publishedVersion.publishedFromVersionId,
-);
-
-async function guardUnpublishedChanges(
-	from: RouteLocationNormalized,
-	next: (proceed?: boolean) => void,
-) {
-	if (!hasUnpublishedChanges.value) {
-		next();
-		return;
-	}
-
-	// The route may already be advancing (especially for in-component param
-	// updates), so resolve project/agent ids from the route we're leaving
-	// rather than the live computed refs.
-	const leavingProjectId = String(from.params.projectId ?? projectId.value);
-	const leavingAgentId = String(from.params.agentId ?? agentId.value);
-
-	const response = await openAgentConfirmationModal({
-		title: locale.baseText('agents.builder.unsavedPublish.modal.title'),
-		description: locale.baseText('agents.builder.unsavedPublish.modal.description'),
-		confirmButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.publish'),
-		cancelButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.leave'),
-	});
-
-	if (response === MODAL_CONFIRM) {
-		try {
-			// Drain the autosave pipeline first: cancel any scheduled-but-not-fired save,
-			// and await any in-flight one. Without this, a save that fires after publish
-			// would bump versionId and mark the agent dirty immediately after publishing.
-			await settleAutosave();
-			if (!localConfig.value) return;
-			await saveConfig({
-				type: 'config',
-				projectId: leavingProjectId,
-				agentId: leavingAgentId,
-				config: deepCopy(localConfig.value),
-			});
-			builderTelemetry.flushConfigEdits();
-			const updated = await publishAgent(
-				rootStore.restApiContext,
-				leavingProjectId,
-				leavingAgentId,
-			);
-			builderTelemetry.trackPublished(updated.publishedVersion?.schema);
-		} catch (error) {
-			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
-			return; // stay on page
-		}
-		next();
-	} else if (response === MODAL_CANCEL) {
-		next();
-	}
-	// MODAL_CLOSE (X / Escape) → don't call next(), stay on page
-}
-
-onBeforeRouteLeave(async (_to, from, next) => {
-	await guardUnpublishedChanges(from, next);
-});
-
-// In-component agent switches (same route, different :agentId) don't fire
-// `onBeforeRouteLeave`, so wire the same publish-or-discard prompt here too.
-onBeforeRouteUpdate(async (to, from, next) => {
-	if (to.params.agentId === from.params.agentId) {
-		next();
-		return;
-	}
-	await guardUnpublishedChanges(from, next);
-});
 
 async function initialize() {
 	initialized.value = false;
@@ -751,6 +679,10 @@ function onOpenAddSkillModal() {
 						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
 					});
 					selectedSection.value = `skills.${id}`;
+					showMessage({
+						title: locale.baseText('agents.builder.skills.added'),
+						type: 'success',
+					});
 				})();
 			},
 		},
@@ -943,13 +875,6 @@ function onContinueLoaded(count: number) {
 	}
 }
 
-function onHeaderBack() {
-	void router.push({
-		name: PROJECT_AGENTS,
-		params: { projectId: projectId.value },
-	});
-}
-
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
 	void router.push({
@@ -967,13 +892,12 @@ function onSwitchAgent(nextAgentId: string) {
 			:agent-id="agentId"
 			:project-name="projectName"
 			:header-actions="headerActions"
-			:chat-column-collapsed="chatColumnCollapsed"
 			:save-status="saveStatus"
-			@back="onHeaderBack"
-			@toggle-chat-column="onToggleChatColumn"
+			:before-revert-to-published="settleAutosave"
 			@header-action="onHeaderAction"
 			@published="onPublished"
 			@unpublished="onUnpublished"
+			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
 		<div ref="builderRef" :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">
@@ -1050,47 +974,58 @@ function onSwitchAgent(nextAgentId: string) {
 						>
 							<template #above-input>
 								<div :class="$style.quickActionsRow">
-									<div :class="$style.quickActionsStart"></div>
-									<N8nTooltip
-										v-if="initialized"
-										:class="$style.chatModeToggle"
-										:disabled="isBuilt"
-										:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
-										:show-after="100"
-										placement="top"
-									>
-										<N8nRadioButtons
-											:model-value="chatMode"
-											:options="chatModeOptions"
-											:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-											data-testid="agent-chat-mode-toggle"
-											@update:model-value="setChatMode"
-										>
-											<template #option="option">
-												<span :class="$style.chatModeOption">
-													<N8nIcon
-														v-if="option.value === 'build' && isBuildChatStreaming"
-														icon="loader-circle"
-														:size="14"
-														:spin="true"
-													/>
-													<N8nIcon
-														v-else-if="option.value === 'test' && !isBuilt"
-														icon="triangle-alert"
-														:size="14"
-														:class="$style.chatModeLockedIcon"
-													/>
-													<N8nIcon
-														v-else
-														:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
-														:size="14"
-													/>
-													<span>{{ option.label }}</span>
-												</span>
-											</template>
-										</N8nRadioButtons>
-									</N8nTooltip>
+									<AgentChatQuickActions
+										:tools="localConfig?.tools ?? []"
+										:project-id="projectId"
+										:agent-id="agentId"
+										:is-published="Boolean(agent?.publishedVersion)"
+										:connected-triggers="connectedTriggers"
+										@update:tools="onQuickActionAddTool"
+										@update:connected-triggers="onConnectedTriggersUpdate"
+										@trigger-added="onTriggerAdded"
+									/>
 								</div>
+							</template>
+							<template #footer-start>
+								<N8nTooltip
+									v-if="initialized"
+									:class="$style.chatModeToggle"
+									:disabled="isBuilt"
+									:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+									:show-after="100"
+									placement="top"
+								>
+									<N8nRadioButtons
+										:model-value="chatMode"
+										:options="chatModeOptions"
+										:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+										data-testid="agent-chat-mode-toggle"
+										@update:model-value="setChatMode"
+									>
+										<template #option="option">
+											<span :class="$style.chatModeOption">
+												<N8nIcon
+													v-if="option.value === 'build' && isBuildChatStreaming"
+													icon="loader-circle"
+													:size="14"
+													:spin="true"
+												/>
+												<N8nIcon
+													v-else-if="option.value === 'test' && !isBuilt"
+													icon="triangle-alert"
+													:size="14"
+													:class="$style.chatModeLockedIcon"
+												/>
+												<N8nIcon
+													v-else
+													:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+													:size="14"
+												/>
+												<span>{{ option.label }}</span>
+											</span>
+										</template>
+									</N8nRadioButtons>
+								</N8nTooltip>
 							</template>
 						</AgentChatPanel>
 						<AgentChatPanel
@@ -1119,46 +1054,48 @@ function onSwitchAgent(nextAgentId: string) {
 										@update:connected-triggers="onConnectedTriggersUpdate"
 										@trigger-added="onTriggerAdded"
 									/>
-									<N8nTooltip
-										v-if="initialized"
-										:class="$style.chatModeToggle"
-										:disabled="isBuilt"
-										:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
-										:show-after="100"
-										placement="top"
-									>
-										<N8nRadioButtons
-											:model-value="chatMode"
-											:options="chatModeOptions"
-											:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-											data-testid="agent-chat-mode-toggle"
-											@update:model-value="setChatMode"
-										>
-											<template #option="option">
-												<span :class="$style.chatModeOption">
-													<N8nIcon
-														v-if="option.value === 'build' && isBuildChatStreaming"
-														icon="loader-circle"
-														:size="14"
-														:spin="true"
-													/>
-													<N8nIcon
-														v-else-if="option.value === 'test' && !isBuilt"
-														icon="triangle-alert"
-														:size="14"
-														:class="$style.chatModeLockedIcon"
-													/>
-													<N8nIcon
-														v-else
-														:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
-														:size="14"
-													/>
-													<span>{{ option.label }}</span>
-												</span>
-											</template>
-										</N8nRadioButtons>
-									</N8nTooltip>
 								</div>
+							</template>
+							<template #footer-start>
+								<N8nTooltip
+									v-if="initialized"
+									:class="$style.chatModeToggle"
+									:disabled="isBuilt"
+									:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+									:show-after="100"
+									placement="top"
+								>
+									<N8nRadioButtons
+										:model-value="chatMode"
+										:options="chatModeOptions"
+										:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+										data-testid="agent-chat-mode-toggle"
+										@update:model-value="setChatMode"
+									>
+										<template #option="option">
+											<span :class="$style.chatModeOption">
+												<N8nIcon
+													v-if="option.value === 'build' && isBuildChatStreaming"
+													icon="loader-circle"
+													:size="14"
+													:spin="true"
+												/>
+												<N8nIcon
+													v-else-if="option.value === 'test' && !isBuilt"
+													icon="triangle-alert"
+													:size="14"
+													:class="$style.chatModeLockedIcon"
+												/>
+												<N8nIcon
+													v-else
+													:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+													:size="14"
+												/>
+												<span>{{ option.label }}</span>
+											</span>
+										</template>
+									</N8nRadioButtons>
+								</N8nTooltip>
 							</template>
 						</AgentChatPanel>
 						<AgentBuilderUnconfiguredEmptyState
@@ -1278,7 +1215,7 @@ function onSwitchAgent(nextAgentId: string) {
 					/>
 					<div
 						v-else-if="selectedTriggerType"
-						:class="[$style.triggersTab, shared.scrollbarThin]"
+						:class="$style.triggersTab"
 						data-testid="agent-triggers-tab"
 					>
 						<AgentIntegrationsPanel
@@ -1294,7 +1231,7 @@ function onSwitchAgent(nextAgentId: string) {
 					</div>
 					<div
 						v-else-if="selectedSection === 'triggers'"
-						:class="[$style.triggersTab, shared.scrollbarThin]"
+						:class="$style.triggersTab"
 						data-testid="agent-triggers-tab"
 					>
 						<div :class="$style.triggersHeader">
@@ -1354,10 +1291,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:supported-directions="['left']"
 				@resize="onTreeColumnResize"
 			>
-				<aside
-					:class="[$style.treeColumn, shared.scrollbarThin]"
-					data-testid="agent-builder-tree-column"
-				>
+				<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
 					<AgentConfigTree
 						:config="localConfig"
 						:selected-key="selectedSection"
@@ -1396,6 +1330,7 @@ function onSwitchAgent(nextAgentId: string) {
 	position: relative;
 	display: flex;
 	flex-direction: column;
+	background-color: var(--color--background--light-3);
 	border-right: var(--border);
 	height: 100%;
 	min-height: 0;
@@ -1406,13 +1341,9 @@ function onSwitchAgent(nextAgentId: string) {
 .quickActionsRow {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacing--2xs);
-}
-
-.quickActionsStart {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .sessionHeader {
@@ -1478,11 +1409,6 @@ function onSwitchAgent(nextAgentId: string) {
 	}
 }
 
-.quickActionsRow > :first-child {
-	flex: 1;
-	min-width: 0;
-}
-
 /* The session picker can grow with the thread list — cap it at ~5 visible rows
    so it never eats the whole viewport. `.agent-chat-session-menu` is the
    popper class we pass through to `N8nNavigationDropdown`'s submenuClass prop;
@@ -1492,8 +1418,6 @@ function onSwitchAgent(nextAgentId: string) {
 	max-width: 360px;
 	min-width: 280px;
 	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
 }
 
 /* Each row is title (truncated) + right-aligned timestamp. We render both
@@ -1532,15 +1456,6 @@ function onSwitchAgent(nextAgentId: string) {
 	font-size: var(--font-size--2xs);
 }
 
-:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar {
-	width: 6px;
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
-}
-
 .chatModeToggle {
 	flex-shrink: 0;
 }
@@ -1570,6 +1485,7 @@ function onSwitchAgent(nextAgentId: string) {
 .treeColumn {
 	display: flex;
 	flex-direction: column;
+	background-color: var(--color--background--light-3);
 	border-left: var(--border);
 	height: 100%;
 	min-height: 0;
@@ -1579,6 +1495,7 @@ function onSwitchAgent(nextAgentId: string) {
 .editorColumn {
 	display: flex;
 	flex-direction: column;
+	background-color: var(--color--background--light-3);
 	min-height: 0;
 	min-width: 0;
 }

@@ -6,7 +6,7 @@
  *   - Add trigger: opens `AgentAddTriggerModal` and re-emits connected-trigger
  *     updates + trigger-added events upward.
  */
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_ADD_TRIGGER_MODAL_KEY } from '../constants';
@@ -60,32 +60,48 @@ function onAddTrigger() {
 
 <template>
 	<div :class="$style.row" data-testid="agent-chat-quick-actions">
-		<N8nButton
-			type="tertiary"
-			size="mini"
+		<button
+			type="button"
+			:class="$style.quickActionButton"
 			data-testid="agent-quick-action-add-tool"
 			@click="onAddTool"
 		>
-			<template #prefix><N8nIcon icon="sparkles" size="xsmall" /></template>
+			<N8nIcon icon="sparkles" :size="12" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTool') }}
-		</N8nButton>
-		<N8nButton
-			type="tertiary"
-			size="mini"
+		</button>
+		<button
+			type="button"
+			:class="$style.quickActionButton"
 			data-testid="agent-quick-action-add-trigger"
 			@click="onAddTrigger"
 		>
-			<template #prefix><N8nIcon icon="zap" size="xsmall" /></template>
+			<N8nIcon icon="zap" :size="12" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTrigger') }}
-		</N8nButton>
+		</button>
 	</div>
 </template>
 
 <style lang="scss" module>
+@use '../../ai/shared/styles/prompt-suggestion-buttons' as promptSuggestions;
+
 .row {
 	display: flex;
-	gap: var(--spacing--3xs);
-	padding-left: var(--spacing--2xs);
 	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+}
+
+.quickActionButton {
+	@include promptSuggestions.prompt-suggestion-button;
+}
+
+.quickActionIcon {
+	@include promptSuggestions.prompt-suggestion-icon;
+
+	.quickActionButton:hover &,
+	.quickActionButton:focus-visible & {
+		opacity: 1;
+	}
 }
 </style>

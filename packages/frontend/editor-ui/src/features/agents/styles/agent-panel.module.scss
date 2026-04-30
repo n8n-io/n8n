@@ -1,33 +1,3 @@
-/* Shared styles for agent builder panels. Imported as a CSS module:
- *
- *   <script setup>
- *   import shared from '../styles/agent-panel.module.scss';
- *   </script>
- *
- *   <template>
- *     <div :class="[$style.foo, shared.scrollbarThin]">…</div>
- *   </template>
- */
-
-.scrollbarThin {
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-
-	&::-webkit-scrollbar {
-		width: 6px;
-		height: 6px;
-	}
-
-	&::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background: var(--color--foreground--shade-1);
-		border-radius: 999px;
-	}
-}
-
 .disabledOverlay {
 	pointer-events: none;
 	opacity: 0.6;

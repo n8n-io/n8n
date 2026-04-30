@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue';
-import { N8nText, N8nIcon } from '@n8n/design-system';
+import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
 import type {
 	AskLlmResume,
 	ChatHubConversationModel,
@@ -79,51 +79,58 @@ function onSelectCredential(provider: ChatHubProvider, credentialId: string | nu
 </script>
 
 <template>
-	<div :class="[$style.card, disabled && $style.disabled]" data-testid="ask-llm-card">
-		<N8nText tag="p" bold :class="$style.purpose">
-			{{ purpose ?? 'Choose a model' }}
-		</N8nText>
+	<N8nCard :class="[$style.card, disabled && $style.disabled]" data-testid="ask-llm-card">
+		<div :class="$style.cardBody">
+			<N8nText tag="p" bold :class="$style.purpose">
+				{{ purpose ?? 'Choose a model' }}
+			</N8nText>
 
-		<!-- Resolved state: show what was selected instead of the live picker -->
-		<div v-if="disabled && resolvedValue" :class="$style.resolved">
-			<N8nIcon icon="circle-check" size="small" color="success" />
-			<div :class="$style.resolvedDetails">
-				<N8nText bold size="small">{{ resolvedValue.provider }}/{{ resolvedValue.model }}</N8nText>
-				<N8nText size="small" color="text-light">{{ resolvedValue.credentialName }}</N8nText>
+			<!-- Resolved state: show what was selected instead of the live picker -->
+			<div v-if="disabled && resolvedValue" :class="$style.resolved">
+				<N8nIcon icon="circle-check" size="small" color="success" />
+				<div :class="$style.resolvedDetails">
+					<N8nText bold size="small"
+						>{{ resolvedValue.provider }}/{{ resolvedValue.model }}</N8nText
+					>
+					<N8nText size="small" color="text-light">{{ resolvedValue.credentialName }}</N8nText>
+				</div>
 			</div>
-		</div>
 
-		<!-- Live picker: shown when not yet resolved -->
-		<ModelSelector
-			v-else
-			:selected-agent="null"
-			:include-custom-agents="false"
-			:credentials="credentialsByProvider"
-			:agents="filteredAgents"
-			:is-loading="false"
-			:warn-missing-credentials="true"
-			horizontal
-			@change="onModelChange"
-			@select-credential="onSelectCredential"
-		/>
-	</div>
+			<!-- Live picker: shown when not yet resolved -->
+			<ModelSelector
+				v-else
+				:selected-agent="null"
+				:include-custom-agents="false"
+				:credentials="credentialsByProvider"
+				:agents="filteredAgents"
+				:is-loading="false"
+				:warn-missing-credentials="true"
+				horizontal
+				@change="onModelChange"
+				@select-credential="onSelectCredential"
+			/>
+		</div>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	display: flex;
-	flex-direction: column;
+	--card--padding: var(--spacing--sm);
+
 	gap: var(--spacing--xs);
-	background: var(--color--background);
-	max-width: 420px;
+	width: 90%;
+	max-width: 90%;
 }
 
 .disabled {
-	opacity: 0.7;
+	opacity: 0.75;
 	pointer-events: none;
+}
+
+.cardBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 .resolved {

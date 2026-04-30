@@ -7,6 +7,10 @@ import type { AgentResource } from '../types';
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
+const routerPush = vi.fn();
+const routerResolve = vi.fn((to: { params?: { projectId?: string } }) => ({
+	href: `/projects/${to.params?.projectId ?? ''}/workflows`,
+}));
 
 vi.mock('../composables/useProjectAgentsList', () => ({
 	useProjectAgentsList: () => ({
@@ -22,7 +26,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: vi.fn() }),
+	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
@@ -40,6 +44,7 @@ const globalStubs = {
 		name: 'N8nBreadcrumbs',
 		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
 		props: ['items'],
+		emits: ['itemSelected'],
 	},
 	N8nNavigationDropdown: {
 		name: 'N8nNavigationDropdown',
@@ -57,14 +62,13 @@ const globalStubs = {
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
-		props: ['agent', 'projectId', 'agentId', 'isSaving'],
-		emits: ['published', 'unpublished'],
+		props: ['agent', 'projectId', 'agentId', 'isSaving', 'beforeRevertToPublished'],
+		emits: ['published', 'unpublished', 'reverted'],
 	},
 };
 
 function mountHeader(
 	overrides: Partial<{
-		chatColumnCollapsed: boolean;
 		agent: AgentResource | null;
 		projectName: string | null;
 		headerActions: unknown[];
@@ -77,7 +81,6 @@ function mountHeader(
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
-			chatColumnCollapsed: overrides.chatColumnCollapsed ?? false,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -86,28 +89,22 @@ function mountHeader(
 describe('AgentBuilderHeader', () => {
 	beforeEach(() => {
 		ensureLoadedMock.mockReset();
+		routerPush.mockReset();
+		routerResolve.mockClear();
 		agentsListRef.value = null;
 	});
 
-	it('renders the back button, toggle, breadcrumbs, publish and action dropdown', () => {
+	it('renders breadcrumbs, publish and action dropdown', () => {
 		const wrapper = mountHeader();
-		expect(wrapper.find('[data-testid="agent-header-back"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-header-toggle-chat"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
 
-	it('emits back when the back button is clicked', async () => {
+	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-back"]').trigger('click');
-		expect(wrapper.emitted('back')).toBeTruthy();
-	});
-
-	it('emits toggle-chat-column when the toggle is clicked', async () => {
-		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-toggle-chat"]').trigger('click');
-		expect(wrapper.emitted('toggle-chat-column')).toBeTruthy();
+		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		expect(action.props('activatorIcon')).toBe('ellipsis');
 	});
 
 	it('passes a single project breadcrumb (agent rendered as switcher button)', () => {
@@ -117,6 +114,20 @@ describe('AgentBuilderHeader', () => {
 		expect(items.map((i) => i.id)).toEqual(['p1']);
 		// Agent name should surface in the switcher button, not the breadcrumb.
 		expect(wrapper.text()).toContain('Darwin');
+	});
+
+	it('links the project breadcrumb to the project workflows page', () => {
+		const wrapper = mountHeader();
+		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+		const items = bc.props('items') as Array<{ href: string }>;
+		expect(items[0].href).toBe('/projects/p1/workflows');
+
+		bc.vm.$emit('itemSelected', { id: 'p1' });
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'ProjectsWorkflows',
+			params: { projectId: 'p1' },
+		});
 	});
 
 	it('falls back to the project fallback label when projectName is null', () => {
@@ -162,13 +173,15 @@ describe('AgentBuilderHeader', () => {
 		expect(menu[0].title).toBe('agents.builder.header.switcher.empty');
 	});
 
-	it('forwards published/unpublished up', async () => {
+	it('forwards publish events up', async () => {
 		const wrapper = mountHeader();
 		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
 		publish.vm.$emit('published', { ...baseAgent, name: 'Darwin v2' });
 		publish.vm.$emit('unpublished', baseAgent);
+		publish.vm.$emit('reverted', baseAgent);
 		expect(wrapper.emitted('published')).toBeTruthy();
 		expect(wrapper.emitted('unpublished')).toBeTruthy();
+		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
 	it('forwards header-action from the action dropdown', async () => {

@@ -378,6 +378,16 @@ export class AgentsController {
 		return await this.agentsService.unpublishAgent(agentId, req.params.projectId);
 	}
 
+	@Post('/:agentId/revert-to-published')
+	@ProjectScope('agent:update')
+	async revertToPublished(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentsService.revertToPublishedAgent(agentId, req.params.projectId);
+	}
+
 	@Post('/:agentId/chat', { usesTemplates: true })
 	@ProjectScope('agent:execute')
 	async chat(

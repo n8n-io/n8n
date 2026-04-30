@@ -4,6 +4,7 @@ import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegration } from '@n
 import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'jest-mock-extended';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { AgentSkillsService } from '../agent-skills.service';
@@ -459,6 +460,102 @@ describe('AgentsService', () => {
 
 			expect(result.publishedVersion).toBeNull();
 			expect(result).toBe(agent);
+		});
+	});
+
+	describe('revertToPublishedAgent', () => {
+		let mockTrx: { save: jest.Mock };
+		let mockTransaction: jest.Mock;
+
+		beforeEach(() => {
+			mockTrx = { save: jest.fn() };
+			mockTransaction = jest.fn(
+				async (cb: (trx: typeof mockTrx) => Promise<void>) => await cb(mockTrx),
+			);
+			Object.defineProperty(agentRepository, 'manager', {
+				value: { transaction: mockTransaction },
+				configurable: true,
+			});
+		});
+
+		it('throws NotFoundError when the agent does not exist', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.revertToPublishedAgent(agentId, projectId)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('throws ConflictError when the agent is not published', async () => {
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ publishedVersion: null }));
+
+			await expect(service.revertToPublishedAgent(agentId, projectId)).rejects.toThrow(
+				ConflictError,
+			);
+		});
+
+		it('restores the draft fields from the published snapshot', async () => {
+			const publishedSchema: AgentJsonConfig = {
+				name: 'Published Agent',
+				description: 'Published description',
+				model: 'anthropic/claude-sonnet-4-5',
+				credential: 'cred-published',
+				instructions: 'Published instructions',
+				tools: [{ type: 'custom', id: 'published_tool' }],
+				skills: [{ type: 'skill', id: 'published_skill' }],
+			};
+			const publishedTools = {
+				published_tool: {
+					code: 'return "published";',
+					descriptor: { name: 'published_tool' },
+				},
+			} as unknown as Agent['tools'];
+			const publishedSkills = {
+				published_skill: {
+					name: 'Published skill',
+					description: 'Published skill description',
+					instructions: 'Published skill instructions',
+				},
+			};
+			const publishedVersion = makePublishedVersion({
+				schema: publishedSchema,
+				tools: publishedTools,
+				skills: publishedSkills,
+				model: 'anthropic/claude-sonnet-4-5',
+				provider: 'anthropic',
+				credentialId: 'cred-published',
+				publishedFromVersionId: 'published-version-id',
+			});
+			const agent = makeAgent({
+				name: 'Draft Agent',
+				description: 'Draft description',
+				versionId: 'draft-version-id',
+				schema: {
+					name: 'Draft Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Draft instructions',
+				},
+				tools: {},
+				skills: {},
+				publishedVersion,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			const result = await service.revertToPublishedAgent(agentId, projectId);
+
+			expect(agent.schema).toEqual(publishedSchema);
+			expect(agent.schema).not.toBe(publishedSchema);
+			expect(agent.tools).toEqual(publishedTools);
+			expect(agent.skills).toEqual(publishedSkills);
+			expect(agent.model).toBe('anthropic/claude-sonnet-4-5');
+			expect(agent.provider).toBe('anthropic');
+			expect(agent.credentialId).toBe('cred-published');
+			expect(agent.versionId).toBe('published-version-id');
+			expect(agent.name).toBe('Published Agent');
+			expect(agent.description).toBe('Published description');
+			expect(mockTrx.save).toHaveBeenCalledWith(agent);
+			expect(result).toBe(agent);
+			expect(result.publishedVersion).toBe(publishedVersion);
 		});
 	});
 

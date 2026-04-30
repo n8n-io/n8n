@@ -8,6 +8,7 @@ import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey, formatDuration, itemFilterKey } from '../session-timeline.utils';
 import { chartBlockStyle, pillStyle as kindPillStyle } from '../session-timeline.styles';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const props = defineProps<{
 	items: TimelineItem[];
@@ -100,12 +101,12 @@ function popoverName(item: TimelineItem): string {
 			return truncate(item.content ?? '', 80);
 		case 'tool': {
 			const key = builtinToolLabelKey(item.toolName, item.toolOutput);
-			return key ? i18n.baseText(key) : (item.toolName ?? '');
+			return key ? i18n.baseText(key) : formatToolNameForDisplay(item.toolName);
 		}
 		case 'workflow':
-			return item.workflowName ?? item.toolName ?? '';
+			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
-			return item.nodeDisplayName ?? item.toolName ?? '';
+			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':

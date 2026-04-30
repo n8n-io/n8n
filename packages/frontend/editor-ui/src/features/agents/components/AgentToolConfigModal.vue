@@ -105,7 +105,13 @@ function handleNodeNameUpdate(name: string) {
 </script>
 
 <template>
-	<Modal v-if="canRender" :name="modalName" width="780px" data-test-id="agent-tool-config-modal">
+	<Modal
+		v-if="canRender"
+		:name="modalName"
+		width="780px"
+		max-height="85vh"
+		data-test-id="agent-tool-config-modal"
+	>
 		<template #header>
 			<div :class="$style.header">
 				<NodeIcon
@@ -205,7 +211,7 @@ function handleNodeNameUpdate(name: string) {
 .contentWrapper {
 	display: flex;
 	flex-direction: column;
-	max-height: 80vh;
+	max-height: 60vh;
 	overflow: hidden;
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding: var(--spacing--md) 0;

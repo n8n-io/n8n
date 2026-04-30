@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { N8nButton, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -39,12 +39,20 @@ const heading = computed(() =>
 
 const inputText = ref('');
 const isCreating = ref(false);
+const statusLoaded = ref(false);
+const chatInputRef = ref<InstanceType<typeof ChatInputBase> | null>(null);
 
 onMounted(async () => {
 	try {
 		await fetchStatus();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.agentBuilder.loadError'));
+	} finally {
+		statusLoaded.value = true;
+		await nextTick();
+		if (isBuilderConfigured.value) {
+			chatInputRef.value?.focus();
+		}
 	}
 });
 // When set, we've created the agent and the progress overlay is streaming
@@ -242,8 +250,8 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 <template>
 	<div :class="$style.page">
-		<AgentBuilderUnconfiguredEmptyState v-if="!isBuilderConfigured" />
-		<template v-else>
+		<AgentBuilderUnconfiguredEmptyState v-if="statusLoaded && !isBuilderConfigured" />
+		<template v-else-if="statusLoaded">
 			<div v-if="building" :class="$style.buildingOverlay">
 				<AgentBuilderProgress
 					:project-id="projectId"
@@ -253,10 +261,9 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 				/>
 			</div>
 			<div :class="$style.topBar">
-				<N8nText tag="span" bold size="large">{{ i18n.baseText('agents.new.title') }}</N8nText>
 				<N8nButton
 					:label="i18n.baseText('agents.new.startBlank')"
-					type="secondary"
+					variant="subtle"
 					size="medium"
 					icon="file"
 					:loading="isCreating"
@@ -270,6 +277,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 				<div :class="$style.inputWrapper">
 					<ChatInputBase
+						ref="chatInputRef"
 						v-model="inputText"
 						:placeholder="i18n.baseText('agents.new.description.placeholder')"
 						:is-streaming="false"
@@ -337,7 +345,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 .topBar {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-end;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
@@ -357,13 +365,15 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 .heading {
 	font-size: var(--font-size--2xl);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	margin: 0 0 var(--spacing--lg);
+	animation: headingLift 360ms ease-out both;
 }
 
 .inputWrapper {
 	width: 100%;
 	margin-bottom: var(--spacing--xl);
+	animation: contentDropIn 360ms ease-out 80ms both;
 }
 
 .suggestions {
@@ -371,6 +381,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	animation: contentDropIn 360ms ease-out 160ms both;
 }
 
 .suggestionsLabel {
@@ -394,16 +405,25 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	background: transparent;
+	background: var(--color--background--light-3);
 	cursor: pointer;
-	transition: background-color 0.15s ease;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease,
+		box-shadow 0.15s ease;
 	text-align: left;
 	font: inherit;
 }
 
 .suggestionCard:hover,
 .suggestionCard:focus-visible {
-	background-color: var(--color--foreground--tint-2);
+	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground--shade-1);
+	box-shadow: var(--shadow--card-hover);
+}
+
+.suggestionCard:active {
+	background-color: var(--color--background--light-1);
 }
 
 .suggestionHeader {
@@ -423,5 +443,37 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 .suggestionDescription {
 	min-width: 0;
+}
+
+@keyframes headingLift {
+	from {
+		opacity: 0;
+		transform: translateY(var(--spacing--xs));
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(calc(-1 * var(--spacing--xs)));
+	}
+}
+
+@keyframes contentDropIn {
+	from {
+		opacity: 0;
+		transform: translateY(calc(-1 * var(--spacing--xs)));
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.heading,
+	.inputWrapper,
+	.suggestions {
+		animation: none;
+	}
 }
 </style>

@@ -21,7 +21,6 @@ import {
 	REASONING_EFFORT_OPTIONS,
 	type ReasoningEffort,
 } from '../provider-capabilities';
-import shared from '../styles/agent-panel.module.scss';
 import { parseProvider } from '../utils/model-string';
 
 const i18n = useI18n();
@@ -127,7 +126,7 @@ const thinkingDisabledReason = computed(() =>
 </script>
 
 <template>
-	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-behavior-panel">
+	<div :class="$style.panel" data-testid="agent-behavior-panel">
 		<div :class="$style.header">
 			<N8nText tag="h3" size="large" :bold="true">{{
 				i18n.baseText('agents.builder.advanced.title')
