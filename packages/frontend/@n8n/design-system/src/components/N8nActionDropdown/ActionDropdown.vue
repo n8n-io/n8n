@@ -15,6 +15,8 @@ const { t } = useI18n();
 
 const TRIGGER = ['click', 'hover'] as const;
 
+defineOptions({ inheritAttrs: false });
+
 interface ActionDropdownProps {
 	items: Array<ActionDropdownItem<T>>;
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
@@ -47,6 +49,11 @@ const attrs = useAttrs();
 const dropdownTestId = computed(() => {
 	const testId = attrs['data-test-id'];
 	return typeof testId === 'string' ? testId : undefined;
+});
+
+const containerAttrs = computed(() => {
+	const { 'data-test-id': _dataTestId, ...rest } = attrs;
+	return rest;
 });
 
 const getItemTestId = (id: T): string => {
@@ -87,14 +94,6 @@ const open = () => dropdownRef.value?.open();
 const close = () => dropdownRef.value?.close();
 defineExpose({ open, close });
 
-const onContainerClick = () => {
-	if (props.disabled) {
-		return;
-	}
-
-	open();
-};
-
 const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
@@ -107,8 +106,8 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 
 <template>
 	<div
+		v-bind="containerAttrs"
 		:class="['action-dropdown-container', $style.actionDropdownContainer]"
-		@click="onContainerClick"
 	>
 		<N8nDropdownMenu
 			ref="dropdownRef"

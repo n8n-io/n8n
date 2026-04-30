@@ -71,6 +71,7 @@ const getActions = (user: UserType): Array<DropdownMenuItemProps<string>> => {
 	return props.actions
 		.filter((action) => (action.guard ?? defaultGuard)(user))
 		.map((action) => ({
+			...action,
 			id: action.value,
 			label: action.label,
 			disabled: action.disabled,

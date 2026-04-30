@@ -200,7 +200,7 @@ const triggerHoverEnter = () => {
 
 const triggerHoverLeave = () => {
 	if (props.trigger === 'hover') {
-		// Don't close immediately - let the content handle it via mouseleave
+		close();
 	}
 };
 
@@ -319,7 +319,7 @@ defineExpose({ open, close });
 				:style="contentStyle"
 				:prioritize-position="true"
 				@keydown="handleContentKeydown"
-				@mouseleave="navigation.reset"
+				@mouseleave="triggerHoverLeave"
 			>
 				<slot v-if="slots.content" name="content" />
 				<template v-else>

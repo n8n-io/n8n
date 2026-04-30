@@ -1,5 +1,5 @@
 import { createTestingPinia } from '@pinia/testing';
-import { screen } from '@testing-library/vue';
+import { screen, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { ROLE, type UsersList } from '@n8n/api-types';
@@ -49,7 +49,7 @@ describe('SettingsUsersActionsCell', () => {
 		renderComponent({ props });
 		const user = userEvent.setup();
 
-		await user.click(screen.getByTestId('action-toggle'));
+		await user.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
 
 		expect(await screen.findByTestId('action-copyInviteLink')).toBeInTheDocument();
 		expect(await screen.findByTestId('action-copyPasswordResetLink')).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('SettingsUsersActionsCell', () => {
 		const { emitted } = renderComponent({ props });
 		const user = userEvent.setup();
 
-		await user.click(screen.getByTestId('action-toggle'));
+		await user.click(within(screen.getByTestId('action-toggle')).getByRole('button'));
 
 		await user.click(await screen.findByTestId('action-copyInviteLink'));
 

@@ -89,10 +89,6 @@ const openActionToggle = (isOpen: boolean) => {
 	}
 };
 
-const onContainerClick = () => {
-	openActionToggle(true);
-};
-
 defineExpose({
 	openActionToggle,
 });
@@ -103,7 +99,7 @@ defineExpose({
 		class="action-toggle"
 		:class="$style.container"
 		data-test-id="action-toggle"
-		@click.stop.prevent="onContainerClick"
+		@click.stop.prevent
 	>
 		<N8nDropdownMenu
 			ref="dropdownRef"
