@@ -2,15 +2,17 @@ import { setNodeValidator } from './set-node-validator';
 import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { PluginContext } from '../types';
 
-// Helper to create a mock node instance
+// Helper to create a mock node instance.
+// Defaults to version 3.4 because the validator only applies to Set v3.3+.
 function createMockNode(
 	type: string,
 	config: { parameters?: Record<string, unknown> } = {},
+	version: string = '3.4',
 ): NodeInstance<string, string, unknown> {
 	return {
 		type,
 		name: 'Test Node',
-		version: '1',
+		version,
 		config: {
 			parameters: config.parameters ?? {},
 		},
@@ -177,6 +179,29 @@ describe('setNodeValidator', () => {
 
 			expect(issues).toHaveLength(0);
 		});
+
+		it.each(['1', '2', '3', '3.1', '3.2'])(
+			'skips validation for Set node version %s (pre-assignments shape)',
+			(version) => {
+				const node = createMockNode(
+					'n8n-nodes-base.set',
+					{
+						parameters: {
+							mode: 'keepAllExistingFields',
+							assignments: {
+								assignments: [{ name: 'password', value: 'secret', type: 'string' }],
+							},
+						},
+					},
+					version,
+				);
+				const ctx = createMockPluginContext();
+
+				const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+				expect(issues).toHaveLength(0);
+			},
+		);
 
 		it('allows raw mode because it is a valid Set node output mode', () => {
 			const node = createMockNode('n8n-nodes-base.set', {

@@ -6,6 +6,7 @@
  */
 
 import type { GraphNode, NodeInstance } from '../../../types/base';
+import { parseVersion } from '../../string-utils';
 import { isCredentialFieldName } from '../../validation-helpers';
 import {
 	type ValidatorPlugin,
@@ -17,6 +18,11 @@ import {
 } from '../types';
 
 const SUPPORTED_MODES = new Set(['manual', 'raw']);
+
+// Set node v3.3 introduced the `assignments` collection (`{ id, name, value, type }`)
+// and `mode: "manual" | "raw"`. v1/v2 use `parameters.values.*`; v3.0–3.2 use
+// `parameters.fields.values[]`. This validator only applies to v3.3+.
+const MIN_ASSIGNMENT_VERSION = 3.3;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -55,6 +61,11 @@ export const setNodeValidator: ValidatorPlugin = {
 		ctx: PluginContext,
 	): ValidationIssue[] {
 		const issues: ValidationIssue[] = [];
+
+		if (parseVersion(node.version) < MIN_ASSIGNMENT_VERSION) {
+			return issues;
+		}
+
 		const params = node.config?.parameters;
 
 		if (!isRecord(params)) {
