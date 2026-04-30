@@ -116,11 +116,16 @@ watch(
 	() => props.row?.packageName,
 	async (name) => {
 		if (!name || !props.row?.isInstalled) return;
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-		const nodeType = nodeTypesStore.visibleNodeTypes.find((node) => node.name.includes(name));
-		const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name ?? '');
-		if (attributes?.npmVersion) {
-			latestVerifiedVersion.value = attributes.npmVersion;
+		try {
+			await nodeTypesStore.loadNodeTypesIfNotLoaded();
+			const nodeType = nodeTypesStore.visibleNodeTypes.find((node) => node.name.includes(name));
+			const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name ?? '');
+			if (attributes?.npmVersion) {
+				latestVerifiedVersion.value = attributes.npmVersion;
+			}
+		} catch {
+			// Swallow: failing to fetch the latest verified version just means we don't show
+			// an "Update available" hint. The UI state remains correct.
 		}
 	},
 	{ immediate: true },
@@ -201,7 +206,8 @@ function onUpdateClick() {
 				</template>
 
 				<N8nBadge v-else-if="isInstalled" theme="success" :class="$style.persistentState">
-					v{{ row?.installedVersion }} {{ i18n.baseText('settings.communityNodes.row.installed') }}
+					<template v-if="row?.installedVersion">v{{ row.installedVersion }} </template
+					>{{ i18n.baseText('settings.communityNodes.row.installed') }}
 				</N8nBadge>
 
 				<N8nButton
@@ -214,6 +220,7 @@ function onUpdateClick() {
 							: i18n.baseText('settings.communityNodes.row.install')
 					"
 					:loading="installLoading"
+					:disabled="!row?.installNodeName"
 					:class="$style.hoverCta"
 					@click="onInstall"
 				/>

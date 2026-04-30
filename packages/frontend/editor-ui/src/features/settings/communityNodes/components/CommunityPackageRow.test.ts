@@ -28,6 +28,22 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 	default: { template: '<div data-test-id="node-icon" />' },
 }));
 
+vi.mock('@n8n/design-system', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+	return {
+		...actual,
+		N8nActionToggle: {
+			props: ['actions'],
+			emits: ['action'],
+			template: `
+				<button data-test-id="mock-action-toggle" @click="$emit('action', actions[0]?.value)">
+					menu
+				</button>
+			`,
+		},
+	};
+});
+
 const renderComponent = createComponentRenderer(CommunityPackageRow);
 
 const flushPromises = async () => await new Promise(setImmediate);
@@ -140,6 +156,20 @@ describe('CommunityPackageRow', () => {
 		).toBeInTheDocument();
 	});
 
+	it('should call openCommunityPackageUninstallConfirmModal when uninstall action fires', async () => {
+		const uninstallSpy = vi.fn();
+		const uiStoreInstance = useUIStore();
+		uiStoreInstance.openCommunityPackageUninstallConfirmModal = uninstallSpy;
+
+		const { getByTestId } = renderComponent({
+			props: { row: makeRow({ isInstalled: true, installedVersion: '2.0.0' }) },
+		});
+
+		await fireEvent.click(getByTestId('community-package-row__menu'));
+
+		expect(uninstallSpy).toHaveBeenCalledWith('n8n-nodes-example');
+	});
+
 	it('should show Update available badge when legacy updateAvailable is set and unverified packages enabled', () => {
 		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => true });
 		Object.defineProperty(useSettingsStore(), 'isCommunityNodesFeatureEnabled', {
@@ -226,6 +256,17 @@ describe('CommunityPackageRow', () => {
 
 		expect(emitted().installed).toBeTruthy();
 		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
+	});
+
+	it('should render Installed badge without version after a local install flip', async () => {
+		const { getByText, getByTestId } = renderComponent({ props: { row: makeRow() } });
+
+		await fireEvent.click(getByTestId('community-package-row__install'));
+		await flushPromises();
+
+		const badge = getByText('Installed');
+		expect(badge).toBeInTheDocument();
+		expect(badge.textContent?.trim()).toBe('Installed');
 	});
 
 	it('should not flip state if install fails', async () => {
