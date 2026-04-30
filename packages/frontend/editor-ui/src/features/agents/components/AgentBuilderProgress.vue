@@ -150,14 +150,33 @@ onMounted(() => {
 <template>
 	<div :class="$style.progress">
 		<div :class="$style.centerColumn">
-			<div :class="$style.spinner">
-				<N8nIcon
-					:icon="hasError ? 'triangle-alert' : 'spinner'"
-					:size="40"
-					:spin="!hasError && isStreaming"
-				/>
+			<div :class="$style.loader" aria-hidden="true">
+				<N8nIcon v-if="hasError" icon="triangle-alert" :size="40" />
+				<svg
+					v-else
+					:class="[$style.nodeLoader, isStreaming ? $style.nodeLoaderActive : '']"
+					width="32"
+					height="26"
+					viewBox="0 0 32 26"
+					fill="none"
+					xmlns="http://www.w3.org/2000/svg"
+				>
+					<path pathLength="1" d="M4.8 13H8" />
+					<path
+						pathLength="1"
+						d="M14.4 13H15.6C16.9 13 17.9 12.1 18.1 10.9L18.2 10.3C18.5 8.6 19.9 7.4 21.6 7.4H24"
+					/>
+					<path
+						pathLength="1"
+						d="M14.4 13H15.6C16.9 13 17.9 13.9 18.1 15.1L18.2 15.7C18.5 17.4 19.9 18.6 21.6 18.6H22.4"
+					/>
+					<circle pathLength="1" cx="3.2" cy="13" r="2.4" />
+					<circle pathLength="1" cx="11.2" cy="13" r="2.4" />
+					<circle pathLength="1" cx="27.2" cy="8.2" r="2.4" />
+					<circle pathLength="1" cx="24" cy="17.8" r="2.4" />
+				</svg>
 			</div>
-			<N8nText tag="p" bold size="large" :class="$style.heading">
+			<N8nText tag="h3" bold step="xl" :class="$style.heading">
 				{{
 					hasError
 						? i18n.baseText('agents.builder.progress.error.title')
@@ -202,9 +221,95 @@ onMounted(() => {
 	gap: var(--spacing--2xs);
 }
 
-.spinner {
-	color: var(--color--primary);
+.loader {
+	color: #ea4b71;
 	margin-bottom: var(--spacing--sm);
+}
+
+.nodeLoader {
+	display: block;
+	width: var(--spacing--3xl);
+	height: auto;
+	overflow: visible;
+}
+
+.nodeLoader path,
+.nodeLoader circle {
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+}
+
+.nodeLoaderActive path,
+.nodeLoaderActive circle {
+	animation: drawNode 2400ms cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.nodeLoaderActive path:nth-of-type(1) {
+	animation-delay: 0ms;
+}
+
+.nodeLoaderActive circle:nth-of-type(1) {
+	animation-delay: 0ms;
+}
+
+.nodeLoaderActive path:nth-of-type(2) {
+	animation-delay: 280ms;
+}
+
+.nodeLoaderActive path:nth-of-type(3) {
+	animation-delay: 420ms;
+}
+
+.nodeLoaderActive circle:nth-of-type(2) {
+	animation-delay: 200ms;
+}
+
+.nodeLoaderActive circle:nth-of-type(3) {
+	animation-delay: 620ms;
+}
+
+.nodeLoaderActive circle:nth-of-type(4) {
+	animation-delay: 760ms;
+}
+
+@keyframes drawNode {
+	0% {
+		stroke-dashoffset: 1;
+		opacity: 0;
+	}
+
+	16% {
+		stroke-dashoffset: 0;
+		opacity: 1;
+	}
+
+	46% {
+		stroke-dashoffset: 0;
+		opacity: 1;
+	}
+
+	58% {
+		stroke-dashoffset: -1;
+		opacity: 0;
+	}
+
+	100% {
+		stroke-dashoffset: -1;
+		opacity: 0;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nodeLoader path,
+	.nodeLoader circle {
+		animation: none;
+		stroke-dashoffset: 0;
+		opacity: 1;
+	}
 }
 
 .heading {

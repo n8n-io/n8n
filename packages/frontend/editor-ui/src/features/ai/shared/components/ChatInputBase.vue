@@ -201,7 +201,7 @@ defineExpose({
 	border-radius: var(--radius--xl);
 	padding: var(--spacing--sm);
 	box-shadow:
-		var(--shadow--xl),
+		var(--shadow--xs),
 		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
 	background-color: var(--background--surface);
 	display: flex;

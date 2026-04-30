@@ -252,75 +252,81 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	<div :class="$style.page">
 		<AgentBuilderUnconfiguredEmptyState v-if="statusLoaded && !isBuilderConfigured" />
 		<template v-else-if="statusLoaded">
-			<div v-if="building" :class="$style.buildingOverlay">
-				<AgentBuilderProgress
-					:project-id="projectId"
-					:agent-id="building.agentId"
-					:initial-message="building.message"
-					@done="onBuildDone"
-				/>
-			</div>
-			<div :class="$style.topBar">
-				<N8nButton
-					:label="i18n.baseText('agents.new.startBlank')"
-					variant="ghost"
-					size="medium"
-					icon="file"
-					:loading="isCreating"
-					data-testid="create-blank-agent"
-					@click="createBlank"
-				/>
-			</div>
-
-			<div :class="$style.center">
-				<h1 :class="$style.heading">{{ heading }}</h1>
-
-				<div :class="$style.inputWrapper">
-					<ChatInputBase
-						ref="chatInputRef"
-						v-model="inputText"
-						:placeholder="i18n.baseText('agents.new.description.placeholder')"
-						:is-streaming="false"
-						:can-submit="inputText.trim().length > 0 && !isCreating"
-						:show-voice="true"
-						:show-attach="false"
-						@submit="submitDescription"
+			<Transition name="building-overlay">
+				<div v-if="building" :class="$style.buildingOverlay">
+					<AgentBuilderProgress
+						:project-id="projectId"
+						:agent-id="building.agentId"
+						:initial-message="building.message"
+						@done="onBuildDone"
 					/>
 				</div>
+			</Transition>
+			<Transition name="new-agent-content">
+				<div v-if="!building" :class="$style.content">
+					<div :class="$style.topBar">
+						<N8nButton
+							:label="i18n.baseText('agents.new.startBlank')"
+							variant="ghost"
+							size="medium"
+							icon="file"
+							:loading="isCreating"
+							data-testid="create-blank-agent"
+							@click="createBlank"
+						/>
+					</div>
 
-				<div :class="$style.suggestions">
-					<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
-						{{ i18n.baseText('agents.new.templates.label') }}
-					</N8nText>
+					<div :class="$style.center">
+						<h1 :class="$style.heading">{{ heading }}</h1>
 
-					<div :class="$style.suggestionGrid">
-						<button
-							v-for="(suggestion, index) in suggestions"
-							:key="suggestion.name"
-							type="button"
-							:class="$style.suggestionCard"
-							:style="{ '--suggestion-index': index }"
-							data-testid="agent-suggestion-card"
-							@click="selectSuggestion(suggestion)"
-						>
-							<div :class="$style.suggestionHeader">
-								<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
-								<N8nText tag="span" bold size="small" :class="$style.suggestionName">
-									{{ suggestion.name }}
-								</N8nText>
-							</div>
-							<N8nText
-								tag="span"
-								size="small"
-								color="text-light"
-								:class="$style.suggestionDescription"
-							>
-								{{ suggestion.description }}
+						<div :class="$style.inputWrapper">
+							<ChatInputBase
+								ref="chatInputRef"
+								v-model="inputText"
+								:placeholder="i18n.baseText('agents.new.description.placeholder')"
+								:is-streaming="false"
+								:can-submit="inputText.trim().length > 0 && !isCreating"
+								:show-voice="true"
+								:show-attach="false"
+								@submit="submitDescription"
+							/>
+						</div>
+
+						<div :class="$style.suggestions">
+							<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
+								{{ i18n.baseText('agents.new.templates.label') }}
 							</N8nText>
-						</button>
+
+							<div :class="$style.suggestionGrid">
+								<button
+									v-for="(suggestion, index) in suggestions"
+									:key="suggestion.name"
+									type="button"
+									:class="$style.suggestionCard"
+									:style="{ '--suggestion-index': index }"
+									data-testid="agent-suggestion-card"
+									@click="selectSuggestion(suggestion)"
+								>
+									<div :class="$style.suggestionHeader">
+										<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
+										<N8nText tag="span" bold size="small" :class="$style.suggestionName">
+											{{ suggestion.name }}
+										</N8nText>
+									</div>
+									<N8nText
+										tag="span"
+										size="small"
+										color="text-light"
+										:class="$style.suggestionDescription"
+									>
+										{{ suggestion.description }}
+									</N8nText>
+								</button>
+							</div>
+						</div>
 					</div>
 				</div>
-			</div>
+			</Transition>
 		</template>
 	</div>
 </template>
@@ -341,6 +347,36 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	display: flex;
 	background: var(--color--background--light-3);
 	backdrop-filter: blur(4px);
+	pointer-events: all;
+}
+
+.content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+:global(.building-overlay-enter-active) {
+	transition: opacity calc(var(--duration--base) * 1.5) var(--easing--ease-out)
+		calc(var(--duration--base) / 3);
+}
+
+:global(.building-overlay-enter-from) {
+	opacity: 0;
+}
+
+:global(.new-agent-content-leave-active) {
+	transition:
+		opacity var(--duration--base) var(--easing--ease-out),
+		filter var(--duration--base) var(--easing--ease-out),
+		transform var(--duration--base) var(--easing--ease-out);
+}
+
+:global(.new-agent-content-leave-to) {
+	opacity: 0;
+	filter: blur(3px);
+	transform: translateY(calc(-1 * var(--spacing--xs)));
 }
 
 .topBar {
@@ -500,6 +536,11 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	.suggestions,
 	.suggestionCard {
 		animation: none;
+	}
+
+	:global(.building-overlay-enter-active),
+	:global(.new-agent-content-leave-active) {
+		transition: none;
 	}
 }
 </style>
