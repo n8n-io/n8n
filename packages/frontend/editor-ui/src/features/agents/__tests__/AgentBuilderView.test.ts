@@ -172,6 +172,7 @@ const baseTextFn = (key: string) => {
 		'agents.builder.chatMode.build': 'Build',
 		'agents.builder.chatMode.test': 'Test',
 		'agents.builder.chatMode.ariaLabel': 'Switch chat mode',
+		'projects.menu.personal': 'Personal',
 	};
 	return map[key] ?? key;
 };
@@ -236,16 +237,9 @@ const commonStubs = {
 	AgentBuilderHeader: {
 		name: 'AgentBuilderHeader',
 		template:
-			'<div data-testid="stub-agent-builder-header" :data-chat-collapsed="chatColumnCollapsed"></div>',
-		props: ['agent', 'projectId', 'agentId', 'projectName', 'headerActions', 'chatColumnCollapsed'],
-		emits: [
-			'back',
-			'toggle-chat-column',
-			'header-action',
-			'published',
-			'unpublished',
-			'switch-agent',
-		],
+			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName"></div>',
+		props: ['agent', 'projectId', 'agentId', 'projectName', 'headerActions'],
+		emits: ['header-action', 'published', 'unpublished', 'switch-agent'],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, chatHub, credentials, sessions list)
@@ -549,33 +543,10 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(false);
 	});
 
-	it('toggling the chat column from the header updates the header prop + localStorage', async () => {
-		window.localStorage.removeItem('agentBuilder.chatColumnCollapsed');
+	it('passes the personal label instead of the personal project owner name', async () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		// Initially not collapsed.
-		expect(header.props('chatColumnCollapsed')).toBe(false);
-		header.vm.$emit('toggle-chat-column');
-		await nextTick();
-		await flushPromises();
-		// After toggle: the prop passed down to the header must flip to true.
-		expect(header.props('chatColumnCollapsed')).toBe(true);
-		// The watcher must have persisted the state to localStorage.
-		expect(window.localStorage.getItem('agentBuilder.chatColumnCollapsed')).toBe('1');
-	});
-
-	it('back event navigates to the project agents list', async () => {
-		routerPush.mockClear();
-		const wrapper = await renderView();
-		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
-		header.vm.$emit('back');
-		await flushPromises();
-		expect(routerPush).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: 'ProjectAgents',
-				params: { projectId: 'p1' },
-			}),
-		);
+		expect(header.props('projectName')).toBe('Personal');
 	});
 
 	it('shows applied skills and opens a skill detail from the tree', async () => {

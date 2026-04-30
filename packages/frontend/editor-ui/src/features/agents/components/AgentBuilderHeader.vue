@@ -1,8 +1,7 @@
 <script setup lang="ts">
 /**
  * Top header bar for the agent builder. Hosts breadcrumb navigation,
- * agent switcher, chat-column collapse toggle, publish button, and the
- * existing action-menu dropdown.
+ * agent switcher, publish button, and the existing action-menu dropdown.
  *
  * Navigation intents are emitted as events — the parent view owns routing.
  */
@@ -12,7 +11,6 @@ import {
 	N8nBreadcrumbs,
 	N8nButton,
 	N8nIcon,
-	N8nIconButton,
 	N8nNavigationDropdown,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -29,13 +27,10 @@ const props = defineProps<{
 	agentId: string;
 	projectName: string | null;
 	headerActions: Array<ActionDropdownItem<string>>;
-	chatColumnCollapsed: boolean;
 	saveStatus?: 'idle' | 'saving' | 'saved';
 }>();
 
 const emit = defineEmits<{
-	back: [];
-	'toggle-chat-column': [];
 	'header-action': [item: string];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
@@ -92,23 +87,6 @@ function onSwitcherSelect(id: string) {
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
-		<N8nIconButton
-			icon="arrow-left"
-			variant="ghost"
-			size="small"
-			:aria-label="i18n.baseText('agents.builder.header.backToAgents')"
-			data-testid="agent-header-back"
-			@click="emit('back')"
-		/>
-		<N8nIconButton
-			icon="panel-left"
-			:variant="chatColumnCollapsed ? 'subtle' : 'ghost'"
-			size="small"
-			:aria-label="i18n.baseText('agents.builder.header.toggleChat')"
-			:aria-pressed="chatColumnCollapsed"
-			data-testid="agent-header-toggle-chat"
-			@click="emit('toggle-chat-column')"
-		/>
 		<N8nBreadcrumbs :items="breadcrumbItems" theme="small">
 			<template #append>
 				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
@@ -152,7 +130,7 @@ function onSwitcherSelect(id: string) {
 			/>
 			<N8nActionDropdown
 				:items="headerActions"
-				activator-icon="ellipsis-vertical"
+				activator-icon="ellipsis"
 				activator-size="small"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"

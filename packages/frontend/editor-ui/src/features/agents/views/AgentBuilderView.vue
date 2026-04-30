@@ -59,7 +59,6 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
-	PROJECT_AGENTS,
 } from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -138,9 +137,9 @@ const {
 	gridColumns,
 	onChatColumnResize,
 	onTreeColumnResize,
-	onToggleChatColumn,
 	resizeGridSize,
 } = useAgentBuilderLayout();
+chatColumnCollapsed.value = false;
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -176,6 +175,9 @@ watch(
 );
 
 const projectName = computed<string | null>(() => {
+	if (projectsStore.personalProject?.id === projectId.value) {
+		return locale.baseText('projects.menu.personal');
+	}
 	const current = projectsStore.currentProject;
 	if (current && current.id === projectId.value) return current.name ?? null;
 	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
@@ -947,13 +949,6 @@ function onContinueLoaded(count: number) {
 	}
 }
 
-function onHeaderBack() {
-	void router.push({
-		name: PROJECT_AGENTS,
-		params: { projectId: projectId.value },
-	});
-}
-
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
 	void router.push({
@@ -971,10 +966,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:agent-id="agentId"
 			:project-name="projectName"
 			:header-actions="headerActions"
-			:chat-column-collapsed="chatColumnCollapsed"
 			:save-status="saveStatus"
-			@back="onHeaderBack"
-			@toggle-chat-column="onToggleChatColumn"
 			@header-action="onHeaderAction"
 			@published="onPublished"
 			@unpublished="onUnpublished"

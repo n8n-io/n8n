@@ -64,7 +64,6 @@ const globalStubs = {
 
 function mountHeader(
 	overrides: Partial<{
-		chatColumnCollapsed: boolean;
 		agent: AgentResource | null;
 		projectName: string | null;
 		headerActions: unknown[];
@@ -77,7 +76,6 @@ function mountHeader(
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
-			chatColumnCollapsed: overrides.chatColumnCollapsed ?? false,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -89,25 +87,17 @@ describe('AgentBuilderHeader', () => {
 		agentsListRef.value = null;
 	});
 
-	it('renders the back button, toggle, breadcrumbs, publish and action dropdown', () => {
+	it('renders breadcrumbs, publish and action dropdown', () => {
 		const wrapper = mountHeader();
-		expect(wrapper.find('[data-testid="agent-header-back"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-header-toggle-chat"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
 
-	it('emits back when the back button is clicked', async () => {
+	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-back"]').trigger('click');
-		expect(wrapper.emitted('back')).toBeTruthy();
-	});
-
-	it('emits toggle-chat-column when the toggle is clicked', async () => {
-		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-toggle-chat"]').trigger('click');
-		expect(wrapper.emitted('toggle-chat-column')).toBeTruthy();
+		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		expect(action.props('activatorIcon')).toBe('ellipsis');
 	});
 
 	it('passes a single project breadcrumb (agent rendered as switcher button)', () => {
