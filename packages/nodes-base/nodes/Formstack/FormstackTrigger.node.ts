@@ -136,7 +136,7 @@ export class FormstackTrigger implements INodeType {
 					standardize_field_values: true,
 					include_field_type: true,
 					content_type: 'json',
-					hmac_key: webhookSecret,
+					hmac_secret: webhookSecret,
 				};
 
 				const response = await apiRequest.call(this, 'POST', endpoint, body);
