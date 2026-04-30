@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import { createHash } from 'crypto';
 
 import { InstanceSettings } from '@/instance-settings';
 import { assertUnreachable } from '@/utils/assertions';
@@ -37,7 +38,7 @@ export class Cipher {
 			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION === 'true'
 		) {
 			const keyInfo = await this.encryptionKeyProxy.getActiveKey();
-			const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
+			const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
 			const ciphertext = this.encryptWithKey(
 				plaintext,
 				plaintextKey,
@@ -62,11 +63,11 @@ export class Cipher {
 				const ciphertext = data.slice(colonIdx + 1);
 				const keyInfo = await this.encryptionKeyProxy.getKeyById(keyId);
 				if (!keyInfo) throw new Error(`Encryption key not found: ${keyId}`);
-				const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
+				const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
 				return this.decryptWithKey(ciphertext, plaintextKey, keyInfo.algorithm as CipherAlgorithm);
 			}
 			const keyInfo = await this.encryptionKeyProxy.getLegacyKey();
-			const plaintextKey = this.decryptWithInstanceKey(keyInfo.value);
+			const plaintextKey = this.decryptDEKWithInstanceKey(keyInfo.value);
 			return this.decryptWithKey(data, plaintextKey, keyInfo.algorithm as CipherAlgorithm);
 		}
 
@@ -76,8 +77,8 @@ export class Cipher {
 
 	/**
 	 * Encrypts with the instance encryption key specifically. Use this for payloads
-	 * that must be protected by the instance key (e.g. data-encryption keys
-	 * themselves), independently of any future change to the default `encrypt` key.
+	 * (e.g. credential data and other user content) that must be protected by the
+	 * instance key independently of any future change to the default `encrypt` key.
 	 */
 	encryptWithInstanceKey(data: string | object): string {
 		const plaintext = typeof data === 'string' ? data : JSON.stringify(data);
@@ -87,6 +88,24 @@ export class Cipher {
 	/** Counterpart of {@link encryptWithInstanceKey}. */
 	decryptWithInstanceKey(data: string): string {
 		return this.decryptWithKey(data, this.instanceSettings.encryptionKey, 'aes-256-cbc');
+	}
+
+	/**
+	 * Encrypts a data-encryption key (DEK) with the instance key using AES-256-GCM.
+	 * DEKs are always wrapped with GCM for authenticated encryption and integrity.
+	 */
+	encryptDEKWithInstanceKey(data: string): string {
+		return this.encryptWithKey(data, this.dekWrappingKey, 'aes-256-gcm');
+	}
+
+	/** Counterpart of {@link encryptDEKWithInstanceKey}. */
+	decryptDEKWithInstanceKey(data: string): string {
+		return this.decryptWithKey(data, this.dekWrappingKey, 'aes-256-gcm');
+	}
+
+	/** Derives a 32-byte (64 hex char) GCM-compatible key from the instance encryption key. */
+	private get dekWrappingKey(): string {
+		return createHash('sha256').update(this.instanceSettings.encryptionKey).digest('hex');
 	}
 
 	encryptWithKey(data: string, key: string, algorithm: CipherAlgorithm): string {

@@ -294,7 +294,7 @@ const isCanvasReadOnly = computed(() => {
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
-		editableWorkflow.value.isArchived ||
+		(workflowDocumentStore?.value?.isArchived ?? false) ||
 		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
 });
@@ -303,7 +303,7 @@ const canExecuteOnCanvas = computed(() => {
 	if (isDemoRoute.value) {
 		return route.query.canExecute === 'true';
 	}
-	if (editableWorkflow.value.isArchived) return false;
+	if (workflowDocumentStore?.value?.isArchived) return false;
 	if (builderStore.streaming) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });

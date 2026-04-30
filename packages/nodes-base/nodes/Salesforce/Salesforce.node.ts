@@ -24,6 +24,7 @@ import { customObjectFields, customObjectOperations } from './CustomObjectDescri
 import { documentFields, documentOperations } from './DocumentDescription';
 import { flowFields, flowOperations } from './FlowDescription';
 import {
+	escapeSoqlString,
 	getQuery,
 	salesforceApiRequest,
 	salesforceApiRequestAllItems,
@@ -389,6 +390,9 @@ export class Salesforce implements INodeType {
 				if (resource === 'customObject') {
 					resource = this.getNodeParameter('customObject', 0) as string;
 				}
+
+				resource = escapeSoqlString(resource as string);
+
 				const qs = {
 					q: `SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = '${resource}'`,
 				};
@@ -1285,7 +1289,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Lead', returnAll);
+								qs.q = getQuery(options, 'Lead', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1659,7 +1663,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Contact', returnAll);
+								qs.q = getQuery(options, 'Contact', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -1811,7 +1815,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, customObject, returnAll);
+								qs.q = getQuery(options, customObject, returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2045,7 +2049,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Opportunity', returnAll);
+								qs.q = getQuery(options, 'Opportunity', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2333,7 +2337,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Account', returnAll);
+								qs.q = getQuery(options, 'Account', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2548,7 +2552,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Case', returnAll);
+								qs.q = getQuery(options, 'Case', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2811,7 +2815,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Task', returnAll);
+								qs.q = getQuery(options, 'Task', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2943,7 +2947,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'Attachment', returnAll);
+								qs.q = getQuery(options, 'Attachment', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -2998,7 +3002,7 @@ export class Salesforce implements INodeType {
 						const options = this.getNodeParameter('options', i);
 						try {
 							if (returnAll) {
-								qs.q = getQuery(options, 'User', returnAll);
+								qs.q = getQuery(options, 'User', returnAll, 0);
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
 									'records',
@@ -3092,14 +3096,14 @@ export class Salesforce implements INodeType {
 					{ itemData: { item: i } },
 				);
 
-				returnData.push(...executionData);
+				returnData.push.apply(returnData, executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionErrorData);
+					returnData.push.apply(returnData, executionErrorData);
 					continue;
 				}
 				throw error;

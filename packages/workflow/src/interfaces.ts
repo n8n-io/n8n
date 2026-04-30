@@ -130,11 +130,13 @@ export abstract class ICredentials<T extends object = ICredentialDataDecryptedOb
 		this.data = data;
 	}
 
-	abstract getData(nodeType?: string): T;
+	abstract getData(nodeType?: string): Promise<T>;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
-	abstract setData(data: T): void;
+	abstract setData(data: T): Promise<void>;
+
+	abstract updateData(toUpdate: Partial<T>, toDelete?: Array<keyof T>): Promise<void>;
 }
 
 export interface IUser {
@@ -225,6 +227,12 @@ export abstract class ICredentialsHelper {
 		typeName: string,
 		node: INode,
 		credentialsExpired: boolean,
+	): Promise<ICredentialDataDecryptedObject | undefined>;
+
+	abstract runPreAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
 	): Promise<ICredentialDataDecryptedObject | undefined>;
 
 	abstract getCredentials(
@@ -2434,6 +2442,30 @@ export interface IBuilderHintInputConfig {
 export type BuilderHintInputs = Partial<Record<AINodeConnectionType, IBuilderHintInputConfig>>;
 
 /**
+ * Configuration for a single output in builderHint.outputs.
+ *
+ * Describes when an output connection type is available based on the node's parameters,
+ * mirroring `IBuilderHintInputConfig`. Unlike inputs, the connection-type key here may also
+ * be `'main'`, since main outputs are commonly mode-conditional (e.g. vector stores expose
+ * `main` only in `insert`/`load` modes and `ai_vectorStore` only in `retrieve` mode).
+ */
+export interface IBuilderHintOutputConfig {
+	/**
+	 * Whether this output is required to be connected. Optional because most outputs
+	 * are availability declarations only — but some sub-node-style outputs (e.g.
+	 * `ai_vectorStore` in `mode: 'retrieve'`) are useless unless wired to a parent.
+	 */
+	required?: boolean;
+	/** Conditions under which this output is exposed by the node. */
+	displayOptions?: IDisplayOptions;
+}
+
+/**
+ * Maps connection types (including `main`) to their availability configuration.
+ */
+export type BuilderHintOutputs = Partial<Record<NodeConnectionType, IBuilderHintOutputConfig>>;
+
+/**
  * Related node with explanation of why it's related
  */
 export interface IRelatedNode {
@@ -2449,6 +2481,8 @@ export interface IRelatedNode {
 export interface IBuilderHint {
 	/** Explicit AI input requirements for accurate type generation */
 	inputs?: BuilderHintInputs;
+	/** Declarative output availability — which outputs the node exposes per parameter values */
+	outputs?: BuilderHintOutputs;
 	/** General hint message for LLM workflow builders */
 	message?: string;
 	/** Related nodes that work together with this node */

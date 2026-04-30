@@ -36,6 +36,7 @@ import type { ChatMessage } from '@n8n/chat/types';
 import * as useChatMessaging from '@/features/execution/logs/composables/useChatMessaging';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import type { IWorkflowDb } from '@/Interface';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -82,6 +83,11 @@ describe('LogsPanel', () => {
 	let workflowState: WorkflowState;
 
 	let aiChatExecutionResponse: typeof aiChatExecutionResponseTemplate;
+
+	function hydrateDocumentStore(workflow: IWorkflowDb) {
+		const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
+		store.hydrate(workflow);
+	}
 
 	function render() {
 		const wrapper = renderComponent(LogsPanel, {
@@ -413,7 +419,7 @@ describe('LogsPanel', () => {
 
 		await nextTick();
 
-		expect(workflowsStore.nodesByName['AI Agent']).toBeUndefined();
+		expect(workflowsStore.workflow.nodes.find((n) => n.name === 'AI Agent')).toBeUndefined();
 		expect(rendered.queryByText('AI Agent')).toBeInTheDocument();
 	});
 
@@ -493,7 +499,10 @@ describe('LogsPanel', () => {
 		logsStore.toggleOpen(true);
 
 		// Create deep copy so that renaming doesn't affect other test cases
-		workflowsStore.workflow = deepCopy(aiChatWorkflow);
+		const workflow = deepCopy(aiChatWorkflow);
+		workflow.id = 'test-workflow-id';
+		workflowsStore.workflow = workflow;
+		hydrateDocumentStore(workflow);
 		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
@@ -575,7 +584,10 @@ describe('LogsPanel', () => {
 		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
 			const canvasOperations = useCanvasOperations();
 
-			workflowsStore.workflow = deepCopy(aiChatWorkflow);
+			const workflow = deepCopy(aiChatWorkflow);
+			workflow.id = 'test-workflow-id';
+			workflowsStore.workflow = workflow;
+			hydrateDocumentStore(workflow);
 			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
 
 			logsStore.toggleLogSelectionSync(true);

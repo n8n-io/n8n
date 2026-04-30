@@ -1,0 +1,91 @@
+import { Meta, Typeset } from '@storybook/addon-docs/blocks';
+
+<Meta title="Styleguide/Type" />
+
+export const typography = {
+	type: {
+		primary: 'InterVariable, sans-serif',
+		monospace: "CommitMono, ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace",
+	},
+	weight: {
+		regular: '400',
+		medium: '500',
+		bold: '600',
+	},
+	size: {
+		s1: 8,
+		s2: 10,
+		s3: 12,
+		s4: 13,
+		s5: 14,
+		m1: 16,
+		m2: 18,
+		m3: 20,
+		l1: 28,
+	},
+};
+
+export const SampleText = 'The quick brown fox jumps over the lazy dog.';
+
+# Type
+
+**Font:** InterVariable
+
+**Weights:** 400 (regular), 500 (medium), 600 (bold)
+
+<Typeset
+	fontSizes={[
+		typography.size.s1,
+		typography.size.s2,
+		typography.size.s3,
+		typography.size.s4,
+		typography.size.s5,
+		typography.size.m1,
+		typography.size.m2,
+		typography.size.m3,
+		typography.size.l1,
+	]}
+	fontWeight={typography.weight.bold}
+	sampleText={SampleText}
+	fontFamily={typography.type.primary}
+/>
+
+---
+
+**Font:** CommitMono
+
+**Weights:** 400 (regular), 600 (bold)
+
+<Typeset
+	fontSizes={[
+		typography.size.s1,
+		typography.size.s2,
+		typography.size.s3,
+		typography.size.s4,
+		typography.size.s5,
+		typography.size.m1,
+		typography.size.m2,
+		typography.size.m3,
+		typography.size.l1,
+	]}
+	fontWeight={typography.weight.bold}
+	sampleText={SampleText}
+	fontFamily={typography.type.monospace}
+/>
+
+## Usage
+
+When rendering text inside the app, use `<Heading />` or `<Text />` and stick to the style and size set.
+Both of them share the same size and weight options.
+
+| Step | Size                    | Letter spacing                    | Line height              |
+| ---- | ----------------------- | --------------------------------- | ------------------------ |
+| 4xs  | `var(--font-size--4xs)` | `var(--letter-spacing--wide)`     | `var(--line-height--xs)` |
+| 3xs  | `var(--font-size--3xs)` | `var(--letter-spacing--normal)`   | `var(--line-height--sm)` |
+| 2xs  | `var(--font-size--2xs)` | `var(--letter-spacing--normal)`   | `var(--line-height--md)` |
+| xs   | `var(--font-size--xs)`  | `var(--letter-spacing--normal)`   | `var(--line-height--md)` |
+| sm   | `var(--font-size--sm)`  | `var(--letter-spacing--normal)`   | `var(--line-height--lg)` |
+| md   | `var(--font-size--md)`  | `var(--letter-spacing--normal)`   | `var(--line-height--lg)` |
+| lg   | `var(--font-size--lg)`  | `var(--letter-spacing--tight)`    | `var(--line-height--xl)` |
+| xl   | `var(--font-size--xl)`  | `var(--letter-spacing--tighter)`  | `var(--line-height--xl)` |
+| 2xl  | `var(--font-size--2xl)` | `var(--letter-spacing--tightest)` | `var(--line-height--xl)` |
