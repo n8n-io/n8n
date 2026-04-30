@@ -512,12 +512,11 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
  * the source example's id, so LangSmith's UI groups them naturally by
  * `reference_example_id` — useful for pass@k visualization.
  *
- * Yields all examples of iteration N before moving to iteration N+1. We tried
- * the inverted order (all iterations of one example before the next) to widen
- * the build-phase fan-out, but it concentrated same-prompt builds on the same
- * lane and the agent started failing at higher load (build_failure rate
- * jumped from 0% to 33%). Keeping iteration-outer order until we have a
- * lane-aware iteration distribution.
+ * Order: round-robin scenarios across test cases, then iter-interleave within
+ * each example. The first wave of yielded examples therefore covers one
+ * scenario from every test case × every iteration — at high enough
+ * `--concurrency` the in-flight set spans all test cases at once, fanning
+ * builds across all lanes simultaneously instead of concentrating on one.
  *
  * The source is buffered into memory once before the first yield: we need to
  * emit each example N times, and an AsyncIterable can only be consumed once.
@@ -528,9 +527,29 @@ async function* expandExamplesForIterations(
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
-	for (let i = 0; i < iterations; i++) {
-		for (const ex of cached) {
-			yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+
+	const byFile = new Map<string, Example[]>();
+	for (const ex of cached) {
+		const file = typeof ex.inputs?.testCaseFile === 'string' ? ex.inputs.testCaseFile : 'unknown';
+		let group = byFile.get(file);
+		if (!group) {
+			group = [];
+			byFile.set(file, group);
+		}
+		group.push(ex);
+	}
+
+	const groups = [...byFile.values()];
+	const maxScenarios = groups.reduce((m, g) => Math.max(m, g.length), 0);
+
+	for (let s = 0; s < maxScenarios; s++) {
+		for (const group of groups) {
+			if (s < group.length) {
+				const ex = group[s];
+				for (let i = 0; i < iterations; i++) {
+					yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+				}
+			}
 		}
 	}
 }

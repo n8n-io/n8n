@@ -78,6 +78,7 @@ jobs:
               -e N8N_ENABLED_MODULES=instance-ai \
               -e N8N_AI_ENABLED=true \
               -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
+              -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
               -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
               -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
@@ -140,7 +141,7 @@ jobs:
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
           pnpm eval:instance-ai \
             --base-url "$BASE_URLS" \
-            --concurrency 16 \
+            --concurrency 32 \
             --verbose \
             --iterations 3 \
             ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
