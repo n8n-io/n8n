@@ -106,12 +106,12 @@ defineProps<{
 .toolStepLabel {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
-	color: var(--text-color--subtler);
+	color: var(--text-color--subtle);
 	line-height: var(--line-height--sm);
 }
 
 .toolStepSummary {
-	color: var(--text-color--subtler);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--sm);
 	overflow: hidden;

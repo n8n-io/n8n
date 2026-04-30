@@ -1286,6 +1286,14 @@ function onSwitchAgent(nextAgentId: string) {
 	padding: var(--spacing--3xs) var(--spacing--sm);
 	height: var(--height--2xl);
 	border-bottom: var(--border);
+	min-height: 36px;
+}
+
+.sessionTitleBtn {
+	gap: var(--spacing--4xs);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	margin-left: calc(var(--spacing--5xs) * -1);
 }
 
 .sessionTitleText {
@@ -1294,8 +1302,60 @@ function onSwitchAgent(nextAgentId: string) {
 	white-space: nowrap;
 }
 
-.sessionTitleBtn {
-	margin-left: calc(var(--spacing--5xs) * -1);
+.newChatBtn {
+	color: var(--text-color--subtle);
+
+	&:hover,
+	&:focus-visible {
+		color: var(--text-color);
+	}
+}
+
+/* The session picker can grow with the thread list — cap it at ~5 visible rows
+   so it never eats the whole viewport. `.agent-chat-session-menu` is the
+   popper class we pass through to `N8nNavigationDropdown`'s submenuClass prop;
+   it's teleported, so the rule has to escape the CSS-module scope. */
+:global(.agent-chat-session-menu) :global(.el-menu) {
+	max-height: 220px;
+	max-width: 360px;
+	min-width: 280px;
+	overflow-y: auto;
+}
+
+/* Each row is title (truncated) + right-aligned timestamp. We render both
+   inside the design-system's append slot (the bare title text node can't host
+   an ellipsis); override the slot wrapper's right-align so the row flexes
+   across the full menu width instead of clinging to the right edge. */
+:global(.agent-chat-session-menu) :global(.el-menu-item) {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	overflow: hidden;
+}
+
+:global(.agent-chat-session-menu) :global(.el-menu-item) > span {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 1;
+	min-width: 0;
+	margin-left: 0;
+	padding-left: 0;
+}
+
+.sessionItemLabel {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.sessionItemWhen {
+	margin-left: auto;
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
 }
 
 .chatModeToggle {
