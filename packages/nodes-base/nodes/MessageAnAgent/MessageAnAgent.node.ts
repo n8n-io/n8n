@@ -21,6 +21,7 @@ export class MessageAnAgent implements INodeType {
 		defaults: {
 			name: 'Message an Agent',
 		},
+		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		properties: [
