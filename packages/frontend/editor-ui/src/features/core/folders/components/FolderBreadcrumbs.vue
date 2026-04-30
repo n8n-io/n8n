@@ -9,8 +9,12 @@ import { useFoldersStore } from '../folders.store';
 import type { FolderPathItem, FolderShortInfo } from '../folders.types';
 import type { IUser } from 'n8n-workflow';
 import ProjectBreadcrumb from '@/features/core/folders/components/ProjectBreadcrumb.vue';
+import {
+	N8nDropdownMenu,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system/v2/components/DropdownMenu';
 
-import { N8nActionToggle, N8nBreadcrumbs } from '@n8n/design-system';
+import { N8nBreadcrumbs, N8nIconButton } from '@n8n/design-system';
 type Props = {
 	// Current folder can be null when showing breadcrumbs for workflows in project root
 	currentFolder?: FolderShortInfo | null;
@@ -76,6 +80,14 @@ const isDragging = computed(() => {
 const hasMoreItems = computed(() => {
 	return visibleBreadcrumbsItems.value[0]?.parentFolder !== undefined;
 });
+
+const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
+	props.actions.map((action) => ({
+		id: action.value,
+		label: action.label,
+		disabled: action.disabled,
+	})),
+);
 
 const visibleBreadcrumbsItems = computed<FolderPathItem[]>(() => {
 	visibleIds.value.clear();
@@ -233,14 +245,22 @@ onBeforeUnmount(() => {
 		<div v-else>
 			<slot name="append"></slot>
 		</div>
-		<N8nActionToggle
-			v-if="visibleBreadcrumbsItems && actions?.length"
-			:actions="actions"
-			:class="$style['action-toggle']"
-			theme="dark"
-			data-test-id="folder-breadcrumbs-actions"
-			@action="onAction"
-		/>
+		<N8nDropdownMenu
+			v-if="menuItems.length"
+			:items="menuItems"
+			placement="bottom-end"
+			@select="onAction"
+		>
+			<template #trigger>
+				<N8nIconButton
+					:class="['action-toggle', $style['actions-menu']]"
+					variant="ghost"
+					icon="ellipsis-vertical"
+					size="medium"
+					data-test-id="folder-breadcrumbs-actions"
+				/>
+			</template>
+		</N8nDropdownMenu>
 	</div>
 </template>
 
@@ -253,11 +273,5 @@ onBeforeUnmount(() => {
 .home-project {
 	display: flex;
 	align-items: center;
-}
-
-.action-toggle {
-	span[role='button'] {
-		color: var(--color--text);
-	}
 }
 </style>
