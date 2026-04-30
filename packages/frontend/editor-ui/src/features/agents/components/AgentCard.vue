@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { N8nCard, N8nText, N8nActionDropdown } from '@n8n/design-system';
+import { computed } from 'vue';
+import dateformat from 'dateformat';
+import { N8nActionToggle, N8nCard, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import { deleteAgent } from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
 import { useAgentPublish } from '../composables/useAgentPublish';
@@ -25,15 +28,25 @@ const rootStore = useRootStore();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 const { publish, unpublish } = useAgentPublish();
 
-function getActions() {
-	const isPublished = props.agent.publishedVersion !== null;
+const isPublished = computed(() => props.agent.publishedVersion !== null);
+
+const actions = computed(() => {
 	return [
-		isPublished
-			? { id: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') }
-			: { id: 'publish', label: locale.baseText('agents.list.actions.publish') },
-		{ id: 'delete', label: locale.baseText('agents.list.actions.delete'), divided: true },
+		isPublished.value
+			? { value: 'unpublish', label: locale.baseText('agents.list.actions.unpublish') }
+			: { value: 'publish', label: locale.baseText('agents.list.actions.publish') },
+		{ value: 'delete', label: locale.baseText('agents.list.actions.delete'), divided: true },
 	];
-}
+});
+
+const formattedCreatedAtDate = computed(() => {
+	const currentYear = new Date().getFullYear().toString();
+
+	return dateformat(
+		props.agent.createdAt,
+		`d mmmm${String(props.agent.createdAt).startsWith(currentYear) ? '' : ', yyyy'}`,
+	);
+});
 
 async function onAction(action: string) {
 	if (action === 'publish') {
@@ -58,100 +71,84 @@ async function onAction(action: string) {
 		emit('deleted', props.agent.id);
 	}
 }
-
-function formatDate(dateStr: string): string {
-	return new Date(dateStr).toLocaleDateString(undefined, {
-		month: 'short',
-		day: 'numeric',
-		year: 'numeric',
-	});
-}
 </script>
 
 <template>
-	<N8nCard
-		:class="$style.card"
-		hoverable
-		data-testid="agent-card"
-		@click="emit('select', agent.id)"
-	>
+	<N8nCard :class="$style.cardLink" data-test-id="agent-card" @click="emit('select', agent.id)">
 		<template #header>
-			<div :class="$style.cardHeader">
-				<N8nText tag="h2" bold :class="$style.cardName">{{ agent.name }}</N8nText>
-			</div>
+			<N8nText tag="h2" bold :class="$style.cardHeading" data-test-id="agent-card-name">
+				{{ agent.name }}
+			</N8nText>
 		</template>
 		<div :class="$style.cardDescription">
-			<N8nText size="small" color="text-light">
-				{{ agent.description || locale.baseText('agents.list.noDescription') }}
-			</N8nText>
-			<N8nText size="small" color="text-light">
-				{{
-					locale.baseText('agents.list.updatedAt', {
-						interpolate: { date: formatDate(agent.updatedAt) },
-					})
-				}}
-			</N8nText>
+			<span>
+				{{ locale.baseText('agents.list.updated') }}
+				<TimeAgo :date="String(agent.updatedAt)" /> |
+			</span>
+			<span> {{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }} </span>
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
 				<div
-					v-if="agent.publishedVersion !== null"
+					v-if="isPublished"
 					:class="$style.publishIndicator"
-					data-testid="agent-published-indicator"
+					data-test-id="agent-card-publish-indicator"
 				>
 					<span :class="$style.publishIndicatorDot" />
 					<N8nText size="small" color="text-base">
 						{{ locale.baseText('agents.list.published') }}
 					</N8nText>
 				</div>
-				<N8nActionDropdown
-					:items="getActions()"
-					activator-icon="ellipsis-vertical"
-					data-testid="agent-card-actions"
-					@select="onAction"
+				<N8nActionToggle
+					:actions="actions"
+					theme="dark"
+					data-test-id="agent-card-actions"
+					@action="onAction"
 				/>
 			</div>
 		</template>
 	</N8nCard>
 </template>
 
-<style module>
-.card {
+<style lang="scss" module>
+.cardLink {
+	transition: box-shadow 0.3s ease;
 	cursor: pointer;
 	padding: 0;
 	align-items: stretch;
-	transition: box-shadow var(--duration--base) var(--easing--ease-out);
-	margin-bottom: var(--spacing--2xs);
+
+	&:hover {
+		box-shadow: var(--shadow--card-hover);
+	}
 }
 
-.card:hover {
-	box-shadow: var(--shadow--card-hover);
-}
-
-.cardHeader {
+.cardHeading {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
+	word-break: break-word;
 	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
 }
 
-.cardName {
-	font-size: var(--font-size--sm);
-}
-
 .cardDescription {
+	min-height: var(--spacing--xl);
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
 	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
-	min-height: var(--spacing--xl);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	gap: var(--spacing--2xs);
 }
 
 .cardActions {
 	display: flex;
-	align-items: center;
 	gap: var(--spacing--2xs);
+	flex-direction: row;
+	justify-content: center;
+	align-items: center;
+	align-self: stretch;
 	padding: 0 var(--spacing--sm) 0 0;
+	cursor: default;
 }
 
 .publishIndicator {
@@ -161,12 +158,32 @@ function formatDate(dateStr: string): string {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-radius: var(--spacing--4xs);
 	border: var(--border);
+
+	* {
+		// This is needed to line height up with ownership badge
+		line-height: calc(var(--font-size--sm) + 1px);
+	}
 }
 
 .publishIndicatorDot {
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
 	border-radius: 50%;
-	background-color: var(--color--success);
+	background-color: var(--color--mint-600);
+}
+
+@include mixins.breakpoint('sm-and-down') {
+	.cardLink {
+		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
+		--card--append--width: 100%;
+
+		flex-direction: column;
+	}
+
+	.cardActions {
+		width: 100%;
+		padding: 0 var(--spacing--sm) var(--spacing--sm);
+		justify-content: end;
+	}
 }
 </style>

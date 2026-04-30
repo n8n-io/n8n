@@ -5677,6 +5677,8 @@
 	"agents.list.published": "Published",
 	"agents.list.noDescription": "No description",
 	"agents.list.updatedAt": "Updated {date}",
+	"agents.list.updated": "Last updated",
+	"agents.list.created": "Created",
 	"agents.list.empty.heading": "No agents yet",
 	"agents.list.empty.description": "Create your first agent to get started building with the n8n agents SDK. Use the button in the top right to create one.",
 	"agents.list.actions.publish": "Publish",
