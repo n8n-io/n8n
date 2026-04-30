@@ -171,6 +171,9 @@ export class AgentsService {
 	 *
 	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
 	 * memory is freed without requiring an explicit shutdown step.
+	 *
+	 * Separating draft and published with explicit prefixes prevents a draft
+	 * runtime from being mistakenly returned to a published-agent execution.
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
@@ -184,15 +187,6 @@ export class AgentsService {
 	 */
 	private readonly pendingUserMessages = new Map<string, string>();
 
-	/**
-	 * Compute a deterministic runtime cache key.
-	 *
-	 * - Draft runtimes: `{agentId}:draft:{n8nUserId}`
-	 * - Published runtimes: `{agentId}:published[:{integrationType}]`
-	 *
-	 * Separating draft and published with explicit prefixes prevents a draft
-	 * runtime from being mistakenly returned to a published-agent execution.
-	 */
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
 		if (params.usePublishedVersion) {
 			const parts = [params.agentId, 'published'];
@@ -655,7 +649,7 @@ export class AgentsService {
 		const integration = integrationType
 			? Container.get(ChatIntegrationRegistry).get(integrationType)
 			: undefined;
-		if (integrationType && integration?.supportedComponents !== undefined) {
+		if (integration?.supportedComponents !== undefined) {
 			try {
 				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
