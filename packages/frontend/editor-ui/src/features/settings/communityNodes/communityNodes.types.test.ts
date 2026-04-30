@@ -103,6 +103,13 @@ describe('fromBrowsePackage', () => {
 		const result = fromBrowsePackage(makeBrowsePackage());
 		expect(result.isVerified).toBe(true);
 	});
+
+	it('should set Resource fields (id, name, resourceType)', () => {
+		const result = fromBrowsePackage(makeBrowsePackage());
+		expect(result.resourceType).toBe('communityPackage');
+		expect(result.id).toBe('n8n-nodes-test');
+		expect(result.name).toBe('n8n-nodes-test');
+	});
 });
 
 describe('fromInstalledPackage', () => {
@@ -174,6 +181,13 @@ describe('fromInstalledPackage', () => {
 	it('should set isVerified to false', () => {
 		const result = fromInstalledPackage(makeInstalledPackage(), mockGetNodeType);
 		expect(result.isVerified).toBe(false);
+	});
+
+	it('should set Resource fields (id, name, resourceType)', () => {
+		const result = fromInstalledPackage(makeInstalledPackage(), mockGetNodeType);
+		expect(result.resourceType).toBe('communityPackage');
+		expect(result.id).toBe('n8n-nodes-installed');
+		expect(result.name).toBe('n8n-nodes-installed');
 	});
 });
 
@@ -276,5 +290,16 @@ describe('mergeVettedAndInstalled', () => {
 		);
 
 		expect(result.nodeCount).toBe(2);
+	});
+
+	it('should set Resource fields (id, name, resourceType)', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage(),
+			makeInstalledPackage(),
+			mockGetNodeType,
+		);
+		expect(result.resourceType).toBe('communityPackage');
+		expect(result.id).toBe('n8n-nodes-test');
+		expect(result.name).toBe('n8n-nodes-test');
 	});
 });

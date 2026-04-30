@@ -17,6 +17,9 @@ export interface CommunityPackageSummary {
 }
 
 export interface CommunityPackageRowData {
+	id: string;
+	name: string;
+	resourceType: 'communityPackage';
 	packageName: string;
 	authorName: string;
 	description: string;
@@ -34,6 +37,9 @@ export interface CommunityPackageRowData {
 
 export function fromBrowsePackage(pkg: CommunityPackageSummary): CommunityPackageRowData {
 	return {
+		id: pkg.packageName,
+		name: pkg.packageName,
+		resourceType: 'communityPackage',
 		packageName: pkg.packageName,
 		authorName: pkg.authorName,
 		description: pkg.description,
@@ -53,6 +59,9 @@ export function fromInstalledPackage(
 ): CommunityPackageRowData {
 	const firstNodeType = pkg.installedNodes[0]?.type;
 	return {
+		id: pkg.packageName,
+		name: pkg.packageName,
+		resourceType: 'communityPackage',
 		packageName: pkg.packageName,
 		authorName: pkg.authorName ?? '',
 		description: '',
@@ -80,6 +89,9 @@ export function mergeVettedAndInstalled(
 		(installed.installedNodes[0]?.type ? getNodeType(installed.installedNodes[0].type) : null);
 
 	return {
+		id: pkg.packageName,
+		name: pkg.packageName,
+		resourceType: 'communityPackage',
 		packageName: pkg.packageName,
 		authorName: pkg.authorName,
 		description: pkg.description,
@@ -94,4 +106,14 @@ export function mergeVettedAndInstalled(
 		updateAvailable: installed.updateAvailable,
 		failedLoading: installed.failedLoading,
 	};
+}
+
+declare module '@/Interface' {
+	interface ModuleResources {
+		communityPackage: CommunityPackageRowData & {
+			id: string;
+			name: string;
+			resourceType: 'communityPackage';
+		};
+	}
 }
