@@ -244,9 +244,18 @@ watch(
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
+	padding-bottom: var(--spacing--xl);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	scrollbar-color: transparent transparent;
+
+	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+
+	&:hover,
+	&:focus-within {
+		scrollbar-color: var(--border) transparent;
+	}
 }
 
 .message {

@@ -59,6 +59,7 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
+
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
@@ -104,7 +105,7 @@ function onBreadcrumbSelect(item: PathItem) {
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
-		<N8nBreadcrumbs :items="breadcrumbItems" theme="small" @item-selected="onBreadcrumbSelect">
+		<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
 			<template #append>
 				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 				<N8nNavigationDropdown
@@ -163,12 +164,11 @@ function onBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--md);
 	background-color: var(--color--background--light-3);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	box-sizing: content-box;
-	height: var(--height--sm);
+	height: var(--height--4xl);
 }
 
 .crumbSeparator {
@@ -182,9 +182,8 @@ function onBreadcrumbSelect(item: PathItem) {
 .switcherButton {
 	--button--height: auto;
 	--button--padding: 0;
-
+	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	font-weight: var(--font-weight--bold);
 }
 
 .switcherLabel {

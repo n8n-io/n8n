@@ -256,8 +256,7 @@ onBeforeUnmount(() => {
 }
 
 .inputArea {
-	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
-	border-top: var(--border);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);

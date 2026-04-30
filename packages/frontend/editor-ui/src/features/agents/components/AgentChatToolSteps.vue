@@ -15,13 +15,13 @@ defineProps<{
 				<N8nIcon
 					v-if="tc.state === 'done'"
 					icon="circle-check"
-					:size="14"
+					size="large"
 					:class="$style.toolStepDone"
 				/>
 				<N8nIcon
 					v-else-if="tc.state === 'error'"
 					icon="circle-x"
-					:size="14"
+					size="large"
 					:class="$style.toolStepError"
 				/>
 				<N8nTooltip
@@ -29,17 +29,13 @@ defineProps<{
 					placement="top"
 					content="Waiting for your input"
 				>
-					<N8nIcon icon="clock" :size="14" :class="$style.toolStepSuspended" />
+					<N8nIcon icon="clock" size="large" :class="$style.toolStepSuspended" />
 				</N8nTooltip>
-				<N8nIcon
-					v-else
-					icon="loader-circle"
-					:size="14"
-					:spin="true"
-					:class="$style.toolStepLoading"
-				/>
+				<N8nIcon v-else icon="spinner" size="large" :spin="true" :class="$style.toolStepLoading" />
 			</div>
-			<span :class="$style.toolStepLabel">{{ formatToolNameForDisplay(tc.tool) }}</span>
+			<span :class="[$style.toolStepLabel, { [$style.shimmer]: tc.state === 'loading' }]">
+				{{ formatToolNameForDisplay(tc.tool) }}
+			</span>
 			<span
 				v-if="tc.displaySummary"
 				:class="$style.toolStepSummary"
@@ -54,18 +50,19 @@ defineProps<{
 <style module>
 .toolSteps {
 	list-style: none;
-	margin: 0 0 var(--spacing--2xs);
+	margin: 0 0 var(--spacing--xs);
 	padding: 0;
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 }
 
 .toolStep {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 	position: relative;
+	user-select: none;
 }
 
 .toolStepIndicator {
@@ -99,7 +96,7 @@ defineProps<{
 }
 
 .toolStepLoading {
-	color: var(--color--primary);
+	color: var(--color--text);
 }
 
 .toolStepSuspended {
@@ -107,17 +104,43 @@ defineProps<{
 }
 
 .toolStepLabel {
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text--tint-1);
+	line-height: var(--line-height--sm);
 }
 
 .toolStepSummary {
-	color: var(--color--text--tint-2);
-	font-size: var(--font-size--2xs);
-	margin-left: var(--spacing--3xs);
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--xs);
+	line-height: var(--line-height--sm);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	min-width: 0;
+}
+
+.shimmer {
+	background: linear-gradient(
+		90deg,
+		var(--color--text--tint-1) 25%,
+		var(--color--text--tint-2) 50%,
+		var(--color--text--tint-1) 75%
+	);
+	background-size: 200% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+
+	100% {
+		background-position: -200% 0;
+	}
 }
 </style>

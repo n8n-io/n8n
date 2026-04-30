@@ -1340,7 +1340,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 .quickActionsRow {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
 	justify-content: center;
 	gap: var(--spacing--2xs);
 	width: 100%;

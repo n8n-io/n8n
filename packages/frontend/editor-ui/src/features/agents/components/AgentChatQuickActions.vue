@@ -87,7 +87,7 @@ function onAddTrigger() {
 .row {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--spacing--2xs);
 	width: 100%;
 }

@@ -3,9 +3,10 @@
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--3xs) var(--spacing--xs);
-	border: var(--border-width) var(--border-style) transparent;
+	border: var(--border);
 	border-radius: var(--radius--xl);
-	background: var(--color--foreground--tint-2);
+	background: light-dark(var(--color--foreground--tint-2), var(--color--foreground--tint-1));
+	box-shadow: var(--shadow--sm);
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
@@ -26,6 +27,7 @@
 		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
 		box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
 		transform: translateY(-1px);
+		outline-color: var(--focus--border-color);
 	}
 
 	&:active {
