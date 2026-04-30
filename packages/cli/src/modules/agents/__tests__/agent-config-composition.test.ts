@@ -1,5 +1,5 @@
-import { composeJsonConfig, decomposeJsonConfig } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
+import { composeJsonConfig, decomposeJsonConfig } from '../json-config/agent-config-composition';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 
 describe('composeJsonConfig', () => {

@@ -10,7 +10,8 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 
-import { AgentsService, composeJsonConfig } from '../agents.service';
+import { AgentsService } from '../agents.service';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';

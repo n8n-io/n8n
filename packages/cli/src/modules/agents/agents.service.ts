@@ -9,8 +9,6 @@ import type {
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
 	isAgentScheduleIntegration,
-	type AgentCredentialIntegration,
-	type AgentIntegration,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
 	type ChatIntegrationDescriptor,
@@ -56,8 +54,11 @@ import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+// eslint-disable-next-line import-x/no-cycle
+import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
@@ -90,45 +91,6 @@ interface InjectRuntimeDependenciesParams {
 /** Derive a stable thread ID for the test-chat of a given agent. */
 export function chatThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
-}
-
-/**
- * Build the unified `AgentJsonConfig` view from an agent entity. The schema
- * column holds everything except triggers, which live on `agent.integrations`.
- * The builder LLM consumes the merged shape.
- */
-export function composeJsonConfig(agent: Agent): AgentJsonConfig | null {
-	if (!agent.schema) return null;
-	return {
-		...agent.schema,
-		integrations: agent.integrations ?? [],
-	};
-}
-
-/**
- * Split an inbound `AgentJsonConfig` into the part stored on `agent.schema` and
- * the part stored on `agent.integrations`. Inverse of `composeJsonConfig`.
- */
-export function decomposeJsonConfig(config: AgentJsonConfig): {
-	schemaConfig: Omit<AgentJsonConfig, 'integrations'>;
-	integrations: AgentIntegration[];
-} {
-	const { integrations, ...schemaConfig } = config;
-	return { schemaConfig, integrations: integrations ?? [] };
-}
-
-function scheduleConfigsEqual(
-	a: AgentIntegration | undefined,
-	b: AgentIntegration | undefined,
-): boolean {
-	if (!a && !b) return true;
-	if (!a || !b) return false;
-	if (!isAgentScheduleIntegration(a) || !isAgentScheduleIntegration(b)) return false;
-	return (
-		a.active === b.active &&
-		a.cronExpression === b.cronExpression &&
-		a.wakeUpPrompt === b.wakeUpPrompt
-	);
 }
 
 @Service()
@@ -1232,58 +1194,13 @@ export class AgentsService {
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
-		await this.syncIntegrations(saved, previousIntegrations, nextIntegrations);
+		await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);
 
 		return {
 			config: composeJsonConfig(saved) ?? result.config,
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
-	}
-
-	/**
-	 * Reconcile runtime state (cron job, chat platform connections) after the
-	 * builder writes a new integrations array. Schedule changes call into
-	 * AgentScheduleService.applyConfig; chat changes are diffed and routed to
-	 * connect/disconnect on ChatIntegrationService.
-	 *
-	 * Failures are logged but never thrown — config writes during a builder turn
-	 * must not be rolled back if e.g. the Slack API is briefly unavailable.
-	 */
-	private async syncIntegrations(
-		agent: Agent,
-		previous: AgentIntegration[],
-		next: AgentIntegration[],
-	): Promise<void> {
-		const prevSchedule = previous.find(isAgentScheduleIntegration);
-		const nextSchedule = next.find(isAgentScheduleIntegration);
-		if (!scheduleConfigsEqual(prevSchedule, nextSchedule)) {
-			try {
-				const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
-				await Container.get(AgentScheduleService).applyConfig(agent);
-			} catch (error) {
-				this.logger.warn('Failed to apply schedule integration during sync', {
-					agentId: agent.id,
-					error,
-				});
-			}
-		}
-
-		const prevChat = previous.filter(
-			(i): i is AgentCredentialIntegration => !isAgentScheduleIntegration(i),
-		);
-		const nextChat = next.filter(
-			(i): i is AgentCredentialIntegration => !isAgentScheduleIntegration(i),
-		);
-		try {
-			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
-			await Container.get(ChatIntegrationService).syncToConfig(agent, prevChat, nextChat);
-		} catch (error) {
-			this.logger.warn('Failed to sync chat integrations', {
-				agentId: agent.id,
-				error,
-			});
-		}
 	}
 
 	/**
