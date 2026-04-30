@@ -7,6 +7,10 @@ import type { AgentResource } from '../types';
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
+const routerPush = vi.fn();
+const routerResolve = vi.fn((to: { params?: { projectId?: string } }) => ({
+	href: `/projects/${to.params?.projectId ?? ''}/workflows`,
+}));
 
 vi.mock('../composables/useProjectAgentsList', () => ({
 	useProjectAgentsList: () => ({
@@ -22,7 +26,7 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: vi.fn() }),
+	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
@@ -40,6 +44,7 @@ const globalStubs = {
 		name: 'N8nBreadcrumbs',
 		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
 		props: ['items'],
+		emits: ['itemSelected'],
 	},
 	N8nNavigationDropdown: {
 		name: 'N8nNavigationDropdown',
@@ -84,6 +89,8 @@ function mountHeader(
 describe('AgentBuilderHeader', () => {
 	beforeEach(() => {
 		ensureLoadedMock.mockReset();
+		routerPush.mockReset();
+		routerResolve.mockClear();
 		agentsListRef.value = null;
 	});
 
@@ -107,6 +114,20 @@ describe('AgentBuilderHeader', () => {
 		expect(items.map((i) => i.id)).toEqual(['p1']);
 		// Agent name should surface in the switcher button, not the breadcrumb.
 		expect(wrapper.text()).toContain('Darwin');
+	});
+
+	it('links the project breadcrumb to the project workflows page', () => {
+		const wrapper = mountHeader();
+		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+		const items = bc.props('items') as Array<{ href: string }>;
+		expect(items[0].href).toBe('/projects/p1/workflows');
+
+		bc.vm.$emit('itemSelected', { id: 'p1' });
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'ProjectsWorkflows',
+			params: { projectId: 'p1' },
+		});
 	});
 
 	it('falls back to the project fallback label when projectName is null', () => {

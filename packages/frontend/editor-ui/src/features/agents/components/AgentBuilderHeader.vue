@@ -3,9 +3,11 @@
  * Top header bar for the agent builder. Hosts breadcrumb navigation,
  * agent switcher, publish button, and the existing action-menu dropdown.
  *
- * Navigation intents are emitted as events — the parent view owns routing.
+ * Navigation intents are emitted as events, except for the project breadcrumb
+ * which links back to the owning project/personal page.
  */
 import { computed, onMounted } from 'vue';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
 import {
 	N8nActionDropdown,
 	N8nBreadcrumbs,
@@ -16,6 +18,7 @@ import {
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n } from '@n8n/i18n';
+import { VIEWS } from '@/app/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -40,6 +43,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 
 const { list: agentsList, ensureLoaded } = useProjectAgentsList(computed(() => props.projectId));
 
@@ -47,10 +51,16 @@ onMounted(() => {
 	void ensureLoaded();
 });
 
+const projectRoute = computed<RouteLocationRaw>(() => ({
+	name: VIEWS.PROJECTS_WORKFLOWS,
+	params: { projectId: props.projectId },
+}));
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
+		href: router.resolve(projectRoute.value).href,
 	},
 ]);
 
@@ -85,11 +95,16 @@ function onSwitcherSelect(id: string) {
 	if (id === '__empty__') return;
 	emit('switch-agent', id);
 }
+
+function onBreadcrumbSelect(item: PathItem) {
+	if (item.id !== props.projectId) return;
+	void router.push(projectRoute.value);
+}
 </script>
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
-		<N8nBreadcrumbs :items="breadcrumbItems" theme="small">
+		<N8nBreadcrumbs :items="breadcrumbItems" theme="small" @item-selected="onBreadcrumbSelect">
 			<template #append>
 				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
 				<N8nNavigationDropdown
@@ -165,6 +180,9 @@ function onSwitcherSelect(id: string) {
 /* N8nButton owns chrome/hover/focus; we just override the breadcrumb-bold weight
    and add gap between the label and chevron. */
 .switcherButton {
+	--button--height: auto;
+	--button--padding: 0;
+
 	gap: var(--spacing--4xs);
 	font-weight: var(--font-weight--bold);
 }
