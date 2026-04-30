@@ -145,6 +145,7 @@ function onSwitcherSelect(id: string) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
+	background-color: var(--color--background--light-3);
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	box-sizing: content-box;

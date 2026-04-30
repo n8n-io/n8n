@@ -1391,6 +1391,7 @@ function onSwitchAgent(nextAgentId: string) {
 	position: relative;
 	display: flex;
 	flex-direction: column;
+	background-color: var(--color--background--light-3);
 	border-right: var(--border);
 	height: 100%;
 	min-height: 0;
@@ -1559,6 +1560,7 @@ function onSwitchAgent(nextAgentId: string) {
 .treeColumn {
 	display: flex;
 	flex-direction: column;
+	background-color: var(--color--background--light-3);
 	border-left: var(--border);
 	height: 100%;
 	min-height: 0;
