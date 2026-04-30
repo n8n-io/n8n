@@ -16,11 +16,12 @@ export interface CommunityPackageSummary {
 	nodes: CommunityNodeType[];
 }
 
-export interface CommunityPackageCardData {
+export interface CommunityPackageRowData {
 	packageName: string;
 	authorName: string;
 	description: string;
 	isOfficialNode: boolean;
+	isVerified: boolean;
 	numberOfDownloads: number;
 	nodeCount: number;
 	nodeDescription: INodeTypeDescription | null;
@@ -31,12 +32,13 @@ export interface CommunityPackageCardData {
 	failedLoading?: boolean;
 }
 
-export function fromBrowsePackage(pkg: CommunityPackageSummary): CommunityPackageCardData {
+export function fromBrowsePackage(pkg: CommunityPackageSummary): CommunityPackageRowData {
 	return {
 		packageName: pkg.packageName,
 		authorName: pkg.authorName,
 		description: pkg.description,
 		isOfficialNode: pkg.isOfficialNode,
+		isVerified: true,
 		numberOfDownloads: pkg.numberOfDownloads,
 		nodeCount: pkg.nodes.length,
 		nodeDescription: pkg.nodes[0]?.nodeDescription ?? null,
@@ -48,13 +50,14 @@ export function fromBrowsePackage(pkg: CommunityPackageSummary): CommunityPackag
 export function fromInstalledPackage(
 	pkg: PublicInstalledPackage,
 	getNodeType: (name: string) => INodeTypeDescription | null,
-): CommunityPackageCardData {
+): CommunityPackageRowData {
 	const firstNodeType = pkg.installedNodes[0]?.type;
 	return {
 		packageName: pkg.packageName,
 		authorName: pkg.authorName ?? '',
 		description: '',
 		isOfficialNode: false,
+		isVerified: false,
 		numberOfDownloads: 0,
 		nodeCount: pkg.installedNodes.length,
 		nodeDescription: firstNodeType ? getNodeType(firstNodeType) : null,

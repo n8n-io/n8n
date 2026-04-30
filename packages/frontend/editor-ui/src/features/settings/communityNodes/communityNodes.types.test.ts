@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fromBrowsePackage, fromInstalledPackage } from './communityNodes.types';
-import type { CommunityPackageSummary } from './communityNodes.types';
+import type { CommunityPackageSummary, CommunityPackageRowData } from './communityNodes.types';
 import type {
 	INodeTypeDescription,
 	PublicInstalledNode,
@@ -94,6 +94,11 @@ describe('fromBrowsePackage', () => {
 		expect(result.updateAvailable).toBeUndefined();
 		expect(result.failedLoading).toBeUndefined();
 	});
+
+	it('should set isVerified to true', () => {
+		const result = fromBrowsePackage(makeBrowsePackage());
+		expect(result.isVerified).toBe(true);
+	});
 });
 
 describe('fromInstalledPackage', () => {
@@ -160,5 +165,10 @@ describe('fromInstalledPackage', () => {
 		expect(result.nodeCount).toBe(0);
 		expect(result.nodeDescription).toBeNull();
 		expect(result.installNodeName).toBe('');
+	});
+
+	it('should set isVerified to false', () => {
+		const result = fromInstalledPackage(makeInstalledPackage(), mockGetNodeType);
+		expect(result.isVerified).toBe(false);
 	});
 });
