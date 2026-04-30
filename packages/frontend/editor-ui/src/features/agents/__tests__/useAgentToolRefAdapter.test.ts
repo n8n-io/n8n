@@ -6,7 +6,6 @@ import {
 	nodeTypeToNewToolRef,
 	toBaseNodeType,
 	toolRefToNode,
-	extractFromAIInputSchema,
 	updateToolRefFromNode,
 	updateWorkflowToolRef,
 	workflowToNewToolRef,
@@ -115,10 +114,10 @@ describe('useAgentToolRefAdapter', () => {
 			expect(ref.node?.nodeTypeVersion).toBe(5);
 		});
 
-		it('seeds empty parameters and an empty input schema', () => {
+		it('seeds empty parameters without persisting an input schema', () => {
 			const ref = nodeTypeToNewToolRef(makeNodeType());
 			expect(ref.node?.nodeParameters).toEqual({});
-			expect(ref.inputSchema).toEqual({ type: 'object', properties: {} });
+			expect(ref.inputSchema).toBeUndefined();
 		});
 
 		it('persists the Tool-variant nodeType so the form gets the AI codex needed for $fromAI', () => {
@@ -145,30 +144,20 @@ describe('useAgentToolRefAdapter', () => {
 			expect(ref.name).toBe('Wikipedia');
 		});
 
-		it('seeds a {input: string} schema for native tool nodes (no resource/operation, AiTool output)', () => {
-			// Matches the LangChain Tool base-class schema shape so the LLM has a
-			// slot to pass the query text (e.g. "Valencia" for toolWikipedia).
+		it('does not persist an input schema for native tool nodes', () => {
 			const ref = nodeTypeToNewToolRef(
 				makeNodeType({
 					name: 'toolWikipedia',
 					displayName: 'Wikipedia',
 					description: 'Search Wikipedia',
-					// outputs is not part of the default makeNodeType above, set it here:
 					outputs: ['ai_tool'],
 					properties: [],
 				} as Partial<INodeTypeDescription>),
 			);
-			const schema = ref.inputSchema as {
-				type: string;
-				properties: Record<string, { type: string; description?: string }>;
-				required?: string[];
-			};
-			expect(schema.type).toBe('object');
-			expect(schema.properties.input.type).toBe('string');
-			expect(schema.required).toEqual(['input']);
+			expect(ref.inputSchema).toBeUndefined();
 		});
 
-		it('keeps an empty schema for non-native (resource/operation) tool nodes', () => {
+		it('does not persist an input schema for non-native tool nodes', () => {
 			const ref = nodeTypeToNewToolRef(
 				makeNodeType({
 					name: 'n8n-nodes-base.slackTool',
@@ -179,7 +168,7 @@ describe('useAgentToolRefAdapter', () => {
 					] as INodeTypeDescription['properties'],
 				} as Partial<INodeTypeDescription>),
 			);
-			expect(ref.inputSchema).toEqual({ type: 'object', properties: {} });
+			expect(ref.inputSchema).toBeUndefined();
 		});
 	});
 
@@ -228,10 +217,8 @@ describe('useAgentToolRefAdapter', () => {
 					nodeParameters: { channel: 'general' },
 					credentials: undefined,
 				},
-				// Reset to a canonical empty object since there are no $fromAI
-				// overrides — backend `resolveInputSchema` will re-introspect.
-				inputSchema: { type: 'object', properties: {} },
 			});
+			expect(updated.inputSchema).toBeUndefined();
 		});
 
 		it('drops credentials whose id is not yet persisted (null id)', () => {
@@ -293,7 +280,7 @@ describe('useAgentToolRefAdapter', () => {
 			expect(updateToolRefFromNode(workflowRef, node)).toBe(workflowRef);
 		});
 
-		it('regenerates inputSchema from $fromAI overrides in nodeParameters on save', () => {
+		it('drops persisted inputSchema when saving $fromAI overrides in nodeParameters', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
@@ -315,21 +302,11 @@ describe('useAgentToolRefAdapter', () => {
 
 			const updated = updateToolRefFromNode(original, node);
 
-			expect(updated.inputSchema).toEqual({
-				type: 'object',
-				properties: {
-					channel: { type: 'string', description: 'Slack channel id' },
-					message: { type: 'string', description: 'Message body' },
-				},
-				required: ['channel', 'message'],
-			});
+			expect(updated.inputSchema).toBeUndefined();
+			expect(updated.node?.nodeParameters).toEqual(node.parameters);
 		});
 
-		it('resets inputSchema to an empty object when no $fromAI overrides remain', () => {
-			// The user may have previously added $fromAI overrides (making
-			// inputSchema list those keys) and then removed them all. Carrying the
-			// stale schema forward would advertise args the tool no longer expects;
-			// resetting lets the backend re-introspect at registration time.
+		it('drops stale inputSchema when no $fromAI overrides remain', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
@@ -356,85 +333,7 @@ describe('useAgentToolRefAdapter', () => {
 			};
 
 			const updated = updateToolRefFromNode(original, node);
-			expect(updated.inputSchema).toEqual({ type: 'object', properties: {} });
-		});
-	});
-
-	describe('extractFromAIInputSchema()', () => {
-		it('returns null when no $fromAI expressions are present', () => {
-			expect(extractFromAIInputSchema({ channel: 'general', text: 'hi' })).toBeNull();
-		});
-
-		it('walks nested objects and arrays to find overrides', () => {
-			const params = {
-				authentication: 'accessToken',
-				resource: 'message',
-				operation: 'post',
-				channel: "={{ $fromAI('channel', 'Target channel', 'string') }}",
-				additionalFields: {
-					attachments: [
-						{
-							fallback: "={{ $fromAI('fallback', 'Fallback text') }}",
-						},
-					],
-				},
-			};
-
-			expect(extractFromAIInputSchema(params)).toEqual({
-				type: 'object',
-				properties: {
-					channel: { type: 'string', description: 'Target channel' },
-					fallback: { type: 'string', description: 'Fallback text' },
-				},
-				required: ['channel', 'fallback'],
-			});
-		});
-
-		it('maps $fromAI type hints to JSON Schema types', () => {
-			const params = {
-				a: "={{ $fromAI('a', 'str field', 'string') }}",
-				b: "={{ $fromAI('b', 'num field', 'number') }}",
-				c: "={{ $fromAI('c', 'bool field', 'boolean') }}",
-				d: "={{ $fromAI('d', 'json field', 'json') }}",
-				e: "={{ $fromAI('e', 'no type') }}",
-			};
-
-			expect(extractFromAIInputSchema(params)).toEqual({
-				type: 'object',
-				properties: {
-					a: { type: 'string', description: 'str field' },
-					b: { type: 'number', description: 'num field' },
-					c: { type: 'boolean', description: 'bool field' },
-					d: { type: 'object', description: 'json field' },
-					e: { type: 'string', description: 'no type' },
-				},
-				required: ['a', 'b', 'c', 'd', 'e'],
-			});
-		});
-
-		it('deduplicates repeated override keys (first occurrence wins)', () => {
-			const params = {
-				a: "={{ $fromAI('key', 'first', 'string') }}",
-				b: "={{ $fromAI('key', 'second', 'number') }}",
-			};
-
-			expect(extractFromAIInputSchema(params)).toEqual({
-				type: 'object',
-				properties: { key: { type: 'string', description: 'first' } },
-				required: ['key'],
-			});
-		});
-
-		it('accepts single- and double-quoted arguments and extra whitespace', () => {
-			const params = {
-				a: '={{ $fromAI(  "spaced" ,  "with commas"  , \'string\' ) }}',
-			};
-
-			expect(extractFromAIInputSchema(params)).toEqual({
-				type: 'object',
-				properties: { spaced: { type: 'string', description: 'with commas' } },
-				required: ['spaced'],
-			});
+			expect(updated.inputSchema).toBeUndefined();
 		});
 	});
 

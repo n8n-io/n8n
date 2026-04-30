@@ -282,7 +282,6 @@ describe('buildFromJson()', () => {
 					name: 'my_node_tool',
 					description: 'A node tool',
 					node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 1, nodeParameters: {} },
-					inputSchema: { type: 'object' as const },
 					requireApproval: true,
 				},
 			],
@@ -567,6 +566,36 @@ describe('AgentJsonConfigSchema', () => {
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.tools?.[0]).toMatchObject({ type: 'custom', id: 'my_tool_1' });
+	});
+
+	it('rejects inputSchema on node tool configs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			tools: [
+				{
+					type: 'node',
+					name: 'http_request',
+					description: 'Make an HTTP request',
+					node: {
+						nodeType: 'n8n-nodes-base.httpRequestTool',
+						nodeTypeVersion: 4,
+						nodeParameters: {
+							url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
+						},
+					},
+					inputSchema: {
+						type: 'object',
+						properties: { url: { type: 'string' } },
+						required: ['url'],
+					},
+				},
+			],
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('rejects custom tool ref with invalid id (uppercase)', () => {

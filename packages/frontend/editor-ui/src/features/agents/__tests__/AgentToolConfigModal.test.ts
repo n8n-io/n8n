@@ -196,10 +196,7 @@ describe('AgentToolConfigModal', () => {
 		// Preserved fields from the original ref
 		expect(updated.type).toBe('node');
 		expect(updated.description).toBe(initial.description);
-		// `inputSchema` is regenerated from $fromAI overrides on every save. The
-		// stub node in this test has none, so we expect the canonical empty
-		// object rather than the `initial.inputSchema` value.
-		expect(updated.inputSchema).toEqual({ type: 'object', properties: {} });
+		expect(updated.inputSchema).toBeUndefined();
 		// Fields merged from the edited INode
 		expect(updated.node.nodeParameters).toEqual({ edited: true });
 		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
