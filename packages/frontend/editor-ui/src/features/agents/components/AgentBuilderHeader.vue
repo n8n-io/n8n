@@ -108,15 +108,15 @@ function onBreadcrumbSelect(item: PathItem) {
 					@select="onSwitcherSelect"
 				>
 					<template #trigger>
-						<N8nButton
-							variant="ghost"
-							size="small"
-							:class="$style.switcherButton"
+					<N8nButton
+						variant="ghost"
+						size="xsmall"
+						:class="$style.switcherButton"
 							:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
-						>
-							<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
-							<N8nIcon icon="chevron-down" :size="14" />
-						</N8nButton>
+					>
+						<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
+						<N8nIcon icon="chevron-down" :size="12" />
+					</N8nButton>
 					</template>
 				</N8nDropdown>
 			</template>
