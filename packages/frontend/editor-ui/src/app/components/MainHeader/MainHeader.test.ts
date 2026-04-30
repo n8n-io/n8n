@@ -103,7 +103,8 @@ describe('MainHeader', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 		collaborationStore = mockedStore(useCollaborationStore);
 
-		workflowsStore.workflow = {
+		workflowsStore.setWorkflowId('1');
+		workflowDocumentStore.hydrate({
 			id: '1',
 			name: 'Test Workflow',
 			active: false,
@@ -118,7 +119,7 @@ describe('MainHeader', () => {
 			connections: {},
 			tags: [],
 			meta: {},
-		};
+		});
 
 		workflowDocumentStore.setName('Test Workflow');
 

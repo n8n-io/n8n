@@ -1412,7 +1412,7 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		workflowsStore.workflow.id = testWorkflowId;
+		workflowsStore.setWorkflowId(testWorkflowId);
 
 		if (pinnedData) {
 			workflowDocumentStore.pinNodeData('Test Node', pinnedData);

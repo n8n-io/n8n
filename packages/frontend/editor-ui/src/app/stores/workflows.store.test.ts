@@ -47,11 +47,9 @@ const getNodeType = vi.fn((_nodeTypeName: string): Partial<INodeTypeDescription>
 	webhooks: [],
 	properties: [],
 }));
-const communityNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
-		communityNodeType,
 	})),
 }));
 
@@ -110,7 +108,7 @@ describe('useWorkflowsStore', () => {
 	});
 
 	it('should initialize with default state', () => {
-		expect(workflowsStore.workflow.id).toBe('');
+		expect(workflowsStore.workflowId).toBe('');
 	});
 
 	describe('allWorkflows', () => {
@@ -154,37 +152,6 @@ describe('useWorkflowsStore', () => {
 				}),
 			);
 			expect(workflowsStore.isWorkflowSaved['123']).toBe(true);
-		});
-	});
-
-	describe('workflowTriggerNodes', () => {
-		it('should return only nodes that are triggers', () => {
-			getNodeType.mockImplementation(
-				(nodeTypeName: string) =>
-					({
-						group: nodeTypeName === 'triggerNode' ? ['trigger'] : [],
-						inputs: [],
-						webhooks: [],
-						properties: [],
-					}) as Partial<INodeTypeDescription> | null,
-			);
-
-			workflowsStore.workflow.nodes = [
-				{ type: 'triggerNode', typeVersion: '1' },
-				{ type: 'nonTriggerNode', typeVersion: '1' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			expect(workflowsStore.workflowTriggerNodes).toHaveLength(1);
-			expect(workflowsStore.workflowTriggerNodes[0].type).toBe('triggerNode');
-		});
-
-		it('should return empty array when no nodes are triggers', () => {
-			workflowsStore.workflow.nodes = [
-				{ type: 'nonTriggerNode1', typeVersion: '1' },
-				{ type: 'nonTriggerNode2', typeVersion: '1' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			expect(workflowsStore.workflowTriggerNodes).toHaveLength(0);
 		});
 	});
 
@@ -450,7 +417,7 @@ describe('useWorkflowsStore', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
 			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
-			workflowsStore.workflow.id = '1';
+			workflowsStore.setWorkflowId('1');
 
 			const mockActiveVersion: WorkflowHistory = {
 				versionId: 'test-version-id',
@@ -473,7 +440,7 @@ describe('useWorkflowsStore', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			workflowsListStore.activeWorkflows = ['1'];
 			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
-			workflowsStore.workflow.id = '1';
+			workflowsStore.setWorkflowId('1');
 
 			const mockActiveVersion: WorkflowHistory = {
 				versionId: 'test-version-id',
@@ -494,7 +461,7 @@ describe('useWorkflowsStore', () => {
 		it('should not clear dirty state when targeting a different workflow', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			uiStore.markStateDirty();
-			workflowsStore.workflow.id = '1';
+			workflowsStore.setWorkflowId('1');
 			workflowsListStore.workflowsById = { '1': { active: false } as IWorkflowDb };
 
 			const mockActiveVersion: WorkflowHistory = {
@@ -536,7 +503,7 @@ describe('useWorkflowsStore', () => {
 			const workflowsListStore = useWorkflowsListStore();
 			workflowsListStore.activeWorkflows = ['1'];
 			workflowsListStore.workflowsById = { '1': { active: true } as IWorkflowDb };
-			workflowsStore.workflow.id = '1';
+			workflowsStore.setWorkflowId('1');
 			workflowsStore.setWorkflowInactive('1');
 			expect(workflowsListStore.workflowsById['1'].active).toBe(false);
 			expect(workflowsListStore.activeWorkflows).toEqual([]);
@@ -672,7 +639,9 @@ describe('useWorkflowsStore', () => {
 		it('should add node success run data', () => {
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
 
-			workflowsStore.workflow.nodes.push(
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
 				mock<INodeUi>({
 					name: successEvent.nodeName,
 					type: 'n8n-nodes-base.manualTrigger',
@@ -697,10 +666,13 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should add node error event and track errored executions', async () => {
-			workflowsStore.workflow.id = 'test-workflow';
-			workflowsStore.workflow.pinData = {};
+			workflowsStore.setWorkflowId('test-workflow');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('test-workflow'),
+			);
+			workflowDocumentStore.setPinData({});
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
-			workflowsStore.workflow.nodes.push({
+			workflowDocumentStore.addNode({
 				parameters: {},
 				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
 				name: 'Edit Fields',
@@ -769,7 +741,9 @@ describe('useWorkflowsStore', () => {
 			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
-			workflowsStore.workflow.nodes.push(
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
 				mock<INodeUi>({
 					name: successEvent.nodeName,
 					type: 'n8n-nodes-base.manualTrigger',
@@ -830,7 +804,9 @@ describe('useWorkflowsStore', () => {
 			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
-			workflowsStore.workflow.nodes.push(
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.addNode(
 				mock<INodeUi>({
 					name: successEvent.nodeName,
 					type: 'n8n-nodes-base.manualTrigger',
@@ -868,7 +844,9 @@ describe('useWorkflowsStore', () => {
 		] as Array<[string[], string, string]>)(
 			'with input %s , %s returns %s',
 			(ids, id, expected) => {
-				workflowsStore.workflow.nodes = ids.map((x) => ({ id: x }) as never);
+				workflowsStore.setWorkflowId('test-wf');
+				const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+				workflowDocumentStore.setNodes(ids.map((x) => ({ id: x }) as never));
 
 				expect(workflowsStore.getPartialIdForNode(id)).toBe(expected);
 			},
@@ -885,11 +863,13 @@ describe('useWorkflowsStore', () => {
 			workflowsListStore.workflowsById = {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
-			workflowsStore.workflow.active = true;
-			workflowsStore.workflow.id = workflowId;
-			workflowsStore.workflow.versionId = versionId;
-
+			workflowsStore.setWorkflowId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'active-version',
+				activeVersion: null,
+			});
+			workflowDocumentStore.setVersionData({ versionId, name: null, description: null });
 			workflowDocumentStore.setIsArchived(false);
 
 			const makeRestApiRequestSpy = vi
@@ -927,10 +907,9 @@ describe('useWorkflowsStore', () => {
 			workflowsListStore.workflowsById = {
 				'1': { active: true, isArchived: false, versionId } as IWorkflowDb,
 			};
-			workflowsStore.workflow.id = workflowId;
-			workflowsStore.workflow.versionId = versionId;
-
+			workflowsStore.setWorkflowId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setVersionData({ versionId, name: null, description: null });
 			workflowDocumentStore.setIsArchived(false);
 
 			const makeRestApiRequestSpy = vi
@@ -964,11 +943,10 @@ describe('useWorkflowsStore', () => {
 			workflowsListStore.workflowsById = {
 				'1': { active: false, isArchived: true, versionId } as IWorkflowDb,
 			};
-			workflowsStore.workflow.active = false;
-			workflowsStore.workflow.id = workflowId;
-			workflowsStore.workflow.versionId = versionId;
-
+			workflowsStore.setWorkflowId(workflowId);
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentStore.setVersionData({ versionId, name: null, description: null });
 			workflowDocumentStore.setIsArchived(true);
 
 			const makeRestApiRequestSpy = vi
@@ -1002,14 +980,7 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('updates current workflow setting and store state', async () => {
-			workflowsStore.workflow.id = 'w1';
-			workflowsStore.workflow.versionId = 'v1';
-			workflowsStore.workflow.settings = {
-				executionOrder: 'v1',
-				timezone: 'UTC',
-			};
-
-			// Also populate the document store since updateWorkflowSetting reads from it
+			workflowsStore.setWorkflowId('w1');
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('w1'));
 			workflowDocumentStore.setVersionData({ versionId: 'v1', name: null, description: null });
 			workflowDocumentStore.setSettings({ executionOrder: 'v1', timezone: 'UTC' });
@@ -1044,7 +1015,7 @@ describe('useWorkflowsStore', () => {
 
 			// Assert returned value and store updates
 			expect(result.versionId).toBe('v1');
-			expect(workflowsStore.workflow.versionId).toBe('v1');
+			expect(workflowDocumentStore.versionId).toBe('v1');
 			expect(workflowDocumentStore.settings).toEqual({
 				executionOrder: 'v1',
 				binaryMode: 'separate',
@@ -1228,10 +1199,10 @@ describe('useWorkflowsStore', () => {
 				},
 			} as unknown as IExecutionResponse;
 
-			workflowsStore.workflow.id = 'test-workflow-id';
+			workflowsStore.setWorkflowId('test-workflow-id');
 
 			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
+				createWorkflowDocumentId(workflowsStore.workflowId),
 			);
 			workflowDocumentStore.addNode({
 				parameters: {},
@@ -1323,323 +1294,30 @@ describe('useWorkflowsStore', () => {
 		const n2 = createTestNode({ type: MANUAL_TRIGGER_NODE_TYPE, name: 'n2' });
 
 		beforeEach(() => {
-			workflowsStore.workflow.nodes = [n0, n1];
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.setNodes([n0, n1]);
 			getNodeType.mockImplementation(() => mockNodeTypeDescription({ group: ['trigger'] }));
 		});
 
 		it('should select newly added trigger node automatically', async () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
-			workflowsStore.workflow.nodes.push(n2);
+			workflowDocumentStore.addNode(n2);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n2'));
 		});
 
 		it('should re-select a trigger when selected trigger gets disabled or removed', async () => {
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n0'));
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).removeNode(n0);
+			workflowDocumentStore.removeNode(n0);
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe('n1'));
-			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)).setNodeValue({
+			workflowDocumentStore.setNodeValue({
 				name: 'n1',
 				key: 'disabled',
 				value: true,
 			});
 			await waitFor(() => expect(workflowsStore.selectedTriggerNodeName).toBe(undefined));
-		});
-	});
-
-	describe('assignCredentialToMatchingNodes', () => {
-		beforeEach(() => {
-			// Reset mock
-			getNodeType.mockReset();
-		});
-
-		it("should assign credential to nodes that support it but don't have it set", () => {
-			const credential = { id: 'cred-1', name: 'Test Credential' };
-			const credentialType = 'slackApi';
-
-			// Set up nodes with different scenarios
-			workflowsStore.workflow.nodes = [
-				createTestNode({
-					name: 'Current Node',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-				createTestNode({
-					name: 'Slack Node 1',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-				createTestNode({
-					name: 'Slack Node 2',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-			];
-
-			// Mock getNodeType to return node type with credential support
-			getNodeType.mockReturnValue({
-				credentials: [{ name: 'slackApi', required: true }],
-				inputs: [],
-				group: [],
-				webhooks: [],
-				properties: [],
-			});
-
-			// Simulate setting credential on the first node
-			const result = workflowsStore.assignCredentialToMatchingNodes({
-				credentials: credential,
-				type: credentialType,
-				currentNodeName: 'Current Node',
-			});
-
-			expect(result).toBe(2); // Should update 2 nodes (excluding current node)
-			expect(workflowsStore.workflow.nodes[1].credentials).toEqual({
-				slackApi: credential,
-			});
-			expect(workflowsStore.workflow.nodes[2].credentials).toEqual({
-				slackApi: credential,
-			});
-		});
-
-		it('should not overwrite existing credentials of the same type', () => {
-			const newCredential = { id: 'cred-new', name: 'New Credential' };
-			const existingCredential = { id: 'cred-old', name: 'Existing Credential' };
-			const credentialType = 'slackApi';
-
-			workflowsStore.workflow.nodes = [
-				createTestNode({
-					name: 'Current Node',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-				createTestNode({
-					name: 'Node With Existing Cred',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-					credentials: {
-						slackApi: existingCredential,
-					},
-				}),
-				createTestNode({
-					name: 'Node Without Cred',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-			];
-
-			getNodeType.mockReturnValue({
-				credentials: [{ name: 'slackApi', required: true }],
-				inputs: [],
-				group: [],
-				webhooks: [],
-				properties: [],
-			});
-
-			// Simulate assigning new credential to the first node
-			const result = workflowsStore.assignCredentialToMatchingNodes({
-				credentials: newCredential,
-				type: credentialType,
-				currentNodeName: 'Current Node',
-			});
-
-			expect(result).toBe(1); // Only 1 node updated (the one without credentials)
-			expect(workflowsStore.workflow.nodes[1].credentials?.slackApi).toEqual(existingCredential); // Unchanged
-			expect(workflowsStore.workflow.nodes[2].credentials?.slackApi).toEqual(newCredential); // Updated
-		});
-
-		it("should not affect nodes that don't support the credential type", () => {
-			const credential = { id: 'cred-1', name: 'Test Credential' };
-			const credentialType = 'slackApi';
-
-			workflowsStore.workflow.nodes = [
-				createTestNode({
-					name: 'Current Node',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-				createTestNode({
-					name: 'Slack Node',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-				createTestNode({
-					name: 'HTTP Node',
-					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 1,
-				}),
-			];
-
-			// Mock getNodeType to return different credentials for different node types
-			getNodeType.mockImplementation((nodeType: string) => {
-				if (nodeType === 'n8n-nodes-base.slack') {
-					return {
-						credentials: [{ name: 'slackApi', required: true }],
-						inputs: [],
-						group: [],
-						webhooks: [],
-						properties: [],
-					};
-				}
-				return {
-					credentials: [{ name: 'httpBasicAuth', required: false }],
-					inputs: [],
-					group: [],
-					webhooks: [],
-					properties: [],
-				};
-			});
-
-			// Simulate assigning credential to the first node
-			const result = workflowsStore.assignCredentialToMatchingNodes({
-				credentials: credential,
-				type: credentialType,
-				currentNodeName: 'Current Node',
-			});
-
-			expect(result).toBe(1); // Only the Slack node updated
-			expect(workflowsStore.workflow.nodes[1].credentials?.slackApi).toEqual(credential);
-			expect(workflowsStore.workflow.nodes[2].credentials).toBeUndefined(); // HTTP node unchanged
-		});
-
-		it('should handle nodes with no credential support', () => {
-			const credential = { id: 'cred-1', name: 'Test Credential' };
-			const credentialType = 'slackApi';
-
-			workflowsStore.workflow.nodes = [
-				createTestNode({
-					name: 'Current Node',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-				createTestNode({
-					name: 'Node Without Creds Support',
-					type: 'n8n-nodes-base.noOp',
-					typeVersion: 1,
-				}),
-			];
-
-			getNodeType.mockImplementation((nodeType: string) => {
-				if (nodeType === 'n8n-nodes-base.slack') {
-					return {
-						credentials: [{ name: 'slackApi', required: true }],
-						inputs: [],
-						group: [],
-						webhooks: [],
-						properties: [],
-					};
-				}
-				// Return node type without credentials field
-				return {
-					inputs: [],
-					group: [],
-					webhooks: [],
-					properties: [],
-				};
-			});
-
-			// Simulate assigning credential to the first node
-			const result = workflowsStore.assignCredentialToMatchingNodes({
-				credentials: credential,
-				type: credentialType,
-				currentNodeName: 'Current Node',
-			});
-
-			expect(result).toBe(0); // No nodes updated
-			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
-		});
-
-		it('should not assign credential to nodes where displayOptions do not match current parameters', () => {
-			const credential = { id: 'cred-1', name: 'Header Auth Credential' };
-			const credentialType = 'httpHeaderAuth';
-
-			workflowsStore.workflow.nodes = [
-				createTestNode({
-					name: 'HTTP Request',
-					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 1,
-				}),
-				createTestNode({
-					name: 'Webhook',
-					type: 'n8n-nodes-base.webhook',
-					typeVersion: 1,
-					parameters: { authentication: 'none' },
-				}),
-			];
-
-			getNodeType.mockImplementation((nodeType: string) => {
-				if (nodeType === 'n8n-nodes-base.httpRequest') {
-					return {
-						credentials: [{ name: 'httpHeaderAuth', required: false }],
-						inputs: [],
-						group: [],
-						webhooks: [],
-						properties: [],
-					};
-				}
-				// Webhook supports httpHeaderAuth but only when authentication = 'headerAuth'
-				return {
-					credentials: [
-						{
-							name: 'httpHeaderAuth',
-							required: false,
-							displayOptions: { show: { authentication: ['headerAuth'] } },
-						},
-					],
-					inputs: [],
-					group: [],
-					webhooks: [],
-					properties: [
-						{
-							displayName: 'Authentication',
-							name: 'authentication',
-							type: 'options',
-							default: 'none',
-							options: [
-								{ name: 'None', value: 'none' },
-								{ name: 'Header Auth', value: 'headerAuth' },
-							],
-						},
-					],
-				};
-			});
-
-			const result = workflowsStore.assignCredentialToMatchingNodes({
-				credentials: credential,
-				type: credentialType,
-				currentNodeName: 'HTTP Request',
-			});
-
-			expect(result).toBe(0); // Webhook should NOT get the credential (authentication is 'none')
-			expect(workflowsStore.workflow.nodes[1].credentials).toBeUndefined();
-		});
-
-		it('should return 0 when there are no matching nodes', () => {
-			const credential = { id: 'cred-1', name: 'Test Credential' };
-			const credentialType = 'slackApi';
-
-			workflowsStore.workflow.nodes = [
-				createTestNode({
-					name: 'Current Node',
-					type: 'n8n-nodes-base.slack',
-					typeVersion: 1,
-				}),
-			];
-
-			getNodeType.mockReturnValue({
-				credentials: [{ name: 'slackApi', required: true }],
-				inputs: [],
-				group: [],
-				webhooks: [],
-				properties: [],
-			});
-
-			// Simulate assigning credential to the first node
-			const result = workflowsStore.assignCredentialToMatchingNodes({
-				credentials: credential,
-				type: credentialType,
-				currentNodeName: 'Current Node',
-			});
-
-			expect(result).toBe(0); // No nodes to update (only current node exists)
 		});
 	});
 
@@ -1671,7 +1349,7 @@ describe('useWorkflowsStore', () => {
 				scopes: ['workflow:update'],
 			});
 
-			workflowsStore.workflow = testWorkflow;
+			workflowsStore.setWorkflowId(workflowId);
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
@@ -1679,8 +1357,8 @@ describe('useWorkflowsStore', () => {
 			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 
 			// Verify the mock is set up correctly
-			expect(workflowsStore.workflow.scopes).toContain('workflow:update');
-			expect(workflowsStore.workflow.id).toBe('workflow-123');
+			expect(workflowDocumentStore.scopes).toContain('workflow:update');
+			expect(workflowsStore.workflowId).toBe('workflow-123');
 			expect(workflowDocumentStore.isArchived).toBe(false);
 
 			vi.mocked(workflowsApi).getLastSuccessfulExecution.mockResolvedValue(mockExecution);
@@ -1703,7 +1381,7 @@ describe('useWorkflowsStore', () => {
 				scopes: ['workflow:update'],
 			});
 
-			workflowsStore.workflow = testWorkflow;
+			workflowsStore.setWorkflowId(testWorkflow.id);
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
@@ -1732,7 +1410,7 @@ describe('useWorkflowsStore', () => {
 				scopes: ['workflow:update'],
 			});
 
-			workflowsStore.workflow = testWorkflow;
+			workflowsStore.setWorkflowId(testWorkflow.id);
 			// Add workflow to workflowsById to simulate it being loaded from backend
 			workflowsListStore.addWorkflow(testWorkflow);
 
@@ -1757,21 +1435,18 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not fetch when workflow is placeholder empty workflow', async () => {
-			workflowsStore.workflow = createTestWorkflow({
-				id: '',
-				scopes: ['workflow:update'],
-			});
-
+			// workflowId defaults to '' which represents an empty placeholder workflow
 			await workflowsStore.fetchLastSuccessfulExecution();
 
 			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
 		});
 
 		it('should not fetch when workflow is read-only', async () => {
-			workflowsStore.workflow = createTestWorkflow({
-				id: 'workflow-123',
-				scopes: ['workflow:update'],
-			});
+			workflowsStore.setWorkflowId('workflow-123');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
+			workflowDocumentStore.setScopes(['workflow:update']);
 			// Set currentView to a read-only view (not WORKFLOW, NEW_WORKFLOW, or EXECUTION_DEBUG)
 			uiStore.currentView = 'execution';
 
@@ -1782,13 +1457,15 @@ describe('useWorkflowsStore', () => {
 
 		it('should not fetch when workflow is archived', async () => {
 			const workflowId = 'workflow-123';
-			workflowsStore.workflow = createTestWorkflow({
+			const testWorkflow = createTestWorkflow({
 				id: workflowId,
 				scopes: ['workflow:update'],
 			});
-			workflowsListStore.addWorkflow(workflowsStore.workflow);
+			workflowsStore.setWorkflowId(workflowId);
+			workflowsListStore.addWorkflow(testWorkflow);
 
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+			workflowDocumentStore.setScopes(testWorkflow.scopes ?? []);
 			workflowDocumentStore.setIsArchived(true);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
@@ -1797,10 +1474,11 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should not fetch when user does not have update permissions', async () => {
-			workflowsStore.workflow = createTestWorkflow({
-				id: 'workflow-123',
-				scopes: ['workflow:read'],
-			});
+			workflowsStore.setWorkflowId('workflow-123');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
+			workflowDocumentStore.setScopes(['workflow:read']);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
 
@@ -1819,10 +1497,11 @@ describe('useWorkflowsStore', () => {
 			setActivePinia(createPinia());
 			workflowsStore = useWorkflowsStore();
 
-			workflowsStore.workflow = createTestWorkflow({
-				id: 'workflow-123',
-				scopes: ['workflow:update'],
-			});
+			workflowsStore.setWorkflowId('workflow-123');
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId('workflow-123'),
+			);
+			workflowDocumentStore.setScopes(['workflow:update']);
 
 			await workflowsStore.fetchLastSuccessfulExecution();
 
@@ -1841,7 +1520,9 @@ describe('useWorkflowsStore', () => {
 			const signedFormUrl = 'http://localhost:5678/form-waiting/exec-123?signature=abc123';
 
 			// Setup workflow with a node
-			workflowsStore.workflow.nodes = [createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })];
+			workflowsStore.setWorkflowId('test-wf');
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			workflowDocumentStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
 
 			// Initialize execution data directly
 			workflowsStore.workflowExecutionData = {
@@ -1882,7 +1563,9 @@ describe('useWorkflowsStore', () => {
 			const executionId = 'exec-456';
 
 			// Setup workflow with a node
-			workflowsStore.workflow.nodes = [createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })];
+			workflowsStore.setWorkflowId('test-wf');
+			const wfDocStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-wf'));
+			wfDocStore.setNodes([createTestNode({ name: nodeName, type: WAIT_NODE_TYPE })]);
 
 			// Initialize execution data directly
 			workflowsStore.workflowExecutionData = {
@@ -1914,108 +1597,6 @@ describe('useWorkflowsStore', () => {
 
 			// Should NOT open form popup
 			expect(openFormPopupWindow).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('getNodeTypes() - getByNameAndVersion', () => {
-		beforeEach(() => {
-			setActivePinia(createPinia());
-			workflowsStore = useWorkflowsStore();
-		});
-
-		it('should return node type for core nodes', () => {
-			const mockNodeType = mockNodeTypeDescription({
-				name: 'n8n-nodes-base.httpRequest',
-				displayName: 'HTTP Request',
-			});
-
-			getNodeType.mockReturnValue(mockNodeType);
-
-			const nodeTypes = workflowsStore.getNodeTypes();
-			const result = nodeTypes.getByNameAndVersion('n8n-nodes-base.httpRequest', 1);
-
-			expect(result).toBeDefined();
-			expect(result?.description.name).toBe('n8n-nodes-base.httpRequest');
-		});
-
-		it('should fallback to community node type when core node not found', () => {
-			const mockCommunityNodeDescription = mockNodeTypeDescription({
-				name: 'n8n-nodes-test.test',
-				displayName: 'Test Node',
-			});
-
-			getNodeType.mockReturnValue(null);
-
-			communityNodeType.mockReturnValue({
-				name: 'n8n-nodes-test.test',
-				packageName: 'n8n-nodes-test',
-				checksum: 'test-checksum',
-				npmVersion: '1.0.0',
-				createdAt: '2024-01-01',
-				updatedAt: '2024-01-01',
-				numberOfStars: 0,
-				numberOfDownloads: 0,
-				authorGithubUrl: '',
-				authorName: '',
-				description: '',
-				displayName: 'Test Node',
-				isOfficialNode: false,
-				nodeDescription: mockCommunityNodeDescription,
-				isInstalled: false,
-			});
-
-			const nodeTypes = workflowsStore.getNodeTypes();
-			const result = nodeTypes.getByNameAndVersion('n8n-nodes-test.test');
-
-			expect(result).toBeDefined();
-			expect(result?.description.name).toBe('n8n-nodes-test.test');
-		});
-
-		it('should return undefined when node type is not found', () => {
-			getNodeType.mockReturnValue(null);
-
-			communityNodeType.mockReturnValue(undefined);
-
-			const nodeTypes = workflowsStore.getNodeTypes();
-			const result = nodeTypes.getByNameAndVersion('non-existent-node');
-
-			expect(result).toBeUndefined();
-		});
-
-		it('should use community node description when available and core node is null', () => {
-			const mockCommunityNodeDescription = mockNodeTypeDescription({
-				name: 'n8n-nodes-community.customNode',
-				displayName: 'Custom Community Node',
-				inputs: ['main'],
-				outputs: ['main'],
-			});
-
-			getNodeType.mockReturnValue(null);
-
-			communityNodeType.mockReturnValue({
-				name: 'n8n-nodes-community.customNode',
-				packageName: 'n8n-nodes-community',
-				checksum: 'test-checksum',
-				npmVersion: '1.0.0',
-				createdAt: '2024-01-01',
-				updatedAt: '2024-01-01',
-				numberOfStars: 10,
-				numberOfDownloads: 100,
-				authorGithubUrl: '',
-				authorName: '',
-				description: '',
-				displayName: 'Custom Community Node',
-				isOfficialNode: false,
-				nodeDescription: mockCommunityNodeDescription,
-				isInstalled: true,
-			});
-
-			const nodeTypes = workflowsStore.getNodeTypes();
-			const result = nodeTypes.getByNameAndVersion('n8n-nodes-community.customNode');
-
-			expect(result).toBeDefined();
-			expect(result?.description.name).toBe('n8n-nodes-community.customNode');
-			expect(result?.description.displayName).toBe('Custom Community Node');
 		});
 	});
 });

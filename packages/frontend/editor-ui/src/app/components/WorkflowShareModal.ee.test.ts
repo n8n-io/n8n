@@ -145,21 +145,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 			updatedAt: new Date().toISOString(),
 		};
 
-		workflowsStore.workflow = {
-			id: '',
-			name: 'My workflow',
-			active: false,
-			activeVersionId: null,
-			isArchived: false,
-			createdAt: new Date().toISOString(),
-			updatedAt: new Date().toISOString(),
-			versionId: '',
-			scopes: [],
-			nodes: [],
-			connections: {},
-			homeProject,
-		};
-
+		workflowsStore.workflowId = '';
 		mockWorkflowDocumentState.homeProject = homeProject;
 
 		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
@@ -210,21 +196,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 				updatedAt: new Date().toISOString(),
 			};
 
-			workflowsStore.workflow = {
-				id: 'workflow-1',
-				name: 'My workflow',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				versionId: '',
-				scopes: [],
-				nodes: [],
-				connections: {},
-				homeProject,
-			};
-
+			workflowsStore.workflowId = 'workflow-1';
 			mockWorkflowDocumentState.homeProject = homeProject;
 
 			const props = {
@@ -254,19 +226,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 				type: ProjectTypes.Team,
 			});
 
-			workflowsStore.workflow = {
-				id: 'workflow-1',
-				name: 'My workflow',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				versionId: '',
-				scopes: [],
-				nodes: [],
-				connections: {},
-			};
+			workflowsStore.workflowId = 'workflow-1';
 
 			const props = {
 				data: { id: 'workflow-1' },

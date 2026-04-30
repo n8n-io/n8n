@@ -6,6 +6,10 @@ import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useSetupCards } from '../composables/useSetupCards';
 
 vi.mock('@/features/setupPanel/setupPanel.utils', () => ({
@@ -43,7 +47,11 @@ describe('useSetupCards', () => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.nodes = [
+		workflowsStore.setWorkflowId('test-workflow');
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow'),
+		);
+		workflowDocumentStore.setNodes([
 			{
 				name: 'DataTable',
 				type: 'n8n-nodes-base.dataTable',
@@ -52,7 +60,7 @@ describe('useSetupCards', () => {
 				position: [0, 0] as [number, number],
 				id: 'node-1',
 			},
-		];
+		]);
 	});
 
 	describe('param-issue card creation', () => {

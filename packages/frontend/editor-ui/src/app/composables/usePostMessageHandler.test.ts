@@ -409,7 +409,7 @@ describe('usePostMessageHandler', () => {
 
 			mockOpenExecution.mockImplementation(async () => {
 				// Simulate what openExecution does: sets workflowId on the store
-				workflowsStore.workflow.id = 'test-wf-id';
+				workflowsStore.setWorkflowId('test-wf-id');
 				return {
 					workflowData: { id: 'test-wf-id', name: 'Test' },
 					mode: 'trigger',

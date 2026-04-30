@@ -1,19 +1,22 @@
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
-import type { IWorkflowDb } from '@/Interface';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { CommunityNodeType } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
-import type { INode } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useInstallNode } from './useInstallNode';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn().mockReturnValue({
@@ -122,7 +125,9 @@ beforeEach(() => {
 		version: '1.0.0',
 	} as unknown as CommunityNodeType);
 
-	workflowsStore.workflow = {
+	workflowsStore.setWorkflowId('test-workflow');
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+	workflowDocumentStore.hydrate({
 		id: 'test-workflow',
 		name: 'Test Workflow',
 		active: false,
@@ -131,12 +136,11 @@ beforeEach(() => {
 		updatedAt: new Date().toISOString(),
 		nodes: [],
 		connections: {},
-		settings: {},
-		staticData: {},
+		settings: { ...DEFAULT_SETTINGS },
 		tags: [],
-		triggerCount: 0,
 		versionId: '1',
-	} as unknown as IWorkflowDb;
+		activeVersionId: '1',
+	});
 
 	vi.clearAllMocks();
 });
@@ -320,7 +324,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes(mockNodes);
 
 			const { installNode } = useInstallNode();
 
@@ -344,7 +348,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should not initialize nodes when nodeType is not provided', async () => {
-			workflowsStore.workflow.nodes = [
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes([
 				{
 					id: 'node-1',
 					type: 'test-node',
@@ -353,7 +357,7 @@ describe('useInstallNode', () => {
 					position: [100, 100] as [number, number],
 					parameters: {},
 				},
-			] as INode[];
+			]);
 
 			const { installNode } = useInstallNode();
 
@@ -366,7 +370,7 @@ describe('useInstallNode', () => {
 		});
 
 		it('should not initialize nodes when workflow has no nodes', async () => {
-			workflowsStore.workflow.nodes = [];
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes([]);
 
 			const { installNode } = useInstallNode();
 
@@ -573,7 +577,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes(mockNodes);
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
@@ -625,7 +629,7 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			workflowsStore.workflow.nodes = mockNodes as INode[];
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes(mockNodes);
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 

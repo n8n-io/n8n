@@ -166,7 +166,7 @@ describe('NodeSetupCard', () => {
 		mockComposableState.listeningHint = '';
 		createTestingPinia();
 		const workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.id = WORKFLOW_ID;
+		workflowsStore.setWorkflowId(WORKFLOW_ID);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		setupPanelStore = mockedStore(useSetupPanelStore);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);

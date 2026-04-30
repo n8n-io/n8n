@@ -30,6 +30,7 @@ const getNodeType = vi.fn();
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
+		getAllNodeTypes: vi.fn().mockReturnValue([]),
 	})),
 }));
 
@@ -84,24 +85,18 @@ describe('usePinnedData', () => {
 		});
 
 		it('should set data correctly for valid inputs', () => {
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
 
 			expect(() => setData(testData, 'pin-icon-click')).not.toThrow();
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
-			);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
 			expect(workflowDocumentStore.pinData?.[node.value.name]).toEqual(testData);
 		});
 	});
 
 	describe('unsetData()', () => {
 		it('should unset data correctly', () => {
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.workflow.id = 'test-workflow';
 			const node = ref({ name: 'testNode' } as INodeUi);
 			const { setData, unsetData } = usePinnedData(node);
 			const testData = [{ json: { key: 'value' } }];
@@ -109,9 +104,7 @@ describe('usePinnedData', () => {
 			setData(testData, 'pin-icon-click');
 			unsetData('context-menu');
 
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflow.id),
-			);
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
 			expect(workflowDocumentStore.pinData?.[node.value.name]).toBeUndefined();
 		});
 	});
@@ -119,7 +112,7 @@ describe('usePinnedData', () => {
 	describe('onSetDataSuccess()', () => {
 		it('should trigger telemetry on successful data setting with correct payload values', async () => {
 			const workflowsStore = useWorkflowsStore();
-			workflowsStore.workflow.id = 'test-workflow-id';
+			workflowsStore.workflowId = 'test-workflow-id';
 
 			const telemetry = useTelemetry();
 			const spy = vi.spyOn(telemetry, 'track');
@@ -178,11 +171,6 @@ describe('usePinnedData', () => {
 	});
 
 	describe('canPinData()', () => {
-		beforeEach(() => {
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.workflow.id = 'test-workflow';
-		});
-
 		afterEach(() => {
 			vi.clearAllMocks();
 		});
