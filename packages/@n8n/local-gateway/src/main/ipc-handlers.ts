@@ -17,7 +17,7 @@ export function registerIpcHandlers(
 
 	ipcMain.handle(
 		'settings:set',
-		async (_event, partial: Partial<AppSettings>): Promise<{ ok: boolean; error?: string }> => {
+		(_event, partial: Partial<AppSettings>): { ok: boolean; error?: string } => {
 			logger.debug('IPC settings:set', { keys: Object.keys(partial) });
 			try {
 				settingsStore.set(partial);
