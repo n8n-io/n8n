@@ -411,10 +411,13 @@ defineExpose({ open, close });
 	overflow-y: auto;
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
-	box-shadow: var(--shadow--md), var(--shadow--outline);
+	--shadow-color--outline: var(--border-color);
+	box-shadow:
+		var(--shadow--md),
+		inset var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--n8n--dropdown--offset--origin-x) var(--n8n--dropdown--offset--origin-y);
-	z-index: 9998;
+	z-index: 9999;
 	scrollbar-width: none;
 
 	&[data-state='open'] {

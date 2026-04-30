@@ -183,10 +183,11 @@ watch(
 	--popover--offset--origin-x: center;
 	--popover--offset--origin-y: center;
 
-	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-2);
-	border: var(--border);
-	box-shadow: var(--shadow--md), var(--shadow--outline);
+	border-radius: var(--radius--xs);
+	background-color: var(--background--surface);
+	box-shadow:
+		var(--shadow--md),
+		inset var(--shadow--outline);
 	will-change: transform, opacity;
 	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 

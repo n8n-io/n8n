@@ -115,16 +115,14 @@ defineExpose({
 		>
 			<template #trigger>
 				<slot>
-					<span :class="$style.trigger">
-						<N8nIconButton
-							variant="ghost"
-							:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
-							size="small"
-							:disabled="disabled"
-							role="button"
-							:aria-controls="dropdownId"
-						/>
-					</span>
+					<N8nIconButton
+						variant="ghost"
+						:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
+						size="small"
+						:disabled="disabled"
+						role="button"
+						:aria-controls="dropdownId"
+					/>
 				</slot>
 			</template>
 			<template #loading>
@@ -156,10 +154,7 @@ defineExpose({
 .trigger {
 	display: inline-flex;
 	&[aria-expanded='true'] button {
-		background-color: var(--button--color--background-active);
-		box-shadow:
-			inset var(--button--border--shadow--active),
-			var(--button--shadow--active);
+		background-color: var(--background-active);
 	}
 }
 

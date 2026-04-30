@@ -181,7 +181,8 @@ const handleClick = (event: MouseEvent) => {
 	}
 
 	&:active,
-	&[aria-expanded='true'] {
+	&[aria-expanded='true'],
+	:global([aria-expanded='true']) & {
 		background-color: var(--button--color--background-active);
 		box-shadow:
 			inset var(--button--border--shadow--active),
