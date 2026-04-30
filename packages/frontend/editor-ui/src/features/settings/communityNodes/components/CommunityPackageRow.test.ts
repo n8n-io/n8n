@@ -214,4 +214,41 @@ describe('CommunityPackageRow', () => {
 			'instance settings',
 		);
 	});
+
+	it('should call useInstallNode with verified type when Install clicked', async () => {
+		const { getByTestId } = renderComponent({ props: { row: makeRow() } });
+
+		await fireEvent.click(getByTestId('community-package-row__install'));
+
+		expect(mockInstallNode).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'verified',
+				packageName: 'n8n-nodes-example',
+				nodeType: 'n8n-nodes-example.exampleNode',
+				telemetry: expect.objectContaining({ source: 'cnr settings browse' }),
+			}),
+		);
+	});
+
+	it('should emit installed and flip to installed state after successful install', async () => {
+		const { getByTestId, emitted, queryByTestId } = renderComponent({
+			props: { row: makeRow() },
+		});
+
+		await fireEvent.click(getByTestId('community-package-row__install'));
+		await flushPromises();
+
+		expect(emitted().installed).toBeTruthy();
+		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
+	});
+
+	it('should not flip state if install fails', async () => {
+		mockInstallNode.mockResolvedValueOnce({ success: false });
+		const { getByTestId } = renderComponent({ props: { row: makeRow() } });
+
+		await fireEvent.click(getByTestId('community-package-row__install'));
+		await flushPromises();
+
+		expect(getByTestId('community-package-row__install')).toBeInTheDocument();
+	});
 });

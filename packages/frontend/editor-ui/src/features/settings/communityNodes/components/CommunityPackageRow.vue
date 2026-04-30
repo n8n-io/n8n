@@ -8,6 +8,8 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useInstallNode } from '../composables/useInstallNode';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
 import type { UserAction } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
@@ -37,6 +39,11 @@ const { openCommunityPackageUpdateConfirmModal, openCommunityPackageUninstallCon
 	useUIStore();
 const settingsStore = useSettingsStore();
 const nodeTypesStore = useNodeTypesStore();
+const telemetry = useTelemetry();
+const { installNode, loading: installLoading } = useInstallNode();
+
+const installedLocally = ref(false);
+const isInstalled = computed(() => (props.row?.isInstalled ?? false) || installedLocally.value);
 
 const packageActions: Array<UserAction<IUser>> = [
 	{
@@ -67,8 +74,25 @@ const bylinePrefix = computed(() =>
 		: '',
 );
 
-function onInstall() {
-	emit('installed');
+async function onInstall() {
+	if (!props.row?.installNodeName) return;
+
+	telemetry.track('user clicked cnr install button', {
+		package_name: props.row.packageName,
+		source: 'cnr settings browse',
+	});
+
+	const result = await installNode({
+		type: 'verified',
+		packageName: props.row.packageName,
+		nodeType: props.row.installNodeName,
+		telemetry: { hasQuickConnect: false, source: 'cnr settings browse' },
+	});
+
+	if (result.success) {
+		installedLocally.value = true;
+		emit('installed');
+	}
 }
 
 const latestVerifiedVersion = ref<string>();
@@ -149,14 +173,14 @@ function onUpdateClick() {
 		</N8nText>
 		<template #append>
 			<div :class="$style.actions">
-				<N8nTooltip v-if="row?.isInstalled && row?.failedLoading" placement="top">
+				<N8nTooltip v-if="isInstalled && row?.failedLoading" placement="top">
 					<template #content>
 						{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
 					</template>
 					<N8nIcon icon="triangle-alert" color="danger" size="large" />
 				</N8nTooltip>
 
-				<template v-else-if="row?.isInstalled && hasUpdate">
+				<template v-else-if="isInstalled && hasUpdate">
 					<N8nBadge :class="[$style.persistentState, $style.persistentStateUpdate]" theme="warning">
 						{{ i18n.baseText('settings.communityNodes.row.updateAvailable') }}
 					</N8nBadge>
@@ -170,21 +194,26 @@ function onUpdateClick() {
 					/>
 				</template>
 
-				<N8nBadge v-else-if="row?.isInstalled" theme="success" :class="$style.persistentState">
-					v{{ row.installedVersion }} {{ i18n.baseText('settings.communityNodes.row.installed') }}
+				<N8nBadge v-else-if="isInstalled" theme="success" :class="$style.persistentState">
+					v{{ row?.installedVersion }} {{ i18n.baseText('settings.communityNodes.row.installed') }}
 				</N8nBadge>
 
 				<N8nButton
 					v-else
 					data-test-id="community-package-row__install"
 					size="small"
-					:label="i18n.baseText('settings.communityNodes.row.install')"
+					:label="
+						installLoading
+							? i18n.baseText('settings.communityNodes.row.installing')
+							: i18n.baseText('settings.communityNodes.row.install')
+					"
+					:loading="installLoading"
 					:class="$style.hoverCta"
 					@click="onInstall"
 				/>
 
 				<N8nActionToggle
-					v-if="row?.isInstalled"
+					v-if="isInstalled"
 					data-test-id="community-package-row__menu"
 					:actions="packageActions"
 					theme="dark"
