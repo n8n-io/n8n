@@ -655,7 +655,7 @@ export class AgentsService {
 		const integration = integrationType
 			? Container.get(ChatIntegrationRegistry).get(integrationType)
 			: undefined;
-		if (integration?.supportedComponents !== undefined) {
+		if (integrationType && integration?.supportedComponents !== undefined) {
 			try {
 				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
@@ -695,10 +695,6 @@ export class AgentsService {
 	 * Resume a suspended tool call and yield the resulting stream chunks.
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
-	 *
-	 * `projectId` is not required — it is resolved from the agent entity.
-	 * If the runtime is no longer cached (e.g. after a server restart) it is
-	 * reconstructed from the published snapshot before resuming.
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, runId, toolCallId, resumeData } = config;
