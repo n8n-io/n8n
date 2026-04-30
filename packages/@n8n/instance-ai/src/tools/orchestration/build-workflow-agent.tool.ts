@@ -100,7 +100,7 @@ function createBuilderResourceId(userId: string): string {
 	return `${userId}:workflow-builder`;
 }
 
-function buildWarmBuilderFollowUp(input: {
+export function buildWarmBuilderFollowUp(input: {
 	task: string;
 	conversationContext?: string;
 	workflowId: string;
@@ -111,6 +111,8 @@ function buildWarmBuilderFollowUp(input: {
 		`Work item ID: ${input.workItemId}`,
 		`Workflow ID: ${input.workflowId}`,
 		'Continue from the existing sandbox files and your prior builder messages/tool calls. Apply the requested change, then submit the main workflow file.',
+		'',
+		DETACHED_BUILDER_REQUIREMENTS,
 	];
 
 	if (input.conversationContext) {
@@ -380,6 +382,41 @@ function buildOutcome(
 		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
 		summary: finalText,
 	};
+}
+
+export function mergeLatestVerificationIntoOutcome(
+	outcome: WorkflowBuildOutcome,
+	latestOutcome: WorkflowBuildOutcome | undefined,
+): WorkflowBuildOutcome {
+	if (!latestOutcome?.verification) return outcome;
+	if (latestOutcome.workItemId !== outcome.workItemId) return outcome;
+	if (latestOutcome.taskId !== outcome.taskId) return outcome;
+	if (
+		outcome.workflowId &&
+		latestOutcome.workflowId &&
+		latestOutcome.workflowId !== outcome.workflowId
+	) {
+		return outcome;
+	}
+
+	return {
+		...outcome,
+		verification: latestOutcome.verification,
+	};
+}
+
+async function buildOutcomeWithLatestVerification(
+	context: OrchestrationContext,
+	workItemId: string,
+	taskId: string,
+	attempt: SubmitWorkflowAttempt | undefined,
+	finalText: string,
+): Promise<WorkflowBuildOutcome> {
+	const outcome = buildOutcome(workItemId, taskId, attempt, finalText);
+	return mergeLatestVerificationIntoOutcome(
+		outcome,
+		await getLatestBuildOutcome(context, workItemId),
+	);
 }
 
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
@@ -1069,9 +1106,16 @@ export async function startBuildWorkflowAgentTask(
 											finalText,
 											shouldUseBuilderMemory,
 										});
+										const outcome = await buildOutcomeWithLatestVerification(
+											context,
+											workItemId,
+											taskId,
+											refreshedAttempt,
+											finalText,
+										);
 										return {
 											text: finalText,
-											outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
+											outcome,
 										};
 									}
 
@@ -1106,9 +1150,16 @@ export async function startBuildWorkflowAgentTask(
 								finalText,
 								shouldUseBuilderMemory,
 							});
+							const outcome = await buildOutcomeWithLatestVerification(
+								context,
+								workItemId,
+								taskId,
+								mainWorkflowAttempt,
+								finalText,
+							);
 							return {
 								text: finalText,
-								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+								outcome,
 							};
 						}
 

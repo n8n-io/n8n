@@ -128,10 +128,9 @@ export const workflowBuildOutcomeSchema = z.object({
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
 	/**
-	 * Structured verification record from the most recent `verify-built-workflow` call
-	 * that executed inside the builder. Observability metadata only: checkpoints must
-	 * still run independent verification before completing — the builder's self-report
-	 * is a claim, not proof.
+	 * Structured verification record from the most recent `verify-built-workflow`
+	 * tool call. This is tool evidence, not builder prose, so downstream checks may
+	 * reuse a successful record instead of re-running verification.
 	 */
 	verification: workflowVerificationEvidenceSchema.optional(),
 	summary: z.string(),
