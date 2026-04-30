@@ -8,6 +8,7 @@ import { FORM_STEP_EDIT_MODAL_KEY, FORM_TRIGGER_NODE_TYPE } from '@/app/constant
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFormAppearance } from '../composables/useFormAppearance';
 import AppearanceTab from './AppearanceTab.vue';
+import FieldsTab from './FieldsTab.vue';
 
 const props = defineProps<{
 	data: Record<string, unknown>;
@@ -81,8 +82,8 @@ function onReset() {
 					<N8nRadioButtons v-model="activeTab" :options="tabs" size="medium" />
 				</div>
 
-				<!-- Fields tab (placeholder) -->
-				<div v-if="activeTab === 'fields'" :class="$style.fieldsPlaceholder" />
+				<!-- Fields tab -->
+				<FieldsTab v-if="activeTab === 'fields'" :node-id="nodeId" :class="$style.fieldsLayout" />
 
 				<!-- Appearance tab -->
 				<div v-else-if="activeTab === 'appearance'" :class="$style.appearanceLayout">
@@ -202,8 +203,9 @@ function onReset() {
 	margin-bottom: var(--spacing--sm);
 }
 
-.fieldsPlaceholder {
+.fieldsLayout {
 	flex: 1;
+	min-height: 0;
 }
 
 .appearanceLayout {
