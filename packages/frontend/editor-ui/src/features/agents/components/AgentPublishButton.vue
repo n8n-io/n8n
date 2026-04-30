@@ -116,8 +116,7 @@ async function onDropdownSelect(action: string) {
 			:class="$style.groupButtonLeft"
 			:loading="publishing"
 			:disabled="!buttonConfig.enabled || isSaving"
-			variant="subtle"
-			size="small"
+			variant="ghost"
 			data-testid="publish-agent-button"
 			@click="onPublishClick"
 		>
@@ -144,8 +143,7 @@ async function onDropdownSelect(action: string) {
 			<template #activator>
 				<N8nIconButton
 					:class="$style.groupButtonRight"
-					variant="subtle"
-					size="small"
+					variant="ghost"
 					icon="chevron-down"
 					:aria-label="locale.baseText('agents.publish.dropdown.ariaLabel')"
 					data-testid="agent-publish-dropdown-trigger"
@@ -158,6 +156,8 @@ async function onDropdownSelect(action: string) {
 <style module lang="scss">
 .buttonGroup {
 	display: inline-flex;
+	border: var(--border);
+	border-radius: var(--radius--3xs);
 }
 
 .groupButtonLeft,
@@ -175,6 +175,7 @@ async function onDropdownSelect(action: string) {
 .groupButtonRight {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+	border-left: var(--border);
 }
 
 .buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {
