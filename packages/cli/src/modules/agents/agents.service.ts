@@ -25,7 +25,12 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { OperationalError, UserError, type INodeParameters } from 'n8n-workflow';
+import {
+	OperationalError,
+	UserError,
+	type ExecuteAgentData,
+	type INodeParameters,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -82,14 +87,6 @@ interface InjectRuntimeDependenciesParams {
 /** Derive a stable thread ID for the test-chat of a given agent. */
 export function chatThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
-}
-
-export interface ExecuteAgentData {
-	response: string;
-	structuredOutput: unknown;
-	usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
-	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
-	finishReason: string;
 }
 
 @Service()
