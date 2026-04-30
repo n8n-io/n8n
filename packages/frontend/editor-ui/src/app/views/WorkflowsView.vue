@@ -4,6 +4,7 @@ import EmptySharedSectionActionBox from '@/features/core/folders/components/Empt
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import FolderCard from '@/features/core/folders/components/FolderCard.vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/core/folders/folders.constants';
+import ResourceActionsMenu from '@/app/components/ResourceActionsMenu.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
@@ -326,6 +327,12 @@ const hasPermissionToCreateWorkflows = computed(() => {
 	return getResourcePermissions(currentProject.value.scopes).workflow.create === true;
 });
 
+const hasPermissionToUpdateWorkflows = computed(() => {
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).workflow.update === true;
+});
+
 const currentProject = computed(() => projectsStore.currentProject);
 
 const projectName = computed(() => {
@@ -341,6 +348,42 @@ const currentParentName = computed(() => {
 	}
 	return projectName.value;
 });
+
+const resourceActionsScope = computed(() => {
+	if (currentFolderId.value) {
+		if (!currentFolder.value) return null;
+
+		return {
+			type: 'folder' as const,
+			id: currentFolder.value.id,
+			name: currentFolder.value.name,
+		};
+	}
+
+	const project = currentProject.value ?? projectsStore.personalProject;
+	const name =
+		project?.type === ProjectTypes.Personal
+			? i18n.baseText('projects.menu.personal')
+			: project?.name;
+
+	if (!project?.id || !name) return null;
+
+	return {
+		type: 'project' as const,
+		id: project.id,
+		name,
+	};
+});
+
+const showResourceActionsMenu = computed(
+	() =>
+		mcpEnabled.value &&
+		resourceActionsScope.value !== null &&
+		!projectPages.isOverviewSubPage &&
+		!projectPages.isSharedSubPage &&
+		!readOnlyEnv.value &&
+		hasPermissionToUpdateWorkflows.value,
+);
 
 const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
@@ -1806,34 +1849,47 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template v-if="showFolders || showRegisteredCommunityCTA" #add-button>
-			<N8nTooltip
-				placement="top"
-				:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
-			>
-				<template #content>
-					<span>
-						{{
-							currentParentName
-								? i18n.baseText('folders.add.to.parent.message', {
-										interpolate: { parent: currentParentName },
-									})
-								: i18n.baseText('folders.add.here.message')
-						}}
-					</span>
-				</template>
-				<N8nButton
-					variant="outline"
-					size="medium"
-					iconOnly
-					icon="folder-plus"
-					:aria-label="i18n.baseText('workflows.addFolder')"
-					data-test-id="add-folder-button"
-					:class="$style['add-folder-button']"
+		<template
+			v-if="showFolders || showRegisteredCommunityCTA || showResourceActionsMenu"
+			#add-button
+		>
+			<div :class="$style['header-action-buttons']">
+				<N8nTooltip
+					v-if="showFolders || showRegisteredCommunityCTA"
+					placement="top"
 					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
-					@click="createFolderInCurrent"
+				>
+					<template #content>
+						<span>
+							{{
+								currentParentName
+									? i18n.baseText('folders.add.to.parent.message', {
+											interpolate: { parent: currentParentName },
+										})
+									: i18n.baseText('folders.add.here.message')
+							}}
+						</span>
+					</template>
+					<N8nButton
+						variant="outline"
+						size="medium"
+						iconOnly
+						icon="folder-plus"
+						:aria-label="i18n.baseText('workflows.addFolder')"
+						data-test-id="add-folder-button"
+						:class="$style['add-folder-button']"
+						:disabled="
+							!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)
+						"
+						@click="createFolderInCurrent"
+					/>
+				</N8nTooltip>
+				<ResourceActionsMenu
+					v-if="showResourceActionsMenu"
+					:scope="resourceActionsScope"
+					@updated="fetchWorkflows"
 				/>
-			</N8nTooltip>
+			</div>
 		</template>
 		<template #callout>
 			<N8nCallout
@@ -2193,6 +2249,12 @@ const onNameSubmit = async (name: string) => {
 		align-items: center;
 		gap: var(--spacing--md);
 	}
+}
+
+.header-action-buttons {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .emptyStateCard {
