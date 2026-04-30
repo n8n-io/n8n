@@ -52,11 +52,13 @@ describe('applyPlannedTaskPermissions', () => {
 	});
 
 	describe('build-workflow', () => {
-		it('should auto-approve workflow run and publish', () => {
+		it('should auto-approve workflow create, update, run, and publish', () => {
 			const context = makeContext();
 			const result = applyPlannedTaskPermissions(context, 'build-workflow');
 
 			expect(result.permissions).toMatchObject({
+				createWorkflow: 'always_allow',
+				updateWorkflow: 'always_allow',
 				runWorkflow: 'always_allow',
 				publishWorkflow: 'always_allow',
 			});

@@ -97,7 +97,7 @@ const nodesWithValidationIssues = computed(
 	() => workflowDocumentStore.value.nodesWithValidationIssues,
 );
 
-const hasNodeIssues = computed(() => workflowDocumentStore.value.hasNodeValidationIssues);
+const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
 type WorkflowPublishState =
 	| 'not-published-not-eligible' // No trigger nodes or has errors

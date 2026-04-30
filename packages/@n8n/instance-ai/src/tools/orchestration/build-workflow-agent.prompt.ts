@@ -86,6 +86,16 @@ After writing any workflow with IF, Switch, or Filter nodes, verify:
 
 ### AI Agent with Subnodes — use factory functions in subnodes config
 \`\`\`javascript
+const chatTrigger = trigger({
+  type: '@n8n/n8n-nodes-langchain.chatTrigger',
+  version: 1.3,
+  config: {
+    name: 'Chat Trigger',
+    parameters: { public: false },
+    output: [{ sessionId: 'chat-session-id', chatInput: 'Hello' }]
+  }
+});
+
 const model = languageModel({
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
   version: 1.3,
@@ -108,6 +118,19 @@ const parser = outputParser({
   }
 });
 
+const memoryNode = memory({
+  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+  version: 1.3,
+  config: {
+    name: 'Conversation Memory',
+    parameters: {
+      sessionIdType: 'customKey',
+      sessionKey: nodeJson(chatTrigger, 'sessionId'),
+      contextWindowLength: 10
+    }
+  }
+});
+
 const agent = node({
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
@@ -119,11 +142,12 @@ const agent = node({
       hasOutputParser: true,
       options: { systemMessage: 'You are an expert...' }
     },
-    subnodes: { model: model, outputParser: parser }
+    subnodes: { model: model, memory: memoryNode, outputParser: parser }
   }
 });
 \`\`\`
 WRONG: \`.to(agent, { connectionType: 'ai_languageModel' })\` — subnodes MUST be in the config object.
+For values inside AI subnodes, use explicit references such as \`nodeJson(triggerNode, 'sessionId')\` instead of \`$json.sessionId\`. For Chat Trigger memory specifically, \`sessionIdType: 'fromInput'\` is also valid.
 
 ### Code Node
 \`\`\`javascript
