@@ -47,7 +47,7 @@ export const resolveBinaryAttributes = (entries: LdapUser[]): void => {
 export const createFilter = (filter: string, userFilter: string) => {
 	let _filter = `(&(|(objectClass=person)(objectClass=user))${filter})`;
 	if (userFilter) {
-		_filter = `(&${userFilter}${filter}`;
+		_filter = `(&${userFilter}${filter})`;
 	}
 	return _filter;
 };

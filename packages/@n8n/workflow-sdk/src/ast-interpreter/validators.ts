@@ -40,6 +40,7 @@ export const ALLOWED_SDK_FUNCTIONS = new Set([
 
 	// Utility
 	'fromAi', // NEW: replaces ($) => $.fromAi() pattern
+	'nodeJson',
 ]);
 
 /**

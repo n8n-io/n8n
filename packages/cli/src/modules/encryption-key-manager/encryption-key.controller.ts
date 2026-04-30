@@ -15,6 +15,7 @@ function toResponseDto(row: DeploymentKey): EncryptionKeyResponseDto {
 		algorithm: row.algorithm,
 		status: row.status,
 		createdAt: row.createdAt.toISOString(),
+		updatedAt: row.updatedAt.toISOString(),
 	};
 }
 
