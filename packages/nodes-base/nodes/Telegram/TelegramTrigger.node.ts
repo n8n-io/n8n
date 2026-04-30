@@ -19,8 +19,8 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2],
-		defaultVersion: 1.2,
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
@@ -226,10 +226,13 @@ export class TelegramTrigger implements INodeType {
 
 				const secret_token = getSecretToken.call(this);
 
+				const drop_pending_updates = this.getNode().typeVersion >= 1.3;
+
 				const body = {
 					url: webhookUrl,
 					allowed_updates: allowedUpdates,
 					secret_token,
+					drop_pending_updates,
 				};
 
 				await apiRequest.call(this, 'POST', endpoint, body);
