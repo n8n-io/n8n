@@ -14,6 +14,7 @@ import {
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
 import * as agents from '@n8n/agents';
+import { extractFromAIParameters } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
@@ -24,7 +25,7 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError, type INodeParameters } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -43,6 +44,7 @@ import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -64,7 +66,6 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -1081,12 +1082,30 @@ export class AgentsService {
 
 		const config = parsed.data;
 
+		try {
+			this.validateNodeToolExpressions(config);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				valid: false,
+				error: `Invalid $fromAI expression in node tool config: ${message}`,
+			};
+		}
+
 		const nodeError = await this.validateNodeToolConfigs(config);
 		if (nodeError) {
 			return { valid: false, error: nodeError };
 		}
 
 		return { valid: true, config };
+	}
+
+	private validateNodeToolExpressions(config: AgentJsonConfig): void {
+		for (const tool of config.tools ?? []) {
+			if (tool.type !== 'node') continue;
+
+			extractFromAIParameters((tool.node.nodeParameters ?? {}) as INodeParameters);
+		}
 	}
 
 	/**

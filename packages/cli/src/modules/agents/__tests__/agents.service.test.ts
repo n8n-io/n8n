@@ -103,6 +103,42 @@ describe('AgentsService', () => {
 		Container.reset();
 	});
 
+	describe('validateConfig', () => {
+		it('rejects inputSchema on node tool configs', async () => {
+			const result = await service.validateConfig({
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Help the user.',
+				tools: [
+					{
+						type: 'node',
+						name: 'http_request',
+						description: 'Make an HTTP request to any URL',
+						inputSchema: {
+							type: 'object',
+							properties: { url: { type: 'string' } },
+							required: ['url'],
+						},
+						node: {
+							nodeType: 'n8n-nodes-base.httpRequestTool',
+							nodeTypeVersion: 4,
+							nodeParameters: {
+								method: 'GET',
+								url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
+								toolDescription: 'Make an HTTP request to any URL',
+							},
+						},
+					},
+				],
+			});
+
+			expect(result.valid).toBe(false);
+			if (result.valid) return;
+
+			expect(result.error).toContain('inputSchema');
+		});
+	});
+
 	describe('updateConfig', () => {
 		const config = {
 			name: 'Test Agent',
