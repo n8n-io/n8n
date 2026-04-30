@@ -155,7 +155,13 @@ function makeContext(
 
 async function runTool(
 	ctx: VerifyToolContext,
-	input: { workItemId: string; workflowId: string; inputData?: Record<string, unknown> },
+	input: {
+		workItemId: string;
+		workflowId: string;
+		inputData?: Record<string, unknown>;
+		includeData?: boolean;
+		maxDataChars?: number;
+	},
 ) {
 	const tool = createVerifyBuiltWorkflowTool(ctx as unknown as OrchestrationContext);
 	// createTool's execute signature wraps the user function; invoke directly via internal handler
@@ -165,11 +171,21 @@ async function runTool(
 				workItemId: string;
 				workflowId: string;
 				inputData?: Record<string, unknown>;
+				includeData?: boolean;
+				maxDataChars?: number;
 			}) => Promise<{
 				success: boolean;
 				error?: string;
 				executionId?: string;
 				status?: string;
+				nodesExecuted?: string[];
+				nodePreviews?: Array<{
+					nodeName: string;
+					itemCount?: number;
+					preview: string;
+					truncated: boolean;
+					chars: number;
+				}>;
 				data?: Record<string, unknown>;
 			}>;
 		}
@@ -178,6 +194,16 @@ async function runTool(
 }
 
 describe('verify-built-workflow tool', () => {
+	let consoleSpy: jest.SpyInstance;
+
+	beforeEach(() => {
+		consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		consoleSpy.mockRestore();
+	});
+
 	it('persists a success verification record onto the build outcome', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',
@@ -204,6 +230,64 @@ describe('verify-built-workflow tool', () => {
 		});
 		expect(update.verification?.evidence?.nodesExecuted).toEqual(['Form Trigger', 'Insert Row']);
 		expect(typeof update.verification?.verifiedAt).toBe('string');
+	});
+
+	it('returns compact verification evidence by default without full execution data', async () => {
+		const largeRows = [{ json: { id: 1, body: 'x'.repeat(2000) } }];
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-compact',
+			status: 'success',
+			data: {
+				'Webhook Trigger': [{ json: { body: { event: 'signup' } } }],
+				'Create Lead': largeRows,
+			},
+		});
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			maxDataChars: 40,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.executionId).toBe('exec-compact');
+		expect(result.nodesExecuted).toEqual(['Webhook Trigger', 'Create Lead']);
+		expect(result.data).toBeUndefined();
+		expect(result.nodePreviews).toEqual([
+			expect.objectContaining({
+				nodeName: 'Webhook Trigger',
+				itemCount: 1,
+			}),
+			expect.objectContaining({
+				nodeName: 'Create Lead',
+				itemCount: 1,
+				truncated: true,
+			}),
+		]);
+		expect(result.nodePreviews?.[1].preview.length).toBeLessThanOrEqual(43);
+	});
+
+	it('returns full execution data when includeData is true', async () => {
+		const data = {
+			'Manual Trigger': [{ json: { ok: true } }],
+			'Set Fields': [{ json: { name: 'Alice' } }],
+		};
+		const { ctx } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-full',
+			status: 'success',
+			data,
+		});
+
+		const result = await runTool(ctx, {
+			workItemId: 'wi-1',
+			workflowId: 'wf-1',
+			includeData: true,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.data).toStrictEqual(data);
+		expect(result.nodesExecuted).toEqual(['Manual Trigger', 'Set Fields']);
+		expect(result.nodePreviews).toHaveLength(2);
 	});
 
 	it('persists a failure verification record with failureSignature', async () => {

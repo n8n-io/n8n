@@ -16,6 +16,27 @@ import type {
 	OrchestrationContext,
 } from '../../types';
 
+const DEFAULT_NODE_PREVIEW_CHARS = 600;
+
+function stringifyForToolOutput(value: unknown): string {
+	if (typeof value === 'string') return value;
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+}
+
+function estimateTokens(value: string): number {
+	return Math.ceil(value.length / 4);
+}
+
+function logWorkflowBuilderToolOutputDebug(event: string, metadata: Record<string, unknown>): void {
+	// TEMP DEBUG: remove after compaction/context tuning.
+	// eslint-disable-next-line no-console
+	console.log(`[InstanceAI][workflow-builder-tool-output] ${event}`, metadata);
+}
+
 interface DataTableWriteNode {
 	nodeName: string;
 	dataTableId: string;
@@ -93,6 +114,60 @@ function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
 	};
 	visit(nodeOutput);
 	return ids;
+}
+
+function countOutputItems(nodeOutput: unknown): number | undefined {
+	if (Array.isArray(nodeOutput)) return nodeOutput.length;
+	if (nodeOutput === undefined || nodeOutput === null) return 0;
+	return 1;
+}
+
+function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
+	const serialized = stringifyForToolOutput(value);
+	if (maxChars <= 0) {
+		return { preview: '', truncated: serialized.length > 0 };
+	}
+	if (serialized.length <= maxChars) {
+		return { preview: serialized, truncated: false };
+	}
+	return { preview: `${serialized.slice(0, maxChars)}...`, truncated: true };
+}
+
+function buildNodePreviews(
+	resultData: Record<string, unknown> | undefined,
+	maxChars: number,
+): Array<{
+	nodeName: string;
+	itemCount?: number;
+	preview: string;
+	truncated: boolean;
+	chars: number;
+}> {
+	if (!resultData) return [];
+
+	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
+		const serialized = stringifyForToolOutput(nodeOutput);
+		const preview = previewValue(nodeOutput, maxChars);
+		return {
+			nodeName,
+			itemCount: countOutputItems(nodeOutput),
+			preview: preview.preview,
+			truncated: preview.truncated,
+			chars: serialized.length,
+		};
+	});
+}
+
+function countProducedOutputRows(
+	resultData: Record<string, unknown> | undefined,
+): number | undefined {
+	if (!resultData) return undefined;
+	let count = 0;
+	for (const nodeOutput of Object.values(resultData)) {
+		const itemCount = countOutputItems(nodeOutput);
+		if (itemCount !== undefined) count += itemCount;
+	}
+	return count;
 }
 
 /**
@@ -265,6 +340,17 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.max(600_000)
 		.optional()
 		.describe('Max wait time in milliseconds (default 300000)'),
+	includeData: z
+		.boolean()
+		.optional()
+		.describe('Set true only when you need the full execution data payload. Default false.'),
+	maxDataChars: z
+		.number()
+		.int()
+		.min(0)
+		.max(20_000)
+		.optional()
+		.describe('Max characters per node preview in the compact response (default 600).'),
 });
 
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
@@ -281,6 +367,18 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			executionId: z.string().optional(),
 			success: z.boolean(),
 			status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
+			nodesExecuted: z.array(z.string()).optional(),
+			nodePreviews: z
+				.array(
+					z.object({
+						nodeName: z.string(),
+						itemCount: z.number().optional(),
+						preview: z.string(),
+						truncated: z.boolean(),
+						chars: z.number(),
+					}),
+				)
+				.optional(),
 			data: z.record(z.unknown()).optional(),
 			error: z.string().optional(),
 		}),
@@ -359,6 +457,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						failureSignature: success ? undefined : result.error,
 						evidence: {
 							nodesExecuted: nodesExecuted && nodesExecuted.length > 0 ? nodesExecuted : undefined,
+							producedOutputRows: countProducedOutputRows(result.data),
 							errorMessage: success ? undefined : result.error,
 						},
 						verifiedAt: new Date().toISOString(),
@@ -376,13 +475,38 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				});
 			}
 
-			return {
+			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
+			const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
+			const response = {
 				executionId: result.executionId || undefined,
 				success,
 				status: result.status,
-				data: result.data,
+				nodesExecuted,
+				nodePreviews: buildNodePreviews(result.data, maxDataChars),
+				...(input.includeData ? { data: result.data } : {}),
 				error: result.error,
 			};
+			const rawData = stringifyForToolOutput(result.data);
+			const compactedOutput = stringifyForToolOutput(response);
+			logWorkflowBuilderToolOutputDebug('verify-built-workflow', {
+				threadId: context.threadId,
+				runId: context.runId,
+				messageGroupId: context.messageGroupId,
+				workItemId: input.workItemId,
+				workflowId: input.workflowId,
+				executionId: result.executionId || undefined,
+				status: result.status,
+				success,
+				includeData: input.includeData === true,
+				rawDataChars: rawData.length,
+				rawDataTokens: estimateTokens(rawData),
+				compactedOutputChars: compactedOutput.length,
+				compactedOutputTokens: estimateTokens(compactedOutput),
+				nodesExecutedCount: nodesExecuted?.length ?? 0,
+				maxDataChars,
+			});
+
+			return response;
 		},
 	});
 }

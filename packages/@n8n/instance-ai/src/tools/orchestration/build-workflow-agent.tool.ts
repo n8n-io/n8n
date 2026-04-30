@@ -19,6 +19,7 @@ import {
 	BUILDER_AGENT_PROMPT,
 	createSandboxBuilderAgentPrompt,
 } from './build-workflow-agent.prompt';
+import { compactBuilderMemoryThread } from './builder-memory-compaction';
 import { truncateLabel } from './display-utils';
 import {
 	createDetachedSubAgentTracing,
@@ -66,7 +67,7 @@ function previewForBuilderDebug(text: string | null | undefined): string | undef
 function stringifyForBuilderDebug(value: unknown): string {
 	if (typeof value === 'string') return value;
 	try {
-		return JSON.stringify(value);
+		return JSON.stringify(value) ?? String(value);
 	} catch {
 		return String(value);
 	}
@@ -76,6 +77,18 @@ function stringifyForBuilderDebug(value: unknown): string {
 function logWorkflowBuilderDebug(event: string, metadata: Record<string, unknown>): void {
 	// eslint-disable-next-line no-console
 	console.log(`[InstanceAI][workflow-builder-context] ${event}`, metadata);
+}
+
+function logWorkflowBuilderMemoryDebug(event: string, metadata: Record<string, unknown>): void {
+	// TEMP DEBUG: remove after compaction/context tuning.
+	// eslint-disable-next-line no-console
+	console.log(`[InstanceAI][workflow-builder-memory] ${event}`, metadata);
+}
+
+function logWorkflowBuilderToolOutputDebug(event: string, metadata: Record<string, unknown>): void {
+	// TEMP DEBUG: remove after compaction/context tuning.
+	// eslint-disable-next-line no-console
+	console.log(`[InstanceAI][workflow-builder-tool-output] ${event}`, metadata);
 }
 
 interface BuilderMemoryBinding {
@@ -152,6 +165,7 @@ async function ensureBuilderMemoryThread(
 async function logBuilderMemoryRecallDebug(
 	context: OrchestrationContext,
 	binding: BuilderMemoryBinding,
+	metadata: { sessionId?: string; workflowId?: string; workItemId?: string } = {},
 ): Promise<void> {
 	if (!context.memory) return;
 
@@ -176,12 +190,15 @@ async function logBuilderMemoryRecallDebug(
 			lastMessagePreview = previewForBuilderDebug(text);
 		}
 
-		logWorkflowBuilderDebug('memory-recall', {
+		logWorkflowBuilderMemoryDebug('loaded', {
 			threadId: context.threadId,
 			runId: context.runId,
 			messageGroupId: context.messageGroupId,
 			builderThreadId: binding.thread,
 			builderResourceId: binding.resource,
+			builderSessionId: metadata.sessionId,
+			workflowId: metadata.workflowId,
+			workItemId: metadata.workItemId,
 			recalledMessageCount: result.messages.length,
 			recalledRoleCounts: roleCounts,
 			recalledTokens,
@@ -189,12 +206,15 @@ async function logBuilderMemoryRecallDebug(
 			lastMessagePreview,
 		});
 	} catch (error) {
-		logWorkflowBuilderDebug('memory-recall-failed', {
+		logWorkflowBuilderMemoryDebug('loaded-failed', {
 			threadId: context.threadId,
 			runId: context.runId,
 			messageGroupId: context.messageGroupId,
 			builderThreadId: binding.thread,
 			builderResourceId: binding.resource,
+			builderSessionId: metadata.sessionId,
+			workflowId: metadata.workflowId,
+			workItemId: metadata.workItemId,
 			error: error instanceof Error ? error.message : String(error),
 		});
 	}
@@ -233,6 +253,74 @@ type ExecutableTool = Record<string, unknown> & {
 
 function isExecutableTool(tool: unknown): tool is ExecutableTool {
 	return isRecord(tool) && typeof tool.execute === 'function';
+}
+
+function extractToolInputAction(args: unknown[]): string | undefined {
+	const firstArg = args[0];
+	if (!isRecord(firstArg)) return undefined;
+	return typeof firstArg.action === 'string' ? firstArg.action : undefined;
+}
+
+function getDefinitionSizeMetadata(result: unknown): Record<string, unknown> {
+	if (!isRecord(result) || !Array.isArray(result.definitions)) return {};
+
+	let largestDefinitionChars = 0;
+	let largestDefinitionNodeType: string | undefined;
+	for (const definition of result.definitions) {
+		if (!isRecord(definition)) continue;
+		const content = typeof definition.content === 'string' ? definition.content : '';
+		if (content.length > largestDefinitionChars) {
+			largestDefinitionChars = content.length;
+			largestDefinitionNodeType =
+				typeof definition.nodeType === 'string' ? definition.nodeType : undefined;
+		}
+	}
+
+	return {
+		definitionCount: result.definitions.length,
+		largestDefinitionChars,
+		largestDefinitionTokens: Math.ceil(largestDefinitionChars / 4),
+		largestDefinitionNodeType,
+	};
+}
+
+function wrapBuilderToolOutputDebug(
+	tools: ToolsInput,
+	metadata: Record<string, unknown>,
+): ToolsInput {
+	const wrapped: ToolsInput = {};
+	for (const [toolName, tool] of Object.entries(tools)) {
+		if (!isExecutableTool(tool)) {
+			wrapped[toolName] = tool;
+			continue;
+		}
+
+		const execute = tool.execute.bind(tool);
+		wrapped[toolName] = {
+			...tool,
+			execute: async (...args: unknown[]) => {
+				const result = await execute(...args);
+				const output = stringifyForBuilderDebug(result);
+				const action = extractToolInputAction(args);
+				const shouldLog =
+					toolName === 'nodes' || toolName === 'verify-built-workflow' || output.length > 10_000;
+
+				if (shouldLog) {
+					logWorkflowBuilderToolOutputDebug('tool-result', {
+						...metadata,
+						toolName,
+						action,
+						outputChars: output.length,
+						outputTokens: estimateDebugTokens(output),
+						...getDefinitionSizeMetadata(result),
+					});
+				}
+
+				return result;
+			},
+		};
+	}
+	return wrapped;
 }
 
 export function recordSuccessfulWorkflowBuilds(
@@ -287,6 +375,7 @@ function buildOutcome(
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
+		triggerNodes: attempt.triggerNodes,
 		verificationPinData: attempt.verificationPinData,
 		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
 		summary: finalText,
@@ -374,6 +463,88 @@ export function resultFromPostStreamError(input: {
 		text,
 		outcome: buildOutcome(input.workItemId, input.taskId, attempt, text),
 	};
+}
+
+async function getWorkflowNodeSummaries(
+	context: InstanceAiContext | undefined,
+	workflowId: string | undefined,
+): Promise<Array<{ name: string; type: string }> | undefined> {
+	if (!context || !workflowId) return undefined;
+
+	try {
+		const json = await context.workflowService.getAsWorkflowJSON(workflowId);
+		const summaries: Array<{ name: string; type: string }> = [];
+		for (const node of json.nodes ?? []) {
+			if (!node.name || !node.type) continue;
+			summaries.push({ name: node.name, type: node.type });
+		}
+		return summaries;
+	} catch {
+		return undefined;
+	}
+}
+
+async function getLatestBuildOutcome(
+	context: OrchestrationContext,
+	workItemId: string,
+): Promise<WorkflowBuildOutcome | undefined> {
+	try {
+		return await context.workflowTaskService?.getBuildOutcome(workItemId);
+	} catch {
+		return undefined;
+	}
+}
+
+async function compactSuccessfulBuilderMemory(input: {
+	context: OrchestrationContext;
+	binding: BuilderMemoryBinding;
+	activeBuilderSession: BuilderSandboxSession | undefined;
+	domainContext: InstanceAiContext | undefined;
+	workflowId: string | undefined;
+	workItemId: string;
+	mainWorkflowPath: string;
+	mainWorkflowAttempt: SubmitWorkflowAttempt;
+	lastRequestedChange: string;
+	finalText: string;
+	shouldUseBuilderMemory: boolean;
+}): Promise<void> {
+	if (!input.shouldUseBuilderMemory) return;
+
+	try {
+		const [nodeSummaries, latestOutcome] = await Promise.all([
+			getWorkflowNodeSummaries(input.domainContext, input.workflowId),
+			getLatestBuildOutcome(input.context, input.workItemId),
+		]);
+
+		await compactBuilderMemoryThread({
+			context: input.context,
+			binding: input.binding,
+			sessionId: input.activeBuilderSession?.sessionId,
+			workflowId: input.workflowId,
+			workItemId: input.workItemId,
+			sourceFilePath: input.mainWorkflowPath,
+			nodeSummaries,
+			triggerNodes: input.mainWorkflowAttempt.triggerNodes,
+			mockedNodeNames: input.mainWorkflowAttempt.mockedNodeNames,
+			mockedCredentialTypes: input.mainWorkflowAttempt.mockedCredentialTypes,
+			mockedCredentialsByNode: input.mainWorkflowAttempt.mockedCredentialsByNode,
+			verification: latestOutcome?.verification,
+			lastRequestedChange: input.lastRequestedChange,
+			finalBuilderResult: input.finalText,
+		});
+	} catch (error) {
+		logWorkflowBuilderMemoryDebug('compact-failed', {
+			threadId: input.context.threadId,
+			runId: input.context.runId,
+			messageGroupId: input.context.messageGroupId,
+			builderThreadId: input.binding.thread,
+			builderResourceId: input.binding.resource,
+			builderSessionId: input.activeBuilderSession?.sessionId,
+			workflowId: input.workflowId,
+			workItemId: input.workItemId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 }
 
 export interface StartBuildWorkflowAgentInput {
@@ -688,17 +859,32 @@ export async function startBuildWorkflowAgentTask(
 								},
 							});
 
-							const tracedBuilderTools = traceSubAgentTools(
-								context,
-								builderTools,
-								'workflow-builder',
+							const tracedBuilderTools = wrapBuilderToolOutputDebug(
+								traceSubAgentTools(context, builderTools, 'workflow-builder'),
+								{
+									threadId: context.threadId,
+									runId: context.runId,
+									messageGroupId: context.messageGroupId,
+									taskId,
+									subAgentId,
+									workItemId,
+									workflowId,
+									builderSessionId: activeBuilderSession?.sessionId,
+									builderThreadId,
+									builderResourceId,
+									mode: 'sandbox',
+								},
 							);
 							const shouldUseBuilderMemory = await ensureBuilderMemoryThread(
 								context,
 								builderMemoryBinding,
 							);
 							if (shouldUseBuilderMemory) {
-								await logBuilderMemoryRecallDebug(context, builderMemoryBinding);
+								await logBuilderMemoryRecallDebug(context, builderMemoryBinding, {
+									sessionId: activeBuilderSession?.sessionId,
+									workflowId,
+									workItemId,
+								});
 							}
 							logWorkflowBuilderDebug('stream-start', {
 								threadId: context.threadId,
@@ -870,6 +1056,19 @@ export async function startBuildWorkflowAgentTask(
 											context.logger,
 											refreshedAttempt.workflowId,
 										);
+										await compactSuccessfulBuilderMemory({
+											context,
+											binding: builderMemoryBinding,
+											activeBuilderSession,
+											domainContext,
+											workflowId: refreshedAttempt.workflowId,
+											workItemId,
+											mainWorkflowPath,
+											mainWorkflowAttempt: refreshedAttempt,
+											lastRequestedChange: input.task,
+											finalText,
+											shouldUseBuilderMemory,
+										});
 										return {
 											text: finalText,
 											outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
@@ -894,6 +1093,19 @@ export async function startBuildWorkflowAgentTask(
 								context.logger,
 								mainWorkflowAttempt.workflowId,
 							);
+							await compactSuccessfulBuilderMemory({
+								context,
+								binding: builderMemoryBinding,
+								activeBuilderSession,
+								domainContext,
+								workflowId: mainWorkflowAttempt.workflowId,
+								workItemId,
+								mainWorkflowPath,
+								mainWorkflowAttempt,
+								lastRequestedChange: input.task,
+								finalText,
+								shouldUseBuilderMemory,
+							});
 							return {
 								text: finalText,
 								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
@@ -905,10 +1117,17 @@ export async function startBuildWorkflowAgentTask(
 							fallbackMainWorkflowId = workflowId;
 						});
 
-						const tracedBuilderTools = traceSubAgentTools(
-							context,
-							builderTools,
-							'workflow-builder',
+						const tracedBuilderTools = wrapBuilderToolOutputDebug(
+							traceSubAgentTools(context, builderTools, 'workflow-builder'),
+							{
+								threadId: context.threadId,
+								runId: context.runId,
+								messageGroupId: context.messageGroupId,
+								taskId,
+								subAgentId,
+								workItemId,
+								mode: 'tool',
+							},
 						);
 						logWorkflowBuilderDebug('stream-start', {
 							threadId: context.threadId,
