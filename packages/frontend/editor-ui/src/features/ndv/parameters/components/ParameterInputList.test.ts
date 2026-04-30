@@ -76,6 +76,20 @@ vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
 }));
 
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: vi.fn(() => ({
+		isEnabled: { value: false },
+		isCredentialTypeSupported: vi.fn(() => false),
+		isActionSupported: vi.fn(() => true),
+		balance: { value: undefined },
+		budget: { value: undefined },
+		fetchError: { value: null },
+		fetchConfig: vi.fn(),
+		fetchWallet: vi.fn(),
+		saveAfterToggle: vi.fn(),
+	})),
+}));
+
 vi.mock('vue-router', async () => {
 	const actual = await vi.importActual('vue-router');
 	return {
