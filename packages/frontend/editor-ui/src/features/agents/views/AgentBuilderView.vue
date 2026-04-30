@@ -1043,6 +1043,20 @@ function onSwitchAgent(nextAgentId: string) {
 							@continue-loaded="onContinueLoaded"
 							@open-build="onOpenBuildFromChat"
 						>
+							<template #above-input>
+								<div :class="$style.quickActionsRow">
+									<AgentChatQuickActions
+										:tools="localConfig?.tools ?? []"
+										:project-id="projectId"
+										:agent-id="agentId"
+										:is-published="Boolean(agent?.publishedVersion)"
+										:connected-triggers="connectedTriggers"
+										@update:tools="onQuickActionAddTool"
+										@update:connected-triggers="onConnectedTriggersUpdate"
+										@trigger-added="onTriggerAdded"
+									/>
+								</div>
+							</template>
 							<template #footer-start>
 								<N8nTooltip
 									v-if="initialized"
@@ -1398,7 +1412,9 @@ function onSwitchAgent(nextAgentId: string) {
 .quickActionsRow {
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .sessionHeader {
@@ -1462,11 +1478,6 @@ function onSwitchAgent(nextAgentId: string) {
 		color: var(--color--text);
 		border-color: var(--color--foreground);
 	}
-}
-
-.quickActionsRow > :first-child {
-	flex: 1;
-	min-width: 0;
 }
 
 /* The session picker can grow with the thread list — cap it at ~5 visible rows
