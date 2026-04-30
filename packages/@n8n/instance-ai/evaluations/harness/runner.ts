@@ -50,6 +50,8 @@ interface WorkflowTestCaseConfig {
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	keepWorkflows: boolean;
+	/** Optional " [lane N/M]" suffix appended to per-build log lines. */
+	laneTag?: string;
 }
 
 /**
@@ -76,6 +78,7 @@ export async function runWorkflowTestCase(
 		preRunWorkflowIds: config.preRunWorkflowIds,
 		claimedWorkflowIds: config.claimedWorkflowIds,
 		logger,
+		laneTag: config.laneTag,
 	});
 
 	if (!build.success || !build.workflowId) {
@@ -116,7 +119,7 @@ export async function runWorkflowTestCase(
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
-		`  Scenarios done: ${String(result.scenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]`,
+		`  Scenarios done: ${String(result.scenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
 	);
 
 	if (!config.keepWorkflows) {
@@ -147,6 +150,8 @@ export interface BuildWorkflowConfig {
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
+	/** Optional " [lane N/M]" suffix appended to the build log line. */
+	laneTag?: string;
 }
 
 /**
@@ -165,7 +170,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 	try {
 		const buildStart = Date.now();
-		logger.info(`  Building workflow: "${truncate(prompt, 60)}"`);
+		logger.info(`  Building workflow: "${truncate(prompt, 60)}"${config.laneTag ?? ''}`);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},

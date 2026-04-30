@@ -218,6 +218,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	// it possible to filter spans by lane in the LangSmith UI.
 	const laneStates: LaneState[] = lanes.map((lane, idx) => {
 		const laneNum = idx + 1;
+		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
 		return {
 			lane,
 			buildLimiter: pLimit(MAX_CONCURRENT_BUILDS),
@@ -232,6 +233,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 						preRunWorkflowIds: lane.preRunWorkflowIds,
 						claimedWorkflowIds: lane.claimedWorkflowIds,
 						logger,
+						laneTag,
 					}),
 				{
 					name: 'workflow_build',
@@ -770,6 +772,8 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 		const laneResults = await Promise.all(
 			lanes.map(async (lane, laneIdx) => {
 				const bucket = buckets[laneIdx];
+				const laneTag =
+					lanes.length > 1 ? ` [lane ${String(laneIdx + 1)}/${String(lanes.length)}]` : '';
 				const results = await runWithConcurrency(
 					bucket,
 					async ({ tc }) =>
@@ -782,6 +786,7 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 							claimedWorkflowIds: lane.claimedWorkflowIds,
 							logger,
 							keepWorkflows: args.keepWorkflows,
+							laneTag,
 						}),
 					MAX_CONCURRENT_BUILDS,
 				);
