@@ -1,4 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -260,6 +261,33 @@ describe('POST /mcp-oauth/register', () => {
 		const response = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
 
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
+	});
+
+	test('should return 503 with descriptive error when instance client limit is reached', async () => {
+		const globalConfig = Container.get(GlobalConfig);
+		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
+		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
+
+		try {
+			const clientData = {
+				client_name: 'Test Client',
+				redirect_uris: ['https://example.com/callback'],
+				grant_types: ['authorization_code'],
+				token_endpoint_auth_method: 'none',
+			};
+
+			const first = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(first.statusCode).toBe(201);
+
+			const second = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
+			expect(second.statusCode).toBe(503);
+			expect(second.body).toMatchObject({
+				error: 'server_error',
+				error_description: expect.stringContaining('maximum of 1 registered MCP clients'),
+			});
+		} finally {
+			globalConfig.endpoints.mcpMaxRegisteredClients = originalLimit;
+		}
 	});
 });
 

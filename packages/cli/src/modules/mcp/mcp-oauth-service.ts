@@ -91,17 +91,26 @@ export class McpOAuthService implements OAuthServerProvider {
 		};
 	}
 
+	/** Returns true when the instance is already at or above the registered-client cap. */
+	async isClientLimitReached(): Promise<boolean> {
+		const clientCount = await this.oauthClientRepository.count();
+		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
+	}
+
 	/**
 	 * Check count after insert to avoid race condition between count() and insert().
 	 * If over limit, rolls back by deleting the just-inserted client.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
 		const clientCount = await this.oauthClientRepository.count();
-		if (clientCount > this.globalConfig.endpoints.mcpMaxRegisteredClients) {
+		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
+		if (clientCount > limit) {
 			await this.oauthClientRepository.delete({ id: clientId });
-			throw new Error(
-				`Maximum number of registered clients (${this.globalConfig.endpoints.mcpMaxRegisteredClients}) reached`,
-			);
+			this.logger.warn('MCP OAuth client registration rejected: instance limit reached', {
+				limit,
+				clientCount,
+			});
+			throw new Error(`Maximum number of registered clients (${limit}) reached`);
 		}
 	}
 
