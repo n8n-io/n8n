@@ -23,7 +23,7 @@ import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 
-import type { EventMessageTypes } from '../eventbus/event-message-classes';
+import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
 
 /**
  * Service for recovering key properties in executions.
@@ -128,9 +128,9 @@ export class ExecutionRecoveryService {
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		if (messages.length === 0) return await this.amendWithoutLogs(executionId);
 
-		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
+		const { nodeMessagesByName, workflowMessages } = this.toRelevantMessages(messages);
 
-		if (nodeMessages.length === 0) return null;
+		if (Object.keys(nodeMessagesByName).length === 0) return null;
 
 		const execution = await this.executionRepository.findSingleExecution(executionId, {
 			includeData: true,
@@ -149,11 +149,12 @@ export class ExecutionRecoveryService {
 			return null;
 		}
 
-		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
+		const runExecutionData = execution.data ?? createEmptyRunExecutionData();
 
 		let lastNodeRunTimestamp: DateTime | undefined;
 
 		for (const node of execution.workflowData.nodes) {
+			const nodeMessages = nodeMessagesByName[node.name] ?? [];
 			const nodeStartedMessage = nodeMessages.find(
 				(m) => m.payload.nodeName === node.name && m.eventName === 'n8n.node.started',
 			);
@@ -217,19 +218,21 @@ export class ExecutionRecoveryService {
 
 	private toRelevantMessages(messages: EventMessageTypes[]) {
 		return messages.reduce<{
-			nodeMessages: EventMessageTypes[];
+			nodeMessagesByName: Record<string, EventMessageTypes[]>;
 			workflowMessages: EventMessageTypes[];
 		}>(
 			(acc, cur) => {
-				if (cur.eventName.startsWith('n8n.node.')) {
-					acc.nodeMessages.push(cur);
+				if (isNodeEventMessage(cur)) {
+					const nodeName = cur.payload.nodeName;
+					acc.nodeMessagesByName[nodeName] ??= [];
+					acc.nodeMessagesByName[nodeName].push(cur);
 				} else if (cur.eventName.startsWith('n8n.workflow.')) {
 					acc.workflowMessages.push(cur);
 				}
 
 				return acc;
 			},
-			{ nodeMessages: [], workflowMessages: [] },
+			{ nodeMessagesByName: {}, workflowMessages: [] },
 		);
 	}
 
