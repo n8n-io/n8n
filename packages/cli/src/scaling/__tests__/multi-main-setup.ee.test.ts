@@ -106,5 +106,27 @@ describe('MultiMainSetup', () => {
 			expect(emit).toHaveBeenCalledWith('leader-takeover');
 			expect(instanceSettings.markAsLeader).toHaveBeenCalled();
 		});
+
+		it('should skip overlapping checkLeader calls', async () => {
+			let resolveGet: (value: string | null) => void;
+			publisher.get.mockReturnValue(
+				new Promise((resolve) => {
+					resolveGet = resolve;
+				}),
+			);
+
+			// @ts-expect-error - private method
+			const first = multiMainSetup.checkLeader();
+			// @ts-expect-error - private method
+			const second = multiMainSetup.checkLeader();
+
+			resolveGet!(hostId);
+			Object.defineProperty(instanceSettings, 'isLeader', { get: () => true });
+
+			await first;
+			await second;
+
+			expect(publisher.get).toHaveBeenCalledTimes(1);
+		});
 	});
 });

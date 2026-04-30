@@ -47,6 +47,8 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 	private leaderCheckInterval: NodeJS.Timeout | undefined;
 
+	private leaderCheckInProgress = false;
+
 	async init() {
 		const prefix = this.globalConfig.redis.prefix;
 		const validPrefix = this.redisClientService.toValidPrefix(prefix);
@@ -69,6 +71,17 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	}
 
 	private async checkLeader() {
+		if (this.leaderCheckInProgress) return;
+
+		this.leaderCheckInProgress = true;
+		try {
+			await this.doLeaderCheck();
+		} finally {
+			this.leaderCheckInProgress = false;
+		}
+	}
+
+	private async doLeaderCheck() {
 		const leaderId = await this.publisher.get(this.leaderKey);
 
 		const { hostId } = this.instanceSettings;
