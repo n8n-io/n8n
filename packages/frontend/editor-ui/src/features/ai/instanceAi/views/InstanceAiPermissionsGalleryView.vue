@@ -261,7 +261,7 @@ function logAnswers(answers: QuestionAnswer[]) {
 	console.log('[gallery] questions submitted', answers);
 }
 
-function logPlanApprove() {
+function logPlanAllow() {
 	// eslint-disable-next-line no-console
 	console.log('[gallery] plan approved');
 }
@@ -296,7 +296,7 @@ function logPlanRequestChanges(feedback: string) {
 				<N8nHeading size="large" bold>Generic approval</N8nHeading>
 				<N8nText color="text-light" tag="p">
 					Used when a sub-agent wants to call a tool that mutates state. Wrapped in the "approval"
-					container; multiple pending items collapse into a single card with an "Approve all"
+					container; multiple pending items collapse into a single card with an "Allow all"
 					shortcut.
 				</N8nText>
 			</div>
@@ -316,7 +316,7 @@ function logPlanRequestChanges(feedback: string) {
 						</div>
 						<ConfirmationFooter>
 							<N8nButton variant="outline" size="medium">Deny</N8nButton>
-							<N8nButton variant="solid" size="medium">Approve</N8nButton>
+							<N8nButton variant="solid" size="medium">Allow</N8nButton>
 						</ConfirmationFooter>
 					</div>
 				</div>
@@ -337,21 +337,21 @@ function logPlanRequestChanges(feedback: string) {
 						</div>
 						<ConfirmationFooter>
 							<N8nButton variant="outline" size="medium">Deny</N8nButton>
-							<N8nButton variant="destructive" size="medium">Approve</N8nButton>
+							<N8nButton variant="destructive" size="medium">Allow</N8nButton>
 						</ConfirmationFooter>
 					</div>
 				</div>
 			</div>
 
-			<!-- Group with "Approve all" -->
+			<!-- Group with "Allow all" -->
 			<div :class="$style.demo">
 				<N8nText size="small" color="text-light" :class="$style.caption">
-					Multiple items · same agent · "Approve all" shortcut
+					Multiple items · same agent · "Allow all" shortcut
 				</N8nText>
 				<div :class="$style.confirmationCard">
 					<div :class="$style.generic">
 						<N8nText>Workflow Builder needs your approval</N8nText>
-						<N8nButton size="medium" variant="subtle">Approve all</N8nButton>
+						<N8nButton size="medium" variant="subtle">Allow all</N8nButton>
 					</div>
 					<div :class="$style.items">
 						<div :class="[$style.item, $style.itemBordered]">
@@ -362,7 +362,7 @@ function logPlanRequestChanges(feedback: string) {
 								</div>
 								<ConfirmationFooter>
 									<N8nButton variant="outline" size="medium">Deny</N8nButton>
-									<N8nButton variant="solid" size="medium">Approve</N8nButton>
+									<N8nButton variant="solid" size="medium">Allow</N8nButton>
 								</ConfirmationFooter>
 							</div>
 						</div>
@@ -374,7 +374,7 @@ function logPlanRequestChanges(feedback: string) {
 								</div>
 								<ConfirmationFooter>
 									<N8nButton variant="outline" size="medium">Deny</N8nButton>
-									<N8nButton variant="solid" size="medium">Approve</N8nButton>
+									<N8nButton variant="solid" size="medium">Allow</N8nButton>
 								</ConfirmationFooter>
 							</div>
 						</div>
@@ -423,7 +423,7 @@ function logPlanRequestChanges(feedback: string) {
 								:variant="example.severity === 'destructive' ? 'destructive' : 'solid'"
 								size="medium"
 							>
-								Approve
+								Allow
 							</N8nButton>
 						</ConfirmationFooter>
 					</div>
@@ -536,7 +536,7 @@ function logPlanRequestChanges(feedback: string) {
 				<N8nText size="small" color="text-light" :class="$style.caption">Single task</N8nText>
 				<PlanReviewPanel
 					:planned-tasks="singlePlanTask"
-					@approve="logPlanApprove"
+					@approve="logPlanAllow"
 					@request-changes="logPlanRequestChanges"
 				/>
 			</div>
@@ -547,7 +547,7 @@ function logPlanRequestChanges(feedback: string) {
 				>
 				<PlanReviewPanel
 					:planned-tasks="multiPlanTasks"
-					@approve="logPlanApprove"
+					@approve="logPlanAllow"
 					@request-changes="logPlanRequestChanges"
 				/>
 			</div>
@@ -571,7 +571,7 @@ function logPlanRequestChanges(feedback: string) {
 				<PlanReviewPanel
 					:planned-tasks="multiPlanTasks"
 					disabled
-					@approve="logPlanApprove"
+					@approve="logPlanAllow"
 					@request-changes="logPlanRequestChanges"
 				/>
 			</div>
