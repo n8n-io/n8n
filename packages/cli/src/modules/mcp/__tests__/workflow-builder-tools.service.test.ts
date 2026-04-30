@@ -8,9 +8,15 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 const MockNodeTypeParser = jest.fn();
 const mockSetSchemaBaseDirs = jest.fn();
+const mockSearchInvoke = jest.fn().mockResolvedValue('search-result');
+const mockGetInvoke = jest.fn().mockResolvedValue('get-result');
+const mockSuggestInvoke = jest.fn().mockResolvedValue('suggest-result');
 
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	NodeTypeParser: MockNodeTypeParser,
+	createCodeBuilderSearchTool: jest.fn(() => ({ invoke: mockSearchInvoke })),
+	createCodeBuilderGetTool: jest.fn(() => ({ invoke: mockGetInvoke })),
+	createGetSuggestedNodesTool: jest.fn(() => ({ invoke: mockSuggestInvoke })),
 }));
 
 jest.mock('@n8n/workflow-sdk', () => ({
@@ -142,6 +148,101 @@ describe('WorkflowBuilderToolsService', () => {
 	describe('constructor', () => {
 		test('registers a post-processor on LoadNodesAndCredentials', () => {
 			expect(loadNodesAndCredentials.addPostProcessor).toHaveBeenCalledWith(expect.any(Function));
+		});
+	});
+
+	describe('searchNodes', () => {
+		test('returns cached result on repeated calls with same queries', async () => {
+			await service.initialize();
+
+			const result1 = await service.searchNodes(['gmail', 'slack']);
+			const result2 = await service.searchNodes(['gmail', 'slack']);
+
+			expect(result1).toBe('search-result');
+			expect(result2).toBe('search-result');
+			expect(mockSearchInvoke).toHaveBeenCalledTimes(1);
+		});
+
+		test('returns cached result regardless of query order', async () => {
+			await service.initialize();
+
+			await service.searchNodes(['gmail', 'slack']);
+			await service.searchNodes(['slack', 'gmail']);
+
+			expect(mockSearchInvoke).toHaveBeenCalledTimes(1);
+		});
+
+		test('calls tool for different queries', async () => {
+			await service.initialize();
+
+			await service.searchNodes(['gmail']);
+			await service.searchNodes(['slack']);
+
+			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('getNodeTypes', () => {
+		test('returns cached result on repeated calls with same nodeIds', async () => {
+			await service.initialize();
+
+			const result1 = await service.getNodeTypes(['n8n-nodes-base.set']);
+			const result2 = await service.getNodeTypes(['n8n-nodes-base.set']);
+
+			expect(result1).toBe('get-result');
+			expect(result2).toBe('get-result');
+			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+		});
+
+		test('handles object nodeIds in cache key', async () => {
+			await service.initialize();
+			const nodeId = { nodeId: 'n8n-nodes-base.gmail', resource: 'message', operation: 'send' };
+
+			await service.getNodeTypes([nodeId]);
+			await service.getNodeTypes([nodeId]);
+
+			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('getSuggestedNodes', () => {
+		test('returns cached result on repeated calls with same categories', async () => {
+			await service.initialize();
+
+			const result1 = await service.getSuggestedNodes(['chatbot', 'notification']);
+			const result2 = await service.getSuggestedNodes(['chatbot', 'notification']);
+
+			expect(result1).toBe('suggest-result');
+			expect(result2).toBe('suggest-result');
+			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('cache invalidation', () => {
+		test('clears all caches when node types are refreshed', async () => {
+			await service.initialize();
+
+			// Populate caches
+			await service.searchNodes(['gmail']);
+			await service.getNodeTypes(['n8n-nodes-base.set']);
+			await service.getSuggestedNodes(['chatbot']);
+
+			expect(mockSearchInvoke).toHaveBeenCalledTimes(1);
+			expect(mockGetInvoke).toHaveBeenCalledTimes(1);
+			expect(mockSuggestInvoke).toHaveBeenCalledTimes(1);
+
+			// Trigger refresh
+			expect(postProcessorCallback).toBeDefined();
+			await postProcessorCallback!();
+
+			// Same calls should invoke tools again (cache was cleared)
+			await service.searchNodes(['gmail']);
+			await service.getNodeTypes(['n8n-nodes-base.set']);
+			await service.getSuggestedNodes(['chatbot']);
+
+			expect(mockSearchInvoke).toHaveBeenCalledTimes(2);
+			expect(mockGetInvoke).toHaveBeenCalledTimes(2);
+			expect(mockSuggestInvoke).toHaveBeenCalledTimes(2);
 		});
 	});
 });

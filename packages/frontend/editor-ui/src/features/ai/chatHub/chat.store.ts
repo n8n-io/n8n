@@ -39,6 +39,10 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import {
 	emptyChatModelsResponse,
 	type ChatHubConversationModel,
 	type ChatHubSendMessageRequest,
@@ -541,7 +545,10 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const workflowsStore = useWorkflowsStore();
 		if (workflowsStore.workflowId !== model.workflowId) return false;
 
-		const chatTrigger = workflowsStore.allNodes.find(
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		const chatTrigger = workflowDocumentStore.allNodes.find(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
 		);
 		if (!chatTrigger) return false;

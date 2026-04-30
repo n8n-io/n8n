@@ -58,6 +58,9 @@ jobs:
           N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      - name: Install script dependencies
+        run: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
       - name: Check for new unpublished packages
         run: node .github/scripts/detect-new-packages.mjs
 
@@ -78,10 +81,16 @@ jobs:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: pnpm --filter n8n publish --publish-branch "$PUBLISH_BRANCH" --access public --tag rc --no-git-checks
 
-      - name: Publish other packages to NPM with latest tag
+      - name: Publish other packages to NPM
         env:
           PUBLISH_BRANCH: ${{ github.event.pull_request.base.ref }}
-        run: pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --no-git-checks
+          PUBLISH_TAG: ${{ needs.determine-version-info.outputs.track }}
+        run: |
+          # Prefix version-like track names (e.g. "1", "v1") to avoid npm rejecting them as semver ranges
+          if [[ "$PUBLISH_TAG" =~ ^v?[0-9] ]]; then
+            PUBLISH_TAG="release-${PUBLISH_TAG}"
+          fi
+          pnpm publish -r --filter '!n8n' --publish-branch "$PUBLISH_BRANCH" --access public --tag "$PUBLISH_TAG" --no-git-checks
 
       - name: Cleanup rc tag
         run: npm dist-tag rm n8n rc
@@ -94,6 +103,15 @@ jobs:
     with:
       n8n_version: ${{ needs.determine-version-info.outputs.version }}
       release_type: ${{ needs.determine-version-info.outputs.release_type }}
+    secrets: inherit
+
+  build-daytona-snapshot:
+    name: Build Daytona snapshot
+    needs: [determine-version-info]
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/release-build-daytona-snapshot.yml
+    with:
+      n8n_version: ${{ needs.determine-version-info.outputs.version }}
     secrets: inherit
 
   create-github-release:
@@ -174,11 +192,13 @@ jobs:
         create-github-release,
         move-track-tag,
         promote-stable-tag,
+        build-daytona-snapshot,
       ]
     if: |
       always() &&
       needs.publish-to-npm.result == 'success' &&
       needs.create-github-release.result == 'success' &&
+      needs.build-daytona-snapshot.result == 'success' &&
       (needs.move-track-tag.result == 'success' || needs.move-track-tag.result == 'skipped') &&
       (needs.promote-stable-tag.result == 'success' || needs.promote-stable-tag.result == 'skipped')
     uses: ./.github/workflows/release-publish-post-release.yml

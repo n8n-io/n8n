@@ -151,7 +151,7 @@ const onConnectClick = () => {
 							:to="
 								router.resolve({
 									name: VIEWS.WORKFLOW,
-									params: { name: item.id },
+									params: { workflowId: item.id },
 								}).fullPath
 							"
 							:theme="'text'"

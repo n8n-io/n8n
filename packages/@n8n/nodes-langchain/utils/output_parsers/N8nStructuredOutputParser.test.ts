@@ -288,7 +288,7 @@ describe('N8nStructuredOutputParser', () => {
 			const emptyOutput = '{}';
 
 			await expect(parser.parse(emptyOutput)).rejects.toThrow(
-				"Model output doesn't fit required format",
+				'The AI model returned an empty response to the Structured Output Parser',
 			);
 		});
 

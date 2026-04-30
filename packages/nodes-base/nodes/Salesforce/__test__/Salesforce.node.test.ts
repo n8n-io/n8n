@@ -5,12 +5,16 @@ import { jsonParse } from 'n8n-workflow';
 import * as GenericFunctions from '../GenericFunctions';
 import { Salesforce } from '../Salesforce.node';
 
-jest.mock('../GenericFunctions', () => ({
-	getQuery: jest.fn(),
-	salesforceApiRequest: jest.fn(),
-	salesforceApiRequestAllItems: jest.fn(),
-	sortOptions: jest.fn(),
-}));
+jest.mock('../GenericFunctions', () => {
+	const actual = jest.requireActual('../GenericFunctions');
+	return {
+		...actual,
+		getQuery: jest.fn(),
+		salesforceApiRequest: jest.fn(),
+		salesforceApiRequestAllItems: jest.fn(),
+		sortOptions: jest.fn(),
+	};
+});
 
 describe('Salesforce', () => {
 	let node: Salesforce;
@@ -326,6 +330,105 @@ describe('Salesforce', () => {
 					},
 				);
 				expect(result).toEqual([{ name: 'Custom Type', value: 'rt1' }]);
+			});
+
+			it('should properly escape special characters in resource names', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(
+					"Account'; DROP TABLE RecordType--",
+				);
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain("\\'");
+				expect(query).toContain("Account\\'");
+				expect(query).toMatch(
+					/SELECT Id, Name, SobjectType, IsActive FROM RecordType WHERE SobjectType = /,
+				);
+
+				expect(query).toContain("WHERE SobjectType = 'Account\\'");
+			});
+
+			it('should handle resource names with backslashes safely', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('Account\\Test');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('\\\\');
+			});
+
+			it('should handle resource names with newlines and control characters', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('Account\nTest\rValue');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('\\n');
+				expect(query).toContain('\\r');
+			});
+
+			it('should handle legitimate custom object names correctly', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockImplementation((param) => {
+					if (param === 'resource') return 'customObject';
+					if (param === 'customObject') return 'My_Custom_Object__c';
+					return '';
+				});
+
+				const mockTypes = [
+					{ Id: 'rt1', Name: 'Type 1', SobjectType: 'My_Custom_Object__c', IsActive: true },
+				];
+				salesforceApiRequestAllItemsSpy.mockResolvedValue(mockTypes);
+
+				const result = await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('My_Custom_Object__c');
+				expect(result).toEqual([{ name: 'Type 1', value: 'rt1' }]);
+			});
+
+			it('should prevent UNION', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue(
+					"Account' UNION SELECT Id, Name FROM User--",
+				);
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain("\\'");
+				expect(query).toContain("Account\\'");
+				expect(query).toContain("WHERE SobjectType = 'Account\\'");
+			});
+
+			it('should handle empty and whitespace resource names', async () => {
+				mockLoadOptionsFunctions.getNodeParameter.mockReturnValue('  Account  ');
+
+				salesforceApiRequestAllItemsSpy.mockResolvedValue([]);
+
+				await node.methods.loadOptions.getRecordTypes.call(mockLoadOptionsFunctions);
+
+				const callArgs = salesforceApiRequestAllItemsSpy.mock.calls[0];
+				const query = (callArgs[4] as { q: string }).q;
+
+				expect(query).toContain('  Account  ');
 			});
 		});
 
@@ -1371,7 +1474,12 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,FirstName,LastName' }, 'Lead', true);
+				expect(getQuerySpy).toHaveBeenCalledWith(
+					{ fields: 'Id,FirstName,LastName' },
+					'Lead',
+					true,
+					0,
+				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -1750,7 +1858,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject,Type' }, 'Case', true);
+				expect(getQuerySpy).toHaveBeenCalledWith({ fields: 'Id,Subject,Type' }, 'Case', true, 0);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -1950,6 +2058,8 @@ describe('Salesforce', () => {
 							acconuntId: 'acc123', // Note: This is a typo in the original code
 							birthdate: '1990-01-01',
 							firstName: 'Jane',
+							middleName: 'Anne',
+							suffix: 'Jr.',
 							homePhone: '+1987654321',
 							otherCity: 'Other City',
 							department: 'Sales',
@@ -1957,6 +2067,8 @@ describe('Salesforce', () => {
 							otherPhone: '+1555555555',
 							otherState: 'TX',
 							salutation: 'Mrs.',
+							pronouns: 'She/Her',
+							genderIdentity: 'Woman',
 							description: 'Contact description',
 							mailingCity: 'Mailing City',
 							mobilePhone: '+1777777777',
@@ -1971,6 +2083,7 @@ describe('Salesforce', () => {
 							emailBouncedDate: '2023-01-01',
 							mailingPostalCode: '12345',
 							emailBouncedReason: 'Mailbox full',
+							hasOptedOutOfEmail: true,
 							customFieldsUi: {
 								customFieldsValues: [
 									{ fieldId: 'Contact_Custom__c', value: 'Contact Custom Value' },
@@ -2000,6 +2113,8 @@ describe('Salesforce', () => {
 						AccountId: 'acc123',
 						Birthdate: '1990-01-01',
 						FirstName: 'Jane',
+						MiddleName: 'Anne',
+						Suffix: 'Jr.',
 						HomePhone: '+1987654321',
 						OtherCity: 'Other City',
 						Department: 'Sales',
@@ -2007,6 +2122,8 @@ describe('Salesforce', () => {
 						OtherPhone: '+1555555555',
 						OtherState: 'TX',
 						Salutation: 'Mrs.',
+						Pronouns: 'She/Her',
+						GenderIdentity: 'Woman',
 						Description: 'Contact description',
 						MailingCity: 'Mailing City',
 						MobilePhone: '+1777777777',
@@ -2021,6 +2138,7 @@ describe('Salesforce', () => {
 						EmailBouncedDate: '2023-01-01',
 						MailingPostalCode: '12345',
 						EmailBouncedReason: 'Mailbox full',
+						HasOptedOutOfEmail: true,
 						Contact_Custom__c: 'Contact Custom Value',
 					}),
 				);
@@ -2088,6 +2206,8 @@ describe('Salesforce', () => {
 							acconuntId: 'acc999', // Note: This is a typo in the original code
 							birthdate: '1985-05-05',
 							firstName: 'Updated Jane',
+							middleName: 'Updated Anne',
+							suffix: 'Sr.',
 							homePhone: '+1888888888',
 							otherCity: 'Updated Other City',
 							department: 'Updated Sales',
@@ -2095,6 +2215,8 @@ describe('Salesforce', () => {
 							otherPhone: '+1777777777',
 							otherState: 'Updated TX',
 							salutation: 'Dr.',
+							pronouns: 'He/Him',
+							genderIdentity: 'Man',
 							description: 'Updated contact description',
 							mailingCity: 'Updated Mailing City',
 							mobilePhone: '+1666666666',
@@ -2109,6 +2231,7 @@ describe('Salesforce', () => {
 							emailBouncedDate: '2024-01-01',
 							mailingPostalCode: 'Updated 12345',
 							emailBouncedReason: 'Updated Mailbox full',
+							hasOptedOutOfEmail: false,
 							customFieldsUi: {
 								customFieldsValues: [
 									{ fieldId: 'Updated_Contact_Custom__c', value: 'Updated Contact Custom Value' },
@@ -2138,6 +2261,8 @@ describe('Salesforce', () => {
 						AccountId: 'acc999',
 						Birthdate: '1985-05-05',
 						FirstName: 'Updated Jane',
+						MiddleName: 'Updated Anne',
+						Suffix: 'Sr.',
 						HomePhone: '+1888888888',
 						OtherCity: 'Updated Other City',
 						Department: 'Updated Sales',
@@ -2145,6 +2270,8 @@ describe('Salesforce', () => {
 						OtherPhone: '+1777777777',
 						OtherState: 'Updated TX',
 						Salutation: 'Dr.',
+						Pronouns: 'He/Him',
+						GenderIdentity: 'Man',
 						Description: 'Updated contact description',
 						MailingCity: 'Updated Mailing City',
 						MobilePhone: '+1666666666',
@@ -2159,6 +2286,7 @@ describe('Salesforce', () => {
 						EmailBouncedDate: '2024-01-01',
 						MailingPostalCode: 'Updated 12345',
 						EmailBouncedReason: 'Updated Mailbox full',
+						HasOptedOutOfEmail: false,
 						Updated_Contact_Custom__c: 'Updated Contact Custom Value',
 					}),
 				);
@@ -2226,6 +2354,7 @@ describe('Salesforce', () => {
 					{ fields: 'Id,FirstName,LastName' },
 					'Contact',
 					true,
+					0,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
@@ -2505,7 +2634,7 @@ describe('Salesforce', () => {
 
 				await node.execute.call(mockExecuteFunctions);
 
-				expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', true);
+				expect(getQuerySpy).toHaveBeenCalledWith({}, 'CustomObject__c', true, 0);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',
 					'GET',
@@ -3768,6 +3897,7 @@ describe('Salesforce', () => {
 					{ fields: 'Id,Name,ParentId' },
 					'Attachment',
 					true,
+					0,
 				);
 				expect(salesforceApiRequestAllItemsSpy).toHaveBeenCalledWith(
 					'records',

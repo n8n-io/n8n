@@ -46,8 +46,14 @@ export class ModuleRegistry {
 		'ldap',
 		'quick-connect',
 		'workflow-builder',
+		'favorites',
 		'redaction',
 		'instance-registry',
+		'otel',
+		'token-exchange',
+		'instance-version-history',
+		'encryption-key-manager',
+		'oauth-jwe',
 	];
 
 	private readonly activeModules: string[] = [];
@@ -91,11 +97,20 @@ export class ModuleRegistry {
 		for (const moduleName of modules ?? this.eligibleModules) {
 			try {
 				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
-			} catch {
+			} catch (primaryError) {
 				try {
 					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
 				} catch (error) {
-					throw new MissingModuleError(moduleName, error instanceof Error ? error.message : '');
+					const loggedError =
+						primaryError instanceof Error &&
+						'code' in primaryError &&
+						primaryError.code !== 'MODULE_NOT_FOUND'
+							? primaryError
+							: error;
+					throw new MissingModuleError(
+						moduleName,
+						loggedError instanceof Error ? loggedError.message : '',
+					);
 				}
 			}
 		}

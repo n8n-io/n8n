@@ -19,7 +19,7 @@ const onSSOLogin = async () => {
 			: ssoStore.oidc.loginUrl;
 		window.location.href = redirectUrl ?? '';
 	} catch (error) {
-		toast.showError(error, 'Error', error.message);
+		toast.showError(error, 'Error', { message: error.message });
 	}
 };
 </script>

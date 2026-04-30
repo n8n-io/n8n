@@ -6,6 +6,7 @@ import type * as express from 'express';
 import type FormData from 'form-data';
 import type { PathLike } from 'fs';
 import type { IncomingHttpHeaders } from 'http';
+import type { AgentOptions } from 'https';
 import type { ReplyHeaders, RequestBodyMatcher, RequestHeaderMatcher } from 'nock';
 import type { Client as SSHClient } from 'ssh2';
 import type { Readable } from 'stream';
@@ -79,6 +80,7 @@ export interface IBinaryData {
 // credentials file.
 export interface IOAuth2Options {
 	includeCredentialsOnRefreshOnBody?: boolean;
+	skipTokenRefresh?: boolean;
 	property?: string;
 	tokenType?: string;
 	keepBearer?: boolean;
@@ -128,11 +130,13 @@ export abstract class ICredentials<T extends object = ICredentialDataDecryptedOb
 		this.data = data;
 	}
 
-	abstract getData(nodeType?: string): T;
+	abstract getData(nodeType?: string): Promise<T>;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 
-	abstract setData(data: T): void;
+	abstract setData(data: T): Promise<void>;
+
+	abstract updateData(toUpdate: Partial<T>, toDelete?: Array<keyof T>): Promise<void>;
 }
 
 export interface IUser {
@@ -508,6 +512,12 @@ export interface IHttpRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
+	agentOptions?: Omit<AgentOptions, 'socket'>;
 }
 
 /**
@@ -561,6 +571,11 @@ export interface IRequestOptions {
 	 * @default true - for backwards compatibility
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
+	/**
+	 * Comma-separated list of allowed domains for credential requests.
+	 * If set, requests to domains not in this list will be blocked.
+	 */
+	allowedDomains?: string;
 }
 
 export interface PaginationOptions {
@@ -934,7 +949,7 @@ export type CronContext = {
 export type Cron = { expression: CronExpression; recurrence?: CronRecurrenceRule };
 
 export interface SchedulingFunctions {
-	registerCron(cron: Cron, onTick: () => void): void;
+	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
 }
 
 export type NodeTypeAndVersion = {
@@ -947,6 +962,8 @@ export type NodeTypeAndVersion = {
 
 export interface FunctionsBase {
 	logger: Logger;
+	customData: IWorkflowExecutionCustomData;
+
 	getCredentials<T extends object = ICredentialDataDecryptedObject>(
 		type: string,
 		itemIndex?: number,
@@ -1225,7 +1242,7 @@ export interface IPollFunctions
 	__emit(
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		donePromise?: IDeferredPromise<IRun>,
+		donePromise?: IDeferredPromise<IRun | undefined>,
 	): void;
 	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
@@ -1245,6 +1262,7 @@ export interface ITriggerFunctions
 		data: INodeExecutionData[][],
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 		donePromise?: IDeferredPromise<IRun>,
+		deduplicationKey?: string,
 	): void;
 	/**
 	 * Persist the current run as a failed execution and run the error workflow if configured.
@@ -1317,6 +1335,11 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 export interface INodeCredentialsDetails {
 	id: string | null;
 	name: string;
+	/**
+	 * Set automatically when the credential slot is managed by the n8n AI Gateway.
+	 * Not intended to be set or modified manually.
+	 */
+	__aiGatewayManaged?: boolean;
 }
 
 export interface INodeCredentials {
@@ -1613,6 +1636,7 @@ export interface INodePropertyTypeOptions {
 		layout?: 'inline'; // Render sub-parameters side-by-side in a row
 	};
 	password?: boolean; // Supported by: string
+	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -2151,23 +2175,34 @@ export interface IWorkflowIssues {
 }
 
 export type ThemeIconColor =
+	| 'neutral'
 	| 'gray'
 	| 'black'
 	| 'blue'
 	| 'light-blue'
 	| 'dark-blue'
+	| 'sky-blue'
 	| 'orange'
 	| 'orange-red'
+	| 'amber'
+	| 'rust'
 	| 'pink-red'
+	| 'magenta'
 	| 'red'
 	| 'light-green'
 	| 'green'
 	| 'dark-green'
+	| 'emerald'
+	| 'forest-green'
+	| 'lime'
 	| 'azure'
+	| 'teal'
 	| 'purple'
+	| 'violet'
+	| 'lavender'
 	| 'crimson';
 export type Themed<T> = T | { light: T; dark: T };
-export type IconRef = `fa:${string}` | `node:${string}.${string}`;
+export type IconRef = `fa:${string}` | `node:${string}`;
 export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
 export type Icon = IconRef | Themed<IconFile> | IconFile;
 
@@ -2401,6 +2436,30 @@ export interface IBuilderHintInputConfig {
 export type BuilderHintInputs = Partial<Record<AINodeConnectionType, IBuilderHintInputConfig>>;
 
 /**
+ * Configuration for a single output in builderHint.outputs.
+ *
+ * Describes when an output connection type is available based on the node's parameters,
+ * mirroring `IBuilderHintInputConfig`. Unlike inputs, the connection-type key here may also
+ * be `'main'`, since main outputs are commonly mode-conditional (e.g. vector stores expose
+ * `main` only in `insert`/`load` modes and `ai_vectorStore` only in `retrieve` mode).
+ */
+export interface IBuilderHintOutputConfig {
+	/**
+	 * Whether this output is required to be connected. Optional because most outputs
+	 * are availability declarations only — but some sub-node-style outputs (e.g.
+	 * `ai_vectorStore` in `mode: 'retrieve'`) are useless unless wired to a parent.
+	 */
+	required?: boolean;
+	/** Conditions under which this output is exposed by the node. */
+	displayOptions?: IDisplayOptions;
+}
+
+/**
+ * Maps connection types (including `main`) to their availability configuration.
+ */
+export type BuilderHintOutputs = Partial<Record<NodeConnectionType, IBuilderHintOutputConfig>>;
+
+/**
  * Related node with explanation of why it's related
  */
 export interface IRelatedNode {
@@ -2416,6 +2475,8 @@ export interface IRelatedNode {
 export interface IBuilderHint {
 	/** Explicit AI input requirements for accurate type generation */
 	inputs?: BuilderHintInputs;
+	/** Declarative output availability — which outputs the node exposes per parameter values */
+	outputs?: BuilderHintOutputs;
 	/** General hint message for LLM workflow builders */
 	message?: string;
 	/** Related nodes that work together with this node */
@@ -2560,18 +2621,20 @@ export interface IWorkflowDataProxyData {
 	constructor: any;
 }
 
+export type IWorkflowExecutionCustomData = {
+	set(key: string, value: string): void;
+	setAll(obj: Record<string, string>): void;
+	get(key: string): string;
+	getAll(): Record<string, string>;
+};
+
 export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 	$execution?: {
 		id: string;
 		mode: 'test' | 'production';
 		resumeUrl: string;
 		resumeFormUrl: string;
-		customData?: {
-			set(key: string, value: string): void;
-			setAll(obj: Record<string, string>): void;
-			get(key: string): string;
-			getAll(): Record<string, string>;
-		};
+		customData?: IWorkflowExecutionCustomData;
 	};
 	$vars?: IDataObject;
 	$secrets?: IDataObject;
@@ -2764,6 +2827,20 @@ export interface ITaskMetadata {
 	 * Contains token for security validation.
 	 */
 	resumeUrl?: string;
+
+	/**
+	 * AI model token usage captured from vendor node API responses before the simplify step
+	 * strips it. Used by telemetry to populate ai_input_tokens / ai_output_tokens in node_graph_string.
+	 */
+	tokenUsage?: {
+		inputTokens: number;
+		outputTokens: number;
+	};
+
+	/**
+	 * Key-value pairs that can be set for tracing - they will be attached to the OTEL node span
+	 * */
+	tracing?: Record<string, string | number | boolean>;
 }
 
 /** The data that gets returned when a node execution starts */
@@ -2934,6 +3011,10 @@ export interface IWorkflowExecutionDataProcess {
 		arguments: Record<string, unknown>;
 		sourceNodeName?: string;
 	};
+	/** Key to uniquely identify this execution, generated by the trigger. */
+	deduplicationKey?: string;
+	/** W3C trace context extracted from inbound webhook headers. */
+	tracingContext?: { traceparent: string; tracestate?: string };
 }
 
 export interface ExecuteWorkflowOptions {
@@ -3009,6 +3090,8 @@ export interface IWorkflowExecuteAdditionalData {
 	currentNodeParameters?: INodeParameters;
 	executionTimeoutTimestamp?: number;
 	userId?: string;
+	workflowId?: string;
+	projectId?: string;
 	variables: IDataObject;
 	logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => void;
 	parentCallbackManager?: CallbackManager;
@@ -3043,6 +3126,13 @@ export interface IWorkflowExecuteAdditionalData {
 	 * dynamically. Reset to false by the execution engine before each node runs.
 	 */
 	currentNodeUsedDynamicCredentials?: boolean;
+	otel?: {
+		injectTraceHeaders: (
+			executionId: string,
+			nodeName: string | undefined,
+			headers: Record<string, string>,
+		) => void;
+	};
 }
 
 export type WorkflowActivateMode =
@@ -3056,7 +3146,7 @@ export type WorkflowActivateMode =
 export namespace WorkflowSettings {
 	export type CallerPolicy = 'any' | 'none' | 'workflowsFromAList' | 'workflowsFromSameOwner';
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
-	export type RedactionPolicy = 'none' | 'all' | 'non-manual';
+	export type RedactionPolicy = 'none' | 'all' | 'non-manual' | 'manual-only';
 }
 
 export type WorkflowSettingsBinaryMode = typeof BINARY_MODE_SEPARATE | typeof BINARY_MODE_COMBINED;
@@ -3238,6 +3328,9 @@ export interface INodeGraphItem {
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
 	ai_model?: string; // AI model for model nodes and standalone AI nodes
+	ai_input_tokens?: number; // AI input (prompt) tokens for model nodes
+	ai_output_tokens?: number; // AI output (completion) tokens for model nodes
+	ai_gateway_credentials?: boolean; // true if node used n8n Connect / AI Gateway managed credentials
 }
 
 export interface INodeNameIndex {
@@ -3491,6 +3584,11 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	instanceAi?: {
+		credentialId?: string | null;
+		modelName?: string;
+		localGatewayDisabled?: boolean;
+	};
 }
 
 export interface IProcessedDataConfig {

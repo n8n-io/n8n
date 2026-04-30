@@ -1,6 +1,6 @@
 {
   "name": "@n8n/expression-runtime",
-  "version": "0.5.0",
+  "version": "0.11.0",
   "description": "Secure, isolated expression evaluation runtime for n8n",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
@@ -17,6 +17,7 @@
     "build": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json && pnpm build:runtime",
     "build:runtime": "node esbuild.config.js",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest --watch --silent false",
     "typecheck": "tsc --noEmit"
   },
@@ -30,7 +31,8 @@
   ],
   "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
-    "@n8n/tournament": "1.0.6",
+    "@n8n/errors": "workspace:*",
+    "@n8n/tournament": "workspace:*",
     "isolated-vm": "^6.0.2",
     "js-base64": "catalog:",
     "jssha": "3.3.1",
@@ -42,6 +44,7 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",
     "@types/luxon": "3.2.0",
     "@types/md5": "^2.3.5",

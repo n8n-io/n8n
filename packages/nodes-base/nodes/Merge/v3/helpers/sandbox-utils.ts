@@ -41,6 +41,15 @@ export async function loadAlaSqlSandbox(): Promise<IsolatedVM.Context> {
 	sandboxIsolate = new ivm.Isolate({ memoryLimit: 64 }); // 64 MB hard limit
 	sandboxContext = await sandboxIsolate.createContext();
 
+	// Block network/file APIs before loading alasql to prevent
+	// file access via SQL statements (e.g. SOURCE, REQUIRE).
+	// Must be non-writable/non-configurable so the alasql bundle cannot overwrite them.
+	await sandboxContext.eval(`
+		function blockedNetworkOrFileApi() { throw new Error('Network and file system access is disabled in the SQL sandbox'); }
+		Object.defineProperty(globalThis, 'fetch', { value: blockedNetworkOrFileApi, writable: false, configurable: false });
+		Object.defineProperty(globalThis, 'XMLHttpRequest', { value: blockedNetworkOrFileApi, writable: false, configurable: false });
+	`);
+
 	// Browser bundle only – no Node.js fs/require handlers inside the isolate.
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const alasqlBundlePath = require.resolve('alasql/dist/alasql.min.js');

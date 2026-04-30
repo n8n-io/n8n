@@ -205,60 +205,126 @@ export class MessageEventBusLogWriter {
 	): Promise<ReadMessagesFromLogFileResult> {
 		if (logFileName && existsSync(logFileName)) {
 			try {
+				const stream = createReadStream(logFileName);
+				stream.on('error', (error) => {
+					if ((error as NodeJS.ErrnoException).code !== 'ERR_STREAM_DESTROYED') {
+						this.logger.error(`Error reading logged messages from file: ${logFileName}`, {
+							error,
+						});
+					}
+				});
 				const rl = readline.createInterface({
-					input: createReadStream(logFileName),
+					input: stream,
 					crlfDelay: Infinity,
 				});
+				// Safety guard: abort if the per-file working set grows too large.
+				// Healthy files stay small because confirm lines prune loggedMessages as
+				// they stream; legacy files with orphaned messages (pre-PR #27334) are
+				// the pathological case this guards against.
+				// The guard is skipped in 'all' mode because confirms don't prune there,
+				// so the count would grow monotonically even for healthy files.
+				const maxMessagesPerParse = this.globalConfig.eventBus.logWriter.maxMessagesPerParse;
+				const maxTotalMessagesPerFile =
+					this.globalConfig.eventBus.logWriter.maxTotalMessagesPerFile;
+				const baselineCount = results.loggedMessages.length;
+				let aborted = false;
+				// Stack-local counters: aggregate malformed lines into a single warn at
+				// the end of the parse pass. Each per-line error log allocates the raw
+				// line into the message template and runs the winston format pipeline,
+				// which on 100k-line malformed files blows the heap.
+				let parseSkipped = 0;
+				let parseSkippedSample: string | undefined;
 				rl.on('line', (line) => {
+					if (aborted) return;
 					try {
-						const json = jsonParse(line);
-						if (isEventMessageOptions(json) && json.__type !== undefined) {
-							const msg = this.getEventMessageObjectByType(json);
-							if (msg !== null) results.loggedMessages.push(msg);
-							if (msg?.eventName && msg.payload?.executionId) {
-								const executionId = msg.payload.executionId as string;
-								switch (msg.eventName) {
-									case 'n8n.workflow.started':
-										if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
-											results.unfinishedExecutions[executionId] = [];
-										}
-										results.unfinishedExecutions[executionId] = [msg];
-										break;
-									case 'n8n.workflow.success':
-									case 'n8n.workflow.failed':
-									case 'n8n.execution.throttled':
-									case 'n8n.execution.started-during-bootup':
-										delete results.unfinishedExecutions[executionId];
-										break;
-									case 'n8n.node.started':
-									case 'n8n.node.finished':
-										if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
-											results.unfinishedExecutions[executionId] = [];
-										}
-										results.unfinishedExecutions[executionId].push(msg);
-										break;
-								}
-							}
+						this.processLoggedLine(line, results, mode);
+					} catch {
+						parseSkipped += 1;
+						if (parseSkippedSample === undefined) {
+							parseSkippedSample = line.slice(0, 200);
 						}
-						if (isEventMessageConfirm(json) && mode !== 'all') {
-							const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
-							if (mode === 'sent') {
-								results.sentMessages.push(...removedMessage);
-							}
-						}
-					} catch (error) {
-						this.logger.error(
-							`Error reading line messages from file: ${logFileName}, line: ${line}, ${error.message}}`,
+					}
+					if (
+						mode !== 'all' &&
+						results.loggedMessages.length - baselineCount > maxMessagesPerParse
+					) {
+						aborted = true;
+						this.logger.warn(
+							`Event log ${logFileName} exceeded ${maxMessagesPerParse} in-memory messages during parse; aborting to prevent out-of-memory. Some unfinished execution recovery may be skipped. Tune via N8N_EVENTBUS_LOGWRITER_MAXMESSAGESPERPARSE.`,
 						);
+						rl.close();
+						stream.destroy();
+						return;
+					}
+					// Absolute ceiling applied in every mode, counting skipped lines too
+					// so 100%-malformed files also trip it.
+					if (
+						results.loggedMessages.length - baselineCount + parseSkipped >=
+						maxTotalMessagesPerFile
+					) {
+						aborted = true;
+						this.logger.warn(
+							`Event log ${logFileName} exceeded ${maxTotalMessagesPerFile} total lines during parse; aborting to prevent out-of-memory. Tune via N8N_EVENTBUS_LOGWRITER_MAXTOTALMESSAGESPERFILE.`,
+						);
+						rl.close();
+						stream.destroy();
 					}
 				});
 				// wait for stream to finish before continue
 				await eventOnce(rl, 'close');
+				if (parseSkipped > 0) {
+					this.logger.warn(
+						`Event log parse skipped ${parseSkipped} malformed line(s) in ${logFileName}. Sample (truncated): ${parseSkippedSample}`,
+					);
+				}
 			} catch {
 				this.logger.error(`Error reading logged messages from file: ${logFileName}`);
 			}
 		}
 		return results;
+	}
+
+	// eslint-disable-next-line complexity
+	private processLoggedLine(
+		line: string,
+		results: ReadMessagesFromLogFileResult,
+		mode: EventMessageReturnMode,
+	): void {
+		const json = jsonParse(line);
+		if (isEventMessageOptions(json) && json.__type !== undefined) {
+			const msg = this.getEventMessageObjectByType(json);
+			if (msg !== null) results.loggedMessages.push(msg);
+			if (msg?.eventName && msg.payload?.executionId) {
+				const executionId = msg.payload.executionId as string;
+				switch (msg.eventName) {
+					case 'n8n.workflow.started':
+						if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
+							results.unfinishedExecutions[executionId] = [];
+						}
+						results.unfinishedExecutions[executionId] = [msg];
+						break;
+					case 'n8n.workflow.success':
+					case 'n8n.workflow.failed':
+					case 'n8n.execution.throttled':
+					case 'n8n.execution.started-during-bootup':
+						delete results.unfinishedExecutions[executionId];
+						break;
+					case 'n8n.node.started':
+					case 'n8n.node.finished':
+						if (!Object.keys(results.unfinishedExecutions).includes(executionId)) {
+							results.unfinishedExecutions[executionId] = [];
+						}
+						results.unfinishedExecutions[executionId].push(msg);
+						break;
+				}
+			}
+		}
+		if (isEventMessageConfirm(json) && mode !== 'all') {
+			const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
+			if (mode === 'sent') {
+				results.sentMessages.push(...removedMessage);
+			}
+		}
 	}
 
 	getLogFileName(counter?: number): string {

@@ -61,6 +61,7 @@ export class WorkflowExecutionService {
 		additionalData: IWorkflowExecuteAdditionalData,
 		mode: WorkflowExecuteMode,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		deduplicationKey?: string,
 	) {
 		const nodeExecutionStack: IExecuteData[] = [
 			{
@@ -84,6 +85,7 @@ export class WorkflowExecutionService {
 			executionMode: mode,
 			executionData,
 			workflowData,
+			deduplicationKey,
 		};
 
 		return await this.workflowRunner.run(runData, true, undefined, undefined, responsePromise);
@@ -142,9 +144,10 @@ export class WorkflowExecutionService {
 
 		// Case 2: Full execution from a known trigger.
 		if (isFullExecutionFromKnownTrigger(payload)) {
-			// Check if we need a webhook.
+			// We must always register the webhook - even when the Chat Trigger has
+			// pinned data – because the chat SDK will POST the message to it.
 			if (
-				triggerHasNoPinnedData(workflowData, payload) &&
+				(payload.chatSessionId || triggerHasNoPinnedData(workflowData, payload)) &&
 				(await this.testWebhooks.needsWebhook({
 					userId: user.id,
 					workflowEntity: workflowData,

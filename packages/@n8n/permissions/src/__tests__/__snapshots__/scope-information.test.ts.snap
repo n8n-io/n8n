@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`Scope Information ensure scopes are defined correctly 1`] = `
+exports[`Scope Information > ensure scopes are defined correctly 1`] = `
 [
   "aiAssistant:manage",
   "aiAssistant:*",
@@ -128,6 +128,7 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "folder:move",
   "folder:*",
   "insights:list",
+  "insights:read",
   "insights:*",
   "oidc:manage",
   "oidc:*",
@@ -140,6 +141,8 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "dataTable:list",
   "dataTable:readRow",
   "dataTable:writeRow",
+  "dataTable:readColumn",
+  "dataTable:writeColumn",
   "dataTable:listProject",
   "dataTable:*",
   "execution:delete",
@@ -173,12 +176,24 @@ exports[`Scope Information ensure scopes are defined correctly 1`] = `
   "breakingChanges:*",
   "apiKey:manage",
   "apiKey:*",
+  "encryptionKey:manage",
+  "encryptionKey:*",
   "credentialResolver:create",
   "credentialResolver:read",
   "credentialResolver:update",
   "credentialResolver:delete",
   "credentialResolver:list",
   "credentialResolver:*",
+  "instanceAi:message",
+  "instanceAi:manage",
+  "instanceAi:gateway",
+  "instanceAi:*",
+  "roleMappingRule:create",
+  "roleMappingRule:read",
+  "roleMappingRule:update",
+  "roleMappingRule:delete",
+  "roleMappingRule:list",
+  "roleMappingRule:*",
   "*",
 ]
 `;
