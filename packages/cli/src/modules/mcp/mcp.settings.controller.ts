@@ -1,29 +1,18 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
-import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
-import {
-	Body,
-	Post,
-	Get,
-	Patch,
-	RestController,
-	GlobalScope,
-	Param,
-	ProjectScope,
-} from '@n8n/decorators';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { type AuthenticatedRequest } from '@n8n/db';
+import { Body, Post, Get, Patch, RestController, GlobalScope } from '@n8n/decorators';
 import type { Response } from 'express';
-import { calculateWorkflowChecksum } from 'n8n-workflow';
 
-import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
-import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
-import { McpServerApiKeyService } from './mcp-api-key.service';
-import { McpSettingsService } from './mcp.settings.service';
-
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
+import { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
+import { McpServerApiKeyService } from './mcp-api-key.service';
+import { McpSettingsService } from './mcp.settings.service';
 
 @RestController('/mcp')
 export class McpSettingsController {
@@ -32,9 +21,8 @@ export class McpSettingsController {
 		private readonly logger: Logger,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
-		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowService: WorkflowService,
-		private readonly collaborationService: CollaborationService,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
 
 	@GlobalScope('mcp:manage')
@@ -44,6 +32,9 @@ export class McpSettingsController {
 		_res: Response,
 		@Body dto: UpdateMcpSettingsDto,
 	) {
+		if (this.instanceSettingsLoaderConfig.mcpManagedByEnv) {
+			throw new ForbiddenError('MCP settings are managed via environment variables');
+		}
 		const enabled = dto.mcpAccessEnabled;
 		await this.mcpSettingsService.setEnabled(enabled);
 		try {
@@ -91,60 +82,20 @@ export class McpSettingsController {
 		res.json({ count, data: workflows });
 	}
 
-	@ProjectScope('workflow:update')
-	@Patch('/workflows/:workflowId/toggle-access')
-	async toggleWorkflowMCPAccess(
+	// Ideally we would use ProjectScope here but it only works if projectId is a URL parameter
+	@Patch('/workflows/toggle-access')
+	async toggleWorkflowsMCPAccess(
 		req: AuthenticatedRequest,
 		_res: Response,
-		@Param('workflowId') workflowId: string,
-		@Body dto: UpdateWorkflowAvailabilityDto,
+		@Body dto: UpdateWorkflowsAvailabilityDto,
 	) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowId,
+		const { changedWorkflows, ...result } = await this.mcpSettingsService.bulkSetAvailableInMCP(
 			req.user,
-			['workflow:update'],
-			{ includeActiveVersion: true },
+			dto,
 		);
 
-		if (!workflow) {
-			this.logger.warn('User attempted to update MCP availability without permissions', {
-				workflowId,
-				userId: req.user.id,
-			});
-			throw new NotFoundError(
-				'Could not load the workflow - you can only access workflows available to you',
-			);
-		}
+		void this.mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged(changedWorkflows);
 
-		const workflowUpdate = new WorkflowEntity();
-		const currentSettings = workflow.settings ?? {};
-		workflowUpdate.settings = {
-			...currentSettings,
-			availableInMCP: dto.availableInMCP,
-		};
-		workflowUpdate.versionId = workflow.versionId;
-
-		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
-
-		const checksum = await calculateWorkflowChecksum(updatedWorkflow);
-
-		void this.collaborationService
-			.broadcastWorkflowSettingsUpdated(
-				workflowId,
-				{ availableInMCP: dto.availableInMCP },
-				checksum,
-			)
-			.catch((error) => {
-				this.logger.warn('Failed to broadcast workflow settings update', {
-					workflowId,
-					cause: error instanceof Error ? error.message : String(error),
-				});
-			});
-
-		return {
-			id: updatedWorkflow.id,
-			settings: updatedWorkflow.settings,
-			versionId: updatedWorkflow.versionId,
-		};
+		return result;
 	}
 }

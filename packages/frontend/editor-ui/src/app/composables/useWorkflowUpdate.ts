@@ -136,7 +136,7 @@ export function useWorkflowUpdate() {
 		}
 
 		// Then update other node properties on the (possibly renamed) nodes
-		const workflow = workflowsStore.cloneWorkflowObject();
+		const workflow = workflowDocumentStore.value.cloneWorkflowObject();
 
 		for (const { existing, updated } of nodesToUpdate) {
 			// Use new name only if rename succeeded, otherwise use old name
