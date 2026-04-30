@@ -4833,7 +4833,7 @@
 	"evaluation.stopTest": "Stop Test",
 	"evaluation.runInParallel.label.sequential": "Sequential",
 	"evaluation.runInParallel.label.concurrent": "Concurrent · {count}",
-	"evaluation.runInParallel.tooltip": "Drag the slider to set how many evaluation test cases run at the same time. 1 runs sequentially; higher values fan out for speed but may hit LLM rate limits.",
+	"evaluation.runInParallel.tooltip": "Drag the slider to set how many evaluation test cases run at the same time. A value of 1 runs cases sequentially; higher values fan out for speed but may hit LLM rate limits.",
 	"evaluation.cancelTestRun": "Cancel Test Run",
 	"evaluation.notImplemented": "This feature is not implemented yet!",
 	"evaluation.viewDetails": "View Details",

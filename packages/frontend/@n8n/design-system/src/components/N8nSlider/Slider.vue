@@ -29,8 +29,14 @@ withDefaults(defineProps<SliderProps>(), {
 // sits inside the track without a visible coloured border ring, and
 // subtle stops that read as light dots on the filled side and barely-
 // visible dots on the unfilled side.
+//
+// Token notes:
+// - `--background--brand` is the semantic alias for the n8n orange.
+// - The runway/disabled tokens fall back to legacy `--color--foreground*`
+//   because the design system has no semantic alias for the
+//   "neutral surface behind an interactive control" role yet.
 const brandTokens = {
-	'--el-slider-main-bg-color': 'var(--color--primary)',
+	'--el-slider-main-bg-color': 'var(--background--brand)',
 	'--el-slider-runway-bg-color': 'var(--color--foreground)',
 	'--el-slider-stop-bg-color': 'rgba(0, 0, 0, 0.28)',
 	'--el-slider-disabled-color': 'var(--color--foreground--shade-1)',

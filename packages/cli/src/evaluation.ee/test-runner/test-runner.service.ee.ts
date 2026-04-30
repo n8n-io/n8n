@@ -530,7 +530,7 @@ export class TestRunnerService {
 			? evaluationLimit
 			: requestedConcurrency;
 
-		this.logger.info(
+		this.logger.debug(
 			`[Eval] runTest called: requestedConcurrency=${requestedConcurrency} effectiveConcurrency=${effectiveConcurrency} evaluationLimit=${evaluationLimit} flagEnabledForUser=${flagEnabledForUser}`,
 			{ workflowId },
 		);
@@ -628,7 +628,7 @@ export class TestRunnerService {
 			// threaded event loop guarantees no interleaving between read and
 			// write of `++` within a sync block.
 			const fanOutMetrics = { inFlight: 0, peakInFlight: 0, casesStarted: 0 };
-			this.logger.info(
+			this.logger.debug(
 				`[Eval] Fan-out begin: cases=${testCases.length} concurrency=${effectiveConcurrency}`,
 				{ testRunId: testRun.id, workflowId },
 			);
@@ -735,7 +735,7 @@ export class TestRunnerService {
 							if (fanOutMetrics.inFlight > fanOutMetrics.peakInFlight) {
 								fanOutMetrics.peakInFlight = fanOutMetrics.inFlight;
 							}
-							this.logger.info(
+							this.logger.debug(
 								`[Eval] Case started: case=${caseIndex} inFlight=${fanOutMetrics.inFlight}/${effectiveConcurrency} peak=${fanOutMetrics.peakInFlight}`,
 								{ testRunId: testRun.id },
 							);
@@ -878,7 +878,7 @@ export class TestRunnerService {
 								// The synthetic id is irrelevant — release dequeues by mode.
 								this.concurrencyControlService.release({ mode: 'evaluation' });
 								fanOutMetrics.inFlight -= 1;
-								this.logger.info(
+								this.logger.debug(
 									`[Eval] Case finished: case=${caseIndex} inFlight=${fanOutMetrics.inFlight}/${effectiveConcurrency}`,
 									{ testRunId: testRun.id },
 								);
@@ -887,7 +887,7 @@ export class TestRunnerService {
 				),
 			);
 
-			this.logger.info(
+			this.logger.debug(
 				`[Eval] Fan-out complete: cases=${fanOutMetrics.casesStarted} peakInFlight=${fanOutMetrics.peakInFlight}/${effectiveConcurrency}`,
 				{ testRunId: testRun.id },
 			);
