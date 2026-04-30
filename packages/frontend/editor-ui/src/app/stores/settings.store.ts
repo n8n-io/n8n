@@ -296,6 +296,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
+		rootStore.setJwksUri(fetchedSettings.jwksUri);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 

@@ -158,3 +158,6 @@ export type EventMessageTypes =
 	| EventMessageAiNode
 	| EventMessageQueue
 	| EventMessageRunner;
+
+export const isNodeEventMessage = (message: EventMessageTypes): message is EventMessageNode =>
+	message.eventName.startsWith('n8n.node.');

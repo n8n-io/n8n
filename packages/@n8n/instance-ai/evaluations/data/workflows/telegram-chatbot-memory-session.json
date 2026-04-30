@@ -1,0 +1,13 @@
+{
+	"prompt": "Build a Telegram chatbot workflow for a family assistant. It should receive Telegram messages, answer with an AI Agent using an OpenAI chat model, keep short-term conversation memory scoped separately for each Telegram chat, and send the AI Agent's answer back to the same Telegram chat. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "telegram", "chatbot", "ai-agent", "memory", "expressions"],
+	"scenarios": [
+		{
+			"name": "distinct-telegram-chat",
+			"description": "A Telegram message from one chat is answered with memory scoped to that chat id",
+			"dataSetup": "The Telegram Trigger receives a text message from chat id 123456 with text 'What is on the family calendar today?' from user 'Alex'. The AI Agent returns a short helpful answer. The Telegram sendMessage call returns a success response.",
+			"successCriteria": "The workflow executes without errors. It contains a Telegram Trigger, an AI Agent, a chat model, and a memory node connected to the agent. The memory node scopes conversation history by Telegram chat id using an explicit source-node reference to the Telegram Trigger chat id, not $json. The final Telegram response is sent back to chat id 123456 and contains the AI Agent answer."
+		}
+	]
+}

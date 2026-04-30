@@ -84,6 +84,10 @@ const createMockSDKFunctions = (): SDKFunctions => ({
 	fromAi: jest.fn(
 		(key: string, desc?: string) => `={{ $fromAI('${key}'${desc ? `, '${desc}'` : ''}) }}`,
 	),
+	nodeJson: jest.fn((node: { name: string } | string, path: string) => {
+		const name = typeof node === 'string' ? node : node.name;
+		return `={{ $('${name}').item.json.${path} }}`;
+	}),
 });
 
 describe('AST Interpreter', () => {
@@ -222,6 +226,14 @@ describe('AST Interpreter', () => {
 			const result = interpretSDKCode(code, sdkFunctions);
 			expect(sdkFunctions.fromAi).toHaveBeenCalledWith('email', 'The recipient email address');
 			expect(result).toContain('$fromAI');
+		});
+
+		it('should call nodeJson function', () => {
+			const code = "export default nodeJson('Telegram Trigger', 'message.chat.id');";
+			const result = interpretSDKCode(code, sdkFunctions);
+
+			expect(sdkFunctions.nodeJson).toHaveBeenCalledWith('Telegram Trigger', 'message.chat.id');
+			expect(result).toBe("={{ $('Telegram Trigger').item.json.message.chat.id }}");
 		});
 
 		it('should chain method calls', () => {

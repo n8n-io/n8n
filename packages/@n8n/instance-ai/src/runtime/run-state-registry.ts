@@ -18,6 +18,10 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	toolCallId: string;
 	requestId: string;
 	createdAt: number;
+	/** Set when the suspended run was a planned-task checkpoint follow-up.
+	 *  Preserved across suspend/resume so the resumed run's finalizer can
+	 *  run the deadlock fallback and reschedule. */
+	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 }
 
 export interface ConfirmationData {
@@ -84,6 +88,9 @@ export class RunStateRegistry<TUser = unknown> {
 	private readonly threadMessageGroupId = new Map<string, string>();
 
 	private readonly runIdsByMessageGroup = new Map<string, string[]>();
+
+	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
+	private readonly threadTimeZones = new Map<string, string>();
 
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
 		const runId = `run_${nanoid()}`;
@@ -270,6 +277,14 @@ export class RunStateRegistry<TUser = unknown> {
 		return this.threadResearchMode.get(threadId);
 	}
 
+	setTimeZone(threadId: string, timeZone: string): void {
+		this.threadTimeZones.set(threadId, timeZone);
+	}
+
+	getTimeZone(threadId: string): string | undefined {
+		return this.threadTimeZones.get(threadId);
+	}
+
 	/**
 	 * Find suspended runs and pending confirmations older than `maxAgeMs`.
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
@@ -330,6 +345,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadResearchMode.delete(threadId);
+		this.threadTimeZones.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
 		if (groupId) this.runIdsByMessageGroup.delete(groupId);
@@ -354,6 +370,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadResearchMode.clear();
+		this.threadTimeZones.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 
