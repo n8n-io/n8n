@@ -1318,7 +1318,32 @@ function onSwitchAgent(nextAgentId: string) {
 								{{ locale.baseText('agents.builder.triggers.add') }}
 							</N8nButton>
 						</div>
+						<div
+							v-if="connectedTriggers.length === 0"
+							:class="$style.triggersEmptyState"
+							data-testid="agent-triggers-empty-state"
+						>
+							<N8nIcon icon="zap" :size="32" :class="$style.triggersEmptyIcon" />
+							<N8nText size="medium" bold>
+								{{ locale.baseText('agents.builder.triggers.empty.title') }}
+							</N8nText>
+							<N8nText size="small" color="text-light" :class="$style.triggersEmptyDescription">
+								{{ locale.baseText('agents.builder.triggers.empty.description') }}
+							</N8nText>
+							<N8nButton
+								type="primary"
+								size="small"
+								data-testid="agent-triggers-empty-add"
+								@click="onOpenAddTriggerModal"
+							>
+								<template #prefix>
+									<N8nIcon icon="plus" :size="14" />
+								</template>
+								{{ locale.baseText('agents.builder.triggers.add') }}
+							</N8nButton>
+						</div>
 						<AgentIntegrationsPanel
+							v-else
 							:key="`integrations-connected-${agentId}`"
 							:project-id="projectId"
 							:agent-id="agentId"
@@ -1605,6 +1630,27 @@ function onSwitchAgent(nextAgentId: string) {
 	gap: var(--spacing--4xs);
 	flex: 1;
 	min-width: 0;
+}
+
+.triggersEmptyState {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xl) var(--spacing--lg);
+	border: 1px dashed var(--color--foreground);
+	border-radius: var(--radius);
+	text-align: center;
+}
+
+.triggersEmptyIcon {
+	color: var(--color--text--tint-2);
+	margin-bottom: var(--spacing--2xs);
+}
+
+.triggersEmptyDescription {
+	max-width: 360px;
 }
 
 .panelArea {

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT } from '@n8n/api-types';
 import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -13,11 +12,15 @@ import {
 	updateScheduleIntegration,
 } from '../composables/useAgentApi';
 
-const props = defineProps<{
-	projectId: string;
-	agentId: string;
-	isPublished: boolean;
-}>();
+const props = withDefaults(
+	defineProps<{
+		projectId: string;
+		agentId: string;
+		isPublished: boolean;
+		flat?: boolean;
+	}>(),
+	{ flat: false },
+);
 
 const emit = defineEmits<{
 	'status-change': [active: boolean];
@@ -29,14 +32,12 @@ const rootStore = useRootStore();
 
 const active = ref(false);
 const cronExpression = ref('');
-const wakeUpPrompt = ref(DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT);
 const loading = ref(false);
 const saving = ref(false);
 const hydrating = ref(true);
 const cronErrorMessage = ref('');
 const generalErrorMessage = ref('');
 const lastSavedCronExpression = ref('');
-const lastSavedWakeUpPrompt = ref(DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT);
 
 const timezone = computed(() => rootStore.timezone || 'UTC');
 const activateDisabled = computed(
@@ -54,12 +55,10 @@ type ScheduleErrorKey =
 	| 'agents.schedule.activateError'
 	| 'agents.schedule.deactivateError';
 
-function applyConfig(config: { active: boolean; cronExpression: string; wakeUpPrompt: string }) {
+function applyConfig(config: { active: boolean; cronExpression: string }) {
 	active.value = config.active;
 	cronExpression.value = config.cronExpression;
-	wakeUpPrompt.value = config.wakeUpPrompt;
 	lastSavedCronExpression.value = config.cronExpression;
-	lastSavedWakeUpPrompt.value = config.wakeUpPrompt;
 	emit('status-change', config.active);
 }
 
@@ -107,11 +106,7 @@ async function loadConfig() {
 }
 
 async function saveConfig(force = false): Promise<boolean> {
-	if (
-		!force &&
-		cronExpression.value === lastSavedCronExpression.value &&
-		wakeUpPrompt.value === lastSavedWakeUpPrompt.value
-	) {
+	if (!force && cronExpression.value === lastSavedCronExpression.value) {
 		return true;
 	}
 
@@ -126,7 +121,6 @@ async function saveConfig(force = false): Promise<boolean> {
 			props.agentId,
 			{
 				cronExpression: cronExpression.value,
-				wakeUpPrompt: wakeUpPrompt.value,
 			},
 		);
 		applyConfig(config);
@@ -149,16 +143,6 @@ watch(cronExpression, () => {
 	}
 
 	cronErrorMessage.value = '';
-	generalErrorMessage.value = '';
-
-	void debouncedSave();
-});
-
-watch(wakeUpPrompt, () => {
-	if (hydrating.value) {
-		return;
-	}
-
 	generalErrorMessage.value = '';
 
 	void debouncedSave();
@@ -218,8 +202,8 @@ onMounted(() => {
 </script>
 
 <template>
-	<N8nCard :class="$style.card">
-		<template #header>
+	<component :is="flat ? 'div' : N8nCard" :class="flat ? $style.flatBody : $style.card">
+		<template v-if="!flat" #header>
 			<div :class="$style.cardHeader">
 				<div :class="$style.statusRow">
 					<span
@@ -260,18 +244,6 @@ onMounted(() => {
 				</N8nText>
 			</div>
 
-			<div :class="$style.field">
-				<N8nText size="small" bold>{{ locale.baseText('agents.schedule.wakeUpPrompt') }}</N8nText>
-				<N8nInput
-					v-model="wakeUpPrompt"
-					type="textarea"
-					:rows="4"
-					:disabled="loading"
-					:placeholder="locale.baseText('agents.schedule.wakeUpPrompt.placeholder')"
-					data-testid="schedule-wake-up-prompt"
-				/>
-			</div>
-
 			<N8nText :class="$style.helpText" size="small">
 				{{
 					locale.baseText('agents.schedule.timezoneHelp', {
@@ -309,13 +281,17 @@ onMounted(() => {
 				</N8nButton>
 			</div>
 		</div>
-	</N8nCard>
+	</component>
 </template>
 
 <style module>
 .card {
 	width: 100%;
 	margin-bottom: var(--spacing--sm);
+}
+
+.flatBody {
+	width: 100%;
 }
 
 .cardHeader {

@@ -1,14 +1,12 @@
 <script setup lang="ts">
 /**
- * Add trigger modal — lets the user connect/disconnect agent trigger
- * integrations (Slack, Telegram, Linear, …) driven by the backend
- * ChatIntegrationRegistry via useAgentIntegrationsCatalog.
- *
- * Reshape of the pre-deletion AgentIntegrationsPanel (git:716964cb88^), with
- * hardcoded integration metadata replaced by the catalog.
+ * Add trigger modal — a single dropdown picker (with icons) at the top, and
+ * the selected trigger's configuration rendered inline below. One config is
+ * visible at a time so the modal doesn't need to scroll.
  */
 import { ref, computed, onMounted, watch } from 'vue';
-import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import N8nSelect from '@n8n/design-system/components/N8nSelect';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import Modal from '@/app/components/Modal.vue';
@@ -44,11 +42,9 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 
-// Local integration list — populated from catalog on mount
 const integrations = ref<ChatIntegrationDescriptor[]>([]);
+const selectedTriggerType = ref<string>('');
 
-// Shared integration status — same reactive source as AgentIntegrationsPanel
-// so connecting here is instantly reflected in the Triggers section.
 const {
 	statuses,
 	connectedCredentials,
@@ -61,17 +57,33 @@ const {
 	isConnected,
 } = useAgentIntegrationStatus(props.data.projectId, props.data.agentId);
 
-// UI-only state — stays local.
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, CredentialOption[]>>({});
 const credentialsLoading = ref(false);
 
-// Linear webhook URL copy state
 const linearCopied = ref(false);
-
-// Slack manifest copy state
 const manifestCopied = ref(false);
 const showManifest = ref(false);
+
+const SCHEDULE_ICON: IconName = 'clock';
+
+const currentIntegration = computed<ChatIntegrationDescriptor | null>(
+	() => integrations.value.find((i) => i.type === selectedTriggerType.value) ?? null,
+);
+
+// Backend integration descriptors ship icon names that may include legacy
+// aliases (e.g. `hashtag`, `paper-plane`); N8nIcon resolves them at runtime
+// but the static `IconName` union doesn't enumerate them.
+function toIconName(icon: string): IconName {
+	return icon as IconName;
+}
+
+const selectedIcon = computed<IconName | null>(() => {
+	if (!selectedTriggerType.value) return null;
+	if (selectedTriggerType.value === AGENT_SCHEDULE_TRIGGER_TYPE) return SCHEDULE_ICON;
+	const icon = currentIntegration.value?.icon;
+	return icon ? toIconName(icon) : null;
+});
 
 function isLoading(type: string): boolean {
 	return loadingMap.value[type] ?? false;
@@ -85,8 +97,6 @@ function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
 }
 
-// Help / connected copy lives in FE i18n (keyed by integration type) so it can
-// be localized — backend ships only stable brand metadata (label, icon).
 const HELP_TEXT_KEYS = {
 	slack: 'agents.builder.addTrigger.helpText.slack',
 	telegram: 'agents.builder.addTrigger.helpText.telegram',
@@ -284,7 +294,6 @@ function onEditCredential(type: string) {
 	}
 }
 
-// Re-fetch credentials when the credential edit modal closes
 const credentialModalOpen = computed(
 	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
 );
@@ -296,7 +305,6 @@ watch(credentialModalOpen, (isOpen, wasOpen) => {
 });
 
 onMounted(async () => {
-	// Load catalog first, then fetch statuses + credentials in parallel
 	const list = await ensureLoaded(props.data.projectId).catch(() => catalog.value ?? []);
 	integrations.value = list ?? [];
 	await Promise.all([fetchStatus(), fetchCredentials()]);
@@ -312,221 +320,237 @@ onMounted(async () => {
 		</template>
 
 		<template #content>
-			<div :class="$style.listWrapper">
+			<div :class="$style.body">
+				<div :class="$style.pickerRow">
+					<N8nText size="small" bold>
+						{{ i18n.baseText('agents.builder.addTrigger.picker.label') }}
+					</N8nText>
+					<N8nSelect
+						v-model="selectedTriggerType"
+						:placeholder="i18n.baseText('agents.builder.addTrigger.picker.placeholder')"
+						size="medium"
+						data-testid="agent-add-trigger-picker"
+					>
+						<template v-if="selectedIcon" #prefix>
+							<N8nIcon :icon="selectedIcon" size="small" />
+						</template>
+						<N8nOption
+							:value="AGENT_SCHEDULE_TRIGGER_TYPE"
+							:label="i18n.baseText('agents.schedule.title')"
+						>
+							<span :class="$style.optionRow">
+								<N8nIcon :icon="SCHEDULE_ICON" size="small" />
+								{{ i18n.baseText('agents.schedule.title') }}
+							</span>
+						</N8nOption>
+						<N8nOption
+							v-for="integration in integrations"
+							:key="integration.type"
+							:value="integration.type"
+							:label="integration.label"
+						>
+							<span :class="$style.optionRow">
+								<N8nIcon :icon="toIconName(integration.icon)" size="small" />
+								{{ integration.label }}
+							</span>
+						</N8nOption>
+					</N8nSelect>
+				</div>
+
+				<div v-if="!selectedTriggerType" :class="$style.placeholderState">
+					<N8nText color="text-light" size="small">
+						{{ i18n.baseText('agents.builder.addTrigger.picker.empty') }}
+					</N8nText>
+				</div>
+
 				<AgentScheduleTriggerCard
+					v-else-if="selectedTriggerType === AGENT_SCHEDULE_TRIGGER_TYPE"
 					:project-id="data.projectId"
 					:agent-id="data.agentId"
 					:is-published="data.isPublished"
+					:flat="true"
 					@status-change="onScheduleStatusChange"
 					@trigger-added="onScheduleTriggerAdded"
 				/>
 
-				<N8nCard v-for="integration in integrations" :key="integration.type" :class="$style.card">
-					<template #header>
-						<div :class="$style.cardHeader">
-							<div :class="$style.statusRow">
-								<span
-									:class="[
-										$style.statusDot,
-										isConnected(integration.type)
-											? $style.statusConnected
-											: $style.statusDisconnected,
-									]"
-								/>
-								<N8nText bold>{{ integration.label }}</N8nText>
-								<N8nText :class="$style.statusLabel" size="small">
-									{{
-										isConnected(integration.type)
-											? i18n.baseText('agents.builder.addTrigger.status.connected')
-											: i18n.baseText('agents.builder.addTrigger.status.disconnected')
-									}}
-								</N8nText>
-							</div>
-						</div>
-					</template>
+				<div v-else-if="currentIntegration" :class="$style.integrationConfig">
+					<N8nText :class="$style.description" size="small">
+						{{ integrationHelpText(currentIntegration.type) }}
+					</N8nText>
 
-					<div :class="$style.cardBody">
-						<N8nText :class="$style.description" size="small">
-							{{ integrationHelpText(integration.type) }}
+					<!-- Linear webhook URL — always visible so the URL can be configured before the credential -->
+					<div v-if="currentIntegration.type === 'linear'" :class="$style.webhookRow">
+						<input
+							:value="webhookUrlFor('linear')"
+							readonly
+							:class="$style.webhookInput"
+							:data-testid="`${currentIntegration.type}-webhook-url`"
+							@focus="($event.target as HTMLInputElement).select()"
+						/>
+						<N8nButton
+							type="secondary"
+							size="small"
+							:data-testid="`${currentIntegration.type}-copy-webhook-url`"
+							@click="copyLinearWebhookUrl"
+						>
+							<template #prefix>
+								<N8nIcon :icon="linearCopied ? 'check' : 'copy'" size="xsmall" />
+							</template>
+							{{
+								linearCopied
+									? i18n.baseText('agents.builder.addTrigger.copied')
+									: i18n.baseText('agents.builder.addTrigger.copy')
+							}}
+						</N8nButton>
+					</div>
+
+					<!-- Slack manifest — always visible so users can create the Slack app before generating credentials -->
+					<div v-if="currentIntegration.type === 'slack'" :class="$style.manifestSection">
+						<N8nText :class="$style.manifestHint" size="small">
+							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
 						</N8nText>
-
-						<!-- Linear webhook URL row — shown regardless of connection state -->
-						<div v-if="integration.type === 'linear'" :class="$style.webhookRow">
-							<input
-								:value="webhookUrlFor('linear')"
-								readonly
-								:class="$style.webhookInput"
-								:data-testid="`${integration.type}-webhook-url`"
-								@focus="($event.target as HTMLInputElement).select()"
-							/>
-							<N8nButton
-								type="secondary"
-								size="small"
-								:data-testid="`${integration.type}-copy-webhook-url`"
-								@click="copyLinearWebhookUrl"
-							>
+						<div :class="$style.manifestActions">
+							<N8nButton type="secondary" size="small" @click="copyManifest">
 								<template #prefix>
-									<N8nIcon :icon="linearCopied ? 'check' : 'copy'" size="xsmall" />
+									<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
 								</template>
 								{{
-									linearCopied
+									manifestCopied
 										? i18n.baseText('agents.builder.addTrigger.copied')
-										: i18n.baseText('agents.builder.addTrigger.copy')
+										: i18n.baseText('agents.builder.addTrigger.slack.copyManifest')
+								}}
+							</N8nButton>
+							<N8nButton type="tertiary" size="small" @click="showManifest = !showManifest">
+								{{
+									showManifest
+										? i18n.baseText('agents.builder.addTrigger.slack.hideJson')
+										: i18n.baseText('agents.builder.addTrigger.slack.viewJson')
+								}}
+							</N8nButton>
+						</div>
+						<pre v-if="showManifest" :class="$style.manifestCode">{{ slackAppManifest }}</pre>
+					</div>
+
+					<div v-if="!isConnected(currentIntegration.type)" :class="$style.connectForm">
+						<template v-if="hasCredentials(currentIntegration.type)">
+							<label :class="$style.label">
+								<N8nText size="small" bold>
+									{{ currentIntegration.label }}
+									{{ i18n.baseText('agents.builder.addTrigger.credential') }}
+								</N8nText>
+							</label>
+							<div :class="$style.selectRow">
+								<N8nSelect
+									v-model="selectedCredentials[currentIntegration.type]"
+									:class="$style.select"
+									:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
+									:loading="credentialsLoading"
+									:disabled="isLoading(currentIntegration.type)"
+									size="medium"
+									:data-testid="`${currentIntegration.type}-credential-select`"
+								>
+									<N8nOption
+										v-for="cred in credentialsByType[currentIntegration.type] ?? []"
+										:key="cred.id"
+										:value="cred.id"
+										:label="cred.name"
+									/>
+								</N8nSelect>
+								<N8nButton
+									v-if="selectedCredentials[currentIntegration.type]"
+									type="tertiary"
+									size="small"
+									icon="pen"
+									:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
+									:data-testid="`${currentIntegration.type}-edit-credential`"
+									@click="onEditCredential(currentIntegration.type)"
+								/>
+							</div>
+						</template>
+
+						<div v-else-if="!credentialsLoading" :class="$style.emptyCredentials">
+							<N8nText size="small">
+								{{
+									i18n.baseText('agents.builder.addTrigger.noCredentials', {
+										interpolate: { label: currentIntegration.label },
+									})
+								}}
+							</N8nText>
+							<N8nButton
+								size="small"
+								:data-testid="`${currentIntegration.type}-create-credential`"
+								@click="onCreateCredential(currentIntegration)"
+							>
+								<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
+								{{
+									i18n.baseText('agents.builder.addTrigger.addCredential', {
+										interpolate: { label: currentIntegration.label },
+									})
 								}}
 							</N8nButton>
 						</div>
 
-						<!-- Disconnected state: credential picker or empty state -->
-						<div v-if="!isConnected(integration.type)" :class="$style.connectForm">
-							<template v-if="hasCredentials(integration.type)">
-								<label :class="$style.label">
-									<N8nText size="small" bold>
-										{{ integration.label }}
-										{{ i18n.baseText('agents.builder.addTrigger.credential') }}
-									</N8nText>
-								</label>
-								<div :class="$style.selectRow">
-									<N8nSelect
-										v-model="selectedCredentials[integration.type]"
-										:class="$style.select"
-										:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
-										:loading="credentialsLoading"
-										:disabled="isLoading(integration.type)"
-										size="medium"
-										:data-testid="`${integration.type}-credential-select`"
-									>
-										<N8nOption
-											v-for="cred in credentialsByType[integration.type] ?? []"
-											:key="cred.id"
-											:value="cred.id"
-											:label="cred.name"
-										/>
-									</N8nSelect>
-									<N8nButton
-										v-if="selectedCredentials[integration.type]"
-										type="tertiary"
-										size="small"
-										icon="pen"
-										:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
-										:data-testid="`${integration.type}-edit-credential`"
-										@click="onEditCredential(integration.type)"
-									/>
-								</div>
-							</template>
+						<N8nText
+							v-if="hasError(currentIntegration.type)"
+							:class="$style.errorText"
+							size="small"
+						>
+							{{ errorMessages[currentIntegration.type] }}
+							<a
+								v-if="
+									selectedCredentials[currentIntegration.type] &&
+									!errorIsConflict[currentIntegration.type]
+								"
+								:class="$style.link"
+								href="#"
+								@click.prevent="onEditCredential(currentIntegration.type)"
+								>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
+							>
+						</N8nText>
 
-							<div v-else-if="!credentialsLoading" :class="$style.emptyCredentials">
-								<N8nText size="small">
-									{{
-										i18n.baseText('agents.builder.addTrigger.noCredentials', {
-											interpolate: { label: integration.label },
-										})
-									}}
-								</N8nText>
-								<N8nButton
-									size="small"
-									:data-testid="`${integration.type}-create-credential`"
-									@click="onCreateCredential(integration)"
-								>
-									<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
-									{{
-										i18n.baseText('agents.builder.addTrigger.addCredential', {
-											interpolate: { label: integration.label },
-										})
-									}}
-								</N8nButton>
-							</div>
-
-							<N8nText v-if="hasError(integration.type)" :class="$style.errorText" size="small">
-								{{ errorMessages[integration.type] }}
-								<a
-									v-if="selectedCredentials[integration.type] && !errorIsConflict[integration.type]"
-									:class="$style.link"
-									href="#"
-									@click.prevent="onEditCredential(integration.type)"
-									>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
-								>
-							</N8nText>
-
-							<div :class="$style.actions">
-								<N8nButton
-									:disabled="!selectedCredentials[integration.type] || isLoading(integration.type)"
-									:loading="isLoading(integration.type)"
-									size="small"
-									:data-testid="`${integration.type}-connect-button`"
-									@click="onConnect(integration.type)"
-								>
-									<template #prefix><N8nIcon icon="plug" size="xsmall" /></template>
-									{{ i18n.baseText('agents.builder.addTrigger.connect') }}
-								</N8nButton>
-								<N8nButton
-									v-if="hasCredentials(integration.type)"
-									type="tertiary"
-									size="small"
-									:data-testid="`${integration.type}-create-another-credential`"
-									@click="onCreateCredential(integration)"
-								>
-									<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
-									{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
-								</N8nButton>
-							</div>
-						</div>
-
-						<!-- Connected state -->
-						<div v-else :class="$style.connectedSection">
-							<N8nText size="small">
-								{{ integrationConnectedText(integration.type) }}
-							</N8nText>
-
-							<!-- Slack App Manifest (Slack only) -->
-							<template v-if="integration.type === 'slack'">
-								<N8nText :class="$style.manifestHint" size="small">
-									{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
-									<a :class="$style.link" href="#" @click.prevent="showManifest = true">
-										{{ i18n.baseText('agents.builder.addTrigger.slack.viewJson') }}
-									</a>
-								</N8nText>
-								<N8nButton type="secondary" size="small" @click="copyManifest">
-									<template #prefix>
-										<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
-									</template>
-									{{
-										manifestCopied
-											? i18n.baseText('agents.builder.addTrigger.copied')
-											: i18n.baseText('agents.builder.addTrigger.slack.copyManifest')
-									}}
-								</N8nButton>
-							</template>
-
+						<div :class="$style.actions">
 							<N8nButton
-								:class="$style.actionButton"
-								type="secondary"
-								:loading="isLoading(integration.type)"
+								:disabled="
+									!selectedCredentials[currentIntegration.type] ||
+									isLoading(currentIntegration.type)
+								"
+								:loading="isLoading(currentIntegration.type)"
 								size="small"
-								:data-testid="`${integration.type}-disconnect-button`"
-								@click="onDisconnect(integration.type)"
+								:data-testid="`${currentIntegration.type}-connect-button`"
+								@click="onConnect(currentIntegration.type)"
 							>
-								<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
-								{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
+								<template #prefix><N8nIcon icon="plug" size="xsmall" /></template>
+								{{ i18n.baseText('agents.builder.addTrigger.connect') }}
 							</N8nButton>
-
-							<!-- Manifest inline expand (Slack only) -->
-							<div
-								v-if="integration.type === 'slack' && showManifest"
-								:class="$style.manifestExpanded"
+							<N8nButton
+								v-if="hasCredentials(currentIntegration.type)"
+								type="tertiary"
+								size="small"
+								:data-testid="`${currentIntegration.type}-create-another-credential`"
+								@click="onCreateCredential(currentIntegration)"
 							>
-								<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
-								<N8nButton type="tertiary" size="small" @click="showManifest = false">
-									{{ i18n.baseText('agents.builder.addTrigger.slack.hideJson') }}
-								</N8nButton>
-							</div>
+								<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
+								{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
+							</N8nButton>
 						</div>
 					</div>
-				</N8nCard>
 
-				<div v-if="integrations.length === 0" :class="$style.emptyState">
-					<N8nText color="text-light">
-						{{ i18n.baseText('agents.builder.addTrigger.noIntegrations') }}
-					</N8nText>
+					<div v-else :class="$style.connectedSection">
+						<N8nText size="small">
+							{{ integrationConnectedText(currentIntegration.type) }}
+						</N8nText>
+						<N8nButton
+							:class="$style.actionButton"
+							type="secondary"
+							:loading="isLoading(currentIntegration.type)"
+							size="small"
+							:data-testid="`${currentIntegration.type}-disconnect-button`"
+							@click="onDisconnect(currentIntegration.type)"
+						>
+							<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
+							{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
+						</N8nButton>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -534,53 +558,36 @@ onMounted(async () => {
 </template>
 
 <style module lang="scss">
-.listWrapper {
+.body {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	max-height: 60vh;
-	overflow-y: auto;
-	margin-right: calc(-1 * var(--spacing--lg));
-	padding-right: var(--spacing--lg);
-	padding-top: var(--spacing--sm);
+	padding-top: var(--spacing--xs);
 }
 
-.card {
-	width: 100%;
-}
-
-.cardHeader {
+.pickerRow {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
-.statusRow {
-	display: flex;
+.optionRow {
+	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
 
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	flex-shrink: 0;
+.placeholderState {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--spacing--xl) var(--spacing--lg);
+	border: 1px dashed var(--color--foreground);
+	border-radius: var(--radius);
+	text-align: center;
 }
 
-.statusConnected {
-	background-color: var(--color--success);
-}
-
-.statusDisconnected {
-	background-color: var(--color--foreground--shade-1);
-}
-
-.statusLabel {
-	color: var(--color--text--tint-2);
-}
-
-.cardBody {
+.integrationConfig {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
@@ -630,8 +637,20 @@ onMounted(async () => {
 	gap: var(--spacing--sm);
 }
 
+.manifestSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
 .manifestHint {
 	color: var(--color--text--tint-1);
+}
+
+.manifestActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .manifestCode {
@@ -642,7 +661,7 @@ onMounted(async () => {
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--xl);
 	overflow-x: auto;
-	max-height: 300px;
+	max-height: 240px;
 	overflow-y: auto;
 	white-space: pre;
 	font-family: monospace;
@@ -688,18 +707,5 @@ onMounted(async () => {
 .webhookInput:focus {
 	outline: none;
 	border-color: var(--color--primary);
-}
-
-.emptyState {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--xl);
-}
-
-.manifestExpanded {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
 }
 </style>
