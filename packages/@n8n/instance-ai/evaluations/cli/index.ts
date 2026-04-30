@@ -21,7 +21,7 @@ import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
-import { partitionRoundRobin } from './lanes';
+import { expandWithIterations, partitionRoundRobin } from './lanes';
 import { N8nClient } from '../clients/n8n-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
@@ -113,13 +113,26 @@ const runInputsSchema = z
 /** Target input shape with the iteration index we inject for multi-run. */
 type TargetInputs = DatasetExampleInputs & { _iteration?: number };
 
+interface Lane {
+	client: N8nClient;
+	preRunWorkflowIds: Set<string>;
+	claimedWorkflowIds: Set<string>;
+	seedResult: { seededTypes: string[]; credentialIds: string[] };
+}
+
+interface RunConfig {
+	args: ReturnType<typeof parseCliArgs>;
+	lanes: Lane[];
+	logger: EvalLogger;
+}
+
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
 
-	// One lane per base URL. Each n8n instance keeps its own MAX_CONCURRENT_BUILDS=4
-	// cap, so multi-lane scales total throughput linearly without breaking the
-	// per-instance ceiling that builds are tuned against.
+	// One lane per base URL. The LangSmith path then uses a work-stealing
+	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
+	// path partitions test cases statically per lane.
 	const lanes: Lane[] = await Promise.all(
 		args.baseUrls.map(async (baseUrl, idx) => {
 			const tag =
@@ -175,19 +188,6 @@ async function main(): Promise<void> {
 // LangSmith mode: evaluate() with dataset sync, tracing, experiments
 // ---------------------------------------------------------------------------
 
-interface Lane {
-	client: N8nClient;
-	preRunWorkflowIds: Set<string>;
-	claimedWorkflowIds: Set<string>;
-	seedResult: { seededTypes: string[]; credentialIds: string[] };
-}
-
-interface RunConfig {
-	args: ReturnType<typeof parseCliArgs>;
-	lanes: Lane[];
-	logger: EvalLogger;
-}
-
 async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> {
 	const { args, lanes, logger } = config;
 
@@ -196,9 +196,11 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
 
 	// LaneState carries the allocator-managed counters (activeBuilds,
-	// inflightPrompts) plus the lane's own traced LangSmith wrappers.
+	// inflightPrompts) plus the lane's traced LangSmith wrappers. `runner` is
+	// the underlying Lane (n8n client, credential state) — named distinctly so
+	// it doesn't shadow the iteration variable `lane` in lanes.map().
 	interface LaneState {
-		lane: Lane;
+		runner: Lane;
 		activeBuilds: number;
 		inflightPrompts: Set<string>;
 		tracedBuild: (prompt: string) => Promise<BuildResult>;
@@ -213,7 +215,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		const laneNum = idx + 1;
 		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
 		return {
-			lane,
+			runner: lane,
 			activeBuilds: 0,
 			inflightPrompts: new Set<string>(),
 			tracedBuild: traceable(
@@ -471,7 +473,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 				[...buildCache.values()].map(async (promise) => {
 					try {
 						const { build, lane } = await promise;
-						await cleanupBuild(lane.lane.client, build, logger);
+						await cleanupBuild(lane.runner.client, build, logger);
 					} catch {
 						// Best-effort
 					}
@@ -483,9 +485,9 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 
 /**
  * Expand a source example stream into N copies, tagging each with `_iteration`.
- * Round-robins scenarios across test cases (groups by `testCaseFile`) and
- * iter-interleaves per scenario so the in-flight set spans both dimensions.
- * Concentration is handled by the work-stealing allocator at build time.
+ * Round-robins scenarios across test cases and iter-interleaves per scenario
+ * so the in-flight set spans both dimensions. Concentration is handled by the
+ * work-stealing allocator at build time.
  */
 async function* expandExamplesForIterations(
 	source: AsyncIterable<Example>,
@@ -493,31 +495,12 @@ async function* expandExamplesForIterations(
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
-
-	const byFile = new Map<string, Example[]>();
-	for (const ex of cached) {
-		const file = typeof ex.inputs?.testCaseFile === 'string' ? ex.inputs.testCaseFile : 'unknown';
-		let group = byFile.get(file);
-		if (!group) {
-			group = [];
-			byFile.set(file, group);
-		}
-		group.push(ex);
-	}
-
-	const groups = [...byFile.values()];
-	const maxScenarios = groups.reduce((m, g) => Math.max(m, g.length), 0);
-
-	for (let s = 0; s < maxScenarios; s++) {
-		for (const group of groups) {
-			if (s < group.length) {
-				const ex = group[s];
-				for (let i = 0; i < iterations; i++) {
-					yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
-				}
-			}
-		}
-	}
+	yield* expandWithIterations(
+		cached,
+		(ex) => (typeof ex.inputs?.testCaseFile === 'string' ? ex.inputs.testCaseFile : 'unknown'),
+		iterations,
+		(ex, i) => ({ ...ex, inputs: { ...ex.inputs, _iteration: i } }),
+	);
 }
 
 function filteredExamplesIterable(
