@@ -530,8 +530,8 @@ importers:
         specifier: ^25.0.1
         version: 25.0.1
       nock:
-        specifier: ^14.0.1
-        version: 14.0.1
+        specifier: ^14.0.13
+        version: 14.0.13
       nodemon:
         specifier: ^3.0.1
         version: 3.0.1
@@ -8174,8 +8174,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@mswjs/interceptors@0.37.5':
-    resolution: {integrity: sha512-AAwRb5vXFcY4L+FvZ7LZusDuZ0vEe0Zm8ohn1FM6/X7A3bj4mqmkAcGRWuvC2JwSygNwHAAmMnAI73vPHeqsHA==}
+  '@mswjs/interceptors@0.41.6':
+    resolution: {integrity: sha512-qmDvJIjcNsZ6tXWy2G9yuCgMPTTn35GMA3dPpSLm7QJVpbQzYdw0ALy1bKoivXnEM3U93/OrK+/M719b+fg84Q==}
     engines: {node: '>=18'}
 
   '@n8n/typeorm@0.3.20-16':
@@ -18080,8 +18080,8 @@ packages:
   no-case@3.0.4:
     resolution: {integrity: sha512-fgAN3jGAh+RoxUGZHTSOLJIqUc2wmoBwGR4tbpNAKmmovFoWq0OdRkb0VkldReO2a2iBT/OEulG9XSUc10r3zg==}
 
-  nock@14.0.1:
-    resolution: {integrity: sha512-IJN4O9pturuRdn60NjQ7YkFt6Rwei7ZKaOwb1tvUIIqTgeD0SDDAX3vrqZD4wcXczeEy/AsUXxpGpP/yHqV7xg==}
+  nock@14.0.13:
+    resolution: {integrity: sha512-SCPsQmGVNY8h1rfS3aU0MzOGYY+wKIFukHEsoSIwPRCYocZkya7MFIlWIEYPWQZj+Gaksg6EyUaY255ZDqpQuA==}
     engines: {node: '>=18.20.0 <20 || >=20.12.1'}
 
   node-abi@3.75.0:
@@ -27952,7 +27952,7 @@ snapshots:
   '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.2':
     optional: true
 
-  '@mswjs/interceptors@0.37.5':
+  '@mswjs/interceptors@0.41.6':
     dependencies:
       '@open-draft/deferred-promise': 2.2.0
       '@open-draft/logger': 0.3.0
@@ -40288,9 +40288,9 @@ snapshots:
       lower-case: 2.0.2
       tslib: 2.8.1
 
-  nock@14.0.1:
+  nock@14.0.13:
     dependencies:
-      '@mswjs/interceptors': 0.37.5
+      '@mswjs/interceptors': 0.41.6
       json-stringify-safe: 5.0.1
       propagate: 2.0.1
 
