@@ -180,6 +180,36 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('planned build synthesize branch — eval proposal', () => {
+		it('requires eval proposal before the final recap for completed AI workflows', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('<planned-task-follow-up type="synthesize">');
+			expect(prompt).toContain('call `evals(action="propose")`');
+			expect(prompt).toContain('before writing the final completion message');
+			expect(prompt).toContain('shouldDelegateToEvalSetupAgent');
+			expect(prompt).toContain('`eval-data` has either been skipped/deferred');
+		});
+	});
+
+	describe('eval setup follow-up data generation', () => {
+		it('requires eval-data after eval-setup completes', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('When the eval-setup background task completes');
+			expect(prompt).toContain('immediately call `eval-data({ workflowId })`');
+			expect(prompt).toContain('shouldWaitForEvalDataAgent');
+		});
+
+		it('routes manual synthetic eval data requests directly to eval-data', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**Eval-data flow**');
+			expect(prompt).toContain('call `eval-data({ workflowId })` directly');
+			expect(prompt).toContain('Do not call `evals(action="propose")` first');
+		});
+	});
+
 	describe('multi-credential disambiguation guidance', () => {
 		it('instructs the orchestrator to ask once when a service has more than one credential of the same type', () => {
 			const prompt = getSystemPrompt({});

@@ -7,7 +7,6 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { detectAiNodes } from './detect-ai-nodes';
-import { ensureEvalDataTable } from './ensure-eval-data-table.service';
 import { formatEvalSetupTask } from './format-eval-setup-task';
 import { DEFAULT_EVAL_SHAPE, inferEvalShape, type EvalShape } from './infer-eval-shape.service';
 import type { InstanceAiContext } from '../../types';
@@ -108,53 +107,28 @@ export function createEvalsTool(context: InstanceAiContext) {
 						: shape.suggestedMetrics.map((m) => m.id);
 			const enabledMetrics = shape.suggestedMetrics.filter((m) => selectedMetricIds.includes(m.id));
 
-			// DataTable prep (deterministic). When datasetChoice='generate', create
-			// a new DataTable and populate it with Haiku-designed sample rows right
-			// here — before delegating to the sub-agent. This keeps dataset
-			// population reliable (the sub-agent otherwise skips insert-rows under
-			// token/step pressure) and shrinks the sub-agent's scope to workflow
-			// graph patching only.
-			// Default to 'generate' when the FE approve card doesn't carry an explicit
-			// dataset choice — users expressed that accepting evals should imply
-			// auto-generating the sample dataset (no extra prompt).
-			const datasetChoiceRaw = resumeData.datasetChoice ?? 'generate';
-			let dataTableId: string | undefined = resumeData.existingDataTableId;
-			let datasetChoiceForTask: 'link-existing' | 'later' = 'later';
+			// Data rows are generated only by the separate eval-data tool after eval
+			// nodes exist. For the setup task, accepting evals means "create the empty
+			// table and wire it" unless a legacy caller supplied an existing table id.
+			const dataTableId = resumeData.existingDataTableId;
+			const datasetChoiceForTask =
+				resumeData.datasetChoice === 'link-existing' && dataTableId
+					? ('link-existing' as const)
+					: resumeData.datasetChoice === 'later'
+						? ('later' as const)
+						: ('create-empty' as const);
 			context.logger?.info('[evals] phase 2 dataset prep', {
 				workflowId: input.workflowId,
-				datasetChoiceRaw,
+				datasetChoiceForTask,
 				existingDataTableId: resumeData.existingDataTableId,
 				projectId: input.projectId,
 				inputColumns: shape.suggestedInputColumns,
 				outputColumns: shape.suggestedOutputColumns,
 			});
-			if (datasetChoiceRaw === 'generate') {
-				try {
-					const dt = await ensureEvalDataTable(context, {
-						workflowName: wf.name ?? 'Workflow',
-						projectId: input.projectId,
-						columns: [...shape.suggestedInputColumns, ...shape.suggestedOutputColumns],
-						workflowForSamples: wf,
-					});
-					dataTableId = dt.id;
-					datasetChoiceForTask = 'link-existing';
-					context.logger?.info('[evals] DataTable created and populated', {
-						dataTableId: dt.id,
-						dataTableName: dt.name,
-					});
-				} catch (error) {
-					context.logger?.error('[evals] ensureEvalDataTable failed', {
-						error: error instanceof Error ? error.message : String(error),
-					});
-					throw error;
-				}
-			} else if (datasetChoiceRaw === 'link-existing' && dataTableId) {
-				datasetChoiceForTask = 'link-existing';
-			}
 
 			// Format the task for eval-setup-agent. From the sub-agent's POV, the
-			// DataTable (if any) is already created — it only needs to wire the
-			// EvaluationTrigger to the given id.
+			// DataTable is either an existing table or an empty table it must create.
+			// Synthetic rows are intentionally out of scope here.
 			const task = formatEvalSetupTask({
 				workflowId: input.workflowId,
 				workflowName: wf.name ?? 'Workflow',

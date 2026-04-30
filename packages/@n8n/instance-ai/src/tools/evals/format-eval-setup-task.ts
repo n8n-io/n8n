@@ -4,7 +4,7 @@ export interface FormatEvalSetupTaskInput {
 	workflowId: string;
 	workflowName: string;
 	detectedAiNodes: string[];
-	datasetChoice: 'generate' | 'link-existing' | 'later';
+	datasetChoice: 'create-empty' | 'generate' | 'link-existing' | 'later';
 	existingDataTableId?: string;
 	projectId?: string;
 	suggestedInputColumns: string[];
@@ -19,20 +19,22 @@ function formatMetric(m: InstanceAiEvalMetricProposal): string {
 }
 
 function formatDatasetSection(input: FormatEvalSetupTaskInput): string {
-	if (input.datasetChoice === 'generate') {
-		// Defensive fallback — the orchestrator normally pre-creates the DataTable
-		// and passes 'link-existing'. If something upstream bypassed that, instruct
-		// the sub-agent to leave dataTableId empty rather than trying to create.
-		return "Do not create a DataTable yourself. Leave the EvaluationTrigger's dataTableId empty — the upstream orchestrator will handle dataset population.";
+	if (input.datasetChoice === 'create-empty' || input.datasetChoice === 'generate') {
+		const tableName = `${input.workflowName} eval dataset`;
+		const columns = [...input.suggestedInputColumns, ...input.suggestedOutputColumns]
+			.map((c) => `- ${c}`)
+			.join('\n');
+		return `Create an empty DataTable named "${tableName}"${input.projectId ? ` in project id \`${input.projectId}\`` : ''} using only the \`create-empty-eval-data-table\` tool. Columns to create as strings:\n${columns}\n\nDo not insert rows, generate rows, or mutate row data. After creating the empty table, wire the EvaluationTrigger and setOutputs dataTableId to the created table id.`;
 	}
 	if (input.datasetChoice === 'link-existing') {
-		return `Wire the EvaluationTrigger to DataTable id \`${input.existingDataTableId}\`. This table is already created and populated with sample rows — do not modify its rows or schema.`;
+		return `Wire the EvaluationTrigger to DataTable id \`${input.existingDataTableId}\`. This table already exists — do not modify its rows or schema.`;
 	}
 	return "Do not create a DataTable. Leave the EvaluationTrigger's dataTableId empty — the user will wire it manually later.";
 }
 
 export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
 	const outputColumns = input.suggestedOutputColumns.map((c) => `- ${c}`).join('\n');
+	const inputColumns = input.suggestedInputColumns.map((c) => `- ${c}`).join('\n');
 	const metrics = input.enabledMetrics.map(formatMetric).join('\n\n');
 	const datasetSection = formatDatasetSection(input);
 
@@ -42,6 +44,9 @@ AI AGENT NODES IN WORKFLOW: ${input.detectedAiNodes.join(', ')}
 
 DATASET:
 ${datasetSection}
+
+INPUT COLUMNS (the shape bridge should read these from the EvaluationTrigger row):
+${inputColumns}
 
 GROUND-TRUTH OUTPUT COLUMNS (already in the dataset — these hold the EXPECTED values per row):
 ${outputColumns}

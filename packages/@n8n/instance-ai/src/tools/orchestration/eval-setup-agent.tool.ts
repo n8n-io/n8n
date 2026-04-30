@@ -2,11 +2,11 @@
  * Preconfigured Eval Setup Agent Tool
  *
  * Creates a specialized sub-agent that reads an n8n workflow, optionally creates
- * a DataTable with realistic eval rows, and patches the workflow with
- * EvaluationTrigger + Evaluation nodes + a checkIfEvaluating gate to isolate
- * side-effect nodes during eval runs.
+ * an empty eval DataTable, and patches the workflow with EvaluationTrigger +
+ * Evaluation nodes + a checkIfEvaluating gate to isolate side-effect nodes
+ * during eval runs.
  *
- * Pattern mirrors data-table-agent.tool.ts. No HITL — the eval card already
+ * Pattern mirrors data-table-agent.tool.ts. No HITL - the eval card already
  * captured the user's approval; this sub-agent operates post-approval.
  */
 
@@ -34,9 +34,18 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
-import type { OrchestrationContext } from '../../types';
+import type { InstanceAiContext, OrchestrationContext } from '../../types';
 
 const EVAL_SETUP_TOOL_NAMES = ['workflows', 'nodes'] as const;
+
+const emptyEvalDataTableInputSchema = z.object({
+	name: z.string().min(1).max(128).describe('Name for the empty eval DataTable'),
+	projectId: z.string().optional().describe('Project ID where the table should be created'),
+	columns: z
+		.array(z.string().min(1))
+		.min(1)
+		.describe('String columns to create. Do not include actual_* output columns.'),
+});
 
 export interface StartEvalSetupAgentInput {
 	workflowId: string;
@@ -53,6 +62,60 @@ export interface StartedEvalSetupAgentTask {
 	agentId: string;
 }
 
+function isNameConflictError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error);
+	return /already exists/i.test(message);
+}
+
+async function createEmptyEvalDataTable(
+	context: InstanceAiContext,
+	input: z.infer<typeof emptyEvalDataTableInputSchema>,
+) {
+	const columns = [...new Set(input.columns)].map((name) => ({ name, type: 'string' as const }));
+	const options = input.projectId ? { projectId: input.projectId } : undefined;
+	try {
+		return await context.dataTableService.create(input.name, columns, options);
+	} catch (error) {
+		if (!isNameConflictError(error)) throw error;
+		for (let attempt = 0; attempt < 3; attempt++) {
+			const suffixedName = `${input.name} (${nanoid(5)})`;
+			try {
+				return await context.dataTableService.create(suffixedName, columns, options);
+			} catch (retryError) {
+				if (!isNameConflictError(retryError)) throw retryError;
+			}
+		}
+		throw error;
+	}
+}
+
+export function createEmptyEvalDataTableTool(context: InstanceAiContext) {
+	return createTool({
+		id: 'create-empty-eval-data-table',
+		description:
+			'Create an empty DataTable for eval setup. This tool creates only schema columns and never inserts, updates, or deletes rows.',
+		inputSchema: emptyEvalDataTableInputSchema,
+		outputSchema: z.object({
+			table: z.object({
+				id: z.string(),
+				name: z.string(),
+				projectId: z.string().optional(),
+				columns: z.array(
+					z.object({
+						id: z.string(),
+						name: z.string(),
+						type: z.string(),
+					}),
+				),
+			}),
+		}),
+		execute: async (input: z.infer<typeof emptyEvalDataTableInputSchema>) => {
+			const table = await createEmptyEvalDataTable(context, input);
+			return { table };
+		},
+	});
+}
+
 export async function startEvalSetupAgentTask(
 	context: OrchestrationContext,
 	input: StartEvalSetupAgentInput,
@@ -63,6 +126,11 @@ export async function startEvalSetupAgentTask(
 		if (name in context.domainTools) {
 			evalSetupTools[name] = context.domainTools[name];
 		}
+	}
+	if (context.domainContext) {
+		evalSetupTools['create-empty-eval-data-table'] = createEmptyEvalDataTableTool(
+			context.domainContext,
+		);
 	}
 	if (!('workflows' in evalSetupTools)) {
 		return { result: 'Error: workflows tool not available.', taskId: '', agentId: '' };
@@ -205,7 +273,7 @@ export function createEvalSetupAgentTool(context: OrchestrationContext) {
 		id: 'eval-setup-with-agent',
 		description:
 			'Set up evaluations for a workflow containing AI agents. ' +
-			'Creates a dataset (when requested) and adds EvaluationTrigger + Evaluation nodes ' +
+			'Creates an empty eval DataTable (when requested) and adds EvaluationTrigger + Evaluation nodes ' +
 			'with a checkIfEvaluating gate that isolates side-effect nodes during eval runs. ' +
 			'Use only after `evals(action="propose")` returned shouldDelegateToEvalSetupAgent=true.',
 		inputSchema: evalSetupAgentInputSchema,

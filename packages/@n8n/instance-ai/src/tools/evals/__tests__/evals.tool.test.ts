@@ -2,7 +2,6 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 
 import type { InstanceAiContext } from '../../../types';
-import { ensureEvalDataTable } from '../ensure-eval-data-table.service';
 import { createEvalsTool } from '../evals.tool';
 import { inferEvalShape, DEFAULT_EVAL_SHAPE } from '../infer-eval-shape.service';
 
@@ -26,9 +25,6 @@ jest.mock('../infer-eval-shape.service', () => ({
 }));
 
 const mockInfer = inferEvalShape as jest.MockedFunction<typeof inferEvalShape>;
-
-jest.mock('../ensure-eval-data-table.service', () => ({ ensureEvalDataTable: jest.fn() }));
-const mockEnsureDataTable = ensureEvalDataTable as jest.MockedFunction<typeof ensureEvalDataTable>;
 
 function aiWf(): WorkflowJSON {
 	return {
@@ -58,6 +54,8 @@ function aiWf(): WorkflowJSON {
 function makeCtx(wf: WorkflowJSON): InstanceAiContext {
 	const ctx = mock<InstanceAiContext>();
 	ctx.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue(wf);
+	ctx.dataTableService.create = jest.fn();
+	ctx.dataTableService.insertRows = jest.fn();
 	// `jest-mock-extended` auto-stubs every property proxy-style, but the
 	// Mastra logger is used via optional chaining (`ctx.logger?.info(...)`)
 	// which short-circuits on `undefined` yet throws on "logger exists but
@@ -181,10 +179,9 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 		expect(result).toMatchObject({ success: true, deferred: true });
 	});
 
-	it('approved + generate: calls ensureEvalDataTable, returns dataTableId, task uses link-existing wording', async () => {
+	it('approved + generate: delegates empty DataTable creation to eval-setup without synthetic rows', async () => {
 		const ctx = makeCtx(aiWf());
 		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
-		mockEnsureDataTable.mockResolvedValue({ id: 'dt-new', name: 'AI Flow — eval samples' });
 		const tool = createEvalsTool(ctx);
 
 		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1', projectId: 'p1' }, {
@@ -197,17 +194,19 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 			},
 		} as never)) as Record<string, unknown>;
 
-		expect(mockEnsureDataTable).toHaveBeenCalledTimes(1);
+		expect(ctx.dataTableService.create).not.toHaveBeenCalled();
+		expect(ctx.dataTableService.insertRows).not.toHaveBeenCalled();
 		expect(result).toMatchObject({
 			success: true,
 			shouldDelegateToEvalSetupAgent: true,
 			workflowId: 'w1',
 			projectId: 'p1',
-			dataTableId: 'dt-new',
 		});
 		const task = result.task as string;
-		expect(task).toContain('dt-new');
-		expect(task).toContain('already created and populated');
+		expect(task).toContain('Create an empty DataTable');
+		expect(task).toContain('Do not insert rows');
+		expect(task).toContain('- input');
+		expect(task).toContain('- expected_output');
 	});
 
 	it('approved + link-existing: task references provided DataTable id', async () => {
@@ -232,7 +231,8 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 		});
 		const task = result.task as string;
 		expect(task).toContain('dt-user-123');
-		expect(task).toContain('already created and populated');
+		expect(task).toContain('already exists');
+		expect(task).toContain('do not modify its rows or schema');
 	});
 
 	it('approved + later: task tells sub-agent to leave dataTableId empty', async () => {

@@ -1,21 +1,12 @@
 <script lang="ts" setup>
-import type { InstanceAiConfirmResponse, InstanceAiEvalMetricProposal } from '@n8n/api-types';
-import {
-	N8nButton,
-	N8nCheckbox,
-	N8nIcon,
-	N8nInput,
-	N8nRadioButtons,
-	N8nText,
-} from '@n8n/design-system';
+import type { InstanceAiEvalMetricProposal } from '@n8n/api-types';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
-
-type DatasetChoice = NonNullable<InstanceAiConfirmResponse['datasetChoice']>;
 
 interface EvalsProposePayload {
 	detectedAiNodes: string[];
@@ -48,34 +39,9 @@ const telemetry = useTelemetry();
 const isSubmitted = ref(false);
 const isDeferred = ref(false);
 
-const datasetChoice = ref<DatasetChoice>('generate');
-const existingDataTableId = ref('');
-
 const enabledMetricIds = ref<Set<string>>(
 	new Set(props.payload.suggestedMetrics.filter((m) => m.defaultEnabled).map((m) => m.id)),
 );
-
-const datasetOptions = computed(() => [
-	{
-		label: i18n.baseText('instanceAi.evalsPropose.dataset.generate' as BaseTextKey),
-		value: 'generate' as DatasetChoice,
-	},
-	{
-		label: i18n.baseText('instanceAi.evalsPropose.dataset.linkExisting' as BaseTextKey),
-		value: 'link-existing' as DatasetChoice,
-	},
-	{
-		label: i18n.baseText('instanceAi.evalsPropose.dataset.later' as BaseTextKey),
-		value: 'later' as DatasetChoice,
-	},
-]);
-
-const isSubmitDisabled = computed(() => {
-	if (datasetChoice.value === 'link-existing' && !existingDataTableId.value.trim()) {
-		return true;
-	}
-	return false;
-});
 
 function toggleMetric(metricId: string, checked: boolean) {
 	if (checked) {
@@ -94,11 +60,6 @@ function trackInput(approved: boolean) {
 		provided_inputs: approved
 			? [
 					{
-						label: 'dataset',
-						options: ['generate', 'link-existing', 'later'],
-						option_chosen: datasetChoice.value,
-					},
-					{
 						label: 'metrics',
 						options: props.payload.suggestedMetrics.map((m) => m.id),
 						option_chosen: Array.from(enabledMetricIds.value),
@@ -110,20 +71,13 @@ function trackInput(approved: boolean) {
 }
 
 async function handleSubmit() {
-	if (store.resolvedConfirmationIds.has(props.requestId) || isSubmitDisabled.value) return;
+	if (store.resolvedConfirmationIds.has(props.requestId)) return;
 
 	const evalsPropose: {
-		datasetChoice?: DatasetChoice;
-		existingDataTableId?: string;
 		enabledMetricIds?: string[];
 	} = {
-		datasetChoice: datasetChoice.value,
 		enabledMetricIds: Array.from(enabledMetricIds.value),
 	};
-
-	if (datasetChoice.value === 'link-existing') {
-		evalsPropose.existingDataTableId = existingDataTableId.value.trim();
-	}
 
 	trackInput(true);
 	isSubmitted.value = true;
@@ -192,31 +146,6 @@ async function handleSkip() {
 					</div>
 				</div>
 
-				<!-- Dataset choice -->
-				<div :class="$style.section">
-					<N8nText size="small" color="text-light" bold>
-						{{ i18n.baseText('instanceAi.evalsPropose.datasetLabel' as BaseTextKey) }}
-					</N8nText>
-					<N8nRadioButtons
-						v-model="datasetChoice"
-						:options="datasetOptions"
-						size="small"
-						data-test-id="instance-ai-evals-propose-dataset-choice"
-					/>
-
-					<N8nInput
-						v-if="datasetChoice === 'link-existing'"
-						v-model="existingDataTableId"
-						:class="$style.dataTableInput"
-						type="text"
-						size="small"
-						:placeholder="
-							i18n.baseText('instanceAi.evalsPropose.existingDataTablePlaceholder' as BaseTextKey)
-						"
-						data-test-id="instance-ai-evals-propose-data-table-id"
-					/>
-				</div>
-
 				<!-- Metrics -->
 				<div v-if="payload.suggestedMetrics.length" :class="$style.section">
 					<N8nText size="small" color="text-light" bold>
@@ -259,7 +188,6 @@ async function handleSkip() {
 						<N8nButton
 							size="medium"
 							:class="$style.actionButton"
-							:disabled="isSubmitDisabled"
 							:label="i18n.baseText('instanceAi.evalsPropose.submit' as BaseTextKey)"
 							data-test-id="instance-ai-evals-propose-submit"
 							@click="handleSubmit"
@@ -327,10 +255,6 @@ async function handleSkip() {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--sm);
-}
-
-.dataTableInput {
-	margin-top: var(--spacing--4xs);
 }
 
 .metricsList {

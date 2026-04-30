@@ -644,6 +644,7 @@ describe('instanceAi.reducer', () => {
 		test('returns data-table for data-table flow aliases', () => {
 			expect(getRenderHint('manage-data-tables-with-agent')).toBe('data-table');
 			expect(getRenderHint('agent-data-table-manager')).toBe('data-table');
+			expect(getRenderHint('eval-data')).toBe('data-table');
 		});
 
 		test('returns default for other tool names', () => {

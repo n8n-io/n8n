@@ -129,6 +129,19 @@ export function isEvalsProposalConfirmation(event: CapturedEvent): boolean {
 	return isRecord(event.data.evalsPropose);
 }
 
+export function isEvalDataConfirmation(event: CapturedEvent): boolean {
+	if (event.type !== 'confirmation-request') {
+		return false;
+	}
+
+	const payload = event.data.payload;
+	if (isRecord(payload) && payload.toolName === 'eval-data') {
+		return true;
+	}
+
+	return event.data.toolName === 'eval-data';
+}
+
 export async function startSseConnection(
 	client: SseClient,
 	threadId: string,
@@ -167,7 +180,7 @@ export async function approveEvalConfirmations(input: {
 	retryCounts?: Map<string, number>;
 }): Promise<void> {
 	for (const event of input.events) {
-		if (!isEvalsProposalConfirmation(event)) {
+		if (!isEvalsProposalConfirmation(event) && !isEvalDataConfirmation(event)) {
 			continue;
 		}
 
@@ -183,12 +196,17 @@ export async function approveEvalConfirmations(input: {
 		}
 
 		try {
-			input.logger.verbose(`[auto-approve] Approving confirmation: ${requestId}`);
-			await input.client.confirmAction(requestId, true, {
-				mockCredentials: true,
-				datasetChoice: 'link-existing',
-				existingDataTableId: input.dataTableId,
-			});
+			if (isEvalDataConfirmation(event)) {
+				input.logger.verbose(`[auto-approve] Declining eval-data confirmation: ${requestId}`);
+				await input.client.confirmAction(requestId, false);
+			} else {
+				input.logger.verbose(`[auto-approve] Approving confirmation: ${requestId}`);
+				await input.client.confirmAction(requestId, true, {
+					mockCredentials: true,
+					datasetChoice: 'link-existing',
+					existingDataTableId: input.dataTableId,
+				});
+			}
 			input.approvedRequestIds.add(requestId);
 			retryCounts.delete(requestId);
 		} catch (error) {

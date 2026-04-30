@@ -40,6 +40,7 @@ jest.mock('../../tools', () => ({
 	})),
 	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
 		plan: { id: `plan-${context.runId}` },
+		'eval-data': { id: `eval-data-${context.runId}` },
 		'build-workflow-with-agent': { id: `build-${context.runId}` },
 	})),
 }));
@@ -138,5 +139,37 @@ describe('createInstanceAgent', () => {
 		const firstCall = calls[0];
 		expect(firstCall).toBeDefined();
 		expect(firstCall[0]).not.toHaveProperty('workspace');
+	});
+
+	it('keeps eval-data deferred instead of always loaded', async () => {
+		Agent.mockClear();
+		ToolSearchProcessor.mockClear();
+		const memoryConfig = { storage: { id: 'memory-store' } } as never;
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'eval-data-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'eval-data-test',
+				browserMcpConfig: undefined,
+			},
+			memoryConfig,
+		} as never);
+
+		const agentCalls = Agent.mock.calls as Array<[Record<string, unknown>]>;
+		const agentTools = agentCalls[0]?.[0].tools as Record<string, unknown>;
+		expect(agentTools).not.toHaveProperty('eval-data');
+
+		const toolSearchCalls = ToolSearchProcessor.mock.calls as Array<
+			[{ tools: Record<string, { id: string }> }]
+		>;
+		expect(toolSearchCalls[0]?.[0]?.tools).toMatchObject({
+			'eval-data': { id: 'eval-data-eval-data-test' },
+		});
 	});
 });

@@ -280,6 +280,32 @@ describe('eval setup topology runner helpers', () => {
 		expect(approvedRequestIds.has('request-1')).toBe(true);
 	});
 
+	it('declines eval-data confirmations so topology runs do not generate synthetic rows', async () => {
+		const client = {
+			confirmAction: jest.fn().mockResolvedValue(undefined),
+		};
+		const approvedRequestIds = new Set<string>();
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1,
+				type: 'confirmation-request',
+				data: { payload: { requestId: 'eval-data-request', toolName: 'eval-data' } },
+			},
+		];
+
+		await approveEvalConfirmations({
+			client,
+			events,
+			approvedRequestIds,
+			dataTableId: 'dt-1',
+			logger: logger(),
+		});
+
+		expect(client.confirmAction).toHaveBeenCalledTimes(1);
+		expect(client.confirmAction).toHaveBeenCalledWith('eval-data-request', false);
+		expect(approvedRequestIds.has('eval-data-request')).toBe(true);
+	});
+
 	it('fails promptly when the SSE stream records an error during settle', async () => {
 		const streamError = new Error('SSE disconnected');
 		const client = {

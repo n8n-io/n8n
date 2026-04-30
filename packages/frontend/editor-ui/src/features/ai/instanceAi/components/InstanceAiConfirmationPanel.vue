@@ -65,6 +65,7 @@ const ROLE_LABELS: Record<string, string> = {
 	orchestrator: 'Agent',
 	'workflow-builder': 'Workflow Builder',
 	'data-table-manager': 'Data Table Manager',
+	'eval-data': 'Eval Data',
 	researcher: 'Researcher',
 };
 

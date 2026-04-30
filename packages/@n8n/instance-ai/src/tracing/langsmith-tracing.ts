@@ -1316,6 +1316,10 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 	};
 }
 
+function getDefaultProjectName(): string {
+	return process.env.LANGSMITH_PROJECT ?? DEFAULT_PROJECT_NAME;
+}
+
 export async function createInstanceAiTraceContext(
 	options: CreateInstanceAiTraceContextOptions,
 ): Promise<InstanceAiTraceContext | undefined> {
@@ -1326,7 +1330,7 @@ export async function createInstanceAiTraceContext(
 	ensureLangSmithTracingEnv();
 
 	const client = options.proxyConfig ? getOrCreateProxyClient(options.proxyConfig) : undefined;
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? getDefaultProjectName();
 	const baseMetadata = buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
@@ -1401,7 +1405,7 @@ export async function createDetachedSubAgentTraceContext(
 	ensureLangSmithTracingEnv();
 
 	const client = options.proxyConfig ? getOrCreateProxyClient(options.proxyConfig) : undefined;
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? getDefaultProjectName();
 	const baseMetadata = buildBaseMetadata(options);
 
 	const createDetachedRuns = async () => {

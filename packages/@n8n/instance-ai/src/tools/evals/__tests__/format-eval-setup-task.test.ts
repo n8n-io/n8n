@@ -30,23 +30,35 @@ describe('formatEvalSetupTask', () => {
 		expect(task).toContain('General Agent');
 	});
 
-	it('dataset=generate (legacy fallback): instructs sub-agent NOT to create a DataTable', () => {
+	it('dataset=create-empty: instructs sub-agent to create an empty DataTable only', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			datasetChoice: 'create-empty',
+		});
+		expect(task).toContain('Create an empty DataTable');
+		expect(task).toContain('Do not insert rows');
+		expect(task).toContain('- user_message');
+		expect(task).toContain('- agent_response');
+	});
+
+	it('dataset=generate (legacy fallback): maps to empty DataTable creation', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			datasetChoice: 'generate',
 		});
-		expect(task).toContain('Do not create a DataTable');
-		expect(task).toContain('upstream orchestrator');
+		expect(task).toContain('Create an empty DataTable');
+		expect(task).toContain('Do not insert rows');
 	});
 
-	it('dataset=link-existing: uses provided id, notes dataset is pre-populated', () => {
+	it('dataset=link-existing: uses provided id without allowing row or schema mutation', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
 			datasetChoice: 'link-existing',
 			existingDataTableId: 'dt-user-42',
 		});
 		expect(task).toContain('dt-user-42');
-		expect(task).toContain('already created and populated');
+		expect(task).toContain('already exists');
+		expect(task).toContain('do not modify its rows or schema');
 		expect(task).not.toContain('Create a new DataTable');
 	});
 
@@ -93,7 +105,7 @@ describe('formatEvalSetupTask', () => {
 	it('mentions the checkIfEvaluating topology as expected behavior', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
-			datasetChoice: 'generate',
+			datasetChoice: 'create-empty',
 		});
 		expect(task).toContain('checkIfEvaluating');
 		expect(task).toContain('setInputs');
@@ -103,7 +115,7 @@ describe('formatEvalSetupTask', () => {
 	it('lists the suggested output columns as bullet items', () => {
 		const task = formatEvalSetupTask({
 			...BASE,
-			datasetChoice: 'generate',
+			datasetChoice: 'create-empty',
 			suggestedOutputColumns: ['agent_response', 'tool_used'],
 		});
 		expect(task).toContain('- agent_response');

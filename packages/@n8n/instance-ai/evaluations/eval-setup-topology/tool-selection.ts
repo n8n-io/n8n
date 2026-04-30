@@ -238,14 +238,14 @@ function isEvalSetupAgentName(value: string | undefined): boolean {
 	return value !== undefined && EVAL_SETUP_AGENT_NAMES.has(value.toLowerCase());
 }
 
-function getString(value: Record<string, unknown>, key: string): string | undefined {
-	const propertyValue = value[key];
+function getString(value: object, key: string): string | undefined {
+	const propertyValue = (value as Record<string, unknown>)[key];
 
 	return typeof propertyValue === 'string' ? propertyValue : undefined;
 }
 
-function hasString(value: Record<string, unknown>, key: string): boolean {
-	return typeof value[key] === 'string';
+function hasString(value: object, key: string): boolean {
+	return typeof (value as Record<string, unknown>)[key] === 'string';
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
