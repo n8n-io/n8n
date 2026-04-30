@@ -69,6 +69,10 @@ function revealParameterIssues(parameterName: string) {
 	revealedIssues.value.add(parameterName);
 }
 
+function getRootParameterName(parameterName: string) {
+	return parameterName.split(/[.[\]]/)[0] ?? parameterName;
+}
+
 const displayName = computed(() => {
 	if (!credentialType.value) return card.value.node.name;
 	const raw =
@@ -124,7 +128,7 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 function onParameterValueChanged(update: IUpdateInformation) {
 	const parameterName = update.name.replace(/^parameters\./, '');
 	ctx.setParameterValue(card.value, parameterName, update.value);
-	revealParameterIssues(parameterName);
+	revealParameterIssues(getRootParameterName(parameterName));
 }
 </script>
 
