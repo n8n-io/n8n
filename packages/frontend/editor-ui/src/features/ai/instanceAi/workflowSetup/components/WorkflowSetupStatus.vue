@@ -1,14 +1,20 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
-import { i18n } from '@n8n/i18n';
+import { N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { i18n, type BaseTextKey } from '@n8n/i18n';
 import type { TerminalState } from '../workflowSetup.types';
 
 const props = defineProps<{ state: TerminalState }>();
 
 type IconClass = 'iconLoading' | 'iconSuccess' | 'iconWarning' | 'iconMuted';
+type StatusView = {
+	icon: IconName;
+	iconClass: IconClass;
+	labelKey: BaseTextKey;
+	spin?: boolean;
+};
 
-const STATUS_BY_STATE = {
+const STATUS_BY_STATE: Record<TerminalState, StatusView> = {
 	applying: {
 		icon: 'spinner',
 		iconClass: 'iconLoading',
@@ -30,10 +36,7 @@ const STATUS_BY_STATE = {
 		iconClass: 'iconMuted',
 		labelKey: 'instanceAi.workflowSetup.deferred',
 	},
-} satisfies Record<
-	TerminalState,
-	{ icon: string; iconClass: IconClass; labelKey: string; spin?: boolean }
->;
+};
 
 const statusView = computed(() => STATUS_BY_STATE[props.state]);
 </script>
