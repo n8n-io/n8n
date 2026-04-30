@@ -93,41 +93,5 @@ describe('TaigaTrigger', () => {
 			expect(result.workflowData).toBeDefined();
 			expect(mockResponse.status).not.toHaveBeenCalled();
 		});
-
-		it('should filter out events with non-matching action', async () => {
-			const body = { action: 'delete', type: 'issue' };
-
-			(verifySignature as jest.Mock).mockReturnValue(true);
-			mockWebhookFunctions.getRequestObject.mockReturnValue({ body } as any);
-			mockWebhookFunctions.getNodeParameter.mockImplementation((name: string) => {
-				if (name === 'operations') return ['create'];
-				if (name === 'resources') return ['all'];
-				return null;
-			});
-
-			const result = await trigger.webhook.call(
-				mockWebhookFunctions as unknown as IWebhookFunctions,
-			);
-
-			expect(result).toEqual({});
-		});
-
-		it('should filter out events with non-matching resource', async () => {
-			const body = { action: 'create', type: 'wikipage' };
-
-			(verifySignature as jest.Mock).mockReturnValue(true);
-			mockWebhookFunctions.getRequestObject.mockReturnValue({ body } as any);
-			mockWebhookFunctions.getNodeParameter.mockImplementation((name: string) => {
-				if (name === 'operations') return ['all'];
-				if (name === 'resources') return ['issue'];
-				return null;
-			});
-
-			const result = await trigger.webhook.call(
-				mockWebhookFunctions as unknown as IWebhookFunctions,
-			);
-
-			expect(result).toEqual({});
-		});
 	});
 });

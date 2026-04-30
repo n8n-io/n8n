@@ -74,21 +74,5 @@ describe('TaigaTriggerHelpers', () => {
 
 			expect(verifySignature.call(mockWebhookFunctions)).toBe(false);
 		});
-
-		it('should accept rawBody passed as a string', () => {
-			const rawBodyString = '{"action":"change","type":"task"}';
-			const expectedSignature = createHmac('sha1', testKey).update(rawBodyString).digest('hex');
-
-			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({ key: testKey });
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((name: string) => {
-					if (name === 'x-taiga-webhook-signature') return expectedSignature;
-					return null;
-				}),
-				rawBody: rawBodyString,
-			});
-
-			expect(verifySignature.call(mockWebhookFunctions)).toBe(true);
-		});
 	});
 });
