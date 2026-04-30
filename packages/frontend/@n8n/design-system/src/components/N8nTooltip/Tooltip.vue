@@ -150,6 +150,7 @@ const handleOpenChange = (open: boolean) => {
 	justify-content: center;
 	flex-direction: column;
 	transform-origin: var(--reka-tooltip-content-transform-origin);
+	text-wrap: pretty;
 
 	svg {
 		fill: currentColor;
