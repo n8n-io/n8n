@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { loadChatSdk } from './esm-loader';
+import type { CardElement } from 'chat';
 
 /**
  * Component type from agent SDK suspend/toMessage payloads.
@@ -72,7 +73,7 @@ export class ComponentMapper {
 		resumeSchema?: unknown,
 		shortenCallback?: (actionId: string, value: string) => Promise<{ id: string; value: string }>,
 		platform?: string,
-	): Promise<unknown> {
+	): Promise<CardElement> {
 		const sdk = await loadChatSdk();
 
 		// Delegate per-platform normalization to the Integration implementation.

@@ -7,7 +7,6 @@ import { mock } from 'jest-mock-extended';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
-import { AgentsCredentialProvider } from '../../adapters/agents-credential-provider';
 import type { AgentsService } from '../../agents.service';
 import type { Agent } from '../../entities/agent.entity';
 import { AgentScheduleService } from '../agent-schedule.service';
@@ -62,9 +61,8 @@ describe('AgentScheduleService', () => {
 				generic: { timezone: 'Europe/Berlin' },
 			}),
 			agentRepository as never,
-			projectRelationRepository as never,
-			mock(),
 			agentsService,
+			projectRelationRepository as never,
 		);
 	});
 
@@ -217,19 +215,20 @@ describe('AgentScheduleService', () => {
 		);
 
 		expect(agentsService.executeForSchedulePublished).toHaveBeenCalledWith(
-			'agent-1',
-			expect.stringContaining('Wake up and check the queue.'),
-			expect.stringMatching(/^schedule-agent-1-/),
-			'user-1',
-			'project-1',
-			expect.any(AgentsCredentialProvider),
-			expect.stringMatching(/^schedule-agent-1-/),
+			expect.objectContaining({
+				agentId: 'agent-1',
+				projectId: 'project-1',
+				message: expect.stringContaining('Wake up and check the queue.'),
+				memory: {
+					threadId: expect.stringMatching(/^schedule-agent-1-/),
+					resourceId: expect.stringMatching(/^user-1/),
+				},
+			}),
 		);
 
-		const call = agentsService.executeForSchedulePublished.mock.calls[0];
-		expect(call[1]).toContain('Current date and time:');
-		expect(call[1]).toContain('(timezone: Europe/Berlin)');
-		expect(call[2]).toBe(call[6]);
+		const config = agentsService.executeForSchedulePublished.mock.calls[0][0];
+		expect(config.message).toContain('Current date and time:');
+		expect(config.message).toContain('(timezone: Europe/Berlin)');
 	});
 
 	it('reconnectAll restores only active published schedules', async () => {

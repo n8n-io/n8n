@@ -18,7 +18,9 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from '../integrations/agent-chat-integration';
+import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentPublishedVersionRepository } from '../repositories/agent-published-version.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
@@ -67,6 +69,8 @@ describe('AgentsService', () => {
 	let agentRepository: jest.Mocked<AgentRepository>;
 	let agentPublishedVersionRepository: jest.Mocked<AgentPublishedVersionRepository>;
 	let n8nMemory: jest.Mocked<N8nMemory>;
+	let n8nCheckpointStorage: jest.Mocked<N8NCheckpointStorage>;
+	let agentExecutionService: jest.Mocked<AgentExecutionService>;
 	let scheduleService: jest.Mocked<AgentScheduleService>;
 
 	beforeEach(() => {
@@ -75,6 +79,9 @@ describe('AgentsService', () => {
 		agentRepository = mock<AgentRepository>();
 		agentPublishedVersionRepository = mock<AgentPublishedVersionRepository>();
 		n8nMemory = mock<N8nMemory>();
+		n8nCheckpointStorage = mock<N8NCheckpointStorage>();
+		agentExecutionService = mock<AgentExecutionService>();
+		agentExecutionService.recordMessage.mockResolvedValue('exec-id');
 		scheduleService = mock<AgentScheduleService>();
 		const logger = mockLogger();
 
@@ -89,12 +96,12 @@ describe('AgentsService', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
+			n8nCheckpointStorage,
 			mock(),
 			mock(),
 			mock(),
 			n8nMemory,
-			mock(),
+			agentExecutionService,
 			agentPublishedVersionRepository,
 			new AgentSkillsService(logger, agentRepository),
 		);
@@ -466,19 +473,26 @@ describe('AgentsService', () => {
 				publishedVersion: makePublishedVersion({
 					schema,
 					skills: { summarize_notes: publishedSkill },
+					publishedById: userId,
 				}),
 			});
 			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
 			const reconstructSpy = jest
 				.spyOn(service as never, 'reconstructFromConfig')
-				.mockResolvedValue({} as never);
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
 			jest
 				.spyOn(service as never, 'streamChatResponse')
 				.mockImplementation(async function* () {} as never);
 
 			await service
-				.executeForChatPublished(agentId, 'hello', 'thread-1', userId, projectId, mock())
+				.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: 'platform-user-1' },
+				})
 				.next();
 
 			expect(reconstructSpy.mock.calls[0][0]).toEqual(
@@ -486,7 +500,42 @@ describe('AgentsService', () => {
 					skills: { summarize_notes: publishedSkill },
 				}),
 			);
-			expect(reconstructSpy.mock.calls[0][2]).toBe(userId);
+		});
+
+		it('passes resourceId (not n8n userId) to streamChatResponse', async () => {
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const n8nPublisherId = 'n8n-user-publisher';
+			const chatUserId = 'slack-user-abc';
+			const agent = makeAgent({
+				schema,
+				publishedVersion: makePublishedVersion({ schema, publishedById: n8nPublisherId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: {}, toolRegistry: {} } as never);
+			const streamSpy = jest
+				.spyOn(service as never, 'streamChatResponse')
+				.mockImplementation(async function* () {} as never);
+
+			await service
+				.executeForChatPublished({
+					agentId,
+					projectId,
+					message: 'hello',
+					memory: { threadId: 'thread-1', resourceId: chatUserId },
+				})
+				.next();
+
+			const streamConfig = (streamSpy.mock.calls[0] as [{ memory: { resourceId: string } }])[0];
+			expect(streamConfig.memory.resourceId).toBe(chatUserId);
+			expect(streamConfig.memory.resourceId).not.toBe(n8nPublisherId);
 		});
 	});
 
@@ -812,6 +861,61 @@ describe('AgentsService', () => {
 			);
 
 			expect(result.missing.filter((m) => m.startsWith('skill:'))).toEqual([]);
+		});
+	});
+
+	describe('resumeForChat', () => {
+		it('does not use n8n userId as resourceId — resume passes no resourceId to agentInstance.resume', async () => {
+			const n8nPublisherId = 'n8n-user-publisher';
+			const runId = 'run-abc';
+			const toolCallId = 'tool-xyz';
+			const schema: AgentJsonConfig = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+			};
+			const agent = makeAgent({
+				schema,
+				publishedVersion: makePublishedVersion({ schema, publishedById: n8nPublisherId }),
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			// Configure the named checkpoint storage mock injected in beforeEach
+			n8nCheckpointStorage.getStatus.mockResolvedValue({
+				status: 'ok',
+				checkpoint: { persistence: { threadId: 'thread-1', resourceId: 'platform-user-1' } },
+			} as never);
+
+			const mockAgentInstance = {
+				name: 'Test Agent',
+				resume: jest.fn().mockResolvedValue({
+					stream: {
+						getReader: () => ({
+							read: jest.fn().mockResolvedValue({ done: true, value: undefined }),
+							releaseLock: jest.fn(),
+						}),
+					},
+				}),
+			};
+
+			jest.spyOn(service as never, 'createCredentialProvider').mockReturnValue(mock());
+			jest
+				.spyOn(service as never, 'reconstructFromConfig')
+				.mockResolvedValue({ agent: mockAgentInstance, toolRegistry: {} } as never);
+
+			await service
+				.resumeForChat({ agentId, projectId, runId, toolCallId, resumeData: { value: 'yes' } })
+				.next();
+
+			// resume() takes runId and toolCallId — no resourceId or userId is passed
+			expect(mockAgentInstance.resume).toHaveBeenCalledWith(
+				'stream',
+				{ value: 'yes' },
+				{ runId, toolCallId },
+			);
+			// The n8n publisher ID must not appear in the resume args
+			const resumeArgs = mockAgentInstance.resume.mock.calls[0];
+			expect(JSON.stringify(resumeArgs)).not.toContain(n8nPublisherId);
 		});
 	});
 

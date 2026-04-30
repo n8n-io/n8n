@@ -5,20 +5,18 @@ import {
 	type AgentScheduleIntegration,
 	isAgentScheduleIntegration,
 } from '@n8n/api-types';
+import { ProjectRelationRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { ProjectRelationRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { CronJob } from 'cron';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 
-import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
@@ -32,9 +30,8 @@ export class AgentScheduleService {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly agentRepository: AgentRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
-		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	getConfig(agent: Agent): AgentScheduleConfig {
@@ -316,10 +313,6 @@ export class AgentScheduleService {
 				return;
 			}
 
-			const credentialProvider = new AgentsCredentialProvider(
-				this.credentialsService,
-				agent.projectId,
-			);
 			threadId = `schedule-${agentId}-${randomUUID()}`;
 			const timezone = this.globalConfig.generic.timezone;
 			const timestamp = DateTime.now().setZone(timezone).toISO() ?? new Date().toISOString();
@@ -330,7 +323,6 @@ export class AgentScheduleService {
 				projectId,
 				threadId,
 				cronExpression: schedule.cronExpression,
-				executionUserId,
 				timezone,
 			});
 			this.logger.debug('[AgentScheduleService] Starting scheduled agent run', {
@@ -341,15 +333,12 @@ export class AgentScheduleService {
 			});
 
 			let chunkCount = 0;
-			for await (const _chunk of this.agentsService.executeForSchedulePublished(
-				agent.id,
+			for await (const _chunk of this.agentsService.executeForSchedulePublished({
+				agentId: agent.id,
+				projectId: agent.projectId,
 				message,
-				threadId,
-				executionUserId,
-				agent.projectId,
-				credentialProvider,
-				threadId,
-			)) {
+				memory: { threadId, resourceId: executionUserId },
+			})) {
 				chunkCount += 1;
 			}
 

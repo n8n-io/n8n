@@ -94,16 +94,87 @@ export function chatThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
 }
 
+export interface ExecuteAgentData {
+	response: string;
+	structuredOutput: unknown;
+	usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
+	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
+	finishReason: string;
+}
+
+/** Scopes the agent's memory to a specific conversation context. */
+export interface AgentMemoryScope {
+	threadId: string;
+	resourceId: string;
+}
+
+export interface ExecuteForChatConfig {
+	agentId: string;
+	projectId: string;
+	message: string;
+	/** n8n user ID — used for RBAC / credential resolution. */
+	userId: string;
+	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
+	memory: AgentMemoryScope;
+}
+
+export interface ExecuteForChatPublishedConfig {
+	agentId: string;
+	projectId: string;
+	message: string;
+	/** Memory scope — resourceId is the chat platform user (e.g. Slack / Telegram user ID). */
+	memory: AgentMemoryScope;
+	integrationType?: string;
+}
+
+export interface ResumeForChatConfig {
+	agentId: string;
+	projectId: string;
+	runId: string;
+	toolCallId: string;
+	resumeData: unknown;
+}
+
+export interface ExecuteForSchedulePublishedConfig {
+	agentId: string;
+	projectId: string;
+	message: string;
+	/** Memory scope — resourceId isolates per-run memory. */
+	memory: AgentMemoryScope;
+}
+
+interface StreamChatResponseConfig {
+	agentInstance: agents.Agent;
+	toolRegistry: ToolRegistry;
+	agentId: string;
+	message: string;
+	memory: AgentMemoryScope;
+	projectId: string;
+	source?: string;
+}
+
+interface GetOrReconstructRuntimeParams {
+	agentId: string;
+	projectId: string;
+	n8nUserId?: string;
+	integrationType?: string;
+	/** When true, load the published snapshot; n8nUserId is derived from publishedById when omitted. */
+	usePublishedVersion?: boolean;
+}
+
 @Service()
 export class AgentsService {
 	/**
-	 * Cached agent runtimes keyed by `agentId` or `agentId:userId`.
+	 * Cached agent runtimes.  Keys follow the pattern:
+	 *   Draft:     `{agentId}:draft:{n8nUserId}`
+	 *   Published: `{agentId}:published[:{integrationType}]`
+	 *
 	 * TTL = 30 minutes — entries are evicted when the agent is idle so that
 	 * memory is freed without requiring an explicit shutdown step.
 	 */
 	private readonly runtimes = new TtlMap<
 		string,
-		{ agent: agents.Agent; agentId: string; userId?: string; toolRegistry: ToolRegistry }
+		{ agent: agents.Agent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 	>(30 * Time.minutes.toMilliseconds);
 
 	/**
@@ -113,11 +184,23 @@ export class AgentsService {
 	 */
 	private readonly pendingUserMessages = new Map<string, string>();
 
-	/** Build a cache key that includes the user and integration type so different contexts get isolated runtimes. */
-	private runtimeKey(agentId: string, userId?: string, integrationType?: string): string {
-		const parts = [agentId];
-		if (userId) parts.push(userId);
-		if (integrationType) parts.push(integrationType);
+	/**
+	 * Compute a deterministic runtime cache key.
+	 *
+	 * - Draft runtimes: `{agentId}:draft:{n8nUserId}`
+	 * - Published runtimes: `{agentId}:published[:{resourceId}[:{integrationType}]]`
+	 *
+	 * Separating draft and published with explicit prefixes prevents a draft
+	 * runtime from being mistakenly returned to a published-agent execution.
+	 */
+	private computeRuntimeCacheKey(params: GetOrReconstructRuntimeParams): string {
+		if (params.usePublishedVersion) {
+			const parts = [params.agentId, 'published'];
+			if (params.integrationType) parts.push(params.integrationType);
+			return parts.join(':');
+		}
+		const parts = [params.agentId, 'draft'];
+		if (params.n8nUserId) parts.push(params.n8nUserId);
 		return parts.join(':');
 	}
 
@@ -436,14 +519,14 @@ export class AgentsService {
 		return this.findRuntimeForAgent(agentId) !== undefined;
 	}
 
-	/** Find any cached runtime for an agent (regardless of user). */
+	/** Find any cached runtime for an agent */
 	private findRuntimeForAgent(
 		agentId: string,
 	):
-		| { agent: agents.Agent; agentId: string; userId?: string; toolRegistry: ToolRegistry }
+		| { agent: agents.Agent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
 		| undefined {
 		for (const [key, runtime] of this.runtimes) {
-			if (key === agentId || key.startsWith(`${agentId}:`)) {
+			if (key.startsWith(`${agentId}:`)) {
 				return runtime;
 			}
 		}
@@ -465,6 +548,67 @@ export class AgentsService {
 			}
 			throw new Error(`Unsupported memory storage: ${params.storage}`);
 		};
+	}
+
+	/** Create a credential provider scoped to a project. */
+	private createCredentialProvider(projectId: string): AgentsCredentialProvider {
+		return new AgentsCredentialProvider(Container.get(CredentialsService), projectId);
+	}
+
+	/**
+	 * Return a cached runtime, or reconstruct one from the DB.
+	 */
+	private async getOrReconstructRuntime(params: GetOrReconstructRuntimeParams): Promise<{
+		agent: agents.Agent;
+		agentId: string;
+		toolRegistry: ToolRegistry;
+		projectId: string;
+	}> {
+		const { agentId, projectId, integrationType, usePublishedVersion } = params;
+
+		const cacheKey = this.computeRuntimeCacheKey(params);
+
+		const cached = this.runtimes.get(cacheKey);
+		if (cached) return cached;
+
+		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+
+		let n8nUserId = params.n8nUserId;
+		let agentData: Agent = agentEntity;
+
+		if (usePublishedVersion) {
+			const publishedSchema = agentEntity.publishedVersion?.schema;
+			if (!publishedSchema) {
+				throw new NotFoundError(`Agent ${agentId} is not published`);
+			}
+			agentData = {
+				...agentEntity,
+				schema: publishedSchema,
+				tools: agentEntity.publishedVersion?.tools ?? agentEntity.tools ?? {},
+				skills: agentEntity.publishedVersion?.skills ?? agentEntity.skills ?? {},
+			} as Agent;
+
+			// Resolve n8n user from publishedById when not provided by the caller.
+			n8nUserId ??= agentEntity.publishedVersion?.publishedById ?? undefined;
+		}
+
+		if (!n8nUserId) {
+			throw new UserError('Agent user owner id is required');
+		}
+
+		const credentialProvider = this.createCredentialProvider(projectId);
+		const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
+			agentData,
+			credentialProvider,
+			n8nUserId,
+			integrationType,
+		);
+
+		this.runtimes.set(cacheKey, { agent: agentInstance, agentId, toolRegistry, projectId });
+		const runtime = this.runtimes.get(cacheKey);
+		if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
+		return runtime;
 	}
 
 	/**
@@ -533,7 +677,7 @@ export class AgentsService {
 		const integration = integrationType
 			? Container.get(ChatIntegrationRegistry).get(integrationType)
 			: undefined;
-		if (integration && integration.supportedComponents !== undefined) {
+		if (integration?.supportedComponents !== undefined) {
 			try {
 				const { createRichInteractionTool } = await import('./integrations/rich-interaction-tool');
 				agent.tool(createRichInteractionTool(integrationType));
@@ -573,33 +717,40 @@ export class AgentsService {
 	 * Resume a suspended tool call and yield the resulting stream chunks.
 	 * Used by chat integration handlers to continue an agent run after
 	 * a human-in-the-loop action (button click, modal submission).
+	 *
+	 * `projectId` is not required — it is resolved from the agent entity.
+	 * If the runtime is no longer cached (e.g. after a server restart) it is
+	 * reconstructed from the published snapshot before resuming.
 	 */
-	async *resumeForChat(
-		agentId: string,
-		runId: string,
-		toolCallId: string,
-		resumeData: unknown,
-		threadId?: string,
-		userId?: string,
-		projectId?: string,
-	): AsyncGenerator<StreamChunk> {
-		const runtime = this.findRuntimeForAgent(agentId);
-		if (!runtime) {
-			throw new UserError(`Agent ${agentId} is not compiled — cannot resume`);
-		}
-
-		const agentInstance = runtime.agent;
+	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
+		const { agentId, projectId, runId, toolCallId, resumeData } = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
-		if (checkpointStatus === 'expired') {
+		if (checkpointStatus.status === 'expired') {
 			throw new UserError(`Checkpoint ${runId} is expired and cannot be resumed`);
 		}
 
-		if (checkpointStatus === 'not-found') {
+		if (checkpointStatus.status === 'not-found') {
 			throw new UserError(`Checkpoint ${runId} not found and cannot be resumed`);
 		}
 
-		const recorder = new ExecutionRecorder(runtime.toolRegistry);
+		const memoryScope = checkpointStatus.checkpoint?.persistence;
+		if (!memoryScope) {
+			throw new UserError(`Checkpoint ${runId} has no memory data and cannot be resumed`);
+		}
+
+		const threadId = memoryScope.threadId;
+
+		// Prefer a cached runtime (correct integrationType already injected).
+		// Fall back to reconstruction from the published snapshot on cache miss
+		// (e.g. server restart).  n8nUserId is derived from publishedById inside
+		// getOrReconstructRuntime.  projectId is always available on the runtime entry.
+		const runtime =
+			this.findRuntimeForAgent(agentId) ??
+			(await this.getOrReconstructRuntime({ agentId, projectId, usePublishedVersion: true }));
+
+		const { agent: agentInstance, toolRegistry } = runtime;
+		const recorder = new ExecutionRecorder(toolRegistry);
 
 		const resultStream = await agentInstance.resume('stream', resumeData, {
 			runId,
@@ -620,30 +771,27 @@ export class AgentsService {
 
 		// Always record resumed executions — even if they suspend again (chained HITL).
 		// Don't repeat the original user message — the pre-suspension execution already has it.
-		if (threadId && userId && projectId) {
-			if (!recorder.suspended) {
-				this.pendingUserMessages.delete(agentId);
-			}
-			const messageRecord = recorder.getMessageRecord();
-			void this.agentExecutionService
-				.recordMessage({
-					threadId,
-					agentId,
-					agentName: agentInstance.name,
-					projectId,
-					userId,
-					userMessage: '',
-					record: messageRecord,
-					hitlStatus: 'resumed',
-				})
-				.catch((error) => {
-					this.logger.warn('Failed to record resumed agent execution', {
-						agentId,
-						threadId,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
+		if (!recorder.suspended) {
+			this.pendingUserMessages.delete(agentId);
 		}
+		const messageRecord = recorder.getMessageRecord();
+		void this.agentExecutionService
+			.recordMessage({
+				threadId,
+				agentId,
+				agentName: agentInstance.name,
+				projectId,
+				userMessage: '',
+				record: messageRecord,
+				hitlStatus: 'resumed',
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to record resumed agent execution', {
+					agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			});
 	}
 
 	/**
@@ -674,7 +822,7 @@ export class AgentsService {
 			return { missing: ['instructions', 'model'] };
 		}
 
-		if (!config.instructions || !config.instructions.trim()) {
+		if (!config.instructions?.trim()) {
 			missing.push('instructions');
 		}
 
@@ -707,55 +855,26 @@ export class AgentsService {
 	}
 
 	/**
-	 * Execute a compiled SDK agent for a chat integration and yield stream chunks.
-	 * Uses userId as the resourceId so each user gets their own memory context.
+	 * Execute an agent for the in-app test chat and yield stream chunks.
 	 *
-	 * When the runtime is not cached (e.g. after server restart), it loads the
-	 * agent from DB and reconstructs from the persisted schema — no compile() call.
+	 * `userId` is the authenticated n8n user (used for RBAC / credential
+	 * resolution).  `memory.resourceId` scopes the agent's memory so each
+	 * user sees their own conversation; for test-chat both equal userId.
+	 *
 	 */
-	async *executeForChat(
-		agentId: string,
-		message: string,
-		threadId: string,
-		userId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		integrationType?: string,
-	): AsyncGenerator<StreamChunk> {
-		const key = this.runtimeKey(agentId, userId, integrationType);
-		let runtime = this.runtimes.get(key);
-		if (!runtime) {
-			// Scope the lookup to the project so an agent from a different project
-			// cannot be driven by supplying an arbitrary agentId (IDOR).
-			const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-			if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
+		const { agentId, projectId, message, userId, memory } = config;
 
-			const { agent: reconstructed, toolRegistry } = await this.reconstructFromConfig(
-				agentEntity,
-				credentialProvider,
-				userId,
-				integrationType,
-			);
+		const runtime = await this.getOrReconstructRuntime({ agentId, projectId, n8nUserId: userId });
 
-			// Cache the runtime for subsequent calls
-			this.runtimes.set(key, { agent: reconstructed, agentId, userId, toolRegistry });
-			runtime = this.runtimes.get(key);
-			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
-		}
-
-		yield* this.streamChatResponse(
-			runtime.agent,
-			runtime.toolRegistry,
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
 			agentId,
 			message,
-			threadId,
-			userId,
-			projectId,
-			{
-				source: integrationType,
-				resourceId: userId,
-			},
-		);
+			memory,
+			projectId: runtime.projectId,
+		});
 	}
 
 	/**
@@ -784,143 +903,77 @@ export class AgentsService {
 	}
 
 	/**
-	 * Execute a published agent for a chat integration (Slack, Discord, etc.).
+	 * Execute a published agent for a chat integration (Slack, Telegram, …).
 	 *
-	 * Mirrors the live-webhooks pattern: load the published snapshot and run that,
-	 * never the current draft. Throws NotFoundError if the agent is not published.
+	 * Loads the published snapshot — never the draft.
 	 */
 	async *executeForChatPublished(
-		agentId: string,
-		message: string,
-		threadId: string,
-		userId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		integrationType?: string,
+		config: ExecuteForChatPublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+		const { agentId, projectId, message, memory, integrationType } = config;
 
-		const publishedSchema = agentEntity.publishedVersion?.schema;
-		if (!publishedSchema) {
-			throw new NotFoundError(`Agent ${agentId} is not published`);
-		}
-		const publishedTools = agentEntity.publishedVersion?.tools ?? agentEntity.tools;
-		const publishedSkills = agentEntity.publishedVersion?.skills ?? agentEntity.skills;
+		const runtime = await this.getOrReconstructRuntime({
+			agentId,
+			projectId,
+			integrationType,
+			usePublishedVersion: true,
+		});
 
-		// Reconstruct from the published snapshot and cache the runtime so that
-		// a follow-up `resumeForChat` (HITL button click) can find it via
-		// `findRuntimeForAgent`. Integration traffic only ever runs the published
-		// version — drafts stay in their own cache under different keys.
-		const key = this.runtimeKey(agentId, userId, integrationType);
-		let runtime = this.runtimes.get(key);
-		if (!runtime) {
-			const publishedAgentData = {
-				...agentEntity,
-				schema: publishedSchema,
-				tools: publishedTools ?? {},
-				skills: publishedSkills ?? {},
-			} as Agent;
-			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
-				publishedAgentData,
-				credentialProvider,
-				userId,
-				integrationType,
-			);
-			this.runtimes.set(key, { agent: agentInstance, agentId, userId, toolRegistry });
-			runtime = this.runtimes.get(key);
-			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
-		}
-
-		yield* this.streamChatResponse(
-			runtime.agent,
-			runtime.toolRegistry,
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
 			agentId,
 			message,
-			threadId,
-			userId,
-			projectId,
-			{
-				source: integrationType,
-				resourceId: userId,
-			},
-		);
+			memory,
+			projectId: runtime.projectId,
+			source: integrationType,
+		});
 	}
 
 	/**
 	 * Execute a published agent for the local schedule trigger.
 	 *
-	 * Scheduled runs compile with a project user identity for RBAC/tool access,
-	 * but persist against a per-run resourceId so no memory is shared across runs.
+	 * The n8n user identity for RBAC is resolved from
+	 * `publishedVersion.publishedById`.  Each scheduled run uses its own
+	 * memory scope so no conversation history is shared across runs.
+	 * `projectId` is resolved from the agent entity.
 	 */
 	async *executeForSchedulePublished(
-		agentId: string,
-		message: string,
-		threadId: string,
-		userId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		resourceId: string,
+		config: ExecuteForSchedulePublishedConfig,
 	): AsyncGenerator<StreamChunk> {
-		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-		if (!agentEntity) throw new NotFoundError(`Agent ${agentId} not found`);
+		const { agentId, projectId, message, memory } = config;
 
-		const publishedSchema = agentEntity.publishedVersion?.schema;
-		if (!publishedSchema) {
-			throw new NotFoundError(`Agent ${agentId} is not published`);
-		}
+		// One shared compiled runtime per agent for all schedule runs.
+		const runtime = await this.getOrReconstructRuntime({
+			agentId,
+			projectId,
+			integrationType: AGENT_SCHEDULE_TRIGGER_TYPE,
+			usePublishedVersion: true,
+		});
 
-		const key = this.runtimeKey(agentId, userId, AGENT_SCHEDULE_TRIGGER_TYPE);
-		let runtime = this.runtimes.get(key);
-		if (!runtime) {
-			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
-			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
-				publishedAgentData,
-				credentialProvider,
-				userId,
-				AGENT_SCHEDULE_TRIGGER_TYPE,
-			);
-			this.runtimes.set(key, { agent: agentInstance, agentId, userId, toolRegistry });
-			runtime = this.runtimes.get(key);
-			if (!runtime) throw new Error(`Agent ${agentId} failed to reconstruct`);
-		}
-
-		yield* this.streamChatResponse(
-			runtime.agent,
-			runtime.toolRegistry,
+		yield* this.streamChatResponse({
+			agentInstance: runtime.agent,
+			toolRegistry: runtime.toolRegistry,
 			agentId,
 			message,
-			threadId,
-			userId,
-			projectId,
-			{
-				source: AGENT_SCHEDULE_TRIGGER_TYPE,
-				resourceId,
-			},
-		);
+			memory,
+			projectId: runtime.projectId,
+			source: AGENT_SCHEDULE_TRIGGER_TYPE,
+		});
 	}
 
 	/**
-	 * Read from an agent's streaming response, record it, and yield each chunk.
-	 * Logs `tool-call-suspended` chunks so we can observe human-in-the-loop pauses,
-	 * and persists the full message record via `AgentExecutionService` so chat
-	 * history shows up in the executions view.
+	 * Stream an agent response, record it, and yield each chunk.
+	 *
+	 * `config.memory.resourceId` is passed as `persistence.resourceId` to
+	 * `agentInstance.stream()` to scope memory per chat user — it is
+	 * deliberately distinct from the n8n user ID used for RBAC.
 	 */
-	private async *streamChatResponse(
-		agentInstance: agents.Agent,
-		toolRegistry: ToolRegistry,
-		agentId: string,
-		message: string,
-		threadId: string,
-		userId: string,
-		projectId: string,
-		options?: {
-			source?: string;
-			resourceId?: string;
-		},
-	): AsyncGenerator<StreamChunk> {
+	private async *streamChatResponse(config: StreamChatResponseConfig): AsyncGenerator<StreamChunk> {
+		const { agentInstance, toolRegistry, agentId, message, memory, projectId, source } = config;
+		const { threadId, resourceId } = memory;
+
 		const recorder = new ExecutionRecorder(toolRegistry);
-		const resourceId = options?.resourceId ?? userId;
 
 		const resultStream = await agentInstance.stream(message, {
 			persistence: { threadId, resourceId },
@@ -958,11 +1011,10 @@ export class AgentsService {
 				agentId,
 				agentName: agentInstance.name,
 				projectId,
-				userId,
 				userMessage: message,
 				record: messageRecord,
 				hitlStatus: recorder.suspended ? 'suspended' : undefined,
-				source: options?.source,
+				source,
 			})
 			.catch((error) => {
 				this.logger.warn('Failed to record agent execution', {
@@ -981,7 +1033,7 @@ export class AgentsService {
 	private async compileIsolated(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
-		userId?: string,
+		userId: string,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -1436,7 +1488,7 @@ export class AgentsService {
 	private async reconstructFromConfig(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
-		userId?: string,
+		userId: string,
 		integrationType?: string,
 	): Promise<{ agent: agents.Agent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;

@@ -29,7 +29,7 @@ export class AgentPublishedVersionRepository extends Repository<AgentPublishedVe
 			model: string | null;
 			provider: string | null;
 			credentialId: string | null;
-			publishedById: string | null;
+			publishedById: string;
 		},
 		trx?: EntityManager,
 	): Promise<AgentPublishedVersion> {
