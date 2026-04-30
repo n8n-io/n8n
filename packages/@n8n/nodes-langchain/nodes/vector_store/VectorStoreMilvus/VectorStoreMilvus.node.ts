@@ -100,7 +100,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			indexCreateOptions,
 			clientConfig: {
 				address: credentials.baseUrl,
-				database: credentials.databaseName ?? 'default',
+				database: credentials.databaseName?.trim() || 'default',
 			},
 		};
 
@@ -126,7 +126,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			collectionName: collection,
 			clientConfig: {
 				address: credentials.baseUrl,
-				database: credentials.databaseName ?? 'default',
+				database: credentials.databaseName?.trim() || 'default',
 			},
 		};
 
@@ -134,7 +134,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			const client = new MilvusClient({
 				address: credentials.baseUrl,
 				token: `${credentials.username}:${credentials.password}`,
-				database: credentials.databaseName ?? 'default',
+				database: credentials.databaseName?.trim() || 'default',
 			});
 			await client.dropCollection({ collection_name: collection });
 		}
