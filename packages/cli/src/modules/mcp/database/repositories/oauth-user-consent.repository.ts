@@ -23,4 +23,25 @@ export class UserConsentRepository extends Repository<UserConsent> {
 	async countByUserId(userId: string): Promise<number> {
 		return await this.count({ where: { userId } });
 	}
+
+	/**
+	 * Returns the client IDs this user has previously consented to whose
+	 * client name matches `clientName`, excluding `excludeClientId`. Used to
+	 * trace duplicate-client registrations on reconnect.
+	 */
+	async findClientIdsForUserByName(
+		userId: string,
+		clientName: string,
+		excludeClientId: string,
+	): Promise<string[]> {
+		const rows = await this.createQueryBuilder('consent')
+			.innerJoin('consent.client', 'client')
+			.select('consent.clientId', 'clientId')
+			.where('consent.userId = :userId', { userId })
+			.andWhere('client.name = :clientName', { clientName })
+			.andWhere('consent.clientId != :excludeClientId', { excludeClientId })
+			.getRawMany<{ clientId: string }>();
+
+		return rows.map((row) => row.clientId);
+	}
 }

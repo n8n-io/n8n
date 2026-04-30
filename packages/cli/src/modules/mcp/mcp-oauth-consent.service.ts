@@ -94,11 +94,20 @@ export class McpOAuthConsentService {
 			}),
 		]);
 
+		const priorSameNameClientIds = client
+			? await this.userConsentRepository.findClientIdsForUserByName(
+					userId,
+					client.name,
+					sessionPayload.clientId,
+				)
+			: [];
+
 		this.logger.info('Linking MCP client to user', {
 			userId,
 			clientId: sessionPayload.clientId,
 			clientName: client?.name,
 			action: existingConsent ? 'refresh' : 'new',
+			priorSameNameClientIds,
 		});
 
 		await this.userConsentRepository.upsert(
@@ -127,6 +136,7 @@ export class McpOAuthConsentService {
 					clientId: sessionPayload.clientId,
 					clientName: client?.name,
 					limit,
+					priorSameNameClientIds,
 				});
 				throw new McpClientLimitReachedError(limit);
 			}
@@ -151,6 +161,7 @@ export class McpOAuthConsentService {
 			clientId: sessionPayload.clientId,
 			clientName: client?.name,
 			action: existingConsent ? 'refresh' : 'new',
+			priorSameNameClientIds,
 		});
 
 		return { redirectUrl: successRedirectUrl };

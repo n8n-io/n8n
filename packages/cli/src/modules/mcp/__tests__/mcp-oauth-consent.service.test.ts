@@ -203,6 +203,7 @@ describe('McpOAuthConsentService', () => {
 				clientId: 'client-123',
 				clientName: undefined,
 				action: 'new',
+				priorSameNameClientIds: [],
 			});
 		});
 
