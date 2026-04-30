@@ -204,8 +204,7 @@ async function onDropdownToggle(open: boolean) {
 	<N8nTooltip :content="tooltipText" placement="bottom" :show-after="300">
 		<N8nDropdownMenu
 			:items="menuItems"
-			trigger="hover"
-			placement="bottom"
+			placement="bottom-end"
 			:loading="isLoadingDetails"
 			:loading-item-count="1"
 			:searchable="showSearch"
