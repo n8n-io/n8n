@@ -370,20 +370,25 @@ const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	const project = currentBreadcrumbsProject.value;
 	if (!project) return [];
 
-	return [
+	const actions: Array<UserAction<IUser>> = [
 		{
 			label: i18n.baseText('folders.actions.create'),
 			value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
 			disabled: readOnlyEnv.value || !hasPermissionToCreateFolders.value,
 		},
-		{
+	];
+
+	if (project.type !== ProjectTypes.Personal) {
+		actions.push({
 			label: favoritesStore.isFavorite(project.id, 'project')
 				? i18n.baseText('favorites.remove')
 				: i18n.baseText('favorites.add'),
 			value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
 			disabled: false,
-		},
-	];
+		});
+	}
+
+	return actions;
 });
 
 const mcpAccessScope = computed(() => {
