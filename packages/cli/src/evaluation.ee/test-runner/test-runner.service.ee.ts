@@ -558,6 +558,13 @@ export class TestRunnerService {
 			parallel_enabled: effectiveConcurrency > 1,
 			concurrency_limited_by_config: concurrencyLimitedByConfig,
 			flag_enabled_for_user: flagEnabledForUser,
+			// Realised parallelism observed at runtime — `cases_started` counts
+			// callbacks that actually began (post-throttle, pre-abort), and
+			// `peak_in_flight` is the high-water mark for in-flight cases.
+			// Updated in lockstep with fanOutMetrics inside the per-case callback;
+			// stays at 0 if the run aborts before the fan-out begins.
+			cases_started: 0,
+			peak_in_flight: 0,
 		};
 
 		// 0.1 Initialize AbortController
@@ -729,11 +736,15 @@ export class TestRunnerService {
 
 							// In-flight tracking — increment as we leave the throttle and
 							// decrement in the outer finally. The peak counter shows whether
-							// the runner actually fanned out concurrently.
+							// the runner actually fanned out concurrently. Mirror the two
+							// summary stats into telemetryMeta so they survive into the
+							// `Test run finished` event even if the run errors mid-fan-out.
 							fanOutMetrics.inFlight += 1;
 							fanOutMetrics.casesStarted += 1;
+							telemetryMeta.cases_started = fanOutMetrics.casesStarted;
 							if (fanOutMetrics.inFlight > fanOutMetrics.peakInFlight) {
 								fanOutMetrics.peakInFlight = fanOutMetrics.inFlight;
+								telemetryMeta.peak_in_flight = fanOutMetrics.peakInFlight;
 							}
 							this.logger.debug(
 								`[Eval] Case started: case=${caseIndex} inFlight=${fanOutMetrics.inFlight}/${effectiveConcurrency} peak=${fanOutMetrics.peakInFlight}`,

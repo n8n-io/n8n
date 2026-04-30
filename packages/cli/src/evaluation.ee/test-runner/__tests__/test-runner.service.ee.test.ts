@@ -2272,6 +2272,22 @@ describe('TestRunnerService', () => {
 			);
 		});
 
+		test('telemetry payload reports realised fan-out (cases_started, peak_in_flight)', async () => {
+			const { inFlightTracker } = setupHappyPathMocks(6);
+
+			await testRunnerService.runTest(USER as never, WORKFLOW_ID, 3, true);
+
+			const payload = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Test run finished',
+			)?.[1] as Record<string, unknown>;
+			expect(payload.cases_started).toBe(6);
+			// Should match what the test harness independently observed —
+			// proves the telemetry stat is the same number a watcher would see.
+			expect(payload.peak_in_flight).toBe(inFlightTracker.max);
+			expect(payload.peak_in_flight).toBeGreaterThan(1);
+			expect(payload.peak_in_flight).toBeLessThanOrEqual(3);
+		});
+
 		test('evaluationLimit clamps requested concurrency and flags concurrency_limited_by_config', async () => {
 			const cappedConfig = mockInstance(ExecutionsConfig, {
 				mode: 'regular',
