@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nRadioButtons, N8nSwitch2 } from '@n8n/design-system';
+import { ElSelect, ElOption } from 'element-plus';
 import Modal from '@/app/components/Modal.vue';
 import { FORM_STEP_EDIT_MODAL_KEY, FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -45,6 +46,22 @@ const activeTab = ref<ModalTab>('appearance');
 
 const appearance = useFormAppearance(nodeId);
 
+const themeOptions = computed(() => {
+	const named = [
+		{ value: 'light', label: i18n.baseText('formStep.appearance.theme.light') },
+		{ value: 'dark', label: i18n.baseText('formStep.appearance.theme.dark') },
+		{ value: 'enterprise', label: i18n.baseText('formStep.appearance.theme.enterprise') },
+		{ value: 'fun', label: i18n.baseText('formStep.appearance.theme.fun') },
+		{ value: 'dense', label: i18n.baseText('formStep.appearance.theme.dense') },
+		{ value: 'compact', label: i18n.baseText('formStep.appearance.theme.compact') },
+		{ value: 'compactDark', label: i18n.baseText('formStep.appearance.theme.compactDark') },
+	];
+	if (appearance.activeTheme.value === 'custom') {
+		named.push({ value: 'custom', label: i18n.baseText('formStep.appearance.theme.custom') });
+	}
+	return named;
+});
+
 async function onSave() {
 	await appearance.save(appearance.scope.value);
 }
@@ -85,6 +102,20 @@ function onReset() {
 					<div :class="$style.controlsPane">
 						<div :class="$style.headerRow">
 							<span :class="$style.nodeName">{{ node?.name }}</span>
+							<ElSelect
+								:model-value="appearance.activeTheme.value"
+								size="small"
+								:class="$style.themeSelect"
+								@change="(v: string) => appearance.applyTheme(v)"
+							>
+								<ElOption
+									v-for="opt in themeOptions"
+									:key="opt.value"
+									:label="opt.label"
+									:value="opt.value"
+									:disabled="opt.value === 'custom'"
+								/>
+							</ElSelect>
 						</div>
 						<AppearanceTab
 							:model-value="appearance.localOverrides.value"
@@ -134,8 +165,15 @@ function onReset() {
 .headerRow {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	padding: var(--spacing--3xs) 0;
 	margin-bottom: var(--spacing--sm);
+}
+
+.themeSelect {
+	flex-shrink: 0;
+	width: 140px;
 }
 
 .nodeName {

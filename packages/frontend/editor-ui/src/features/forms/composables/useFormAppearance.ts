@@ -9,6 +9,7 @@ import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import type { INodeUi } from '@/Interface';
 import { fetchFormPreview } from '../api';
+import { FORM_THEMES } from '../constants/themes';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -285,6 +286,22 @@ export function useFormAppearance(nodeId: string) {
 		}
 	}
 
+	const activeTheme = computed((): string => {
+		const overrides = localOverrides.value;
+		const overrideKeys = Object.keys(overrides);
+		for (const theme of FORM_THEMES) {
+			const themeKeys = Object.keys(theme.overrides);
+			if (themeKeys.length !== overrideKeys.length) continue;
+			if (themeKeys.every((k) => theme.overrides[k] === overrides[k])) return theme.id;
+		}
+		return 'custom';
+	});
+
+	function applyTheme(themeId: string) {
+		const theme = FORM_THEMES.find((t) => t.id === themeId);
+		if (theme) localOverrides.value = { ...theme.overrides };
+	}
+
 	return {
 		localOverrides,
 		localAppendAttribution,
@@ -294,6 +311,8 @@ export function useFormAppearance(nodeId: string) {
 		iframeEl,
 		isSaving,
 		hasUnsavedChanges,
+		activeTheme,
+		applyTheme,
 		reset,
 		save,
 		onIframeLoad,
