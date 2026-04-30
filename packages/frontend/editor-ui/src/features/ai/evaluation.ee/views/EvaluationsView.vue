@@ -102,51 +102,56 @@ watch(runningTestRun, (run) => {
 <template>
 	<div :class="$style.evaluationsView">
 		<div :class="$style.header">
-			<div
-				v-if="parallelEvalStore.isFeatureEnabled && !runningTestRun"
-				:class="$style.parallelControls"
-				data-test-id="parallel-eval-controls"
-			>
-				<span :class="$style.concurrencyLabel" data-test-id="run-in-parallel-mode-label">
-					{{ concurrencyLabel }}
-				</span>
-				<N8nTooltip placement="top" :content="locale.baseText('evaluation.runInParallel.tooltip')">
-					<N8nIcon
-						icon="circle-help"
-						size="small"
-						:class="$style.tooltipIcon"
-						data-test-id="run-in-parallel-tooltip-icon"
+			<div :class="$style.headerInner">
+				<div
+					v-if="parallelEvalStore.isFeatureEnabled && !runningTestRun"
+					:class="$style.parallelControls"
+					data-test-id="parallel-eval-controls"
+				>
+					<span :class="$style.concurrencyLabel" data-test-id="run-in-parallel-mode-label">
+						{{ concurrencyLabel }}
+					</span>
+					<N8nTooltip
+						placement="top"
+						:content="locale.baseText('evaluation.runInParallel.tooltip')"
+					>
+						<N8nIcon
+							icon="circle-help"
+							size="small"
+							:class="$style.tooltipIcon"
+							data-test-id="run-in-parallel-tooltip-icon"
+						/>
+					</N8nTooltip>
+					<ConcurrencySlider
+						v-model="concurrencyModel"
+						:min="1"
+						:max="10"
+						:step="1"
+						show-stops
+						:class="$style.concurrencySlider"
+						data-test-id="run-in-parallel-concurrency"
 					/>
-				</N8nTooltip>
-				<ConcurrencySlider
-					v-model="concurrencyModel"
-					:min="1"
-					:max="10"
-					:step="1"
-					show-stops
-					:class="$style.concurrencySlider"
-					data-test-id="run-in-parallel-concurrency"
+				</div>
+				<N8nButton
+					variant="subtle"
+					v-if="runningTestRun"
+					:disabled="cancellingTestRun"
+					:class="$style.runOrStopTestButton"
+					size="small"
+					data-test-id="stop-test-button"
+					:label="locale.baseText('evaluation.stopTest')"
+					@click="stopTest"
+				/>
+				<N8nButton
+					variant="solid"
+					v-else
+					:class="$style.runOrStopTestButton"
+					size="small"
+					data-test-id="run-test-button"
+					:label="locale.baseText('evaluation.runTest')"
+					@click="runTest"
 				/>
 			</div>
-			<N8nButton
-				variant="subtle"
-				v-if="runningTestRun"
-				:disabled="cancellingTestRun"
-				:class="$style.runOrStopTestButton"
-				size="small"
-				data-test-id="stop-test-button"
-				:label="locale.baseText('evaluation.stopTest')"
-				@click="stopTest"
-			/>
-			<N8nButton
-				variant="solid"
-				v-else
-				:class="$style.runOrStopTestButton"
-				size="small"
-				data-test-id="run-test-button"
-				:label="locale.baseText('evaluation.runTest')"
-				@click="runTest"
-			/>
 		</div>
 		<div :class="$style.wrapper">
 			<div :class="$style.content">
@@ -175,16 +180,29 @@ watch(runningTestRun, (run) => {
 
 .header {
 	display: flex;
-	justify-content: end;
-	align-items: center;
+	justify-content: center;
 	padding: var(--spacing--md) var(--spacing--lg);
-	padding-left: 27px;
+	// Match `.wrapper` so the inner 1024px box anchors at the same left
+	// origin as the runs section below (the 58px reserves space for the
+	// editor's collapsed sidebar in the wrapper layout).
+	padding-left: 58px;
 	padding-bottom: 8px;
 	position: sticky;
 	top: 0;
 	left: 0;
 	background-color: var(--color--background--light-2);
 	z-index: 2;
+}
+
+// Inner container: width-capped at the same 1024px as `.runs` and
+// horizontally centred via the parent's `justify-content: center`. This
+// makes the controls + Run button hug the same horizontal bounds as the
+// chart and table below, instead of floating against the viewport edges.
+.headerInner {
+	display: flex;
+	align-items: center;
+	width: 100%;
+	max-width: 1024px;
 }
 
 .wrapper {
@@ -194,13 +212,16 @@ watch(runningTestRun, (run) => {
 
 .runOrStopTestButton {
 	white-space: nowrap;
+	// Anchor to the right edge of `.headerInner` regardless of which
+	// siblings render. Works for the flag-off case (only the button is
+	// rendered) and the flag-on case (parallel controls take the left).
+	margin-left: auto;
 }
 
 .parallelControls {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-	margin-right: var(--spacing--md);
 }
 
 .tooltipIcon {
