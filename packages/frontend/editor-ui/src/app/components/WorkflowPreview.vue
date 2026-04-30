@@ -46,6 +46,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	close: [];
 	ready: [];
+	'update:ndv-open': [open: boolean];
 }>();
 
 const i18n = useI18n();
@@ -186,10 +187,12 @@ const onReady = () => {
 
 const onOpenNDV = () => {
 	nodeViewDetailsOpened.value = true;
+	emit('update:ndv-open', true);
 };
 
 const onCloseNDV = () => {
 	nodeViewDetailsOpened.value = false;
+	emit('update:ndv-open', false);
 };
 
 const onError = () => {

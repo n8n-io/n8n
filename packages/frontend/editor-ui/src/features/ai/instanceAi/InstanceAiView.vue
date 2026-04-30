@@ -178,6 +178,15 @@ const showArtifactsPanel = ref(true);
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
+// While the iframe NDV is fullscreen, drop our stacking context (see styles)
+// and a body class to neutralise BaseLayout `#content`'s `isolation: isolate`,
+// so the iframe's `z-index` can paint above the sidebar.
+const isPreviewNdvOpen = ref(false);
+
+watch(isPreviewNdvOpen, (open) => {
+	document.body.classList.toggle('preview-ndv-fullscreen', open);
+});
+
 // --- Sidebar collapse & resize ---
 const sidebarCollapsed = useLocalStorage('instanceAi.sidebarCollapsed', false);
 const sidebarWidth = ref(260);
@@ -320,6 +329,7 @@ onUnmounted(() => {
 	store.closeSSE();
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
+	document.body.classList.remove('preview-ndv-fullscreen');
 });
 
 function reconnectThreadIfHydrationApplied(threadId: string): void {
@@ -401,7 +411,10 @@ function handleStop() {
 </script>
 
 <template>
-	<div :class="$style.container" data-test-id="instance-ai-container">
+	<div
+		:class="[$style.container, { [$style.containerNdvOpen]: isPreviewNdvOpen }]"
+		data-test-id="instance-ai-container"
+	>
 		<!-- Resizable sidebar -->
 		<N8nResizeWrapper
 			v-if="!sidebarCollapsed"
@@ -638,6 +651,7 @@ function handleStop() {
 						:execution-id="preview.activeExecutionId.value"
 						:refresh-key="preview.workflowRefreshKey.value"
 						@iframe-ready="eventRelay.handleIframeReady"
+						@update:ndv-open="isPreviewNdvOpen = $event"
 					/>
 					<InstanceAiDataTablePreview
 						v-else-if="preview.activeDataTableId.value"
@@ -660,6 +674,12 @@ function handleStop() {
 	overflow: hidden;
 	position: relative;
 	z-index: 0;
+}
+
+// Drop the stacking context while the iframe NDV is fullscreen so its
+// `z-index` can escape and paint above the sidebar.
+.containerNdvOpen {
+	z-index: auto;
 }
 
 .sidebar {
@@ -859,6 +879,12 @@ function handleStop() {
 </style>
 
 <style lang="scss">
+// Pair to `isPreviewNdvOpen`: lifts BaseLayout `#content`'s isolation while
+// the iframe NDV is fullscreen so it can paint above the sidebar.
+body.preview-ndv-fullscreen #content {
+	isolation: auto;
+}
+
 .message-slide-enter-from {
 	opacity: 0;
 	transform: translateY(8px);
