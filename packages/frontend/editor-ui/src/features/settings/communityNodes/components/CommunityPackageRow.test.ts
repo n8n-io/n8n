@@ -251,4 +251,34 @@ describe('CommunityPackageRow', () => {
 
 		expect(getByTestId('community-package-row__install')).toBeInTheDocument();
 	});
+
+	it('should show triangle-alert icon when failedLoading', () => {
+		const { container } = renderComponent({
+			props: {
+				row: makeRow({ isInstalled: true, installedVersion: '1.0.0', failedLoading: true }),
+			},
+		});
+
+		expect(
+			container.querySelector('svg[data-icon="triangle-alert"], [class*="triangle-alert"]'),
+		).not.toBeNull();
+	});
+
+	it('should not render install/update buttons when failedLoading', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				row: makeRow({ isInstalled: true, failedLoading: true, updateAvailable: '2.0.0' }),
+			},
+		});
+
+		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
+		expect(queryByTestId('community-package-row__update')).not.toBeInTheDocument();
+	});
+
+	it('should render skeleton when loading is true', () => {
+		const { container, queryByTestId } = renderComponent({ props: { loading: true } });
+
+		expect(container.querySelector('[class*="skeleton"]')).toBeInTheDocument();
+		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
+	});
 });

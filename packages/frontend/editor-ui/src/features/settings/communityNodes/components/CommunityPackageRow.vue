@@ -20,6 +20,7 @@ import {
 	N8nCard,
 	N8nExternalLink,
 	N8nIcon,
+	N8nLoading,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -135,13 +136,14 @@ function onUpdateClick() {
 	<N8nCard data-test-id="community-package-row">
 		<template #prepend>
 			<NodeIcon
-				v-if="row?.nodeDescription"
+				v-if="!loading && row?.nodeDescription"
 				:node-type="row.nodeDescription"
 				:show-tooltip="false"
 			/>
+			<div v-if="loading" :class="$style.skeletonIcon" />
 		</template>
 		<template #header>
-			<div :class="$style.identity">
+			<div v-if="!loading" :class="$style.identity">
 				<N8nExternalLink :href="docsUrl">
 					<N8nText :bold="true" size="small">{{ row?.packageName }}</N8nText>
 				</N8nExternalLink>
@@ -157,7 +159,7 @@ function onUpdateClick() {
 					/>
 				</N8nTooltip>
 			</div>
-			<div :class="$style.stats">
+			<div v-if="!loading" :class="$style.stats">
 				<span v-if="row?.nodeCount" :class="$style.stat">
 					<N8nIcon icon="box" size="xsmall" />
 					<N8nText size="xsmall" color="text-light" :bold="true">{{ row.nodeCount }}</N8nText>
@@ -168,11 +170,15 @@ function onUpdateClick() {
 				</span>
 			</div>
 		</template>
-		<N8nText size="xsmall" color="text-light" :class="$style.byline">
+		<div v-if="loading" :class="$style.skeleton">
+			<N8nLoading variant="p" :rows="1" />
+			<N8nLoading variant="p" :rows="1" />
+		</div>
+		<N8nText v-else size="xsmall" color="text-light" :class="$style.byline">
 			{{ bylinePrefix }}<template v-if="row?.description"> · {{ row.description }}</template>
 		</N8nText>
 		<template #append>
-			<div :class="$style.actions">
+			<div v-if="!loading" :class="$style.actions">
 				<N8nTooltip v-if="isInstalled && row?.failedLoading" placement="top">
 					<template #content>
 						{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
@@ -279,6 +285,20 @@ function onUpdateClick() {
 	.persistentStateUpdate {
 		display: none;
 	}
+}
+
+.skeleton {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	flex: 1;
+}
+
+.skeletonIcon {
+	width: 36px;
+	height: 36px;
+	background-color: var(--color--foreground--tint-1);
+	border-radius: var(--radius);
 }
 
 .hoverCta {
