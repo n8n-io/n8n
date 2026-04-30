@@ -1,10 +1,13 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
+import semver from 'semver';
 import type { CommunityPackageRowData } from '../communityNodes.types';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
 import type { UserAction } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
@@ -30,7 +33,10 @@ const props = withDefaults(
 const emit = defineEmits<{ installed: [] }>();
 
 const i18n = useI18n();
-const { openCommunityPackageUninstallConfirmModal } = useUIStore();
+const { openCommunityPackageUpdateConfirmModal, openCommunityPackageUninstallConfirmModal } =
+	useUIStore();
+const settingsStore = useSettingsStore();
+const nodeTypesStore = useNodeTypesStore();
 
 const packageActions: Array<UserAction<IUser>> = [
 	{
@@ -63,6 +69,41 @@ const bylinePrefix = computed(() =>
 
 function onInstall() {
 	emit('installed');
+}
+
+const latestVerifiedVersion = ref<string>();
+
+const hasUpdate = computed(() => {
+	if (!props.row?.isInstalled) return false;
+	if (settingsStore.isUnverifiedPackagesEnabled && props.row.updateAvailable) return true;
+	if (
+		settingsStore.isCommunityNodesFeatureEnabled &&
+		latestVerifiedVersion.value &&
+		props.row.installedVersion &&
+		semver.gt(latestVerifiedVersion.value, props.row.installedVersion)
+	) {
+		return true;
+	}
+	return false;
+});
+
+watch(
+	() => props.row?.packageName,
+	async (name) => {
+		if (!name || !props.row?.isInstalled) return;
+		await nodeTypesStore.loadNodeTypesIfNotLoaded();
+		const nodeType = nodeTypesStore.visibleNodeTypes.find((node) => node.name.includes(name));
+		const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name ?? '');
+		if (attributes?.npmVersion) {
+			latestVerifiedVersion.value = attributes.npmVersion;
+		}
+	},
+	{ immediate: true },
+);
+
+function onUpdateClick() {
+	if (!props.row) return;
+	openCommunityPackageUpdateConfirmModal(props.row.packageName, 'instance settings');
 }
 </script>
 
@@ -108,9 +149,31 @@ function onInstall() {
 		</N8nText>
 		<template #append>
 			<div :class="$style.actions">
-				<N8nBadge v-if="row?.isInstalled" theme="success" :class="$style.persistentState">
+				<N8nTooltip v-if="row?.isInstalled && row?.failedLoading" placement="top">
+					<template #content>
+						{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+					</template>
+					<N8nIcon icon="triangle-alert" color="danger" size="large" />
+				</N8nTooltip>
+
+				<template v-else-if="row?.isInstalled && hasUpdate">
+					<N8nBadge :class="[$style.persistentState, $style.persistentStateUpdate]" theme="warning">
+						{{ i18n.baseText('settings.communityNodes.row.updateAvailable') }}
+					</N8nBadge>
+					<N8nButton
+						data-test-id="community-package-row__update"
+						size="small"
+						variant="outline"
+						:label="i18n.baseText('settings.communityNodes.row.update')"
+						:class="$style.hoverCta"
+						@click="onUpdateClick"
+					/>
+				</template>
+
+				<N8nBadge v-else-if="row?.isInstalled" theme="success" :class="$style.persistentState">
 					v{{ row.installedVersion }} {{ i18n.baseText('settings.communityNodes.row.installed') }}
 				</N8nBadge>
+
 				<N8nButton
 					v-else
 					data-test-id="community-package-row__install"
@@ -119,6 +182,7 @@ function onInstall() {
 					:class="$style.hoverCta"
 					@click="onInstall"
 				/>
+
 				<N8nActionToggle
 					v-if="row?.isInstalled"
 					data-test-id="community-package-row__menu"
@@ -175,6 +239,17 @@ function onInstall() {
 
 .persistentState {
 	flex-shrink: 0;
+}
+
+[data-test-id='community-package-row']:hover .persistentStateUpdate,
+[data-test-id='community-package-row']:focus-within .persistentStateUpdate {
+	display: none;
+}
+
+@media (hover: none) {
+	.persistentStateUpdate {
+		display: none;
+	}
 }
 
 .hoverCta {

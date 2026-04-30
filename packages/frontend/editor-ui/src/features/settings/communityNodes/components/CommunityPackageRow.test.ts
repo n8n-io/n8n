@@ -1,4 +1,6 @@
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { ref } from 'vue';
@@ -150,5 +152,66 @@ describe('CommunityPackageRow', () => {
 		expect(
 			container.querySelector('[data-test-id="community-package-row__menu"]'),
 		).toBeInTheDocument();
+	});
+
+	it('should show Update available badge when legacy updateAvailable is set and unverified packages enabled', () => {
+		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => true });
+		Object.defineProperty(useSettingsStore(), 'isCommunityNodesFeatureEnabled', {
+			get: () => false,
+		});
+
+		const { getByText } = renderComponent({
+			props: {
+				row: makeRow({
+					isInstalled: true,
+					installedVersion: '1.0.0',
+					updateAvailable: '2.0.0',
+				}),
+			},
+		});
+
+		expect(getByText(/Update available/i)).toBeInTheDocument();
+	});
+
+	it('should show Update available when verified path detects newer npmVersion', async () => {
+		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => false });
+		Object.defineProperty(useSettingsStore(), 'isCommunityNodesFeatureEnabled', {
+			get: () => true,
+		});
+		Object.defineProperty(nodeTypesStore, 'visibleNodeTypes', {
+			get: () => [{ name: 'n8n-nodes-example' }],
+		});
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '2.0.0' });
+
+		const { findByText } = renderComponent({
+			props: { row: makeRow({ isInstalled: true, installedVersion: '1.0.0' }) },
+		});
+
+		expect(await findByText(/Update available/i)).toBeInTheDocument();
+	});
+
+	it('should call openCommunityPackageUpdateConfirmModal on Update click', async () => {
+		const openCommunityPackageUpdateConfirmModal = vi.fn();
+		const uiStoreMock = useUIStore();
+		uiStoreMock.openCommunityPackageUpdateConfirmModal = openCommunityPackageUpdateConfirmModal;
+		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => true });
+
+		const { getByTestId } = renderComponent({
+			props: {
+				row: makeRow({
+					isInstalled: true,
+					installedVersion: '1.0.0',
+					updateAvailable: '2.0.0',
+				}),
+			},
+		});
+
+		await fireEvent.click(getByTestId('community-package-row__update'));
+
+		expect(openCommunityPackageUpdateConfirmModal).toHaveBeenCalledWith(
+			'n8n-nodes-example',
+			'instance settings',
+		);
 	});
 });
