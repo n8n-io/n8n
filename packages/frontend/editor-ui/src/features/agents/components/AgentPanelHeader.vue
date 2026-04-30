@@ -20,7 +20,7 @@ defineProps<{
 <style module lang="scss">
 .header {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	margin-bottom: var(--spacing--2xs);

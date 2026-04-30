@@ -5,7 +5,7 @@ import { defaultKeymap, history } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
 import { useI18n } from '@n8n/i18n';
-import { N8nIconButton } from '@n8n/design-system';
+import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
@@ -148,24 +148,30 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 
 <template>
 	<div :class="$style.wrapper" data-testid="agent-section-editor">
-		<N8nIconButton
-			:icon="copied ? 'check' : 'copy'"
-			variant="subtle"
-			size="xmini"
-			:class="[$style.copyBtn, offsetCopyForToggle && $style.copyBtnOffset]"
-			:title="
-				copied
-					? i18n.baseText('agents.builder.editor.copied')
-					: i18n.baseText('agents.builder.editor.copy')
-			"
-			:aria-label="
-				copied
-					? i18n.baseText('agents.builder.editor.copied')
-					: i18n.baseText('agents.builder.editor.copy')
-			"
-			data-testid="agent-section-copy"
-			@click="copyContent"
-		/>
+		<div :class="$style.buttonWrapper">
+			<N8nTooltip content="Copy to clipboard">
+				<slot>
+					<N8nIconButton
+						:icon="copied ? 'check' : 'copy'"
+						variant="subtle"
+						size="xmini"
+						:class="$style.copyBtn"
+						:title="
+							copied
+								? i18n.baseText('agents.builder.editor.copied')
+								: i18n.baseText('agents.builder.editor.copy')
+						"
+						:aria-label="
+							copied
+								? i18n.baseText('agents.builder.editor.copied')
+								: i18n.baseText('agents.builder.editor.copy')
+						"
+						data-testid="agent-section-copy"
+						@click="copyContent"
+					/>
+				</slot>
+			</N8nTooltip>
+		</div>
 		<div ref="container" :class="$style.editor"></div>
 		<div v-if="parseError" :class="$style.error">{{ parseError }}</div>
 	</div>
@@ -178,21 +184,25 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
-}
+	border: var(--border);
+	border-radius: var(--radius);
+	overflow: hidden;
 
-.copyBtnOffset {
-	/* Make room for the Raw toggle when it's rendered at the same corner. */
-	right: calc(var(--spacing--md) + 64px) !important;
+	&:hover .buttonWrapper {
+		opacity: 1;
+		transition: opacity 0.2s;
+	}
 }
 
 /* N8nIconButton owns the chrome — only override positioning so the button
    floats at the editor's top-right corner. */
-.copyBtn {
+.buttonWrapper {
 	position: absolute;
-	top: var(--spacing--sm);
-	right: var(--spacing--md);
+	top: var(--spacing--xs);
+	right: var(--spacing--xs);
 	z-index: 1;
-	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+	opacity: 0;
+	transition: opacity 0.2s;
 }
 
 .editor {
