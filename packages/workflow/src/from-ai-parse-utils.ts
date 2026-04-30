@@ -332,60 +332,6 @@ export function traverseNodeParameters(payload: unknown, collectedArgs: FromAIAr
 	}
 }
 
-function toJsonSchemaProperty(
-	raw: FromAIArgument['type'],
-	description?: string,
-): Record<string, unknown> {
-	const withDescription = (schema: Record<string, unknown>) => ({
-		...schema,
-		...(description ? { description } : {}),
-	});
-
-	switch (raw) {
-		case 'number':
-			return withDescription({ type: 'number' });
-		case 'boolean':
-			return withDescription({ type: 'boolean' });
-		case 'json':
-			return withDescription({ type: 'object' });
-		default:
-			return withDescription({ type: 'string' });
-	}
-}
-
-/**
- * Walk node parameters and build the JSON Schema advertised to the LLM from
- * every `$fromAI(key, description?, type?)` placeholder found in them.
- *
- * This mirrors the runtime placeholder parser used by `createNodeAsTool`, so
- * persisted node-tool configs stay aligned with the same arguments the tool
- * execution path reads from AI input.
- */
-export function extractFromAIInputSchema(payload: unknown): Record<string, unknown> | null {
-	const collectedArgs: FromAIArgument[] = [];
-	traverseNodeParameters(payload, collectedArgs);
-
-	if (collectedArgs.length === 0) return null;
-
-	const properties: Record<string, Record<string, unknown>> = {};
-	const required: string[] = [];
-
-	for (const argument of collectedArgs) {
-		if (!argument.key || properties[argument.key]) continue;
-
-		properties[argument.key] = toJsonSchemaProperty(argument.type, argument.description);
-		required.push(argument.key);
-	}
-
-	if (required.length === 0) return null;
-
-	return {
-		type: 'object',
-		properties,
-		required,
-	};
-}
-
 export function traverseNodeParametersWithParamNames(
 	payload: unknown,
 	collectedArgs: Map<string, FromAIArgument>,

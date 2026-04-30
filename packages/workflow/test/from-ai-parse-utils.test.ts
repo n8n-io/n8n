@@ -9,7 +9,6 @@ import {
 	isFromAIOnlyExpression,
 	findDisallowedChatToolExpressions,
 	collectExpressionDefaults,
-	extractFromAIInputSchema,
 } from '../src/from-ai-parse-utils';
 
 // Note that for historic reasons a lot of testing of this file happens indirectly in `packages/core/test/CreateNodeAsTool.test.ts`
@@ -101,38 +100,6 @@ describe('traverseNodeParameters', () => {
 			]);
 		},
 	);
-});
-
-describe('extractFromAIInputSchema', () => {
-	it('builds JSON Schema from nested $fromAI placeholders', () => {
-		expect(
-			extractFromAIInputSchema({
-				url: 'https://example.com',
-				body: {
-					name: "={{ $fromAI('name', 'Contact name', 'string') }}",
-					score: "={{ $fromAI('score', 'Lead score', 'number') }}",
-					enabled: "={{ $fromAI('enabled', 'Whether to enable sync', 'boolean') }}",
-					payload: "={{ $fromAI('payload', 'Additional JSON payload', 'json') }}",
-				},
-			}),
-		).toEqual({
-			type: 'object',
-			properties: {
-				name: { type: 'string', description: 'Contact name' },
-				score: { type: 'number', description: 'Lead score' },
-				enabled: { type: 'boolean', description: 'Whether to enable sync' },
-				payload: {
-					type: 'object',
-					description: 'Additional JSON payload',
-				},
-			},
-			required: ['name', 'score', 'enabled', 'payload'],
-		});
-	});
-
-	it('returns null when no placeholders are present', () => {
-		expect(extractFromAIInputSchema({ url: 'https://example.com' })).toBeNull();
-	});
 });
 
 describe('JSON Type Parsing via generateZodSchema', () => {

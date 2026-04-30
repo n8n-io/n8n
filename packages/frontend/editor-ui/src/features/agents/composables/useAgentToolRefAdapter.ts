@@ -1,10 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import {
-	extractFromAIInputSchema,
-	type INode,
-	type INodeCredentials,
-	type INodeTypeDescription,
-} from 'n8n-workflow';
+import type { INode, INodeCredentials, INodeTypeDescription } from 'n8n-workflow';
 
 import type { IWorkflowDb } from '@/Interface';
 import type { AgentJsonToolRef, NodeToolConfig } from '../types';
@@ -16,11 +11,11 @@ import type { AgentJsonToolRef, NodeToolConfig } from '../types';
  *
  * The agent config stores node tools as a flat ref:
  *   { type: 'node', name, description, node: { nodeType, nodeTypeVersion,
- *     nodeParameters, credentials }, inputSchema, requireApproval }
+ *     nodeParameters, credentials }, requireApproval }
  *
  * Rendering a row in the tools list only needs `INode.type`, `typeVersion`,
  * `name`, and — for the settings/config panel — `parameters` and
- * `credentials`. `inputSchema` stays on the ref and is round-tripped.
+ * `credentials`.
  */
 
 function pickLatestVersion(version: number | number[]): number {
@@ -42,51 +37,6 @@ function pickLatestVersion(version: number | number[]): number {
  */
 export function toBaseNodeType(name: string): string {
 	return name.endsWith('Tool') ? name.slice(0, -'Tool'.length) : name;
-}
-
-/**
- * Native tool nodes (e.g. `toolWikipedia`, `toolCalculator`) have no
- * `resource`/`operation` dimensions — they wrap a LangChain `Tool` whose own
- * schema is `z.object({ input: z.string() })`. They're distinct from the
- * wrapped-variant shape (`slackTool`, etc.) which inherits `resource`/
- * `operation` from its base node.
- */
-function isNativeToolNode(nodeType: INodeTypeDescription): boolean {
-	const props = nodeType.properties ?? [];
-	const hasResource = props.some((p) => p.name === 'resource');
-	const hasOperation = props.some((p) => p.name === 'operation');
-	if (hasResource || hasOperation) return false;
-	const outputs = nodeType.outputs;
-	if (!Array.isArray(outputs)) return false;
-	return outputs.some((o) => {
-		if (typeof o === 'string') return o === 'ai_tool';
-		return typeof o === 'object' && o !== null && 'type' in o && o.type === 'ai_tool';
-	});
-}
-
-/**
- * Seed an `inputSchema` that matches LangChain `Tool`'s base schema shape
- * (`{ input: string }`). The LLM gets a clear signal to provide the query
- * text, and at runtime our supplyData handler hands that object to
- * `langchainTool.invoke(...)`, which unwraps `.input` to the string expected
- * by the underlying `_call`. For non-native nodes we stay with an empty schema
- * — their dynamic params are configured explicitly per field.
- */
-function defaultInputSchemaForNodeType(nodeType: INodeTypeDescription): Record<string, unknown> {
-	if (!isNativeToolNode(nodeType)) {
-		return { type: 'object', properties: {} };
-	}
-	return {
-		type: 'object',
-		properties: {
-			input: {
-				type: 'string',
-				description:
-					nodeType.description ?? `The query or input text to pass to ${nodeType.displayName}.`,
-			},
-		},
-		required: ['input'],
-	};
 }
 
 /**
@@ -155,29 +105,22 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 			nodeTypeVersion: version,
 			nodeParameters: {},
 		},
-		// Native tool nodes get a `{ input: string }` default so the LLM has a
-		// slot for the query; standard tool-wrapped nodes start empty and get
-		// their dynamic params filled in via the config modal.
-		inputSchema: defaultInputSchemaForNodeType(nodeType),
 	};
 }
 
 /**
  * Merge edits made to an `INode` back into the original ref (preserving extra
- * fields). `inputSchema` is always regenerated from the `$fromAI` overrides
- * found in the new parameters — or reset to an empty object when none remain.
- * Leaving a stale `$fromAI`-derived schema in place after the user cleared all
- * overrides would mislead the LLM; resetting lets the backend's
- * `resolveInputSchema` re-introspect at tool-registration time, which
- * regenerates the native-tool seed or the MCP-introspected shape.
+ * fields). Node tool configs do not persist `inputSchema`; the backend derives
+ * the runtime schema from `$fromAI` expressions or node introspection.
  */
 export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): AgentJsonToolRef {
 	if (original.type !== 'node' || !original.node) return original;
 
-	const derivedSchema = extractFromAIInputSchema(node.parameters as Record<string, unknown>);
+	const originalWithoutInputSchema = { ...original };
+	delete originalWithoutInputSchema.inputSchema;
 
 	return {
-		...original,
+		...originalWithoutInputSchema,
 		name: node.name,
 		node: {
 			...original.node,
@@ -186,7 +129,6 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 			nodeParameters: node.parameters as Record<string, unknown>,
 			credentials: toConfigCredentials(node.credentials),
 		},
-		inputSchema: derivedSchema ?? { type: 'object', properties: {} },
 	};
 }
 

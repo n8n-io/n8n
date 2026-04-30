@@ -1,15 +1,18 @@
 import type { BuiltTool } from '@n8n/agents';
-import { Tool, isZodSchema } from '@n8n/agents';
-import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
+import { Tool } from '@n8n/agents';
+import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
+import type { JSONSchema7 } from 'json-schema';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
-import { extractFromAIInputSchema, isToolType, nodeNameToToolName } from 'n8n-workflow';
-import { zodToJsonSchema } from 'zod-to-json-schema';
+import { isToolType, nodeNameToToolName } from 'n8n-workflow';
+import type { z } from 'zod';
 
 import type { EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 import { Container } from '@n8n/di';
 
 import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
+
+type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 
 export interface NodeToolFactoryContext {
 	executor: EphemeralNodeExecutor;
@@ -33,24 +36,6 @@ function toExecutorCredentials(
 	return Object.keys(out).length > 0 ? out : undefined;
 }
 
-function isObjectSchema(value: JSONSchema7Definition): value is JSONSchema7 {
-	return typeof value === 'object' && value !== null && value.type === 'object';
-}
-
-function mergeAllOfObjects(members: JSONSchema7[]): JSONSchema7 {
-	const properties: Record<string, JSONSchema7Definition> = {};
-	const required: string[] = [];
-	for (const member of members) {
-		Object.assign(properties, member.properties ?? {});
-		if (Array.isArray(member.required)) required.push(...member.required);
-	}
-	return {
-		type: 'object',
-		properties,
-		...(required.length > 0 && { required: Array.from(new Set(required)) }),
-	};
-}
-
 function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string {
 	if (isToolType(nodeType)) return nodeType;
 
@@ -61,49 +46,6 @@ function resolveToolNodeType(nodeType: string, nodeTypeVersion: number): string 
 	} catch {
 		return nodeType;
 	}
-}
-
-/**
- * Coerce any `zodToJsonSchema` output into a top-level `{ type: "object" }`
- * without dropping field guidance — Anthropic rejects any other root, but
- * simply flattening unions would strip the per-branch shapes the LLM relies
- * on. Branches:
- *
- *   - `type: 'object'` → pass through.
- *   - `allOf` of objects → merge into one object (lossless for z.intersection).
- *   - `anyOf`/`oneOf` of objects → hoist `type: 'object'` to the root but keep
- *     the union so discriminated-union branches survive.
- *   - Anything else → wrap in `{ input: <schema> }`. This covers single-type
- *     primitives / arrays, multi-type roots (e.g. `["string","null"]` from
- *     `z.string().nullable()`), `$ref`-only, `const`-only, `enum`-only,
- *     `not`-only, and bare `{}` schemas. The inner schema stays intact as a
- *     valid property-value — strictly more informative than an empty object.
- */
-export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
-	if (schema.type === 'object') return schema;
-
-	if (Array.isArray(schema.allOf)) {
-		const objectMembers = schema.allOf.filter(isObjectSchema);
-		if (objectMembers.length > 0) return mergeAllOfObjects(objectMembers);
-	}
-
-	for (const key of ['anyOf', 'oneOf'] as const) {
-		const members = schema[key];
-		if (!Array.isArray(members) || members.length === 0) continue;
-		const normalized = members
-			.filter((m): m is JSONSchema7 => typeof m === 'object' && m !== null)
-			.map((m) => normalizeToObjectSchema(m))
-			.filter(isObjectSchema);
-		if (normalized.length > 0) {
-			return { type: 'object', [key]: normalized };
-		}
-	}
-
-	return {
-		type: 'object',
-		properties: { input: schema },
-		required: ['input'],
-	};
 }
 
 /**
@@ -119,15 +61,17 @@ export function normalizeToObjectSchema(schema: JSONSchema7): JSONSchema7 {
  *   1. If nodeParameters contain `$fromAI(...)`, derive the schema from those
  *      placeholders so the tool schema cannot drift from runtime params.
  *   2. Otherwise, ask the executor to instantiate the LangChain tool and
- *      report its `.schema`. If it's a Zod schema, convert to JSON Schema.
+ *      report its `.schema`. Zod and JSON schemas can be handed to the SDK as-is.
  *   3. Fall back to the `{ input: string }` shape for plain `Tool` nodes.
  */
 async function resolveInputSchema(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
-): Promise<JSONSchema7> {
-	const fromAISchema = extractFromAIInputSchema(toolSchema.node.nodeParameters ?? {});
-	if (fromAISchema) return fromAISchema as JSONSchema7;
+): Promise<NodeToolInputSchema> {
+	const collectedArguments = extractFromAIParameters(
+		(toolSchema.node.nodeParameters ?? {}) as INodeParameters,
+	);
+	if (collectedArguments.length > 0) return createZodSchemaFromArgs(collectedArguments);
 
 	let nodeType;
 	const nodeTypeName = resolveToolNodeType(
@@ -154,9 +98,7 @@ async function resolveInputSchema(
 			credentials: toExecutorCredentials(toolSchema.node.credentials) ?? null,
 		});
 
-		if (isZodSchema(introspected)) {
-			return normalizeToObjectSchema(zodToJsonSchema(introspected) as JSONSchema7);
-		}
+		if (introspected) return introspected as NodeToolInputSchema;
 
 		return {
 			type: 'object',
