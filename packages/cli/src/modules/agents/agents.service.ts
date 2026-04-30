@@ -188,7 +188,7 @@ export class AgentsService {
 	 * Compute a deterministic runtime cache key.
 	 *
 	 * - Draft runtimes: `{agentId}:draft:{n8nUserId}`
-	 * - Published runtimes: `{agentId}:published[:{resourceId}[:{integrationType}]]`
+	 * - Published runtimes: `{agentId}:published[:{integrationType}]`
 	 *
 	 * Separating draft and published with explicit prefixes prevents a draft
 	 * runtime from being mistakenly returned to a published-agent execution.
