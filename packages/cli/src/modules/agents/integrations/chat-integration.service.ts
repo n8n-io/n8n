@@ -232,11 +232,18 @@ export class ChatIntegrationService {
 			}
 		}
 
-		for (const integration of next) {
-			if (previousKeys.has(key(integration))) continue;
-			const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(
-				agent.projectId,
-			);
+		// TODO: AgentCredentialIntegration has no record of *who* connected the
+		// integration, so we have no anchor user identity to decrypt credentials
+		// with on reconnect / sync. We fall back to probing project members until
+		// one has `credential:read` on the integration credential. Replace by
+		// storing `connectedByUserId` on the integration entry and trying that
+		// user first, with this enumeration as the safety net.
+		const additions = next.filter((i) => !previousKeys.has(key(i)));
+		const userIds = additions.length
+			? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(agent.projectId)
+			: [];
+
+		for (const integration of additions) {
 			let connected = false;
 			for (const userId of userIds) {
 				try {
