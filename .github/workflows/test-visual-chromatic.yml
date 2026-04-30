@@ -18,7 +18,7 @@ on:
         value: ${{ jobs.chromatic.outputs.build_url }}
       ui_review_url:
         description: URL of the Chromatic UI Review check details.
-        value: ${{ jobs.chromatic.outputs.ui_review_url }}
+        value: ${{ jobs.chromatic-resolve-urls-and-report.outputs.ui_review_url }}
 
 jobs:
   chromatic:
@@ -26,7 +26,6 @@ jobs:
     outputs:
       change_count: ${{ steps.chromatic_tests.outputs.changeCount }}
       build_url: ${{ steps.chromatic_tests.outputs.buildUrl }}
-      ui_review_url: ${{ steps.resolve_ui_review_url.outputs.ui_review_url }}
     permissions:
       checks: read
       contents: read
@@ -54,106 +53,47 @@ jobs:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: true
 
-      - name: Resolve UI Review URL
-        if: always() && github.event.pull_request.number && steps.chromatic_tests.outputs.buildUrl
-        id: resolve_ui_review_url
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+  chromatic-resolve-urls-and-report:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    needs: [chromatic]
+    outputs:
+      ui_review_url: ${{ steps.resolve_ui_review_url.outputs.ui_review_url }}
+    permissions:
+      checks: read
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Generate GitHub App Token
+        id: generate_token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
         with:
-          script: |
-            const refsToCheck = [
-              context.sha,
-              context.payload.pull_request?.head?.sha,
-            ].filter(Boolean);
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
-            const seenRefs = new Set();
-            const uniqueRefs = refsToCheck.filter((ref) => {
-              if (seenRefs.has(ref)) return false;
-              seenRefs.add(ref);
-              return true;
-            });
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
 
-            const findUiReviewCheck = async () => {
-              for (const ref of uniqueRefs) {
-                const { data } = await github.rest.checks.listForRef({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  ref,
-                  per_page: 100,
-                });
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
 
-                const checkRun = data.check_runs.find((run) => {
-                  const appSlug = run.app?.slug?.toLowerCase() ?? '';
-                  const name = run.name ?? '';
-                  return appSlug.includes('chromatic') && /ui review/i.test(name);
-                });
+      - name: Resolve UI Review URL
+        if: always() && github.event.pull_request.number && needs.chromatic.outputs.build_url
+        id: resolve_ui_review_url
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: node ./.github/scripts/find-chromatic-review-url.mjs
 
-                if (checkRun?.details_url) return checkRun.details_url;
-              }
-
-              return '';
-            };
-
-            let uiReviewUrl = '';
-            for (let attempt = 1; attempt <= 12; attempt++) {
-              uiReviewUrl = await findUiReviewCheck();
-              if (uiReviewUrl) break;
-
-              if (attempt < 12) {
-                await new Promise((resolve) => setTimeout(resolve, 10000));
-              }
-            }
-
-            core.setOutput('ui_review_url', uiReviewUrl);
 
       - name: Comment visual regression results on PR
-        if: always() && github.event.pull_request.number && steps.chromatic_tests.outputs.buildUrl
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        if: always() && github.event.pull_request.number && needs.chromatic.outputs.build_url
         env:
-          CHANGE_COUNT: ${{ steps.chromatic_tests.outputs.changeCount }}
-          BUILD_URL: ${{ steps.chromatic_tests.outputs.buildUrl }}
+          CHANGE_COUNT: ${{ needs.chromatic.outputs.change_count }}
+          BUILD_URL: ${{ needs.chromatic.outputs.build_url }}
           UI_REVIEW_URL: ${{ steps.resolve_ui_review_url.outputs.ui_review_url }}
-        with:
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const issue_number = context.payload.pull_request.number;
-            const marker = '<!-- chromatic-visual-regression-results -->';
-            const changeCount = process.env.CHANGE_COUNT ?? '0';
-            const buildUrl = process.env.BUILD_URL;
-            const uiReviewUrl = process.env.UI_REVIEW_URL;
-
-            const uiReviewLine = uiReviewUrl
-              ? `- UI Review: [Open Chromatic PR](${uiReviewUrl})`
-              : '- UI Review: UI Review check not found (Chromatic PR link unavailable)';
-
-            const body =
-              `${marker}\n` +
-              `## Chromatic Results\n\n` +
-              `- Visual changes: **${changeCount}**\n` +
-              `- Build: [Open Chromatic build](${buildUrl})\n` +
-              `${uiReviewLine}`;
-
-            const { data: comments } = await github.rest.issues.listComments({
-              owner,
-              repo,
-              issue_number,
-              per_page: 100,
-            });
-
-            const existing = comments.find((comment) => comment.body?.includes(marker));
-
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existing.id,
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number,
-                body,
-              });
-            }
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: node ./.github/scripts/find-chromatic-review-url.mjs
