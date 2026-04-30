@@ -3,7 +3,7 @@ import type { GraphNode, NodeInstance } from '../../../types/base';
 import type { PluginContext } from '../types';
 
 // Helper to create a mock node instance.
-// Defaults to version 3.4 because the validator only applies to Set v3.3+.
+// Defaults to version 3.4 because assignment validation applies to Set v3.3+.
 function createMockNode(
 	type: string,
 	config: { parameters?: Record<string, unknown> } = {},
@@ -180,14 +180,63 @@ describe('setNodeValidator', () => {
 			expect(issues).toHaveLength(0);
 		});
 
-		it.each(['1', '2', '3', '3.1', '3.2'])(
-			'skips validation for Set node version %s (pre-assignments shape)',
+		it.each(['1', '2'])('skips validation for legacy Set node version %s', (version) => {
+			const node = createMockNode(
+				'n8n-nodes-base.set',
+				{
+					parameters: {
+						mode: 'keepAllExistingFields',
+						assignments: {
+							assignments: [{ name: 'password', value: 'secret', type: 'string' }],
+						},
+					},
+				},
+				version,
+			);
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toHaveLength(0);
+		});
+
+		it.each(['3', '3.1', '3.2'])(
+			'returns SET_INVALID_MODE error for unsupported Set node mode on version %s',
 			(version) => {
 				const node = createMockNode(
 					'n8n-nodes-base.set',
 					{
 						parameters: {
 							mode: 'keepAllExistingFields',
+							assignments: {
+								assignments: [{ name: 'caption', value: '={{ $json.title }}', type: 'string' }],
+							},
+						},
+					},
+					version,
+				);
+				const ctx = createMockPluginContext();
+
+				const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+				expect(issues).toEqual([
+					expect.objectContaining({
+						code: 'SET_INVALID_MODE',
+						severity: 'error',
+						parameterPath: 'parameters.mode',
+					}),
+				]);
+			},
+		);
+
+		it.each(['3', '3.1', '3.2'])(
+			'skips assignment validation for Set node version %s',
+			(version) => {
+				const node = createMockNode(
+					'n8n-nodes-base.set',
+					{
+						parameters: {
+							mode: 'manual',
 							assignments: {
 								assignments: [{ name: 'password', value: 'secret', type: 'string' }],
 							},

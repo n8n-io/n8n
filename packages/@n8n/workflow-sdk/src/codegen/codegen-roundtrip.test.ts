@@ -2652,14 +2652,11 @@ describe('Committed workflows — builder validator errors', () => {
 	} else {
 		workflowsWithExpectedBuilderErrors.forEach(({ id, name, json, expectedBuilderErrors }) => {
 			it(`emits expected builder validation errors for workflow ${id}: "${name}"`, () => {
-				const expectedCodes = new Set((expectedBuilderErrors ?? []).map((e) => e.code));
-
 				const code = generateWorkflowCode(json);
 				const builder = parseWorkflowCodeToBuilder(code);
 				const result = builder.validate({ allowDisconnectedNodes: true });
 
 				const actualErrors: ExpectedError[] = result.errors
-					.filter((e) => expectedCodes.has(e.code))
 					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
 					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
 

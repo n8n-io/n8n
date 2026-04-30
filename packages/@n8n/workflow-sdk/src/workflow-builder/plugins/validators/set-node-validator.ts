@@ -19,9 +19,10 @@ import {
 
 const SUPPORTED_MODES = new Set(['manual', 'raw']);
 
-// Set node v3.3 introduced the `assignments` collection (`{ id, name, value, type }`)
-// and `mode: "manual" | "raw"`. v1/v2 use `parameters.values.*`; v3.0–3.2 use
-// `parameters.fields.values[]`. This validator only applies to v3.3+.
+// Set node v3.x declares `mode: "manual" | "raw"`. v3.3 introduced the
+// `assignments` collection (`{ id, name, value, type }`). v1/v2 use
+// `parameters.values.*`; v3.0-3.2 use `parameters.fields.values[]`.
+const MIN_MODE_VERSION = 3;
 const MIN_ASSIGNMENT_VERSION = 3.3;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -62,7 +63,9 @@ export const setNodeValidator: ValidatorPlugin = {
 	): ValidationIssue[] {
 		const issues: ValidationIssue[] = [];
 
-		if (parseVersion(node.version) < MIN_ASSIGNMENT_VERSION) {
+		const nodeVersion = parseVersion(node.version);
+
+		if (nodeVersion < MIN_MODE_VERSION) {
 			return issues;
 		}
 
@@ -94,6 +97,10 @@ export const setNodeValidator: ValidatorPlugin = {
 				parameterPath: 'parameters.mode',
 				originalName: origForWarning,
 			});
+		}
+
+		if (nodeVersion < MIN_ASSIGNMENT_VERSION) {
+			return issues;
 		}
 
 		const assignments = params.assignments;
