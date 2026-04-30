@@ -181,15 +181,6 @@ function matchesGuidePattern(nodeType: string, pattern: NodeTypePattern): boolea
 	return nodeTypeLower.includes(patternLower);
 }
 
-function guideTitle(id: string, content: string): string {
-	const firstHeading = content
-		.split('\n')
-		.map((line) => line.trim())
-		.find((line) => line.startsWith('#'));
-
-	return firstHeading?.replace(/^#+\s*/, '') ?? id;
-}
-
 // ── Handlers ────────────────────────────────────────────────────────────────
 
 async function handleList(
@@ -360,7 +351,6 @@ async function handleGuide(input: Extract<FullInput, { action: 'guide' }>) {
 				return entry.guide.patterns.some((pattern) => matchesGuidePattern(nodeType, pattern));
 			}).map((entry) => ({
 				id: entry.id,
-				title: guideTitle(entry.id, entry.guide.content),
 				content: entry.guide.content.trim(),
 			}));
 

@@ -53,8 +53,7 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
 - When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
-- **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
-- **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
+- **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.`;
 
 const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 

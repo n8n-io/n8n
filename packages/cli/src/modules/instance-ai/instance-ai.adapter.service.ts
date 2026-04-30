@@ -1626,6 +1626,7 @@ export class InstanceAiAdapterService {
 			if (!version) return undefined;
 			const normalized = version.replace(/^v/i, '');
 			if (!/^\d+$/.test(normalized)) return Number(normalized);
+			// Supports v3 and compact decimals like v34 -> 3.4; assumes minor version < 10.
 			if (normalized.length === 2) {
 				return Number(`${normalized[0]}.${normalized[1]}`);
 			}
