@@ -200,6 +200,7 @@ async function resolveToolRef(
 			const builtTool: BuiltTool = {
 				name: descriptor.name,
 				description: descriptor.description,
+				systemInstruction: descriptor.systemInstruction ?? undefined,
 				inputSchema: descriptor.inputSchema ?? undefined,
 				handler: async (input, ctx) => {
 					return await options.toolExecutor.executeTool(descriptor.name, input, {

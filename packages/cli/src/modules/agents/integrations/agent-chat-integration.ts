@@ -47,9 +47,6 @@ export abstract class AgentChatIntegration {
 	 */
 	readonly supportedComponents?: string[];
 
-	/** User-facing description used by `createRichInteractionTool`. */
-	readonly description?: string;
-
 	/**
 	 * True if this platform has a small callback_data limit (Telegram: 64 bytes).
 	 * When true, buttons encode a short key that the bridge resolves via the

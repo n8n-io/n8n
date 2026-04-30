@@ -30,6 +30,14 @@ const props = defineProps<{
 	output: unknown;
 	nodeType?: string;
 	nodeTypeVersion?: number;
+	/**
+	 * Configured node parameters from the agent's JSON config (channel,
+	 * operation, `$fromAI(...)` templates, etc.). Set on the synthesised tool
+	 * node so the IO viewer can render the actual node config — without this
+	 * the synthetic execution shows an empty parameters block, which makes a
+	 * failed node call read as "input == output".
+	 */
+	nodeParameters?: Record<string, unknown>;
 }>();
 
 const i18n = useI18n();
@@ -60,7 +68,17 @@ function wrap(value: unknown): INodeExecutionData[] {
 }
 
 const synthExecution = computed<IExecutionResponse>(() => {
-	const inputItems = wrap(props.input);
+	// For node tools the LLM's runtime args are usually `{}` (the node's
+	// `$fromAI(...)` substitutions live inside the configured parameters, not
+	// as top-level tool args). Showing `{}` next to the output makes the input
+	// pane look identical to the output pane on failures, so we prefer the
+	// configured `nodeParameters` here when present — that's the actual
+	// "what was this node going to do" information.
+	const inputSource =
+		props.nodeParameters && Object.keys(props.nodeParameters).length > 0
+			? props.nodeParameters
+			: props.input;
+	const inputItems = wrap(inputSource);
 	const outputItems = wrap(props.output);
 
 	const inputNode: INodeUi = {
@@ -77,7 +95,10 @@ const synthExecution = computed<IExecutionResponse>(() => {
 		type: props.nodeType ?? 'n8n-nodes-base.set',
 		typeVersion: props.nodeTypeVersion ?? 1,
 		position: [220, 0],
-		parameters: {},
+		// `nodeParameters` is typed loosely on the wire (Record<string, unknown>)
+		// because it round-trips through JSON storage, but at this point it
+		// matches the INodeParameters shape the IO viewer expects.
+		parameters: (props.nodeParameters ?? {}) as INodeUi['parameters'],
 	};
 
 	const workflowData: IWorkflowDb = {
@@ -122,6 +143,12 @@ const synthExecution = computed<IExecutionResponse>(() => {
 				executionStatus: 'success',
 				source: [{ previousNode: INPUT_NODE_NAME, previousNodeOutput: 0, previousNodeRun: 0 }],
 				data: { main: [outputItems] },
+				// `RunData` reads the input pane from `inputOverride` (see
+				// useNodeHelpers.ts → getNodeInputData). Without this it falls
+				// back to `data` and shows the output content in both panes.
+				// We don't rely on the synthetic upstream node — its connection
+				// is only there so the workflow object validates.
+				inputOverride: { main: [inputItems] },
 			},
 		],
 	};

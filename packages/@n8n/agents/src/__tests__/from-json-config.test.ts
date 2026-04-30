@@ -26,6 +26,20 @@ describe('Tool.describe()', () => {
 		expect(descriptor.hasToMessage).toBe(false);
 		expect(descriptor.requireApproval).toBe(false);
 		expect(descriptor.providerOptions).toBeNull();
+		expect(descriptor.systemInstruction).toBeNull();
+	});
+
+	it('persists systemInstruction through describe() so it survives JSON-config round-trip', () => {
+		const directive = 'Always cite a URL when summarising web search results.';
+		const tool = new Tool('search')
+			.description('Search the web')
+			.systemInstruction(directive)
+			.input(z.object({ query: z.string() }))
+			.handler(async ({ query }) => await Promise.resolve({ result: query }));
+
+		const descriptor = tool.describe();
+
+		expect(descriptor.systemInstruction).toBe(directive);
 	});
 
 	it('sets hasSuspend/hasResume when suspend/resume are defined', () => {
