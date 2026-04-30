@@ -137,12 +137,6 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	onMounted(async () => {
 		await bootstrap.bootstrap();
-		if (opts.setupRequests.value.length > 0 && inputsState.allCardsComplete()) {
-			// Auto-apply on mount preserves the existing analytics behavior — it
-			// intentionally bypasses trackSetupInput because the user did not
-			// interact with the wizard.
-			await applyMachine.apply(inputsState.buildCompletedSetupPayload());
-		}
 	});
 
 	const context: WorkflowSetupContext = {
