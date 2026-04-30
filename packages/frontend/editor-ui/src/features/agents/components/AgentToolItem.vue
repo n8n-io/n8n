@@ -13,7 +13,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import { N8nButton, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
-import { computed } from 'vue';
+import { computed, useCssModule, useAttrs } from 'vue';
 
 import ToolConnectedBadge from './ToolConnectedBadge.vue';
 import ToolCredsMissingChip from './ToolCredsMissingChip.vue';
@@ -32,6 +32,16 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const attrs = useAttrs();
+const style = useCssModule();
+
+defineOptions({ inheritAttrs: false });
+
+const containerClass = computed(() => [
+	style.item,
+	{ [style.configured]: props.mode === 'configured' },
+	attrs.class,
+]);
 
 const description = computed(() => {
 	// Configured rows: subtitle is the attached credential name (e.g. "Slack Token"),
@@ -53,7 +63,7 @@ const displayName = computed(() => {
 </script>
 
 <template>
-	<div :class="[$style.item, { [$style.configured]: mode === 'configured' }]">
+	<div v-bind="attrs" :class="containerClass">
 		<div :class="$style.iconWrapper">
 			<NodeIcon :node-type="nodeType" :size="32" />
 		</div>
