@@ -19,7 +19,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	placement: 'top',
-	showAfter: 0,
+	showAfter: 200,
 	enterable: true,
 	teleported: true,
 	offset: 8,
@@ -32,7 +32,6 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 const injectedAppendTo = useInjectTooltipAppendTo();
 const appendTo = computed(() => injectedAppendTo.value ?? 'body');
 
-// Convert Element+ placement to Reka UI side + align
 type Side = 'top' | 'bottom' | 'left' | 'right';
 type Align = 'start' | 'end' | 'center';
 
