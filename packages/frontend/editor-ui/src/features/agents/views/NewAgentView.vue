@@ -360,7 +360,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 .heading {
 	font-size: var(--font-size--2xl);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--color--text--shade-1);
 	margin: 0 0 var(--spacing--lg);
 	animation: headingLift 360ms ease-out both;
 }
