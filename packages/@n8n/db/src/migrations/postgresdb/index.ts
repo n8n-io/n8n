@@ -169,6 +169,8 @@ import { AddToolsColumnToAgents1778000000000 } from '../common/1778000000000-Add
 import { DropAgentCodeColumn1779000000000 } from '../common/1779000000000-DropAgentCodeColumn';
 import { AddAgentPublishVersionSupport1780000000000 } from '../common/1780000000000-AddAgentPublishVersionSupport';
 import { CreateExecutionThreads1780000000000 } from '../common/1780000000000-CreateExecutionThreads';
+import { AddSkillsColumnToAgents1781000000000 } from '../common/1781000000000-AddSkillsColumnToAgents';
+import { AddSnapshotsToAgentPublishedVersion1782000000000 } from '../common/1782000000000-AddSnapshotsToAgentPublishedVersion';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -343,4 +345,6 @@ export const postgresMigrations: Migration[] = [
 	DropAgentCodeColumn1779000000000,
 	AddAgentPublishVersionSupport1780000000000,
 	CreateExecutionThreads1780000000000,
+	AddSkillsColumnToAgents1781000000000,
+	AddSnapshotsToAgentPublishedVersion1782000000000,
 ];

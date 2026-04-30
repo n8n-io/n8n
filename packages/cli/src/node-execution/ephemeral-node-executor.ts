@@ -61,10 +61,10 @@ const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
 /**
  * Two classes of node are legitimate agent tools:
  *
- *   1. Standard nodes whose description carries `usableAsTool: true` — the
+ *   1. Standard nodes whose description carries `usableAsTool: true`. The
  *      node-types resolver can wrap these into a Tool variant on demand
- *      (`convertNodeToAiTool`), but when invoked by the agent we execute the
- *      base description directly.
+ *      (`convertNodeToAiTool`), and agent-created node tools should use that
+ *      `*Tool` node type.
  *   2. Native tool nodes (e.g. `toolWikipedia`, `toolCalculator`) that declare
  *      `outputs: [AiTool]` up front. These never carry `usableAsTool` — they
  *      *are* tools — so a plain `usableAsTool` check rejects them.

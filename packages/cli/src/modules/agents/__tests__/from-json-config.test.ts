@@ -112,6 +112,95 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
 	});
 
+	it('injects attached skill names and descriptions, but not bodies, into instructions', async () => {
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+				},
+			},
+		);
+
+		const instructions = agent.snapshot.instructions ?? '';
+		expect(instructions).toContain('summarize_notes: Summarize notes');
+		expect(instructions).toContain('Use for meeting notes and transcripts');
+		expect(instructions).toContain('load_skill');
+		expect(instructions).not.toContain('Extract decisions and action items.');
+	});
+
+	it('wires load_skill for attached skills and returns the selected skill body on demand', async () => {
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+				skills: {
+					summarize_notes: {
+						name: 'Summarize notes',
+						description: 'Use for meeting notes and transcripts',
+						instructions: 'Extract decisions and action items.',
+					},
+					unused_skill: {
+						name: 'Unused skill',
+						description: 'This is not attached',
+						instructions: 'This should not load.',
+					},
+				},
+			},
+		);
+
+		const loadSkill = agent.declaredTools.find((t) => t.name === 'load_skill');
+		expect(loadSkill).toBeDefined();
+
+		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
+			ok: true,
+			skillId: 'summarize_notes',
+			instructions: 'Extract decisions and action items.',
+		});
+
+		await expect(loadSkill!.handler?.({ skillId: 'unused_skill' }, {})).resolves.toMatchObject({
+			ok: false,
+		});
+	});
+
+	it('throws when a configured skill ref is missing its stored body', async () => {
+		const config = makeConfig({
+			skills: [{ type: 'skill', id: 'missing_skill' }],
+		});
+
+		await expect(
+			buildFromJson(
+				config,
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					skills: {},
+				},
+			),
+		).rejects.toThrow('Skill "missing_skill" not found in stored skill bodies');
+	});
+
 	it('throws when custom tool id is not found in descriptors', async () => {
 		const config = makeConfig({ tools: [{ type: 'custom', id: 'missing_tool' }] });
 
@@ -193,7 +282,6 @@ describe('buildFromJson()', () => {
 					name: 'my_node_tool',
 					description: 'A node tool',
 					node: { nodeType: 'n8n-nodes-base.httpRequest', nodeTypeVersion: 1, nodeParameters: {} },
-					inputSchema: { type: 'object' as const },
 					requireApproval: true,
 				},
 			],
@@ -478,6 +566,36 @@ describe('AgentJsonConfigSchema', () => {
 		};
 		const parsed = AgentJsonConfigSchema.parse(config);
 		expect(parsed.tools?.[0]).toMatchObject({ type: 'custom', id: 'my_tool_1' });
+	});
+
+	it('rejects inputSchema on node tool configs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			tools: [
+				{
+					type: 'node',
+					name: 'http_request',
+					description: 'Make an HTTP request',
+					node: {
+						nodeType: 'n8n-nodes-base.httpRequestTool',
+						nodeTypeVersion: 4,
+						nodeParameters: {
+							url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
+						},
+					},
+					inputSchema: {
+						type: 'object',
+						properties: { url: { type: 'string' } },
+						required: ['url'],
+					},
+				},
+			],
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('rejects custom tool ref with invalid id (uppercase)', () => {

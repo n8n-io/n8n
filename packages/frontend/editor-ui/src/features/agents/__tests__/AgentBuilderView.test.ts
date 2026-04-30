@@ -2,10 +2,13 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
+import type { AgentJsonSkillRef, AgentJsonToolRef } from '../types';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
 const routeQuery: Record<string, string | undefined> = {};
+const openModalWithDataMock = vi.fn();
+const closeModalMock = vi.fn();
 vi.mock('vue-router', () => ({
 	useRouter: () => ({ push: routerPush, replace: routerReplace }),
 	useRoute: () => ({ params: { projectId: 'p1', agentId: 'a1' }, query: routeQuery }),
@@ -47,27 +50,24 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({
-		openModalWithData: vi.fn(),
-		closeModal: vi.fn(),
+		openModalWithData: openModalWithDataMock,
+		closeModal: closeModalMock,
 	}),
 }));
 
 const updateAgentMock = vi.fn();
+const updateAgentSkillMock = vi.fn();
+const createAgentSkillMock = vi.fn();
 const getIntegrationStatusMock = vi.fn();
 const publishAgentMock = vi.fn();
+const getAgentMock = vi.fn();
 const sessionThreads: Array<{ id: string; updatedAt: string }> = [];
 
 vi.mock('../composables/useAgentApi', () => ({
-	getAgent: vi.fn().mockResolvedValue({
-		id: 'a1',
-		name: 'Agent One',
-		description: null,
-		tools: {},
-		updatedAt: '2026-01-01T00:00:00Z',
-		publishedVersion: null,
-		versionId: 'v1',
-	}),
+	getAgent: getAgentMock,
 	updateAgent: updateAgentMock,
+	updateAgentSkill: updateAgentSkillMock,
+	createAgentSkill: createAgentSkillMock,
 	deleteAgent: vi.fn(),
 	publishAgent: publishAgentMock,
 	getIntegrationStatus: getIntegrationStatusMock,
@@ -94,7 +94,14 @@ vi.mock('../composables/useAgentBuilderStatus', () => ({
 
 // Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
 // Tests that need an unbuilt agent flip this to empty instructions before render.
-const mockConfig = ref<{ name: string; instructions: string } | null>({
+interface TestAgentConfig {
+	name: string;
+	instructions: string;
+	tools?: AgentJsonToolRef[];
+	skills?: AgentJsonSkillRef[];
+}
+
+const mockConfig = ref<TestAgentConfig | null>({
 	name: 'Agent One',
 	instructions: 'You are a helpful assistant.',
 });
@@ -102,10 +109,24 @@ const mockConfig = ref<{ name: string; instructions: string } | null>({
 // the ref after `initialize()` clears `localConfig` and re-fetches. Without
 // this, the view's `localConfig = null` reset sticks — the config ref hasn't
 // changed, so the `watch(config, ...)` listener doesn't re-fire.
-let intendedConfig: { name: string; instructions: string } | null = {
+let intendedConfig: TestAgentConfig | null = {
 	name: 'Agent One',
 	instructions: 'You are a helpful assistant.',
 };
+
+function makeAgentResponse(overrides: Record<string, unknown> = {}) {
+	return {
+		id: 'a1',
+		name: 'Agent One',
+		description: null,
+		tools: {},
+		skills: {},
+		updatedAt: '2026-01-01T00:00:00Z',
+		publishedVersion: null,
+		versionId: 'v1',
+		...overrides,
+	};
+}
 
 vi.mock('../composables/useAgentConfig', () => ({
 	useAgentConfig: () => ({
@@ -257,6 +278,18 @@ const commonStubs = {
 		props: ['tools', 'config', 'disabled'],
 		emits: ['open-tool', 'add-tool', 'remove-tool', 'update:config'],
 	},
+	AgentSkillsListPanel: {
+		name: 'AgentSkillsListPanel',
+		template: '<div data-testid="stub-agent-skills-list-panel" />',
+		props: ['skills', 'disabled'],
+		emits: ['open-skill', 'add-skill', 'remove-skill'],
+	},
+	AgentSkillViewer: {
+		name: 'AgentSkillViewer',
+		template: '<div data-testid="stub-agent-skill-viewer" />',
+		props: ['skill', 'disabled', 'errors'],
+		emits: ['update:skill'],
+	},
 	AgentIntegrationsPanel: {
 		name: 'AgentIntegrationsPanel',
 		template: '<div data-testid="stub-agent-integrations-panel" />',
@@ -288,14 +321,18 @@ describe('AgentBuilderView — chat mode toggle', () => {
 		vi.clearAllMocks();
 		routerPush.mockReset();
 		routerReplace.mockReset();
+		openModalWithDataMock.mockReset();
+		closeModalMock.mockReset();
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		sessionThreads.length = 0;
+		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 		// Reset to a built agent; tests that need an unbuilt agent override locally.
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
 		};
 		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
@@ -467,13 +504,17 @@ describe('AgentBuilderView — three-column shell', () => {
 		vi.clearAllMocks();
 		routerPush.mockReset();
 		routerReplace.mockReset();
+		openModalWithDataMock.mockReset();
+		closeModalMock.mockReset();
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		sessionThreads.length = 0;
+		sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 		intendedConfig = {
 			name: 'Agent One',
 			instructions: 'You are a helpful assistant.',
 		};
 		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValue(makeAgentResponse());
 		getIntegrationStatusMock.mockResolvedValue({ status: 'ok', integrations: [] });
 	});
 
@@ -533,6 +574,189 @@ describe('AgentBuilderView — three-column shell', () => {
 				name: 'ProjectAgents',
 				params: { projectId: 'p1' },
 			}),
+		);
+	});
+
+	it('shows applied skills and opens a skill detail from the tree', async () => {
+		const skill = {
+			name: 'summarize_notes',
+			description: 'Summarize notes before replying',
+			instructions: 'Read the notes and produce a concise summary.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: skill,
+				},
+			}),
+		);
+
+		const wrapper = await renderView();
+
+		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
+		await nextTick();
+
+		const skillsPanel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		expect(skillsPanel.exists()).toBe(true);
+		expect(skillsPanel.props('skills')).toEqual([{ id: 'summarize_notes', skill }]);
+
+		skillsPanel.vm.$emit('open-skill', 'summarize_notes');
+		await nextTick();
+
+		const skillViewer = wrapper.findComponent({ name: 'AgentSkillViewer' });
+		expect(skillViewer.exists()).toBe(true);
+		expect(skillViewer.props('skill')).toEqual(skill);
+	});
+
+	it('removes an applied skill from the config skills list', async () => {
+		const skill = {
+			name: 'summarize_notes',
+			description: 'Use when summarizing notes',
+			instructions: 'Read the notes and produce a concise summary.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'custom', id: 'custom_tool' }],
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: skill,
+				},
+			}),
+		);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
+		await nextTick();
+
+		const skillsPanel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		skillsPanel.vm.$emit('remove-skill', 'summarize_notes');
+		await nextTick();
+
+		const vm = wrapper.vm as unknown as {
+			localConfig: { tools?: AgentJsonToolRef[]; skills?: AgentJsonSkillRef[] };
+		};
+		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
+		expect(vm.localConfig.skills).toEqual([]);
+		expect(wrapper.findComponent({ name: 'AgentSkillsListPanel' }).props('skills')).toEqual([]);
+	});
+
+	it('opens the add skill modal and applies the created skill', async () => {
+		const skill = {
+			name: 'Summarize Meetings',
+			description: 'Use when summarizing meeting notes',
+			instructions: 'Extract decisions and action items.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'custom', id: 'custom_tool' }],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
+		createAgentSkillMock.mockResolvedValueOnce({ skill, versionId: 'v2' });
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
+		await nextTick();
+
+		const skillsPanel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		skillsPanel.vm.$emit('add-skill');
+		await nextTick();
+
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'agentSkillModal',
+				data: expect.objectContaining({
+					projectId: 'p1',
+					agentId: 'a1',
+					existingSkillIds: [],
+				}),
+			}),
+		);
+
+		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
+			onConfirm: (payload: { id: string; skill: typeof skill }) => void;
+		};
+		modalData.onConfirm({ id: 'summarize_meetings', skill });
+		await flushPromises();
+		await nextTick();
+
+		const vm = wrapper.vm as unknown as {
+			localConfig: { tools?: AgentJsonToolRef[]; skills?: AgentJsonSkillRef[] };
+		};
+		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
+		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'summarize_meetings' }]);
+		expect(wrapper.findComponent({ name: 'AgentSkillViewer' }).props('skill')).toEqual(skill);
+	});
+
+	it('autosaves skill detail edits from the detail view', async () => {
+		sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
+		const skill = {
+			name: 'summarize_notes',
+			description: 'Use when summarizing notes',
+			instructions: 'Read the notes and produce a concise summary.',
+		};
+		const updatedSkill = {
+			name: 'meeting_summary',
+			description: 'Use when extracting decisions from meeting notes',
+			instructions: 'Extract decisions, risks, and action items.',
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: skill,
+				},
+			}),
+		);
+		getAgentMock.mockResolvedValue(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: updatedSkill,
+				},
+			}),
+		);
+		updateAgentSkillMock.mockResolvedValue({ skill: updatedSkill, versionId: 'v2' });
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentConfigTree' }).vm.$emit('select', 'skills');
+		await nextTick();
+
+		const skillsPanel = wrapper.findComponent({ name: 'AgentSkillsListPanel' });
+		skillsPanel.vm.$emit('open-skill', 'summarize_notes');
+		await nextTick();
+
+		const skillViewer = wrapper.findComponent({ name: 'AgentSkillViewer' });
+		skillViewer.vm.$emit('update:skill', updatedSkill);
+		await nextTick();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		await flushPromises();
+
+		expect(updateAgentSkillMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'summarize_notes',
+			updatedSkill,
+		);
+		expect((wrapper.vm as unknown as { agent: { versionId: string | null } }).agent.versionId).toBe(
+			'v2',
 		);
 	});
 });

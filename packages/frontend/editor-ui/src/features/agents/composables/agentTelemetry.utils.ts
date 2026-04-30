@@ -5,6 +5,7 @@ export type AgentTelemetryStatus = 'draft' | 'production';
 export type AgentConfigFingerprint = {
 	instructions: string;
 	tools: string[];
+	skills: string[];
 	triggers: string[];
 	memory: { enabled: boolean; storage: 'n8n' | 'sqlite' | 'postgres' } | null;
 	model: string | null;
@@ -34,12 +35,20 @@ export function toolIdentifiersFromConfig(config: AgentJsonConfig | null): strin
 	return (config?.tools ?? []).map(toolIdentifier).filter(Boolean).sort();
 }
 
+export function skillIdentifiersFromConfig(config: AgentJsonConfig | null): string[] {
+	return (config?.skills ?? [])
+		.map((ref) => ref.id)
+		.filter(Boolean)
+		.sort();
+}
+
 export async function buildAgentConfigFingerprint(
 	config: AgentJsonConfig | null,
 	connectedTriggers: string[],
 ): Promise<AgentConfigFingerprint> {
 	const instructions = config?.instructions ?? '';
 	const tools = toolIdentifiersFromConfig(config);
+	const skills = skillIdentifiersFromConfig(config);
 	const triggers = [...connectedTriggers].sort();
 	const memory = config?.memory
 		? { enabled: config.memory.enabled, storage: config.memory.storage }
@@ -49,6 +58,7 @@ export async function buildAgentConfigFingerprint(
 	const versionPayload = JSON.stringify({
 		instructions,
 		tools,
+		skills,
 		triggers,
 		memory,
 		model,
@@ -58,6 +68,7 @@ export async function buildAgentConfigFingerprint(
 	return {
 		instructions,
 		tools,
+		skills,
 		triggers,
 		memory,
 		model,

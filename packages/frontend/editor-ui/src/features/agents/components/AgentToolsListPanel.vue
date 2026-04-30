@@ -29,7 +29,7 @@ import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 import shared from '../styles/agent-panel.module.scss';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
-import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
+import type { AgentJsonConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
 
 const props = withDefaults(
 	defineProps<{
@@ -86,6 +86,8 @@ interface CustomRow {
 	description?: string;
 }
 
+type CustomToolRef = AgentJsonToolRef & { type: 'custom' };
+
 const nodeRows = computed<NodeRow[]>(() => {
 	const out: NodeRow[] = [];
 	props.tools.forEach((ref, index) => {
@@ -108,7 +110,7 @@ const nodeRows = computed<NodeRow[]>(() => {
 const workflowRows = computed<WorkflowRow[]>(() =>
 	props.tools
 		.map((ref, index) => ({ ref, index }))
-		.filter(({ ref }) => ref.type === 'workflow')
+		.filter((item): item is { ref: WorkflowToolRef; index: number } => item.ref.type === 'workflow')
 		.map(({ ref, index }) => ({
 			index,
 			name: ref.name ?? (ref.workflow as string),
@@ -119,7 +121,7 @@ const workflowRows = computed<WorkflowRow[]>(() =>
 const customRows = computed<CustomRow[]>(() =>
 	props.tools
 		.map((ref, index) => ({ ref, index }))
-		.filter(({ ref }) => ref.type === 'custom')
+		.filter((item): item is { ref: CustomToolRef; index: number } => item.ref.type === 'custom')
 		.map(({ ref, index }) => ({
 			index,
 			label: ref.name?.trim() || ref.id || `Custom tool ${index + 1}`,

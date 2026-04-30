@@ -6,9 +6,15 @@ import type {
 	StreamChunk,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type { ChatIntegrationDescriptor } from '@n8n/api-types';
+import {
+	AGENT_SCHEDULE_TRIGGER_TYPE,
+	isAgentScheduleIntegration,
+	type AgentSkill,
+	type AgentSkillMutationResponse,
+	type ChatIntegrationDescriptor,
+} from '@n8n/api-types';
 import * as agents from '@n8n/agents';
-import { AGENT_SCHEDULE_TRIGGER_TYPE, isAgentScheduleIntegration } from '@n8n/api-types';
+import { extractFromAIParameters } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import {
@@ -19,7 +25,12 @@ import {
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { OperationalError, UserError } from 'n8n-workflow';
+import {
+	OperationalError,
+	UserError,
+	type ExecuteAgentData,
+	type INodeParameters,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -34,8 +45,11 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
+import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { AgentExecutionService } from './agent-execution.service';
+import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
+import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -44,6 +58,7 @@ import { N8nMemory } from './integrations/n8n-memory';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
+	AgentJsonConfigRef,
 	AgentJsonMemoryConfig,
 	AgentJsonToolConfig,
 } from './json-config/agent-json-config';
@@ -56,7 +71,8 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
+
+type AgentToolEntries = Agent['tools'];
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -71,14 +87,6 @@ interface InjectRuntimeDependenciesParams {
 /** Derive a stable thread ID for the test-chat of a given agent. */
 export function chatThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
-}
-
-export interface ExecuteAgentData {
-	response: string;
-	structuredOutput: unknown;
-	usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
-	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
-	finishReason: string;
 }
 
 @Service()
@@ -117,20 +125,6 @@ export class AgentsService {
 		}
 	}
 
-	/**
-	 * Start a new draft if the agent is currently in sync with the published snapshot.
-	 * Any mutation that changes how the agent would run must call this so that
-	 * `hasUnpublishedChanges` (derived from versionId vs publishedFromVersionId) stays accurate.
-	 */
-	private markDraftDirty(agent: Agent): void {
-		if (
-			agent.versionId !== null &&
-			agent.versionId === agent.publishedVersion?.publishedFromVersionId
-		) {
-			agent.versionId = uuid();
-		}
-	}
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
@@ -149,6 +143,7 @@ export class AgentsService {
 		private readonly n8nMemory: N8nMemory,
 		private readonly agentExecutionService: AgentExecutionService,
 		private readonly agentPublishedVersionRepository: AgentPublishedVersionRepository,
+		private readonly agentSkillsService: AgentSkillsService,
 	) {}
 
 	/**
@@ -175,6 +170,8 @@ export class AgentsService {
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: '',
 			instructions: '',
+			tools: [],
+			skills: [],
 		};
 
 		const agent = this.agentRepository.create({
@@ -212,7 +209,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, name };
 		}
-		this.markDraftDirty(agent);
+		markAgentDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent name', { agentId, projectId, name });
 		return saved;
@@ -238,7 +235,7 @@ export class AgentsService {
 		if (agent.schema) {
 			agent.schema = { ...agent.schema, description };
 		}
-		this.markDraftDirty(agent);
+		markAgentDraftDirty(agent);
 		const saved = await this.agentRepository.save(agent);
 		this.logger.debug('Updated SDK agent description', { agentId, projectId });
 		return saved;
@@ -273,6 +270,11 @@ export class AgentsService {
 				{
 					agentId: agent.id,
 					schema: agent.schema,
+					tools: this.snapshotConfiguredTools(agent.schema, agent.tools ?? {}),
+					skills: this.agentSkillsService.snapshotConfiguredSkills(
+						agent.schema,
+						agent.skills ?? {},
+					),
 					publishedFromVersionId: agent.versionId,
 					model: agent.model,
 					provider: agent.provider,
@@ -596,6 +598,7 @@ export class AgentsService {
 	 *   - "model":        missing model or one that fails the provider/model regex
 	 *   - "credential":   credential name is set in config but doesn't resolve to
 	 *                     a real credential in the project
+	 *   - "skill:<id>":   config references a skill id with no stored body
 	 */
 	async validateAgentIsRunnable(
 		agentId: string,
@@ -636,6 +639,12 @@ export class AgentsService {
 				// the runtime will surface the real error path on execute.
 			}
 		}
+
+		missing.push(
+			...this.agentSkillsService
+				.getMissingSkillIds(config, agentEntity.skills ?? {})
+				.map((skillId) => `skill:${skillId}`),
+		);
 
 		return { missing };
 	}
@@ -739,6 +748,8 @@ export class AgentsService {
 		if (!publishedSchema) {
 			throw new NotFoundError(`Agent ${agentId} is not published`);
 		}
+		const publishedTools = agentEntity.publishedVersion?.tools ?? agentEntity.tools;
+		const publishedSkills = agentEntity.publishedVersion?.skills ?? agentEntity.skills;
 
 		// Reconstruct from the published snapshot and cache the runtime so that
 		// a follow-up `resumeForChat` (HITL button click) can find it via
@@ -747,7 +758,12 @@ export class AgentsService {
 		const key = this.runtimeKey(agentId, userId, integrationType);
 		let runtime = this.runtimes.get(key);
 		if (!runtime) {
-			const publishedAgentData = { ...agentEntity, schema: publishedSchema } as Agent;
+			const publishedAgentData = {
+				...agentEntity,
+				schema: publishedSchema,
+				tools: publishedTools ?? {},
+				skills: publishedSkills ?? {},
+			} as Agent;
 			const { agent: agentInstance, toolRegistry } = await this.reconstructFromConfig(
 				publishedAgentData,
 				credentialProvider,
@@ -1063,12 +1079,30 @@ export class AgentsService {
 
 		const config = parsed.data;
 
+		try {
+			this.validateNodeToolExpressions(config);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return {
+				valid: false,
+				error: `Invalid $fromAI expression in node tool config: ${message}`,
+			};
+		}
+
 		const nodeError = await this.validateNodeToolConfigs(config);
 		if (nodeError) {
 			return { valid: false, error: nodeError };
 		}
 
 		return { valid: true, config };
+	}
+
+	private validateNodeToolExpressions(config: AgentJsonConfig): void {
+		for (const tool of config.tools ?? []) {
+			if (tool.type !== 'node') continue;
+
+			extractFromAIParameters((tool.node.nodeParameters ?? {}) as INodeParameters);
+		}
 	}
 
 	/**
@@ -1087,15 +1121,17 @@ export class AgentsService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
+		this.validateConfigRefs(result.config, entity);
+
 		entity.schema = result.config;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 
 		// Remove tool entries that are no longer referenced in the config
 		const referencedIds = new Set(
 			(result.config.tools ?? [])
-				.filter((t): t is { type: 'custom'; id: string } => t.type === 'custom')
+				.filter((t): t is Extract<AgentJsonConfigRef, { type: 'custom' }> => t.type === 'custom')
 				.map((t) => t.id),
 		);
 		const orphanIds = Object.keys(entity.tools).filter((id) => !referencedIds.has(id));
@@ -1106,6 +1142,8 @@ export class AgentsService {
 			}
 			entity.tools = tools;
 		}
+
+		this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
 
 		// Invalidate runtime caches
 		this.clearRuntimes(agentId);
@@ -1144,13 +1182,43 @@ export class AgentsService {
 			[toolId]: { code, descriptor },
 		};
 
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
 		return { ok: true, descriptor };
+	}
+
+	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
+		return await this.agentSkillsService.listSkills(agentId, projectId);
+	}
+
+	async getSkill(agentId: string, projectId: string, skillId: string): Promise<AgentSkill> {
+		return await this.agentSkillsService.getSkill(agentId, projectId, skillId);
+	}
+
+	async createSkill(
+		agentId: string,
+		projectId: string,
+		skillId: string,
+		skill: AgentSkill,
+	): Promise<AgentSkillMutationResponse> {
+		const result = await this.agentSkillsService.createSkill(agentId, projectId, skillId, skill);
+		this.clearRuntimes(agentId);
+		return result;
+	}
+
+	async updateSkill(
+		agentId: string,
+		projectId: string,
+		skillId: string,
+		updates: Partial<AgentSkill>,
+	): Promise<AgentSkillMutationResponse> {
+		const result = await this.agentSkillsService.updateSkill(agentId, projectId, skillId, updates);
+		this.clearRuntimes(agentId);
+		return result;
 	}
 
 	/**
@@ -1167,15 +1235,20 @@ export class AgentsService {
 		// Remove from config tools array
 		if (entity.schema?.tools) {
 			entity.schema.tools = entity.schema.tools.filter(
-				(t: AgentJsonToolConfig) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
+				(t: AgentJsonConfigRef) => !(t.type === 'custom' && 'id' in t && t.id === toolId),
 			);
 		}
 
-		this.markDraftDirty(entity);
+		markAgentDraftDirty(entity);
 		this.clearRuntimes(agentId);
 		await this.agentRepository.save(entity);
 
 		this.logger.debug('Deleted custom tool', { agentId, projectId, toolId });
+	}
+
+	async deleteSkill(agentId: string, projectId: string, skillId: string): Promise<void> {
+		await this.agentSkillsService.deleteSkill(agentId, projectId, skillId);
+		this.clearRuntimes(agentId);
 	}
 
 	/**
@@ -1225,6 +1298,60 @@ export class AgentsService {
 		return errors.length > 0 ? errors.join('\n') : null;
 	}
 
+	private validateConfigRefs(config: AgentJsonConfig, entity: Agent) {
+		const missingSkillIds = this.agentSkillsService.getMissingSkillIds(config, entity.skills ?? {});
+		if (missingSkillIds.length > 0) {
+			throw new UserError(
+				`Invalid agent config: Missing skill bodies: ${missingSkillIds.join(', ')}`,
+			);
+		}
+
+		const missingToolIds = this.getMissingCustomToolIds(config, entity.tools ?? {});
+		if (missingToolIds.length > 0) {
+			throw new UserError(
+				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
+			);
+		}
+	}
+
+	private getMissingCustomToolIds(
+		config: AgentJsonConfig | null,
+		tools: AgentToolEntries,
+	): string[] {
+		const refs = (config?.tools ?? []).filter(
+			(ref): ref is Extract<AgentJsonConfigRef, { type: 'custom' }> => ref.type === 'custom',
+		);
+		const seen = new Set<string>();
+		const missing: string[] = [];
+
+		for (const ref of refs) {
+			if (seen.has(ref.id)) continue;
+			seen.add(ref.id);
+			if (!tools[ref.id]) missing.push(ref.id);
+		}
+
+		return missing;
+	}
+
+	private snapshotConfiguredTools(
+		config: AgentJsonConfig | null,
+		tools: AgentToolEntries,
+	): AgentToolEntries | null {
+		if (!config) return null;
+		const missing = this.getMissingCustomToolIds(config, tools);
+		if (missing.length > 0) {
+			throw new UserError(`Cannot publish agent with missing custom tools: ${missing.join(', ')}`);
+		}
+
+		const snapshot: AgentToolEntries = {};
+		for (const ref of config.tools ?? []) {
+			if (ref.type !== 'custom') continue;
+			const tool = tools[ref.id];
+			if (tool) snapshot[ref.id] = tool;
+		}
+		return snapshot;
+	}
+
 	/**
 	 * Reconstruct an agent from its JSON config using buildFromJson().
 	 * This is the new execution path for JSON-config agents.
@@ -1266,6 +1393,7 @@ export class AgentsService {
 				if (resolved) resolvedTools.push(resolved);
 				return resolved;
 			},
+			skills: agentEntity.skills ?? {},
 			memoryFactory: this.getMemoryFactory(),
 		});
 

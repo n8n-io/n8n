@@ -49,28 +49,24 @@ Flow: search_nodes → get_node_types → ask_credential (per slot) → write/up
   "name": "http_request",
   "description": "Make an HTTP request to any URL",
   "node": {
-    "nodeType": "n8n-nodes-base.httpRequest",
+    "nodeType": "n8n-nodes-base.httpRequestTool",
     "nodeTypeVersion": 4,
     "nodeParameters": {
-      "method": "={{$json.method || 'GET'}}",
-      "url": "={{$json.url}}"
+      "method": "GET",
+      "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}"
     }
-  },
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "url": { "type": "string", "description": "The URL to request" },
-      "method": { "type": "string", "description": "HTTP method (GET, POST, PUT, DELETE)" }
-    },
-    "required": ["url"]
   }
 }
 \`\`\`
 
 Rules for node tools:
-- \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results
-- \`nodeParameters\` sets fixed parameters (resource, operation, etc.) and pipes parameters from inputSchema using expressions "={{$json.paramName}}" where paramName must match parameter name in inputSchema.
-- \`inputSchema\` defines what the LLM passes at runtime (JSON Schema)
+- \`nodeType\` and \`nodeTypeVersion\` come from get_node_types results. Use the tool node ID from search_nodes (usually ending in \`Tool\`, e.g. \`n8n-nodes-base.httpRequestTool\`), not the base node ID.
+- \`nodeParameters\` sets fixed parameters (resource, operation, etc.). For any value the AI should choose at runtime, use \`$fromAI\`: \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('key', 'description', 'type') }}\`.
+- Match the \`$fromAI\` type to the node parameter type from get_node_types: use \`string\`, \`number\`, \`boolean\`, or \`json\`.
+- Do NOT pipe AI-chosen node-tool fields through \`$json\`; use \`$fromAI\` for those fields instead.
+- Do NOT include \`inputSchema\` for node tools. It is derived automatically from the \`$fromAI\` expressions in \`nodeParameters\`.
+- Do NOT include \`toolDescription\` in \`nodeParameters\`. Use the top-level tool \`description\` only.
+- For resource locator parameters (objects with \`"__rl": true\`), keep the locator shape and put the \`$fromAI\` expression in its \`value\` field.
 - For every credential slot the node requires, you MUST first call ask_credential and use the { id, name } returned in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never leave empty values.
 - Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If the user dismisses the picker (returns { skipped: true }), omit that slot entirely and warn the user the tool will fail at runtime until a credential is set.
 - Use search_nodes first, never guess node type names
@@ -117,7 +113,16 @@ function: take \`input\`, compute, return a JSON-serialisable value.
   ~32 MB of memory.
 - If something fails at runtime, the error message is handed back to you on
   the next turn — fix the code and try again.
-- Do NOT call \`.build()\` — the engine handles it.`;
+- Do NOT call \`.build()\` — the engine handles it.
+
+### Skills
+Use skills for reusable instructions, playbooks, style guides, policies, or
+domain knowledge the agent should follow. Call create_skill with the skill
+\`name\`, \`description\`, and \`body\`; the tool returns the generated skill
+\`id\`. Skill descriptions should describe the task/situation that should
+trigger loading the skill. create_skill stores the skill body and attaches
+\`{ "type": "skill", "id": "<returned id>" }\` to the agent config in one
+operation, so do not add a second skill ref afterwards.`;
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools (user-facing)
@@ -163,12 +168,12 @@ ask in prose for that.
 export const N8N_EXPRESSIONS_SECTION = `\
 ## n8n expressions
 
-Node tool parameters inside \`nodeParameters\` can use n8n expressions to reference dynamic input.
-The LLM input is available as \`$json\` — each key matches a property from \`inputSchema\`.
+Node tool parameters inside \`nodeParameters\` can use n8n expressions.
+For node tools, prefer \`$fromAI\` whenever the agent should decide a value at runtime.
 
-- \`={{ $json.fieldName }}\` — reference a field from the tool's input
-- \`={{ $json.count > 0 ? 'yes' : 'no' }}\` — inline ternary
-- \`={{ $json.items.join(', ') }}\` — call JS methods on input values
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fieldName', 'What value to provide', 'string') }}\` — let the AI provide a string
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('count', 'How many items', 'number') }}\` — let the AI provide a number
+- \`={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('enabled', 'Whether to enable this option', 'boolean') }}\` — let the AI provide a boolean
 - \`={{ $now.toISO() }}\` — current date/time (Luxon DateTime)
 - \`={{ $today }}\` — start of today (Luxon DateTime)
 
@@ -290,7 +295,7 @@ On error, the response includes a \`stage\` field: "parse" (invalid JSON), "patc
 export const WORKFLOW_SECTION = `\
 ## Workflow
 
-1. If the agent has no \`instructions\` and \`crededential\` yet (fresh agent), FIRST call ask_llm to let
+1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call ask_llm to let
    the user pick the model + credential, then write_config with the chosen
    \`model\` and \`credential\` plus a draft \`instructions\`.
 2. Use ask_question whenever you have a clarifying question with discrete
@@ -299,7 +304,8 @@ export const WORKFLOW_SECTION = `\
 3. Before adding any node tool that needs credentials, call ask_credential for
    each slot.
 4. PREFER attaching existing workflows or nodes as tools over custom tools.
-5. Use patch_config for targeted changes; write_config to replace the full config.`;
+5. Use create_skill for reusable instruction bundles; it attaches the returned skill id to \`skills\`.
+6. Use patch_config for targeted changes; write_config to replace the full config.`;
 
 export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
@@ -309,9 +315,9 @@ export const FEW_SHOT_FLOWS_SECTION = `\
    → { provider: "anthropic", model: "claude-sonnet-4-5",
        credentialId: "abc", credentialName: "My Anthropic" }
 2. search_nodes({ query: "slack" }) → ...
-3. get_node_types({ nodeType: "n8n-nodes-base.slack" }) → ...
+3. get_node_types({ nodeType: "n8n-nodes-base.slackTool" }) → ...
 4. ask_credential({ purpose: "Slack workspace to read/post messages",
-       nodeType: "n8n-nodes-base.slack", credentialType: "slackApi",
+       nodeType: "n8n-nodes-base.slackTool", credentialType: "slackApi",
        slot: "slackApi" })
    → { credentialId: "xyz", credentialName: "Acme Slack" }
 5. write_config({ ...
@@ -327,6 +333,11 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 2. search_nodes / get_node_types
 3. ask_credential per required slot
 4. patch_config with \`{ op: "add", path: "/tools/-", value: { ... credentials: {...} } }\`
+
+### Adding a skill to an existing agent
+1. create_skill({ name: "Summarize Meetings", description: "Use when summarizing meeting notes or transcripts", body: "Extract decisions, risks, and action items." })
+   → { id: "summarize_meetings", ... }
+2. patch_config with \`{ op: "add", path: "/skills/-", value: { "type": "skill", "id": "summarize_meetings" } }\`
 
 ### Ambiguous request: "Make it post somewhere"
 1. ask_question({ question: "Where should the agent post?",
@@ -347,7 +358,8 @@ export const IMPORTANT_SECTION = `\
 - Use search_nodes + get_node_types to discover nodes before adding node tools
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
-- \`build_custom_tool\` only compiles and stores the tool code. Register it in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config`;
+- \`build_custom_tool\` only compiles and stores the tool code. Register it in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
+- \`create_skill\` creates the skill and attaches a \`{ type: "skill", id }\` entry to \`skills\` in one operation`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style

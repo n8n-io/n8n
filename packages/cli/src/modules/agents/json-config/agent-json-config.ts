@@ -39,13 +39,13 @@ export const NodeConfigSchema = z.object({
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
 
-const JsonSchemaObjectSchema = z
-	.object({
-		type: z.literal('object').optional(),
-		properties: z.record(z.unknown()).optional(),
-		required: z.array(z.string()).optional(),
-	})
-	.passthrough();
+const AgentJsonSkillConfigSchema = z.object({
+	type: z.literal('skill'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[a-z0-9_-]+$/),
+});
 
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
@@ -67,14 +67,15 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 			.optional()
 			.describe('Whether to return all node outputs instead of just the last node'),
 	}),
-	z.object({
-		type: z.literal('node'),
-		name: z.string().min(1),
-		description: z.string().optional(),
-		node: NodeConfigSchema,
-		inputSchema: JsonSchemaObjectSchema,
-		requireApproval: z.boolean().optional(),
-	}),
+	z
+		.object({
+			type: z.literal('node'),
+			name: z.string().min(1),
+			description: z.string().optional(),
+			node: NodeConfigSchema,
+			requireApproval: z.boolean().optional(),
+		})
+		.strict(),
 ]);
 
 export const AgentJsonConfigSchema = z.object({
@@ -96,6 +97,7 @@ export const AgentJsonConfigSchema = z.object({
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
+	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	config: z
 		.object({
@@ -115,6 +117,8 @@ export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
+export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonConfigRef = AgentJsonToolConfig | AgentJsonSkillConfig;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 
 export interface ConfigValidationError {

@@ -9,6 +9,7 @@ export type AgentConfigPart =
 	| 'model'
 	| 'memory'
 	| 'tools'
+	| 'skills'
 	| 'triggers'
 	| 'name'
 	| 'description';

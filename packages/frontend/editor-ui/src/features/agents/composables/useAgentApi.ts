@@ -2,6 +2,8 @@ import type {
 	AgentBuilderMessagesResponse,
 	AgentIntegrationStatusResponse,
 	AgentPersistedMessageDto,
+	AgentSkill,
+	AgentSkillMutationResponse,
 	AgentScheduleConfig,
 	ChatIntegrationDescriptor,
 } from '@n8n/api-types';
@@ -272,6 +274,36 @@ export const updateAgentConfig = async (
 		'PUT',
 		`/projects/${projectId}/agents/v2/${agentId}/config`,
 		{ config },
+	);
+};
+
+export const createAgentSkill = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+	skill: AgentSkill,
+): Promise<AgentSkillMutationResponse> => {
+	return await makeRestApiRequest<AgentSkillMutationResponse>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/skills`,
+		{ id: skillId, ...skill },
+	);
+};
+
+export const updateAgentSkill = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	skillId: string,
+	updates: Partial<AgentSkill>,
+): Promise<AgentSkillMutationResponse> => {
+	return await makeRestApiRequest<AgentSkillMutationResponse>(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
+		updates,
 	);
 };
 
