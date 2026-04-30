@@ -88,6 +88,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			password: string;
 			databaseName: string;
 		}>('milvusApi');
+		const database = credentials.databaseName?.trim() || 'default';
 		const indexCreateOptions: IndexCreateOptions = {
 			index_type: context.getNodeParameter('options.indexType', itemIndex, IndexType.AUTOINDEX),
 			metric_type: context.getNodeParameter('options.distanceStrategy', itemIndex, MetricType.L2),
@@ -100,7 +101,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			indexCreateOptions,
 			clientConfig: {
 				address: credentials.baseUrl,
-				database: credentials.databaseName?.trim() || 'default',
+				database,
 			},
 		};
 
@@ -119,6 +120,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			password: string;
 			databaseName: string;
 		}>('milvusApi');
+		const database = credentials.databaseName?.trim() || 'default';
 		const config: MilvusLibArgs = {
 			url: credentials.baseUrl,
 			username: credentials.username,
@@ -126,7 +128,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			collectionName: collection,
 			clientConfig: {
 				address: credentials.baseUrl,
-				database: credentials.databaseName?.trim() || 'default',
+				database,
 			},
 		};
 
@@ -134,7 +136,7 @@ export class VectorStoreMilvus extends createVectorStoreNode<Milvus>({
 			const client = new MilvusClient({
 				address: credentials.baseUrl,
 				token: `${credentials.username}:${credentials.password}`,
-				database: credentials.databaseName?.trim() || 'default',
+				database,
 			});
 			await client.dropCollection({ collection_name: collection });
 		}
