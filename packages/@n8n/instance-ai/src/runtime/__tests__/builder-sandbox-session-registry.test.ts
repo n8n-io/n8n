@@ -23,15 +23,8 @@ function createSession(registry: BuilderSandboxSessionRegistry, cleanup = jest.f
 }
 
 describe('BuilderSandboxSessionRegistry', () => {
-	let consoleLog: jest.SpyInstance;
-
-	beforeEach(() => {
-		consoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
-	});
-
 	afterEach(() => {
 		jest.useRealTimers();
-		consoleLog.mockRestore();
 	});
 
 	it('returns undefined when retention is disabled', () => {

@@ -49,12 +49,6 @@ function sessionKey(threadId: string, value: string): string {
 	return `${threadId}:${value}`;
 }
 
-function logBuilderSessionDebug(event: string, metadata: Record<string, unknown>): void {
-	// TEMP DEBUG: remove after workflow-builder warm-session tuning.
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][workflow-builder-session] ${event}`, metadata);
-}
-
 function toPublicSession(session: BuilderSandboxSessionInternal): BuilderSandboxSession {
 	return {
 		sessionId: session.sessionId,
@@ -87,27 +81,15 @@ export class BuilderSandboxSessionRegistry {
 
 	acquireByWorkflowId(threadId: string, workflowId: string): BuilderSandboxSession | undefined {
 		if (!this.enabled) {
-			logBuilderSessionDebug('session-miss', {
-				threadId,
-				workflowId,
-				reason: 'disabled',
-				ttlMs: this.ttlMs,
-			});
 			return undefined;
 		}
 
 		const sessionId = this.byThreadWorkflowId.get(sessionKey(threadId, workflowId));
 		if (!sessionId) {
-			logBuilderSessionDebug('session-miss', {
-				threadId,
-				workflowId,
-				reason: 'not_found',
-				ttlMs: this.ttlMs,
-			});
 			return undefined;
 		}
 
-		return this.acquire(sessionId, { workflowId });
+		return this.acquire(sessionId);
 	}
 
 	create(input: CreateBuilderSandboxSessionInput): BuilderSandboxSession | undefined {
@@ -142,7 +124,6 @@ export class BuilderSandboxSessionRegistry {
 			);
 		}
 
-		logBuilderSessionDebug('session-created', this.debugMetadata(session, 'created'));
 		return toPublicSession(session);
 	}
 
@@ -157,8 +138,6 @@ export class BuilderSandboxSessionRegistry {
 		session.workflowId = workflowId;
 		session.updatedAt = Date.now();
 		this.byThreadWorkflowId.set(sessionKey(session.threadId, workflowId), session.sessionId);
-
-		logBuilderSessionDebug('session-aliased', this.debugMetadata(session, 'workflow_id_alias'));
 	}
 
 	async release(sessionId: string, options: { keep: boolean; reason: string }): Promise<void> {
@@ -175,7 +154,6 @@ export class BuilderSandboxSessionRegistry {
 
 		session.expiresAt = Date.now() + this.ttlMs;
 		this.scheduleExpiry(session);
-		logBuilderSessionDebug('session-release', this.debugMetadata(session, options.reason));
 	}
 
 	async cleanupThread(threadId: string, reason = 'thread_cleanup'): Promise<void> {
@@ -195,28 +173,17 @@ export class BuilderSandboxSessionRegistry {
 		);
 	}
 
-	private acquire(
-		sessionId: string,
-		input: { workflowId?: string },
-	): BuilderSandboxSession | undefined {
+	private acquire(sessionId: string): BuilderSandboxSession | undefined {
 		const session = this.sessions.get(sessionId);
 		if (!session) {
-			logBuilderSessionDebug('session-miss', {
-				workflowId: input.workflowId,
-				sessionId,
-				reason: 'stale_index',
-				ttlMs: this.ttlMs,
-			});
 			return undefined;
 		}
 
 		if (session.busy) {
-			logBuilderSessionDebug('session-miss', this.debugMetadata(session, 'busy'));
 			return undefined;
 		}
 
 		if (session.expiresAt <= Date.now()) {
-			logBuilderSessionDebug('session-miss', this.debugMetadata(session, 'expired'));
 			void this.cleanupSession(session.sessionId, 'expired_on_acquire');
 			return undefined;
 		}
@@ -228,7 +195,6 @@ export class BuilderSandboxSessionRegistry {
 
 		session.busy = true;
 		session.updatedAt = Date.now();
-		logBuilderSessionDebug('session-reused', this.debugMetadata(session, 'acquired'));
 		return toPublicSession(session);
 	}
 
@@ -239,13 +205,12 @@ export class BuilderSandboxSessionRegistry {
 
 		const delay = Math.max(0, session.expiresAt - Date.now());
 		session.cleanupTimer = setTimeout(() => {
-			logBuilderSessionDebug('session-expired', this.debugMetadata(session, 'ttl_expired'));
 			void this.cleanupSession(session.sessionId, 'ttl_expired');
 		}, delay);
 		session.cleanupTimer.unref();
 	}
 
-	private async cleanupSession(sessionId: string, reason: string): Promise<void> {
+	private async cleanupSession(sessionId: string, _reason: string): Promise<void> {
 		const session = this.sessions.get(sessionId);
 		if (!session) return;
 
@@ -260,34 +225,10 @@ export class BuilderSandboxSessionRegistry {
 			session.cleanupTimer = undefined;
 		}
 
-		logBuilderSessionDebug('session-cleanup', this.debugMetadata(session, reason));
-
 		try {
 			await session.cleanup();
-		} catch (error) {
-			logBuilderSessionDebug('session-cleanup-error', {
-				...this.debugMetadata(session, reason),
-				error: error instanceof Error ? error.message : String(error),
-			});
+		} catch {
+			// Best-effort cleanup
 		}
-	}
-
-	private debugMetadata(
-		session: BuilderSandboxSessionInternal,
-		reason: string,
-	): Record<string, unknown> {
-		return {
-			threadId: session.threadId,
-			workflowId: session.workflowId,
-			workItemId: session.workItemId,
-			sessionId: session.sessionId,
-			builderThreadId: session.builderThreadId,
-			builderResourceId: session.builderResourceId,
-			ttlMs: this.ttlMs,
-			expiresAt: new Date(session.expiresAt).toISOString(),
-			busy: session.busy,
-			workspaceRoot: session.root,
-			reason,
-		};
 	}
 }

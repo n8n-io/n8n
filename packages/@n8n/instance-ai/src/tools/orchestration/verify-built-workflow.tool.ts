@@ -27,16 +27,6 @@ function stringifyForToolOutput(value: unknown): string {
 	}
 }
 
-function estimateTokens(value: string): number {
-	return Math.ceil(value.length / 4);
-}
-
-function logWorkflowBuilderToolOutputDebug(event: string, metadata: Record<string, unknown>): void {
-	// TEMP DEBUG: remove after compaction/context tuning.
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][workflow-builder-tool-output] ${event}`, metadata);
-}
-
 interface DataTableWriteNode {
 	nodeName: string;
 	dataTableId: string;
@@ -486,25 +476,6 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				...(input.includeData ? { data: result.data } : {}),
 				error: result.error,
 			};
-			const rawData = stringifyForToolOutput(result.data);
-			const compactedOutput = stringifyForToolOutput(response);
-			logWorkflowBuilderToolOutputDebug('verify-built-workflow', {
-				threadId: context.threadId,
-				runId: context.runId,
-				messageGroupId: context.messageGroupId,
-				workItemId: input.workItemId,
-				workflowId: input.workflowId,
-				executionId: result.executionId || undefined,
-				status: result.status,
-				success,
-				includeData: input.includeData === true,
-				rawDataChars: rawData.length,
-				rawDataTokens: estimateTokens(rawData),
-				compactedOutputChars: compactedOutput.length,
-				compactedOutputTokens: estimateTokens(compactedOutput),
-				nodesExecutedCount: nodesExecuted?.length ?? 0,
-				maxDataChars,
-			});
 
 			return response;
 		},

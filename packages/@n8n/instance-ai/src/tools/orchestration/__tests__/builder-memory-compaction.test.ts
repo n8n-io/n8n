@@ -72,16 +72,6 @@ function makeCompactionInput(
 }
 
 describe('compactBuilderMemoryThread', () => {
-	let consoleSpy: jest.SpyInstance;
-
-	beforeEach(() => {
-		consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		consoleSpy.mockRestore();
-	});
-
 	it('compacts a large builder thread into one summary message', async () => {
 		const messages = [
 			makeMessage('msg-1', 'initial builder prompt'),

@@ -68,27 +68,6 @@ function getContextWindowForModel(modelId: ModelConfig): number {
 /** Estimate tokens consumed by system prompt, tools, and working memory overhead. */
 const FIXED_CONTEXT_OVERHEAD_TOKENS = 8_000;
 const MIN_UNSUMMARIZED_TOKENS = 500;
-const DEBUG_PREVIEW_CHARS = 500;
-
-// TEMP DEBUG: remove after compaction tuning.
-function logCompactionDebug(event: string, metadata: Record<string, unknown>): void {
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][compaction] ${event}`, metadata);
-}
-
-function previewForDebug(text: string | null | undefined): string | undefined {
-	if (!text) return undefined;
-	return text.length > DEBUG_PREVIEW_CHARS ? `${text.slice(0, DEBUG_PREVIEW_CHARS)}...` : text;
-}
-
-function countMessagesByRole(messages: MastraDBMessage[]): Record<string, number> {
-	const counts: Record<string, number> = {};
-	for (const message of messages) {
-		const role = String(message.role);
-		counts[role] = (counts[role] ?? 0) + 1;
-	}
-	return counts;
-}
 
 interface ConversationSummaryMetadata {
 	version: number;
@@ -171,65 +150,19 @@ export class InstanceAiCompactionService {
 			// Load existing compaction state
 			const thread = await memory.getThreadById({ threadId });
 			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
-			const existingSummaryTokens = existing ? estimateTokens(existing.summary) : 0;
-
-			logCompactionDebug('loaded', {
-				threadId,
-				messageCount: allMessages.length,
-				roleCounts: countMessagesByRole(allMessages),
-				rawMessageTokens,
-				currentInputLabel: currentInput?.label,
-				currentInputChars: currentInput?.text.length ?? 0,
-				currentInputTokens,
-				currentInputPreview: previewForDebug(currentInput?.text),
-				fixedContextOverheadTokens: FIXED_CONTEXT_OVERHEAD_TOKENS,
-				totalTokensBeforeCompaction: totalTokens,
-				modelContextWindow,
-				configuredContextWindowCap: this.maxContextWindowTokensCap,
-				effectiveContextWindow: contextWindow,
-				compactionThreshold,
-				thresholdTokens: Math.floor(threshold),
-				lastMessages: recentTail,
-				hasCachedSummary: Boolean(existing?.summary),
-				cachedSummaryVersion: existing?.version,
-				cachedSummaryUpToMessageId: existing?.upToMessageId,
-				cachedSummaryTokens: existingSummaryTokens,
-			});
 
 			if (allMessages.length <= recentTail) {
-				logCompactionDebug('skip', {
-					threadId,
-					reason: 'message_count_within_recent_tail',
-					messageCount: allMessages.length,
-					lastMessages: recentTail,
-					totalTokensBeforeCompaction: totalTokens,
-					thresholdTokens: Math.floor(threshold),
-					returnsCachedSummary: Boolean(existing?.summary),
-				});
 				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Only compact when context usage exceeds the threshold
 			if (totalTokens < threshold) {
-				logCompactionDebug('skip', {
-					threadId,
-					reason: 'below_threshold',
-					totalTokensBeforeCompaction: totalTokens,
-					thresholdTokens: Math.floor(threshold),
-					returnsCachedSummary: Boolean(existing?.summary),
-				});
 				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Split into prefix (older messages) and tail (recent)
 			const prefixEnd = allMessages.length - recentTail;
 			const prefix = allMessages.slice(0, prefixEnd);
-			const tail = allMessages.slice(prefixEnd);
-			const prefixTokens = prefix.reduce(
-				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
-				0,
-			);
-			const tailTokens = tail.reduce((sum, m) => sum + estimateTokens(this.extractRawText(m)), 0);
 
 			// Find where the previous summary left off
 			let unsummarizedStart = 0;
@@ -248,20 +181,6 @@ export class InstanceAiCompactionService {
 				0,
 			);
 			if (unsummarizedTokens < MIN_UNSUMMARIZED_TOKENS) {
-				logCompactionDebug('skip', {
-					threadId,
-					reason: 'unsummarized_delta_too_small',
-					prefixMessageCount: prefix.length,
-					tailMessageCount: tail.length,
-					prefixTokens,
-					tailTokens,
-					unsummarizedMessageCount: unsummarizedSlice.length,
-					unsummarizedTokens,
-					minUnsummarizedTokens: MIN_UNSUMMARIZED_TOKENS,
-					currentInputTokens,
-					totalTokensBeforeCompaction: totalTokens,
-					returnsCachedSummary: Boolean(existing?.summary),
-				});
 				return this.formatCachedSummaryBlock(existing);
 			}
 
@@ -269,46 +188,10 @@ export class InstanceAiCompactionService {
 			const messageBatch = this.extractHighSignalContent(unsummarizedSlice);
 
 			if (messageBatch.length === 0) {
-				logCompactionDebug('skip', {
-					threadId,
-					reason: 'no_high_signal_messages',
-					unsummarizedMessageCount: unsummarizedSlice.length,
-					unsummarizedTokens,
-					currentInputTokens,
-					totalTokensBeforeCompaction: totalTokens,
-					returnsCachedSummary: Boolean(existing?.summary),
-				});
 				return this.formatCachedSummaryBlock(existing);
 			}
 
-			const messageBatchTokens = messageBatch.reduce(
-				(sum, message) => sum + estimateTokens(message.text),
-				0,
-			);
 			const lastCompactedMessage = unsummarizedSlice[unsummarizedSlice.length - 1];
-			const estimatedTokensWithCachedSummary =
-				FIXED_CONTEXT_OVERHEAD_TOKENS + tailTokens + existingSummaryTokens + currentInputTokens;
-
-			logCompactionDebug('start', {
-				threadId,
-				nextSummaryVersion: (existing?.version ?? 0) + 1,
-				prefixMessageCount: prefix.length,
-				tailMessageCount: tail.length,
-				prefixTokens,
-				tailTokens,
-				unsummarizedStartIndex: unsummarizedStart,
-				unsummarizedMessageCount: unsummarizedSlice.length,
-				unsummarizedTokens,
-				highSignalMessageCount: messageBatch.length,
-				highSignalTokens: messageBatchTokens,
-				previousSummaryVersion: existing?.version,
-				previousSummaryTokens: existingSummaryTokens,
-				previousSummaryPreview: previewForDebug(existing?.summary),
-				lastCompactedMessageId: lastCompactedMessage.id,
-				currentInputTokens,
-				totalTokensBeforeCompaction: totalTokens,
-				estimatedTokensWithCachedSummary,
-			});
 
 			// Generate the updated summary
 			const summary = await generateCompactionSummary(modelId, {
@@ -325,22 +208,6 @@ export class InstanceAiCompactionService {
 			};
 
 			await this.saveMetadata(threadId, memory, newMetadata);
-
-			const summaryTokens = estimateTokens(summary);
-			const estimatedTokensAfterCompaction =
-				FIXED_CONTEXT_OVERHEAD_TOKENS + tailTokens + summaryTokens + currentInputTokens;
-			logCompactionDebug('complete', {
-				threadId,
-				summaryVersion: newMetadata.version,
-				upToMessageId: newMetadata.upToMessageId,
-				summaryChars: summary.length,
-				summaryTokens,
-				summaryPreview: previewForDebug(summary),
-				currentInputTokens,
-				totalTokensBeforeCompaction: totalTokens,
-				estimatedTokensAfterCompaction,
-				estimatedTokensReduced: totalTokens - estimatedTokensAfterCompaction,
-			});
 
 			return this.formatSummaryBlock(summary);
 		} catch (error) {

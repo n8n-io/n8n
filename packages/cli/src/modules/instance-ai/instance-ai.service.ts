@@ -106,7 +106,6 @@ function createInertAbortSignal(): AbortSignal {
 }
 
 const ORCHESTRATOR_AGENT_ID = 'agent-001';
-const INSTANCE_AI_DEBUG_PREVIEW_CHARS = 500;
 
 // Stable UUID namespace for deterministic feedback IDs. Submitting the same
 // (key, responseId) pair twice produces the same feedback UUID so LangSmith
@@ -114,30 +113,17 @@ const INSTANCE_AI_DEBUG_PREVIEW_CHARS = 500;
 const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
-function estimateDebugTokens(text: string): number {
+function estimateTokens(text: string): number {
 	return Math.ceil(text.length / 4);
 }
 
-function previewForInstanceAiDebug(text: string | null | undefined): string | undefined {
-	if (!text) return undefined;
-	return text.length > INSTANCE_AI_DEBUG_PREVIEW_CHARS
-		? `${text.slice(0, INSTANCE_AI_DEBUG_PREVIEW_CHARS)}...`
-		: text;
-}
-
-function stringifyForInstanceAiDebug(value: unknown): string {
+function stringifyForContextValue(value: unknown): string {
 	if (typeof value === 'string') return value;
 	try {
 		return JSON.stringify(value);
 	} catch {
 		return String(value);
 	}
-}
-
-// TEMP DEBUG: remove after compaction/context tuning.
-function logInstanceAiDebug(scope: string, event: string, metadata: Record<string, unknown>): void {
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][${scope}] ${event}`, metadata);
 }
 
 const PLANNED_TASK_CONTEXT_VALUE_LIMIT = 1_500;
@@ -179,7 +165,7 @@ function buildPlannedTaskConversationContext(
 			}
 			if (dependency.outcome) {
 				dependencyParts.push(
-					`outcome=${truncateContextValue(stringifyForInstanceAiDebug(dependency.outcome))}`,
+					`outcome=${truncateContextValue(stringifyForContextValue(dependency.outcome))}`,
 				);
 			}
 			parts.push(dependencyParts.join(' '));
@@ -1067,16 +1053,7 @@ export class InstanceAiService {
 		taskId: string,
 		correction: string,
 	): 'queued' | 'task-completed' | 'task-not-found' {
-		const status = this.backgroundTasks.queueCorrection(threadId, taskId, correction);
-		logInstanceAiDebug('workflow-builder-context', 'correction', {
-			threadId,
-			taskId,
-			status,
-			correctionChars: correction.length,
-			correctionTokens: estimateDebugTokens(correction),
-			correctionPreview: previewForInstanceAiDebug(correction),
-		});
-		return status;
+		return this.backgroundTasks.queueCorrection(threadId, taskId, correction);
 	}
 
 	/** Cancel a single background task by ID. */
@@ -2140,7 +2117,7 @@ export class InstanceAiService {
 					: attachmentManifest
 						? `${enrichedMessage}\n\n${attachmentManifest}`
 						: enrichedMessage;
-			const messageWithoutSummaryTokens = estimateDebugTokens(messageWithoutSummary);
+			const messageWithoutSummaryTokens = estimateTokens(messageWithoutSummary);
 
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
 			this.eventBus.publish(threadId, {
@@ -2192,21 +2169,6 @@ export class InstanceAiService {
 				}
 				throw error;
 			}
-			logInstanceAiDebug('orchestrator-context', 'compaction-result', {
-				threadId,
-				runId,
-				messageGroupId,
-				hasConversationSummary: Boolean(conversationSummary),
-				conversationSummaryChars: conversationSummary?.length ?? 0,
-				conversationSummaryTokens: conversationSummary
-					? estimateDebugTokens(conversationSummary)
-					: 0,
-				conversationSummaryPreview: previewForInstanceAiDebug(conversationSummary),
-				lastMessages: this.instanceAiConfig.lastMessages ?? 20,
-				currentInputChars: messageWithoutSummary.length,
-				currentInputTokens: messageWithoutSummaryTokens,
-				currentInputPreview: previewForInstanceAiDebug(messageWithoutSummary),
-			});
 			this.eventBus.publish(threadId, {
 				type: 'status',
 				runId,
@@ -2259,37 +2221,6 @@ export class InstanceAiService {
 					streamInput = fullMessage;
 				}
 
-				logInstanceAiDebug('orchestrator-context', 'prompt-built', {
-					threadId,
-					runId,
-					messageGroupId,
-					inputKind: typeof streamInput === 'string' ? 'text' : 'multimodal',
-					memoryThreadId: threadId,
-					memoryResourceId: user.id,
-					lastMessages: memoryConfig.lastMessages ?? 20,
-					hasConversationSummary: Boolean(conversationSummary),
-					conversationSummaryTokens: conversationSummary
-						? estimateDebugTokens(conversationSummary)
-						: 0,
-					currentUserMessageChars: message.length,
-					currentUserMessageTokens: estimateDebugTokens(message),
-					enrichedMessageChars: enrichedMessage.length,
-					enrichedMessageTokens: estimateDebugTokens(enrichedMessage),
-					fullMessageChars: fullMessage.length,
-					fullMessageTokens: estimateDebugTokens(fullMessage),
-					fullMessagePreview: previewForInstanceAiDebug(fullMessage),
-					attachmentCount: attachments?.length ?? 0,
-					nonStructuredAttachmentCount: nonStructuredAttachments.length,
-				});
-				await this.logMemoryRecallDebug(
-					memory,
-					threadId,
-					user.id,
-					runId,
-					messageGroupId,
-					memoryConfig.lastMessages ?? 20,
-				);
-
 				if (promptBuildRun && tracing) {
 					// Redact raw attachment data from trace output — log metadata only
 					const traceOutput =
@@ -2313,18 +2244,6 @@ export class InstanceAiService {
 				}
 				throw error;
 			}
-
-			logInstanceAiDebug('orchestrator-context', 'stream-start', {
-				threadId,
-				runId,
-				messageGroupId,
-				agentId: ORCHESTRATOR_AGENT_ID,
-				maxSteps: MAX_STEPS.ORCHESTRATOR,
-				memoryThreadId: threadId,
-				memoryResourceId: user.id,
-				lastMessages: memoryConfig.lastMessages ?? 20,
-				inputKind: typeof streamInput === 'string' ? 'text' : 'multimodal',
-			});
 
 			const result = tracing
 				? await tracing.withRunTree(tracing.actorRun, async () => {
@@ -3223,53 +3142,6 @@ export class InstanceAiService {
 					`[Running task — ${task.role}]: taskId=${task.taskId}`,
 			},
 		);
-	}
-
-	private async logMemoryRecallDebug(
-		memory: ReturnType<typeof createMemory>,
-		threadId: string,
-		resourceId: string,
-		runId: string,
-		messageGroupId: string | undefined,
-		lastMessages: number,
-	): Promise<void> {
-		try {
-			const result = await memory.recall({ threadId, resourceId, perPage: lastMessages });
-			const roleCounts: Record<string, number> = {};
-			let recalledTokens = 0;
-			let firstMessagePreview: string | undefined;
-			let lastMessagePreview: string | undefined;
-
-			for (const recalledMessage of result.messages) {
-				const role = typeof recalledMessage.role === 'string' ? recalledMessage.role : 'unknown';
-				roleCounts[role] = (roleCounts[role] ?? 0) + 1;
-
-				const text = stringifyForInstanceAiDebug(recalledMessage.content);
-				recalledTokens += estimateDebugTokens(text);
-				firstMessagePreview ??= previewForInstanceAiDebug(text);
-				lastMessagePreview = previewForInstanceAiDebug(text);
-			}
-
-			logInstanceAiDebug('orchestrator-context', 'memory-recall', {
-				threadId,
-				runId,
-				messageGroupId,
-				resourceId,
-				requestedLastMessages: lastMessages,
-				recalledMessageCount: result.messages.length,
-				recalledRoleCounts: roleCounts,
-				recalledTokens,
-				firstMessagePreview,
-				lastMessagePreview,
-			});
-		} catch (error) {
-			logInstanceAiDebug('orchestrator-context', 'memory-recall-failed', {
-				threadId,
-				runId,
-				messageGroupId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
 	}
 
 	private trackConfirmationRequest(

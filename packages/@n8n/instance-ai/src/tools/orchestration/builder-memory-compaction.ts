@@ -57,12 +57,6 @@ function stringifyForTokens(value: unknown): string {
 	}
 }
 
-function logWorkflowBuilderMemoryDebug(event: string, metadata: Record<string, unknown>): void {
-	// TEMP DEBUG: remove after compaction/context tuning.
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][workflow-builder-memory] ${event}`, metadata);
-}
-
 function hasBuilderMemoryStore(value: unknown): value is BuilderMemoryStore {
 	if (!value || typeof value !== 'object') return false;
 	const candidate = value as Record<string, unknown>;
@@ -188,19 +182,7 @@ export async function compactBuilderMemoryThread(
 	let store: BuilderMemoryStore | undefined;
 	try {
 		store = await getBuilderMemoryStore(input.context.storage);
-	} catch (error) {
-		logWorkflowBuilderMemoryDebug('compact-skip', {
-			threadId: input.context.threadId,
-			runId: input.context.runId,
-			messageGroupId: input.context.messageGroupId,
-			builderThreadId: input.binding.thread,
-			builderResourceId: input.binding.resource,
-			builderSessionId: input.sessionId,
-			workflowId: input.workflowId,
-			workItemId: input.workItemId,
-			reason: 'store_unavailable',
-			error: error instanceof Error ? error.message : String(error),
-		});
+	} catch {
 		return {
 			compacted: false,
 			skippedReason: 'store_unavailable',
@@ -212,17 +194,6 @@ export async function compactBuilderMemoryThread(
 	}
 
 	if (!store) {
-		logWorkflowBuilderMemoryDebug('compact-skip', {
-			threadId: input.context.threadId,
-			runId: input.context.runId,
-			messageGroupId: input.context.messageGroupId,
-			builderThreadId: input.binding.thread,
-			builderResourceId: input.binding.resource,
-			builderSessionId: input.sessionId,
-			workflowId: input.workflowId,
-			workItemId: input.workItemId,
-			reason: 'mutation_methods_unavailable',
-		});
 		return {
 			compacted: false,
 			skippedReason: 'mutation_methods_unavailable',
@@ -246,39 +217,10 @@ export async function compactBuilderMemoryThread(
 	const summary = buildSummaryContent(input);
 	const compactedTokenEstimate = estimateTokens(summary);
 
-	logWorkflowBuilderMemoryDebug('compact-start', {
-		threadId: input.context.threadId,
-		runId: input.context.runId,
-		messageGroupId: input.context.messageGroupId,
-		builderThreadId: input.binding.thread,
-		builderResourceId: input.binding.resource,
-		builderSessionId: input.sessionId,
-		workflowId: input.workflowId,
-		workItemId: input.workItemId,
-		rawMessageCount: loaded.messages.length,
-		rawTokenEstimate,
-		compactedTokenEstimate,
-	});
-
 	const oldMessageIds = loaded.messages.map((message) => message.id);
 	const summaryMessage = buildSummaryMessage(input, summary);
 	await store.saveMessages({ messages: [summaryMessage] });
 	await store.deleteMessages(oldMessageIds);
-
-	logWorkflowBuilderMemoryDebug('compact-complete', {
-		threadId: input.context.threadId,
-		runId: input.context.runId,
-		messageGroupId: input.context.messageGroupId,
-		builderThreadId: input.binding.thread,
-		builderResourceId: input.binding.resource,
-		builderSessionId: input.sessionId,
-		workflowId: input.workflowId,
-		workItemId: input.workItemId,
-		rawMessageCount: loaded.messages.length,
-		compactedMessageCount: 1,
-		rawTokenEstimate,
-		compactedTokenEstimate,
-	});
 
 	return {
 		compacted: true,

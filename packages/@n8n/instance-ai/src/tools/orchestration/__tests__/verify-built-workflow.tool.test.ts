@@ -194,16 +194,6 @@ async function runTool(
 }
 
 describe('verify-built-workflow tool', () => {
-	let consoleSpy: jest.SpyInstance;
-
-	beforeEach(() => {
-		consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
-	});
-
-	afterEach(() => {
-		consoleSpy.mockRestore();
-	});
-
 	it('persists a success verification record onto the build outcome', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',

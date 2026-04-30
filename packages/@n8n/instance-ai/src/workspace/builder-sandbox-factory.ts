@@ -201,14 +201,6 @@ export class BuilderSandboxFactory {
 			// Keep the raw command output in the debug log below.
 		}
 
-		console.log('[InstanceAI][workflow-builder-sandbox] sdk-link-check', {
-			exitCode: resolveCheck.exitCode,
-			expectedVersion: packed.version,
-			resolvedVersion,
-			resolvedPath,
-			stdout: resolveCheck.stdout.trim(),
-			stderr: resolveCheck.stderr.trim(),
-		});
 		if (resolveCheck.exitCode !== 0) {
 			this.logger.error('Linked workspace SDK is not resolvable in sandbox', {
 				exitCode: resolveCheck.exitCode,

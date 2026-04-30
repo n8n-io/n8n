@@ -51,46 +51,6 @@ import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-cre
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
 
-const BUILDER_DEBUG_PREVIEW_CHARS = 500;
-
-function estimateDebugTokens(text: string): number {
-	return Math.ceil(text.length / 4);
-}
-
-function previewForBuilderDebug(text: string | null | undefined): string | undefined {
-	if (!text) return undefined;
-	return text.length > BUILDER_DEBUG_PREVIEW_CHARS
-		? `${text.slice(0, BUILDER_DEBUG_PREVIEW_CHARS)}...`
-		: text;
-}
-
-function stringifyForBuilderDebug(value: unknown): string {
-	if (typeof value === 'string') return value;
-	try {
-		return JSON.stringify(value) ?? String(value);
-	} catch {
-		return String(value);
-	}
-}
-
-// TEMP DEBUG: remove after compaction/context tuning.
-function logWorkflowBuilderDebug(event: string, metadata: Record<string, unknown>): void {
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][workflow-builder-context] ${event}`, metadata);
-}
-
-function logWorkflowBuilderMemoryDebug(event: string, metadata: Record<string, unknown>): void {
-	// TEMP DEBUG: remove after compaction/context tuning.
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][workflow-builder-memory] ${event}`, metadata);
-}
-
-function logWorkflowBuilderToolOutputDebug(event: string, metadata: Record<string, unknown>): void {
-	// TEMP DEBUG: remove after compaction/context tuning.
-	// eslint-disable-next-line no-console
-	console.log(`[InstanceAI][workflow-builder-tool-output] ${event}`, metadata);
-}
-
 interface BuilderMemoryBinding {
 	resource: string;
 	thread: string;
@@ -143,82 +103,9 @@ async function ensureBuilderMemoryThread(
 				updatedAt: now,
 			},
 		});
-		logWorkflowBuilderDebug('memory-thread-created', {
-			threadId: context.threadId,
-			runId: context.runId,
-			messageGroupId: context.messageGroupId,
-			builderThreadId: binding.thread,
-			builderResourceId: binding.resource,
-		});
 		return true;
-	} catch (error) {
-		logWorkflowBuilderDebug('memory-thread-create-failed', {
-			threadId: context.threadId,
-			runId: context.runId,
-			messageGroupId: context.messageGroupId,
-			builderThreadId: binding.thread,
-			builderResourceId: binding.resource,
-			error: error instanceof Error ? error.message : String(error),
-		});
+	} catch {
 		return false;
-	}
-}
-
-async function logBuilderMemoryRecallDebug(
-	context: OrchestrationContext,
-	binding: BuilderMemoryBinding,
-	metadata: { sessionId?: string; workflowId?: string; workItemId?: string } = {},
-): Promise<void> {
-	if (!context.memory) return;
-
-	try {
-		const result = await context.memory.recall({
-			threadId: binding.thread,
-			resourceId: binding.resource,
-			perPage: 20,
-		});
-		const roleCounts: Record<string, number> = {};
-		let recalledTokens = 0;
-		let firstMessagePreview: string | undefined;
-		let lastMessagePreview: string | undefined;
-
-		for (const recalledMessage of result.messages) {
-			const role = typeof recalledMessage.role === 'string' ? recalledMessage.role : 'unknown';
-			roleCounts[role] = (roleCounts[role] ?? 0) + 1;
-
-			const text = stringifyForBuilderDebug(recalledMessage.content);
-			recalledTokens += estimateDebugTokens(text);
-			firstMessagePreview ??= previewForBuilderDebug(text);
-			lastMessagePreview = previewForBuilderDebug(text);
-		}
-
-		logWorkflowBuilderMemoryDebug('loaded', {
-			threadId: context.threadId,
-			runId: context.runId,
-			messageGroupId: context.messageGroupId,
-			builderThreadId: binding.thread,
-			builderResourceId: binding.resource,
-			builderSessionId: metadata.sessionId,
-			workflowId: metadata.workflowId,
-			workItemId: metadata.workItemId,
-			recalledMessageCount: result.messages.length,
-			recalledRoleCounts: roleCounts,
-			recalledTokens,
-			firstMessagePreview,
-			lastMessagePreview,
-		});
-	} catch (error) {
-		logWorkflowBuilderMemoryDebug('loaded-failed', {
-			threadId: context.threadId,
-			runId: context.runId,
-			messageGroupId: context.messageGroupId,
-			builderThreadId: binding.thread,
-			builderResourceId: binding.resource,
-			builderSessionId: metadata.sessionId,
-			workflowId: metadata.workflowId,
-			workItemId: metadata.workItemId,
-			error: error instanceof Error ? error.message : String(error),
-		});
 	}
 }
 
@@ -255,74 +142,6 @@ type ExecutableTool = Record<string, unknown> & {
 
 function isExecutableTool(tool: unknown): tool is ExecutableTool {
 	return isRecord(tool) && typeof tool.execute === 'function';
-}
-
-function extractToolInputAction(args: unknown[]): string | undefined {
-	const firstArg = args[0];
-	if (!isRecord(firstArg)) return undefined;
-	return typeof firstArg.action === 'string' ? firstArg.action : undefined;
-}
-
-function getDefinitionSizeMetadata(result: unknown): Record<string, unknown> {
-	if (!isRecord(result) || !Array.isArray(result.definitions)) return {};
-
-	let largestDefinitionChars = 0;
-	let largestDefinitionNodeType: string | undefined;
-	for (const definition of result.definitions) {
-		if (!isRecord(definition)) continue;
-		const content = typeof definition.content === 'string' ? definition.content : '';
-		if (content.length > largestDefinitionChars) {
-			largestDefinitionChars = content.length;
-			largestDefinitionNodeType =
-				typeof definition.nodeType === 'string' ? definition.nodeType : undefined;
-		}
-	}
-
-	return {
-		definitionCount: result.definitions.length,
-		largestDefinitionChars,
-		largestDefinitionTokens: Math.ceil(largestDefinitionChars / 4),
-		largestDefinitionNodeType,
-	};
-}
-
-function wrapBuilderToolOutputDebug(
-	tools: ToolsInput,
-	metadata: Record<string, unknown>,
-): ToolsInput {
-	const wrapped: ToolsInput = {};
-	for (const [toolName, tool] of Object.entries(tools)) {
-		if (!isExecutableTool(tool)) {
-			wrapped[toolName] = tool;
-			continue;
-		}
-
-		const execute = tool.execute.bind(tool);
-		wrapped[toolName] = {
-			...tool,
-			execute: async (...args: unknown[]) => {
-				const result = await execute(...args);
-				const output = stringifyForBuilderDebug(result);
-				const action = extractToolInputAction(args);
-				const shouldLog =
-					toolName === 'nodes' || toolName === 'verify-built-workflow' || output.length > 10_000;
-
-				if (shouldLog) {
-					logWorkflowBuilderToolOutputDebug('tool-result', {
-						...metadata,
-						toolName,
-						action,
-						outputChars: output.length,
-						outputTokens: estimateDebugTokens(output),
-						...getDefinitionSizeMetadata(result),
-					});
-				}
-
-				return result;
-			},
-		};
-	}
-	return wrapped;
 }
 
 export function recordSuccessfulWorkflowBuilds(
@@ -569,18 +388,8 @@ async function compactSuccessfulBuilderMemory(input: {
 			lastRequestedChange: input.lastRequestedChange,
 			finalBuilderResult: input.finalText,
 		});
-	} catch (error) {
-		logWorkflowBuilderMemoryDebug('compact-failed', {
-			threadId: input.context.threadId,
-			runId: input.context.runId,
-			messageGroupId: input.context.messageGroupId,
-			builderThreadId: input.binding.thread,
-			builderResourceId: input.binding.resource,
-			builderSessionId: input.activeBuilderSession?.sessionId,
-			workflowId: input.workflowId,
-			workItemId: input.workItemId,
-			error: error instanceof Error ? error.message : String(error),
-		});
+	} catch {
+		// Builder memory compaction is best-effort and must not fail the build.
 	}
 }
 
@@ -716,34 +525,6 @@ export async function startBuildWorkflowAgentTask(
 						: undefined,
 					runningTasks: runningTaskSummaries,
 				});
-	logWorkflowBuilderDebug('briefing-built', {
-		threadId: context.threadId,
-		runId: context.runId,
-		messageGroupId: context.messageGroupId,
-		taskId,
-		subAgentId,
-		plannedTaskId: input.plannedTaskId,
-		workItemId,
-		workflowId,
-		builderSessionReused: Boolean(reusedBuilderSession),
-		builderSessionId: reusedBuilderSession?.sessionId,
-		builderThreadId,
-		builderResourceId,
-		mode: useSandbox ? 'sandbox' : 'tool',
-		toolNames: Object.keys(builderTools),
-		taskChars: input.task.length,
-		taskTokens: estimateDebugTokens(input.task),
-		conversationContextChars: input.conversationContext?.length ?? 0,
-		conversationContextTokens: input.conversationContext
-			? estimateDebugTokens(input.conversationContext)
-			: 0,
-		hasAdditionalContext: additionalContext.length > 0,
-		additionalContextChars: additionalContext.length,
-		runningTaskCount: runningTaskSummaries?.length ?? 0,
-		briefingChars: briefing.length,
-		briefingTokens: estimateDebugTokens(briefing),
-		briefingPreview: previewForBuilderDebug(briefing),
-	});
 	let traceContext: Awaited<ReturnType<typeof createDetachedSubAgentTracing>>;
 	try {
 		traceContext = await createDetachedSubAgentTracing(context, {
@@ -804,19 +585,6 @@ export async function startBuildWorkflowAgentTask(
 							let workspace: BuilderWorkspace['workspace'];
 							let root: string;
 							if (activeBuilderSession) {
-								logWorkflowBuilderDebug('session-reuse-selected', {
-									threadId: context.threadId,
-									runId: context.runId,
-									messageGroupId: context.messageGroupId,
-									taskId,
-									subAgentId,
-									workItemId,
-									workflowId,
-									builderSessionId: activeBuilderSession.sessionId,
-									builderThreadId: activeBuilderSession.builderThreadId,
-									builderResourceId: activeBuilderSession.builderResourceId,
-									workspaceRoot: activeBuilderSession.root,
-								});
 								workspace = activeBuilderSession.workspace;
 								root = activeBuilderSession.root;
 							} else {
@@ -896,55 +664,14 @@ export async function startBuildWorkflowAgentTask(
 								},
 							});
 
-							const tracedBuilderTools = wrapBuilderToolOutputDebug(
-								traceSubAgentTools(context, builderTools, 'workflow-builder'),
-								{
-									threadId: context.threadId,
-									runId: context.runId,
-									messageGroupId: context.messageGroupId,
-									taskId,
-									subAgentId,
-									workItemId,
-									workflowId,
-									builderSessionId: activeBuilderSession?.sessionId,
-									builderThreadId,
-									builderResourceId,
-									mode: 'sandbox',
-								},
-							);
-							const shouldUseBuilderMemory = await ensureBuilderMemoryThread(
+							const tracedBuilderTools = traceSubAgentTools(
 								context,
-								builderMemoryBinding,
+								builderTools,
+								'workflow-builder',
 							);
-							if (shouldUseBuilderMemory) {
-								await logBuilderMemoryRecallDebug(context, builderMemoryBinding, {
-									sessionId: activeBuilderSession?.sessionId,
-									workflowId,
-									workItemId,
-								});
-							}
-							logWorkflowBuilderDebug('stream-start', {
-								threadId: context.threadId,
-								runId: context.runId,
-								messageGroupId: context.messageGroupId,
-								taskId,
-								subAgentId,
-								workItemId,
-								mode: 'sandbox',
-								maxSteps: MAX_STEPS.BUILDER,
-								systemPromptChars: prompt.length,
-								systemPromptTokens: estimateDebugTokens(prompt),
-								briefingChars: briefing.length,
-								briefingTokens: estimateDebugTokens(briefing),
-								toolNames: Object.keys(tracedBuilderTools),
-								workspaceRoot: root,
-								builderSessionReused: Boolean(reusedBuilderSession),
-								builderSessionId: activeBuilderSession?.sessionId,
-								builderThreadId,
-								builderResourceId,
-								sandboxReused: Boolean(reusedBuilderSession),
-								savePerStep: shouldUseBuilderMemory,
-							});
+							const shouldUseBuilderMemory = activeBuilderSession
+								? await ensureBuilderMemoryThread(context, builderMemoryBinding)
+								: false;
 
 							const subAgent = new Agent({
 								id: subAgentId,
@@ -1022,21 +749,6 @@ export async function startBuildWorkflowAgentTask(
 								});
 
 								finalText = await hitlResult.text;
-								logWorkflowBuilderDebug('stream-complete', {
-									threadId: context.threadId,
-									runId: context.runId,
-									messageGroupId: context.messageGroupId,
-									taskId,
-									subAgentId,
-									workItemId,
-									mode: 'sandbox',
-									builderSessionReused: Boolean(reusedBuilderSession),
-									builderSessionId: activeBuilderSession?.sessionId,
-									builderThreadId,
-									builderResourceId,
-									finalTextChars: finalText.length,
-									finalTextTokens: estimateDebugTokens(finalText),
-								});
 							} catch (error) {
 								const recovered = resultFromPostStreamError({
 									error,
@@ -1168,33 +880,11 @@ export async function startBuildWorkflowAgentTask(
 							fallbackMainWorkflowId = workflowId;
 						});
 
-						const tracedBuilderTools = wrapBuilderToolOutputDebug(
-							traceSubAgentTools(context, builderTools, 'workflow-builder'),
-							{
-								threadId: context.threadId,
-								runId: context.runId,
-								messageGroupId: context.messageGroupId,
-								taskId,
-								subAgentId,
-								workItemId,
-								mode: 'tool',
-							},
+						const tracedBuilderTools = traceSubAgentTools(
+							context,
+							builderTools,
+							'workflow-builder',
 						);
-						logWorkflowBuilderDebug('stream-start', {
-							threadId: context.threadId,
-							runId: context.runId,
-							messageGroupId: context.messageGroupId,
-							taskId,
-							subAgentId,
-							workItemId,
-							mode: 'tool',
-							maxSteps: MAX_STEPS.BUILDER,
-							systemPromptChars: prompt.length,
-							systemPromptTokens: estimateDebugTokens(prompt),
-							briefingChars: briefing.length,
-							briefingTokens: estimateDebugTokens(briefing),
-							toolNames: Object.keys(tracedBuilderTools),
-						});
 
 						const subAgent = new Agent({
 							id: subAgentId,
@@ -1262,17 +952,6 @@ export async function startBuildWorkflowAgentTask(
 						});
 
 						const toolFinalText = await hitlResult.text;
-						logWorkflowBuilderDebug('stream-complete', {
-							threadId: context.threadId,
-							runId: context.runId,
-							messageGroupId: context.messageGroupId,
-							taskId,
-							subAgentId,
-							workItemId,
-							mode: 'tool',
-							finalTextChars: toolFinalText.length,
-							finalTextTokens: estimateDebugTokens(toolFinalText),
-						});
 						await promoteMainWorkflow(domainContext, context.logger, fallbackMainWorkflowId);
 						return { text: toolFinalText };
 					} finally {
