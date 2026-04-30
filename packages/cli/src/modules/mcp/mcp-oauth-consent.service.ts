@@ -86,9 +86,19 @@ export class McpOAuthConsentService {
 			return { redirectUrl };
 		}
 
-		const existingConsent = await this.userConsentRepository.findOneBy({
+		const [client, existingConsent] = await Promise.all([
+			this.oauthClientRepository.findOneBy({ id: sessionPayload.clientId }),
+			this.userConsentRepository.findOneBy({
+				userId,
+				clientId: sessionPayload.clientId,
+			}),
+		]);
+
+		this.logger.info('Linking MCP client to user', {
 			userId,
 			clientId: sessionPayload.clientId,
+			clientName: client?.name,
+			action: existingConsent ? 'refresh' : 'new',
 		});
 
 		await this.userConsentRepository.upsert(
@@ -112,6 +122,12 @@ export class McpOAuthConsentService {
 					userId,
 					clientId: sessionPayload.clientId,
 				});
+				this.logger.info('Rolled back MCP client link: per-user limit reached', {
+					userId,
+					clientId: sessionPayload.clientId,
+					clientName: client?.name,
+					limit,
+				});
 				throw new McpClientLimitReachedError(limit);
 			}
 		}
@@ -130,9 +146,11 @@ export class McpOAuthConsentService {
 			sessionPayload.state,
 		);
 
-		this.logger.info('Consent approved', {
-			clientId: sessionPayload.clientId,
+		this.logger.info('MCP client linked to user', {
 			userId,
+			clientId: sessionPayload.clientId,
+			clientName: client?.name,
+			action: existingConsent ? 'refresh' : 'new',
 		});
 
 		return { redirectUrl: successRedirectUrl };

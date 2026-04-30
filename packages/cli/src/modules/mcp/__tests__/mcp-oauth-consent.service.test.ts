@@ -198,9 +198,11 @@ describe('McpOAuthConsentService', () => {
 				'challenge-abc',
 				'state-xyz',
 			);
-			expect(logger.info).toHaveBeenCalledWith('Consent approved', {
-				clientId: 'client-123',
+			expect(logger.info).toHaveBeenCalledWith('MCP client linked to user', {
 				userId: 'user-123',
+				clientId: 'client-123',
+				clientName: undefined,
+				action: 'new',
 			});
 		});
 
