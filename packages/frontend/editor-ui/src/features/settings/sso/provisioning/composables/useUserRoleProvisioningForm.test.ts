@@ -121,50 +121,6 @@ describe('useUserRoleProvisioningForm', () => {
 		});
 	});
 
-	describe('formValue — legacy value derivation', () => {
-		it('should return disabled when manual is selected', async () => {
-			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
-				mockProvisioningConfig({}),
-			);
-
-			const { formValue } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
-		});
-		it('should return instance_role when instance + idp', async () => {
-			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
-				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
-			);
-
-			const { formValue } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
-		});
-		it('should return instance_and_project_roles when both scopes + idp', async () => {
-			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
-				mockProvisioningConfig({
-					scopesProvisionInstanceRole: true,
-					scopesProvisionProjectRoles: true,
-				}),
-			);
-
-			const { formValue } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
-		});
-		it('should return expression_based when rules_in_n8n is selected', async () => {
-			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
-				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
-			);
-
-			const { roleAssignment, mappingMethod, formValue } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(mappingMethod.value).toBe('rules_in_n8n'));
-
-			// Regardless of roleAssignment, rules_in_n8n → expression_based
-			expect(formValue.value).toBe('expression_based');
-
-			roleAssignment.value = 'instance';
-			expect(formValue.value).toBe('expression_based');
-		});
-	});
-
 	describe('saveProvisioningConfig — conversion to backend flags', () => {
 		it('should save manual as all false', async () => {
 			vi.mocked(provisioningApi.getProvisioningConfig).mockResolvedValue(
@@ -174,9 +130,9 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({}),
 			);
 
-			const { roleAssignment, mappingMethod, formValue, saveProvisioningConfig } =
+			const { roleAssignment, mappingMethod, saveProvisioningConfig } =
 				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			roleAssignment.value = 'manual';
 			mappingMethod.value = 'idp';
@@ -199,9 +155,9 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { roleAssignment, mappingMethod, formValue, saveProvisioningConfig } =
+			const { roleAssignment, mappingMethod, saveProvisioningConfig } =
 				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('manual'));
 
 			roleAssignment.value = 'instance';
 			mappingMethod.value = 'idp';
@@ -227,9 +183,9 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 
-			const { roleAssignment, mappingMethod, formValue, saveProvisioningConfig } =
+			const { roleAssignment, mappingMethod, saveProvisioningConfig } =
 				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('manual'));
 
 			roleAssignment.value = 'instance_and_project';
 			mappingMethod.value = 'idp';
@@ -252,9 +208,9 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesUseExpressionMapping: true }),
 			);
 
-			const { roleAssignment, mappingMethod, formValue, saveProvisioningConfig } =
+			const { roleAssignment, mappingMethod, saveProvisioningConfig } =
 				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('manual'));
 
 			roleAssignment.value = 'instance_and_project';
 			mappingMethod.value = 'rules_in_n8n';
@@ -277,8 +233,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({}),
 			);
 
-			const { formValue, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			await saveProvisioningConfig(true);
 
@@ -300,8 +256,8 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 
-			const { formValue, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
 
 			// Don't change anything — stored is instance_and_project, no cleanup needed
 			await saveProvisioningConfig(false);
@@ -320,15 +276,17 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
-			await saveProvisioningConfig(false);
+			const result = await saveProvisioningConfig(false);
 
 			expect(provisioningApi.saveProvisioningConfig).toHaveBeenCalledWith(
 				expect.anything(),
 				expect.objectContaining({ deleteProjectRules: true }),
 			);
+			// Reports a change so the caller fires telemetry — the API call did happen.
+			expect(result).toEqual({ configChanged: true });
 		});
 	});
 
@@ -338,8 +296,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, roleAssignmentTransition } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			const { roleAssignment, roleAssignmentTransition } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			expect(roleAssignmentTransition.value).toBe('none');
 		});
@@ -349,9 +307,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({}),
 			);
 
-			const { formValue, roleAssignment, roleAssignmentTransition } =
-				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('disabled'));
+			const { roleAssignment, roleAssignmentTransition } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('manual'));
 
 			roleAssignment.value = 'instance';
 
@@ -363,9 +320,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, roleAssignment, roleAssignmentTransition } =
-				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			const { roleAssignment, roleAssignmentTransition } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			roleAssignment.value = 'instance_and_project';
 
@@ -377,9 +333,9 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, mappingMethod, roleAssignmentTransition } =
+			const { roleAssignment, mappingMethod, roleAssignmentTransition } =
 				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			mappingMethod.value = 'rules_in_n8n';
 
@@ -391,9 +347,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, roleAssignment, roleAssignmentTransition } =
-				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			const { roleAssignment, roleAssignmentTransition } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			roleAssignment.value = 'manual';
 
@@ -407,9 +362,9 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, roleAssignment, mappingMethod, revertRoleAssignment } =
+			const { roleAssignment, mappingMethod, revertRoleAssignment } =
 				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			roleAssignment.value = 'instance_and_project';
 			mappingMethod.value = 'rules_in_n8n';
@@ -430,9 +385,8 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 
-			const { formValue, roleAssignment, isDroppingProjectRules } =
-				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+			const { roleAssignment, isDroppingProjectRules } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
 
 			expect(isDroppingProjectRules.value).toBe(false);
 
@@ -465,9 +419,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, roleAssignment, isDroppingProjectRules } =
-				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			const { roleAssignment, isDroppingProjectRules } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			roleAssignment.value = 'manual';
 
@@ -487,9 +440,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({ scopesProvisionInstanceRole: true }),
 			);
 
-			const { formValue, roleAssignment, saveProvisioningConfig } =
-				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
 
 			roleAssignment.value = 'instance';
 			await saveProvisioningConfig(false);
@@ -541,9 +493,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({}),
 			);
 
-			const { formValue, roleAssignment, saveProvisioningConfig } =
-				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_role'));
+			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance'));
 
 			roleAssignment.value = 'manual';
 			await saveProvisioningConfig(false);
@@ -569,9 +520,9 @@ describe('useUserRoleProvisioningForm', () => {
 				}),
 			);
 
-			const { formValue, mappingMethod, saveProvisioningConfig } =
+			const { roleAssignment, mappingMethod, saveProvisioningConfig } =
 				useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
 
 			// Change only the mapping method, keep roleAssignment at instance_and_project
 			mappingMethod.value = 'rules_in_n8n';
@@ -593,8 +544,8 @@ describe('useUserRoleProvisioningForm', () => {
 				mockProvisioningConfig({}),
 			);
 
-			const { formValue, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
-			await vi.waitFor(() => expect(formValue.value).toBe('instance_and_project_roles'));
+			const { roleAssignment, saveProvisioningConfig } = useUserRoleProvisioningForm('oidc');
+			await vi.waitFor(() => expect(roleAssignment.value).toBe('instance_and_project'));
 
 			await saveProvisioningConfig(true);
 

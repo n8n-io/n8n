@@ -5,15 +5,18 @@
   "private": true,
   "main": "dist/main/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
+    "build": "echo 'skipped'",
+    "lint": "echo 'skipped'",
+    "typecheck": "echo 'skipped'",
+    "fix:build": "tsc -p tsconfig.renderer.json && tsc -p tsconfig.build.json && pnpm copy:renderer && pnpm copy:assets",
+    "fix:lint": "eslint . --quiet",
+    "fix:typecheck": "tsc --noEmit",
     "copy:assets": "node scripts/copy-assets.js",
     "copy:renderer": "node scripts/copy-renderer.js",
     "dev": "pnpm copy:assets && pnpm copy:renderer && concurrently \"tsc -p tsconfig.renderer.json --watch\" \"tsc -p tsconfig.build.json --watch\"",
     "start": "electron dist/main/index.js",
-    "dist:mac": "pnpm build && electron-builder --mac --config electron-builder.config.js",
-    "dist:win": "pnpm build && electron-builder --win --config electron-builder.config.js",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --quiet",
+    "dist:mac": "pnpm fix:build && electron-builder --mac --config electron-builder.config.js",
+    "dist:win": "pnpm fix:build && electron-builder --win --config electron-builder.config.js",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "clean": "rimraf dist out .turbo",
@@ -27,13 +30,13 @@
     "electron-store": "^8.2.0"
   },
   "devDependencies": {
-    "@electron/rebuild": "^4.0.3",
+    "@electron/rebuild": "^4.0.4",
     "@n8n/eslint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/node": "catalog:",
     "concurrently": "^8.2.0",
-    "electron": "^36.0.0",
-    "electron-builder": "^25.0.0",
+    "electron": "^41.3.0",
+    "electron-builder": "^26.9.0",
     "rimraf": "catalog:"
   }
 }

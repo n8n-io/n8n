@@ -89,7 +89,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 		settingsStore.settings.enterprise = { sharing: true } as FrontendSettings['enterprise'];
 		workflowsEEStore.getWorkflowOwnerName = vi.fn(() => 'Owner Name');
 		projectsStore.personalProjects = [createProjectListItem()];
-		projectsStore.searchProjects.mockResolvedValue({
+		projectsStore.searchShareableProjects.mockResolvedValue({
 			count: projectsStore.personalProjects.length,
 			data: projectsStore.personalProjects,
 		});

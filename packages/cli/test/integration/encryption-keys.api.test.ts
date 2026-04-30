@@ -46,7 +46,7 @@ const seedKey = async (
 	);
 
 describe('GET /encryption/keys', () => {
-	test('returns all keys for owner with id/type/algorithm/status/createdAt (never value)', async () => {
+	test('returns all keys for owner with id/type/algorithm/status/createdAt/updatedAt (never value)', async () => {
 		const legacy = await seedKey({ algorithm: 'aes-256-cbc', status: 'inactive', value: 'legacy' });
 		const active = await seedKey({
 			algorithm: 'aes-256-gcm',
@@ -69,6 +69,7 @@ describe('GET /encryption/keys', () => {
 				algorithm: expect.any(String),
 				status: expect.any(String),
 				createdAt: expect.any(String),
+				updatedAt: expect.any(String),
 			});
 			expect(row).not.toHaveProperty('value');
 		}
@@ -117,6 +118,7 @@ describe('POST /encryption/keys', () => {
 			algorithm: 'aes-256-gcm',
 			status: 'active',
 			createdAt: expect.any(String),
+			updatedAt: expect.any(String),
 		});
 		expect(response.body.data).not.toHaveProperty('value');
 

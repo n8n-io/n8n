@@ -30,6 +30,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
+import EnvFeatureFlag from '@/features/shared/envFeatureFlag/EnvFeatureFlag.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -178,6 +179,8 @@ const oAuthCallbackUrl = computed(() => {
 			: 'oauth1';
 	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 });
+
+const jwksUri = computed(() => rootStore.jwksUri);
 
 const showOAuthSuccessBanner = computed(() => {
 	return (
@@ -447,6 +450,17 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						"
 						:redact-value="true"
 					/>
+
+					<EnvFeatureFlag name="OAUTH2_JWE">
+						<CopyInput
+							v-if="isOAuthType && !isManagedOAuth"
+							:label="i18n.baseText('credentialEdit.credentialConfig.jwksUri.label')"
+							:value="jwksUri"
+							:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
+							:hint="i18n.baseText('credentialEdit.credentialConfig.jwksUri.hint')"
+							:toast-title="i18n.baseText('credentialEdit.credentialConfig.jwksUri.copiedToast')"
+						/>
+					</EnvFeatureFlag>
 				</template>
 				<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 					<div>

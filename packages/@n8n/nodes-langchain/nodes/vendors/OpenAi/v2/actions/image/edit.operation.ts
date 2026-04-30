@@ -10,6 +10,7 @@ import { updateDisplayOptions } from 'n8n-workflow';
 
 import { getBinaryDataFile } from '../../../helpers/binary-data';
 import { apiRequest } from '../../../transport';
+import { modelRLC } from '../descriptions';
 
 export const properties: INodeProperties[] = [
 	{
@@ -28,6 +29,20 @@ export const properties: INodeProperties[] = [
 				value: 'gpt-image-1',
 			},
 		],
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { lt: 2.3 } }],
+			},
+		},
+	},
+	{
+		...modelRLC('imageGenerateModelSearch'),
+		default: { mode: 'list', value: 'gpt-image-1' },
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 2.3 } }],
+			},
+		},
 	},
 	{
 		displayName: 'Prompt',
@@ -77,6 +92,40 @@ export const properties: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'Images',
+		name: 'images',
+		type: 'fixedCollection',
+		placeholder: 'Add Image',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Image',
+		},
+		default: { values: [{ binaryPropertyName: 'data' }] },
+		description:
+			'Add one or more binary fields to include images with your prompt. Each image should be a png, webp, or jpg file less than 50MB. You can provide up to 16 images.',
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+			},
+		},
+		options: [
+			{
+				displayName: 'Image',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Binary Field Name',
+						name: 'binaryPropertyName',
+						type: 'string',
+						default: 'data',
+						placeholder: 'e.g. data',
+						description: 'The name of the binary field containing the image data',
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Binary Field Name',
 		name: 'binaryPropertyName',
 		type: 'string',
@@ -88,6 +137,21 @@ export const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				'/model': ['dall-e-2'],
+			},
+		},
+	},
+	{
+		displayName: 'Binary Field Name',
+		name: 'binaryPropertyName',
+		type: 'string',
+		default: 'data',
+		placeholder: 'e.g. data',
+		hint: 'The name of the input field containing the binary file data to be processed',
+		description:
+			'Name of the binary property which contains the image. It should be a square png file less than 4MB.',
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'dall-e' } }],
 			},
 		},
 	},
@@ -172,6 +236,41 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Quality',
+		name: 'quality',
+		type: 'options',
+		default: 'auto',
+		description: 'The quality of the image that will be generated',
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+		options: [
+			{
+				name: 'Auto',
+				value: 'auto',
+			},
+			{
+				name: 'High',
+				value: 'high',
+			},
+			{
+				name: 'Medium',
+				value: 'medium',
+			},
+			{
+				name: 'Low',
+				value: 'low',
+			},
+			{
+				name: 'Standard',
+				value: 'standard',
+			},
+		],
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+			},
+		},
+	},
+	{
 		displayName: 'Response Format',
 		name: 'responseFormat',
 		type: 'options',
@@ -191,6 +290,29 @@ export const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				'/model': ['dall-e-2'],
+			},
+		},
+	},
+	{
+		displayName: 'Response Format',
+		name: 'responseFormat',
+		type: 'options',
+		default: 'url',
+		description:
+			'The format in which the generated images are returned. URLs are only valid for 60 minutes after generation.',
+		options: [
+			{
+				name: 'URL',
+				value: 'url',
+			},
+			{
+				name: 'Base64 JSON',
+				value: 'b64_json',
+			},
+		],
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'dall-e' } }],
 			},
 		},
 	},
@@ -222,6 +344,33 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Output Format',
+		name: 'outputFormat',
+		type: 'options',
+		default: 'png',
+		description:
+			'The format in which the generated images are returned. Only supported for gpt-image-1.',
+		options: [
+			{
+				name: 'PNG',
+				value: 'png',
+			},
+			{
+				name: 'JPEG',
+				value: 'jpeg',
+			},
+			{
+				name: 'WebP',
+				value: 'webp',
+			},
+		],
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+			},
+		},
+	},
+	{
 		displayName: 'Output Compression',
 		name: 'outputCompression',
 		type: 'number',
@@ -240,11 +389,34 @@ export const properties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Output Compression',
+		name: 'outputCompression',
+		type: 'number',
+		default: 100,
+		description:
+			'The compression level (0-100%) for the generated images. Only supported for gpt-image-1 with webp or jpeg output formats.',
+		typeOptions: {
+			minValue: 0,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+				outputFormat: ['webp', 'jpeg'],
+			},
+		},
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
 		type: 'collection',
 		default: {},
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { lt: 2.3 } }],
+			},
+		},
 		options: [
 			{
 				displayName: 'User',
@@ -316,6 +488,88 @@ export const properties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		placeholder: 'Add Option',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 2.3 } }],
+			},
+		},
+		options: [
+			{
+				displayName: 'User',
+				name: 'user',
+				type: 'string',
+				default: '',
+				description:
+					'A unique identifier representing your end-user, which can help OpenAI to monitor and detect abuse',
+				placeholder: 'user-12345',
+			},
+			{
+				displayName: 'Background',
+				name: 'background',
+				type: 'options',
+				default: 'auto',
+				description:
+					'Allows to set transparency for the background of the generated image(s). Only supported for gpt-image-1.',
+				options: [
+					{
+						name: 'Auto',
+						value: 'auto',
+					},
+					{
+						name: 'Transparent',
+						value: 'transparent',
+					},
+					{
+						name: 'Opaque',
+						value: 'opaque',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+					},
+				},
+			},
+			{
+				displayName: 'Input Fidelity',
+				name: 'inputFidelity',
+				type: 'options',
+				default: 'low',
+				description:
+					'Control how much effort the model will exert to match the style and features of input images. Only supported for gpt-image-1.',
+				options: [
+					{
+						name: 'Low',
+						value: 'low',
+					},
+					{
+						name: 'High',
+						value: 'high',
+					},
+				],
+				displayOptions: {
+					show: {
+						'/modelId': [{ _cnd: { includes: 'gpt-image' } }],
+					},
+				},
+			},
+			{
+				displayName: 'Image Mask',
+				name: 'imageMask',
+				type: 'string',
+				default: 'data',
+				hint: 'The name of the input field containing the binary file data to be processed',
+				description:
+					'Name of the binary property which contains the image. An additional image whose fully transparent areas (e.g. where alpha is zero) indicate where image should be edited. If there are multiple images provided, the mask will be applied on the first image. Must be a valid PNG file, less than 4MB, and have the same dimensions as image.',
+			},
+		],
+	},
 ];
 
 const displayOptions = {
@@ -328,16 +582,24 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
-	const model = this.getNodeParameter('model', i);
+	const nodeVersion = this.getNode().typeVersion;
+
+	let model = '';
+	if (nodeVersion >= 2.3) {
+		model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
+	} else {
+		model = this.getNodeParameter('model', i) as string;
+	}
+
 	const prompt = this.getNodeParameter('prompt', i);
 	const options = this.getNodeParameter('options', i, {});
 
-	const isGPTImage1 = model === 'gpt-image-1';
-	const isDallE2 = model === 'dall-e-2';
+	const isGPTImage = model.includes('gpt-image');
+	const isDallE = model.includes('dall-e');
 
 	const n = this.getNodeParameter('n', i, 1) as number;
 	const size = this.getNodeParameter('size', i, '1024x1024') as string;
-	const defaultResponseFormat = isGPTImage1 ? 'b64_json' : 'url';
+	const defaultResponseFormat = isGPTImage ? 'b64_json' : 'url';
 	const responseFormat = this.getNodeParameter(
 		'responseFormat',
 		i,
@@ -347,7 +609,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	const formData = new FormData();
 
-	if (isGPTImage1) {
+	if (isGPTImage) {
 		const imagesParam = this.getNodeParameter('images', i, {
 			values: [{ binaryPropertyName: 'data' }],
 		}) as { values: Array<{ binaryPropertyName: string | IBinaryData }> };
@@ -386,25 +648,25 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	if (size) {
 		formData.append('size', size);
 	}
-	if (responseFormat && isDallE2) {
+	if (responseFormat && isDallE) {
 		formData.append('response_format', responseFormat);
 	}
 	if (options.user) {
 		formData.append('user', options.user as string);
 	}
-	if (options.background && isGPTImage1) {
+	if (options.background && isGPTImage) {
 		formData.append('background', options.background as string);
 	}
-	if (options.inputFidelity && isGPTImage1) {
+	if (options.inputFidelity && isGPTImage) {
 		formData.append('input_fidelity', options.inputFidelity as string);
 	}
-	if (options.outputFormat && isGPTImage1) {
+	if (options.outputFormat && isGPTImage) {
 		formData.append('output_format', options.outputFormat as string);
 	}
 	if (options.outputCompression !== undefined && options.outputCompression !== null) {
 		formData.append('output_compression', String(Number(options.outputCompression)));
 	}
-	if (quality && isGPTImage1) {
+	if (quality && isGPTImage) {
 		formData.append('quality', quality);
 	}
 

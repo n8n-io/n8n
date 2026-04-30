@@ -30,6 +30,9 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import { RoleService } from '@/services/role.service';
+
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
 import { DataTableCsvImportService } from './data-table-csv-import.service';
@@ -42,9 +45,6 @@ import { DataTableNameConflictError } from './errors/data-table-name-conflict.er
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
-
-import { EventService } from '@/events/event.service';
-import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
@@ -64,6 +64,19 @@ export class DataTableService {
 
 	async start() {}
 	async shutdown() {}
+
+	async getProjectIdForDataTable(dataTableId: string): Promise<string> {
+		const dataTable = await this.dataTableRepository.findOne({
+			select: ['projectId'],
+			where: { id: dataTableId },
+		});
+
+		if (!dataTable) {
+			throw new DataTableNotFoundError(dataTableId);
+		}
+
+		return dataTable.projectId;
+	}
 
 	async createDataTable(projectId: string, dto: CreateDataTableDto) {
 		if (dto.fileId && dto.columns.length === 0) {
@@ -258,6 +271,20 @@ export class DataTableService {
 		await this.validateDataTableExists(dataTableId, projectId);
 
 		return await this.dataTableColumnRepository.getColumns(dataTableId);
+	}
+
+	async getColumnById({
+		projectId,
+		dataTableId,
+		columnId,
+	}: {
+		projectId: string;
+		dataTableId: string;
+		columnId: string;
+	}) {
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		return await this.dataTableColumnRepository.getColumnByIdOrFail(dataTableId, columnId);
 	}
 
 	async insertRows<T extends DataTableInsertRowsReturnType = 'count'>(

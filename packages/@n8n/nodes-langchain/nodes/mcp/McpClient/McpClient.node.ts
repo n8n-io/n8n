@@ -18,6 +18,7 @@ import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
 	getAuthHeaders,
+	isStructuredContent,
 	tryRefreshOAuth2Token,
 	connectMcpClient,
 	mapToNodeOperationError,
@@ -290,10 +291,16 @@ export class McpClient implements INodeType {
 						content.push(contentItem as IDataObject);
 					}
 
+					const outputJson: IDataObject = {};
+					if (isStructuredContent(result.structuredContent)) {
+						outputJson.structuredContent = { ...result.structuredContent };
+					}
+					if (content.length > 0) {
+						outputJson.content = content;
+					}
+
 					returnData.push({
-						json: {
-							content: content.length > 0 ? content : undefined,
-						},
+						json: outputJson,
 						binary: Object.keys(binary).length > 0 ? binary : undefined,
 						pairedItem: {
 							item: itemIndex,

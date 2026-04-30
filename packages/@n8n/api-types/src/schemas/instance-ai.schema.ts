@@ -112,6 +112,13 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/**
+	 * Workflow IDs the run-finish reap soft-deleted — intermediate
+	 * stepping-stones the agent created but never promoted to the main
+	 * deliverable. Surfaced to the UI so the artifacts panel can dim these
+	 * entries and label them as archived.
+	 */
+	archivedWorkflowIds: z.array(z.string()).optional(),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({

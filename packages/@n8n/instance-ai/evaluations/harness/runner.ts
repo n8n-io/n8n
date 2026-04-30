@@ -41,8 +41,6 @@ const MAX_CONCURRENT_SCENARIOS = 99;
 // Workflow test case runner — build once, run scenarios against it
 // ---------------------------------------------------------------------------
 
-const SCENARIO_BG_TASK_TIMEOUT_MS = 240_000;
-
 interface WorkflowTestCaseConfig {
 	client: N8nClient;
 	testCase: WorkflowTestCase;
@@ -52,6 +50,8 @@ interface WorkflowTestCaseConfig {
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	keepWorkflows: boolean;
+	/** Optional " [lane N/M]" suffix appended to per-build log lines. */
+	laneTag?: string;
 }
 
 /**
@@ -78,6 +78,7 @@ export async function runWorkflowTestCase(
 		preRunWorkflowIds: config.preRunWorkflowIds,
 		claimedWorkflowIds: config.claimedWorkflowIds,
 		logger,
+		laneTag: config.laneTag,
 	});
 
 	if (!build.success || !build.workflowId) {
@@ -100,6 +101,7 @@ export async function runWorkflowTestCase(
 					scenario,
 					build.workflowJsons,
 					logger,
+					timeoutMs,
 				);
 			} catch (error: unknown) {
 				const errorMessage = error instanceof Error ? error.message : String(error);
@@ -117,7 +119,7 @@ export async function runWorkflowTestCase(
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
-		`  Scenarios done: ${String(result.scenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]`,
+		`  Scenarios done: ${String(result.scenarioResults.length)} scenarios [${String(Math.round(scenarioMs / 1000))}s]${config.laneTag ?? ''}`,
 	);
 
 	if (!config.keepWorkflows) {
@@ -148,6 +150,8 @@ export interface BuildWorkflowConfig {
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
+	/** Optional " [lane N/M]" suffix appended to the build log line. */
+	laneTag?: string;
 }
 
 /**
@@ -166,7 +170,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 	try {
 		const buildStart = Date.now();
-		logger.info(`  Building workflow: "${truncate(prompt, 60)}"`);
+		logger.info(`  Building workflow: "${truncate(prompt, 60)}"${config.laneTag ?? ''}`);
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
@@ -181,7 +185,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			events,
 			approvedRequests,
 			startTime,
-			timeoutMs: Math.min(timeoutMs, SCENARIO_BG_TASK_TIMEOUT_MS),
+			timeoutMs,
 			logger,
 		});
 
@@ -288,8 +292,9 @@ export async function executeScenario(
 	scenario: TestScenario,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
+	timeoutMs?: number,
 ): Promise<ScenarioResult> {
-	return await runScenario(client, scenario, workflowId, workflowJsons, logger);
+	return await runScenario(client, scenario, workflowId, workflowJsons, logger, timeoutMs);
 }
 
 /**
@@ -335,9 +340,10 @@ async function runScenario(
 	workflowId: string,
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
+	timeoutMs?: number,
 ): Promise<ScenarioResult> {
 	const execStart = Date.now();
-	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup);
+	const evalResult = await client.executeWithLlmMock(workflowId, scenario.dataSetup, timeoutMs);
 	const execMs = Date.now() - execStart;
 
 	logger.info(
@@ -655,6 +661,12 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 
 	config.logger.verbose('Sub-agent(s) detected -- waiting for background tasks...');
 
+	// Log on count change, plus a heartbeat every 20s so a long stable wait still
+	// emits a liveness signal without spamming every poll interval.
+	const HEARTBEAT_MS = 20_000;
+	let lastLoggedKey = '';
+	let lastLogAt = 0;
+
 	while (Date.now() < deadline) {
 		await processConfirmationRequests(config);
 
@@ -672,9 +684,15 @@ async function waitForBackgroundTasks(config: WaitConfig, timeoutMs: number): Pr
 			return;
 		}
 
-		config.logger.verbose(
-			`Waiting for ${String(restRunning.length)} REST task(s), ${String(ssePending.length)} SSE agent(s)`,
-		);
+		const key = `${String(restRunning.length)}/${String(ssePending.length)}`;
+		const now = Date.now();
+		if (key !== lastLoggedKey || now - lastLogAt >= HEARTBEAT_MS) {
+			config.logger.verbose(
+				`Waiting for ${String(restRunning.length)} REST task(s), ${String(ssePending.length)} SSE agent(s)`,
+			);
+			lastLoggedKey = key;
+			lastLogAt = now;
+		}
 
 		await delay(BACKGROUND_TASK_POLL_INTERVAL_MS);
 	}

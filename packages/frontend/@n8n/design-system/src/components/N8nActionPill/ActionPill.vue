@@ -15,14 +15,17 @@ withDefaults(
 		hoverText?: string;
 		/** Enables pointer cursor and hover styles — use when the pill triggers an action. */
 		clickable?: boolean;
-		/** 'small' matches BetaTag/PreviewTag scale (for menus/lists); 'medium' is the default. */
+		/** 'small' matches PreviewTag scale (for menus/lists); 'medium' is the default. */
 		size?: 'small' | 'medium';
+		/** Visual variant. 'default' is green; 'danger' is red for depleted/error states. */
+		type?: 'default' | 'danger';
 	}>(),
 	{
 		text: undefined,
 		hoverText: undefined,
 		clickable: false,
 		size: 'medium',
+		type: 'default',
 	},
 );
 
@@ -38,6 +41,7 @@ const hovered = ref(false);
 		:class="[
 			$style.root,
 			size === 'small' && $style.small,
+			type === 'danger' && $style.danger,
 			clickable && $style.clickable,
 			hoverText && hovered && $style.pressed,
 		]"
@@ -75,6 +79,16 @@ const hovered = ref(false);
 .small {
 	padding: var(--spacing--5xs) var(--spacing--4xs);
 	font-size: var(--font-size--3xs);
+}
+
+.danger {
+	background-color: var(--color--danger--tint-4);
+	color: var(--color--danger--shade-1);
+
+	&.clickable:hover {
+		background-color: var(--color--green-200);
+		color: var(--color--green-950);
+	}
 }
 
 .clickable {
