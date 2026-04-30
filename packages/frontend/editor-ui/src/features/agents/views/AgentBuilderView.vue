@@ -236,6 +236,13 @@ function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
 }
 
+async function onReverted(updated: AgentResource) {
+	agent.value = updated;
+	agentName.value = updated.name;
+	await fetchConfig(projectId.value, agentId.value);
+	builderTelemetry.captureToolsBaseline();
+}
+
 /**
  * Pick the session the Test tab should bind to when no explicit one has been
  * chosen yet. Prefer the most recent thread — users land back where they left
@@ -966,9 +973,11 @@ function onSwitchAgent(nextAgentId: string) {
 			:project-name="projectName"
 			:header-actions="headerActions"
 			:save-status="saveStatus"
+			:before-revert-to-published="settleAutosave"
 			@header-action="onHeaderAction"
 			@published="onPublished"
 			@unpublished="onUnpublished"
+			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
 		<div ref="builderRef" :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">

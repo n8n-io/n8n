@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { publishAgent, unpublishAgent } from './useAgentApi';
+import { publishAgent, revertAgentToPublished, unpublishAgent } from './useAgentApi';
 import { useAgentTelemetry } from './useAgentTelemetry';
 import { buildAgentConfigFingerprint } from './agentTelemetry.utils';
 import { useAgentConfirmationModal } from './useAgentConfirmationModal';
@@ -81,5 +81,31 @@ export function useAgentPublish() {
 		}
 	}
 
-	return { publish, unpublish, publishing };
+	async function revertToPublished(
+		projectId: string,
+		agentId: string,
+	): Promise<AgentResource | null> {
+		if (publishing.value) return null;
+		const confirmed = await openAgentConfirmationModal({
+			title: locale.baseText('agents.revertToPublished.modal.title'),
+			description: locale.baseText('agents.revertToPublished.modal.description'),
+			confirmButtonText: locale.baseText('agents.revertToPublished.modal.button.revert'),
+			cancelButtonText: locale.baseText('generic.cancel'),
+		});
+		if (confirmed !== MODAL_CONFIRM) return null;
+
+		publishing.value = true;
+		try {
+			const updated = await revertAgentToPublished(rootStore.restApiContext, projectId, agentId);
+			showMessage({ title: locale.baseText('agents.publish.toast.reverted'), type: 'success' });
+			return updated;
+		} catch (error) {
+			showError(error, locale.baseText('agents.publish.error.revert'));
+			return null;
+		} finally {
+			publishing.value = false;
+		}
+	}
+
+	return { publish, unpublish, revertToPublished, publishing };
 }

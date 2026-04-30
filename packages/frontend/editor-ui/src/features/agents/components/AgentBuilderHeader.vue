@@ -28,12 +28,14 @@ const props = defineProps<{
 	projectName: string | null;
 	headerActions: Array<ActionDropdownItem<string>>;
 	saveStatus?: 'idle' | 'saving' | 'saved';
+	beforeRevertToPublished?: () => Promise<void> | void;
 }>();
 
 const emit = defineEmits<{
 	'header-action': [item: string];
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
+	reverted: [agent: AgentResource];
 	'switch-agent': [agentId: string];
 }>();
 
@@ -125,8 +127,10 @@ function onSwitcherSelect(id: string) {
 				:project-id="projectId"
 				:agent-id="agentId"
 				:is-saving="saveStatus === 'saving'"
+				:before-revert-to-published="beforeRevertToPublished"
 				@published="(a: AgentResource) => emit('published', a)"
 				@unpublished="(a: AgentResource) => emit('unpublished', a)"
+				@reverted="(a: AgentResource) => emit('reverted', a)"
 			/>
 			<N8nActionDropdown
 				:items="headerActions"

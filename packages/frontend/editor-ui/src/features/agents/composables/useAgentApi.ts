@@ -239,6 +239,18 @@ export const unpublishAgent = async (
 	);
 };
 
+export const revertAgentToPublished = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentResource> => {
+	return await makeRestApiRequest<AgentResource>(
+		context,
+		'POST',
+		`/projects/${projectId}/agents/v2/${agentId}/revert-to-published`,
+	);
+};
+
 export const listAgentCredentials = async (
 	context: IRestApiContext,
 	projectId: string,

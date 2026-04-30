@@ -242,8 +242,15 @@ const commonStubs = {
 		name: 'AgentBuilderHeader',
 		template:
 			'<div data-testid="stub-agent-builder-header" :data-project-name="projectName"></div>',
-		props: ['agent', 'projectId', 'agentId', 'projectName', 'headerActions'],
-		emits: ['header-action', 'published', 'unpublished', 'switch-agent'],
+		props: [
+			'agent',
+			'projectId',
+			'agentId',
+			'projectName',
+			'headerActions',
+			'beforeRevertToPublished',
+		],
+		emits: ['header-action', 'published', 'unpublished', 'reverted', 'switch-agent'],
 	},
 	// Stub each panel that the editor column dispatches to. These panels pull
 	// in stores / composables (users, chatHub, credentials, sessions list)

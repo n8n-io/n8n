@@ -57,8 +57,8 @@ const globalStubs = {
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
-		props: ['agent', 'projectId', 'agentId', 'isSaving'],
-		emits: ['published', 'unpublished'],
+		props: ['agent', 'projectId', 'agentId', 'isSaving', 'beforeRevertToPublished'],
+		emits: ['published', 'unpublished', 'reverted'],
 	},
 };
 
@@ -152,13 +152,15 @@ describe('AgentBuilderHeader', () => {
 		expect(menu[0].title).toBe('agents.builder.header.switcher.empty');
 	});
 
-	it('forwards published/unpublished up', async () => {
+	it('forwards publish events up', async () => {
 		const wrapper = mountHeader();
 		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
 		publish.vm.$emit('published', { ...baseAgent, name: 'Darwin v2' });
 		publish.vm.$emit('unpublished', baseAgent);
+		publish.vm.$emit('reverted', baseAgent);
 		expect(wrapper.emitted('published')).toBeTruthy();
 		expect(wrapper.emitted('unpublished')).toBeTruthy();
+		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
 	it('forwards header-action from the action dropdown', async () => {
