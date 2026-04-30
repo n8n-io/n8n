@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
+import MarkdownIt from 'markdown-it';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
@@ -43,6 +44,21 @@ type Props = {
 };
 
 const props = defineProps<Props>();
+
+const errorMessageMarkdown = new MarkdownIt({
+	html: false,
+	linkify: false,
+	breaks: false,
+});
+errorMessageMarkdown.disable('image');
+const defaultLinkOpen =
+	errorMessageMarkdown.renderer.rules.link_open ??
+	((tokens, idx, options, _env, self) => self.renderToken(tokens, idx, options));
+errorMessageMarkdown.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+	tokens[idx].attrSet('target', '_blank');
+	tokens[idx].attrSet('rel', 'noopener noreferrer');
+	return defaultLinkOpen(tokens, idx, options, env, self);
+};
 
 const router = useRouter();
 const clipboard = useClipboard();
@@ -241,6 +257,8 @@ function getErrorMessage(): string {
 
 	return addItemIndexSuffix(message);
 }
+
+const renderedErrorMessage = computed(() => errorMessageMarkdown.render(getErrorMessage()));
 
 function parameterDisplayName(path: string, fullPath = true) {
 	try {
@@ -461,9 +479,7 @@ async function onAskAssistantClick() {
 	<div :class="['node-error-view', props.compact ? 'node-error-view_compact' : '']">
 		<div class="node-error-view__header">
 			<div class="node-error-view__header-message" data-test-id="node-error-message">
-				<div>
-					{{ getErrorMessage() }}
-				</div>
+				<div v-n8n-html="renderedErrorMessage"></div>
 			</div>
 			<div
 				v-if="(error.description || error.context?.descriptionKey) && !isSubNodeError"
@@ -725,6 +741,27 @@ async function onAskAssistantClick() {
 		color: var(--color--danger);
 		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--sm);
+
+		p {
+			margin: 0;
+		}
+
+		p + p {
+			margin-top: var(--spacing--3xs);
+		}
+
+		a {
+			color: inherit;
+			text-decoration: underline;
+		}
+
+		code {
+			font-size: var(--font-size--xs);
+			color: var(--color--text);
+			background: var(--color--background);
+			padding: var(--spacing--5xs);
+			border-radius: var(--radius);
+		}
 	}
 
 	&__header-description {

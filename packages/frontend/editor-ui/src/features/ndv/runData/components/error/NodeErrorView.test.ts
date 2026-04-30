@@ -151,6 +151,98 @@ describe('NodeErrorView.vue', () => {
 		expect(getByTestId('node-error-message').textContent).toContain('Test error message');
 	});
 
+	describe('error message markdown rendering', () => {
+		it('renders markdown links as anchor tags with safe attributes', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					error: {
+						node: error.node,
+						message: 'See [our docs](https://docs.n8n.io/credits) for details.',
+					} as NodeError,
+				},
+			});
+
+			const messageEl = getByTestId('node-error-message');
+			const link = messageEl.querySelector('a');
+
+			expect(link).not.toBeNull();
+			expect(link?.getAttribute('href')).toBe('https://docs.n8n.io/credits');
+			expect(link?.getAttribute('target')).toBe('_blank');
+			expect(link?.getAttribute('rel')).toContain('noopener');
+			expect(link?.textContent).toBe('our docs');
+		});
+
+		it.each([
+			['javascript:alert(1)'],
+			['data:text/html,<script>alert(1)</script>'],
+			['vbscript:alert(1)'],
+		])('does not render a link for unsafe URI scheme %s', (href) => {
+			const { getByTestId } = renderComponent({
+				props: {
+					error: {
+						node: error.node,
+						message: `Bad [click me](${href}) link`,
+					} as NodeError,
+				},
+			});
+
+			const messageEl = getByTestId('node-error-message');
+
+			expect(messageEl.querySelector('a')).toBeNull();
+			expect(messageEl.textContent).toContain('Bad');
+			expect(messageEl.textContent).toContain('link');
+		});
+
+		it('does not render raw HTML elements in error messages', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					error: {
+						node: error.node,
+						message: 'Bad <script>alert(1)</script><img src=x onerror="alert(2)">',
+					} as NodeError,
+				},
+			});
+
+			const messageEl = getByTestId('node-error-message');
+
+			expect(messageEl.querySelector('script')).toBeNull();
+			expect(messageEl.querySelector('img')).toBeNull();
+		});
+
+		it('renders inline code spans from backticks', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					error: {
+						node: error.node,
+						message: 'Field `apiKey` is missing',
+					} as NodeError,
+				},
+			});
+
+			const messageEl = getByTestId('node-error-message');
+			const code = messageEl.querySelector('code');
+
+			expect(code).not.toBeNull();
+			expect(code?.textContent).toBe('apiKey');
+		});
+
+		it('renders plain-text messages without modification', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					error: {
+						node: error.node,
+						message: 'Plain error with [item 0] and (parens) intact',
+					} as NodeError,
+				},
+			});
+
+			const messageEl = getByTestId('node-error-message');
+
+			expect(messageEl.textContent).toContain('Plain error with [item 0] and (parens) intact');
+			expect(messageEl.querySelector('a')).toBeNull();
+		});
+	});
+
 	it('renders error description', () => {
 		const { getByTestId } = renderComponent({
 			props: { error },
