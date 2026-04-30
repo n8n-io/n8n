@@ -41,6 +41,10 @@ export interface BuilderWorkspace {
 	cleanup: () => Promise<void>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
 async function cleanupTrackedSandboxProcesses(workspace: Workspace): Promise<void> {
 	const processManager = workspace.sandbox?.processes;
 	if (!processManager) return;
@@ -109,7 +113,7 @@ export class BuilderSandboxFactory {
 
 		const install = await runInSandbox(
 			workspace,
-			`npm install ${remotePath} --no-save --ignore-scripts --force`,
+			`npm install ${remotePath} --ignore-scripts --force`,
 			root,
 		);
 		if (install.exitCode !== 0) {
@@ -120,8 +124,44 @@ export class BuilderSandboxFactory {
 			throw new Error(`Failed to install workspace SDK tarball: ${install.stderr}`);
 		}
 
+		const resolveCheck = await runInSandbox(
+			workspace,
+			'node -e "const p=require.resolve(\'@n8n/workflow-sdk/package.json\'); const pkg=require(p); console.log(JSON.stringify({version: pkg.version, resolvedPath: p}));"',
+			root,
+		);
+		let resolvedVersion: string | undefined;
+		let resolvedPath: string | undefined;
+		try {
+			const parsed: unknown = JSON.parse(resolveCheck.stdout.trim());
+			if (isRecord(parsed)) {
+				resolvedVersion = typeof parsed.version === 'string' ? parsed.version : undefined;
+				resolvedPath = typeof parsed.resolvedPath === 'string' ? parsed.resolvedPath : undefined;
+			}
+		} catch {
+			// Keep the raw command output in the debug log below.
+		}
+
+		console.log('[InstanceAI][workflow-builder-sandbox] sdk-link-check', {
+			exitCode: resolveCheck.exitCode,
+			expectedVersion: packed.version,
+			resolvedVersion,
+			resolvedPath,
+			stdout: resolveCheck.stdout.trim(),
+			stderr: resolveCheck.stderr.trim(),
+		});
+		if (resolveCheck.exitCode !== 0) {
+			this.logger.error('Linked workspace SDK is not resolvable in sandbox', {
+				exitCode: resolveCheck.exitCode,
+				stderr: resolveCheck.stderr,
+				stdout: resolveCheck.stdout,
+			});
+			throw new Error(`Linked workspace SDK is not resolvable: ${resolveCheck.stderr}`);
+		}
+
 		this.logger.info('Linked workspace SDK into sandbox', {
 			version: packed.version,
+			resolvedVersion,
+			resolvedPath,
 			sdkPath: packed.sdkPath,
 		});
 	}

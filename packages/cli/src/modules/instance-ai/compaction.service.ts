@@ -67,12 +67,39 @@ function getContextWindowForModel(modelId: ModelConfig): number {
 
 /** Estimate tokens consumed by system prompt, tools, and working memory overhead. */
 const FIXED_CONTEXT_OVERHEAD_TOKENS = 8_000;
+const MIN_UNSUMMARIZED_TOKENS = 500;
+const DEBUG_PREVIEW_CHARS = 500;
+
+// TEMP DEBUG: remove after compaction tuning.
+function logCompactionDebug(event: string, metadata: Record<string, unknown>): void {
+	// eslint-disable-next-line no-console
+	console.log(`[InstanceAI][compaction] ${event}`, metadata);
+}
+
+function previewForDebug(text: string | null | undefined): string | undefined {
+	if (!text) return undefined;
+	return text.length > DEBUG_PREVIEW_CHARS ? `${text.slice(0, DEBUG_PREVIEW_CHARS)}...` : text;
+}
+
+function countMessagesByRole(messages: MastraDBMessage[]): Record<string, number> {
+	const counts: Record<string, number> = {};
+	for (const message of messages) {
+		const role = String(message.role);
+		counts[role] = (counts[role] ?? 0) + 1;
+	}
+	return counts;
+}
 
 interface ConversationSummaryMetadata {
 	version: number;
 	upToMessageId: string;
 	summary: string;
 	updatedAt: string;
+}
+
+interface PendingCompactionInput {
+	label: string;
+	text: string;
 }
 
 /**
@@ -114,9 +141,11 @@ export class InstanceAiCompactionService {
 		modelId: ModelConfig,
 		lastMessages: number,
 		compactionThreshold = 0.8,
+		currentInput?: PendingCompactionInput,
 	): Promise<string | null> {
 		try {
-			const recentTail = lastMessages;
+			const recentTail = Math.max(0, lastMessages);
+			const currentInputTokens = currentInput ? estimateTokens(currentInput.text) : 0;
 
 			// Load all messages for the thread, ordered chronologically
 			const { messages: allMessages } = await this.memoryStorage.listMessages({
@@ -125,14 +154,12 @@ export class InstanceAiCompactionService {
 				orderBy: { field: 'createdAt', direction: 'ASC' },
 			});
 
-			if (allMessages.length <= recentTail) {
-				return await this.getCachedSummaryBlock(threadId, memory);
-			}
-
 			// Estimate total token usage across all messages
-			const totalTokens =
-				FIXED_CONTEXT_OVERHEAD_TOKENS +
-				allMessages.reduce((sum, m) => sum + estimateTokens(this.extractRawText(m)), 0);
+			const rawMessageTokens = allMessages.reduce(
+				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
+				0,
+			);
+			const totalTokens = FIXED_CONTEXT_OVERHEAD_TOKENS + rawMessageTokens + currentInputTokens;
 
 			const modelContextWindow = getContextWindowForModel(modelId);
 			const contextWindow =
@@ -141,18 +168,68 @@ export class InstanceAiCompactionService {
 					: modelContextWindow;
 			const threshold = contextWindow * compactionThreshold;
 
+			// Load existing compaction state
+			const thread = await memory.getThreadById({ threadId });
+			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
+			const existingSummaryTokens = existing ? estimateTokens(existing.summary) : 0;
+
+			logCompactionDebug('loaded', {
+				threadId,
+				messageCount: allMessages.length,
+				roleCounts: countMessagesByRole(allMessages),
+				rawMessageTokens,
+				currentInputLabel: currentInput?.label,
+				currentInputChars: currentInput?.text.length ?? 0,
+				currentInputTokens,
+				currentInputPreview: previewForDebug(currentInput?.text),
+				fixedContextOverheadTokens: FIXED_CONTEXT_OVERHEAD_TOKENS,
+				totalTokensBeforeCompaction: totalTokens,
+				modelContextWindow,
+				configuredContextWindowCap: this.maxContextWindowTokensCap,
+				effectiveContextWindow: contextWindow,
+				compactionThreshold,
+				thresholdTokens: Math.floor(threshold),
+				lastMessages: recentTail,
+				hasCachedSummary: Boolean(existing?.summary),
+				cachedSummaryVersion: existing?.version,
+				cachedSummaryUpToMessageId: existing?.upToMessageId,
+				cachedSummaryTokens: existingSummaryTokens,
+			});
+
+			if (allMessages.length <= recentTail) {
+				logCompactionDebug('skip', {
+					threadId,
+					reason: 'message_count_within_recent_tail',
+					messageCount: allMessages.length,
+					lastMessages: recentTail,
+					totalTokensBeforeCompaction: totalTokens,
+					thresholdTokens: Math.floor(threshold),
+					returnsCachedSummary: Boolean(existing?.summary),
+				});
+				return this.formatCachedSummaryBlock(existing);
+			}
+
 			// Only compact when context usage exceeds the threshold
 			if (totalTokens < threshold) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+				logCompactionDebug('skip', {
+					threadId,
+					reason: 'below_threshold',
+					totalTokensBeforeCompaction: totalTokens,
+					thresholdTokens: Math.floor(threshold),
+					returnsCachedSummary: Boolean(existing?.summary),
+				});
+				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Split into prefix (older messages) and tail (recent)
 			const prefixEnd = allMessages.length - recentTail;
 			const prefix = allMessages.slice(0, prefixEnd);
-
-			// Load existing compaction state
-			const thread = await memory.getThreadById({ threadId });
-			const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
+			const tail = allMessages.slice(prefixEnd);
+			const prefixTokens = prefix.reduce(
+				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
+				0,
+			);
+			const tailTokens = tail.reduce((sum, m) => sum + estimateTokens(this.extractRawText(m)), 0);
 
 			// Find where the previous summary left off
 			let unsummarizedStart = 0;
@@ -170,16 +247,68 @@ export class InstanceAiCompactionService {
 				(sum, m) => sum + estimateTokens(this.extractRawText(m)),
 				0,
 			);
-			if (unsummarizedTokens < 500) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+			if (unsummarizedTokens < MIN_UNSUMMARIZED_TOKENS) {
+				logCompactionDebug('skip', {
+					threadId,
+					reason: 'unsummarized_delta_too_small',
+					prefixMessageCount: prefix.length,
+					tailMessageCount: tail.length,
+					prefixTokens,
+					tailTokens,
+					unsummarizedMessageCount: unsummarizedSlice.length,
+					unsummarizedTokens,
+					minUnsummarizedTokens: MIN_UNSUMMARIZED_TOKENS,
+					currentInputTokens,
+					totalTokensBeforeCompaction: totalTokens,
+					returnsCachedSummary: Boolean(existing?.summary),
+				});
+				return this.formatCachedSummaryBlock(existing);
 			}
 
 			// Extract high-signal content from the unsummarized slice
 			const messageBatch = this.extractHighSignalContent(unsummarizedSlice);
 
 			if (messageBatch.length === 0) {
-				return await this.getCachedSummaryBlock(threadId, memory);
+				logCompactionDebug('skip', {
+					threadId,
+					reason: 'no_high_signal_messages',
+					unsummarizedMessageCount: unsummarizedSlice.length,
+					unsummarizedTokens,
+					currentInputTokens,
+					totalTokensBeforeCompaction: totalTokens,
+					returnsCachedSummary: Boolean(existing?.summary),
+				});
+				return this.formatCachedSummaryBlock(existing);
 			}
+
+			const messageBatchTokens = messageBatch.reduce(
+				(sum, message) => sum + estimateTokens(message.text),
+				0,
+			);
+			const lastCompactedMessage = unsummarizedSlice[unsummarizedSlice.length - 1];
+			const estimatedTokensWithCachedSummary =
+				FIXED_CONTEXT_OVERHEAD_TOKENS + tailTokens + existingSummaryTokens + currentInputTokens;
+
+			logCompactionDebug('start', {
+				threadId,
+				nextSummaryVersion: (existing?.version ?? 0) + 1,
+				prefixMessageCount: prefix.length,
+				tailMessageCount: tail.length,
+				prefixTokens,
+				tailTokens,
+				unsummarizedStartIndex: unsummarizedStart,
+				unsummarizedMessageCount: unsummarizedSlice.length,
+				unsummarizedTokens,
+				highSignalMessageCount: messageBatch.length,
+				highSignalTokens: messageBatchTokens,
+				previousSummaryVersion: existing?.version,
+				previousSummaryTokens: existingSummaryTokens,
+				previousSummaryPreview: previewForDebug(existing?.summary),
+				lastCompactedMessageId: lastCompactedMessage.id,
+				currentInputTokens,
+				totalTokensBeforeCompaction: totalTokens,
+				estimatedTokensWithCachedSummary,
+			});
 
 			// Generate the updated summary
 			const summary = await generateCompactionSummary(modelId, {
@@ -188,7 +317,6 @@ export class InstanceAiCompactionService {
 			});
 
 			// Persist the updated compaction state
-			const lastCompactedMessage = unsummarizedSlice[unsummarizedSlice.length - 1];
 			const newMetadata: ConversationSummaryMetadata = {
 				version: (existing?.version ?? 0) + 1,
 				upToMessageId: lastCompactedMessage.id,
@@ -197,6 +325,22 @@ export class InstanceAiCompactionService {
 			};
 
 			await this.saveMetadata(threadId, memory, newMetadata);
+
+			const summaryTokens = estimateTokens(summary);
+			const estimatedTokensAfterCompaction =
+				FIXED_CONTEXT_OVERHEAD_TOKENS + tailTokens + summaryTokens + currentInputTokens;
+			logCompactionDebug('complete', {
+				threadId,
+				summaryVersion: newMetadata.version,
+				upToMessageId: newMetadata.upToMessageId,
+				summaryChars: summary.length,
+				summaryTokens,
+				summaryPreview: previewForDebug(summary),
+				currentInputTokens,
+				totalTokensBeforeCompaction: totalTokens,
+				estimatedTokensAfterCompaction,
+				estimatedTokensReduced: totalTokens - estimatedTokensAfterCompaction,
+			});
 
 			return this.formatSummaryBlock(summary);
 		} catch (error) {
@@ -208,12 +352,7 @@ export class InstanceAiCompactionService {
 		}
 	}
 
-	/**
-	 * Return the cached summary block if one exists, without re-generating.
-	 */
-	private async getCachedSummaryBlock(threadId: string, memory: Memory): Promise<string | null> {
-		const thread = await memory.getThreadById({ threadId });
-		const existing = this.parseMetadata(thread?.metadata?.[METADATA_KEY]);
+	private formatCachedSummaryBlock(existing: ConversationSummaryMetadata | null): string | null {
 		if (existing?.summary) {
 			return this.formatSummaryBlock(existing.summary);
 		}
