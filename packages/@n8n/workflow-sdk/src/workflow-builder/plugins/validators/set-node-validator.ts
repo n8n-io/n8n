@@ -26,10 +26,6 @@ function isNonEmptyString(value: unknown): value is string {
 	return typeof value === 'string' && value.trim() !== '';
 }
 
-function hasOwnProperty(record: Record<string, unknown>, key: string): boolean {
-	return Object.prototype.hasOwnProperty.call(record, key);
-}
-
 function formatMode(mode: unknown): string {
 	if (typeof mode === 'string') return mode;
 	if (typeof mode === 'number' || typeof mode === 'boolean' || mode === null) {
@@ -156,7 +152,7 @@ export const setNodeValidator: ValidatorPlugin = {
 				}
 			}
 
-			if (!hasOwnProperty(assignment, 'value')) {
+			if (assignment.value === undefined) {
 				issues.push({
 					code: 'SET_INVALID_ASSIGNMENT',
 					message: `${nodeRef} assignment at index ${index} is missing the "value" field.`,

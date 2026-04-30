@@ -293,6 +293,35 @@ describe('setNodeValidator', () => {
 			);
 		});
 
+		it('returns SET_INVALID_ASSIGNMENT error when a manual assignment has explicit undefined value', () => {
+			const node = createMockNode('n8n-nodes-base.set', {
+				parameters: {
+					mode: 'manual',
+					assignments: {
+						assignments: [
+							{
+								id: 'caption-assignment',
+								name: 'caption',
+								type: 'string',
+								value: undefined,
+							},
+						],
+					},
+				},
+			});
+			const ctx = createMockPluginContext();
+
+			const issues = setNodeValidator.validateNode(node, createGraphNode(node), ctx);
+
+			expect(issues).toContainEqual(
+				expect.objectContaining({
+					code: 'SET_INVALID_ASSIGNMENT',
+					severity: 'error',
+					parameterPath: 'parameters.assignments.assignments[0].value',
+				}),
+			);
+		});
+
 		it('returns no issues for a canonical manual Set v3.4 assignment shape', () => {
 			const node = createMockNode('n8n-nodes-base.set', {
 				parameters: {
