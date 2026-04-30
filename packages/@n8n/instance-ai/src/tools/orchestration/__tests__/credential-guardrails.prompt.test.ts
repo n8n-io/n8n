@@ -49,7 +49,7 @@ describe('credential guardrail prompts', () => {
 			createSandboxBuilderAgentPrompt('/tmp/workspace'),
 		]) {
 			expect(prompt).toContain('## Node Configuration Safety Rules');
-			expect(prompt).toContain('nodes(action="guide")');
+			expect(prompt).not.toContain('nodes(action="guide")');
 			expect(prompt).not.toContain('### Set Node Updates - Comprehensive Type Handling Guide');
 			expect(prompt).not.toContain('#### Complete Operator Reference');
 			expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');

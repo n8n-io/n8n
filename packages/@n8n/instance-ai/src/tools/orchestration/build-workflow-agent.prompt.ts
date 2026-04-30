@@ -60,9 +60,7 @@ const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 - Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
 - Prefer generated definitions, \`@builderHint\`, \`@default\`, \`@searchListMethod\`, and \`@loadOptionsMethod\` over memory or examples in this prompt.
 - Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
-- For IF nodes, always include \`conditions.options\`, \`conditions.conditions\`, and \`conditions.combinator\`. The combinator is \`'and'\` or \`'or'\`.
-- For Switch nodes in rules mode, use \`rules.values\` for cases.
-- If type definitions and builder hints are not enough for a tricky node shape, call \`nodes(action="guide")\` for targeted guidance instead of relying on global prompt memory.`;
+- Do not rely on static node-shape memory; if a configuration is unclear after reading definitions and hints, ask for clarification or use placeholders instead of guessing.`;
 
 // The AI Agent subnode example below differs by mode:
 //   tool mode  → `newCredential('OpenAI')`

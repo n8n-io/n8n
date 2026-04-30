@@ -2,18 +2,6 @@
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
 import { createTool } from '@mastra/core/tools';
-import {
-	EMBEDDING_NODES_GUIDE,
-	GMAIL_GUIDE,
-	HTTP_REQUEST_GUIDE,
-	IF_NODE_GUIDE,
-	RESOURCE_LOCATOR_GUIDE,
-	SET_NODE_GUIDE,
-	SWITCH_NODE_GUIDE,
-	TOOL_NODES_GUIDE,
-	type NodeTypeGuide,
-	type NodeTypePattern,
-} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -27,8 +15,6 @@ import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
 const NODE_TYPE_ID_DESCRIPTION = 'Node type ID, e.g. "n8n-nodes-base.httpRequest"';
 const NODE_TYPES_ARRAY_DESCRIPTION =
 	'Node type IDs for node-level lookups (max 5). Entries may be plain strings or objects with action-specific options.';
-const HAS_RESOURCE_LOCATOR_PARAMS_DESCRIPTION =
-	'For guide action only: set true when the type definition includes resourceLocator parameters and ResourceLocator guidance is needed.';
 
 const listAction = z.object({
 	action: z.literal('list').describe('List available node types'),
@@ -66,10 +52,6 @@ const nodeRequestObjectSchema = z.object({
 	resource: z.string().optional().describe('Resource discriminator for split nodes'),
 	operation: z.string().optional().describe('Operation discriminator for split nodes'),
 	mode: z.string().optional().describe('Mode discriminator for split nodes'),
-	hasResourceLocatorParams: z
-		.boolean()
-		.optional()
-		.describe(HAS_RESOURCE_LOCATOR_PARAMS_DESCRIPTION),
 });
 
 const nodeRequestSchema = z.union([
@@ -89,18 +71,6 @@ const suggestedAction = z.object({
 		.min(1)
 		.max(3)
 		.describe(`Workflow technique categories: ${categoryList.join(', ')}`),
-});
-
-const guideNodeRequestSchema = z.union([
-	z.string().describe(NODE_TYPE_ID_DESCRIPTION),
-	nodeRequestObjectSchema,
-]);
-
-const guideAction = z.object({
-	action: z
-		.literal('guide')
-		.describe('Get targeted fallback node configuration guidance for selected node types'),
-	nodeTypes: z.array(guideNodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const exploreResourcesAction = z.object({
@@ -147,39 +117,11 @@ const fullInputSchema = sanitizeInputSchema(
 		describeAction,
 		typeDefinitionAction,
 		suggestedAction,
-		guideAction,
 		exploreResourcesAction,
 	]),
 );
 
 type FullInput = z.infer<typeof fullInputSchema>;
-
-type GuideEntry = {
-	id: string;
-	guide: NodeTypeGuide;
-	requiresResourceLocatorParams?: boolean;
-};
-
-const ON_DEMAND_NODE_GUIDES: GuideEntry[] = [
-	{ id: 'if', guide: IF_NODE_GUIDE },
-	{ id: 'switch', guide: SWITCH_NODE_GUIDE },
-	{ id: 'set', guide: SET_NODE_GUIDE },
-	{ id: 'http-request', guide: HTTP_REQUEST_GUIDE },
-	{ id: 'gmail', guide: GMAIL_GUIDE },
-	{ id: 'tool-nodes', guide: TOOL_NODES_GUIDE },
-	{ id: 'embedding-nodes', guide: EMBEDDING_NODES_GUIDE },
-	{ id: 'resource-locator', guide: RESOURCE_LOCATOR_GUIDE, requiresResourceLocatorParams: true },
-];
-
-function matchesGuidePattern(nodeType: string, pattern: NodeTypePattern): boolean {
-	const nodeTypeLower = nodeType.toLowerCase();
-	const patternLower = pattern.toLowerCase();
-
-	if (nodeTypeLower === patternLower) return true;
-	if (patternLower.startsWith('*')) return nodeTypeLower.endsWith(patternLower.slice(1));
-	if (patternLower.endsWith('*')) return nodeTypeLower.startsWith(patternLower.slice(0, -1));
-	return nodeTypeLower.includes(patternLower);
-}
 
 // ── Handlers ────────────────────────────────────────────────────────────────
 
@@ -338,27 +280,6 @@ async function handleSuggested(input: Extract<FullInput, { action: 'suggested' }
 	return { results, unknownCategories };
 }
 
-// eslint-disable-next-line @typescript-eslint/require-await
-async function handleGuide(input: Extract<FullInput, { action: 'guide' }>) {
-	return {
-		guides: input.nodeTypes.map((request: z.infer<typeof guideNodeRequestSchema>) => {
-			const nodeType = typeof request === 'string' ? request : request.nodeType;
-			const hasResourceLocatorParams =
-				typeof request === 'string' ? false : request.hasResourceLocatorParams === true;
-
-			const matches = ON_DEMAND_NODE_GUIDES.filter((entry) => {
-				if (entry.requiresResourceLocatorParams && !hasResourceLocatorParams) return false;
-				return entry.guide.patterns.some((pattern) => matchesGuidePattern(nodeType, pattern));
-			}).map((entry) => ({
-				id: entry.id,
-				content: entry.guide.content.trim(),
-			}));
-
-			return { nodeType, guides: matches };
-		}),
-	};
-}
-
 async function handleExploreResources(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'explore-resources' }>,
@@ -457,7 +378,7 @@ export function createNodesTool(
 	return createTool({
 		id: 'nodes',
 		description:
-			'Work with n8n node types — discover, search, describe, get type definitions, get targeted guides, and explore real resources.',
+			'Work with n8n node types — discover, search, describe, get type definitions, and explore real resources.',
 		inputSchema: fullInputSchema,
 		execute: async (input: FullInput) => {
 			switch (input.action) {
@@ -471,8 +392,6 @@ export function createNodesTool(
 					return await handleTypeDefinition(context, input);
 				case 'suggested':
 					return await handleSuggested(input);
-				case 'guide':
-					return await handleGuide(input);
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
 			}
