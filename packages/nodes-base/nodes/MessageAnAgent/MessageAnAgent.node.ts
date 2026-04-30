@@ -16,6 +16,7 @@ export class MessageAnAgent implements INodeType {
 		icon: 'fa:robot',
 		group: ['transform'],
 		version: 1,
+		hidden: true,
 		description: 'Send a message to an SDK agent and receive its response',
 		defaults: {
 			name: 'Message an Agent',
