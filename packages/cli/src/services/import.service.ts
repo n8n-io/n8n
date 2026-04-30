@@ -219,7 +219,6 @@ export class ImportService {
 	private async activateWorkflow(workflowId: string, versionIdToActivate: string): Promise<void> {
 		let didActivate = false;
 		try {
-			await this.activeWorkflowManager.remove(workflowId);
 			await this.workflowRepository.update(
 				{ id: workflowId },
 				{ activeVersionId: versionIdToActivate },

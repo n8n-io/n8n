@@ -418,5 +418,41 @@ describe('ImportService', () => {
 			expect(activatedRecords[0].versionId).toBe(dbWorkflow.versionId);
 			expect(activatedRecords[0].userId).toBeNull();
 		});
+
+		test('should not call ActiveWorkflowManager.remove for a brand-new active workflow', async () => {
+			jest.mocked(mockActiveWorkflowManager.remove).mockClear();
+			jest.mocked(mockActiveWorkflowManager.add).mockClear();
+
+			const workflowToImport = await createWorkflow();
+			workflowToImport.active = true;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			expect(mockActiveWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledTimes(1);
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledWith(workflowToImport.id, 'activate');
+		});
+
+		test('should call ActiveWorkflowManager.remove exactly once when re-importing an active workflow', async () => {
+			jest.mocked(mockActiveWorkflowManager.remove).mockClear();
+			jest.mocked(mockActiveWorkflowManager.add).mockClear();
+
+			const existingWorkflow = await createActiveWorkflow();
+
+			const workflowToImport = await getWorkflowById(existingWorkflow.id);
+			if (!workflowToImport) fail('Expected to find workflow');
+			workflowToImport.active = true;
+
+			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, {
+				activeState: 'fromJson',
+			});
+
+			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledTimes(1);
+			expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(existingWorkflow.id);
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledTimes(1);
+			expect(mockActiveWorkflowManager.add).toHaveBeenCalledWith(existingWorkflow.id, 'activate');
+		});
 	});
 });
