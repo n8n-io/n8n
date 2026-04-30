@@ -30,7 +30,7 @@ import {
 	buildInProcess,
 	type InProcessBuildResult,
 	type ToolCallTrace,
-} from '../harness/in-process-builder';
+} from '../harness/in-process-orchestrator';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
 import type { Logger } from '../../src/logger';

@@ -62,6 +62,8 @@ interface ToolCallTrace {
 	step: number;
 	toolCallId: string;
 	toolName: string;
+	/** Optional — runs predating agentId capture won't have it. */
+	agentId?: string;
 	args?: unknown;
 	result?: unknown;
 	error?: string;
@@ -233,6 +235,23 @@ function formatJson(value: unknown): string {
 	}
 }
 
+function agentHue(agentId: string): number {
+	// Deterministic hue per agent so the same agent stays the same color
+	// across rows in a single record.
+	let h = 0;
+	for (let i = 0; i < agentId.length; i += 1) {
+		h = (h * 31 + agentId.charCodeAt(i)) | 0;
+	}
+	return Math.abs(h) % 360;
+}
+
+function renderAgentChip(agentId: string | undefined): string {
+	if (!agentId) return '';
+	const hue = agentHue(agentId);
+	const style = `background: hsl(${hue} 60% 22%); color: hsl(${hue} 80% 78%); border-color: hsl(${hue} 50% 35%);`;
+	return `<span class="tool-agent" title="${escapeAttr(agentId)}" style="${style}">${escapeHtml(agentId)}</span>`;
+}
+
 function renderToolCallTimeline(toolCalls: ToolCallTrace[] | undefined): string {
 	if (!toolCalls || toolCalls.length === 0) {
 		return '<div class="no-tools">No tool calls recorded.</div>';
@@ -284,6 +303,7 @@ function renderToolCallTimeline(toolCalls: ToolCallTrace[] | undefined): string 
 			return `<li class="tool-call">
   <header class="tool-call-header">
     <span class="tool-step">#${trace.step}</span>
+    ${renderAgentChip(trace.agentId)}
     <span class="tool-name">${escapeHtml(trace.toolName)}</span>
     <span class="tool-elapsed">${elapsed}</span>
     <span class="tool-states">${stateBits.join('')}</span>
@@ -423,14 +443,6 @@ function renderRun(run: Run, index: number): string {
 }
 
 function renderDocument(runs: Run[]): string {
-	const runLinks = runs
-		.map((run, i) => {
-			const s = run.summary;
-			const pct = (s.totals.primaryPassRate * 100).toFixed(0);
-			return `<a href="#run-${i}"><span class="nav-exp">${escapeHtml(s.experimentName)}</span><span class="nav-time">${escapeHtml(s.startedAt)}</span><span class="nav-score">${pct}%</span></a>`;
-		})
-		.join('\n');
-
 	const body = runs.map((run, i) => renderRun(run, i)).join('\n');
 
 	return `<!DOCTYPE html>
@@ -458,12 +470,7 @@ function renderDocument(runs: Run[]): string {
   }
   body { margin: 0; background: var(--bg); color: var(--fg); }
   header.top { position: sticky; top: 0; background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 20px; z-index: 10; }
-  header.top h1 { margin: 0 0 6px 0; font-size: 18px; }
-  nav.runs { display: flex; flex-wrap: wrap; gap: 8px; }
-  nav.runs a { display: inline-flex; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; text-decoration: none; color: inherit; font-size: 12px; background: var(--subtle); }
-  nav.runs a:hover { border-color: var(--accent); color: var(--accent); }
-  nav.runs .nav-time { color: var(--muted); }
-  nav.runs .nav-score { font-weight: 600; }
+  header.top h1 { margin: 0; font-size: 18px; }
   main { padding: 20px; display: flex; flex-direction: column; gap: 32px; max-width: 1400px; margin: 0 auto; }
   section.run { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   section.run header.run-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--subtle); }
@@ -529,8 +536,9 @@ function renderDocument(runs: Run[]): string {
   .no-tools { color: var(--muted); font-size: 12px; padding: 8px 12px; background: var(--card); border: 1px dashed var(--border); border-radius: 4px; }
   ol.tool-calls { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
   li.tool-call { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; }
-  .tool-call-header { display: grid; grid-template-columns: 36px minmax(0, 1fr) 80px auto; gap: 10px; align-items: center; font-size: 12px; }
+  .tool-call-header { display: grid; grid-template-columns: 36px minmax(0, auto) minmax(0, 1fr) 80px auto; gap: 10px; align-items: center; font-size: 12px; }
   .tool-step { color: var(--muted); font-family: ui-monospace, monospace; }
+  .tool-agent { font-family: ui-monospace, monospace; font-size: 10px; padding: 2px 6px; border: 1px solid; border-radius: 3px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tool-name { font-weight: 600; color: var(--fg); font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tool-elapsed { color: var(--muted); font-size: 11px; text-align: right; }
   .tool-states { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
@@ -552,7 +560,6 @@ function renderDocument(runs: Run[]): string {
 <body>
 <header class="top">
   <h1>Instance AI — Pairwise Eval Report (${runs.length} run${runs.length === 1 ? '' : 's'})</h1>
-  <nav class="runs">${runLinks}</nav>
 </header>
 <main>${body}</main>
 </body>

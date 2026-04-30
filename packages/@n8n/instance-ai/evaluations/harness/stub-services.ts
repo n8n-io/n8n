@@ -79,6 +79,10 @@ export async function createStubServices(
 		},
 		async archive() {},
 		async delete() {},
+		async clearAiTemporary() {},
+		async archiveIfAiTemporary() {
+			return false;
+		},
 		async publish() {
 			return { activeVersionId: 'eval-version' };
 		},

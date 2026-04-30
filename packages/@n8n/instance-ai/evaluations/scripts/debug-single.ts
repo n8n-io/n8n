@@ -7,7 +7,7 @@
 
 import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
 import { SnapshotManager } from '../../src/workspace/snapshot-manager';
-import { buildInProcess } from '../harness/in-process-builder';
+import { buildInProcess } from '../harness/in-process-orchestrator';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
 
 async function main(): Promise<void> {
