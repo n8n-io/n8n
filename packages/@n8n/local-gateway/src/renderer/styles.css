@@ -11,7 +11,6 @@
 	--color-badge-connected: #22a06b;
 	--color-badge-connecting: #f59e0b;
 	--color-badge-disconnected: #dc2626;
-	--color-badge-idle: #999999;
 	--color-badge-error: #dc2626;
 	--radius: 6px;
 	/* biome-ignore format: git hooks overwrite formatting to what biome throws an error for */
@@ -90,9 +89,6 @@ body {
 }
 .status-dot.disconnected {
 	background: var(--color-badge-disconnected);
-}
-.status-dot.idle {
-	background: var(--color-badge-idle);
 }
 .status-dot.error {
 	background: var(--color-badge-error);
@@ -274,6 +270,16 @@ body {
 	font-size: 11px;
 	color: var(--color-text-secondary);
 	margin-top: 3px;
+}
+
+.connection-deeplink-copy {
+	margin-top: 10px;
+	line-height: 1.45;
+}
+
+.code-inline {
+	font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+	font-size: 12px;
 }
 
 /* Footer */

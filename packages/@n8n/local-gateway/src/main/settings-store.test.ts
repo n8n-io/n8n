@@ -23,7 +23,6 @@ jest.mock('@n8n/computer-use/logger', () => ({
 
 jest.mock('electron-store');
 
-import { logger } from '@n8n/computer-use/logger';
 import { app } from 'electron';
 import Store from 'electron-store';
 import * as path from 'node:path';
@@ -46,40 +45,21 @@ describe('SettingsStore (Electron)', () => {
 		});
 	});
 
-	it('toGatewayConfig uses cloud default allowedOrigins when no instance URL is known', () => {
+	it('toGatewayConfig uses persisted allowedOrigins', () => {
 		const store = new SettingsStore();
+		store.set({
+			allowedOrigins: ['https://tenant.example', 'https://*.app.n8n.cloud'],
+		});
 		const config = store.toGatewayConfig();
-		expect(config.allowedOrigins).toEqual(['https://*.app.n8n.cloud']);
+		expect(config.allowedOrigins).toEqual(['https://tenant.example', 'https://*.app.n8n.cloud']);
 		expect(config.filesystem.dir).toBe('/mock/home');
 	});
 
-	it('toGatewayConfig derives allowedOrigins from instanceUrl', () => {
+	it('toGatewayConfig falls back to default origins when list is empty after coercion', () => {
 		const store = new SettingsStore();
-		store.set({ instanceUrl: 'https://self.example/n8n/' });
-		expect(store.toGatewayConfig().allowedOrigins).toEqual(['https://self.example']);
-	});
-
-	it('toGatewayConfig falls back to lastConnectedUrl when instanceUrl is empty', () => {
-		const store = new SettingsStore();
-		store.setLastConnectedUrl('https://backup.example');
-		expect(store.toGatewayConfig().allowedOrigins).toEqual(['https://backup.example']);
-	});
-
-	it('prefers instanceUrl over lastConnectedUrl when both are set', () => {
-		const store = new SettingsStore();
-		store.set({ instanceUrl: 'https://primary.example' });
-		store.setLastConnectedUrl('https://secondary.example');
-		expect(store.toGatewayConfig().allowedOrigins).toEqual(['https://primary.example']);
-	});
-
-	it('warns and uses cloud default when instance URL is invalid', () => {
-		const store = new SettingsStore();
-		store.set({ instanceUrl: 'not-a-valid-url' });
-		expect(store.toGatewayConfig().allowedOrigins).toEqual(['https://*.app.n8n.cloud']);
-		expect(logger.warn).toHaveBeenCalledWith(
-			'Invalid n8n instance URL; using default allowedOrigins',
-			expect.objectContaining({ url: 'not-a-valid-url' }),
-		);
+		store.set({ allowedOrigins: [] });
+		const config = store.toGatewayConfig();
+		expect(config.allowedOrigins).toEqual(['https://*.app.n8n.cloud']);
 	});
 
 	it('maps capability toggles to gateway permissions', () => {

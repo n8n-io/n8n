@@ -9,7 +9,6 @@ const STATUS_LABELS: Record<DaemonStatus, string> = {
 	connected: '', // set dynamically with URL
 	connecting: '○  Connecting...',
 	disconnected: '✕  Disconnected',
-	idle: '■  Idle',
 	error: '✕  Error',
 };
 
@@ -17,7 +16,6 @@ const ICON_NAMES: Record<DaemonStatus, string> = {
 	connected: 'tray-connected',
 	connecting: 'tray-waiting',
 	disconnected: 'tray-disconnected',
-	idle: 'tray-stopped',
 	error: 'tray-disconnected',
 };
 
@@ -66,15 +64,12 @@ function buildStatusLabel(snapshot: StatusSnapshot): string {
 }
 
 function buildMenu(
-	controller: DaemonController,
 	snapshot: StatusSnapshot,
 	onSettings: () => void,
-	onStartDaemon: () => void,
 	onQuit: () => void,
 	onDisconnect: () => void,
 ): Menu {
-	const running = controller.isRunning();
-	const connected = snapshot.status === 'connected';
+	const sessionActive = snapshot.status === 'connected' || snapshot.status === 'connecting';
 	return Menu.buildFromTemplate([
 		{
 			label: buildStatusLabel(snapshot),
@@ -82,12 +77,8 @@ function buildMenu(
 		},
 		{ type: 'separator' },
 		{
-			label: running ? 'Reconnect' : 'Connect',
-			click: onStartDaemon,
-		},
-		{
 			label: 'Disconnect',
-			visible: connected,
+			visible: sessionActive,
 			click: onDisconnect,
 		},
 		{ type: 'separator' },
@@ -106,19 +97,16 @@ function buildMenu(
 export function createTray(
 	controller: DaemonController,
 	onSettings: () => void,
-	onStartDaemon: () => void,
 	onQuit: () => void,
 	onDisconnect: () => void,
 ): Tray {
-	const tray = new Tray(getTrayIcon('idle'));
+	const tray = new Tray(getTrayIcon('disconnected'));
 	tray.setToolTip('n8n Gateway');
 
 	const update = (snapshot: StatusSnapshot): void => {
 		logger.debug('Tray updating', { status: snapshot.status, connectedUrl: snapshot.connectedUrl });
 		tray.setImage(getTrayIcon(snapshot.status));
-		tray.setContextMenu(
-			buildMenu(controller, snapshot, onSettings, onStartDaemon, onQuit, onDisconnect),
-		);
+		tray.setContextMenu(buildMenu(snapshot, onSettings, onQuit, onDisconnect));
 	};
 
 	controller.on('statusChanged', update);

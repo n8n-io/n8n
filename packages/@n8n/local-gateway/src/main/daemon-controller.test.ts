@@ -1,7 +1,6 @@
 const mockStart = jest.fn();
 const mockDisconnect = jest.fn();
 const mockStop = jest.fn();
-const mockGetCurrentGatewayKey = jest.fn();
 const mockGetDefaults = jest.fn();
 const mockSessionFlush = jest.fn();
 
@@ -38,7 +37,6 @@ jest.mock('@n8n/computer-use/gateway-client', () => ({
 			start: mockStart,
 			disconnect: mockDisconnect,
 			stop: mockStop,
-			getCurrentGatewayKey: mockGetCurrentGatewayKey,
 		};
 	}),
 }));
@@ -72,6 +70,15 @@ async function settleNextTurn(): Promise<void> {
 }
 
 describe('DaemonController', () => {
+	it('starts disconnected with no session', () => {
+		const controller = new DaemonController();
+		expect(controller.getSnapshot()).toEqual({
+			status: 'disconnected',
+			connectedUrl: null,
+			lastError: null,
+		});
+	});
+
 	beforeEach(() => {
 		jest.clearAllMocks();
 		lastGatewayOptions = undefined;
@@ -88,19 +95,17 @@ describe('DaemonController', () => {
 		mockStart.mockResolvedValue(undefined);
 		mockDisconnect.mockResolvedValue(undefined);
 		mockStop.mockResolvedValue(undefined);
-		mockGetCurrentGatewayKey.mockReturnValue('sess_token');
 		mockSessionFlush.mockResolvedValue(undefined);
 	});
 
 	it('connects and updates snapshot state', async () => {
 		const controller = new DaemonController();
-		const result = await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
+		await controller.connect(BASE_CONFIG, 'https://example.n8n.cloud', 'gw_token');
 
 		const snapshot = controller.getSnapshot();
 		expect(snapshot.status).toBe('connected');
 		expect(snapshot.connectedUrl).toBe('https://example.n8n.cloud');
 		expect(snapshot.lastError).toBeNull();
-		expect(result.apiKey).toBe('sess_token');
 	});
 
 	it('normalizes trailing slash on URL', async () => {
@@ -141,7 +146,6 @@ describe('DaemonController', () => {
 		const snapshot = controller.getSnapshot();
 		expect(snapshot.status).toBe('disconnected');
 		expect(snapshot.connectedUrl).toBeNull();
-		expect(snapshot.connectedAt).toBeNull();
 		expect(mockDisconnect).toHaveBeenCalled();
 		expect(mockSessionFlush).toHaveBeenCalled();
 	});
@@ -152,21 +156,6 @@ describe('DaemonController', () => {
 		await controller.connect(BASE_CONFIG, 'https://b.example', 't2');
 		expect(mockStop).toHaveBeenCalled();
 		expect(mockStart).toHaveBeenCalledTimes(2);
-	});
-
-	it('reconnect is a no-op when nothing was connected before', async () => {
-		const controller = new DaemonController();
-		await controller.reconnect(BASE_CONFIG);
-		expect(mockStart).not.toHaveBeenCalled();
-	});
-
-	it('reconnect reuses last credentials', async () => {
-		const controller = new DaemonController();
-		await controller.connect(BASE_CONFIG, 'https://x.example', 'k1');
-		await controller.reconnect(BASE_CONFIG);
-		expect(mockStart).toHaveBeenCalledTimes(2);
-		expect(lastGatewayOptions?.url).toBe('https://x.example');
-		expect(lastGatewayOptions?.apiKey).toBe('sess_token');
 	});
 
 	it('sets error state when gateway signals persistent auth failure', async () => {

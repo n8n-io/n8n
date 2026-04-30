@@ -2,9 +2,8 @@ import { select, input } from '@inquirer/prompts';
 import * as fs from 'node:fs/promises';
 import * as nodePath from 'node:path';
 
-import type { GatewayConfig, PermissionMode, ToolGroup } from './config';
+import type { PermissionMode, ToolGroup } from './config';
 import { PERMISSION_MODES, TOOL_GROUP_DEFINITIONS } from './config';
-import { SettingsStore } from './settings-store';
 
 // ---------------------------------------------------------------------------
 // Display helpers
@@ -73,17 +72,4 @@ export function isAllDeny(permissions: Record<ToolGroup, PermissionMode>): boole
 	return (Object.keys(TOOL_GROUP_DEFINITIONS) as ToolGroup[]).every(
 		(g) => permissions[g] === 'deny',
 	);
-}
-
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Silently creates the settings file with the default (Recommended) template
- * if it does not exist. Merges CLI/ENV overrides from config.permissions on top.
- * filesystemDir is left empty. Does NOT prompt. Safe to call on every startup.
- */
-export async function ensureSettingsFile(config: GatewayConfig): Promise<void> {
-	await SettingsStore.ensureInitialized(config);
 }

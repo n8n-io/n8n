@@ -1,11 +1,10 @@
 import type { ConnectPayload } from '../shared/types';
 
-/** Custom URI scheme registered with the OS for deep links (`n8n-gateway://…`). */
-export const DEEP_LINK_PROTOCOL = 'n8n-gateway';
+/** Registered with the OS for deeplinks (`n8n-computer-use://…`). */
+export const DEEP_LINK_PROTOCOL = 'n8n-computer-use';
 
 /**
- * Parses `n8n-gateway://connect?url=…&token=…` deep links (strict: host must be `connect`).
- * Requires a non-empty `token=` (after trim), same as a missing `url=` — invalid links return `null`.
+ * Parses `n8n-computer-use://connect?url=…&token=…`. Host must be `connect`. Requires non-empty `token=` after trim.
  */
 export function parseConnectPayload(value: string): ConnectPayload | null {
 	let parsed: URL;
@@ -32,8 +31,8 @@ export function parseConnectPayload(value: string): ConnectPayload | null {
 	return { url, apiKey };
 }
 
-/** True if argv appears to include our scheme (even when parse fails, e.g. missing token). */
-export function argvContainsDeepLinkAttempt(argv: string[]): boolean {
+/** True if argv appears to include our deeplink scheme (even when parse fails). */
+export function deepLinkProtocolsInArgv(argv: string[]): boolean {
 	const needle = `${DEEP_LINK_PROTOCOL}://`;
 	return argv.some((arg) => arg.includes(needle));
 }

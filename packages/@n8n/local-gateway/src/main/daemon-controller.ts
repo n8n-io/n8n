@@ -17,23 +17,16 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 	private client: GatewayClient | null = null;
 	private session: GatewaySession | null = null;
 	private settingsStore: SettingsStore | null = null;
-	private _status: DaemonStatus = 'idle';
+	private _status: DaemonStatus = 'disconnected';
 	private _connectedUrl: string | null = null;
-	private _connectedAt: string | null = null;
 	private _lastError: string | null = null;
-	private lastCredentials: { url: string; apiKey: string } | null = null;
 
 	getSnapshot(): StatusSnapshot {
 		return {
 			status: this._status,
 			connectedUrl: this._connectedUrl,
-			connectedAt: this._connectedAt,
 			lastError: this._lastError,
 		};
-	}
-
-	isRunning(): boolean {
-		return this.client !== null;
 	}
 
 	private async getSettingsStore(): Promise<SettingsStore> {
@@ -63,7 +56,6 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		this.client = null;
 		this.session = null;
 		this._connectedUrl = null;
-		this._connectedAt = null;
 	}
 
 	private formatErrorMessage(error: unknown): string {
@@ -76,7 +68,7 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		}
 	}
 
-	async connect(config: GatewayConfig, url: string, apiKey: string): Promise<{ apiKey: string }> {
+	async connect(config: GatewayConfig, url: string, apiKey: string): Promise<void> {
 		const normalizedUrl = url.replace(/\/$/, '');
 		logger.debug('Direct gateway connect requested', { url: normalizedUrl });
 
@@ -103,24 +95,15 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 
 		try {
 			await client.start();
-			const activeApiKey = client.getCurrentGatewayKey();
 			this.client = client;
 			this.session = session;
-			this.lastCredentials = { url: normalizedUrl, apiKey: activeApiKey };
 			this._connectedUrl = normalizedUrl;
-			this._connectedAt = new Date().toISOString();
 			this.setStatus('connected');
-			return { apiKey: activeApiKey };
 		} catch (error) {
 			this._lastError = this.formatErrorMessage(error);
 			this.clearConnectionState('error');
 			throw new Error(this._lastError);
 		}
-	}
-
-	async reconnect(config: GatewayConfig): Promise<void> {
-		if (!this.lastCredentials) return;
-		await this.connect(config, this.lastCredentials.url, this.lastCredentials.apiKey);
 	}
 
 	async disconnect(): Promise<void> {
@@ -145,7 +128,6 @@ export class DaemonController extends EventEmitter<DaemonControllerEvents> {
 		this.client = null;
 		this.session = null;
 		this._connectedUrl = null;
-		this._connectedAt = null;
 		this.setStatus(status);
 	}
 

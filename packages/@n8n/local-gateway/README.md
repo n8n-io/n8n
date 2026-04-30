@@ -47,6 +47,8 @@ cd packages/@n8n/local-gateway
 pnpm dev
 ```
 
+**OS deeplink / connect handshake:** Plain `pnpm start` is fine for tray and settings UI. To verify **`n8n-computer-use://…`** routing from n8n the way end users experience it, build the macOS artefact (**`pnpm dist:mac`**, see below), install or run the generated app under **`packages/@n8n/local-gateway/out/`**, and trigger connect from n8n’s computer-use / local-gateway flow.
+
 ## Building
 
 Compile the TypeScript sources:
@@ -79,44 +81,39 @@ Installers are written to the `out/` directory.
 
 ## Connecting
 
-You can connect in two ways:
+Pairing is done from n8n via the **computer-use / local gateway** flow, which opens an OS deeplink into this app. The Settings window does not accept an instance URL or gateway token; it only stores global preferences (allowed origins, capabilities, etc.).
 
-### 1) Manual connect (paste token in Settings)
+1. In n8n, start the connect flow for the local gateway / computer-use integration so your browser or OS opens the registered protocol URL (see below).
+2. Before connecting, open tray icon → **Settings** and ensure **Allowed origins** includes the origin of your n8n instance (for local dev, add `http://localhost:5678` or your port). Origins are validated before any connection.
 
-1. Open tray icon → **Settings**.
-2. Enter your n8n instance URL.
-3. Paste a fresh **Gateway token** from n8n.
-4. Click **Connect**.
+The app registers **`n8n-computer-use`** as the primary OS protocol handler. The URL shape is:
+
+```text
+n8n-computer-use://connect?url=<ENCODED_N8N_URL>&token=<TOKEN>
+```
+
+Example (manual test of the handler):
+
+```bash
+open "n8n-computer-use://connect?url=http%3A%2F%2Flocalhost%3A5678&token=YOUR_TOKEN"
+```
 
 Notes:
 
-- The gateway token is one-time.
-- After successful connect, n8n upgrades it to a reusable session key.
-- The token field is shown only while disconnected.
-
-### 2) URL-based deep link
-
-`@n8n/local-gateway` registers a custom protocol handler and accepts:
-
-```text
-n8n-gateway://connect?url=<ENCODED_N8N_URL>&token=<TOKEN>
-```
-
-Example:
-
-```bash
-open "n8n-gateway://connect?url=http%3A%2F%2Flocalhost%3A5678&token=YOUR_TOKEN"
-```
+- The gateway token is one-time for pairing.
+- URL and token are not stored in global settings; connect again after restart using n8n’s link or a deeplink.
+- For headless or scripted use outside Electron, the **`n8n-computer-use` CLI** in `@n8n/computer-use` remains available.
 
 ## Settings
 
-Settings are persisted across restarts and can be changed via the tray icon → **Settings**:
+Global preferences are persisted across restarts (tray icon → **Settings**). They are separate from connection credentials:
 
-- **n8n URL** — target instance URL used for direct connection
-- **Gateway token** — one-time token used when initiating a new connection
+- **Allowed origins** — patterns used to validate an instance URL **before** any connection is attempted (defaults include `https://*.app.n8n.cloud`). Never derived from the URL you paste.
 - **Capability toggles** — enable or disable individual capabilities
 - **Filesystem directory** — root path for filesystem tools
 - **Log level** — controls verbosity of local gateway logs (`~/.n8n-local-gateway/log`)
+
+Connection URL and gateway token are supplied only via the deeplink (or CLI); not through Settings.
 
 ## Architecture
 
@@ -128,4 +125,6 @@ src/renderer/   — Settings UI (plain HTML/CSS/TS, sandboxed)
 src/shared/     — Types shared between main and renderer
 ```
 
-The local runtime is provided by `@n8n/computer-use` and managed by `DaemonController`, which handles connect/disconnect and surfaces status (`idle → connecting → connected → disconnected/error`) to the tray menu and settings window via IPC.
+The local runtime is provided by `@n8n/computer-use` and managed by `DaemonController`, which handles connect/disconnect and surfaces status (`disconnected` until a session starts, then `connecting → connected → disconnected/error`) to the tray menu and settings window via IPC.
+
+See `docs/ARCHITECTURE_CONNECTION_VS_SETTINGS.md` for how global settings, connection attempts, and runtime session state relate.

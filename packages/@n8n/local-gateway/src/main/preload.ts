@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { AppSettings, ConnectPayload, StatusSnapshot } from '../shared/types';
+import type { AppSettings, StatusSnapshot } from '../shared/types';
 
 contextBridge.exposeInMainWorld('electronAPI', {
 	getSettings: async (): Promise<AppSettings> =>
@@ -12,12 +12,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 	getDaemonStatus: async (): Promise<StatusSnapshot> =>
 		await (ipcRenderer.invoke('daemon:status') as Promise<StatusSnapshot>),
 
-	connectGateway: async (payload: ConnectPayload): Promise<{ ok: boolean; error?: string }> =>
-		await (ipcRenderer.invoke('gateway:connect', payload) as Promise<{
-			ok: boolean;
-			error?: string;
-		}>),
-
 	disconnectGateway: async (): Promise<{ ok: boolean }> =>
 		await (ipcRenderer.invoke('gateway:disconnect') as Promise<{ ok: boolean }>),
 
@@ -25,9 +19,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
 		ipcRenderer.on('statusChanged', (_event, snapshot: StatusSnapshot) =>
 			onChangeCallback(snapshot),
 		);
-	},
-
-	onFocusGatewayToken: (onFocusCallback: () => void): void => {
-		ipcRenderer.on('focusGatewayToken', () => onFocusCallback());
 	},
 });

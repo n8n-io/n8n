@@ -3,13 +3,11 @@ import { ipcMain } from 'electron';
 
 import type { DaemonController } from './daemon-controller';
 import type { AppSettings, SettingsStore } from './settings-store';
-import type { ConnectPayload } from '../shared/types';
 
 export function registerIpcHandlers(
 	controller: DaemonController,
 	settingsStore: SettingsStore,
-	connect: (payload: ConnectPayload) => Promise<void>,
-	/** Clears persisted connection state and disconnects server-side (Electron app concern). */
+	/** Tears down the local gateway connection (Electron app). */
 	disconnectGateway: () => Promise<void>,
 ): void {
 	ipcMain.handle('settings:get', (): AppSettings => {
@@ -27,10 +25,7 @@ export function registerIpcHandlers(
 					configure({ level: partial.logLevel });
 					logger.info('Log level updated', { level: partial.logLevel });
 				}
-				const requiresReconnect = Object.keys(partial).some((key) => key !== 'logLevel');
-				if (requiresReconnect && controller.isRunning()) {
-					await controller.reconnect(settingsStore.toGatewayConfig());
-				}
+				// Changing tool/capability toggles does not hot-reload an active connection; disconnect and connect again if needed.
 				return { ok: true };
 			} catch (error) {
 				const message = error instanceof Error ? error.message : String(error);
@@ -43,20 +38,6 @@ export function registerIpcHandlers(
 	ipcMain.handle('daemon:status', () => {
 		logger.debug('IPC daemon:status');
 		return controller.getSnapshot();
-	});
-
-	ipcMain.handle('gateway:connect', async (_event, payload: ConnectPayload) => {
-		logger.debug('IPC gateway:connect', { url: payload.url });
-		try {
-			await connect(payload);
-			return { ok: true };
-		} catch (error) {
-			const snapshot = controller.getSnapshot();
-			const message =
-				snapshot.lastError ?? (error instanceof Error ? error.message : String(error));
-			logger.error('IPC gateway:connect failed', { error: message });
-			return { ok: false, error: message };
-		}
 	});
 
 	ipcMain.handle('gateway:disconnect', async (): Promise<{ ok: boolean }> => {

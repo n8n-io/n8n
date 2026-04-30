@@ -1,6 +1,6 @@
 import {
-	argvContainsDeepLinkAttempt,
 	DEEP_LINK_PROTOCOL,
+	deepLinkProtocolsInArgv,
 	parseConnectPayload,
 	parseConnectPayloadFromArgv,
 } from './connect-payload';
@@ -76,14 +76,14 @@ describe('parseConnectPayloadFromArgv', () => {
 	});
 });
 
-describe('argvContainsDeepLinkAttempt', () => {
+describe('deepLinkProtocolsInArgv', () => {
 	it('returns false when argv has no deep-link string', () => {
-		expect(argvContainsDeepLinkAttempt(['electron', '/app/main.js'])).toBe(false);
+		expect(deepLinkProtocolsInArgv(['electron', '/app/main.js'])).toBe(false);
 	});
 
 	it('returns true when argv includes our scheme even if parse fails', () => {
 		expect(
-			argvContainsDeepLinkAttempt([
+			deepLinkProtocolsInArgv([
 				'electron',
 				`${DEEP_LINK_PROTOCOL}://connect?url=https://x.example`,
 			]),

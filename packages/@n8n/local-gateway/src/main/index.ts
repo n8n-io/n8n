@@ -2,11 +2,12 @@ import { configure, logger } from '@n8n/computer-use/logger';
 import { app } from 'electron';
 import * as path from 'node:path';
 
+import { assertConnectOriginAllowed } from './connect-origin';
 import {
-	argvContainsDeepLinkAttempt,
-	DEEP_LINK_PROTOCOL,
+	deepLinkProtocolsInArgv,
 	parseConnectPayload,
 	parseConnectPayloadFromArgv,
+	DEEP_LINK_PROTOCOL,
 } from './connect-payload';
 import { DaemonController } from './daemon-controller';
 import { registerIpcHandlers } from './ipc-handlers';
@@ -20,161 +21,110 @@ if (process.platform === 'win32') {
 	app.setAppUserModelId('io.n8n.gateway');
 }
 
-// ensure only one instance of the app can run at once
 if (!app.requestSingleInstanceLock()) {
 	app.quit();
-}
-
-// Keep the process running even when all windows are closed (tray-only app).
-// Returning false from the handler is not possible via the Electron API directly;
-// instead we simply never quit — the tray manages app lifetime.
-app.on('window-all-closed', () => {
-	// Intentionally do nothing: this is a tray-only app that stays alive
-	// even when all BrowserWindows are closed.
-});
-
-app
-	.whenReady()
-	.then(() => {
-		// macOS: hide from Dock (tray-only app)
-		if (process.platform === 'darwin') {
-			app.dock?.hide();
-		}
-		app.setAsDefaultProtocolClient(DEEP_LINK_PROTOCOL);
-
-		const settingsStore = new SettingsStore();
-		configure({ level: settingsStore.get().logLevel });
-		logger.info('n8n Gateway starting');
-
-		const controller = new DaemonController();
-
-		const preloadPath = path.join(__dirname, 'preload.js');
-		const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
-
-		async function connect(payload: ConnectPayload): Promise<void> {
-			const config = settingsStore.toGatewayConfig();
-			const inline = payload.apiKey?.trim();
-			const stored = settingsStore.getReconnectKey()?.trim();
-			const effectiveKey =
-				inline && inline.length > 0 ? inline : stored && stored.length > 0 ? stored : undefined;
-			if (!effectiveKey) {
-				throw new Error('No saved session key. Use a fresh token from n8n to connect.');
-			}
-			const result = await controller.connect(config, payload.url, effectiveKey);
-			const settingsPatch = {
-				instanceUrl: payload.url,
-			};
-			settingsStore.set(settingsPatch);
-			settingsStore.setReconnectKey(result.apiKey);
-		}
-
-		async function reconnectStoredCredentials(): Promise<boolean> {
-			const settings = settingsStore.get();
-			const reconnectKey = settingsStore.getReconnectKey();
-			if (!settings.instanceUrl || !reconnectKey) return false;
-			try {
-				await connect({
-					url: settings.instanceUrl,
-					apiKey: reconnectKey,
-				});
-				return true;
-			} catch (error) {
-				logger.warn('Initial reconnect failed', {
-					error: error instanceof Error ? error.message : String(error),
-				});
-				return false;
-			}
-		}
-
-		function scheduleFocusGatewayToken(): void {
-			setTimeout(() => {
-				notifySettingsWindow('focusGatewayToken');
-			}, 50);
-		}
-
-		function openSettingsForTokenEntry(): void {
-			openSettingsWindow(preloadPath, rendererPath);
-			scheduleFocusGatewayToken();
-		}
-
-		async function disconnectGateway(): Promise<void> {
-			settingsStore.setLastConnectedUrl(null);
-			settingsStore.setReconnectKey(null);
-			await controller.disconnect();
-		}
-
-		function handleConnectPayload(payload: ConnectPayload): void {
-			logger.info('Handling deep-link connection payload', { url: payload.url });
-			void connect(payload).catch((error: unknown) => {
-				logger.error('Deep-link connection failed', {
-					error: error instanceof Error ? error.message : String(error),
-				});
-				openSettingsForTokenEntry();
-			});
-		}
-
-		registerIpcHandlers(controller, settingsStore, connect, disconnectGateway);
-
-		// Propagate status changes to the settings window (if open) and persist connection URL
-		controller.on('statusChanged', (snapshot) => {
-			notifySettingsWindow('statusChanged', snapshot);
-			if (snapshot.status === 'connected' && snapshot.connectedUrl) {
-				settingsStore.setLastConnectedUrl(snapshot.connectedUrl);
-			}
-		});
-
-		createTray(
-			controller,
-			() => openSettingsWindow(preloadPath, rendererPath),
-			() => {
-				const reconnectKey = settingsStore.getReconnectKey();
-				if (!reconnectKey) {
-					openSettingsForTokenEntry();
-					return;
-				}
-				void reconnectStoredCredentials().then((connected) => {
-					if (!connected) openSettingsForTokenEntry();
-				});
-			},
-			() => {
-				logger.info('n8n Gateway quitting');
-				void controller
-					.disconnect()
-					.catch((error: unknown) => {
-						logger.error('Disconnect failed during quit', {
-							error: error instanceof Error ? error.message : String(error),
-						});
-					})
-					.finally(() => {
-						app.quit();
-					});
-			},
-			() => {
-				void disconnectGateway();
-			},
-		);
-
-		const payloadFromArgs = parseConnectPayloadFromArgv(process.argv);
-		if (payloadFromArgs) {
-			handleConnectPayload(payloadFromArgs);
-		} else if (!argvContainsDeepLinkAttempt(process.argv)) {
-			void reconnectStoredCredentials();
-		}
-
-		app.on('open-url', (event, url) => {
-			event.preventDefault();
-			const payload = parseConnectPayload(url);
-			if (!payload) return;
-			handleConnectPayload(payload);
-		});
-
-		app.on('second-instance', (_event, argv) => {
-			const payload = parseConnectPayloadFromArgv(argv);
-			if (!payload) return;
-			handleConnectPayload(payload);
-		});
-	})
-	.catch((error: unknown) => {
-		logger.error('Failed to initialize app', { error: String(error) });
-		app.quit();
+} else {
+	app.on('window-all-closed', () => {
+		// Intentionally do nothing: this is a tray-only app that stays alive
+		// even when all BrowserWindows are closed.
 	});
+
+	app
+		.whenReady()
+		.then(() => {
+			if (process.platform === 'darwin') {
+				app.dock?.hide();
+			}
+
+			app.setAsDefaultProtocolClient(DEEP_LINK_PROTOCOL);
+
+			const settingsStore = new SettingsStore();
+			configure({ level: settingsStore.get().logLevel });
+			logger.info('n8n Gateway starting');
+
+			const controller = new DaemonController();
+
+			const preloadPath = path.join(__dirname, 'preload.js');
+			const rendererPath = path.join(__dirname, '..', 'renderer', 'index.html');
+
+			async function connect(payload: ConnectPayload): Promise<void> {
+				const settings = settingsStore.get();
+				assertConnectOriginAllowed(payload.url, settings.allowedOrigins);
+				const config = settingsStore.toGatewayConfig(settings);
+				const token = payload.apiKey?.trim();
+				if (!token || token.length === 0) {
+					throw new Error(
+						'Missing gateway token in deeplink. Connect from n8n using the computer-use link.',
+					);
+				}
+				await controller.connect(config, payload.url, token);
+			}
+
+			async function disconnectGateway(): Promise<void> {
+				await controller.disconnect();
+			}
+
+			function handleConnectPayload(payload: ConnectPayload): void {
+				logger.info('Handling deep-link connection payload', { url: payload.url });
+				void connect(payload).catch((error: unknown) => {
+					logger.error('Deep-link connection failed', {
+						error: error instanceof Error ? error.message : String(error),
+					});
+					openSettingsWindow(preloadPath, rendererPath);
+				});
+			}
+
+			registerIpcHandlers(controller, settingsStore, disconnectGateway);
+
+			controller.on('statusChanged', (snapshot) => {
+				notifySettingsWindow('statusChanged', snapshot);
+			});
+
+			createTray(
+				controller,
+				() => openSettingsWindow(preloadPath, rendererPath),
+				() => {
+					logger.info('n8n Gateway quitting');
+					void controller
+						.disconnect()
+						.catch((error: unknown) => {
+							logger.error('Disconnect failed during quit', {
+								error: error instanceof Error ? error.message : String(error),
+							});
+						})
+						.finally(() => {
+							app.quit();
+						});
+				},
+				() => {
+					void disconnectGateway();
+				},
+			);
+
+			const payloadFromArgs = parseConnectPayloadFromArgv(process.argv);
+			if (payloadFromArgs) {
+				handleConnectPayload(payloadFromArgs);
+			} else if (deepLinkProtocolsInArgv(process.argv)) {
+				logger.warn(
+					'Deep link present in argv but payload invalid (e.g. missing token); skipping startup connect',
+				);
+			}
+
+			app.on('open-url', (event, url) => {
+				event.preventDefault();
+				const payload = parseConnectPayload(url);
+				if (!payload) return;
+				handleConnectPayload(payload);
+			});
+
+			app.on('second-instance', (_event, argv) => {
+				const payload = parseConnectPayloadFromArgv(argv);
+				if (!payload) return;
+				handleConnectPayload(payload);
+			});
+		})
+		.catch((error: unknown) => {
+			logger.error('Failed to initialize app', { error: String(error) });
+			app.quit();
+		});
+}

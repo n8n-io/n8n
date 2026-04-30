@@ -1,10 +1,4 @@
-import type {
-	AppSettings,
-	ConnectPayload,
-	DaemonStatus,
-	LogLevel,
-	StatusSnapshot,
-} from '../shared/types';
+import type { AppSettings, DaemonStatus, LogLevel, StatusSnapshot } from '../shared/types';
 
 declare global {
 	interface Window {
@@ -12,10 +6,8 @@ declare global {
 			getSettings: () => Promise<AppSettings>;
 			setSettings: (partial: Partial<AppSettings>) => Promise<{ ok: boolean; error?: string }>;
 			getDaemonStatus: () => Promise<StatusSnapshot>;
-			connectGateway: (payload: ConnectPayload) => Promise<{ ok: boolean; error?: string }>;
 			disconnectGateway: () => Promise<{ ok: boolean }>;
 			onStatusChanged: (onChangeCallback: (snapshot: StatusSnapshot) => void) => void;
-			onFocusGatewayToken: (onFocusCallback: () => void) => void;
 		};
 	}
 }
@@ -24,7 +16,6 @@ const STATUS_TEXT: Record<DaemonStatus, string> = {
 	connected: 'Connected',
 	connecting: 'Connecting',
 	disconnected: 'Disconnected',
-	idle: 'Idle',
 	error: 'Error',
 };
 
@@ -51,21 +42,29 @@ function updateStatusBadge(snapshot: StatusSnapshot): void {
 		label = STATUS_TEXT[snapshot.status];
 	}
 	text.textContent = label;
-	const connectBtn = document.getElementById('connectBtn') as HTMLButtonElement | null;
 	const disconnectBtn = document.getElementById('disconnectBtn') as HTMLButtonElement | null;
-	const tokenRow = document.getElementById('gatewayTokenRow');
-	if (connectBtn && disconnectBtn) {
-		const isConnected = snapshot.status === 'connected' || snapshot.status === 'connecting';
-		connectBtn.disabled = isConnected;
-		disconnectBtn.disabled = !isConnected;
-		if (tokenRow) {
-			tokenRow.style.display = isConnected ? 'none' : 'block';
-		}
+	if (disconnectBtn) {
+		const sessionActive = snapshot.status === 'connected' || snapshot.status === 'connecting';
+		disconnectBtn.disabled = !sessionActive;
+		disconnectBtn.style.display = sessionActive ? 'inline-flex' : 'none';
 	}
 }
 
+function parseAllowedOriginsInput(raw: string): string[] {
+	return raw
+		.split(/[\n,]+/)
+		.map((s) => s.trim())
+		.filter(Boolean);
+}
+
+function formatAllowedOriginsForForm(origins: string[]): string {
+	return origins.join('\n');
+}
+
 function readForm(): Partial<AppSettings> {
-	const instanceUrl = (document.getElementById('instanceUrl') as HTMLInputElement).value.trim();
+	const allowedOriginsRaw = (document.getElementById('allowedOrigins') as HTMLTextAreaElement)
+		.value;
+	const allowedOrigins = parseAllowedOriginsInput(allowedOriginsRaw);
 	const filesystemDir = (document.getElementById('filesystemDir') as HTMLInputElement).value.trim();
 	const filesystemEnabled = (document.getElementById('filesystemEnabled') as HTMLInputElement)
 		.checked;
@@ -78,7 +77,7 @@ function readForm(): Partial<AppSettings> {
 	const logLevel = (document.getElementById('logLevel') as HTMLSelectElement).value as LogLevel;
 
 	return {
-		instanceUrl,
+		allowedOrigins,
 		filesystemDir,
 		filesystemEnabled,
 		shellEnabled,
@@ -89,16 +88,9 @@ function readForm(): Partial<AppSettings> {
 	};
 }
 
-function readConnectPayload(): ConnectPayload {
-	const url = (document.getElementById('instanceUrl') as HTMLInputElement).value.trim();
-	const rawApiKey = (document.getElementById('gatewayKey') as HTMLInputElement).value.trim();
-	const apiKey = rawApiKey.length > 0 ? rawApiKey : undefined;
-	return { url, apiKey };
-}
-
 function populateForm(settings: AppSettings): void {
-	(document.getElementById('instanceUrl') as HTMLInputElement).value = settings.instanceUrl;
-	(document.getElementById('gatewayKey') as HTMLInputElement).value = '';
+	(document.getElementById('allowedOrigins') as HTMLTextAreaElement).value =
+		formatAllowedOriginsForForm(settings.allowedOrigins);
 	(document.getElementById('filesystemDir') as HTMLInputElement).value = settings.filesystemDir;
 	(document.getElementById('filesystemEnabled') as HTMLInputElement).checked =
 		settings.filesystemEnabled;
@@ -136,7 +128,7 @@ function isFormDirty(initial: AppSettings): boolean {
 	return (
 		JSON.stringify(current) !==
 		JSON.stringify({
-			instanceUrl: initial.instanceUrl,
+			allowedOrigins: initial.allowedOrigins,
 			filesystemDir: initial.filesystemDir,
 			filesystemEnabled: initial.filesystemEnabled,
 			shellEnabled: initial.shellEnabled,
@@ -168,17 +160,6 @@ async function init(): Promise<void> {
 	};
 	form.addEventListener('change', updateDirtyState);
 	form.addEventListener('input', updateDirtyState);
-
-	document.getElementById('connectBtn')?.addEventListener('click', () => {
-		const payload = readConnectPayload();
-		void window.electronAPI.connectGateway(payload).then((result) => {
-			if (result.ok) {
-				(document.getElementById('gatewayKey') as HTMLInputElement).value = '';
-			} else {
-				alert('Connection failed. See logs for details.');
-			}
-		});
-	});
 
 	document.getElementById('disconnectBtn')?.addEventListener('click', () => {
 		void window.electronAPI.disconnectGateway();
@@ -224,12 +205,6 @@ async function init(): Promise<void> {
 
 	// Live status updates
 	window.electronAPI.onStatusChanged(updateStatusBadge);
-	window.electronAPI.onFocusGatewayToken(() => {
-		const tokenInput = document.getElementById('gatewayKey') as HTMLInputElement | null;
-		if (!tokenInput) return;
-		tokenInput.focus();
-		tokenInput.select();
-	});
 }
 
 void init().catch((e: unknown) => {
