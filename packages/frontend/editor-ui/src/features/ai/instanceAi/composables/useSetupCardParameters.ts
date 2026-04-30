@@ -62,7 +62,7 @@ export function useSetupCardParameters(
 		const nodeName = req.node.name;
 		const tracked =
 			trackedParamNames.value.get(nodeName) ?? new Set(Object.keys(req.parameterIssues ?? {}));
-		const node = workflowsStore.getNodeByName(nodeName);
+		const node = workflowDocumentStore.value.getNodeByName(nodeName);
 		if (!node) return [];
 
 		return nodeType.properties.filter(
@@ -116,7 +116,7 @@ export function useSetupCardParameters(
 				for (const paramName of paramNames) {
 					let val = paramValues.value[nodeName]?.[paramName];
 					if (!isParamValueSet(val)) {
-						val = workflowsStore.getNodeByName(nodeName)?.parameters[paramName];
+						val = workflowDocumentStore.value.getNodeByName(nodeName)?.parameters[paramName];
 					}
 					if (isParamValueSet(val)) {
 						merged[paramName] = val;

@@ -276,7 +276,7 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				assert(amendedExecution);
 				expect(amendedExecution.stoppedAt).not.toBe(execution.stoppedAt);
-				expect(amendedExecution.data).toEqual({ resultData: { runData: {} } });
+				expect(amendedExecution.data).toEqual({ version: 1, resultData: { runData: {} } });
 				expect(amendedExecution.status).toBe('crashed');
 			});
 

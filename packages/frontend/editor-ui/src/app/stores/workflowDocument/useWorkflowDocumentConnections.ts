@@ -5,6 +5,7 @@ import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
+import * as workflowUtils from 'n8n-workflow/common';
 
 // --- Event types ---
 
@@ -188,20 +189,24 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	// Read API
 	// -----------------------------------------------------------------------
 
-	const connectionsBySourceNode = computed<IConnections>(
-		() => workflowsStore.connectionsBySourceNode,
-	);
+	const connectionsBySourceNode = computed(() => workflowsStore.workflow.connections);
 
-	const connectionsByDestinationNode = computed<IConnections>(
-		() => workflowsStore.connectionsByDestinationNode,
+	const connectionsByDestinationNode = computed<IConnections>(() =>
+		workflowUtils.mapConnectionsByDestination(workflowsStore.workflow.connections),
 	);
 
 	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {
-		return workflowsStore.outgoingConnectionsByNodeName(nodeName);
+		if (connectionsBySourceNode.value.hasOwnProperty(nodeName)) {
+			return connectionsBySourceNode.value[nodeName] as unknown as INodeConnections;
+		}
+		return {};
 	}
 
 	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
-		return workflowsStore.incomingConnectionsByNodeName(nodeName);
+		if (connectionsByDestinationNode.value.hasOwnProperty(nodeName)) {
+			return connectionsByDestinationNode.value[nodeName] as unknown as INodeConnections;
+		}
+		return {};
 	}
 
 	// -----------------------------------------------------------------------

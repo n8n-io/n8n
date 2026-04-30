@@ -110,7 +110,7 @@ type WorkflowPublishState =
 const workflowPublishState = computed((): WorkflowPublishState => {
 	const hasBeenPublished = !!activeVersion.value;
 	const hasChanges =
-		workflowDocumentStore.value?.versionId !== activeVersion.value?.versionId ||
+		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
 		uiStore.hasUnsavedWorkflowChanges;
 
 	// Not published states
@@ -308,7 +308,7 @@ const shouldDisablePublishButton = computed(() => {
 	);
 });
 
-const activeVersion = computed(() => workflowDocumentStore.value?.activeVersion ?? null);
+const activeVersion = computed(() => workflowDocumentStore.value.activeVersion ?? null);
 
 const activeVersionName = computed(() => {
 	if (!activeVersion.value) {
@@ -343,7 +343,7 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 			id: VERSION_ACTIONS.NAME_VERSION,
 			label: i18n.baseText('generic.nameVersion'),
 			shortcut: { metaKey: true, keys: ['S'] },
-			disabled: !hasUpdatePermission.value || !workflowDocumentStore.value?.versionId,
+			disabled: !hasUpdatePermission.value || !workflowDocumentStore.value.versionId,
 		});
 	}
 
@@ -375,8 +375,8 @@ const onNameVersion = async () => {
 		}
 	}
 
-	const currentVersionId = workflowDocumentStore.value?.versionId ?? '';
-	const currentVersionData = workflowDocumentStore.value?.versionData;
+	const currentVersionId = workflowDocumentStore.value.versionId ?? '';
+	const currentVersionData = workflowDocumentStore.value.versionData;
 
 	const nameVersionEventBus = createEventBus<WorkflowVersionFormModalEventBusEvents>();
 	const modalData = ref({
@@ -400,7 +400,7 @@ const onNameVersion = async () => {
 					description: submitData.description,
 				});
 
-				workflowDocumentStore.value?.setVersionData({
+				workflowDocumentStore.value.setVersionData({
 					versionId: currentVersionId,
 					name: submitData.name,
 					description: submitData.description,
@@ -483,7 +483,7 @@ useKeybindings({
 		disabled: () =>
 			!isNamedVersionsEnabled.value ||
 			!hasUpdatePermission.value ||
-			!workflowDocumentStore.value?.versionId,
+			!workflowDocumentStore.value.versionId,
 		run: async () => {
 			await onNameVersion();
 		},
