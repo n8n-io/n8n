@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
-import {
-	onBeforeRouteLeave,
-	onBeforeRouteUpdate,
-	useRoute,
-	useRouter,
-	type RouteLocationNormalized,
-} from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nButton,
 	N8nIcon,
@@ -24,12 +18,11 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
 	deleteAgent,
-	publishAgent,
 	updateAgentSkill,
 	createAgentSkill,
 } from '../composables/useAgentApi';
@@ -130,6 +123,7 @@ const {
 } = useAgentBuilderSession();
 
 const {
+	builderRef,
 	chatColumnCollapsed,
 	chatColumnWidth,
 	treeColumnWidth,
@@ -471,9 +465,8 @@ async function onHeaderAction(action: string) {
 			return;
 		}
 
-		// Clear local agent state BEFORE router.replace so `hasUnpublishedChanges`
-		// is false and the route-leave guard doesn't intercept the navigation to
-		// ask about publishing a now-deleted agent.
+		// Clear local agent state before router.replace so the component teardown
+		// doesn't keep rendering data for an agent that no longer exists.
 		agent.value = null;
 		localConfig.value = null;
 		agentsEventBus.emit('agentUpdated');
@@ -502,79 +495,6 @@ async function onHeaderAction(action: string) {
 		}
 	}
 }
-
-const hasUnpublishedChanges = computed(
-	() =>
-		!!agent.value?.publishedVersion &&
-		agent.value.versionId !== agent.value.publishedVersion.publishedFromVersionId,
-);
-
-async function guardUnpublishedChanges(
-	from: RouteLocationNormalized,
-	next: (proceed?: boolean) => void,
-) {
-	if (!hasUnpublishedChanges.value) {
-		next();
-		return;
-	}
-
-	// The route may already be advancing (especially for in-component param
-	// updates), so resolve project/agent ids from the route we're leaving
-	// rather than the live computed refs.
-	const leavingProjectId = String(from.params.projectId ?? projectId.value);
-	const leavingAgentId = String(from.params.agentId ?? agentId.value);
-
-	const response = await openAgentConfirmationModal({
-		title: locale.baseText('agents.builder.unsavedPublish.modal.title'),
-		description: locale.baseText('agents.builder.unsavedPublish.modal.description'),
-		confirmButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.publish'),
-		cancelButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.leave'),
-	});
-
-	if (response === MODAL_CONFIRM) {
-		try {
-			// Drain the autosave pipeline first: cancel any scheduled-but-not-fired save,
-			// and await any in-flight one. Without this, a save that fires after publish
-			// would bump versionId and mark the agent dirty immediately after publishing.
-			await settleAutosave();
-			if (!localConfig.value) return;
-			await saveConfig({
-				type: 'config',
-				projectId: leavingProjectId,
-				agentId: leavingAgentId,
-				config: deepCopy(localConfig.value),
-			});
-			builderTelemetry.flushConfigEdits();
-			const updated = await publishAgent(
-				rootStore.restApiContext,
-				leavingProjectId,
-				leavingAgentId,
-			);
-			builderTelemetry.trackPublished(updated.publishedVersion?.schema);
-		} catch (error) {
-			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
-			return; // stay on page
-		}
-		next();
-	} else if (response === MODAL_CANCEL) {
-		next();
-	}
-	// MODAL_CLOSE (X / Escape) → don't call next(), stay on page
-}
-
-onBeforeRouteLeave(async (_to, from, next) => {
-	await guardUnpublishedChanges(from, next);
-});
-
-// In-component agent switches (same route, different :agentId) don't fire
-// `onBeforeRouteLeave`, so wire the same publish-or-discard prompt here too.
-onBeforeRouteUpdate(async (to, from, next) => {
-	if (to.params.agentId === from.params.agentId) {
-		next();
-		return;
-	}
-	await guardUnpublishedChanges(from, next);
-});
 
 async function initialize() {
 	initialized.value = false;

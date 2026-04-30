@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeUnmount } from 'vue';
 import { N8nButton, N8nCard, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
 import type { AskQuestionResume } from '@n8n/api-types';
 
@@ -23,6 +23,7 @@ const emit = defineEmits<{
 
 const SINGLE_CHOICE_SUBMIT_DELAY_MS = 250;
 const selected = ref<string[]>([]);
+let singleChoiceSubmitTimer: number | undefined;
 
 /** Labels of the persisted selected values, for the resolved state. */
 const resolvedLabels = computed(() => {
@@ -35,9 +36,18 @@ const resolvedLabels = computed(() => {
 function selectSingle(value: string) {
 	if (props.disabled) return;
 	selected.value = [value];
-	window.setTimeout(() => {
+	clearSingleChoiceSubmitTimer();
+	singleChoiceSubmitTimer = window.setTimeout(() => {
+		singleChoiceSubmitTimer = undefined;
+		if (props.disabled || selected.value[0] !== value) return;
 		emit('submit', { values: [value] });
 	}, SINGLE_CHOICE_SUBMIT_DELAY_MS);
+}
+
+function clearSingleChoiceSubmitTimer() {
+	if (singleChoiceSubmitTimer === undefined) return;
+	window.clearTimeout(singleChoiceSubmitTimer);
+	singleChoiceSubmitTimer = undefined;
 }
 
 function toggleMultiple(value: string, checked: boolean) {
@@ -54,6 +64,8 @@ function onSubmit() {
 	if (selected.value.length === 0 || props.disabled) return;
 	emit('submit', { values: [...selected.value] });
 }
+
+onBeforeUnmount(clearSingleChoiceSubmitTimer);
 </script>
 
 <template>
@@ -204,7 +216,7 @@ function onSubmit() {
 
 .activeSelected {
 	.optionDescription {
-		color: white;
+		color: var(--color--neutral-white);
 	}
 }
 

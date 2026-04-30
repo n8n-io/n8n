@@ -59,6 +59,23 @@ describe('AskQuestionCard', () => {
 		expect((wrapper.emitted('submit') as unknown[][])[0][0]).toEqual({ values: ['a'] });
 	});
 
+	it('only submits the latest single-choice option when clicks happen quickly', async () => {
+		vi.useFakeTimers();
+		const wrapper = mountCard();
+		const buttons = wrapper.findAll('button[aria-pressed]');
+
+		await buttons[0].trigger('click');
+		vi.advanceTimersByTime(100);
+		await buttons[1].trigger('click');
+		vi.advanceTimersByTime(249);
+		expect(wrapper.emitted('submit')).toBeFalsy();
+
+		vi.advanceTimersByTime(1);
+
+		expect(wrapper.emitted('submit')).toHaveLength(1);
+		expect((wrapper.emitted('submit') as unknown[][])[0][0]).toEqual({ values: ['b'] });
+	});
+
 	it('does not emit if nothing is selected', async () => {
 		const wrapper = mountCard({ allowMultiple: true });
 		await wrapper.find('[data-testid="ask-question-submit"]').trigger('click');

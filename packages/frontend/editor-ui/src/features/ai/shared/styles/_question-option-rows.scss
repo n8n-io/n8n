@@ -64,16 +64,16 @@
 
 		.numberBadge {
 			background-color: var(--color--orange-400);
-			color: white;
+			color: var(--color--neutral-white);
 		}
 
 		.optionLabel {
-			color: white;
+			color: var(--color--neutral-white);
 		}
 
 		.arrowIndicator {
 			opacity: 1;
-			color: white;
+			color: var(--color--neutral-white);
 		}
 	}
 }

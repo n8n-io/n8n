@@ -37,6 +37,7 @@ const NodeCredentialsStub = {
 		projectId: { type: String, default: '' },
 		standalone: { type: Boolean, default: false },
 		hideIssues: { type: Boolean, default: false },
+		skipAutoSelect: { type: Boolean, default: false },
 		readonly: { type: Boolean, default: false },
 	},
 	emits: ['credentialSelected'],
@@ -47,6 +48,7 @@ const NodeCredentialsStub = {
 			:data-project-id="projectId"
 			:data-standalone="String(standalone)"
 			:data-hide-issues="String(hideIssues)"
+			:data-skip-auto-select="String(skipAutoSelect)"
 			:data-readonly="String(readonly)"
 			:data-node-type="node?.type"
 		>
@@ -113,6 +115,7 @@ describe('AskCredentialCard', () => {
 		expect(stub.attributes('data-project-id')).toBe('p1');
 		expect(stub.attributes('data-standalone')).toBe('true');
 		expect(stub.attributes('data-hide-issues')).toBe('true');
+		expect(stub.attributes('data-skip-auto-select')).toBe('true');
 		expect(stub.attributes('data-readonly')).toBe('false');
 	});
 

@@ -94,6 +94,7 @@ function onSkip() {
 					:readonly="disabled"
 					standalone
 					hide-issues
+					skip-auto-select
 					@credential-selected="onCredentialSelected"
 				/>
 			</div>
