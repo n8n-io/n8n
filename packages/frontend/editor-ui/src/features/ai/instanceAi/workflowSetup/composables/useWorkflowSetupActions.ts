@@ -2,7 +2,7 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { useInstanceAiStore } from '../../instanceAi.store';
-import type { WorkflowSetupCard } from '../workflowSetup.types';
+import type { WorkflowSetupApplyPayload, WorkflowSetupCard } from '../workflowSetup.types';
 
 interface SelectionAccessors {
 	selections: Ref<Record<string, Record<string, string>>>;
@@ -10,11 +10,11 @@ interface SelectionAccessors {
 	isCardComplete: (card: WorkflowSetupCard) => boolean;
 	isCardSkipped: (card: WorkflowSetupCard) => boolean;
 	markCardSkipped: (card: WorkflowSetupCard) => void;
-	buildCompletedNodeCredentials: () => Record<string, Record<string, string>>;
+	buildCompletedSetupPayload: () => WorkflowSetupApplyPayload;
 }
 
 interface ApplyMachine {
-	apply: (nodeCredentials: Record<string, Record<string, string>>) => Promise<void>;
+	apply: (payload: WorkflowSetupApplyPayload) => Promise<void>;
 	defer: () => Promise<void>;
 }
 
@@ -95,17 +95,20 @@ export function useWorkflowSetupActions(deps: {
 		const skipped: Array<{ label: string; options: string[] }> = [];
 		const explicitlySkipped: Array<{ label: string; options: string[] }> = [];
 		for (const card of deps.cards.value) {
+			const label = card.credentialType ?? card.targetNodeName;
 			if (deps.selections.isCardComplete(card)) {
 				provided.push({
-					label: card.credentialType,
+					label,
 					options: [],
 					option_chosen:
-						deps.selections.selections.value[card.targetNodeName]?.[card.credentialType] ?? '',
+						card.credentialType !== undefined
+							? (deps.selections.selections.value[card.targetNodeName]?.[card.credentialType] ?? '')
+							: card.parameterNames.join(','),
 				});
 			} else {
-				skipped.push({ label: card.credentialType, options: [] });
+				skipped.push({ label, options: [] });
 				if (deps.selections.isCardSkipped(card)) {
-					explicitlySkipped.push({ label: card.credentialType, options: [] });
+					explicitlySkipped.push({ label, options: [] });
 				}
 			}
 		}
@@ -123,7 +126,7 @@ export function useWorkflowSetupActions(deps: {
 
 	async function apply(): Promise<void> {
 		trackSetupInput();
-		await deps.applyMachine.apply(deps.selections.buildCompletedNodeCredentials());
+		await deps.applyMachine.apply(deps.selections.buildCompletedSetupPayload());
 	}
 
 	async function skipCurrentCard(): Promise<void> {
@@ -144,10 +147,12 @@ export function useWorkflowSetupActions(deps: {
 
 			// Terminal: every card is now complete or skipped.
 			trackSetupInput();
-			const completedMap = deps.selections.buildCompletedNodeCredentials();
-			const hasAnyCompleted = Object.keys(completedMap).length > 0;
+			const completedPayload = deps.selections.buildCompletedSetupPayload();
+			const hasAnyCompleted =
+				Object.keys(completedPayload.nodeCredentials ?? {}).length > 0 ||
+				Object.keys(completedPayload.nodeParameters ?? {}).length > 0;
 			if (hasAnyCompleted) {
-				await deps.applyMachine.apply(completedMap);
+				await deps.applyMachine.apply(completedPayload);
 			} else {
 				await deps.applyMachine.defer();
 			}

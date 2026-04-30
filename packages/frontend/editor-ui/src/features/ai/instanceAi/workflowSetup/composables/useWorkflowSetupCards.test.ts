@@ -7,13 +7,23 @@ const credentialsStore = vi.hoisted(() => ({
 	allCredentials: [] as Array<{ id: string; type: string; name: string }>,
 }));
 
+const nodeTypesStore = vi.hoisted(() => ({
+	getNodeType: vi.fn((): unknown => null),
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => credentialsStore,
+}));
+
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => nodeTypesStore,
 }));
 
 describe('useWorkflowSetupCards', () => {
 	beforeEach(() => {
 		credentialsStore.allCredentials = [];
+		nodeTypesStore.getNodeType.mockReset();
+		nodeTypesStore.getNodeType.mockReturnValue(null);
 	});
 
 	it('skips setup requests without a credential type', () => {
@@ -26,6 +36,60 @@ describe('useWorkflowSetupCards', () => {
 
 		expect(cards.value).toHaveLength(1);
 		expect(cards.value[0].credentialType).toBe('httpBasicAuth');
+	});
+
+	it('creates cards for editable parameter-only setup requests', () => {
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: undefined,
+				parameterIssues: { url: ['URL is required'] },
+				editableParameters: [{ name: 'url', displayName: 'URL', type: 'string' }],
+			}),
+		]);
+
+		const { cards } = useWorkflowSetupCards(setupRequests);
+
+		expect(cards.value).toHaveLength(1);
+		expect(cards.value[0]).toMatchObject({
+			id: 'HTTP Request:parameters',
+			parameterNames: ['url'],
+		});
+		expect(cards.value[0].credentialType).toBeUndefined();
+	});
+
+	it('does not create parameter-only cards for non-editable issues', () => {
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: undefined,
+				parameterIssues: { url: ['URL is required'] },
+			}),
+		]);
+
+		const { cards } = useWorkflowSetupCards(setupRequests);
+
+		expect(cards.value).toHaveLength(0);
+	});
+
+	it('resolves hidden parameter defaults from the node type', () => {
+		nodeTypesStore.getNodeType.mockReturnValue({
+			name: 'n8n-nodes-base.httpRequest',
+			properties: [
+				{ displayName: 'Method', name: 'method', type: 'options', default: 'GET' },
+				{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+			],
+		});
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: undefined,
+				parameterIssues: { url: ['URL is required'] },
+				editableParameters: [{ name: 'url', displayName: 'URL', type: 'string' }],
+				node: { parameters: { url: '' } },
+			}),
+		]);
+
+		const { cards } = useWorkflowSetupCards(setupRequests);
+
+		expect(cards.value[0].node.parameters).toMatchObject({ method: 'GET', url: '' });
 	});
 
 	it('uses a stable node-name and credential-type id', () => {

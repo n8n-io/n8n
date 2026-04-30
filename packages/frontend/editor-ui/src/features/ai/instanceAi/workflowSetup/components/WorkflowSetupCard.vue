@@ -1,29 +1,76 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, provide, ref, watch } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
+import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { Workflow, type IConnections, type INodeProperties } from 'n8n-workflow';
+import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
+import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
 
 const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+const nodeTypesStore = useNodeTypesStore();
+const workflowsStore = useWorkflowsStore();
+const environmentsStore = useEnvironmentsStore();
 
 const card = computed(() => ctx.activeCard.value!);
 const credentialType = computed(() => card.value.credentialType);
 
-const selectedCredentialId = computed(
-	() => ctx.selections.value[card.value.targetNodeName]?.[credentialType.value] ?? null,
+const selectedCredentialId = computed(() =>
+	credentialType.value
+		? (ctx.selections.value[card.value.targetNodeName]?.[credentialType.value] ?? null)
+		: null,
 );
 
 const isComplete = computed(() => ctx.isCardComplete(card.value));
 const isSkipped = computed(() => ctx.isCardSkipped(card.value));
 
+const nodeType = computed(() =>
+	nodeTypesStore.getNodeType(card.value.node.type, card.value.node.typeVersion),
+);
+
+const parameterDefinitions = computed<INodeProperties[]>(() => {
+	if (!nodeType.value || card.value.parameterNames.length === 0) return [];
+	const names = new Set(card.value.parameterNames);
+	return nodeType.value.properties.filter((property) => names.has(property.name));
+});
+
+const useCredentialIcon = computed(
+	() => !!credentialType.value && parameterDefinitions.value.length === 0,
+);
+
+const revealedIssues = ref(new Set<string>());
+
+watch(
+	() => card.value.id,
+	() => {
+		revealedIssues.value = new Set();
+	},
+);
+
+const hiddenIssuesInputs = computed(() =>
+	parameterDefinitions.value
+		.filter((param) => !revealedIssues.value.has(param.name))
+		.map((param) => param.name),
+);
+
+function revealParameterIssues(parameterName: string) {
+	revealedIssues.value.add(parameterName);
+}
+
 const displayName = computed(() => {
+	if (!credentialType.value) return card.value.node.name;
 	const raw =
 		credentialsStore.getCredentialTypeByName(credentialType.value)?.displayName ??
 		credentialType.value;
@@ -31,30 +78,65 @@ const displayName = computed(() => {
 	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
 });
 
-// Mirror the selected credential onto node.credentials so NodeCredentials'
-// dropdown stays in sync — it derives its selection from props.node.credentials.
 const displayNode = computed<INodeUi>(() => {
-	if (!selectedCredentialId.value) {
-		const { credentials: _drop, ...rest } = card.value.node;
-		return rest as INodeUi;
-	}
-	const cred = credentialsStore.getCredentialById(selectedCredentialId.value);
+	const node = ctx.getDisplayNode(card.value);
+	if (!credentialType.value) return node;
+	const cred = selectedCredentialId.value
+		? credentialsStore.getCredentialById(selectedCredentialId.value)
+		: undefined;
 	return {
-		...card.value.node,
+		...node,
 		credentials: cred ? { [credentialType.value]: { id: cred.id, name: cred.name } } : {},
 	} as INodeUi;
 });
 
+const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => {
+	const node = displayNode.value;
+	const connections: IConnections = {};
+	const workflow = new Workflow({
+		id: 'instance-ai-workflow-setup',
+		name: 'Instance AI workflow setup',
+		nodes: [node],
+		connections,
+		active: false,
+		nodeTypes: workflowsStore.getNodeTypes(),
+	});
+
+	return {
+		localResolve: true,
+		envVars: environmentsStore.variablesAsObject,
+		workflow,
+		execution: null,
+		nodeName: node.name,
+		additionalKeys: {},
+		connections,
+	};
+});
+
+provide(ExpressionLocalResolveContextSymbol, expressionContext);
+
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
+	if (!credentialType.value) return;
 	const data = update.properties.credentials?.[credentialType.value];
 	ctx.setSelection(card.value.targetNodeName, credentialType.value, data?.id ?? null);
+}
+
+function onParameterValueChanged(update: IUpdateInformation) {
+	const parameterName = update.name.replace(/^parameters\./, '');
+	ctx.setParameterValue(card.value, parameterName, update.value);
+	revealParameterIssues(parameterName);
 }
 </script>
 
 <template>
 	<div :class="$style.card" data-test-id="instance-ai-workflow-setup-card">
 		<header :class="$style.header">
-			<CredentialIcon :credential-type-name="credentialType" :size="16" />
+			<CredentialIcon
+				v-if="useCredentialIcon"
+				:credential-type-name="credentialType ?? null"
+				:size="16"
+			/>
+			<NodeIcon v-else :node-type="nodeType" :size="16" />
 			<N8nText :class="$style.title" size="medium" color="text-dark" bold>
 				{{ displayName }}
 			</N8nText>
@@ -82,6 +164,7 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 
 		<div :class="$style.body">
 			<NodeCredentials
+				v-if="credentialType"
 				:node="displayNode"
 				:override-cred-type="credentialType"
 				:project-id="ctx.projectId.value"
@@ -89,6 +172,26 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 				hide-issues
 				@credential-selected="onCredentialSelected"
 			/>
+
+			<div
+				v-if="parameterDefinitions.length > 0"
+				:class="$style.parameters"
+				data-test-id="instance-ai-workflow-setup-parameters"
+			>
+				<ParameterInputList
+					:parameters="parameterDefinitions"
+					:node-values="{ parameters: displayNode.parameters }"
+					:node="displayNode"
+					path="parameters"
+					:hide-delete="true"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					:remove-first-parameter-margin="true"
+					:remove-last-parameter-margin="true"
+					:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+					@value-changed="onParameterValueChanged"
+					@parameter-blur="revealParameterIssues"
+				/>
+			</div>
 		</div>
 
 		<slot name="footer" />
@@ -134,10 +237,16 @@ function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 .body {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--xs);
 	padding: 0 var(--spacing--sm);
 
 	:global(.node-credentials) {
 		margin-top: 0;
 	}
+}
+
+.parameters {
+	display: flex;
+	flex-direction: column;
 }
 </style>

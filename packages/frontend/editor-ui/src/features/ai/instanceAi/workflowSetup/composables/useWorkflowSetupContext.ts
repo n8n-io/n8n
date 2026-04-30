@@ -11,13 +11,14 @@ import {
 } from 'vue';
 import type { InstanceAiCredentialFlow, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
+import type { INodeUi } from '@/Interface';
 import { useInstanceAiStore } from '../../instanceAi.store';
 import type { TerminalState, WorkflowSetupCard } from '../workflowSetup.types';
 import { useWorkflowSetupActions } from './useWorkflowSetupActions';
 import { useWorkflowSetupApply } from './useWorkflowSetupApply';
 import { useWorkflowSetupBootstrap } from './useWorkflowSetupBootstrap';
 import { useWorkflowSetupCards } from './useWorkflowSetupCards';
-import { useWorkflowSetupSelections } from './useWorkflowSetupSelections';
+import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
 
 type SelectionsMap = Record<string, Record<string, string>>;
 
@@ -34,6 +35,8 @@ export interface WorkflowSetupContext {
 	credentialFlow: ComputedRef<InstanceAiCredentialFlow | undefined>;
 	isActionPending: Ref<boolean>;
 	setSelection: (nodeName: string, credType: string, credId: string | null) => void;
+	setParameterValue: (card: WorkflowSetupCard, parameterName: string, value: unknown) => void;
+	getDisplayNode: (card: WorkflowSetupCard) => INodeUi;
 	isCardComplete: (card: WorkflowSetupCard) => boolean;
 	isCredentialTestFailed: (card: WorkflowSetupCard) => boolean;
 	isCardSkipped: (card: WorkflowSetupCard) => boolean;
@@ -78,14 +81,10 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 	const currentStepIndex = ref(0);
 	const activeCard = computed(() => cards.value[currentStepIndex.value]);
 
-	const selectionsState = useWorkflowSetupSelections({ cards, activeCard });
+	const inputsState = useWorkflowSetupInputs({ cards, activeCard });
 
 	const projectId = computed(() => opts.projectId.value);
 	const credentialFlow = computed(() => opts.credentialFlow.value);
-
-	// Track manual navigation so the auto-advance watcher below doesn't
-	// override an explicit step change the user just made.
-	const userNavigated = ref(false);
 
 	function goToStep(index: number) {
 		if (index >= 0 && index < cards.value.length) {
@@ -95,14 +94,12 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	function goToNext() {
 		if (currentStepIndex.value < cards.value.length - 1) {
-			userNavigated.value = true;
 			currentStepIndex.value++;
 		}
 	}
 
 	function goToPrev() {
 		if (currentStepIndex.value > 0) {
-			userNavigated.value = true;
 			currentStepIndex.value--;
 		}
 	}
@@ -114,12 +111,12 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		currentStepIndex,
 		goToStep,
 		selections: {
-			selections: selectionsState.selections,
-			skippedCardIds: selectionsState.skippedCardIds,
-			isCardComplete: selectionsState.isCardComplete,
-			isCardSkipped: selectionsState.isCardSkipped,
-			markCardSkipped: selectionsState.markCardSkipped,
-			buildCompletedNodeCredentials: selectionsState.buildCompletedNodeCredentials,
+			selections: inputsState.selections,
+			skippedCardIds: inputsState.skippedCardIds,
+			isCardComplete: inputsState.isCardComplete,
+			isCardSkipped: inputsState.isCardSkipped,
+			markCardSkipped: inputsState.markCardSkipped,
+			buildCompletedSetupPayload: inputsState.buildCompletedSetupPayload,
 		},
 		applyMachine: {
 			apply: applyMachine.apply,
@@ -127,25 +124,6 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		},
 		store,
 	});
-
-	// Auto-advance watcher: when the active card becomes complete (and the user
-	// didn't just navigate manually), jump to the next unhandled card. The
-	// "unhandled" predicate skips both complete AND already-skipped cards so we
-	// don't bounce the user back onto something they explicitly skipped.
-	watch(
-		() => (activeCard.value ? selectionsState.isCardComplete(activeCard.value) : false),
-		(complete, prevComplete) => {
-			if (!complete || prevComplete || userNavigated.value) {
-				userNavigated.value = false;
-				return;
-			}
-			const next = actions.nextUnhandledIndex.value;
-			if (next >= 0) {
-				currentStepIndex.value = next;
-			}
-		},
-		{ immediate: true },
-	);
 
 	// Clamp currentStepIndex when the card list shrinks beneath it.
 	watch(
@@ -159,11 +137,11 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 
 	onMounted(async () => {
 		await bootstrap.bootstrap();
-		if (opts.setupRequests.value.length > 0 && selectionsState.allCardsComplete()) {
+		if (opts.setupRequests.value.length > 0 && inputsState.allCardsComplete()) {
 			// Auto-apply on mount preserves the existing analytics behavior — it
 			// intentionally bypasses trackSetupInput because the user did not
 			// interact with the wizard.
-			await applyMachine.apply(selectionsState.buildCompletedNodeCredentials());
+			await applyMachine.apply(inputsState.buildCompletedSetupPayload());
 		}
 	});
 
@@ -173,16 +151,18 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		activeCard,
 		hasOtherUnhandledCards: actions.hasOtherUnhandledCards,
 		canAdvanceToNextIncomplete: actions.canAdvanceToNextIncomplete,
-		selections: selectionsState.selections,
+		selections: inputsState.selections,
 		terminalState: applyMachine.terminalState,
 		isReady: bootstrap.isReady,
 		projectId,
 		credentialFlow,
 		isActionPending: actions.isActionPending,
-		setSelection: selectionsState.setSelection,
-		isCardComplete: selectionsState.isCardComplete,
-		isCredentialTestFailed: selectionsState.isCredentialTestFailed,
-		isCardSkipped: selectionsState.isCardSkipped,
+		setSelection: inputsState.setSelection,
+		setParameterValue: inputsState.setParameterValue,
+		getDisplayNode: inputsState.getDisplayNode,
+		isCardComplete: inputsState.isCardComplete,
+		isCredentialTestFailed: inputsState.isCredentialTestFailed,
+		isCardSkipped: inputsState.isCardSkipped,
 		goToStep,
 		goToNext,
 		goToPrev,

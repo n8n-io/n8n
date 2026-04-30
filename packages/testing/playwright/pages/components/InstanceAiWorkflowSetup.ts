@@ -47,6 +47,16 @@ export class InstanceAiWorkflowSetup {
 		return this.root.getByTestId('instance-ai-workflow-setup-card-skipped');
 	}
 
+	getParameterInput(parameterName: string): Locator {
+		return this.root.getByTestId(`parameter-input-${parameterName}`).getByRole('textbox');
+	}
+
+	getParameterIssues(parameterName: string): Locator {
+		return this.root
+			.getByTestId(`parameter-input-${parameterName}`)
+			.getByTestId('parameter-issues');
+	}
+
 	getPrevButton(): Locator {
 		return this.root.getByTestId('instance-ai-workflow-setup-prev');
 	}
@@ -58,5 +68,9 @@ export class InstanceAiWorkflowSetup {
 	async selectCredential(credentialName: string): Promise<void> {
 		await this.getCredentialSelect().click();
 		await this.getCredentialOption(credentialName).click();
+	}
+
+	async fillParameter(parameterName: string, value: string): Promise<void> {
+		await this.getParameterInput(parameterName).fill(value);
 	}
 }

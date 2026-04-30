@@ -2,7 +2,7 @@ import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeWorkflowSetupCard } from '../__tests__/factories';
 import type { WorkflowSetupCard } from '../workflowSetup.types';
-import { useWorkflowSetupSelections } from './useWorkflowSetupSelections';
+import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
 
 interface TestCredential {
 	id: string;
@@ -36,6 +36,10 @@ const credentialTest = vi.hoisted(() => ({
 	testCredentialInBackground: vi.fn(),
 }));
 
+const nodeTypesStore = vi.hoisted(() => ({
+	getNodeType: vi.fn((): unknown => null),
+}));
+
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => credentialsStore,
 	listenForCredentialChanges: vi.fn((listeners: CredentialChangeListeners) => {
@@ -51,13 +55,17 @@ vi.mock('@/features/credentials/composables/useCredentialTestInBackground', () =
 	}),
 }));
 
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: () => nodeTypesStore,
+}));
+
 interface Harness {
 	cardA: WorkflowSetupCard;
 	cardB: WorkflowSetupCard;
 	cardsRef: Ref<WorkflowSetupCard[]>;
 	cards: ComputedRef<WorkflowSetupCard[]>;
 	activeIndex: Ref<number>;
-	selections: ReturnType<typeof useWorkflowSetupSelections>;
+	inputs: ReturnType<typeof useWorkflowSetupInputs>;
 }
 
 function addCredential(credential: TestCredential): void {
@@ -80,7 +88,7 @@ function setupHarness(cards?: WorkflowSetupCard[]): Harness {
 	const activeIndex = ref(0);
 	const activeCard = computed(() => cardsComputed.value[activeIndex.value]);
 
-	const selections = useWorkflowSetupSelections({
+	const inputs = useWorkflowSetupInputs({
 		cards: cardsComputed,
 		activeCard,
 	});
@@ -91,11 +99,11 @@ function setupHarness(cards?: WorkflowSetupCard[]): Harness {
 		cardsRef,
 		cards: cardsComputed,
 		activeIndex,
-		selections,
+		inputs,
 	};
 }
 
-describe('useWorkflowSetupSelections', () => {
+describe('useWorkflowSetupInputs', () => {
 	beforeEach(() => {
 		credentialsStore.credentials.clear();
 		credentialsStore.credentialTestResults.clear();
@@ -106,16 +114,18 @@ describe('useWorkflowSetupSelections', () => {
 		credentialTest.testableTypes.clear();
 		credentialTest.isCredentialTypeTestable.mockClear();
 		credentialTest.testCredentialInBackground.mockClear();
+		nodeTypesStore.getNodeType.mockReset();
+		nodeTypesStore.getNodeType.mockReturnValue(null);
 	});
 
 	it('sets a selection, tests it in the background, and clears a previous skip', () => {
 		addCredential({ id: 'cred-1', type: 'httpBasicAuth', name: 'HTTP credential' });
 		const h = setupHarness();
-		h.selections.markCardSkipped(h.cardA);
+		h.inputs.markCardSkipped(h.cardA);
 
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
 
-		expect(h.selections.selections.value).toEqual({
+		expect(h.inputs.selections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'cred-1' },
 		});
 		expect(credentialTest.testCredentialInBackground).toHaveBeenCalledWith(
@@ -123,88 +133,83 @@ describe('useWorkflowSetupSelections', () => {
 			'HTTP credential',
 			'httpBasicAuth',
 		);
-		expect(h.selections.isCardSkipped(h.cardA)).toBe(false);
+		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
 	});
 
 	it('removes a selected credential when set to null', () => {
 		const h = setupHarness();
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
 
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', null);
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', null);
 
-		expect(h.selections.selections.value).toEqual({ 'HTTP Request': {} });
-		expect(h.selections.buildNodeCredentials()).toEqual({});
+		expect(h.inputs.selections.value).toEqual({ 'HTTP Request': {} });
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
 	});
 
 	it('reports card completion based on testability and credential test result', () => {
 		const h = setupHarness();
 
-		expect(h.selections.isCardComplete(h.cardA)).toBe(false);
+		expect(h.inputs.isCardComplete(h.cardA)).toBe(false);
 
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
-		expect(h.selections.isCardComplete(h.cardA)).toBe(true);
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		expect(h.inputs.isCardComplete(h.cardA)).toBe(true);
 
 		credentialTest.testableTypes.add('httpBasicAuth');
-		expect(h.selections.isCardComplete(h.cardA)).toBe(false);
+		expect(h.inputs.isCardComplete(h.cardA)).toBe(false);
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
-		expect(h.selections.isCardComplete(h.cardA)).toBe(true);
+		expect(h.inputs.isCardComplete(h.cardA)).toBe(true);
 	});
 
 	it('reports credential test failures only for selected testable credentials', () => {
 		const h = setupHarness();
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
 		credentialsStore.credentialTestResults.set('cred-1', 'error');
 
-		expect(h.selections.isCredentialTestFailed(h.cardA)).toBe(false);
+		expect(h.inputs.isCredentialTestFailed(h.cardA)).toBe(false);
 
 		credentialTest.testableTypes.add('httpBasicAuth');
-		expect(h.selections.isCredentialTestFailed(h.cardA)).toBe(true);
-		expect(h.selections.isCredentialTestFailed(h.cardB)).toBe(false);
+		expect(h.inputs.isCredentialTestFailed(h.cardA)).toBe(true);
+		expect(h.inputs.isCredentialTestFailed(h.cardB)).toBe(false);
 	});
 
-	it('marks and clears skipped cards idempotently with immutable sets', () => {
+	it('marks and clears skipped cards idempotently', () => {
 		const h = setupHarness();
-		const initialSet = h.selections.skippedCardIds.value;
 
-		h.selections.markCardSkipped(h.cardA);
-		const markedSet = h.selections.skippedCardIds.value;
-		h.selections.markCardSkipped(h.cardA);
+		h.inputs.markCardSkipped(h.cardA);
+		h.inputs.markCardSkipped(h.cardA);
 
-		expect(markedSet).not.toBe(initialSet);
-		expect(h.selections.skippedCardIds.value).toBe(markedSet);
-		expect(h.selections.isCardSkipped(h.cardA)).toBe(true);
+		expect(h.inputs.isCardSkipped(h.cardA)).toBe(true);
+		expect(h.inputs.skippedCardIds.value).toEqual(new Set([h.cardA.id]));
 
-		h.selections.clearCardSkipped(h.cardA);
-		const clearedSet = h.selections.skippedCardIds.value;
-		h.selections.clearCardSkipped(h.cardA);
+		h.inputs.clearCardSkipped(h.cardA);
+		h.inputs.clearCardSkipped(h.cardA);
 
-		expect(clearedSet).not.toBe(markedSet);
-		expect(h.selections.skippedCardIds.value).toBe(clearedSet);
-		expect(h.selections.isCardSkipped(h.cardA)).toBe(false);
+		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
+		expect(h.inputs.skippedCardIds.value).toEqual(new Set());
 	});
 
-	it('builds all selections and only completed selections separately', () => {
+	it('builds only completed selections into the payload', () => {
 		const h = setupHarness();
 		credentialTest.testableTypes.add('httpBasicAuth');
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
-		h.selections.setSelection('Slack', 'slackApi', 'cred-2');
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setSelection('Slack', 'slackApi', 'cred-2');
 
-		expect(h.selections.allCardsComplete()).toBe(false);
-		expect(h.selections.buildNodeCredentials()).toEqual({
-			'HTTP Request': { httpBasicAuth: 'cred-1' },
-			Slack: { slackApi: 'cred-2' },
-		});
-		expect(h.selections.buildCompletedNodeCredentials()).toEqual({
-			Slack: { slackApi: 'cred-2' },
+		expect(h.inputs.allCardsComplete()).toBe(false);
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: {
+				Slack: { slackApi: 'cred-2' },
+			},
 		});
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
 
-		expect(h.selections.allCardsComplete()).toBe(true);
-		expect(h.selections.buildCompletedNodeCredentials()).toEqual({
-			'HTTP Request': { httpBasicAuth: 'cred-1' },
-			Slack: { slackApi: 'cred-2' },
+		expect(h.inputs.allCardsComplete()).toBe(true);
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: {
+				'HTTP Request': { httpBasicAuth: 'cred-1' },
+				Slack: { slackApi: 'cred-2' },
+			},
 		});
 	});
 
@@ -219,7 +224,7 @@ describe('useWorkflowSetupSelections', () => {
 		const h = setupHarness([card]);
 		await nextTick();
 
-		expect(h.selections.selections.value).toEqual({
+		expect(h.inputs.selections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'current-cred' },
 		});
 		expect(credentialTest.testCredentialInBackground).toHaveBeenCalledWith(
@@ -231,7 +236,7 @@ describe('useWorkflowSetupSelections', () => {
 
 	it('does not overwrite an existing user selection when cards refresh', async () => {
 		const h = setupHarness();
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'user-cred');
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'user-cred');
 
 		h.cardsRef.value = [
 			{
@@ -241,34 +246,34 @@ describe('useWorkflowSetupSelections', () => {
 		];
 		await nextTick();
 
-		expect(h.selections.selections.value).toEqual({
+		expect(h.inputs.selections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'user-cred' },
 		});
 	});
 
 	it('prunes skipped card ids that no longer correspond to a card', async () => {
 		const h = setupHarness();
-		h.selections.markCardSkipped(h.cardA);
-		h.selections.markCardSkipped(h.cardB);
+		h.inputs.markCardSkipped(h.cardA);
+		h.inputs.markCardSkipped(h.cardB);
 
 		h.cardsRef.value = [h.cardB];
 		await nextTick();
 
-		expect(h.selections.isCardSkipped(h.cardA)).toBe(false);
-		expect(h.selections.isCardSkipped(h.cardB)).toBe(true);
+		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
+		expect(h.inputs.isCardSkipped(h.cardB)).toBe(true);
 	});
 
 	it('clears a skip when the skipped card later becomes complete', async () => {
 		const h = setupHarness();
 		credentialTest.testableTypes.add('httpBasicAuth');
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
-		h.selections.markCardSkipped(h.cardA);
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.markCardSkipped(h.cardA);
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
 		h.cardsRef.value = [...h.cardsRef.value];
 		await nextTick();
 
-		expect(h.selections.isCardSkipped(h.cardA)).toBe(false);
+		expect(h.inputs.isCardSkipped(h.cardA)).toBe(false);
 	});
 
 	it('selects a newly created credential for the active matching card', () => {
@@ -280,7 +285,7 @@ describe('useWorkflowSetupSelections', () => {
 			name: 'Created credential',
 		});
 
-		expect(h.selections.selections.value).toEqual({
+		expect(h.inputs.selections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'created-cred' },
 		});
 	});
@@ -294,19 +299,74 @@ describe('useWorkflowSetupSelections', () => {
 			name: 'Created credential',
 		});
 
-		expect(h.selections.selections.value).toEqual({});
+		expect(h.inputs.selections.value).toEqual({});
 	});
 
 	it('clears selections that reference a deleted credential', () => {
 		const h = setupHarness();
-		h.selections.setSelection('HTTP Request', 'httpBasicAuth', 'deleted-cred');
-		h.selections.setSelection('Slack', 'slackApi', 'other-cred');
+		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'deleted-cred');
+		h.inputs.setSelection('Slack', 'slackApi', 'other-cred');
 
 		credentialListeners.current?.onCredentialDeleted?.('deleted-cred');
 
-		expect(h.selections.selections.value).toEqual({
+		expect(h.inputs.selections.value).toEqual({
 			'HTTP Request': {},
 			Slack: { slackApi: 'other-cred' },
+		});
+	});
+
+	it('tracks parameter values and builds nodeParameters after issues clear', () => {
+		nodeTypesStore.getNodeType.mockReturnValue({
+			name: 'n8n-nodes-base.httpRequest',
+			properties: [
+				{ displayName: 'URL', name: 'url', type: 'string', default: '', required: true },
+			],
+		});
+		const parameterCard = makeWorkflowSetupCard({
+			id: 'HTTP Request:parameters',
+			credentialType: undefined,
+			parameterNames: ['url'],
+			node: { parameters: { url: '' } },
+		});
+		const h = setupHarness([parameterCard]);
+
+		expect(h.inputs.isCardComplete(parameterCard)).toBe(false);
+
+		h.inputs.setParameterValue(parameterCard, 'url', 'https://example.com/api');
+
+		expect(h.inputs.isCardComplete(parameterCard)).toBe(true);
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeParameters: {
+				'HTTP Request': { url: 'https://example.com/api' },
+			},
+		});
+	});
+
+	it('updates nested parameter values without flattening the path', () => {
+		const parameterCard = makeWorkflowSetupCard({
+			id: 'HTTP Request:parameters',
+			credentialType: undefined,
+			parameterNames: ['options'],
+			node: { parameters: { options: { path: 'old', keep: true } } },
+		});
+		const h = setupHarness([parameterCard]);
+
+		h.inputs.setParameterValue(parameterCard, 'options.path', 'new');
+
+		expect(h.inputs.getDisplayNode(parameterCard).parameters).toEqual({
+			options: { path: 'new', keep: true },
+		});
+		expect(
+			Object.prototype.hasOwnProperty.call(
+				h.inputs.parameterValues.value['HTTP Request'],
+				'options.path',
+			),
+		).toBe(false);
+		expect(parameterCard.node.parameters).toEqual({ options: { path: 'old', keep: true } });
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeParameters: {
+				'HTTP Request': { options: { path: 'new', keep: true } },
+			},
 		});
 	});
 });

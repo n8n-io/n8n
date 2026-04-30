@@ -2,7 +2,7 @@ import { ref, watch, onUnmounted, type Ref } from 'vue';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import { useToast } from '@/app/composables/useToast';
 import type { useInstanceAiStore } from '../../instanceAi.store';
-import type { TerminalState } from '../workflowSetup.types';
+import type { TerminalState, WorkflowSetupApplyPayload } from '../workflowSetup.types';
 
 const APPLY_TIMEOUT_MS = 60_000;
 const WAIT_CANCELLED = Symbol('wait-cancelled');
@@ -14,7 +14,7 @@ export function useWorkflowSetupApply(deps: {
 	store: ReturnType<typeof useInstanceAiStore>;
 }): {
 	terminalState: Ref<TerminalState | null>;
-	apply: (nodeCredentials: Record<string, Record<string, string>>) => Promise<void>;
+	apply: (payload: WorkflowSetupApplyPayload) => Promise<void>;
 	defer: () => Promise<void>;
 } {
 	const toast = useToast();
@@ -85,7 +85,7 @@ export function useWorkflowSetupApply(deps: {
 		return { promise, cancel: () => finish(WAIT_CANCELLED) };
 	}
 
-	async function apply(nodeCredentials: Record<string, Record<string, string>>): Promise<void> {
+	async function apply(payload: WorkflowSetupApplyPayload): Promise<void> {
 		if (terminalState.value === 'applying') return;
 		terminalState.value = 'applying';
 
@@ -99,7 +99,7 @@ export function useWorkflowSetupApply(deps: {
 			undefined,
 			{
 				action: 'apply',
-				nodeCredentials,
+				...payload,
 			},
 		);
 
