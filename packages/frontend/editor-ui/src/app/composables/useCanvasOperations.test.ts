@@ -20,7 +20,7 @@ import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/app/models/hi
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createTestNode,
 	createTestNodeProperties,
@@ -179,7 +179,7 @@ describe('useCanvasOperations', () => {
 	function createInitialState() {
 		return {
 			[STORES.NODE_TYPES]: {},
-			[STORES.NDV]: {},
+			[getNDVStoreId(createWorkflowDocumentId('default'))]: {},
 			[STORES.WORKFLOWS]: {
 				workflowId,
 				workflow: mock<IWorkflowDb>({

@@ -161,7 +161,11 @@ export class ActiveWorkflows {
 		await executeTrigger(true);
 
 		for (const expression of cronExpressions) {
-			if (expression.split(' ').at(0)?.includes('*')) {
+			const fields = expression.split(' ');
+			// 6-field expressions include seconds as the first field.
+			// A wildcard there means sub-minute execution, which is too frequent.
+			// 5-field expressions (standard cron) have minute-level granularity at minimum.
+			if (fields.length === 6 && fields[0].includes('*')) {
 				throw new UserError('The polling interval is too short. It has to be at least a minute.');
 			}
 
