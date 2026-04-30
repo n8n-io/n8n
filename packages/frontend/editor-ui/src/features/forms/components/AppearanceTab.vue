@@ -13,6 +13,7 @@ import type { CssVarGroup } from '../constants/cssVariableMap';
 const props = defineProps<{
 	modelValue: Record<string, string>;
 	appendAttribution: boolean;
+	isTrigger: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -61,7 +62,7 @@ function onControlUpdate(variable: string, value: string) {
 					:model-value="effectiveValue(control.variable)"
 					@update:model-value="(v) => onControlUpdate(control.variable, v)"
 				/>
-				<div v-if="group.key === 'page'" :class="$style.row">
+				<div v-if="group.key === 'page' && isTrigger" :class="$style.row">
 					<span :class="$style.controlLabel">
 						{{ i18n.baseText('formStep.appearance.control.appendAttribution') }}
 					</span>

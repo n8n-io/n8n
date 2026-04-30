@@ -81,6 +81,29 @@ export function useFormAppearance(nodeId: string) {
 		return Object.fromEntries(items?.map((p) => [p.name, p.default]) ?? []);
 	});
 
+	const triggerNode = computed<INodeUi | undefined>(() =>
+		workflowsStore.workflow.nodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE),
+	);
+
+	const triggerResolvedParameters = computed((): INodeParameters => {
+		if (!triggerNode.value) return {};
+		const nodeType = nodeTypesStore.getNodeType(
+			triggerNode.value.type,
+			triggerNode.value.typeVersion,
+		);
+		if (!nodeType) return triggerNode.value.parameters;
+		return (
+			NodeHelpers.getNodeParameters(
+				nodeType.properties,
+				triggerNode.value.parameters,
+				true,
+				false,
+				triggerNode.value,
+				nodeType,
+			) ?? triggerNode.value.parameters
+		);
+	});
+
 	// -------------------------------------------------------------------------
 	// Appearance state
 	// -------------------------------------------------------------------------
@@ -88,11 +111,17 @@ export function useFormAppearance(nodeId: string) {
 	const localOverrides = ref<Record<string, string>>({});
 	const localAppendAttribution = ref(true);
 
+	function triggerAppendAttribution(): boolean {
+		const triggerOptions = triggerResolvedParameters.value.options as INodeParameters | undefined;
+		return (triggerOptions?.appendAttribution as boolean | undefined) ?? true;
+	}
+
 	function initFromNode() {
 		const options = node.value?.parameters?.options as INodeParameters | undefined;
 		const existingCss = (options?.customCss as string | undefined) ?? '';
 		localOverrides.value = existingCss ? parseCssVariables(existingCss) : {};
-		localAppendAttribution.value = (options?.appendAttribution as boolean | undefined) ?? true;
+		localAppendAttribution.value =
+			(options?.appendAttribution as boolean | undefined) ?? triggerAppendAttribution();
 	}
 
 	initFromNode();
@@ -106,7 +135,7 @@ export function useFormAppearance(nodeId: string) {
 
 	const savedAppendAttribution = computed(() => {
 		const options = node.value?.parameters?.options as INodeParameters | undefined;
-		return (options?.appendAttribution as boolean | undefined) ?? true;
+		return (options?.appendAttribution as boolean | undefined) ?? triggerAppendAttribution();
 	});
 
 	const hasUnsavedChanges = computed(
@@ -146,16 +175,21 @@ export function useFormAppearance(nodeId: string) {
 		}
 
 		const options = params.options as INodeParameters | undefined;
+		const triggerParams = triggerResolvedParameters.value;
+		const triggerOptions = triggerParams.options as INodeParameters | undefined;
 		const defaults = optionsCollectionDefaults.value;
 		return {
 			formTitle: isTrigger.value
 				? ((params.formTitle as string) ?? '')
-				: ((options?.formTitle as string) ?? (defaults.formTitle as string) ?? ''),
+				: (options?.formTitle as string) || (triggerParams.formTitle as string) || '',
 			formDescription: isTrigger.value
 				? ((params.formDescription as string) ?? '')
-				: ((options?.formDescription as string) ?? (defaults.formDescription as string) ?? ''),
+				: (options?.formDescription as string) || (triggerParams.formDescription as string) || '',
 			buttonLabel:
-				(options?.buttonLabel as string) || (defaults.buttonLabel as string) || undefined,
+				(options?.buttonLabel as string) ||
+				(triggerOptions?.buttonLabel as string) ||
+				(defaults.buttonLabel as string) ||
+				undefined,
 			formFields: (params.formFields as { values?: INodeParameters[] })?.values ?? [],
 			nodeVersion: node.value.typeVersion,
 			customCss: assembledCss.value,
@@ -176,8 +210,9 @@ export function useFormAppearance(nodeId: string) {
 	function onIframeLoad() {
 		const iframe = iframeEl.value;
 		if (!iframe?.contentDocument) return;
-		const h = iframe.contentDocument.documentElement.scrollHeight;
-		iframe.style.height = `${h}px`;
+		const contentH = iframe.contentDocument.documentElement.scrollHeight;
+		const paneH = iframe.parentElement?.clientHeight ?? 0;
+		iframe.style.height = `${Math.max(contentH, paneH)}px`;
 	}
 
 	const debouncedFetchPreview = useDebounceFn(

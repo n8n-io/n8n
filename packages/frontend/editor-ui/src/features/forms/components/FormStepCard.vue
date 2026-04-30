@@ -62,13 +62,41 @@ const optionsCollectionDefaults = computed(() => {
 	return Object.fromEntries(items?.map((p) => [p.name, p.default]) ?? []);
 });
 
+const triggerNode = computed(() =>
+	workflowsStore.workflow.nodes.find((n: INodeUi) => n.type === FORM_TRIGGER_NODE_TYPE),
+);
+
+const triggerResolvedParameters = computed((): INodeParameters => {
+	if (!triggerNode.value) return {};
+	const nodeType = nodeTypesStore.getNodeType(
+		triggerNode.value.type,
+		triggerNode.value.typeVersion,
+	);
+	if (!nodeType) return triggerNode.value.parameters;
+	return (
+		NodeHelpers.getNodeParameters(
+			nodeType.properties,
+			triggerNode.value.parameters,
+			true,
+			false,
+			triggerNode.value,
+			nodeType,
+		) ?? triggerNode.value.parameters
+	);
+});
+
 const previewParams = computed(() => {
 	if (!node.value) return null;
 	const params = resolvedParameters.value;
+	const triggerParams = triggerResolvedParameters.value;
+	const triggerOptions = triggerParams.options as INodeParameters | undefined;
 
 	const options = params.options as INodeParameters | undefined;
 	const customCss = (options?.customCss as string | undefined) || undefined;
-	const appendAttribution = (options?.appendAttribution as boolean | undefined) ?? true;
+	const appendAttribution =
+		(options?.appendAttribution as boolean | undefined) ??
+		(triggerOptions?.appendAttribution as boolean | undefined) ??
+		true;
 
 	if (isCompletion.value) {
 		return {
@@ -86,11 +114,15 @@ const previewParams = computed(() => {
 	return {
 		formTitle: isTrigger.value
 			? ((params.formTitle as string) ?? '')
-			: ((options?.formTitle as string) ?? (defaults.formTitle as string) ?? ''),
+			: (options?.formTitle as string) || (triggerParams.formTitle as string) || '',
 		formDescription: isTrigger.value
 			? ((params.formDescription as string) ?? '')
-			: ((options?.formDescription as string) ?? (defaults.formDescription as string) ?? ''),
-		buttonLabel: (options?.buttonLabel as string) || (defaults.buttonLabel as string) || undefined,
+			: (options?.formDescription as string) || (triggerParams.formDescription as string) || '',
+		buttonLabel:
+			(options?.buttonLabel as string) ||
+			(triggerOptions?.buttonLabel as string) ||
+			(defaults.buttonLabel as string) ||
+			undefined,
 		formFields: (params.formFields as { values?: INodeParameters[] })?.values ?? [],
 		nodeVersion: node.value.typeVersion,
 		customCss,

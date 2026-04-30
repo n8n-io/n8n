@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nRadioButtons, N8nSwitch2 } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
-import { FORM_STEP_EDIT_MODAL_KEY } from '@/app/constants';
+import { FORM_STEP_EDIT_MODAL_KEY, FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFormAppearance } from '../composables/useFormAppearance';
 import AppearanceTab from './AppearanceTab.vue';
@@ -19,6 +19,7 @@ const workflowsStore = useWorkflowsStore();
 const nodeId = props.data?.nodeId as string;
 
 const node = computed(() => workflowsStore.workflow.nodes.find((n) => n.id === nodeId));
+const isTrigger = computed(() => node.value?.type === FORM_TRIGGER_NODE_TYPE);
 const title = i18n.baseText('formStep.editForm');
 
 const applyToAll = computed({
@@ -88,6 +89,7 @@ function onReset() {
 						<AppearanceTab
 							:model-value="appearance.localOverrides.value"
 							:append-attribution="appearance.localAppendAttribution.value"
+							:is-trigger="isTrigger"
 							@update:model-value="(v) => (appearance.localOverrides.value = v)"
 							@update:append-attribution="(v) => (appearance.localAppendAttribution.value = v)"
 						/>
