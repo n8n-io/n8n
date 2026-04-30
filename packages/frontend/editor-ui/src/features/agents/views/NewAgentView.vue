@@ -39,12 +39,15 @@ const heading = computed(() =>
 
 const inputText = ref('');
 const isCreating = ref(false);
+const statusLoaded = ref(false);
 
 onMounted(async () => {
 	try {
 		await fetchStatus();
 	} catch (error) {
 		showError(error, i18n.baseText('settings.agentBuilder.loadError'));
+	} finally {
+		statusLoaded.value = true;
 	}
 });
 // When set, we've created the agent and the progress overlay is streaming
@@ -242,8 +245,8 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 <template>
 	<div :class="$style.page">
-		<AgentBuilderUnconfiguredEmptyState v-if="!isBuilderConfigured" />
-		<template v-else>
+		<AgentBuilderUnconfiguredEmptyState v-if="statusLoaded && !isBuilderConfigured" />
+		<template v-else-if="statusLoaded">
 			<div v-if="building" :class="$style.buildingOverlay">
 				<AgentBuilderProgress
 					:project-id="projectId"
@@ -352,6 +355,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	max-width: 640px;
 	margin: 0 auto;
 	width: 100%;
+	animation: fadeIn 0.3s ease-out;
 }
 
 .heading {
@@ -423,5 +427,23 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 .suggestionDescription {
 	min-width: 0;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: scale(0.98);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.center {
+		animation: none;
+	}
 }
 </style>

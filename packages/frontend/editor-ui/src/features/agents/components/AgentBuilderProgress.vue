@@ -217,7 +217,8 @@ onMounted(() => {
 }
 
 .logBox {
-	width: 100%;
+	width: 42ch;
+	max-width: 100%;
 	max-height: 140px;
 	overflow: hidden;
 	position: relative;
@@ -238,6 +239,7 @@ onMounted(() => {
 	line-height: var(--line-height--xl);
 	color: var(--color--text);
 	text-align: center;
+	max-width: 100%;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
