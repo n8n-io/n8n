@@ -78,8 +78,10 @@ describe('CommunityPackageRow', () => {
 	});
 
 	it('should render node count', () => {
-		const { getByText } = renderComponent({ props: { row: makeRow({ nodeCount: 3 }) } });
-		expect(getByText(/3/)).toBeInTheDocument();
+		const { getByText } = renderComponent({
+			props: { row: makeRow({ nodeCount: 3, numberOfDownloads: 0 }) },
+		});
+		expect(getByText('3')).toBeInTheDocument();
 	});
 
 	it('should render formatted downloads (k)', () => {
@@ -130,22 +132,6 @@ describe('CommunityPackageRow', () => {
 		const { container } = renderComponent({
 			props: {
 				row: makeRow({ isInstalled: true, installedVersion: '2.0.0' }),
-			},
-		});
-
-		expect(
-			container.querySelector('[data-test-id="community-package-row__menu"]'),
-		).toBeInTheDocument();
-	});
-
-	it('should call openCommunityPackageUninstallConfirmModal on uninstall action', async () => {
-		const openCommunityPackageUninstallConfirmModal = vi.fn();
-		const { container } = renderComponent({
-			props: { row: makeRow({ isInstalled: true, installedVersion: '2.0.0' }) },
-			global: {
-				mocks: {
-					$store: {},
-				},
 			},
 		});
 

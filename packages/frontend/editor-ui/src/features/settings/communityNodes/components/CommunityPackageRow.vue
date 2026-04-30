@@ -295,8 +295,8 @@ function onUpdateClick() {
 }
 
 .skeletonIcon {
-	width: 36px;
-	height: 36px;
+	width: var(--spacing--xl);
+	height: var(--spacing--xl);
 	background-color: var(--color--foreground--tint-1);
 	border-radius: var(--radius);
 }
