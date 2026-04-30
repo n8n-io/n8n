@@ -9,7 +9,7 @@ import NodeCredentials from '@/features/credentials/components/NodeCredentials.v
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createFrontendNodeTypes } from '@/app/utils/nodeTypes/createFrontendNodeTypes';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { Workflow, type IConnections, type INodeProperties } from 'n8n-workflow';
@@ -21,8 +21,8 @@ const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const environmentsStore = useEnvironmentsStore();
+const frontendNodeTypes = createFrontendNodeTypes(nodeTypesStore);
 
 const card = computed(() => ctx.activeCard.value!);
 const credentialType = computed(() => card.value.credentialType);
@@ -99,7 +99,7 @@ const expressionContext = computed<ExpressionLocalResolveContext | undefined>(()
 		nodes: [node],
 		connections,
 		active: false,
-		nodeTypes: workflowsStore.getNodeTypes(),
+		nodeTypes: frontendNodeTypes,
 	});
 
 	return {

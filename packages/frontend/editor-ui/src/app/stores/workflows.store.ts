@@ -1,7 +1,6 @@
 import {
 	AI_NODES_PACKAGE_NAME,
 	DUPLICATE_POSTFFIX,
-	ERROR_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -28,7 +27,6 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 	IWorkflowSettings,
-	INodeType,
 	ITaskStartedData,
 } from 'n8n-workflow';
 import { deepCopy, Workflow, TelemetryHelpers } from 'n8n-workflow';
@@ -67,6 +65,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { createFrontendNodeTypes } from '@/app/utils/nodeTypes/createFrontendNodeTypes';
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
 	id: '',
@@ -374,33 +373,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function getNodeTypes(): INodeTypes {
-		const nodeTypes: INodeTypes = {
-			nodeTypes: {},
-			init: async (): Promise<void> => {},
-			getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-				const nodeTypeDescription =
-					nodeTypesStore.getNodeType(nodeType, version) ??
-					nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
-					null;
-				if (nodeTypeDescription === null) {
-					return undefined;
-				}
-
-				return {
-					description: nodeTypeDescription,
-					// As we do not have the trigger/poll functions available in the frontend
-					// we use the information available to figure out what are trigger nodes
-					// @ts-ignore
-					trigger:
-						(![ERROR_TRIGGER_NODE_TYPE].includes(nodeType) &&
-							nodeTypeDescription.inputs.length === 0 &&
-							!nodeTypeDescription.webhooks) ||
-						undefined,
-				};
-			},
-		} as unknown as INodeTypes;
-
-		return nodeTypes;
+		return createFrontendNodeTypes(nodeTypesStore);
 	}
 
 	/**
