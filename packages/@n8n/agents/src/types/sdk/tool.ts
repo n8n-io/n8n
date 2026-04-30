@@ -26,6 +26,14 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 export interface BuiltTool {
 	readonly name: string;
 	readonly description: string;
+	/**
+	 * Behavioural directive paired with the tool, injected into the agent's
+	 * system prompt under a `<built_in_rules>` block when the tool is added.
+	 * Use for guidance the LLM needs to *decide whether to call* the tool —
+	 * tool descriptions answer "what does this do?" but are weighted lower
+	 * than system instructions for usage decisions.
+	 */
+	readonly systemInstruction?: string;
 	readonly suspendSchema?: ZodType | JSONSchema7;
 	readonly resumeSchema?: ZodType | JSONSchema7;
 	readonly withDefaultApproval?: boolean;

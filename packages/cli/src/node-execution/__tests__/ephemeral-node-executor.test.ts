@@ -10,7 +10,6 @@ import { mock } from 'jest-mock-extended';
 import { StructuredToolkit } from 'n8n-core';
 import {
 	NodeConnectionTypes,
-	UserError,
 	type INodeCredentialsDetails,
 	type INodeType,
 	type INodeTypeDescription,
@@ -84,7 +83,7 @@ describe('EphemeralNodeExecutor', () => {
 	});
 
 	describe('validateNodeForExecution (via executeInline)', () => {
-		it('throws when the node is not usable as a tool', async () => {
+		it('returns a structured error when the node is not usable as a tool', async () => {
 			const nonToolDescription: INodeTypeDescription = {
 				...toolDescription,
 				usableAsTool: undefined,
@@ -94,47 +93,52 @@ describe('EphemeralNodeExecutor', () => {
 				mock<INodeType>({ description: nonToolDescription }),
 			);
 
-			await expect(
-				executor.executeInline({
-					nodeType: 'n8n-nodes-base.notATool',
-					nodeTypeVersion: 1,
-					nodeParameters: {},
-					inputData: [],
-					projectId: 'p-1',
-				}),
-			).rejects.toThrow(UserError);
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.notATool',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.error).toContain('Node is not usable as a tool');
+			expect(result.error).toContain('n8n-nodes-base.notATool');
+			expect(result.data).toEqual([]);
 		});
 
-		it('throws when the node is a trigger', async () => {
+		it('returns a structured error when the node is a trigger', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({ description: { ...toolDescription, group: ['trigger'] } }),
 			);
 
-			await expect(
-				executor.executeInline({
-					nodeType: 'n8n-nodes-base.triggerNode',
-					nodeTypeVersion: 1,
-					nodeParameters: {},
-					inputData: [],
-					projectId: 'p-1',
-				}),
-			).rejects.toThrow('Trigger nodes cannot be executed standalone');
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.triggerNode',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.error).toContain('Trigger nodes cannot be executed standalone');
 		});
 
-		it('throws when the operation is on the blacklist (sendAndWait)', async () => {
+		it('returns a structured error when the operation is on the blacklist (sendAndWait)', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(
 				mock<INodeType>({ description: toolDescription }),
 			);
 
-			await expect(
-				executor.executeInline({
-					nodeType: 'n8n-nodes-base.slack',
-					nodeTypeVersion: 1,
-					nodeParameters: { operation: 'sendAndWait' },
-					inputData: [],
-					projectId: 'p-1',
-				}),
-			).rejects.toThrow(/not supported for agent tool execution/);
+			const result = await executor.executeInline({
+				nodeType: 'n8n-nodes-base.slack',
+				nodeTypeVersion: 1,
+				nodeParameters: { operation: 'sendAndWait' },
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.status).toBe('error');
+			expect(result.error).toMatch(/not supported for agent tool execution/);
 		});
 	});
 

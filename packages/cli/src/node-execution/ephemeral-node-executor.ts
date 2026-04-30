@@ -298,11 +298,30 @@ export class EphemeralNodeExecutor {
 	}
 
 	async executeInline(request: InlineNodeExecutionRequest): Promise<NodeExecutionResult> {
-		this.validateNodeForExecution(
-			request.nodeType,
-			request.nodeTypeVersion,
-			request.nodeParameters,
-		);
+		// Validation failures (unknown node type, trigger nodes, blacklisted
+		// operations like send-and-wait) need to surface to the agent as a
+		// tool error rather than crashing silently. Returning the standard
+		// `{ status: 'error', error }` shape lets `run_node_tool` translate
+		// it into a tool-result the LLM sees AND lets the ExecutionRecorder
+		// record it as a failed tool call in the session timeline.
+		try {
+			this.validateNodeForExecution(
+				request.nodeType,
+				request.nodeTypeVersion,
+				request.nodeParameters,
+			);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			this.logger.debug('Node execution validation failed', {
+				nodeType: request.nodeType,
+				error: message,
+			});
+			return {
+				status: 'error',
+				data: [],
+				error: `Cannot execute node "${request.nodeType}": ${message}`,
+			};
+		}
 
 		const fromNames =
 			(await this.resolveInlineCredentials(request.projectId, request.credentials)) ?? {};
