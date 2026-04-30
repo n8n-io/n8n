@@ -1,10 +1,128 @@
 import type { JsonValue } from 'n8n-workflow';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
-import type { Column, Header } from './views/TestRunDetailView.vue';
+import type { TestTableColumn } from './components/shared/TestTableBase.vue';
+
+export type Column =
+	| {
+			key: string;
+			label: string;
+			visible: boolean;
+			numeric?: boolean;
+			disabled: false;
+			columnType: 'inputs' | 'outputs' | 'metrics';
+	  }
+	| { key: string; disabled: true };
+
+export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
+
+export type DeltaTone = 'positive' | 'negative' | 'default';
 
 export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
 const LONG_TABLE_CELL_MIN_WIDTH = 250;
-const specialKeys = ['promptTokens', 'completionTokens', 'totalTokens', 'executionTime'];
+
+const PREDEFINED_METRIC_KEYS: ReadonlySet<string> = new Set([
+	'promptTokens',
+	'completionTokens',
+	'totalTokens',
+	'executionTime',
+]);
+
+/**
+ * Returns the user-defined metric names from a metrics record, excluding
+ * the predefined ones (token counts, execution time) emitted by every run.
+ */
+export function getUserDefinedMetricNames(
+	metrics: Record<string, number | boolean> | null | undefined,
+): string[] {
+	if (!metrics) return [];
+	return Object.keys(metrics).filter((key) => !PREDEFINED_METRIC_KEYS.has(key));
+}
+
+/**
+ * Coerces a metric value (which can be `number | boolean`) into a comparable
+ * number. Booleans map to 1/0 to keep delta math consistent.
+ */
+export function normalizeMetricValue(value: number | boolean | undefined): number | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value === 'boolean') return value ? 1 : 0;
+	return value;
+}
+
+/**
+ * Signed delta between current and previous metric values, or undefined when
+ * either side is missing (e.g. first run or metric only appeared this run).
+ */
+export function computeDelta(
+	current: number | boolean | undefined,
+	previous: number | boolean | undefined,
+): number | undefined {
+	const currentNum = normalizeMetricValue(current);
+	const previousNum = normalizeMetricValue(previous);
+	if (currentNum === undefined || previousNum === undefined) return undefined;
+	return currentNum - previousNum;
+}
+
+/**
+ * Maps a delta value to a tone for FE coloring:
+ *   - positive (improved vs previous run) → green
+ *   - negative (declined vs previous run) → red
+ *   - default (no comparison available) → neutral
+ */
+export function getDeltaTone(delta: number | undefined): DeltaTone {
+	if (delta === undefined) return 'default';
+	if (delta > 0) return 'positive';
+	if (delta < 0) return 'negative';
+	return 'default';
+}
+
+/**
+ * Formats a token count as e.g. "3,912t" — used in the per-case header.
+ */
+export function formatTokens(tokens: number | undefined): string {
+	if (tokens === undefined || Number.isNaN(tokens)) return '–';
+	return `${Math.round(tokens).toLocaleString()}t`;
+}
+
+/**
+ * Formats a numeric metric value as a percentage string e.g. "94%".
+ *
+ * Heuristic: values within [-1, 1] are treated as 0–1 normalized scores and
+ * scaled to percent; values outside that range are assumed to already be in
+ * percent and rendered as-is. Edge case: a metric reporting 1.5 (out of range)
+ * renders as "2%" — acceptable for V1 since metrics are conventionally 0–1.
+ */
+export function formatMetricPercent(value: number | boolean | undefined): string {
+	const num = normalizeMetricValue(value);
+	if (num === undefined || Number.isNaN(num)) return '–';
+	const scaled = Math.abs(num) <= 1 ? num * 100 : num;
+	return `${Math.round(scaled)}%`;
+}
+
+/**
+ * Formats a delta in percentage points with a leading sign, e.g. "+4%" / "-28%".
+ */
+export function formatDeltaPercent(delta: number | undefined): string {
+	if (delta === undefined || Number.isNaN(delta)) return '';
+	const scaled = Math.abs(delta) <= 1 ? delta * 100 : delta;
+	const rounded = Math.round(scaled);
+	const sign = rounded > 0 ? '+' : '';
+	return `${sign}${rounded}%`;
+}
+
+/**
+ * Duration in ms between two ISO date strings, or undefined when either end
+ * is missing.
+ */
+export function computeDurationMs(
+	startIso: string | undefined,
+	endIso: string | null | undefined,
+): number | undefined {
+	if (!startIso || !endIso) return undefined;
+	const start = new Date(startIso).getTime();
+	const end = new Date(endIso).getTime();
+	if (Number.isNaN(start) || Number.isNaN(end) || end < start) return undefined;
+	return end - start;
+}
 
 export function getDefaultOrderedColumns(
 	run?: TestRunRecord,
@@ -12,8 +130,12 @@ export function getDefaultOrderedColumns(
 ) {
 	// Default sort order
 	// -> inputs, outputs, metrics, tokens, executionTime
-	const metricColumns = Object.keys(run?.metrics ?? {}).filter((key) => !specialKeys.includes(key));
-	const specialColumns = specialKeys.filter((key) => (run?.metrics ? key in run.metrics : false));
+	const metricColumns = Object.keys(run?.metrics ?? {}).filter(
+		(key) => !PREDEFINED_METRIC_KEYS.has(key),
+	);
+	const specialColumns = Array.from(PREDEFINED_METRIC_KEYS).filter((key) =>
+		run?.metrics ? key in run.metrics : false,
+	);
 	const inputColumns = getTestCasesColumns(filteredTestCases ?? [], 'inputs');
 	const outputColumns = getTestCasesColumns(filteredTestCases ?? [], 'outputs');
 
@@ -105,7 +227,7 @@ function formatValue(
 ) {
 	let stringValue: string;
 
-	if (numeric && typeof value === 'number' && !specialKeys.includes(key)) {
+	if (numeric && typeof value === 'number' && !PREDEFINED_METRIC_KEYS.has(key)) {
 		stringValue = value.toFixed(2) ?? '-';
 	} else if (typeof value === 'object' && value !== null) {
 		stringValue = JSON.stringify(value, null, 2);

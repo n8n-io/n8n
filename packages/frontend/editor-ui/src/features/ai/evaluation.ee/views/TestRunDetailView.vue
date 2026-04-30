@@ -1,64 +1,32 @@
 <script setup lang="ts">
-import type { TestCaseExecutionRecord } from '../evaluation.api';
-import type { TestTableColumn } from '../components/shared/TestTableBase.vue';
-import TestTableBase from '../components/shared/TestTableBase.vue';
+import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
+import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
-import type { BaseTextKey } from '@n8n/i18n';
 import { useEvaluationStore } from '../evaluation.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
-import { statusDictionary, getErrorBaseKey } from '../evaluation.constants';
-import { ElScrollbar } from 'element-plus';
+import { getErrorBaseKey } from '../evaluation.constants';
+import { N8nCallout, N8nHeading, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import {
-	N8nCallout,
-	N8nExternalLink,
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nLoading,
-	N8nTableHeaderControlsButton,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
-import {
-	applyCachedSortOrder,
-	applyCachedVisibility,
-	getDefaultOrderedColumns,
-	getTestCasesColumns,
-	getTestTableHeaders,
+	computeDelta,
+	getDeltaTone,
+	getUserDefinedMetricNames,
+	type DeltaTone,
 } from '../evaluation.utils';
-import {
-	useWorkflowSettingsCache,
-	type UserEvaluationPreferences,
-} from '@/app/composables/useWorkflowsCache';
-
-export type Column =
-	| {
-			key: string;
-			label: string;
-			visible: boolean;
-			numeric?: boolean;
-			disabled: false;
-			columnType: 'inputs' | 'outputs' | 'metrics';
-	  }
-	// Disabled state ensures current sort order is not lost if user resorts teh columns
-	// even if some columns are disabled / not available in the current run
-	| { key: string; disabled: true };
-
-export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
+import MetricSummaryStrip from '../components/RunDetail/MetricSummaryStrip.vue';
+import AiSummarySection from '../components/RunDetail/AiSummarySection.vue';
+import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
 
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
 const workflowsListStore = useWorkflowsListStore();
 const locale = useI18n();
-const workflowsCache = useWorkflowSettingsCache();
 
 const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
@@ -70,73 +38,57 @@ const workflowName = computed(
 	() => workflowsListStore.getWorkflowById(workflowId.value)?.name ?? '',
 );
 
-const cachedUserPreferences = ref<UserEvaluationPreferences | undefined>();
-const expandedRows = ref<Set<string>>(new Set());
-
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 const runErrorDetails = computed(() => {
 	return run.value?.errorDetails as Record<string, string | number>;
 });
 
-const filteredTestCases = computed(() =>
-	orderBy(testCases.value, (record) => record.runAt, ['asc']).map((record, index) =>
-		Object.assign(record, { index: index + 1 }),
+const orderedRuns = computed<TestRunRecord[]>(() =>
+	orderBy(
+		Object.values(evaluationStore.testRunsById).filter(
+			(record) => record.workflowId === workflowId.value,
+		),
+		(record) => new Date(record.runAt),
+		['asc'],
 	),
 );
 
-const isAllExpanded = computed(() => expandedRows.value.size === filteredTestCases.value.length);
-
 const testRunIndex = computed(() =>
-	Object.values(
-		orderBy(evaluationStore.testRunsById, (record) => new Date(record.runAt), ['asc']).filter(
-			({ workflowId: wId }) => wId === workflowId.value,
-		) ?? {},
-	).findIndex(({ id }) => id === runId.value),
+	orderedRuns.value.findIndex((record) => record.id === runId.value),
 );
 
-const formattedTime = computed(() => convertToDisplayDate(new Date(run.value?.runAt).getTime()));
-
-const openRelatedExecution = (row: TestCaseExecutionRecord) => {
-	const executionId = row.executionId;
-	if (executionId) {
-		const { href } = router.resolve({
-			name: VIEWS.EXECUTION_PREVIEW,
-			params: {
-				workflowId: workflowId.value,
-				executionId,
-			},
-		});
-		window.open(href, '_blank');
-	}
-};
-
-const inputColumns = computed(() => getTestCasesColumns(filteredTestCases.value, 'inputs'));
-
-const orderedColumns = computed((): Column[] => {
-	const defaultOrder = getDefaultOrderedColumns(run.value, filteredTestCases.value);
-	const appliedCachedOrder = applyCachedSortOrder(defaultOrder, cachedUserPreferences.value?.order);
-
-	return applyCachedVisibility(appliedCachedOrder, cachedUserPreferences.value?.visibility);
+const previousRun = computed<TestRunRecord | null>(() => {
+	const index = testRunIndex.value;
+	if (index <= 0) return null;
+	return orderedRuns.value[index - 1] ?? null;
 });
 
-const columns = computed((): Header[] => [
-	{
-		prop: 'index',
-		width: 100,
-		label: locale.baseText('evaluation.runDetail.testCase'),
-		sortable: true,
-	} satisfies Header,
-	{
-		prop: 'status',
-		label: locale.baseText('evaluation.listRuns.status'),
-		minWidth: 125,
-	} satisfies Header,
-	...getTestTableHeaders(orderedColumns.value, filteredTestCases.value),
-]);
+const orderedTestCases = computed(() =>
+	orderBy(testCases.value, (record) => record.runAt, ['asc']),
+);
 
-const metrics = computed(() => run.value?.metrics ?? {});
+const metricTones = computed<Record<string, DeltaTone>>(() => {
+	const tones: Record<string, DeltaTone> = {};
+	for (const name of getUserDefinedMetricNames(run.value?.metrics)) {
+		const delta = computeDelta(run.value?.metrics?.[name], previousRun.value?.metrics?.[name]);
+		tones[name] = getDeltaTone(delta);
+	}
+	return tones;
+});
 
-// Temporary workaround to fetch test cases by manually getting workflow executions
+const openRelatedExecution = (testCase: TestCaseExecutionRecord) => {
+	const executionId = testCase.executionId;
+	if (!executionId) return;
+	const { href } = router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: {
+			workflowId: workflowId.value,
+			executionId,
+		},
+	});
+	window.open(href, '_blank');
+};
+
 const fetchExecutionTestCases = async () => {
 	if (!runId.value || !workflowId.value) return;
 
@@ -162,49 +114,8 @@ const fetchExecutionTestCases = async () => {
 	}
 };
 
-async function loadCachedUserPreferences() {
-	cachedUserPreferences.value = await workflowsCache.getEvaluationPreferences(workflowId.value);
-}
-
-async function saveCachedUserPreferences() {
-	if (cachedUserPreferences.value) {
-		await workflowsCache.saveEvaluationPreferences(workflowId.value, cachedUserPreferences.value);
-	}
-}
-
-async function handleColumnVisibilityUpdate(columnKey: string, visibility: boolean) {
-	cachedUserPreferences.value ??= { order: [], visibility: {} };
-	cachedUserPreferences.value.visibility[columnKey] = visibility;
-	await saveCachedUserPreferences();
-}
-
-async function handleColumnOrderUpdate(newOrder: string[]) {
-	cachedUserPreferences.value ??= { order: [], visibility: {} };
-	cachedUserPreferences.value.order = newOrder;
-	await saveCachedUserPreferences();
-}
-
-function toggleRowExpansion(row: { id: string }) {
-	if (expandedRows.value.has(row.id)) {
-		expandedRows.value.delete(row.id);
-	} else {
-		expandedRows.value.add(row.id);
-	}
-}
-
-function toggleAllExpansion() {
-	if (isAllExpanded.value) {
-		// Collapse all
-		expandedRows.value.clear();
-	} else {
-		// Expand all
-		expandedRows.value = new Set(filteredTestCases.value.map((row) => row.id));
-	}
-}
-
 onMounted(async () => {
 	await fetchExecutionTestCases();
-	await loadCachedUserPreferences();
 });
 </script>
 
@@ -232,6 +143,7 @@ onMounted(async () => {
 				}}
 			</N8nHeading>
 		</div>
+
 		<N8nCallout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
 			<N8nText size="small" :class="$style.capitalized">
 				{{
@@ -243,175 +155,43 @@ onMounted(async () => {
 			</N8nText>
 		</N8nCallout>
 
-		<ElScrollbar always :class="$style.scrollableSummary" class="mb-m">
-			<div style="display: flex">
-				<div :class="$style.summaryCard">
-					<N8nText size="small" :class="$style.summaryCardTitle">
-						{{ locale.baseText('evaluation.runDetail.totalCases') }}
-					</N8nText>
-					<N8nText size="xlarge" :class="$style.summaryCardContentLargeNumber" bold>{{
-						testCases.length
-					}}</N8nText>
-				</div>
-
-				<div :class="$style.summaryCard">
-					<N8nText size="small" :class="$style.summaryCardTitle">
-						{{ locale.baseText('evaluation.runDetail.ranAt') }}
-					</N8nText>
-					<div>
-						<N8nText size="medium"> {{ formattedTime.date }} {{ formattedTime.time }} </N8nText>
-					</div>
-				</div>
-
-				<div :class="$style.summaryCard">
-					<N8nText size="small" :class="$style.summaryCardTitle">
-						{{ locale.baseText('evaluation.listRuns.status') }}
-					</N8nText>
-					<N8nText
-						v-if="run?.status === 'completed' && hasFailedTestCases"
-						size="medium"
-						color="warning"
-					>
-						{{ locale.baseText(`evaluation.runDetail.error.partialCasesFailed`) }}
-					</N8nText>
-					<N8nText
-						v-else
-						:color="statusDictionary[run?.status]?.color"
-						size="medium"
-						:class="run?.status.toLowerCase()"
-						style="text-transform: capitalize"
-					>
-						{{ run?.status }}
-					</N8nText>
-				</div>
-
-				<div v-for="(value, key) in metrics" :key="key" :class="$style.summaryCard">
-					<N8nTooltip :content="key" placement="top">
-						<N8nText
-							size="small"
-							:class="$style.summaryCardTitle"
-							style="text-overflow: ellipsis; overflow: hidden"
-						>
-							{{ key }}
-						</N8nText>
-					</N8nTooltip>
-
-					<N8nText size="xlarge" :class="$style.summaryCardContentLargeNumber" bold>{{
-						value.toFixed(2)
-					}}</N8nText>
-				</div>
-			</div>
-		</ElScrollbar>
-
-		<div :class="['mb-s', $style.runsHeader]">
-			<div>
-				<N8nHeading size="large" :bold="true"
-					>{{
-						locale.baseText('evaluation.listRuns.allTestCases', {
-							interpolate: {
-								count: filteredTestCases.length,
-							},
-						})
-					}}
-				</N8nHeading>
-			</div>
-			<div :class="$style.runsHeaderButtons">
-				<N8nIconButton
-					variant="subtle"
-					:icon="isAllExpanded ? 'chevrons-down-up' : 'chevrons-up-down'"
-					size="medium"
-					@click="toggleAllExpansion"
-				/>
-				<N8nTableHeaderControlsButton
-					size="medium"
-					icon-size="small"
-					:columns="orderedColumns"
-					@update:column-visibility="handleColumnVisibilityUpdate"
-					@update:column-order="handleColumnOrderUpdate"
-				/>
-			</div>
-		</div>
-
 		<N8nCallout
-			v-if="
-				!isLoading &&
-				!inputColumns.length &&
-				run?.status === 'completed' &&
-				run?.finalResult === 'success'
-			"
-			theme="secondary"
-			icon="info"
+			v-if="run?.status === 'completed' && hasFailedTestCases"
+			theme="warning"
+			icon="triangle-alert"
 			class="mb-s"
 		>
 			<N8nText size="small" :class="$style.capitalized">
-				{{ locale.baseText('evaluation.runDetail.notice.useSetInputs') }}
+				{{ locale.baseText('evaluation.runDetail.error.partialCasesFailed') }}
 			</N8nText>
 		</N8nCallout>
+
+		<MetricSummaryStrip
+			:current-metrics="run?.metrics"
+			:previous-metrics="previousRun?.metrics"
+			class="mb-m"
+		/>
+
+		<AiSummarySection />
 
 		<div v-if="isLoading" :class="$style.loading">
 			<N8nLoading :loading="true" :rows="5" />
 		</div>
 
-		<TestTableBase
-			v-else
-			:data="filteredTestCases"
-			:columns="columns"
-			:default-sort="{ prop: 'id', order: 'descending' }"
-			:expanded-rows="expandedRows"
-			@row-click="toggleRowExpansion"
-		>
-			<template #id="{ row }">
-				<div style="display: flex; justify-content: space-between; gap: 10px">
-					{{ row.id }}
-				</div>
-			</template>
-			<template #index="{ row }">
-				<div>
-					<N8nExternalLink
-						v-if="row.executionId"
-						class="open-execution-link"
-						@click.stop.prevent="openRelatedExecution(row)"
-					>
-						#{{ row.index }}
-					</N8nExternalLink>
-					<span v-else :class="$style.deletedExecutionRowIndex">#{{ row.index }}</span>
-				</div>
-			</template>
-			<template #status="{ row }">
-				<div style="display: inline-flex; gap: 12px; align-items: center; max-width: 100%">
-					<N8nIcon
-						:icon="statusDictionary[row.status].icon"
-						:color="statusDictionary[row.status].color"
-					/>
-					<template v-if="row.status === 'error'">
-						<N8nTooltip placement="top" :show-after="300">
-							<template #content>
-								{{
-									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
-								}}
-							</template>
-							<N8nText color="danger" :class="$style.capitalized">
-								{{
-									locale.baseText(`${getErrorBaseKey(row.errorCode)}` as BaseTextKey) || row.status
-								}}
-							</N8nText>
-						</N8nTooltip>
-					</template>
-					<template v-else>
-						<N8nText :class="$style.capitalized">
-							{{ row.status }}
-						</N8nText>
-					</template>
-				</div>
-			</template>
-		</TestTableBase>
+		<div v-else :class="$style.caseList">
+			<TestCaseCard
+				v-for="(testCase, index) in orderedTestCases"
+				:key="testCase.id"
+				:test-case="testCase"
+				:index="index + 1"
+				:metric-tones="metricTones"
+				@view="openRelatedExecution"
+			/>
+		</div>
 	</div>
 </template>
 
 <style lang="scss" scoped>
-/**
-	When hovering over link in row, ensure hover background is removed from row
- */
 :global(tr:hover:has(.open-execution-link:hover)) {
 	--table--row--color--background--hover: transparent;
 }
@@ -430,11 +210,6 @@ onMounted(async () => {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--lg);
-
-	.timestamp {
-		color: var(--color--text);
-		font-size: var(--font-size--sm);
-	}
 }
 
 .backButton {
@@ -458,40 +233,11 @@ onMounted(async () => {
 	color: var(--color--text--tint-1);
 }
 
-.summary {
-	margin-bottom: var(--spacing--md);
-
-	.summaryStats {
-		display: flex;
-		gap: var(--spacing--lg);
-	}
+.capitalized {
+	text-transform: none;
 }
-.stat {
-	display: flex;
-	flex-direction: column;
-}
-
-.controls {
-	display: flex;
-	gap: var(--spacing--sm);
-	margin-bottom: var(--spacing--sm);
-}
-
-.downloadButton {
-	margin-bottom: var(--spacing--sm);
-}
-
-.runsHeader {
-	display: flex;
-
-	> div:first-child {
-		flex: 1;
-	}
-}
-
-.runsHeaderButtons {
-	display: flex;
-	gap: var(--spacing--xs);
+.capitalized::first-letter {
+	text-transform: uppercase;
 }
 
 .loading {
@@ -501,80 +247,9 @@ onMounted(async () => {
 	height: 200px;
 }
 
-.scrollableSummary {
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: 5px;
-	background-color: var(--color--background--light-3);
-
-	:global(.el-scrollbar__bar) {
-		opacity: 1;
-	}
-	:global(.el-scrollbar__thumb) {
-		background-color: var(--color--foreground);
-		&:hover {
-			background-color: var(--color--foreground--shade-1);
-		}
-	}
-}
-
-.summaryCard {
-	height: 100px;
-	box-sizing: border-box;
-	padding: var(--spacing--sm);
-	border-right: var(--border-width) var(--border-style) var(--color--foreground);
-	flex-basis: 169px;
-	flex-shrink: 0;
-	max-width: 170px;
+.caseList {
 	display: flex;
 	flex-direction: column;
-	justify-content: space-between;
-
-	&:first-child {
-		border-top-left-radius: inherit;
-		border-bottom-left-radius: inherit;
-	}
-}
-
-.capitalized {
-	text-transform: none;
-}
-.capitalized::first-letter {
-	text-transform: uppercase;
-}
-
-.summaryCardTitle {
-	display: inline;
-	width: fit-content;
-	max-width: 100%;
-	flex-shrink: 0;
-	text-overflow: ellipsis;
-	overflow: hidden;
-	white-space: nowrap;
-	color: var(--color--text);
-}
-
-.summaryCardContentLargeNumber {
-	font-size: 32px;
-	line-height: 1;
-}
-
-.alertText {
-	display: -webkit-box;
-	-webkit-line-clamp: 2;
-	line-clamp: 2;
-	-webkit-box-orient: vertical;
-	max-width: 100%;
-	text-overflow: ellipsis;
-	overflow: hidden;
-	white-space: normal;
-	word-break: break-word;
-	color: var(--color--text--danger);
-	font-size: var(--font-size--2xs);
-	line-height: 1.25;
-}
-
-.deletedExecutionRowIndex {
-	color: var(--color--text);
-	font-weight: var(--font-weight--regular);
+	gap: var(--spacing--md);
 }
 </style>

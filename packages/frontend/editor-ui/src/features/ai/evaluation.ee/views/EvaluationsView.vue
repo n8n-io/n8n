@@ -3,6 +3,9 @@ import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
 import RunsSection from '../components/ListRuns/RunsSection.vue';
+// TODO(TRUST-70 follow-up): wire `RunComparison.vue` from `../components/RunDetail/`
+// here once the feature is built. The placeholder lives next to the run-detail
+// components since comparison reuses the delta/tone helpers.
 import { useEvaluationStore } from '../evaluation.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';

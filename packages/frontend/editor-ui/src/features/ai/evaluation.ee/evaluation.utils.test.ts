@@ -2,9 +2,17 @@ import { describe, it, expect } from 'vitest';
 import {
 	applyCachedSortOrder,
 	applyCachedVisibility,
+	computeDelta,
+	computeDurationMs,
+	formatDeltaPercent,
+	formatMetricPercent,
+	formatTokens,
 	getDefaultOrderedColumns,
+	getDeltaTone,
 	getTestCasesColumns,
 	getTestTableHeaders,
+	getUserDefinedMetricNames,
+	normalizeMetricValue,
 } from './evaluation.utils';
 import type { TestCaseExecutionRecord } from './evaluation.api';
 
@@ -1193,6 +1201,94 @@ describe('utils', () => {
 
 			expect(result).toHaveLength(1);
 			expect(result[0]?.minWidth).toBe(250); // Should be 250 because second test case has long content
+		});
+	});
+
+	describe('normalizeMetricValue', () => {
+		it('returns numbers unchanged', () => {
+			expect(normalizeMetricValue(0.42)).toBe(0.42);
+		});
+		it('coerces booleans to 1/0', () => {
+			expect(normalizeMetricValue(true)).toBe(1);
+			expect(normalizeMetricValue(false)).toBe(0);
+		});
+		it('returns undefined for undefined input', () => {
+			expect(normalizeMetricValue(undefined)).toBeUndefined();
+		});
+	});
+
+	describe('computeDelta', () => {
+		it('returns the signed difference when both values are present', () => {
+			expect(computeDelta(0.9, 0.85)).toBeCloseTo(0.05);
+			expect(computeDelta(0.4, 0.7)).toBeCloseTo(-0.3);
+		});
+		it('returns undefined when previous is missing', () => {
+			expect(computeDelta(0.9, undefined)).toBeUndefined();
+		});
+		it('returns undefined when current is missing', () => {
+			expect(computeDelta(undefined, 0.5)).toBeUndefined();
+		});
+	});
+
+	describe('getDeltaTone', () => {
+		it('returns positive for an increase', () => {
+			expect(getDeltaTone(0.1)).toBe('positive');
+		});
+		it('returns negative for a decrease', () => {
+			expect(getDeltaTone(-0.1)).toBe('negative');
+		});
+		it('returns default for zero or missing comparison', () => {
+			expect(getDeltaTone(0)).toBe('default');
+			expect(getDeltaTone(undefined)).toBe('default');
+		});
+	});
+
+	describe('formatTokens', () => {
+		it('renders with a t suffix and locale grouping', () => {
+			expect(formatTokens(3912)).toBe('3,912t');
+		});
+		it('renders – when undefined', () => {
+			expect(formatTokens(undefined)).toBe('–');
+		});
+	});
+
+	describe('formatMetricPercent', () => {
+		it('rescales 0–1 values to percent', () => {
+			expect(formatMetricPercent(0.94)).toBe('94%');
+		});
+		it('passes through values already above 1', () => {
+			expect(formatMetricPercent(85)).toBe('85%');
+		});
+	});
+
+	describe('formatDeltaPercent', () => {
+		it('formats positive delta with a leading +', () => {
+			expect(formatDeltaPercent(0.04)).toBe('+4%');
+		});
+		it('formats negative delta with a leading -', () => {
+			expect(formatDeltaPercent(-0.28)).toBe('-28%');
+		});
+	});
+
+	describe('getUserDefinedMetricNames', () => {
+		it('excludes predefined token + execution-time keys', () => {
+			const names = getUserDefinedMetricNames({
+				accuracy: 0.9,
+				totalTokens: 100,
+				promptTokens: 50,
+				completionTokens: 50,
+				executionTime: 1000,
+			});
+			expect(names).toEqual(['accuracy']);
+		});
+	});
+
+	describe('computeDurationMs', () => {
+		it('returns the diff in milliseconds for valid timestamps', () => {
+			expect(computeDurationMs('2023-10-01T10:00:00Z', '2023-10-01T10:00:01.243Z')).toBe(1243);
+		});
+		it('returns undefined when end is missing', () => {
+			expect(computeDurationMs('2023-10-01T10:00:00Z', undefined)).toBeUndefined();
 		});
 	});
 });
