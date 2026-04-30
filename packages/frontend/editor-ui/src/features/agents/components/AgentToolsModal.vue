@@ -23,7 +23,7 @@ import AgentToolItem from './AgentToolItem.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 
 import type { INodeUi, IWorkflowDb } from '@/Interface';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonToolRef, WorkflowToolRef } from '../types';
 import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
@@ -184,7 +184,7 @@ interface ConfiguredWorkflowView {
 
 const configuredWorkflows = computed<ConfiguredWorkflowView[]>(() =>
 	workingTools.value
-		.filter((t) => t.type === 'workflow')
+		.filter((t): t is WorkflowToolRef => t.type === 'workflow')
 		.map((ref) => ({
 			ref,
 			name: ref.name ?? (ref.workflow as string),

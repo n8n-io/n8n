@@ -39,6 +39,14 @@ export const NodeConfigSchema = z.object({
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
 
+const AgentJsonSkillConfigSchema = z.object({
+	type: z.literal('skill'),
+	id: z
+		.string()
+		.min(1)
+		.regex(/^[a-z0-9_-]+$/),
+});
+
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
@@ -89,6 +97,7 @@ export const AgentJsonConfigSchema = z.object({
 	instructions: z.string(),
 	memory: MemoryConfigSchema.optional(),
 	tools: z.array(AgentJsonToolConfigSchema).optional(),
+	skills: z.array(AgentJsonSkillConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	config: z
 		.object({
@@ -108,6 +117,8 @@ export const AgentJsonConfigPartialSchema = AgentJsonConfigSchema.partial();
 
 export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
+export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
+export type AgentJsonConfigRef = AgentJsonToolConfig | AgentJsonSkillConfig;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
 
 export interface ConfigValidationError {

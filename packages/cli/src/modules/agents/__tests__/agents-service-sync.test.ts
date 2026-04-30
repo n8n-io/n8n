@@ -15,6 +15,7 @@ import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type { AgentExecutionService } from '../agent-execution.service';
+import type { AgentSkillsService } from '../agent-skills.service';
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
@@ -72,6 +73,7 @@ describe('AgentsService — updateName / updateDescription schema sync', () => {
 			mock<N8nMemory>(),
 			mock<AgentExecutionService>(),
 			mock(),
+			mock<AgentSkillsService>(),
 		);
 	});
 

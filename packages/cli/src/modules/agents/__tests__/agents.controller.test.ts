@@ -32,4 +32,14 @@ describe('AgentsController route access scopes', () => {
 			expect(route.accessScope?.scope.startsWith('agent:')).toBe(true);
 		},
 	);
+
+	it.each([
+		['listSkills', 'agent:read'],
+		['getSkill', 'agent:read'],
+		['createSkill', 'agent:update'],
+		['updateSkill', 'agent:update'],
+		['deleteSkill', 'agent:update'],
+	])('%s uses %s', (handlerName, scope) => {
+		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
+	});
 });

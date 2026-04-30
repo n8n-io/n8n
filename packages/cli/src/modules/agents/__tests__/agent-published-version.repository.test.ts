@@ -21,6 +21,8 @@ describe('AgentPublishedVersionRepository', () => {
 		const payload = {
 			agentId: 'agent-1',
 			schema: null,
+			tools: null,
+			skills: null,
 			publishedFromVersionId: 'v1',
 			model: 'claude-3',
 			provider: 'anthropic',
