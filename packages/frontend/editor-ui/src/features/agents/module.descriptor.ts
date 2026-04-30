@@ -194,7 +194,7 @@ export const AgentsModule: FrontendModuleDescription = {
 			icon: 'robot',
 			label: i18n.baseText('settings.agentBuilder.title'),
 			position: 'top',
-			beta: true,
+			preview: true,
 			route: { to: { name: AGENT_BUILDER_SETTINGS_VIEW } },
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
