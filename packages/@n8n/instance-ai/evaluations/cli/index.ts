@@ -266,16 +266,49 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		};
 	});
 
-	// Map each test case file to a lane (round-robin in source order via
-	// partitionRoundRobin). Stable across calls so all scenarios + iterations of
-	// a given test case share the build cache on a single lane.
+	// Distribute work to lanes. Two modes, gated on whether we have enough lanes
+	// to spread iterations of the same test case across distinct containers:
+	//
+	//   useDistributedIters = lanes.length >= args.iterations
+	//
+	// True (CI default at 9 lanes × 3 iters): map (file, iter) → lane via flat
+	// round-robin so the same prompt never lands on one container twice. Pairs
+	// with iter-interleave below for max parallelism.
+	//
+	// False (e.g. local 1 lane × 3 iters, or any lanes < iters case): map file
+	// → lane only. Fall back to iter-sequential at the iterator so each lane
+	// processes one iteration phase at a time, never concurrent same-prompt.
+	const useDistributedIters = laneStates.length >= args.iterations;
+
 	const laneByFile = new Map<string, LaneState>();
-	const laneBuckets = partitionRoundRobin(testCasesWithFiles, laneStates.length);
-	laneBuckets.forEach((bucket, laneIdx) => {
-		for (const tc of bucket) {
-			laneByFile.set(tc.fileSlug, laneStates[laneIdx]);
+	const laneByFileIter = new Map<string, LaneState>();
+	if (useDistributedIters) {
+		const fileIterPairs: Array<{ fileSlug: string; iter: number }> = [];
+		for (const tc of testCasesWithFiles) {
+			for (let iter = 0; iter < args.iterations; iter++) {
+				fileIterPairs.push({ fileSlug: tc.fileSlug, iter });
+			}
 		}
-	});
+		const buckets = partitionRoundRobin(fileIterPairs, laneStates.length);
+		buckets.forEach((bucket, laneIdx) => {
+			for (const pair of bucket) {
+				laneByFileIter.set(`${pair.fileSlug}:${String(pair.iter)}`, laneStates[laneIdx]);
+			}
+		});
+	} else {
+		const buckets = partitionRoundRobin(testCasesWithFiles, laneStates.length);
+		buckets.forEach((bucket, laneIdx) => {
+			for (const tc of bucket) {
+				laneByFile.set(tc.fileSlug, laneStates[laneIdx]);
+			}
+		});
+	}
+
+	function laneFor(fileSlug: string, iter: number): LaneState | undefined {
+		return useDistributedIters
+			? laneByFileIter.get(`${fileSlug}:${String(iter)}`)
+			: laneByFile.get(fileSlug);
+	}
 
 	async function getOrBuild(
 		prompt: string,
@@ -305,15 +338,16 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			successCriteria: inputs.successCriteria,
 		};
 
-		const st = laneByFile.get(inputs.testCaseFile);
+		const st = laneFor(inputs.testCaseFile, iteration);
 		if (!st) {
-			// Defensive: a stale dataset example referencing a deleted local file.
-			// Surface as a framework_issue so it doesn't get classified as a builder regression.
+			// Defensive: a stale dataset example referencing a deleted local file
+			// or an unexpected iteration index. Surface as framework_issue so it
+			// doesn't get classified as a builder regression.
 			return {
 				buildSuccess: false,
 				passed: false,
 				score: 0,
-				reasoning: `No lane for testCaseFile: ${inputs.testCaseFile}`,
+				reasoning: `No lane for testCaseFile=${inputs.testCaseFile} iter=${String(iteration)}`,
 				failureCategory: 'framework_issue',
 				execErrors: [],
 				execDurationMs: 0,
@@ -431,9 +465,12 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	// sync is additive — see langsmith/dataset-sync.ts) and we don't want to
 	// run scenarios whose JSON file no longer exists.
 	const sourceExamples = filteredExamplesIterable(lsClient, datasetName, args.filter, logger);
+	// Interleave iterations only when (file, iter) distribution is active.
+	// Otherwise iter-interleave would concentrate same-prompt builds on the
+	// lanes that handle each test case — the regression we already saw.
 	const evaluateData =
 		args.iterations > 1
-			? expandExamplesForIterations(sourceExamples, args.iterations)
+			? expandExamplesForIterations(sourceExamples, args.iterations, useDistributedIters)
 			: sourceExamples;
 
 	try {
@@ -514,11 +551,19 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
  * the source example's id, so LangSmith's UI groups them naturally by
  * `reference_example_id` — useful for pass@k visualization.
  *
- * Order: round-robin scenarios across test cases, then iter-interleave within
- * each example. The first wave of yielded examples therefore covers one
- * scenario from every test case × every iteration — at high enough
- * `--concurrency` the in-flight set spans all test cases at once, fanning
- * builds across all lanes simultaneously instead of concentrating on one.
+ * Always round-robins scenarios across test cases (groups by `testCaseFile`,
+ * then yields one scenario per group per "round"). This keeps multi-lane
+ * setups busy by fanning the in-flight set across distinct test cases.
+ *
+ * `interleaveIters` controls iteration ordering:
+ *   - true: yield all iterations of each example before moving to the next
+ *     example. Maximizes build-phase parallelism by exposing all 3 distinct
+ *     `(iter, prompt)` build keys per scenario at once. **Only safe when
+ *     iterations of the same test case land on different lanes** — pair with
+ *     `laneByFileIter` distribution. Otherwise concentrates same-prompt builds
+ *     on a single container.
+ *   - false: yield iter 0 of every example before iter 1, then iter 2. Safe
+ *     for any lane count; only one iteration phase is in flight at a time.
  *
  * The source is buffered into memory once before the first yield: we need to
  * emit each example N times, and an AsyncIterable can only be consumed once.
@@ -526,6 +571,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 async function* expandExamplesForIterations(
 	source: AsyncIterable<Example>,
 	iterations: number,
+	interleaveIters: boolean,
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
@@ -544,12 +590,29 @@ async function* expandExamplesForIterations(
 	const groups = [...byFile.values()];
 	const maxScenarios = groups.reduce((m, g) => Math.max(m, g.length), 0);
 
-	for (let s = 0; s < maxScenarios; s++) {
-		for (const group of groups) {
-			if (s < group.length) {
-				const ex = group[s];
-				for (let i = 0; i < iterations; i++) {
-					yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+	if (interleaveIters) {
+		// (scenario_round, group, iteration) — iter-interleave inside each example.
+		for (let s = 0; s < maxScenarios; s++) {
+			for (const group of groups) {
+				if (s < group.length) {
+					const ex = group[s];
+					for (let i = 0; i < iterations; i++) {
+						yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+					}
+				}
+			}
+		}
+	} else {
+		// (iteration, scenario_round, group) — iter-sequential, scenarios still
+		// round-robin across test cases so multi-lane setups stay busy within
+		// each iteration phase.
+		for (let i = 0; i < iterations; i++) {
+			for (let s = 0; s < maxScenarios; s++) {
+				for (const group of groups) {
+					if (s < group.length) {
+						const ex = group[s];
+						yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
+					}
 				}
 			}
 		}
