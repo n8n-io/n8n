@@ -5,6 +5,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
+import { resolveAwsCredentials } from '../../../../utils/aws';
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
 
 vi.mock('@langchain/aws', () => ({
@@ -18,6 +19,11 @@ vi.mock('@n8n/ai-utilities', () => ({
 	N8nLlmTracing: vi.fn(),
 	getNodeProxyAgent: vi.fn(),
 }));
+vi.mock('../../../../utils/aws', () => ({
+	awsNodeCredentials: [],
+	awsNodeAuthOptions: { displayName: '', name: 'authentication', type: 'options', default: 'iam' },
+	resolveAwsCredentials: vi.fn(),
+}));
 
 vi.mock('@aws-sdk/client-bedrock-runtime', () => ({
 	BedrockRuntimeClient: vi.fn(),
@@ -26,6 +32,15 @@ const MockedBedrockRuntimeClient = vi.mocked(BedrockRuntimeClient);
 const MockedChatBedrockConverse = vi.mocked(ChatBedrockConverse);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
+const mockedResolveAwsCredentials = vi.mocked(resolveAwsCredentials);
+
+const defaultResolvedCredentials = {
+	region: 'us-east-1',
+	credentials: {
+		accessKeyId: 'test-key',
+		secretAccessKey: 'test-secret',
+	},
+};
 
 describe('LmChatAwsBedrock', () => {
 	let node: LmChatAwsBedrock;
@@ -40,28 +55,20 @@ describe('LmChatAwsBedrock', () => {
 		parameters: {},
 	};
 
-	const defaultCredentials = {
-		region: 'us-east-1',
-		secretAccessKey: 'test-secret',
-		accessKeyId: 'test-key',
-		sessionToken: '',
-	};
-
-	const setupMockContext = (overrides: { credentials?: Record<string, unknown> } = {}) => {
+	const setupMockContext = () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			mockNode,
 		) as Mocked<ISupplyDataFunctions>;
 
-		mockContext.getCredentials = vi
-			.fn()
-			.mockResolvedValue(overrides.credentials ?? defaultCredentials);
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
-		//@ts-expect-error - Mocking
 		mockContext.getNodeParameter = vi.fn();
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());
 		mockedGetNodeProxyAgent.mockReturnValue(undefined);
+		MockedBedrockRuntimeClient.mockImplementation(vi.fn() as unknown as () => BedrockRuntimeClient);
+		MockedChatBedrockConverse.mockImplementation(vi.fn() as unknown as () => ChatBedrockConverse);
+		mockedResolveAwsCredentials.mockResolvedValue(defaultResolvedCredentials);
 
 		return mockContext;
 	};
@@ -82,6 +89,7 @@ describe('LmChatAwsBedrock', () => {
 
 			await node.supplyData.call(ctx, 0);
 
+			expect(mockedResolveAwsCredentials).toHaveBeenCalledWith(ctx, 0);
 			expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
 				expect.objectContaining({ region: 'us-east-1' }),
 			);
@@ -163,6 +171,75 @@ describe('LmChatAwsBedrock', () => {
 					maxTokens: 1000,
 				}),
 			);
+		});
+
+		it('should pass resolved credentials to BedrockRuntimeClient', async () => {
+			const ctx = setupMockContext();
+			mockedResolveAwsCredentials.mockResolvedValueOnce({
+				region: 'us-west-2',
+				credentials: {
+					accessKeyId: 'assumed-access-key',
+					secretAccessKey: 'assumed-secret',
+					sessionToken: 'assumed-token',
+				},
+			});
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+				expect.objectContaining({
+					region: 'us-west-2',
+					credentials: {
+						accessKeyId: 'assumed-access-key',
+						secretAccessKey: 'assumed-secret',
+						sessionToken: 'assumed-token',
+					},
+				}),
+			);
+		});
+
+		it('should extract region from ARN overriding credential region', async () => {
+			const ctx = setupMockContext();
+			mockedResolveAwsCredentials.mockResolvedValueOnce({
+				region: 'us-west-2',
+				credentials: {
+					accessKeyId: 'assumed-access-key',
+					secretAccessKey: 'assumed-secret',
+					sessionToken: 'assumed-token',
+				},
+			});
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model')
+					return 'arn:aws:bedrock:eu-central-1:123456789012:inference-profile/eu.amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedBedrockRuntimeClient).toHaveBeenCalledWith(
+				expect.objectContaining({ region: 'eu-central-1' }),
+			);
+			expect(MockedChatBedrockConverse).toHaveBeenCalledWith(
+				expect.objectContaining({ region: 'eu-central-1' }),
+			);
+		});
+
+		it('should propagate errors from credential resolution', async () => {
+			const ctx = setupMockContext();
+			mockedResolveAwsCredentials.mockRejectedValueOnce(new Error('STS AssumeRole failed'));
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'amazon.nova-pro-v1:0';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow('STS AssumeRole failed');
 		});
 	});
 });

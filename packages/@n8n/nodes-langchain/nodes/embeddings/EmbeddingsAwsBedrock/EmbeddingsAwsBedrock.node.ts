@@ -12,17 +12,14 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { awsNodeCredentials, awsNodeAuthOptions, resolveAwsCredentials } from '../../../utils/aws';
+
 export class EmbeddingsAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings AWS Bedrock',
 		name: 'embeddingsAwsBedrock',
 		icon: 'file:bedrock.svg',
-		credentials: [
-			{
-				name: 'aws',
-				required: true,
-			},
-		],
+		credentials: awsNodeCredentials,
 		group: ['transform'],
 		version: 1,
 		description: 'Use Embeddings AWS Bedrock',
@@ -54,6 +51,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiVectorStore]),
+			awsNodeAuthOptions,
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -106,21 +104,16 @@ export class EmbeddingsAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
-		}>('aws');
+		const { region, credentials: resolvedCredentials } = await resolveAwsCredentials(
+			this,
+			itemIndex,
+		);
+
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const clientConfig: BedrockRuntimeClientConfig = {
-			region: credentials.region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				sessionToken: credentials.sessionToken,
-			},
+			region,
+			credentials: resolvedCredentials,
 		};
 
 		const proxyAgent = getNodeProxyAgent();
@@ -136,7 +129,7 @@ export class EmbeddingsAwsBedrock implements INodeType {
 			client,
 			model: modelName,
 			maxRetries: 3,
-			region: credentials.region,
+			region,
 		});
 
 		return {
