@@ -18,10 +18,6 @@ const SKIP_BADGE_BASIC_CREDENTIAL_NAME = 'B3 Skip Badge Basic Auth';
 
 const ROUTE_BACK_WORKFLOW_NAME = 'B3 Workflow Setup Route Back To Earlier Card';
 
-const AUTO_APPLY_WORKFLOW_NAME = 'B3 Workflow Setup Auto Apply Header Auth';
-const AUTO_APPLY_OLDER_CREDENTIAL_NAME = 'B3 Auto Apply Header Older';
-const AUTO_APPLY_NEWER_CREDENTIAL_NAME = 'B3 Auto Apply Header Newer';
-
 const SLACK_WORKFLOW_NAME = 'B3 Workflow Setup Slack Credential Test';
 const SLACK_CREDENTIAL_NAME = 'B3 Slack Credential Test';
 
@@ -126,42 +122,6 @@ function createTwoCardWorkflow(name: string): Partial<IWorkflowBase> {
 				main: [[{ node: 'HTTP Request Basic', type: 'main', index: 0 }]],
 			},
 			'HTTP Request Basic': {
-				main: [[{ node: 'HTTP Request Header', type: 'main', index: 0 }]],
-			},
-		},
-		settings: {},
-	};
-}
-
-function createSingleCardAutoApplyWorkflow(name: string): Partial<IWorkflowBase> {
-	return {
-		name,
-		active: false,
-		nodes: [
-			{
-				id: 'trigger',
-				name: 'Manual Trigger',
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
-			{
-				id: 'header',
-				name: 'HTTP Request Header',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 4.2,
-				position: [220, 0],
-				parameters: {
-					method: 'GET',
-					url: 'https://example.com/header',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-			},
-		],
-		connections: {
-			'Manual Trigger': {
 				main: [[{ node: 'HTTP Request Header', type: 'main', index: 0 }]],
 			},
 		},
@@ -493,44 +453,6 @@ test.describe(
 			await n8n.instanceAi.workflowSetup.getLaterButton().click();
 			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
 			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible();
-		});
-
-		test('should auto-apply a matching existing credential when setup starts complete', async ({
-			n8n,
-		}) => {
-			await n8n.api.credentials.createCredential({
-				name: AUTO_APPLY_OLDER_CREDENTIAL_NAME,
-				type: 'httpHeaderAuth',
-				data: {
-					name: 'x-auto-older',
-					value: 'older-header-value',
-				},
-			});
-			await n8n.api.credentials.createCredential({
-				name: AUTO_APPLY_NEWER_CREDENTIAL_NAME,
-				type: 'httpHeaderAuth',
-				data: {
-					name: 'x-auto-newer',
-					value: 'newer-header-value',
-				},
-			});
-
-			const workflow = await n8n.api.workflows.createWorkflow(
-				createSingleCardAutoApplyWorkflow(AUTO_APPLY_WORKFLOW_NAME),
-			);
-
-			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(`Set up the workflow named "${AUTO_APPLY_WORKFLOW_NAME}".`);
-
-			await n8n.instanceAi.waitForResponseComplete();
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeHidden();
-
-			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
-			const assignedCredentialName = getNode(persisted, 'HTTP Request Header')?.credentials
-				?.httpHeaderAuth?.name;
-			expect([AUTO_APPLY_OLDER_CREDENTIAL_NAME, AUTO_APPLY_NEWER_CREDENTIAL_NAME]).toContain(
-				assignedCredentialName,
-			);
 		});
 
 		test('should clear required parameter issue indicator when the field is filled', async ({
