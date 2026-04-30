@@ -5673,6 +5673,7 @@
 	"agents.chat.misconfigured.missing.skill": "Skill ({id})",
 	"agents.chat.misconfigured.openBuild": "Finish setup in Build",
 	"agents.chat.misconfigured.dismiss": "Dismiss",
+	"agents.chat.askCredential.skip": "Skip",
 	"agents.list.published": "Published",
 	"agents.list.noDescription": "No description",
 	"agents.list.updatedAt": "Updated {date}",

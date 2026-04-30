@@ -64,4 +64,17 @@ describe('ask_credential tool', () => {
 		expect(credentialProvider.list).not.toHaveBeenCalled();
 		expect(result).toEqual({ credentialId: 'c9', credentialName: 'Picked' });
 	});
+
+	it('returns skipped resumeData so the builder can continue without credentials', async () => {
+		const credentialProvider = makeProvider([]);
+		const tool = buildAskCredentialTool({ credentialProvider });
+		const ctx = makeCtx({ resumeData: { skipped: true } });
+		const result = await tool.handler!(
+			{ purpose: 'Slack', credentialType: 'slackApi' },
+			ctx as never,
+		);
+		expect(ctx.suspend).not.toHaveBeenCalled();
+		expect(credentialProvider.list).not.toHaveBeenCalled();
+		expect(result).toEqual({ skipped: true });
+	});
 });

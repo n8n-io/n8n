@@ -1555,6 +1555,7 @@ function onSwitchAgent(nextAgentId: string) {
 .editorColumn {
 	display: flex;
 	flex-direction: column;
+	background-color: var(--color--background--light-3);
 	min-height: 0;
 	min-width: 0;
 }

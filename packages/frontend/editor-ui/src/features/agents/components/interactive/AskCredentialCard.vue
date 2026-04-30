@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -30,8 +30,6 @@ const credentialsStore = useCredentialsStore();
 // ---------------------------------------------------------------------------
 
 const selectedId = ref<string>('');
-const selectedName = ref<string>('');
-
 const selectedCredential = computed(() =>
 	selectedId.value ? credentialsStore.getCredentialById(selectedId.value) : null,
 );
@@ -56,13 +54,17 @@ const nodeForCredentials = computed<INodeUi>(() => {
 });
 
 function onCredentialSelected(info: INodeUpdatePropertiesInformation) {
+	if (props.disabled) return;
 	const data = info.properties.credentials?.[props.credentialType];
 	if (data && typeof data === 'object' && data.id) {
+		if (data.id === selectedId.value) return;
 		selectedId.value = data.id;
-		selectedName.value = data.name ?? '';
+		emit('submit', {
+			credentialId: data.id,
+			credentialName: data.name ?? selectedCredential.value?.name ?? '',
+		});
 	} else {
 		selectedId.value = '';
-		selectedName.value = '';
 	}
 }
 
@@ -73,14 +75,6 @@ function onCredentialSelected(info: INodeUpdatePropertiesInformation) {
 // Credentials + credential types are pre-fetched by AgentBuilderView when the
 // agent loads, so NodeCredentials renders against an already-warm store.
 
-function onSubmit() {
-	if (props.disabled || !selectedCredential.value) return;
-	emit('submit', {
-		credentialId: selectedCredential.value.id,
-		credentialName: selectedCredential.value.name,
-	});
-}
-
 function onSkip() {
 	if (props.disabled) return;
 	emit('submit', { skipped: true });
@@ -88,69 +82,70 @@ function onSkip() {
 </script>
 
 <template>
-	<div :class="[$style.card, disabled && $style.disabled]" data-testid="ask-credential-card">
-		<N8nText tag="p" bold :class="$style.purpose">{{ purpose }}</N8nText>
+	<N8nCard :class="[$style.card, disabled && $style.disabled]" data-testid="ask-credential-card">
+		<div :class="$style.cardBody">
+			<N8nText tag="p" bold :class="$style.purpose">{{ purpose }}</N8nText>
 
-		<div :class="$style.credentialContainer">
-			<NodeCredentials
-				:node="nodeForCredentials"
-				:override-cred-type="credentialType"
-				:project-id="projectId"
-				:readonly="disabled"
-				standalone
-				hide-issues
-				@credential-selected="onCredentialSelected"
-			/>
-		</div>
+			<div :class="$style.credentialContainer">
+				<NodeCredentials
+					:node="nodeForCredentials"
+					:override-cred-type="credentialType"
+					:project-id="projectId"
+					:readonly="disabled"
+					standalone
+					hide-issues
+					@credential-selected="onCredentialSelected"
+				/>
+			</div>
 
-		<!-- Action row -->
-		<div v-if="!disabled" :class="$style.actions">
-			<N8nButton
-				size="small"
-				:disabled="!selectedCredential"
-				data-testid="ask-credential-confirm"
-				@click="onSubmit"
-			>
-				{{ i18n.baseText('nodeCredentials.selectCredential') }}
-			</N8nButton>
-			<N8nButton size="small" type="secondary" data-testid="ask-credential-skip" @click="onSkip">
-				{{ i18n.baseText('generic.cancel') }}
-			</N8nButton>
+			<div v-if="!disabled" :class="$style.actions">
+				<N8nButton
+					size="medium"
+					variant="outline"
+					data-testid="ask-credential-skip"
+					@click="onSkip"
+				>
+					{{ i18n.baseText('agents.chat.askCredential.skip') }}
+				</N8nButton>
+			</div>
+			<div v-else :class="$style.resolvedRow">
+				<template v-if="resolvedValue && 'skipped' in resolvedValue">
+					<N8nText size="small" color="text-light">Skipped</N8nText>
+				</template>
+				<template v-else>
+					<N8nIcon icon="circle-check" size="small" color="success" />
+					<N8nText size="small">
+						{{
+							(resolvedValue && 'credentialName' in resolvedValue
+								? resolvedValue.credentialName
+								: null) ??
+							selectedCredential?.name ??
+							'—'
+						}}
+					</N8nText>
+				</template>
+			</div>
 		</div>
-		<div v-else :class="$style.resolvedRow">
-			<template v-if="resolvedValue && 'skipped' in resolvedValue">
-				<N8nText size="small" color="text-light">Skipped</N8nText>
-			</template>
-			<template v-else>
-				<N8nIcon icon="circle-check" size="small" color="success" />
-				<N8nText size="small">
-					{{
-						(resolvedValue && 'credentialName' in resolvedValue
-							? resolvedValue.credentialName
-							: null) ??
-						selectedCredential?.name ??
-						'—'
-					}}
-				</N8nText>
-			</template>
-		</div>
-	</div>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius--lg);
-	padding: var(--spacing--sm);
-	display: flex;
-	flex-direction: column;
+	--card--padding: var(--spacing--sm);
+
 	gap: var(--spacing--xs);
-	background: var(--color--background);
-	max-width: 420px;
+	width: 90%;
+	max-width: 90%;
 }
 
 .disabled {
-	opacity: 0.7;
+	opacity: 0.75;
+}
+
+.cardBody {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
 }
 
 .purpose {
@@ -170,7 +165,9 @@ function onSkip() {
 
 .actions {
 	display: flex;
+	justify-content: flex-end;
 	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--2xs);
 }
 
 .resolvedRow {

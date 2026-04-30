@@ -19,7 +19,8 @@ export function buildAskCredentialTool(deps: AskCredentialToolDeps): BuiltTool {
 				'Show a credential picker card in the chat UI and suspend until the user selects ' +
 					'a credential. Call ONCE per credential slot, BEFORE the write_config / patch_config ' +
 					'that introduces the node tool. Returns { credentialId, credentialName } on success ' +
-					'or { skipped: true } if the user dismissed the picker. Auto-resolves without ' +
+					'or { skipped: true } if the user skips credential setup so the tool can be added ' +
+					'without credentials. Auto-resolves without ' +
 					'rendering a card when the user has exactly one credential of the requested type.',
 			)
 			.input(askCredentialInputSchema)
