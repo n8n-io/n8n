@@ -36,6 +36,7 @@ interface RichOutput {
 	type?: string;
 	value?: string;
 	id?: string;
+	displayOnly?: boolean;
 }
 
 const props = defineProps<{
@@ -113,8 +114,9 @@ const parsed = computed(() => {
 			</template>
 		</template>
 
-		<!-- User response -->
-		<div v-if="parsed.output.value" :class="$style.response">
+		<!-- User response (interactive cards only — display-only cards have
+		     `output.displayOnly === true` and no user input to summarise). -->
+		<div v-if="parsed.output.value && !parsed.output.displayOnly" :class="$style.response">
 			User selected: <strong>{{ parsed.output.value }}</strong>
 		</div>
 	</div>

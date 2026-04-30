@@ -59,7 +59,7 @@ function searchableText(item: TimelineItem): string {
 	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
 
 	// Built-in tool friendly label
-	const toolKey = builtinToolLabelKey(item.toolName);
+	const toolKey = builtinToolLabelKey(item.toolName, item.toolOutput);
 	if (toolKey) parts.push(i18n.baseText(toolKey));
 
 	return parts

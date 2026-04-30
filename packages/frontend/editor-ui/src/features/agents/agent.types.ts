@@ -1,6 +1,7 @@
 export interface ToolDescriptor {
 	name: string;
 	description: string;
+	systemInstruction: string | null;
 	inputSchema: Record<string, unknown> | null;
 	outputSchema: Record<string, unknown> | null;
 	hasSuspend: boolean;

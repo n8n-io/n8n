@@ -2487,16 +2487,16 @@ importers:
         specifier: 4.8.0
         version: 4.8.0
       '@chat-adapter/linear':
-        specifier: ^4.20.2
+        specifier: ^4.26.0
         version: 4.26.0(graphql@16.11.0)
       '@chat-adapter/slack':
-        specifier: ^4.20.2
+        specifier: ^4.26.0
         version: 4.26.0
       '@chat-adapter/state-memory':
-        specifier: ^4.20.2
+        specifier: ^4.26.0
         version: 4.26.0
       '@chat-adapter/telegram':
-        specifier: ^4.20.2
+        specifier: ^4.26.0
         version: 4.26.0
       '@google-cloud/secret-manager':
         specifier: 5.6.0
@@ -2625,7 +2625,7 @@ importers:
         specifier: 4.1.2
         version: 4.1.2
       chat:
-        specifier: ^4.20.2
+        specifier: ^4.26.0
         version: 4.26.0
       class-transformer:
         specifier: 0.5.1

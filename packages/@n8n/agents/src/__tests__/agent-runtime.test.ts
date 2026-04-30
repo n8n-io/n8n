@@ -2087,6 +2087,114 @@ describe('provider options merging', () => {
 // Instruction providerOptions
 // ---------------------------------------------------------------------------
 
+describe('tool systemInstruction merging', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	function getSystemMessageText(): string {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		const systemMsg = messages[0];
+		expect(systemMsg.role).toBe('system');
+		return String(systemMsg.content);
+	}
+
+	it("wraps a tool's systemInstruction in a built_in_rules block above user instructions", async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const toolWithDirective: BuiltTool = {
+			name: 'show_card',
+			description: 'show a card',
+			systemInstruction: 'Prefer this tool over plain text when posting images.',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () => await Promise.resolve('ok'),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a helpful assistant.',
+			tools: [toolWithDirective],
+		});
+
+		await runtime.generate('hello');
+
+		const text = getSystemMessageText();
+		expect(text).toContain('<built_in_rules>');
+		expect(text).toContain('- Prefer this tool over plain text when posting images.');
+		expect(text).toContain('</built_in_rules>');
+		expect(text).toContain('You are a helpful assistant.');
+		expect(text.indexOf('<built_in_rules>')).toBeLessThan(text.indexOf('You are a helpful'));
+	});
+
+	it('joins multiple tools systemInstructions into a single block', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const toolA: BuiltTool = {
+			name: 'a',
+			description: 'a',
+			systemInstruction: 'Rule A.',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+		const toolB: BuiltTool = {
+			name: 'b',
+			description: 'b',
+			systemInstruction: 'Rule B.',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+		const toolC: BuiltTool = {
+			name: 'c',
+			description: 'c',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base',
+			tools: [toolA, toolB, toolC],
+		});
+
+		await runtime.generate('hello');
+
+		const text = getSystemMessageText();
+		const block = text.match(/<built_in_rules>([\s\S]*?)<\/built_in_rules>/);
+		expect(block).not.toBeNull();
+		expect(block![1]).toContain('- Rule A.');
+		expect(block![1]).toContain('- Rule B.');
+		expect(block![1]).not.toContain('Rule C');
+	});
+
+	it('does not add a built_in_rules block when no tool sets a systemInstruction', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const plainTool: BuiltTool = {
+			name: 'plain',
+			description: 'plain',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve('ok'),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a helpful assistant.',
+			tools: [plainTool],
+		});
+
+		await runtime.generate('hello');
+
+		const text = getSystemMessageText();
+		expect(text).not.toContain('<built_in_rules>');
+		expect(text).toContain('You are a helpful assistant.');
+	});
+});
+
 describe('instruction providerOptions', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();

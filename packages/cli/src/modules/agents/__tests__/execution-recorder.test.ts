@@ -124,6 +124,41 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
+	describe('display-only rich_interaction', () => {
+		it('records the standard tool-call/tool-result pair with displayOnly marker', () => {
+			const recorder = new ExecutionRecorder();
+
+			const cardPayload = {
+				components: [{ type: 'image', url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
+			};
+
+			// Display-only rich_interaction emits no special framework chunk:
+			// the LLM calls the tool, the handler returns `{ displayOnly: true }`
+			// (which is what gets recorded), and the bridge handles rendering.
+			recorder.record(makeToolCallChunk('rich_interaction', cardPayload, 'tc1'));
+			recorder.record(makeToolResultChunk('rich_interaction', { displayOnly: true }, 'tc1'));
+			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
+
+			const record = recorder.getMessageRecord();
+
+			const toolEvents = record.timeline.filter((e) => e.type === 'tool-call');
+			expect(toolEvents).toHaveLength(1);
+			if (toolEvents[0].type === 'tool-call') {
+				expect(toolEvents[0].toolCallId).toBe('tc1');
+				expect(toolEvents[0].input).toEqual(cardPayload);
+				expect(toolEvents[0].output).toEqual({ displayOnly: true });
+				expect(toolEvents[0].success).toBe(true);
+			}
+
+			expect(record.toolCalls).toHaveLength(1);
+			expect(record.toolCalls[0]).toEqual({
+				name: 'rich_interaction',
+				input: cardPayload,
+				output: { displayOnly: true },
+			});
+		});
+	});
+
 	describe('backward compat', () => {
 		it('still populates flat toolCalls array', () => {
 			const recorder = new ExecutionRecorder();
@@ -163,6 +198,156 @@ function wfTool(name: string, id: string, wfName: string, trigger = 'manual'): B
 		metadata: { kind: 'workflow', workflowId: id, workflowName: wfName, triggerType: trigger },
 	} as unknown as BuiltTool;
 }
+
+function nodeTool(
+	name: string,
+	nodeType: string,
+	nodeParameters: Record<string, unknown>,
+): BuiltTool {
+	return {
+		name,
+		metadata: { kind: 'node', nodeType, nodeTypeVersion: 1, displayName: name, nodeParameters },
+	} as unknown as BuiltTool;
+}
+
+describe('ExecutionRecorder — node-tool $fromAI resolution', () => {
+	it('substitutes a full-string $fromAI expression with the LLM-provided value', () => {
+		const registry = buildToolRegistry([
+			nodeTool('generate_image', '@n8n/n8n-nodes-langchain.openAi', {
+				resource: 'image',
+				operation: 'generate',
+				prompt: "={{ $fromAI('prompt', 'Image description', 'string') }}",
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'generate_image',
+			input: { prompt: 'a rolling landscape' },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'generate_image',
+			output: { status: 'success' },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect(tc.kind).toBe('node');
+		expect(tc.nodeParameters).toEqual({
+			resource: 'image',
+			operation: 'generate',
+			prompt: 'a rolling landscape',
+		});
+	});
+
+	it('falls back to the $fromAI default when the LLM did not provide the key', () => {
+		const registry = buildToolRegistry([
+			nodeTool('send_message', 'n8n-nodes-base.slack', {
+				channel: "={{ $fromAI('channel', 'Channel name', 'string', 'general') }}",
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'send_message',
+			input: {},
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'send_message',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect((tc.nodeParameters as Record<string, unknown>).channel).toBe('general');
+	});
+
+	it('substitutes $fromAI inside an auto-generated-marker template', () => {
+		const registry = buildToolRegistry([
+			nodeTool('search', 'n8n-nodes-base.http', {
+				url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('query', 'Search term', 'string') }}",
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'search',
+			input: { query: 'dragons' },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'search',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect((tc.nodeParameters as Record<string, unknown>).url).toBe('dragons');
+	});
+
+	it('walks nested objects in nodeParameters and resolves each $fromAI', () => {
+		const registry = buildToolRegistry([
+			nodeTool('image', '@n8n/n8n-nodes-langchain.openAi', {
+				options: {
+					size: "={{ $fromAI('size', 'Image size', 'string', '1024x1024') }}",
+					nested: { nested2: "={{ $fromAI('quality', 'Quality', 'string', 'medium') }}" },
+				},
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'image',
+			input: { size: '512x512', quality: 'high' },
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'image',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		const params = tc.nodeParameters as Record<string, Record<string, unknown>>;
+		expect(params.options.size).toBe('512x512');
+		expect((params.options.nested as Record<string, unknown>).nested2).toBe('high');
+	});
+
+	it('leaves the raw template in place when extraction fails', () => {
+		const registry = buildToolRegistry([
+			nodeTool('broken', 'n8n-nodes-base.set', {
+				field: '={{ $fromAI(unbalanced ',
+			}),
+		]);
+		const rec = new ExecutionRecorder(registry);
+
+		rec.record({
+			type: 'tool-call',
+			toolCallId: 't1',
+			toolName: 'broken',
+			input: {},
+		} as never);
+		rec.record({
+			type: 'tool-result',
+			toolCallId: 't1',
+			toolName: 'broken',
+			output: { ok: true },
+		} as never);
+
+		const tc = rec.getMessageRecord().timeline.find((e) => e.type === 'tool-call')!;
+		expect((tc.nodeParameters as Record<string, unknown>).field).toBe('={{ $fromAI(unbalanced ');
+	});
+});
 
 describe('ExecutionRecorder — workflow-tool timeline tags', () => {
 	it('tags a tool-call entry as kind:tool when no registry is provided', () => {

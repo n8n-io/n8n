@@ -141,7 +141,7 @@ async function loadMore() {
 						data-test-id="agent-session-list-item"
 						@click="onRowClick(thread.id)"
 					>
-						<td>{{ truncate(threadTitleOf(thread), 32) }}</td>
+						<td>{{ truncate(threadTitleOf(thread), 24) }}</td>
 						<td>{{ formatDate(thread.updatedAt) }}</td>
 						<td>{{ formatDuration(thread.totalDuration) }}</td>
 						<td>{{ formatTokens(thread.totalPromptTokens + thread.totalCompletionTokens) }}</td>

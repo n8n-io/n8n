@@ -25,6 +25,13 @@ export interface TimelineItem {
 	nodeType?: string;
 	nodeTypeVersion?: number;
 	nodeDisplayName?: string;
+	/**
+	 * Configured node parameters from the agent's JSON config (only set for
+	 * `kind: 'node'`). Surfaced in the IO viewer so the user can see the node's
+	 * actual config — channel, operation, `$fromAI(...)` templates — alongside
+	 * the LLM's runtime input items.
+	 */
+	nodeParameters?: Record<string, unknown>;
 	resumed?: boolean;
 }
 

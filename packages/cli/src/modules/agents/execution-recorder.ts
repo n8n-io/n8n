@@ -1,5 +1,76 @@
 import type { StreamChunk } from '@n8n/agents';
+import { extractFromAICalls, isFromAIOnlyExpression } from 'n8n-workflow';
+
 import type { ToolRegistry } from './tool-registry';
+
+/**
+ * Walk a nodeParameters tree and substitute every `$fromAI('key', ...)`
+ * expression with the value the LLM passed for that key (or the call's
+ * default when the LLM didn't provide one). Used when recording a
+ * `kind: 'node'` tool call so the timeline shows the resolved values the
+ * node would have run with — not the raw template strings the user
+ * configured.
+ *
+ * Pure best-effort: parsing failures fall through to the raw string. The
+ * goal is a clearer log entry, not exact expression-engine fidelity.
+ */
+function resolveFromAIInValue(value: unknown, llmArgs: Record<string, unknown>): unknown {
+	if (typeof value === 'string') return resolveFromAIInString(value, llmArgs);
+	if (Array.isArray(value)) return value.map((v) => resolveFromAIInValue(v, llmArgs));
+	if (value !== null && typeof value === 'object') {
+		const out: Record<string, unknown> = {};
+		for (const [k, v] of Object.entries(value)) {
+			out[k] = resolveFromAIInValue(v, llmArgs);
+		}
+		return out;
+	}
+	return value;
+}
+
+function resolveFromAIInString(str: string, llmArgs: Record<string, unknown>): unknown {
+	if (!str.includes('$fromAI')) return str;
+
+	let calls: ReturnType<typeof extractFromAICalls>;
+	try {
+		calls = extractFromAICalls(str);
+	} catch {
+		return str;
+	}
+	if (calls.length === 0) return str;
+
+	// Full-string `$fromAI(...)` — replace the entire value with the resolved
+	// arg so the timeline shows e.g. the literal prompt text, not `={{ ... }}`.
+	if (isFromAIOnlyExpression(str)) {
+		const call = calls[0];
+		if (call.key in llmArgs) return llmArgs[call.key];
+		if (call.defaultValue !== undefined) return call.defaultValue;
+		return str;
+	}
+
+	// Mixed-content expression — substitute each `$fromAI(...)` call inline.
+	// We re-scan with a forgiving pattern; precise expression-engine rules
+	// (e.g. nested calls) aren't supported, but the common case of a single
+	// call inside `={{ ... }}` works.
+	const pattern = /\$fromAI\s*\([^)]*\)/g;
+	return str.replace(pattern, (match) => {
+		try {
+			const inner = extractFromAICalls(match);
+			if (inner.length === 0) return match;
+			const call = inner[0];
+			const resolved =
+				call.key in llmArgs
+					? llmArgs[call.key]
+					: call.defaultValue !== undefined
+						? call.defaultValue
+						: undefined;
+			if (resolved === undefined) return match;
+			if (typeof resolved === 'object') return JSON.stringify(resolved);
+			return String(resolved);
+		} catch {
+			return match;
+		}
+	});
+}
 
 export interface RecordedUsage {
 	promptTokens: number;
@@ -32,6 +103,13 @@ export type TimelineEvent =
 			nodeType?: string;
 			nodeTypeVersion?: number;
 			nodeDisplayName?: string;
+			/**
+			 * Configured node parameters from the agent's JSON config (only set
+			 * for `kind: 'node'`). The LLM's runtime args go into `input`; this
+			 * field carries the node's actual configuration so the session-
+			 * detail viewer can show what the node was set up to do.
+			 */
+			nodeParameters?: Record<string, unknown>;
 	  }
 	| { type: 'working-memory'; content: string; timestamp: number }
 	| { type: 'suspension'; toolName: string; toolCallId: string; timestamp: number };
@@ -205,6 +283,15 @@ export class ExecutionRecorder {
 		this.toolCalls.push({ name, input, output: undefined });
 
 		const entry = this.registry.get(name);
+		// Resolve `$fromAI(...)` expressions in nodeParameters using the LLM's
+		// args so the timeline shows the values the node would have run with
+		// (e.g. the actual prompt text) rather than raw template strings.
+		const llmArgs =
+			input !== null && typeof input === 'object' ? (input as Record<string, unknown>) : {};
+		const resolvedNodeParameters =
+			entry?.nodeParameters !== undefined
+				? (resolveFromAIInValue(entry.nodeParameters, llmArgs) as Record<string, unknown>)
+				: undefined;
 		this.timeline.push({
 			type: 'tool-call',
 			kind: entry?.kind ?? 'tool',
@@ -221,6 +308,7 @@ export class ExecutionRecorder {
 			nodeType: entry?.nodeType,
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
+			nodeParameters: resolvedNodeParameters,
 		});
 	}
 
@@ -290,6 +378,7 @@ export class ExecutionRecorder {
 			nodeType: entry?.nodeType,
 			nodeTypeVersion: entry?.nodeTypeVersion,
 			nodeDisplayName: entry?.nodeDisplayName,
+			nodeParameters: entry?.nodeParameters,
 		};
 		if (synthesized.kind === 'workflow' && isRecord(output)) {
 			const execId = output.executionId;

@@ -100,7 +100,7 @@ function popoverName(item: TimelineItem): string {
 		case 'agent':
 			return truncate(item.content ?? '', 80);
 		case 'tool': {
-			const key = builtinToolLabelKey(item.toolName);
+			const key = builtinToolLabelKey(item.toolName, item.toolOutput);
 			return key ? i18n.baseText(key) : formatToolNameForDisplay(item.toolName);
 		}
 		case 'workflow':
