@@ -1,6 +1,6 @@
 import { DeploymentKeyRepository, type DeploymentKey } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Cipher, type CipherAlgorithm } from 'n8n-core';
+import { Cipher, type CipherAlgorithm, type IEncryptionKeyProvider } from 'n8n-core';
 import { randomBytes } from 'node:crypto';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -8,7 +8,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 type KeyInfo = { id: string; value: string; algorithm: string };
 
 @Service()
-export class KeyManagerService {
+export class KeyManagerService implements IEncryptionKeyProvider {
 	constructor(
 		private readonly deploymentKeyRepository: DeploymentKeyRepository,
 		private readonly cipher: Cipher,
