@@ -6,7 +6,7 @@
 
 <style lang="scss" module>
 .preview {
-	font-family: monospace;
+	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--sm);
 	color: var(--color--text);
 	word-break: break-all;
