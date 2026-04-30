@@ -55,7 +55,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 			if (!threadId.includes('-')) {
 				return threadId;
 			}
-			return threadId.split('-')[1];
+			return threadId.split('-').slice(1).join('-');
 		},
 	};
 
