@@ -7,15 +7,6 @@
  */
 
 import {
-	IF_NODE_GUIDE,
-	SWITCH_NODE_GUIDE,
-	SET_NODE_GUIDE,
-	HTTP_REQUEST_GUIDE,
-	TOOL_NODES_GUIDE,
-	EMBEDDING_NODES_GUIDE,
-	RESOURCE_LOCATOR_GUIDE,
-} from '@n8n/workflow-sdk/prompts/node-guidance/parameter-guides';
-import {
 	AI_TOOL_PATTERNS,
 	CONNECTION_CHANGING_PARAMETERS,
 	BASELINE_FLOW_CONTROL,
@@ -64,6 +55,15 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
 - **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.
 - **IF node combinator** must be \`'and'\` or \`'or'\` (not \`'any'\` or \`'all'\`).`;
+
+const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
+
+- Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
+- Prefer generated definitions, \`@builderHint\`, \`@default\`, \`@searchListMethod\`, and \`@loadOptionsMethod\` over memory or examples in this prompt.
+- Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
+- For IF nodes, always include \`conditions.options\`, \`conditions.conditions\`, and \`conditions.combinator\`. The combinator is \`'and'\` or \`'or'\`.
+- For Switch nodes in rules mode, use \`rules.values\` for cases.
+- If type definitions and builder hints are not enough for a tricky node shape, call \`nodes(action="guide")\` for targeted guidance instead of relying on global prompt memory.`;
 
 // The AI Agent subnode example below differs by mode:
 //   tool mode  → `newCredential('OpenAI')`
@@ -337,14 +337,7 @@ function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 		'## SDK Patterns Reference\n\n' + WORKFLOW_SDK_PATTERNS,
 		'## Expression Reference\n\n' + EXPRESSION_REFERENCE,
 		'## Additional Functions\n\n' + ADDITIONAL_FUNCTIONS,
-		'## Node-Specific Configuration Guides',
-		IF_NODE_GUIDE.content,
-		SWITCH_NODE_GUIDE.content,
-		SET_NODE_GUIDE.content,
-		HTTP_REQUEST_GUIDE.content,
-		TOOL_NODES_GUIDE.content,
-		EMBEDDING_NODES_GUIDE.content,
-		RESOURCE_LOCATOR_GUIDE.content,
+		NODE_CONFIGURATION_SAFETY_RULES,
 		mode === 'sandbox' ? BUILDER_SPECIFIC_PATTERNS_SANDBOX : BUILDER_SPECIFIC_PATTERNS_TOOL,
 	].join('\n\n');
 }

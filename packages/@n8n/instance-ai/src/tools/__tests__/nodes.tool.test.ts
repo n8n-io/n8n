@@ -101,6 +101,7 @@ describe('nodes tool', () => {
 			const tool = createNodesTool(context, 'full');
 
 			expect(tool.description).toContain('node types');
+			expect(tool.description).toContain('targeted guides');
 		});
 	});
 
@@ -207,6 +208,99 @@ describe('nodes tool', () => {
 			expect(result).toMatchObject({
 				definitions: [],
 				error: expect.stringContaining('nodeTypes'),
+			});
+		});
+
+		it('should surface node-level builder hints from type definitions', async () => {
+			const context = createMockContext({
+				nodeService: {
+					listAvailable: jest.fn(),
+					getDescription: jest.fn(),
+					listSearchable: jest.fn(),
+					exploreResources: jest.fn(),
+					getNodeTypeDefinition: jest.fn().mockResolvedValue({
+						content: 'export type IfNode = unknown;',
+						version: 'v23',
+						builderHint: 'Always include options, conditions, and combinator.',
+					}),
+				},
+			});
+
+			const tool = createNodesTool(context, 'full');
+			const result = await tool.execute!(
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.if'] } as never,
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				definitions: [
+					{
+						nodeType: 'n8n-nodes-base.if',
+						version: 'v23',
+						content: 'export type IfNode = unknown;',
+						builderHint: 'Always include options, conditions, and combinator.',
+					},
+				],
+			});
+		});
+	});
+
+	describe('guide action', () => {
+		it('should return targeted guides for matching node types', async () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			const result = await tool.execute!(
+				{ action: 'guide', nodeTypes: ['n8n-nodes-base.if'] } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				guides: [
+					{
+						nodeType: 'n8n-nodes-base.if',
+						guides: [
+							{
+								id: 'if',
+								content: expect.stringContaining('IF Node Structure'),
+							},
+						],
+					},
+				],
+			});
+		});
+
+		it('should only return ResourceLocator guidance when requested for a matching node', async () => {
+			const context = createMockContext();
+			const tool = createNodesTool(context, 'full');
+
+			const withoutResourceLocator = await tool.execute!(
+				{ action: 'guide', nodeTypes: ['n8n-nodes-base.googleSheets'] } as never,
+				{} as never,
+			);
+			const withResourceLocator = await tool.execute!(
+				{
+					action: 'guide',
+					nodeTypes: [{ nodeType: 'n8n-nodes-base.googleSheets', hasResourceLocatorParams: true }],
+				} as never,
+				{} as never,
+			);
+
+			expect(withoutResourceLocator).toEqual({
+				guides: [{ nodeType: 'n8n-nodes-base.googleSheets', guides: [] }],
+			});
+			expect(withResourceLocator).toMatchObject({
+				guides: [
+					{
+						nodeType: 'n8n-nodes-base.googleSheets',
+						guides: [
+							{
+								id: 'resource-locator',
+								content: expect.stringContaining('ResourceLocator Parameter Handling'),
+							},
+						],
+					},
+				],
 			});
 		});
 	});

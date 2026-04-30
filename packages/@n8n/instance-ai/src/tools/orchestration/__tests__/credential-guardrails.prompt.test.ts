@@ -42,4 +42,17 @@ describe('credential guardrail prompts', () => {
 			"If `explore-resources` returns more than one match and the user did not name a specific one, use `placeholder('Select <resource>')`",
 		);
 	});
+
+	it('does not inline bulky static node guides in builder prompts', () => {
+		for (const prompt of [
+			BUILDER_AGENT_PROMPT,
+			createSandboxBuilderAgentPrompt('/tmp/workspace'),
+		]) {
+			expect(prompt).toContain('## Node Configuration Safety Rules');
+			expect(prompt).toContain('nodes(action="guide")');
+			expect(prompt).not.toContain('### Set Node Updates - Comprehensive Type Handling Guide');
+			expect(prompt).not.toContain('#### Complete Operator Reference');
+			expect(prompt).not.toContain('## IMPORTANT: ResourceLocator Parameter Handling');
+		}
+	});
 });
