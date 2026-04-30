@@ -35,7 +35,7 @@ function assembleCss(overrides: Record<string, string>): string {
 // ---------------------------------------------------------------------------
 
 type Scope = 'current' | 'all';
-const globalScope = ref<Scope>('current');
+const globalScope = ref<Scope>('all');
 
 // ---------------------------------------------------------------------------
 // Composable

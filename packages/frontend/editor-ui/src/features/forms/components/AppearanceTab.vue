@@ -91,16 +91,18 @@ function onControlUpdate(variable: string, value: string) {
 }
 
 .group {
-	margin-bottom: var(--spacing--lg);
+	margin-bottom: var(--spacing--md);
 }
 
 .groupTitle {
-	margin: 0 0 var(--spacing--3xs);
-	font-size: var(--font-size--xs);
+	margin: 0 0 var(--spacing--4xs);
+	padding-bottom: var(--spacing--5xs);
+	border-bottom: 1px solid var(--color--foreground--tint-2);
+	font-size: var(--font-size--3xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--color--text--tint-2);
 	text-transform: uppercase;
-	letter-spacing: 0.05em;
+	letter-spacing: 0.08em;
 }
 
 .row {
