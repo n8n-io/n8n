@@ -87,6 +87,7 @@ import type {
 	ModalKey,
 	AppliedThemeOption,
 	TabOptions,
+	INodeUi,
 } from '@/Interface';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -550,6 +551,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		projectId?: string,
 		suggestedName?: string,
 		nodeName?: string,
+		contextNode?: INodeUi,
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -559,6 +561,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			projectId,
 			suggestedName,
 			nodeName,
+			contextNode,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);

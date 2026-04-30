@@ -1,14 +1,26 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { CredentialModal } from './components/CredentialModal';
 import { InstanceAiSidebar } from './components/InstanceAiSidebar';
+import { InstanceAiWorkflowSetup } from './components/InstanceAiWorkflowSetup';
 
 export class InstanceAiPage extends BasePage {
 	readonly sidebar: InstanceAiSidebar;
+	readonly workflowSetup: InstanceAiWorkflowSetup;
+	readonly credentialModal: CredentialModal;
 
 	constructor(page: Page) {
 		super(page);
 		this.sidebar = new InstanceAiSidebar(page.getByTestId('instance-ai-thread-list'));
+		this.workflowSetup = new InstanceAiWorkflowSetup(
+			page.getByTestId('instance-ai-workflow-setup'),
+		);
+		this.credentialModal = new CredentialModal(page.getByTestId('editCredential-modal'));
+	}
+
+	private get container(): Locator {
+		return this.page.getByTestId('instance-ai-container');
 	}
 
 	async goto(): Promise<void> {
@@ -16,66 +28,66 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getContainer(): Locator {
-		return this.page.getByTestId('instance-ai-container');
+		return this.container;
 	}
 
 	// ── Messages ──────────────────────────────────────────────────────
 
 	getChatInput(): Locator {
-		return this.page.getByRole('textbox');
+		return this.container.getByRole('textbox');
 	}
 
 	getSendButton(): Locator {
-		return this.page.getByTestId('instance-ai-send-button');
+		return this.container.getByTestId('instance-ai-send-button');
 	}
 
 	getStopButton(): Locator {
-		return this.page.getByTestId('instance-ai-stop-button');
+		return this.container.getByTestId('instance-ai-stop-button');
 	}
 
 	getUserMessages(): Locator {
-		return this.page.getByTestId('instance-ai-user-message');
+		return this.container.getByTestId('instance-ai-user-message');
 	}
 
 	getAssistantMessages(): Locator {
-		return this.page.getByTestId('instance-ai-assistant-message');
+		return this.container.getByTestId('instance-ai-assistant-message');
 	}
 
 	getStatusBar(): Locator {
-		return this.page.getByTestId('instance-ai-status-bar');
+		return this.container.getByTestId('instance-ai-status-bar');
 	}
 
 	/** "Working in the background..." indicator — visible when orchestrator is done but child agents still building. */
 	getBackgroundTaskIndicator(): Locator {
-		return this.page.getByText('Working in the background...');
+		return this.container.getByText('Working in the background...');
 	}
 
 	getEmptyState(): Locator {
-		return this.page.getByTestId('instance-ai-empty-state');
+		return this.container.getByTestId('instance-ai-empty-state');
 	}
 
 	// ── Confirmations ─────────────────────────────────────────────────
 
 	getConfirmApproveButton(): Locator {
-		return this.page.getByTestId('instance-ai-panel-confirm-approve');
+		return this.container.getByTestId('instance-ai-panel-confirm-approve');
 	}
 
 	getConfirmDenyButton(): Locator {
-		return this.page.getByTestId('instance-ai-panel-confirm-deny');
+		return this.container.getByTestId('instance-ai-panel-confirm-deny');
 	}
 
 	getDomainAccessApprove(): Locator {
-		return this.page.getByTestId('domain-access-primary');
+		return this.container.getByTestId('domain-access-primary');
 	}
 
 	getCredentialContinue(): Locator {
-		return this.page.getByTestId('instance-ai-credential-continue-button');
+		return this.container.getByTestId('instance-ai-credential-continue-button');
 	}
 
 	// ── Plan Review ───────────────────────────────────────────────────
 
 	getPlanApproveButton(): Locator {
-		return this.page.getByTestId('instance-ai-plan-approve');
+		return this.container.getByTestId('instance-ai-plan-approve');
 	}
 
 	/**
@@ -92,7 +104,7 @@ export class InstanceAiPage extends BasePage {
 	// ── Preview ───────────────────────────────────────────────────────
 
 	getPreviewIframe() {
-		return this.page.getByTestId('workflow-preview-iframe').contentFrame();
+		return this.getPreviewIframeLocator().contentFrame();
 	}
 
 	getPreviewCanvasNodes(): Locator {
@@ -110,11 +122,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	getPreviewCloseButton(): Locator {
-		return this.page.getByTestId('instance-ai-preview-close');
+		return this.container.getByTestId('instance-ai-preview-close');
 	}
 
 	getPreviewIframeLocator(): Locator {
-		return this.page.getByTestId('workflow-preview-iframe');
+		return this.container.getByTestId('workflow-preview-iframe');
 	}
 
 	getPreviewRunWorkflowButton(): Locator {
@@ -144,7 +156,7 @@ export class InstanceAiPage extends BasePage {
 	// ── Artifacts ─────────────────────────────────────────────────────
 
 	getArtifactCards(): Locator {
-		return this.page.locator('.card').filter({ has: this.page.getByTestId('card-content') });
+		return this.container.getByTestId('instance-ai-artifact-card');
 	}
 
 	// ── Convenience Actions ───────────────────────────────────────────
