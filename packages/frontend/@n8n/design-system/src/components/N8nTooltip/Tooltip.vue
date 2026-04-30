@@ -19,7 +19,7 @@ defineOptions({
 
 const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	placement: 'top',
-	showAfter: 200,
+	showAfter: 0,
 	enterable: true,
 	teleported: true,
 	offset: 8,
