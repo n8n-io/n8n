@@ -13,7 +13,7 @@ import { NodeHelpers } from 'n8n-workflow';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { fetchFormPreview } from '../api';
-import { FORM_STEP_IFRAME_ZOOM, FORM_STEP_PADDING, FORM_STEP_WIDTH } from '../constants';
+import { FORM_STEP_PADDING, FORM_STEP_WIDTH } from '../constants';
 
 const emit = defineEmits<{
 	activate: [id: string, event: MouseEvent];
@@ -130,6 +130,20 @@ const previewParams = computed(() => {
 	};
 });
 
+// Derive the effective --container-width from the node's saved customCss.
+// Falls back to the handlebars default (448px) when not overridden.
+const effectiveContainerWidth = computed(() => {
+	const options = resolvedParameters.value.options as INodeParameters | undefined;
+	const css = (options?.customCss as string | undefined) ?? '';
+	const match = css.match(/--container-width\s*:\s*(\d+(?:\.\d+)?)px/);
+	return match ? Math.round(parseFloat(match[1])) : 448;
+});
+
+// The iframe must exceed 500px so the form template's mobile breakpoint never fires.
+// We also keep 28px of breathing room on each side of the form card.
+const iframeWidth = computed(() => Math.max(504, effectiveContainerWidth.value + 56));
+const iframeZoom = computed(() => FORM_STEP_WIDTH / iframeWidth.value);
+
 async function fetchPreview() {
 	if (!previewParams.value) return;
 
@@ -180,7 +194,7 @@ watch(
 					sandbox="allow-same-origin"
 					scrolling="no"
 					class="n8n-form-preview__iframe"
-					:style="{ zoom: FORM_STEP_IFRAME_ZOOM }"
+					:style="{ zoom: iframeZoom, width: `${iframeWidth}px` }"
 					@load="onIframeLoad"
 				/>
 				<div v-else class="n8n-form-preview__skeleton" />
@@ -248,13 +262,7 @@ watch(
 
 .n8n-form-preview__iframe {
 	display: block;
-	/*
-	 * 504px > 500px mobile breakpoint → desktop card styles (border, shadow) always apply.
-	 * Card (448px) centred in 504px iframe → 28px left margin → 12.6px visual (zoom 0.45).
-	 * Inner card area = FORM_STEP_WIDTH − 3px border = 225px; card sits at 12.6 → 214.2px.
-	 * zoom is set via :style binding from FORM_STEP_IFRAME_ZOOM in forms/constants.ts.
-	 */
-	width: 504px;
+	/* width and zoom driven dynamically by iframeWidth / iframeZoom computed properties */
 	border: none;
 	pointer-events: none;
 }

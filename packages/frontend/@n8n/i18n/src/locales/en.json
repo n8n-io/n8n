@@ -4428,6 +4428,8 @@
 	"formStep.appearance.theme.dense": "Dense",
 	"formStep.appearance.theme.compact": "Compact",
 	"formStep.appearance.theme.compactDark": "Compact Dark",
+	"formStep.appearance.theme.enterpriseDark": "Enterprise Dark",
+	"formStep.appearance.theme.funColorful": "Fun Colorful",
 	"formStep.appearance.theme.custom": "Custom",
 	"projects.settings": "Project settings",
 	"projects.settings.info": "Project info",

@@ -50,11 +50,13 @@ const themeOptions = computed(() => {
 	const named = [
 		{ value: 'light', label: i18n.baseText('formStep.appearance.theme.light') },
 		{ value: 'dark', label: i18n.baseText('formStep.appearance.theme.dark') },
-		{ value: 'enterprise', label: i18n.baseText('formStep.appearance.theme.enterprise') },
-		{ value: 'fun', label: i18n.baseText('formStep.appearance.theme.fun') },
 		{ value: 'dense', label: i18n.baseText('formStep.appearance.theme.dense') },
 		{ value: 'compact', label: i18n.baseText('formStep.appearance.theme.compact') },
 		{ value: 'compactDark', label: i18n.baseText('formStep.appearance.theme.compactDark') },
+		{ value: 'enterprise', label: i18n.baseText('formStep.appearance.theme.enterprise') },
+		{ value: 'enterpriseDark', label: i18n.baseText('formStep.appearance.theme.enterpriseDark') },
+		{ value: 'fun', label: i18n.baseText('formStep.appearance.theme.fun') },
+		{ value: 'funColorful', label: i18n.baseText('formStep.appearance.theme.funColorful') },
 	];
 	if (appearance.activeTheme.value === 'custom') {
 		named.push({ value: 'custom', label: i18n.baseText('formStep.appearance.theme.custom') });

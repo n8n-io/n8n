@@ -7,9 +7,6 @@ export const FORM_STEP_WIDTH = 228;
 /** Top and bottom padding (px) on the FormStepCard outer wrapper. */
 export const FORM_STEP_PADDING = 20;
 
-/** Zoom applied to the form-preview iframe so the 448 px card fits inside FORM_STEP_WIDTH. */
-export const FORM_STEP_IFRAME_ZOOM = 0.45;
-
 /**
  * Minimum gap (px) between the bottom edge of one FormStepCard wrapper and the top
  * edge of the next wrapper. Visual gap between the card content edges is

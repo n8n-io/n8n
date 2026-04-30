@@ -32,8 +32,27 @@ const COMPACT_OVERRIDES: Record<string, string> = {
 };
 
 export const FORM_THEMES: FormTheme[] = [
+	// ── Light family ──────────────────────────────────────────────────────────
 	{ id: 'light', overrides: {} },
 	{ id: 'dark', overrides: DARK_OVERRIDES },
+
+	// ── Density variants ──────────────────────────────────────────────────────
+	{
+		id: 'dense',
+		overrides: {
+			'--padding-container-top': '12px',
+			'--padding-card': '16px',
+			'--margin-bottom-card': '8px',
+			'--padding-form-input': '8px',
+			'--submit-btn-height': '36px',
+			'--font-size-header': '17px',
+			'--font-size-subheader': '12px',
+		},
+	},
+	{ id: 'compact', overrides: COMPACT_OVERRIDES },
+	{ id: 'compactDark', overrides: { ...COMPACT_OVERRIDES, ...DARK_OVERRIDES } },
+
+	// ── Enterprise family ─────────────────────────────────────────────────────
 	{
 		id: 'enterprise',
 		overrides: {
@@ -49,6 +68,28 @@ export const FORM_THEMES: FormTheme[] = [
 			'--border-radius-input': '2px',
 		},
 	},
+	{
+		id: 'enterpriseDark',
+		overrides: {
+			'--font-family': "'Helvetica Neue', Helvetica, Arial, sans-serif",
+			'--color-background': '#12192b',
+			'--color-card-bg': '#1c2540',
+			'--color-card-border': '#2a3560',
+			'--color-header': '#dde3f0',
+			'--color-header-subtext': '#7a88a8',
+			'--color-label': '#8898b8',
+			'--color-input-bg': '#161e36',
+			'--color-input-border': '#2a3560',
+			'--color-input-text': '#a8b8d8',
+			'--color-focus-border': '#0077cc',
+			'--color-link': '#4488cc',
+			'--color-submit-btn-bg': '#0055b3',
+			'--color-required': '#cc2222',
+			'--border-radius-card': '2px',
+			'--border-radius-input': '2px',
+		},
+	},
+	// ── Fun family ────────────────────────────────────────────────────────────
 	{
 		id: 'fun',
 		overrides: {
@@ -67,17 +108,22 @@ export const FORM_THEMES: FormTheme[] = [
 		},
 	},
 	{
-		id: 'dense',
+		id: 'funColorful',
 		overrides: {
-			'--padding-container-top': '12px',
-			'--padding-card': '16px',
-			'--margin-bottom-card': '8px',
-			'--padding-form-input': '8px',
-			'--submit-btn-height': '36px',
-			'--font-size-header': '17px',
-			'--font-size-subheader': '12px',
+			'--font-family': "'Georgia', serif",
+			'--color-background': '#e8fff0',
+			'--color-card-bg': '#f8fffc',
+			'--color-card-border': '#40d890',
+			'--color-header': '#ff3838',
+			'--color-header-subtext': '#ff8c20',
+			'--color-label': '#1a88d0',
+			'--color-input-bg': '#ffffff',
+			'--color-input-border': '#40d890',
+			'--color-focus-border': '#30c8a8',
+			'--color-submit-btn-bg': '#ff5520',
+			'--color-required': '#ff2060',
+			'--border-radius-card': '24px',
+			'--border-radius-input': '16px',
 		},
 	},
-	{ id: 'compact', overrides: COMPACT_OVERRIDES },
-	{ id: 'compactDark', overrides: { ...COMPACT_OVERRIDES, ...DARK_OVERRIDES } },
 ];
