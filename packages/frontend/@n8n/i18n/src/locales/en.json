@@ -2724,6 +2724,7 @@
 	"saveButton.saving": "Saving",
 	"settings": "Settings",
 	"settings.communityNodes": "Community nodes",
+	"settings.communityNodes.byline": "by {author}",
 	"settings.communityNodes.empty.title": "Supercharge your workflows with community nodes",
 	"settings.communityNodes.empty.verified.only.title": "Supercharge your workflows with verified community nodes",
 	"settings.communityNodes.empty.description": "Install over {count} node packages contributed by our community.",
