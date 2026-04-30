@@ -39,6 +39,7 @@ import ParameterInputFull from './ParameterInputFull.vue';
 import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import {
 	getParameterTypeOption,
@@ -116,6 +117,9 @@ const {
 	openSampleWorkflowTemplate,
 	isRagStarterCalloutVisible,
 } = useCalloutHelpers();
+const aiGateway = useAiGateway();
+
+const MODEL_PARAMETER_NAMES = new Set(['modelId', 'model', 'modelName']);
 
 const { activeNode } = storeToRefs(ndvStore);
 
@@ -434,10 +438,36 @@ function deleteOption(optionName: string): void {
 	emit('valueChanged', parameterData);
 }
 
+function isHiddenByAiGateway(parameter: INodeProperties): boolean {
+	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
+	if (!node.value) return false;
+
+	const credentials = node.value.credentials;
+	if (!credentials) return false;
+
+	const hasGatewayCredential = Object.values(credentials).some(
+		(cred) => cred.__aiGatewayManaged === true,
+	);
+	if (!hasGatewayCredential) return false;
+
+	const params = props.path
+		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
+		: props.nodeValues;
+	const resource = params?.resource as string | undefined;
+	const operation = params?.operation as string | undefined;
+	if (!resource || !operation) return false;
+
+	return !aiGateway.isActionSupported(node.value.type, resource, operation);
+}
+
 async function shouldDisplayNodeParameter(
 	parameter: INodeProperties,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ): Promise<boolean> {
+	if (displayKey === 'displayOptions' && isHiddenByAiGateway(parameter)) {
+		return false;
+	}
+
 	return await nodeSettingsParameters.shouldDisplayNodeParameter(
 		props.nodeValues,
 		node.value,

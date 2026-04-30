@@ -535,6 +535,31 @@ function showAiGatewaySelector(credentialType: string): boolean {
 	return true;
 }
 
+function isCurrentActionUnsupported(credentialType: string): boolean {
+	if (!isAiGatewayManagedCredentials(credentialType)) return false;
+	const resource = props.node.parameters?.resource as string | undefined;
+	const operation = props.node.parameters?.operation as string | undefined;
+	if (!resource || !operation) return false;
+	return !aiGateway.isActionSupported(props.node.type, resource, operation);
+}
+
+function getOperationDisplayName(): string {
+	const operation = props.node.parameters?.operation as string | undefined;
+	const resource = props.node.parameters?.resource as string | undefined;
+	if (!operation || !resource || !nodeType.value) return operation ?? '';
+	const resourceParam = nodeType.value.properties?.find(
+		(p) => p.name === 'resource' && p.type === 'options',
+	);
+	const resourceLabel =
+		resourceParam?.options?.find((o) => 'value' in o && o.value === resource)?.name ?? resource;
+	const operationParam = nodeType.value.properties?.find(
+		(p) => p.name === 'operation' && p.type === 'options',
+	);
+	const operationLabel =
+		operationParam?.options?.find((o) => 'value' in o && o.value === operation)?.name ?? operation;
+	return `${resourceLabel} - ${operationLabel}`;
+}
+
 function onAiGatewaySelector(credentialType: string, enable: boolean): void {
 	const credentials = { ...(props.node.credentials ?? {}) };
 
@@ -692,6 +717,18 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					:credential-type="type.name"
 					@toggle="onAiGatewaySelector(type.name, $event)"
 				/>
+				<N8nNotice
+					v-if="isCurrentActionUnsupported(type.name)"
+					theme="warning"
+					:class="$style.unsupportedActionNotice"
+					data-test-id="ai-gateway-unsupported-action-notice"
+				>
+					{{
+						i18n.baseText('aiGateway.unsupportedAction.notice', {
+							interpolate: { actionName: getOperationDisplayName() },
+						})
+					}}
+				</N8nNotice>
 				<div v-if="readonly && !isAiGatewayManagedCredentials(type.name)">
 					<N8nInput
 						:model-value="getSelectedName(type.name)"
@@ -984,6 +1021,11 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 
 .resolverWarning {
 	margin-top: var(--spacing--2xs);
+}
+
+.unsupportedActionNotice {
+	margin-top: var(--spacing--2xs);
+	margin-bottom: 0;
 }
 
 .newCredential {
