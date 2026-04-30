@@ -163,12 +163,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async waitForSaveWorkflowCompleted() {
+	/**
+	 * @param options - Configuration options for waiting for save workflow completion.
+	 * @param options.timeout - Timeout in milliseconds. Defaults to 2000ms to account for the 1500ms autosave debounce.
+	 */
+	async waitForSaveWorkflowCompleted({ timeout = 2000 }: { timeout?: number } = {}) {
 		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
 				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
-			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
+			{ timeout },
 		);
 	}
 
