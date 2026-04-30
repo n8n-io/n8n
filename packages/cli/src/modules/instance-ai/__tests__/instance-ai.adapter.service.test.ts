@@ -1919,3 +1919,121 @@ describe('resolveDataTableByIdOrName', () => {
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 });
+
+// ---------------------------------------------------------------------------
+// createExecutionAdapter – run() forces save settings
+// ---------------------------------------------------------------------------
+
+function createRunAdapterForTests(workflow: Record<string, unknown>) {
+	const mockWorkflowFinderService = {
+		findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+	};
+
+	const mockWorkflowRunner = {
+		run: jest.fn().mockResolvedValue('exec-1'),
+	};
+
+	const mockActiveExecutions = {
+		has: jest.fn().mockReturnValue(false),
+	};
+
+	const mockExecutionRepository = {
+		findSingleExecution: jest.fn().mockResolvedValue(undefined),
+	};
+
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	const service = new InstanceAiAdapterService(
+		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[0],
+		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[1],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
+		mockWorkflowFinderService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[3],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
+		mockExecutionRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
+		mockActiveExecutions as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		mockWorkflowRunner as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{
+			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[25],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
+	);
+
+	const adapter = service.createContext(mockUser).executionService;
+
+	return { adapter, mockWorkflowRunner };
+}
+
+describe('createExecutionAdapter run()', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('forces save settings so the agent can read the result back', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+			settings: {
+				saveManualExecutions: false,
+				saveDataSuccessExecution: 'none',
+				saveDataErrorExecution: 'none',
+				executionOrder: 'v1',
+			},
+		});
+
+		await adapter.run('wf-1');
+
+		expect(mockWorkflowRunner.run).toHaveBeenCalledTimes(1);
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.settings).toMatchObject({
+			executionOrder: 'v1',
+			saveManualExecutions: true,
+			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
+		});
+	});
+
+	it('still applies overrides when the workflow has no settings', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.settings).toEqual({
+			saveManualExecutions: true,
+			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
+		});
+	});
+});
