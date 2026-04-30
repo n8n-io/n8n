@@ -13,14 +13,14 @@ function newLanes(count: number): TestLane[] {
 }
 
 describe('LaneAllocator', () => {
-	it('hands out lanes in order until capacity is exhausted', async () => {
+	it('spreads builds across lanes by picking the least-loaded eligible lane', async () => {
 		const lanes = newLanes(3);
 		const a = new LaneAllocator(lanes, 4);
 		const l1 = await a.acquire('p1');
 		const l2 = await a.acquire('p2');
 		const l3 = await a.acquire('p3');
-		expect([l1.id, l2.id, l3.id]).toEqual([0, 0, 0]);
-		expect(lanes[0].activeBuilds).toBe(3);
+		expect([l1.id, l2.id, l3.id]).toEqual([0, 1, 2]);
+		expect(lanes.map((l) => l.activeBuilds)).toEqual([1, 1, 1]);
 	});
 
 	it('skips a lane already running the same prompt', async () => {

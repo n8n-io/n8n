@@ -38,10 +38,14 @@ export class LaneAllocator<L extends AllocatableLane> {
 	}
 
 	private findFree(prompt: string): L | undefined {
+		// Least-loaded policy: spread builds evenly across lanes rather than
+		// filling lane 0 to cap before touching lane 1. Avoids hot-spotting.
+		let best: L | undefined;
 		for (const lane of this.lanes) {
-			if (this.canRun(lane, prompt)) return lane;
+			if (!this.canRun(lane, prompt)) continue;
+			if (best === undefined || lane.activeBuilds < best.activeBuilds) best = lane;
 		}
-		return undefined;
+		return best;
 	}
 
 	private canRun(lane: L, prompt: string): boolean {
