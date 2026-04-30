@@ -4,7 +4,7 @@ import type { CommunityPackageRowData } from '../communityNodes.types';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nButton, N8nCard, N8nExternalLink, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nExternalLink, N8nIcon, N8nText } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -19,6 +19,13 @@ const emit = defineEmits<{ installed: [] }>();
 const i18n = useI18n();
 
 const docsUrl = computed(() => `${NPM_PACKAGE_DOCS_BASE_URL}${props.row?.packageName ?? ''}`);
+
+const formattedDownloads = computed(() => {
+	const count = props.row?.numberOfDownloads ?? 0;
+	if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+	if (count >= 1_000) return `${(count / 1_000).toFixed(1)}k`;
+	return count.toString();
+});
 const bylinePrefix = computed(() =>
 	props.row?.authorName
 		? i18n.baseText('settings.communityNodes.byline', {
@@ -46,6 +53,16 @@ function onInstall() {
 				<N8nExternalLink :href="docsUrl">
 					<N8nText :bold="true" size="small">{{ row?.packageName }}</N8nText>
 				</N8nExternalLink>
+			</div>
+			<div :class="$style.stats">
+				<span v-if="row?.nodeCount" :class="$style.stat">
+					<N8nIcon icon="box" size="xsmall" />
+					<N8nText size="xsmall" color="text-light" :bold="true">{{ row.nodeCount }}</N8nText>
+				</span>
+				<span v-if="row?.numberOfDownloads" :class="$style.stat">
+					<N8nIcon icon="hard-drive-download" size="xsmall" />
+					<N8nText size="xsmall" color="text-light" :bold="true">{{ formattedDownloads }}</N8nText>
+				</span>
 			</div>
 		</template>
 		<N8nText size="xsmall" color="text-light" :class="$style.byline">
@@ -87,6 +104,19 @@ function onInstall() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	flex-shrink: 0;
+}
+
+.stats {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--sm);
+	flex-shrink: 0;
+}
+
+.stat {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 .hoverCta {

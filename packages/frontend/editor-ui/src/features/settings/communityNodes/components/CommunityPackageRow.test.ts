@@ -74,4 +74,28 @@ describe('CommunityPackageRow', () => {
 		const { getByTestId } = renderComponent({ props: { row: makeRow() } });
 		expect(getByTestId('community-package-row__install')).toBeInTheDocument();
 	});
+
+	it('should render node count', () => {
+		const { getByText } = renderComponent({ props: { row: makeRow({ nodeCount: 3 }) } });
+		expect(getByText(/3/)).toBeInTheDocument();
+	});
+
+	it('should render formatted downloads (k)', () => {
+		const { getByText } = renderComponent({ props: { row: makeRow({ numberOfDownloads: 1234 }) } });
+		expect(getByText(/1\.2k/)).toBeInTheDocument();
+	});
+
+	it('should render formatted downloads (M)', () => {
+		const { getByText } = renderComponent({
+			props: { row: makeRow({ numberOfDownloads: 2_500_000 }) },
+		});
+		expect(getByText(/2\.5M/)).toBeInTheDocument();
+	});
+
+	it('should hide downloads when zero', () => {
+		const { queryByText } = renderComponent({
+			props: { row: makeRow({ numberOfDownloads: 0 }) },
+		});
+		expect(queryByText(/[0-9]+(\.[0-9]+)?k|[0-9]+(\.[0-9]+)?M/)).not.toBeInTheDocument();
+	});
 });
