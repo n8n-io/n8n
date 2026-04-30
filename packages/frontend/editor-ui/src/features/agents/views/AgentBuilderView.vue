@@ -1104,14 +1104,11 @@ function onSwitchAgent(nextAgentId: string) {
 							>
 								<N8nIcon icon="arrow-left" :size="16" />
 							</button>
-							<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
-								{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
-							</span>
-						</div>
-						<AgentCustomToolViewer v-if="customToolSelection" :code="customToolSelection.code" />
-						<AgentSkillViewer
-							v-else-if="selectedSkill"
-							:skill="selectedSkill.skill"
+							</div>
+							<AgentCustomToolViewer v-if="customToolSelection" :code="customToolSelection.code" />
+							<AgentSkillViewer
+								v-else-if="selectedSkill"
+								:skill="selectedSkill.skill"
 							:disabled="isBuildChatStreaming"
 							@update:skill="onSkillUpdate"
 						/>
