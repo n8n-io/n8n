@@ -734,6 +734,16 @@ export const buildWorkflowAgentInputSchema = z.object({
 		),
 });
 
+const buildWorkflowAgentSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: z.literal('warning'),
+});
+
+const buildWorkflowAgentResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
 /**
  * Replan / checkpoint follow-ups have already paid the planner's discovery cost
  * and carry the checkpoint task graph from the original plan — direct builder
@@ -747,6 +757,19 @@ function isBuildViaPlanGuardEnabled(): boolean {
 	const raw = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
 	if (raw === undefined) return true;
 	return raw.toLowerCase() !== 'false' && raw !== '0';
+}
+
+async function resolveWorkflowNameForEditConfirmation(
+	context: OrchestrationContext,
+	workflowId: string,
+): Promise<string> {
+	try {
+		const workflow = await context.domainContext?.workflowService.get(workflowId);
+		const workflowName = workflow?.name?.trim();
+		return workflowName && workflowName.length > 0 ? workflowName : workflowId;
+	} catch {
+		return workflowId;
+	}
 }
 
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
@@ -763,8 +786,14 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 			result: z.string(),
 			taskId: z.string(),
 		}),
-		execute: async (input: z.infer<typeof buildWorkflowAgentInputSchema>) => {
-			if (isBuildViaPlanGuardEnabled() && !isPostPlanFollowUp(context)) {
+		suspendSchema: buildWorkflowAgentSuspendSchema,
+		resumeSchema: buildWorkflowAgentResumeSchema,
+		execute: async (
+			input: z.infer<typeof buildWorkflowAgentInputSchema>,
+			ctx?: { agent?: { resumeData?: unknown; suspend?: unknown } },
+		) => {
+			const isPostPlanFollowUpRun = isPostPlanFollowUp(context);
+			if (isBuildViaPlanGuardEnabled() && !isPostPlanFollowUpRun) {
 				if (!input.bypassPlan) {
 					context.logger.warn(
 						'build-workflow-with-agent called outside plan/replan context — rejecting',
@@ -808,6 +837,46 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					reason: input.reason,
 				});
 			}
+
+			if (input.workflowId && !isPostPlanFollowUpRun && context.domainContext) {
+				const updateWorkflowPermission =
+					context.domainContext.permissions?.updateWorkflow ?? 'require_approval';
+				if (updateWorkflowPermission === 'blocked') {
+					return { result: 'Action blocked by admin', taskId: '' };
+				}
+
+				const isOwnInFlightWorkflow =
+					context.domainContext.aiCreatedWorkflowIds?.has(input.workflowId) ?? false;
+
+				if (!isOwnInFlightWorkflow) {
+					const resumeData = ctx?.agent?.resumeData as
+						| z.infer<typeof buildWorkflowAgentResumeSchema>
+						| undefined;
+					const suspend = ctx?.agent?.suspend as
+						| ((payload: z.infer<typeof buildWorkflowAgentSuspendSchema>) => Promise<void>)
+						| undefined;
+					const needsApproval = updateWorkflowPermission !== 'always_allow';
+
+					if (needsApproval && (resumeData === undefined || resumeData === null)) {
+						const workflowName = await resolveWorkflowNameForEditConfirmation(
+							context,
+							input.workflowId,
+						);
+						const reason = input.reason?.trim();
+						await suspend?.({
+							requestId: nanoid(),
+							message: `Edit existing workflow "${workflowName}" (ID: ${input.workflowId})?${reason ? ` Reason: ${reason}` : ''}`,
+							severity: 'warning',
+						});
+						return { result: '', taskId: '' };
+					}
+
+					if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+						return { result: 'User declined the workflow edit.', taskId: '' };
+					}
+				}
+			}
+
 			const result = await startBuildWorkflowAgentTask(context, input);
 			return { result: result.result, taskId: result.taskId };
 		},
