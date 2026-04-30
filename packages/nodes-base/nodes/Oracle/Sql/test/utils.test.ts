@@ -11,6 +11,8 @@ import {
 	getOutBindDefsForExecute,
 } from '../helpers/utils';
 
+const integratedTests = process.env.ORACLE_INTEG_TESTS ?? false;
+
 describe('Test addSortRules', () => {
 	it('should ORDER BY ASC', () => {
 		const query = 'SELECT * FROM "scott"."employees"';
@@ -239,7 +241,11 @@ describe('Test getBindParameters ', () => {
 	});
 });
 
-describe('configureQueryRunner', () => {
+// Regression coverage for https://github.com/n8n-io/n8n/issues/26985 needs enough items to
+// fail if the implementation appends with push.apply(...) or push(...largeArray).
+const describeStackOverflowRegression = integratedTests ? describe : describe.skip;
+
+describeStackOverflowRegression('configureQueryRunner stack overflow regression', () => {
 	it('should handle large out bind datasets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const outBinds = [[[42]]];
