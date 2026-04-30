@@ -77,8 +77,15 @@ function openWorkflow() {
 	});
 }
 
-function onNodeActivated(nodeId: string) {
-	uiStore.openModalWithData({ name: FORM_STEP_EDIT_MODAL_KEY, data: { nodeId } });
+function onNodeActivated(nodeId: string, event?: MouseEvent) {
+	if (event?.type === 'dblclick') {
+		void router.push({
+			name: VIEWS.WORKFLOW,
+			params: { name: workflowsStore.workflow.id, nodeId },
+		});
+	} else {
+		uiStore.openModalWithData({ name: FORM_STEP_EDIT_MODAL_KEY, data: { nodeId } });
+	}
 }
 </script>
 
@@ -104,7 +111,7 @@ function onNodeActivated(nodeId: string) {
 						:viewport="viewport"
 						:striped="false"
 						variant="lines"
-						pattern-color="color-mix(in srgb, var(--canvas--dot--color) 20%, transparent)"
+						pattern-color="color-mix(in srgb, var(--canvas--dot--color) 8%, transparent)"
 					/>
 				</template>
 				<div v-if="showOpenWorkflowButton" :class="$style.canvasButtons">
