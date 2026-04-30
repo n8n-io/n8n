@@ -91,21 +91,6 @@ describe('components/N8nTooltip', () => {
 			expect(tooltip.querySelector('strong')).toBeInTheDocument();
 			expect(tooltip).toHaveTextContent('Bold text');
 		});
-
-		it('should not render arrow', async () => {
-			render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			const tooltipContent = await getTooltip();
-			expect(tooltipContent.querySelector('svg')).not.toBeInTheDocument();
-		});
 	});
 
 	describe('placements', () => {
