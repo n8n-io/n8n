@@ -4,7 +4,14 @@ import type { CommunityPackageRowData } from '../communityNodes.types';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
-import { N8nButton, N8nCard, N8nExternalLink, N8nIcon, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCard,
+	N8nExternalLink,
+	N8nIcon,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
@@ -53,6 +60,17 @@ function onInstall() {
 				<N8nExternalLink :href="docsUrl">
 					<N8nText :bold="true" size="small">{{ row?.packageName }}</N8nText>
 				</N8nExternalLink>
+				<N8nTooltip v-if="row?.isVerified" placement="top" :show-after="500">
+					<template #content>
+						{{ i18n.baseText('settings.communityNodes.verified.tooltip') }}
+					</template>
+					<N8nIcon
+						data-test-id="community-package-row__verified"
+						icon="badge-check"
+						size="small"
+						:class="$style.verifiedIcon"
+					/>
+				</N8nTooltip>
 			</div>
 			<div :class="$style.stats">
 				<span v-if="row?.nodeCount" :class="$style.stat">
@@ -117,6 +135,12 @@ function onInstall() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.verifiedIcon {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--color--text);
 }
 
 .hoverCta {

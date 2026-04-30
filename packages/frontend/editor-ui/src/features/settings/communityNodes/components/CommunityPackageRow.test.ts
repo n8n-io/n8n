@@ -98,4 +98,18 @@ describe('CommunityPackageRow', () => {
 		});
 		expect(queryByText(/[0-9]+(\.[0-9]+)?k|[0-9]+(\.[0-9]+)?M/)).not.toBeInTheDocument();
 	});
+
+	it('should render verified icon when isVerified is true', () => {
+		const { container } = renderComponent({ props: { row: makeRow({ isVerified: true }) } });
+		expect(
+			container.querySelector('[data-test-id="community-package-row__verified"]'),
+		).toBeInTheDocument();
+	});
+
+	it('should not render verified icon when isVerified is false', () => {
+		const { container } = renderComponent({ props: { row: makeRow({ isVerified: false }) } });
+		expect(
+			container.querySelector('[data-test-id="community-package-row__verified"]'),
+		).not.toBeInTheDocument();
+	});
 });
