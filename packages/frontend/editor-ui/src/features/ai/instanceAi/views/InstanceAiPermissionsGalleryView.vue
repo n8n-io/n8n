@@ -309,9 +309,7 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nHeading tag="div" size="medium" bold>
-								Update workflow “Lead enrichment”
-							</N8nHeading>
+							<N8nHeading tag="div" size="medium"> Update workflow “Lead enrichment” </N8nHeading>
 							<ConfirmationPreview>
 								Add a Set node before the HTTP Request to coerce email to lower case.
 							</ConfirmationPreview>
@@ -332,7 +330,7 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nHeading tag="div" size="medium" bold>
+							<N8nHeading tag="div" size="medium">
 								Delete workflow “Old onboarding flow”
 							</N8nHeading>
 							<ConfirmationPreview>
@@ -361,9 +359,7 @@ function logPlanRequestChanges(feedback: string) {
 						<div :class="[$style.item, $style.itemBordered]">
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nHeading tag="div" size="medium" bold>
-										Tag workflow “Lead enrichment”
-									</N8nHeading>
+									<N8nHeading tag="div" size="medium"> Tag workflow “Lead enrichment” </N8nHeading>
 									<ConfirmationPreview>Add tag: production</ConfirmationPreview>
 								</div>
 								<ConfirmationFooter>
@@ -375,7 +371,7 @@ function logPlanRequestChanges(feedback: string) {
 						<div :class="[$style.item, $style.itemBordered]">
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nHeading tag="div" size="medium" bold>
+									<N8nHeading tag="div" size="medium">
 										Move workflow to folder “Marketing”
 									</N8nHeading>
 									<ConfirmationPreview>From: Inbox · To: Marketing</ConfirmationPreview>
@@ -422,7 +418,7 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nHeading tag="div" size="medium" bold>{{ example.title }}</N8nHeading>
+							<N8nHeading tag="div" size="medium">{{ example.title }}</N8nHeading>
 							<ConfirmationPreview>{{ example.message }}</ConfirmationPreview>
 						</div>
 						<ConfirmationFooter>
