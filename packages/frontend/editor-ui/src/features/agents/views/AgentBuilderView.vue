@@ -1366,7 +1366,6 @@ function onSwitchAgent(nextAgentId: string) {
 						:config="localConfig"
 						:selected-key="selectedSection"
 						:connected-triggers="connectedTriggers"
-						:executions-count="sessionsStore.threads.length"
 						@select="onTreeSelect"
 					/>
 				</aside>
