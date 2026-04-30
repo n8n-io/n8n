@@ -512,12 +512,12 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
  * the source example's id, so LangSmith's UI groups them naturally by
  * `reference_example_id` — useful for pass@k visualization.
  *
- * **Order matters for build-phase parallelism.** We yield all iterations of
- * each example before moving to the next example, not all examples of each
- * iteration. With `evaluate(maxConcurrency=16)`, the in-flight set then spans
- * iterations rather than concentrating in one — so the build cache (keyed
- * `${iter}:${prompt}`) sees up to ~3× more distinct keys at peak, unlocking
- * lane-level parallelism that was previously demand-starved.
+ * Yields all examples of iteration N before moving to iteration N+1. We tried
+ * the inverted order (all iterations of one example before the next) to widen
+ * the build-phase fan-out, but it concentrated same-prompt builds on the same
+ * lane and the agent started failing at higher load (build_failure rate
+ * jumped from 0% to 33%). Keeping iteration-outer order until we have a
+ * lane-aware iteration distribution.
  *
  * The source is buffered into memory once before the first yield: we need to
  * emit each example N times, and an AsyncIterable can only be consumed once.
@@ -528,8 +528,8 @@ async function* expandExamplesForIterations(
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
-	for (const ex of cached) {
-		for (let i = 0; i < iterations; i++) {
+	for (let i = 0; i < iterations; i++) {
+		for (const ex of cached) {
 			yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
 		}
 	}

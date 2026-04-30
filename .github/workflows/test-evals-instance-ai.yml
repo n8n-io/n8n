@@ -138,7 +138,7 @@ jobs:
           BASE_URLS=$(IFS=,; printf '%s' "${URLS[*]}")
           pnpm eval:instance-ai \
             --base-url "$BASE_URLS" \
-            --concurrency 32 \
+            --concurrency 16 \
             --verbose \
             --iterations 3 \
             ${{ inputs.filter && format('--filter "{0}"', inputs.filter) || '' }}
