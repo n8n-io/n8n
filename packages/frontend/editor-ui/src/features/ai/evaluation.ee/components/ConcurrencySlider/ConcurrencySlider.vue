@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ElSlider } from 'element-plus';
 
-interface SliderProps {
+// Feature-local slider for the parallel-evaluation concurrency control.
+// Lives here (not in `@n8n/design-system`) because it bakes in a single
+// hard-coded brand-token theme — that bypasses the variant story DS
+// components are expected to support and would need design sign-off
+// before being promoted. Promote when both conditions hold.
+
+interface ConcurrencySliderProps {
 	min?: number;
 	max?: number;
 	step?: number;
@@ -10,7 +16,7 @@ interface SliderProps {
 	showTooltip?: boolean;
 }
 
-withDefaults(defineProps<SliderProps>(), {
+withDefaults(defineProps<ConcurrencySliderProps>(), {
 	min: 0,
 	max: 100,
 	step: 1,
@@ -19,22 +25,18 @@ withDefaults(defineProps<SliderProps>(), {
 	showTooltip: true,
 });
 
-// Brand-token overrides applied inline so they win over element-plus's
-// default `.el-slider { ... }` rule (same selector specificity, but the
-// element-plus rule typically loads later in the cascade). Inline style
-// has higher specificity than any class-based rule, guaranteeing the
-// override.
+// Element-plus's `.el-slider` rule sets these CSS vars at class-level
+// specificity. Inline `:style` wins by specificity, guaranteeing the
+// override regardless of stylesheet load order.
 //
-// Discord-like pill aesthetic: tall rounded runway, white thumb that
-// sits inside the track without a visible coloured border ring, and
-// subtle stops that read as light dots on the filled side and barely-
-// visible dots on the unfilled side.
+// Discord-like pill aesthetic: tall rounded runway, white thumb sitting
+// inside the track without a visible coloured border ring, and subtle
+// stops as dots rather than dividers.
 //
-// Token notes:
-// - `--background--brand` is the semantic alias for the n8n orange.
-// - The runway/disabled tokens fall back to legacy `--color--foreground*`
-//   because the design system has no semantic alias for the
-//   "neutral surface behind an interactive control" role yet.
+// `--background--brand` is the semantic alias for the n8n orange. The
+// runway/disabled tokens fall back to legacy `--color--foreground*`
+// because the design system has no semantic alias for the
+// "neutral surface behind an interactive control" role yet.
 const brandTokens = {
 	'--el-slider-main-bg-color': 'var(--background--brand)',
 	'--el-slider-runway-bg-color': 'var(--color--foreground)',

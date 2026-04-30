@@ -2,13 +2,14 @@
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
+import ConcurrencySlider from '../components/ConcurrencySlider';
 import RunsSection from '../components/ListRuns/RunsSection.vue';
 import { useEvaluationStore } from '../evaluation.store';
 import { useParallelEvalStore } from '../parallelEval.store';
 import orderBy from 'lodash/orderBy';
 import { useToast } from '@/app/composables/useToast';
 
-import { N8nButton, N8nIcon, N8nSlider, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 const props = defineProps<{
 	workflowId: string;
@@ -117,7 +118,7 @@ watch(runningTestRun, (run) => {
 						data-test-id="run-in-parallel-tooltip-icon"
 					/>
 				</N8nTooltip>
-				<N8nSlider
+				<ConcurrencySlider
 					v-model="concurrencyModel"
 					:min="1"
 					:max="10"
