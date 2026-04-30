@@ -691,7 +691,7 @@ export const useWorkflowSetupState = (
 		return groupSetupCards(
 			flatCards,
 			sourceNodes.value,
-			workflowsStore.connectionsByDestinationNode,
+			workflowDocumentStore.value.connectionsByDestinationNode,
 			executionOrder,
 		);
 	});

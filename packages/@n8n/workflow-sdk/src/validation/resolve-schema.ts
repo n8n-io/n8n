@@ -170,3 +170,57 @@ export function resolveSchema({
 		});
 	}
 }
+
+export type ResolveOneOfSchemasVariant = {
+	schema: z.ZodTypeAny;
+	required: boolean;
+	displayOptions: DisplayOptions;
+	defaults?: Record<string, unknown>;
+};
+
+export type ResolveOneOfSchemasConfig = {
+	parameters: Record<string, unknown>;
+	variants: ResolveOneOfSchemasVariant[];
+	defaults?: Record<string, unknown>;
+	isToolNode?: boolean;
+};
+
+export type ResolveOneOfSchemasFn = (config: ResolveOneOfSchemasConfig) => z.ZodTypeAny;
+
+/**
+ * Pick the first variant whose displayOptions match the current parameters and
+ * return its schema. Use this for properties declared multiple times with
+ * mutually exclusive displayOptions — the declarations are OR alternatives,
+ * not AND constraints, so naively unioning their show/hide produces a
+ * self-contradicting predicate that rejects every value.
+ *
+ * A z.union of per-variant resolveSchema calls would also be wrong: each
+ * inactive variant's "must-be-undefined" branch would silently match any
+ * concrete value the active variant rejects, and any required-when-visible
+ * validation would be lost.
+ */
+export function resolveOneOfSchemas({
+	parameters,
+	variants,
+	defaults = {},
+	isToolNode,
+}: ResolveOneOfSchemasConfig): z.ZodTypeAny {
+	for (const variant of variants) {
+		const context: DisplayOptionsContext = {
+			parameters,
+			defaults: { ...defaults, ...(variant.defaults ?? {}) },
+			isToolNode,
+		};
+		if (matchesDisplayOptionsCore(context, variant.displayOptions)) {
+			return variant.required ? variant.schema : variant.schema.optional();
+		}
+	}
+
+	const requirementParts = variants
+		.map((v) => formatDisplayOptionsRequirements(v.displayOptions))
+		.filter(Boolean);
+	const message = requirementParts.length
+		? `This field is only allowed when one of: ${requirementParts.map((r) => `(${r})`).join(' or ')}`
+		: 'This field is not applicable for the current configuration';
+	return z.any().refine((val) => val === undefined, { message });
+}
