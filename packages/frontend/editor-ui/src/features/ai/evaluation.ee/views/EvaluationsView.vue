@@ -9,7 +9,7 @@ import { useToast } from '@/app/composables/useToast';
 
 import { N8nButton } from '@n8n/design-system';
 const props = defineProps<{
-	name: string;
+	workflowId: string;
 }>();
 
 const locale = useI18n();
@@ -24,13 +24,13 @@ const runningTestRun = computed(() => runs.value.find((run) => run.status === 'r
 
 async function runTest() {
 	try {
-		await evaluationStore.startTestRun(props.name);
+		await evaluationStore.startTestRun(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 	}
 
 	try {
-		await evaluationStore.fetchTestRuns(props.name);
+		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
@@ -54,7 +54,7 @@ async function stopTest() {
 
 const runs = computed(() => {
 	const testRuns = Object.values(evaluationStore.testRunsById ?? {}).filter(
-		({ workflowId }) => workflowId === props.name,
+		({ workflowId }) => workflowId === props.workflowId,
 	);
 
 	return orderBy(testRuns, (record) => new Date(record.runAt), ['asc']).map((record, index) => ({
@@ -100,7 +100,7 @@ watch(runningTestRun, (run) => {
 					v-model:selected-metric="selectedMetric"
 					:class="$style.runs"
 					:runs="runs"
-					:workflow-id="props.name"
+					:workflow-id="props.workflowId"
 				/>
 			</div>
 		</div>
