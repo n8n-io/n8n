@@ -4,6 +4,7 @@ import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentSseEvent } from '@n8n/api-types';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const props = defineProps<{
 	projectId: string;
@@ -55,11 +56,11 @@ function handleEvent(event: AgentSseEvent, state: StreamState): void {
 				pushLine(state.textBuffer);
 				state.textBuffer = '';
 			}
-			pushLine(`→ ${event.toolName}`);
+			pushLine(`→ ${formatToolNameForDisplay(event.toolName)}`);
 			break;
 		}
 		case 'tool-result': {
-			pushLine(`${event.isError ? '✗' : '✓'} ${event.toolName}`);
+			pushLine(`${event.isError ? '✗' : '✓'} ${formatToolNameForDisplay(event.toolName)}`);
 			break;
 		}
 		case 'config-updated':

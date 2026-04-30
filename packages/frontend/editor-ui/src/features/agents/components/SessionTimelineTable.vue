@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import SessionTimelineRow from './SessionTimelineRow.vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey, formatDuration, itemFilterKey } from '../session-timeline.utils';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 const props = defineProps<{
 	items: TimelineItem[];
@@ -55,6 +56,7 @@ function searchableText(item: TimelineItem): string {
 
 	// Free text + raw identifiers
 	parts.push(item.content, item.toolName, item.workflowName, item.nodeDisplayName);
+	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
 
 	// Built-in tool friendly label
 	const toolKey = builtinToolLabelKey(item.toolName);

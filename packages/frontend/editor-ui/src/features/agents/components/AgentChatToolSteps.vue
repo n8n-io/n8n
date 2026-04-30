@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import type { ToolCall } from '../composables/agentChatMessages';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 
 defineProps<{
 	toolCalls: ToolCall[];
@@ -38,7 +39,7 @@ defineProps<{
 					:class="$style.toolStepLoading"
 				/>
 			</div>
-			<span :class="$style.toolStepLabel">{{ tc.tool }}</span>
+			<span :class="$style.toolStepLabel">{{ formatToolNameForDisplay(tc.tool) }}</span>
 			<span
 				v-if="tc.displaySummary"
 				:class="$style.toolStepSummary"
@@ -106,7 +107,6 @@ defineProps<{
 }
 
 .toolStepLabel {
-	font-family: monospace;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
 }

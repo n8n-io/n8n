@@ -7,6 +7,7 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey } from '../session-timeline.utils';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import {
 	pillStyle as kindPillStyle,
 	rowBorderColor as kindRowBorderColor,
@@ -40,12 +41,12 @@ const infoText = computed((): string => {
 			return truncate(it.content ?? '', 120);
 		case 'tool': {
 			const key = builtinToolLabelKey(it.toolName);
-			return key ? i18n.baseText(key) : (it.toolName ?? '');
+			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);
 		}
 		case 'workflow':
-			return it.workflowName ?? it.toolName ?? '';
+			return it.workflowName ?? formatToolNameForDisplay(it.toolName);
 		case 'node':
-			return it.nodeDisplayName ?? it.toolName ?? '';
+			return it.nodeDisplayName ?? formatToolNameForDisplay(it.toolName);
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
