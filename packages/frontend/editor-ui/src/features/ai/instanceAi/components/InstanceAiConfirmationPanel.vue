@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -453,9 +453,9 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 						<div v-else>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nText size="medium" bold>
+									<N8nHeading tag="div" size="medium" bold>
 										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
-									</N8nText>
+									</N8nHeading>
 									<ConfirmationPreview>{{
 										item.toolCall.confirmation!.message
 									}}</ConfirmationPreview>
