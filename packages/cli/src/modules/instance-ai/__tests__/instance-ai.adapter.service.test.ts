@@ -9,12 +9,13 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
-import type { IRunExecutionData, ITaskData } from 'n8n-workflow';
+import type { ExecutionError, IRunExecutionData, ITaskData } from 'n8n-workflow';
 
 import {
 	extractExecutionResult,
 	extractExecutionDebugInfo,
 	extractNodeOutput,
+	formatExecutionError,
 	resolveDataTableByIdOrName,
 	truncateNodeOutput,
 	truncateResultData,
@@ -39,7 +40,7 @@ function makeExecution(
 		startedAt?: Date;
 		stoppedAt?: Date;
 		runData?: Record<string, ITaskData[]>;
-		error?: { message: string };
+		error?: Partial<ExecutionError>;
 		workflowNodes?: Array<{ name: string; type: string }>;
 	} = {},
 ) {
@@ -64,7 +65,11 @@ function makeExecution(
 /** Build a task data entry with the given output items. */
 function makeTaskData(
 	outputItems: Array<Record<string, unknown>>,
-	opts?: { error?: Error; startTime?: number; executionTime?: number },
+	opts?: {
+		error?: Error | Partial<ExecutionError>;
+		startTime?: number;
+		executionTime?: number;
+	},
 ): ITaskData {
 	return {
 		startTime: opts?.startTime ?? 1000,
@@ -103,6 +108,56 @@ describe('extractExecutionResult', () => {
 
 		expect(result.status).toBe('error');
 		expect(result.error).toBe('boom');
+	});
+
+	it('combines message, description, and upstream messages when the error is a deserialized NodeOperationError', async () => {
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'error',
+				error: {
+					name: 'NodeOperationError',
+					message: 'Bad request - please check your parameters',
+					description: 'Your credit balance is too low to access the Anthropic API.',
+					messages: ['400 {"type":"error","error":{"message":"credits"}}'],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			true,
+		);
+
+		expect(result.error).toContain('Bad request - please check your parameters');
+		expect(result.error).toContain('Your credit balance is too low');
+		expect(result.error).toContain('Details:');
+		expect(result.error).toContain('400');
+	});
+
+	it('suppresses upstream description and messages when allowSendingParameterValues is false', async () => {
+		const repo = createMockExecutionRepository(
+			makeExecution({
+				status: 'error',
+				error: {
+					name: 'NodeOperationError',
+					message: 'Bad request - please check your parameters',
+					description: 'Your credit balance is too low to access the Anthropic API.',
+					messages: ['400 {"type":"error","error":{"message":"credits"}}'],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			false,
+		);
+
+		expect(result.error).toContain('Bad request - please check your parameters');
+		expect(result.error).not.toContain('Your credit balance is too low');
+		expect(result.error).not.toContain('400');
+		expect(result.error).toContain('instance AI privacy setting');
 	});
 
 	it('maps "crashed" status to "error"', async () => {
@@ -224,6 +279,130 @@ describe('extractExecutionResult', () => {
 		);
 
 		expect(result.data).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// formatExecutionError
+// ---------------------------------------------------------------------------
+
+describe('formatExecutionError', () => {
+	const nodeOpError = {
+		name: 'NodeOperationError',
+		message: 'Bad request - please check your parameters',
+		description: 'Your credit balance is too low to access the Anthropic API.',
+		messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
+	} as ExecutionError;
+
+	describe('with upstream details enabled (allowSendingParameterValues=true)', () => {
+		it('returns message + description + upstream messages for a NodeOperationError shape', () => {
+			const result = formatExecutionError(nodeOpError, true);
+
+			expect(result).toContain('Bad request - please check your parameters');
+			expect(result).toContain('Your credit balance is too low');
+			expect(result).toContain('Details:');
+			expect(result).toContain('low balance');
+		});
+
+		it('returns just the message when description and messages are absent', () => {
+			const result = formatExecutionError(
+				{
+					name: 'WorkflowOperationError',
+					message: 'something went wrong',
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result).toBe('something went wrong');
+		});
+
+		it('does not duplicate description when it equals the message', () => {
+			const result = formatExecutionError(
+				{
+					name: 'WorkflowOperationError',
+					message: 'identical',
+					description: 'identical',
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result).toBe('identical');
+		});
+
+		it('joins multiple upstream messages with a separator', () => {
+			const result = formatExecutionError(
+				{
+					name: 'NodeApiError',
+					message: 'API error',
+					messages: ['first', 'second', 'third'],
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result).toContain('Details: first | second | third');
+		});
+
+		it('truncates oversized output to keep the agent context bounded', () => {
+			const huge = 'x'.repeat(10_000);
+			const result = formatExecutionError(
+				{
+					name: 'NodeApiError',
+					message: 'API error',
+					messages: [huge],
+				} as ExecutionError,
+				true,
+			);
+
+			expect(result.length).toBeLessThanOrEqual(4_001); // MAX_ERROR_CHARS + ellipsis
+			expect(result.endsWith('…')).toBe(true);
+		});
+
+		it('returns "Unknown error" for an empty error object', () => {
+			const result = formatExecutionError({} as ExecutionError, true);
+
+			expect(result).toBe('Unknown error');
+		});
+	});
+
+	describe('with upstream details suppressed (allowSendingParameterValues=false)', () => {
+		it('omits description and upstream messages and adds a hint to ask the user', () => {
+			const result = formatExecutionError(nodeOpError, false);
+
+			expect(result).toContain('Bad request - please check your parameters');
+			expect(result).not.toContain('Your credit balance is too low');
+			expect(result).not.toContain('low balance');
+			expect(result).not.toContain('Details:');
+			expect(result).toContain('instance AI privacy setting');
+			expect(result).toContain('ask the user');
+		});
+
+		it('does not append the suppression hint when there are no upstream details to suppress', () => {
+			// A bare message has nothing to gate, so the hint would be misleading.
+			const result = formatExecutionError(
+				{
+					name: 'WorkflowOperationError',
+					message: 'just a message',
+				} as ExecutionError,
+				false,
+			);
+
+			expect(result).toBe('just a message');
+		});
+
+		it('appends the suppression hint when only description is present', () => {
+			const result = formatExecutionError(
+				{
+					name: 'NodeOperationError',
+					message: 'top',
+					description: 'sensitive upstream payload',
+				} as ExecutionError,
+				false,
+			);
+
+			expect(result).toContain('top');
+			expect(result).not.toContain('sensitive upstream payload');
+			expect(result).toContain('instance AI privacy setting');
+		});
 	});
 });
 
@@ -456,6 +635,73 @@ describe('extractExecutionDebugInfo', () => {
 		expect(result.failedNode!.name).toBe('HTTP');
 		expect(result.failedNode!.type).toBe('n8n-nodes-base.httpRequest');
 		expect(result.failedNode!.error).toBe('Connection refused');
+	});
+
+	it('formats failed node error from a deserialized NodeOperationError shape (no Error prototype)', async () => {
+		// After unflattenData, the persisted error is a plain object with the
+		// NodeOperationError fields but no Error prototype. The formatter must
+		// still surface message + description + upstream messages.
+		const deserialized: Partial<ExecutionError> = {
+			name: 'NodeOperationError',
+			message: 'Bad request - please check your parameters',
+			description: 'Your credit balance is too low to access the Anthropic API.',
+			messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
+		};
+		const execution = makeExecution({
+			status: 'error',
+			workflowNodes: [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }],
+			runData: {
+				'AI Agent': [
+					makeTaskData([{ chatInput: 'Hello' }], {
+						error: deserialized,
+						startTime: 1100,
+						executionTime: 50,
+					}),
+				],
+			},
+		});
+		const repo = createMockExecutionRepository(execution);
+
+		const result = await extractExecutionDebugInfo(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			true,
+		);
+
+		expect(result.failedNode).toBeDefined();
+		expect(result.failedNode!.error).not.toBe('[object Object]');
+		expect(result.failedNode!.error).toContain('Bad request');
+		expect(result.failedNode!.error).toContain('Your credit balance is too low');
+		expect(result.failedNode!.error).toContain('Details:');
+		expect(result.failedNode!.error).toContain('low balance');
+	});
+
+	it('suppresses upstream description and messages on the failed node when allowSendingParameterValues is false', async () => {
+		const deserialized: Partial<ExecutionError> = {
+			name: 'NodeOperationError',
+			message: 'Bad request - please check your parameters',
+			description: 'Your credit balance is too low to access the Anthropic API.',
+			messages: ['400 {"type":"error","error":{"message":"low balance"}}'],
+		};
+		const execution = makeExecution({
+			status: 'error',
+			workflowNodes: [{ name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent' }],
+			runData: {
+				'AI Agent': [makeTaskData([{ chatInput: 'Hello' }], { error: deserialized })],
+			},
+		});
+		const repo = createMockExecutionRepository(execution);
+
+		const result = await extractExecutionDebugInfo(
+			repo as unknown as ExecutionRepository,
+			'exec-1',
+			false,
+		);
+
+		expect(result.failedNode!.error).toContain('Bad request');
+		expect(result.failedNode!.error).not.toContain('Your credit balance is too low');
+		expect(result.failedNode!.error).not.toContain('low balance');
+		expect(result.failedNode!.error).toContain('instance AI privacy setting');
 	});
 
 	it('uses "unknown" type when node is not in workflowData', async () => {
@@ -1671,5 +1917,123 @@ describe('resolveDataTableByIdOrName', () => {
 		expect(result.kind).toBe('hit');
 		if (result.kind === 'hit') expect(result.table.id).toBe('dt_uuid_123');
 		expect(logger.warn).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// createExecutionAdapter – run() forces save settings
+// ---------------------------------------------------------------------------
+
+function createRunAdapterForTests(workflow: Record<string, unknown>) {
+	const mockWorkflowFinderService = {
+		findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
+	};
+
+	const mockWorkflowRunner = {
+		run: jest.fn().mockResolvedValue('exec-1'),
+	};
+
+	const mockActiveExecutions = {
+		has: jest.fn().mockReturnValue(false),
+	};
+
+	const mockExecutionRepository = {
+		findSingleExecution: jest.fn().mockResolvedValue(undefined),
+	};
+
+	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+	const service = new InstanceAiAdapterService(
+		{ error: jest.fn(), scoped: jest.fn().mockReturnThis() } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[0],
+		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[1],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
+		mockWorkflowFinderService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[3],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
+		mockExecutionRepository as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
+		mockActiveExecutions as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
+		mockWorkflowRunner as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[14],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[15],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[16],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[17],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[18],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[19],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[20],
+		{
+			getPreferences: jest.fn().mockReturnValue({ branchReadOnly: false }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[24],
+		{ isLicensed: jest.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[25],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[26],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[27],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
+	);
+
+	const adapter = service.createContext(mockUser).executionService;
+
+	return { adapter, mockWorkflowRunner };
+}
+
+describe('createExecutionAdapter run()', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	it('forces save settings so the agent can read the result back', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+			settings: {
+				saveManualExecutions: false,
+				saveDataSuccessExecution: 'none',
+				saveDataErrorExecution: 'none',
+				executionOrder: 'v1',
+			},
+		});
+
+		await adapter.run('wf-1');
+
+		expect(mockWorkflowRunner.run).toHaveBeenCalledTimes(1);
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.settings).toMatchObject({
+			executionOrder: 'v1',
+			saveManualExecutions: true,
+			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
+		});
+	});
+
+	it('still applies overrides when the workflow has no settings', async () => {
+		const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+			id: 'wf-1',
+			nodes: [],
+		});
+
+		await adapter.run('wf-1');
+
+		const runData = mockWorkflowRunner.run.mock.calls[0][0];
+		expect(runData.workflowData.settings).toEqual({
+			saveManualExecutions: true,
+			saveDataSuccessExecution: 'all',
+			saveDataErrorExecution: 'all',
+		});
 	});
 });

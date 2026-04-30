@@ -8,7 +8,6 @@ import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import InstanceAiWorkflowSetup from '../components/InstanceAiWorkflowSetup.vue';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getWorkflow as fetchWorkflowApi } from '@/app/api/workflows';
 import {
@@ -140,8 +139,8 @@ describe('InstanceAiWorkflowSetup', () => {
 		const nodeTypesStore = useNodeTypesStore();
 		vi.spyOn(nodeTypesStore, 'getNodesInformation').mockResolvedValue([]);
 
-		const workflowsStore = useWorkflowsStore();
-		workflowsStore.getNodeByName = vi.fn().mockReturnValue(undefined);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+		workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue(undefined);
 	});
 
 	describe('handleLater in wizard mode', () => {
@@ -802,7 +801,7 @@ describe('InstanceAiWorkflowSetup', () => {
 
 	describe('NDV parameter fallback', () => {
 		it('includes store node parameters in apply payload when not in local paramValues', async () => {
-			const workflowsStore = useWorkflowsStore();
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
 			const nodeName = 'My Slack Node';
 			const storeNode = {
 				id: 'node-1',
@@ -812,7 +811,7 @@ describe('InstanceAiWorkflowSetup', () => {
 				parameters: { channel: '#general' },
 				position: [0, 0],
 			};
-			workflowsStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
+			workflowDocumentStore.getNodeByName = vi.fn().mockImplementation((name: string) => {
 				if (name === nodeName) return storeNode;
 				return undefined;
 			});
@@ -885,8 +884,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				],
 			}));
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue({
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue({
 				id: 'node-1',
 				name: 'DataTable',
 				type: 'n8n-nodes-base.dataTable',
@@ -960,8 +959,8 @@ describe('InstanceAiWorkflowSetup', () => {
 				],
 			}));
 
-			const workflowsStore = useWorkflowsStore();
-			workflowsStore.getNodeByName = vi.fn().mockReturnValue({
+			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(''));
+			workflowDocumentStore.getNodeByName = vi.fn().mockReturnValue({
 				id: 'node-1',
 				name: 'DataTable',
 				type: 'n8n-nodes-base.dataTable',

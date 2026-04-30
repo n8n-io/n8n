@@ -93,6 +93,7 @@ export interface FrontendSettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	jwksUri: string;
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
