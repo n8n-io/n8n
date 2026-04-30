@@ -25,6 +25,7 @@ const SELECT_EXISTING_WORKFLOW_NAME = 'B3 Workflow Setup Select Existing Credent
 const SELECT_EXISTING_INITIAL_CREDENTIAL_NAME = 'B3 Slack Trigger Initial Credential';
 const SELECT_EXISTING_TARGET_CREDENTIAL_NAME = 'B3 Slack Trigger Target Credential';
 
+const PARAMETER_ISSUE_WORKFLOW_NAME = 'B3 Workflow Setup Required Parameter';
 const PARAMETER_APPLY_WORKFLOW_NAME = 'B3 Full Wizard Apply';
 const PARAMETER_CREDENTIAL_NAME = 'B3 Parameter Header Auth';
 
@@ -458,9 +459,13 @@ test.describe(
 		test('should clear required parameter issue indicator when the field is filled', async ({
 			n8n,
 		}) => {
+			await n8n.api.workflows.createWorkflow(
+				createParameterOnlyWorkflow(PARAMETER_ISSUE_WORKFLOW_NAME),
+			);
+
 			await n8n.navigate.toInstanceAi();
 			await n8n.instanceAi.sendMessage(
-				'Build a workflow with a Manual Trigger node connected to an HTTP Request node. Leave the URL field on the HTTP Request node empty/blank — do not fill in any URL. The user will configure it themselves after the workflow is built.',
+				`Set up the workflow named "${PARAMETER_ISSUE_WORKFLOW_NAME}".`,
 			);
 
 			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
