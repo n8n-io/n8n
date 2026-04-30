@@ -127,11 +127,13 @@ jest.mock('../sandbox-setup', () => ({
 	getWorkspaceRoot: jest.fn(async () => await Promise.resolve('/home/daytona/workspace')),
 	setupSandboxWorkspace: jest.fn(async () => await Promise.resolve()),
 	PACKAGE_JSON: '{}',
+	SANDBOX_SDK_VERSION: '1.2.3',
 	TSCONFIG_JSON: '{}',
 	BUILD_MJS: '',
 }));
 
 jest.mock('../sandbox-fs', () => ({
+	escapeSingleQuotes: (input: string) => input,
 	runInSandbox: jest.fn(async () => await Promise.resolve({ exitCode: 0, stdout: '', stderr: '' })),
 	writeFileViaSandbox: jest.fn(async () => {
 		await Promise.resolve();
@@ -142,7 +144,10 @@ import type { Logger } from '../../logger';
 import type { InstanceAiContext } from '../../types';
 import { BuilderSandboxFactory } from '../builder-sandbox-factory';
 import type { SandboxConfig } from '../create-workspace';
+import { runInSandbox } from '../sandbox-fs';
 import { SnapshotManager } from '../snapshot-manager';
+
+const runInSandboxMock = runInSandbox as jest.MockedFunction<typeof runInSandbox>;
 
 const NOOP_LOGGER: Logger = {
 	info: () => {},
@@ -184,6 +189,8 @@ describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 		daytonaCreateMock.mockReset();
 		daytonaCreateMock.mockResolvedValue({ id: 'sandbox-id' });
 		daytonaDeleteMock.mockClear();
+		runInSandboxMock.mockReset();
+		runInSandboxMock.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 	});
 
 	it('passes { snapshot } when ensureSnapshot returns a name', async () => {
@@ -239,12 +246,67 @@ describe('BuilderSandboxFactory createDaytona snapshot branching', () => {
 
 		expect(ensureSnapshotSpy).toHaveBeenCalledWith(expect.anything(), 'proxy');
 	});
+
+	it('repairs the sandbox SDK install before returning the workspace', async () => {
+		runInSandboxMock
+			.mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'Cannot find module' })
+			.mockResolvedValueOnce({ exitCode: 0, stdout: 'installed', stderr: '' })
+			.mockResolvedValueOnce({
+				exitCode: 0,
+				stdout:
+					'{"version":"1.2.3","resolvedPath":"/workspace/node_modules/@n8n/workflow-sdk/package.json"}',
+				stderr: '',
+			});
+		const config = makeDaytonaConfig();
+		const snapshotManager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
+		jest.spyOn(snapshotManager, 'ensureSnapshot').mockResolvedValue(null);
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER);
+		await factory.create('builder-1', makeContext());
+
+		expect(runInSandboxMock).toHaveBeenCalledWith(
+			expect.anything(),
+			"npm install '@n8n/workflow-sdk@1.2.3' --ignore-scripts",
+			'/home/daytona/workspace',
+		);
+	});
+
+	it('falls back to the registry default when the pinned SDK version is unpublished', async () => {
+		runInSandboxMock
+			.mockResolvedValueOnce({ exitCode: 1, stdout: '', stderr: 'Cannot find module' })
+			.mockResolvedValueOnce({
+				exitCode: 1,
+				stdout: '',
+				stderr: 'npm error code ETARGET\nNo matching version found for @n8n/workflow-sdk@1.2.3',
+			})
+			.mockResolvedValueOnce({ exitCode: 0, stdout: 'installed latest', stderr: '' })
+			.mockResolvedValueOnce({
+				exitCode: 0,
+				stdout:
+					'{"version":"1.2.2","resolvedPath":"/workspace/node_modules/@n8n/workflow-sdk/package.json"}',
+				stderr: '',
+			});
+		const config = makeDaytonaConfig();
+		const snapshotManager = new SnapshotManager('node:20', NOOP_LOGGER, '1.123.0');
+		jest.spyOn(snapshotManager, 'ensureSnapshot').mockResolvedValue(null);
+
+		const factory = new BuilderSandboxFactory(config, snapshotManager, NOOP_LOGGER);
+		await factory.create('builder-1', makeContext());
+
+		expect(runInSandboxMock).toHaveBeenCalledWith(
+			expect.anything(),
+			"npm install '@n8n/workflow-sdk' --ignore-scripts",
+			'/home/daytona/workspace',
+		);
+	});
 });
 
 describe('BuilderSandboxFactory createDaytona error reporting', () => {
 	beforeEach(() => {
 		daytonaCreateMock.mockReset();
 		daytonaDeleteMock.mockClear();
+		runInSandboxMock.mockReset();
+		runInSandboxMock.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 	});
 
 	function makeManager(): SnapshotManager {
@@ -353,6 +415,8 @@ describe('BuilderSandboxFactory createDaytona error reporting', () => {
 describe('BuilderSandboxFactory.createN8nSandbox cleanup on failure', () => {
 	beforeEach(() => {
 		capturedSandboxes.length = 0;
+		runInSandboxMock.mockReset();
+		runInSandboxMock.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 	});
 
 	it('destroys the remote sandbox when a post-creation step throws', async () => {
