@@ -31,6 +31,7 @@ describe('buildFromJson()', () => {
 	const makeToolDescriptor = (overrides: Partial<ToolDescriptor> = {}): ToolDescriptor => ({
 		name: 'search',
 		description: 'Search the web',
+		systemInstruction: null,
 		inputSchema: { type: 'object', properties: { query: { type: 'string' } } } as JSONSchema7,
 		outputSchema: null,
 		hasSuspend: false,

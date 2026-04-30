@@ -137,7 +137,7 @@ export async function resolveNodeTool(
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
 		.handler(async (input: Record<string, unknown>) => {
-			return await ctx.executor.executeInline({
+			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
 				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
@@ -145,6 +145,14 @@ export async function resolveNodeTool(
 				inputData: [{ json: input as IDataObject }],
 				projectId: ctx.projectId,
 			});
+			// Throw on the executor's structured error so the agent runtime
+			// flags the tool-result with `isError: true` and the recorder
+			// marks the timeline entry as a failed call. Returning the error
+			// object normally would otherwise read as a successful tool call.
+			if (result.status === 'error') {
+				throw new Error(result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`);
+			}
+			return result;
 		})
 		.build();
 

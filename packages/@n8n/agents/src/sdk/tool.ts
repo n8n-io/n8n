@@ -323,6 +323,7 @@ export class Tool<
 		return {
 			name: this.name,
 			description: this.desc,
+			systemInstruction: this.systemInstructionText ?? null,
 			inputSchema: inputSchema as JSONSchema7,
 			outputSchema: outputSchema as JSONSchema7,
 			hasSuspend: this.suspendSchemaValue !== undefined,
