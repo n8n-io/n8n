@@ -30,6 +30,15 @@ const MOCK_CONFIG = {
 			image: ['analyze', 'generate', 'edit'],
 			audio: ['generate', 'transcribe', 'translate'],
 		},
+		'@n8n/n8n-nodes-langchain.googleGemini': {
+			text: ['message'],
+			image: ['generate'],
+		},
+		'@n8n/n8n-nodes-langchain.anthropic': {
+			text: ['message'],
+			image: ['analyze'],
+			document: ['analyze'],
+		},
 	},
 };
 
