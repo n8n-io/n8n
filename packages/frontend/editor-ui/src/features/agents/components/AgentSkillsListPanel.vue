@@ -148,7 +148,7 @@ const totalCount = computed(() => props.skills.length);
 
 .skillIcon {
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .name {
@@ -168,7 +168,7 @@ const totalCount = computed(() => props.skills.length);
 }
 
 .chevron {
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 	flex-shrink: 0;
 }
 </style>

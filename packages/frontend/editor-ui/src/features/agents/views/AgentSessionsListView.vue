@@ -210,7 +210,7 @@ async function loadMore() {
 	cursor: pointer;
 
 	&:hover {
-		background-color: var(--color--foreground--tint-2);
+		background-color: var(--background--hover);
 	}
 }
 </style>

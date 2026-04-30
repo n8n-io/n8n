@@ -4,10 +4,10 @@
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--3xs) var(--spacing--xs);
 	border: var(--border);
-	border-radius: var(--radius--xl);
+	border-radius: var(--radius--xs);
 	background: light-dark(var(--color--foreground--tint-2), var(--color--foreground--tint-1));
-	box-shadow: var(--shadow--sm);
-	color: var(--color--text--tint-1);
+	box-shadow: var(--shadow--xs);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
 	font-family: var(--font-family);
 	line-height: var(--line-height--sm);
@@ -22,10 +22,10 @@
 
 	&:hover,
 	&:focus-visible {
-		color: color-mix(in srgb, var(--color--primary) 68%, var(--color--text));
-		border-color: color-mix(in srgb, var(--color--primary) 28%, var(--color--foreground--tint-1));
-		background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
-		box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+		color: color-mix(in srgb, var(--background--brand) 68%, var(--text-color));
+		border-color: color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
+		background: color-mix(in srgb, var(--background--brand) 12%, var(--background--hover));
+		box-shadow: var(--shadow--xs);
 		transform: translateY(-1px);
 		outline-color: var(--focus--border-color);
 	}
@@ -37,10 +37,10 @@
 }
 
 @mixin prompt-suggestion-button-active {
-	color: color-mix(in srgb, var(--color--primary) 68%, var(--color--text));
-	border-color: color-mix(in srgb, var(--color--primary) 28%, var(--color--foreground--tint-1));
-	background: color-mix(in srgb, var(--color--primary) 12%, var(--color--foreground--tint-2));
-	box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+	color: color-mix(in srgb, var(--background--brand) 68%, var(--text-color));
+	border-color: color-mix(in srgb, var(--background--brand) 28%, var(--border-color--subtle));
+	background: color-mix(in srgb, var(--background--brand) 12%, var(--background--hover));
+	box-shadow: var(--shadow--xs);
 }
 
 @mixin prompt-suggestion-icon {

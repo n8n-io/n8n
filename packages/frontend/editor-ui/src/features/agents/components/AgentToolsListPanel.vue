@@ -380,7 +380,7 @@ const totalCount = computed(() => props.tools.length);
 
 .customIcon {
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .customName,

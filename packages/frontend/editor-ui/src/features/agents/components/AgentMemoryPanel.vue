@@ -244,17 +244,17 @@ function onRangeAfterChange(event: Event) {
 	width: 70px;
 	text-align: center;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border: var(--border);
 	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-2);
-	color: var(--color--text);
+	background-color: var(--background--hover);
+	color: var(--text-color);
 	font-size: var(--font-size--sm);
 	font-family: var(--font-family);
 	outline: none;
 }
 
 .inlineInput:focus {
-	border-color: var(--color--primary);
+	border-color: var(--background--brand);
 }
 
 .inlineSelect {
@@ -263,7 +263,7 @@ function onRangeAfterChange(event: Event) {
 
 .divider {
 	border: none;
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	border-top: var(--border);
 	margin: var(--spacing--2xs) 0;
 }
 
@@ -282,7 +282,7 @@ function onRangeAfterChange(event: Event) {
 	justify-content: center;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--xl);
-	border: var(--border-width) dashed var(--color--foreground);
+	border: var(--border-width) dashed var(--border-color);
 	border-radius: var(--radius--lg);
 	text-align: center;
 	max-width: 360px;

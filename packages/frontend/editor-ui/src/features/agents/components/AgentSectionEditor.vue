@@ -224,10 +224,10 @@ watch([() => props.sectionPath, () => props.pickKeys], () => {
 
 .error {
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	color: var(--color--text--danger);
+	color: var(--text-color--danger);
 	font-size: var(--font-size--2xs);
-	background: var(--color--danger--tint-4);
+	background: var(--background--danger);
 	border-top: var(--border);
-	border-color: var(--color--danger--tint-3);
+	border-color: var(--border-color--danger);
 }
 </style>

@@ -165,14 +165,14 @@ function onBreadcrumbSelect(item: PathItem) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--md);
-	background-color: var(--color--background--light-3);
+	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);
 }
 
 .crumbSeparator {
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 	margin: 0 var(--spacing--4xs);
 	user-select: none;
 }
@@ -202,7 +202,7 @@ function onBreadcrumbSelect(item: PathItem) {
 
 .saveStatus {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	user-select: none;
 }
 

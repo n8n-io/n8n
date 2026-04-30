@@ -330,7 +330,7 @@ defineExpose({
 	}
 
 	&:hover {
-		border-color: var(--color--foreground--shade-1);
+		border-color: var(--border-color--strong);
 	}
 }
 

@@ -1378,7 +1378,7 @@ function onSwitchAgent(nextAgentId: string) {
 	position: relative;
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color--background--light-3);
+	background-color: var(--background--surface);
 	border-right: var(--border);
 	height: 100%;
 	min-height: 0;
@@ -1414,20 +1414,20 @@ function onSwitchAgent(nextAgentId: string) {
 	background: transparent;
 	border: var(--border-width) var(--border-style) transparent;
 	border-radius: var(--radius);
-	color: var(--color--text);
+	color: var(--text-color);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	cursor: pointer;
 	line-height: var(--line-height--md);
 
 	&:hover {
-		background: var(--color--background--light-2);
-		border-color: var(--color--foreground);
+		background: var(--background--hover);
+		border-color: var(--border-color);
 	}
 
 	&:focus-visible {
 		outline: none;
-		border-color: var(--color--primary);
+		border-color: var(--background--brand);
 	}
 }
 
@@ -1445,15 +1445,15 @@ function onSwitchAgent(nextAgentId: string) {
 	background: transparent;
 	border: var(--border-width) var(--border-style) transparent;
 	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);
 	cursor: pointer;
 	line-height: var(--line-height--md);
 
 	&:hover {
-		background: var(--color--background--light-2);
-		color: var(--color--text);
-		border-color: var(--color--foreground);
+		background: var(--background--hover);
+		color: var(--text-color);
+		border-color: var(--border-color);
 	}
 }
 
@@ -1500,7 +1500,7 @@ function onSwitchAgent(nextAgentId: string) {
 .sessionItemWhen {
 	margin-left: auto;
 	flex-shrink: 0;
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
 }
 
@@ -1515,7 +1515,7 @@ function onSwitchAgent(nextAgentId: string) {
 }
 
 .chatModeLockedIcon {
-	color: var(--color--warning);
+	color: var(--text-color--warning);
 }
 
 .chatBody {
@@ -1533,7 +1533,7 @@ function onSwitchAgent(nextAgentId: string) {
 .treeColumn {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color--background--light-3);
+	background-color: var(--background--surface);
 	border-left: var(--border);
 	height: 100%;
 	min-height: 0;
@@ -1543,7 +1543,7 @@ function onSwitchAgent(nextAgentId: string) {
 .editorColumn {
 	display: flex;
 	flex-direction: column;
-	background-color: var(--color--background--light-3);
+	background-color: var(--background--surface);
 	min-height: 0;
 	min-width: 0;
 }
@@ -1602,7 +1602,7 @@ function onSwitchAgent(nextAgentId: string) {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .rawPanel {
@@ -1632,12 +1632,12 @@ function onSwitchAgent(nextAgentId: string) {
 	border: var(--border);
 	border-color: transparent;
 	border-radius: var(--radius);
-	color: var(--color--text);
+	color: var(--text-color);
 	cursor: pointer;
 	flex-shrink: 0;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--background--hover);
 	}
 }
 

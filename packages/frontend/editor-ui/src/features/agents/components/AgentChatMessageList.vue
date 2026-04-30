@@ -293,7 +293,7 @@ watch(
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--color--background);
+	background-color: var(--background--surface);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
@@ -302,13 +302,13 @@ watch(
 .chatMessageError {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
-	background-color: var(--color--danger--tint-4);
-	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
-	color: var(--color--danger);
+	background-color: var(--background--danger);
+	border: var(--border-width) var(--border-style) var(--border-color--danger);
+	color: var(--text-color--danger);
 }
 
 .markdownContent {
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
@@ -328,7 +328,7 @@ watch(
 
 .thinkingSummary {
 	cursor: pointer;
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 	font-style: italic;
 	display: flex;
 	align-items: center;
@@ -340,7 +340,7 @@ watch(
 	white-space: pre-wrap;
 	font-family: inherit;
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	max-height: 150px;
 	overflow-y: auto;
 }

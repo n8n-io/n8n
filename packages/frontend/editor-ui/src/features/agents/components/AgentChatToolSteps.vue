@@ -73,7 +73,7 @@ defineProps<{
 	width: 14px;
 	height: 14px;
 	flex-shrink: 0;
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 }
 
 .toolStep:not(:last-child) .toolStepIndicator::after {
@@ -84,34 +84,34 @@ defineProps<{
 	width: 1px;
 	height: var(--spacing--2xs);
 	transform: translateX(-50%);
-	background-color: var(--color--foreground);
+	background-color: var(--border-color);
 }
 
 .toolStepDone {
-	color: var(--color--success);
+	color: var(--text-color--success);
 }
 
 .toolStepError {
-	color: var(--color--danger);
+	color: var(--text-color--danger);
 }
 
 .toolStepLoading {
-	color: var(--color--text);
+	color: var(--text-color);
 }
 
 .toolStepSuspended {
-	color: var(--color--warning);
+	color: var(--text-color--warning);
 }
 
 .toolStepLabel {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	line-height: var(--line-height--sm);
 }
 
 .toolStepSummary {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	font-size: var(--font-size--xs);
 	line-height: var(--line-height--sm);
 	overflow: hidden;
@@ -123,9 +123,9 @@ defineProps<{
 .shimmer {
 	background: linear-gradient(
 		90deg,
-		var(--color--text--tint-1) 25%,
-		var(--color--text--tint-2) 50%,
-		var(--color--text--tint-1) 75%
+		var(--text-color--subtle) 25%,
+		var(--text-color--subtler) 50%,
+		var(--text-color--subtle) 75%
 	);
 	background-size: 200% 100%;
 	-webkit-background-clip: text;

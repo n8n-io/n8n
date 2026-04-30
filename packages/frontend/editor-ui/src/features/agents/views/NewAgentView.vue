@@ -263,7 +263,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 			<div :class="$style.topBar">
 				<N8nButton
 					:label="i18n.baseText('agents.new.startBlank')"
-					variant="subtle"
+					variant="ghost"
 					size="medium"
 					icon="file"
 					:loading="isCreating"
@@ -295,10 +295,11 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 
 					<div :class="$style.suggestionGrid">
 						<button
-							v-for="suggestion in suggestions"
+							v-for="(suggestion, index) in suggestions"
 							:key="suggestion.name"
 							type="button"
 							:class="$style.suggestionCard"
+							:style="{ '--suggestion-index': index }"
 							data-testid="agent-suggestion-card"
 							@click="selectSuggestion(suggestion)"
 						>
@@ -346,8 +347,13 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	display: flex;
 	align-items: center;
 	justify-content: flex-end;
-	padding: var(--spacing--sm) var(--spacing--lg);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	padding: var(--spacing--xs) var(--spacing--xs);
+	background-image: linear-gradient(
+		to bottom,
+		var(--color--background--light-3),
+		var(--color--background--light-3) 1px,
+		transparent 1px
+	);
 }
 
 .center {
@@ -367,13 +373,14 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text--shade-1);
 	margin: 0 0 var(--spacing--lg);
-	animation: headingLift 360ms ease-out both;
+	animation: headingLift var(--duration--base) var(--easing--ease-out) both;
 }
 
 .inputWrapper {
 	width: 100%;
 	margin-bottom: var(--spacing--xl);
-	animation: contentDropIn 360ms ease-out 80ms both;
+	animation: contentDropIn var(--duration--base) var(--easing--ease-out)
+		calc(var(--duration--base) / 4) both;
 }
 
 .suggestions {
@@ -381,7 +388,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	animation: contentDropIn 360ms ease-out 160ms both;
+	animation: contentDropIn var(--duration--base) var(--easing--ease-out) 160ms both;
 }
 
 .suggestionsLabel {
@@ -408,11 +415,13 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	background: var(--color--background--light-3);
 	cursor: pointer;
 	transition:
-		background-color 0.15s ease,
-		border-color 0.15s ease,
-		box-shadow 0.15s ease;
+		background-color var(--duration--snappy) var(--easing--ease-out),
+		border-color var(--duration--snappy) var(--easing--ease-out),
+		box-shadow var(--duration--snappy) var(--easing--ease-out);
 	text-align: left;
 	font: inherit;
+	animation: suggestionCardIn var(--duration--base) var(--easing--ease-out)
+		calc(240ms + var(--suggestion-index) * 80ms) both;
 }
 
 .suggestionCard:hover,
@@ -448,11 +457,13 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 @keyframes headingLift {
 	from {
 		opacity: 0;
+		filter: blur(3px);
 		transform: translateY(var(--spacing--xs));
 	}
 
 	to {
 		opacity: 1;
+		filter: blur(0);
 		transform: translateY(calc(-1 * var(--spacing--xs)));
 	}
 }
@@ -460,7 +471,21 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 @keyframes contentDropIn {
 	from {
 		opacity: 0;
+		filter: blur(3px);
 		transform: translateY(calc(-1 * var(--spacing--xs)));
+	}
+
+	to {
+		opacity: 1;
+		filter: blur(0);
+		transform: translateY(0);
+	}
+}
+
+@keyframes suggestionCardIn {
+	from {
+		opacity: 0;
+		transform: translateY(var(--spacing--2xs));
 	}
 
 	to {
@@ -472,7 +497,8 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 @media (prefers-reduced-motion: reduce) {
 	.heading,
 	.inputWrapper,
-	.suggestions {
+	.suggestions,
+	.suggestionCard {
 		animation: none;
 	}
 }
