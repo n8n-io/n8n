@@ -169,7 +169,7 @@ async function main(): Promise<void> {
 
 		let evaluation: MultiRunEvaluation;
 		let experimentName: string | undefined;
-		let comparison: { result: ComparisonResult; markdown: string } | undefined;
+		let comparison: ComparisonResult | undefined;
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
@@ -183,22 +183,20 @@ async function main(): Promise<void> {
 		}
 
 		const totalDuration = Date.now() - startTime;
-		const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
-		const { jsonPath, markdownPath } = writeEvalResults(
+		const commitSha = process.env.LANGSMITH_REVISION_ID ?? process.env.GITHUB_SHA;
+		const { jsonPath, prCommentPath } = writeEvalResults(
 			evaluation,
 			totalDuration,
 			args.outputDir,
 			experimentName,
 			comparison,
+			commitSha,
 		);
 		console.log(`Results:    ${jsonPath}`);
-		if (markdownPath) console.log(`Comparison: ${markdownPath}`);
+		console.log(`PR comment: ${prCommentPath}`);
 		const htmlPath = writeWorkflowReport(flattenRunsForReport(evaluation));
 		console.log(`Report:     ${htmlPath}`);
-		printSummary(evaluation, testCasesWithFiles);
-		if (comparison) {
-			console.log('\n' + formatComparisonTerminal(comparison.result));
-		}
+		console.log('\n' + formatComparisonTerminal(evaluation, comparison, { commitSha }));
 	} finally {
 		await Promise.all(
 			lanes.map(async (lane) => {
@@ -215,7 +213,7 @@ async function main(): Promise<void> {
 async function runWithLangSmith(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	experimentName: string;
-	comparison?: { result: ComparisonResult; markdown: string };
+	comparison?: ComparisonResult;
 }> {
 	const { args, lanes, logger } = config;
 
@@ -868,8 +866,9 @@ function writeEvalResults(
 	duration: number,
 	outputDir: string | undefined,
 	experimentName: string | undefined,
-	comparison: { result: ComparisonResult; markdown: string } | undefined,
-): { jsonPath: string; markdownPath?: string } {
+	comparison: ComparisonResult | undefined,
+	commitSha: string | undefined,
+): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
 
@@ -887,12 +886,12 @@ function writeEvalResults(
 			passRatePerIter: metrics.passRatePerIter,
 		},
 		// Structured comparison payload only — the rendered markdown lives in
-		// the sibling `eval-comparison.md` file so consumers can pick the format
+		// the sibling `eval-pr-comment.md` file so consumers can pick the format
 		// they want without re-running the eval.
 		comparison: comparison
 			? {
-					baseline: comparison.result.baseline.experimentName,
-					result: serializeComparison(comparison.result),
+					baseline: comparison.baseline.experimentName,
+					result: serializeComparison(comparison),
 				}
 			: undefined,
 		testCases: testCases.map((tc) => ({
@@ -923,13 +922,13 @@ function writeEvalResults(
 	const jsonPath = join(targetDir, 'eval-results.json');
 	writeFileSync(jsonPath, JSON.stringify(report, null, 2));
 
-	let markdownPath: string | undefined;
-	if (comparison) {
-		markdownPath = join(targetDir, 'eval-comparison.md');
-		writeFileSync(markdownPath, comparison.markdown);
-	}
+	// Always write the rendered PR comment — the markdown formatter handles
+	// both with-comparison and no-baseline cases. CI consumes this file
+	// directly; local users get a copy-pasteable artifact.
+	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
+	writeFileSync(prCommentPath, formatComparisonMarkdown(evaluation, comparison, { commitSha }));
 
-	return { jsonPath, markdownPath };
+	return { jsonPath, prCommentPath };
 }
 
 /**
@@ -974,7 +973,7 @@ async function tryRunComparison(config: {
 	evaluation: MultiRunEvaluation;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
 	logger: EvalLogger;
-}): Promise<{ result: ComparisonResult; markdown: string } | undefined> {
+}): Promise<ComparisonResult | undefined> {
 	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
 
 	try {
@@ -994,9 +993,7 @@ async function tryRunComparison(config: {
 		logger.info(`Comparing against baseline: ${baselineName}`);
 		const baseline = await fetchBaselineBucket(lsClient, baselineName);
 		const pr = bucketFromEvaluation(evaluation, testCasesWithFiles, prExperimentName);
-		const result = compareBuckets(pr, baseline);
-		const markdown = formatComparisonMarkdown(result);
-		return { result, markdown };
+		return compareBuckets(pr, baseline);
 	} catch (error: unknown) {
 		const msg = error instanceof Error ? error.message : String(error);
 		logger.warn(`Comparison vs baseline failed: ${msg}`);
@@ -1052,109 +1049,6 @@ function bucketFromEvaluation(
 		}
 	}
 	return { experimentName, scenarios, failureCategoryTotals, trialTotal };
-}
-
-// ---------------------------------------------------------------------------
-// Console summary
-// ---------------------------------------------------------------------------
-
-function printSummary(
-	evaluation: MultiRunEvaluation,
-	testCasesWithFiles: WorkflowTestCaseWithFile[],
-): void {
-	const { totalRuns, testCases } = evaluation;
-	const multiRun = totalRuns > 1;
-	const metrics = computeAggregateMetrics(evaluation);
-	const slugByTestCase = new Map(
-		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
-	);
-
-	console.log('\nWorkflow Eval Results');
-	console.log('─────────────────────\n');
-
-	for (const tc of testCases) {
-		const slug = slugByTestCase.get(tc.testCase) ?? tc.testCase.prompt.slice(0, 60);
-		console.log(slug);
-		console.log(`  prompt: ${tc.testCase.prompt.slice(0, 80)}…`);
-
-		if (multiRun) {
-			console.log(`  builds: ${tc.buildSuccessCount}/${totalRuns}`);
-			console.log('');
-			printScenariosTable(tc.scenarios, totalRuns, metrics.kIndex);
-		} else {
-			const r = tc.runs[0];
-			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
-			console.log(`  workflow: ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
-			if (r.buildError) console.log(`  error: ${r.buildError.slice(0, 200)}`);
-			console.log('');
-			printScenariosSingleRun(tc.scenarios);
-		}
-		console.log('');
-	}
-
-	console.log('Summary');
-	console.log('───────');
-	if (multiRun) {
-		console.log(`  built       ${metrics.built}/${testCases.length}`);
-		console.log(`  pass@${totalRuns}      ${Math.round(metrics.passAtK * 100)}%`);
-		console.log(`  pass^${totalRuns}      ${Math.round(metrics.passHatK * 100)}%`);
-		console.log(`  iter rates  ${metrics.passRatePerIter}`);
-	} else {
-		const allScenarios = testCases.flatMap((tc) => tc.scenarios);
-		const passed = allScenarios.filter((s) => s.runs[0]?.success).length;
-		const total = metrics.scenariosTotal;
-		const pct = total > 0 ? Math.round((passed / total) * 100) : 0;
-		console.log(`  built       ${metrics.built}/${testCases.length}`);
-		console.log(`  passed      ${passed}/${total} (${pct}%)`);
-	}
-}
-
-function printScenariosTable(
-	scenarios: MultiRunEvaluation['testCases'][number]['scenarios'],
-	totalRuns: number,
-	kIndex: number,
-): void {
-	const rows = scenarios.map((sa) => ({
-		name: sa.scenario.name,
-		passed: `${sa.passCount}/${totalRuns}`,
-		passAtK: `${Math.round((sa.passAtK[kIndex] ?? 0) * 100)}%`,
-		passHatK: `${Math.round((sa.passHatK[kIndex] ?? 0) * 100)}%`,
-	}));
-	const nameW = Math.max(...rows.map((r) => r.name.length), 'scenario'.length);
-	const passedW = Math.max(...rows.map((r) => r.passed.length), 'passed'.length);
-	const atKHeader = `pass@${totalRuns}`;
-	const hatKHeader = `pass^${totalRuns}`;
-	const atKW = Math.max(...rows.map((r) => r.passAtK.length), atKHeader.length);
-	const hatKW = Math.max(...rows.map((r) => r.passHatK.length), hatKHeader.length);
-	const indent = '  ';
-	console.log(
-		`${indent}${'scenario'.padEnd(nameW)}  ${'passed'.padEnd(passedW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
-	);
-	console.log(
-		`${indent}${'─'.repeat(nameW)}  ${'─'.repeat(passedW)}  ${'─'.repeat(atKW)}  ${'─'.repeat(hatKW)}`,
-	);
-	for (const r of rows) {
-		console.log(
-			`${indent}${r.name.padEnd(nameW)}  ${r.passed.padEnd(passedW)}  ${r.passAtK.padStart(atKW)}  ${r.passHatK.padStart(hatKW)}`,
-		);
-	}
-}
-
-function printScenariosSingleRun(
-	scenarios: MultiRunEvaluation['testCases'][number]['scenarios'],
-): void {
-	for (const sa of scenarios) {
-		const sr = sa.runs[0];
-		const status = sr.success ? 'PASS' : 'FAIL';
-		const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
-		console.log(`  ${status}  ${sr.scenario.name}${category}  (${Math.round(sr.score * 100)}%)`);
-		if (!sr.success) {
-			const execErrors = sr.evalResult?.errors ?? [];
-			if (execErrors.length > 0)
-				console.log(`        error: ${execErrors.join('; ').slice(0, 200)}`);
-			console.log(`        diagnosis: ${sr.reasoning.slice(0, 200)}`);
-		}
-	}
 }
 
 main().catch((error) => {

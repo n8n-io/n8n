@@ -1,17 +1,18 @@
 // ---------------------------------------------------------------------------
-// Render a ComparisonResult as a markdown block for the PR comment.
+// Render the eval run as a PR comment (markdown) or a console summary
+// (aligned plain text). Both formats are driven by:
 //
-// Three tiers, surfaced as separate sections (skipped when empty):
-//   - Regressions          — high-confidence flags
-//   - Soft regressions     — looser bar; investigate, not gating
-//   - Notable movement     — large delta, no statistical flag (visibility)
+//   - MultiRunEvaluation — pass rates, build counts, per-trial reasoning
+//   - ComparisonResult (optional) — verdicts vs the LangSmith baseline
 //
-// Plus an Improvements section and a run-level Failure-category drift table
-// when category data is available on both sides.
+// When no comparison is available (no baseline yet, LangSmith offline)
+// the renderers still produce a useful per-test-case summary. When a
+// comparison is available, sections render in priority order:
+// regressions, soft regressions, notable movement, improvements,
+// failure-category drift. Only sections with content are emitted.
 // ---------------------------------------------------------------------------
 
 import {
-	byVerdict,
 	hardRegressions,
 	improvements,
 	softRegressions,
@@ -20,299 +21,659 @@ import {
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
+import type { MultiRunEvaluation, WorkflowTestCaseResult } from '../types';
 
-/** Aggregate pass-rate change large enough to bold in the header. */
-const AGGREGATE_NOTABLE_DELTA = 0.05;
+interface FormatOptions {
+	/** Optional commit SHA to include in the heading. Truncated to 8 chars. */
+	commitSha?: string;
+}
 
-export function formatComparisonMarkdown(result: ComparisonResult): string {
-	const counts = byVerdict(result);
-	const hard = hardRegressions(result);
-	const soft = softRegressions(result);
-	const watch = watchList(result);
-	const imps = improvements(result);
+// ---------------------------------------------------------------------------
+// Markdown PR comment
+// ---------------------------------------------------------------------------
 
+export function formatComparisonMarkdown(
+	evaluation: MultiRunEvaluation,
+	comparison?: ComparisonResult,
+	options: FormatOptions = {},
+): string {
 	const lines: string[] = [];
-	lines.push(`### vs Baseline \`${result.baseline.experimentName}\``);
-	lines.push('');
-	lines.push(formatAggregateLine(result));
-	lines.push('');
 
-	const partial = formatPartialBanner(result);
-	if (partial !== undefined) {
-		lines.push(partial);
-		lines.push('');
-	}
-
-	lines.push(formatTallyLine(counts));
+	lines.push(formatHeading(options.commitSha));
+	lines.push('');
+	lines.push(formatTopAlert(evaluation, comparison));
+	lines.push('');
+	lines.push(formatAggregateBlock(evaluation, comparison));
 	lines.push('');
 
-	if (hard.length > 0) {
-		lines.push('#### Regressions');
-		lines.push('');
-		lines.push(
-			'High-confidence: large pass-rate drop on a reliable scenario, unlikely to be noise.',
-		);
-		lines.push('');
-		lines.push(formatScenarioTable(hard, { withPValue: true }));
-		lines.push('');
+	if (comparison) {
+		const hard = hardRegressions(comparison);
+		const soft = softRegressions(comparison);
+		const watch = watchList(comparison);
+		const imps = improvements(comparison);
+
+		const renderedAnyTable = hard.length > 0 || soft.length > 0 || imps.length > 0;
+
+		if (hard.length > 0) {
+			lines.push(...renderScenarioSection('Regressions', '— high-confidence', hard, true));
+		}
+		if (soft.length > 0) {
+			lines.push(
+				...renderScenarioSection('Soft regressions', '— likely natural variance', soft, true),
+			);
+		}
+		if (watch.length > 0) {
+			lines.push(
+				...renderScenarioSection(
+					'Notable movement',
+					'— large gap, no statistical flag',
+					watch,
+					false,
+				),
+			);
+		}
+		if (imps.length > 0) {
+			lines.push(...renderScenarioSection('Improvements', '', imps, true));
+		}
+
+		if (renderedAnyTable) {
+			lines.push(
+				"_p = Fisher's exact one-sided p-value. Lower = stronger evidence of a real change._",
+			);
+			lines.push('');
+		}
+
+		const notableCats = comparison.failureCategories.filter((c) => c.notable);
+		if (notableCats.length > 0) {
+			lines.push(...renderFailureCategorySection(notableCats));
+		}
 	}
 
-	if (soft.length > 0) {
-		lines.push('#### Soft regressions');
-		lines.push('');
-		lines.push(
-			'Crossed the looser bar. Frequently natural variance — worth a glance only if your changes touch related code paths.',
-		);
-		lines.push('');
-		lines.push(formatScenarioTable(soft, { withPValue: true }));
-		lines.push('');
+	lines.push(...renderPerTestCaseDetails(evaluation));
+
+	if (comparison) {
+		const otherFindings = renderOtherFindings(comparison);
+		if (otherFindings.length > 0) lines.push(...otherFindings);
 	}
 
-	if (watch.length > 0) {
-		lines.push('#### Notable movement');
-		lines.push('');
-		lines.push('Moved noticeably without crossing either regression bar. Visibility only.');
-		lines.push('');
-		lines.push(formatScenarioTable(watch, { withPValue: false }));
-		lines.push('');
-	}
-
-	if (imps.length > 0) {
-		lines.push('#### Improvements');
-		lines.push('');
-		lines.push(formatScenarioTable(imps, { withPValue: true }));
-		lines.push('');
-	}
-
-	const categoryBlock = formatFailureCategorySection(result.failureCategories);
-	if (categoryBlock) {
-		lines.push(categoryBlock);
-		lines.push('');
-	}
-
-	if (
-		hard.length === 0 &&
-		soft.length === 0 &&
-		watch.length === 0 &&
-		imps.length === 0 &&
-		!categoryBlock
-	) {
-		lines.push('_No scenarios moved beyond the noise floor._');
-	}
+	const failureDetails = renderFailureDetails(evaluation);
+	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
 }
 
-function formatAggregateLine(result: ComparisonResult): string {
-	const { aggregate } = result;
+function formatHeading(commitSha?: string): string {
+	const sha = commitSha ? ` — \`${commitSha.slice(0, 8)}\`` : '';
+	return `### Instance AI Workflow Eval${sha}`;
+}
+
+function formatTopAlert(_evaluation: MultiRunEvaluation, comparison?: ComparisonResult): string {
+	if (!comparison) {
+		return [
+			'> [!NOTE]',
+			'> No baseline configured — comparison skipped. Run the eval with `--experiment-name instance-ai-baseline` on master to create one.',
+		].join('\n');
+	}
+
+	const hard = hardRegressions(comparison).length;
+	const soft = softRegressions(comparison).length;
+	const watch = watchList(comparison).length;
+	const imps = improvements(comparison).length;
+
+	const aggDelta = comparison.aggregate.delta * 100;
+	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
+
+	const parts: string[] = [];
+	if (hard > 0) parts.push(`**${hard} regression${hard === 1 ? '' : 's'}**`);
+	if (soft > 0) parts.push(`${soft} soft`);
+	if (watch > 0) parts.push(`${watch} notable`);
+	if (imps > 0) parts.push(`${imps} improvement${imps === 1 ? '' : 's'}`);
+
+	let icon: string;
+	let alertKind: 'CAUTION' | 'WARNING' | 'NOTE' | 'TIP';
+	let summary: string;
+
+	if (hard > 0) {
+		icon = '🔴';
+		alertKind = 'CAUTION';
+		summary = `${parts.join(', ')}. Pass rate ${aggDeltaText} vs master.`;
+	} else if (soft > 0) {
+		icon = '🟡';
+		alertKind = 'WARNING';
+		summary = `${parts.join(', ')} to investigate. Pass rate ${aggDeltaText} vs master.`;
+	} else if (watch > 0 || imps > 0) {
+		icon = imps > 0 && watch === 0 ? '🟢' : '🔵';
+		alertKind = imps > 0 && watch === 0 ? 'TIP' : 'NOTE';
+		summary = `No regressions${parts.length ? `. ${parts.join(', ')}` : ''}. Pass rate ${aggDeltaText} vs master.`;
+	} else {
+		icon = '🟢';
+		alertKind = 'TIP';
+		summary = `No regressions. ${countByVerdict(comparison, 'stable')} stable. Pass rate ${aggDeltaText} vs master.`;
+	}
+
+	return `> [!${alertKind}]\n> ${icon} ${summary}`;
+}
+
+function formatAggregateBlock(
+	evaluation: MultiRunEvaluation,
+	comparison?: ComparisonResult,
+): string {
+	if (!comparison) {
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
+		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
+		const rate = total > 0 ? (passed / total) * 100 : 0;
+		return `**Aggregate**: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`;
+	}
+
+	const { aggregate } = comparison;
 	const delta = aggregate.delta * 100;
 	const sign = delta >= 0 ? '+' : '';
-	const emphasis = Math.abs(aggregate.delta) >= AGGREGATE_NOTABLE_DELTA;
-	const deltaPart = `**${sign}${delta.toFixed(1)}pp**${emphasis ? ' (worth a look)' : ''}`;
-	return (
-		`Aggregate (n=${String(aggregate.intersectionSize)}): ` +
-		`PR ${pct(aggregate.prAggregatePassRate)}% vs baseline ${pct(aggregate.baselineAggregatePassRate)}% — ` +
-		deltaPart
-	);
+	const arrow = delta > 0 ? ' ↑' : delta < 0 ? ' ↓' : '';
+
+	const baselineN = inferBaselineN(comparison);
+	const sampleLine = baselineN
+		? `_${aggregate.intersectionSize} scenarios · N=${evaluation.totalRuns} (PR) vs N=${baselineN} (baseline) · baseline: \`${comparison.baseline.experimentName}\`_`
+		: `_${aggregate.intersectionSize} scenarios · N=${evaluation.totalRuns} (PR) · baseline: \`${comparison.baseline.experimentName}\`_`;
+
+	const partial = comparison.baselineOnly.length + comparison.prOnly.length;
+	const partialNote =
+		partial > 0
+			? `\n_Partial: ${[
+					comparison.baselineOnly.length > 0
+						? `${comparison.baselineOnly.length} in baseline not run by PR`
+						: null,
+					comparison.prOnly.length > 0 ? `${comparison.prOnly.length} new in PR` : null,
+				]
+					.filter((s) => s !== null)
+					.join(', ')}._`
+			: '';
+
+	return [
+		`**Aggregate**: ${pct(aggregate.prAggregatePassRate)}% PR vs ${pct(aggregate.baselineAggregatePassRate)}% baseline — **${sign}${delta.toFixed(1)}pp${arrow}**`,
+		sampleLine + partialNote,
+	].join('\n');
 }
 
-function formatTallyLine(counts: Record<string, number>): string {
-	// Spell out each tier explicitly. The reader shouldn't have to guess what
-	// "soft" or "watch" means — each label says what it is.
-	const parts: string[] = [];
-	if (counts.hard_regression) {
-		parts.push(`**${String(counts.hard_regression)} regression** (high-confidence)`);
-	}
-	if (counts.soft_regression) {
-		parts.push(`${String(counts.soft_regression)} soft regression`);
-	}
-	if (counts.watch) {
-		parts.push(`${String(counts.watch)} notable movement (no claim)`);
-	}
-	if (counts.improvement) {
-		parts.push(`${String(counts.improvement)} improvement`);
-	}
-	if (counts.unreliable_baseline) {
-		parts.push(`${String(counts.unreliable_baseline)} on flaky baseline`);
-	}
-	parts.push(`${String(counts.stable)} stable`);
-	if (counts.insufficient_data) parts.push(`${String(counts.insufficient_data)} no data`);
-	return parts.join(' · ');
-}
-
-function formatPartialBanner(result: ComparisonResult): string | undefined {
-	const skipped = result.baselineOnly.length;
-	const onlyInPr = result.prOnly.length;
-	if (skipped === 0 && onlyInPr === 0) return undefined;
-	const parts: string[] = [];
-	if (skipped > 0) parts.push(`${String(skipped)} in baseline not run by PR`);
-	if (onlyInPr > 0) parts.push(`${String(onlyInPr)} new in PR`);
-	return `> Partial comparison: ${parts.join(', ')}.`;
-}
-
-function formatScenarioTable(
+function renderScenarioSection(
+	heading: string,
+	subtitle: string,
 	scenarios: ScenarioComparison[],
-	opts: { withPValue: boolean },
-): string {
-	const header = opts.withPValue
-		? '| Scenario | PR | Baseline | Δ | noise probability |\n|---|---|---|---|---|'
-		: '| Scenario | PR | Baseline | Δ |\n|---|---|---|---|';
-	const rows = scenarios.map((s) => {
-		const prRate = `${String(s.prPasses)}/${String(s.prTotal)}`;
-		const baseRate = `${String(s.baselinePasses)}/${String(s.baselineTotal)}`;
-		const delta = s.delta * 100;
-		const sign = delta >= 0 ? '+' : '';
-		const cells: string[] = [
-			`${s.testCaseFile} / ${s.scenarioName}`,
-			prRate,
-			baseRate,
-			`${sign}${delta.toFixed(0)}pp`,
+	withPValue: boolean,
+): string[] {
+	const lines: string[] = [];
+	const headingLine = subtitle
+		? `#### ${heading} (${scenarios.length}) ${subtitle}`
+		: `#### ${heading} (${scenarios.length})`;
+	lines.push(headingLine);
+	lines.push('');
+	if (withPValue) {
+		lines.push('| Scenario | PR | Baseline | Δ | p |');
+		lines.push('|---|---|---|---|---|');
+	} else {
+		lines.push('| Scenario | PR | Baseline | Δ |');
+		lines.push('|---|---|---|---|');
+	}
+	for (const s of scenarios) {
+		const cells = [
+			`\`${s.testCaseFile}/${s.scenarioName}\``,
+			formatRateCell(s.prPasses, s.prTotal),
+			formatRateCell(s.baselinePasses, s.baselineTotal),
+			formatDeltaCell(s.delta),
 		];
-		if (opts.withPValue) {
+		if (withPValue) {
 			const p = s.verdict === 'improvement' ? s.pValueRight : s.pValueLeft;
 			cells.push(p.toFixed(3));
 		}
-		return `| ${cells.join(' | ')} |`;
-	});
-	return [header, ...rows].join('\n');
+		lines.push(`| ${cells.join(' | ')} |`);
+	}
+	lines.push('');
+	return lines;
 }
 
-function formatFailureCategorySection(categories: FailureCategoryComparison[]): string | undefined {
-	if (categories.length === 0) return undefined;
-	// Always show the table, but only include categories with non-zero count on either side.
-	const rows = categories.filter((c) => c.prCount > 0 || c.baselineCount > 0);
-	if (rows.length === 0) return undefined;
-
-	const header = '| Category | PR | Baseline | Δ |\n|---|---|---|---|';
-	const formatted = rows.map((c) => {
-		const prRate = pct(c.prRate);
-		const baseRate = pct(c.baselineRate);
+function renderFailureCategorySection(notable: FailureCategoryComparison[]): string[] {
+	const lines: string[] = [];
+	lines.push('#### Failure types shifted');
+	lines.push('');
+	lines.push('| Category | PR | Baseline | Δ |');
+	lines.push('|---|---|---|---|');
+	for (const c of notable) {
+		const isNew = c.baselineCount === 0 && c.prCount > 0;
+		const label = isNew ? `\`${c.category}\` 🆕` : `\`${c.category}\``;
 		const delta = c.delta * 100;
 		const sign = delta >= 0 ? '+' : '';
-		const note = c.notable ? ' **(notable)**' : '';
-		return `| ${c.category} | ${c.prCount} (${prRate}%) | ${c.baselineCount} (${baseRate}%) | ${sign}${delta.toFixed(1)}pp${note} |`;
-	});
-
-	return ['#### Failure-category drift', '', header, ...formatted].join('\n');
+		lines.push(
+			`| ${label} | ${c.prCount} (${pct(c.prRate)}%) | ${c.baselineCount} (${pct(c.baselineRate)}%) | ${sign}${delta.toFixed(1)}pp |`,
+		);
+	}
+	lines.push('');
+	return lines;
 }
+
+function renderPerTestCaseDetails(evaluation: MultiRunEvaluation): string[] {
+	const { totalRuns, testCases } = evaluation;
+	if (testCases.length === 0) return [];
+	const lines: string[] = [];
+	lines.push(`<details><summary>Per-test-case results (${testCases.length})</summary>`);
+	lines.push('');
+	if (totalRuns > 1) {
+		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
+		lines.push('|---|---|---|---|');
+		for (const tc of testCases) {
+			const meanPassAtK = tc.scenarios.length
+				? Math.floor(
+						(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
+							tc.scenarios.length) *
+							100,
+					)
+				: 0;
+			const meanPassHatK = tc.scenarios.length
+				? Math.floor(
+						(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
+							tc.scenarios.length) *
+							100,
+					)
+				: 0;
+			const name = `\`${tc.testCase.prompt.slice(0, 70)}\``;
+			lines.push(
+				`| ${name} | ${tc.buildSuccessCount}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
+			);
+		}
+	} else {
+		lines.push('| Workflow | Built | Pass rate |');
+		lines.push('|---|---|---|');
+		for (const tc of testCases) {
+			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
+			const passed = tc.scenarios.filter((sa) => sa.runs[0]?.success).length;
+			const total = tc.scenarios.length;
+			const name = `\`${tc.testCase.prompt.slice(0, 70)}\``;
+			lines.push(`| ${name} | ${built} | ${passed}/${total} |`);
+		}
+	}
+	lines.push('');
+	lines.push('</details>');
+	lines.push('');
+	return lines;
+}
+
+function renderOtherFindings(comparison: ComparisonResult): string[] {
+	const stable = countByVerdict(comparison, 'stable');
+	const flaky = countByVerdict(comparison, 'unreliable_baseline');
+	const noData = countByVerdict(comparison, 'insufficient_data');
+	if (stable === 0 && flaky === 0 && noData === 0) return [];
+
+	const summaryParts: string[] = [];
+	if (flaky > 0) summaryParts.push(`${flaky} on flaky baseline`);
+	if (noData > 0) summaryParts.push(`${noData} no data`);
+	if (stable > 0) summaryParts.push(`${stable} stable`);
+	const summary = summaryParts.join(' · ');
+
+	const lines: string[] = [];
+	lines.push(`<details><summary>Other findings: ${summary}</summary>`);
+	lines.push('');
+
+	const stableScenarios = comparison.scenarios.filter((s) => s.verdict === 'stable');
+	const flakyScenarios = comparison.scenarios.filter((s) => s.verdict === 'unreliable_baseline');
+	const noDataScenarios = comparison.scenarios.filter((s) => s.verdict === 'insufficient_data');
+
+	if (flakyScenarios.length > 0) {
+		lines.push('**Confident drop on a flaky baseline (surfaced for visibility, not flagged):**');
+		lines.push('');
+		lines.push('| Scenario | PR | Baseline | Δ |');
+		lines.push('|---|---|---|---|');
+		for (const s of flakyScenarios) {
+			lines.push(
+				`| \`${s.testCaseFile}/${s.scenarioName}\` | ${formatRateCell(s.prPasses, s.prTotal)} | ${formatRateCell(s.baselinePasses, s.baselineTotal)} | ${formatDeltaCell(s.delta)} |`,
+			);
+		}
+		lines.push('');
+	}
+
+	if (noDataScenarios.length > 0) {
+		lines.push(
+			`**No data:** ${noDataScenarios.map((s) => `\`${s.testCaseFile}/${s.scenarioName}\``).join(', ')}`,
+		);
+		lines.push('');
+	}
+
+	if (stableScenarios.length > 0) {
+		lines.push(`**Stable (${stableScenarios.length}):**`);
+		lines.push(
+			stableScenarios.map((s) => `\`${s.testCaseFile}/${s.scenarioName}\``).join(', ') + '.',
+		);
+		lines.push('');
+	}
+
+	lines.push('</details>');
+	lines.push('');
+	return lines;
+}
+
+function renderFailureDetails(evaluation: MultiRunEvaluation): string[] {
+	const failed: Array<{
+		tc: WorkflowTestCaseResult;
+		scenarioName: string;
+		failedRuns: Array<{ category?: string; reasoning: string }>;
+	}> = [];
+	for (const tc of evaluation.testCases) {
+		for (const sa of tc.scenarios) {
+			const failedRuns = sa.runs
+				.filter((r) => !r.success)
+				.map((r) => ({ category: r.failureCategory, reasoning: r.reasoning }));
+			if (failedRuns.length > 0) {
+				failed.push({ tc: tc.runs[0], scenarioName: sa.scenario.name, failedRuns });
+			}
+		}
+	}
+	if (failed.length === 0) return [];
+
+	const lines: string[] = [];
+	lines.push('<details><summary>Failure details</summary>');
+	lines.push('');
+	for (const { tc, scenarioName, failedRuns } of failed) {
+		const tcName = tc.testCase.prompt.slice(0, 70);
+		lines.push(`**${tcName} / ${scenarioName}** — ${failedRuns.length} failed`);
+		for (const fr of failedRuns) {
+			const tag = fr.category ? ` [${fr.category}]` : '';
+			lines.push(`> Run${tag}: ${fr.reasoning.slice(0, 200)}`);
+		}
+		lines.push('');
+	}
+	lines.push('</details>');
+	lines.push('');
+	return lines;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function pct(rate: number): string {
 	return (rate * 100).toFixed(1);
 }
 
+function formatRateCell(passes: number, total: number): string {
+	const rate = total > 0 ? Math.round((passes / total) * 100) : 0;
+	return `${passes}/${total} (${rate}%)`;
+}
+
+function formatDeltaCell(delta: number): string {
+	const pp = delta * 100;
+	const sign = pp >= 0 ? '+' : '';
+	const arrow = pp > 0 ? ' ↑' : pp < 0 ? ' ↓' : '';
+	return `${sign}${pp.toFixed(0)}pp${arrow}`;
+}
+
+function countByVerdict(
+	comparison: ComparisonResult,
+	verdict: ScenarioComparison['verdict'],
+): number {
+	return comparison.scenarios.filter((s) => s.verdict === verdict).length;
+}
+
+/** Best-effort N=baseline iteration count. The comparison only carries trial
+ *  totals per scenario; we infer N from the most-common scenario total since
+ *  the baseline runs every scenario the same number of times. */
+function inferBaselineN(comparison: ComparisonResult): number | undefined {
+	const totals = comparison.scenarios
+		.filter((s) => s.baselineTotal > 0)
+		.map((s) => s.baselineTotal);
+	if (totals.length === 0) return undefined;
+	const counts = new Map<number, number>();
+	for (const t of totals) counts.set(t, (counts.get(t) ?? 0) + 1);
+	let best = totals[0];
+	let bestCount = 0;
+	for (const [n, c] of counts) {
+		if (c > bestCount) {
+			best = n;
+			bestCount = c;
+		}
+	}
+	return best;
+}
+
 // ---------------------------------------------------------------------------
 // Terminal renderer: aligned plain text for the eval CLI's end-of-run print.
-// Same data as the markdown renderer, no markdown syntax.
 // ---------------------------------------------------------------------------
 
 const TERMINAL_INDENT = '  ';
 const TERMINAL_TABLE_INDENT = '    ';
 
-export function formatComparisonTerminal(result: ComparisonResult): string {
-	const counts = byVerdict(result);
-	const hard = hardRegressions(result);
-	const soft = softRegressions(result);
-	const watch = watchList(result);
-	const imps = improvements(result);
-	const cats = result.failureCategories.filter((c) => c.prCount > 0 || c.baselineCount > 0);
-
+export function formatComparisonTerminal(
+	evaluation: MultiRunEvaluation,
+	comparison?: ComparisonResult,
+	options: FormatOptions = {},
+): string {
 	const lines: string[] = [];
-	const title = `vs baseline ${result.baseline.experimentName}`;
+
+	const titleSuffix = options.commitSha ? ` — ${options.commitSha.slice(0, 8)}` : '';
+	const title = `Instance AI Workflow Eval${titleSuffix}`;
 	lines.push(title);
-	lines.push('─'.repeat(title.length));
+	lines.push('═'.repeat(title.length));
 
-	lines.push(TERMINAL_INDENT + formatTerminalAggregateLine(result));
+	lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(comparison));
+	lines.push('');
 
-	const partial = formatTerminalPartialLine(result);
-	if (partial !== undefined) lines.push(TERMINAL_INDENT + partial);
+	lines.push(...formatTerminalAggregate(evaluation, comparison));
+	lines.push('');
 
-	lines.push(TERMINAL_INDENT + 'verdicts: ' + formatTerminalTally(counts));
+	lines.push(...formatTerminalPerTestCase(evaluation));
 
-	if (hard.length > 0) {
-		lines.push('');
-		lines.push(
-			TERMINAL_INDENT +
-				'REGRESSIONS  (high-confidence: large drop on a reliable scenario, unlikely noise)',
-		);
-		lines.push(formatTerminalScenarioTable(hard, true));
-	}
+	if (comparison) {
+		const hard = hardRegressions(comparison);
+		const soft = softRegressions(comparison);
+		const watch = watchList(comparison);
+		const imps = improvements(comparison);
 
-	if (soft.length > 0) {
-		lines.push('');
-		lines.push(
-			TERMINAL_INDENT + 'SOFT REGRESSIONS  (crossed the looser bar — investigate, not gating)',
-		);
-		lines.push(formatTerminalScenarioTable(soft, true));
-	}
+		if (hard.length > 0) {
+			lines.push(
+				TERMINAL_INDENT +
+					'REGRESSIONS  (high-confidence: large drop on a reliable scenario, unlikely noise)',
+			);
+			lines.push(formatTerminalScenarioTable(hard, true));
+			lines.push('');
+		}
+		if (soft.length > 0) {
+			lines.push(
+				TERMINAL_INDENT +
+					'SOFT REGRESSIONS  (likely natural variance — investigate if related to your changes)',
+			);
+			lines.push(formatTerminalScenarioTable(soft, true));
+			lines.push('');
+		}
+		if (watch.length > 0) {
+			lines.push(TERMINAL_INDENT + 'NOTABLE MOVEMENT  (large gap, no statistical flag)');
+			lines.push(formatTerminalScenarioTable(watch, false));
+			lines.push('');
+		}
+		if (imps.length > 0) {
+			lines.push(TERMINAL_INDENT + 'IMPROVEMENTS');
+			lines.push(formatTerminalScenarioTable(imps, true));
+			lines.push('');
+		}
 
-	if (watch.length > 0) {
-		lines.push('');
-		lines.push(
-			TERMINAL_INDENT + 'NOTABLE MOVEMENT  (moved noticeably without crossing either bar)',
-		);
-		lines.push(formatTerminalScenarioTable(watch, false));
-	}
+		const notableCats = comparison.failureCategories.filter((c) => c.notable);
+		if (notableCats.length > 0) {
+			lines.push(TERMINAL_INDENT + 'failure-category drift');
+			lines.push(formatTerminalCategoryTable(notableCats));
+			lines.push('');
+		}
 
-	if (imps.length > 0) {
-		lines.push('');
-		lines.push(TERMINAL_INDENT + 'IMPROVEMENTS');
-		lines.push(formatTerminalScenarioTable(imps, true));
-	}
-
-	if (cats.length > 0) {
-		lines.push('');
-		lines.push(TERMINAL_INDENT + 'failure-category drift');
-		lines.push(formatTerminalCategoryTable(cats));
-	}
-
-	if (
-		hard.length === 0 &&
-		soft.length === 0 &&
-		watch.length === 0 &&
-		imps.length === 0 &&
-		cats.length === 0
-	) {
-		lines.push('');
-		lines.push(TERMINAL_INDENT + 'No scenarios moved beyond the noise floor.');
+		const flaky = countByVerdict(comparison, 'unreliable_baseline');
+		const noData = countByVerdict(comparison, 'insufficient_data');
+		const stable = countByVerdict(comparison, 'stable');
+		const otherParts: string[] = [];
+		if (flaky > 0) otherParts.push(`${flaky} on flaky baseline`);
+		if (noData > 0) otherParts.push(`${noData} no data`);
+		if (stable > 0) otherParts.push(`${stable} stable`);
+		if (otherParts.length > 0) {
+			lines.push(TERMINAL_INDENT + 'other: ' + otherParts.join(' · '));
+		}
 	}
 
 	return lines.join('\n');
 }
 
-function formatTerminalAggregateLine(result: ComparisonResult): string {
-	const { aggregate } = result;
-	const totalScenarios =
-		aggregate.intersectionSize + result.prOnly.length + result.baselineOnly.length;
-	const delta = aggregate.delta * 100;
-	const sign = delta >= 0 ? '+' : '';
-	const emphasis = Math.abs(aggregate.delta) >= AGGREGATE_NOTABLE_DELTA ? '  (worth a look)' : '';
-	return (
-		`aggregate (${aggregate.intersectionSize} of ${totalScenarios} scenarios):  ` +
-		`${pct(aggregate.prAggregatePassRate)}% PR vs ${pct(aggregate.baselineAggregatePassRate)}% baseline   ` +
-		`${sign}${delta.toFixed(1)}pp${emphasis}`
-	);
-}
+function formatTerminalVerdictLine(comparison?: ComparisonResult): string {
+	if (!comparison) return '▶ No baseline configured — comparison skipped.';
 
-function formatTerminalPartialLine(result: ComparisonResult): string | undefined {
-	if (result.baselineOnly.length === 0 && result.prOnly.length === 0) return undefined;
+	const hard = hardRegressions(comparison).length;
+	const soft = softRegressions(comparison).length;
+	const watch = watchList(comparison).length;
+	const imps = improvements(comparison).length;
+
+	const aggDelta = comparison.aggregate.delta * 100;
+	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
+
 	const parts: string[] = [];
-	if (result.baselineOnly.length > 0) {
-		parts.push(`${result.baselineOnly.length} baseline scenarios not run by PR`);
+	if (hard > 0) parts.push(`${hard} regression${hard === 1 ? '' : 's'}`);
+	if (soft > 0) parts.push(`${soft} soft`);
+	if (watch > 0) parts.push(`${watch} notable`);
+	if (imps > 0) parts.push(`${imps} improvement${imps === 1 ? '' : 's'}`);
+
+	if (hard === 0 && soft === 0 && watch === 0 && imps === 0) {
+		return `▶ No regressions. ${countByVerdict(comparison, 'stable')} stable. Pass rate ${aggDeltaText} vs master.`;
 	}
-	if (result.prOnly.length > 0) parts.push(`${result.prOnly.length} new in PR`);
-	return `partial: ${parts.join(', ')}`;
+	return `▶ ${parts.join(', ')}. Pass rate ${aggDeltaText} vs master.`;
 }
 
-function formatTerminalTally(counts: Record<string, number>): string {
-	const parts: string[] = [];
-	if (counts.hard_regression) parts.push(`${counts.hard_regression} regression`);
-	if (counts.soft_regression) parts.push(`${counts.soft_regression} soft regression`);
-	if (counts.watch) parts.push(`${counts.watch} notable movement`);
-	if (counts.improvement) parts.push(`${counts.improvement} improvement`);
-	if (counts.unreliable_baseline) parts.push(`${counts.unreliable_baseline} on flaky baseline`);
-	parts.push(`${counts.stable} stable`);
-	if (counts.insufficient_data) parts.push(`${counts.insufficient_data} no data`);
-	return parts.join(', ');
+function formatTerminalAggregate(
+	evaluation: MultiRunEvaluation,
+	comparison?: ComparisonResult,
+): string[] {
+	const lines: string[] = [];
+	if (!comparison) {
+		const allScenarios = evaluation.testCases.flatMap((tc) => tc.scenarios);
+		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
+		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
+		const rate = total > 0 ? (passed / total) * 100 : 0;
+		lines.push(
+			TERMINAL_INDENT +
+				`Aggregate: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`,
+		);
+		return lines;
+	}
+
+	const { aggregate } = comparison;
+	const baselineN = inferBaselineN(comparison);
+	const aggDelta = aggregate.delta * 100;
+	const sign = aggDelta >= 0 ? '+' : '';
+	const arrow = aggDelta > 0 ? ' ↑' : aggDelta < 0 ? ' ↓' : '';
+	lines.push(TERMINAL_INDENT + `Aggregate (${aggregate.intersectionSize} scenarios)`);
+	lines.push(
+		TERMINAL_INDENT +
+			`  PR        ${pct(aggregate.prAggregatePassRate)}%   (N=${evaluation.totalRuns})`,
+	);
+	if (baselineN !== undefined) {
+		lines.push(
+			TERMINAL_INDENT +
+				`  baseline  ${pct(aggregate.baselineAggregatePassRate)}%   (N=${baselineN})`,
+		);
+	} else {
+		lines.push(TERMINAL_INDENT + `  baseline  ${pct(aggregate.baselineAggregatePassRate)}%`);
+	}
+	lines.push(TERMINAL_INDENT + `  Δ         ${sign}${aggDelta.toFixed(1)}pp${arrow}`);
+
+	if (comparison.baselineOnly.length > 0 || comparison.prOnly.length > 0) {
+		const partialParts: string[] = [];
+		if (comparison.baselineOnly.length > 0)
+			partialParts.push(`${comparison.baselineOnly.length} baseline-only`);
+		if (comparison.prOnly.length > 0) partialParts.push(`${comparison.prOnly.length} new in PR`);
+		lines.push(TERMINAL_INDENT + `  partial: ${partialParts.join(', ')}`);
+	}
+
+	return lines;
+}
+
+function formatTerminalPerTestCase(evaluation: MultiRunEvaluation): string[] {
+	const { totalRuns, testCases } = evaluation;
+	if (testCases.length === 0) return [];
+	const lines: string[] = [];
+	const heading = `Per-test-case results (${testCases.length})`;
+	lines.push(TERMINAL_INDENT + heading);
+
+	if (totalRuns > 1) {
+		const rows = testCases.map((tc) => {
+			const meanPassAtK =
+				tc.scenarios.length > 0
+					? Math.round(
+							(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
+								tc.scenarios.length) *
+								100,
+						)
+					: 0;
+			const meanPassHatK =
+				tc.scenarios.length > 0
+					? Math.round(
+							(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
+								tc.scenarios.length) *
+								100,
+						)
+					: 0;
+			return {
+				name: tc.testCase.prompt.slice(0, 60),
+				builds: `${tc.buildSuccessCount}/${totalRuns}`,
+				passAtK: `${meanPassAtK}%`,
+				passHatK: `${meanPassHatK}%`,
+			};
+		});
+		const nameW = maxWidth(
+			rows.map((r) => r.name),
+			'workflow',
+		);
+		const buildsW = maxWidth(
+			rows.map((r) => r.builds),
+			'builds',
+		);
+		const atKHeader = `pass@${totalRuns}`;
+		const hatKHeader = `pass^${totalRuns}`;
+		const atKW = maxWidth(
+			rows.map((r) => r.passAtK),
+			atKHeader,
+		);
+		const hatKW = maxWidth(
+			rows.map((r) => r.passHatK),
+			hatKHeader,
+		);
+		lines.push(
+			TERMINAL_TABLE_INDENT +
+				`${'workflow'.padEnd(nameW)}  ${'builds'.padEnd(buildsW)}  ${atKHeader.padStart(atKW)}  ${hatKHeader.padStart(hatKW)}`,
+		);
+		lines.push(
+			TERMINAL_TABLE_INDENT +
+				`${'─'.repeat(nameW)}  ${'─'.repeat(buildsW)}  ${'─'.repeat(atKW)}  ${'─'.repeat(hatKW)}`,
+		);
+		for (const r of rows) {
+			lines.push(
+				TERMINAL_TABLE_INDENT +
+					`${r.name.padEnd(nameW)}  ${r.builds.padEnd(buildsW)}  ${r.passAtK.padStart(atKW)}  ${r.passHatK.padStart(hatKW)}`,
+			);
+		}
+	} else {
+		for (const tc of testCases) {
+			const r = tc.runs[0];
+			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
+			lines.push('');
+			lines.push(TERMINAL_INDENT + `${tc.testCase.prompt.slice(0, 70)}…`);
+			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
+			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
+			for (const sa of tc.scenarios) {
+				const sr = sa.runs[0];
+				const status = sr.success ? 'PASS' : 'FAIL';
+				const category = sr.failureCategory ? ` [${sr.failureCategory}]` : '';
+				lines.push(TERMINAL_INDENT + `  ${status}  ${sr.scenario.name}${category}`);
+				if (!sr.success) {
+					const errs = sr.evalResult?.errors ?? [];
+					if (errs.length > 0) {
+						lines.push(TERMINAL_INDENT + `        error: ${errs.join('; ').slice(0, 200)}`);
+					}
+					lines.push(TERMINAL_INDENT + `        diagnosis: ${sr.reasoning.slice(0, 200)}`);
+				}
+			}
+		}
+	}
+	lines.push('');
+	return lines;
 }
 
 function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue: boolean): string {
@@ -321,7 +682,9 @@ function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue
 	const baseCells = scenarios.map((s) => `${s.baselinePasses}/${s.baselineTotal}`);
 	const deltaCells = scenarios.map((s) => {
 		const d = s.delta * 100;
-		return `${d >= 0 ? '+' : ''}${d.toFixed(0)}pp`;
+		const sign = d >= 0 ? '+' : '';
+		const arrow = d > 0 ? ' ↑' : d < 0 ? ' ↓' : '';
+		return `${sign}${d.toFixed(0)}pp${arrow}`;
 	});
 	const pCells = withPValue
 		? scenarios.map((s) => (s.verdict === 'improvement' ? s.pValueRight : s.pValueLeft).toFixed(3))
@@ -331,7 +694,7 @@ function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue
 	const prW = maxWidth(prCells, 'PR');
 	const baseW = maxWidth(baseCells, 'baseline');
 	const deltaW = maxWidth(deltaCells, 'Δ');
-	const pW = withPValue ? maxWidth(pCells, 'noise prob') : 0;
+	const pW = withPValue ? maxWidth(pCells, 'p') : 0;
 
 	const headers = [
 		'scenario'.padEnd(nameW),
@@ -339,8 +702,7 @@ function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue
 		'baseline'.padEnd(baseW),
 		'Δ'.padEnd(deltaW),
 	];
-	if (withPValue) headers.push('noise prob'.padEnd(pW));
-
+	if (withPValue) headers.push('p'.padEnd(pW));
 	const widths = withPValue ? [nameW, prW, baseW, deltaW, pW] : [nameW, prW, baseW, deltaW];
 	const sep = widths.map((w) => '─'.repeat(w)).join('  ');
 
@@ -361,13 +723,16 @@ function formatTerminalScenarioTable(scenarios: ScenarioComparison[], withPValue
 }
 
 function formatTerminalCategoryTable(cats: FailureCategoryComparison[]): string {
-	const names = cats.map((c) => c.category);
+	const names = cats.map((c) => {
+		const isNew = c.baselineCount === 0 && c.prCount > 0;
+		return c.category + (isNew ? ' 🆕' : '');
+	});
 	const prCells = cats.map((c) => `${c.prCount} (${pct(c.prRate)}%)`);
 	const baseCells = cats.map((c) => `${c.baselineCount} (${pct(c.baselineRate)}%)`);
 	const deltaCells = cats.map((c) => {
 		const d = c.delta * 100;
 		const sign = d >= 0 ? '+' : '';
-		return `${sign}${d.toFixed(1)}pp${c.notable ? '  notable' : ''}`;
+		return `${sign}${d.toFixed(1)}pp`;
 	});
 
 	const nameW = maxWidth(names, 'category');
