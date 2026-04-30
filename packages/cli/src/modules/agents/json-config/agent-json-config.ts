@@ -39,14 +39,6 @@ export const NodeConfigSchema = z.object({
 	credentials: z.record(NodeToolCredentialSchema).optional(),
 });
 
-const JsonSchemaObjectSchema = z
-	.object({
-		type: z.literal('object').optional(),
-		properties: z.record(z.unknown()).optional(),
-		required: z.array(z.string()).optional(),
-	})
-	.passthrough();
-
 const AgentJsonSkillConfigSchema = z.object({
 	type: z.literal('skill'),
 	id: z
@@ -75,14 +67,15 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 			.optional()
 			.describe('Whether to return all node outputs instead of just the last node'),
 	}),
-	z.object({
-		type: z.literal('node'),
-		name: z.string().min(1),
-		description: z.string().optional(),
-		node: NodeConfigSchema,
-		inputSchema: JsonSchemaObjectSchema,
-		requireApproval: z.boolean().optional(),
-	}),
+	z
+		.object({
+			type: z.literal('node'),
+			name: z.string().min(1),
+			description: z.string().optional(),
+			node: NodeConfigSchema,
+			requireApproval: z.boolean().optional(),
+		})
+		.strict(),
 ]);
 
 export const AgentJsonConfigSchema = z.object({

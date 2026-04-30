@@ -440,11 +440,7 @@ function searchForQuery(
 	query: string,
 	nodeFilter?: (nodeId: string) => boolean,
 ): string {
-	let results = nodeTypeParser.searchNodeTypes(query, 5);
-
-	if (nodeFilter) {
-		results = results.filter((node: ParsedNodeType) => nodeFilter(node.id));
-	}
+	const results = nodeTypeParser.searchNodeTypes(query, 5, nodeFilter);
 
 	if (results.length === 0) {
 		return `## "${query}"\nNo nodes found. Try a different search term.`;

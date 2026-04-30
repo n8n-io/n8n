@@ -9,8 +9,7 @@
  *                          allOutputs toggle)
  *
  * On Save, edits are merged back into the ref:
- *   - Node tools round-trip via `updateToolRefFromNode` so fields the form
- *     doesn't know about (`inputSchema`, etc.) are preserved.
+ *   - Node tools round-trip via `updateToolRefFromNode`.
  *   - Workflow tools round-trip via `updateWorkflowToolRef`.
  */
 import { computed, ref } from 'vue';
