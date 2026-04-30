@@ -110,6 +110,10 @@ if (!app.requestSingleInstanceLock()) {
 				);
 			}
 
+			// macOS — `open-url`: Fires when the OS hands the app a `n8n-computer-use://…` URL (browser, another app,
+			// or “Open” from Finder). Runs for a process that is already running and also after launch when the app
+			// was opened via the protocol; cold starts may still receive the URL in `process.argv` — we parse that
+			// above so both paths are covered.
 			app.on('open-url', (event, url) => {
 				event.preventDefault();
 				const payload = parseConnectPayload(url);
@@ -117,6 +121,10 @@ if (!app.requestSingleInstanceLock()) {
 				handleConnectPayload(payload);
 			});
 
+			// Windows / Linux — `second-instance`: Fires on the **first** (lock-holding) process when the user starts
+			// the app again while it is already running. The second process exits immediately (`requestSingleInstanceLock`
+			// failed); this event receives that second process’s `argv`, which often includes the deeplink the OS
+			// passed to the new launch, so we connect from here instead of argv-only startup parsing.
 			app.on('second-instance', (_event, argv) => {
 				const payload = parseConnectPayloadFromArgv(argv);
 				if (!payload) return;
