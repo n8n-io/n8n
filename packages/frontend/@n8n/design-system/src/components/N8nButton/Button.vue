@@ -147,8 +147,8 @@ const handleClick = (event: MouseEvent) => {
 	font-size: var(--button--font-size);
 
 	--button--color--background: transparent;
-	--button--color--background-hover: transparent;
-	--button--color--background-active: transparent;
+	--button--color--background-hover: var(--background--hover);
+	--button--color--background-active: var(--background--active);
 	--button--color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
 	--button--shadow: 0 0 0 0 transparent;
 	--button--shadow--hover: 0 0 0 0 transparent;
@@ -191,6 +191,7 @@ const handleClick = (event: MouseEvent) => {
 
 	&:focus-visible {
 		@include focus.focus-ring;
+		--button--border-color: var(--focus--border-color) !important;
 	}
 
 	&.xsmall {
@@ -229,50 +230,30 @@ const handleClick = (event: MouseEvent) => {
 	}
 
 	&.solid {
-		--button--color--background: var(--color--orange-400);
-		--button--color--background-hover: var(--color--orange-500);
-		--button--color--background-active: var(--color--orange-600);
+		--button--color--background: var(--background--brand);
+		--button--color--background-hover: var(--background--brand--hover);
+		--button--color--background-active: var(--background--brand--active);
 		--button--color: var(--color--neutral-white);
-		--button--shadow: 0 1px 3px 0
-			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
-		--button--shadow--hover: 0 1px 3px 0
-			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
-		--button--shadow--active: 0 1px 3px 0
-			light-dark(var(--color--black-alpha-100), var(--color--black-alpha-200));
-		--button--border-color: var(--color--orange-400);
-		--button--border-color--hover: var(--color--orange-500);
-		--button--border-color--active: var(--color--orange-600);
+		--button--shadow: var(--shadow--xs);
+		--button--shadow--hover: var(--shadow--xs);
+		--button--shadow--active: var(--shadow--xs);
+		--button--border-color: var(--background--brand);
+		--button--border-color--hover: var(--background--brand--hover);
+		--button--border-color--active: var(--background--brand--active);
 		--button--border--shadow: 0 0 0 1px var(--button--border-color);
 		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color--hover);
 		--button--border--shadow--active: 0 0 0 1px var(--button--border-color--active);
 	}
 
 	&.subtle {
-		--button--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-800));
-		--button--color--background-hover: light-dark(
-			var(--color--neutral-150),
-			var(--color--neutral-700)
-		);
-		--button--color--background-active: light-dark(
-			var(--color--neutral-200),
-			var(--color--neutral-600)
-		);
-		--button--shadow:
-			0 1px 3px light-dark(var(--color--black-alpha-100), var(--color--black-alpha-300)),
-			0 0 0 1.5px light-dark(transparent, var(--color--black-alpha-100));
-		--button--shadow--hover:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
-			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
-		--button--shadow--active:
-			0 1px 3px 0 light-dark(var(--color--black-alpha-200), var(--color--black-alpha-300)),
-			0 0 0 1px light-dark(transparent, var(--color--black-alpha-100));
-		--button--border-color: light-dark(
-			var(--color--black-alpha-200),
-			var(--color--white-alpha-100)
-		);
+		--button--color--background: var(--background--surface);
+		--button--shadow: var(--shadow--xs);
+		--button--shadow--hover: var(--shadow--xs);
+		--button--shadow--active: var(--shadow--xs);
+		--button--border-color: var(--border-color);
 		--button--border-color--hover: light-dark(
 			var(--color--black-alpha-200),
-			var(--color--white-alpha-300)
+			var(--color--white-alpha-200)
 		);
 		--button--border-color--active: light-dark(
 			var(--color--black-alpha-300),
@@ -285,18 +266,7 @@ const handleClick = (event: MouseEvent) => {
 
 	&.outline {
 		--button--color--background: transparent;
-		--button--color--background-hover: light-dark(
-			var(--color--neutral-150),
-			var(--color--white-alpha-100)
-		);
-		--button--color--background-active: light-dark(
-			var(--color--black-alpha-200),
-			var(--color--white-alpha-200)
-		);
-		--button--border-color: light-dark(
-			var(--color--black-alpha-200),
-			var(--color--white-alpha-100)
-		);
+		--button--border-color: var(--border-color);
 		--button--border-color--hover: light-dark(
 			var(--color--black-alpha-200),
 			var(--color--white-alpha-200)
@@ -312,14 +282,6 @@ const handleClick = (event: MouseEvent) => {
 
 	&.ghost {
 		--button--color--background: transparent;
-		--button--color--background-hover: light-dark(
-			var(--color--black-alpha-100),
-			var(--color--white-alpha-100)
-		);
-		--button--color--background-active: light-dark(
-			var(--color--black-alpha-200),
-			var(--color--white-alpha-200)
-		);
 		--button--border-color: transparent;
 		--button--border--shadow: 0 0 0 1px var(--button--border-color);
 		--button--border--shadow--hover: 0 0 0 1px var(--button--border-color);

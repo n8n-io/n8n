@@ -598,7 +598,7 @@ const saveSettings = async () => {
 	data.expectedChecksum = workflowDocumentStore?.value?.checksum;
 
 	try {
-		await workflowsStore.updateWorkflow(String(route.params.name), data);
+		await workflowsStore.updateWorkflow(String(route.params.workflowId), data);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowSettings.showError.saveSettings3.title'));
 		isLoading.value = false;
@@ -1419,6 +1419,7 @@ onBeforeUnmount(() => {
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-per-execution"
 								:min="0"
+								:precision="0"
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>

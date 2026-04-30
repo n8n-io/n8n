@@ -67,7 +67,7 @@ describe('SsoInstanceSettingsLoader', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		logger.scoped.mockReturnThis();
-		cipher.encrypt.mockImplementation((v: string) => `encrypted:${v}`);
+		cipher.encryptV2.mockImplementation(async (v: string) => `encrypted:${v}`);
 		mockGetCurrentAuthenticationMethod.mockReturnValue('email');
 	});
 

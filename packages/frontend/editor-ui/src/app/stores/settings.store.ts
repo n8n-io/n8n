@@ -175,6 +175,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAgentModuleActive('node-tools-searcher'),
 	);
 
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
+	);
+
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
 	);
@@ -458,5 +462,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isAgentsNodeToolsFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

@@ -560,7 +560,10 @@ export class E2EController {
 
 		if (owner?.mfaSecret && owner.mfaRecoveryCodes?.length) {
 			const { encryptedRecoveryCodes, encryptedSecret } =
-				this.mfaService.encryptSecretAndRecoveryCodes(owner.mfaSecret, owner.mfaRecoveryCodes);
+				await this.mfaService.encryptSecretAndRecoveryCodes(
+					owner.mfaSecret,
+					owner.mfaRecoveryCodes,
+				);
 
 			await this.userRepository.update(newOwner.user.id, {
 				mfaSecret: encryptedSecret,

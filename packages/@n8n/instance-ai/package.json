@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -10,7 +10,8 @@
     "test": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
-    "eval:instance-ai": "tsx evaluations/cli/index.ts"
+    "eval:instance-ai": "tsx evaluations/cli/index.ts",
+    "eval:subagent": "tsx evaluations/subagent/cli.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

@@ -25,6 +25,7 @@ packages/**/.turbo
 *.swp
 CHANGELOG-*.md
 *.mdx
+!packages/frontend/@n8n/design-system/**/*.mdx
 build-storybook.log
 build.log
 *.junit.xml
@@ -59,6 +60,7 @@ packages/cli/src/commands/export/outputs
 .data/
 .claude/settings.local.json
 .claude/plans/
+.claude/worktrees/
 .cursor/plans/
 .superset
 .conductor

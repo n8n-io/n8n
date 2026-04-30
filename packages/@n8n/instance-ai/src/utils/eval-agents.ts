@@ -21,10 +21,13 @@ export const HAIKU_MODEL = 'anthropic/claude-haiku-4-5-20251001';
 // ---------------------------------------------------------------------------
 
 function getApiKey(): string {
-	const key = process.env.N8N_INSTANCE_AI_MODEL_API_KEY ?? process.env.N8N_AI_ANTHROPIC_KEY;
+	const key =
+		process.env.N8N_INSTANCE_AI_MODEL_API_KEY ??
+		process.env.N8N_AI_ANTHROPIC_KEY ??
+		process.env.ANTHROPIC_API_KEY;
 	if (!key) {
 		throw new Error(
-			'Missing API key. Set N8N_INSTANCE_AI_MODEL_API_KEY (or N8N_AI_ANTHROPIC_KEY) in your environment.',
+			'Missing API key. Set N8N_INSTANCE_AI_MODEL_API_KEY, N8N_AI_ANTHROPIC_KEY, or ANTHROPIC_API_KEY in your environment.',
 		);
 	}
 	return key;

@@ -15,6 +15,7 @@
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
+import { DateTime } from 'luxon';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -132,8 +133,19 @@ async function getRecentMessages(
 	return messages;
 }
 
-function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: string): string {
+function formatMessagesForBriefing(
+	messages: FormattedMessage[],
+	guidance?: string,
+	timeZone?: string,
+): string {
 	const parts: string[] = [];
+
+	const now = timeZone ? DateTime.now().setZone(timeZone) : DateTime.now();
+	const isoNow = now.toISO({ includeOffset: true }) ?? new Date().toISOString();
+	parts.push(`<current-datetime>${isoNow}</current-datetime>`);
+	if (timeZone) {
+		parts.push(`<user-timezone>${timeZone}</user-timezone>`);
+	}
 
 	if (messages.length > 0) {
 		parts.push('## Recent conversation');
@@ -154,6 +166,8 @@ function formatMessagesForBriefing(messages: FormattedMessage[], guidance?: stri
 	return parts.join('\n\n');
 }
 
+export const __testFormatMessagesForBriefing = formatMessagesForBriefing;
+
 // ---------------------------------------------------------------------------
 // Helper: clear draft checklist from taskStorage
 // ---------------------------------------------------------------------------
@@ -171,6 +185,36 @@ function publishClearingEvent(context: OrchestrationContext): void {
 async function clearDraftChecklist(context: OrchestrationContext): Promise<void> {
 	try {
 		await context.taskStorage.save(context.threadId, { tasks: [] });
+	} catch {
+		// Best-effort — don't let cleanup failures block the return path
+	}
+}
+
+/**
+ * Remove any persisted planned-task graph for this thread *if and only if* it
+ * belongs to this planner run's unapproved plan. Called on planner give-up /
+ * error paths to prevent a later schedulePlannedTasks() tick from dispatching
+ * a plan the user never approved.
+ *
+ * Guarded because the thread may already carry an unrelated active graph (a
+ * prior approved plan with pending checkpoints / in-flight tasks); an
+ * unconditional `clear()` here would strand that work. We only touch the graph
+ * when its `planRunId` matches this run AND its `status` is `awaiting_approval`
+ * — the single window where submit-plan has persisted but approval hasn't
+ * happened yet.
+ */
+export async function __testClearPlannedTaskGraph(context: OrchestrationContext): Promise<void> {
+	return await clearPlannedTaskGraph(context);
+}
+
+async function clearPlannedTaskGraph(context: OrchestrationContext): Promise<void> {
+	if (!context.plannedTaskService) return;
+	try {
+		const graph = await context.plannedTaskService.getGraph(context.threadId);
+		if (!graph) return;
+		if (graph.planRunId !== context.runId) return;
+		if (graph.status !== 'awaiting_approval') return;
+		await context.plannedTaskService.clear(context.threadId);
 	} catch {
 		// Best-effort — don't let cleanup failures block the return path
 	}
@@ -227,7 +271,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 			// ── Retrieve conversation history ─────────────────────────────
 			const messages = await getRecentMessages(context, MESSAGE_HISTORY_COUNT);
-			const briefing = formatMessagesForBriefing(messages, input.guidance);
+			const briefing = formatMessagesForBriefing(messages, input.guidance, context.timeZone);
 
 			// ── IDs & events ──────────────────────────────────────────────
 			const subAgentId = `agent-planner-${nanoid(6)}`;
@@ -337,7 +381,12 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 				// ── Schedule tasks after planner-driven approval ──────────
 				// Only dispatch if submit-plan was called AND the user approved.
+				// createPlan persists the graph as `awaiting_approval`; flip it
+				// to `active` before scheduling so tick() can dispatch.
 				if (accumulator.isApproved()) {
+					if (context.plannedTaskService) {
+						await context.plannedTaskService.approvePlan(context.threadId);
+					}
 					if (context.schedulePlannedTasks) {
 						await context.schedulePlannedTasks();
 					}
@@ -350,6 +399,11 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 				// Planner finished without approval (no submit-plan or user didn't approve)
 				publishClearingEvent(context);
 				await clearDraftChecklist(context);
+				// Clear the persisted planned-task graph too. submit-plan persists
+				// it BEFORE user approval (so HITL can display the checklist), so
+				// leaving it intact on planner give-up would let a later
+				// schedulePlannedTasks() tick pick up and dispatch a rejected plan.
+				await clearPlannedTaskGraph(context);
 				if (!accumulator.isEmpty()) {
 					return {
 						result: `Planner added ${accumulator.getTaskList().length} items but did not submit the plan for approval. The plan was not executed.`,
@@ -376,9 +430,17 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					},
 				});
 
-				// Clear draft checklist on error
-				publishClearingEvent(context);
-				await clearDraftChecklist(context);
+				// Clear draft checklist and persisted graph on error — same reason
+				// as the non-approval path: an error-aborted plan must not later be
+				// auto-dispatched by the post-run reschedule. Skip both when the user
+				// already approved this plan: the failure is downstream of approval
+				// (e.g. approvePlan/schedulePlannedTasks threw), and clearing would
+				// drop a plan the user explicitly accepted.
+				if (!accumulator.isApproved()) {
+					publishClearingEvent(context);
+					await clearDraftChecklist(context);
+					await clearPlannedTaskGraph(context);
+				}
 
 				return { result: `Planner error: ${errorMessage}` };
 			}

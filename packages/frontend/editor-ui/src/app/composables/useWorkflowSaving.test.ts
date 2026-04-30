@@ -163,7 +163,9 @@ describe('useWorkflowSaving', () => {
 			resolveSpy.mockReturnValue(resolveMarker);
 			const mockRouter = {
 				resolve: resolveSpy,
-				currentRoute: { value: { params: { name: workflow.id }, query: { parentFolderId: '' } } },
+				currentRoute: {
+					value: { params: { workflowId: workflow.id }, query: { parentFolderId: '' } },
+				},
 			};
 
 			const { promptSaveUnsavedWorkflowChanges } = useWorkflowSaving({
@@ -240,7 +242,7 @@ describe('useWorkflowSaving', () => {
 			expect(next).toHaveBeenCalledWith(
 				router.resolve({
 					name: VIEWS.WORKFLOW,
-					params: { name: MOCK_ID },
+					params: { workflowId: MOCK_ID },
 				}),
 			);
 		});
@@ -330,7 +332,9 @@ describe('useWorkflowSaving', () => {
 			resolveSpy.mockReturnValue(resolveMarker);
 			const mockRouter = {
 				resolve: resolveSpy,
-				currentRoute: { value: { params: { name: workflow.id }, query: { parentFolderId: '' } } },
+				currentRoute: {
+					value: { params: { workflowId: workflow.id }, query: { parentFolderId: '' } },
+				},
 			};
 
 			const workflowSaving = useWorkflowSaving({ router: mockRouter as never });

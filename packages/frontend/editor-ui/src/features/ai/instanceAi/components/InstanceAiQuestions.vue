@@ -88,6 +88,7 @@ const showSkipButton = computed(() => {
 });
 
 const showNextButton = computed(() => {
+	if (isLastQuestion.value) return true;
 	if (currentQuestion.value?.type === 'single') return hasCustomText.value;
 	return true;
 });
@@ -95,6 +96,7 @@ const showNextButton = computed(() => {
 const isNextEnabled = computed(() => {
 	const q = currentQuestion.value;
 	if (!q) return false;
+	if (isLastQuestion.value) return true;
 	if (q.type === 'single') return hasCustomText.value;
 	if (q.type === 'multi') {
 		const answer = currentAnswer.value;
@@ -326,7 +328,7 @@ function handleEnterKey(event: KeyboardEvent, type: string, optionCount: number)
 		} else if (isNextEnabled.value) {
 			goToNextInternal();
 		}
-	} else if (type === 'text' && hasCustomText.value) {
+	} else if (type === 'text' && isNextEnabled.value) {
 		goToNextInternal();
 	}
 	return true;

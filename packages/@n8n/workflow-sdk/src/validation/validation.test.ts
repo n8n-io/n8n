@@ -2218,6 +2218,359 @@ describe('Validation', () => {
 			const warnings = result.warnings.filter((w) => w.code === 'UNSUPPORTED_SUBNODE_INPUT');
 			expect(warnings).toHaveLength(0);
 		});
+
+		it('does not also fire SUBNODE_PARAMETER_MISMATCH for parent-relative displayOptions (INS-136)', () => {
+			// Scenario: chat trigger that has loadPreviousSession: memory but no
+			// `mode` set, so the parent fails its own displayOptions. The memory
+			// subnode is connected - but `mode` and `options.loadPreviousSession`
+			// are parent params, not subnode params. Only UNSUPPORTED_SUBNODE_INPUT
+			// should fire (parent-relative); SUBNODE_PARAMETER_MISMATCH is a false
+			// positive when the subnode doesn't even own those params.
+			const provider = {
+				getByNameAndVersion: (type: string) => {
+					if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+						return {
+							description: {
+								inputs: ['main'],
+								builderHint: {
+									inputs: {
+										ai_memory: {
+											required: true,
+											displayOptions: {
+												show: {
+													mode: ['hostedChat', 'webhook'],
+													'options.loadPreviousSession': ['memory'],
+												},
+											},
+										},
+									},
+								},
+							},
+						};
+					}
+					return { description: { inputs: ['main'] } };
+				},
+				getByName: (type: string) => provider.getByNameAndVersion(type),
+				getKnownTypes: () => ({}),
+			};
+
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						// Parent's own `mode` and `options.loadPreviousSession` not set
+						// -> parent fails displayOptions
+						parameters: {},
+					},
+					{
+						id: 'mem-1',
+						name: 'Session Memory',
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						typeVersion: 1,
+						position: [0, 200] as [number, number],
+						parameters: {}, // memory subnode has no `mode` or `options.loadPreviousSession`
+					},
+				],
+				connections: {
+					'Session Memory': {
+						ai_memory: [[{ node: 'Chat Trigger', type: 'ai_memory', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: provider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const mismatch = result.warnings.filter((w) => w.code === 'SUBNODE_PARAMETER_MISMATCH');
+			const unsupported = result.warnings.filter((w) => w.code === 'UNSUPPORTED_SUBNODE_INPUT');
+
+			expect(mismatch).toHaveLength(0);
+			expect(unsupported).toHaveLength(1);
+			expect(unsupported[0].nodeName).toBe('Chat Trigger');
+			// Message should direct the LLM to set params on the parent
+			expect(unsupported[0].message).toContain("must be set on 'Chat Trigger' itself");
+			expect(unsupported[0].message).toContain('NOT on the memory subnode');
+		});
+	});
+
+	describe('MISSING_REQUIRED_INPUT validation', () => {
+		const mockNodeTypesProvider = {
+			getByNameAndVersion: (type: string, _version?: number) => {
+				if (type === '@n8n/n8n-nodes-langchain.chatTrigger') {
+					return {
+						description: {
+							inputs: ['main'],
+							builderHint: {
+								inputs: {
+									ai_memory: {
+										required: true,
+										displayOptions: {
+											show: {
+												mode: ['hostedChat', 'webhook'],
+												'options.loadPreviousSession': ['memory'],
+											},
+										},
+									},
+								},
+							},
+						},
+					};
+				}
+				if (type === '@n8n/n8n-nodes-langchain.agent') {
+					return {
+						description: {
+							inputs: ['main'],
+							builderHint: {
+								inputs: {
+									ai_languageModel: { required: true },
+									ai_memory: { required: false },
+								},
+							},
+						},
+					};
+				}
+				return { description: { inputs: ['main'] } };
+			},
+			getByName: (type: string) => mockNodeTypesProvider.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		it('errors when chat trigger has loadPreviousSession=memory but no memory subnode', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'memory' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('Chat Trigger');
+			expect(errors[0].message).toContain('ai_memory');
+			// The triggering condition reports the actual nested value via lodash get,
+			// not the literal dotted-key lookup that would resolve to 'undefined'.
+			expect(errors[0].message).toContain("options.loadPreviousSession='memory'");
+			expect(errors[0].message).not.toContain("options.loadPreviousSession='undefined'");
+			// Message offers the alternative path (change the params, don't connect).
+			expect(errors[0].message).toContain('change those parameters to remove the requirement');
+			expect(result.valid).toBe(false);
+		});
+
+		it('passes when chat trigger has loadPreviousSession=memory and a memory subnode is connected', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'memory' },
+						},
+					},
+					{
+						id: 'mem-1',
+						name: 'Memory',
+						type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+						typeVersion: 1,
+						position: [0, 200] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					Memory: {
+						ai_memory: [[{ node: 'Chat Trigger', type: 'ai_memory', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('passes when chat trigger has loadPreviousSession=notSupported and no memory', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'notSupported' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('errors on unconditional required input (agent without language model)', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(1);
+			expect(errors[0].nodeName).toBe('AI Agent');
+			expect(errors[0].message).toContain('ai_languageModel');
+			// No condition details when requirement is unconditional
+			expect(errors[0].message).not.toContain('Required:');
+		});
+
+		it('does not error for optional inputs', () => {
+			// Agent declares ai_memory as required:false — should never emit MISSING_REQUIRED_INPUT
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 3,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'lm-1',
+						name: 'Model',
+						type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						typeVersion: 1,
+						position: [0, 200] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					Model: {
+						ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('is a no-op for nodes without builderHint.inputs', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'n-1',
+						name: 'Some Node',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 4.2,
+						position: [0, 0] as [number, number],
+						parameters: { url: 'https://example.com' },
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProvider as never,
+				allowDisconnectedNodes: true,
+			});
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
+
+		it('is skipped when nodeTypesProvider is not supplied', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'ct-1',
+						name: 'Chat Trigger',
+						type: '@n8n/n8n-nodes-langchain.chatTrigger',
+						typeVersion: 1.4,
+						position: [0, 0] as [number, number],
+						parameters: {
+							mode: 'hostedChat',
+							options: { loadPreviousSession: 'memory' },
+						},
+					},
+				],
+				connections: {},
+			};
+
+			const result = validateWorkflow(workflowJson, { allowDisconnectedNodes: true });
+
+			const errors = result.errors.filter((e) => e.code === 'MISSING_REQUIRED_INPUT');
+			expect(errors).toHaveLength(0);
+		});
 	});
 
 	describe('Invalid subnode error message enhancement', () => {
@@ -2341,6 +2694,297 @@ describe('Validation', () => {
 			expect(invalidParamWarnings.some((w) => w.message.includes('This node only accepts'))).toBe(
 				false,
 			);
+		});
+	});
+
+	describe('INVALID_OUTPUT_FOR_MODE validation', () => {
+		// Mock parent provider — agent declares ai_vectorStore as a valid input.
+		// Vector store declares mode-conditional outputs via builderHint.outputs.
+		const vectorStoreInMemoryDescription = {
+			inputs: ['main'],
+			outputs: ['main'],
+			builderHint: {
+				inputs: {
+					ai_embedding: { required: true },
+				},
+				outputs: {
+					main: { displayOptions: { show: { mode: ['insert', 'load', 'update'] } } },
+					ai_vectorStore: { displayOptions: { show: { mode: ['retrieve'] } } },
+					ai_tool: { displayOptions: { show: { mode: ['retrieve-as-tool'] } } },
+				},
+			},
+		};
+
+		const mockNodeTypesProviderWithOutputs = {
+			getByNameAndVersion: (type: string, _version?: number) => {
+				if (type === '@n8n/n8n-nodes-langchain.vectorStoreInMemory') {
+					return { description: vectorStoreInMemoryDescription };
+				}
+				if (type === '@n8n/n8n-nodes-langchain.agent') {
+					return { description: { inputs: ['main'], outputs: ['main'] } };
+				}
+				return { description: { inputs: ['main'], outputs: ['main'] } };
+			},
+			getByName: (type: string) => mockNodeTypesProviderWithOutputs.getByNameAndVersion(type),
+			getKnownTypes: () => ({}),
+		};
+
+		const baseNodes = [
+			{
+				id: 'trigger-1',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			},
+		];
+
+		it('warns when a vector store in retrieve mode emits a main connection', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Retrieve Relevant Regulations',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve', topK: 8 },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format Retrieved Regulations',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Retrieve Relevant Regulations', type: 'main', index: 0 }]],
+					},
+					'Retrieve Relevant Regulations': {
+						main: [[{ node: 'Format Retrieved Regulations', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Retrieve Relevant Regulations');
+			// Message uses SDK vocabulary, not raw connection types
+			expect(warnings[0].message).toContain('.to()');
+			expect(warnings[0].message).toContain("currently 'retrieve'");
+			// Suggests the alternative wiring that IS enabled in the current mode
+			expect(warnings[0].message).toContain('subnodes.vectorStore');
+			expect(warnings[0].violationLevel).toBe('major');
+		});
+
+		it('does not warn when a vector store in retrieve mode emits ai_vectorStore', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'agent-1',
+						name: 'AI Agent',
+						type: '@n8n/n8n-nodes-langchain.agent',
+						typeVersion: 1.7,
+						position: [400, 0] as [number, number],
+						parameters: { text: 'hi' },
+					},
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve' },
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						ai_vectorStore: [[{ node: 'AI Agent', type: 'ai_vectorStore', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('warns when a vector store in retrieve-as-tool mode emits a main connection', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve-as-tool' },
+					},
+					{
+						id: 'next-1',
+						name: 'Next Step',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Vector Store', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						main: [[{ node: 'Next Step', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(1);
+			expect(warnings[0].nodeName).toBe('Vector Store');
+			expect(warnings[0].message).toContain("currently 'retrieve-as-tool'");
+			expect(warnings[0].message).toContain('.to()');
+			expect(warnings[0].message).toContain('subnodes.tools');
+		});
+
+		it('does not warn for load mode with main connections', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'load' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Manual Trigger': {
+						main: [[{ node: 'Vector Store', type: 'main', index: 0 }]],
+					},
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('skips validation when no nodeTypesProvider is given', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: 'retrieve' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson);
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
+		});
+
+		it('does not warn when mode parameter is an expression that cannot be evaluated', () => {
+			const workflowJson = {
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					...baseNodes,
+					{
+						id: 'vs-1',
+						name: 'Vector Store',
+						type: '@n8n/n8n-nodes-langchain.vectorStoreInMemory',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: { mode: '={{ $json.mode }}' },
+					},
+					{
+						id: 'fmt-1',
+						name: 'Format',
+						type: 'n8n-nodes-base.code',
+						typeVersion: 2,
+						position: [400, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {
+					'Vector Store': {
+						main: [[{ node: 'Format', type: 'main', index: 0 }]],
+					},
+				},
+			};
+
+			const result = validateWorkflow(workflowJson, {
+				nodeTypesProvider: mockNodeTypesProviderWithOutputs as never,
+			});
+			const warnings = result.warnings.filter((w) => w.code === 'INVALID_OUTPUT_FOR_MODE');
+			expect(warnings).toHaveLength(0);
 		});
 	});
 });

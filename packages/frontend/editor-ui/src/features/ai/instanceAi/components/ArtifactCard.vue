@@ -1,6 +1,9 @@
 <script lang="ts" setup>
 import { N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
+
+const i18n = useI18n();
 
 const props = defineProps<{
 	type: 'workflow' | 'data-table';
@@ -8,6 +11,7 @@ const props = defineProps<{
 	resourceId: string;
 	projectId?: string;
 	metadata?: string;
+	archived?: boolean;
 }>();
 
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
@@ -46,12 +50,15 @@ function handleClick(e: MouseEvent) {
 </script>
 
 <template>
-	<N8nCard :class="$style.card" @click="handleClick">
+	<N8nCard :class="[$style.card, props.archived && $style.cardArchived]" @click="handleClick">
 		<template #prepend>
 			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
 		</template>
 		<template #header>
 			<N8nText>{{ props.name }}</N8nText>
+			<span v-if="props.archived" :class="$style.archivedBadge">
+				{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
+			</span>
 		</template>
 		<N8nText v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</N8nText>
 	</N8nCard>
@@ -66,6 +73,19 @@ function handleClick(e: MouseEvent) {
 	&:hover {
 		box-shadow: var(--shadow--card-hover);
 	}
+}
+
+.cardArchived {
+	opacity: 0.55;
+}
+
+.archivedBadge {
+	font-size: var(--font-size--3xs);
+	color: var(--color--text--tint-1);
+	background: var(--color--foreground--tint-1);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	margin-left: var(--spacing--2xs);
 }
 
 .icon {

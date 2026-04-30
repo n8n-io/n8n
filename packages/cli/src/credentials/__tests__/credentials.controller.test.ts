@@ -177,8 +177,8 @@ describe('CredentialsController', () => {
 		});
 
 		beforeEach(() => {
-			decryptSpy.mockReturnValue({ apiKey: 'test-key' });
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential());
+			decryptSpy.mockResolvedValue({ apiKey: 'test-key' });
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential());
 			getCredentialScopesSpy.mockResolvedValue([
 				'credential:read' as Scope,
 				'credential:update' as Scope,
@@ -396,7 +396,7 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
 			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
@@ -437,7 +437,7 @@ describe('CredentialsController', () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
 				existingCredentialWithResolvable,
 			);
-			createEncryptedDataSpy.mockReturnValue(getEncryptedCredential(true));
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
 			updateSpy.mockResolvedValue({
 				...existingCredentialWithResolvable,
 				name: 'Updated Credential',
@@ -475,7 +475,7 @@ describe('CredentialsController', () => {
 				existingCredentialWithSecret,
 			);
 			// Mock setup: existing credential already has a secret expression
-			decryptSpy.mockReturnValue({ apiKey: '$secrets.oldKey' });
+			decryptSpy.mockResolvedValue({ apiKey: '$secrets.oldKey' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',
@@ -504,7 +504,7 @@ describe('CredentialsController', () => {
 
 			// Mock setup: existing credential has no external secret yet
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			decryptSpy.mockReturnValue({ apiKey: 'regular-key' });
+			decryptSpy.mockResolvedValue({ apiKey: 'regular-key' });
 
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrow(
 				'Lacking permissions to reference external secrets in credentials',

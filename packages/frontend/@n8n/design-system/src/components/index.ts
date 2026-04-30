@@ -1,5 +1,4 @@
 export { default as N8nActionBox } from './N8nActionBox';
-export { default as BetaTag } from './BetaTag/BetaTag.vue';
 export { default as N8nAskAssistantButton } from './AskAssistantButton';
 export {
 	default as N8nAskAssistantChat,
@@ -76,6 +75,7 @@ export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
+export { default as N8nSwitch } from './N8nSwitch';
 export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';

@@ -1,0 +1,318 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "import", "unicorn", "vue"],
+	"jsPlugins": ["@stylistic/eslint-plugin", "eslint-plugin-unused-imports", "eslint-plugin-lodash"],
+	"categories": {
+		"correctness": "off"
+	},
+	"options": {
+		"typeAware": true
+	},
+	"env": {
+		"builtin": true
+	},
+	"settings": {
+		"import-x/extensions": [".ts", ".tsx", ".cts", ".mts", ".js", ".jsx", ".cjs", ".mjs"],
+		"import-x/external-module-folders": ["node_modules", "node_modules/@types"],
+		"import-x/parsers": {
+			"@typescript-eslint/parser": [".ts", ".tsx", ".cts", ".mts"]
+		},
+		"import-x/resolver": {
+			"typescript": true
+		},
+		"import-x/resolver-next": [
+			{
+				"interfaceVersion": 3,
+				"name": "eslint-import-resolver-typescript"
+			}
+		]
+	},
+	"ignorePatterns": [
+		"**/*.js",
+		"**/*.d.ts",
+		"vite.config.ts",
+		"**/*.ts.snap",
+		"node_modules/**",
+		"dist/**",
+		"eslint.config.mjs",
+		"tsup.config.ts",
+		"jest.config.js",
+		"vitest.config.ts",
+		"**/*.test.ts"
+	],
+	"rules": {
+		"constructor-super": "error",
+		"for-direction": "error",
+		"no-async-promise-executor": "error",
+		"no-case-declarations": "warn",
+		"no-class-assign": "error",
+		"no-compare-neg-zero": "error",
+		"no-cond-assign": "error",
+		"no-const-assign": "error",
+		"no-constant-binary-expression": "error",
+		"no-constant-condition": "error",
+		"no-control-regex": "warn",
+		"no-delete-var": "error",
+		"no-dupe-class-members": "error",
+		"no-dupe-else-if": "error",
+		"no-dupe-keys": "error",
+		"no-duplicate-case": "error",
+		"no-empty": "warn",
+		"no-empty-character-class": "error",
+		"no-empty-pattern": "error",
+		"no-empty-static-block": "error",
+		"no-ex-assign": "error",
+		"no-extra-boolean-cast": "warn",
+		"no-fallthrough": "warn",
+		"no-func-assign": "error",
+		"no-global-assign": "error",
+		"no-import-assign": "error",
+		"no-invalid-regexp": "error",
+		"no-irregular-whitespace": "error",
+		"no-loss-of-precision": "error",
+		"no-misleading-character-class": "error",
+		"no-new-native-nonconstructor": "error",
+		"no-nonoctal-decimal-escape": "error",
+		"no-obj-calls": "error",
+		"no-prototype-builtins": "warn",
+		"no-redeclare": "error",
+		"no-regex-spaces": "error",
+		"no-self-assign": "error",
+		"no-setter-return": "error",
+		"no-shadow-restricted-names": "error",
+		"no-sparse-arrays": "warn",
+		"no-this-before-super": "error",
+		"no-unsafe-finally": "error",
+		"no-unsafe-negation": "error",
+		"no-unsafe-optional-chaining": "warn",
+		"no-unused-labels": "error",
+		"no-unused-private-class-members": "error",
+		"no-unused-vars": "warn",
+		"no-useless-backreference": "error",
+		"no-useless-catch": "error",
+		"no-useless-escape": "warn",
+		"no-with": "error",
+		"require-yield": "error",
+		"use-isnan": "error",
+		"valid-typeof": "error",
+		"no-array-constructor": "error",
+		"no-unused-expressions": "warn",
+		"no-void": [
+			"error",
+			{
+				"allowAsStatement": true
+			}
+		],
+		"eqeqeq": "error",
+		"object-shorthand": "error",
+		"prefer-const": "error",
+		"unused-imports/no-unused-imports": "error",
+		"unicorn/no-unnecessary-await": "error",
+		"unicorn/no-useless-promise-resolve-reject": "error",
+		"lodash/path-style": ["error", "as-needed"],
+		"lodash/import-scope": ["error", "method"],
+		"vue/no-arrow-functions-in-watch": "error",
+		"vue/no-deprecated-destroyed-lifecycle": "error",
+		"vue/no-export-in-script-setup": "error",
+		"vue/no-lifecycle-after-await": "error",
+		"vue/prefer-import-from-vue": "error",
+		"vue/valid-define-emits": "error",
+		"vue/valid-define-props": "error",
+		"vue/no-multiple-slot-args": "warn",
+		"vue/no-required-prop-with-default": "warn",
+		"no-console": "warn",
+		"@stylistic/lines-between-class-members": "warn",
+		"@stylistic/member-delimiter-style": "warn",
+		"no-use-before-define": ["warn", { "functions": false, "classes": false }],
+		"no-loop-func": "warn",
+		"no-shadow": "warn",
+		"import/no-named-as-default": "warn",
+		"import/no-duplicates": "warn",
+		"import/no-cycle": [
+			"warn",
+			{
+				"ignoreExternal": false,
+				"maxDepth": 3
+			}
+		],
+		"import/no-default-export": "warn",
+		"import/extensions": "warn",
+		"typescript/ban-ts-comment": [
+			"warn",
+			{
+				"ts-ignore": true
+			}
+		],
+		"typescript/no-duplicate-enum-values": "error",
+		"typescript/no-empty-object-type": "warn",
+		"typescript/no-explicit-any": "error",
+		"typescript/no-extra-non-null-assertion": "error",
+		"typescript/no-misused-new": "error",
+		"typescript/no-non-null-asserted-optional-chain": "error",
+		"typescript/no-require-imports": "error",
+		"typescript/no-this-alias": "warn",
+		"typescript/no-unnecessary-type-constraint": "error",
+		"typescript/no-unsafe-declaration-merging": "error",
+		"typescript/no-unsafe-function-type": "warn",
+		"typescript/no-wrapper-object-types": "error",
+		"typescript/prefer-as-const": "error",
+		"typescript/prefer-namespace-keyword": "error",
+		"typescript/await-thenable": "error",
+		"typescript/no-array-delete": "error",
+		"typescript/no-base-to-string": "warn",
+		"typescript/no-duplicate-type-constituents": "error",
+		"typescript/no-floating-promises": [
+			"error",
+			{
+				"ignoreVoid": true
+			}
+		],
+		"typescript/no-for-in-array": "warn",
+		"typescript/no-implied-eval": "error",
+		"typescript/no-misused-promises": [
+			"error",
+			{
+				"checksVoidReturn": false
+			}
+		],
+		"typescript/no-redundant-type-constituents": "warn",
+		"typescript/no-unnecessary-type-assertion": "warn",
+		"typescript/no-unsafe-argument": "warn",
+		"typescript/no-unsafe-assignment": "warn",
+		"typescript/no-unsafe-call": "warn",
+		"typescript/no-unsafe-enum-comparison": "warn",
+		"typescript/no-unsafe-member-access": "warn",
+		"typescript/no-unsafe-return": "warn",
+		"typescript/no-unsafe-unary-minus": "error",
+		"typescript/only-throw-error": "error",
+		"typescript/prefer-promise-reject-errors": "warn",
+		"typescript/require-await": "warn",
+		"typescript/restrict-plus-operands": "warn",
+		"typescript/restrict-template-expressions": "warn",
+		"typescript/unbound-method": "warn",
+		"typescript/array-type": [
+			"error",
+			{
+				"default": "array-simple"
+			}
+		],
+		"typescript/no-restricted-types": [
+			"warn",
+			{
+				"types": {
+					"Object": {
+						"message": "Use object instead",
+						"fixWith": "object"
+					},
+					"String": {
+						"message": "Use string instead",
+						"fixWith": "string"
+					},
+					"Boolean": {
+						"message": "Use boolean instead",
+						"fixWith": "boolean"
+					},
+					"Number": {
+						"message": "Use number instead",
+						"fixWith": "number"
+					},
+					"Symbol": {
+						"message": "Use symbol instead",
+						"fixWith": "symbol"
+					},
+					"Function": {
+						"message": "The `Function` type accepts any function-like value.\nIt provides no type safety when calling the function, which can be a common source of bugs.\nIt also accepts things like class declarations, which will throw at runtime as they will not be called with `new`.\nIf you are expecting the function to accept certain arguments, you should explicitly define the function shape."
+					}
+				}
+			}
+		],
+		"typescript/consistent-type-assertions": "error",
+		"typescript/consistent-type-imports": "error",
+		"typescript/consistent-type-exports": "error",
+		"typescript/no-invalid-void-type": "error",
+		"typescript/no-unnecessary-boolean-literal-compare": "warn",
+		"typescript/no-unnecessary-qualifier": "error",
+		"typescript/prefer-nullish-coalescing": "warn",
+		"typescript/promise-function-async": "error",
+		"typescript/return-await": ["error", "always"],
+		"typescript/explicit-member-accessibility": [
+			"error",
+			{
+				"accessibility": "no-public"
+			}
+		],
+		"typescript/dot-notation": "warn",
+		"typescript/no-empty-interface": "warn",
+		"typescript/no-non-null-assertion": "warn",
+		"typescript/no-var-requires": "warn"
+	},
+	"overrides": [
+		{
+			"files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
+			"rules": {
+				"constructor-super": "off",
+				"no-class-assign": "off",
+				"no-const-assign": "off",
+				"no-dupe-class-members": "off",
+				"no-dupe-keys": "off",
+				"no-func-assign": "off",
+				"no-import-assign": "off",
+				"no-new-native-nonconstructor": "off",
+				"no-obj-calls": "off",
+				"no-redeclare": "off",
+				"no-setter-return": "off",
+				"no-this-before-super": "off",
+				"no-unsafe-negation": "off",
+				"no-var": "error",
+				"no-with": "off",
+				"prefer-rest-params": "error"
+			}
+		},
+		{
+			"files": ["test/**/*.ts", "**/__tests__/*.ts", "**/*.test.ts", "**/*.cy.ts"],
+			"rules": {
+				"typescript/unbound-method": "off"
+			}
+		},
+		{
+			"files": ["**/*.ts"],
+			"globals": {
+				"NodeJS": "writable",
+				"AudioWorkletGlobalScope": "readonly",
+				"AudioWorkletProcessor": "readonly",
+				"currentFrame": "readonly",
+				"currentTime": "readonly",
+				"registerProcessor": "readonly",
+				"sampleRate": "readonly",
+				"WorkletGlobalScope": "readonly"
+			},
+			"env": {
+				"es2026": true,
+				"browser": true,
+				"node": true
+			}
+		},
+		{
+			"files": ["**/*.vue"],
+			"rules": {
+				"vue/define-emits-declaration": ["error", "type-literal"],
+				"unused-imports/no-unused-imports": "off"
+			},
+			"globals": {
+				"NodeJS": "writable",
+				"AudioWorkletGlobalScope": "readonly",
+				"AudioWorkletProcessor": "readonly",
+				"currentFrame": "readonly",
+				"currentTime": "readonly",
+				"registerProcessor": "readonly",
+				"sampleRate": "readonly",
+				"WorkletGlobalScope": "readonly"
+			},
+			"env": {
+				"es2026": true,
+				"browser": true,
+				"node": true
+			}
+		}
+	]
+}
