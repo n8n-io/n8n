@@ -355,7 +355,6 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	max-width: 640px;
 	margin: 0 auto;
 	width: 100%;
-	animation: fadeIn 0.3s ease-out;
 }
 
 .heading {
@@ -363,11 +362,13 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
 	margin: 0 0 var(--spacing--lg);
+	animation: headingLift 360ms ease-out both;
 }
 
 .inputWrapper {
 	width: 100%;
 	margin-bottom: var(--spacing--xl);
+	animation: contentDropIn 360ms ease-out 80ms both;
 }
 
 .suggestions {
@@ -375,6 +376,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	animation: contentDropIn 360ms ease-out 160ms both;
 }
 
 .suggestionsLabel {
@@ -398,16 +400,25 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
 	border: var(--border-width) var(--border-style) var(--color--foreground);
-	background: transparent;
+	background: var(--color--background--light-3);
 	cursor: pointer;
-	transition: background-color 0.15s ease;
+	transition:
+		background-color 0.15s ease,
+		border-color 0.15s ease,
+		box-shadow 0.15s ease;
 	text-align: left;
 	font: inherit;
 }
 
 .suggestionCard:hover,
 .suggestionCard:focus-visible {
-	background-color: var(--color--foreground--tint-2);
+	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground--shade-1);
+	box-shadow: var(--shadow--card-hover);
+}
+
+.suggestionCard:active {
+	background-color: var(--color--background--light-1);
 }
 
 .suggestionHeader {
@@ -429,20 +440,34 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	min-width: 0;
 }
 
-@keyframes fadeIn {
+@keyframes headingLift {
 	from {
 		opacity: 0;
-		transform: scale(0.98);
+		transform: translateY(var(--spacing--xs));
 	}
 
 	to {
 		opacity: 1;
-		transform: scale(1);
+		transform: translateY(calc(-1 * var(--spacing--xs)));
+	}
+}
+
+@keyframes contentDropIn {
+	from {
+		opacity: 0;
+		transform: translateY(calc(-1 * var(--spacing--xs)));
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
 	}
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.center {
+	.heading,
+	.inputWrapper,
+	.suggestions {
 		animation: none;
 	}
 }
