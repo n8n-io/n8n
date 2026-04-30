@@ -44,9 +44,12 @@ async function findChromaticReviewUrl() {
 		}
 	}
 
-	writeGithubOutput({
+	const output = {
 		ui_review_url: uiReviewUrl,
-	});
+	};
+	console.log('Output: ', output);
+
+	writeGithubOutput(output);
 }
 
 // only run when executed directly, not when imported by tests

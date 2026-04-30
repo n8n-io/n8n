@@ -96,4 +96,4 @@ jobs:
           BUILD_URL: ${{ needs.chromatic.outputs.build_url }}
           UI_REVIEW_URL: ${{ steps.resolve_ui_review_url.outputs.ui_review_url }}
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
-        run: node ./.github/scripts/find-chromatic-review-url.mjs
+        run: node ./.github/scripts/chromatic-comment-visual-regressions.mjs
