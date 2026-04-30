@@ -51,6 +51,24 @@ interface FeedbackEntry {
 	comment?: string;
 }
 
+interface ToolCallSuspension {
+	message?: string;
+	questions?: unknown;
+	severity?: string;
+	autoApproved: boolean;
+}
+
+interface ToolCallTrace {
+	step: number;
+	toolCallId: string;
+	toolName: string;
+	args?: unknown;
+	result?: unknown;
+	error?: string;
+	elapsedMs?: number;
+	suspension?: ToolCallSuspension;
+}
+
 interface ResultRecord {
 	exampleId: string;
 	iteration: number;
@@ -71,6 +89,8 @@ interface ResultRecord {
 			mockedCredentialTypes: string[];
 		};
 	};
+	/** Optional — older runs predate the field. */
+	toolCalls?: ToolCallTrace[];
 	feedback: FeedbackEntry[];
 }
 
@@ -203,6 +223,78 @@ function renderJudgeComments(feedback: FeedbackEntry[]): string {
 	return `<table class="judges"><thead><tr><th>Judge</th><th>Pass</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
+function formatJson(value: unknown): string {
+	if (value === undefined) return '';
+	if (typeof value === 'string') return value;
+	try {
+		return JSON.stringify(value, null, 2);
+	} catch {
+		return String(value);
+	}
+}
+
+function renderToolCallTimeline(toolCalls: ToolCallTrace[] | undefined): string {
+	if (!toolCalls || toolCalls.length === 0) {
+		return '<div class="no-tools">No tool calls recorded.</div>';
+	}
+	const items = toolCalls
+		.map((trace) => {
+			const elapsed =
+				typeof trace.elapsedMs === 'number' ? `${trace.elapsedMs}ms` : '<em>pending</em>';
+			const stateBits: string[] = [];
+			if (trace.error) stateBits.push('<span class="tool-state error">error</span>');
+			else if (trace.result !== undefined) stateBits.push('<span class="tool-state ok">ok</span>');
+			else stateBits.push('<span class="tool-state pending">pending</span>');
+			if (trace.suspension) {
+				stateBits.push(
+					trace.suspension.autoApproved
+						? '<span class="tool-state suspended auto">auto-approved</span>'
+						: '<span class="tool-state suspended">suspended</span>',
+				);
+			}
+
+			const blocks: string[] = [];
+			if (trace.suspension) {
+				const suspParts: string[] = [];
+				if (trace.suspension.message) {
+					suspParts.push(`<div class="tool-message">${escapeHtml(trace.suspension.message)}</div>`);
+				}
+				if (trace.suspension.questions) {
+					suspParts.push(
+						`<details class="tool-block tool-questions"><summary>Questions asked</summary><pre>${escapeHtml(formatJson(trace.suspension.questions))}</pre></details>`,
+					);
+				}
+				blocks.push(`<div class="tool-suspension">${suspParts.join('')}</div>`);
+			}
+			if (trace.args !== undefined) {
+				blocks.push(
+					`<details class="tool-block tool-args"><summary>Input</summary><pre>${escapeHtml(formatJson(trace.args))}</pre></details>`,
+				);
+			}
+			if (trace.error) {
+				blocks.push(
+					`<details class="tool-block tool-error" open><summary>Error</summary><pre>${escapeHtml(trace.error)}</pre></details>`,
+				);
+			} else if (trace.result !== undefined) {
+				blocks.push(
+					`<details class="tool-block tool-result"><summary>Output</summary><pre>${escapeHtml(formatJson(trace.result))}</pre></details>`,
+				);
+			}
+
+			return `<li class="tool-call">
+  <header class="tool-call-header">
+    <span class="tool-step">#${trace.step}</span>
+    <span class="tool-name">${escapeHtml(trace.toolName)}</span>
+    <span class="tool-elapsed">${elapsed}</span>
+    <span class="tool-states">${stateBits.join('')}</span>
+  </header>
+  ${blocks.join('')}
+</li>`;
+		})
+		.join('');
+	return `<ol class="tool-calls">${items}</ol>`;
+}
+
 function renderWorkflow(workflow: unknown): string {
 	if (!workflow) {
 		return '<div class="no-workflow">No workflow built.</div>';
@@ -263,6 +355,10 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
     <section class="workflow-section">
       <h3>Built workflow</h3>
       ${renderWorkflow(record.workflow)}
+    </section>
+    <section class="tool-calls-section">
+      <h3>Tool calls${record.toolCalls && record.toolCalls.length > 0 ? ` (${record.toolCalls.length})` : ''}</h3>
+      ${renderToolCallTimeline(record.toolCalls)}
     </section>
     ${renderJudgeComments(record.feedback)}
   </div>
@@ -348,28 +444,29 @@ function renderDocument(runs: Run[]): string {
 <style>
   :root {
     font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-    color-scheme: light;
-    --bg: #f7f7f9;
-    --fg: #222;
-    --muted: #6b7280;
-    --border: #e5e7eb;
-    --card: #fff;
-    --pass: #10b981;
-    --partial: #f59e0b;
-    --fail: #ef4444;
-    --accent: #4f46e5;
+    color-scheme: dark;
+    --bg: #0d1117;
+    --fg: #e6edf3;
+    --muted: #8b949e;
+    --border: #30363d;
+    --card: #161b22;
+    --subtle: #1c2129;
+    --pass: #3fb950;
+    --partial: #d29922;
+    --fail: #f85149;
+    --accent: #7c8cff;
   }
   body { margin: 0; background: var(--bg); color: var(--fg); }
   header.top { position: sticky; top: 0; background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 20px; z-index: 10; }
   header.top h1 { margin: 0 0 6px 0; font-size: 18px; }
   nav.runs { display: flex; flex-wrap: wrap; gap: 8px; }
-  nav.runs a { display: inline-flex; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; text-decoration: none; color: inherit; font-size: 12px; background: #fafafa; }
+  nav.runs a { display: inline-flex; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; text-decoration: none; color: inherit; font-size: 12px; background: var(--subtle); }
   nav.runs a:hover { border-color: var(--accent); color: var(--accent); }
   nav.runs .nav-time { color: var(--muted); }
   nav.runs .nav-score { font-weight: 600; }
   main { padding: 20px; display: flex; flex-direction: column; gap: 32px; max-width: 1400px; margin: 0 auto; }
   section.run { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  section.run header.run-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: #fafafa; }
+  section.run header.run-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--subtle); }
   section.run header.run-header h2 { margin: 0 0 8px 0; font-size: 16px; }
   .run-meta, .run-totals, .run-interactivity { display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: var(--muted); }
   .run-totals { margin-top: 8px; font-size: 13px; color: var(--fg); }
@@ -389,6 +486,7 @@ function renderDocument(runs: Run[]): string {
     align-items: center;
     font-size: 13px;
   }
+  details.example > summary:hover { background: var(--subtle); }
   details.example > summary::-webkit-details-marker { display: none; }
   details.example > summary .status {
     font-weight: 700;
@@ -398,35 +496,57 @@ function renderDocument(runs: Run[]): string {
     letter-spacing: 0.03em;
     text-align: center;
   }
-  details.ex-pass > summary .status { background: rgba(16,185,129,0.1); color: var(--pass); }
-  details.ex-partial > summary .status { background: rgba(245,158,11,0.1); color: var(--partial); }
-  details.ex-fail > summary .status { background: rgba(239,68,68,0.1); color: var(--fail); }
+  details.ex-pass > summary .status { background: rgba(63,185,80,0.18); color: var(--pass); }
+  details.ex-partial > summary .status { background: rgba(210,153,34,0.18); color: var(--partial); }
+  details.ex-fail > summary .status { background: rgba(248,81,73,0.18); color: var(--fail); }
   details.example > summary .example-id { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   details.example > summary .iteration { color: var(--muted); font-size: 11px; }
   details.example > summary .duration { color: var(--muted); font-size: 11px; text-align: right; }
   details.example > summary .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-  .badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #eef0f3; color: #374151; }
-  .badge.badge-pass { background: rgba(16,185,129,0.15); color: var(--pass); }
-  .badge.badge-fail { background: rgba(239,68,68,0.15); color: var(--fail); }
-  details.example > .body { padding: 16px 20px 24px; background: #fcfcfd; }
+  .badge { font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(139,148,158,0.18); color: var(--fg); }
+  .badge.badge-pass { background: rgba(63,185,80,0.2); color: var(--pass); }
+  .badge.badge-fail { background: rgba(248,81,73,0.2); color: var(--fail); }
+  details.example > .body { padding: 16px 20px 24px; background: var(--subtle); }
   details.example > .body h3 { margin: 16px 0 6px 0; font-size: 13px; text-transform: uppercase; color: var(--muted); letter-spacing: 0.05em; }
-  details.example pre { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; font-size: 12px; white-space: pre-wrap; }
+  details.example pre { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; font-size: 12px; white-space: pre-wrap; color: var(--fg); }
   .criteria-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
-  .criteria { border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; background: #fff; }
+  .criteria { border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; background: var(--card); }
   .criteria h4 { margin: 0 0 4px 0; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
   .criteria.do h4 { color: var(--pass); }
   .criteria.dont h4 { color: var(--fail); }
   .criteria ul { margin: 0; padding-left: 18px; font-size: 12px; }
-  .error { margin-top: 8px; padding: 8px 12px; background: rgba(239,68,68,0.08); color: var(--fail); border-radius: 4px; font-size: 12px; white-space: pre-wrap; }
+  .error { margin-top: 8px; padding: 8px 12px; background: rgba(248,81,73,0.12); color: var(--fail); border-radius: 4px; font-size: 12px; white-space: pre-wrap; }
   .interactivity { margin-top: 8px; font-size: 11px; color: var(--muted); }
   .workflow-section { margin-top: 8px; }
-  n8n-demo { display: block; height: 560px; border: 1px solid var(--border); border-radius: 4px; background: #fff; }
+  n8n-demo { display: block; height: 380px; border: 1px solid var(--border); border-radius: 4px; background: #fff; color-scheme: light; }
   .no-workflow { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border); border-radius: 4px; }
-  table.judges { margin-top: 12px; width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+  table.judges { margin-top: 12px; width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
   table.judges th, table.judges td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
   table.judges tr:last-child td { border-bottom: none; }
   table.judges td.judge-pass { color: var(--pass); font-weight: 600; }
   table.judges td.judge-fail { color: var(--fail); font-weight: 600; }
+  .tool-calls-section { margin-top: 12px; }
+  .no-tools { color: var(--muted); font-size: 12px; padding: 8px 12px; background: var(--card); border: 1px dashed var(--border); border-radius: 4px; }
+  ol.tool-calls { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+  li.tool-call { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; }
+  .tool-call-header { display: grid; grid-template-columns: 36px minmax(0, 1fr) 80px auto; gap: 10px; align-items: center; font-size: 12px; }
+  .tool-step { color: var(--muted); font-family: ui-monospace, monospace; }
+  .tool-name { font-weight: 600; color: var(--fg); font-family: ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool-elapsed { color: var(--muted); font-size: 11px; text-align: right; }
+  .tool-states { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .tool-state { font-size: 10px; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.03em; text-transform: uppercase; font-weight: 600; }
+  .tool-state.ok { background: rgba(63,185,80,0.18); color: var(--pass); }
+  .tool-state.error { background: rgba(248,81,73,0.18); color: var(--fail); }
+  .tool-state.pending { background: rgba(139,148,158,0.18); color: var(--muted); }
+  .tool-state.suspended { background: rgba(210,153,34,0.18); color: var(--partial); }
+  .tool-state.suspended.auto { background: rgba(124,140,255,0.18); color: var(--accent); }
+  .tool-suspension { margin-top: 6px; padding: 6px 10px; background: rgba(210,153,34,0.08); border-left: 2px solid var(--partial); border-radius: 2px; }
+  .tool-message { font-size: 12px; color: var(--fg); white-space: pre-wrap; }
+  .tool-block { margin-top: 6px; }
+  .tool-block > summary { cursor: pointer; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 0; }
+  .tool-block > summary:hover { color: var(--accent); }
+  .tool-block pre { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; font-size: 11px; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-word; color: var(--fg); margin: 4px 0 0 0; font-family: ui-monospace, monospace; }
+  .tool-block.tool-error pre { border-color: var(--fail); }
 </style>
 </head>
 <body>

@@ -53,6 +53,34 @@ import { normalizeWorkflow } from './normalize-workflow';
 
 export type BuildErrorClass = 'build_timeout' | 'no_workflow_built' | 'agent_error';
 
+export interface ToolCallSuspension {
+	/** Pre-suspend message — for `ask-user` this is the introMessage or first question. */
+	message?: string;
+	/** Structured questions for `ask-user` suspensions, otherwise undefined. */
+	questions?: unknown;
+	/** Free-form severity from the suspend payload. */
+	severity?: string;
+	/** True when the eval harness auto-approved the suspension. */
+	autoApproved: boolean;
+}
+
+export interface ToolCallTrace {
+	/** 1-based step ordinal in tool-call order. */
+	step: number;
+	toolCallId: string;
+	toolName: string;
+	/** Truncated tool input. */
+	args?: unknown;
+	/** Truncated successful tool result (mutually exclusive with `error`). */
+	result?: unknown;
+	/** Stringified tool error (mutually exclusive with `result`). */
+	error?: string;
+	/** Wall-clock duration between tool-call and tool-result/tool-error. */
+	elapsedMs?: number;
+	/** Populated when the tool suspended for HITL (e.g. `ask-user`). */
+	suspension?: ToolCallSuspension;
+}
+
 export interface InProcessBuildResult {
 	success: boolean;
 	workflow?: SimpleWorkflow;
@@ -67,6 +95,8 @@ export interface InProcessBuildResult {
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
 	};
+	/** Ordered tool-call timeline observed during the run. */
+	toolCalls: ToolCallTrace[];
 }
 
 export interface BuildInProcessOptions {
@@ -111,6 +141,8 @@ export async function buildInProcess(
 		mockedCredentialTypes: new Set<string>(),
 	};
 
+	const traceCollector = createToolTraceCollector();
+
 	const chunkLog = options.logPath ? await openChunkLog(options.logPath) : null;
 	chunkLog?.writeHeader(options.prompt, { modelId, maxSteps, timeoutMs });
 
@@ -122,7 +154,14 @@ export async function buildInProcess(
 	} catch (error) {
 		chunkLog?.write({ kind: 'error', stage: 'stub-services', message: String(error) });
 		await chunkLog?.close();
-		return failResult(started, 'agent_error', error, interactivity);
+		return failResult(
+			started,
+			'agent_error',
+			error,
+			interactivity,
+			undefined,
+			traceCollector.snapshot(),
+		);
 	}
 
 	const allTools = createAllTools(services.context);
@@ -138,7 +177,14 @@ export async function buildInProcess(
 			message: error instanceof Error ? error.message : String(error),
 		});
 		await chunkLog?.close();
-		return failResult(started, 'agent_error', error, interactivity);
+		return failResult(
+			started,
+			'agent_error',
+			error,
+			interactivity,
+			undefined,
+			traceCollector.snapshot(),
+		);
 	}
 	let root: string;
 	try {
@@ -159,7 +205,14 @@ export async function buildInProcess(
 			});
 		}
 		await chunkLog?.close();
-		return failResult(started, 'agent_error', error, interactivity);
+		return failResult(
+			started,
+			'agent_error',
+			error,
+			interactivity,
+			undefined,
+			traceCollector.snapshot(),
+		);
 	}
 	const prompt = createSandboxBuilderAgentPrompt(root);
 
@@ -203,6 +256,7 @@ export async function buildInProcess(
 	const runId = 'eval-run-' + nanoid(6);
 	const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 		observeEvent(event, interactivity);
+		traceCollector.observe(event);
 		chunkLog?.writeEvent(event);
 	});
 	const logger = silentLogger();
@@ -232,6 +286,7 @@ export async function buildInProcess(
 				mode: 'auto',
 				waitForConfirmation: async (requestId): Promise<Record<string, unknown>> => {
 					interactivity.autoApprovedSuspensions++;
+					traceCollector.markAutoApproved(requestId);
 					chunkLog?.write({ kind: 'auto-approve', requestId });
 					return { approved: true };
 				},
@@ -268,6 +323,7 @@ export async function buildInProcess(
 				new Error(`Build exceeded ${timeoutMs}ms`),
 				interactivity,
 				finalText,
+				traceCollector.snapshot(),
 			);
 		}
 		if (result.status === 'errored') {
@@ -278,6 +334,7 @@ export async function buildInProcess(
 				new Error('Stream errored'),
 				interactivity,
 				finalText,
+				traceCollector.snapshot(),
 			);
 		}
 	} catch (error) {
@@ -294,10 +351,18 @@ export async function buildInProcess(
 				new Error(`Build exceeded ${timeoutMs}ms`),
 				interactivity,
 				finalText,
+				traceCollector.snapshot(),
 			);
 		}
 		await chunkLog?.close();
-		return failResult(started, 'agent_error', error, interactivity, finalText);
+		return failResult(
+			started,
+			'agent_error',
+			error,
+			interactivity,
+			finalText,
+			traceCollector.snapshot(),
+		);
 	} finally {
 		clearTimeout(timeoutHandle);
 		try {
@@ -321,6 +386,7 @@ export async function buildInProcess(
 			new Error('Builder finished without invoking submit-workflow'),
 			interactivity,
 			finalText,
+			traceCollector.snapshot(),
 		);
 	}
 
@@ -339,6 +405,7 @@ export async function buildInProcess(
 			autoApprovedSuspensions: interactivity.autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(interactivity.mockedCredentialTypes),
 		},
+		toolCalls: traceCollector.snapshot(),
 	};
 }
 
@@ -377,7 +444,8 @@ function failResult(
 	errorClass: BuildErrorClass,
 	error: unknown,
 	interactivity: InteractivityState,
-	finalText?: string,
+	finalText: string | undefined,
+	toolCalls: ToolCallTrace[],
 ): InProcessBuildResult {
 	return {
 		success: false,
@@ -391,6 +459,83 @@ function failResult(
 			planToolCount: interactivity.planToolCount,
 			autoApprovedSuspensions: interactivity.autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(interactivity.mockedCredentialTypes),
+		},
+		toolCalls,
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Tool-call trace collector — observes events from the same bus as the chunk
+// log, but produces a structured timeline that lives on the build result so
+// the eval report can render per-example tool sequences.
+// ---------------------------------------------------------------------------
+
+interface ToolTraceCollector {
+	observe: (event: InstanceAiEvent) => void;
+	markAutoApproved: (requestId: string) => void;
+	snapshot: () => ToolCallTrace[];
+}
+
+const TOOL_TRACE_TRUNC = 4000;
+
+function createToolTraceCollector(): ToolTraceCollector {
+	const traces: ToolCallTrace[] = [];
+	const byToolCallId = new Map<string, ToolCallTrace>();
+	const startTimes = new Map<string, number>();
+	const requestIdToToolCallId = new Map<string, string>();
+	let stepCounter = 0;
+
+	return {
+		observe(event) {
+			if (event.type === 'tool-call') {
+				stepCounter += 1;
+				const trace: ToolCallTrace = {
+					step: stepCounter,
+					toolCallId: event.payload.toolCallId,
+					toolName: event.payload.toolName,
+					args: truncate(event.payload.args, TOOL_TRACE_TRUNC),
+				};
+				traces.push(trace);
+				byToolCallId.set(trace.toolCallId, trace);
+				startTimes.set(trace.toolCallId, Date.now());
+			} else if (event.type === 'tool-result') {
+				const trace = byToolCallId.get(event.payload.toolCallId);
+				if (!trace) return;
+				const start = startTimes.get(trace.toolCallId);
+				if (start !== undefined) trace.elapsedMs = Date.now() - start;
+				trace.result = truncate(event.payload.result, TOOL_TRACE_TRUNC);
+				startTimes.delete(trace.toolCallId);
+			} else if (event.type === 'tool-error') {
+				const trace = byToolCallId.get(event.payload.toolCallId);
+				if (!trace) return;
+				const start = startTimes.get(trace.toolCallId);
+				if (start !== undefined) trace.elapsedMs = Date.now() - start;
+				const errStr =
+					typeof event.payload.error === 'string'
+						? event.payload.error
+						: JSON.stringify(event.payload.error);
+				trace.error = errStr.length > TOOL_TRACE_TRUNC ? errStr.slice(0, TOOL_TRACE_TRUNC) : errStr;
+				startTimes.delete(trace.toolCallId);
+			} else if (event.type === 'confirmation-request') {
+				const trace = byToolCallId.get(event.payload.toolCallId);
+				if (!trace) return;
+				requestIdToToolCallId.set(event.payload.requestId, event.payload.toolCallId);
+				trace.suspension = {
+					message: event.payload.message,
+					questions: event.payload.questions,
+					severity: event.payload.severity,
+					autoApproved: false,
+				};
+			}
+		},
+		markAutoApproved(requestId) {
+			const toolCallId = requestIdToToolCallId.get(requestId);
+			if (!toolCallId) return;
+			const trace = byToolCallId.get(toolCallId);
+			if (trace?.suspension) trace.suspension.autoApproved = true;
+		},
+		snapshot() {
+			return traces.map((t) => ({ ...t }));
 		},
 	};
 }

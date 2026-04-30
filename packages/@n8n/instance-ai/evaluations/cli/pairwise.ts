@@ -26,7 +26,11 @@ import {
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
 
-import { buildInProcess, type InProcessBuildResult } from '../harness/in-process-builder';
+import {
+	buildInProcess,
+	type InProcessBuildResult,
+	type ToolCallTrace,
+} from '../harness/in-process-builder';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
 import type { Logger } from '../../src/logger';
@@ -216,6 +220,7 @@ interface ExampleRecord {
 		extraWorkflowCount: number;
 		interactivity: InProcessBuildResult['interactivity'];
 	};
+	toolCalls: ToolCallTrace[];
 	feedback: Feedback[];
 }
 
@@ -274,6 +279,7 @@ async function runExample(
 			extraWorkflowCount: build.extraWorkflows.length,
 			interactivity: build.interactivity,
 		},
+		toolCalls: build.toolCalls,
 		feedback: [],
 	};
 
