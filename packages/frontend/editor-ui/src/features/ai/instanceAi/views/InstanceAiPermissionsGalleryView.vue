@@ -309,7 +309,7 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nHeading tag="div" size="medium"> Update workflow “Lead enrichment” </N8nHeading>
+							<N8nText size="large" bold>Update workflow “Lead enrichment”</N8nText>
 							<ConfirmationPreview>
 								Add a Set node before the HTTP Request to coerce email to lower case.
 							</ConfirmationPreview>
@@ -330,9 +330,7 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nHeading tag="div" size="medium">
-								Delete workflow “Old onboarding flow”
-							</N8nHeading>
+							<N8nText size="large" bold>Delete workflow “Old onboarding flow”</N8nText>
 							<ConfirmationPreview>
 								This workflow has 12 prior executions. Deleting it cannot be undone.
 							</ConfirmationPreview>
@@ -359,7 +357,7 @@ function logPlanRequestChanges(feedback: string) {
 						<div :class="[$style.item, $style.itemBordered]">
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nHeading tag="div" size="medium"> Tag workflow “Lead enrichment” </N8nHeading>
+									<N8nText size="large" bold>Tag workflow “Lead enrichment”</N8nText>
 									<ConfirmationPreview>Add tag: production</ConfirmationPreview>
 								</div>
 								<ConfirmationFooter>
@@ -371,9 +369,7 @@ function logPlanRequestChanges(feedback: string) {
 						<div :class="[$style.item, $style.itemBordered]">
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nHeading tag="div" size="medium">
-										Move workflow to folder “Marketing”
-									</N8nHeading>
+									<N8nText size="large" bold>Move workflow to folder “Marketing”</N8nText>
 									<ConfirmationPreview>From: Inbox · To: Marketing</ConfirmationPreview>
 								</div>
 								<ConfirmationFooter>
@@ -418,7 +414,7 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nHeading tag="div" size="medium">{{ example.title }}</N8nHeading>
+							<N8nText size="large" bold>{{ example.title }}</N8nText>
 							<ConfirmationPreview>{{ example.message }}</ConfirmationPreview>
 						</div>
 						<ConfirmationFooter>
