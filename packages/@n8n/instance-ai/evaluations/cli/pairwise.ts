@@ -51,7 +51,6 @@ interface PairwiseArgs {
 	judgeModel: string;
 	experimentName: string;
 	verbose: boolean;
-	sandbox: boolean;
 }
 
 function parseArgs(argv: string[]): PairwiseArgs {
@@ -95,7 +94,6 @@ function parseArgs(argv: string[]): PairwiseArgs {
 		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
-		sandbox: !has('--no-sandbox'),
 	};
 }
 
@@ -106,8 +104,12 @@ function parseArgs(argv: string[]): PairwiseArgs {
 function createSandboxFactory(
 	config: SandboxConfig,
 	evalLogger: EvalLogger,
-): BuilderSandboxFactory | undefined {
-	if (!config.enabled) return undefined;
+): BuilderSandboxFactory {
+	if (!config.enabled) {
+		throw new Error(
+			'Sandbox config is unexpectedly disabled — eval runs always require a sandbox.',
+		);
+	}
 
 	const factoryLogger: Logger = {
 		debug: (message, meta) => evalLogger.verbose(`[sandbox] ${message}${formatMeta(meta)}`),
@@ -242,7 +244,7 @@ async function runExample(
 	judgeLlm: BaseChatModel,
 	args: PairwiseArgs,
 	logger: EvalLogger,
-	sandboxFactory: BuilderSandboxFactory | undefined,
+	sandboxFactory: BuilderSandboxFactory,
 ): Promise<ExampleRecord> {
 	logger.verbose(`[${example.id} #${iteration}] building workflow...`);
 	const logPath = path.join(
@@ -329,7 +331,7 @@ interface Summary {
 		autoApprovedSuspensions: number;
 		mockedCredentialTypes: string[];
 	};
-	sandbox: { enabled: boolean; provider?: string };
+	sandbox: { provider: string };
 }
 
 async function writeOutputs(
@@ -339,7 +341,7 @@ async function writeOutputs(
 	startedAt: Date,
 	finishedAt: Date,
 	logger: EvalLogger,
-	sandboxConfig: SandboxConfig,
+	sandboxProvider: string,
 ): Promise<Summary> {
 	await fs.mkdir(outputDir, { recursive: true });
 	await fs.mkdir(path.join(outputDir, 'workflows'), { recursive: true });
@@ -452,9 +454,7 @@ async function writeOutputs(
 			autoApprovedSuspensions,
 			mockedCredentialTypes: Array.from(allMockedCreds),
 		},
-		sandbox: sandboxConfig.enabled
-			? { enabled: true, provider: sandboxConfig.provider }
-			: { enabled: false },
+		sandbox: { provider: sandboxProvider },
 	};
 	await fs.writeFile(
 		path.join(outputDir, 'summary.json'),
@@ -483,17 +483,14 @@ async function main(): Promise<void> {
 		);
 	}
 
-	const sandboxConfig = resolveSandboxConfig(process.env, { sandbox: args.sandbox });
+	const sandboxConfig = resolveSandboxConfig(process.env);
 	const sandboxFactory = createSandboxFactory(sandboxConfig, logger);
-	if (sandboxConfig.enabled) {
-		logger.info(
-			`Sandbox: provider=${sandboxConfig.provider} (workflow built via TypeScript file + tsc)`,
-		);
-	} else {
-		logger.warn(
-			'Sandbox: disabled (--no-sandbox) — using string-based build-workflow tool. Use only for local development.',
-		);
+	if (!sandboxConfig.enabled) {
+		throw new Error('resolveSandboxConfig returned a disabled config — this should never happen.');
 	}
+	logger.info(
+		`Sandbox: provider=${sandboxConfig.provider} (workflow built via TypeScript file + tsc)`,
+	);
 
 	const judgeLlm = new ChatAnthropic({
 		model: args.judgeModel,
@@ -543,7 +540,15 @@ async function main(): Promise<void> {
 			? a.iteration - b.iteration
 			: a.exampleId.localeCompare(b.exampleId),
 	);
-	await writeOutputs(args.outputDir, records, args, startedAt, finishedAt, logger, sandboxConfig);
+	await writeOutputs(
+		args.outputDir,
+		records,
+		args,
+		startedAt,
+		finishedAt,
+		logger,
+		sandboxConfig.provider,
+	);
 
 	if (args.backend === 'langsmith') {
 		logger.info(

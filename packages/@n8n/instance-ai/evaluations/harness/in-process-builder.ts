@@ -4,13 +4,14 @@
 // Rather than wire up the full orchestrator (which requires a
 // BackgroundTaskManager, workflowTaskService, trace context, etc.), we
 // invoke the same builder sub-agent that the orchestrator would delegate
-// to — a Mastra Agent given BUILDER_AGENT_PROMPT plus the `build-workflow`
-// tool and a few supporting domain tools. For single-workflow prompts in
-// the pairwise dataset the orchestrator's only job is to route here, so
-// skipping it loses nothing material.
+// to — a Mastra Agent given the sandbox builder prompt plus
+// `submit-workflow` and a few supporting domain tools. For single-workflow
+// prompts in the pairwise dataset the orchestrator's only job is to route
+// here, so skipping it loses nothing material.
 //
 // The built workflow is captured through the stub `workflowService`'s
-// `createFromWorkflowJSON` hook — the `build-workflow` tool calls it.
+// `createFromWorkflowJSON` hook — `submit-workflow` calls it after parsing
+// the TypeScript file the agent wrote inside the sandbox.
 //
 // HITL: several domain tools (data-tables create, delete workflow, etc.)
 // suspend the stream waiting for user approval. We run the stream through
@@ -34,10 +35,7 @@ import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
 import { createAllTools } from '../../src/tools';
-import {
-	BUILDER_AGENT_PROMPT,
-	createSandboxBuilderAgentPrompt,
-} from '../../src/tools/orchestration/build-workflow-agent.prompt';
+import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/build-workflow-agent.prompt';
 import { createSubmitWorkflowTool } from '../../src/tools/workflows/submit-workflow.tool';
 import type { ModelConfig } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
@@ -86,12 +84,12 @@ export interface BuildInProcessOptions {
 	 */
 	logPath?: string;
 	/**
-	 * When set, the builder runs in sandbox mode: a per-call workspace
-	 * is provisioned via the factory, the agent uses the sandbox builder
-	 * prompt + `submit-workflow` (TS file → tsc → save), and the workspace
-	 * is destroyed on completion. Mirrors the production build path.
+	 * Provisions the per-call sandbox workspace. The agent runs the
+	 * production sandbox builder prompt + `submit-workflow` path: writes
+	 * TypeScript to the workspace, runs `tsc`, and saves the parsed
+	 * `WorkflowJSON`. The workspace is destroyed on completion.
 	 */
-	sandboxFactory?: BuilderSandboxFactory;
+	sandboxFactory: BuilderSandboxFactory;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,75 +127,54 @@ export async function buildInProcess(
 
 	const allTools = createAllTools(services.context);
 	const builderTools: Record<string, unknown> = {};
-	let prompt = BUILDER_AGENT_PROMPT;
-	let builderWs: BuilderWorkspace | undefined;
 
-	if (options.sandboxFactory) {
-		try {
-			builderWs = await options.sandboxFactory.create(
-				`eval-builder-${nanoid(6)}`,
-				services.context,
-			);
-		} catch (error) {
-			chunkLog?.write({
-				kind: 'error',
-				stage: 'sandbox-create',
-				message: error instanceof Error ? error.message : String(error),
-			});
-			await chunkLog?.close();
-			return failResult(started, 'agent_error', error, interactivity);
-		}
-		let root: string;
-		try {
-			root = await getWorkspaceRoot(builderWs.workspace);
-		} catch (error) {
-			chunkLog?.write({
-				kind: 'error',
-				stage: 'sandbox-resolve-root',
-				message: error instanceof Error ? error.message : String(error),
-			});
-			try {
-				await builderWs.cleanup();
-			} catch (cleanupError) {
-				chunkLog?.write({
-					kind: 'error',
-					stage: 'sandbox-cleanup',
-					message: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
-				});
-			}
-			await chunkLog?.close();
-			return failResult(started, 'agent_error', error, interactivity);
-		}
-		prompt = createSandboxBuilderAgentPrompt(root);
-
-		const sandboxToolNames = [
-			'nodes',
-			'workflows',
-			'credentials',
-			'data-tables',
-			'templates',
-		] as const;
-		for (const name of sandboxToolNames) {
-			const tool = (allTools as Record<string, unknown>)[name];
-			if (tool) builderTools[name] = tool;
-		}
-		builderTools['submit-workflow'] = createSubmitWorkflowTool(
-			services.context,
-			builderWs.workspace,
-		);
-	} else {
-		const builderToolNames = [
-			'build-workflow',
-			'nodes',
-			'workflows',
-			'data-tables',
-			'templates',
-		] as const;
-		for (const name of builderToolNames) {
-			const tool = (allTools as Record<string, unknown>)[name];
-			if (tool) builderTools[name] = tool;
-		}
+	let builderWs: BuilderWorkspace;
+	try {
+		builderWs = await options.sandboxFactory.create(`eval-builder-${nanoid(6)}`, services.context);
+	} catch (error) {
+		chunkLog?.write({
+			kind: 'error',
+			stage: 'sandbox-create',
+			message: error instanceof Error ? error.message : String(error),
+		});
+		await chunkLog?.close();
+		return failResult(started, 'agent_error', error, interactivity);
 	}
+	let root: string;
+	try {
+		root = await getWorkspaceRoot(builderWs.workspace);
+	} catch (error) {
+		chunkLog?.write({
+			kind: 'error',
+			stage: 'sandbox-resolve-root',
+			message: error instanceof Error ? error.message : String(error),
+		});
+		try {
+			await builderWs.cleanup();
+		} catch (cleanupError) {
+			chunkLog?.write({
+				kind: 'error',
+				stage: 'sandbox-cleanup',
+				message: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+			});
+		}
+		await chunkLog?.close();
+		return failResult(started, 'agent_error', error, interactivity);
+	}
+	const prompt = createSandboxBuilderAgentPrompt(root);
+
+	const sandboxToolNames = [
+		'nodes',
+		'workflows',
+		'credentials',
+		'data-tables',
+		'templates',
+	] as const;
+	for (const name of sandboxToolNames) {
+		const tool = (allTools as Record<string, unknown>)[name];
+		if (tool) builderTools[name] = tool;
+	}
+	builderTools['submit-workflow'] = createSubmitWorkflowTool(services.context, builderWs.workspace);
 
 	const agentId = 'eval-builder-' + nanoid(6);
 	const agent = new Agent({
@@ -212,7 +189,7 @@ export async function buildInProcess(
 		},
 		model: modelId,
 		tools: builderTools,
-		...(builderWs ? { workspace: builderWs.workspace } : {}),
+		workspace: builderWs.workspace,
 	});
 
 	// Register with Mastra so HITL-suspending tools can persist a snapshot
@@ -324,7 +301,7 @@ export async function buildInProcess(
 	} finally {
 		clearTimeout(timeoutHandle);
 		try {
-			await builderWs?.cleanup();
+			await builderWs.cleanup();
 		} catch (cleanupError) {
 			chunkLog?.write({
 				kind: 'error',
@@ -341,7 +318,7 @@ export async function buildInProcess(
 		return failResult(
 			started,
 			'no_workflow_built',
-			new Error('Builder finished without invoking build-workflow'),
+			new Error('Builder finished without invoking submit-workflow'),
 			interactivity,
 			finalText,
 		);

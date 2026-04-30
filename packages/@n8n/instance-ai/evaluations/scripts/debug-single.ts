@@ -1,8 +1,14 @@
 // Debug a single prompt through the in-process builder and print the
 // result (captured workflow if any, error class, interactivity stats).
 // Use this to investigate `no_workflow_built` failures in a pairwise run.
+//
+// Requires the same sandbox env vars as pairwise (DAYTONA_API_URL/KEY by
+// default, or N8N_INSTANCE_AI_SANDBOX_PROVIDER=local for a local runner).
 
+import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
+import { SnapshotManager } from '../../src/workspace/snapshot-manager';
 import { buildInProcess } from '../harness/in-process-builder';
+import { resolveSandboxConfig } from '../harness/sandbox-config';
 
 async function main(): Promise<void> {
 	const prompt = process.argv.slice(2).join(' ');
@@ -11,7 +17,23 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	const result = await buildInProcess({ prompt });
+	const sandboxConfig = resolveSandboxConfig(process.env);
+	if (!sandboxConfig.enabled) {
+		throw new Error('Sandbox config is unexpectedly disabled.');
+	}
+	const silentLogger = {
+		debug: () => {},
+		info: () => {},
+		warn: () => {},
+		error: () => {},
+	};
+	const imageManager =
+		sandboxConfig.provider === 'daytona'
+			? new SnapshotManager(sandboxConfig.image, silentLogger, undefined)
+			: undefined;
+	const sandboxFactory = new BuilderSandboxFactory(sandboxConfig, imageManager, silentLogger);
+
+	const result = await buildInProcess({ prompt, sandboxFactory });
 
 	console.log('\n=== BUILD RESULT ===');
 	console.log('success:', result.success);

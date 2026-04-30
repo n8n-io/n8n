@@ -188,14 +188,13 @@ pnpm eval:pairwise:langsmith \
   --output-dir .output/pairwise/rerun
 ```
 
-### Sandbox mode (default)
+### Sandbox
 
-Pairwise evals run in **sandbox mode by default** — the same path production
-uses. The agent writes TypeScript to `~/workspace/src/workflow.ts` inside a
-Daytona container, runs `tsc` to validate, and calls `submit-workflow` to save
-the parsed `WorkflowJSON`. This exercises the production builder agent
-end-to-end (sandbox prompt, file I/O, real type checking) instead of the
-string-based `build-workflow` tool.
+Pairwise evals always run inside a sandbox — the same path production uses.
+The agent writes TypeScript to `~/workspace/src/workflow.ts` inside the
+sandbox, runs `tsc` to validate, and calls `submit-workflow` to save the
+parsed `WorkflowJSON`. This exercises the production builder agent
+end-to-end (sandbox prompt, file I/O, real type checking).
 
 Required env vars (Daytona provider — the default):
 
@@ -211,32 +210,16 @@ N8N_INSTANCE_AI_SANDBOX_IMAGE=daytonaio/sandbox:0.5.0   # default
 N8N_INSTANCE_AI_SANDBOX_TIMEOUT=300000        # per-command timeout (ms)
 ```
 
-The CLI fails fast at startup if Daytona is selected but the API URL/key are
-missing — set them or pass `--no-sandbox` to fall back to the string-based
-build path. The chosen provider is recorded under `summary.json → sandbox`.
+The CLI fails fast at startup if the chosen provider is misconfigured (e.g.,
+Daytona selected without API URL/key). The chosen provider is recorded under
+`summary.json → sandbox.provider`.
 
 > **Daytona cold-start.** The very first sandbox creation triggers an image
 > build on Daytona's side (`npm install` for `@n8n/workflow-sdk`). That can
 > exceed the SDK's 5-minute create timeout and fail with `Sandbox failed to
 > become ready within the timeout period`. Once the image is cached, later
-> runs are fast. Workarounds: pre-build the image via the Daytona dashboard,
-> or pass `--no-sandbox` while iterating.
-
-> **`--no-sandbox` opt-out.** Useful when iterating locally and the sandbox
-> path is slow or unavailable. Skips Daytona, uses `build-workflow` (string
-> mode). Scores aren't comparable to sandbox-mode runs — keep this for
-> development only.
-
-> **Stale `dist/` warning (no-sandbox path only).** The harness imports the
-> compiled `workflow-sdk` from `packages/@n8n/workflow-sdk/dist/`, not source.
-> If you've changed the SDK's interpreter or validators (e.g., adding allowed
-> methods), rebuild it first or the agent will hit "security violation"
-> errors that don't reflect reality. Sandbox mode runs `npm install` of the
-> published SDK inside the container, so this warning doesn't apply.
->
-> ```bash
-> pushd packages/@n8n/workflow-sdk && pnpm build && popd
-> ```
+> runs are fast. Workaround: pre-build the image via the Daytona dashboard
+> before kicking off a full eval run.
 
 ### Flags
 
@@ -254,7 +237,6 @@ build path. The chosen provider is recorded under `summary.json → sandbox`.
 | `--output-dir` | `.output/pairwise/<iso>` | Where to write artifacts |
 | `--experiment-name` | `pairwise-evals-instance-ai` | LangSmith experiment label |
 | `--verbose` | `false` | Per-example log lines |
-| `--no-sandbox` | — | Disable Daytona sandbox; use the string-based `build-workflow` tool. Dev-only |
 
 ### Outputs
 

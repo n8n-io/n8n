@@ -29,6 +29,9 @@ interface FeedbackEntry {
 
 interface BuilderRecord {
 	prompt: string;
+	/** Stable id for the example. For IA, the LangSmith dataset example id;
+	 * for EE, the example directory name (e.g. `example-000-ab12cd`). */
+	exampleId?: string;
 	dos?: string;
 	donts?: string;
 	workflow: unknown | null;
@@ -117,6 +120,7 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 
 	const normalized: BuilderRecord[] = records.map((r) => ({
 		prompt: r.prompt,
+		exampleId: r.exampleId,
 		dos: r.dos,
 		donts: r.donts,
 		workflow: r.workflow,
@@ -249,6 +253,7 @@ async function loadEERun(dir: string): Promise<BuilderRun> {
 
 		const workflow = workflowRaw ? (JSON.parse(workflowRaw) as unknown) : null;
 		const feedbackJson = feedbackRaw ? (JSON.parse(feedbackRaw) as EEFeedbackJson) : null;
+		const exampleId = path.basename(exampleDir);
 
 		const feedback: FeedbackEntry[] = [];
 		// Prefer `allFeedback` (flat list, matches IA shape), fall back to nested evaluators.
@@ -273,6 +278,7 @@ async function loadEERun(dir: string): Promise<BuilderRun> {
 
 		records.push({
 			prompt,
+			exampleId,
 			dos: extractDosFromPrompt(prompt) ?? undefined,
 			donts: extractDontsFromPrompt(prompt) ?? undefined,
 			workflow,
@@ -537,11 +543,16 @@ function renderBuilderColumn(label: string, record: BuilderRecord | undefined): 
 		? `<div class="error">${escapeHtml(record.errorMessage)}</div>`
 		: '';
 
+	const idLine = record.exampleId
+		? `<div class="builder-id" title="${escapeAttr(record.exampleId)}">${escapeHtml(record.exampleId)}</div>`
+		: '';
+
 	return `<div class="builder-col">
   <div class="builder-header">
     <div class="builder-label">${escapeHtml(label)}</div>
     ${statusBadge}
   </div>
+  ${idLine}
   <div class="builder-meta">${metaParts.join(' · ')}</div>
   ${errorBlock}
   <div class="workflow-wrap">${renderWorkflow(record.workflow)}</div>
@@ -576,12 +587,19 @@ function renderRow(row: ComparisonRow, index: number): string {
       <span class="chip-meta">${escapeHtml(head.metaText)}</span>
     </span>`;
 
+	const ids: string[] = [];
+	if (row.ia?.exampleId) ids.push(row.ia.exampleId);
+	if (row.ee?.exampleId && row.ee.exampleId !== row.ia?.exampleId) ids.push(row.ee.exampleId);
+	const idText = ids.join(' / ');
+	const idChip = `<span class="example-id" title="${escapeAttr(idText)}">${escapeHtml(idText)}</span>`;
+
 	// Heavy content (workflow previews + judge tables) is wrapped in a <template>
 	// so the n8n-demo web component is NOT instantiated until the user expands
 	// the row. The lazy loader script in the document head does the swap.
 	return `<details class="row ${verdictCls[row.verdict]}" id="row-${index}">
   <summary>
     <span class="verdict">${verdictLabel[row.verdict]}</span>
+    ${idChip}
     <span class="prompt-preview">${escapeHtml(promptPreview)}</span>
     <span class="builder-chips">
       ${builderChip('Code', eeHead)}
@@ -737,10 +755,19 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
     cursor: pointer;
     padding: 10px 16px;
     display: grid;
-    grid-template-columns: 110px minmax(0, 1fr) auto;
+    grid-template-columns: 110px minmax(0, auto) minmax(0, 1fr) auto;
     gap: 16px;
     align-items: center;
     font-size: 13px;
+  }
+  details.row > summary > .example-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
   }
   details.row > summary:hover { background: #fafbff; }
   details.row[open] > summary { background: #f5f6fb; border-bottom: 1px solid var(--border); }
@@ -795,6 +822,7 @@ function renderDocument(ee: BuilderRun, ia: BuilderRun, rows: ComparisonRow[]): 
   .status-pass { background: rgba(16,185,129,0.15); color: var(--pass); }
   .status-fail { background: rgba(239,68,68,0.15); color: var(--fail); }
   .builder-meta { font-size: 11px; color: var(--muted); display: flex; gap: 8px; flex-wrap: wrap; }
+  .builder-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .error { padding: 8px 10px; background: rgba(239,68,68,0.08); color: var(--fail); border-radius: 4px; font-size: 11px; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
   .workflow-wrap { display: flex; }
   n8n-demo { display: block; width: 100%; height: 480px; border: 1px solid var(--border); border-radius: 4px; background: #fff; }

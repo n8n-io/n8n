@@ -5,9 +5,9 @@
 // DAYTONA_*, N8N_SANDBOX_SERVICE_*) and produces a SandboxConfig the
 // in-process eval harness can hand to BuilderSandboxFactory.
 //
-// The CLI controls whether sandbox is enabled (default ON for evals);
-// missing required env vars raise clear errors so misconfiguration shows
-// up at startup, not mid-run.
+// The sandbox is always on for evals — there is no opt-out. Missing
+// required env vars raise clear errors so misconfiguration shows up at
+// startup, not mid-run.
 // ---------------------------------------------------------------------------
 
 import type { SandboxConfig, SandboxProvider } from '../../src/workspace/create-workspace';
@@ -21,19 +21,7 @@ const DEFAULT_TIMEOUT_MS = 300_000;
 const DEFAULT_DAYTONA_CREATE_TIMEOUT_SECONDS = 900;
 const VALID_PROVIDERS: SandboxProvider[] = ['daytona', 'local', 'n8n-sandbox'];
 
-export interface ResolveSandboxOptions {
-	/** Whether the eval run wants the sandbox at all. False returns a disabled config. */
-	sandbox: boolean;
-}
-
-export function resolveSandboxConfig(
-	env: NodeJS.ProcessEnv,
-	options: ResolveSandboxOptions,
-): SandboxConfig {
-	if (!options.sandbox) {
-		return { enabled: false, provider: 'daytona' };
-	}
-
+export function resolveSandboxConfig(env: NodeJS.ProcessEnv): SandboxConfig {
 	const providerRaw = env.N8N_INSTANCE_AI_SANDBOX_PROVIDER ?? 'daytona';
 	if (!VALID_PROVIDERS.includes(providerRaw as SandboxProvider)) {
 		throw new Error(
@@ -48,12 +36,12 @@ export function resolveSandboxConfig(
 		const daytonaApiKey = env.DAYTONA_API_KEY;
 		if (!daytonaApiUrl) {
 			throw new Error(
-				'DAYTONA_API_URL is required for sandbox provider "daytona". Set it to e.g. https://app.daytona.io/api, or pass --no-sandbox to opt out.',
+				'DAYTONA_API_URL is required for sandbox provider "daytona". Set it to e.g. https://app.daytona.io/api.',
 			);
 		}
 		if (!daytonaApiKey) {
 			throw new Error(
-				'DAYTONA_API_KEY is required for sandbox provider "daytona". Set the Daytona API key, or pass --no-sandbox to opt out.',
+				'DAYTONA_API_KEY is required for sandbox provider "daytona". Set the Daytona API key.',
 			);
 		}
 		const image = env.N8N_INSTANCE_AI_SANDBOX_IMAGE;
