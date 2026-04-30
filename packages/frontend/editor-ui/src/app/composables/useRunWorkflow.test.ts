@@ -90,6 +90,22 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
+vi.mock('@/app/stores/favorites.store', () => ({
+	useFavoritesStore: vi.fn(() => ({
+		favorites: { value: [] },
+		workflowFavoriteIds: { value: [] },
+		projectFavoriteIds: { value: [] },
+		dataTableFavoriteIds: { value: [] },
+		folderFavoriteIds: { value: [] },
+		fetchFavorites: vi.fn(),
+		isFavorite: vi.fn(() => false),
+		renameFavorite: vi.fn(),
+		toggleFavorite: vi.fn(),
+		removeFavoriteLocally: vi.fn(),
+		reset: vi.fn(),
+	})),
+}));
+
 vi.mock('@/app/stores/aiGateway.store', () => ({
 	useAiGatewayStore: vi.fn(() => ({
 		config: { value: null },

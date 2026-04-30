@@ -49,6 +49,22 @@ vi.mock('@/app/stores/aiGateway.store', () => ({
 	})),
 }));
 
+vi.mock('@/app/stores/favorites.store', () => ({
+	useFavoritesStore: vi.fn(() => ({
+		favorites: { value: [] },
+		workflowFavoriteIds: { value: [] },
+		projectFavoriteIds: { value: [] },
+		dataTableFavoriteIds: { value: [] },
+		folderFavoriteIds: { value: [] },
+		fetchFavorites: vi.fn(),
+		isFavorite: vi.fn(() => false),
+		renameFavorite: vi.fn(),
+		toggleFavorite: vi.fn(),
+		removeFavoriteLocally: vi.fn(),
+		reset: vi.fn(),
+	})),
+}));
+
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
 	useRoute: () =>
