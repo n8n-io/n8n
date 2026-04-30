@@ -244,9 +244,10 @@ export class ExecutionRecorder {
 			open.success = true;
 		} else {
 			// Defensive: no preceding `tool-call` chunk was recorded (e.g. on
-			// HITL resume the SDK doesn't replay it). Synthesize a fresh entry.
+			// HITL resume the SDK doesn't replay it). Synthesize a fresh entry,
+			// preserving registry metadata so workflow/node link fields render.
 			const entry = this.registry.get(name);
-			this.timeline.push({
+			const synthesized: TimelineEvent = {
 				type: 'tool-call',
 				kind: entry?.kind ?? 'tool',
 				name,
@@ -256,7 +257,20 @@ export class ExecutionRecorder {
 				startTime: now,
 				endTime: now,
 				success: true,
-			});
+				workflowId: entry?.workflowId,
+				workflowName: entry?.workflowName,
+				triggerType: entry?.triggerType,
+				nodeType: entry?.nodeType,
+				nodeTypeVersion: entry?.nodeTypeVersion,
+				nodeDisplayName: entry?.nodeDisplayName,
+			};
+			if (synthesized.kind === 'workflow' && isRecord(output)) {
+				const execId = output.executionId;
+				if (typeof execId === 'string') {
+					synthesized.workflowExecutionId = execId;
+				}
+			}
+			this.timeline.push(synthesized);
 		}
 
 		const flatOpen = [...this.toolCalls]
