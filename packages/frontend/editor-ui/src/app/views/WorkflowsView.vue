@@ -339,6 +339,10 @@ const hasPermissionToUpdateWorkflows = computed(() => {
 
 const currentProject = computed(() => projectsStore.currentProject);
 
+const currentBreadcrumbsProject = computed(
+	() => currentProject.value ?? projectsStore.personalProject,
+);
+
 const projectName = computed(() => {
 	if (currentProject.value?.type === ProjectTypes.Personal) {
 		return i18n.baseText('projects.menu.personal');
@@ -353,6 +357,25 @@ const currentParentName = computed(() => {
 	return projectName.value;
 });
 
+const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
+	const project = currentBreadcrumbsProject.value;
+	if (!project) return [];
+
+	return [
+		{
+			label: favoritesStore.isFavorite(project.id, 'project')
+				? i18n.baseText('favorites.remove')
+				: i18n.baseText('favorites.add'),
+			value: FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE,
+			disabled: false,
+		},
+	];
+});
+
+const breadcrumbsActions = computed(() =>
+	currentFolder.value ? mainBreadcrumbsActions.value : projectRootBreadcrumbsActions.value,
+);
+
 const resourceActionsScope = computed(() => {
 	if (currentFolderId.value) {
 		if (!currentFolder.value) return null;
@@ -364,7 +387,7 @@ const resourceActionsScope = computed(() => {
 		};
 	}
 
-	const project = currentProject.value ?? projectsStore.personalProject;
+	const project = currentBreadcrumbsProject.value;
 	const name =
 		project?.type === ProjectTypes.Personal
 			? i18n.baseText('projects.menu.personal')
@@ -1271,6 +1294,8 @@ const onBreadCrumbsAction = async (action: string) => {
 		case FOLDER_LIST_ITEM_ACTIONS.TOGGLE_FAVORITE:
 			if (currentFolder.value) {
 				await favoritesStore.toggleFavorite(currentFolder.value.id, 'folder');
+			} else if (currentBreadcrumbsProject.value) {
+				await favoritesStore.toggleFavorite(currentBreadcrumbsProject.value.id, 'project');
 			}
 			break;
 		case FOLDER_LIST_ITEM_ACTIONS.RENAME:
@@ -1973,7 +1998,7 @@ const onNameSubmit = async (name: string) => {
 			>
 				<FolderBreadcrumbs
 					:current-folder="currentFolderParent"
-					:actions="currentFolder ? mainBreadcrumbsActions : []"
+					:actions="breadcrumbsActions"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
