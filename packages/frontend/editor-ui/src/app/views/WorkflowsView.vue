@@ -4,7 +4,6 @@ import EmptySharedSectionActionBox from '@/features/core/folders/components/Empt
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import FolderCard from '@/features/core/folders/components/FolderCard.vue';
 import { FOLDER_LIST_ITEM_ACTIONS } from '@/features/core/folders/folders.constants';
-import ResourceActionsMenu from '@/app/components/ResourceActionsMenu.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
@@ -70,6 +69,8 @@ import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import {
 	type Project,
 	type ProjectSharingData,
@@ -136,6 +137,7 @@ const sourceControlStore = useSourceControlStore();
 const usersStore = useUsersStore();
 const workflowsStore = useWorkflowsStore();
 const workflowsListStore = useWorkflowsListStore();
+const mcpStore = useMCPStore();
 const settingsStore = useSettingsStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
@@ -178,6 +180,16 @@ const filters = ref<Filters>({
 });
 
 const workflowListEventBus = createEventBus<WorkflowListEventMap>();
+
+type BreadcrumbAction = UserAction<IUser> & {
+	children?: BreadcrumbAction[];
+	tooltip?: string;
+};
+
+const MCP_ACCESS_ACTIONS = {
+	ENABLE: 'enableMcpAccess',
+	DISABLE: 'disableMcpAccess',
+} as const;
 
 type ResourcesListLayoutExpose = {
 	getScrollContainer?: () => HTMLElement | null;
@@ -374,11 +386,7 @@ const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	];
 });
 
-const breadcrumbsActions = computed(() =>
-	currentFolder.value ? mainBreadcrumbsActions.value : projectRootBreadcrumbsActions.value,
-);
-
-const resourceActionsScope = computed(() => {
+const mcpAccessScope = computed(() => {
 	if (currentFolderId.value) {
 		if (!currentFolder.value) return null;
 
@@ -401,15 +409,54 @@ const resourceActionsScope = computed(() => {
 	};
 });
 
-const showResourceActionsMenu = computed(
+const showMcpAccessActions = computed(
 	() =>
 		mcpEnabled.value &&
-		resourceActionsScope.value !== null &&
+		mcpAccessScope.value !== null &&
 		!projectPages.isOverviewSubPage &&
 		!projectPages.isSharedSubPage &&
 		!readOnlyEnv.value &&
 		hasPermissionToUpdateWorkflows.value,
 );
+
+const settingsLink = computed(() => router.resolve({ name: MCP_SETTINGS_VIEW }).href);
+
+const mcpAccessBreadcrumbsAction = computed<BreadcrumbAction | null>(() => {
+	if (!showMcpAccessActions.value || !mcpAccessScope.value) return null;
+
+	return {
+		label: i18n.baseText('resourceActions.mcpAccess.manage'),
+		value: 'manageMcpAccess',
+		disabled: false,
+		children: [
+			{
+				label: i18n.baseText('resourceActions.mcpAccess.enable'),
+				value: MCP_ACCESS_ACTIONS.ENABLE,
+				disabled: false,
+				tooltip: i18n.baseText('resourceActions.mcpAccess.enable.tooltip', {
+					interpolate: { scopeName: mcpAccessScope.value.name },
+				}),
+			},
+			{
+				label: i18n.baseText('resourceActions.mcpAccess.disable'),
+				value: MCP_ACCESS_ACTIONS.DISABLE,
+				disabled: false,
+				tooltip: i18n.baseText('resourceActions.mcpAccess.disable.tooltip', {
+					interpolate: { scopeName: mcpAccessScope.value.name },
+				}),
+			},
+		],
+	};
+});
+
+const breadcrumbsActions = computed<BreadcrumbAction[]>(() => {
+	const actions = currentFolder.value
+		? mainBreadcrumbsActions.value
+		: projectRootBreadcrumbsActions.value;
+	const mcpAction = mcpAccessBreadcrumbsAction.value;
+
+	return mcpAction ? [...actions, mcpAction] : actions;
+});
 
 const personalProject = computed<Project | null>(() => {
 	return projectsStore.personalProject;
@@ -1268,6 +1315,12 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 // These render next to the breadcrumbs and are applied to the current folder/project
 const onBreadCrumbsAction = async (action: string) => {
 	switch (action) {
+		case MCP_ACCESS_ACTIONS.ENABLE:
+			await toggleMcpAccess(true);
+			break;
+		case MCP_ACCESS_ACTIONS.DISABLE:
+			await toggleMcpAccess(false);
+			break;
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
 			if (!currentBreadcrumbsProject.value) return;
 			const currentParent = currentFolder.value?.name || currentBreadcrumbsProjectName.value;
@@ -1316,6 +1369,97 @@ const onBreadCrumbsAction = async (action: string) => {
 			break;
 	}
 };
+
+function getMcpAccessTarget() {
+	if (!mcpAccessScope.value) return null;
+
+	return mcpAccessScope.value.type === 'folder'
+		? { folderId: mcpAccessScope.value.id }
+		: { projectId: mcpAccessScope.value.id };
+}
+
+function openSettingsFromToast(event?: MouseEvent) {
+	if (!(event?.target instanceof HTMLAnchorElement)) return;
+
+	event.preventDefault();
+	void router.push(settingsLink.value);
+}
+
+function showMCPAccessSuccessToast(enabled: boolean, count: number) {
+	const title = enabled
+		? i18n.baseText('resourceActions.mcpAccess.success.enabled.title')
+		: i18n.baseText('resourceActions.mcpAccess.success.disabled.title');
+	const message = enabled
+		? i18n.baseText('resourceActions.mcpAccess.success.enabled.message', {
+				adjustToNumber: count,
+				interpolate: {
+					count: String(count),
+					link: settingsLink.value,
+					scopeName: mcpAccessScope.value?.name ?? '',
+				},
+			})
+		: i18n.baseText('resourceActions.mcpAccess.success.disabled.message', {
+				adjustToNumber: count,
+				interpolate: {
+					count: String(count),
+					link: settingsLink.value,
+					scopeName: mcpAccessScope.value?.name ?? '',
+				},
+			});
+
+	toast.showToast({
+		title,
+		message,
+		onClick: openSettingsFromToast,
+		type: 'success',
+	});
+}
+
+function showMCPAccessErrorToast(enabled: boolean) {
+	const title = enabled
+		? i18n.baseText('resourceActions.mcpAccess.error.enabled.title')
+		: i18n.baseText('resourceActions.mcpAccess.error.disabled.title');
+	const message = enabled
+		? i18n.baseText('resourceActions.mcpAccess.error.enabled.message', {
+				interpolate: {
+					link: settingsLink.value,
+					scopeName: mcpAccessScope.value?.name ?? '',
+				},
+			})
+		: i18n.baseText('resourceActions.mcpAccess.error.disabled.message', {
+				interpolate: {
+					link: settingsLink.value,
+					scopeName: mcpAccessScope.value?.name ?? '',
+				},
+			});
+
+	toast.showToast({
+		title,
+		message,
+		onClick: openSettingsFromToast,
+		type: 'error',
+		duration: 0,
+	});
+}
+
+async function toggleMcpAccess(enabled: boolean) {
+	const target = getMcpAccessTarget();
+	if (!target) return;
+
+	try {
+		const response = await mcpStore.toggleWorkflowsMcpAccess(target, enabled);
+		await fetchWorkflows();
+
+		if (response.failedCount > 0) {
+			showMCPAccessErrorToast(enabled);
+			return;
+		}
+
+		showMCPAccessSuccessToast(enabled, response.updatedCount);
+	} catch {
+		showMCPAccessErrorToast(enabled);
+	}
+}
 
 // Folder card action handlers
 // These render on each folder card and are applied to the clicked folder
@@ -1879,9 +2023,6 @@ const onNameSubmit = async (name: string) => {
 					time-range="week"
 				/>
 			</ProjectHeader>
-		</template>
-		<template v-if="showResourceActionsMenu" #add-button>
-			<ResourceActionsMenu :scope="resourceActionsScope" @updated="fetchWorkflows" />
 		</template>
 		<template #callout>
 			<N8nCallout

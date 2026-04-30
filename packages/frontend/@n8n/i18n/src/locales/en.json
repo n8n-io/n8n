@@ -3840,7 +3840,7 @@
 	"workflows.heading": "Workflows",
 	"workflows.add": "Add workflow",
 	"workflows.addFolder": "Add folder",
-	"resourceActions.mcpAccess.button.ariaLabel": "Manage workflow MCP access",
+	"resourceActions.mcpAccess.manage": "Manage MCP access",
 	"resourceActions.mcpAccess.enable": "Enable MCP access",
 	"resourceActions.mcpAccess.disable": "Disable MCP access",
 	"resourceActions.mcpAccess.enable.tooltip": "Allow MCP access for all workflows in '{scopeName}'",
