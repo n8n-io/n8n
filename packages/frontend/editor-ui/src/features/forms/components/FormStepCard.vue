@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nIconButton } from '@n8n/design-system';
 import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 import { useCanvasNode } from '@/features/workflows/canvas/composables/useCanvasNode';
@@ -181,10 +181,15 @@ watch(
 	>
 		<div class="n8n-form-preview__card-positioner">
 			<div class="n8n-form-preview__toolbar">
-				<button class="n8n-form-preview__edit-button" @click.stop="onActivate">
-					<N8nIcon icon="pencil" size="xsmall" />
-					<span>{{ i18n.baseText('formStep.editForm') }}</span>
-				</button>
+				<N8nIconButton
+					variant="ghost"
+					size="small"
+					icon="clipboard-list"
+					:icon-only="false"
+					:label="i18n.baseText('formStep.editForm')"
+					class="n8n-form-preview__edit-button"
+					@click.stop="onActivate"
+				/>
 			</div>
 			<div class="n8n-form-preview__card">
 				<iframe
@@ -227,25 +232,7 @@ watch(
 }
 
 .n8n-form-preview__edit-button {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	background: none;
-	border: none;
-	border-radius: var(--radius);
-	color: var(--color--text--shade-1);
-	font-size: var(--font-size--2xs);
-	font-family: var(--font-family);
-	font-weight: var(--font-weight--bold);
-	white-space: nowrap;
-	cursor: pointer;
 	pointer-events: auto;
-}
-
-.n8n-form-preview__edit-button :deep(svg path) {
-	fill: currentColor;
-	stroke: none;
 }
 
 .n8n-form-preview:hover .n8n-form-preview__toolbar {

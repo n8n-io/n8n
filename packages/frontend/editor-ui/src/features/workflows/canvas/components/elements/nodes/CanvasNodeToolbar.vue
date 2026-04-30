@@ -6,6 +6,9 @@ import { CanvasNodeRenderType } from '../../../canvas.types';
 import { useCanvas } from '../../../composables/useCanvas';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { FORM_STEP_EDIT_MODAL_KEY } from '@/app/constants';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useExperimentalNdvStore } from '../../../experimental/experimentalNdv.store';
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vue';
@@ -34,6 +37,7 @@ const i18n = useI18n();
 
 const { isExecuting, isExperimentalNdvActive } = useCanvas();
 const { isDisabled, render, name } = useCanvasNode();
+const uiStore = useUIStore();
 
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
@@ -44,6 +48,18 @@ const node = computed(() =>
 	name.value ? workflowDocumentStore?.value?.getNodeByName(name.value) : null,
 );
 const isToolNode = computed(() => !!node.value && nodeTypesStore.isToolNode(node.value.type));
+
+const isFormEditVisible = computed(
+	() =>
+		!props.readOnly &&
+		(node.value?.type === FORM_NODE_TYPE || node.value?.type === FORM_TRIGGER_NODE_TYPE),
+);
+
+function onEditForm() {
+	if (node.value) {
+		uiStore.openModalWithData({ name: FORM_STEP_EDIT_MODAL_KEY, data: { nodeId: node.value.id } });
+	}
+}
 
 const nodeDisabledTitle = computed(() => {
 	return isDisabled.value ? i18n.baseText('node.enable') : i18n.baseText('node.disable');
@@ -135,6 +151,15 @@ function onAddToAi() {
 		@click.stop
 	>
 		<div :class="[$style.canvasNodeToolbarItems, itemsClass]">
+			<N8nIconButton
+				v-if="isFormEditVisible"
+				variant="ghost"
+				data-test-id="edit-form-button"
+				size="small"
+				icon="clipboard-list"
+				:title="i18n.baseText('node.editForm')"
+				@click.stop="onEditForm"
+			/>
 			<N8nTooltip
 				v-if="isExecuteNodeVisible"
 				placement="top"

@@ -1812,6 +1812,7 @@
 	"node.disable": "Deactivate",
 	"node.enable": "Activate",
 	"node.delete": "Delete",
+	"node.editForm": "Edit form",
 	"node.addToAi": "Add to n8n AI",
 	"node.focusNode": "Focus node",
 	"node.moreActions": "More actions",
