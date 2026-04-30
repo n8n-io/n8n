@@ -33,6 +33,17 @@ Include information with the user prompt such as timestamp, user ID, or session 
 If there are other agents involved in the workflow you should share memory between the chatbot and those other agents where it makes sense.
 Connect the same memory node to multiple agents to enable data sharing and context continuity.
 
+### Memory Session Keys
+
+Memory session keys must uniquely identify the user or chat. In AI Agent memory subnodes, do not use $json for a custom session key because the memory subnode does not have the same immediate predecessor context as a main-flow node.
+
+Use nodeJson(triggerNode, 'field.path') for external chat platforms:
+- Telegram: sessionIdType = customKey, sessionKey = nodeJson(telegramTrigger, 'message.chat.id')
+- Slack: sessionIdType = customKey, sessionKey = nodeJson(slackTrigger, 'event.channel')
+- WhatsApp: sessionIdType = customKey, sessionKey = nodeJson(whatsAppTrigger, 'messages.0.from')
+
+For the built-in n8n Chat Trigger, prefer memory parameters sessionIdType = fromInput and omit a custom sessionKey, because the Chat Trigger provides the session ID directly to the AI Agent.
+
 ## Context Engineering & AI Agent Output
 
 It can be beneficial to respond to the user as a tool of the chatbot agent rather than using the agent output - this allows the agent to loop/carry out multiple responses if necessary.

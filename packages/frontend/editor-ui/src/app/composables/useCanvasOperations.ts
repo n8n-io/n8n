@@ -363,7 +363,7 @@ export function useCanvasOperations() {
 		newName = uniqueNodeName(newName);
 
 		// Rename the node and update the connections
-		const workflow = workflowsStore.cloneWorkflowObject();
+		const workflow = workflowDocumentStore.value.cloneWorkflowObject();
 		try {
 			workflow.renameNode(currentName, newName);
 		} catch (error) {
@@ -2512,7 +2512,7 @@ export function useCanvasOperations() {
 
 		// Create a workflow with the new nodes and connections that we can use
 		// the rename method
-		const tempWorkflow: Workflow = workflowsStore.createWorkflowObject(
+		const tempWorkflow: Workflow = workflowDocumentStore.value.createWorkflowObject(
 			createNodes,
 			newConnections,
 			true,

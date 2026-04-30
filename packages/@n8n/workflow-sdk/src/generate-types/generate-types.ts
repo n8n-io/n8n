@@ -715,10 +715,8 @@ function mapNestedPropertyType(
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
 	const result = mapNestedPropertyTypeInner(prop, discriminatorContext);
-	if (prop.noDataExpression) {
-		return stripExpressionFromType(result);
-	}
-	return result;
+	const expressionAwareResult = prop.noDataExpression ? stripExpressionFromType(result) : result;
+	return wrapMultipleValuesType(prop, expressionAwareResult);
 }
 
 function mapNestedPropertyTypeInner(
@@ -1152,9 +1150,116 @@ export function narrowDisplayOptionsByDisabled(prop: NodeProperty): {
 }
 
 /**
+ * Collapse a two-variant UX fork into a single displayOptions. Returns null if
+ * the two variants don't form a clean single-key partition.
+ *
+ * A fork qualifies when:
+ *  - all show/hide entries are equal across `a` and `b` except for exactly one
+ *    key K, and
+ *  - one variant has `hide: { K: H }` (with K absent from its `show`) while the
+ *    other has `show: { K: S }` (with K absent from its `hide`).
+ *
+ * The collapsed result is `hide: { K: H \ S }` plus the shared entries; if
+ * `H \ S` is empty the K constraint is dropped entirely (fully partitioned).
+ *
+ * Example — BigQuery `sqlQuery`:
+ *   variant a: `{ hide: { useLegacySql: [true] } }`
+ *   variant b: `{ show: { useLegacySql: [true] } }`
+ *   collapse → `{}` (no constraint — sqlQuery is settable in either mode)
+ *
+ * Multi-key forks (e.g. Cortex's 5-way `parameters`) return null and the caller
+ * keeps the first variant's displayOptions; the runtime path uses
+ * resolveOneOfSchemas so validation stays correct, only the .d.ts shows
+ * variant-1 only as a documented limitation.
+ */
+export function tryMergeUxForkVariants(
+	a: NodeProperty['displayOptions'] | undefined,
+	b: NodeProperty['displayOptions'] | undefined,
+): NodeProperty['displayOptions'] | null {
+	if (!a || !b) return null;
+
+	const aShow = a.show ?? {};
+	const aHide = a.hide ?? {};
+	const bShow = b.show ?? {};
+	const bHide = b.hide ?? {};
+
+	const allKeys = new Set<string>([
+		...Object.keys(aShow),
+		...Object.keys(aHide),
+		...Object.keys(bShow),
+		...Object.keys(bHide),
+	]);
+
+	const sharedShow: Record<string, unknown[]> = {};
+	const sharedHide: Record<string, unknown[]> = {};
+	let forkKey: string | null = null;
+	let hideValues: unknown[] | null = null;
+	let showValues: unknown[] | null = null;
+
+	for (const key of allKeys) {
+		const aS = aShow[key];
+		const bS = bShow[key];
+		const aH = aHide[key];
+		const bH = bHide[key];
+
+		const showEqual = JSON.stringify(aS ?? null) === JSON.stringify(bS ?? null);
+		const hideEqual = JSON.stringify(aH ?? null) === JSON.stringify(bH ?? null);
+
+		if (showEqual && hideEqual) {
+			if (aS !== undefined) sharedShow[key] = aS;
+			if (aH !== undefined) sharedHide[key] = aH;
+			continue;
+		}
+
+		if (forkKey !== null) return null; // more than one differing key
+		forkKey = key;
+
+		// Clean partition: K appears in hide of one variant and show of the other,
+		// with K absent from the opposite clause on each side.
+		if (aH !== undefined && aS === undefined && bS !== undefined && bH === undefined) {
+			hideValues = aH;
+			showValues = bS;
+		} else if (bH !== undefined && bS === undefined && aS !== undefined && aH === undefined) {
+			hideValues = bH;
+			showValues = aS;
+		} else {
+			return null;
+		}
+	}
+
+	const result: { show?: Record<string, unknown[]>; hide?: Record<string, unknown[]> } = {};
+	if (Object.keys(sharedShow).length > 0) result.show = sharedShow;
+
+	if (forkKey === null) {
+		if (Object.keys(sharedHide).length > 0) result.hide = sharedHide;
+		return result;
+	}
+
+	const showSerialized = (showValues ?? []).map((s) => JSON.stringify(s));
+	const remainingHide = (hideValues ?? []).filter(
+		(h) => !showSerialized.includes(JSON.stringify(h)),
+	);
+
+	if (remainingHide.length > 0) {
+		result.hide = { ...sharedHide, [forkKey]: remainingHide };
+	} else if (Object.keys(sharedHide).length > 0) {
+		result.hide = sharedHide;
+	}
+
+	return result;
+}
+
+/**
  * Merge properties with the same name for collection/fixedCollection types.
  * When multiple properties have the same name (e.g., multiple 'options' collections
  * with different displayOptions), their nested options should be merged.
+ *
+ * For same-named declarations whose displayOptions form a two-variant UX fork
+ * (e.g. BigQuery's `sqlQuery` `hide: { useLegacySql: [true] }` paired with
+ * `show: { useLegacySql: [true] }`), the displayOptions are collapsed to a
+ * single accurate representation via `tryMergeUxForkVariants`. Multi-key forks
+ * fall through and keep the first variant — the runtime path uses
+ * `resolveOneOfSchemas` so validation stays correct.
  *
  * @param properties - Array of node properties, possibly with duplicates
  * @returns Array of properties with duplicates merged
@@ -1181,6 +1286,18 @@ function mergeCollectionProperties(properties: NodeProperty[]): NodeProperty[] {
 
 		if (seenProps.has(normalizedProp.name)) {
 			const existingProp = seenProps.get(normalizedProp.name)!;
+
+			// Collapse a UX fork (e.g. hide+show partition of one key) into a
+			// single accurate displayOptions for the emitted type def.
+			if (existingProp.displayOptions && normalizedProp.displayOptions) {
+				const mergedDisplayOptions = tryMergeUxForkVariants(
+					existingProp.displayOptions,
+					normalizedProp.displayOptions,
+				);
+				if (mergedDisplayOptions !== null) {
+					existingProp.displayOptions = mergedDisplayOptions;
+				}
+			}
 
 			// For collection/fixedCollection types, merge nested options
 			if (
@@ -1275,10 +1392,16 @@ export function mapPropertyType(
 	discriminatorContext?: DiscriminatorCombination,
 ): string {
 	const result = mapPropertyTypeInner(prop, discriminatorContext);
-	if (prop.noDataExpression) {
-		return stripExpressionFromType(result);
+	const expressionAwareResult = prop.noDataExpression ? stripExpressionFromType(result) : result;
+	return wrapMultipleValuesType(prop, expressionAwareResult);
+}
+
+function wrapMultipleValuesType(prop: NodeProperty, typeStr: string): string {
+	if (!typeStr || prop.type === 'fixedCollection' || prop.type === 'multiOptions') {
+		return typeStr;
 	}
-	return result;
+
+	return prop.typeOptions?.multipleValues === true ? `Array<${typeStr}>` : typeStr;
 }
 
 function mapPropertyTypeInner(
@@ -1728,13 +1851,10 @@ export function generateDiscriminatedUnion(node: NodeTypeDescription): string {
 			}
 		}
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
+		// so the emitted type def reflects the OR of variants accurately.
+		const mergedProps = mergeCollectionProperties(props);
+		for (const prop of mergedProps) {
 			// Pass combo as discriminator context to filter redundant displayOptions
 			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {
@@ -2391,11 +2511,10 @@ export function generateDiscriminatorFile(
 		}
 	}
 
-	// Add properties
-	const seenNames = new Set<string>();
-	for (const prop of props) {
-		if (seenNames.has(prop.name)) continue;
-		seenNames.add(prop.name);
+	// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
+	// so the emitted type def reflects the OR of variants accurately.
+	const mergedProps = mergeCollectionProperties(props);
+	for (const prop of mergedProps) {
 		// Pass combo as discriminator context to filter redundant displayOptions
 		const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 		if (propLine) {
@@ -3249,13 +3368,10 @@ function generateDiscriminatedUnionForEntry(
 			}
 		}
 
-		// Track seen property names to avoid duplicates
-		const seenNames = new Set<string>();
-		for (const prop of props) {
-			if (seenNames.has(prop.name)) {
-				continue; // Skip duplicate property names
-			}
-			seenNames.add(prop.name);
+		// Merge same-named declarations (e.g. UX forks like BigQuery's sqlQuery)
+		// so the emitted type def reflects the OR of variants accurately.
+		const mergedProps = mergeCollectionProperties(props);
+		for (const prop of mergedProps) {
 			// Pass combo as discriminator context to filter redundant displayOptions
 			const propLine = generatePropertyLine(prop, isPropertyOptional(prop), combo);
 			if (propLine) {

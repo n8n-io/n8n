@@ -765,11 +765,12 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
-				mock<INodeUi>({ type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
-			);
+			workflowsStore.workflow.nodes = [
+				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.telegram', typeVersion: 1 }),
+			];
 
-			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+			nodeTypesStore.getNodeType = () =>
+				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
 
@@ -793,11 +794,12 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
-				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			);
+			workflowsStore.workflow.nodes = [
+				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			];
 
-			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+			nodeTypesStore.getNodeType = () =>
+				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', false);
 
@@ -821,11 +823,12 @@ describe('manual execution stats tracking', () => {
 				},
 			} as unknown as IExecutionResponse);
 
-			vi.spyOn(workflowsStore, 'getNodeByName').mockReturnValue(
-				mock<INodeUi>({ type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
-			);
+			workflowsStore.workflow.nodes = [
+				mock<INodeUi>({ name: nodeName, type: 'n8n-nodes-base.vonage', typeVersion: 1 }),
+			];
 
-			nodeTypesStore.getNodeType = () => mock<INodeTypeDescription>({ polling: undefined });
+			nodeTypesStore.getNodeType = () =>
+				mock<INodeTypeDescription>({ polling: undefined, group: [] });
 
 			handleExecutionFinishedWithSuccessOrOther(mock<WorkflowState>(), 'success', true);
 

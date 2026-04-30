@@ -65,6 +65,7 @@ export const defaultSettings: FrontendSettings = {
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
+	jwksUri: '',
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',
 	posthog: {

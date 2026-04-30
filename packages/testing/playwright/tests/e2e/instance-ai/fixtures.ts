@@ -35,6 +35,102 @@ async function writeTraceFile(folder: string, events: unknown[]): Promise<void> 
 	await fs.writeFile(filePath, jsonl);
 }
 
+type AnthropicMessage = {
+	role?: unknown;
+	content?: unknown;
+};
+
+type AnthropicContentBlock = {
+	type?: unknown;
+	text?: unknown;
+	name?: unknown;
+	input?: unknown;
+};
+
+function escapeRegex(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function asContentBlocks(content: unknown): AnthropicContentBlock[] {
+	if (typeof content === 'string') return [{ type: 'text', text: content }];
+	if (!Array.isArray(content)) return [];
+	return content.filter(
+		(block): block is AnthropicContentBlock =>
+			typeof block === 'object' && block !== null && !Array.isArray(block),
+	);
+}
+
+function getStableTextAnchor(text: string): string | undefined {
+	const trimmed = text.trimStart();
+	if (!trimmed) return undefined;
+
+	const tagMatch = /^<[a-z-]+/.exec(trimmed);
+	if (tagMatch) return escapeRegex(tagMatch[0]);
+
+	return escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1));
+}
+
+function getToolUseAnchor(block: AnthropicContentBlock): string | undefined {
+	if (block.type !== 'tool_use' || typeof block.name !== 'string') return undefined;
+
+	const toolNameMatcher = `"type"\\s*:\\s*"tool_use"[\\s\\S]{0,300}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
+	const input = block.input;
+	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+		return toolNameMatcher;
+	}
+
+	const action = Reflect.get(input, 'action');
+	if (typeof action !== 'string') return toolNameMatcher;
+
+	return `${toolNameMatcher}[\\s\\S]{0,500}"action"\\s*:\\s*"${escapeRegex(action)}"`;
+}
+
+function getLatestMessageAnchor(messages: AnthropicMessage[] | undefined): string | undefined {
+	if (!messages) return undefined;
+
+	for (let messageIndex = messages.length - 1; messageIndex >= 0; messageIndex--) {
+		const blocks = asContentBlocks(messages[messageIndex]?.content);
+		for (let blockIndex = blocks.length - 1; blockIndex >= 0; blockIndex--) {
+			const block = blocks[blockIndex];
+			if (block.type === 'text' && typeof block.text === 'string') {
+				const textAnchor = getStableTextAnchor(block.text);
+				if (textAnchor) return textAnchor;
+			}
+
+			const toolUseAnchor = getToolUseAnchor(block);
+			if (toolUseAnchor) return toolUseAnchor;
+		}
+	}
+
+	return undefined;
+}
+
+function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string } | undefined {
+	const parsed = JSON.parse(raw) as {
+		system?: string | unknown[];
+		messages?: AnthropicMessage[];
+	};
+
+	const system =
+		typeof parsed.system === 'string'
+			? parsed.system
+			: Array.isArray(parsed.system)
+				? JSON.stringify(parsed.system)
+				: undefined;
+	if (!system) return undefined;
+
+	const systemSnippet = escapeRegex(system.slice(0, 80));
+	const latestMessageAnchor = getLatestMessageAnchor(parsed.messages);
+	const matcher = latestMessageAnchor
+		? `${systemSnippet}[\\s\\S]*${latestMessageAnchor}`
+		: systemSnippet;
+
+	return {
+		type: 'REGEX',
+		regex: `[\\s\\S]*${matcher}[\\s\\S]*`,
+	};
+}
+
 type InstanceAiFixtures = {
 	anthropicApiKey: string;
 	instanceAiProxySetup: undefined;
@@ -73,6 +169,15 @@ export const test = base.extend<InstanceAiFixtures>({
 			const testSlug = slugify(testInfo.title);
 			const folder = `instance-ai/${testSlug}`;
 
+			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
+			// and user workflows before clearing the proxy so cleanup traffic from a
+			// previous test cannot be captured into this test's recording.
+			try {
+				await fetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
+			} catch {
+				// Endpoint may not be available
+			}
+
 			await services.proxy.clearAllExpectations();
 
 			// Install a success response for Slack's `users.profile.get` — the
@@ -99,15 +204,6 @@ export const test = base.extend<InstanceAiFixtures>({
 				},
 				times: { unlimited: true },
 			});
-
-			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
-			// and user workflows so the orchestrator's `list-workflows` tool can't see
-			// leftovers from a prior test and contaminate this test's recorded responses.
-			try {
-				await fetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
-			} catch {
-				// Endpoint may not be available
-			}
 
 			// Recording mode: real API key, not CI → proxy forwards to real API,
 			// backend records tool I/O. Replay mode: load existing expectations
@@ -162,8 +258,8 @@ export const test = base.extend<InstanceAiFixtures>({
 						}
 
 						// Keep a minimal body matcher so the proxy can distinguish
-						// between different LLM call types (title gen vs orchestrator
-						// vs sub-agent) which may arrive in different order during replay.
+						// between agent type and stable turn context without matching
+						// volatile tool output such as workflow and execution IDs.
 						const request = expectation.httpRequest as {
 							// eslint-disable-next-line id-denylist -- `string` is MockServer's body matcher field name
 							body?: { type?: string; string?: string; json?: Record<string, unknown> };
@@ -174,23 +270,9 @@ export const test = base.extend<InstanceAiFixtures>({
 								(request.body.json ? JSON.stringify(request.body.json) : undefined);
 							if (raw) {
 								try {
-									const parsed = JSON.parse(raw) as { system?: string | unknown[] };
-									// Extract a short substring from the system prompt to
-									// distinguish title-generation from orchestrator from sub-agent.
-									const system =
-										typeof parsed.system === 'string'
-											? parsed.system
-											: Array.isArray(parsed.system)
-												? JSON.stringify(parsed.system)
-												: undefined;
-									if (system) {
-										const snippet = system.slice(0, 80);
-										request.body = {
-											type: 'STRING',
-											// eslint-disable-next-line id-denylist -- `string` is MockServer's body matcher field name
-											string: snippet,
-											subString: true,
-										} as unknown as typeof request.body;
+									const bodyMatcher = createAnthropicBodyMatcher(raw);
+									if (bodyMatcher) {
+										request.body = bodyMatcher as unknown as typeof request.body;
 									} else {
 										delete request.body;
 									}

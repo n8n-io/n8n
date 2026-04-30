@@ -6,7 +6,7 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 } from '@/app/constants';
 import { STORES } from '@n8n/stores';
-import type { INodeUi, IStartRunData, IWorkflowDb, WorkflowValidationIssue } from '@/Interface';
+import type { INodeUi, IStartRunData, IWorkflowDb } from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -17,11 +17,9 @@ import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
 import type {
-	IConnections,
 	IDataObject,
 	ExecutionSummary,
 	INode,
-	INodeConnections,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeTypes,
@@ -31,8 +29,7 @@ import type {
 	IWorkflowSettings,
 	INodeType,
 } from 'n8n-workflow';
-import { deepCopy, Workflow, TelemetryHelpers } from 'n8n-workflow';
-import * as workflowUtils from 'n8n-workflow/common';
+import { deepCopy, TelemetryHelpers } from 'n8n-workflow';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
@@ -214,88 +211,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		() => workflowExecutionSession.value.activeExecutionRunData,
 	);
 
-	/** @deprecated Use `workflowDocumentStore.allConnections` instead. */
-	const allConnections = computed(() => workflow.value.connections);
-
 	const isWorkflowRunning = computed(() => workflowExecutionSession.value.isWorkflowRunning);
-
-	/** @deprecated Use `workflowDocumentStore.nodesByName` instead. */
-	const nodesByName = computed(() => {
-		return workflow.value.nodes.reduce<Record<string, INodeUi>>((acc, node) => {
-			acc[node.name] = node;
-			return acc;
-		}, {});
-	});
-
-	const nodesWithIssues = computed(() =>
-		workflow.value.nodes.filter((node) => {
-			const nodeHasIssues = Object.keys(node.issues ?? {}).length > 0;
-			const isConnected =
-				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
-			return !node.disabled && isConnected && nodeHasIssues;
-		}),
-	);
-
-	const nodesWithIssuesCount = computed(() => nodesWithIssues.value.length);
-
-	const nodesIssuesExist = computed(() => nodesWithIssuesCount.value > 0);
-
-	/**
-	 * Get detailed validation issues for all connected, enabled nodes
-	 */
-	const workflowValidationIssues = computed(() => {
-		const issues: WorkflowValidationIssue[] = [];
-
-		const isStringOrStringArray = (value: unknown): value is string | string[] =>
-			typeof value === 'string' || Array.isArray(value);
-
-		workflow.value.nodes.forEach((node) => {
-			if (!node.issues || node.disabled) return;
-
-			const isConnected =
-				Object.keys(outgoingConnectionsByNodeName(node.name)).length > 0 ||
-				Object.keys(incomingConnectionsByNodeName(node.name)).length > 0;
-
-			if (!isConnected) return;
-
-			Object.entries(node.issues).forEach(([issueType, issueValue]) => {
-				if (!issueValue) return;
-
-				if (typeof issueValue === 'object' && !Array.isArray(issueValue)) {
-					// Handle nested issues (parameters, credentials)
-					Object.entries(issueValue).forEach(([_key, value]) => {
-						if (value) {
-							issues.push({
-								node: node.name,
-								type: issueType,
-								value,
-							});
-						}
-					});
-				} else {
-					// Handle direct issues
-					issues.push({
-						node: node.name,
-						type: issueType,
-						value: isStringOrStringArray(issueValue) ? issueValue : String(issueValue),
-					});
-				}
-			});
-		});
-
-		return issues;
-	});
-
-	/**
-	 * Format issue message for display
-	 */
-	function formatIssueMessage(issue: string | string[]): string {
-		if (Array.isArray(issue)) {
-			return issue.join(', ').replace(/\.$/, '');
-		}
-		return String(issue);
-	}
 
 	const executedNode = computed(() => workflowExecutionSession.value.activeExecution?.executedNode);
 
@@ -306,19 +222,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const getWorkflowExecution = computed(() => workflowExecutionSession.value.activeExecution);
 
 	const getPastChatMessages = computed(() => workflowExecutionSession.value.getPastChatMessages);
-
-	/**
-	 * This section contains functions migrated from the workflow class
-	 */
-
-	/** @deprecated Use `workflowDocumentStore.connectionsBySourceNode` instead. */
-	const connectionsBySourceNode = computed(() => workflow.value.connections);
-	/** @deprecated Use `workflowDocumentStore.connectionsByDestinationNode` instead. */
-	const connectionsByDestinationNode = computed(() =>
-		workflowUtils.mapConnectionsByDestination(workflow.value.connections),
-	);
-
-	// End section
 
 	const selectableTriggerNodes = computed(() =>
 		workflowTriggerNodes.value.filter((node) => !node.disabled && !isChatNode(node)),
@@ -345,32 +248,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
 		return workflowExecutionSession.value.getActiveExecutionRunDataByNodeName(nodeName);
-	}
-
-	/** @deprecated Use `workflowDocumentStore.outgoingConnectionsByNodeName()` instead. */
-	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {
-		if (workflow.value.connections.hasOwnProperty(nodeName)) {
-			return workflow.value.connections[nodeName] as unknown as INodeConnections;
-		}
-		return {};
-	}
-
-	/** @deprecated Use `workflowDocumentStore.incomingConnectionsByNodeName()` instead. */
-	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
-		if (connectionsByDestinationNode.value.hasOwnProperty(nodeName)) {
-			return connectionsByDestinationNode.value[nodeName] as unknown as INodeConnections;
-		}
-		return {};
-	}
-
-	/** @deprecated Use `workflowDocumentStore.getNodeByName()` instead. */
-	function getNodeByName(nodeName: string): INodeUi | null {
-		return workflowUtils.getNodeByName(nodesByName.value, nodeName);
-	}
-
-	/** @deprecated Use `workflowDocumentStore.getNodeById()` instead. */
-	function getNodeById(nodeId: string): INodeUi | undefined {
-		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
 	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
@@ -418,17 +295,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return nodeTypes;
 	}
 
-	/**
-	 * Returns a shallow copy of the nodes which means that all the data on the lower
-	 * levels still only gets referenced but the top level object is a different one.
-	 * This has the advantage that it is very fast and does not cause problems with vuex
-	 * when the workflow replaces the node-parameters.
-	 * @deprecated Use `workflowDocumentStore.getNodes()` instead.
-	 */
-	function getNodes(): INodeUi[] {
-		return workflow.value.nodes.map((node) => ({ ...node }));
-	}
-
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
 		const filteredCredentials = Object.keys(node.credentials ?? {}).reduce<INodeCredentials>(
 			(credentials, curr) => {
@@ -448,41 +314,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			...node,
 			credentials: filteredCredentials,
 		};
-	}
-
-	function createWorkflowObject(
-		nodes: INodeUi[],
-		connections: IConnections,
-		copyData?: boolean,
-	): Workflow {
-		const nodeTypes = getNodeTypes();
-
-		let id: string | undefined = workflow.value.id;
-		// If workflow doesn't exist in store, treat as new (no ID)
-		if (id && !workflowsListStore.getWorkflowById(id)?.id) {
-			id = undefined;
-		}
-
-		const wfId = workflow.value.id;
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(wfId));
-
-		return new Workflow({
-			id,
-			name: workflowDocumentStore.name,
-			nodes: copyData ? deepCopy(nodes) : nodes,
-			connections: copyData ? deepCopy(connections) : connections,
-			active: false,
-			nodeTypes,
-			settings: workflowDocumentStore.settings,
-			pinData: workflowDocumentStore.getPinDataSnapshot(),
-		});
-	}
-
-	function cloneWorkflowObject(): Workflow {
-		const nodes = getNodes();
-		const connections = allConnections.value;
-
-		return createWorkflowObject(nodes, connections);
 	}
 
 	async function getWorkflowFromUrl(url: string, projectId: string): Promise<IWorkflowDb> {
@@ -746,7 +577,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const nodeName = pushData.nodeName;
 
 		if (pushData.data.error) {
-			const node = getNodeByName(nodeName);
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowId.value),
+			);
+			const node = workflowDocumentStore.getNodeByName(nodeName);
 			telemetry.track('Manual exec errored', {
 				error_title: pushData.data.error.message,
 				node_type: node?.type,
@@ -754,7 +588,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				node_id: node?.id,
 				node_graph_string: JSON.stringify(
 					TelemetryHelpers.generateNodesGraph(
-						useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)).serialize(),
+						workflowDocumentStore.serialize(),
 						workflowHelpers.getNodeTypes(),
 						{
 							isCloudDeployment: settingsStore.isCloudDeployment,
@@ -1074,23 +908,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowExecutionSession.value.appendChatMessage(message);
 	}
 
-	//
-	// Start Canvas V2 Functions
-	//
-
-	function removeNodeExecutionDataById(nodeId: string): void {
-		const node = getNodeById(nodeId);
-		if (!node) {
-			return;
-		}
-
-		clearNodeExecutionData(node.name);
-	}
-
-	//
-	// End Canvas V2 Functions
-	//
-
 	function setSelectedTriggerNodeName(value: string | undefined) {
 		workflowExecutionSession.value.setSelectedTriggerNodeName(value);
 	}
@@ -1145,31 +962,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		currentWorkflowHasWebhookNode,
 		getWorkflowRunData,
 		getWorkflowResultDataByNodeName,
-		allConnections,
-		connectionsBySourceNode,
-		connectionsByDestinationNode,
 		isWorkflowRunning,
-		nodesByName,
-		nodesWithIssuesCount,
-		nodesWithIssues,
-		nodesIssuesExist,
-		workflowValidationIssues,
-		formatIssueMessage,
 		executedNode,
 		getAllLoadedFinishedExecutions,
 		getWorkflowExecution,
 		getPastChatMessages,
 		selectedTriggerNodeName,
 		workflowExecutionTriggerNodeName,
-		outgoingConnectionsByNodeName,
-		incomingConnectionsByNodeName,
-		getNodeByName,
 		getExecutionDataById,
 		getNodeTypes,
-		getNodes,
 		convertTemplateNodeToNodeUi,
-		createWorkflowObject,
-		cloneWorkflowObject,
 		getWorkflowFromUrl,
 		getActivationError,
 		setWorkflowId,
@@ -1204,7 +1006,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getBinaryUrl,
 		resetChatMessages,
 		appendChatMessage,
-		removeNodeExecutionDataById,
 		getPartialIdForNode,
 		setSelectedTriggerNodeName,
 		fetchLastSuccessfulExecution,
