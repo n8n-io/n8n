@@ -261,10 +261,9 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 				/>
 			</div>
 			<div :class="$style.topBar">
-				<N8nText tag="span" bold size="large">{{ i18n.baseText('agents.new.title') }}</N8nText>
 				<N8nButton
 					:label="i18n.baseText('agents.new.startBlank')"
-					type="secondary"
+					variant="subtle"
 					size="medium"
 					icon="file"
 					:loading="isCreating"
@@ -346,7 +345,7 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 .topBar {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-end;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }

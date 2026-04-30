@@ -5735,7 +5735,7 @@
 	"agents.toolConfig.cancel": "Cancel",
 	"agents.new.title": "New agent",
 	"agents.new.defaultName": "New Agent",
-	"agents.new.startBlank": "Start blank",
+	"agents.new.startBlank": "Start from blank",
 	"agents.new.heading": "What should we build?",
 	"agents.new.headingWithName": "What should we build, {name}?",
 	"agents.new.description.placeholder": "Describe your agent...",
