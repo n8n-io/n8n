@@ -18,7 +18,6 @@ describe('createRichInteractionTool', () => {
 		return {
 			resumeData: undefined,
 			suspend: jest.fn().mockResolvedValue(undefined as never),
-			display: jest.fn(),
 			parentTelemetry: undefined,
 		};
 	}
@@ -35,7 +34,6 @@ describe('createRichInteractionTool', () => {
 
 		expect(result).toEqual(resumeData);
 		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(ctx.display).not.toHaveBeenCalled();
 	});
 
 	it('should suspend when actionable components exist and no resumeData', async () => {
@@ -52,10 +50,9 @@ describe('createRichInteractionTool', () => {
 		await tool.handler!(input, ctx);
 
 		expect(ctx.suspend).toHaveBeenCalledWith(input);
-		expect(ctx.display).not.toHaveBeenCalled();
 	});
 
-	it('should display (not suspend) when no actionable components are present', async () => {
+	it('should return displayOnly marker (not suspend) when no actionable components are present', async () => {
 		const tool = createRichInteractionTool().build();
 		const input = {
 			title: 'Info Card',
@@ -67,11 +64,10 @@ describe('createRichInteractionTool', () => {
 		const result = await tool.handler!(input, ctx);
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(ctx.display).toHaveBeenCalledWith(input);
-		expect(result).toEqual({ displayed: true });
+		expect(result).toEqual({ displayOnly: true });
 	});
 
-	it('should display when only an image component is present', async () => {
+	it('should return displayOnly marker when only an image component is present', async () => {
 		const tool = createRichInteractionTool('slack').build();
 		const input = {
 			components: [{ type: 'image' as const, url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
@@ -81,8 +77,7 @@ describe('createRichInteractionTool', () => {
 		const result = await tool.handler!(input, ctx);
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(ctx.display).toHaveBeenCalledWith(input);
-		expect(result).toEqual({ displayed: true });
+		expect(result).toEqual({ displayOnly: true });
 	});
 
 	it('should suspend for select components', async () => {
@@ -105,7 +100,6 @@ describe('createRichInteractionTool', () => {
 		await tool.handler!(input, ctx);
 
 		expect(ctx.suspend).toHaveBeenCalledWith(input);
-		expect(ctx.display).not.toHaveBeenCalled();
 	});
 
 	it('should suspend for radio_select components', async () => {
@@ -127,6 +121,5 @@ describe('createRichInteractionTool', () => {
 		await tool.handler!(input, ctx);
 
 		expect(ctx.suspend).toHaveBeenCalledWith(input);
-		expect(ctx.display).not.toHaveBeenCalled();
 	});
 });

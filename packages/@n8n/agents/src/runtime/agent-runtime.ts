@@ -127,15 +127,11 @@ type ToolCallOutcome =
 			modelOutput: unknown;
 			subAgentUsage?: SubAgentUsage[];
 			customMessage?: AgentMessage;
-			/** Payloads from `ctx.display()` calls — emitted as `tool-card-display` chunks. */
-			displayPayloads?: unknown[];
 	  }
 	| {
 			outcome: 'suspended';
 			payload: unknown;
 			resumeSchema: JsonSchema7Type;
-			/** Payloads from `ctx.display()` calls made before suspension. */
-			displayPayloads?: unknown[];
 	  }
 	| { outcome: 'error'; error: unknown }
 	| { outcome: 'noop' }; // tool call shouldn't be saved or logged anywhere, usually means that if was executed by AI SDK
@@ -149,7 +145,6 @@ interface ToolCallSuccess {
 	modelOutput: unknown;
 	subAgentUsage?: SubAgentUsage[];
 	customMessage?: AgentMessage;
-	displayPayloads?: unknown[];
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -160,8 +155,6 @@ interface ToolCallSuspension {
 	payload: unknown;
 	/** JSON Schema describing the shape of resume data, derived from the tool's resumeSchema. */
 	resumeSchema: JsonSchema7Type;
-	/** Payloads from `ctx.display()` calls made before the suspension. */
-	displayPayloads?: unknown[];
 }
 
 /** Info about a tool call that failed — carries enough data for stream chunks. */
@@ -892,17 +885,6 @@ export class AgentRuntime {
 
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					if (r.displayPayloads) {
-						for (const payload of r.displayPayloads) {
-							await writer.write({
-								type: 'tool-card-display',
-								runId,
-								toolCallId: r.toolCallId,
-								toolName: r.toolName,
-								payload,
-							});
-						}
-					}
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: r.toolCallId,
@@ -933,17 +915,6 @@ export class AgentRuntime {
 						runId,
 					);
 					for (const s of batch.suspensions) {
-						if (s.displayPayloads) {
-							for (const payload of s.displayPayloads) {
-								await writer.write({
-									type: 'tool-card-display',
-									runId: suspendRunId,
-									toolCallId: s.toolCallId,
-									toolName: s.toolName,
-									payload,
-								});
-							}
-						}
 						await writer.write({
 							type: 'tool-call-suspended',
 							runId: suspendRunId,
@@ -1037,17 +1008,6 @@ export class AgentRuntime {
 
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					if (r.displayPayloads) {
-						for (const payload of r.displayPayloads) {
-							await writer.write({
-								type: 'tool-card-display',
-								runId,
-								toolCallId: r.toolCallId,
-								toolName: r.toolName,
-								payload,
-							});
-						}
-					}
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: r.toolCallId,
@@ -1078,17 +1038,6 @@ export class AgentRuntime {
 						runId,
 					);
 					for (const s of batch.suspensions) {
-						if (s.displayPayloads) {
-							for (const payload of s.displayPayloads) {
-								await writer.write({
-									type: 'tool-card-display',
-									runId: suspendRunId,
-									toolCallId: s.toolCallId,
-									toolName: s.toolName,
-									payload,
-								});
-							}
-						}
 						await writer.write({
 							type: 'tool-call-suspended',
 							runId: suspendRunId,
@@ -1373,7 +1322,6 @@ export class AgentRuntime {
 						input: toolInput,
 						payload: result.value.payload,
 						resumeSchema: result.value.resumeSchema,
-						displayPayloads: result.value.displayPayloads,
 					});
 					pending[tc.toolCallId] = {
 						suspended: true,
@@ -1393,7 +1341,6 @@ export class AgentRuntime {
 						modelOutput: result.value.modelOutput,
 						subAgentUsage: result.value.subAgentUsage,
 						customMessage: result.value.customMessage,
-						displayPayloads: result.value.displayPayloads,
 					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
@@ -1475,7 +1422,6 @@ export class AgentRuntime {
 				input: resumedEntry.input,
 				payload: processResult.payload,
 				resumeSchema: processResult.resumeSchema,
-				displayPayloads: processResult.displayPayloads,
 			});
 		} else if (processResult.outcome === 'success') {
 			results.push({
@@ -1486,7 +1432,6 @@ export class AgentRuntime {
 				modelOutput: processResult.modelOutput,
 				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
-				displayPayloads: processResult.displayPayloads,
 			});
 		} else if (processResult.outcome === 'error') {
 			errors.push({
@@ -1626,11 +1571,8 @@ export class AgentRuntime {
 		}
 
 		let toolResult: unknown;
-		let displayPayloads: unknown[] = [];
 		try {
-			const execResult = await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry);
-			toolResult = execResult.result;
-			displayPayloads = execResult.displayPayloads;
+			toolResult = await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry);
 		} catch (error) {
 			return makeToolError(error as Error);
 		}
@@ -1657,7 +1599,6 @@ export class AgentRuntime {
 				outcome: 'suspended',
 				payload: toolResult.payload,
 				resumeSchema,
-				displayPayloads: displayPayloads.length > 0 ? displayPayloads : undefined,
 			};
 		}
 
@@ -1700,7 +1641,6 @@ export class AgentRuntime {
 			modelOutput: modelResult,
 			subAgentUsage: extractedSubAgentUsage,
 			customMessage,
-			displayPayloads: displayPayloads.length > 0 ? displayPayloads : undefined,
 		};
 	}
 

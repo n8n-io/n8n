@@ -115,6 +115,20 @@ export class AgentChatBridge {
 	/** When true, buffer deltas and post as a single message (see integration flag). */
 	private readonly disableStreaming: boolean;
 
+	/**
+	 * In-flight `rich_interaction` tool inputs keyed by toolCallId. Populated on
+	 * the `tool-call` chunk; consumed on the matching `tool-result` chunk when
+	 * the result carries `displayOnly: true` (display-only render path) or
+	 * cleared on `tool-call-suspended` (interactive HITL path, where the
+	 * suspendPayload itself carries the components).
+	 *
+	 * Storing the input here is the cleanest way to render a display-only
+	 * card from the bridge without leaking chat-SDK semantics into the agent
+	 * framework: the framework just emits tool-call/tool-result; the bridge
+	 * decides which results trigger a card post.
+	 */
+	private readonly richInteractionInputs = new Map<string, unknown>();
+
 	constructor(
 		private readonly bot: ChatBot,
 		private readonly agentId: string,
@@ -356,14 +370,22 @@ export class AgentChatBridge {
 					textStream.yield?.(`_${delta}_`);
 					break;
 				}
+				case 'tool-call':
+					this.stashRichInteractionInput(chunk);
+					break;
 				case 'tool-call-suspended':
+					this.richInteractionInputs.delete(chunk.toolCallId);
 					await endStreamingPost();
 					await this.handleSuspension(chunk, thread);
 					// Don't start new streaming post — wait for next text delta
 					break;
-				case 'tool-card-display':
-					await endStreamingPost();
-					await this.handleCardDisplay(chunk, thread);
+				case 'tool-result':
+					if (this.isRichInteractionDisplayOnly(chunk)) {
+						await endStreamingPost();
+						await this.handleDisplayOnly(chunk, thread);
+					} else {
+						this.richInteractionInputs.delete(chunk.toolCallId);
+					}
 					break;
 				case 'message':
 					await endStreamingPost();
@@ -374,8 +396,8 @@ export class AgentChatBridge {
 					await this.postErrorToThread(thread, chunk.error);
 					break;
 				default:
-					// Ignore other chunk types (finish, tool-input-*, tool-call,
-					// tool-result, start-step, finish-step, etc.)
+					// Ignore other chunk types (finish, tool-input-*,
+					// start-step, finish-step, etc.)
 					break;
 			}
 		}
@@ -420,13 +442,21 @@ export class AgentChatBridge {
 				case 'reasoning-delta':
 					buffer += `_${chunk.delta}_`;
 					break;
+				case 'tool-call':
+					this.stashRichInteractionInput(chunk);
+					break;
 				case 'tool-call-suspended':
+					this.richInteractionInputs.delete(chunk.toolCallId);
 					await flushBuffer();
 					await this.handleSuspension(chunk, thread);
 					break;
-				case 'tool-card-display':
-					await flushBuffer();
-					await this.handleCardDisplay(chunk, thread);
+				case 'tool-result':
+					if (this.isRichInteractionDisplayOnly(chunk)) {
+						await flushBuffer();
+						await this.handleDisplayOnly(chunk, thread);
+					} else {
+						this.richInteractionInputs.delete(chunk.toolCallId);
+					}
 					break;
 				case 'message':
 					await flushBuffer();
@@ -570,28 +600,56 @@ export class AgentChatBridge {
 
 	// ---------------------------------------------------------------------------
 	// Display-only card handling (no suspension)
+	//
+	// `rich_interaction` returns `{ displayOnly: true }` from its handler when
+	// the card has no actionable components. The bridge stashes the tool-call
+	// input on the way down (carrying the components) and posts the card when
+	// the matching tool-result arrives carrying the marker. The framework
+	// itself stays free of any chat-rendering semantics.
 	// ---------------------------------------------------------------------------
 
+	private stashRichInteractionInput(chunk: Extract<StreamChunk, { type: 'tool-call' }>): void {
+		if (chunk.toolName !== 'rich_interaction') return;
+		this.richInteractionInputs.set(chunk.toolCallId, chunk.input);
+	}
+
+	private isRichInteractionDisplayOnly(
+		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
+	): boolean {
+		if (chunk.toolName !== 'rich_interaction') return false;
+		const out = chunk.output;
+		return (
+			typeof out === 'object' &&
+			out !== null &&
+			'displayOnly' in out &&
+			(out as { displayOnly: unknown }).displayOnly === true
+		);
+	}
+
 	/**
-	 * Render a card emitted via `ctx.display()` — same payload shape as the
-	 * suspending `rich_interaction` path, but the agent run continues. We pass a
-	 * minimal resume schema because the card has no interactive surface, so no
-	 * resume callback will be invoked.
+	 * Render the stashed `rich_interaction` input as a display-only card. No
+	 * resume callback can fire (no buttons/selects), so we pass a placeholder
+	 * runId — the unique IDs the component mapper builds for interactive
+	 * elements never get used.
 	 */
-	private async handleCardDisplay(
-		chunk: Extract<StreamChunk, { type: 'tool-card-display' }>,
+	private async handleDisplayOnly(
+		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
 		thread: ChatThread,
 	): Promise<void> {
-		const { runId, toolCallId, payload } = chunk;
+		const { toolCallId } = chunk;
+		const input = this.richInteractionInputs.get(toolCallId);
+		this.richInteractionInputs.delete(toolCallId);
 
-		const cardPayload = payload as {
+		const cardPayload = input as {
 			title?: string;
 			message?: string;
 			components?: Array<{ type: string; [key: string]: unknown }>;
 		};
 
 		if (!cardPayload?.components?.length) {
-			this.logger.warn('[AgentChatBridge] tool-card-display has no components');
+			this.logger.warn('[AgentChatBridge] display-only rich_interaction has no components', {
+				toolCallId,
+			});
 			return;
 		}
 
@@ -607,7 +665,7 @@ export class AgentChatBridge {
 					message?: string;
 					components: Array<{ type: string; [key: string]: unknown }>;
 				},
-				runId,
+				'',
 				toolCallId,
 				displayResumeSchema,
 				this.getShortenCallback(),

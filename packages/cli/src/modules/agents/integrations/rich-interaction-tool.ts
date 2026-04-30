@@ -150,14 +150,13 @@ export function createRichInteractionTool(platform?: string) {
 			);
 
 			if (!hasActionable) {
-				// Display-only: surface the card to the chat without halting the
-				// agent run. The handler returns a confirmation ack so the LLM
-				// knows the card was rendered. The runtime emits a separate
-				// `tool-card-display` chunk for the integration layer; the
-				// recorder uses that as the canonical timeline entry and drops
-				// this ack so it doesn't surface as "User selected: displayed".
-				ctx.display(input);
-				return { displayed: true };
+				// Display-only: signal intent to the consumer (the chat bridge)
+				// via a marker on the tool result. The bridge inspects
+				// tool-call/tool-result chunks and renders the card from this
+				// tool's *input*, since we never actually do the chat-SDK work
+				// here. `displayOnly: true` is a directive ("show this without
+				// awaiting a response"), not a state assertion.
+				return { displayOnly: true };
 			}
 
 			return await ctx.suspend(input);

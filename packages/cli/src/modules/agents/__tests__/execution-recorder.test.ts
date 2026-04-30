@@ -124,83 +124,38 @@ describe('ExecutionRecorder', () => {
 		});
 	});
 
-	describe('display-only card', () => {
-		it('records tool-card-display as a closed tool-call timeline event', () => {
+	describe('display-only rich_interaction', () => {
+		it('records the standard tool-call/tool-result pair with displayOnly marker', () => {
 			const recorder = new ExecutionRecorder();
 
 			const cardPayload = {
 				components: [{ type: 'image', url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
 			};
-			recorder.record({ type: 'text-delta', id: 't1', delta: 'Here' });
-			recorder.record({
-				type: 'tool-card-display',
-				runId: 'r1',
-				toolCallId: 'tc1',
-				toolName: 'rich_interaction',
-				payload: cardPayload,
-			} as StreamChunk);
+
+			// Display-only rich_interaction emits no special framework chunk:
+			// the LLM calls the tool, the handler returns `{ displayOnly: true }`
+			// (which is what gets recorded), and the bridge handles rendering.
+			recorder.record(makeToolCallChunk('rich_interaction', cardPayload, 'tc1'));
+			recorder.record(makeToolResultChunk('rich_interaction', { displayOnly: true }, 'tc1'));
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();
 
-			expect(recorder.suspended).toBe(false);
-			expect(record.timeline).toHaveLength(2);
-			expect(record.timeline[0].type).toBe('text');
-
-			const toolEvent = record.timeline[1];
-			expect(toolEvent.type).toBe('tool-call');
-			if (toolEvent.type === 'tool-call') {
-				expect(toolEvent.name).toBe('rich_interaction');
-				expect(toolEvent.toolCallId).toBe('tc1');
-				expect(toolEvent.input).toEqual(cardPayload);
-				expect(toolEvent.output).toEqual({ displayed: true });
-				expect(toolEvent.success).toBe(true);
-				expect(toolEvent.endTime).toBeGreaterThan(0);
+			const toolEvents = record.timeline.filter((e) => e.type === 'tool-call');
+			expect(toolEvents).toHaveLength(1);
+			if (toolEvents[0].type === 'tool-call') {
+				expect(toolEvents[0].toolCallId).toBe('tc1');
+				expect(toolEvents[0].input).toEqual(cardPayload);
+				expect(toolEvents[0].output).toEqual({ displayOnly: true });
+				expect(toolEvents[0].success).toBe(true);
 			}
 
 			expect(record.toolCalls).toHaveLength(1);
 			expect(record.toolCalls[0]).toEqual({
 				name: 'rich_interaction',
 				input: cardPayload,
-				output: { displayed: true },
+				output: { displayOnly: true },
 			});
-		});
-
-		it('produces a single timeline entry when tool-call, tool-card-display, and tool-result all fire for the same toolCallId', () => {
-			const recorder = new ExecutionRecorder();
-
-			const cardPayload = {
-				components: [{ type: 'image', url: 'https://media.giphy.com/x.gif', alt: 'gif' }],
-			};
-
-			// Realistic stream order: tool-call (LLM picks the tool) → handler
-			// runs and calls ctx.display() → runtime emits tool-card-display →
-			// handler returns synthetic ack → runtime emits tool-result.
-			recorder.record(makeToolCallChunk('rich_interaction', cardPayload, 'tc1'));
-			recorder.record({
-				type: 'tool-card-display',
-				runId: 'r1',
-				toolCallId: 'tc1',
-				toolName: 'rich_interaction',
-				payload: cardPayload,
-			} as StreamChunk);
-			recorder.record(makeToolResultChunk('rich_interaction', { displayed: true }, 'tc1'));
-			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
-
-			const record = recorder.getMessageRecord();
-
-			// Exactly one timeline entry — display chunk settled the open
-			// tool-call entry; the subsequent tool-result was a no-op.
-			const toolEvents = record.timeline.filter((e) => e.type === 'tool-call');
-			expect(toolEvents).toHaveLength(1);
-			if (toolEvents[0].type === 'tool-call') {
-				expect(toolEvents[0].toolCallId).toBe('tc1');
-				expect(toolEvents[0].output).toEqual({ displayed: true });
-			}
-
-			// Exactly one flat entry — same dedup applied.
-			expect(record.toolCalls).toHaveLength(1);
-			expect(record.toolCalls[0].output).toEqual({ displayed: true });
 		});
 	});
 

@@ -70,8 +70,9 @@ export type BuiltinToolLabelKey =
  * `rich_interaction`) have two semantically distinct modes — interactive
  * (suspends, awaits user input) vs display-only (renders a card and the
  * agent continues). We pick the label based on the recorded output: the
- * runtime stamps `{ displayed: true }` for display-only calls and a button/
- * select payload for interactive ones.
+ * `rich_interaction` handler returns `{ displayOnly: true }` to mark a
+ * display-only call, and a button/select payload (after the user clicks)
+ * for the interactive case.
  */
 export function builtinToolLabelKey(
 	toolName: string | undefined,
@@ -79,7 +80,7 @@ export function builtinToolLabelKey(
 ): BuiltinToolLabelKey | null {
 	switch (toolName) {
 		case 'rich_interaction':
-			return isDisplayOutput(output)
+			return isDisplayOnlyOutput(output)
 				? 'agentSessions.timeline.tool.richInteractionDisplay'
 				: 'agentSessions.timeline.tool.richInteraction';
 		default:
@@ -87,12 +88,12 @@ export function builtinToolLabelKey(
 	}
 }
 
-function isDisplayOutput(output: unknown): boolean {
+function isDisplayOnlyOutput(output: unknown): boolean {
 	return (
 		typeof output === 'object' &&
 		output !== null &&
-		'displayed' in output &&
-		(output as { displayed: unknown }).displayed === true
+		'displayOnly' in output &&
+		(output as { displayOnly: unknown }).displayOnly === true
 	);
 }
 
