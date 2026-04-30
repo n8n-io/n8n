@@ -91,8 +91,8 @@ const navigation = useMenuKeyboardNavigation({
 const { highlightedIndex } = navigation;
 
 const openState = computed(() => {
-	if (!props.modal) return internalOpen.value;
-	return isControlled.value ? internalOpen.value : undefined;
+	if (isControlled.value || internalOpen.value) return internalOpen.value;
+	return props.modal ? undefined : internalOpen.value;
 });
 
 const placementParts = computed(() => {

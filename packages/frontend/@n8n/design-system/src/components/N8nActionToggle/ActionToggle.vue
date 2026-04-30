@@ -16,6 +16,9 @@ type ActionToggleItem<T extends string> = {
 interface ActionToggleProps {
 	actions?: Array<ActionToggleItem<T>>;
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
+	size?: 'mini' | 'small' | 'medium';
+	theme?: 'default' | 'dark';
+	iconSize?: 'small' | 'medium' | 'large' | 'xlarge';
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingRowCount?: number;
@@ -41,6 +44,7 @@ const props = withDefaults(defineProps<ActionToggleProps>(), {
 
 const emit = defineEmits<{
 	action: [value: ActionValue];
+	'visible-change': [open: boolean];
 	'update:modelValue': [open: boolean];
 	'item-mouseup': [action: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>];
 }>();
@@ -59,7 +63,10 @@ const items = computed((): Array<DropdownMenuItemProps<ActionValue, ActionToggle
 });
 
 const onAction = (value: ActionValue) => emit('action', value);
-const onOpenChange = (open: boolean) => emit('update:modelValue', open);
+const onOpenChange = (open: boolean) => {
+	emit('visible-change', open);
+	emit('update:modelValue', open);
+};
 const onItemMouseUp = (item: DropdownMenuItemProps<ActionValue, ActionToggleItem<T>>) => {
 	const action =
 		item.data ?? props.actions.find((candidate) => (candidate.id ?? candidate.value) === item.id);
