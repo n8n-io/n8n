@@ -1,9 +1,6 @@
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
-import {
-	syncWorkflowExecutionDataFromExecutionStore,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
+import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /**
  * Handles the 'nodeExecuteBefore' event, which happens before a node is executed.
@@ -14,5 +11,4 @@ export async function nodeExecuteBefore(
 ) {
 	workflowState.executingNode.addExecutingNode(data.nodeName);
 	useExecutionDataStore(createExecutionDataId(data.executionId)).addNodeExecutionStartedData(data);
-	syncWorkflowExecutionDataFromExecutionStore(data.executionId);
 }

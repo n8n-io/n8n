@@ -5,10 +5,7 @@ import type { INodeExecutionData, ITaskData } from 'n8n-workflow';
 import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
-import {
-	syncWorkflowExecutionDataFromExecutionStore,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
+import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 /**
  * Handles the 'nodeExecuteAfter' event, which happens after a node is executed.
@@ -55,7 +52,6 @@ export async function nodeExecuteAfter(
 	useExecutionDataStore(createExecutionDataId(pushData.executionId)).updateNodeExecutionStatus(
 		pushDataWithPlaceholderOutputData,
 	);
-	syncWorkflowExecutionDataFromExecutionStore(pushData.executionId);
 	workflowState.executingNode.removeExecutingNode(pushData.nodeName);
 
 	void assistantStore.onNodeExecution(pushData);

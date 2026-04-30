@@ -9,6 +9,10 @@ import {
 	setRunExecutionData,
 } from './executionFinished';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import type { useRouter } from 'vue-router';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
@@ -18,9 +22,12 @@ export async function executionRecovered(
 ) {
 	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+	);
 
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof workflowExecutionSession.activeExecutionId === 'undefined') {
 		return;
 	}
 

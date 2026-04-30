@@ -16,6 +16,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
@@ -46,10 +50,7 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 import type { useRouter } from 'vue-router';
-import {
-	syncWorkflowExecutionDataFromExecutionStore,
-	type WorkflowState,
-} from '@/app/composables/useWorkflowState';
+import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 export type SimplifiedExecution = Pick<
@@ -70,6 +71,9 @@ export async function executionFinished(
 	options: ExecutionFinishedOptions,
 ) {
 	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId || data.workflowId),
+	);
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const aiTemplatesStarterCollectionStore = useAITemplatesStarterCollectionStore();
@@ -78,8 +82,10 @@ export async function executionFinished(
 	options.workflowState.executingNode.lastAddedExecutingNode = null;
 	options.workflowState.executingNode.clearNodeExecutionQueue();
 
+	const activeExecutionId = workflowExecutionSession.activeExecutionId;
+
 	// No workflow is actively running, therefore we ignore this event
-	if (typeof workflowsStore.activeExecutionId === 'undefined') {
+	if (typeof activeExecutionId === 'undefined') {
 		return;
 	}
 
@@ -223,7 +229,9 @@ export async function fetchExecutionData(
 			workflowData: workflowsStore.workflow,
 			data: executionResponse.data,
 			status: executionResponse.status,
-			startedAt: workflowsStore.workflowExecutionData?.startedAt as Date,
+			startedAt: useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(executionResponse.workflowId ?? workflowsStore.workflowId),
+			).activeExecution?.startedAt as Date,
 			stoppedAt: new Date(),
 		};
 	} catch {
@@ -254,9 +262,12 @@ export function getRunDataExecutedErrorMessage(execution: SimplifiedExecution) {
 		return i18n.baseText('pushConnection.executionFailed.message');
 	} else if (execution.status === 'canceled') {
 		const workflowsStore = useWorkflowsStore();
+		const workflowExecutionSession = useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowsStore.workflowId || execution.workflowId || ''),
+		);
 
 		return i18n.baseText('executionsList.showMessage.stopExecution.message', {
-			interpolate: { activeExecutionId: workflowsStore.activeExecutionId ?? '' },
+			interpolate: { activeExecutionId: workflowExecutionSession.activeExecutionId ?? '' },
 		});
 	}
 
@@ -420,7 +431,11 @@ export function handleExecutionFinishedWithSuccessOrOther(
 
 	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
 
-	const workflowExecution = workflowsStore.getWorkflowExecution;
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+	);
+	const workflowExecution =
+		workflowExecutionSession.activeExecution ?? workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
 		const node = workflowDocumentStore.getNodeByName(workflowExecution.executedNode) ?? null;
 		const nodeType = node && nodeTypesStore.getNodeType(node.type, node.typeVersion);
@@ -477,7 +492,10 @@ export function setRunExecutionData(
 	const workflowsStore = useWorkflowsStore();
 	const nodeHelpers = useNodeHelpers();
 	const runDataExecutedErrorMessage = getRunDataExecutedErrorMessage(execution);
-	const workflowExecution = workflowsStore.getWorkflowExecution;
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId || execution.workflowId || ''),
+	);
+	const workflowExecution = workflowExecutionSession.activeExecution;
 
 	workflowState.executingNode.clearNodeExecutionQueue();
 
@@ -492,7 +510,6 @@ export function setRunExecutionData(
 		stoppedAt: execution.stoppedAt,
 	});
 	useExecutionDataStore(createExecutionDataId(execution.id)).setExecutionRunData(runExecutionData);
-	syncWorkflowExecutionDataFromExecutionStore(execution.id);
 	workflowState.setActiveExecutionId(undefined);
 
 	// Set the node execution issues on all the nodes which produced an error so that

@@ -16,6 +16,10 @@ import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
 import { createRunExecutionData } from 'n8n-workflow';
 import { stringify } from 'flatted';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 describe('executionStarted', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
@@ -40,8 +44,6 @@ describe('executionStarted', () => {
 	});
 
 	it('should skip when activeExecutionId is undefined', async () => {
-		workflowsStore.activeExecutionId = undefined;
-
 		await executionStarted(makeEvent(), mockOptions);
 
 		expect(mockOptions.workflowState.setActiveExecutionId).not.toHaveBeenCalled();
@@ -49,9 +51,11 @@ describe('executionStarted', () => {
 	});
 
 	it('should accept execution when activeExecutionId is null and populate workflowData from store', async () => {
-		workflowsStore.activeExecutionId = null;
 		workflowsStore.workflowExecutionData = null;
 		workflowsStore.workflow.id = 'wf-123';
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId('wf-123'),
+		).setActiveExecutionId(null);
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
 
@@ -68,8 +72,10 @@ describe('executionStarted', () => {
 	});
 
 	it('should initialize execution data in the matching execution data store', async () => {
-		workflowsStore.activeExecutionId = null;
 		workflowsStore.workflow.id = 'wf-123';
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId('wf-123'),
+		).setActiveExecutionId(null);
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('wf-123'));
 		workflowDocumentStore.setName('My Workflow');
 		const workflowState = useWorkflowState();
@@ -88,13 +94,17 @@ describe('executionStarted', () => {
 	});
 
 	it('should copy in-progress execution data to the backend execution id', async () => {
-		workflowsStore.activeExecutionId = null;
-		const inProgressExecutionDataStore = useExecutionDataStore(
-			createExecutionDataId(IN_PROGRESS_EXECUTION_ID),
+		workflowsStore.workflow.id = 'wf-123';
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId('wf-123'),
+		).setActiveExecutionId(null);
+		const executionSessionStore = useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId('wf-123'),
 		);
-		inProgressExecutionDataStore.setExecution(
+		executionSessionStore.setPendingExecution(
 			createTestWorkflowExecutionResponse({
 				id: IN_PROGRESS_EXECUTION_ID,
+				workflowId: 'wf-123',
 				data: createRunExecutionData({
 					resultData: {
 						runData: { Existing: [createTestTaskData({ startTime: 1, executionIndex: 0 })] },
@@ -108,13 +118,13 @@ describe('executionStarted', () => {
 		const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
 		expect(executionDataStore.execution?.id).toBe('exec-1');
 		expect(executionDataStore.executionRunData?.Existing).toHaveLength(1);
-		expect(
-			useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).execution,
-		).toBeNull();
+		expect(executionSessionStore.pendingExecution).toBeNull();
 	});
 
 	it('should write flatted run data to the execution data store', async () => {
-		workflowsStore.activeExecutionId = null;
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowsStore.workflowId),
+		).setActiveExecutionId(null);
 		const event = makeEvent('exec-1');
 		event.data.flattedRunData = stringify({
 			Node1: [createTestTaskData({ startTime: 1, executionIndex: 0 })],
@@ -128,7 +138,9 @@ describe('executionStarted', () => {
 	});
 
 	it('should not reinitialize when same execution ID arrives', async () => {
-		workflowsStore.activeExecutionId = 'exec-1';
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowsStore.workflowId),
+		).setActiveExecutionId('exec-1');
 		workflowsStore.workflowExecutionData = {
 			id: 'exec-1',
 			data: { resultData: { runData: {} } },
@@ -161,7 +173,9 @@ describe('executionStarted', () => {
 		});
 
 		it('should accept execution when activeExecutionId is undefined in iframe (post-executionFinished)', async () => {
-			workflowsStore.activeExecutionId = undefined;
+			useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			).setActiveExecutionId(undefined);
 			workflowsStore.workflowExecutionData = {
 				id: 'old-exec',
 				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
@@ -176,7 +190,9 @@ describe('executionStarted', () => {
 		});
 
 		it('should accept new execution and reset state when re-executing in iframe', async () => {
-			workflowsStore.activeExecutionId = 'exec-1';
+			useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			).setActiveExecutionId('exec-1');
 			workflowsStore.workflowExecutionData = {
 				id: 'exec-1',
 				data: { resultData: { runData: { Node1: [{ executionTime: 100 }] } } },
@@ -191,7 +207,9 @@ describe('executionStarted', () => {
 		});
 
 		it('should not reset when same execution ID arrives in iframe', async () => {
-			workflowsStore.activeExecutionId = 'exec-1';
+			useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			).setActiveExecutionId('exec-1');
 			workflowsStore.workflowExecutionData = {
 				id: 'exec-1',
 				data: { resultData: { runData: {} } },

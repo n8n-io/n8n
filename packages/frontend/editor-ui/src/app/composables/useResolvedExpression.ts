@@ -22,6 +22,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
@@ -43,6 +47,9 @@ export function useResolvedExpression({
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const workflowExecutionSession = computed(() =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+	);
 
 	const { resolveExpression } = useWorkflowHelpers();
 
@@ -57,9 +64,7 @@ export function useResolvedExpression({
 	const targetItem = computed(() => ndvStore.expressionTargetItem ?? undefined);
 	const activeNode = computed(() => ndvStore.activeNode);
 	const hasRunData = computed(() =>
-		Boolean(
-			workflowsStore.workflowExecutionData?.data?.resultData?.runData[activeNode.value?.name ?? ''],
-		),
+		Boolean(workflowExecutionSession.value.activeExecutionRunData?.[activeNode.value?.name ?? '']),
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
 
@@ -124,8 +129,8 @@ export function useResolvedExpression({
 			expressionLocalResolveCtx,
 			toRef(expression),
 			toRef(additionalData),
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
+			() => workflowExecutionSession.value.activeExecution,
+			() => workflowExecutionSession.value.activeExecutionRunData,
 			() => workflowDocumentStore.value.name,
 			targetItem,
 		],

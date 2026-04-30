@@ -57,6 +57,10 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { computed } from 'vue';
 import type { WorkflowObjectAccessors } from '../types';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 export type ResolveParameterOptions = {
 	targetItem?: TargetItem;
@@ -95,6 +99,9 @@ export async function resolveParameter<T = IDataObject>(
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+	);
 
 	return await resolveParameterImpl(
 		parameter,
@@ -102,7 +109,7 @@ export async function resolveParameter<T = IDataObject>(
 		workflowDocumentStore.connectionsBySourceNode,
 		useEnvironmentsStore().variablesAsObject,
 		useNDVStore().activeNode,
-		workflowsStore.workflowExecutionData,
+		workflowExecutionSession.activeExecution,
 		workflowDocumentStore.getPinDataSnapshot(),
 		opts,
 	);
@@ -389,6 +396,9 @@ export function executeData(
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+	);
 
 	return executeDataImpl(
 		connections,
@@ -397,7 +407,7 @@ export function executeData(
 		inputName,
 		runIndex,
 		workflowDocumentStore.getPinDataSnapshot(),
-		workflowsStore.getWorkflowRunData,
+		workflowExecutionSession.activeExecutionRunData,
 		parentRunIndex,
 	);
 }

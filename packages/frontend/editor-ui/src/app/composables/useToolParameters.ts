@@ -19,6 +19,10 @@ import { type IFormInput } from '@n8n/design-system';
 import { type JSONSchema7 } from 'json-schema';
 import { AI_MCP_TOOL_NODE_TYPE } from '../constants';
 import { TOOL_NODE_TYPES_NEED_INPUT } from '../utils/nodes/nodeTransforms';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 export type FieldMetadata = {
 	nodeName: string;
@@ -42,11 +46,14 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 	const selectedToolMap = reactive<Record<string, string | undefined>>({});
 	const error = ref<Error | undefined>(undefined);
 
+	const workflowExecutionSession = computed(() =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+	);
+
 	const nodeRunData = computed(() => {
 		if (!node.value) return undefined;
 
-		const workflowExecutionData = workflowsStore.getWorkflowExecution;
-		const lastRunData = workflowExecutionData?.data?.resultData.runData[node.value?.name];
+		const lastRunData = workflowExecutionSession.value.activeExecutionRunData?.[node.value.name];
 		if (!lastRunData) return undefined;
 		return lastRunData[0];
 	});
