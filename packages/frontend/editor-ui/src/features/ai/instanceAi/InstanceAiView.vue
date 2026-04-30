@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import {
 	computed,
+	inject,
 	nextTick,
 	onMounted,
 	onUnmounted,
@@ -9,6 +10,7 @@ import {
 	useTemplateRef,
 	watch,
 } from 'vue';
+import { BaseLayoutContentIsolatedKey } from '@/app/constants/injectionKeys';
 import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nHeading,
@@ -179,12 +181,13 @@ const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 
 // While the iframe NDV is fullscreen, drop our stacking context (see styles)
-// and a body class to neutralise BaseLayout `#content`'s `isolation: isolate`,
-// so the iframe's `z-index` can paint above the sidebar.
+// and ask BaseLayout to lift `#content`'s `isolation: isolate`, so the
+// iframe's `z-index` can paint above the sidebar.
 const isPreviewNdvOpen = ref(false);
+const baseLayoutContentIsolated = inject(BaseLayoutContentIsolatedKey, null);
 
 watch(isPreviewNdvOpen, (open) => {
-	document.body.classList.toggle('preview-ndv-fullscreen', open);
+	if (baseLayoutContentIsolated) baseLayoutContentIsolated.value = !open;
 });
 
 // --- Sidebar collapse & resize ---
@@ -329,7 +332,7 @@ onUnmounted(() => {
 	store.closeSSE();
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
-	document.body.classList.remove('preview-ndv-fullscreen');
+	if (baseLayoutContentIsolated) baseLayoutContentIsolated.value = true;
 });
 
 function reconnectThreadIfHydrationApplied(threadId: string): void {
@@ -879,12 +882,6 @@ function handleStop() {
 </style>
 
 <style lang="scss">
-// Pair to `isPreviewNdvOpen`: lifts BaseLayout `#content`'s isolation while
-// the iframe NDV is fullscreen so it can paint above the sidebar.
-body.preview-ndv-fullscreen #content {
-	isolation: auto;
-}
-
 .message-slide-enter-from {
 	opacity: 0;
 	transform: translateY(8px);

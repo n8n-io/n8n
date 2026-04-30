@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { onMounted, useTemplateRef } from 'vue';
+import { onMounted, provide, ref, useTemplateRef } from 'vue';
+import { BaseLayoutContentIsolatedKey } from '@/app/constants/injectionKeys';
 
 const layoutRef = useTemplateRef('layout');
 
 const emit = defineEmits<{
 	mounted: [Element];
 }>();
+
+const contentIsolated = ref(true);
+provide(BaseLayoutContentIsolatedKey, contentIsolated);
 
 onMounted(() => {
 	if (layoutRef.value) emit('mounted', layoutRef.value);
@@ -23,7 +27,7 @@ onMounted(() => {
 		<aside v-if="!!$slots.sidebar" id="sidebar" :class="$style.sidebar">
 			<slot name="sidebar" />
 		</aside>
-		<main id="content" :class="$style.content">
+		<main id="content" :class="[$style.content, { [$style.contentIsolated]: contentIsolated }]">
 			<div :class="$style.contentWrapper">
 				<slot />
 			</div>
@@ -84,6 +88,9 @@ onMounted(() => {
 	align-items: center;
 	overflow: auto;
 	grid-area: content;
+}
+
+.contentIsolated {
 	isolation: isolate;
 }
 
