@@ -276,7 +276,6 @@ export class ApiHelpers {
 
 	/**
 	 * Fetch cluster info from the instance registry endpoint.
-	 * Requires `N8N_ENV_FEAT_INSTANCE_REGISTRY=true` on every container.
 	 */
 	async getClusterInfo(): Promise<ClusterInfoResponse> {
 		const response = await this.request.get('/rest/instance-registry');

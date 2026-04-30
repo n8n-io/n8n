@@ -1,12 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref } from 'vue';
 import { setActivePinia, createPinia } from 'pinia';
 import type { ClusterInfoResponse } from '@n8n/api-types';
 import { useInstanceRegistryStore } from '../instanceRegistry.store';
 
 const mocks = vi.hoisted(() => ({
 	getClusterInfo: vi.fn(),
-	envFeatureFlagCheck: vi.fn(),
 }));
 
 vi.mock('@n8n/rest-api-client/api/instance-registry', () => ({
@@ -16,12 +14,6 @@ vi.mock('@n8n/rest-api-client/api/instance-registry', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: { baseUrl: 'http://localhost', sessionId: 'test' },
-	}),
-}));
-
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: () => ({
-		check: ref(mocks.envFeatureFlagCheck),
 	}),
 }));
 
@@ -45,22 +37,9 @@ describe('useInstanceRegistryStore', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		mocks.getClusterInfo.mockReset();
-		mocks.envFeatureFlagCheck.mockReset();
 	});
 
-	it('skips fetch when env feature flag is disabled', async () => {
-		mocks.envFeatureFlagCheck.mockReturnValue(false);
-
-		const store = useInstanceRegistryStore();
-		await store.fetchClusterInfo();
-
-		expect(mocks.getClusterInfo).not.toHaveBeenCalled();
-		expect(store.clusterInfo).toBeNull();
-		expect(store.isAvailable).toBe(false);
-	});
-
-	it('fetches and stores cluster info when feature flag is enabled', async () => {
-		mocks.envFeatureFlagCheck.mockReturnValue(true);
+	it('fetches and stores cluster info', async () => {
 		mocks.getClusterInfo.mockResolvedValue(SAMPLE_RESPONSE);
 
 		const store = useInstanceRegistryStore();
@@ -72,9 +51,8 @@ describe('useInstanceRegistryStore', () => {
 	});
 
 	it('swallows errors and preserves the prior snapshot', async () => {
-		mocks.envFeatureFlagCheck.mockReturnValue(true);
 		mocks.getClusterInfo.mockResolvedValueOnce(SAMPLE_RESPONSE);
-		mocks.getClusterInfo.mockRejectedValueOnce(new Error('endpoint 404'));
+		mocks.getClusterInfo.mockRejectedValueOnce(new Error('endpoint failure'));
 		const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
 
 		const store = useInstanceRegistryStore();
