@@ -153,7 +153,7 @@ interface StreamChatResponseConfig {
 	source?: string;
 }
 
-interface GetOrReconstructRuntimeParams {
+interface GetRuntimeParams {
 	agentId: string;
 	projectId: string;
 	n8nUserId?: string;
@@ -193,7 +193,7 @@ export class AgentsService {
 	 * Separating draft and published with explicit prefixes prevents a draft
 	 * runtime from being mistakenly returned to a published-agent execution.
 	 */
-	private computeRuntimeCacheKey(params: GetOrReconstructRuntimeParams): string {
+	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
 		if (params.usePublishedVersion) {
 			const parts = [params.agentId, 'published'];
 			if (params.integrationType) parts.push(params.integrationType);
@@ -511,28 +511,6 @@ export class AgentsService {
 		return true;
 	}
 
-	getRuntime(agentId: string): { agent: agents.Agent; agentId: string } | undefined {
-		return this.findRuntimeForAgent(agentId);
-	}
-
-	hasRuntime(agentId: string): boolean {
-		return this.findRuntimeForAgent(agentId) !== undefined;
-	}
-
-	/** Find any cached runtime for an agent */
-	private findRuntimeForAgent(
-		agentId: string,
-	):
-		| { agent: agents.Agent; agentId: string; toolRegistry: ToolRegistry; projectId: string }
-		| undefined {
-		for (const [key, runtime] of this.runtimes) {
-			if (key.startsWith(`${agentId}:`)) {
-				return runtime;
-			}
-		}
-		return undefined;
-	}
-
 	/** Return persisted chat messages for a given session/thread. */
 	async getChatMessages(threadId: string) {
 		return await this.n8nMemory.getMessages(threadId);
@@ -558,7 +536,7 @@ export class AgentsService {
 	/**
 	 * Return a cached runtime, or reconstruct one from the DB.
 	 */
-	private async getOrReconstructRuntime(params: GetOrReconstructRuntimeParams): Promise<{
+	private async getRuntime(params: GetRuntimeParams): Promise<{
 		agent: agents.Agent;
 		agentId: string;
 		toolRegistry: ToolRegistry;
@@ -741,13 +719,11 @@ export class AgentsService {
 
 		const threadId = memoryScope.threadId;
 
-		// Prefer a cached runtime (correct integrationType already injected).
-		// Fall back to reconstruction from the published snapshot on cache miss
-		// (e.g. server restart).  n8nUserId is derived from publishedById inside
-		// getOrReconstructRuntime.  projectId is always available on the runtime entry.
-		const runtime =
-			this.findRuntimeForAgent(agentId) ??
-			(await this.getOrReconstructRuntime({ agentId, projectId, usePublishedVersion: true }));
+		const runtime = await this.getRuntime({
+			agentId,
+			projectId,
+			usePublishedVersion: true,
+		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
 		const recorder = new ExecutionRecorder(toolRegistry);
@@ -865,7 +841,7 @@ export class AgentsService {
 	async *executeForChat(config: ExecuteForChatConfig): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, userId, memory } = config;
 
-		const runtime = await this.getOrReconstructRuntime({ agentId, projectId, n8nUserId: userId });
+		const runtime = await this.getRuntime({ agentId, projectId, n8nUserId: userId });
 
 		yield* this.streamChatResponse({
 			agentInstance: runtime.agent,
@@ -912,7 +888,7 @@ export class AgentsService {
 	): AsyncGenerator<StreamChunk> {
 		const { agentId, projectId, message, memory, integrationType } = config;
 
-		const runtime = await this.getOrReconstructRuntime({
+		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
 			integrationType,
@@ -944,7 +920,7 @@ export class AgentsService {
 		const { agentId, projectId, message, memory } = config;
 
 		// One shared compiled runtime per agent for all schedule runs.
-		const runtime = await this.getOrReconstructRuntime({
+		const runtime = await this.getRuntime({
 			agentId,
 			projectId,
 			integrationType: AGENT_SCHEDULE_TRIGGER_TYPE,
