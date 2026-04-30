@@ -11,6 +11,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
 import type { AgentSchema } from '../types';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(defineProps<{ schema?: AgentSchema | null }>(), {
 	schema: null,
@@ -21,12 +22,10 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 
 <template>
 	<div :class="$style.panel" data-testid="agent-evals-panel">
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Evaluations</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ evals.length }} evaluation{{ evals.length === 1 ? '' : 's' }} configured in code
-			</N8nText>
-		</div>
+		<AgentPanelHeader
+			title="Evaluations"
+			:description="`${evals.length} evaluation${evals.length === 1 ? '' : 's'} configured in code`"
+		/>
 
 		<template v-if="evals.length > 0">
 			<N8nCard v-for="evalItem in evals" :key="evalItem.name" :class="$style.evalCard">
@@ -75,13 +74,6 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .evalCard {

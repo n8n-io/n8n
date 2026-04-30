@@ -93,7 +93,6 @@ const displayName = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--sm);
-	padding: var(--spacing--sm) 0;
 }
 
 .iconWrapper {

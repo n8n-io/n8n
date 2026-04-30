@@ -7,7 +7,6 @@ import {
 	N8nNavigationDropdown,
 	N8nRadioButtons,
 	N8nResizeWrapper,
-	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -68,6 +67,7 @@ import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
+import AgentPanelHeader from '../components/AgentPanelHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -610,6 +610,10 @@ const canToggleRaw = computed(() => {
 });
 
 const AGENT_RAW_PICK_KEYS = ['name', 'model', 'credential', 'instructions'];
+const sectionViewOptions = [
+	{ label: 'Config', value: 'form' as const, icon: 'list' },
+	{ label: 'Raw', value: 'raw' as const, icon: 'json' },
+];
 
 /** Path passed to AgentSectionEditor when `showRawSection` is on. */
 const rawSectionPath = computed<string | null>(() => {
@@ -625,6 +629,39 @@ const rawSectionPath = computed<string | null>(() => {
 const rawPickKeys = computed<string[] | null>(() =>
 	selectedSection.value === AGENT_SECTION_KEY ? AGENT_RAW_PICK_KEYS : null,
 );
+
+const rawSectionTitle = computed(() => {
+	switch (selectedSection.value) {
+		case AGENT_SECTION_KEY:
+			return locale.baseText('agents.builder.agent.title');
+		case ADVANCED_SECTION_KEY:
+			return locale.baseText('agents.builder.advanced.title');
+		case 'memory':
+			return 'Memory';
+		default:
+			return '';
+	}
+});
+
+const rawSectionDescription = computed(() => {
+	switch (selectedSection.value) {
+		case AGENT_SECTION_KEY:
+			return locale.baseText('agents.builder.agent.description');
+		case ADVANCED_SECTION_KEY:
+			return locale.baseText('agents.builder.advanced.description');
+		case 'memory':
+			return 'Conversation memory configuration';
+		default:
+			return '';
+	}
+});
+
+const sectionViewMode = computed(() => (showRawSection.value ? 'raw' : 'form'));
+
+function setSectionViewMode(mode: 'form' | 'raw') {
+	if ((mode === 'raw') === showRawSection.value) return;
+	toggleRawSection();
+}
 
 function onOpenToolFromList(index: number) {
 	selectedSection.value = `tools.${index}`;
@@ -1134,44 +1171,53 @@ function onSwitchAgent(nextAgentId: string) {
 							<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
 								{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
 							</span>
-							<button
+							<N8nRadioButtons
 								v-if="canToggleRaw && isToolSliceSelection"
-								type="button"
-								:class="[
-									$style.rawToggle,
-									$style.rawToggleInline,
-									showRawSection && $style.rawToggleActive,
-								]"
-								:aria-pressed="showRawSection"
-								:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
+								:class="$style.viewModeToggleInline"
+								:model-value="sectionViewMode"
+								:options="sectionViewOptions"
 								data-testid="agent-section-raw-toggle"
-								@click="toggleRawSection"
+								@update:model-value="setSectionViewMode"
 							>
-								<N8nIcon icon="code" :size="12" />
-								<span>Raw</span>
-							</button>
+								<template #option="option">
+									<span :class="$style.viewModeOption">
+										<N8nIcon :icon="option.icon" :size="14" />
+										<span>{{ option.label }}</span>
+									</span>
+								</template>
+							</N8nRadioButtons>
 						</div>
-						<button
+						<N8nRadioButtons
 							v-if="canToggleRaw && !isToolSliceSelection"
-							type="button"
-							:class="[$style.rawToggle, showRawSection && $style.rawToggleActive]"
-							:aria-pressed="showRawSection"
-							:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
+							:class="$style.viewModeToggle"
+							:model-value="sectionViewMode"
+							:options="sectionViewOptions"
 							data-testid="agent-section-raw-toggle"
-							@click="toggleRawSection"
+							@update:model-value="setSectionViewMode"
 						>
-							<N8nIcon icon="code" :size="12" />
-							<span>Raw</span>
-						</button>
-						<AgentSectionEditor
-							v-if="showRawSection && canToggleRaw"
-							:config="localConfig"
-							:section-path="rawSectionPath"
-							:pick-keys="rawPickKeys"
-							:offset-copy-for-toggle="true"
-							:read-only="isBuildChatStreaming"
-							@update:config="onSectionEditorUpdate"
-						/>
+							<template #option="option">
+								<span :class="$style.viewModeOption">
+									<N8nIcon :icon="option.icon" :size="14" />
+									<span>{{ option.label }}</span>
+								</span>
+							</template>
+						</N8nRadioButtons>
+						<div v-if="showRawSection && canToggleRaw" :class="$style.rawPanel">
+							<AgentPanelHeader
+								v-if="rawSectionTitle"
+								:title="rawSectionTitle"
+								:description="rawSectionDescription"
+							/>
+							<AgentSectionEditor
+								:class="$style.rawPanelEditor"
+								:config="localConfig"
+								:section-path="rawSectionPath"
+								:pick-keys="rawPickKeys"
+								:offset-copy-for-toggle="true"
+								:read-only="isBuildChatStreaming"
+								@update:config="onSectionEditorUpdate"
+							/>
+						</div>
 						<AgentCustomToolViewer
 							v-else-if="customToolSelection"
 							:code="customToolSelection.code"
@@ -1238,27 +1284,24 @@ function onSwitchAgent(nextAgentId: string) {
 							:class="$style.triggersTab"
 							data-testid="agent-triggers-tab"
 						>
-							<div :class="$style.triggersHeader">
-								<div :class="$style.triggersHeaderText">
-									<N8nText tag="h3" size="large" :bold="true"
-										>{{ locale.baseText('agents.builder.triggers.title') }}
-									</N8nText>
-									<N8nText size="small" color="text-light">
-										{{ locale.baseText('agents.builder.triggers.description') }}
-									</N8nText>
-								</div>
-								<N8nButton
-									type="primary"
-									size="small"
-									data-testid="agent-triggers-add"
-									@click="onOpenAddTriggerModal"
-								>
-									<template #prefix>
-										<N8nIcon icon="plus" :size="14" />
-									</template>
-									{{ locale.baseText('agents.builder.triggers.add') }}
-								</N8nButton>
-							</div>
+							<AgentPanelHeader
+								:title="locale.baseText('agents.builder.triggers.title')"
+								:description="locale.baseText('agents.builder.triggers.description')"
+							>
+								<template #actions>
+									<N8nButton
+										type="primary"
+										size="small"
+										data-testid="agent-triggers-add"
+										@click="onOpenAddTriggerModal"
+									>
+										<template #prefix>
+											<N8nIcon icon="plus" :size="14" />
+										</template>
+										{{ locale.baseText('agents.builder.triggers.add') }}
+									</N8nButton>
+								</template>
+							</AgentPanelHeader>
 							<AgentIntegrationsPanel
 								:key="`integrations-connected-${agentId}`"
 								:project-id="projectId"
@@ -1514,21 +1557,6 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow-y: auto;
 }
 
-.triggersHeader {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-}
-
-.triggersHeaderText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .panelArea {
 	position: relative;
 	flex: 1;
@@ -1573,9 +1601,24 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-family: var(--font-family--monospace, monospace);
 	font-size: var(--font-size--2xs);
 	color: var(--color--text);
+}
+
+.rawPanel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
+	overflow-y: auto;
+	height: 100%;
+	width: 100%;
+	min-height: 0;
+}
+
+.rawPanelEditor {
+	flex: 1;
+	min-height: 0;
 }
 
 .backBtn {
@@ -1598,38 +1641,22 @@ function onSwitchAgent(nextAgentId: string) {
 	}
 }
 
-.rawToggleInline {
+.viewModeToggleInline {
 	position: static;
 	top: auto;
 	right: auto;
 }
 
-.rawToggle {
+.viewModeToggle {
 	position: absolute;
 	top: var(--spacing--2xl);
 	right: var(--spacing--xl);
 	z-index: 1;
+}
+
+.viewModeOption {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--color--background);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--background--light-2);
-		color: var(--color--text);
-	}
-}
-
-.rawToggleActive {
-	background: var(--color--background--light-3);
-	color: var(--color--text);
-	border-color: var(--color--foreground);
 }
 </style>

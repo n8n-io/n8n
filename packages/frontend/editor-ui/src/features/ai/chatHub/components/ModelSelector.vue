@@ -202,9 +202,10 @@ defineExpose({
 	>
 		<template #trigger>
 			<N8nButton
-				:variant="text ? 'ghost' : 'subtle'"
+				:variant="text ? 'ghost' : 'outline'"
 				:class="[$style.dropdownButton, horizontal && $style.dropdownButtonHorizontal]"
 				:text="text"
+				size="large"
 				data-test-id="chat-model-selector"
 			>
 				<ChatAgentAvatar
@@ -295,7 +296,6 @@ defineExpose({
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: fit-content;
-	height: unset !important;
 	padding-block: var(--spacing--2xs);
 
 	/* disable underline */
@@ -318,9 +318,9 @@ defineExpose({
 	width: 100%;
 	display: flex;
 	justify-content: stretch;
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius--lg);
+	/* padding: var(--spacing--2xs) var(--spacing--xs); */
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+	border-radius: var(--radius--2xs);
 
 	> div {
 		width: 100%;

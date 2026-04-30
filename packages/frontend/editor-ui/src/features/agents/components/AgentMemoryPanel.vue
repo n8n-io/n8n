@@ -4,6 +4,7 @@ import { N8nText, N8nButton, N8nSelect } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { ElSwitch } from 'element-plus';
 import type { AgentJsonConfig } from '../types';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
 type StorageType = MemoryConfig['storage'];
@@ -113,10 +114,11 @@ function onRangeAfterChange(event: Event) {
 		:class="[$style.container, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Memory</N8nText>
-			<N8nText size="small" color="text-light">Conversation memory configuration</N8nText>
-		</div>
+		<AgentPanelHeader
+			:class="$style.header"
+			title="Memory"
+			description="Conversation memory configuration"
+		/>
 		<!-- Configured + enabled state -->
 		<template v-if="memory !== null">
 			<!-- Storage type -->
@@ -229,13 +231,6 @@ function onRangeAfterChange(event: Event) {
 .container.disabled > :not(.header) {
 	pointer-events: none;
 	opacity: 0.6;
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .row {

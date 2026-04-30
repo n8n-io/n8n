@@ -11,8 +11,9 @@ import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nTableBase, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+import AgentPanelHeader from '../components/AgentPanelHeader.vue';
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -114,13 +115,12 @@ async function loadMore() {
 
 <template>
 	<div :class="$style.wrapper">
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Executions</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ sessionsStore.threads.length }}
-				{{ sessionsStore.threads.length === 1 ? 'execution' : 'executions' }}
-			</N8nText>
-		</div>
+		<AgentPanelHeader
+			title="Executions"
+			:description="`${sessionsStore.threads.length} ${
+				sessionsStore.threads.length === 1 ? 'execution' : 'executions'
+			}`"
+		/>
 		<div :class="$style.tableContainer">
 			<N8nTableBase>
 				<thead>
@@ -199,12 +199,6 @@ async function loadMore() {
 	height: 100%;
 	min-height: 0;
 	overflow-y: auto;
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
 }
 
 .tableContainer {

@@ -14,6 +14,7 @@ import {
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
+	N8nCard,
 	N8nSwitch2,
 	N8nText,
 	N8nTooltip,
@@ -26,6 +27,7 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 
 import AgentToolItem from './AgentToolItem.vue';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 import WorkflowToolRow from './WorkflowToolRow.vue';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import type { AgentJsonConfig, AgentJsonToolRef, WorkflowToolRef } from '../types';
@@ -137,31 +139,29 @@ const totalCount = computed(() => props.tools.length);
 		:inert="props.disabled || undefined"
 		data-testid="agent-tools-list-panel"
 	>
-		<div :class="$style.header">
-			<div :class="$style.headerText">
-				<N8nText tag="h3" size="large" :bold="true">{{
-					i18n.baseText('agents.builder.tools.title')
-				}}</N8nText>
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText('agents.builder.tools.count', {
-							adjustToNumber: totalCount,
-							interpolate: { count: String(totalCount) },
-						})
-					}}
-				</N8nText>
-			</div>
-			<N8nButton
-				type="primary"
-				size="small"
-				:disabled="props.disabled"
-				data-testid="agent-tools-add"
-				@click="emit('add-tool')"
-			>
-				<template #prefix><N8nIcon icon="plus" :size="14" /></template>
-				{{ i18n.baseText('agents.builder.tools.add') }}
-			</N8nButton>
-		</div>
+		<AgentPanelHeader
+			:class="$style.header"
+			:title="i18n.baseText('agents.builder.tools.title')"
+			:description="
+				i18n.baseText('agents.builder.tools.count', {
+					adjustToNumber: totalCount,
+					interpolate: { count: String(totalCount) },
+				})
+			"
+		>
+			<template #actions>
+				<N8nButton
+					type="primary"
+					size="small"
+					:disabled="props.disabled"
+					data-testid="agent-tools-add"
+					@click="emit('add-tool')"
+				>
+					<template #prefix><N8nIcon icon="plus" :size="14" /></template>
+					{{ i18n.baseText('agents.builder.tools.add') }}
+				</N8nButton>
+			</template>
+		</AgentPanelHeader>
 
 		<div v-if="nodeToolsFeatureEnabled" :class="$style.toggleRow">
 			<div :class="$style.toggleText">
@@ -186,12 +186,17 @@ const totalCount = computed(() => props.tools.length);
 
 		<div v-if="nodeRows.length > 0" :class="$style.section">
 			<div :class="$style.rows">
-				<div
+				<N8nCard
 					v-for="row in nodeRows"
 					:key="`node-${row.index}`"
 					:class="$style.rowWrap"
+					hoverable
+					role="button"
+					tabindex="0"
 					data-testid="agent-tools-list-row"
 					@click="emit('open-tool', row.index)"
+					@keydown.enter.prevent="emit('open-tool', row.index)"
+					@keydown.space.prevent="emit('open-tool', row.index)"
 				>
 					<AgentToolItem
 						:class="$style.rowContent"
@@ -200,17 +205,19 @@ const totalCount = computed(() => props.tools.length);
 						:missing-credentials="row.missingCredentials"
 						mode="configured"
 					/>
-					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
-						<N8nIconButton
-							icon="trash-2"
-							variant="ghost"
-							text
-							:aria-label="i18n.baseText('agents.builder.tools.remove')"
-							data-testid="agent-tools-list-remove"
-							@click.stop="emit('remove-tool', row.index)"
-						/>
-					</N8nTooltip>
-				</div>
+					<template #append>
+						<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
+							<N8nIconButton
+								icon="trash-2"
+								variant="ghost"
+								text
+								:aria-label="i18n.baseText('agents.builder.tools.remove')"
+								data-testid="agent-tools-list-remove"
+								@click.stop="emit('remove-tool', row.index)"
+							/>
+						</N8nTooltip>
+					</template>
+				</N8nCard>
 			</div>
 		</div>
 
@@ -219,12 +226,17 @@ const totalCount = computed(() => props.tools.length);
 				i18n.baseText('agents.builder.tools.workflows.title')
 			}}</N8nHeading>
 			<div :class="$style.rows">
-				<div
+				<N8nCard
 					v-for="row in workflowRows"
 					:key="`wf-${row.index}`"
 					:class="$style.rowWrap"
+					hoverable
+					role="button"
+					tabindex="0"
 					data-testid="agent-tools-list-row"
 					@click="emit('open-tool', row.index)"
+					@keydown.enter.prevent="emit('open-tool', row.index)"
+					@keydown.space.prevent="emit('open-tool', row.index)"
 				>
 					<WorkflowToolRow
 						:class="$style.rowContent"
@@ -232,17 +244,19 @@ const totalCount = computed(() => props.tools.length);
 						:name="row.name"
 						:description="row.description"
 					/>
-					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
-						<N8nIconButton
-							icon="trash-2"
-							variant="ghost"
-							text
-							:aria-label="i18n.baseText('agents.builder.tools.remove')"
-							data-testid="agent-tools-list-remove"
-							@click.stop="emit('remove-tool', row.index)"
-						/>
-					</N8nTooltip>
-				</div>
+					<template #append>
+						<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
+							<N8nIconButton
+								icon="trash-2"
+								variant="ghost"
+								text
+								:aria-label="i18n.baseText('agents.builder.tools.remove')"
+								data-testid="agent-tools-list-remove"
+								@click.stop="emit('remove-tool', row.index)"
+							/>
+						</N8nTooltip>
+					</template>
+				</N8nCard>
 			</div>
 		</div>
 
@@ -251,10 +265,11 @@ const totalCount = computed(() => props.tools.length);
 				i18n.baseText('agents.builder.tree.customBadge')
 			}}</N8nHeading>
 			<div :class="$style.rows">
-				<div
+				<N8nCard
 					v-for="row in customRows"
 					:key="`custom-${row.index}`"
 					:class="$style.customRow"
+					hoverable
 					role="button"
 					tabindex="0"
 					data-testid="agent-tools-list-row"
@@ -262,31 +277,34 @@ const totalCount = computed(() => props.tools.length);
 					@keydown.enter.prevent="emit('open-tool', row.index)"
 					@keydown.space.prevent="emit('open-tool', row.index)"
 				>
-					<N8nIcon icon="code" :size="14" :class="$style.customIcon" />
-					<div :class="$style.customLabels">
-						<N8nText size="small" color="text-dark" :class="$style.customName">{{
-							row.label
-						}}</N8nText>
-						<N8nText
-							v-if="row.description"
-							size="small"
-							color="text-light"
-							:class="$style.customDescription"
-							>{{ row.description }}</N8nText
-						>
-					</div>
-					<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
-						<N8nIconButton
-							icon="trash-2"
-							variant="ghost"
-							text
-							:aria-label="i18n.baseText('agents.builder.tools.remove')"
-							data-testid="agent-tools-list-remove"
-							@click.stop="emit('remove-tool', row.index)"
-						/>
-					</N8nTooltip>
-					<N8nIcon icon="chevron-right" :size="14" :class="$style.chevron" />
-				</div>
+					<template #prepend>
+						<N8nIcon icon="code" :size="14" :class="$style.customIcon" />
+					</template>
+
+					<N8nText size="small" color="text-dark" :class="$style.customName">{{
+						row.label
+					}}</N8nText>
+					<N8nText
+						v-if="row.description"
+						size="small"
+						color="text-light"
+						:class="$style.customDescription"
+						>{{ row.description }}</N8nText
+					>
+
+					<template #append>
+						<N8nTooltip :content="i18n.baseText('agents.builder.tools.remove')" placement="top">
+							<N8nIconButton
+								icon="trash-2"
+								variant="ghost"
+								text
+								:aria-label="i18n.baseText('agents.builder.tools.remove')"
+								data-testid="agent-tools-list-remove"
+								@click.stop="emit('remove-tool', row.index)"
+							/>
+						</N8nTooltip>
+					</template>
+				</N8nCard>
 			</div>
 		</div>
 	</div>
@@ -322,21 +340,6 @@ const totalCount = computed(() => props.tools.length);
 	gap: var(--spacing--5xs);
 }
 
-.header {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-}
-
-.headerText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .empty {
 	padding: var(--spacing--lg);
 	text-align: center;
@@ -355,17 +358,10 @@ const totalCount = computed(() => props.tools.length);
 }
 
 .rowWrap {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	cursor: pointer;
-	padding: 0 var(--spacing--2xs) 0 var(--spacing--xs);
-	background: transparent;
-	border: var(--border);
-	border-radius: var(--radius);
+	--card--append--width: auto;
 
-	&:hover {
-		border-color: var(--color--foreground--shade-1);
+	:global(.n8n-card-append) {
+		gap: var(--spacing--2xs);
 	}
 }
 
@@ -375,20 +371,10 @@ const totalCount = computed(() => props.tools.length);
 }
 
 .customRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) var(--spacing--xs);
-	background: transparent;
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text);
-	text-align: left;
-	cursor: pointer;
-	width: 100%;
+	--card--append--width: auto;
 
-	&:hover {
-		border-color: var(--color--foreground--shade-1);
+	:global(.n8n-card-append) {
+		gap: var(--spacing--2xs);
 	}
 }
 
@@ -397,24 +383,19 @@ const totalCount = computed(() => props.tools.length);
 	color: var(--color--text--tint-1);
 }
 
-.customLabels {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .customName,
 .customDescription {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
+	max-width: 80%;
 }
 
-.chevron {
-	color: var(--color--text--tint-2);
-	flex-shrink: 0;
+.customName {
+	font-weight: var(--font-weight--medium);
+	margin-bottom: var(--spacing--4xs);
 }
 </style>

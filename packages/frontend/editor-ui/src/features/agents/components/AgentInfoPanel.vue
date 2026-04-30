@@ -22,6 +22,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 import type { AgentJsonConfig } from '../types';
 import {
@@ -162,14 +163,10 @@ function onInstructionsInput(value: string) {
 
 <template>
 	<div :class="$style.panel" data-testid="agent-info-panel">
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">{{
-				i18n.baseText('agents.builder.agent.title')
-			}}</N8nText>
-			<N8nText size="small" color="text-light">{{
-				i18n.baseText('agents.builder.agent.description')
-			}}</N8nText>
-		</div>
+		<AgentPanelHeader
+			:title="i18n.baseText('agents.builder.agent.title')"
+			:description="i18n.baseText('agents.builder.agent.description')"
+		/>
 
 		<div :class="$style.field">
 			<label :class="$style.label"
@@ -270,13 +267,6 @@ function onInstructionsInput(value: string) {
 .instructionsEditor > :global(.cm-editor) {
 	flex: 1;
 	min-height: 0;
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .field {
