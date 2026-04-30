@@ -287,6 +287,10 @@ const currentFolderParent = computed(() => {
 		: null;
 });
 
+const showMainBreadcrumbs = computed(() => {
+	return showFolders.value && (!currentFolderId.value || currentFolder.value !== null);
+});
+
 const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
 });
@@ -1963,13 +1967,13 @@ const onNameSubmit = async (name: string) => {
 				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
 			<div
-				v-else-if="showFolders && currentFolder"
+				v-else-if="showMainBreadcrumbs"
 				:class="$style['breadcrumbs-container']"
 				data-test-id="main-breadcrumbs"
 			>
 				<FolderBreadcrumbs
 					:current-folder="currentFolderParent"
-					:actions="mainBreadcrumbsActions"
+					:actions="currentFolder ? mainBreadcrumbsActions : []"
 					:hidden-items-trigger="isDragging ? 'hover' : 'click'"
 					:current-folder-as-link="true"
 					@item-selected="onBreadcrumbItemClick"
@@ -1977,7 +1981,7 @@ const onNameSubmit = async (name: string) => {
 					@item-drop="onBreadCrumbsItemDrop"
 					@project-drop="moveFolderToProjectRoot"
 				>
-					<template #append>
+					<template v-if="currentFolder" #append>
 						<span :class="$style['path-separator']">/</span>
 						<N8nInlineTextEdit
 							ref="renameInput"
