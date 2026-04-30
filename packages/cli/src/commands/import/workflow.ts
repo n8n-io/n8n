@@ -80,6 +80,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	async run(): Promise<void> {
 		const { flags } = this;
 
+		if (flags.activeState === 'fromJson' && this.globalConfig.executions.mode !== 'queue') {
+			throw new UserError(
+				'The "--activeState=fromJson" flag can only be used when n8n is running in queue or multi-main mode. In regular deployment mode, workflow activation is not supported.',
+			);
+		}
+
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
 			return;
