@@ -1090,6 +1090,81 @@ describe('NodeCredentials', () => {
 				expect(screen.queryByTestId('node-credentials-select')).not.toBeInTheDocument();
 			});
 
+			it('should show unsupported action notice when action is not supported via gateway', () => {
+				vi.mocked(useAiGateway).mockReturnValue({
+					isEnabled: computed(() => true),
+					isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+					isActionSupported: vi.fn(() => false),
+					balance: computed(() => undefined),
+					budget: computed(() => undefined),
+					fetchConfig: vi.fn().mockResolvedValue(undefined),
+					fetchWallet: vi.fn().mockResolvedValue(undefined),
+					saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+					fetchError: computed(() => null),
+				});
+
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					parameters: { resource: 'audio', operation: 'transcribe' },
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(screen.getByTestId('ai-gateway-unsupported-action-notice')).toBeInTheDocument();
+			});
+
+			it('should not show unsupported action notice when action is supported via gateway', () => {
+				const nodeWithGateway: INodeUi = {
+					...googleAiNode,
+					parameters: { resource: 'text', operation: 'message' },
+					credentials: { googlePalmApi: { id: null, name: '', __aiGatewayManaged: true } },
+				};
+				ndvStore.activeNode = nodeWithGateway;
+
+				renderComponent({
+					props: { node: nodeWithGateway, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(
+					screen.queryByTestId('ai-gateway-unsupported-action-notice'),
+				).not.toBeInTheDocument();
+			});
+
+			it('should not show unsupported action notice when credential is not gateway-managed', () => {
+				const existingCred = {
+					id: 'cred-1',
+					name: 'My Google Key',
+					type: 'googlePalmApi',
+					isManaged: false,
+					createdAt: '2024-01-01',
+					updatedAt: '2024-01-01',
+				};
+				credentialsStore.state.credentials = { 'cred-1': existingCred };
+				credentialsStore.getCredentialById = vi.fn().mockReturnValue(existingCred);
+
+				const nodeWithCred: INodeUi = {
+					...googleAiNode,
+					parameters: { resource: 'audio', operation: 'transcribe' },
+					credentials: { googlePalmApi: { id: 'cred-1', name: 'My Google Key' } },
+				};
+				ndvStore.activeNode = nodeWithCred;
+
+				renderComponent({
+					props: { node: nodeWithCred, overrideCredType: 'googlePalmApi' },
+					global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+				});
+
+				expect(
+					screen.queryByTestId('ai-gateway-unsupported-action-notice'),
+				).not.toBeInTheDocument();
+			});
+
 			it('should show the readonly disabled input and the toggle when readonly and not managed', () => {
 				const nodeWithCred: INodeUi = {
 					...googleAiNode,
