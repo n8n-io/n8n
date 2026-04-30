@@ -203,8 +203,12 @@ async function renderView() {
 const commonStubs = {
 	AgentChatPanel: {
 		name: 'AgentChatPanel',
-		template:
-			'<div data-testid="chat-panel-stub" :data-endpoint="endpoint"><slot name="above-input" /></div>',
+		template: `
+			<div data-testid="chat-panel-stub" :data-endpoint="endpoint">
+				<div data-testid="stub-above-input"><slot name="above-input" /></div>
+				<div data-testid="stub-footer-start"><slot name="footer-start" /></div>
+			</div>
+		`,
 		props: [
 			'endpoint',
 			'projectId',
@@ -520,10 +524,19 @@ describe('AgentBuilderView — three-column shell', () => {
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 	});
 
-	it('renders the Build/Test toggle inside the chat column', async () => {
+	it('renders the Build/Test toggle inside the chat input footer', async () => {
 		const wrapper = await renderView();
-		const chatCol = wrapper.find('[data-testid="agent-builder-chat-column"]');
-		expect(chatCol.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(true);
+		const chatPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
+		expect(
+			chatPanel
+				.find('[data-testid="stub-footer-start"] [data-testid="agent-chat-mode-toggle"]')
+				.exists(),
+		).toBe(true);
+		expect(
+			chatPanel
+				.find('[data-testid="stub-above-input"] [data-testid="agent-chat-mode-toggle"]')
+				.exists(),
+		).toBe(false);
 	});
 
 	it('does not render the old home content or settings sidebar', async () => {

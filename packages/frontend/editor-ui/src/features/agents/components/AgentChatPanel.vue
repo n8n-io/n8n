@@ -227,7 +227,11 @@ onBeforeUnmount(() => {
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
-			/>
+			>
+				<template #footer-start>
+					<slot name="footer-start" />
+				</template>
+			</ChatInputBase>
 		</div>
 	</aside>
 </template>
