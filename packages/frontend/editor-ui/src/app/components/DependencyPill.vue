@@ -240,6 +240,9 @@ async function onDropdownToggle(open: boolean) {
 </template>
 
 <style lang="scss" module>
+.trigger {
+	background-color: red;
+}
 .badge {
 	cursor: pointer;
 	border: var(--border);
@@ -247,6 +250,14 @@ async function onDropdownToggle(open: boolean) {
 
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	color: var(--color--text);
+
+	&:hover {
+		background-color: var(--background--hover);
+	}
+
+	:global([aria-expanded='true']) & {
+		background-color: var(--background--active);
+	}
 }
 
 .badgeText {
