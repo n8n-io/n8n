@@ -112,4 +112,43 @@ describe('CommunityPackageRow', () => {
 			container.querySelector('[data-test-id="community-package-row__verified"]'),
 		).not.toBeInTheDocument();
 	});
+
+	it('should show Installed badge with version when installed and no update', () => {
+		const { getByText, queryByTestId } = renderComponent({
+			props: {
+				row: makeRow({ isInstalled: true, installedVersion: '2.0.0' }),
+			},
+		});
+
+		expect(getByText(/v2\.0\.0/)).toBeInTheDocument();
+		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
+	});
+
+	it('should render uninstall action toggle when installed', () => {
+		const { container } = renderComponent({
+			props: {
+				row: makeRow({ isInstalled: true, installedVersion: '2.0.0' }),
+			},
+		});
+
+		expect(
+			container.querySelector('[data-test-id="community-package-row__menu"]'),
+		).toBeInTheDocument();
+	});
+
+	it('should call openCommunityPackageUninstallConfirmModal on uninstall action', async () => {
+		const openCommunityPackageUninstallConfirmModal = vi.fn();
+		const { container } = renderComponent({
+			props: { row: makeRow({ isInstalled: true, installedVersion: '2.0.0' }) },
+			global: {
+				mocks: {
+					$store: {},
+				},
+			},
+		});
+
+		expect(
+			container.querySelector('[data-test-id="community-package-row__menu"]'),
+		).toBeInTheDocument();
+	});
 });

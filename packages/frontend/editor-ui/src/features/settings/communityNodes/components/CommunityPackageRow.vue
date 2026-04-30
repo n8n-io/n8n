@@ -4,7 +4,13 @@ import type { CommunityPackageRowData } from '../communityNodes.types';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../communityNodes.constants';
+import type { UserAction } from '@n8n/design-system';
+import type { IUser } from 'n8n-workflow';
 import {
+	N8nActionToggle,
+	N8nBadge,
 	N8nButton,
 	N8nCard,
 	N8nExternalLink,
@@ -24,6 +30,20 @@ const props = withDefaults(
 const emit = defineEmits<{ installed: [] }>();
 
 const i18n = useI18n();
+const { openCommunityPackageUninstallConfirmModal } = useUIStore();
+
+const packageActions: Array<UserAction<IUser>> = [
+	{
+		label: i18n.baseText('settings.communityNodes.uninstallAction.label'),
+		value: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL,
+	},
+];
+
+function onAction(value: string) {
+	if (value === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL && props.row) {
+		openCommunityPackageUninstallConfirmModal(props.row.packageName);
+	}
+}
 
 const docsUrl = computed(() => `${NPM_PACKAGE_DOCS_BASE_URL}${props.row?.packageName ?? ''}`);
 
@@ -88,13 +108,23 @@ function onInstall() {
 		</N8nText>
 		<template #append>
 			<div :class="$style.actions">
+				<N8nBadge v-if="row?.isInstalled" theme="success" :class="$style.persistentState">
+					v{{ row.installedVersion }} {{ i18n.baseText('settings.communityNodes.row.installed') }}
+				</N8nBadge>
 				<N8nButton
-					v-if="!row?.isInstalled"
+					v-else
 					data-test-id="community-package-row__install"
 					size="small"
 					:label="i18n.baseText('settings.communityNodes.row.install')"
 					:class="$style.hoverCta"
 					@click="onInstall"
+				/>
+				<N8nActionToggle
+					v-if="row?.isInstalled"
+					data-test-id="community-package-row__menu"
+					:actions="packageActions"
+					theme="dark"
+					@action="onAction"
 				/>
 			</div>
 		</template>
@@ -141,6 +171,10 @@ function onInstall() {
 	display: inline-flex;
 	flex-shrink: 0;
 	color: var(--color--text);
+}
+
+.persistentState {
+	flex-shrink: 0;
 }
 
 .hoverCta {
