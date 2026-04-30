@@ -100,7 +100,6 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
-	N8nTooltip,
 } from '@n8n/design-system';
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
@@ -312,18 +311,21 @@ useAutoScrollOnDrag({
 });
 
 const hasPermissionToCreateFolders = computed(() => {
-	if (!currentProject.value) return false;
-	return getResourcePermissions(currentProject.value.scopes).folder.create === true;
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).folder.create === true;
 });
 
 const hasPermissionToUpdateFolders = computed(() => {
-	if (!currentProject.value) return false;
-	return getResourcePermissions(currentProject.value.scopes).folder.update === true;
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).folder.update === true;
 });
 
 const hasPermissionToDeleteFolders = computed(() => {
-	if (!currentProject.value) return false;
-	return getResourcePermissions(currentProject.value.scopes).folder.delete === true;
+	const project = currentProject.value ?? projectsStore.personalProject;
+	if (!project) return false;
+	return getResourcePermissions(project.scopes).folder.delete === true;
 });
 
 const hasPermissionToCreateWorkflows = computed(() => {
@@ -343,18 +345,13 @@ const currentBreadcrumbsProject = computed(
 	() => currentProject.value ?? projectsStore.personalProject,
 );
 
-const projectName = computed(() => {
-	if (currentProject.value?.type === ProjectTypes.Personal) {
-		return i18n.baseText('projects.menu.personal');
-	}
-	return currentProject.value?.name;
-});
+const currentBreadcrumbsProjectName = computed(() => {
+	const project = currentBreadcrumbsProject.value;
+	if (!project) return undefined;
 
-const currentParentName = computed(() => {
-	if (currentFolder.value) {
-		return currentFolder.value.name;
-	}
-	return projectName.value;
+	return project.type === ProjectTypes.Personal
+		? i18n.baseText('projects.menu.personal')
+		: project.name;
 });
 
 const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
@@ -362,6 +359,11 @@ const projectRootBreadcrumbsActions = computed<Array<UserAction<IUser>>>(() => {
 	if (!project) return [];
 
 	return [
+		{
+			label: i18n.baseText('folders.actions.create'),
+			value: FOLDER_LIST_ITEM_ACTIONS.CREATE,
+			disabled: readOnlyEnv.value || !hasPermissionToCreateFolders.value,
+		},
 		{
 			label: favoritesStore.isFavorite(project.id, 'project')
 				? i18n.baseText('favorites.remove')
@@ -388,10 +390,7 @@ const resourceActionsScope = computed(() => {
 	}
 
 	const project = currentBreadcrumbsProject.value;
-	const name =
-		project?.type === ProjectTypes.Personal
-			? i18n.baseText('projects.menu.personal')
-			: project?.name;
+	const name = currentBreadcrumbsProjectName.value;
 
 	if (!project?.id || !name) return null;
 
@@ -1270,8 +1269,8 @@ const onBreadcrumbItemClick = (item: PathItem) => {
 const onBreadCrumbsAction = async (action: string) => {
 	switch (action) {
 		case FOLDER_LIST_ITEM_ACTIONS.CREATE:
-			if (!route.params.projectId) return;
-			const currentParent = currentFolder.value?.name || projectName.value;
+			if (!currentBreadcrumbsProject.value) return;
+			const currentParent = currentFolder.value?.name || currentBreadcrumbsProjectName.value;
 			if (!currentParent) return;
 			await createFolder({
 				id: (route.params.folderId as string) ?? '-1',
@@ -1371,6 +1370,9 @@ const createFolder = async (
 	parent: { id: string; name: string; type: 'project' | 'folder' },
 	options: { openAfterCreate: boolean } = { openAfterCreate: false },
 ) => {
+	const projectId = currentBreadcrumbsProject.value?.id;
+	if (!projectId) return;
+
 	const promptResponsePromise = message.prompt(
 		i18n.baseText('folders.add.to.parent.message', { interpolate: { parent: parent.name } }),
 		{
@@ -1386,13 +1388,13 @@ const createFolder = async (
 		try {
 			const newFolder = await foldersStore.createFolder(
 				folderName,
-				route.params.projectId as string,
+				projectId,
 				parent.type === 'folder' ? parent.id : undefined,
 			);
 
 			const newFolderURL = router.resolve({
 				name: VIEWS.PROJECTS_FOLDERS,
-				params: { projectId: route.params.projectId, folderId: newFolder.id },
+				params: { projectId, folderId: newFolder.id },
 			}).href;
 			toast.showToast({
 				title: i18n.baseText('folders.add.success.title'),
@@ -1417,7 +1419,7 @@ const createFolder = async (
 				// Navigate to parent folder id option specified by the caller
 				await router.push({
 					name: VIEWS.PROJECTS_FOLDERS,
-					params: { projectId: route.params.projectId, folderId: parent.id },
+					params: { projectId, folderId: parent.id },
 				});
 			} else {
 				// If we are on an empty list, just add the new folder to the list
@@ -1429,7 +1431,7 @@ const createFolder = async (
 							resource: 'folder',
 							createdAt: newFolder.createdAt,
 							updatedAt: newFolder.updatedAt,
-							homeProject: projectsStore.currentProject as ProjectSharingData,
+							homeProject: currentBreadcrumbsProject.value as ProjectSharingData,
 							workflowCount: 0,
 							subFolderCount: 0,
 						},
@@ -1492,8 +1494,8 @@ const createFolderInCurrent = async () => {
 		});
 		return;
 	}
-	if (!route.params.projectId) return;
-	const currentParent = currentFolder.value?.name || projectName.value;
+	if (!currentBreadcrumbsProject.value) return;
+	const currentParent = currentFolder.value?.name || currentBreadcrumbsProjectName.value;
 	if (!currentParent) return;
 	await createFolder({
 		id: (route.params.folderId as string) ?? '-1',
@@ -1878,47 +1880,8 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</ProjectHeader>
 		</template>
-		<template
-			v-if="showFolders || showRegisteredCommunityCTA || showResourceActionsMenu"
-			#add-button
-		>
-			<div :class="$style['header-action-buttons']">
-				<N8nTooltip
-					v-if="showFolders || showRegisteredCommunityCTA"
-					placement="top"
-					:disabled="!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)"
-				>
-					<template #content>
-						<span>
-							{{
-								currentParentName
-									? i18n.baseText('folders.add.to.parent.message', {
-											interpolate: { parent: currentParentName },
-										})
-									: i18n.baseText('folders.add.here.message')
-							}}
-						</span>
-					</template>
-					<N8nButton
-						variant="outline"
-						size="medium"
-						iconOnly
-						icon="folder-plus"
-						:aria-label="i18n.baseText('workflows.addFolder')"
-						data-test-id="add-folder-button"
-						:class="$style['add-folder-button']"
-						:disabled="
-							!showRegisteredCommunityCTA && (readOnlyEnv || !hasPermissionToCreateFolders)
-						"
-						@click="createFolderInCurrent"
-					/>
-				</N8nTooltip>
-				<ResourceActionsMenu
-					v-if="showResourceActionsMenu"
-					:scope="resourceActionsScope"
-					@updated="fetchWorkflows"
-				/>
-			</div>
+		<template v-if="showResourceActionsMenu" #add-button>
+			<ResourceActionsMenu :scope="resourceActionsScope" @updated="fetchWorkflows" />
 		</template>
 		<template #callout>
 			<N8nCallout
@@ -2278,12 +2241,6 @@ const onNameSubmit = async (name: string) => {
 		align-items: center;
 		gap: var(--spacing--md);
 	}
-}
-
-.header-action-buttons {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 
 .emptyStateCard {
