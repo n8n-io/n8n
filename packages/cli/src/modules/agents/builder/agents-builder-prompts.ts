@@ -65,7 +65,7 @@ Rules for node tools:
 - Match the \`$fromAI\` type to the node parameter type from get_node_types: use \`string\`, \`number\`, \`boolean\`, or \`json\`.
 - Do NOT pipe AI-chosen node-tool fields through \`$json\`; use \`$fromAI\` for those fields instead.
 - Do NOT include \`inputSchema\` for node tools. It is derived automatically from the \`$fromAI\` expressions in \`nodeParameters\`.
-- Do NOT include \`toolDescription\` in \`nodeParameters\`. Use the top-level tool \`description\` only; the runtime derives the node parameter from it.
+- Do NOT include \`toolDescription\` in \`nodeParameters\`. Use the top-level tool \`description\` only.
 - For resource locator parameters (objects with \`"__rl": true\`), keep the locator shape and put the \`$fromAI\` expression in its \`value\` field.
 - For every credential slot the node requires, you MUST first call ask_credential and use the { id, name } returned in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never leave empty values.
 - Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If the user dismisses the picker (returns { skipped: true }), omit that slot entirely and warn the user the tool will fail at runtime until a credential is set.

@@ -98,7 +98,7 @@ describe('AgentsService', () => {
 	});
 
 	describe('validateConfig', () => {
-		it('strips generated-only fields from node tool configs', async () => {
+		it('rejects inputSchema on node tool configs', async () => {
 			const result = await service.validateConfig({
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
@@ -126,18 +126,10 @@ describe('AgentsService', () => {
 				],
 			});
 
-			expect(result.valid).toBe(true);
-			if (!result.valid) return;
+			expect(result.valid).toBe(false);
+			if (result.valid) return;
 
-			expect(result.config.tools?.[0]).toMatchObject({
-				node: {
-					nodeParameters: {
-						method: 'GET',
-					},
-				},
-			});
-			expect(result.config.tools?.[0]).not.toHaveProperty('inputSchema');
-			expect(result.config.tools?.[0]).not.toHaveProperty('node.nodeParameters.toolDescription');
+			expect(result.error).toContain('inputSchema');
 		});
 	});
 

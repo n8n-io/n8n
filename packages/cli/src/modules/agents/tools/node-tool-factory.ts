@@ -10,7 +10,6 @@ import { NodeTypes } from '@/node-types';
 import { Container } from '@n8n/di';
 
 import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
-import { withDynamicNodeToolDescription } from './node-tool-config-utils';
 
 export interface NodeToolFactoryContext {
 	executor: EphemeralNodeExecutor;
@@ -185,26 +184,22 @@ export async function resolveNodeTool(
 	toolSchema: Extract<AgentJsonToolConfig, { type: 'node' }>,
 	ctx: NodeToolFactoryContext,
 ): Promise<BuiltTool> {
-	const normalizedToolSchema = withDynamicNodeToolDescription(toolSchema);
 	// Anthropic + OpenAI accept only `[a-zA-Z0-9_-]` (len ≤ 64/128) for tool
 	// identifiers. The persisted `name` is a human-readable label (e.g. "Google
 	// Drive") so we normalize it here — same helper the LangChain canvas path
 	// uses (see `create-node-as-tool.ts:101`).
-	const sanitizedName = nodeNameToToolName(normalizedToolSchema.name);
-	const nodeType = resolveToolNodeType(
-		normalizedToolSchema.node.nodeType,
-		normalizedToolSchema.node.nodeTypeVersion,
-	);
+	const sanitizedName = nodeNameToToolName(toolSchema.name);
+	const nodeType = resolveToolNodeType(toolSchema.node.nodeType, toolSchema.node.nodeTypeVersion);
 
 	const built = new Tool(sanitizedName)
-		.description(normalizedToolSchema.description ?? `Execute the ${nodeType} node`)
-		.input(await resolveInputSchema(normalizedToolSchema, ctx))
+		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
+		.input(await resolveInputSchema(toolSchema, ctx))
 		.handler(async (input: Record<string, unknown>) => {
 			return await ctx.executor.executeInline({
 				nodeType,
-				nodeTypeVersion: normalizedToolSchema.node.nodeTypeVersion,
-				nodeParameters: normalizedToolSchema.node.nodeParameters as INodeParameters,
-				credentialDetails: toExecutorCredentials(normalizedToolSchema.node.credentials),
+				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
+				nodeParameters: toolSchema.node.nodeParameters as INodeParameters,
+				credentialDetails: toExecutorCredentials(toolSchema.node.credentials),
 				inputData: [{ json: input as IDataObject }],
 				projectId: ctx.projectId,
 			});

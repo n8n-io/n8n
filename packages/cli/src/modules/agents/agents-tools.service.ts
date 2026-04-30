@@ -134,7 +134,7 @@ export class AgentsToolsService {
 		return new Tool('search_nodes')
 			.description(
 				'Search for n8n nodes by name or service. Use this to find nodes that can be executed. ' +
-					'Returns tool node IDs (including mirrored *Tool variants), display names, versions, and descriptions. ' +
+					'Returns tool node IDs, display names, versions, and descriptions. ' +
 					'After finding a node, call get_node_types to get its parameter schema.',
 			)
 			.input(searchNodesInputSchema)
@@ -152,7 +152,7 @@ export class AgentsToolsService {
 			.description(
 				'Get detailed parameter schema for specific n8n nodes. Use the node IDs returned ' +
 					'by search_nodes. Returns parameter definitions needed to configure a node for execution. ' +
-					'Use the tool node IDs from search_nodes, not base node IDs. ' +
+					'Use the tool node IDs from search_nodes. ' +
 					'You can optionally filter by resource/operation/mode.',
 			)
 			.input(getNodeTypesInputSchema)

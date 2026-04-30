@@ -104,7 +104,7 @@ describe('resolveNodeTool → tool name sanitization', () => {
 		});
 	});
 
-	it('injects toolDescription from the top-level node tool description at execution time', async () => {
+	it('passes node parameters through unchanged at execution time', async () => {
 		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
 		const tool = await resolveNodeTool(
 			{
@@ -127,7 +127,7 @@ describe('resolveNodeTool → tool name sanitization', () => {
 			expect.objectContaining({
 				nodeParameters: {
 					method: 'GET',
-					toolDescription: 'Make an HTTP request to any URL',
+					toolDescription: 'Stale generated description',
 				},
 			}),
 		);

@@ -479,7 +479,7 @@ describe('AgentJsonConfigSchema', () => {
 		expect(parsed.tools?.[0]).toMatchObject({ type: 'custom', id: 'my_tool_1' });
 	});
 
-	it('strips inputSchema from node tool configs', () => {
+	it('rejects inputSchema on node tool configs', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
@@ -495,7 +495,6 @@ describe('AgentJsonConfigSchema', () => {
 						nodeTypeVersion: 4,
 						nodeParameters: {
 							url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
-							toolDescription: 'Make an HTTP request',
 						},
 					},
 					inputSchema: {
@@ -507,10 +506,7 @@ describe('AgentJsonConfigSchema', () => {
 			],
 		};
 
-		const parsed = AgentJsonConfigSchema.parse(config);
-
-		expect(parsed.tools?.[0]).not.toHaveProperty('inputSchema');
-		expect(parsed.tools?.[0]).not.toHaveProperty('node.nodeParameters.toolDescription');
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('rejects custom tool ref with invalid id (uppercase)', () => {

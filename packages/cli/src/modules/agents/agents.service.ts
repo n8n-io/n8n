@@ -57,7 +57,6 @@ import { AgentPublishedVersionRepository } from './repositories/agent-published-
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { withoutStaticNodeToolDescription } from './tools/node-tool-config-utils';
 
 interface InjectRuntimeDependenciesParams {
 	agent: agents.Agent;
@@ -1062,10 +1061,10 @@ export class AgentsService {
 			return { valid: false, error: parsed.error.message };
 		}
 
-		let config = parsed.data;
+		const config = parsed.data;
 
 		try {
-			config = this.normalizeNodeToolConfigs(config);
+			this.validateNodeToolExpressions(config);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return {
@@ -1082,22 +1081,12 @@ export class AgentsService {
 		return { valid: true, config };
 	}
 
-	private normalizeNodeToolConfigs(config: AgentJsonConfig): AgentJsonConfig {
-		if (!config.tools) return config;
+	private validateNodeToolExpressions(config: AgentJsonConfig): void {
+		for (const tool of config.tools ?? []) {
+			if (tool.type !== 'node') continue;
 
-		let changed = false;
-		const tools = config.tools.map((tool) => {
-			if (tool.type !== 'node') return tool;
-
-			const normalizedTool = withoutStaticNodeToolDescription(tool);
-			extractFromAIInputSchema(normalizedTool.node.nodeParameters ?? {});
-			if (normalizedTool === tool) return tool;
-
-			changed = true;
-			return normalizedTool;
-		});
-
-		return changed ? { ...config, tools } : config;
+			extractFromAIInputSchema(tool.node.nodeParameters ?? {});
+		}
 	}
 
 	/**
