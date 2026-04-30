@@ -13,7 +13,6 @@ import {
 import {
 	createExecutionDataId,
 	disposeExecutionDataStore,
-	getActiveExecutionDataStore,
 	getExecutionDataStoreId,
 	useExecutionDataStore,
 } from '@/app/stores/executionData.store';
@@ -299,9 +298,6 @@ describe('executionData.store', () => {
 		const secondStore = useExecutionDataStore(createExecutionDataId('exec-2'));
 		firstStore.setExecution(createExecution('exec-1'));
 		secondStore.setExecution(createExecution('exec-2'));
-
-		expect(getActiveExecutionDataStore({ value: firstStore })).toBe(firstStore);
-		expect(getActiveExecutionDataStore({ value: undefined })).toBeNull();
 
 		disposeExecutionDataStore(createExecutionDataId('exec-1'));
 

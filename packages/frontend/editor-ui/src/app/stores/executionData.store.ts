@@ -366,9 +366,3 @@ export function disposeExecutionDataStore(executionId: ExecutionDataId) {
 		delete pinia.state.value[storeId];
 	}
 }
-
-export function getActiveExecutionDataStore(session: {
-	value: ReturnType<typeof useExecutionDataStore> | null | undefined;
-}) {
-	return session.value ?? null;
-}
