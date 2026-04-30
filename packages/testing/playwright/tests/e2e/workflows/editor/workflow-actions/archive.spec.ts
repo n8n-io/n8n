@@ -2,11 +2,12 @@ import { SCHEDULE_TRIGGER_NODE_NAME } from '../../../../../config/constants';
 import { test, expect } from '../../../../../fixtures/base';
 import type { n8nPage } from '../../../../../pages/n8nPage';
 
-async function getWorkflowIdAfterSave(n8n: n8nPage): Promise<string> {
-	const saveResponse = await n8n.canvas.waitForSaveWorkflowCompleted();
+async function addNodeAndGetWorkflowId(n8n: n8nPage): Promise<string> {
+	const saveResponsePromise = n8n.canvas.waitForSaveWorkflowCompleted({ timeout: 5000 });
+	await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 	const {
 		data: { id },
-	} = await saveResponse.json();
+	} = await saveResponsePromise.then((r) => r.json());
 	return id;
 }
 
@@ -33,8 +34,7 @@ test.describe(
 
 		test('should display archived workflow in read-only mode on canvas', async ({ n8n }) => {
 			// Create and save a workflow
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			const workflowId = await getWorkflowIdAfterSave(n8n);
+			const workflowId = await addNodeAndGetWorkflowId(n8n);
 
 			// Archive the workflow
 			await n8n.workflowSettingsModal.getWorkflowMenu().click();
@@ -62,25 +62,23 @@ test.describe(
 			// Click the node - in read-only mode, this should not trigger edit mode
 			await scheduleNode.click();
 
-			// Node toolbar (with delete, disable buttons) should not appear in read-only mode
-			const nodeToolbar = n8n.canvas.nodeToolbar('Schedule Trigger');
-			await expect(nodeToolbar).not.toBeVisible();
+			// Node toolbar action buttons should not be present in read-only mode
+			await expect(n8n.page.getByTestId('execute-node-button')).not.toBeAttached();
+			await expect(n8n.page.getByTestId('delete-node-button')).not.toBeAttached();
+			await expect(n8n.page.getByTestId('disable-node-button')).not.toBeAttached();
 
 			// Try to drag a node - this should not work in read-only mode
-			// Get the node's initial position
 			const nodeBox = await scheduleNode.boundingBox();
-			if (nodeBox) {
-				// Try to drag the node
-				await scheduleNode.hover();
-				await n8n.page.mouse.down();
-				await n8n.page.mouse.move(nodeBox.x + 100, nodeBox.y + 100);
-				await n8n.page.mouse.up();
+			expect(nodeBox).not.toBeNull();
 
-				// Verify the node hasn't moved (should still be at the same position)
-				const newNodeBox = await scheduleNode.boundingBox();
-				expect(newNodeBox?.x).toBe(nodeBox.x);
-				expect(newNodeBox?.y).toBe(nodeBox.y);
-			}
+			await scheduleNode.hover();
+			await n8n.page.mouse.down();
+			await n8n.page.mouse.move(nodeBox!.x + 100, nodeBox!.y + 100);
+			await n8n.page.mouse.up();
+
+			const newNodeBox = await scheduleNode.boundingBox();
+			expect(newNodeBox?.x).toBe(nodeBox!.x);
+			expect(newNodeBox?.y).toBe(nodeBox!.y);
 
 			// Verify that autosave does NOT trigger when attempting to edit
 			// Listen for save requests - there should be none
@@ -92,6 +90,7 @@ test.describe(
 			});
 
 			// Wait a bit to ensure no autosave is triggered
+			// eslint-disable-next-line playwright/no-wait-for-timeout
 			await n8n.page.waitForTimeout(2000);
 
 			// Verify no save request was made
@@ -109,8 +108,7 @@ test.describe(
 		});
 
 		test('should archive nonactive workflow and then delete it', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			const workflowId = await getWorkflowIdAfterSave(n8n);
+			const workflowId = await addNodeAndGetWorkflowId(n8n);
 			await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
 
 			await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
@@ -137,8 +135,7 @@ test.describe(
 
 		// Flaky in multi-main mode
 		test.fixme('should archive published workflow and then delete it', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			const workflowId = await getWorkflowIdAfterSave(n8n);
+			const workflowId = await addNodeAndGetWorkflowId(n8n);
 			await n8n.canvas.publishWorkflow();
 			await n8n.page.keyboard.press('Escape');
 
@@ -169,8 +166,7 @@ test.describe(
 		});
 
 		test('should archive nonactive workflow and then unarchive it', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			const workflowId = await getWorkflowIdAfterSave(n8n);
+			const workflowId = await addNodeAndGetWorkflowId(n8n);
 			await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
 
 			await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
@@ -196,8 +192,7 @@ test.describe(
 		});
 
 		test('should not show unpublish menu item for non-published workflow', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			await n8n.canvas.waitForSaveWorkflowCompleted();
+			await addNodeAndGetWorkflowId(n8n);
 
 			await expect(n8n.canvas.getPublishedIndicator()).toBeHidden();
 
@@ -225,8 +220,7 @@ test.describe(
 
 		// Flaky in multi-main mode
 		test.fixme('should unpublish published workflow on archive', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			const workflowId = await getWorkflowIdAfterSave(n8n);
+			const workflowId = await addNodeAndGetWorkflowId(n8n);
 			await n8n.canvas.publishWorkflow();
 			await n8n.page.keyboard.press('Escape');
 
