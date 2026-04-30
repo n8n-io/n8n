@@ -280,8 +280,10 @@ const foldersEnabled = computed(() => {
 	return settingsStore.isFoldersFeatureEnabled;
 });
 
+const mcpModuleEnabled = computed(() => settingsStore.isModuleActive('mcp'));
+
 const mcpEnabled = computed(() => {
-	return settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
+	return mcpModuleEnabled.value && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
 });
 
 const showFolders = computed(() => {
@@ -416,7 +418,7 @@ const mcpAccessScope = computed(() => {
 
 const showMcpAccessActions = computed(
 	() =>
-		mcpEnabled.value &&
+		mcpModuleEnabled.value &&
 		mcpAccessScope.value !== null &&
 		!projectPages.isOverviewSubPage &&
 		!projectPages.isSharedSubPage &&
@@ -1447,7 +1449,23 @@ function showMCPAccessErrorToast(enabled: boolean) {
 	});
 }
 
+function showMCPAccessDisabledToast() {
+	toast.showToast({
+		title: i18n.baseText('resourceActions.mcpAccess.disabled.title'),
+		message: i18n.baseText('resourceActions.mcpAccess.disabled.message', {
+			interpolate: { link: settingsLink.value },
+		}),
+		onClick: openSettingsFromToast,
+		type: 'warning',
+	});
+}
+
 async function toggleMcpAccess(enabled: boolean) {
+	if (!mcpEnabled.value) {
+		showMCPAccessDisabledToast();
+		return;
+	}
+
 	const target = getMcpAccessTarget();
 	if (!target) return;
 

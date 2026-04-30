@@ -3853,6 +3853,8 @@
 	"resourceActions.mcpAccess.error.disabled.title": "Error disabling MCP access",
 	"resourceActions.mcpAccess.error.enabled.message": "Could not enable MCP access for all workflows in '{scopeName}'.<br><a href=\"{link}\">Manage MCP settings</a>",
 	"resourceActions.mcpAccess.error.disabled.message": "Could not disable MCP access for all workflows in '{scopeName}'.<br><a href=\"{link}\">Manage MCP settings</a>",
+	"resourceActions.mcpAccess.disabled.title": "MCP access is off",
+	"resourceActions.mcpAccess.disabled.message": "Turn on instance-level MCP access before managing workflow access.<br><a href=\"{link}\">Manage MCP settings</a>",
 	"workflows.publish": "Publish",
 	"workflows.published": "Published",
 	"workflows.publish.permissionDenied": "You don't have permission to publish this workflow",

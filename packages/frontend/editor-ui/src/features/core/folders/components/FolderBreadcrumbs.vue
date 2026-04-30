@@ -87,7 +87,7 @@ const isDragging = computed(() => {
 	return foldersStore.draggedElement !== null;
 });
 
-const rootBreadcrumbIcon = { type: 'icon' as const, value: 'house' as const };
+const rootBreadcrumbIcon = { type: 'icon' as const, value: 'chevrons-right' as const };
 
 const hasMoreItems = computed(() => {
 	return visibleBreadcrumbsItems.value[0]?.parentFolder !== undefined;
