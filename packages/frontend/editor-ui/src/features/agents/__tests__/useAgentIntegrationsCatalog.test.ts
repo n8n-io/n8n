@@ -16,7 +16,7 @@ describe('useAgentIntegrationsCatalog', () => {
 		{
 			type: 'slack',
 			label: 'Slack',
-			icon: 'hashtag',
+			icon: 'slack',
 			credentialTypes: ['slackApi'],
 		},
 	];

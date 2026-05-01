@@ -81,7 +81,6 @@ const pendingNewCredentialType = ref<string | null>(null);
 
 const linearCopied = ref(false);
 const manifestCopied = ref(false);
-const showManifest = ref(false);
 
 const SCHEDULE_ICON: IconName = 'clock';
 
@@ -115,22 +114,11 @@ function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
 }
 
-const HELP_TEXT_KEYS = {
-	slack: 'agents.builder.addTrigger.helpText.slack',
-	telegram: 'agents.builder.addTrigger.helpText.telegram',
-	linear: 'agents.builder.addTrigger.helpText.linear',
-} as const;
-
 const CONNECTED_TEXT_KEYS = {
 	slack: 'agents.builder.addTrigger.connectedText.slack',
 	telegram: 'agents.builder.addTrigger.connectedText.telegram',
 	linear: 'agents.builder.addTrigger.connectedText.linear',
 } as const;
-
-function integrationHelpText(type: string): string {
-	const key = HELP_TEXT_KEYS[type as keyof typeof HELP_TEXT_KEYS];
-	return key ? i18n.baseText(key) : '';
-}
 
 function integrationConnectedText(type: string): string {
 	const key = CONNECTED_TEXT_KEYS[type as keyof typeof CONNECTED_TEXT_KEYS];
@@ -398,6 +386,9 @@ onMounted(async () => {
 
 		<template #content>
 			<div :class="$style.body">
+				<N8nText :class="$style.modalDescription" size="small">
+					{{ i18n.baseText('agents.builder.addTrigger.modal.description') }}
+				</N8nText>
 				<div :class="$style.pickerRow">
 					<N8nText size="small" bold>
 						{{ i18n.baseText('agents.builder.addTrigger.picker.label') }}
@@ -409,14 +400,14 @@ onMounted(async () => {
 						data-testid="agent-add-trigger-picker"
 					>
 						<template v-if="selectedIcon" #prefix>
-							<N8nIcon :icon="selectedIcon" size="small" />
+							<N8nIcon :icon="selectedIcon" :size="16" />
 						</template>
 						<N8nOption
 							:value="AGENT_SCHEDULE_TRIGGER_TYPE"
 							:label="i18n.baseText('agents.schedule.title')"
 						>
 							<span :class="$style.optionRow">
-								<N8nIcon :icon="SCHEDULE_ICON" size="small" />
+								<N8nIcon :icon="SCHEDULE_ICON" :size="16" />
 								{{ i18n.baseText('agents.schedule.title') }}
 							</span>
 						</N8nOption>
@@ -427,7 +418,7 @@ onMounted(async () => {
 							:label="integration.label"
 						>
 							<span :class="$style.optionRow">
-								<N8nIcon :icon="toIconName(integration.icon)" size="small" />
+								<N8nIcon :icon="toIconName(integration.icon)" :size="16" />
 								{{ integration.label }}
 							</span>
 						</N8nOption>
@@ -451,10 +442,6 @@ onMounted(async () => {
 				/>
 
 				<div v-else-if="currentIntegration" :class="$style.integrationConfig">
-					<N8nText :class="$style.description" size="small">
-						{{ integrationHelpText(currentIntegration.type) }}
-					</N8nText>
-
 					<!-- Linear webhook URL — always visible so the URL can be configured before the credential -->
 					<div v-if="currentIntegration.type === 'linear'" :class="$style.webhookRow">
 						<input
@@ -479,33 +466,6 @@ onMounted(async () => {
 									: i18n.baseText('agents.builder.addTrigger.copy')
 							}}
 						</N8nButton>
-					</div>
-
-					<!-- Slack manifest — always visible so users can create the Slack app before generating credentials -->
-					<div v-if="currentIntegration.type === 'slack'" :class="$style.manifestSection">
-						<N8nText :class="$style.manifestHint" size="small">
-							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
-						</N8nText>
-						<div :class="$style.manifestActions">
-							<N8nButton variant="outline" size="small" @click="copyManifest">
-								<template #prefix>
-									<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
-								</template>
-								{{
-									manifestCopied
-										? i18n.baseText('agents.builder.addTrigger.copied')
-										: i18n.baseText('agents.builder.addTrigger.slack.copyManifest')
-								}}
-							</N8nButton>
-							<N8nButton variant="outline" size="small" @click="showManifest = !showManifest">
-								{{
-									showManifest
-										? i18n.baseText('agents.builder.addTrigger.slack.hideJson')
-										: i18n.baseText('agents.builder.addTrigger.slack.viewJson')
-								}}
-							</N8nButton>
-						</div>
-						<pre v-if="showManifest" :class="$style.manifestCode">{{ slackAppManifest }}</pre>
 					</div>
 
 					<div v-if="!isConnected(currentIntegration.type)" :class="$style.connectForm">
@@ -629,6 +589,37 @@ onMounted(async () => {
 							{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
 						</N8nButton>
 					</div>
+
+					<!-- Slack manifest — placed after the credential so the primary
+						 (connect) action is the first thing the user sees, with the
+						 manifest reference material grouped at the bottom. -->
+					<div v-if="currentIntegration.type === 'slack'" :class="$style.manifestSection">
+						<N8nText size="small" bold>
+							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestTitle') }}
+						</N8nText>
+						<N8nText :class="$style.manifestHint" size="small">
+							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
+						</N8nText>
+						<div :class="$style.codeBlock">
+							<N8nButton
+								variant="outline"
+								size="small"
+								:class="$style.codeBlockCopy"
+								:data-testid="`${currentIntegration.type}-copy-manifest`"
+								@click="copyManifest"
+							>
+								<template #prefix>
+									<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
+								</template>
+								{{
+									manifestCopied
+										? i18n.baseText('agents.builder.addTrigger.copied')
+										: i18n.baseText('agents.builder.addTrigger.copy')
+								}}
+							</N8nButton>
+							<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
+						</div>
+					</div>
 				</div>
 			</div>
 		</template>
@@ -671,7 +662,7 @@ onMounted(async () => {
 	gap: var(--spacing--sm);
 }
 
-.description {
+.modalDescription {
 	color: var(--color--text--tint-1);
 }
 
@@ -725,15 +716,26 @@ onMounted(async () => {
 	color: var(--color--text--tint-1);
 }
 
-.manifestActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.codeBlock {
+	position: relative;
+	margin-top: var(--spacing--3xs);
+}
+
+/* Sit on top of the rounded container itself rather than inside the scrolling
+   <pre>, so the button stays put as the user scrolls and never collides with
+   the scrollbar groove. The right offset clears typical macOS / overlay
+   scrollbars (~14px) plus our normal inner padding. */
+.codeBlockCopy {
+	position: absolute;
+	top: var(--spacing--2xs);
+	right: var(--spacing--lg);
+	z-index: 1;
 }
 
 .manifestCode {
 	margin: 0;
 	padding: var(--spacing--xs);
+	padding-right: calc(var(--spacing--2xl) + var(--spacing--lg));
 	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--radius);
 	font-size: var(--font-size--2xs);

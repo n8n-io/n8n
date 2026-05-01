@@ -5838,6 +5838,7 @@
 	"agents.builder.triggers.empty.title": "No triggers configured",
 	"agents.builder.triggers.empty.description": "Add a trigger to let this agent respond to events from a chat platform or run on a schedule.",
 	"agents.builder.addTrigger.modal.title": "Add trigger",
+	"agents.builder.addTrigger.modal.description": "Add a trigger to allow messaging the agent, or scheduling it to periodically carry out a task.",
 	"agents.builder.addTrigger.picker.label": "Trigger",
 	"agents.builder.addTrigger.picker.placeholder": "Select a trigger...",
 	"agents.builder.addTrigger.picker.empty": "Pick a trigger above to configure it.",

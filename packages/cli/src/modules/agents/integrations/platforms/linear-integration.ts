@@ -26,7 +26,7 @@ export class LinearIntegration extends AgentChatIntegration {
 
 	readonly displayLabel = 'Linear';
 
-	readonly displayIcon = 'list-checks';
+	readonly displayIcon = 'linear';
 
 	constructor(private readonly logger: Logger) {
 		super();

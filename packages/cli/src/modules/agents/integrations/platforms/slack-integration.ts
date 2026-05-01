@@ -18,7 +18,7 @@ export class SlackIntegration extends AgentChatIntegration {
 
 	readonly displayLabel = 'Slack';
 
-	readonly displayIcon = 'hashtag';
+	readonly displayIcon = 'slack';
 
 	readonly supportedComponents = [
 		'section',
