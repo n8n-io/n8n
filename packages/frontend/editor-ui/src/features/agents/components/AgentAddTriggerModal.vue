@@ -107,10 +107,6 @@ function isLoading(type: string): boolean {
 	return loadingMap.value[type] ?? false;
 }
 
-function hasCredentials(type: string): boolean {
-	return (credentialsByType.value[type] ?? []).length > 0;
-}
-
 function hasError(type: string): boolean {
 	return (errorMessages.value[type] ?? '').length > 0;
 }
@@ -485,63 +481,38 @@ onMounted(async () => {
 					</div>
 
 					<div v-if="!isConnected(currentIntegration.type)" :class="$style.connectForm">
-						<template v-if="hasCredentials(currentIntegration.type)">
-							<label :class="$style.label">
-								<N8nText size="small" bold>
-									{{ currentIntegration.label }}
-									{{ i18n.baseText('agents.builder.addTrigger.credential') }}
-								</N8nText>
-							</label>
-							<div :class="$style.selectRow">
-								<N8nSelect
-									v-model="selectedCredentials[currentIntegration.type]"
-									:class="$style.select"
-									:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
-									:loading="credentialsLoading"
-									:disabled="isLoading(currentIntegration.type)"
-									size="medium"
-									:data-testid="`${currentIntegration.type}-credential-select`"
-								>
-									<N8nOption
-										v-for="cred in credentialsByType[currentIntegration.type] ?? []"
-										:key="cred.id"
-										:value="cred.id"
-										:label="cred.name"
-									/>
-								</N8nSelect>
-								<N8nButton
-									v-if="selectedCredentials[currentIntegration.type]"
-									variant="outline"
-									size="small"
-									icon="pen"
-									:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
-									:data-testid="`${currentIntegration.type}-edit-credential`"
-									@click="onEditCredential(currentIntegration.type)"
-								/>
-							</div>
-						</template>
-
-						<div v-else-if="!credentialsLoading" :class="$style.emptyCredentials">
-							<N8nText size="small">
-								{{
-									i18n.baseText('agents.builder.addTrigger.noCredentials', {
-										interpolate: { label: currentIntegration.label },
-									})
-								}}
+						<label :class="$style.label">
+							<N8nText size="small" bold>
+								{{ currentIntegration.label }}
+								{{ i18n.baseText('agents.builder.addTrigger.credential') }}
 							</N8nText>
+						</label>
+						<div :class="$style.selectRow">
+							<N8nSelect
+								v-model="selectedCredentials[currentIntegration.type]"
+								:class="$style.select"
+								:placeholder="i18n.baseText('agents.builder.addTrigger.selectCredential')"
+								:loading="credentialsLoading"
+								:disabled="isLoading(currentIntegration.type)"
+								size="medium"
+								:data-testid="`${currentIntegration.type}-credential-select`"
+							>
+								<N8nOption
+									v-for="cred in credentialsByType[currentIntegration.type] ?? []"
+									:key="cred.id"
+									:value="cred.id"
+									:label="cred.name"
+								/>
+							</N8nSelect>
 							<N8nButton
+								v-if="selectedCredentials[currentIntegration.type]"
 								variant="outline"
 								size="small"
-								:data-testid="`${currentIntegration.type}-create-credential`"
-								@click="onCreateCredential(currentIntegration)"
-							>
-								<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
-								{{
-									i18n.baseText('agents.builder.addTrigger.addCredential', {
-										interpolate: { label: currentIntegration.label },
-									})
-								}}
-							</N8nButton>
+								icon="pen"
+								:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
+								:data-testid="`${currentIntegration.type}-edit-credential`"
+								@click="onEditCredential(currentIntegration.type)"
+							/>
 						</div>
 
 						<N8nText
@@ -578,7 +549,6 @@ onMounted(async () => {
 								{{ i18n.baseText('agents.builder.addTrigger.connect') }}
 							</N8nButton>
 							<N8nButton
-								v-if="hasCredentials(currentIntegration.type)"
 								variant="outline"
 								size="small"
 								:data-testid="`${currentIntegration.type}-create-another-credential`"
@@ -702,13 +672,6 @@ onMounted(async () => {
 .select {
 	flex: 1;
 	min-width: 0;
-}
-
-.emptyCredentials {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	align-items: flex-start;
 }
 
 .actions {
