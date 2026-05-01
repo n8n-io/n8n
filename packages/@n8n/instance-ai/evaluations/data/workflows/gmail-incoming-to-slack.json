@@ -1,0 +1,14 @@
+{
+	"prompt": "Create a workflow that triggers whenever a new email arrives in our shared support inbox. For each new email, post a message to the Slack channel #support-triage that includes the sender's email address, the subject line, and the full text content of the email so the on-call engineer can read it without leaving Slack. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "gmail-trigger", "slack", "content-fetching"],
+	"triggerType": "webhook",
+	"scenarios": [
+		{
+			"name": "body-reaches-slack",
+			"description": "A new support email arrives and its body content shows up in the Slack message",
+			"dataSetup": "The Gmail Trigger fires for one new email from customer@acme.com with subject 'Cannot connect API key' and a body explaining that the API returns 401 even after rotating the key three times.",
+			"successCriteria": "The Slack message posted to #support-triage contains the sender address customer@acme.com, the subject 'Cannot connect API key', and the full text body explaining the 401 issue. The body content is the actual email body, not just the subject or a generic snippet."
+		}
+	]
+}

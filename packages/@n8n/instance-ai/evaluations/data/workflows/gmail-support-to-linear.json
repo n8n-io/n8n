@@ -1,0 +1,14 @@
+{
+	"prompt": "Create a workflow that watches our support@ Gmail inbox and creates a Linear issue for every new email that comes in. The Linear issue should use the email subject as its title and the email's contents as the issue description, so engineers triaging in Linear have everything they need to start investigating. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "gmail-trigger", "linear", "content-fetching", "holdout"],
+	"triggerType": "webhook",
+	"scenarios": [
+		{
+			"name": "ticket-description-has-body",
+			"description": "Incoming support email becomes a Linear issue whose description includes the email body",
+			"dataSetup": "The Gmail Trigger fires for one new email from user@beta-tester.com with subject 'Webhook signature mismatch on prod' and a body describing that the X-Signature header doesn't match the computed HMAC after upgrading from 1.108 to 1.109, with two reproduction steps and an example payload.",
+			"successCriteria": "A Linear issue is created with title 'Webhook signature mismatch on prod' and a description that contains the email body text, including the reproduction steps and the version-upgrade context. The description is not just the subject or sender address."
+		}
+	]
+}

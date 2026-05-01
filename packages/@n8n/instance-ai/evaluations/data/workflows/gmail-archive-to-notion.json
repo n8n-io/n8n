@@ -1,0 +1,14 @@
+{
+	"prompt": "Create a workflow that runs every morning at 8 AM and fetches yesterday's email from the label 'team/announcements' in Gmail. For each email, append a new block to a Notion page (page ID 'a1b2c3d4-e5f6-7890-abcd-ef1234567890') containing the sender, the subject, the date, and the full email content so the team has a daily archive they can read without opening Gmail. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "schedule", "gmail", "notion", "content-fetching"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "body-in-notion-block",
+			"description": "Yesterday's announcement email is archived to Notion with its content",
+			"dataSetup": "The Gmail message:getAll returns a single email labeled 'team/announcements' from the previous day: an outage post-mortem from sre@company.com with a multi-paragraph body explaining the root cause, the timeline, and the remediation steps.",
+			"successCriteria": "The Notion page receives a new block (or group of blocks). The block contains the sender 'sre@company.com', the subject of the post-mortem email, and the actual body content of the email — including the root-cause explanation and remediation steps. The block is not just the subject or a one-line preview."
+		}
+	]
+}
