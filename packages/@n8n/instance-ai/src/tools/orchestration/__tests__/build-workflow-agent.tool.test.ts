@@ -23,6 +23,7 @@ import type { SubmitWorkflowAttempt } from '../../workflows/submit-workflow.tool
 const {
 	recordSuccessfulWorkflowBuilds,
 	resultFromPostStreamError,
+	resultFromLaterFailedMainSubmit,
 	withTerminalLoopState,
 	createBuildWorkflowAgentTool,
 } =
@@ -209,6 +210,41 @@ describe('resultFromPostStreamError', () => {
 
 		expect(result).toBeDefined();
 		expect(result!.outcome).toMatchObject({
+			workflowId: 'WF_123',
+			submitted: true,
+		});
+	});
+
+	it('preserves an earlier saved workflow when the final submit attempt failed', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['validation failed after later edit'],
+			},
+		];
+
+		const result = resultFromLaterFailedMainSubmit({
+			failedAttempt: submitAttempts[1],
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeDefined();
+		expect(result!.text).toContain('A later submit failed');
+		expect(result!.outcome).toMatchObject({
+			workItemId: 'wi_test',
+			taskId: 'task_test',
 			workflowId: 'WF_123',
 			submitted: true,
 		});

@@ -276,6 +276,19 @@ function createDeterministicBuilderIds(input: StartBuildWorkflowAgentInput): {
 	};
 }
 
+function latestSuccessfulMainSubmit(
+	submitAttempts: SubmitWorkflowAttempt[],
+	mainWorkflowPath: string,
+): SubmitWorkflowAttempt | undefined {
+	for (let i = submitAttempts.length - 1; i >= 0; i--) {
+		const attempt = submitAttempts[i];
+		if (attempt.filePath === mainWorkflowPath && attempt.success && attempt.workflowId) {
+			return attempt;
+		}
+	}
+	return undefined;
+}
+
 /**
  * When the builder's stream errors mid-run, recover a successful-submit outcome
  * from the submit-attempt history so the orchestrator doesn't redo a build that
@@ -291,14 +304,7 @@ export function resultFromPostStreamError(input: {
 	runId: string;
 	taskId: string;
 }): BackgroundTaskResult | undefined {
-	let attempt: SubmitWorkflowAttempt | undefined;
-	for (let i = input.submitAttempts.length - 1; i >= 0; i--) {
-		const a = input.submitAttempts[i];
-		if (a.filePath === input.mainWorkflowPath && a.success) {
-			attempt = a;
-			break;
-		}
-	}
+	const attempt = latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath);
 	if (!attempt) return undefined;
 
 	const errorText = input.error instanceof Error ? input.error.message : String(input.error);
@@ -306,6 +312,27 @@ export function resultFromPostStreamError(input: {
 	return {
 		text,
 		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, attempt, text),
+	};
+}
+
+export function resultFromLaterFailedMainSubmit(input: {
+	failedAttempt: SubmitWorkflowAttempt;
+	submitAttempts: SubmitWorkflowAttempt[];
+	mainWorkflowPath: string;
+	workItemId: string;
+	runId: string;
+	taskId: string;
+}): { text: string; outcome: WorkflowBuildOutcome } | undefined {
+	const preservedAttempt = latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath);
+	if (!preservedAttempt) return undefined;
+
+	const errorText = input.failedAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
+	const text =
+		`Workflow ${preservedAttempt.workflowId} was already submitted successfully. ` +
+		`A later submit failed: ${errorText}`;
+	return {
+		text,
+		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, preservedAttempt, text),
 	};
 }
 
@@ -631,6 +658,21 @@ export async function startBuildWorkflowAgentTask(
 						}
 
 						if (!mainWorkflowAttempt.success) {
+							const recovered = resultFromLaterFailedMainSubmit({
+								failedAttempt: mainWorkflowAttempt,
+								submitAttempts: submitAttemptHistory,
+								mainWorkflowPath,
+								workItemId,
+								runId: context.runId,
+								taskId,
+							});
+							if (recovered) {
+								return {
+									text: recovered.text,
+									outcome: await finalBuildOutcome(context, workItemId, recovered.outcome),
+								};
+							}
+
 							const errorText =
 								mainWorkflowAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
 							const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
@@ -676,6 +718,22 @@ export async function startBuildWorkflowAgentTask(
 									(typeof resubmit?.errors === 'string'
 										? resubmit.errors
 										: 'Auto-re-submit failed.');
+								if (refreshedAttempt && !refreshedAttempt.success) {
+									const recovered = resultFromLaterFailedMainSubmit({
+										failedAttempt: refreshedAttempt,
+										submitAttempts: submitAttemptHistory,
+										mainWorkflowPath,
+										workItemId,
+										runId: context.runId,
+										taskId,
+									});
+									if (recovered) {
+										return {
+											text: recovered.text,
+											outcome: await finalBuildOutcome(context, workItemId, recovered.outcome),
+										};
+									}
+								}
 								const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
 								return {
 									text,

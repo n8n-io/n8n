@@ -112,6 +112,36 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(reported.remediation).toMatchObject({ category: 'needs_setup' });
 	});
 
+	it('does not treat mocked credentials as setup when the execution error is code-fixable', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			mockedCredentialTypes: ['slackApi'],
+			mockedNodeNames: ['Slack'],
+			summary: 'Built',
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Code node failed: Cannot read properties of undefined',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'runtime_failure',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
 	it('returns terminal remediation even when verdict persistence and telemetry fail', async () => {
 		const trackTelemetry = jest.fn(() => {
 			throw new Error('telemetry unavailable');
@@ -244,6 +274,51 @@ describe('verify-built-workflow tool — remediation guard', () => {
 		expect(result.success).toBe(true);
 		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
 		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('blocks a failing verification after the second post-submit repair was already submitted', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+			workItemId: 'wi_1',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			workflowId: 'wf_1',
+			phase: 'verifying',
+			status: 'active',
+			source: 'create',
+			rebuildAttempts: 2,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+			lastRemediation: createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'runtime_failure',
+				guidance: 'Verify the latest repair.',
+			}),
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Code node still fails',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'post_submit_budget_exhausted',
+			remainingSubmitFixes: 0,
+		});
+		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'failed_terminal',
+				failureSignature: 'post_submit_budget_exhausted',
+			}),
+		);
 	});
 
 	it('returns editable remediation for generic runtime failures without terminal reporting', async () => {

@@ -288,17 +288,13 @@ function classifyVerificationFailure(
 	status: string | undefined,
 	buildOutcome: WorkflowBuildOutcome,
 ): RemediationMetadata {
-	if (
-		buildOutcome.mockedCredentialTypes?.length ||
-		buildOutcome.mockedNodeNames?.length ||
-		buildOutcome.hasUnresolvedPlaceholders
-	) {
+	if (buildOutcome.hasUnresolvedPlaceholders) {
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
 			reason: 'mocked_credentials_or_placeholders',
 			guidance:
-				'Workflow submitted successfully, but verification is blocked by mocked credentials or unresolved setup values. Stop code edits and route to workflows(action="setup").',
+				'Workflow submitted successfully, but verification is blocked by unresolved setup values. Stop code edits and route to workflows(action="setup").',
 		});
 	}
 
@@ -313,6 +309,9 @@ function classifyVerificationFailure(
 	}
 
 	const normalized = (error ?? '').toLowerCase();
+	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
+	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
+	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
 	if (
 		normalized.includes('credential') ||
 		normalized.includes('unauthorized') ||
@@ -325,9 +324,12 @@ function classifyVerificationFailure(
 		return createRemediation({
 			category: 'needs_setup',
 			shouldEdit: false,
-			reason: 'credential_or_setup_failure',
-			guidance:
-				'Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").',
+			reason: hasMockedCredentialContext
+				? 'mocked_credentials_or_placeholders'
+				: 'credential_or_setup_failure',
+			guidance: hasMockedCredentialContext
+				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
+				: 'Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").',
 		});
 	}
 
@@ -454,9 +456,14 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const success =
 				result.status === 'success' || (result.status === 'waiting' && !result.error && hasOutput);
 
-			const remediation = success
+			const failureRemediation = success
 				? undefined
 				: classifyVerificationFailure(result.error, result.status, buildOutcome);
+			const budgetRemediation =
+				failureRemediation?.shouldEdit === true
+					? terminalRemediationFromState(stateBefore, context.runId)
+					: undefined;
+			const remediation = budgetRemediation ?? failureRemediation;
 
 			// Post-verify cleanup: delete only rows this run's own dataTable insert
 			// nodes emitted as output, and only those whose IDs were not present in
