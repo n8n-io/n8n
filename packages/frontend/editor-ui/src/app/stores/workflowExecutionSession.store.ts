@@ -49,6 +49,13 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 		const onExecutionSessionChange = createEventHook<WorkflowExecutionSessionChangeEvent>();
 
 		function getActiveExecutionDataStore() {
+			const executionId = activeExecutionId.value;
+			if (!executionId) return null;
+
+			return useExecutionDataStore(createExecutionDataId(executionId));
+		}
+
+		function getVisibleExecutionDataStore() {
 			const executionId = activeExecutionId.value ?? displayedExecutionId.value;
 			if (!executionId) return null;
 
@@ -58,23 +65,23 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 		const activeExecution = computed(() => {
 			if (activeExecutionId.value === null) return pendingExecution.value;
 
-			return getActiveExecutionDataStore()?.execution ?? null;
+			return getVisibleExecutionDataStore()?.execution ?? null;
 		});
 
 		const activeExecutionRunData = computed<IRunData | null>(() => {
-			return activeExecution.value?.data?.resultData.runData ?? null;
+			return activeExecution.value?.data?.resultData?.runData ?? null;
 		});
 
 		const activeExecutionStartedData = computed(() => {
-			return getActiveExecutionDataStore()?.executionStartedData;
+			return getVisibleExecutionDataStore()?.executionStartedData;
 		});
 
 		const activeExecutionPairedItemMappings = computed<Record<string, Set<string>>>(() => {
-			return getActiveExecutionDataStore()?.executionPairedItemMappings ?? {};
+			return getVisibleExecutionDataStore()?.executionPairedItemMappings ?? {};
 		});
 
 		const activeExecutionResultDataLastUpdate = computed<number | undefined>(() => {
-			return getActiveExecutionDataStore()?.executionResultDataLastUpdate;
+			return getVisibleExecutionDataStore()?.executionResultDataLastUpdate;
 		});
 
 		const lastSuccessfulExecution = computed<IExecutionResponse | null>({
@@ -141,6 +148,11 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 			triggerExecutionSessionChange(CHANGE_ACTION.UPDATE);
 		}
 
+		function setDisplayedExecutionId(id: string | undefined) {
+			displayedExecutionId.value = id;
+			triggerExecutionSessionChange(id ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.DELETE);
+		}
+
 		function setPendingExecution(execution: IExecutionResponse | null) {
 			pendingExecution.value = execution;
 			triggerExecutionSessionChange(execution ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.DELETE);
@@ -167,7 +179,7 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 		}
 
 		function clearActiveNodeExecutionData(nodeName: string) {
-			const executionDataStore = getActiveExecutionDataStore();
+			const executionDataStore = getVisibleExecutionDataStore();
 			if (executionDataStore) {
 				executionDataStore.clearNodeExecutionData(nodeName);
 				return;
@@ -227,8 +239,7 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 		}
 
 		function clearDisplayedExecution() {
-			displayedExecutionId.value = undefined;
-			triggerExecutionSessionChange(CHANGE_ACTION.DELETE);
+			setDisplayedExecutionId(undefined);
 		}
 
 		function filterCurrentWorkflowExecutions(executions: ExecutionSummary[]) {
@@ -354,9 +365,11 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 			getAllLoadedFinishedExecutions,
 			getPastChatMessages,
 			setActiveExecutionId,
+			setDisplayedExecutionId,
 			setPendingExecution,
 			setPendingExecutionRunData,
 			getActiveExecutionDataStore,
+			getVisibleExecutionDataStore,
 			getActiveExecutionRunDataByNodeName,
 			clearActiveNodeExecutionData,
 			promotePendingExecution,

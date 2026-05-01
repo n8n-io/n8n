@@ -4,6 +4,10 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { createRunExecutionData } from 'n8n-workflow';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
@@ -16,14 +20,25 @@ describe('useWorkflowState', () => {
 	});
 
 	describe('setWorkflowExecutionData', () => {
-		it('writes execution data to the execution data store and mirrors legacy fields', () => {
-			const execution = createTestWorkflowExecutionResponse({ id: 'exec-1' });
+		it('loads execution data as displayed data without marking it active', () => {
+			const execution = createTestWorkflowExecutionResponse({
+				id: 'exec-1',
+				finished: true,
+				status: 'success',
+			});
 
 			workflowState.setWorkflowExecutionData(execution);
 
+			const workflowExecutionSession = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			);
 			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+
 			expect(executionDataStore.execution).toEqual(execution);
+			expect(workflowExecutionSession.displayedExecutionId).toBe('exec-1');
+			expect(workflowExecutionSession.activeExecutionId).toBeUndefined();
 			expect(workflowsStore.workflowExecutionData).toEqual(execution);
+			expect(workflowsStore.isWorkflowRunning).toBe(false);
 			expect(workflowsStore.workflowExecutionPairedItemMappings).toEqual(
 				executionDataStore.executionPairedItemMappings,
 			);
@@ -32,12 +47,31 @@ describe('useWorkflowState', () => {
 		it('clears the active execution data store when setting execution data to null', () => {
 			const execution = createTestWorkflowExecutionResponse({ id: 'exec-1' });
 			workflowState.setWorkflowExecutionData(execution);
+			workflowState.setActiveExecutionId('exec-1');
 
 			workflowState.setWorkflowExecutionData(null);
 
 			expect(useExecutionDataStore(createExecutionDataId('exec-1')).execution).toBeNull();
 			expect(workflowsStore.workflowExecutionData).toBeNull();
 			expect(workflowsStore.workflowExecutionPairedItemMappings).toEqual({});
+		});
+
+		it('keeps an existing active execution id when refreshing visible running data', () => {
+			const execution = createTestWorkflowExecutionResponse({
+				id: 'exec-1',
+				status: 'running',
+				finished: false,
+			});
+			workflowState.setActiveExecutionId('exec-1');
+
+			workflowState.setWorkflowExecutionData(execution);
+
+			const workflowExecutionSession = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			);
+			expect(workflowExecutionSession.activeExecutionId).toBe('exec-1');
+			expect(workflowExecutionSession.displayedExecutionId).toBe('exec-1');
+			expect(workflowsStore.workflowExecutionData).toEqual(execution);
 		});
 
 		it('clears displayed execution data when setting execution data to null', () => {

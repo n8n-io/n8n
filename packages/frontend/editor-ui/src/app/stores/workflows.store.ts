@@ -66,7 +66,11 @@ import {
 	createWorkflowExecutionSessionId,
 	useWorkflowExecutionSessionStore,
 } from '@/app/stores/workflowExecutionSession.store';
-import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createDisplayedExecutionDataId,
+	createExecutionDataId,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
@@ -114,6 +118,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 					useExecutionDataStore(createExecutionDataId(activeExecutionId)).resetExecutionData();
 				}
 				workflowExecutionSession.value.setPendingExecution(null);
+				workflowExecutionSession.value.clearDisplayedExecution();
 				return;
 			}
 
@@ -122,7 +127,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 
-			useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+			const executionDataId = createDisplayedExecutionDataId(execution.id);
+			useExecutionDataStore(executionDataId).setExecution(execution);
+			workflowExecutionSession.value.setDisplayedExecutionId(executionDataId);
 		},
 	});
 	const workflowExecutionStartedData = computed(
@@ -360,7 +367,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowId(id?: string) {
+		const previousWorkflowId = workflow.value.id;
+		const previousWorkflowExecutionSession = workflowExecutionSession.value;
 		workflow.value.id = id || '';
+
+		if (previousWorkflowId !== workflow.value.id) {
+			migrateDisplayedExecutionSession(previousWorkflowExecutionSession);
+		}
+	}
+
+	function migrateDisplayedExecutionSession(
+		previousWorkflowExecutionSession: ReturnType<typeof useWorkflowExecutionSessionStore>,
+	) {
+		const previousDisplayedExecutionId = previousWorkflowExecutionSession.displayedExecutionId;
+		if (previousDisplayedExecutionId && !workflowExecutionSession.value.displayedExecutionId) {
+			workflowExecutionSession.value.setDisplayedExecutionId(previousDisplayedExecutionId);
+		}
 	}
 
 	function resetWorkflow() {
@@ -555,13 +577,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			uiStore.lastSelectedNode = nameData.new;
 		}
 
-		const activeExecutionId = workflowExecutionSession.value.activeExecutionId;
-		if (activeExecutionId) {
-			useExecutionDataStore(createExecutionDataId(activeExecutionId)).renameExecutionDataNode(
-				nameData.old,
-				nameData.new,
-			);
-		}
+		workflowExecutionSession.value
+			.getVisibleExecutionDataStore()
+			?.renameExecutionDataNode(nameData.old, nameData.new);
 		workflowExecutionSession.value.renameExecutionSessionNode(nameData.old, nameData.new);
 
 		if (workflowId.value) {
@@ -605,19 +623,22 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	function getExecutionDataStoreForPush(executionId: string) {
+		const executionDataStore = useExecutionDataStore(createExecutionDataId(executionId));
+		return executionDataStore.execution
+			? executionDataStore
+			: (workflowExecutionSession.value.getVisibleExecutionDataStore() ?? executionDataStore);
+	}
+
 	function updateNodeExecutionStatus(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		useExecutionDataStore(createExecutionDataId(pushData.executionId)).updateNodeExecutionStatus(
-			pushData,
-		);
+		getExecutionDataStoreForPush(pushData.executionId).updateNodeExecutionStatus(pushData);
 		if (pushData.data.executionStatus !== 'waiting') {
 			void trackNodeExecution(pushData);
 		}
 	}
 
 	function updateNodeExecutionRunData(pushData: PushPayload<'nodeExecuteAfterData'>): void {
-		useExecutionDataStore(createExecutionDataId(pushData.executionId)).updateNodeExecutionRunData(
-			pushData,
-		);
+		getExecutionDataStoreForPush(pushData.executionId).updateNodeExecutionRunData(pushData);
 	}
 
 	function clearNodeExecutionData(nodeName: string): void {
@@ -911,6 +932,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	function setSelectedTriggerNodeName(value: string | undefined) {
 		workflowExecutionSession.value.setSelectedTriggerNodeName(value);
 	}
+
+	watch(
+		workflowId,
+		(_newWorkflowId, previousWorkflowId) => {
+			migrateDisplayedExecutionSession(
+				useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(previousWorkflowId)),
+			);
+		},
+		{ flush: 'sync' },
+	);
 
 	watch(
 		[selectableTriggerNodes, workflowExecutionTriggerNodeName],

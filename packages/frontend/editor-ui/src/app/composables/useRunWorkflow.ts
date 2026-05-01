@@ -91,6 +91,17 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const workflowExecutionSession = computed(() =>
 		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
 	);
+	const getLegacyActiveExecutionId = () =>
+		(workflowsStore as { activeExecutionId?: string | null }).activeExecutionId;
+	const getActiveExecutionId = () => {
+		const activeExecutionId = workflowExecutionSession.value.activeExecutionId;
+		return typeof activeExecutionId === 'undefined'
+			? getLegacyActiveExecutionId()
+			: activeExecutionId;
+	};
+	const isExecutionIdPending = () =>
+		workflowExecutionSession.value.activeExecutionId === null ||
+		getLegacyActiveExecutionId() === null;
 
 	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({
@@ -135,7 +146,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		}
 
 		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
-		const workflowExecutionIdIsPending = workflowExecutionSession.value.activeExecutionId === null;
+		const workflowExecutionIdIsPending = isExecutionIdPending();
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowState.setActiveExecutionId(response.executionId);
 		}
@@ -155,7 +166,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		source?: string;
 		sessionId?: string;
 	}): Promise<IExecutionPushResponse | undefined> {
-		if (workflowExecutionSession.value.activeExecutionId) {
+		if (getActiveExecutionId()) {
 			return;
 		}
 
@@ -172,7 +183,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = workflowExecutionSession.value.activeExecutionRunData;
+			const runData =
+				workflowExecutionSession.value.activeExecutionRunData ?? workflowsStore.getWorkflowRunData;
 
 			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
 				await workflowSaving.saveCurrentWorkflow();
@@ -522,7 +534,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function stopCurrentExecution() {
-		const executionId = workflowExecutionSession.value.activeExecutionId;
+		const executionId = getActiveExecutionId();
 		let stopData: IExecutionsStopData | undefined;
 
 		if (!executionId) {

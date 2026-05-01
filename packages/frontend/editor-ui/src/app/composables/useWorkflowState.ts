@@ -4,7 +4,11 @@ import {
 	IN_PROGRESS_EXECUTION_ID,
 	WorkflowStateKey,
 } from '@/app/constants';
-import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createDisplayedExecutionDataId,
+	createExecutionDataId,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
@@ -59,10 +63,9 @@ export function useWorkflowState() {
 			return;
 		}
 
-		workflowExecutionSession.setActiveExecutionId(workflowResultData.id);
-		useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
-			workflowResultData,
-		);
+		const executionDataId = createDisplayedExecutionDataId(workflowResultData.id);
+		useExecutionDataStore(executionDataId).setExecution(workflowResultData);
+		workflowExecutionSession.setDisplayedExecutionId(executionDataId);
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {

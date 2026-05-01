@@ -22,6 +22,8 @@ import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
 export type ExecutionDataId = string;
 
+export const DISPLAYED_EXECUTION_DATA_ID: ExecutionDataId = '__displayed_execution__';
+
 export type ExecutionDataChangePayload = {
 	executionId: ExecutionDataId;
 	nodeName?: string;
@@ -36,6 +38,10 @@ type PiniaInternal = ReturnType<typeof getActivePinia> & {
 
 export function createExecutionDataId(executionId: string): ExecutionDataId {
 	return executionId;
+}
+
+export function createDisplayedExecutionDataId(executionId?: string): ExecutionDataId {
+	return executionId ?? DISPLAYED_EXECUTION_DATA_ID;
 }
 
 export function getExecutionDataStoreId(executionId: ExecutionDataId): string {
@@ -229,11 +235,6 @@ export function useExecutionDataStore(executionId: ExecutionDataId) {
 			}
 
 			const { nodeName, data } = pushData;
-			const node = execution.value.workflowData.nodes.find(
-				(workflowNode) => workflowNode.name === nodeName,
-			);
-			if (!node) return;
-
 			execution.value.data.resultData.lastNodeExecuted = nodeName;
 			execution.value.data.resultData.runData[nodeName] ??= [];
 
@@ -304,13 +305,15 @@ export function useExecutionDataStore(executionId: ExecutionDataId) {
 				}
 			});
 
-			execution.value.workflowData.nodes.forEach((node) => {
+			execution.value.workflowData?.nodes?.forEach((node) => {
 				if (node.name === oldName) {
 					node.name = newName;
 				}
 			});
-			renameWorkflowConnections(execution.value.workflowData.connections, oldName, newName);
-			renamePinDataReferences(execution.value.workflowData.pinData, oldName, newName);
+			if (execution.value.workflowData?.connections) {
+				renameWorkflowConnections(execution.value.workflowData.connections, oldName, newName);
+			}
+			renamePinDataReferences(execution.value.workflowData?.pinData, oldName, newName);
 
 			if (execution.value.executedNode === oldName) {
 				execution.value.executedNode = newName;
