@@ -10,8 +10,13 @@ import { useRouter } from 'vue-router';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nextTick } from 'vue';
-import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -41,6 +46,10 @@ const ModalStub = {
 };
 
 vi.mock('vue-router');
+
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => ({ value: 'test-workflow' }),
+}));
 
 vi.mocked(useRouter);
 
@@ -85,10 +94,6 @@ const mockRunData = {
 	},
 };
 
-const mockWorkflow = createTestWorkflow({
-	id: 'test-workflow',
-});
-
 const mockTools = [
 	{
 		name: 'Test Tool',
@@ -113,6 +118,7 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 describe('FromAiParametersModal', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({
+			stubActions: false,
 			initialState: {
 				[STORES.UI]: {
 					modalsById: {
@@ -124,10 +130,6 @@ describe('FromAiParametersModal', () => {
 						},
 					},
 					modalStack: [FROM_AI_PARAMETERS_MODAL_KEY],
-				},
-				[STORES.WORKFLOWS]: {
-					workflow: mockWorkflow,
-					workflowExecutionData: mockRunData,
 				},
 			},
 		});
@@ -149,6 +151,13 @@ describe('FromAiParametersModal', () => {
 		nodeTypesStore.getNodeParameterOptions = vi.fn().mockResolvedValue(mockTools);
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProjectId = 'test-project-id';
+		useExecutionDataStore(createExecutionDataId('execution-id')).setExecution({
+			id: 'execution-id',
+			...mockRunData,
+		} as IExecutionResponse);
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId('test-workflow'),
+		).setActiveExecutionId('execution-id');
 	});
 
 	it('renders correctly with node data', () => {

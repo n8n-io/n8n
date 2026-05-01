@@ -5,6 +5,12 @@ import { ref, nextTick } from 'vue';
 import { waitFor } from '@testing-library/vue';
 import { useToolParameters } from './useToolParameters';
 import { useWorkflowsStore } from '../stores/workflows.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '../stores/nodeTypes.store';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
@@ -22,6 +28,10 @@ const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 		settings: {},
 		getPinDataSnapshot: () => ({}),
 	},
+}));
+
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => ({ value: 'test-workflow' }),
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -46,7 +56,9 @@ describe('useToolParameters', () => {
 		mockWorkflowDocumentStore.getNodeByName.mockReset();
 		projectsStore.currentProjectId = 'test-project';
 		workflowsStore.workflowId = 'test-workflow';
-		workflowsStore.getWorkflowExecution = null;
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId('test-workflow'),
+		).setActiveExecutionId(undefined);
 		agentRequestStore.getQueryValue = vi.fn().mockReturnValue(null);
 	});
 
@@ -155,7 +167,8 @@ describe('useToolParameters', () => {
 				},
 			};
 
-			workflowsStore.getWorkflowExecution = {
+			useExecutionDataStore(createExecutionDataId('execution-id')).setExecution({
+				id: 'execution-id',
 				data: {
 					resultData: {
 						runData: {
@@ -171,7 +184,10 @@ describe('useToolParameters', () => {
 						},
 					},
 				},
-			} as never;
+			} as IExecutionResponse);
+			useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId('test-workflow'),
+			).setActiveExecutionId('execution-id');
 
 			const node = ref<INode>(testNode);
 

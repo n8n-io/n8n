@@ -37,6 +37,7 @@ import {
 
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -82,26 +83,18 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 	const rootStore = useRootStore();
 	const pushConnectionStore = usePushConnectionStore();
+	const workflowId = useWorkflowId();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowExecutionSession = computed(() =>
-		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
 	);
-	const getLegacyActiveExecutionId = () =>
-		(workflowsStore as { activeExecutionId?: string | null }).activeExecutionId;
-	const getActiveExecutionId = () => {
-		const activeExecutionId = workflowExecutionSession.value.activeExecutionId;
-		return typeof activeExecutionId === 'undefined'
-			? getLegacyActiveExecutionId()
-			: activeExecutionId;
-	};
-	const isExecutionIdPending = () =>
-		workflowExecutionSession.value.activeExecutionId === null ||
-		getLegacyActiveExecutionId() === null;
+	const getActiveExecutionId = () => workflowExecutionSession.value.activeExecutionId;
+	const isExecutionIdPending = () => workflowExecutionSession.value.activeExecutionId === null;
 
 	const nodeHelpers = useNodeHelpers();
 	const workflowSaving = useWorkflowSaving({
@@ -145,14 +138,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			throw error;
 		}
 
-		const workflowExecutionIdIsNew = workflowsStore.previousExecutionId !== response.executionId;
+		const workflowExecutionIdIsNew =
+			workflowExecutionSession.value.previousExecutionId !== response.executionId;
 		const workflowExecutionIdIsPending = isExecutionIdPending();
 		if (response.executionId && workflowExecutionIdIsNew && workflowExecutionIdIsPending) {
 			workflowState.setActiveExecutionId(response.executionId);
 		}
 
 		if (response.waitingForWebhook === true) {
-			workflowsStore.executionWaitingForWebhook = true;
+			workflowExecutionSession.value.setExecutionWaitingForWebhook(true);
 		}
 
 		return response;
@@ -183,10 +177,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData =
-				workflowExecutionSession.value.activeExecutionRunData ?? workflowsStore.getWorkflowRunData;
+			const runData = workflowExecutionSession.value.activeExecutionRunData;
 
-			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowsStore.workflowId]) {
+			if (uiStore.stateIsDirty || !workflowsStore.isWorkflowSaved[workflowId.value]) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
 
@@ -269,7 +262,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode.nodeName;
+						workflowExecutionSession.value.setChatPartialExecutionDestinationNode(
+							options.destinationNode.nodeName,
+						);
 						startChat();
 						return;
 					}
@@ -419,7 +414,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					},
 				}),
 				workflowData: {
-					id: workflowsStore.workflowId,
+					id: workflowId.value,
 					name: workflowData.name!,
 					active: workflowData.active!,
 					createdAt: 0,
@@ -558,7 +553,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				// execution finished before it could be stopped
 				const executedData = {
 					data: execution.data,
-					workflowData: workflowsStore.workflow,
+					workflowData: workflowDocumentStore.value.serialize() as IWorkflowDb,
 					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,
@@ -597,7 +592,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 	async function stopWaitingForWebhook() {
 		try {
-			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			await workflowsStore.removeTestWebhook(workflowId.value);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.stopWaitingForWebhook.title'));
 			return;
@@ -620,7 +615,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 		telemetry.track('User clicked execute workflow button', telemetryPayload);
 		void externalHooks.run('nodeView.onRunWorkflow', telemetryPayload);
 
-		let resolvedTriggerNode = triggerNode ?? workflowsStore.selectedTriggerNodeName;
+		let resolvedTriggerNode = triggerNode ?? workflowExecutionSession.value.selectedTriggerNodeName;
 
 		// When no trigger is explicitly selected (e.g. chat trigger is the only trigger
 		// and the Run button doesn't offer it for selection), resolve it from the workflow.

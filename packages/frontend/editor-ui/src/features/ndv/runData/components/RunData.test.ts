@@ -1,10 +1,10 @@
-import { reactive, computed } from 'vue';
+import { reactive, computed, shallowRef } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
@@ -25,6 +25,12 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
@@ -1363,36 +1369,6 @@ describe('RunData', () => {
 				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
 					activeNodeName: 'Test Node',
 				},
-				[STORES.WORKFLOWS]: {
-					workflow: {
-						workflowNodes,
-					},
-					workflowExecutionData: {
-						id: '1',
-						finished: true,
-						mode: 'trigger',
-						startedAt: new Date(),
-						workflowData: {
-							id: '1',
-							name: 'Test Workflow',
-							versionId: '1',
-							createdAt: new Date().toISOString(),
-							updatedAt: new Date().toISOString(),
-							active: false,
-							nodes: [],
-							connections: {},
-						},
-						data: {
-							resultData: {
-								runData: {
-									'Test Node': runs ?? [defaultRun],
-								},
-							},
-							...(redactionInfo ? { redactionInfo } : {}),
-						},
-					},
-					lastSuccessfulExecution: lastSuccessfulExecution ?? null,
-				},
 			},
 		});
 
@@ -1413,6 +1389,40 @@ describe('RunData', () => {
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
 		workflowsStore.workflow.id = testWorkflowId;
+		const execution = {
+			id: '1',
+			finished: true,
+			mode: 'trigger',
+			startedAt: new Date(),
+			workflowData: {
+				id: '1',
+				name: 'Test Workflow',
+				versionId: '1',
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				active: false,
+				nodes: [],
+				connections: {},
+			},
+			data: {
+				resultData: {
+					runData: {
+						'Test Node': runs ?? [defaultRun],
+					},
+				},
+				...(redactionInfo ? { redactionInfo } : {}),
+			},
+		} as IExecutionResponse;
+		useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+		const workflowExecutionSession = useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(testWorkflowId),
+		);
+		workflowExecutionSession.setDisplayedExecutionId(execution.id);
+		if (lastSuccessfulExecution) {
+			workflowExecutionSession.setLastSuccessfulExecution(
+				lastSuccessfulExecution as IExecutionResponse,
+			);
+		}
 
 		if (pinnedData) {
 			workflowDocumentStore.pinNodeData('Test Node', pinnedData);
@@ -1434,6 +1444,7 @@ describe('RunData', () => {
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => workflowId ?? 'test-workflow'),
+					[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
 				},
 				stubs: {
 					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },

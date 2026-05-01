@@ -32,6 +32,32 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+
+function setWorkflowRunData(runData: IRunData | null) {
+	const executionDataStore = useExecutionDataStore(createExecutionDataId('execution-id'));
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId('test-workflow'),
+	);
+	if (!runData) {
+		executionDataStore.execution = null;
+		workflowExecutionSession.setActiveExecutionId(undefined);
+		return;
+	}
+	executionDataStore.execution = {
+		id: 'execution-id',
+		data: { resultData: { runData } },
+	} as IExecutionResponse;
+	workflowExecutionSession.setActiveExecutionId('execution-id');
+}
+
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => ({ value: 'test-workflow' }),
+}));
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -40,7 +66,7 @@ describe('useWorkflowHelpers', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	beforeAll(() => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
 
@@ -51,6 +77,10 @@ describe('useWorkflowHelpers', () => {
 	afterEach(() => {
 		vi.clearAllMocks();
 		workflowsStore.workflowId = '';
+		useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).getPinDataSnapshot = vi
+			.fn()
+			.mockReturnValue({});
+		setWorkflowRunData(null);
 	});
 
 	describe('getNodeParametersWithResolvedExpressions', () => {
@@ -722,29 +752,23 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[0]]: [
+			setWorkflowRunData({
+				[parentNodes[0]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonData,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonData,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+			});
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -796,29 +820,23 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[1]]: [
+			setWorkflowRunData({
+				[parentNodes[1]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonData,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonData,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+			});
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -881,44 +899,38 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[0]]: [
+			setWorkflowRunData({
+				[parentNodes[0]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonDataA,
-												index: 0,
-											},
-										],
-									},
-									source: [],
-								},
-							],
-							[parentNodes[1]]: [
-								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonDataB,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonDataA,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+				[parentNodes[1]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
+								{
+									json: jsonDataB,
+									index: 0,
+								},
+							],
+						},
+						source: [],
+					},
+				],
+			});
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -980,13 +992,13 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = {
+			setWorkflowRunData({
 				ParentNode: [
 					{
 						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
 					} as never,
 				],
-			};
+			});
 
 			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
@@ -1019,14 +1031,14 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 			const parentRunIndex = 1;
 
-			workflowsStore.getWorkflowRunData = {
+			setWorkflowRunData({
 				ParentNode: [
 					{ data: {} } as never,
 					{
 						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
 					} as never,
 				],
-			};
+			});
 
 			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
@@ -1060,7 +1072,7 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = null;
+			setWorkflowRunData(null);
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 

@@ -56,6 +56,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	createWorkflowExecutionSessionId,
 	useWorkflowExecutionSessionStore,
@@ -177,6 +178,7 @@ type AddNodeOptions = AddNodesBaseOptions & {
 
 export function useCanvasOperations() {
 	const rootStore = useRootStore();
+	const workflowId = useWorkflowId();
 	const workflowsStore = useWorkflowsStore();
 	const workflowState = injectWorkflowState();
 	const credentialsStore = useCredentialsStore();
@@ -196,7 +198,7 @@ export function useCanvasOperations() {
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const i18n = useI18n();
@@ -494,7 +496,7 @@ export function useCanvasOperations() {
 		deleteConnectionsByNodeId(id, { trackHistory, trackBulk: false });
 
 		useWorkflowExecutionSessionStore(
-			createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			createWorkflowExecutionSessionId(workflowId.value),
 		).clearActiveNodeExecutionData(node.name);
 		workflowDocumentStore.value.removeNodeById(id);
 

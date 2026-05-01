@@ -74,7 +74,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 
 const mockRoute = reactive({
 	query: {},
-	params: {},
+	params: { workflowId: 'test' },
 });
 
 const mockRouterReplace = vi.fn();
@@ -205,6 +205,7 @@ describe('useCanvasOperations', () => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
 
+		mockRoute.params = { workflowId };
 		const pinia = createTestingPinia({ initialState: createInitialState() });
 		setActivePinia(pinia);
 

@@ -20,8 +20,35 @@ import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const mockDocumentStoreUsedCredentials: Record<string, IUsedCredential> = {};
+
+function setWorkflowRunData(runData: IRunData | null) {
+	const executionDataStore = useExecutionDataStore(createExecutionDataId('execution-id'));
+	const workflowExecutionSession = useWorkflowExecutionSessionStore(
+		createWorkflowExecutionSessionId('workflow-id'),
+	);
+	if (!runData) {
+		executionDataStore.execution = null;
+		workflowExecutionSession.setActiveExecutionId(undefined);
+		return;
+	}
+	executionDataStore.execution = {
+		id: 'execution-id',
+		data: { resultData: { runData } },
+	} as IExecutionResponse;
+	workflowExecutionSession.setActiveExecutionId('execution-id');
+}
+
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => ({ value: 'workflow-id' }),
+}));
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -44,7 +71,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 
 describe('useNodeHelpers()', () => {
 	beforeAll(() => {
-		setActivePinia(createTestingPinia());
+		setActivePinia(createTestingPinia({ stubActions: false }));
 		mockedStore(useWorkflowsStore).workflowId = 'workflow-id';
 	});
 
@@ -360,7 +387,7 @@ describe('useNodeHelpers()', () => {
 		});
 
 		it('should return an empty array when runData is not available', () => {
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			setWorkflowRunData(null);
 			const { getNodeInputData } = useNodeHelpers();
 			const node = createTestNode({
 				name: 'test',
@@ -373,9 +400,11 @@ describe('useNodeHelpers()', () => {
 
 		it('should return an empty array when taskData is unavailable', () => {
 			const nodeName = 'Code';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [],
-			});
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [],
+				}),
+			);
 			const { getNodeInputData } = useNodeHelpers();
 			const node = createTestNode({
 				name: nodeName,
@@ -388,9 +417,11 @@ describe('useNodeHelpers()', () => {
 
 		it('should return an empty array when taskData.data is unavailable', () => {
 			const nodeName = 'Code';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [{ data: undefined }],
-			});
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [{ data: undefined }],
+				}),
+			);
 			const { getNodeInputData } = useNodeHelpers();
 			const node = createTestNode({
 				name: nodeName,
@@ -404,15 +435,17 @@ describe('useNodeHelpers()', () => {
 		it('should return input data from inputOverride', () => {
 			const nodeName = 'Code';
 			const data = [{ json: { hello: 'world' } }];
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [
-					{
-						inputOverride: {
-							main: [data],
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [
+						{
+							inputOverride: {
+								main: [data],
+							},
 						},
-					},
-				],
-			});
+					],
+				}),
+			);
 			const { getNodeInputData } = useNodeHelpers();
 			const node = createTestNode({
 				name: nodeName,
@@ -427,9 +460,11 @@ describe('useNodeHelpers()', () => {
 			'should return input data for "%s" node name, with given connection type and output index',
 			(nodeName) => {
 				const data = [{ json: { hello: 'world' } }];
-				mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-					[nodeName]: [{ data: { main: [data] } }],
-				});
+				setWorkflowRunData(
+					mock<IRunData>({
+						[nodeName]: [{ data: { main: [data] } }],
+					}),
+				);
 				const { getNodeInputData } = useNodeHelpers();
 				const node = createTestNode({
 					name: nodeName,
@@ -448,9 +483,11 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [{ data: { main: [mockData] } }, { data: { main: [mockData] } }],
-			});
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [{ data: { main: [mockData] } }, { data: { main: [mockData] } }],
+				}),
+			);
 			expect(getLastRunIndexWithData(nodeName)).toEqual(1);
 		});
 
@@ -458,9 +495,11 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [],
-			});
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [],
+				}),
+			);
 			expect(getLastRunIndexWithData(nodeName)).toEqual(-1);
 		});
 
@@ -468,7 +507,7 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			setWorkflowRunData(null);
 			expect(getLastRunIndexWithData(nodeName)).toEqual(-1);
 		});
 
@@ -476,15 +515,17 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [
-					{ data: { main: [mockData, []] } },
-					{ data: { main: [mockData, []] } },
-					{ data: { main: [mockData, mockData] } },
-					{ data: { main: [[], mockData] } },
-					{ data: { main: [[], []] } },
-				],
-			});
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [
+						{ data: { main: [mockData, []] } },
+						{ data: { main: [mockData, []] } },
+						{ data: { main: [mockData, mockData] } },
+						{ data: { main: [[], mockData] } },
+						{ data: { main: [[], []] } },
+					],
+				}),
+			);
 			expect(getLastRunIndexWithData(nodeName, 1)).toEqual(3);
 		});
 
@@ -492,13 +533,15 @@ describe('useNodeHelpers()', () => {
 			const nodeName = 'Test Node';
 			const { getLastRunIndexWithData } = useNodeHelpers();
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [
-					{ data: { main: [mockData], ai_tool: [mockData] } },
-					{ data: { ai_tool: [mockData] } },
-					{ data: { main: [mockData] } },
-				],
-			});
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [
+						{ data: { main: [mockData], ai_tool: [mockData] } },
+						{ data: { ai_tool: [mockData] } },
+						{ data: { main: [mockData] } },
+					],
+				}),
+			);
 			expect(getLastRunIndexWithData(nodeName, 0, 'ai_tool')).toEqual(1);
 		});
 	});
@@ -506,7 +549,7 @@ describe('useNodeHelpers()', () => {
 	describe('hasNodeExecuted()', () => {
 		it('should return false when runData is not available', () => {
 			const nodeName = 'Test Node';
-			mockedStore(useWorkflowsStore).getWorkflowRunData = null;
+			setWorkflowRunData(null);
 			const { hasNodeExecuted } = useNodeHelpers();
 			expect(hasNodeExecuted(nodeName)).toBe(false);
 		});
@@ -520,9 +563,11 @@ describe('useNodeHelpers()', () => {
 		])('should return $expected when execution status is $status', ({ status, expected }) => {
 			const nodeName = 'Test Node';
 
-			mockedStore(useWorkflowsStore).getWorkflowRunData = mock<IRunData>({
-				[nodeName]: [{ executionStatus: status }],
-			});
+			setWorkflowRunData(
+				mock<IRunData>({
+					[nodeName]: [{ executionStatus: status }],
+				}),
+			);
 			const { hasNodeExecuted } = useNodeHelpers();
 			expect(hasNodeExecuted(nodeName)).toBe(expected);
 		});

@@ -42,6 +42,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getSourceItems } from '@/app/utils/pairedItemUtils';
 import * as workflowHistoryApi from '@n8n/rest-api-client/api/workflowHistory';
@@ -95,12 +96,12 @@ export async function resolveParameter<T = IDataObject>(
 		);
 	}
 
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowId.value),
 	);
 	const workflowExecutionSession = useWorkflowExecutionSessionStore(
-		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+		createWorkflowExecutionSessionId(workflowId.value),
 	);
 
 	return await resolveParameterImpl(
@@ -392,12 +393,12 @@ export function executeData(
 	runIndex: number,
 	parentRunIndex?: number,
 ): IExecuteData {
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 	const workflowDocumentStore = useWorkflowDocumentStore(
-		createWorkflowDocumentId(workflowsStore.workflowId),
+		createWorkflowDocumentId(workflowId.value),
 	);
 	const workflowExecutionSession = useWorkflowExecutionSessionStore(
-		createWorkflowExecutionSessionId(workflowsStore.workflowId),
+		createWorkflowExecutionSessionId(workflowId.value),
 	);
 
 	return executeDataImpl(

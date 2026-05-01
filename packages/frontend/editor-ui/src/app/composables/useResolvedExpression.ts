@@ -1,5 +1,5 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	isExpression as isExpressionUtil,
 	stringifyExpressionResult,
@@ -43,12 +43,12 @@ export function useResolvedExpression({
 	contextNodeName?: MaybeRefOrGetter<string>;
 }) {
 	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowExecutionSession = computed(() =>
-		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
 	);
 
 	const { resolveExpression } = useWorkflowHelpers();

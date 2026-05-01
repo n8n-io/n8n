@@ -136,7 +136,10 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 			<NDVEmptyState :title="locale.baseText('ndv.output.waitNodeWaiting.title')" wide>
 				<span
 					v-n8n-html="
-						waitingNodeTooltip(logEntry.node, logEntry.workflow, logEntry.runData?.metadata)
+						waitingNodeTooltip(logEntry.node, logEntry.workflow, {
+							...logEntry.runData?.metadata,
+							executionId: logEntry.executionId,
+						})
 					"
 				/>
 			</NDVEmptyState>

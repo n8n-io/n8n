@@ -179,11 +179,13 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 		}
 
 		function clearActiveNodeExecutionData(nodeName: string) {
-			const executionDataStore = getVisibleExecutionDataStore();
+			const executionDataStore = getActiveExecutionDataStore();
 			if (executionDataStore) {
 				executionDataStore.clearNodeExecutionData(nodeName);
 				return;
 			}
+
+			if (activeExecutionId.value !== null) return;
 
 			if (!pendingExecution.value?.data?.resultData) return;
 

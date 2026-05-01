@@ -15,9 +15,10 @@ import {
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { assert } from '@n8n/utils/assert';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	createWorkflowExecutionSessionId,
 	useWorkflowExecutionSessionStore,
@@ -43,12 +44,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	const chatMessages = ref<ChatUI.AssistantMessage[]>([]);
 	const usersStore = useUsersStore();
 	const uiStore = useUIStore();
+	const workflowId = useWorkflowId();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowExecutionSession = computed(() =>
-		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
 	);
 	const route = useRoute();
 	const streaming = ref<boolean>();
@@ -356,7 +358,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const activeCredential = isCredentialModalActive
 			? useCredentialsStore().getCredentialTypeByName(uiStore.activeCredentialType ?? '')
 			: undefined;
-		const executionResult = workflowsStore.workflowExecutionData?.data?.resultData;
+		const executionResult = workflowExecutionSession.value.activeExecution?.data?.resultData;
 		const isCurrentNodeExecuted = Boolean(
 			executionResult?.runData?.hasOwnProperty(activeNode?.name ?? ''),
 		);
@@ -721,7 +723,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			task,
 			has_existing_session,
 			instance_id: rootStore.instanceId,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			canvas_status: canvasStatus,
 			node_type: chatSessionError.value?.node?.type,
 			error: chatSessionError.value?.error,
@@ -730,7 +732,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	}
 
 	watch(route, () => {
-		const activeWorkflowId = workflowsStore.workflowId;
+		const activeWorkflowId = workflowId.value;
 		if (
 			!currentSessionId.value ||
 			!currentSessionWorkflowId.value ||
@@ -749,7 +751,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 	);
 
 	watch(
-		() => workflowsStore.workflowExecutionResultDataLastUpdate,
+		() => workflowExecutionSession.value.activeExecutionResultDataLastUpdate,
 		() => {
 			workflowExecutionDataStale.value = true;
 		},

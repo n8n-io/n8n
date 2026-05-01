@@ -3,7 +3,7 @@ import Modal from '@/app/components/Modal.vue';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { FROM_AI_PARAMETERS_MODAL_KEY } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -40,9 +40,9 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const ndvStore = useNDVStore();
 const modalBus = createEventBus();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useWorkflowId();
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 );
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
@@ -70,7 +70,7 @@ const onExecute = async () => {
 	const nodeName = node.value.name;
 	const inputValues = Object.values(inputs.value?.getValuesWithMetadata() ?? {});
 
-	agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.value.id);
+	agentRequestStore.clearAgentRequests(workflowId.value, node.value.id);
 	// check if there's a selected tool, e.g. HITL/MCP client tool selector
 	// findLast is used to get the last selected tool from the tool chain
 	const selectedToolName = inputValues.findLast((value) => value.metadata?.type === 'selector')
@@ -96,11 +96,11 @@ const onExecute = async () => {
 		}
 	}
 
-	agentRequestStore.setAgentRequestForNode(workflowsStore.workflowId, node.value.id, agentRequest);
+	agentRequestStore.setAgentRequestForNode(workflowId.value, node.value.id, agentRequest);
 
 	const telemetryPayload = {
 		node_type: node.value.type,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		source: 'from-ai-parameters-modal',
 		push_ref: ndvStore.pushRef,
 	};

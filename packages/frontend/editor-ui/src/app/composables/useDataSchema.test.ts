@@ -1,6 +1,6 @@
 import { JSONPath } from 'jsonpath-plus';
 import { useDataSchema, useFlattenSchema, type SchemaNode } from './useDataSchema';
-import type { INodeUi, Schema, IWorkflowDb } from '@/Interface';
+import type { INodeUi, Schema } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
@@ -10,11 +10,21 @@ import {
 	type INodeExecutionData,
 	type ITaskDataConnections,
 } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 
-vi.mock('@/app/stores/workflows.store');
+vi.mock('@/app/composables/useWorkflowId', () => ({
+	useWorkflowId: () => ({ value: 'test-workflow' }),
+}));
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;
@@ -723,11 +733,7 @@ describe('useDataSchema', () => {
 		const getNodeInputData = useDataSchema().getNodeInputData;
 
 		beforeEach(() => {
-			setActivePinia(createTestingPinia());
-		});
-
-		afterEach(() => {
-			vi.clearAllMocks();
+			setActivePinia(createTestingPinia({ stubActions: false }));
 		});
 
 		const name = 'a';
@@ -835,16 +841,19 @@ describe('useDataSchema', () => {
 				],
 				mockExecutionDataMarker,
 			],
-		])(
-			'should return correct output %s',
-			([node, runIndex, outputIndex, getWorkflowExecution], output) => {
-				vi.mocked(useWorkflowsStore).mockReturnValue({
-					...useWorkflowsStore(),
-					getWorkflowExecution: getWorkflowExecution as IExecutionResponse,
-				});
-				expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
-			},
-		);
+		])('should return correct output %s', ([node, runIndex, outputIndex, execution], output) => {
+			if (execution) {
+				useExecutionDataStore(createExecutionDataId('execution-id')).setExecution({
+					id: 'execution-id',
+					...execution,
+				} as IExecutionResponse);
+				useWorkflowExecutionSessionStore(
+					createWorkflowExecutionSessionId('test-workflow'),
+				).setActiveExecutionId('execution-id');
+			}
+
+			expect(getNodeInputData(node as INodeUi, runIndex, outputIndex)).toEqual(output);
+		});
 	});
 
 	describe('getSchemaForJsonSchema', () => {
@@ -1165,26 +1174,8 @@ describe('useFlattenSchema', () => {
 		});
 
 		it('should flatten node schemas', () => {
-			vi.mocked(useWorkflowsStore).mockReturnValue({
-				...useWorkflowsStore(),
-				workflow: {
-					id: '1',
-					name: 'Test Workflow',
-					active: false,
-					activeVersionId: null,
-					isArchived: false,
-					createdAt: '2024-01-01',
-					updatedAt: '2024-01-01',
-					nodes: [],
-					connections: {},
-					settings: {
-						executionOrder: 'v1',
-						binaryMode: undefined,
-					},
-					tags: [],
-					pinData: {},
-					versionId: '',
-				} as IWorkflowDb,
+			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).mergeSettings({
+				binaryMode: undefined,
 			});
 
 			const { flattenMultipleSchemas } = useFlattenSchema();

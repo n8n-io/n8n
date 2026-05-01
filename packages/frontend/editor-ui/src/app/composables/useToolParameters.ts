@@ -7,7 +7,7 @@ import {
 	traverseNodeParameters,
 } from 'n8n-workflow';
 import { computed, reactive, ref, watch, type Ref } from 'vue';
-import { useWorkflowsStore } from '../stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -34,20 +34,20 @@ interface GetToolParametersProps {
 
 export function useToolParameters({ node }: GetToolParametersProps) {
 	const parameters = ref<IFormInput[]>([]);
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 	const projectsStore = useProjectsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const agentRequestStore = useAgentRequestStore();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	const selectedToolMap = reactive<Record<string, string | undefined>>({});
 	const error = ref<Error | undefined>(undefined);
 
 	const workflowExecutionSession = computed(() =>
-		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
 	);
 
 	const nodeRunData = computed(() => {
@@ -121,7 +121,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			currentNodeParameters: newNode.parameters,
 			credentials: newNode.credentials,
 			projectId: projectsStore.currentProjectId,
-			workflowId: workflowsStore.workflowId,
+			workflowId: workflowId.value,
 		});
 
 		// Load available tools
@@ -278,7 +278,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const initialValue = inputQuery?.[value.key]
 				? inputQuery[value.key]
 				: (agentRequestStore.getQueryValue(
-						workflowsStore.workflowId,
+						workflowId.value,
 						toolNode.id,
 						toolNode.name,
 						value.key,
@@ -307,12 +307,7 @@ export function useToolParameters({ node }: GetToolParametersProps) {
 			const inputQuery = inputOverrides?.[key];
 			const queryValue =
 				inputQuery ??
-				agentRequestStore.getQueryValue(
-					workflowsStore.workflowId,
-					toolNode.id,
-					toolNode.name,
-					key,
-				) ??
+				agentRequestStore.getQueryValue(workflowId.value, toolNode.id, toolNode.name, key) ??
 				'';
 
 			result.unshift({

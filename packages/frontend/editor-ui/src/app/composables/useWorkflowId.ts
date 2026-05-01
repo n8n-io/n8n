@@ -10,6 +10,7 @@ export function useWorkflowId() {
 	const route = useRoute();
 
 	return computed(() => {
+		if (!route) return '';
 		if (route.name === VIEWS.DEMO || route.name === VIEWS.DEMO_DIFF) return 'demo';
 
 		const workflowId = route.params.workflowId;

@@ -35,11 +35,6 @@ import {
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	createWorkflowExecutionSessionId,
-	useWorkflowExecutionSessionStore,
-} from '@/app/stores/workflowExecutionSession.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
@@ -192,7 +187,7 @@ export async function displayForm({
 export const waitingNodeTooltip = (
 	node: INodeUi | null | undefined,
 	workflow?: WorkflowObjectAccessors,
-	metadata?: { resumeUrl?: string; resumeFormUrl?: string },
+	metadata?: { executionId?: string; resumeUrl?: string; resumeFormUrl?: string },
 ) => {
 	if (!node) return '';
 	try {
@@ -200,20 +195,16 @@ export const waitingNodeTooltip = (
 			node.type,
 		)?.waitingNodeTooltip;
 		if (waitingNodeTooltipFromNodeType) {
-			const workflowsStore = useWorkflowsStore();
-			const activeExecutionId = useWorkflowExecutionSessionStore(
-				createWorkflowExecutionSessionId(workflowsStore.workflowId),
-			).activeExecutionId as string;
+			const executionId = metadata?.executionId ?? '';
 			// Use signed URLs from metadata if available
 			// otherwise fall back to constructing URLs without token
 			const additionalData: IWorkflowDataProxyAdditionalKeys = {
 				$execution: {
-					id: activeExecutionId,
+					id: executionId,
 					mode: 'test',
-					resumeUrl:
-						metadata?.resumeUrl ?? `${useRootStore().webhookWaitingUrl}/${activeExecutionId}`,
+					resumeUrl: metadata?.resumeUrl ?? `${useRootStore().webhookWaitingUrl}/${executionId}`,
 					resumeFormUrl:
-						metadata?.resumeFormUrl ?? `${useRootStore().formWaitingUrl}/${activeExecutionId}`,
+						metadata?.resumeFormUrl ?? `${useRootStore().formWaitingUrl}/${executionId}`,
 				},
 			};
 			if (workflow) {

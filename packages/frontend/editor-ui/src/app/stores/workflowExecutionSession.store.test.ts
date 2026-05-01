@@ -5,6 +5,7 @@ import { createRunExecutionData, type ExecutionSummary } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
 import {
 	createTestNode,
+	createTestTaskData,
 	createTestWorkflow,
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
@@ -279,6 +280,77 @@ describe('workflowExecutionSession.store', () => {
 		expect(store.displayedExecutionId).toBe('manual-execution');
 		expect(store.activeExecution).toEqual(execution);
 		expect(store.activeExecutionRunData).toEqual({});
+	});
+
+	it('does not clear displayed execution data when there is no active execution', () => {
+		const store = useWorkflowExecutionSessionStore('workflow-1');
+		const execution = createExecution('manual-execution', {
+			status: 'success',
+			finished: true,
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						'Manual Trigger': [createTestTaskData()],
+						Set: [createTestTaskData()],
+					},
+				},
+			}),
+		});
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('manual-execution'));
+		executionDataStore.setExecution(execution);
+
+		store.setActiveExecutionId('manual-execution');
+		store.setActiveExecutionId(undefined);
+		store.clearActiveNodeExecutionData('Set');
+
+		expect(store.activeExecutionId).toBeUndefined();
+		expect(store.displayedExecutionId).toBe('manual-execution');
+		expect(executionDataStore.executionRunData?.Set).toHaveLength(1);
+		expect(store.activeExecutionRunData?.Set).toHaveLength(1);
+	});
+
+	it('clears node data for the active execution only', () => {
+		const store = useWorkflowExecutionSessionStore('workflow-1');
+		const execution = createExecution('active-execution', {
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						'Manual Trigger': [createTestTaskData()],
+						Set: [createTestTaskData()],
+					},
+				},
+			}),
+		});
+		const executionDataStore = useExecutionDataStore(createExecutionDataId('active-execution'));
+		executionDataStore.setExecution(execution);
+		store.setActiveExecutionId('active-execution');
+
+		store.clearActiveNodeExecutionData('Set');
+
+		expect(executionDataStore.executionRunData?.Set).toBeUndefined();
+		expect(executionDataStore.executionRunData?.['Manual Trigger']).toHaveLength(1);
+	});
+
+	it('clears node data for a pending execution', () => {
+		const store = useWorkflowExecutionSessionStore('workflow-1');
+		store.setPendingExecution(
+			createExecution('pending-execution', {
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							'Manual Trigger': [createTestTaskData()],
+							Set: [createTestTaskData()],
+						},
+					},
+				}),
+			}),
+		);
+		store.setActiveExecutionId(null);
+
+		store.clearActiveNodeExecutionData('Set');
+
+		expect(store.activeExecutionRunData?.Set).toBeUndefined();
+		expect(store.activeExecutionRunData?.['Manual Trigger']).toHaveLength(1);
 	});
 
 	it('clears displayed execution without clearing last successful execution', () => {

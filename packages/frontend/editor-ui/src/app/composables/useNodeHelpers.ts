@@ -39,7 +39,7 @@ import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { isString } from '@/app/utils/typeGuards';
 import { isObject } from '@/app/utils/objectUtils';
 import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
@@ -71,16 +71,16 @@ export function useNodeHelpers() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 	const settingsStore = useSettingsStore();
 	const i18n = useI18n();
 	const canvasStore = useCanvasStore();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 	const workflowExecutionSession = computed(() =>
-		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
 	);
 
 	const isInsertingNodes = ref(false);
@@ -162,7 +162,7 @@ export function useNodeHelpers() {
 		}
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		const usedCredentials = workflowDocumentStore.usedCredentials;
 
@@ -200,7 +200,7 @@ export function useNodeHelpers() {
 		ignoreIssues?: string[],
 	): INodeIssues | null {
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		const pinDataNodeNames = Object.keys(workflowDocumentStore.pinData);
 
@@ -437,7 +437,7 @@ export function useNodeHelpers() {
 	): INodeIssues | null {
 		const localNodeType = nodeType ?? nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		if (node.disabled) {
 			// Node is disabled
@@ -754,7 +754,7 @@ export function useNodeHelpers() {
 			telemetry.track('User set node enabled status', {
 				node_type: node.type,
 				is_enabled: node.disabled,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowId.value,
 			});
 
 			workflowDocumentStore.value.updateNodeProperties(updateInformation);

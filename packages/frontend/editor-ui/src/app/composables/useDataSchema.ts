@@ -7,7 +7,7 @@ import type {
 	Schema,
 	SchemaType,
 } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -184,9 +184,9 @@ export function useDataSchema() {
 		runIndex = 0,
 		outputIndex = 0,
 	): INodeExecutionData[] {
-		const workflowsStore = useWorkflowsStore();
+		const workflowId = useWorkflowId();
 		const workflowExecutionSession = useWorkflowExecutionSessionStore(
-			createWorkflowExecutionSessionId(workflowsStore.workflowId),
+			createWorkflowExecutionSessionId(workflowId.value),
 		);
 		const execution = workflowExecutionSession.activeExecution;
 		if (node === null) {
@@ -218,9 +218,9 @@ export function useDataSchema() {
 	): INodeExecutionData[] {
 		if (!node) return [];
 
-		const workflowsStore = useWorkflowsStore();
+		const workflowId = useWorkflowId();
 		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		const pinnedData = workflowDocumentStore.getNodePinData(node.name)?.map((item) => item.json);
 		let inputData = getNodeInputData(node, runIndex, outputIndex);
@@ -403,6 +403,10 @@ const isEmptySchema = (schema: Schema) => {
 const prefixTitle = (title: string, prefix?: string) => (prefix ? `${prefix}[${title}]` : title);
 
 export const useFlattenSchema = () => {
+	const workflowId = useWorkflowId();
+	const workflowDocumentStore = useWorkflowDocumentStore(
+		createWorkflowDocumentId(workflowId.value),
+	);
 	const closedNodes = ref<Set<string>>(new Set());
 	const toggleNode = (id: string) => {
 		if (closedNodes.value.has(id)) {
@@ -575,7 +579,7 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
-						binaryMode: useWorkflowsStore().workflow.settings?.binaryMode,
+						binaryMode: workflowDocumentStore.settings.binaryMode,
 					}),
 				}),
 			);

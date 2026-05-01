@@ -42,12 +42,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: () => ({
-		activeExecutionId: '123',
-	}),
-}));
-
 vi.mock('@n8n/i18n', () => ({
 	i18n: {
 		baseText: (key: string, options?: { interpolate?: { error?: string; details?: string } }) => {
@@ -361,6 +355,7 @@ describe('executionFilterToQueryFilter()', () => {
 });
 
 describe('waitingNodeTooltip', () => {
+	const executionMetadata = { executionId: '123' };
 	const mockWorkflow = {
 		expression: {
 			getSimpleParameterValue: (
@@ -411,7 +406,9 @@ describe('waitingNodeTooltip', () => {
 			},
 		};
 
-		expect(waitingNodeTooltip(node, mockWorkflow)).toBe('Waiting for execution to resume...');
+		expect(waitingNodeTooltip(node, mockWorkflow, executionMetadata)).toBe(
+			'Waiting for execution to resume...',
+		);
 	});
 
 	it('should return form submission message with URL for form resume type', () => {
@@ -427,7 +424,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/form-waiting/123';
-		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow, executionMetadata)).toBe(
 			`Waiting for form submission: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -448,7 +445,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/webhook-waiting/123';
-		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow, executionMetadata)).toBe(
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -464,7 +461,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/form-waiting/123';
-		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow, executionMetadata)).toBe(
 			`Waiting for form submission: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -481,7 +478,9 @@ describe('waitingNodeTooltip', () => {
 			},
 		};
 
-		expect(waitingNodeTooltip(node, mockWorkflow)).toBe('Waiting for approval...');
+		expect(waitingNodeTooltip(node, mockWorkflow, executionMetadata)).toBe(
+			'Waiting for approval...',
+		);
 	});
 
 	it('should handle GitHub dispatchAndWait operation', () => {
@@ -497,7 +496,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/webhook-waiting/123';
-		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow, executionMetadata)).toBe(
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -518,7 +517,7 @@ describe('waitingNodeTooltip', () => {
 		};
 
 		const expectedUrl = 'http://localhost:5678/webhook-waiting/123';
-		expect(waitingNodeTooltip(node, mockWorkflow)).toBe(
+		expect(waitingNodeTooltip(node, mockWorkflow, executionMetadata)).toBe(
 			`Waiting for webhook call: <a href="${expectedUrl}" target="_blank">${expectedUrl}</a>`,
 		);
 	});
@@ -550,7 +549,10 @@ describe('waitingNodeTooltip', () => {
 				resume: 'webhook',
 			},
 		};
-		const metadata = { resumeUrl: 'http://signed.com/wait/123?signature=abc123' };
+		const metadata = {
+			executionId: '123',
+			resumeUrl: 'http://signed.com/wait/123?signature=abc123',
+		};
 		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
 		expect(result).toContain('http://signed.com/wait/123?signature=abc123');
 	});
@@ -566,7 +568,10 @@ describe('waitingNodeTooltip', () => {
 				resume: 'form',
 			},
 		};
-		const metadata = { resumeFormUrl: 'http://signed.com/form/123?signature=xyz789' };
+		const metadata = {
+			executionId: '123',
+			resumeFormUrl: 'http://signed.com/form/123?signature=xyz789',
+		};
 		const result = waitingNodeTooltip(node, mockWorkflow, metadata);
 		expect(result).toContain('http://signed.com/form/123?signature=xyz789');
 	});
@@ -582,8 +587,8 @@ describe('waitingNodeTooltip', () => {
 				resume: 'webhook',
 			},
 		};
-		// No metadata passed - should use constructed URL from store
-		const result = waitingNodeTooltip(node, mockWorkflow);
+		// No signed URL metadata passed - should use constructed URL from execution ID
+		const result = waitingNodeTooltip(node, mockWorkflow, executionMetadata);
 		expect(result).toContain('http://localhost:5678/webhook-waiting/123');
 	});
 });

@@ -10,8 +10,11 @@ import {
 } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
@@ -108,8 +111,10 @@ const inputModes = [
 
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionSession = computed(() =>
+	useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
+);
 const workflowState = injectWorkflowState();
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
@@ -132,14 +137,13 @@ const rootNode = computed(() => {
 
 const hasRootNodeRun = computed(() => {
 	return !!(
-		rootNode.value && workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
+		rootNode.value && workflowExecutionSession.value.activeExecutionRunData?.[rootNode.value]
 	);
 });
 
 const inputMode = ref<MappingMode>(
 	// Show debugging mode by default only when the node has already run
-	activeNode.value &&
-		workflowsStore.getWorkflowExecution?.data?.resultData.runData[activeNode.value.name]
+	activeNode.value && workflowExecutionSession.value.activeExecutionRunData?.[activeNode.value.name]
 		? 'debugging'
 		: 'mapping',
 );
@@ -192,10 +196,10 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowsStore.isWorkflowRunning) {
+	if (!workflowExecutionSession.value.isWorkflowRunning) {
 		return false;
 	}
-	const triggeredNode = workflowsStore.executedNode;
+	const triggeredNode = workflowExecutionSession.value.activeExecution?.executedNode;
 	const executingNode = workflowState.executingNode.executingNode;
 
 	if (
@@ -266,13 +270,13 @@ const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
 	if (!parentNode) return '';
 
-	const runData = workflowsStore.getWorkflowExecution?.data?.resultData?.runData;
+	const runData = workflowExecutionSession.value.activeExecutionRunData;
 	const parentRunData = runData?.[parentNode.name]?.[0];
 
 	return waitingNodeTooltip(
 		workflowDocumentStore?.value?.getNodeByName(parentNode.name) ?? null,
 		props.workflowObject,
-		parentRunData?.metadata,
+		{ ...parentRunData?.metadata, executionId: workflowExecutionSession.value.activeExecution?.id },
 	);
 });
 

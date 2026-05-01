@@ -8,7 +8,7 @@ import {
 	type Undoable,
 } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -127,10 +127,10 @@ function findLoop(
  */
 export function useNodeDirtiness() {
 	const historyStore = useHistoryStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowId = useWorkflowId();
 
 	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	function getIncomingConnections(nodeName: string): INodeConnections {
@@ -244,15 +244,12 @@ export function useNodeDirtiness() {
 	});
 
 	const workflowExecutionSession = computed(() =>
-		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowsStore.workflowId)),
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
 	);
 
 	const dirtinessByName = computed(() => {
 		const dirtiness: Record<string, CanvasNodeDirtinessType | undefined> = {};
-		const runDataByNode =
-			workflowExecutionSession.value.activeExecutionRunData ??
-			workflowsStore.getWorkflowRunData ??
-			{};
+		const runDataByNode = workflowExecutionSession.value.activeExecutionRunData ?? {};
 
 		function setDirtiness(nodeName: string, value: CanvasNodeDirtinessType) {
 			dirtiness[nodeName] = dirtiness[nodeName] ?? value;
