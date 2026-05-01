@@ -54,10 +54,10 @@ export async function executionStarted(
 	// Initialize or reinitialize workflowExecutionData to clear previous execution's
 	// node status (e.g. DemoLayout iframe receiving push events for a new execution).
 	if (needsInit && !executionDataStore.execution?.data && !pendingExecution) {
-		const wf = workflowsStore.workflow;
-		const workflowDocumentStore = workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined;
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId || data.workflowId || ''),
+		);
+
 		options.workflowState.setWorkflowExecutionData({
 			id: data.executionId,
 			finished: false,
@@ -65,18 +65,7 @@ export async function executionStarted(
 			status: 'running',
 			createdAt: new Date(),
 			startedAt: new Date(),
-			workflowData: {
-				id: wf.id,
-				name: workflowDocumentStore?.name ?? '',
-				active: wf.active,
-				isArchived: wf.isArchived,
-				nodes: wf.nodes,
-				connections: wf.connections,
-				createdAt: wf.createdAt,
-				updatedAt: wf.updatedAt,
-				versionId: wf.versionId ?? '',
-				activeVersionId: wf.activeVersionId ?? null,
-			},
+			workflowData: workflowDocumentStore.getSnapshot(),
 			data: createRunExecutionData(),
 		});
 	}

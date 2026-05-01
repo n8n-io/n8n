@@ -975,6 +975,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	);
 
 	return {
+		/**
+		 * @deprecated use granular methods or getSnapshot() in workflow document store.
+		 */
 		workflow,
 		currentWorkflowExecutions,
 		workflowExecutionData,

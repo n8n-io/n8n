@@ -33,6 +33,7 @@ import {
 import { ref } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
+import { DEFAULT_SETTINGS } from '../stores/workflowDocument/useWorkflowDocumentSettings';
 
 export function useDataSchema() {
 	function getSchema(
@@ -566,6 +567,7 @@ export const useFlattenSchema = () => {
 				return acc;
 			}
 
+
 			acc = acc.concat(
 				flattenSchema({
 					isDataEmpty: item.isDataEmpty,
@@ -579,7 +581,8 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
-						binaryMode: workflowDocumentStore.settings.binaryMode,
+						binaryMode:
+							workflowDocumentStore.getSettingsSnapshot().binaryMode ?? DEFAULT_SETTINGS.binaryMode,
 					}),
 				}),
 			);

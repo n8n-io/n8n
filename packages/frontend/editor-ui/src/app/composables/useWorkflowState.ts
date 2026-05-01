@@ -116,9 +116,7 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		workflowExecutionSession.setExecutionWaitingForWebhook(false);
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(ws.workflow.id),
-		);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
 		if (activeExecutionId) {
