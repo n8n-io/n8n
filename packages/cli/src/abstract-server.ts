@@ -1,5 +1,5 @@
 import { inTest, inDevelopment, Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, validateEndpointPaths } from '@n8n/config';
 import { DbConnection } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
@@ -82,6 +82,7 @@ export abstract class AbstractServer {
 		this.sslCert = this.globalConfig.ssl_cert;
 
 		const { endpoints } = this.globalConfig;
+		validateEndpointPaths(endpoints);
 		this.restEndpoint = endpoints.rest;
 
 		this.endpointForm = endpoints.form;
