@@ -445,18 +445,6 @@ async function settleAutosave() {
 	await Promise.all([configAutosave.settleAutosave(), skillAutosave.settleAutosave()]);
 }
 
-function onSectionEditorUpdate(nextConfig: AgentJsonConfig) {
-	if (!localConfig.value) return;
-	builderTelemetry.recordConfigEdit(nextConfig);
-	localConfig.value = nextConfig;
-	configAutosave.scheduleAutosave({
-		projectId: projectId.value,
-		agentId: agentId.value,
-		type: 'config',
-		config: deepCopy(localConfig.value),
-	});
-}
-
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	// Record BEFORE assigning so the composable can diff against the pre-update state.
@@ -679,13 +667,14 @@ function onOpenAddTriggerModal() {
 }
 
 function onOpenToolFromList(index: number) {
-	const tool = localConfig.value?.tools[index];
+	const tools = localConfig.value?.tools ?? [];
+	const tool = tools[index];
 	if (!tool) return;
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
 			toolRef: tool,
-			existingToolNames: (localConfig.value?.tools ?? [])
+			existingToolNames: tools
 				.map((ref, i) => (i === index ? null : ref.name))
 				.filter((name): name is string => !!name),
 			onConfirm: (updatedTool: AgentJsonToolRef) => {

@@ -12,7 +12,6 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
-	N8nIcon,
 	N8nIconButton,
 	N8nInput,
 	N8nSelect,
@@ -43,7 +42,6 @@ const props = withDefaults(
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const isCollapsed = ref(props.collapsible);
-const sectionView = computed(() => (isCollapsed.value ? 'collapsed' : 'expanded'));
 
 function toggleCollapsed() {
 	if (!props.collapsible) return;
