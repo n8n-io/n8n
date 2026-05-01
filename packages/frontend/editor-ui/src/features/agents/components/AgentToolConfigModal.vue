@@ -156,8 +156,8 @@ function handleNodeNameUpdate(name: string) {
 					:class="$style.viewToggle"
 					@update:model-value="activeView = $event"
 				/>
-				<pre v-if="activeView === 'raw'" :class="$style.codePreview">{{ toolJson }}</pre>
-				<div v-else :class="$style.configureTab">
+				<pre v-show="activeView === 'raw'" :class="$style.codePreview">{{ toolJson }}</pre>
+				<div v-show="activeView === 'config'" :class="$style.configureTab">
 					<WorkflowToolConfigContent
 						v-if="isWorkflowTool"
 						ref="workflowContentRef"
@@ -181,7 +181,7 @@ function handleNodeNameUpdate(name: string) {
 				<N8nButton
 					v-if="data.onRemove"
 					variant="subtle"
-					data-testid="agent-tool-config-remove"
+					data-test-id="agent-tool-config-remove"
 					@click="handleRemove"
 				>
 					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>

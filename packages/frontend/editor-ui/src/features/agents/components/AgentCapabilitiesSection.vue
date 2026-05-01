@@ -341,7 +341,7 @@ function toolNodeType(tool: AgentJsonToolRef) {
 
 	.rowLabel {
 		flex-basis: auto;
-		line-height: var(--line-height-compact);
+		line-height: var(--line-height--sm);
 	}
 }
 </style>
