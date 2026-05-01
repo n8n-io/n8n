@@ -170,9 +170,9 @@ packages/frontend/editor-ui/src/features/project-roles/ @n8n-io/iam
 packages/frontend/editor-ui/src/features/integrations/  @n8n-io/nodes
 
 packages/frontend/@n8n/design-system/                   @n8n-io/design
-packages/frontend/@n8n/stores/                          @n8n-io/design
-packages/frontend/@n8n/composables/                     @n8n-io/design
-packages/frontend/@n8n/rest-api-client/                 @n8n-io/design
+packages/frontend/@n8n/stores/                          @n8n-io/frontend
+packages/frontend/@n8n/composables/                     @n8n-io/frontend
+packages/frontend/@n8n/rest-api-client/                 @n8n-io/frontend
 packages/frontend/@n8n/storybook/                       @n8n-io/design
 packages/frontend/@n8n/i18n/                            @n8n-io/adore
 packages/@n8n/stylelint-config/                         @n8n-io/adore
