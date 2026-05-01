@@ -7,7 +7,7 @@ import { isToolType, isTriggerNodeType } from 'n8n-workflow';
 import type { IDataObject, INodeParameters } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { EphemeralNodeExecutor } from '@/node-execution';
+import { EphemeralNodeExecutor, isAgentProviderNode } from '@/node-execution';
 import { NodeCatalogService } from '@/node-catalog';
 
 type NodeRequest =
@@ -31,13 +31,16 @@ export const isExecutableNodeType = (nodeId: string): boolean => !isTriggerNodeT
  * tools. For regular nodes marked `usableAsTool`, the loader creates a
  * mirrored `*Tool` node type; native tool nodes already follow this shape.
  * HITL tools are excluded because the builder wires regular executable tools,
- * not approval-gated workflow steps.
+ * not approval-gated workflow steps. Provider nodes (OpenAI etc.) are
+ * admitted via the explicit whitelist — they ship the full vendor API
+ * (image, audio, …) but lack the `usableAsTool` flag.
  *
  * Exported as a stable reference so the catalog service can cache its
  * filtered search tool per filter identity.
  */
 export const isAgentToolNodeType = (nodeId: string): boolean =>
-	isExecutableNodeType(nodeId) && isToolType(nodeId, { includeHitl: false });
+	isExecutableNodeType(nodeId) &&
+	(isToolType(nodeId, { includeHitl: false }) || isAgentProviderNode(nodeId));
 
 const searchNodesInputSchema = z.object({
 	queries: z.array(z.string()).min(1).describe('Search queries (e.g., ["gmail", "slack", "http"])'),

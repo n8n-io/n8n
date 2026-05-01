@@ -59,6 +59,32 @@ export interface NodeExecutionResult {
 const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
 
 /**
+ * Vendor-API nodes the agent runtime can execute even though they aren't
+ * marked `usableAsTool`. They expose the full provider API (image generation,
+ * audio, files, embeddings, etc.) — not just chat completion — and are
+ * designed to back LangChain agents rather than be called as agent tools, so
+ * they ship without the flag. Surfacing them here lets the agent builder use
+ * e.g. OpenAI image generation as a tool.
+ *
+ * Scope this list to *provider* nodes only. Don't add the agent node itself,
+ * the LM Chat sub-models (`lmChatOpenAi`, etc.), or generic LangChain helpers
+ * like summarization — those have different semantics.
+ */
+export const AGENT_PROVIDER_NODE_WHITELIST = new Set<string>([
+	'@n8n/n8n-nodes-langchain.openAi',
+	'@n8n/n8n-nodes-langchain.anthropic',
+	'@n8n/n8n-nodes-langchain.googleGemini',
+	'@n8n/n8n-nodes-langchain.alibabaCloud',
+	'@n8n/n8n-nodes-langchain.minimax',
+	'@n8n/n8n-nodes-langchain.ollama',
+	'@n8n/n8n-nodes-langchain.moonshot',
+]);
+
+export function isAgentProviderNode(nodeType: string): boolean {
+	return AGENT_PROVIDER_NODE_WHITELIST.has(nodeType);
+}
+
+/**
  * Two classes of node are legitimate agent tools:
  *
  *   1. Standard nodes whose description carries `usableAsTool: true`. The
@@ -70,6 +96,8 @@ const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
  *      *are* tools — so a plain `usableAsTool` check rejects them.
  *
  * Accept either signal so the agent runtime works for both families.
+ * Provider nodes (see {@link AGENT_PROVIDER_NODE_WHITELIST}) are admitted
+ * separately by id at the call site.
  */
 export function isUsableAsAgentTool(description: {
 	usableAsTool?: unknown;
@@ -192,7 +220,7 @@ export class EphemeralNodeExecutor {
 	): void {
 		const resolved = this.nodeTypes.getByNameAndVersion(nodeType, typeVersion);
 
-		if (!isUsableAsAgentTool(resolved.description)) {
+		if (!isUsableAsAgentTool(resolved.description) && !isAgentProviderNode(nodeType)) {
 			throw new UserError('Node is not usable as a tool', { extra: { nodeType } });
 		}
 

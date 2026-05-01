@@ -275,7 +275,8 @@ onBeforeUnmount(() => {
 .pane {
 	display: flex;
 	flex-direction: column;
-	min-height: 220px;
+	height: 320px;
+	flex-shrink: 0;
 	border: var(--border);
 	border-radius: var(--radius);
 	overflow: hidden;
@@ -289,8 +290,12 @@ onBeforeUnmount(() => {
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
+	flex-shrink: 0;
 }
 .pane > :not(.paneTitle) {
 	padding-top: var(--spacing--2xs);
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
 }
 </style>
