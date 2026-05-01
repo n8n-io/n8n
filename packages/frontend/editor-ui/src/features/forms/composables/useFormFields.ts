@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import type { INodeParameters } from 'n8n-workflow';
 import { FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
@@ -105,6 +106,7 @@ function fromNodeParam(param: INodeParameters): FormFieldDraft {
 
 export function useFormFields(nodeId: string) {
 	const workflowsStore = useWorkflowsStore();
+	const nodeHelpers = useNodeHelpers();
 
 	const node = computed<INodeUi | undefined>(() =>
 		workflowsStore.workflow.nodes.find((n) => n.id === nodeId),
@@ -122,6 +124,7 @@ export function useFormFields(nodeId: string) {
 	const formDescription = ref('');
 	const submitLabel = ref('');
 	const selectedFieldId = ref<string | null>(null);
+	const selectedFormElement = ref<'title' | 'description' | 'submit' | null>(null);
 
 	// -------------------------------------------------------------------------
 	// Init
@@ -179,9 +182,15 @@ export function useFormFields(nodeId: string) {
 		if (formTitle.value !== savedTitle()) return true;
 		if (formDescription.value !== savedDescription()) return true;
 		if (submitLabel.value !== savedSubmitLabel()) return true;
-		const current = JSON.stringify(fields.value.map(toNodeParam));
-		if (current !== JSON.stringify(savedFields())) return true;
-		return false;
+		const canonicalize = (p: Record<string, unknown>) =>
+			Object.fromEntries(
+				Object.entries(p)
+					.filter(([, v]) => v !== undefined && v !== '')
+					.sort(([a], [b]) => a.localeCompare(b)),
+			);
+		const current = JSON.stringify(fields.value.map(toNodeParam).map(canonicalize));
+		const saved = JSON.stringify(savedFields().map(canonicalize));
+		return current !== saved;
 	});
 
 	// -------------------------------------------------------------------------
@@ -190,6 +199,22 @@ export function useFormFields(nodeId: string) {
 
 	const selectedField = computed(
 		() => fields.value.find((f) => f._id === selectedFieldId.value) ?? null,
+	);
+
+	// -------------------------------------------------------------------------
+	// Validation
+	// -------------------------------------------------------------------------
+
+	function getFieldErrors(field: FormFieldDraft): string[] {
+		const errors: string[] = [];
+		if (field.fieldType !== 'html' && field.fieldType !== 'hiddenField' && !field.fieldLabel) {
+			errors.push('label');
+		}
+		return errors;
+	}
+
+	const fieldErrors = computed<Record<string, string[]>>(() =>
+		Object.fromEntries(fields.value.map((f) => [f._id, getFieldErrors(f)])),
 	);
 
 	function addField(type: FormFieldType, atIndex?: number): string {
@@ -205,7 +230,6 @@ export function useFormFields(nodeId: string) {
 		} else {
 			fields.value.push(draft);
 		}
-		selectedFieldId.value = draft._id;
 		return draft._id;
 	}
 
@@ -237,6 +261,12 @@ export function useFormFields(nodeId: string) {
 
 	function selectField(id: string | null) {
 		selectedFieldId.value = id;
+		selectedFormElement.value = null;
+	}
+
+	function selectFormElement(el: 'title' | 'description' | 'submit' | null) {
+		selectedFormElement.value = el;
+		selectedFieldId.value = null;
 	}
 
 	// -------------------------------------------------------------------------
@@ -277,6 +307,7 @@ export function useFormFields(nodeId: string) {
 		newParams.options = opts as INodeParameters;
 
 		workflowsStore.workflow.nodes[nodeIdx].parameters = newParams;
+		nodeHelpers.updateNodeParameterIssuesByName(target.name);
 
 		isSaving.value = true;
 		try {
@@ -296,14 +327,17 @@ export function useFormFields(nodeId: string) {
 		submitLabel,
 		selectedField,
 		selectedFieldId,
+		selectedFormElement,
 		isTrigger,
 		isCompletion,
 		hasUnsavedChanges,
 		isSaving,
+		fieldErrors,
 		addField,
 		removeField,
 		updateField,
 		selectField,
+		selectFormElement,
 		save,
 	};
 }

@@ -2,6 +2,7 @@
 import { useI18n } from '@n8n/i18n';
 import Draggable from 'vuedraggable';
 import { N8nIcon } from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system';
 import type { FormFieldType } from '../composables/useFormFields';
 import { FIELD_TYPES_WITH_OPTIONS } from '../composables/useFormFields';
 
@@ -11,21 +12,21 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-type FieldTypeDescriptor = { type: FormFieldType; icon: string; labelKey: string };
+type FieldTypeDescriptor = { type: FormFieldType; icon: IconName; labelKey: string };
 
 const FIELD_TYPES: FieldTypeDescriptor[] = [
-	{ type: 'text', icon: 'string', labelKey: 'formStep.fields.type.text' },
+	{ type: 'text', icon: 'case-upper', labelKey: 'formStep.fields.type.text' },
 	{ type: 'email', icon: 'at-sign', labelKey: 'formStep.fields.type.email' },
-	{ type: 'number', icon: 'sliders-h', labelKey: 'formStep.fields.type.number' },
+	{ type: 'number', icon: 'sliders-horizontal', labelKey: 'formStep.fields.type.number' },
 	{ type: 'password', icon: 'key-round', labelKey: 'formStep.fields.type.password' },
 	{ type: 'date', icon: 'circle-dot', labelKey: 'formStep.fields.type.date' },
 	{ type: 'textarea', icon: 'scroll-text', labelKey: 'formStep.fields.type.textarea' },
 	{ type: 'dropdown', icon: 'chevron-down', labelKey: 'formStep.fields.type.dropdown' },
-	{ type: 'checkbox', icon: 'check-square', labelKey: 'formStep.fields.type.checkbox' },
-	{ type: 'radio', icon: 'dot-circle', labelKey: 'formStep.fields.type.radio' },
-	{ type: 'file', icon: 'file-alt', labelKey: 'formStep.fields.type.file' },
+	{ type: 'checkbox', icon: 'square-check', labelKey: 'formStep.fields.type.checkbox' },
+	{ type: 'radio', icon: 'circle-dot', labelKey: 'formStep.fields.type.radio' },
+	{ type: 'file', icon: 'file-text', labelKey: 'formStep.fields.type.file' },
 	{ type: 'html', icon: 'file-code', labelKey: 'formStep.fields.type.html' },
-	{ type: 'hiddenField', icon: 'eye-slash', labelKey: 'formStep.fields.type.hiddenField' },
+	{ type: 'hiddenField', icon: 'eye-off', labelKey: 'formStep.fields.type.hiddenField' },
 ];
 
 function cloneType(descriptor: FieldTypeDescriptor) {
@@ -53,13 +54,12 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 			:class="$style.list"
 		>
 			<template #item="{ element }">
-				<div
-					:class="$style.card"
-					:data-testid="`field-type-${element.type}`"
-					@click="emit('add', element.type)"
-				>
-					<N8nIcon :icon="element.icon" size="small" :class="$style.cardIcon" />
+				<div :class="$style.card" :data-testid="`field-type-${element.type}`">
+					<N8nIcon :icon="element.icon" size="large" :class="$style.cardIcon" />
 					<span :class="$style.cardLabel">{{ i18n.baseText(element.labelKey) }}</span>
+					<button :class="$style.addBtn" @click.stop="emit('add', element.type)">
+						<N8nIcon icon="plus" size="small" />
+					</button>
 				</div>
 			</template>
 		</Draggable>
@@ -71,17 +71,19 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	min-width: 0;
 	overflow: hidden;
+	padding-right: var(--spacing--2xs);
 }
 
 .title {
 	flex-shrink: 0;
 	margin: 0 0 var(--spacing--xs);
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	letter-spacing: 0.06em;
 }
 
 .list {
@@ -96,7 +98,7 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+	padding: var(--spacing--5xs) var(--spacing--2xs);
 	border-radius: var(--radius);
 	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
 	background: var(--color--background);
@@ -109,6 +111,10 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 	&:hover {
 		border-color: var(--color--primary--tint-1);
 		background: var(--color--primary--tint-3);
+
+		.addBtn {
+			opacity: 1;
+		}
 	}
 
 	&:active {
@@ -122,7 +128,27 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 }
 
 .cardLabel {
+	flex: 1;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text);
+}
+
+.addBtn {
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	margin-left: auto;
+	padding: var(--spacing--3xs);
+	border: none;
+	background: none;
+	cursor: pointer;
+	color: var(--color--primary);
+	border-radius: var(--radius--sm);
+	opacity: 0;
+	transition: opacity 0.15s;
+
+	&:hover {
+		background: var(--color--primary--tint-2);
+	}
 }
 </style>

@@ -9,6 +9,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFormAppearance } from '../composables/useFormAppearance';
 import AppearanceTab from './AppearanceTab.vue';
 import FieldsTab from './FieldsTab.vue';
+import SaveButton from './SaveButton.vue';
 
 const props = defineProps<{
 	data: Record<string, unknown>;
@@ -36,8 +37,8 @@ const applyToAll = computed({
 type ModalTab = 'fields' | 'appearance';
 
 const tabs = computed(() => [
-	{ label: i18n.baseText('formStep.modal.tab.fields'), value: 'fields' as ModalTab },
 	{ label: i18n.baseText('formStep.modal.tab.appearance'), value: 'appearance' as ModalTab },
+	{ label: i18n.baseText('formStep.modal.tab.fields'), value: 'fields' as ModalTab },
 ]);
 const activeTab = ref<ModalTab>('appearance');
 
@@ -140,15 +141,12 @@ function onReset() {
 									:label="i18n.baseText('formStep.appearance.reset')"
 									@click="onReset"
 								/>
-								<N8nButton variant="solid" :class="$style.saveButton" @click="onSave">
-									<span :class="$style.saveContent">
-										<span :class="$style.saveSide">
-											<span v-if="appearance.hasUnsavedChanges.value" :class="$style.unsavedDot" />
-										</span>
-										<span>{{ i18n.baseText('formStep.appearance.save') }}</span>
-										<span :class="$style.saveSide" />
-									</span>
-								</N8nButton>
+								<SaveButton
+									:has-unsaved-changes="appearance.hasUnsavedChanges.value"
+									:is-saving="appearance.isSaving.value"
+									:class="$style.saveButton"
+									@save="onSave"
+								/>
 							</div>
 						</div>
 					</div>
@@ -274,26 +272,5 @@ function onReset() {
 
 .saveButton {
 	min-width: 96px;
-}
-
-.saveContent {
-	display: grid;
-	grid-template-columns: 16px 1fr 16px;
-	align-items: center;
-	width: 100%;
-}
-
-.saveSide {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.unsavedDot {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: currentColor;
-	opacity: 0.8;
 }
 </style>

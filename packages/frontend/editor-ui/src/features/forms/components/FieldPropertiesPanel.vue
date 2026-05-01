@@ -1,18 +1,28 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
+import type { BaseTextKey } from '@n8n/i18n';
+import { N8nIcon, N8nInput } from '@n8n/design-system';
 import { ElSwitch, ElSelect, ElOption } from 'element-plus';
 import type { FormFieldDraft, FormFieldType } from '../composables/useFormFields';
+import SaveButton from './SaveButton.vue';
 
 const props = defineProps<{
 	field: FormFieldDraft | null;
+	fieldErrors: string[];
+	selectedFormElement: 'title' | 'description' | 'submit' | null;
+	formTitle: string;
+	formDescription: string;
+	submitLabel: string;
 	hasUnsavedChanges: boolean;
 	isSaving: boolean;
 }>();
 
 const emit = defineEmits<{
 	'update:field': [patch: Partial<FormFieldDraft>];
+	'update:formTitle': [value: string];
+	'update:formDescription': [value: string];
+	'update:submitLabel': [value: string];
 	save: [];
 }>();
 
@@ -37,6 +47,7 @@ const group = computed(() => (props.field ? typeGroup(props.field.fieldType) : n
 const showLabel = computed(
 	() => props.field?.fieldType !== 'hiddenField' && props.field?.fieldType !== 'html',
 );
+const labelHasError = computed(() => props.fieldErrors.includes('label'));
 const showFieldName = computed(() => props.field !== null);
 const showRequired = computed(() => props.field?.fieldType !== 'html');
 const showPlaceholder = computed(
@@ -82,7 +93,7 @@ function updateOption(idx: number, value: string) {
 // Limit selection options
 // ---------------------------------------------------------------------------
 
-const limitSelectionOptions = [
+const limitSelectionOptions: Array<{ value: string; labelKey: BaseTextKey }> = [
 	{ value: 'unlimited', labelKey: 'formStep.fields.props.limitSelection.unlimited' },
 	{ value: 'exact', labelKey: 'formStep.fields.props.limitSelection.exact' },
 	{ value: 'range', labelKey: 'formStep.fields.props.limitSelection.range' },
@@ -92,22 +103,69 @@ const limitSelectionOptions = [
 <template>
 	<div :class="$style.panel">
 		<!-- Empty state -->
-		<div v-if="!field" :class="$style.emptyState">
-			<N8nIcon icon="mouse-pointer" size="xlarge" color="var(--color--text--tint-2)" />
+		<div v-if="!field && !selectedFormElement" :class="$style.emptyState">
+			<N8nIcon icon="mouse-pointer" size="xlarge" />
 			<span :class="$style.emptyStateText">{{
 				i18n.baseText('formStep.fields.props.emptyState')
 			}}</span>
 		</div>
 
-		<!-- Properties -->
-		<div v-else :class="$style.propsScroll">
+		<!-- Form-level properties (title / description / submit) -->
+		<div v-else-if="selectedFormElement" :class="$style.propsScroll">
+			<h4 :class="$style.sectionTitle">
+				{{ i18n.baseText('formStep.fields.props.formSettings') }}
+			</h4>
+
+			<div :class="$style.row">
+				<label :class="$style.label">{{ i18n.baseText('formStep.fields.props.formTitle') }}</label>
+				<N8nInput
+					:model-value="formTitle"
+					size="small"
+					:placeholder="i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
+					@update:model-value="(v) => emit('update:formTitle', v)"
+				/>
+			</div>
+
+			<div :class="$style.row">
+				<label :class="$style.label">{{
+					i18n.baseText('formStep.fields.props.formDescription')
+				}}</label>
+				<N8nInput
+					:model-value="formDescription"
+					type="textarea"
+					:rows="3"
+					:placeholder="i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')"
+					@update:model-value="(v) => emit('update:formDescription', v)"
+				/>
+			</div>
+
+			<div :class="$style.row">
+				<label :class="$style.label">{{
+					i18n.baseText('formStep.fields.props.submitLabel')
+				}}</label>
+				<N8nInput
+					:model-value="submitLabel"
+					size="small"
+					:placeholder="i18n.baseText('formStep.fields.canvas.submitPlaceholder')"
+					@update:model-value="(v) => emit('update:submitLabel', v)"
+				/>
+			</div>
+		</div>
+
+		<!-- Field properties -->
+		<div v-else-if="field" :class="$style.propsScroll">
 			<h4 :class="$style.sectionTitle">
 				{{ i18n.baseText('formStep.fields.props.title') }}
 			</h4>
 
 			<!-- Label -->
 			<div v-if="showLabel" :class="$style.row">
-				<label :class="$style.label">{{ i18n.baseText('formStep.fields.props.label') }}</label>
+				<label :class="[$style.label, { [$style.labelError]: labelHasError }]">
+					{{ i18n.baseText('formStep.fields.props.label') }}
+					<span v-if="labelHasError" :class="$style.errorHint">{{
+						i18n.baseText('formStep.fields.props.required')
+					}}</span>
+				</label>
 				<N8nInput
 					:model-value="field.fieldLabel"
 					size="small"
@@ -298,21 +356,12 @@ const limitSelectionOptions = [
 
 		<!-- Save button pinned at bottom -->
 		<div :class="$style.footer">
-			<N8nButton
-				variant="solid"
-				:disabled="!hasUnsavedChanges"
-				:loading="isSaving"
+			<SaveButton
+				:has-unsaved-changes="hasUnsavedChanges"
+				:is-saving="isSaving"
 				:class="$style.saveButton"
-				@click="emit('save')"
-			>
-				<span :class="$style.saveContent">
-					<span :class="$style.saveSide">
-						<span v-if="hasUnsavedChanges" :class="$style.unsavedDot" />
-					</span>
-					<span>{{ i18n.baseText('formStep.appearance.save') }}</span>
-					<span :class="$style.saveSide" />
-				</span>
-			</N8nButton>
+				@save="emit('save')"
+			/>
 		</div>
 	</div>
 </template>
@@ -322,6 +371,7 @@ const limitSelectionOptions = [
 	display: flex;
 	flex-direction: column;
 	height: 100%;
+	min-width: 0;
 	overflow: hidden;
 }
 
@@ -342,19 +392,20 @@ const limitSelectionOptions = [
 
 .propsScroll {
 	flex: 1;
+	min-width: 0;
+	overflow-x: hidden;
 	overflow-y: auto;
 	padding-right: var(--spacing--3xs);
+	padding-left: var(--spacing--2xs);
 }
 
 .sectionTitle {
 	margin: 0 0 var(--spacing--xs);
-	font-size: var(--font-size--3xs);
+	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text--tint-2);
+	color: var(--color--text--tint-1);
 	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	padding-bottom: var(--spacing--5xs);
-	border-bottom: 1px solid var(--color--foreground--tint-2);
+	letter-spacing: 0.06em;
 }
 
 .row {
@@ -371,8 +422,20 @@ const limitSelectionOptions = [
 }
 
 .label {
+	display: flex;
+	justify-content: space-between;
+	align-items: baseline;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-1);
+}
+
+.labelError {
+	color: var(--color--danger);
+}
+
+.errorHint {
+	font-size: var(--font-size--3xs);
+	color: var(--color--danger);
 }
 
 .optionsList {
@@ -427,6 +490,10 @@ const limitSelectionOptions = [
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+
+	> * {
+		min-width: 0;
+	}
 }
 
 .rangeSep {
@@ -437,33 +504,16 @@ const limitSelectionOptions = [
 
 .footer {
 	flex-shrink: 0;
+	display: flex;
+	justify-content: flex-end;
 	padding-top: var(--spacing--sm);
+	padding-left: var(--spacing--2xs);
+	padding-right: var(--spacing--3xs);
 	border-top: var(--border);
 	margin-top: auto;
 }
 
 .saveButton {
-	width: 100%;
-}
-
-.saveContent {
-	display: grid;
-	grid-template-columns: 16px 1fr 16px;
-	align-items: center;
-	width: 100%;
-}
-
-.saveSide {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
-
-.unsavedDot {
-	width: 6px;
-	height: 6px;
-	border-radius: 50%;
-	background: currentColor;
-	opacity: 0.8;
+	min-width: 96px;
 }
 </style>

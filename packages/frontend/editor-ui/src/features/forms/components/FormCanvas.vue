@@ -8,10 +8,10 @@ import type { FormFieldDraft } from '../composables/useFormFields';
 const props = defineProps<{
 	fields: FormFieldDraft[];
 	selectedFieldId: string | null;
+	fieldErrors: Record<string, string[]>;
 	formTitle: string;
 	formDescription: string;
 	submitLabel: string;
-	isTrigger: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -20,6 +20,7 @@ const emit = defineEmits<{
 	'update:formDescription': [value: string];
 	'update:submitLabel': [value: string];
 	selectField: [id: string | null];
+	selectFormElement: [el: 'title' | 'description' | 'submit'];
 	deleteField: [id: string];
 }>();
 
@@ -36,29 +37,25 @@ const isEmpty = computed(() => props.fields.length === 0);
 <template>
 	<div :class="$style.canvas" @click="emit('selectField', null)">
 		<div :class="$style.card">
-			<!-- Title (only editable on trigger; other nodes inherit from trigger) -->
 			<input
-				v-if="isTrigger"
 				:value="formTitle"
 				:placeholder="i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
 				:class="$style.titleInput"
+				autocomplete="off"
 				@input="emit('update:formTitle', ($event.target as HTMLInputElement).value)"
 				@click.stop
+				@focus="emit('selectFormElement', 'title')"
 			/>
-			<p v-else-if="formTitle" :class="$style.titleStatic">{{ formTitle }}</p>
 
 			<textarea
-				v-if="isTrigger"
 				:value="formDescription"
 				:placeholder="i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')"
 				:class="$style.descriptionInput"
 				rows="2"
 				@input="emit('update:formDescription', ($event.target as HTMLTextAreaElement).value)"
 				@click.stop
+				@focus="emit('selectFormElement', 'description')"
 			/>
-			<p v-else-if="formDescription" :class="$style.descriptionStatic">
-				{{ formDescription }}
-			</p>
 
 			<!-- Fields list -->
 			<Draggable
@@ -74,6 +71,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 					<FormFieldRow
 						:field="element"
 						:selected="selectedFieldId === element._id"
+						:has-error="(fieldErrors[element._id]?.length ?? 0) > 0"
 						@select="emit('selectField', element._id)"
 						@delete="emit('deleteField', element._id)"
 					/>
@@ -87,12 +85,16 @@ const isEmpty = computed(() => props.fields.length === 0);
 
 			<!-- Submit button -->
 			<div :class="$style.submitRow" @click.stop>
-				<input
-					:value="submitLabel"
-					:placeholder="i18n.baseText('formStep.fields.canvas.submitPlaceholder')"
+				<div
 					:class="$style.submitInput"
-					@input="emit('update:submitLabel', ($event.target as HTMLInputElement).value)"
-				/>
+					contenteditable="true"
+					:data-placeholder="i18n.baseText('formStep.fields.canvas.submitPlaceholder')"
+					@input="emit('update:submitLabel', ($event.target as HTMLElement).textContent ?? '')"
+					@focus="emit('selectFormElement', 'submit')"
+					@keydown.enter.prevent
+				>
+					{{ submitLabel }}
+				</div>
 			</div>
 		</div>
 	</div>
@@ -102,55 +104,46 @@ const isEmpty = computed(() => props.fields.length === 0);
 .canvas {
 	height: 100%;
 	overflow-y: auto;
-	padding: var(--spacing--sm);
-	background: var(--color--background--shade-1);
-	border-radius: var(--radius--lg);
-	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
+	padding: 0 var(--spacing--sm);
 }
 
 .card {
-	background: var(--color--background);
+	background: var(--color--secondary--tint-1);
 	border-radius: var(--radius--lg);
+	border: var(--border-width) var(--border-style) var(--color--secondary);
+	overflow: hidden;
 	padding: var(--spacing--lg);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	min-height: 100%;
-}
-
-.titleInput,
-.titleStatic {
-	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
-	line-height: var(--line-height--md);
+	max-width: 480px;
+	margin: 0 auto;
+	width: 100%;
 }
 
 .titleInput {
+	font-size: var(--font-size--xl);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--secondary);
+	line-height: var(--line-height--md);
 	border: none;
 	outline: none;
 	background: transparent;
 	width: 100%;
 	padding: 0;
 	font-family: var(--font-family);
-
-	&:focus {
-		outline: none;
-	}
+	text-align: center;
 
 	&::placeholder {
-		color: var(--color--text--tint-2);
+		color: var(--color--secondary);
 	}
-}
-
-.titleStatic {
-	margin: 0;
 }
 
 .descriptionInput {
 	font-size: var(--font-size--sm);
 	font-family: var(--font-family);
-	color: var(--color--text--tint-1);
+	color: var(--color--secondary);
 	border: none;
 	outline: none;
 	background: transparent;
@@ -158,16 +151,11 @@ const isEmpty = computed(() => props.fields.length === 0);
 	padding: 0;
 	resize: none;
 	line-height: var(--line-height--xl);
+	text-align: center;
 
 	&::placeholder {
-		color: var(--color--text--tint-2);
+		color: var(--color--secondary--tint-1);
 	}
-}
-
-.descriptionStatic {
-	font-size: var(--font-size--sm);
-	color: var(--color--text--tint-1);
-	margin: 0;
 }
 
 .fieldList {
@@ -179,7 +167,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 }
 
 .empty {
-	border: var(--border-width) dashed var(--color--foreground--tint-1);
+	border: var(--border-width) dashed var(--color--secondary);
 	border-radius: var(--radius);
 }
 
@@ -187,7 +175,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 	padding: var(--spacing--md);
 	text-align: center;
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-2);
+	color: var(--color--secondary);
 }
 
 .submitRow {
@@ -197,18 +185,20 @@ const isEmpty = computed(() => props.fields.length === 0);
 .submitInput {
 	width: 100%;
 	padding: var(--spacing--xs) var(--spacing--sm);
-	background: var(--color--primary);
+	background: var(--color--secondary);
 	color: white;
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	font-family: var(--font-family);
-	border: none;
 	border-radius: var(--radius);
 	text-align: center;
 	cursor: text;
+	outline: none;
+	min-height: 1em;
+	box-sizing: border-box;
 
-	&::placeholder {
-		color: white;
+	&:empty::before {
+		content: attr(data-placeholder);
 		opacity: 0.7;
 	}
 }
