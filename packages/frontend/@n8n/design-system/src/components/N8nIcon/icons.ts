@@ -519,8 +519,6 @@ export const updatedIconSet = {
 	resolver: Resolver,
 	form: Form,
 	webhook: Webhook,
-	linear: Linear,
-	telegram: Telegram,
 
 	// lucide
 	'align-right': IconLucideAlignRight,

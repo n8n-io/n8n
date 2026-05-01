@@ -9,6 +9,8 @@ import {
 	N8nResizeWrapper,
 	N8nTooltip,
 	N8nCard,
+	N8nHeading,
+	N8nText,
 } from '@n8n/design-system';
 import type { N8nDropdownOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
