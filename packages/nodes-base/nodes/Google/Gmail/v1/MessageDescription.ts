@@ -285,6 +285,10 @@ export const messageFields: INodeProperties[] = [
 				],
 				default: 'resolved',
 				description: 'The format to return the message in',
+				builderHint: {
+					message:
+						'Use "resolved" or "full" when downstream nodes need the email body or attachments. "metadata", "minimal", and "raw" do not return parsed body content; "raw" returns base64url that downstream nodes will not be able to read directly.',
+				},
 			},
 			{
 				displayName: 'Attachment Prefix',
@@ -404,6 +408,10 @@ export const messageFields: INodeProperties[] = [
 				],
 				default: 'resolved',
 				description: 'The format to return the message in',
+				builderHint: {
+					message:
+						'Use "resolved" or "full" when downstream nodes need the email body or attachments. "ids", "metadata", "minimal", and "raw" do not return parsed body content; downstream references to body fields will be empty.',
+				},
 			},
 			{
 				displayName: 'Include Spam and Trash',
@@ -430,6 +438,10 @@ export const messageFields: INodeProperties[] = [
 				default: '',
 				description:
 					'Only return messages matching the specified query. Supports the same query format as the Gmail search box. For example, "from:someuser@example.com rfc822msgid:&lt;somemsgid@example.com&gt; is:unread". Parameter cannot be used when accessing the api using the gmail.metadata scope.',
+				builderHint: {
+					message:
+						'Set a Gmail search query to scope results. Uses Gmail search syntax: from:, to:, subject:, has:attachment, label:, newer_than:, is:unread. Combine terms with spaces (AND) or OR for alternatives. Without a query, all messages are returned, which can be slow and noisy.',
+				},
 			},
 		],
 	},

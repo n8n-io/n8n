@@ -13,7 +13,7 @@ export class Gmail extends VersionedNodeType {
 			group: ['transform'],
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Consume the Gmail API',
-			defaultVersion: 2.2,
+			defaultVersion: 2.3,
 			builderHint: {
 				relatedNodes: [
 					{
@@ -31,6 +31,7 @@ export class Gmail extends VersionedNodeType {
 			2: new GmailV2(baseDescription),
 			2.1: new GmailV2(baseDescription),
 			2.2: new GmailV2(baseDescription),
+			2.3: new GmailV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

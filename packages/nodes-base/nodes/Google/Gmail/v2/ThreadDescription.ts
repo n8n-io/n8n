@@ -236,10 +236,33 @@ export const threadFields: INodeProperties[] = [
 			show: {
 				operation: ['get'],
 				resource: ['thread'],
+				'@version': [{ _cnd: { lt: 2.3 } }],
 			},
 		},
 		default: true,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			message:
+				'Set to false when downstream nodes need the full thread message bodies, attachments, or content fields (text, html, textAsHtml, payload). When true, only metadata-like fields are returned and references such as $json.text or $json.html will be empty.',
+		},
+	},
+	{
+		displayName: 'Simplify',
+		name: 'simple',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['thread'],
+				'@version': [{ _cnd: { gte: 2.3 } }],
+			},
+		},
+		default: false,
+		description: 'Whether to return a simplified version of the response instead of the raw data',
+		builderHint: {
+			message:
+				'Default is false so downstream nodes can read the full thread message bodies and attachments. Set to true only when the workflow needs the metadata-only shape — references such as $json.text or $json.html resolve to empty values when true.',
+		},
 	},
 	{
 		displayName: 'Options',
@@ -351,6 +374,10 @@ export const threadFields: INodeProperties[] = [
 				placeholder: 'has:attachment',
 				hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
 				description: 'Only return messages matching the specified query',
+				builderHint: {
+					message:
+						'Set a Gmail search query to scope results. Uses Gmail search syntax: from:, to:, subject:, has:attachment, label:, newer_than:, is:unread. Combine terms with spaces (AND) or OR for alternatives. Without a query, all threads are returned, which can be slow and noisy.',
+				},
 			},
 			{
 				displayName: 'Read Status',

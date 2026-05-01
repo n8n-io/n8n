@@ -42,7 +42,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'gmail',
 	icon: 'file:gmail.svg',
 	group: ['transform'],
-	version: [2, 2.1, 2.2],
+	version: [2, 2.1, 2.2, 2.3],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Gmail API',
 	defaults: {
