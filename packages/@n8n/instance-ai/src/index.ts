@@ -44,6 +44,7 @@ export {
 	MastraIterationLogStorage,
 	MastraTaskStorage,
 	PlannedTaskStorage,
+	TerminalOutcomeStorage,
 	patchThread,
 	WorkflowLoopStorage,
 } from './storage';
@@ -53,6 +54,7 @@ export type {
 	IterationLog,
 	PatchableThreadMemory,
 	ThreadPatch,
+	TerminalOutcome,
 	WorkflowLoopWorkItemRecord,
 } from './storage';
 export { truncateToTitle, generateTitleForRun } from './memory/title-utils';
@@ -88,6 +90,12 @@ export type {
 	StartedRunState,
 	SuspendedRunState,
 } from './runtime/run-state-registry';
+export { InstanceAiTerminalResponseGuard } from './runtime/terminal-response-guard';
+export type {
+	TerminalResponseDecision,
+	TerminalResponseStatus,
+	TerminalVisibilitySource,
+} from './runtime/terminal-response-guard';
 export { executeResumableStream } from './runtime/resumable-stream-executor';
 export type {
 	AutoResumeControl,
@@ -98,6 +106,7 @@ export type {
 	ResumableStreamControl,
 	ResumableStreamSource,
 } from './runtime/resumable-stream-executor';
+export type { WorkSummary } from './stream/work-summary-accumulator';
 export { resumeAgentRun, streamAgentRun } from './runtime/stream-runner';
 export type {
 	StreamableAgent,
