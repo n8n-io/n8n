@@ -89,12 +89,12 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 	it('tracks copied parameter payload with the current variant', () => {
 		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal);
 
-		store.trackCopiedParameter('empty-state', 'claude', 'url');
+		store.trackCopiedParameter('first_open_modal', 'codex', 'setup-config');
 
 		expect(mockTrack).toHaveBeenCalledWith('MCP onboarding copied parameter', {
-			surface: 'empty-state',
-			client: 'claude',
-			parameter: 'url',
+			surface: 'first_open_modal',
+			client: 'codex',
+			parameter: 'setup-config',
 			variant: SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal,
 		});
 	});

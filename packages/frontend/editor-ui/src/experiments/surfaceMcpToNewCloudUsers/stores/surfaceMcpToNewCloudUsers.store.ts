@@ -9,9 +9,9 @@ import { computed } from 'vue';
 const FIRST_OPEN_SEEN_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_SEEN';
 const FIRST_OPEN_DISMISSED_STORAGE_KEY = 'N8N_SURFACE_MCP_TO_NEW_CLOUD_USERS_FIRST_OPEN_DISMISSED';
 
-type SurfaceMcpOnboardingSurface = string;
-type SurfaceMcpOnboardingClient = string;
-type SurfaceMcpOnboardingParameter = string;
+type SurfaceMcpOnboardingSurface = 'tile' | 'first_open_modal';
+type SurfaceMcpOnboardingClient = 'claude_code' | 'codex';
+type SurfaceMcpOnboardingParameter = 'server-url' | 'access-token' | 'setup-config';
 
 export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 	STORES.EXPERIMENT_SURFACE_MCP_TO_NEW_CLOUD_USERS,
