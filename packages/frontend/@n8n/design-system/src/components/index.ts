@@ -32,7 +32,13 @@ export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
 export { default as N8nHeaderAction } from './N8nHeaderAction';
-export { default as N8nIcon, type IconName, updatedIconSet } from './N8nIcon';
+export {
+	default as N8nIcon,
+	type IconName,
+	type NodeIconName,
+	isNodeIcon,
+	updatedIconSet,
+} from './N8nIcon';
 export { default as N8nIconButton } from './N8nIconButton';
 export { default as N8nInlineAskAssistantButton } from './InlineAskAssistantButton';
 export { default as N8nInfoAccordion } from './N8nInfoAccordion';
@@ -54,6 +60,7 @@ export { default as N8nOption } from './N8nOption';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
+export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
 export { default as N8nPromptInput } from './N8nPromptInput';
@@ -68,6 +75,7 @@ export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
 export { default as N8nSuggestedActions } from './N8nSuggestedActions';
+export { default as N8nSwitch } from './N8nSwitch';
 export { default as N8nTabs } from './N8nTabs';
 export { default as N8nTag } from './N8nTag';
 export { default as N8nTags } from './N8nTags';

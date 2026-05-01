@@ -15,6 +15,12 @@ import type { JSONSchema7 } from 'json-schema';
 import { mock } from 'vitest-mock-extended';
 
 vi.mock('@/app/stores/workflows.store');
+vi.mock('@/app/stores/workflowDocument.store', () => ({
+	createWorkflowDocumentId: vi.fn(() => 'test'),
+	useWorkflowDocumentStore: vi.fn(() => ({
+		getSettingsSnapshot: () => ({ binaryMode: undefined }),
+	})),
+}));
 
 describe('useDataSchema', () => {
 	const getSchema = useDataSchema().getSchema;

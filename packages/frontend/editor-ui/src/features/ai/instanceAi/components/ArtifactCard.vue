@@ -1,6 +1,9 @@
 <script lang="ts" setup>
+import { N8nCard, N8nIcon, N8nText, type IconName } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
-import { N8nIcon, type IconName } from '@n8n/design-system';
+
+const i18n = useI18n();
 
 const props = defineProps<{
 	type: 'workflow' | 'data-table';
@@ -8,6 +11,7 @@ const props = defineProps<{
 	resourceId: string;
 	projectId?: string;
 	metadata?: string;
+	archived?: boolean;
 }>();
 
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
@@ -46,49 +50,52 @@ function handleClick(e: MouseEvent) {
 </script>
 
 <template>
-	<div :class="$style.card" @click="handleClick">
-		<N8nIcon :icon="icon" size="medium" :class="$style.icon" />
-		<div :class="$style.content">
-			<span :class="$style.name">{{ props.name }}</span>
-			<span v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</span>
-		</div>
-	</div>
+	<N8nCard :class="[$style.card, props.archived && $style.cardArchived]" @click="handleClick">
+		<template #prepend>
+			<N8nIcon :icon="icon" size="large" :class="$style.icon" />
+		</template>
+		<template #header>
+			<N8nText>{{ props.name }}</N8nText>
+			<span v-if="props.archived" :class="$style.archivedBadge">
+				{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
+			</span>
+		</template>
+		<N8nText v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</N8nText>
+	</N8nCard>
 </template>
 
 <style lang="scss" module>
 .card {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
-	border: var(--border);
-	border-radius: var(--radius--lg);
-	background: var(--color--background--light-2);
 	cursor: pointer;
-	margin: var(--spacing--xs) 0;
+	background-color: var(--color--background--light-3);
 	transition: box-shadow 0.3s ease;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(68, 28, 23, 0.1);
-		clip-path: inset(0 -8px -8px -8px);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 
-.icon {
+.cardArchived {
+	opacity: 0.55;
+}
+
+.archivedBadge {
+	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
+	background: var(--color--foreground--tint-1);
+	padding: var(--spacing--5xs) var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	margin-left: var(--spacing--2xs);
+}
+
+.icon {
+	color: var(--icon-color--strong);
 	flex-shrink: 0;
 }
 
-.content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	min-width: 0;
-}
-
 .name {
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-size: var(--font-size--md);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -96,8 +103,8 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	/* stylelint-disable-next-line @n8n/css-var-naming -- design-system token */
+	color: var(--text-color--subtler);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

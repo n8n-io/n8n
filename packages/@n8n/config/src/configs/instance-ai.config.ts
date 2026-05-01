@@ -90,10 +90,6 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
 
-	/** Base directory for server-side filesystem access. Empty = filesystem access disabled. */
-	@Env('N8N_INSTANCE_AI_FILESYSTEM_PATH')
-	filesystemPath: string = '';
-
 	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
 	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
 	gatewayApiKey: string = '';

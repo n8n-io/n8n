@@ -1,3 +1,4 @@
+import { AiBuilderTemporaryWorkflow } from './ai-builder-temporary-workflow';
 import { AnnotationTagEntity } from './annotation-tag-entity.ee';
 import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
@@ -9,6 +10,7 @@ import {
 	type CredentialDependencyType,
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
+import { DeploymentKey } from './deployment-key';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
 import { ExecutionEntity } from './execution-entity';
@@ -45,6 +47,7 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -58,6 +61,7 @@ export {
 	CredentialsEntity,
 	CredentialDependency,
 	type CredentialDependencyType,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,
@@ -92,6 +96,7 @@ export {
 
 export const entities = {
 	InvalidAuthToken,
+	AiBuilderTemporaryWorkflow,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -101,6 +106,7 @@ export const entities = {
 	AuthIdentity,
 	CredentialsEntity,
 	CredentialDependency,
+	DeploymentKey,
 	Folder,
 	Project,
 	ProjectRelation,

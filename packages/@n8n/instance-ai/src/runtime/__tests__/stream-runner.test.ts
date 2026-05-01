@@ -1,17 +1,13 @@
+import type { WorkSummary } from '../../stream/work-summary-accumulator';
 import { executeResumableStream } from '../resumable-stream-executor';
 import { streamAgentRun } from '../stream-runner';
-import { traceWorkingMemoryContext } from '../working-memory-tracing';
 
 jest.mock('../resumable-stream-executor', () => ({
 	executeResumableStream: jest.fn(),
 	createLlmStepTraceHooks: jest.fn(),
 }));
 
-jest.mock('../working-memory-tracing', () => ({
-	traceWorkingMemoryContext: jest.fn(
-		async (_options: unknown, fn: () => Promise<unknown>) => await fn(),
-	),
-}));
+const emptyWorkSummary: WorkSummary = { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 };
 
 function createLogger() {
 	return { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
@@ -45,6 +41,7 @@ describe('streamAgentRun', () => {
 		jest.mocked(executeResumableStream).mockResolvedValue({
 			status: 'errored',
 			mastraRunId: 'mastra-run-1',
+			workSummary: emptyWorkSummary,
 		});
 		const eventBus = createEventBus();
 		const agent = {
@@ -84,6 +81,7 @@ describe('streamAgentRun', () => {
 		jest.mocked(executeResumableStream).mockResolvedValue({
 			status: 'completed',
 			mastraRunId: 'mastra-run-1',
+			workSummary: emptyWorkSummary,
 		});
 		const eventBus = createEventBus();
 		const agent = {
@@ -123,6 +121,7 @@ describe('streamAgentRun', () => {
 		mockedExecuteResumableStream.mockResolvedValue({
 			status: 'suspended',
 			mastraRunId: 'mastra-run-1',
+			workSummary: emptyWorkSummary,
 			suspension: {
 				requestId: 'request-1',
 				toolCallId: 'tool-call-1',
@@ -188,6 +187,7 @@ describe('streamAgentRun', () => {
 			status: 'completed',
 			mastraRunId: 'mastra-run-2',
 			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary,
 		});
 
 		await streamAgentRun(
@@ -208,58 +208,6 @@ describe('streamAgentRun', () => {
 			expect.objectContaining({
 				stream: streamResult,
 			}),
-		);
-	});
-
-	it('wraps memory-enabled stream setup in a working memory context span', async () => {
-		const mockedTraceWorkingMemoryContext = jest.mocked(traceWorkingMemoryContext);
-		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
-		const streamResult = {
-			runId: 'mastra-run-3',
-			fullStream: emptyStream(),
-			text: Promise.resolve('done'),
-		};
-		const agent = {
-			stream: jest.fn().mockResolvedValue(streamResult),
-		};
-		const eventBus = createEventBus();
-
-		mockedExecuteResumableStream.mockResolvedValue({
-			status: 'completed',
-			mastraRunId: 'mastra-run-3',
-			text: Promise.resolve('done'),
-		});
-
-		await streamAgentRun(
-			agent,
-			'hello',
-			{
-				memory: {
-					resource: 'user-1',
-					thread: 'thread-1',
-				},
-			},
-			{
-				threadId: 'thread-1',
-				runId: 'run-1',
-				agentId: 'agent-1',
-				signal: new AbortController().signal,
-				eventBus,
-				logger: createLogger(),
-			},
-		);
-
-		expect(mockedTraceWorkingMemoryContext).toHaveBeenCalledWith(
-			expect.objectContaining({
-				phase: 'initial',
-				agentId: 'agent-1',
-				threadId: 'thread-1',
-				memory: {
-					resource: 'user-1',
-					thread: 'thread-1',
-				},
-			}),
-			expect.any(Function),
 		);
 	});
 });

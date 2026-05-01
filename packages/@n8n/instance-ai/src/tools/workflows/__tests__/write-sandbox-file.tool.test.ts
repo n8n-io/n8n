@@ -56,10 +56,10 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: 'src/workflow.ts', content: 'export default {}' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: true,
@@ -78,13 +78,13 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{
 					filePath: '/home/user/workspace/src/index.ts',
 					content: 'console.log("hello")',
 				},
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: true,
@@ -102,10 +102,10 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects paths that traverse outside the workspace root', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: '../../etc/passwd', content: 'malicious' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,
@@ -118,10 +118,10 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects absolute paths outside the workspace root', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: '/etc/passwd', content: 'malicious' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,
@@ -134,10 +134,10 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects prefix collision attacks (path that starts with root but is a sibling)', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: '/home/user/workspace-evil/file.ts', content: 'malicious' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,
@@ -150,13 +150,13 @@ describe('createWriteSandboxFileTool', () => {
 		it('rejects paths with embedded traversal in the middle', async () => {
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{
 					filePath: '/home/user/workspace/src/../../etc/passwd',
 					content: 'malicious',
 				},
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,
@@ -172,10 +172,10 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: 'chunks/helper.ts', content: 'export const x = 1;' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: true,
@@ -193,10 +193,10 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockResolvedValue(undefined);
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: '/home/user/workspace', content: '' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			// The path equals the root exactly — this is allowed by the check
 			expect(result).toEqual({
@@ -211,10 +211,10 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockRejectedValue(new Error('Disk full'));
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: 'src/workflow.ts', content: 'content' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,
@@ -227,10 +227,10 @@ describe('createWriteSandboxFileTool', () => {
 			mockWriteFile.mockRejectedValue('unexpected string error');
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: 'src/workflow.ts', content: 'content' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,
@@ -243,10 +243,10 @@ describe('createWriteSandboxFileTool', () => {
 			mockGetRoot.mockRejectedValue(new Error('Sandbox unavailable'));
 			const tool = createWriteSandboxFileTool(workspace);
 
-			const result = await tool.execute!(
+			const result = (await tool.execute!(
 				{ filePath: 'src/workflow.ts', content: 'content' },
 				{} as never,
-			);
+			)) as Record<string, unknown>;
 
 			expect(result).toEqual({
 				success: false,

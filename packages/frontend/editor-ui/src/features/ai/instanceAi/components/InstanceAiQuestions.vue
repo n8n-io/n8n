@@ -11,6 +11,7 @@
 import { ref, computed, watch, nextTick } from 'vue';
 import { N8nButton, N8nCheckbox, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const OTHER_SENTINEL = '__other__';
 
@@ -87,6 +88,7 @@ const showSkipButton = computed(() => {
 });
 
 const showNextButton = computed(() => {
+	if (isLastQuestion.value) return true;
 	if (currentQuestion.value?.type === 'single') return hasCustomText.value;
 	return true;
 });
@@ -94,6 +96,7 @@ const showNextButton = computed(() => {
 const isNextEnabled = computed(() => {
 	const q = currentQuestion.value;
 	if (!q) return false;
+	if (isLastQuestion.value) return true;
 	if (q.type === 'single') return hasCustomText.value;
 	if (q.type === 'multi') {
 		const answer = currentAnswer.value;
@@ -325,7 +328,7 @@ function handleEnterKey(event: KeyboardEvent, type: string, optionCount: number)
 		} else if (isNextEnabled.value) {
 			goToNextInternal();
 		}
-	} else if (type === 'text' && hasCustomText.value) {
+	} else if (type === 'text' && isNextEnabled.value) {
 		goToNextInternal();
 	}
 	return true;
@@ -387,10 +390,6 @@ function onOptionMouseEnter(idx: number) {
 			tabindex="0"
 			@keydown="onKeydown"
 		>
-			<p v-if="introMessage" :class="$style.intro">
-				{{ introMessage }}
-			</p>
-
 			<Transition :name="$style.questionFade" mode="out-in">
 				<div :key="currentQuestion.id" :class="$style.question">
 					<N8nText tag="p" :bold="true" :class="$style.questionText">
@@ -509,11 +508,11 @@ function onOptionMouseEnter(idx: number) {
 			</Transition>
 
 			<!-- Footer -->
-			<div :class="$style.footer">
+			<ConfirmationFooter layout="row-between" bordered>
 				<div :class="$style.pagination">
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isFirstQuestion"
 						data-test-id="instance-ai-questions-back"
@@ -529,7 +528,7 @@ function onOptionMouseEnter(idx: number) {
 					</N8nText>
 					<N8nButton
 						variant="ghost"
-						size="xsmall"
+						size="medium"
 						icon-only
 						:disabled="isLastQuestion"
 						data-test-id="instance-ai-questions-forward"
@@ -544,7 +543,7 @@ function onOptionMouseEnter(idx: number) {
 					<N8nButton
 						v-if="showSkipButton"
 						variant="outline"
-						size="small"
+						size="medium"
 						:disabled="disabled"
 						data-test-id="instance-ai-questions-skip"
 						@click="skipQuestion"
@@ -554,8 +553,8 @@ function onOptionMouseEnter(idx: number) {
 
 					<N8nButton
 						v-if="showNextButton"
-						:type="isNextEnabled ? 'primary' : 'secondary'"
-						size="small"
+						:variant="isNextEnabled ? 'solid' : 'outline'"
+						size="medium"
 						:disabled="disabled || isSubmitted || !isNextEnabled"
 						data-test-id="instance-ai-questions-next"
 						@click="goToNext"
@@ -563,7 +562,7 @@ function onOptionMouseEnter(idx: number) {
 						{{ nextButtonLabel }}
 					</N8nButton>
 				</div>
-			</div>
+			</ConfirmationFooter>
 		</div>
 	</div>
 </template>
@@ -587,6 +586,7 @@ function onOptionMouseEnter(idx: number) {
 	outline: none;
 	border: var(--border);
 	border-radius: var(--radius--lg);
+	background-color: var(--color--background--light-3);
 }
 
 .question {
@@ -618,7 +618,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 
 	&:hover .arrowIndicator,
@@ -690,7 +690,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 }
 
@@ -706,7 +706,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 
 	.somethingElseInput {
@@ -738,7 +738,7 @@ function onOptionMouseEnter(idx: number) {
 
 	&:hover,
 	&.highlighted {
-		background-color: light-dark(var(--color--neutral-200), var(--color--neutral-800));
+		background-color: light-dark(var(--color--neutral-100), var(--color--neutral-800));
 	}
 }
 
@@ -756,14 +756,6 @@ function onOptionMouseEnter(idx: number) {
 .pencilIcon {
 	color: var(--color--text--tint-1);
 	flex-shrink: 0;
-}
-
-.footer {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	border-top: var(--border);
-	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .pagination {

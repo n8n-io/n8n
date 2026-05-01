@@ -313,8 +313,8 @@ describe('CommunityNodeTypesService', () => {
 			(service as any).updateCommunityNodeTypes(mockNodeTypes);
 		});
 
-		it('should return the correct package when exact packageName match is found', () => {
-			const result = service.findVetted('n8n-nodes-air');
+		it('should return the correct package when exact packageName match is found', async () => {
+			const result = await service.findVetted('n8n-nodes-air');
 
 			expect(result).toBeDefined();
 			expect(result?.packageName).toBe('n8n-nodes-air');
@@ -322,14 +322,14 @@ describe('CommunityNodeTypesService', () => {
 			expect(result?.npmVersion).toBe('1.0.0');
 		});
 
-		it('should return undefined when package is not found', () => {
-			const result = service.findVetted('n8n-nodes-nonexistent');
+		it('should return undefined when package is not found', async () => {
+			const result = await service.findVetted('n8n-nodes-nonexistent');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should not match similar package names with substring matching', () => {
-			const result = service.findVetted('n8n-nodes-air');
+		it('should not match similar package names with substring matching', async () => {
+			const result = await service.findVetted('n8n-nodes-air');
 
 			expect(result).toBeDefined();
 			expect(result?.packageName).toBe('n8n-nodes-air');
@@ -337,9 +337,9 @@ describe('CommunityNodeTypesService', () => {
 			expect(result?.packageName).not.toBe('n8n-nodes-airparser');
 		});
 
-		it('should return the correct package from multiple similar names', () => {
-			const airResult = service.findVetted('n8n-nodes-air');
-			const airparserResult = service.findVetted('n8n-nodes-airparser');
+		it('should return the correct package from multiple similar names', async () => {
+			const airResult = await service.findVetted('n8n-nodes-air');
+			const airparserResult = await service.findVetted('n8n-nodes-airparser');
 
 			expect(airResult?.packageName).toBe('n8n-nodes-air');
 			expect(airResult?.checksum).toBe('checksum-air');
@@ -348,15 +348,15 @@ describe('CommunityNodeTypesService', () => {
 			expect(airparserResult?.checksum).toBe('checksum-airparser');
 		});
 
-		it('should return undefined when communityNodeTypes is empty', () => {
+		it('should return undefined when communityNodeTypes is empty', async () => {
 			(service as any).communityNodeTypes.clear();
 
-			const result = service.findVetted('n8n-nodes-air');
+			const result = await service.findVetted('n8n-nodes-air');
 
 			expect(result).toBeUndefined();
 		});
 
-		it('should handle packages with similar prefixes correctly', () => {
+		it('should handle packages with similar prefixes correctly', async () => {
 			const mockNodeTypes = [
 				{
 					name: 'n8n-nodes-test.test',
@@ -380,9 +380,9 @@ describe('CommunityNodeTypesService', () => {
 
 			(service as any).updateCommunityNodeTypes(mockNodeTypes);
 
-			const testResult = service.findVetted('n8n-nodes-test');
-			const testingResult = service.findVetted('n8n-nodes-testing');
-			const testerResult = service.findVetted('n8n-nodes-tester');
+			const testResult = await service.findVetted('n8n-nodes-test');
+			const testingResult = await service.findVetted('n8n-nodes-testing');
+			const testerResult = await service.findVetted('n8n-nodes-tester');
 
 			expect(testResult?.packageName).toBe('n8n-nodes-test');
 			expect(testingResult?.packageName).toBe('n8n-nodes-testing');

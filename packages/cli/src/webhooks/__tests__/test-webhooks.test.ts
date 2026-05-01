@@ -381,6 +381,46 @@ describe('TestWebhooks', () => {
 
 			await expect(promise).rejects.toThrowError(NotFoundError);
 		});
+
+		test('returns a not-found error when a form trigger is requested on the webhook route family', async () => {
+			const formWebhook = mock<IWebhookData>({
+				httpMethod,
+				path,
+				workflowId: workflowEntity.id,
+				webhookDescription: { nodeType: 'form' } as never,
+			});
+
+			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(formWebhook);
+			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+
+			const promise = testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path } }),
+				mock<express.Response>(),
+				'webhook',
+			);
+
+			await expect(promise).rejects.toThrowError(WebhookNotFoundError);
+		});
+
+		test('returns a not-found error when a regular webhook is requested on the form route family', async () => {
+			const regularWebhook = mock<IWebhookData>({
+				httpMethod,
+				path,
+				workflowId: workflowEntity.id,
+				webhookDescription: { nodeType: undefined } as never,
+			});
+
+			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(regularWebhook);
+			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+
+			const promise = testWebhooks.executeWebhook(
+				mock<WebhookRequest>({ params: { path } }),
+				mock<express.Response>(),
+				'form',
+			);
+
+			await expect(promise).rejects.toThrowError(WebhookNotFoundError);
+		});
 	});
 
 	describe('deactivateWebhooks()', () => {

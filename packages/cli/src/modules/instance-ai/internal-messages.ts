@@ -11,9 +11,9 @@
 
 export const AUTO_FOLLOW_UP_MESSAGE = '(continue)';
 
-/** Matches `<running-tasks>`, `<planned-task-follow-up>`, or `<background-task-completed>` prefix blocks. */
+/** Matches `<running-tasks>`, `<planned-task-follow-up>`, `<planning-blueprint>`, or `<background-task-completed>` prefix blocks. */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>)\n\n/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>)\n\n/;
 
 /**
  * Recover the original user text from a stored message that may contain

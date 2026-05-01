@@ -49,6 +49,7 @@ import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-Chan
 import { ConvertAgentIdToUuid1765804780000 } from './1765804780000-ConvertAgentIdToUuid';
 import { ExpandInsightsWorkflowIdLength1766500000000 } from './1766500000000-ExpandInsightsWorkflowIdLength';
 import { ChangeWorkflowStatisticsFKToNoAction1767018516000 } from './1767018516000-ChangeWorkflowStatisticsFKToNoAction';
+import { ExpandVariablesValueColumnToText1777420800000 } from './1777420800000-ExpandVariablesValueColumnToText';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -158,6 +159,15 @@ import { AddRestoreFieldsToWorkflowBuilderSession1774280963551 } from '../common
 import { CreateInstanceVersionHistoryTable1774854660000 } from '../common/1774854660000-CreateInstanceVersionHistoryTable';
 import { CreateInstanceAiTables1775000000000 } from '../common/1775000000000-CreateInstanceAiTables';
 import { CreateTokenExchangeJtiTable1775116241000 } from '../common/1775116241000-CreateTokenExchangeJtiTable';
+import { ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000 } from '../common/1775740765000-ChangeWorkflowPublishHistoryVersionIdToSetNull';
+import { CreateTrustedKeyTables1776000000000 } from '../common/1776000000000-CreateTrustedKeyTables';
+import { CreateFavoritesTable1776150756000 } from '../common/1776150756000-CreateFavoritesTable';
+import { CreateDeploymentKeyTable1777000000000 } from '../common/1777000000000-CreateDeploymentKeyTable';
+import { AddJweKeyIndexesToDeploymentKey1777023444000 } from '../common/1777023444000-AddJweKeyIndexesToDeploymentKey';
+import { AddTracingContextToExecution1777045000000 } from '../common/1777045000000-AddTracingContextToExecution';
+import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
+import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
+import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -321,4 +331,14 @@ export const postgresMigrations: Migration[] = [
 	CreateInstanceVersionHistoryTable1774854660000,
 	CreateInstanceAiTables1775000000000,
 	CreateTokenExchangeJtiTable1775116241000,
+	ChangeWorkflowPublishHistoryVersionIdToSetNull1775740765000,
+	CreateTrustedKeyTables1776000000000,
+	CreateFavoritesTable1776150756000,
+	CreateDeploymentKeyTable1777000000000,
+	AddJweKeyIndexesToDeploymentKey1777023444000,
+	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
+	AddExecutionDeduplicationKey1778000000000,
+	AddTracingContextToExecution1777045000000,
+	CreateAiBuilderTemporaryWorkflowTable1777281990043,
+	ExpandVariablesValueColumnToText1777420800000,
 ];

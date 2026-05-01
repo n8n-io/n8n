@@ -15,6 +15,7 @@ import type {
 	WriteAccessRequestedMessage,
 	WriteAccessReleaseRequestedMessage,
 } from '@/collaboration/collaboration.message';
+import { CollaborationState } from '@/collaboration/collaboration.state';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
@@ -29,12 +30,14 @@ describe('CollaborationService', () => {
 	let memberWithAccess: User;
 	let workflow: IWorkflowBase;
 	let cacheService: CacheService;
+	let collaborationState: CollaborationState;
 
 	beforeAll(async () => {
 		await testDb.init();
 
 		pushService = Container.get(Push);
 		collaborationService = Container.get(CollaborationService);
+		collaborationState = Container.get(CollaborationState);
 		cacheService = Container.get(CacheService);
 
 		await cacheService.init();
@@ -374,6 +377,33 @@ describe('CollaborationService', () => {
 
 			// Assert
 			expect(lockHolder).toBeNull();
+		});
+	});
+
+	describe('filterOpenWorkflowIds', () => {
+		it('should skip failed collaborator lookups and return resolved open workflows', async () => {
+			jest.spyOn(collaborationState, 'getCollaborators').mockImplementation(async (workflowId) => {
+				if (workflowId === 'workflow-failing') throw new Error('cache down');
+				if (workflowId === 'workflow-open') {
+					return [
+						{
+							clientId: 'client-1',
+							userId: owner.id,
+							lastSeen: new Date().toISOString(),
+						},
+					];
+				}
+
+				return [];
+			});
+
+			await expect(
+				collaborationService.filterOpenWorkflowIds([
+					'workflow-open',
+					'workflow-failing',
+					'workflow-closed',
+				]),
+			).resolves.toEqual(['workflow-open']);
 		});
 	});
 });

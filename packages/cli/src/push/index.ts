@@ -19,8 +19,15 @@ import { TypedEmitter } from '@/typed-emitter';
 import { validateOriginHeaders } from './origin-validator';
 import { PushConfig } from './push.config';
 import { SSEPush } from './sse.push';
-import type { OnPushMessage, PushResponse, SSEPushRequest, WebSocketPushRequest } from './types';
+import {
+	type OnPushMessage,
+	type PushResponse,
+	type SSEPushRequest,
+	type WebSocketPushRequest,
+} from './types';
 import { WebSocketPush } from './websocket.push';
+import { isPushResponse, isSSEPushRequest, isWebSocketPushRequest } from './push-helpers';
+import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
 type PushEvents = {
 	editorUiConnected: string;
@@ -95,8 +102,15 @@ export class Push extends TypedEmitter<PushEvents> {
 			`/${restEndpoint}/push`,
 
 			this.authService.createAuthMiddleware({ allowSkipMFA: false }),
-			(req: SSEPushRequest | WebSocketPushRequest, res: PushResponse) =>
-				this.handleRequest(req, res),
+			(req, res) => {
+				if (!isWebSocketPushRequest(req) && !isSSEPushRequest(req)) {
+					throw new BadRequestError('Request is not a PushRequest');
+				}
+				if (!isPushResponse(res)) {
+					throw new InternalServerError('Malformed response object');
+				}
+				return this.handleRequest(req, res);
+			},
 		);
 	}
 

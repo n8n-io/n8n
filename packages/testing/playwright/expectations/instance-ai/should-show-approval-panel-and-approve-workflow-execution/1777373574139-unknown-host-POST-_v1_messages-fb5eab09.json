@@ -1,0 +1,105 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*\\[\\{\"type\":\"text\",\"text\":\"You are the n8n Instance Agent — an AI assistant embedde[\\s\\S]*Build a simple workflow with a manual trigger and a set node called \\\\\"approval test\\\\\" and run it[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "x-envoy-upstream-service-time": [
+        "1609"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=ovLOA0HOqgWJIXCXGJ8xoEJtswq0eNIpofXoQeoDD_0-1777373540.7830431-1.0.1.1-ew4UHKdrCoDFsbmzidpNW6j6L99SVCM7ExxPgX9YpBE; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CaW3SXEVJX9GKdQA1vaqY"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-04-28T10:52:20Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26975000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-04-28T10:52:20Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19998"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-04-28T10:52:20Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-04-28T10:52:21Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22475000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Tue, 28 Apr 2026 10:52:22 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "9f358455e98df974-PRG"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "ovLOA0HOqgWJIXCXGJ8xoEJtswq0eNIpofXoQeoDD_0-1777373540.7830431-1.0.1.1-ew4UHKdrCoDFsbmzidpNW6j6L99SVCM7ExxPgX9YpBE"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_014eugyrt1ofSEVktnw8HjGB\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":343,\"cache_creation_input_tokens\":14091,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":14091,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":52,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}}\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01QjRSWGjcUrBgqBewtR5xpo\",\"name\":\"credentials\",\"input\":{},\"caller\":{\"type\":\"direct\"}}    }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}           }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"act\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"ion\\\": \\\"li\"}          }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"st\\\"}\"}       }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0        }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":343,\"cache_creation_input_tokens\":14091,\"cache_read_input_tokens\":0,\"output_tokens\":52}   }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"              }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxNGV1Z3lydDFvZlNFVmt0bnc4SGpHQiIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjM0MywiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjoxNDA5MSwiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjAsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjE0MDkxLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6NTIsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fX0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX3N0YXJ0CmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RhcnQiLCJpbmRleCI6MCwiY29udGVudF9ibG9jayI6eyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxUWpSU1dHamNVckJncUJld3RSNXhwbyIsIm5hbWUiOiJjcmVkZW50aWFscyIsImlucHV0Ijp7fSwiY2FsbGVyIjp7InR5cGUiOiJkaXJlY3QifX0gICAgfQoKZXZlbnQ6IHBpbmcKZGF0YTogeyJ0eXBlIjogInBpbmcifQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IiJ9ICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wiYWN0In0gICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiaW9uXCI6IFwibGkifSAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoic3RcIn0ifSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdG9wCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfc3RvcCIsImluZGV4IjowICAgICAgICB9CgpldmVudDogbWVzc2FnZV9kZWx0YQpkYXRhOiB7InR5cGUiOiJtZXNzYWdlX2RlbHRhIiwiZGVsdGEiOnsic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MzQzLCJjYWNoZV9jcmVhdGlvbl9pbnB1dF90b2tlbnMiOjE0MDkxLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MCwib3V0cHV0X3Rva2VucyI6NTJ9ICAgfQoKZXZlbnQ6IG1lc3NhZ2Vfc3RvcApkYXRhOiB7InR5cGUiOiJtZXNzYWdlX3N0b3AiICAgICAgICAgICAgICB9Cgo=",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "1777373574139-unknown-host-POST-_v1_messages-fb5eab09.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

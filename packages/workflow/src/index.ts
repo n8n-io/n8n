@@ -55,9 +55,11 @@ export {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	isDomainAllowed,
+	getCredentialAllowedDomains,
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,
+	sanitizeXmlName,
 	generateSecureToken,
 } from './utils';
 export {

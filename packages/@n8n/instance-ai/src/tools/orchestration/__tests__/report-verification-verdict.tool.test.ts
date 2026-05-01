@@ -51,7 +51,7 @@ describe('report-verification-verdict tool', () => {
 		const context = createMockContext({ workflowTaskService: undefined });
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = await tool.execute!(baseInput, {} as never);
+		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('Error');
 	});
@@ -68,7 +68,7 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = await tool.execute!(baseInput, {} as never);
+		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
 
 		expect(reportVerificationVerdict).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -89,10 +89,10 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = await tool.execute!(baseInput, {} as never);
+		const result = (await tool.execute!(baseInput, {} as never)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('VERIFY');
-		expect((result as { guidance: string }).guidance).toContain('run-workflow');
+		expect((result as { guidance: string }).guidance).toContain('executions(action="run")');
 	});
 
 	it('returns patch guidance when needs_patch produces patch action', async () => {
@@ -109,7 +109,7 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = await tool.execute!(
+		const result = (await tool.execute!(
 			{
 				...baseInput,
 				verdict: 'needs_patch',
@@ -117,7 +117,7 @@ describe('report-verification-verdict tool', () => {
 				patch: { url: 'https://example.com' },
 			},
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('PATCH NEEDED');
 		expect((result as { guidance: string }).guidance).toContain('mode');
@@ -136,14 +136,14 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = await tool.execute!(
+		const result = (await tool.execute!(
 			{ ...baseInput, verdict: 'needs_rebuild', diagnosis: 'Missing connection between nodes' },
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('REBUILD NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('plan');
-		expect((result as { guidance: string }).guidance).toContain('build-workflow');
+		expect((result as { guidance: string }).guidance).toContain('build-workflow-with-agent');
+		expect((result as { guidance: string }).guidance).toContain('workflowId: "wf-123"');
 	});
 
 	it('returns blocked guidance when action is blocked', async () => {
@@ -157,10 +157,10 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		const result = await tool.execute!(
+		const result = (await tool.execute!(
 			{ ...baseInput, verdict: 'failed_terminal', failureSignature: 'TypeError' },
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect((result as { guidance: string }).guidance).toContain('BUILD BLOCKED');
 		expect((result as { guidance: string }).guidance).toContain('Repeated patch failure');
@@ -178,7 +178,7 @@ describe('report-verification-verdict tool', () => {
 		});
 		const tool = createReportVerificationVerdictTool(context);
 
-		await tool.execute!(
+		(await tool.execute!(
 			{
 				...baseInput,
 				executionId: 'exec-456',
@@ -188,7 +188,7 @@ describe('report-verification-verdict tool', () => {
 				patch: { code: 'fixed' },
 			},
 			{} as never,
-		);
+		)) as Record<string, unknown>;
 
 		expect(reportVerificationVerdict).toHaveBeenCalledWith({
 			workItemId: 'wi_test1234',

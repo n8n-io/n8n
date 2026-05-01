@@ -28,6 +28,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import type { ExternalHooks } from '@/external-hooks';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -741,12 +742,12 @@ describe('CredentialsService', () => {
 			credentialTypes.getByName.calledWith(credentialEntity.type).mockReturnValueOnce(credType);
 		});
 
-		it('should redact sensitive values by default', () => {
+		it('should redact sensitive values by default', async () => {
 			// ARRANGE
-			jest.spyOn(Credentials.prototype, 'getData').mockReturnValueOnce(data);
+			jest.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
 			// ACT
-			const redactedData = service.decrypt(credentialEntity);
+			const redactedData = await service.decrypt(credentialEntity);
 
 			// ASSERT
 			expect(redactedData).toEqual({
@@ -758,29 +759,27 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		it('should return sensitive values if `includeRawData` is true', () => {
+		it('should return sensitive values if `includeRawData` is true', async () => {
 			// ARRANGE
-			jest.spyOn(Credentials.prototype, 'getData').mockReturnValueOnce(data);
+			jest.spyOn(Credentials.prototype, 'getData').mockResolvedValueOnce(data);
 
 			// ACT
-			const redactedData = service.decrypt(credentialEntity, true);
+			const redactedData = await service.decrypt(credentialEntity, true);
 
 			// ASSERT
 			expect(redactedData).toEqual(data);
 		});
 
-		it('should return return an empty object if decryption fails', () => {
+		it('should return return an empty object if decryption fails', async () => {
 			// ARRANGE
 			const decryptionError = new CredentialDataError(
 				credentials,
 				CREDENTIAL_ERRORS.DECRYPTION_FAILED,
 			);
-			jest.spyOn(Credentials.prototype, 'getData').mockImplementation(() => {
-				throw decryptionError;
-			});
+			jest.spyOn(Credentials.prototype, 'getData').mockRejectedValueOnce(decryptionError);
 
 			// ACT
-			const redactedData = service.decrypt(credentialEntity, true);
+			const redactedData = await service.decrypt(credentialEntity, true);
 
 			// ASSERT
 			expect(redactedData).toEqual({});
@@ -790,6 +789,103 @@ describe('CredentialsService', () => {
 				level: 'error',
 				tags: { credentialType: credentialEntity.type },
 			});
+		});
+	});
+
+	describe('testById', () => {
+		it('throws CredentialNotFoundError when credential does not exist', async () => {
+			credentialsFinderService.findCredentialById.mockResolvedValue(null);
+
+			await expect(service.testById(ownerUser.id, 'missing-credential')).rejects.toThrow(
+				CredentialNotFoundError,
+			);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
+		it('decrypts stored credential and calls credentials tester', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Test Credential',
+				type: 'githubApi',
+			});
+			const decryptedData = { accessToken: 'secret-token' } as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+
+			credentialsFinderService.findCredentialById.mockResolvedValue(storedCredential);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+			jest.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+
+			const result = await service.testById(ownerUser.id, storedCredential.id);
+
+			expect(credentialsFinderService.findCredentialById).toHaveBeenCalledWith(storedCredential.id);
+			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(
+				ownerUser.id,
+				storedCredential.type,
+				{
+					id: storedCredential.id,
+					name: storedCredential.name,
+					type: storedCredential.type,
+					data: decryptedData,
+				},
+			);
+			expect(result).toEqual(testResult);
+		});
+	});
+
+	describe('testWithCredentials', () => {
+		it('throws CredentialNotFoundError when user cannot access credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await expect(
+				service.testWithCredentials(ownerUser, {
+					id: 'missing-credential',
+					name: 'Missing Credential',
+					type: 'githubApi',
+					data: {},
+				}),
+			).rejects.toThrow(CredentialNotFoundError);
+			expect(credentialsTester.testCredentials).not.toHaveBeenCalled();
+		});
+
+		it('prepares merged credentials and runs test', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'githubApi',
+			});
+			const decryptedData = { accessToken: 'stored-token' } as ICredentialDataDecryptedObject;
+			const unredactedData = { accessToken: 'live-token' } as ICredentialDataDecryptedObject;
+			const testResult = { status: 'OK', message: 'Credential tested successfully' } as const;
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(storedCredential);
+			jest.spyOn(service, 'decrypt').mockResolvedValue(decryptedData);
+			jest.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			jest.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			jest.spyOn(service, 'unredact').mockReturnValue(unredactedData);
+			credentialsTester.testCredentials.mockResolvedValue(testResult);
+
+			const payload = {
+				id: 'credential-id',
+				name: 'Stored Credential',
+				type: 'githubApi',
+				data: { accessToken: '***' },
+			};
+
+			const result = await service.testWithCredentials(ownerUser, payload);
+
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				payload.id,
+				ownerUser,
+				['credential:read'],
+			);
+			expect(service.decrypt).toHaveBeenCalledWith(storedCredential, true);
+			expect(service.unredact).toHaveBeenCalledWith(payload.data, decryptedData, []);
+			expect(credentialsTester.testCredentials).toHaveBeenCalledWith(ownerUser.id, payload.type, {
+				...payload,
+				data: unredactedData,
+			});
+			expect(result).toEqual(testResult);
 		});
 	});
 
@@ -934,7 +1030,7 @@ describe('CredentialsService', () => {
 			describe('with includeData', () => {
 				beforeEach(() => {
 					projectService.getProjectRelationsForUser.mockResolvedValue([]);
-					jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({
+					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 						oauthTokenData: { token: 'secret-token' },
 					});
@@ -997,7 +1093,7 @@ describe('CredentialsService', () => {
 					roleService.addScopes.mockImplementation(
 						(c) => ({ ...c, scopes: ['credential:update'] }) as any,
 					);
-					jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({
+					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 						oauthTokenData: { token: 'secret-token' },
 					});
@@ -1194,7 +1290,7 @@ describe('CredentialsService', () => {
 			describe('with includeData', () => {
 				beforeEach(() => {
 					projectService.getProjectRelationsForUser.mockResolvedValue([]);
-					jest.spyOn(Credentials.prototype, 'getData').mockReturnValue({
+					jest.spyOn(Credentials.prototype, 'getData').mockResolvedValue({
 						apiKey: 'secret-key',
 					});
 					credentialTypes.getByName.mockReturnValue(credType);
@@ -2042,6 +2138,31 @@ describe('CredentialsService', () => {
 
 				await service.createUnmanagedCredential(payload, ownerUser);
 			});
+
+			it('should create credential when external secret uses mixed bracket notation', async () => {
+				credentialsHelper.getCredentialsProperties.mockReturnValue([]);
+				const payload = {
+					name: 'Test Credential',
+					type: 'apiKey',
+					data: {
+						apiKey: "={{ $secrets.validProvider['bar'] }}",
+						url: 'https://api.example.com',
+					},
+					projectId: 'WHwt9vP3keCUvmB5',
+				};
+
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					true,
+				);
+
+				credentialsRepository.create.mockImplementation((data) => ({ ...data }) as any);
+				mockTransactionManager();
+
+				await expect(service.createUnmanagedCredential(payload, ownerUser)).resolves.toBeDefined();
+				expect(
+					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).toHaveBeenCalledWith('validProvider', 'WHwt9vP3keCUvmB5');
+			});
 		});
 	});
 
@@ -2129,7 +2250,7 @@ describe('CredentialsService', () => {
 	describe('prepareUpdateData', () => {
 		describe('external secrets', () => {
 			beforeEach(() => {
-				jest.spyOn(service, 'decrypt').mockReturnValue({});
+				jest.spyOn(service, 'decrypt').mockResolvedValue({});
 				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			});
 

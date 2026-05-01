@@ -13,7 +13,7 @@ export class OutputParserItemList implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Item List Output Parser',
 		name: 'outputParserItemList',
-		icon: 'fa:bars',
+		icon: 'node:item-list-output-parser',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,

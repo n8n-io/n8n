@@ -15,6 +15,21 @@
 			"Write(.claude/plans/*)"
 		]
 	},
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Skill",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "node .claude/plugins/n8n/scripts/track-skill-usage.mjs",
+						"timeout": 10,
+						"async": true
+					}
+				]
+			}
+		]
+	},
 	"extraKnownMarketplaces": {
 		"n8n": {
 			"source": {

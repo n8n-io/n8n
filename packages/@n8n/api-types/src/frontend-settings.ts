@@ -35,6 +35,7 @@ export interface IUserManagementSettings {
 	showSetupOnFirstLoad?: boolean;
 	smtpSetup: boolean;
 	authenticationMethod: AuthenticationMethod;
+	passwordMinLength: number;
 }
 
 export interface IEnterpriseSettings {
@@ -92,6 +93,7 @@ export interface FrontendSettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	jwksUri: string;
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
@@ -131,6 +133,7 @@ export interface FrontendSettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	sso: {
+		managedByEnv: boolean;
 		saml: {
 			loginLabel: string;
 			loginEnabled: boolean;
@@ -144,6 +147,9 @@ export interface FrontendSettings {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
+	};
+	logStreaming: {
+		managedByEnv: boolean;
 	};
 	publicApi: {
 		enabled: boolean;
@@ -215,6 +221,10 @@ export interface FrontendSettings {
 		credits: number;
 		setup: boolean;
 	};
+	aiGateway?: {
+		enabled: boolean;
+		budget: number;
+	};
 	ai: {
 		allowSendingParameterValues: boolean;
 	};
@@ -225,6 +235,9 @@ export interface FrontendSettings {
 	};
 	security: {
 		blockFileAccessToN8nFiles: boolean;
+	};
+	chatTrigger?: {
+		disablePublicChat: boolean;
 	};
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
@@ -257,6 +270,8 @@ export type FrontendModuleSettings = {
 	mcp?: {
 		/** Whether MCP access is enabled in the instance. */
 		mcpAccessEnabled: boolean;
+		/** Whether MCP settings are managed via environment variables. */
+		mcpManagedByEnv: boolean;
 	};
 
 	/**
@@ -274,10 +289,10 @@ export type FrontendModuleSettings = {
 	 */
 	'instance-ai'?: {
 		enabled: boolean;
-		localGateway: boolean;
 		localGatewayDisabled: boolean;
-		localGatewayFallbackDirectory: string | null;
 		proxyEnabled: boolean;
+		optinModalDismissed: boolean;
+		cloudManaged: boolean;
 	};
 
 	/**

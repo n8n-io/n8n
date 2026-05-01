@@ -1,7 +1,7 @@
 import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
 
-import { sanitizeMcpToolSchemas } from '../sanitize-mcp-schemas';
+import { sanitizeMcpToolSchemas, sanitizeZodType } from '../sanitize-mcp-schemas';
 
 function makeTools(
 	schemas: Record<string, { input?: z.ZodTypeAny; output?: z.ZodTypeAny }>,
@@ -267,6 +267,239 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(resultSchema.safeParse({ data: { key: 'value' } }).success).toBe(true);
 			expect(resultSchema.safeParse({ data: { key: undefined } }).success).toBe(true);
 			expect(resultSchema.safeParse({ data: { key: null } }).success).toBe(false);
+		});
+	});
+
+	describe('strict mode', () => {
+		it('should throw on conflicting field descriptions in discriminated unions', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					name: z.string().describe('Table name'),
+				}),
+				z.object({
+					action: z.literal('rename'),
+					name: z.string().describe('Column name'),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).toThrow(/Description conflict for field "name"/);
+		});
+
+		it('should not throw when field descriptions are consistent', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('get'),
+					id: z.string().describe('Resource ID'),
+				}),
+				z.object({
+					action: z.literal('delete'),
+					id: z.string().describe('Resource ID'),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).not.toThrow();
+		});
+
+		it('should merge conflicting descriptions in non-strict mode', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					name: z.string().describe('Table name'),
+				}),
+				z.object({
+					action: z.literal('rename'),
+					name: z.string().describe('Column name'),
+				}),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const nameField = result.shape.name;
+
+			expect(nameField.description).toBe('For "create": Table name. For "rename": Column name');
+		});
+
+		it('should throw on conflicting enum values in strict mode', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					status: z.enum(['draft', 'published']),
+				}),
+				z.object({
+					action: z.literal('update'),
+					status: z.enum(['pending', 'complete']),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).toThrow(/Enum conflict for field "status"/);
+		});
+
+		it('should not throw when enum values are identical across variants', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					priority: z.enum(['low', 'medium', 'high']),
+				}),
+				z.object({
+					action: z.literal('update'),
+					priority: z.enum(['low', 'medium', 'high']),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union, true)).not.toThrow();
+		});
+
+		it('should not throw on enum conflicts in non-strict mode', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					status: z.enum(['draft', 'published']),
+				}),
+				z.object({
+					action: z.literal('update'),
+					status: z.enum(['pending', 'complete']),
+				}),
+			]);
+
+			expect(() => sanitizeZodType(union)).not.toThrow();
+		});
+	});
+
+	describe('discriminated union flattening', () => {
+		it('should generate action enum description from literal descriptions', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('list').describe('List all items'),
+				}),
+				z.object({
+					action: z.literal('get').describe('Get item by ID'),
+					id: z.string(),
+				}),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const actionField = result.shape.action;
+
+			expect(actionField.description).toBe('"list": List all items | "get": Get item by ID');
+		});
+
+		it('should include undescribed actions in the enum without a label', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('list').describe('List all items'),
+				}),
+				z.object({
+					action: z.literal('ping'),
+				}),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const actionField = result.shape.action;
+
+			expect(actionField.description).toBe('"list": List all items | "ping"');
+		});
+
+		it('should preserve consistent field descriptions across variants', () => {
+			const sharedId = z.string().describe('Resource ID');
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('get'), id: sharedId }),
+				z.object({ action: z.literal('delete'), id: sharedId }),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const idField = result.shape.id as z.ZodOptional<z.ZodTypeAny>;
+
+			// Original description is preserved (no combined override)
+			expect(idField.description).toBe('Resource ID');
+			expect(idField.description).not.toContain('For "');
+		});
+
+		it('should annotate single-variant fields with an action hint', () => {
+			// When a field appears in only ONE variant, flattening makes it optional.
+			// Without an action hint the model cross-mixes fields between sibling
+			// actions (e.g. sends `nodeIds` when calling `describe`). Prefix with
+			// `For "<action>":` so the field is clearly bound to the right action.
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('list') }),
+				z.object({
+					action: z.literal('type-definition'),
+					nodeIds: z.array(z.string()).describe('Node IDs to get definitions for'),
+				}),
+				z.object({ action: z.literal('describe'), nodeType: z.string().describe('Node type ID') }),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+
+			expect(result.shape.nodeIds.description).toBe(
+				'For "type-definition": Node IDs to get definitions for',
+			);
+			expect(result.shape.nodeType.description).toBe('For "describe": Node type ID');
+		});
+
+		it('should annotate fields shared by a subset of variants with all their actions', () => {
+			// A field appearing in 2 of 3 variants with a consistent description
+			// still needs an action hint — the third variant doesn't use it.
+			const shared = z.string().describe('Node type ID');
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('list') }),
+				z.object({ action: z.literal('describe'), nodeType: shared }),
+				z.object({ action: z.literal('explore-resources'), nodeType: shared }),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+
+			expect(result.shape.nodeType.description).toBe(
+				'For "describe", "explore-resources": Node type ID',
+			);
+		});
+
+		it('should annotate subset-only fields without a description using "Only for" hint', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({ action: z.literal('list') }),
+				z.object({ action: z.literal('get'), id: z.string() }),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+
+			expect(result.shape.id.description).toBe('Only for "get"');
+		});
+
+		it('should combine conflicting field descriptions with action context', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('create'),
+					name: z.string().describe('Table name'),
+				}),
+				z.object({
+					action: z.literal('rename'),
+					name: z.string().describe('Column name'),
+				}),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+			const nameField = result.shape.name;
+
+			expect(nameField.description).toBe('For "create": Table name. For "rename": Column name');
+		});
+
+		it('should make all non-discriminator fields optional', () => {
+			const union = z.discriminatedUnion('action', [
+				z.object({
+					action: z.literal('list'),
+					limit: z.number().describe('Max results'),
+				}),
+				z.object({
+					action: z.literal('get'),
+					id: z.string().describe('Item ID'),
+				}),
+			]);
+
+			const result = sanitizeZodType(union) as z.ZodObject<z.ZodRawShape>;
+
+			expect(result.shape.limit).toBeInstanceOf(z.ZodOptional);
+			expect(result.shape.id).toBeInstanceOf(z.ZodOptional);
+			// action is required (not optional)
+			expect(result.shape.action).not.toBeInstanceOf(z.ZodOptional);
 		});
 	});
 });

@@ -24,6 +24,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_EXTRACTION_NAME_MODAL_KEY,
 	LOCAL_STORAGE_THEME,
+	LOCAL_STORAGE_SIDEBAR_WIDTH,
 	WHATS_NEW_MODAL_KEY,
 	WORKFLOW_DIFF_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -40,6 +41,7 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	AI_GATEWAY_TOP_UP_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -173,6 +175,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 				AI_BUILDER_DIFF_MODAL_KEY,
 				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+				AI_GATEWAY_TOP_UP_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
 		),
 		[DELETE_USER_MODAL_KEY]: {
@@ -284,6 +287,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			write: (v) => String(v),
 		},
 	});
+	const sidebarWidth = useLocalStorage(LOCAL_STORAGE_SIDEBAR_WIDTH, 200);
 	const currentView = ref<string>('');
 	const stateIsDirty = ref<boolean>(false);
 	// This tracks only structural changes without metadata (name or tags)
@@ -295,6 +299,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const areNotificationsSuppressed = ref(false);
+	const allowErrorNotificationsWhenSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -340,9 +345,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const settingsStore = useSettingsStore();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
@@ -414,7 +417,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 
 	const lastInteractedWithNode = computed(() => {
 		if (lastInteractedWithNodeId.value) {
-			return workflowDocumentStore.value?.getNodeById(lastInteractedWithNodeId.value) ?? null;
+			return workflowDocumentStore.value.getNodeById(lastInteractedWithNodeId.value) ?? null;
 		}
 
 		return null;
@@ -546,6 +549,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		forceManualMode = false,
 		projectId?: string,
 		suggestedName?: string,
+		nodeName?: string,
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -554,6 +558,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			forceManualMode,
 			projectId,
 			suggestedName,
+			nodeName,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -625,8 +630,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews.value[view] = notifications;
 	};
 
-	const setNotificationsSuppressed = (suppressed: boolean) => {
+	const setNotificationsSuppressed = (suppressed: boolean, options?: { allowErrors?: boolean }) => {
 		areNotificationsSuppressed.value = suppressed;
+		allowErrorNotificationsWhenSuppressed.value = suppressed && options?.allowErrors === true;
 	};
 
 	function resetLastInteractedWith() {
@@ -745,12 +751,14 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		nodeViewInitialized,
 		addFirstStepOnLoad,
 		sidebarMenuCollapsed,
+		sidebarWidth,
 		theme: computed(() => theme.value),
 		modalsById,
 		currentView,
 		isAnyModalOpen,
 		pendingNotificationsForViews,
 		areNotificationsSuppressed,
+		allowErrorNotificationsWhenSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,

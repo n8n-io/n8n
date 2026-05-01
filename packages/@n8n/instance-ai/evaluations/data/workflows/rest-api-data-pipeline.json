@@ -1,0 +1,26 @@
+{
+	"prompt": "Fetch the latest posts from the JSONPlaceholder API (GET https://jsonplaceholder.typicode.com/posts). Filter out any posts where the title contains the word 'qui'. Then post a summary message to a Slack channel called #api-digest that says how many posts remain and lists their titles. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "http-request", "slack", "data-transformation", "schedule"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "API returns posts, some contain 'qui' and get filtered, summary posted to Slack",
+			"dataSetup": "The HTTP Request node returns JSON objects with fields: id, userId, title, body. Some of them should have 'qui' in the title (e.g. 'qui est esse', 'nesciunt quid non qui'). Others should NOT contain 'qui'. The Slack node returns a success response.",
+			"successCriteria": "The workflow executes without errors. Posts containing 'qui' in the title are filtered out. The Slack message is posted to #api-digest and includes how many posts remain plus the titles of the remaining posts. None of the titles in the Slack message should contain the word 'qui'."
+		},
+		{
+			"name": "empty-response",
+			"description": "The API returns an empty array",
+			"dataSetup": "The HTTP Request node returns an empty array []. The Slack node returns a success response.",
+			"successCriteria": "The workflow handles an empty API response without crashing. The Slack message is either posted with a 'no posts' message or the workflow completes gracefully without posting."
+		},
+		{
+			"name": "all-filtered",
+			"description": "Every post contains 'qui' in the title and all are filtered out",
+			"dataSetup": "The HTTP Request node returns 3 posts, all with 'qui' in their titles. The Slack node returns a success response.",
+			"successCriteria": "The workflow handles the case where all items are filtered out. It should not crash or send an empty message to Slack."
+		}
+	]
+}

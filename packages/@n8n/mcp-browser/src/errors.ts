@@ -69,6 +69,30 @@ export class BrowserNotAvailableError extends McpBrowserError {
 	}
 }
 
+export type ConnectionLostReason =
+	| 'browser_closed'
+	| 'extension_disconnected'
+	| 'debugger_detached'
+	| 'network_error'
+	| 'heartbeat_timeout';
+
+const connectionLostMessages: Record<ConnectionLostReason, string> = {
+	browser_closed: 'The browser was closed',
+	extension_disconnected: 'The browser extension disconnected',
+	debugger_detached: 'The Chrome debugger was detached (banner dismissed or DevTools closed)',
+	network_error: 'The connection to the browser extension was lost',
+	heartbeat_timeout: 'The browser extension stopped responding',
+};
+
+export class ConnectionLostError extends McpBrowserError {
+	constructor(readonly reason: ConnectionLostReason) {
+		super(
+			`Browser connection lost: ${connectionLostMessages[reason]}`,
+			'Call browser_connect to reconnect.',
+		);
+	}
+}
+
 export class BrowserExecutableNotFoundError extends McpBrowserError {
 	constructor(readonly browser: string) {
 		super(

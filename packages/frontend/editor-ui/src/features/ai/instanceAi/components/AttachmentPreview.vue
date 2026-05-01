@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { computed, ref, onBeforeUnmount } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
-import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { N8nIcon } from '@n8n/design-system';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 const props = defineProps<{
 	file?: File;
@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
 <template>
 	<div v-if="isImage && thumbnailSrc" :class="$style.thumbnailWrapper">
 		<div v-if="loading" :class="$style.loadingSkeleton">
-			<N8nIcon icon="spinner" spin size="small" />
+			<N8nIcon icon="spinner" color="primary" spin size="small" />
 		</div>
 		<img :src="thumbnailSrc" :alt="fileName" :class="$style.thumbnail" @load="handleLoad" />
 		<button

@@ -28,6 +28,7 @@ export interface BuiltTool {
 	readonly description: string;
 	readonly suspendSchema?: ZodType;
 	readonly resumeSchema?: ZodType;
+	readonly withDefaultApproval?: boolean;
 	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.

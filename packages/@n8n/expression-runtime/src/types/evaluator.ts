@@ -42,6 +42,9 @@ export interface EvaluatorConfig {
 	 */
 	poolSize?: number;
 
+	/** If set, scale the pool to 0 warm bridges after this many ms with no isolate acquire. */
+	idleTimeoutMs?: number;
+
 	/** Optional logger. Passed through to pool. Falls back to no-op. */
 	logger?: Logger;
 }
