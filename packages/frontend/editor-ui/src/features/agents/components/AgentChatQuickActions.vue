@@ -10,12 +10,13 @@ import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_ADD_TRIGGER_MODAL_KEY } from '../constants';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonToolRef, AgentResource } from '../types';
 
 const props = defineProps<{
 	tools: AgentJsonToolRef[];
 	projectId: string;
 	agentId: string;
+	agentName: string;
 	isPublished: boolean;
 	connectedTriggers: string[];
 }>();
@@ -24,6 +25,7 @@ const emit = defineEmits<{
 	'update:tools': [tools: AgentJsonToolRef[]];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'agent-published': [agent: AgentResource];
 }>();
 
 const i18n = useI18n();
@@ -47,12 +49,14 @@ function onAddTrigger() {
 		data: {
 			projectId: props.projectId,
 			agentId: props.agentId,
+			agentName: props.agentName,
 			isPublished: props.isPublished,
 			connectedTriggers: props.connectedTriggers,
 			onConnectedTriggersChange: (triggers: string[]) =>
 				emit('update:connected-triggers', triggers),
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				emit('trigger-added', payload),
+			onAgentPublished: (agent: AgentResource) => emit('agent-published', agent),
 		},
 	});
 }

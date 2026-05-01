@@ -6,6 +6,7 @@ import EmptyOutput from './custom/empty-output.svg';
 import FilledSquare from './custom/filled-square.svg';
 import Form from './custom/form.svg';
 import GripLinesVertical from './custom/grip-lines-vertical.svg';
+import Linear from './custom/linear.svg';
 import Lovable from './custom/lovable.svg';
 import Mcp from './custom/mcp.svg';
 import NodeDirty from './custom/node-dirty.svg';
@@ -32,6 +33,7 @@ import StatusNew from './custom/status-new.svg';
 import StatusUnknown from './custom/status-unknown.svg';
 import StatusWaiting from './custom/status-waiting.svg';
 import StatusWarning from './custom/status-warning.svg';
+import Telegram from './custom/telegram.svg';
 import Text from './custom/text.svg';
 import Toolbox from './custom/toolbox.svg';
 import Triangle from './custom/triangle.svg';
@@ -281,6 +283,8 @@ export const deprecatedIconSet = {
 	text: Text,
 	toolbox: Toolbox,
 	slack: Slack,
+	linear: Linear,
+	telegram: Telegram,
 	spinner: Spinner,
 	xmark: IconLucideX,
 	mcp: Mcp,
@@ -498,6 +502,8 @@ export const updatedIconSet = {
 	text: Text,
 	toolbox: Toolbox,
 	slack: Slack,
+	linear: Linear,
+	telegram: Telegram,
 	spinner: Spinner,
 	'node-dirty': NodeDirty,
 	'node-ellipsis': NodeEllipsis,

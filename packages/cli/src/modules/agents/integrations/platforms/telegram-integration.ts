@@ -32,7 +32,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 
 	readonly displayLabel = 'Telegram';
 
-	readonly displayIcon = 'paper-plane';
+	readonly displayIcon = 'telegram';
 
 	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
 

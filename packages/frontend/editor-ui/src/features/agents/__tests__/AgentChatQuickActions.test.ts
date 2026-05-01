@@ -29,6 +29,7 @@ const defaultProps = {
 	tools: [] as AgentJsonToolRef[],
 	projectId: 'p1',
 	agentId: 'a1',
+	agentName: 'My Agent',
 	isPublished: true,
 	connectedTriggers: [] as string[],
 };
