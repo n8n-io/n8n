@@ -2,6 +2,7 @@ import { useI18n } from '@n8n/i18n';
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import {
 	MCP_CONNECT_WORKFLOWS_MODAL_KEY,
+	MCP_ONBOARDING_MODAL_KEY,
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -49,6 +50,16 @@ export const MCPModule: FrontendModuleDescription = {
 			key: MCP_CONNECT_WORKFLOWS_MODAL_KEY,
 			component: async () => await import('./modals/MCPConnectWorkflowsModal.vue'),
 			initialState: { open: false },
+		},
+		{
+			key: MCP_ONBOARDING_MODAL_KEY,
+			component: async () => await import('./modals/MCPOnboardingModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					surface: 'tile',
+				},
+			},
 		},
 	],
 };
