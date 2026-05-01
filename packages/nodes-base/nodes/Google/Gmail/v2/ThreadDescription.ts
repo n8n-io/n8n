@@ -257,11 +257,12 @@ export const threadFields: INodeProperties[] = [
 				'@version': [{ _cnd: { gte: 2.3 } }],
 			},
 		},
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-simplify -- v2.3 deliberately flips the default so the agent gets full body/content fields by default
 		default: false,
 		description: 'Whether to return a simplified version of the response instead of the raw data',
 		builderHint: {
 			message:
-				'Default is false so downstream nodes can read the full thread message bodies and attachments. Set to true only when the workflow needs the metadata-only shape — references such as $json.text or $json.html resolve to empty values when true.',
+				'KEEP DEFAULT (false). Do not set to true if any downstream node references body or content fields (text, html, textAsHtml, payload, raw, or $binary). Setting to true silently resolves those references to empty strings — the workflow runs without errors but emits blank output. Only set to true when the workflow uses ONLY metadata fields (id, threadId, labelIds, subject, from, to, date).',
 		},
 	},
 	{
