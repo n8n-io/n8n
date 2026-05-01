@@ -18,7 +18,7 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import WorkflowToolConfigContent from './WorkflowToolConfigContent.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInlineTextEdit, N8nRadioButtons } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
 
@@ -35,6 +35,7 @@ const props = defineProps<{
 		toolRef: AgentJsonToolRef;
 		existingToolNames?: string[];
 		onConfirm: (updatedRef: AgentJsonToolRef) => void;
+		onRemove?: () => void;
 	};
 }>();
 
@@ -46,6 +47,7 @@ const isWorkflowTool = computed(() => props.data.toolRef.type === 'workflow');
 const nodeContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const workflowContentRef = ref<InstanceType<typeof WorkflowToolConfigContent> | null>(null);
 const isValid = ref(false);
+const activeView = ref<'config' | 'raw'>('config');
 
 /** Derive an INode view of a node-type ref once. Null for workflow refs. */
 const initialNode = computed<INode | null>(() =>
@@ -53,6 +55,12 @@ const initialNode = computed<INode | null>(() =>
 );
 const initialName = computed(() => props.data.toolRef.name ?? initialNode.value?.name ?? '');
 const nodeName = ref(initialName.value);
+
+const toolJson = computed(() => JSON.stringify(props.data.toolRef, null, 2));
+const viewOptions = computed(() => [
+	{ label: 'Config', value: 'config' as const },
+	{ label: 'Raw', value: 'raw' as const },
+]);
 
 /** Gate the modal render — for node tools we need a resolvable node; workflow
  *  tools always render since their data is self-contained in the ref. */
@@ -84,6 +92,11 @@ function handleConfirm() {
 }
 
 function handleCancel() {
+	closeDialog();
+}
+
+function handleRemove() {
+	props.data.onRemove?.();
 	closeDialog();
 }
 
@@ -137,7 +150,14 @@ function handleNodeNameUpdate(name: string) {
 		</template>
 		<template #content>
 			<div :class="$style.contentWrapper">
-				<div :class="$style.configureTab">
+				<N8nRadioButtons
+					:model-value="activeView"
+					:options="viewOptions"
+					:class="$style.viewToggle"
+					@update:model-value="activeView = $event"
+				/>
+				<pre v-if="activeView === 'raw'" :class="$style.codePreview">{{ toolJson }}</pre>
+				<div v-else :class="$style.configureTab">
 					<WorkflowToolConfigContent
 						v-if="isWorkflowTool"
 						ref="workflowContentRef"
@@ -158,17 +178,28 @@ function handleNodeNameUpdate(name: string) {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="handleCancel">
-					{{ i18n.baseText('agents.toolConfig.cancel') }}
-				</N8nButton>
 				<N8nButton
-					variant="solid"
-					:disabled="!isValid"
-					data-test-id="agent-tool-config-save"
-					@click="handleConfirm"
+					v-if="data.onRemove"
+					variant="subtle"
+					data-testid="agent-tool-config-remove"
+					@click="handleRemove"
 				>
-					{{ i18n.baseText('agents.toolConfig.save') }}
+					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+					{{ i18n.baseText('agents.builder.tools.remove') }}
 				</N8nButton>
+				<div :class="$style.footerActions">
+					<N8nButton variant="subtle" @click="handleCancel">
+						{{ i18n.baseText('agents.toolConfig.cancel') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						:disabled="!isValid"
+						data-test-id="agent-tool-config-save"
+						@click="handleConfirm"
+					>
+						{{ i18n.baseText('agents.toolConfig.save') }}
+					</N8nButton>
+				</div>
 			</div>
 		</template>
 	</Modal>
@@ -204,13 +235,20 @@ function handleNodeNameUpdate(name: string) {
 
 .footer {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
+}
+
+.footerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .contentWrapper {
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--sm);
 	max-height: 60vh;
 	overflow: hidden;
 	margin-right: calc(-1 * var(--spacing--lg));
@@ -226,5 +264,25 @@ function handleNodeNameUpdate(name: string) {
 	flex: 1;
 	min-height: 0;
 	flex-direction: column;
+}
+
+.viewToggle {
+	align-self: flex-start;
+}
+
+.codePreview {
+	flex: 1;
+	min-height: 0;
+	margin: 0;
+	padding: var(--spacing--sm);
+	overflow: auto;
+	border: var(--border);
+	border-radius: var(--radius);
+	background: var(--background--base);
+	color: var(--text-color--base);
+	font-family: var(--font-family-monospace);
+	font-size: var(--font-size--xs);
+	line-height: var(--line-height--md);
+	white-space: pre;
 }
 </style>

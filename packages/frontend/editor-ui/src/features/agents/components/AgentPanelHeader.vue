@@ -8,24 +8,13 @@ defineProps<{
 </script>
 
 <template>
-	<div :class="$style.header">
-		<div :class="$style.text">
-			<N8nText tag="h3" size="xlarge" :bold="true">{{ title }}</N8nText>
-			<N8nText v-if="description" color="text-light">{{ description }}</N8nText>
-		</div>
-		<slot name="actions" />
+	<div :class="$style.text">
+		<N8nText tag="h3" size="xlarge" :bold="true">{{ title }}</N8nText>
+		<N8nText v-if="description" color="text-light">{{ description }}</N8nText>
 	</div>
 </template>
 
 <style module lang="scss">
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	margin-bottom: var(--spacing--2xs);
-}
-
 .text {
 	display: flex;
 	flex-direction: column;

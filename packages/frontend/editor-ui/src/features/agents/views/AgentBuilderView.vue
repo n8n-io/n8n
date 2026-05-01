@@ -8,6 +8,7 @@ import {
 	N8nRadioButtons,
 	N8nResizeWrapper,
 	N8nTooltip,
+	N8nCard,
 } from '@n8n/design-system';
 import type { N8nDropdownOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -38,37 +39,31 @@ import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
-import { useAgentSectionNav } from '../composables/useAgentSectionNav';
-import { agentsEventBus } from '../agents.eventBus';
 import {
 	AGENT_BUILDER_VIEW,
-	AGENT_SECTION_KEY,
-	ADVANCED_SECTION_KEY,
-	EVALS_SECTION_KEY,
-	CONFIG_JSON_SECTION_KEY,
 	EXECUTIONS_SECTION_KEY,
+	EVALS_SECTION_KEY,
 	AGENT_TOOLS_MODAL_KEY,
+	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 } from '../constants';
+import { agentsEventBus } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
-import AgentConfigTree from '../components/AgentConfigTree.vue';
-import AgentSectionEditor from '../components/AgentSectionEditor.vue';
-import AgentCustomToolViewer from '../components/AgentCustomToolViewer.vue';
-import AgentSkillViewer from '../components/AgentSkillViewer.vue';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import AgentSessionsListView from './AgentSessionsListView.vue';
-import AgentIntegrationsPanel from '../components/AgentIntegrationsPanel.vue';
-import AgentToolsListPanel from '../components/AgentToolsListPanel.vue';
-import AgentSkillsListPanel from '../components/AgentSkillsListPanel.vue';
 import AgentInfoPanel from '../components/AgentInfoPanel.vue';
+import AgentIdentityHeader from '../components/AgentIdentityHeader.vue';
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
-import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
+import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
+import AgentConfigJsonEditor from '../components/AgentConfigJsonEditor.vue';
 import AgentPanelHeader from '../components/AgentPanelHeader.vue';
+
+type AgentBuilderMainTab = 'agent' | 'executions' | 'evaluations' | 'raw';
 
 const route = useRoute();
 const router = useRouter();
@@ -104,10 +99,8 @@ const {
  *     will immediately transition them to the build chat, and
  *   - render the Test tab first on unbuilt agents only to flip it to Build
  *     once the config fetch resolves.
- * Everything below the header is empty until we know the right starting state.
  */
 const initialized = ref(false);
-const { selectedSection, onTreeSelect } = useAgentSectionNav();
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const {
@@ -131,17 +124,42 @@ const sessionOptions = computed<Array<N8nDropdownOption<string>>>(() =>
 	})),
 );
 
-const {
-	builderRef,
-	chatColumnCollapsed,
-	chatColumnWidth,
-	treeColumnWidth,
-	gridColumns,
-	onChatColumnResize,
-	onTreeColumnResize,
-	resizeGridSize,
-} = useAgentBuilderLayout();
+const { chatColumnCollapsed, chatColumnWidth, onChatColumnResize, resizeGridSize } =
+	useAgentBuilderLayout();
 chatColumnCollapsed.value = false;
+
+// Main tab state (Agent, Executions, Evaluations)
+const selectedSection = ref<string | null>(null);
+
+const activeMainTab = computed<AgentBuilderMainTab>({
+	get() {
+		if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'executions';
+		if (selectedSection.value === EVALS_SECTION_KEY) return 'evaluations';
+		if (selectedSection.value === 'raw') return 'raw';
+		return 'agent';
+	},
+	set(tab) {
+		selectedSection.value =
+			tab === 'executions'
+				? EXECUTIONS_SECTION_KEY
+				: tab === 'evaluations'
+					? EVALS_SECTION_KEY
+					: tab === 'raw'
+						? 'raw'
+						: null;
+	},
+});
+
+const mainTabOptions = computed(() => [
+	{ label: locale.baseText('agents.builder.header.tab.agent'), value: 'agent' as const },
+	{ label: locale.baseText('agents.builder.header.tab.executions'), value: 'executions' as const },
+	{ label: 'Raw', value: 'raw' as const },
+]);
+
+const executionsDescription = computed(
+	() =>
+		`${sessionsStore.threads.length} ${sessionsStore.threads.length === 1 ? 'execution' : 'executions'}`,
+);
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -606,114 +624,6 @@ function exitContinueMode() {
 	clearContinueSessionParam();
 }
 
-function onOpenToolFromList(index: number) {
-	selectedSection.value = `tools.${index}`;
-}
-
-function onOpenSkillFromList(id: string) {
-	selectedSection.value = `skills.${id}`;
-}
-
-function onOpenAddSkillModal() {
-	const existingSkillIds = new Set(Object.keys(agent.value?.skills ?? {}));
-	for (const ref of localConfig.value?.skills ?? []) {
-		if (ref.id) existingSkillIds.add(ref.id);
-	}
-
-	uiStore.openModalWithData({
-		name: AGENT_SKILL_MODAL_KEY,
-		data: {
-			projectId: projectId.value,
-			agentId: agentId.value,
-			existingSkillIds: [...existingSkillIds],
-			onConfirm: ({ id, skill }: { id: string; skill: AgentSkill }) => {
-				const targetProjectId = projectId.value;
-				const targetAgentId = agentId.value;
-				void (async () => {
-					let created: AgentSkill;
-					let versionId: string | null;
-					try {
-						const result = await createAgentSkill(
-							rootStore.restApiContext,
-							targetProjectId,
-							targetAgentId,
-							id,
-							skill,
-						);
-						created = result.skill;
-						versionId = result.versionId;
-					} catch (error) {
-						showError(error, locale.baseText('agents.builder.skills.create.error'));
-						return;
-					}
-					if (agent.value?.id !== targetAgentId) return;
-					agent.value = {
-						...agent.value,
-						versionId,
-						skills: {
-							...(agent.value.skills ?? {}),
-							[id]: created,
-						},
-					};
-					onConfigFieldUpdate({
-						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
-					});
-					selectedSection.value = `skills.${id}`;
-					showMessage({
-						title: locale.baseText('agents.builder.skills.added'),
-						type: 'success',
-					});
-				})();
-			},
-		},
-	});
-}
-
-function onRemoveTool(index: number) {
-	const currentTools = localConfig.value?.tools ?? [];
-	if (index < 0 || index >= currentTools.length) return;
-	const nextTools = currentTools.filter((_, i) => i !== index);
-	onConfigFieldUpdate({ tools: nextTools });
-	// If the removed tool's per-slice tab was open, drop back to the Tools list.
-	if (selectedSection.value === `tools.${index}`) {
-		selectedSection.value = 'tools';
-	}
-}
-
-function onRemoveSkill(id: string) {
-	const currentSkills = localConfig.value?.skills ?? [];
-	const nextSkills = currentSkills.filter((ref) => ref.id !== id);
-	if (nextSkills.length === currentSkills.length) return;
-
-	onConfigFieldUpdate({ skills: nextSkills });
-
-	if (selectedSection.value === `skills.${id}`) {
-		selectedSection.value = 'skills';
-	}
-}
-
-function onSkillUpdate(updates: Partial<AgentSkill>) {
-	const selected = selectedSkill.value;
-	if (!selected || !agent.value) return;
-
-	const updatedSkill = { ...selected.skill, ...updates };
-	agent.value = {
-		...agent.value,
-		skills: {
-			...(agent.value.skills ?? {}),
-			[selected.id]: updatedSkill,
-		},
-	};
-
-	skillAutosave.scheduleAutosave({
-		type: 'skill',
-		projectId: projectId.value,
-		agentId: agentId.value,
-		skillId: selected.id,
-		skill: deepCopy(updatedSkill),
-	});
-}
-
 function onOpenAddToolModal() {
 	uiStore.openModalWithData({
 		name: AGENT_TOOLS_MODAL_KEY,
@@ -743,23 +653,122 @@ function onOpenAddTriggerModal() {
 	});
 }
 
-/**
- * When the tree selects a custom-tool child (`tools.<i>` whose ref has
- * `type: 'custom'`), we show its compiled TS source instead of the JSON ref.
- * The source lives on `agent.tools[id].code` (populated server-side on compile).
- */
-/** Active trigger type when the tree selection is `triggers.<type>`. */
-const selectedTriggerType = computed<string | null>(() => {
-	const key = selectedSection.value;
-	if (!key?.startsWith('triggers.')) return null;
-	return key.slice('triggers.'.length) || null;
-});
+function onOpenToolFromList(index: number) {
+	const tool = localConfig.value?.tools[index];
+	if (!tool) return;
+	uiStore.openModalWithData({
+		name: AGENT_TOOL_CONFIG_MODAL_KEY,
+		data: {
+			toolRef: tool,
+			existingToolNames: (localConfig.value?.tools ?? [])
+				.map((ref, i) => (i === index ? null : ref.name))
+				.filter((name): name is string => !!name),
+			onConfirm: (updatedTool: AgentJsonToolRef) => {
+				const nextTools = [...(localConfig.value?.tools ?? [])];
+				nextTools[index] = updatedTool;
+				onConfigFieldUpdate({ tools: nextTools });
+			},
+			onRemove: () => onRemoveTool(index),
+		},
+	});
+}
 
-/** True when a tree selection points at a specific tool slice (tools.<i>). */
-const isToolSliceSelection = computed(() => selectedSection.value?.startsWith('tools.') ?? false);
+function onOpenSkillFromList(id: string) {
+	const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
+	if (!skill) return;
+	uiStore.openModalWithData({
+		name: AGENT_SKILL_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingSkillIds: Object.keys(agent.value?.skills ?? {}),
+			skill,
+			skillId: id,
+			onRemove: (skillId: string) => onRemoveSkill(skillId),
+			onConfirm: ({ id: skillId, skill: updatedSkill }: { id: string; skill: AgentSkill }) => {
+				if (agent.value?.id !== agentId.value) return;
+				agent.value = {
+					...agent.value,
+					skills: {
+						...(agent.value.skills ?? {}),
+						[skillId]: updatedSkill,
+					},
+				};
+				const nextSkills = [...(localConfig.value?.skills ?? [])];
+				const skillRefIndex = nextSkills.findIndex((ref) => ref.id === id);
+				if (skillRefIndex !== -1) {
+					nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
+					onConfigFieldUpdate({ skills: nextSkills });
+				}
+			},
+		},
+	});
+}
 
-/** True when a tree selection points at a specific skill slice (skills.<id>). */
-const isSkillSliceSelection = computed(() => selectedSection.value?.startsWith('skills.') ?? false);
+function onRemoveTool(index: number) {
+	const currentTools = localConfig.value?.tools ?? [];
+	if (index < 0 || index >= currentTools.length) return;
+	const nextTools = currentTools.filter((_, i) => i !== index);
+	onConfigFieldUpdate({ tools: nextTools });
+}
+
+function onRemoveSkill(id: string) {
+	const currentSkills = localConfig.value?.skills ?? [];
+	const nextSkills = currentSkills.filter((ref) => ref.id !== id);
+	onConfigFieldUpdate({ skills: nextSkills });
+}
+
+function onOpenAddSkillModal() {
+	const existingSkillIds = new Set(Object.keys(agent.value?.skills ?? {}));
+	for (const ref of localConfig.value?.skills ?? []) {
+		if (ref.id) existingSkillIds.add(ref.id);
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_SKILL_MODAL_KEY,
+		data: {
+			projectId: projectId.value,
+			agentId: agentId.value,
+			existingSkillIds: [...existingSkillIds],
+			onConfirm: ({ id, skill }: { id: string; skill: AgentSkill }) => {
+				void (async () => {
+					let created: AgentSkill;
+					let versionId: string | null;
+					try {
+						const result = await createAgentSkill(
+							rootStore.restApiContext,
+							projectId.value,
+							agentId.value,
+							id,
+							skill,
+						);
+						created = result.skill;
+						versionId = result.versionId;
+					} catch (error) {
+						showError(error, locale.baseText('agents.builder.skills.create.error'));
+						return;
+					}
+					if (agent.value?.id !== agentId.value) return;
+					agent.value = {
+						...agent.value,
+						versionId,
+						skills: {
+							...(agent.value.skills ?? {}),
+							[id]: created,
+						},
+					};
+					onConfigFieldUpdate({
+						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
+					});
+					showMessage({
+						title: locale.baseText('agents.builder.skills.added'),
+						type: 'success',
+					});
+				})();
+			},
+		},
+	});
+}
 
 const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
 	const refs = localConfig.value?.skills ?? [];
@@ -780,46 +789,6 @@ const appliedSkills = computed<Array<{ id: string; skill: AgentSkill }>>(() => {
 	}
 
 	return out;
-});
-
-const selectedSkill = computed<{ id: string; skill: AgentSkill } | null>(() => {
-	const key = selectedSection.value;
-	if (!key?.startsWith('skills.')) return null;
-	const id = key.slice('skills.'.length);
-	if (!id) return null;
-	return appliedSkills.value.find((entry) => entry.id === id) ?? null;
-});
-
-/** Filename-like label for the currently-open tool. */
-const toolHeaderTitle = computed(() => {
-	const key = selectedSection.value;
-	if (!key?.startsWith('tools.')) return '';
-	const idx = Number(key.slice('tools.'.length));
-	if (!Number.isInteger(idx)) return '';
-	const ref = localConfig.value?.tools?.[idx];
-	if (!ref) return `Tool ${idx + 1}`;
-	const name = ref.name?.trim();
-	if (ref.type === 'custom') {
-		const base = name || ref.id || `tool-${idx + 1}`;
-		return `${base}.ts`;
-	}
-	return name || `${ref.type ?? 'tool'}-${idx + 1}`;
-});
-
-const skillHeaderTitle = computed(
-	() => selectedSkill.value?.skill.name || selectedSkill.value?.id || '',
-);
-
-const customToolSelection = computed<{ code: string } | null>(() => {
-	const key = selectedSection.value;
-	if (!key?.startsWith('tools.')) return null;
-	const idx = Number(key.slice('tools.'.length));
-	if (!Number.isInteger(idx)) return null;
-	const ref = localConfig.value?.tools?.[idx];
-	if (!ref || ref.type !== 'custom' || !ref.id) return null;
-	const entry = agent.value?.tools?.[ref.id];
-	if (!entry) return null;
-	return { code: entry.code ?? '' };
 });
 
 function onQuickActionAddTool(tools: AgentJsonToolRef[]) {
@@ -882,7 +851,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
-		<div ref="builderRef" :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">
+		<div :class="$style.builder">
 			<!-- Column 1: chat -->
 			<N8nResizeWrapper
 				:class="$style.chatColumnResizeWrapper"
@@ -914,7 +883,6 @@ function onSwitchAgent(nextAgentId: string) {
 									size="small"
 									:class="$style.sessionTitleBtn"
 									:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
-									data-testid="agent-chat-session-picker-btn"
 								>
 									{{ currentSessionTitle }}
 									<N8nIcon icon="chevron-down" color="text-light" :size="12" />
@@ -1086,153 +1054,107 @@ function onSwitchAgent(nextAgentId: string) {
 			>
 				<div :class="$style.panelArea">
 					<div :class="$style.panelAreaContainer">
-						<div
-							v-if="isToolSliceSelection || isSkillSliceSelection"
-							:class="$style.panelToolbar"
-							data-testid="agent-tool-header"
-						>
-							<button
-								type="button"
-								:class="$style.backBtn"
-								:aria-label="
-									isSkillSliceSelection
-										? locale.baseText('agents.builder.skills.back')
-										: locale.baseText('agents.builder.tools.back')
-								"
-								data-testid="agent-tool-back"
-								@click="selectedSection = isSkillSliceSelection ? 'skills' : 'tools'"
-							>
-							<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
-								{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
-							</span>
+						<div :class="$style.panelHeaderRow">
+							<AgentIdentityHeader
+								v-if="activeMainTab === 'agent'"
+								:config="localConfig"
+								:disabled="isBuildChatStreaming"
+								@update:config="onConfigFieldUpdate"
+							/>
+							<AgentPanelHeader
+								v-else-if="activeMainTab === 'executions'"
+								title="Executions"
+								:description="executionsDescription"
+							/>
+							<AgentPanelHeader
+								v-else-if="activeMainTab === 'raw'"
+								title="Raw"
+								description="Agent JSON configuration"
+							/>
+							<div v-else />
+							<N8nRadioButtons
+								:model-value="activeMainTab"
+								:options="mainTabOptions"
+								:class="$style.mainTabs"
+								data-testid="agent-header-tabs"
+								@update:model-value="activeMainTab = $event"
+							/>
 						</div>
-						<AgentCustomToolViewer v-if="customToolSelection" :code="customToolSelection.code" />
-						<AgentSkillViewer
-							v-else-if="selectedSkill"
-							:skill="selectedSkill.skill"
-							:disabled="isBuildChatStreaming"
-							@update:skill="onSkillUpdate"
-						/>
-						<AgentAdvancedPanel
-							v-else-if="selectedSection === ADVANCED_SECTION_KEY"
-							:config="localConfig"
-							:disabled="isBuildChatStreaming"
-							@update:config="onConfigFieldUpdate"
-						/>
-						<AgentEvalsPanel v-else-if="selectedSection === EVALS_SECTION_KEY" />
-						<AgentInfoPanel
-							v-else-if="selectedSection === AGENT_SECTION_KEY"
-							:config="localConfig"
-							:disabled="isBuildChatStreaming"
-							@update:config="onConfigFieldUpdate"
-						/>
+
+						<!-- Agent tab: consolidated cards -->
+						<div v-if="activeMainTab === 'agent'" :class="$style.agentCards">
+							<AgentCapabilitiesSection
+								:config="localConfig"
+								:tools="localConfig?.tools ?? []"
+								:skills="appliedSkills"
+								:connected-triggers="connectedTriggers"
+								:disabled="isBuildChatStreaming"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:is-published="Boolean(agent?.publishedVersion)"
+								@open-tool="onOpenToolFromList"
+								@open-skill="onOpenSkillFromList"
+								@open-trigger="onOpenAddTriggerModal"
+								@add-tool="onOpenAddToolModal"
+								@add-skill="onOpenAddSkillModal"
+								@add-trigger="onOpenAddTriggerModal"
+								@remove-tool="onRemoveTool"
+								@remove-skill="onRemoveSkill"
+								@update:connected-triggers="onConnectedTriggersUpdate"
+								@trigger-added="onTriggerAdded"
+							/>
+							<N8nCard variant="outlined" :class="$style.card">
+								<AgentInfoPanel
+									:config="localConfig"
+									:disabled="isBuildChatStreaming"
+									embedded
+									@update:config="onConfigFieldUpdate"
+								/>
+							</N8nCard>
+
+							<N8nCard variant="outlined" :class="$style.card">
+								<AgentMemoryPanel
+									:config="localConfig"
+									:disabled="isBuildChatStreaming"
+									embedded
+									@update:config="onConfigFieldUpdate"
+								/>
+							</N8nCard>
+
+							<N8nCard variant="outlined" :class="$style.card">
+								<AgentAdvancedPanel
+									:config="localConfig"
+									:disabled="isBuildChatStreaming"
+									collapsible
+									@update:config="onConfigFieldUpdate"
+								/>
+							</N8nCard>
+						</div>
+
+						<!-- Executions tab -->
 						<AgentSessionsListView
-							v-else-if="selectedSection === EXECUTIONS_SECTION_KEY"
+							v-else-if="activeMainTab === 'executions'"
 							data-testid="agent-executions-panel"
 						/>
-						<AgentToolsListPanel
-							v-else-if="selectedSection === 'tools'"
-							:tools="localConfig?.tools ?? []"
-							:config="localConfig"
-							:disabled="isBuildChatStreaming"
-							@open-tool="onOpenToolFromList"
-							@add-tool="onOpenAddToolModal"
-							@remove-tool="onRemoveTool"
-							@update:config="onConfigFieldUpdate"
-						/>
-						<AgentSkillsListPanel
-							v-else-if="selectedSection === 'skills'"
-							:skills="appliedSkills"
-							:disabled="isBuildChatStreaming"
-							@open-skill="onOpenSkillFromList"
-							@add-skill="onOpenAddSkillModal"
-							@remove-skill="onRemoveSkill"
-						/>
-						<div
-							v-else-if="selectedTriggerType"
-							:class="$style.triggersTab"
-							data-testid="agent-triggers-tab"
-						>
-							<AgentIntegrationsPanel
-								:key="`integrations-focus-${agentId}`"
-								:project-id="projectId"
-								:agent-id="agentId"
-								:agent-name="agentName"
-								:is-published="Boolean(agent?.publishedVersion)"
-								:focus-type="selectedTriggerType"
-								@update:connected-triggers="onConnectedTriggersUpdate"
-								@trigger-added="onTriggerAdded"
+
+						<div v-else-if="activeMainTab === 'raw'">
+							<AgentConfigJsonEditor
+								:config="localConfig"
+								:read-only="isBuildChatStreaming"
+								@update:config="onConfigFieldUpdate"
 							/>
 						</div>
-						<div
-							v-else-if="selectedSection === 'triggers'"
-							:class="$style.triggersTab"
-							data-testid="agent-triggers-tab"
-						>
-							<AgentPanelHeader
-								:title="locale.baseText('agents.builder.triggers.title')"
-								:description="locale.baseText('agents.builder.triggers.description')"
-							>
-								<template #actions>
-									<N8nButton
-										type="primary"
-										size="small"
-										data-testid="agent-triggers-add"
-										@click="onOpenAddTriggerModal"
-									>
-										<template #prefix>
-											<N8nIcon icon="plus" :size="14" />
-										</template>
-										{{ locale.baseText('agents.builder.triggers.add') }}
-									</N8nButton>
-								</template>
-							</AgentPanelHeader>
-							<AgentIntegrationsPanel
-								:key="`integrations-connected-${agentId}`"
-								:project-id="projectId"
-								:agent-id="agentId"
-								:agent-name="agentName"
-								:is-published="Boolean(agent?.publishedVersion)"
-								:only-connected="true"
-								@update:connected-triggers="onConnectedTriggersUpdate"
-								@trigger-added="onTriggerAdded"
-							/>
+
+						<!-- Evaluations tab (placeholder) -->
+						<div v-else data-testid="agent-evaluations-panel">
+							<N8nCard variant="outlined" :class="$style.card">
+								<N8nHeading size="medium">Evaluations</N8nHeading>
+								<N8nText color="text-light"> Evaluations functionality is coming soon. </N8nText>
+							</N8nCard>
 						</div>
-						<AgentMemoryPanel
-							v-else-if="selectedSection === 'memory'"
-							:config="localConfig"
-							:disabled="isBuildChatStreaming"
-							@update:config="onConfigFieldUpdate"
-						/>
-						<AgentSectionEditor
-							v-else
-							:config="localConfig"
-							:section-path="selectedSection === CONFIG_JSON_SECTION_KEY ? null : selectedSection"
-							:read-only="isBuildChatStreaming"
-							@update:config="onSectionEditorUpdate"
-						/>
 					</div>
 				</div>
 			</section>
-
-			<!-- Column 3: tree -->
-			<N8nResizeWrapper
-				:class="$style.treeColumnResizeWrapper"
-				:width="treeColumnWidth"
-				:min-width="220"
-				:grid-size="resizeGridSize"
-				:supported-directions="['left']"
-				@resize="onTreeColumnResize"
-			>
-				<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
-					<AgentConfigTree
-						:config="localConfig"
-						:selected-key="selectedSection"
-						:connected-triggers="connectedTriggers"
-						@select="onTreeSelect"
-					/>
-				</aside>
-			</N8nResizeWrapper>
 		</div>
 	</div>
 </template>
@@ -1250,10 +1172,10 @@ function onSwitchAgent(nextAgentId: string) {
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
+	grid-template-columns: var(--agent-chat-column-width, 460px) 1fr;
 }
 
-.chatColumnResizeWrapper,
-.treeColumnResizeWrapper {
+.chatColumnResizeWrapper {
 	min-width: 0;
 	min-height: 0;
 	overflow: hidden;
@@ -1385,31 +1307,12 @@ function onSwitchAgent(nextAgentId: string) {
 	min-height: 0;
 }
 
-.treeColumn {
-	display: flex;
-	flex-direction: column;
-	background-color: var(--background--surface);
-	border-left: var(--border);
-	height: 100%;
-	min-height: 0;
-	overflow: auto;
-}
-
 .editorColumn {
 	display: flex;
 	flex-direction: column;
 	background-color: var(--background--surface);
 	min-height: 0;
 	min-width: 0;
-}
-
-.triggersTab {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--lg);
-	height: 100%;
-	overflow-y: auto;
 }
 
 .panelArea {
@@ -1422,6 +1325,7 @@ function onSwitchAgent(nextAgentId: string) {
 		var(--color--background--light-1),
 		var(--color--background--light-2)
 	);
+	overflow: auto;
 }
 
 .panelAreaContainer {
@@ -1430,53 +1334,41 @@ function onSwitchAgent(nextAgentId: string) {
 	width: 100%;
 	padding: var(--spacing--sm);
 	margin: 0 auto;
+	height: 100%;
 }
 
-.panelArea > * {
-	flex: 1;
-	min-height: 0;
-}
-
-.panelToolbar {
+.panelHeaderRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--sm);
-	border-bottom: var(--border);
-	/* Overrides `.panelArea > *` which sets flex:1. The toolbar should size to
-	   its content, not share height with the panel below. */
-	flex: 0 0 36px !important;
-	height: 36px !important;
-	min-height: 36px !important;
-}
+	justify-content: space-between;
+	gap: var(--spacing--lg);
+	padding: var(--spacing--lg) var(--spacing--lg) 0;
 
-.panelToolbarTitle {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-size: var(--font-size--2xs);
-	color: var(--text-color);
-}
-
-.backBtn {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
-	width: 24px;
-	height: 24px;
-	padding: 0;
-	background: transparent;
-	border: var(--border);
-	border-color: transparent;
-	border-radius: var(--radius);
-	color: var(--text-color);
-	cursor: pointer;
-	flex-shrink: 0;
-
-	&:hover {
-		background: var(--background--hover);
+	> *:first-child {
+		width: 100%;
 	}
+	> .mainTabs {
+		margin-left: auto;
+	}
+}
+
+.agentCards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	padding: var(--spacing--lg);
+	width: 100%;
+	max-width: 56rem;
+	margin: 0 auto;
+}
+
+.card {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+}
+
+.rawCard {
+	display: flex;
 }
 </style>

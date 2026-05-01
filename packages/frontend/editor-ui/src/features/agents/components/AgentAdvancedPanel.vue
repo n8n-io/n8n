@@ -11,7 +11,15 @@
  */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nInput, N8nSelect, N8nSwitch2, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconButton,
+	N8nInput,
+	N8nSelect,
+	N8nSwitch2,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { useI18n } from '@n8n/i18n';
 
@@ -22,14 +30,25 @@ import {
 	type ReasoningEffort,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
-import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const i18n = useI18n();
 
-const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
-	disabled: false,
-});
+const props = withDefaults(
+	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; collapsible?: boolean }>(),
+	{
+		disabled: false,
+		collapsible: false,
+	},
+);
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
+
+const isCollapsed = ref(props.collapsible);
+const sectionView = computed(() => (isCollapsed.value ? 'collapsed' : 'expanded'));
+
+function toggleCollapsed() {
+	if (!props.collapsible) return;
+	isCollapsed.value = !isCollapsed.value;
+}
 
 const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(
@@ -43,6 +62,7 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 const toolCallConcurrency = ref(props.config?.config?.toolCallConcurrency ?? 1);
+const requireToolApproval = ref(props.config?.config?.requireToolApproval ?? false);
 
 watch(
 	() => props.config,
@@ -53,6 +73,7 @@ watch(
 		budgetTokens.value = t?.budgetTokens ?? 1024;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
 		toolCallConcurrency.value = cfg.config?.toolCallConcurrency ?? 1;
+		requireToolApproval.value = cfg.config?.requireToolApproval ?? false;
 	},
 	{ deep: true },
 );
@@ -104,6 +125,13 @@ function onConcurrencyInput(value: string) {
 	void emitConcurrency();
 }
 
+function onApprovalToggle(value: boolean) {
+	requireToolApproval.value = value;
+	emit('update:config', {
+		config: { ...props.config?.config, requireToolApproval: value },
+	});
+}
+
 const thinkingDisabledReason = computed(() =>
 	capabilities.value.thinking
 		? ''
@@ -119,94 +147,131 @@ const thinkingDisabledReason = computed(() =>
 
 <template>
 	<div :class="$style.panel" data-testid="agent-behavior-panel">
-		<AgentPanelHeader
-			:title="i18n.baseText('agents.builder.advanced.title')"
-			:description="i18n.baseText('agents.builder.advanced.description')"
-		/>
-
-		<div :class="$style.row">
-			<div :class="$style.rowLabel">
-				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.advanced.thinking.label')
-				}}</N8nText>
-				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.advanced.thinking.hint') }}
-				</N8nText>
-			</div>
-			<N8nTooltip
-				:content="thinkingDisabledReason"
-				:disabled="!!capabilities.thinking"
-				placement="top"
-			>
-				<N8nSwitch2
-					:model-value="thinkingEnabled"
-					:disabled="!capabilities.thinking || props.disabled"
-					data-testid="agent-thinking-toggle"
-					@update:model-value="(v) => onThinkingToggle(Boolean(v))"
-				/>
-			</N8nTooltip>
-		</div>
-
-		<div v-if="thinkingEnabled && capabilities.thinking === 'budgetTokens'" :class="$style.row">
-			<N8nText size="small" :bold="true">{{
-				i18n.baseText('agents.builder.advanced.budgetTokens.label')
-			}}</N8nText>
-			<N8nInput
-				type="number"
-				:model-value="String(budgetTokens)"
-				:disabled="props.disabled"
-				:class="$style.shortInput"
-				data-testid="agent-budget-tokens-input"
-				@update:model-value="onBudgetInput"
-			/>
-		</div>
-
-		<div v-if="thinkingEnabled && capabilities.thinking === 'reasoningEffort'" :class="$style.row">
-			<N8nText size="small" :bold="true">{{
-				i18n.baseText('agents.builder.advanced.reasoningEffort.label')
-			}}</N8nText>
-			<N8nSelect
-				:model-value="reasoningEffort"
+		<div :class="$style.header">
+			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
+			<N8nIconButton
+				v-if="props.collapsible"
+				variant="ghost"
 				size="small"
-				:disabled="props.disabled"
-				:class="$style.shortInput"
-				data-testid="agent-reasoning-effort-select"
-				@update:model-value="onReasoningEffortChange"
-			>
-				<N8nOption v-for="opt in REASONING_EFFORT_OPTIONS" :key="opt" :value="opt" :label="opt" />
-			</N8nSelect>
-		</div>
-
-		<div :class="$style.row">
-			<div :class="$style.rowLabel">
-				<N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.advanced.concurrency.label')
-				}}</N8nText>
-				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
-				</N8nText>
-			</div>
-			<N8nInput
-				type="number"
-				:model-value="String(toolCallConcurrency)"
-				:disabled="props.disabled"
-				:class="$style.shortInput"
-				data-testid="agent-concurrency-input"
-				@update:model-value="onConcurrencyInput"
+				:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
+				:aria-expanded="!isCollapsed"
+				:aria-label="i18n.baseText('agents.builder.advanced.title')"
+				data-testid="agent-advanced-collapse-toggle"
+				@click="toggleCollapsed"
 			/>
 		</div>
+
+		<template v-if="!isCollapsed">
+			<div :class="$style.row">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.advanced.thinking.label')
+					}}</N8nText>
+					<N8nText size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.builder.advanced.thinking.hint') }}
+					</N8nText>
+				</div>
+				<N8nTooltip
+					:content="thinkingDisabledReason"
+					:disabled="!!capabilities.thinking"
+					placement="top"
+				>
+					<N8nSwitch2
+						:model-value="thinkingEnabled"
+						:disabled="!capabilities.thinking || props.disabled"
+						data-testid="agent-thinking-toggle"
+						@update:model-value="(v) => onThinkingToggle(Boolean(v))"
+					/>
+				</N8nTooltip>
+			</div>
+
+			<div v-if="thinkingEnabled && capabilities.thinking === 'budgetTokens'" :class="$style.row">
+				<N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.advanced.budgetTokens.label')
+				}}</N8nText>
+				<N8nInput
+					type="number"
+					:model-value="String(budgetTokens)"
+					:disabled="props.disabled"
+					:class="$style.shortInput"
+					data-testid="agent-budget-tokens-input"
+					@update:model-value="onBudgetInput"
+				/>
+			</div>
+
+			<div
+				v-if="thinkingEnabled && capabilities.thinking === 'reasoningEffort'"
+				:class="$style.row"
+			>
+				<N8nText size="small" :bold="true">{{
+					i18n.baseText('agents.builder.advanced.reasoningEffort.label')
+				}}</N8nText>
+				<N8nSelect
+					:model-value="reasoningEffort"
+					size="small"
+					:disabled="props.disabled"
+					:class="$style.shortInput"
+					data-testid="agent-reasoning-effort-select"
+					@update:model-value="onReasoningEffortChange"
+				>
+					<N8nOption v-for="opt in REASONING_EFFORT_OPTIONS" :key="opt" :value="opt" :label="opt" />
+				</N8nSelect>
+			</div>
+
+			<div :class="$style.row">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.advanced.concurrency.label')
+					}}</N8nText>
+					<N8nText size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
+					</N8nText>
+				</div>
+				<N8nInput
+					type="number"
+					:model-value="String(toolCallConcurrency)"
+					:disabled="props.disabled"
+					:class="$style.shortInput"
+					data-testid="agent-concurrency-input"
+					@update:model-value="onConcurrencyInput"
+				/>
+			</div>
+
+			<div :class="$style.row">
+				<div :class="$style.rowLabel">
+					<N8nText size="small" :bold="true">{{
+						i18n.baseText('agents.builder.advanced.approval.label')
+					}}</N8nText>
+					<N8nText size="xsmall" color="text-light">
+						{{ i18n.baseText('agents.builder.advanced.approval.hint') }}
+					</N8nText>
+				</div>
+				<N8nSwitch2
+					:model-value="requireToolApproval"
+					:disabled="props.disabled"
+					data-testid="agent-require-approval-toggle"
+					@update:model-value="(v) => onApprovalToggle(Boolean(v))"
+				/>
+			</div>
+		</template>
 	</div>
 </template>
 
 <style module>
 .panel {
-	padding: var(--spacing--lg);
 	overflow-y: auto;
 	height: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 }
 
 .row {

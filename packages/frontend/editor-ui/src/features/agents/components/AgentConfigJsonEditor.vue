@@ -84,6 +84,7 @@ watch(
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
+	padding: var(--spacing--lg);
 }
 
 .errorBanner {

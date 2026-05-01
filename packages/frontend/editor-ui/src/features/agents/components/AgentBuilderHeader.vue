@@ -25,6 +25,8 @@ import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
+export type AgentBuilderMainTab = 'agent' | 'executions' | 'evaluations';
+
 const props = defineProps<{
 	agent: AgentResource | null;
 	projectId: string;
@@ -99,28 +101,30 @@ function onBreadcrumbSelect(item: PathItem) {
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
-		<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
-			<template #append>
-				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
-				<N8nDropdown
-					:options="switcherOptions"
-					data-testid="agent-header-switcher"
-					@select="onSwitcherSelect"
-				>
-					<template #trigger>
-						<N8nButton
-							variant="ghost"
-							size="xsmall"
-							:class="$style.switcherButton"
-							:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
-						>
-							<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
-							<N8nIcon icon="chevron-down" :size="12" />
-						</N8nButton>
-					</template>
-				</N8nDropdown>
-			</template>
-		</N8nBreadcrumbs>
+		<div :class="$style.left">
+			<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
+				<template #append>
+					<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
+					<N8nDropdown
+						:options="switcherOptions"
+						data-testid="agent-header-switcher"
+						@select="onSwitcherSelect"
+					>
+						<template #trigger>
+							<N8nButton
+								variant="ghost"
+								size="xsmall"
+								:class="$style.switcherButton"
+								:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
+							>
+								<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
+								<N8nIcon icon="chevron-down" :size="12" />
+							</N8nButton>
+						</template>
+					</N8nDropdown>
+				</template>
+			</N8nBreadcrumbs>
+		</div>
 		<div :class="$style.right">
 			<span
 				v-if="saveStatus === 'saving' || saveStatus === 'saved'"
@@ -166,14 +170,17 @@ function onBreadcrumbSelect(item: PathItem) {
 	height: var(--height--4xl);
 }
 
+.left {
+	display: flex;
+	align-items: center;
+}
+
 .crumbSeparator {
 	color: var(--border-color);
 	margin: 0 var(--spacing--4xs);
 	user-select: none;
 }
 
-/* N8nButton owns chrome/hover/focus; we just override the breadcrumb-bold weight
-   and add gap between the label and chevron. */
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
