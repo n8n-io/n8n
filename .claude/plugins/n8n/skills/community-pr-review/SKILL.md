@@ -63,14 +63,20 @@ Check the `license/cla` commit status first; fall back to the CLAassistant comme
 
 #### B. PR title format
 
-The title must match:
+For all types except `revert`, the title must match:
 ```
-^(feat|fix|perf|test|docs|refactor|build|ci|chore|revert)(\([a-zA-Z0-9 ]+( Node)?\))?!?: [A-Z].+[^.]$
+^(feat|fix|perf|test|docs|refactor|build|ci|chore)(\([a-zA-Z0-9 ]+( Node)?\))?!?: [A-Z].+[^.]$
 ```
+
+For `revert` titles, the summary is the original commit header (which starts with a lowercase type), so capitalization is not enforced:
+```
+^revert(\([a-zA-Z0-9 ]+( Node)?\))?!?: .+[^.]$
+```
+
 - Type must be one of: `feat fix perf test docs refactor build ci chore revert`
 - Scope is optional, in parentheses e.g. `(editor)` or `(Slack Node)`
 - Breaking changes: `!` before the colon
-- Summary: starts with capital letter, no trailing period
+- Summary: starts with capital letter (lowercase allowed for `revert:`), no trailing period
 - No Linear ticket IDs in the title (e.g. `N8N-1234`)
 
 #### C. PR description completeness
@@ -107,10 +113,10 @@ Report:
 
 #### E. cubic-dev-ai issues
 
-Review the PR review comments fetched in step 2. `cubic-dev-ai[bot]` flags code issues with priority prefixes (`P1:` critical, `P2:` important).
+Review the PR review comments fetched in step 2. `cubic-dev-ai[bot]` leaves comments for every issue it finds, prefixed with a priority (`P1:`, `P2:`, `P3:`).
 
-- No comments from `cubic-dev-ai[bot]` → ✅ no issues raised
-- Any comments present → ❌ report the count and priority breakdown
+- No comments from `cubic-dev-ai[bot]`, or every comment explicitly states no issues were found → ✅
+- Any other comment → ❌ report the total count and priority breakdown (e.g. "3 issues: 1× P1, 1× P2, 1× P3")
 
 ### 4. Output
 
