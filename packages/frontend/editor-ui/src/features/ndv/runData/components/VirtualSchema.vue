@@ -20,7 +20,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
@@ -46,7 +45,6 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { asyncComputed } from '@vueuse/core';
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css';
-import pick from 'lodash/pick';
 import { DateTime } from 'luxon';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import { I18nT } from 'vue-i18n';
@@ -87,7 +85,6 @@ const telemetryContext = useTelemetryContext();
 const i18n = useI18n();
 const ndvStore = useNDVStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const schemaPreviewStore = useSchemaPreviewStore();
 const environmentsStore = useEnvironmentsStore();
@@ -221,7 +218,11 @@ const contextSchema = computed(() => {
 			mode: 'test',
 			resumeUrl: i18n.baseText('dataMapping.schemaView.execution.resumeUrl'),
 		},
-		$workflow: pick(workflowsStore.workflow, ['id', 'name', 'active']),
+		$workflow: {
+			id: workflowDocumentStore?.value?.workflowId ?? '',
+			name: workflowDocumentStore?.value?.name ?? '',
+			active: workflowDocumentStore?.value?.active ?? false,
+		},
 	};
 
 	return filterSchema(getSchema(schemaSource), props.search);

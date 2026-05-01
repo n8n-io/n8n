@@ -63,7 +63,7 @@ const emit = defineEmits<{
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflow.id)),
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
 
 const telemetry = useTelemetry();

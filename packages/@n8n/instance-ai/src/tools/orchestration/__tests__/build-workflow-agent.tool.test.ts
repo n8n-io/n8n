@@ -9,7 +9,13 @@ jest.mock('@mastra/core/tools', () => ({
 	createTool: jest.fn((config: Record<string, unknown>) => config),
 }));
 
-import type { OrchestrationContext } from '../../../types';
+import {
+	applyBranchReadOnlyOverrides,
+	DEFAULT_INSTANCE_AI_PERMISSIONS,
+	type InstanceAiPermissions,
+} from '@n8n/api-types';
+
+import type { InstanceAiContext, OrchestrationContext } from '../../../types';
 import type { SubmitWorkflowAttempt } from '../../workflows/submit-workflow.tool';
 
 const { resultFromPostStreamError, createBuildWorkflowAgentTool, recordSuccessfulWorkflowBuilds } =
@@ -17,7 +23,10 @@ const { resultFromPostStreamError, createBuildWorkflowAgentTool, recordSuccessfu
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
 
 type BuildExecutable = {
-	execute: (input: Record<string, unknown>) => Promise<{ result: string; taskId: string }>;
+	execute: (
+		input: Record<string, unknown>,
+		ctx?: { agent?: { resumeData?: unknown; suspend?: jest.Mock<Promise<void>, [unknown]> } },
+	) => Promise<{ result: string; taskId: string }>;
 };
 
 function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
@@ -42,6 +51,39 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		abortSignal: new AbortController().signal,
 		...overrides,
 	} as OrchestrationContext;
+}
+
+function createMockDomainContext(
+	permissionOverrides: Partial<InstanceAiPermissions> = {},
+	workflowName = 'Existing Workflow',
+): InstanceAiContext {
+	return {
+		userId: 'test-user',
+		permissions: { ...DEFAULT_INSTANCE_AI_PERMISSIONS, ...permissionOverrides },
+		workflowService: {
+			get: jest.fn().mockResolvedValue({ name: workflowName }),
+		} as unknown as InstanceAiContext['workflowService'],
+		executionService: {} as InstanceAiContext['executionService'],
+		credentialService: {} as InstanceAiContext['credentialService'],
+		nodeService: {} as InstanceAiContext['nodeService'],
+		dataTableService: {} as InstanceAiContext['dataTableService'],
+	};
+}
+
+function createSpawnableContext(
+	permissionOverrides: Partial<InstanceAiPermissions> = {},
+	overrides: Partial<OrchestrationContext> = {},
+): OrchestrationContext {
+	return createMockContext({
+		domainContext: createMockDomainContext(permissionOverrides),
+		domainTools: { 'build-workflow': {} },
+		spawnBackgroundTask: jest.fn().mockReturnValue({
+			status: 'started',
+			taskId: 'build-task',
+			agentId: 'agent-builder',
+		}),
+		...overrides,
+	});
 }
 
 const MAIN_PATH = '/home/daytona/workspace/src/workflow.ts';
@@ -219,7 +261,9 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 	});
 
 	it('allows the call when bypassPlan=true with a reason is provided', async () => {
-		const context = createMockContext();
+		const context = createMockContext({
+			domainContext: createMockDomainContext({ updateWorkflow: 'always_allow' }),
+		});
 		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
 
 		const out = await tool.execute({
@@ -267,6 +311,192 @@ describe('createBuildWorkflowAgentTool — plan-enforcement guard', () => {
 		const out = await tool.execute({ task: 'build directly' });
 
 		expect(out.result).not.toContain('direct builder calls require');
+	});
+});
+
+describe('createBuildWorkflowAgentTool — existing workflow approval', () => {
+	const ORIGINAL_ENV = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+
+	afterEach(() => {
+		if (ORIGINAL_ENV === undefined) {
+			delete process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+		} else {
+			process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = ORIGINAL_ENV;
+		}
+	});
+
+	const editInput = {
+		task: 'patch one expression',
+		workflowId: 'WF_EXISTING',
+		bypassPlan: true,
+		reason: 'Swap Slack channel on this notifier.',
+	};
+
+	it('suspends before spawning when updateWorkflow requires approval', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: '', taskId: '' });
+		expect(suspend).toHaveBeenCalledWith(
+			expect.objectContaining({
+				message:
+					'Edit existing workflow "Existing Workflow" (ID: WF_EXISTING)? Reason: Swap Slack channel on this notifier.',
+				severity: 'warning',
+			}),
+		);
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('spawns when approval resume data is approved', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, {
+			agent: { resumeData: { approved: true } },
+		});
+
+		expect(out.taskId).toMatch(/^build-/);
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not spawn when approval resume data is denied', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, {
+			agent: { resumeData: { approved: false } },
+		});
+
+		expect(out).toEqual({ result: 'User declined the workflow edit.', taskId: '' });
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('skips suspend when updateWorkflow is always_allow', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'always_allow' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not apply the edit approval gate without a workflowId', async () => {
+		process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN = 'false';
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute({ task: 'build a new workflow' }, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not apply the edit approval gate without domain context', async () => {
+		const context = createMockContext({
+			domainTools: { 'build-workflow': {} },
+			spawnBackgroundTask: jest.fn().mockReturnValue({
+				status: 'started',
+				taskId: 'build-task',
+				agentId: 'agent-builder',
+			}),
+		});
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('skips suspend in a replan follow-up', async () => {
+		const context = createSpawnableContext(
+			{ updateWorkflow: 'require_approval' },
+			{ isReplanFollowUp: true },
+		);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('skips suspend in a checkpoint follow-up', async () => {
+		const context = createSpawnableContext(
+			{ updateWorkflow: 'require_approval' },
+			{ isCheckpointFollowUp: true },
+		);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('denies without suspend or spawn when updateWorkflow is blocked', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'blocked' });
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: 'Action blocked by admin', taskId: '' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('denies branch read-only edits without suspend or spawn', async () => {
+		const readOnlyPermissions = applyBranchReadOnlyOverrides({
+			...DEFAULT_INSTANCE_AI_PERMISSIONS,
+		});
+		const context = createSpawnableContext(readOnlyPermissions);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: 'Action blocked by admin', taskId: '' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
+	});
+
+	it('skips suspend when the workflow was created earlier in the plan cycle', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'require_approval' });
+		(context.domainContext as InstanceAiContext).aiCreatedWorkflowIds = new Set([
+			editInput.workflowId,
+		]);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		await tool.execute(editInput, { agent: { suspend } });
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
+	});
+
+	it('still denies blocked edits even when the workflow is in the active plan cycle', async () => {
+		const context = createSpawnableContext({ updateWorkflow: 'blocked' });
+		(context.domainContext as InstanceAiContext).aiCreatedWorkflowIds = new Set([
+			editInput.workflowId,
+		]);
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		const tool = createBuildWorkflowAgentTool(context) as unknown as BuildExecutable;
+
+		const out = await tool.execute(editInput, { agent: { suspend } });
+
+		expect(out).toEqual({ result: 'Action blocked by admin', taskId: '' });
+		expect(suspend).not.toHaveBeenCalled();
+		expect(context.spawnBackgroundTask).not.toHaveBeenCalled();
 	});
 });
 

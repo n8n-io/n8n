@@ -84,6 +84,7 @@ onMounted(() => {
 	align-items: center;
 	overflow: auto;
 	grid-area: content;
+	isolation: isolate;
 }
 
 .contentWrapper {
