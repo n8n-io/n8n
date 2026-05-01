@@ -32,7 +32,7 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 			() =>
 				currentVariant.value === SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.variantFirstOpenModal,
 		);
-		const isEnabled = computed(() => isTileVariant.value || isFirstOpenModalVariant.value);
+		const isEnabled = computed(() => Boolean(currentVariant.value));
 
 		const hasSeenFirstEligibleOpen = computed(() => firstOpenSeenStorage.value === 'true');
 		const hasDismissedFirstOpenModal = computed(() => firstOpenDismissedStorage.value === 'true');

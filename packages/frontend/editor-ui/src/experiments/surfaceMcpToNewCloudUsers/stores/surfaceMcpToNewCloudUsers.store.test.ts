@@ -61,6 +61,15 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 		expect(store.isFirstOpenModalVariant).toBe(false);
 	});
 
+	it('treats the control variant as experiment enrollment', () => {
+		mockGetVariant.mockReturnValue(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.control);
+
+		expect(store.currentVariant).toBe(SURFACE_MCP_TO_NEW_CLOUD_USERS_EXPERIMENT.control);
+		expect(store.isEnabled).toBe(true);
+		expect(store.isTileVariant).toBe(false);
+		expect(store.isFirstOpenModalVariant).toBe(false);
+	});
+
 	it('persists the first eligible open marker', () => {
 		store.markFirstEligibleOpenSeen();
 
