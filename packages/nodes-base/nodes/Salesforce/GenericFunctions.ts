@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	ICredentialDataDecryptedObject,
 	IDataObject,
 	INodePropertyOptions,
 	JsonObject,
@@ -44,7 +45,7 @@ function getOptions(
 
 async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
-	credentials: IDataObject,
+	credentials: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {
 	const now = moment().unix();
 	const authUrl = resolveAuthUrl(credentials);
