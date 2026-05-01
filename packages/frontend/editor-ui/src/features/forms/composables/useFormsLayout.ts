@@ -167,6 +167,10 @@ export function useFormsLayout(vueFlowId: string) {
 	// Re-runs use these so shifted positions don't corrupt row grouping.
 	const originalYById = new Map<string, number>();
 
+	// FormStep node ID set for O(1) lookup in the onNodesChange handler.
+	// Populated/refreshed inside applyLayout so it's always in sync.
+	const formStepNodeIds = new Set<string>();
+
 	function applyLayout({ doFitView }: { doFitView: boolean }) {
 		const nodes = getNodes.value;
 		if (!nodes.length) {
@@ -181,6 +185,10 @@ export function useFormsLayout(vueFlowId: string) {
 			layoutReady.value = true;
 			return;
 		}
+
+		// Refresh the lookup set so the onNodesChange handler can use O(1) checks.
+		formStepNodeIds.clear();
+		for (const n of formStepNodes) formStepNodeIds.add(n.id);
 
 		// Snapshot original Ys on first encounter so subsequent re-runs use stable row keys.
 		for (const node of nodes) {
@@ -229,13 +237,7 @@ export function useFormsLayout(vueFlowId: string) {
 
 	onNodesChange((changes) => {
 		if (!layoutReady.value) return;
-		const hasDimChange = changes.some((c) => {
-			if (c.type !== 'dimensions') return false;
-			const node = getNodes.value.find((n) => n.id === c.id);
-			return (
-				(node?.data as CanvasNodeData | undefined)?.render?.type === CanvasNodeRenderType.FormStep
-			);
-		});
+		const hasDimChange = changes.some((c) => c.type === 'dimensions' && formStepNodeIds.has(c.id));
 		if (hasDimChange) void debouncedApply();
 	});
 

@@ -156,7 +156,7 @@ const hiddenCount = computed(() =>
 	flex-direction: row;
 	align-items: stretch;
 	border-radius: var(--radius);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border: var(--border-width) var(--border-style) var(--color--foreground--shade-1);
 	background: transparent;
 	cursor: pointer;
 	user-select: none;
@@ -300,7 +300,7 @@ const hiddenCount = computed(() =>
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border: var(--border-width) var(--border-style) var(--color--foreground--shade-1);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--sm);
 	background: transparent;
 	min-height: 26px;
@@ -343,7 +343,7 @@ const hiddenCount = computed(() =>
 	flex-shrink: 0;
 	width: 12px;
 	height: 12px;
-	border: var(--border-width) var(--border-style) var(--color--foreground--shade-1);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius--sm);
 }
 
@@ -376,7 +376,7 @@ const hiddenCount = computed(() =>
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: var(--border-width) dashed var(--color--foreground--shade-1);
+	border: var(--border-width) dashed var(--color--foreground);
 	border-radius: var(--radius--sm);
 	font-size: var(--font-size--3xs);
 	color: var(--color--text);

@@ -164,12 +164,18 @@ function onIframeLoad() {
 
 const debouncedFetch = useDebounceFn(fetchPreview, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
+// Use a serialized key so the fetch is only triggered when preview-relevant
+// data actually changes. Without this, any workflow node mutation (e.g. an
+// issues update that re-assigns nodes[i] = node) would cause every FormStepCard
+// to re-fetch, even though the form content hasn't changed.
+const previewParamsKey = computed(() => JSON.stringify(previewParams.value));
+
 watch(
-	previewParams,
+	previewParamsKey,
 	() => {
 		void debouncedFetch();
 	},
-	{ immediate: true, deep: true },
+	{ immediate: true },
 );
 </script>
 

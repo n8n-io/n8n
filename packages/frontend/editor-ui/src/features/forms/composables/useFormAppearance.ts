@@ -221,12 +221,16 @@ export function useFormAppearance(nodeId: string) {
 		getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH),
 	);
 
+	// Serialize to avoid re-fetching when the reference changes but content is the same
+	// (e.g. after a node issues update that re-assigns the node object in the store).
+	const previewParamsKey = computed(() => JSON.stringify(previewParams.value));
+
 	watch(
-		previewParams,
+		previewParamsKey,
 		() => {
 			void debouncedFetchPreview();
 		},
-		{ immediate: true, deep: true },
+		{ immediate: true },
 	);
 
 	// -------------------------------------------------------------------------

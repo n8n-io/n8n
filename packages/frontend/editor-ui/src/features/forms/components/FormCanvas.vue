@@ -228,7 +228,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 .fieldList {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	min-height: 48px;
 	flex: 1;
 }
