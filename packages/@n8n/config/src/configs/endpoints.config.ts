@@ -165,6 +165,8 @@ export class EndpointsConfig {
  * multi-segment) Express patterns, and Express dispatches in registration
  * order. If one endpoint value equals or path-segment-prefixes another, the
  * earlier-registered route silently swallows the later one's traffic.
+ *
+ * For example, `prefix` shadows `prefix/test`.
  */
 export function validateEndpointPaths(endpoints: EndpointsConfig): void {
 	const routes = [
