@@ -1510,7 +1510,8 @@ export function useCanvasOperations() {
 		// if it's a webhook and the path is empty set the UUID as the default path
 		if (
 			[WEBHOOK_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE].includes(node.type) &&
-			node.parameters.path === ''
+			node.parameters.path === '' &&
+			!(node.parameters.options as IDataObject)?.path
 		) {
 			node.parameters.path = node.webhookId as string;
 		}
@@ -2638,14 +2639,13 @@ export function useCanvasOperations() {
 
 					// Generate new webhookId
 					if (node.webhookId && UPDATE_WEBHOOK_ID_NODE_TYPES.includes(node.type)) {
-						if (node.webhookId) {
-							nodeHelpers.assignWebhookId(node);
+						const oldWebhookId = node.webhookId;
+						nodeHelpers.assignWebhookId(node);
 
-							if (node.parameters.path) {
-								node.parameters.path = node.webhookId;
-							} else if ((node.parameters.options as IDataObject)?.path) {
-								(node.parameters.options as IDataObject).path = node.webhookId;
-							}
+						if (node.parameters.path === oldWebhookId) {
+							node.parameters.path = node.webhookId;
+						} else if ((node.parameters.options as IDataObject)?.path === oldWebhookId) {
+							(node.parameters.options as IDataObject).path = node.webhookId;
 						}
 					}
 

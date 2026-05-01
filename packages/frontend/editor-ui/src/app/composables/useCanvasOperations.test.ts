@@ -4629,7 +4629,7 @@ describe('useCanvasOperations', () => {
 						position: [200, 200] as [number, number],
 						webhookId: 'first-webhook',
 						parameters: {
-							path: 'some-path',
+							path: 'first-webhook',
 						},
 					},
 					{
@@ -4641,7 +4641,7 @@ describe('useCanvasOperations', () => {
 						webhookId: 'second-webhook',
 						parameters: {
 							options: {
-								path: 'some-path',
+								path: 'second-webhook',
 							},
 						},
 					},
@@ -4658,17 +4658,72 @@ describe('useCanvasOperations', () => {
 
 				const canvasOperations = useCanvasOperations();
 
-				// This should not throw even when nodes can't be added due to maxNodes limit
 				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
 
 				expect(workflow.nodes).toHaveLength(2);
 				expect(workflow.nodes![0].name).toBe('Execute Workflow Trigger 1');
 				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
-				expect(workflow.nodes![0].parameters.path).not.toBe('some-path');
+				expect(workflow.nodes![0].parameters.path).toBe(workflow.nodes![0].webhookId);
 				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
 				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
-				expect((workflow.nodes![1].parameters.options as { path: string }).path).not.toBe(
-					'some-path',
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe(
+					workflow.nodes![1].webhookId,
+				);
+			},
+		);
+
+		it.each(UPDATE_WEBHOOK_ID_NODE_TYPES)(
+			'should preserve custom paths for node type "%s" on pasting into canvas',
+			async (type) => {
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				} as unknown as Workflow);
+
+				const nodesToImport = [
+					{
+						id: 'import-1',
+						name: 'Execute Workflow Trigger 1',
+						type,
+						typeVersion: 1,
+						position: [200, 200] as [number, number],
+						webhookId: 'first-webhook',
+						parameters: {
+							path: 'custom-path-1',
+						},
+					},
+					{
+						id: 'import-2',
+						name: 'Execute Workflow Trigger 2',
+						type,
+						typeVersion: 1,
+						position: [300, 300] as [number, number],
+						webhookId: 'second-webhook',
+						parameters: {
+							options: {
+								path: 'custom-path-2',
+							},
+						},
+					},
+				];
+
+				const workflowDataToImport = {
+					nodes: nodesToImport,
+					connections: {},
+				};
+
+				const canvasOperations = useCanvasOperations();
+
+				const workflow = await canvasOperations.importWorkflowData(workflowDataToImport, 'paste');
+
+				expect(workflow.nodes).toHaveLength(2);
+				expect(workflow.nodes![0].webhookId).not.toBe('first-webhook');
+				expect(workflow.nodes![0].parameters.path).toBe('custom-path-1');
+				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
+				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe(
+					'custom-path-2',
 				);
 			},
 		);
