@@ -5,8 +5,10 @@ import { N8nButton, N8nRadioButtons, N8nSwitch2 } from '@n8n/design-system';
 import { ElSelect, ElOption } from 'element-plus';
 import Modal from '@/app/components/Modal.vue';
 import { FORM_STEP_EDIT_MODAL_KEY, FORM_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants/modals';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFormAppearance } from '../composables/useFormAppearance';
+import { useMessage } from '@/app/composables/useMessage';
 import AppearanceTab from './AppearanceTab.vue';
 import FieldsTab from './FieldsTab.vue';
 import SaveButton from './SaveButton.vue';
@@ -17,6 +19,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
+const message = useMessage();
 
 // nodeId is fixed for the lifetime of this modal instance.
 const nodeId = props.data?.nodeId as string;
@@ -41,6 +44,57 @@ const tabs = computed(() => [
 	{ label: i18n.baseText('formStep.modal.tab.fields'), value: 'fields' as ModalTab },
 ]);
 const activeTab = ref<ModalTab>('appearance');
+const fieldsTabRef = ref<InstanceType<typeof FieldsTab> | null>(null);
+
+async function promptUnsavedChanges(): Promise<'save' | 'discard' | 'cancel'> {
+	const result = await message.confirm(
+		i18n.baseText('formStep.unsavedChanges.message'),
+		i18n.baseText('formStep.unsavedChanges.title'),
+		{
+			confirmButtonText: i18n.baseText('formStep.unsavedChanges.save'),
+			cancelButtonText: i18n.baseText('formStep.unsavedChanges.discard'),
+		},
+	);
+	if (result === MODAL_CONFIRM) return 'save';
+	if (result === 'cancel') return 'discard';
+	return 'cancel';
+}
+
+async function saveCurrentTab() {
+	if (activeTab.value === 'appearance') {
+		await appearance.save(appearance.scope.value);
+	} else {
+		await fieldsTabRef.value?.save();
+	}
+}
+
+function currentTabHasUnsavedChanges(): boolean {
+	if (activeTab.value === 'appearance') return appearance.hasUnsavedChanges.value;
+	return fieldsTabRef.value?.hasUnsavedChanges ?? false;
+}
+
+async function onTabChange(newTab: ModalTab) {
+	if (newTab === activeTab.value) return;
+	if (currentTabHasUnsavedChanges()) {
+		const action = await promptUnsavedChanges();
+		if (action === 'cancel') return;
+		if (action === 'save') await saveCurrentTab();
+	}
+	activeTab.value = newTab;
+}
+
+async function beforeClose(): Promise<boolean> {
+	const hasChanges =
+		appearance.hasUnsavedChanges.value || (fieldsTabRef.value?.hasUnsavedChanges ?? false);
+	if (!hasChanges) return true;
+	const action = await promptUnsavedChanges();
+	if (action === 'cancel') return false;
+	if (action === 'save') {
+		if (appearance.hasUnsavedChanges.value) await appearance.save(appearance.scope.value);
+		if (fieldsTabRef.value?.hasUnsavedChanges) await fieldsTabRef.value.save();
+	}
+	return true;
+}
 
 // ---------------------------------------------------------------------------
 // Appearance — composable must be called at top level of setup.
@@ -76,18 +130,34 @@ function onReset() {
 </script>
 
 <template>
-	<Modal :name="FORM_STEP_EDIT_MODAL_KEY" :title="title" width="80%" height="90%">
+	<Modal
+		:name="FORM_STEP_EDIT_MODAL_KEY"
+		:title="title"
+		width="80%"
+		height="90%"
+		:before-close="beforeClose"
+	>
 		<template #content>
 			<div :class="$style.modalBody">
 				<div :class="$style.tabsRow">
-					<N8nRadioButtons v-model="activeTab" :options="tabs" size="medium" />
+					<N8nRadioButtons
+						:model-value="activeTab"
+						:options="tabs"
+						size="medium"
+						@update:model-value="onTabChange"
+					/>
 				</div>
 
 				<!-- Fields tab -->
-				<FieldsTab v-if="activeTab === 'fields'" :node-id="nodeId" :class="$style.fieldsLayout" />
+				<FieldsTab
+					v-show="activeTab === 'fields'"
+					ref="fieldsTabRef"
+					:node-id="nodeId"
+					:class="$style.fieldsLayout"
+				/>
 
 				<!-- Appearance tab -->
-				<div v-else-if="activeTab === 'appearance'" :class="$style.appearanceLayout">
+				<div v-show="activeTab === 'appearance'" :class="$style.appearanceLayout">
 					<!-- Left: live preview -->
 					<div :class="$style.previewPane">
 						<iframe

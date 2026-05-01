@@ -13,6 +13,13 @@ const props = defineProps<{
 
 const formFields = useFormFields(props.nodeId);
 
+defineExpose({
+	get hasUnsavedChanges() {
+		return formFields.hasUnsavedChanges.value;
+	},
+	save: formFields.save,
+});
+
 const COMPLETION_MODES: Array<{ value: string; icon: IconName; labelKey: BaseTextKey }> = [
 	{
 		value: 'text',
