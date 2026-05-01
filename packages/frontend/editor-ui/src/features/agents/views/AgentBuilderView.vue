@@ -3,12 +3,13 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nButton,
+	N8nDropdown,
 	N8nIcon,
-	N8nNavigationDropdown,
 	N8nRadioButtons,
 	N8nResizeWrapper,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type { N8nDropdownOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -121,6 +122,14 @@ const {
 	onSessionPick,
 	onNewChat,
 } = useAgentBuilderSession();
+
+const sessionOptions = computed<Array<N8nDropdownOption<string>>>(() =>
+	sessionMenu.value.map((item) => ({
+		value: item.id,
+		label: item.when ? `${item.label} · ${item.when}` : (item.label ?? item.title),
+		disabled: item.disabled,
+	})),
+);
 
 const {
 	builderRef,
@@ -963,38 +972,41 @@ function onSwitchAgent(nextAgentId: string) {
 						:class="$style.sessionHeader"
 						data-testid="agent-chat-session-header"
 					>
-						<N8nNavigationDropdown
-							:menu="sessionMenu"
-							submenu-class="agent-chat-session-menu"
+						<N8nDropdown
+							:options="sessionOptions"
 							data-testid="agent-chat-session-picker"
 							@select="onSessionPick"
 						>
-							<button
-								type="button"
-								:class="$style.sessionTitleBtn"
-								:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
-								data-testid="agent-chat-session-picker-btn"
-							>
-								<N8nIcon icon="history" :size="14" />
-								<span :class="$style.sessionTitleText">{{ currentSessionTitle }}</span>
-								<N8nIcon icon="chevron-down" :size="12" />
-							</button>
-							<template v-for="item in sessionMenu" :key="item.id" #[`item.append.${item.id}`]>
-								<span v-if="item.label" :class="$style.sessionItemLabel">{{ item.label }}</span>
-								<span v-if="item.when" :class="$style.sessionItemWhen">{{ item.when }}</span>
+							<template #trigger>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									:class="$style.sessionTitleBtn"
+									:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
+									data-testid="agent-chat-session-picker-btn"
+								>
+									{{ currentSessionTitle }}
+									<N8nIcon icon="chevron-down" color="text-light" :size="12" />
+								</N8nButton>
 							</template>
-						</N8nNavigationDropdown>
-						<button
-							v-if="currentSessionHasMessages"
-							type="button"
-							:class="$style.newChatBtn"
-							:aria-label="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
-							data-testid="agent-chat-new-chat-btn"
-							@click="onNewChat"
+						</N8nDropdown>
+						<N8nTooltip
+							placement="left"
+							:content="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
 						>
-							<N8nIcon icon="plus" :size="14" />
-							<span>{{ locale.baseText('agents.builder.chat.newChat.label') }}</span>
-						</button>
+							<N8nButton
+								v-if="currentSessionHasMessages"
+								variant="ghost"
+								iconOnly
+								size="small"
+								:class="$style.newChatBtn"
+								:aria-label="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
+								data-testid="agent-chat-new-chat-btn"
+								@click="onNewChat"
+							>
+								<N8nIcon icon="plus" :size="14" />
+							</N8nButton>
+						</N8nTooltip>
 					</div>
 					<div :class="$style.chatBody">
 						<AgentChatPanel
@@ -1014,20 +1026,6 @@ function onSwitchAgent(nextAgentId: string) {
 							@continue-loaded="onContinueLoaded"
 							@open-build="onOpenBuildFromChat"
 						>
-							<template #above-input>
-								<div :class="$style.quickActionsRow">
-									<AgentChatQuickActions
-										:tools="localConfig?.tools ?? []"
-										:project-id="projectId"
-										:agent-id="agentId"
-										:is-published="Boolean(agent?.publishedVersion)"
-										:connected-triggers="connectedTriggers"
-										@update:tools="onQuickActionAddTool"
-										@update:connected-triggers="onConnectedTriggersUpdate"
-										@trigger-added="onTriggerAdded"
-									/>
-								</div>
-							</template>
 							<template #footer-start>
 								<N8nTooltip
 									v-if="initialized"
@@ -1405,35 +1403,8 @@ function onSwitchAgent(nextAgentId: string) {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--3xs) var(--spacing--sm);
+	height: var(--height--2xl);
 	border-bottom: var(--border);
-	min-height: 36px;
-}
-
-.sessionTitleBtn {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	max-width: 100%;
-	min-width: 0;
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	background: transparent;
-	border: var(--border-width) var(--border-style) transparent;
-	border-radius: var(--radius);
-	color: var(--text-color);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	cursor: pointer;
-	line-height: var(--line-height--md);
-
-	&:hover {
-		background: var(--background--hover);
-		border-color: var(--border-color);
-	}
-
-	&:focus-visible {
-		outline: none;
-		border-color: var(--background--brand);
-	}
 }
 
 .sessionTitleText {
@@ -1442,71 +1413,8 @@ function onSwitchAgent(nextAgentId: string) {
 	white-space: nowrap;
 }
 
-.newChatBtn {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	background: transparent;
-	border: var(--border-width) var(--border-style) transparent;
-	border-radius: var(--radius);
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--2xs);
-	cursor: pointer;
-	line-height: var(--line-height--md);
-
-	&:hover {
-		background: var(--background--hover);
-		color: var(--text-color);
-		border-color: var(--border-color);
-	}
-}
-
-/* The session picker can grow with the thread list — cap it at ~5 visible rows
-   so it never eats the whole viewport. `.agent-chat-session-menu` is the
-   popper class we pass through to `N8nNavigationDropdown`'s submenuClass prop;
-   it's teleported, so the rule has to escape the CSS-module scope. */
-:global(.agent-chat-session-menu) :global(.el-menu) {
-	max-height: 220px;
-	max-width: 360px;
-	min-width: 280px;
-	overflow-y: auto;
-}
-
-/* Each row is title (truncated) + right-aligned timestamp. We render both
-   inside the design-system's append slot (the bare title text node can't host
-   an ellipsis); override the slot wrapper's right-align so the row flexes
-   across the full menu width instead of clinging to the right edge. */
-:global(.agent-chat-session-menu) :global(.el-menu-item) {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	overflow: hidden;
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu-item) > span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex: 1;
-	min-width: 0;
-	margin-left: 0;
-	padding-left: 0;
-}
-
-.sessionItemLabel {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.sessionItemWhen {
-	margin-left: auto;
-	flex-shrink: 0;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--2xs);
+.sessionTitleBtn {
+	margin-left: calc(var(--spacing--5xs) * -1);
 }
 
 .chatModeToggle {

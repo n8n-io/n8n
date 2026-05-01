@@ -19,7 +19,7 @@ const subtitle = computed(() =>
 
 <template>
 	<div :class="[$style.emptyState, endpoint === 'build' && $style.buildEmptyState]">
-		<N8nIcon :icon="icon" :size="32" />
+		<N8nIcon :icon="icon" :size="32" color="text-light" />
 		<N8nText tag="p" bold>{{ title }}</N8nText>
 		<N8nText size="small" color="text-light">{{ subtitle }}</N8nText>
 	</div>
@@ -33,10 +33,5 @@ const subtitle = computed(() =>
 	justify-content: center;
 	height: 100%;
 	gap: var(--spacing--3xs);
-	color: var(--color--text--tint-2);
-}
-
-.buildEmptyState {
-	color: var(--color--text);
 }
 </style>
