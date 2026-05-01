@@ -1,0 +1,217 @@
+/* eslint-disable n8n-nodes-base/node-filename-against-convention */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/unbound-method */
+import { ChatOpenAI } from '@langchain/openai';
+import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
+import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
+import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+
+import { LmChatNvidia } from '../LmChatNvidia.node';
+
+jest.mock('@langchain/openai');
+jest.mock('@n8n/ai-utilities');
+
+const MockedChatOpenAI = jest.mocked(ChatOpenAI);
+const MockedN8nLlmTracing = jest.mocked(N8nLlmTracing);
+const mockedMakeN8nLlmFailedAttemptHandler = jest.mocked(makeN8nLlmFailedAttemptHandler);
+const mockedGetProxyAgent = jest.mocked(getProxyAgent);
+
+describe('LmChatNvidia', () => {
+	let node: LmChatNvidia;
+
+	const mockNodeDef: INode = {
+		id: '1',
+		name: 'NVIDIA Nemotron Chat Model',
+		typeVersion: 1,
+		type: 'n8n-nodes-langchain.lmChatNvidia',
+		position: [0, 0],
+		parameters: {},
+	};
+
+	const setupMockContext = (
+		auth: 'cloud' | 'selfHosted' = 'cloud',
+		nodeOverrides: Partial<INode> = {},
+	) => {
+		const nodeDef = { ...mockNodeDef, ...nodeOverrides };
+		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
+			{},
+			nodeDef,
+		) as jest.Mocked<ISupplyDataFunctions>;
+
+		ctx.getCredentials = jest
+			.fn()
+			.mockResolvedValue(
+				auth === 'cloud'
+					? { apiKey: 'test-key', url: 'https://integrate.api.nvidia.com/v1' }
+					: { apiKey: '', url: 'http://localhost:8000/v1' },
+			);
+		ctx.getNode = jest.fn().mockReturnValue(nodeDef);
+		ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			if (paramName === 'authentication') return auth;
+			if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+			if (paramName === 'options') return {};
+			return undefined;
+		});
+
+		MockedN8nLlmTracing.mockImplementation(() => ({}) as unknown as N8nLlmTracing);
+		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(jest.fn());
+		mockedGetProxyAgent.mockReturnValue({} as any);
+		return ctx;
+	};
+
+	beforeEach(() => {
+		node = new LmChatNvidia();
+		jest.clearAllMocks();
+	});
+
+	describe('node description', () => {
+		it('should have correct node properties', () => {
+			expect(node.description).toMatchObject({
+				displayName: 'NVIDIA Nemotron Chat Model',
+				name: 'lmChatNvidia',
+				group: ['transform'],
+				version: [1],
+			});
+		});
+
+		it('should declare both cloud and self-hosted credentials', () => {
+			expect(node.description.credentials).toEqual([
+				{
+					name: 'nvidiaApi',
+					required: true,
+					displayOptions: { show: { authentication: ['cloud'] } },
+				},
+				{
+					name: 'nvidiaSelfHostedApi',
+					required: true,
+					displayOptions: { show: { authentication: ['selfHosted'] } },
+				},
+			]);
+		});
+
+		it('should output ai_languageModel', () => {
+			expect(node.description.outputs).toEqual(['ai_languageModel']);
+			expect(node.description.outputNames).toEqual(['Model']);
+		});
+
+		it('should filter to Nemotron models in loadOptions', () => {
+			const modelProp = node.description.properties.find((p) => p?.name === 'model');
+			expect(modelProp).toBeDefined();
+			const postReceive = (modelProp?.typeOptions as any)?.loadOptions?.routing?.output
+				?.postReceive as Array<{ type: string; properties: { pass?: string } }>;
+			const filterStep = postReceive.find((step) => step.type === 'filter');
+			expect(filterStep?.properties.pass).toMatch(/nemotron/i);
+		});
+	});
+
+	describe('supplyData', () => {
+		it('should use the cloud credential when authentication is cloud', async () => {
+			const ctx = setupMockContext('cloud');
+
+			const result = await node.supplyData.call(ctx, 0);
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('nvidiaApi');
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiKey: 'test-key',
+					model: 'nvidia/llama-3.1-nemotron-70b-instruct',
+					configuration: expect.objectContaining({
+						baseURL: 'https://integrate.api.nvidia.com/v1',
+					}),
+				}),
+			);
+			expect(result).toEqual({ response: expect.any(Object) });
+		});
+
+		it('should use the self-hosted credential when authentication is selfHosted', async () => {
+			const ctx = setupMockContext('selfHosted');
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(ctx.getCredentials).toHaveBeenCalledWith('nvidiaSelfHostedApi');
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					configuration: expect.objectContaining({
+						baseURL: 'http://localhost:8000/v1',
+					}),
+				}),
+			);
+		});
+
+		it('should fall back to a placeholder apiKey when self-hosted credential has none', async () => {
+			const ctx = setupMockContext('selfHosted');
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiKey: 'unused',
+				}),
+			);
+		});
+
+		it('should pass options through to ChatOpenAI', async () => {
+			const ctx = setupMockContext('cloud');
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'authentication') return 'cloud';
+				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+				if (paramName === 'options')
+					return {
+						temperature: 0.5,
+						maxTokens: 2000,
+						topP: 0.9,
+						frequencyPenalty: 0.3,
+						presencePenalty: 0.2,
+						timeout: 60000,
+						maxRetries: 5,
+					};
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					temperature: 0.5,
+					maxTokens: 2000,
+					topP: 0.9,
+					frequencyPenalty: 0.3,
+					presencePenalty: 0.2,
+					timeout: 60000,
+					maxRetries: 5,
+				}),
+			);
+		});
+
+		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
+			const ctx = setupMockContext('cloud');
+			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'authentication') return 'cloud';
+				if (paramName === 'model') return 'nvidia/llama-3.1-nemotron-70b-instruct';
+				if (paramName === 'options') return { responseFormat: 'json_object' };
+				return undefined;
+			});
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: { response_format: { type: 'json_object' } },
+				}),
+			);
+		});
+
+		it('should not set modelKwargs when no responseFormat', async () => {
+			const ctx = setupMockContext('cloud');
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(MockedChatOpenAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelKwargs: undefined,
+				}),
+			);
+		});
+	});
+});
