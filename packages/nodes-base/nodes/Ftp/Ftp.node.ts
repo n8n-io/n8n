@@ -22,6 +22,8 @@ import { file as tmpFile } from 'tmp-promise';
 
 import { formatPrivateKey, generatePairedItemData } from '@utils/utilities';
 
+import { makeHandshakeKey, withHandshakePermit } from './HandshakeQueue';
+
 interface ReturnFtpItem {
 	type: string;
 	name: string;
@@ -525,12 +527,20 @@ export class Ftp implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				const ftp = new ftpClient();
+				const handshakeKey = makeHandshakeKey({
+					host: credentials.host as string,
+					port: credentials.port as number,
+					username: credentials.username as string,
+					protocol: 'ftp',
+				});
 				try {
-					await ftp.connect({
-						host: credentials.host as string,
-						port: credentials.port as number,
-						user: credentials.username as string,
-						password: credentials.password as string,
+					await withHandshakePermit(handshakeKey, async () => {
+						await ftp.connect({
+							host: credentials.host as string,
+							port: credentials.port as number,
+							user: credentials.username as string,
+							password: credentials.password as string,
+						});
 					});
 				} catch (error) {
 					await ftp.end();
@@ -551,24 +561,34 @@ export class Ftp implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				const sftp = new sftpClient();
+				const handshakeKey = makeHandshakeKey({
+					host: credentials.host as string,
+					port: credentials.port as number,
+					username: credentials.username as string,
+					protocol: 'sftp',
+				});
 				try {
-					if (credentials.privateKey) {
-						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
-							passphrase: credentials.passphrase as string | undefined,
-						});
-					} else {
-						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: credentials.password as string,
-						});
-					}
+					await withHandshakePermit(handshakeKey, async () => {
+						if (credentials.privateKey) {
+							await sftp.connect({
+								host: credentials.host as string,
+								port: credentials.port as number,
+								username: credentials.username as string,
+								password: (credentials.password as string) || undefined,
+								privateKey: formatPrivateKey(credentials.privateKey as string),
+								passphrase: credentials.passphrase as string | undefined,
+								readyTimeout: 10000,
+							});
+						} else {
+							await sftp.connect({
+								host: credentials.host as string,
+								port: credentials.port as number,
+								username: credentials.username as string,
+								password: credentials.password as string,
+								readyTimeout: 10000,
+							});
+						}
+					});
 				} catch (error) {
 					await sftp.end();
 					return {
@@ -603,43 +623,54 @@ export class Ftp implements INodeType {
 		let ftp: ftpClient;
 		let sftp: sftpClient;
 
+		const handshakeKey = makeHandshakeKey({
+			host: credentials.host as string,
+			port: credentials.port as number,
+			username: credentials.username as string,
+			protocol: protocol === 'sftp' ? 'sftp' : 'ftp',
+		});
+
 		try {
 			try {
 				if (protocol === 'sftp') {
 					sftp = new sftpClient();
-					if (credentials.privateKey) {
-						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: (credentials.password as string) || undefined,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
-							passphrase: credentials.passphrase as string | undefined,
-							readyTimeout: connectionTimeout,
-							algorithms: {
-								compress: ['zlib@openssh.com', 'zlib', 'none'],
-							},
-						});
-					} else {
-						await sftp.connect({
-							host: credentials.host as string,
-							port: credentials.port as number,
-							username: credentials.username as string,
-							password: credentials.password as string,
-							readyTimeout: connectionTimeout,
-							algorithms: {
-								compress: ['zlib@openssh.com', 'zlib', 'none'],
-							},
-						});
-					}
+					await withHandshakePermit(handshakeKey, async () => {
+						if (credentials.privateKey) {
+							await sftp.connect({
+								host: credentials.host as string,
+								port: credentials.port as number,
+								username: credentials.username as string,
+								password: (credentials.password as string) || undefined,
+								privateKey: formatPrivateKey(credentials.privateKey as string),
+								passphrase: credentials.passphrase as string | undefined,
+								readyTimeout: connectionTimeout,
+								algorithms: {
+									compress: ['zlib@openssh.com', 'zlib', 'none'],
+								},
+							});
+						} else {
+							await sftp.connect({
+								host: credentials.host as string,
+								port: credentials.port as number,
+								username: credentials.username as string,
+								password: credentials.password as string,
+								readyTimeout: connectionTimeout,
+								algorithms: {
+									compress: ['zlib@openssh.com', 'zlib', 'none'],
+								},
+							});
+						}
+					});
 				} else {
 					ftp = new ftpClient();
-					await ftp.connect({
-						host: credentials.host as string,
-						port: credentials.port as number,
-						user: credentials.username as string,
-						password: credentials.password as string,
-						connTimeout: connectionTimeout,
+					await withHandshakePermit(handshakeKey, async () => {
+						await ftp.connect({
+							host: credentials.host as string,
+							port: credentials.port as number,
+							user: credentials.username as string,
+							password: credentials.password as string,
+							connTimeout: connectionTimeout,
+						});
 					});
 				}
 			} catch (error) {
