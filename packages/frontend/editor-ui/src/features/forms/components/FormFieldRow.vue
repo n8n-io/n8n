@@ -156,7 +156,7 @@ const hiddenCount = computed(() =>
 	flex-direction: row;
 	align-items: stretch;
 	border-radius: var(--radius);
-	border: var(--border-width) var(--border-style) var(--color--secondary);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	background: transparent;
 	cursor: pointer;
 	user-select: none;
@@ -164,7 +164,7 @@ const hiddenCount = computed(() =>
 	overflow: hidden;
 
 	&:hover {
-		border-color: var(--color--secondary--shade-1);
+		border-color: var(--color--foreground--shade-1);
 
 		.deleteBtn {
 			opacity: 1;
@@ -182,8 +182,8 @@ const hiddenCount = computed(() =>
 }
 
 .selected {
-	border-color: var(--color--secondary--shade-1);
-	background: var(--color--secondary--tint-2);
+	border-color: var(--color--foreground--shade-1);
+	background: var(--color--foreground--tint-1);
 }
 
 .error {
@@ -226,7 +226,6 @@ const hiddenCount = computed(() =>
 
 .error.selected {
 	border-color: var(--color--danger--shade-1);
-	background: var(--color--danger--tint-4);
 }
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
@@ -251,7 +250,7 @@ const hiddenCount = computed(() =>
 
 .typeIcon {
 	flex-shrink: 0;
-	color: var(--color--secondary);
+	color: var(--color--text--tint-1);
 }
 
 .labelText {
@@ -259,7 +258,7 @@ const hiddenCount = computed(() =>
 	min-width: 0;
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--secondary);
+	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -281,7 +280,7 @@ const hiddenCount = computed(() =>
 	border: none;
 	background: none;
 	cursor: pointer;
-	color: var(--color--secondary);
+	color: var(--color--text--tint-2);
 	border-radius: var(--radius--sm);
 	opacity: 0;
 	transition:
@@ -301,7 +300,7 @@ const hiddenCount = computed(() =>
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border: var(--border-width) var(--border-style) var(--color--secondary);
+	border: var(--border-width) var(--border-style) var(--color--foreground--shade-1);
 	border-radius: var(--radius--sm);
 	background: transparent;
 	min-height: 26px;
@@ -319,7 +318,7 @@ const hiddenCount = computed(() =>
 
 .previewPlaceholder {
 	font-size: var(--font-size--3xs);
-	color: var(--color--secondary);
+	color: var(--color--text--tint-1);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -344,7 +343,7 @@ const hiddenCount = computed(() =>
 	flex-shrink: 0;
 	width: 12px;
 	height: 12px;
-	border: var(--border-width) var(--border-style) var(--color--secondary);
+	border: var(--border-width) var(--border-style) var(--color--foreground--shade-1);
 	border-radius: var(--radius--sm);
 }
 
@@ -352,13 +351,13 @@ const hiddenCount = computed(() =>
 	flex-shrink: 0;
 	width: 12px;
 	height: 12px;
-	border: var(--border-width) var(--border-style) var(--color--secondary);
+	border: var(--border-width) var(--border-style) var(--color--foreground--shade-1);
 	border-radius: 50%;
 }
 
 .optionLabel {
 	font-size: var(--font-size--3xs);
-	color: var(--color--secondary);
+	color: var(--color--text);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -366,7 +365,7 @@ const hiddenCount = computed(() =>
 
 .moreLabel {
 	font-size: var(--font-size--3xs);
-	color: var(--color--secondary);
+	color: var(--color--text--tint-2);
 	padding-left: calc(12px + var(--spacing--3xs));
 }
 
@@ -377,18 +376,17 @@ const hiddenCount = computed(() =>
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: var(--border-width) dashed var(--color--secondary);
+	border: var(--border-width) dashed var(--color--foreground--shade-1);
 	border-radius: var(--radius--sm);
 	font-size: var(--font-size--3xs);
-	color: var(--color--secondary);
+	color: var(--color--text);
 	pointer-events: none;
 }
 
 .fileTypes {
 	margin-left: auto;
 	font-size: var(--font-size--3xs);
-	color: var(--color--secondary);
-	opacity: 0.7;
+	color: var(--color--text--tint-1);
 }
 
 /* ── HTML ────────────────────────────────────────────────────────────────── */
@@ -400,7 +398,7 @@ const hiddenCount = computed(() =>
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	border-radius: var(--radius--sm);
 	font-size: var(--font-size--3xs);
-	color: var(--color--secondary);
+	color: var(--color--text);
 	overflow: hidden;
 	pointer-events: none;
 }
@@ -421,17 +419,17 @@ const hiddenCount = computed(() =>
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
 	font-size: var(--font-size--3xs);
-	color: var(--color--secondary);
+	color: var(--color--text);
 	font-style: italic;
 	pointer-events: none;
 }
 
 .hiddenValue {
 	font-family: monospace;
-	color: var(--color--secondary);
+	color: var(--color--text--tint-1);
 }
 
 .iconMuted {
-	color: var(--color--secondary);
+	color: var(--color--text--tint-2);
 }
 </style>

@@ -14,6 +14,9 @@ const props = defineProps<{
 	formTitle: string;
 	formDescription: string;
 	submitLabel: string;
+	inheritedTitle?: string;
+	inheritedDescription?: string;
+	inheritedSubmitLabel?: string;
 	hasUnsavedChanges: boolean;
 	isSaving: boolean;
 }>();
@@ -121,7 +124,7 @@ const limitSelectionOptions: Array<{ value: string; labelKey: BaseTextKey }> = [
 				<N8nInput
 					:model-value="formTitle"
 					size="small"
-					:placeholder="i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
+					:placeholder="inheritedTitle || i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
 					@update:model-value="(v) => emit('update:formTitle', v)"
 				/>
 			</div>
@@ -134,7 +137,9 @@ const limitSelectionOptions: Array<{ value: string; labelKey: BaseTextKey }> = [
 					:model-value="formDescription"
 					type="textarea"
 					:rows="3"
-					:placeholder="i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')"
+					:placeholder="
+						inheritedDescription || i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')
+					"
 					@update:model-value="(v) => emit('update:formDescription', v)"
 				/>
 			</div>
@@ -146,7 +151,9 @@ const limitSelectionOptions: Array<{ value: string; labelKey: BaseTextKey }> = [
 				<N8nInput
 					:model-value="submitLabel"
 					size="small"
-					:placeholder="i18n.baseText('formStep.fields.canvas.submitPlaceholder')"
+					:placeholder="
+						inheritedSubmitLabel || i18n.baseText('formStep.fields.canvas.submitPlaceholder')
+					"
 					@update:model-value="(v) => emit('update:submitLabel', v)"
 				/>
 			</div>

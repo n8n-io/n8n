@@ -12,6 +12,9 @@ const props = defineProps<{
 	formTitle: string;
 	formDescription: string;
 	submitLabel: string;
+	inheritedTitle?: string;
+	inheritedDescription?: string;
+	inheritedSubmitLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -39,7 +42,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 		<div :class="$style.card">
 			<input
 				:value="formTitle"
-				:placeholder="i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
+				:placeholder="inheritedTitle || i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
 				:class="$style.titleInput"
 				autocomplete="off"
 				@input="emit('update:formTitle', ($event.target as HTMLInputElement).value)"
@@ -49,7 +52,9 @@ const isEmpty = computed(() => props.fields.length === 0);
 
 			<textarea
 				:value="formDescription"
-				:placeholder="i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')"
+				:placeholder="
+					inheritedDescription || i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')
+				"
 				:class="$style.descriptionInput"
 				rows="2"
 				@input="emit('update:formDescription', ($event.target as HTMLTextAreaElement).value)"
@@ -88,7 +93,9 @@ const isEmpty = computed(() => props.fields.length === 0);
 				<div
 					:class="$style.submitInput"
 					contenteditable="true"
-					:data-placeholder="i18n.baseText('formStep.fields.canvas.submitPlaceholder')"
+					:data-placeholder="
+						inheritedSubmitLabel || i18n.baseText('formStep.fields.canvas.submitPlaceholder')
+					"
 					@input="emit('update:submitLabel', ($event.target as HTMLElement).textContent ?? '')"
 					@focus="emit('selectFormElement', 'submit')"
 					@keydown.enter.prevent
@@ -108,9 +115,9 @@ const isEmpty = computed(() => props.fields.length === 0);
 }
 
 .card {
-	background: var(--color--secondary--tint-1);
+	background: var(--color--background--light-2);
 	border-radius: var(--radius--lg);
-	border: var(--border-width) var(--border-style) var(--color--secondary);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
 	overflow: hidden;
 	padding: var(--spacing--lg);
 	display: flex;
@@ -125,7 +132,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 .titleInput {
 	font-size: var(--font-size--xl);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--secondary);
+	color: var(--color--text);
 	line-height: var(--line-height--md);
 	border: none;
 	outline: none;
@@ -136,14 +143,14 @@ const isEmpty = computed(() => props.fields.length === 0);
 	text-align: center;
 
 	&::placeholder {
-		color: var(--color--secondary);
+		color: var(--color--text--tint-2);
 	}
 }
 
 .descriptionInput {
 	font-size: var(--font-size--sm);
 	font-family: var(--font-family);
-	color: var(--color--secondary);
+	color: var(--color--text--tint-1);
 	border: none;
 	outline: none;
 	background: transparent;
@@ -154,7 +161,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 	text-align: center;
 
 	&::placeholder {
-		color: var(--color--secondary--tint-1);
+		color: var(--color--text--tint-2);
 	}
 }
 
@@ -167,7 +174,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 }
 
 .empty {
-	border: var(--border-width) dashed var(--color--secondary);
+	border: var(--border-width) dashed var(--color--foreground);
 	border-radius: var(--radius);
 }
 
@@ -175,7 +182,7 @@ const isEmpty = computed(() => props.fields.length === 0);
 	padding: var(--spacing--md);
 	text-align: center;
 	font-size: var(--font-size--2xs);
-	color: var(--color--secondary);
+	color: var(--color--text--tint-2);
 }
 
 .submitRow {
@@ -185,8 +192,8 @@ const isEmpty = computed(() => props.fields.length === 0);
 .submitInput {
 	width: 100%;
 	padding: var(--spacing--xs) var(--spacing--sm);
-	background: var(--color--secondary);
-	color: white;
+	background: var(--color--text);
+	color: var(--color--background);
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
 	font-family: var(--font-family);

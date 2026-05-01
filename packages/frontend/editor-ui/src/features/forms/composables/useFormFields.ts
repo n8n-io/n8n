@@ -115,6 +115,25 @@ export function useFormFields(nodeId: string) {
 	const isTrigger = computed(() => node.value?.type === FORM_TRIGGER_NODE_TYPE);
 	const isCompletion = computed(() => node.value?.parameters?.operation === 'completion');
 
+	const triggerNode = computed<INodeUi | undefined>(() =>
+		isTrigger.value
+			? undefined
+			: workflowsStore.workflow.nodes.find((n) => n.type === FORM_TRIGGER_NODE_TYPE),
+	);
+
+	const inheritedTitle = computed<string>(
+		() => (triggerNode.value?.parameters?.formTitle as string) || '',
+	);
+
+	const inheritedDescription = computed<string>(
+		() => (triggerNode.value?.parameters?.formDescription as string) || '',
+	);
+
+	const inheritedSubmitLabel = computed<string>(() => {
+		const opts = triggerNode.value?.parameters?.options as INodeParameters | undefined;
+		return (opts?.buttonLabel as string) || '';
+	});
+
 	// -------------------------------------------------------------------------
 	// Local state
 	// -------------------------------------------------------------------------
@@ -325,6 +344,9 @@ export function useFormFields(nodeId: string) {
 		formTitle,
 		formDescription,
 		submitLabel,
+		inheritedTitle,
+		inheritedDescription,
+		inheritedSubmitLabel,
 		selectedField,
 		selectedFieldId,
 		selectedFormElement,
