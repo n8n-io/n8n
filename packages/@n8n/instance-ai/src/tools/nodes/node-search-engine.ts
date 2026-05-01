@@ -44,6 +44,19 @@ const NODE_SEARCH_KEYS = [
 ];
 
 /**
+ * Minimal XML escaping for content rendered into the search result envelope.
+ * Covers `&`, `<`, `>`, `"`, and `'` — enough for both element text and attributes.
+ */
+function escapeXml(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&apos;');
+}
+
+/**
  * Extract the short type name from a full node name.
  * e.g., "n8n-nodes-base.set" -> "set"
  */
@@ -200,6 +213,7 @@ export class NodeSearchEngine {
 			.slice(0, limit)
 			.map(({ item, score }): NodeSearchResult => {
 				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
+				const relatedNodes = item.builderHint?.relatedNodes;
 				return {
 					name: item.name,
 					displayName: item.displayName,
@@ -210,6 +224,7 @@ export class NodeSearchEngine {
 					score,
 					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
 					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+					...(Array.isArray(relatedNodes) && relatedNodes.length > 0 && { relatedNodes }),
 				};
 			});
 	}
@@ -244,6 +259,7 @@ export class NodeSearchEngine {
 				.slice(0, limit)
 				.map(({ nodeType, connectionScore }) => {
 					const subnodeRequirements = extractSubnodeRequirements(nodeType.builderHint?.inputs);
+					const relatedNodes = nodeType.builderHint?.relatedNodes;
 					return {
 						name: nodeType.name,
 						displayName: nodeType.displayName,
@@ -256,6 +272,7 @@ export class NodeSearchEngine {
 							builderHintMessage: nodeType.builderHint.message,
 						}),
 						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+						...(Array.isArray(relatedNodes) && relatedNodes.length > 0 && { relatedNodes }),
 					};
 				});
 		}
@@ -271,6 +288,7 @@ export class NodeSearchEngine {
 			);
 			const connectionScore = connectionResult?.connectionScore ?? 0;
 			const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
+			const relatedNodes = item.builderHint?.relatedNodes;
 
 			return {
 				name: item.name,
@@ -282,6 +300,7 @@ export class NodeSearchEngine {
 				score: connectionScore + nameScore,
 				...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
 				...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+				...(Array.isArray(relatedNodes) && relatedNodes.length > 0 && { relatedNodes }),
 			};
 		});
 	}
@@ -326,6 +345,17 @@ export class NodeSearchEngine {
 				}
 			}
 			parts.push('			</subnode_requirements>');
+		}
+
+		// Add related nodes if present
+		if (result.relatedNodes && result.relatedNodes.length > 0) {
+			parts.push('			<related_nodes>');
+			for (const related of result.relatedNodes) {
+				parts.push(
+					`				<related node_type="${escapeXml(related.nodeType)}">${escapeXml(related.relationHint)}</related>`,
+				);
+			}
+			parts.push('			</related_nodes>');
 		}
 
 		parts.push('		</node>');

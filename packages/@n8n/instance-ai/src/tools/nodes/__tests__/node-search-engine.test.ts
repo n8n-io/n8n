@@ -489,4 +489,84 @@ describe('NodeSearchEngine', () => {
 			expect(engine.getSubnodesForConnectionType('unknown')).toEqual([]);
 		});
 	});
+
+	// -----------------------------------------------------------------------
+	// relatedNodes propagation
+	// -----------------------------------------------------------------------
+
+	describe('relatedNodes', () => {
+		const gmailNode = makeNode({
+			name: 'n8n-nodes-base.gmail',
+			displayName: 'Gmail',
+			description: 'Consume the Gmail API',
+			builderHint: {
+				relatedNodes: [
+					{
+						nodeType: 'n8n-nodes-base.gmailTrigger',
+						relationHint: 'Use Gmail Trigger for scheduled email fetching',
+					},
+				],
+			},
+		});
+
+		const relatedEngine = new NodeSearchEngine([gmailNode, slackNode]);
+
+		it('searchByName returns relatedNodes when present', () => {
+			const results = relatedEngine.searchByName('gmail');
+			const gmailResult = results.find((r) => r.name === 'n8n-nodes-base.gmail');
+			expect(gmailResult?.relatedNodes).toEqual([
+				{
+					nodeType: 'n8n-nodes-base.gmailTrigger',
+					relationHint: 'Use Gmail Trigger for scheduled email fetching',
+				},
+			]);
+		});
+
+		it('searchByName omits relatedNodes when the source node has none', () => {
+			const results = relatedEngine.searchByName('slack');
+			const slackResult = results.find((r) => r.name === 'n8n-nodes-base.slack');
+			expect(slackResult?.relatedNodes).toBeUndefined();
+		});
+
+		it('formatResult renders relatedNodes as compact XML with node_type and relationHint', () => {
+			const [gmailResult] = relatedEngine.searchByName('gmail');
+			const xml = relatedEngine.formatResult(gmailResult);
+			expect(xml).toContain('<related_nodes>');
+			expect(xml).toContain('node_type="n8n-nodes-base.gmailTrigger"');
+			expect(xml).toContain('Use Gmail Trigger for scheduled email fetching');
+			expect(xml).toContain('</related_nodes>');
+		});
+
+		it('formatResult omits the related_nodes block when none are present', () => {
+			const [slackResult] = relatedEngine.searchByName('slack');
+			const xml = relatedEngine.formatResult(slackResult);
+			expect(xml).not.toContain('<related_nodes>');
+		});
+
+		it('formatResult escapes XML-significant characters in nodeType and relationHint', () => {
+			const trickyNode = makeNode({
+				name: 'n8n-nodes-base.tricky',
+				displayName: 'Tricky',
+				description: 'Has dangerous related-node text',
+				builderHint: {
+					relatedNodes: [
+						{
+							nodeType: 'n8n-nodes-base.<bad>',
+							relationHint: 'Hint with <tag> & "quotes" and \'apostrophes\'',
+						},
+					],
+				},
+			});
+			const trickyEngine = new NodeSearchEngine([trickyNode]);
+			const [trickyResult] = trickyEngine.searchByName('tricky');
+			const xml = trickyEngine.formatResult(trickyResult);
+
+			expect(xml).toContain('node_type="n8n-nodes-base.&lt;bad&gt;"');
+			expect(xml).toContain(
+				'Hint with &lt;tag&gt; &amp; &quot;quotes&quot; and &apos;apostrophes&apos;',
+			);
+			expect(xml).not.toContain('<bad>');
+			expect(xml).not.toContain('"quotes"');
+		});
+	});
 });

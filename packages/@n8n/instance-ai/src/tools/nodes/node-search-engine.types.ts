@@ -43,6 +43,12 @@ export interface BuilderHintInputConfig {
 /** Maps AI input types to their configuration. */
 export type BuilderHintInputs = Partial<Record<string, BuilderHintInputConfig>>;
 
+/** Pointer to a related node with a brief reason it's related. */
+export interface RelatedNodeHint {
+	nodeType: string;
+	relationHint: string;
+}
+
 // ---------------------------------------------------------------------------
 // Searchable node type
 // ---------------------------------------------------------------------------
@@ -67,6 +73,7 @@ export interface SearchableNodeType {
 	builderHint?: {
 		message?: string;
 		inputs?: BuilderHintInputs;
+		relatedNodes?: RelatedNodeHint[];
 	};
 }
 
@@ -97,4 +104,6 @@ export interface NodeSearchResult {
 	builderHintMessage?: string;
 	/** Subnode requirements extracted from builderHint.inputs. */
 	subnodeRequirements?: SubnodeRequirement[];
+	/** Related nodes the agent should consider together with this one (from builderHint.relatedNodes). */
+	relatedNodes?: RelatedNodeHint[];
 }

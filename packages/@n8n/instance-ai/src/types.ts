@@ -340,6 +340,7 @@ export interface SearchableNodeDescription {
 		message?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
+		relatedNodes?: Array<{ nodeType: string; relationHint: string }>;
 	};
 }
 

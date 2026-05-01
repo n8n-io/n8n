@@ -1705,6 +1705,15 @@ export class InstanceAiAdapterService {
 							}
 							result.builderHint.outputs = outputs;
 						}
+						if (
+							Array.isArray(n.builderHint.relatedNodes) &&
+							n.builderHint.relatedNodes.length > 0
+						) {
+							result.builderHint.relatedNodes = n.builderHint.relatedNodes.map((related) => ({
+								nodeType: related.nodeType,
+								relationHint: related.relationHint,
+							}));
+						}
 					}
 					return result;
 				});
