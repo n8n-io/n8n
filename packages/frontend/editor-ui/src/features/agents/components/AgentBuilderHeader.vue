@@ -110,12 +110,12 @@ function onBreadcrumbSelect(item: PathItem) {
 					<template #trigger>
 						<N8nButton
 							variant="ghost"
-							size="xsmall"
+							size="small"
 							:class="$style.switcherButton"
 							:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
 						>
-							<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
-							<N8nIcon icon="chevron-down" :size="12" />
+							{{ agentDisplayName }}
+							<N8nIcon icon="chevron-down" :size="14" />
 						</N8nButton>
 					</template>
 				</N8nDropdown>
@@ -175,10 +175,9 @@ function onBreadcrumbSelect(item: PathItem) {
 /* N8nButton owns chrome/hover/focus; we just override the breadcrumb-bold weight
    and add gap between the label and chevron. */
 .switcherButton {
-	--button--height: auto;
-	--button--padding: 0;
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--5xs);
 }
 
 .switcherLabel {
