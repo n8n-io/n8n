@@ -50,10 +50,12 @@ const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
 const { publish, publishing } = useAgentPublish();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
-// Mirror published state locally so the same modal session reflects a
-// publish-and-connect performed from inside the confirmation popout — the
-// parent's `data.isPublished` is only read at modal-open time.
-const isPublishedLocal = ref(props.data.isPublished);
+// Track in-modal publish so the same session reflects a publish-and-connect
+// performed from the confirmation popout. The base value still tracks
+// `props.data.isPublished` reactively — a `ref` snapshot would silently go
+// stale if the prop is updated (or the modal is ever switched to keep-alive).
+const publishedDuringSession = ref(false);
+const isPublishedLocal = computed(() => publishedDuringSession.value || props.data.isPublished);
 
 const integrations = ref<ChatIntegrationDescriptor[]>([]);
 const selectedTriggerType = ref<string>('');
@@ -308,7 +310,7 @@ async function ensurePublished(): Promise<boolean> {
 
 	const updated = await publish(props.data.projectId, props.data.agentId);
 	if (!updated) return false;
-	isPublishedLocal.value = true;
+	publishedDuringSession.value = true;
 	props.data.onAgentPublished?.(updated);
 	return true;
 }
