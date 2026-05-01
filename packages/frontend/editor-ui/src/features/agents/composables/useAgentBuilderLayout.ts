@@ -18,7 +18,10 @@ export function useAgentBuilderLayout() {
 	const chatColumnCollapsed = ref(
 		typeof window !== 'undefined' && window.localStorage?.getItem(CHAT_COLLAPSED_KEY) === '1',
 	);
-	const chatColumnWidth = ref(readStoredNumber(CHAT_WIDTH_KEY, DEFAULT_CHAT_WIDTH));
+	const expandedChatColumnWidth = ref(readStoredNumber(CHAT_WIDTH_KEY, DEFAULT_CHAT_WIDTH));
+	const chatColumnWidth = computed(() =>
+		chatColumnCollapsed.value ? MIN_CHAT_WIDTH : expandedChatColumnWidth.value,
+	);
 	const writeChatColumnWidth = useDebounceFn((width: number) => {
 		writeStoredNumber(CHAT_WIDTH_KEY, width);
 	}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
@@ -35,7 +38,7 @@ export function useAgentBuilderLayout() {
 		}
 	});
 
-	watch(chatColumnWidth, (width) => {
+	watch(expandedChatColumnWidth, (width) => {
 		void writeChatColumnWidth(width);
 	});
 
@@ -54,13 +57,17 @@ export function useAgentBuilderLayout() {
 
 	function onChatColumnResize({ width }: { width: number }) {
 		chatColumnCollapsed.value = false;
-		chatColumnWidth.value = clamp(width, MIN_CHAT_WIDTH, maxChatWidth.value);
+		expandedChatColumnWidth.value = clamp(width, MIN_CHAT_WIDTH, maxChatWidth.value);
 		clampPanelWidths();
 	}
 
 	function clampPanelWidths() {
 		if (builderWidth.value <= 0) return;
-		chatColumnWidth.value = clamp(chatColumnWidth.value, MIN_CHAT_WIDTH, maxChatWidth.value);
+		expandedChatColumnWidth.value = clamp(
+			expandedChatColumnWidth.value,
+			MIN_CHAT_WIDTH,
+			maxChatWidth.value,
+		);
 	}
 
 	return {

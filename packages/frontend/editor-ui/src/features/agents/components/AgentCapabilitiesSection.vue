@@ -268,7 +268,6 @@ function toolNodeType(tool: AgentJsonToolRef) {
 	flex-direction: column;
 	gap: var(--spacing--md);
 	width: 100%;
-	/* padding: var(--spacing--xl) var(--spacing--2xl); */
 }
 
 .capabilityRow {

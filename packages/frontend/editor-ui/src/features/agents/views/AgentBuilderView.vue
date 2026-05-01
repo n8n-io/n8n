@@ -64,6 +64,9 @@ import AgentConfigJsonEditor from '../components/AgentConfigJsonEditor.vue';
 import AgentPanelHeader from '../components/AgentPanelHeader.vue';
 
 type AgentBuilderMainTab = 'agent' | 'executions' | 'evaluations' | 'raw';
+type AgentBuilderSection = typeof EXECUTIONS_SECTION_KEY | typeof EVALS_SECTION_KEY | 'raw' | null;
+
+const SECTION_QUERY_PARAM = 'section';
 
 const route = useRoute();
 const router = useRouter();
@@ -129,7 +132,28 @@ const { chatColumnCollapsed, chatColumnWidth, onChatColumnResize, resizeGridSize
 chatColumnCollapsed.value = false;
 
 // Main tab state (Agent, Executions, Evaluations)
-const selectedSection = ref<string | null>(null);
+const selectedSection = ref<AgentBuilderSection>(null);
+
+function getSectionFromQuery(section: unknown): AgentBuilderSection {
+	const value = Array.isArray(section) ? section[0] : section;
+	if (value === EXECUTIONS_SECTION_KEY || value === EVALS_SECTION_KEY || value === 'raw')
+		return value;
+	return null;
+}
+
+function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
+	if (tab === 'executions') return EXECUTIONS_SECTION_KEY;
+	if (tab === 'evaluations') return EVALS_SECTION_KEY;
+	if (tab === 'raw') return 'raw';
+	return null;
+}
+
+async function setSelectedSection(section: AgentBuilderSection) {
+	selectedSection.value = section;
+	await router.replace({
+		query: { ...route.query, [SECTION_QUERY_PARAM]: section ?? undefined },
+	});
+}
 
 const activeMainTab = computed<AgentBuilderMainTab>({
 	get() {
@@ -139,14 +163,7 @@ const activeMainTab = computed<AgentBuilderMainTab>({
 		return 'agent';
 	},
 	set(tab) {
-		selectedSection.value =
-			tab === 'executions'
-				? EXECUTIONS_SECTION_KEY
-				: tab === 'evaluations'
-					? EVALS_SECTION_KEY
-					: tab === 'raw'
-						? 'raw'
-						: null;
+		void setSelectedSection(getSectionFromTab(tab));
 	},
 });
 
@@ -593,6 +610,14 @@ async function initialize() {
 }
 
 watch(agentId, initialize, { immediate: true });
+
+watch(
+	() => route.query[SECTION_QUERY_PARAM],
+	(section) => {
+		selectedSection.value = getSectionFromQuery(section);
+	},
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	sessionsStore.stopAutoRefresh();
@@ -1330,7 +1355,7 @@ function onSwitchAgent(nextAgentId: string) {
 
 .panelAreaContainer {
 	position: relative;
-	max-width: 56rem;
+	max-width: 72rem;
 	width: 100%;
 	padding: var(--spacing--sm);
 	margin: 0 auto;
@@ -1358,7 +1383,6 @@ function onSwitchAgent(nextAgentId: string) {
 	gap: var(--spacing--lg);
 	padding: var(--spacing--lg);
 	width: 100%;
-	max-width: 56rem;
 	margin: 0 auto;
 }
 
