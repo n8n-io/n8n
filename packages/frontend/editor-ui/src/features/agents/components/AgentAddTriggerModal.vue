@@ -34,6 +34,7 @@ const props = defineProps<{
 	data: {
 		projectId: string;
 		agentId: string;
+		agentName: string;
 		isPublished: boolean;
 		connectedTriggers: string[];
 		onConnectedTriggersChange: (triggers: string[]) => void;
@@ -159,8 +160,23 @@ const oauthCallbackUrl = computed(() => {
 	}
 });
 
+const DEFAULT_SLACK_APP_NAME = 'n8n Agent';
+
+// Slack app names accept letters, digits, spaces, periods, hyphens and
+// underscores (max 35 chars per Slack's submission guidelines). Strip anything
+// else and fall back to a sensible default if the agent name is empty after
+// sanitisation, so the manifest always validates on Slack's side.
+function sanitiseSlackAppName(raw: string): string {
+	const cleaned = raw
+		.replace(/[^a-zA-Z0-9 ._-]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim()
+		.slice(0, 35);
+	return cleaned.length > 0 ? cleaned : DEFAULT_SLACK_APP_NAME;
+}
+
 const slackAppManifest = computed(() => {
-	const agentName = 'n8n Agent';
+	const agentName = sanitiseSlackAppName(props.data.agentName);
 	return JSON.stringify(
 		{
 			display_information: {
@@ -643,7 +659,8 @@ onMounted(async () => {
 .optionRow {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
+	padding: 0 var(--spacing--3xs);
 }
 
 .placeholderState {

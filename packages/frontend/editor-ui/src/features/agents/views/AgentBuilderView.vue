@@ -805,6 +805,7 @@ function onOpenAddTriggerModal() {
 		data: {
 			projectId: projectId.value,
 			agentId: agentId.value,
+			agentName: agentName.value,
 			isPublished: Boolean(agent.value?.publishedVersion),
 			connectedTriggers: connectedTriggers.value,
 			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
@@ -1099,6 +1100,7 @@ function onSwitchAgent(nextAgentId: string) {
 										:tools="localConfig?.tools ?? []"
 										:project-id="projectId"
 										:agent-id="agentId"
+										:agent-name="agentName"
 										:is-published="Boolean(agent?.publishedVersion)"
 										:connected-triggers="connectedTriggers"
 										@update:tools="onQuickActionAddTool"
