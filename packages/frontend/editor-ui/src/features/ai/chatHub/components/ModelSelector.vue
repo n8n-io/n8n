@@ -221,6 +221,7 @@ defineExpose({
 						v-if="credentialsName"
 						:size="horizontal ? 'small' : 'xsmall'"
 						color="text-light"
+						data-test-id="chat-model-selector-credential"
 					>
 						{{ truncateBeforeLast(credentialsName, MAX_AGENT_NAME_CHARS) }}
 					</N8nText>
