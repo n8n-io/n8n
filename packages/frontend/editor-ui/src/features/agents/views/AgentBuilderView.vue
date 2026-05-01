@@ -670,33 +670,18 @@ function exitContinueMode() {
 }
 
 /**
- * Whether the current tab has a non-raw custom view that the user can flip away
- * from. For plain JSON slices the toggle isn't offered (it's already raw).
+ * Whether the current tab can flip to a raw JSON view. Only the custom-tool
+ * tabs offer this toggle — everything else uses the dedicated "Raw" entry at
+ * the bottom of the tree, which shows the full agent config.
  */
 const canToggleRaw = computed(() => {
-	const key = selectedSection.value;
-	if (!key) return false;
+	if (!selectedSection.value) return false;
 	if (!localConfig.value) return false;
-	if (key === AGENT_SECTION_KEY || key === ADVANCED_SECTION_KEY || key === 'memory') return true;
 	return customToolSelection.value !== null;
 });
 
-const AGENT_RAW_PICK_KEYS = ['name', 'model', 'credential', 'instructions'];
-
 /** Path passed to AgentSectionEditor when `showRawSection` is on. */
-const rawSectionPath = computed<string | null>(() => {
-	const key = selectedSection.value;
-	if (!key) return null;
-	// `__agent` is synthetic — its raw view uses `pickKeys` instead.
-	if (key === AGENT_SECTION_KEY) return null;
-	// `__advanced` maps to the `config` subtree in raw view.
-	if (key === ADVANCED_SECTION_KEY) return 'config';
-	return key;
-});
-
-const rawPickKeys = computed<string[] | null>(() =>
-	selectedSection.value === AGENT_SECTION_KEY ? AGENT_RAW_PICK_KEYS : null,
-);
+const rawSectionPath = computed<string | null>(() => selectedSection.value);
 
 function onOpenToolFromList(index: number) {
 	selectedSection.value = `tools.${index}`;
@@ -1215,23 +1200,10 @@ function onSwitchAgent(nextAgentId: string) {
 							<span>Raw</span>
 						</button>
 					</div>
-					<button
-						v-if="canToggleRaw && !isToolSliceSelection"
-						type="button"
-						:class="[$style.rawToggle, showRawSection && $style.rawToggleActive]"
-						:aria-pressed="showRawSection"
-						:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
-						data-testid="agent-section-raw-toggle"
-						@click="toggleRawSection"
-					>
-						<N8nIcon icon="code" :size="12" />
-						<span>Raw</span>
-					</button>
 					<AgentSectionEditor
 						v-if="showRawSection && canToggleRaw"
 						:config="localConfig"
 						:section-path="rawSectionPath"
-						:pick-keys="rawPickKeys"
 						:offset-copy-for-toggle="true"
 						:read-only="isBuildChatStreaming"
 						@update:config="onSectionEditorUpdate"

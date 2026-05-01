@@ -5740,7 +5740,7 @@
 	"agents.new.templates.label": "Or try a template",
 	"agents.builder.sections.agent": "Agent",
 	"agents.builder.sections.advanced": "Advanced",
-	"agents.builder.sections.configJson": "config.json",
+	"agents.builder.sections.configJson": "Raw",
 	"agents.builder.sections.evaluations": "Evaluations",
 	"agents.builder.sections.evaluations.comingSoon": "Coming soon",
 	"agents.builder.sections.executions": "Executions",
