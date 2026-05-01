@@ -16,8 +16,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { AGENT_SCHEDULE_TRIGGER_TYPE, type ChatIntegrationDescriptor } from '@n8n/api-types';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { useAgentIntegrationStatus } from '../composables/useAgentIntegrationStatus';
+import { useAgentPublish } from '../composables/useAgentPublish';
+import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
+import type { AgentResource } from '../types';
 import AgentScheduleTriggerCard from './AgentScheduleTriggerCard.vue';
 
 interface CredentialOption {
@@ -34,6 +38,7 @@ const props = defineProps<{
 		connectedTriggers: string[];
 		onConnectedTriggersChange: (triggers: string[]) => void;
 		onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) => void;
+		onAgentPublished?: (agent: AgentResource) => void;
 	};
 }>();
 
@@ -41,6 +46,13 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
+const { publish, publishing } = useAgentPublish();
+const { openAgentConfirmationModal } = useAgentConfirmationModal();
+
+// Mirror published state locally so the same modal session reflects a
+// publish-and-connect performed from inside the confirmation popout — the
+// parent's `data.isPublished` is only read at modal-open time.
+const isPublishedLocal = ref(props.data.isPublished);
 
 const integrations = ref<ChatIntegrationDescriptor[]>([]);
 const selectedTriggerType = ref<string>('');
@@ -60,6 +72,12 @@ const {
 const selectedCredentials = ref<Record<string, string>>({});
 const credentialsByType = ref<Record<string, CredentialOption[]>>({});
 const credentialsLoading = ref(false);
+
+// Track credentials that existed before the user opened the "new credential"
+// modal, keyed by trigger type. After the modal closes we diff against the
+// fresh list to detect the just-created credential and auto-select it.
+const credentialIdsBeforeNew = ref<Record<string, Set<string>>>({});
+const pendingNewCredentialType = ref<string | null>(null);
 
 const linearCopied = ref(false);
 const manifestCopied = ref(false);
@@ -119,9 +137,17 @@ function integrationConnectedText(type: string): string {
 	return key ? i18n.baseText(key) : '';
 }
 
+// Use the browser origin (rather than the configured `urlBaseEditor`) so the
+// generated URLs match whichever host the user is currently viewing the UI
+// from — e.g. an ngrok tunnel or a reverse-proxy port. The instance's
+// configured editor URL might be `http://localhost:5678` while the user is
+// actually serving Slack the URL via `https://<id>.ngrok.app`.
+function browserOrigin(): string {
+	return typeof window !== 'undefined' ? window.location.origin : rootStore.urlBaseEditor;
+}
+
 function webhookUrlFor(platform: string): string {
-	const base = rootStore.urlBaseEditor;
-	return `${base}rest/projects/${props.data.projectId}/agents/v2/${props.data.agentId}/webhooks/${platform}`;
+	return `${browserOrigin()}/rest/projects/${props.data.projectId}/agents/v2/${props.data.agentId}/webhooks/${platform}`;
 }
 
 async function copyLinearWebhookUrl() {
@@ -132,9 +158,18 @@ async function copyLinearWebhookUrl() {
 	}, 2000);
 }
 
-const oauthCallbackUrl = computed(
-	() => (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '',
-);
+const oauthCallbackUrl = computed(() => {
+	const configured = (rootStore.OAuthCallbackUrls as { oauth2?: string }).oauth2 ?? '';
+	if (!configured) return '';
+	try {
+		// Preserve the configured path (which may include a custom rest endpoint
+		// or base path) but rebase onto the current browser origin.
+		const parsed = new URL(configured);
+		return `${browserOrigin()}${parsed.pathname}${parsed.search}`;
+	} catch {
+		return configured;
+	}
+});
 
 const slackAppManifest = computed(() => {
 	const agentName = 'n8n Agent';
@@ -260,9 +295,29 @@ async function fetchCredentials() {
 	}
 }
 
+async function ensurePublished(): Promise<boolean> {
+	if (isPublishedLocal.value) return true;
+
+	const confirmed = await openAgentConfirmationModal({
+		title: i18n.baseText('agents.builder.addTrigger.publishPrompt.title'),
+		description: i18n.baseText('agents.builder.addTrigger.publishPrompt.description'),
+		confirmButtonText: i18n.baseText('agents.builder.addTrigger.publishPrompt.confirm'),
+		cancelButtonText: i18n.baseText('generic.cancel'),
+	});
+	if (confirmed !== MODAL_CONFIRM) return false;
+
+	const updated = await publish(props.data.projectId, props.data.agentId);
+	if (!updated) return false;
+	isPublishedLocal.value = true;
+	props.data.onAgentPublished?.(updated);
+	return true;
+}
+
 async function onConnect(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (!credId) return;
+	const published = await ensurePublished();
+	if (!published) return;
 	try {
 		await connect(type, credId);
 		const triggers = computeConnectedTriggers();
@@ -284,6 +339,9 @@ async function onDisconnect(type: string) {
 function onCreateCredential(integration: ChatIntegrationDescriptor) {
 	const [primaryCredentialType] = integration.credentialTypes;
 	if (!primaryCredentialType) return;
+	const existing = credentialsByType.value[integration.type] ?? [];
+	credentialIdsBeforeNew.value[integration.type] = new Set(existing.map((c) => c.id));
+	pendingNewCredentialType.value = integration.type;
 	uiStore.openNewCredential(primaryCredentialType);
 }
 
@@ -298,13 +356,32 @@ const credentialModalOpen = computed(
 	() => uiStore.isModalActiveById[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
 );
 
-watch(credentialModalOpen, (isOpen, wasOpen) => {
-	if (wasOpen && !isOpen) {
-		void fetchCredentials();
+watch(credentialModalOpen, async (isOpen, wasOpen) => {
+	if (!wasOpen || isOpen) return;
+	const type = pendingNewCredentialType.value;
+	pendingNewCredentialType.value = null;
+	await fetchCredentials();
+	if (!type) return;
+
+	const before = credentialIdsBeforeNew.value[type];
+	const after = credentialsByType.value[type] ?? [];
+	const newCred = before ? after.find((c) => !before.has(c.id)) : undefined;
+	if (newCred) {
+		selectedCredentials.value[type] = newCred.id;
 	}
+	delete credentialIdsBeforeNew.value[type];
 });
 
 onMounted(async () => {
+	// Connect errors live in the shared integration-status cache so they
+	// survive remounts. Clear them whenever the modal opens so a stale
+	// "agent must be published" message from a previous attempt doesn't
+	// reappear on the next open.
+	for (const key of Object.keys(errorMessages.value)) {
+		errorMessages.value[key] = '';
+		errorIsConflict.value[key] = false;
+	}
+
 	const list = await ensureLoaded(props.data.projectId).catch(() => catalog.value ?? []);
 	integrations.value = list ?? [];
 	await Promise.all([fetchStatus(), fetchCredentials()]);
@@ -367,7 +444,7 @@ onMounted(async () => {
 					v-else-if="selectedTriggerType === AGENT_SCHEDULE_TRIGGER_TYPE"
 					:project-id="data.projectId"
 					:agent-id="data.agentId"
-					:is-published="data.isPublished"
+					:is-published="isPublishedLocal"
 					:flat="true"
 					@status-change="onScheduleStatusChange"
 					@trigger-added="onScheduleTriggerAdded"
@@ -388,7 +465,7 @@ onMounted(async () => {
 							@focus="($event.target as HTMLInputElement).select()"
 						/>
 						<N8nButton
-							type="secondary"
+							variant="outline"
 							size="small"
 							:data-testid="`${currentIntegration.type}-copy-webhook-url`"
 							@click="copyLinearWebhookUrl"
@@ -410,7 +487,7 @@ onMounted(async () => {
 							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestHint') }}
 						</N8nText>
 						<div :class="$style.manifestActions">
-							<N8nButton type="secondary" size="small" @click="copyManifest">
+							<N8nButton variant="outline" size="small" @click="copyManifest">
 								<template #prefix>
 									<N8nIcon :icon="manifestCopied ? 'check' : 'copy'" size="xsmall" />
 								</template>
@@ -420,7 +497,7 @@ onMounted(async () => {
 										: i18n.baseText('agents.builder.addTrigger.slack.copyManifest')
 								}}
 							</N8nButton>
-							<N8nButton type="tertiary" size="small" @click="showManifest = !showManifest">
+							<N8nButton variant="outline" size="small" @click="showManifest = !showManifest">
 								{{
 									showManifest
 										? i18n.baseText('agents.builder.addTrigger.slack.hideJson')
@@ -458,7 +535,7 @@ onMounted(async () => {
 								</N8nSelect>
 								<N8nButton
 									v-if="selectedCredentials[currentIntegration.type]"
-									type="tertiary"
+									variant="outline"
 									size="small"
 									icon="pen"
 									:aria-label="i18n.baseText('agents.builder.addTrigger.editCredential')"
@@ -477,6 +554,7 @@ onMounted(async () => {
 								}}
 							</N8nText>
 							<N8nButton
+								variant="outline"
 								size="small"
 								:data-testid="`${currentIntegration.type}-create-credential`"
 								@click="onCreateCredential(currentIntegration)"
@@ -512,9 +590,10 @@ onMounted(async () => {
 							<N8nButton
 								:disabled="
 									!selectedCredentials[currentIntegration.type] ||
-									isLoading(currentIntegration.type)
+									isLoading(currentIntegration.type) ||
+									publishing
 								"
-								:loading="isLoading(currentIntegration.type)"
+								:loading="isLoading(currentIntegration.type) || publishing"
 								size="small"
 								:data-testid="`${currentIntegration.type}-connect-button`"
 								@click="onConnect(currentIntegration.type)"
@@ -524,7 +603,7 @@ onMounted(async () => {
 							</N8nButton>
 							<N8nButton
 								v-if="hasCredentials(currentIntegration.type)"
-								type="tertiary"
+								variant="outline"
 								size="small"
 								:data-testid="`${currentIntegration.type}-create-another-credential`"
 								@click="onCreateCredential(currentIntegration)"
@@ -541,7 +620,6 @@ onMounted(async () => {
 						</N8nText>
 						<N8nButton
 							:class="$style.actionButton"
-							type="secondary"
 							:loading="isLoading(currentIntegration.type)"
 							size="small"
 							:data-testid="`${currentIntegration.type}-disconnect-button`"

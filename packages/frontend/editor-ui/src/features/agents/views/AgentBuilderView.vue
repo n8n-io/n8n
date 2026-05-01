@@ -825,6 +825,7 @@ function onOpenAddTriggerModal() {
 			onConnectedTriggersChange: (triggers: string[]) => onConnectedTriggersUpdate(triggers),
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				onTriggerAdded(payload),
+			onAgentPublished: (updated: AgentResource) => onPublished(updated),
 		},
 	});
 }
@@ -1118,6 +1119,7 @@ function onSwitchAgent(nextAgentId: string) {
 										@update:tools="onQuickActionAddTool"
 										@update:connected-triggers="onConnectedTriggersUpdate"
 										@trigger-added="onTriggerAdded"
+										@agent-published="onPublished"
 									/>
 									<N8nTooltip
 										v-if="initialized"
