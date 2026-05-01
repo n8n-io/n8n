@@ -1,6 +1,8 @@
 import type { Response } from 'express';
+import { rm } from 'fs/promises';
 import isbot from 'isbot';
 import { DateTime } from 'luxon';
+import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
 	INodeExecutionData,
 	MultiPartFormData,
@@ -14,13 +16,22 @@ import {
 	FORM_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	WAIT_NODE_TYPE,
+	WorkflowConfigurationError,
 	jsonParse,
+	tryToParseUrl,
+	BINARY_MODE_COMBINED,
+	tryToParseJsonToFormFields,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
-import { validateWebhookAuthentication } from '../../Webhook/utils';
+import {
+	generateFormPostBasicAuthToken,
+	isIpAllowed,
+	validateWebhookAuthentication,
+} from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
 
@@ -54,6 +65,14 @@ export function sanitizeHtml(text: string) {
 			'ol',
 			'li',
 			'p',
+			'table',
+			'thead',
+			'tbody',
+			'tfoot',
+			'td',
+			'tr',
+			'th',
+			'br',
 		],
 		allowedAttributes: {
 			a: ['href', 'target', 'rel'],
@@ -69,6 +88,8 @@ export function sanitizeHtml(text: string) {
 				'referrerpolicy',
 			],
 			source: ['src', 'type'],
+			td: ['colspan', 'rowspan', 'scope', 'headers'],
+			th: ['colspan', 'rowspan', 'scope', 'headers'],
 		},
 		allowedSchemes: ['https', 'http'],
 		allowedSchemesByTag: {
@@ -86,20 +107,21 @@ export function sanitizeHtml(text: string) {
 	});
 }
 
-export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
+/**
+ *  Replaces `\n` strings with actual newline characters.
+ *  Also replaces `\\n` strings with `\n` string
+ * @param text - The text to replace newlines in
+ * @returns Updated text
+ */
+export const handleNewlines = (text: string) => {
+	return text.replace(/\\n|\\\\n/g, (match) => (match === '\\\\n' ? '\\n' : '\n'));
+};
+
+export const prepareFormFields = (fields: FormFieldsParameter) => {
 	return fields.map((field) => {
-		if (field.fieldType === 'html') {
-			let { html } = field;
-
-			if (!html) return field;
-
-			for (const resolvable of getResolvables(html)) {
-				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-			}
-
-			field.html = sanitizeHtml(html);
+		if (field.fieldType === 'html' && field.html) {
+			field.html = sanitizeHtml(field.html);
 		}
-
 		if (field.fieldType === 'hiddenField') {
 			field.fieldLabel = field.fieldName as string;
 		}
@@ -111,19 +133,52 @@ export const prepareFormFields = (context: IWebhookFunctions, fields: FormFields
 export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	if (!css) return undefined;
 
-	// Use sanitize-html with custom settings for CSS
-	return sanitize(css, {
-		allowedTags: [], // No HTML tags allowed
-		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
+	const sanitized = sanitize(css, {
+		allowedTags: [],
+		allowedAttributes: {},
 	});
+
+	// Restore only the entities needed for valid CSS after tag stripping.
+	// &gt; → > is needed for CSS child combinator selectors (div > p).
+	// &amp; → & is needed for CSS values, but NOT when followed by lt;/gt;/amp;
+	// to prevent cascading decode of double-encoded entities.
+	// &lt; is never decoded — < is not valid in CSS and would enable tag injection.
+	return sanitized.replace(/&gt;/g, '>').replace(/&amp;(?!(?:lt|gt|amp);)/g, '&');
+}
+
+/**
+ * Validates that a URL uses a safe scheme.
+ * Returns the normalized URL if valid, or null if invalid.
+ */
+export function validateSafeRedirectUrl(url: string | undefined): string | null {
+	if (!url) return null;
+	const trimmed = url.trim();
+	if (!trimmed) return null;
+
+	try {
+		return tryToParseUrl(trimmed);
+	} catch {
+		return null;
+	}
 }
 
 export function createDescriptionMetadata(description: string) {
 	return description === ''
 		? 'n8n form'
 		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
+}
+
+/**
+ * Gets the field identifier to use based on node version.
+ * For v2.4+, uses fieldName as the primary identifier.
+ * For earlier versions, falls back to fieldLabel.
+ */
+function getFieldIdentifier(field: FormFieldsParameter[number], nodeVersion?: number): string {
+	if (nodeVersion && nodeVersion >= 2.4 && field.fieldName) {
+		return field.fieldName;
+	}
+
+	return field.fieldLabel ?? field.fieldName ?? '';
 }
 
 export function prepareFormData({
@@ -140,6 +195,8 @@ export function prepareFormData({
 	appendAttribution = true,
 	buttonLabel,
 	customCss,
+	nodeVersion,
+	authToken,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -154,6 +211,8 @@ export function prepareFormData({
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
 	customCss?: string;
+	nodeVersion?: number;
+	authToken?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -175,24 +234,26 @@ export function prepareFormData({
 		appendAttribution,
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
+		authToken,
 	};
 
 	if (redirectUrl) {
-		if (!redirectUrl.includes('://')) {
-			redirectUrl = `http://${redirectUrl}`;
+		const safeUrl = validateSafeRedirectUrl(redirectUrl);
+		if (safeUrl) {
+			formData.redirectUrl = safeUrl;
 		}
-		formData.redirectUrl = redirectUrl;
 	}
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField, multiselect, placeholder } = field;
+		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
+		const queryParam = getFieldIdentifier(field, nodeVersion);
 
 		const input: FormField = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
-			defaultValue: query[field.fieldLabel] ?? '',
+			defaultValue: query[queryParam] ?? defaultValue ?? '',
 			placeholder,
 		};
 
@@ -262,9 +323,9 @@ export const validateResponseModeConfiguration = (context: IWebhookFunctions) =>
 	}
 
 	if (isRespondToWebhookConnected && responseMode !== 'responseNode' && nodeVersion <= 2.1) {
-		throw new NodeOperationError(
+		throw new WorkflowConfigurationError(
 			context.getNode(),
-			new Error(`${context.getNode().name} node not correctly configured`),
+			new Error('Unused Respond to Webhook node found in the workflow'),
 			{
 				description:
 					'Set the “Respond When” parameter to “Using Respond to Webhook Node” or remove the Respond to Webhook node',
@@ -290,10 +351,11 @@ export function addFormResponseDataToReturnItem(
 	returnItem: INodeExecutionData,
 	formFields: FormFieldsParameter,
 	bodyData: IDataObject,
+	nodeVersion?: number,
 ) {
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
-		const name = field.fieldLabel ?? field.fieldName;
+		const name = getFieldIdentifier(field, nodeVersion);
 		let value = bodyData[key] ?? null;
 
 		if (value === null) {
@@ -324,8 +386,9 @@ export function addFormResponseDataToReturnItem(
 				value = value[0];
 			}
 		}
-		if (field.fieldType === 'date' && value && field.formatDate !== '') {
-			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		if (field.fieldType === 'date' && value && field.formatDate) {
+			const datetime = DateTime.fromFormat(String(value), 'yyyy-mm-dd');
+			value = datetime.toFormat(field.formatDate as string);
 		}
 		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
 			value = [value];
@@ -341,8 +404,11 @@ export async function prepareFormReturnItem(
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
 ) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
+	const { binaryMode } = context.getWorkflowSettings();
 
 	const returnItem: INodeExecutionData = {
 		json: {},
@@ -357,42 +423,62 @@ export async function prepareFormReturnItem(
 		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
 
 		if (Array.isArray(filesInput)) {
-			bodyData[key] = filesInput.map((file) => ({
-				filename: file.originalFilename,
-				mimetype: file.mimetype,
-				size: file.size,
-			}));
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? []
+					: filesInput.map((file) => ({
+							filename: file.originalFilename,
+							mimetype: file.mimetype,
+							size: file.size,
+						}));
 			processFiles.push(...filesInput);
 			multiFile = true;
 		} else {
-			bodyData[key] = {
-				filename: filesInput.originalFilename,
-				mimetype: filesInput.mimetype,
-				size: filesInput.size,
-			};
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? {}
+					: {
+							filename: filesInput.originalFilename,
+							mimetype: filesInput.mimetype,
+							size: filesInput.size,
+						};
 			processFiles.push(filesInput);
 		}
 
 		const entryIndex = Number(key.replace(/field-/g, ''));
-		const fieldLabel = isNaN(entryIndex) ? key : formFields[entryIndex].fieldLabel;
+		const field = isNaN(entryIndex) ? null : formFields[entryIndex];
+		const fieldLabel = field ? getFieldIdentifier(field, context.getNode().typeVersion) : key;
 
 		let fileCount = 0;
 		for (const file of processFiles) {
-			let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
-
-			if (multiFile) {
-				binaryPropertyName += `_${fileCount++}`;
-			}
-
-			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+			const binaryData = await context.nodeHelpers.copyBinaryFile(
 				file.filepath,
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
+
+			if (binaryMode === BINARY_MODE_COMBINED) {
+				if (Array.isArray(bodyData[key])) {
+					(bodyData[key] as IDataObject[]).push(binaryData);
+				} else {
+					bodyData[key] = binaryData;
+				}
+			} else {
+				let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
+
+				if (multiFile) {
+					binaryPropertyName += `_${fileCount++}`;
+				}
+
+				returnItem.binary![binaryPropertyName] = binaryData;
+			}
+
+			// Delete original file to prevent tmp directory from growing too large
+			await rm(file.filepath, { force: true });
 		}
 	}
 
-	addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context.getNode().typeVersion);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
@@ -422,6 +508,7 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
+	authToken,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -435,8 +522,8 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
+	authToken?: string;
 }) {
-	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
 
 	const useResponseData = responseMode === 'responseNode';
@@ -461,7 +548,7 @@ export function renderForm({
 		} catch (error) {}
 	}
 
-	formFields = prepareFormFields(context, formFields);
+	formFields = prepareFormFields(formFields);
 
 	const data = prepareFormData({
 		formTitle,
@@ -476,8 +563,13 @@ export function renderForm({
 		appendAttribution,
 		buttonLabel,
 		customCss,
+		nodeVersion: context.getNode().typeVersion,
+		authToken,
 	});
 
+	if (!isFormHtmlSandboxingDisabled()) {
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	}
 	res.render('form-trigger', data);
 }
 
@@ -495,6 +587,7 @@ export async function formWebhook(
 	const node = context.getNode();
 	const options = context.getNodeParameter('options', {}) as {
 		ignoreBots?: boolean;
+		ipWhitelist?: string;
 		respondWithOptions?: {
 			values: {
 				respondWith: 'text' | 'redirect';
@@ -510,6 +603,13 @@ export async function formWebhook(
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
+
+	// Check IP allowlist first (before bot detection and authentication)
+	if (!isIpAllowed(options.ipWhitelist, req.ips, req.ip)) {
+		res.writeHead(403);
+		res.end('IP is not allowed to access this form!');
+		return { noWebhookResponse: true };
+	}
 
 	try {
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
@@ -537,7 +637,9 @@ export async function formWebhook(
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
+		const formDescription = handleNewlines(
+			sanitizeHtml(context.getNodeParameter('formDescription', '') as string),
+		);
 		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
@@ -576,6 +678,11 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		let authToken: string | undefined;
+		if (node.typeVersion > 1) {
+			authToken = await generateFormPostBasicAuthToken(context, authProperty);
+		}
+
 		renderForm({
 			context,
 			res,
@@ -589,6 +696,7 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
+			authToken,
 		});
 
 		return {
@@ -632,4 +740,39 @@ export function resolveRawData(context: IWebhookFunctions, rawData: string) {
 		}
 	}
 	return returnData;
+}
+
+type ParseFormFieldsOptions = {
+	defineForm: 'json' | 'fields';
+	fieldsParameterName: string;
+	mode?: 'test' | 'production';
+};
+export function parseFormFields(context: IWebhookFunctions, options: ParseFormFieldsOptions) {
+	let fields: FormFieldsParameter = [];
+	if (options.defineForm === 'json') {
+		try {
+			const jsonOutput = context.getNodeParameter(options.fieldsParameterName, '', {
+				rawExpressions: true,
+			}) as string;
+
+			fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), error.message, {
+				description: error.message,
+				type: options.mode === 'test' ? 'manual-form-test' : undefined,
+			});
+		}
+	} else {
+		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
+		for (const field of fields) {
+			if (field.fieldType === 'html') {
+				let html = field.html ?? '';
+				for (const resolvable of getResolvables(html)) {
+					html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+				}
+				field.html = html;
+			}
+		}
+	}
+	return fields;
 }

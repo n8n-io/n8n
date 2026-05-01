@@ -1,7 +1,7 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
-import type { OutputFixingParser, StructuredOutputParser } from 'langchain/output_parsers';
+import type { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
 import { getTracingConfig } from '@utils/tracing';
@@ -36,8 +36,12 @@ export async function processItem(
 		itemIndex,
 		SYSTEM_PROMPT_TEMPLATE,
 	) as string;
+	const escapedTemplate = (systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE)
+		.replace(/[{}]/g, (match) => match + match)
+		.replaceAll('{{categories}}', '{categories}');
+
 	const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-		`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
+		`${escapedTemplate}
 	{format_instructions}
 	${multiClassPrompt}
 	${fallbackPrompt}`,

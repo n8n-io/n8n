@@ -18,12 +18,6 @@
                     "form-type": {
                         "type": "string"
                     },
-                    "page-title": {
-                        "type": "string"
-                    },
-                    "page-url": {
-                        "type": "string"
-                    },
                     "portal-id": {
                         "type": "integer"
                     },
@@ -105,46 +99,323 @@
         "properties": {
             "type": "object",
             "properties": {
+                "createdate": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "email": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "firstname": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_all_contact_vids": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_average_page_views": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_first_timestamp": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_num_event_completions": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_num_page_views": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_num_visits": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_revenue": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_source": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_source_data_1": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_analytics_source_data_2": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_associated_target_accounts": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_currently_enrolled_in_prospecting_agent": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_email_domain": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_full_name_or_email": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
                 "hs_is_contact": {
                     "type": "object",
                     "properties": {
                         "value": {
                             "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "data-sensitivity": {
-                                        "type": "null"
-                                    },
-                                    "is-encrypted": {
-                                        "type": "null"
-                                    },
-                                    "selected": {
-                                        "type": "boolean"
-                                    },
-                                    "source-id": {
-                                        "type": "null"
-                                    },
-                                    "source-label": {
-                                        "type": "null"
-                                    },
-                                    "source-type": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "updated-by-user-id": {
-                                        "type": "null"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
+                        }
+                    }
+                },
+                "hs_is_unworked": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_latest_source": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_latest_source_data_1": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_latest_source_data_2": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_latest_source_timestamp": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_lifecyclestage_lead_date": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_membership_has_accessed_private_content": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_object_id": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_object_source": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_object_source_id": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_object_source_label": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_pipeline": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_prospecting_agent_actively_enrolled_count": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_registered_member": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_sequences_actively_enrolled_count": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_social_facebook_clicks": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_social_google_plus_clicks": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_social_linkedin_clicks": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_social_num_broadcast_clicks": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_social_twitter_clicks": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_updated_by_user_id": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "hs_v2_date_entered_lead": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
                         }
                     }
                 },
@@ -153,38 +424,46 @@
                     "properties": {
                         "value": {
                             "type": "string"
-                        },
-                        "versions": {
-                            "type": "array",
-                            "items": {
-                                "type": "object",
-                                "properties": {
-                                    "data-sensitivity": {
-                                        "type": "null"
-                                    },
-                                    "is-encrypted": {
-                                        "type": "null"
-                                    },
-                                    "selected": {
-                                        "type": "boolean"
-                                    },
-                                    "source-label": {
-                                        "type": "null"
-                                    },
-                                    "source-type": {
-                                        "type": "string"
-                                    },
-                                    "timestamp": {
-                                        "type": "integer"
-                                    },
-                                    "updated-by-user-id": {
-                                        "type": "null"
-                                    },
-                                    "value": {
-                                        "type": "string"
-                                    }
-                                }
-                            }
+                        }
+                    }
+                },
+                "lastname": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "lifecyclestage": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "num_conversion_events": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "num_notes": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "num_unique_conversion_events": {
+                    "type": "object",
+                    "properties": {
+                        "value": {
+                            "type": "string"
                         }
                     }
                 }
@@ -194,5 +473,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 3
 }

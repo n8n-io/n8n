@@ -11,8 +11,8 @@ export class ProjectComposer {
 	 * @returns The project name and ID.
 	 */
 	async createProject(projectName?: string) {
-		await this.n8n.page.getByTestId('universal-add').click();
-		await this.n8n.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
+		await this.n8n.sideBar.universalAdd();
+		await this.n8n.sideBar.getProjectButtonInUniversalAdd().click();
 		await this.n8n.notifications.waitForNotificationAndClose('saved successfully');
 		await this.n8n.page.waitForLoadState();
 		const projectNameUnique = projectName ?? `Project ${nanoid(8)}`;
@@ -36,11 +36,9 @@ export class ProjectComposer {
 		credentialValue: string,
 	) {
 		await this.n8n.sideBar.openNewCredentialDialogForProject(projectName);
-		await this.n8n.credentials.openNewCredentialDialogFromCredentialList(credentialType);
-		await this.n8n.credentials.fillCredentialField(credentialFieldName, credentialValue);
-		await this.n8n.credentials.saveCredential();
-		await this.n8n.notifications.waitForNotificationAndClose('Credential successfully created');
-		await this.n8n.credentials.closeCredentialDialog();
+		await this.n8n.credentials.createCredentialFromCredentialPicker(credentialType, {
+			[credentialFieldName]: credentialValue,
+		});
 	}
 
 	extractIdFromUrl(url: string, beforeWord: string, afterWord: string): string {

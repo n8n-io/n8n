@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "date": {
+            "type": "string"
+        },
         "dimensionHeaders": {
             "type": "array",
             "items": {
@@ -40,39 +43,12 @@
                 }
             }
         },
-        "rowCount": {
-            "type": "integer"
+        "sessions": {
+            "type": "string"
         },
-        "rows": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "dimensionValues": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "value": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    },
-                    "metricValues": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "value": {
-                                    "type": "string"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        "totalUsers": {
+            "type": "string"
         }
     },
-    "version": 4
+    "version": 6
 }

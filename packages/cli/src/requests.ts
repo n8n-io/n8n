@@ -15,6 +15,7 @@ import type {
 	ProjectRole,
 	Scope,
 } from '@n8n/permissions';
+import type { Request } from 'express';
 import type {
 	ICredentialDataDecryptedObject,
 	INodeCredentialTestRequest,
@@ -50,6 +51,11 @@ export namespace ListQuery {
 	};
 }
 
+export function appendListQueryOptions(req: Request, options: ListQuery.Options) {
+	const listReq = req as ListQuery.Request;
+	listReq.listQueryOptions = { ...listReq.listQueryOptions, ...options };
+}
+
 // ----------------------------------
 //            list query
 // ----------------------------------
@@ -72,6 +78,8 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 		isManaged?: boolean;
+		isGlobal?: boolean;
+		isResolvable?: boolean;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
@@ -225,7 +233,7 @@ export declare namespace NodeRequest {
 // ----------------------------------
 
 export declare namespace LicenseRequest {
-	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string }, {}>;
+	type Activate = AuthenticatedRequest<{}, {}, { activationKey: string; eulaUri?: string }, {}>;
 }
 
 // ----------------------------------
@@ -235,7 +243,19 @@ export declare namespace LicenseRequest {
 export declare namespace VariablesRequest {
 	type CreateUpdatePayload = Omit<Variables, 'id'> & { id?: unknown };
 
-	type GetAll = AuthenticatedRequest;
+	type GetAll = AuthenticatedRequest<
+		{},
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+			projectId?: string;
+			state?: 'empty';
+		}
+	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload, {}>;
 	type Update = AuthenticatedRequest<{ id: string }, {}, CreateUpdatePayload, {}>;

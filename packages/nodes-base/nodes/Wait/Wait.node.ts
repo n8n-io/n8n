@@ -226,24 +226,62 @@ const onWebhookCallProperties = updateDisplayOptions(displayOnWebhook, [
 
 const webhookPath = '={{$parameter["options"]["webhookSuffix"] || ""}}';
 
+const waitingTooltip = (
+	parameters: { resume: string; options?: Record<string, string> },
+	resumeUrl: string,
+	formResumeUrl: string,
+) => {
+	const resume = parameters.resume;
+
+	if (['webhook', 'form'].includes(resume)) {
+		const { webhookSuffix } = (parameters.options ?? {}) as { webhookSuffix: string };
+		const suffix = webhookSuffix && typeof webhookSuffix !== 'object' ? `/${webhookSuffix}` : '';
+
+		let message = '';
+		const baseUrl = resume === 'form' ? formResumeUrl : resumeUrl;
+
+		// Insert suffix before query parameters if present (for URLs with ?signature=token)
+		// Note: Cannot use URL class here because it is not available in expressions
+		let url: string;
+		const queryIndex = baseUrl.indexOf('?');
+		if (queryIndex !== -1) {
+			url = baseUrl.slice(0, queryIndex) + suffix + baseUrl.slice(queryIndex);
+		} else {
+			url = baseUrl + suffix;
+		}
+
+		if (resume === 'form') {
+			message = 'Execution will continue when form is submitted on ';
+		}
+
+		if (resume === 'webhook') {
+			message = 'Execution will continue when webhook is received on ';
+		}
+
+		return `${message}<a href="${url}" target="_blank">${url}</a>`;
+	}
+
+	return 'Execution will continue when wait time is over';
+};
+
 export class Wait extends Webhook {
 	authPropertyName = 'incomingAuthentication';
 
 	description: INodeTypeDescription = {
 		displayName: 'Wait',
 		name: 'wait',
-		icon: 'fa:pause-circle',
+		icon: 'node:wait',
 		iconColor: 'crimson',
 		group: ['organization'],
 		version: [1, 1.1],
 		description: 'Wait before continue with execution',
 		defaults: {
 			name: 'Wait',
-			color: '#804050',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
 		credentials: credentialsProperty(this.authPropertyName),
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl, $execution.resumeFormUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -276,6 +314,10 @@ export class Wait extends Webhook {
 				displayName: 'Resume',
 				name: 'resume',
 				type: 'options',
+				builderHint: {
+					message:
+						'For user approval workflows, consider using nodes with operation: "sendAndWait" (e.g., email, Slack) instead of Wait node. If using "webhook", the URL will be generated at runtime and can be referenced with {{ $execution.resumeUrl }}.',
+				},
 				options: [
 					{
 						name: 'After Time Interval',
@@ -469,8 +511,21 @@ export class Wait extends Webhook {
 			let hasFormTrigger = false;
 
 			if (resume === 'form') {
+				// Add signed resumeFormUrl to metadata for frontend to use when opening form popup
+				const resumeFormUrl = context.evaluateExpression(
+					'{{ $execution.resumeFormUrl }}',
+					0,
+				) as string;
+				context.setMetadata({ resumeFormUrl });
+
 				const parentNodes = context.getParentNodes(context.getNode().name);
 				hasFormTrigger = parentNodes.some((node) => node.type === FORM_TRIGGER_NODE_TYPE);
+			}
+
+			if (resume === 'webhook') {
+				// Add signed resumeUrl to metadata for frontend to use in waiting tooltip
+				const resumeUrl = context.evaluateExpression('{{ $execution.resumeUrl }}', 0) as string;
+				context.setMetadata({ resumeUrl });
 			}
 
 			const returnData = await this.configureAndPutToWait(context);
@@ -503,7 +558,7 @@ export class Wait extends Webhook {
 			if (!validateWaitAmount(waitAmount)) {
 				throw new NodeOperationError(
 					context.getNode(),
-					'Invalid wait amount. It must be a positive number.',
+					'Invalid wait amount. Please enter a number that is 0 or greater.',
 				);
 			}
 
@@ -541,9 +596,12 @@ export class Wait extends Webhook {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return await new Promise((resolve) => {
+			return await new Promise((resolve, _reject) => {
 				const timer = setTimeout(() => resolve([context.getInputData()]), waitValue);
-				context.onExecutionCancellation(() => clearTimeout(timer));
+				context.onExecutionCancellation(() => {
+					clearTimeout(timer);
+					resolve([context.getInputData()]);
+				});
 			});
 		}
 

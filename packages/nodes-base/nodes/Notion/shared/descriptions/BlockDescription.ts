@@ -45,7 +45,7 @@ const blockIdRLC: INodeProperties = {
 				{
 					type: 'regex',
 					properties: {
-						regex: '[a-f0-9]{2,}',
+						regex: idValidationRegexp,
 						errorMessage: 'Not a valid Notion Block ID',
 					},
 				},

@@ -11,6 +11,7 @@ import { validateExecutionUpdatePayload } from './validation';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
+import { RoleService } from '@/services/role.service';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -21,6 +22,7 @@ export class ExecutionsController {
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
+		private readonly roleService: RoleService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
@@ -36,19 +38,21 @@ export class ExecutionsController {
 
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
-
-		if (accessibleWorkflowIds.length === 0) {
-			return { count: 0, estimated: false, results: [] };
-		}
-
 		const { rangeQuery: query } = req;
 
-		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
-			return { count: 0, estimated: false, results: [] };
+		// Build sharing options for the subquery instead of fetching IDs upfront
+		const scope: Scope = 'workflow:read';
+		query.user = req.user;
+		if (this.license.isSharingEnabled()) {
+			const projectRoles = await this.roleService.rolesWithScope('project', [scope]);
+			const workflowRoles = await this.roleService.rolesWithScope('workflow', [scope]);
+			query.sharingOptions = { scopes: [scope], projectRoles, workflowRoles };
+		} else {
+			query.sharingOptions = {
+				workflowRoles: ['workflow:owner'],
+				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
+			};
 		}
-
-		query.accessibleWorkflowIds = accessibleWorkflowIds;
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
@@ -59,20 +63,43 @@ export class ExecutionsController {
 		const noRange = !query.range.lastId || !query.range.firstId;
 
 		if (noStatus && noRange) {
-			const executions = await this.executionService.findLatestCurrentAndCompleted(query);
+			const [executions, concurrentExecutionsCount] = await Promise.all([
+				this.executionService.findLatestCurrentAndCompleted(query),
+				this.executionService.getConcurrentExecutionsCount(),
+			]);
 			await this.executionService.addScopes(
 				req.user,
 				executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 			);
-			return executions;
+			return {
+				...executions,
+				concurrentExecutionsCount,
+			};
 		}
 
-		const executions = await this.executionService.findRangeWithCount(query);
+		const [executions, concurrentExecutionsCount] = await Promise.all([
+			this.executionService.findRangeWithCount(query),
+			this.executionService.getConcurrentExecutionsCount(),
+		]);
 		await this.executionService.addScopes(
 			req.user,
 			executions.results as ExecutionSummaries.ExecutionSummaryWithScopes[],
 		);
-		return executions;
+		return {
+			...executions,
+			concurrentExecutionsCount,
+		};
+	}
+
+	@Get('/versions/:workflowId')
+	async getVersions(req: ExecutionRequest.GetVersions) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
+			return [];
+		}
+
+		return await this.executionService.getExecutedVersions(req.params.workflowId);
 	}
 
 	@Get('/:id')
@@ -99,6 +126,22 @@ export class ExecutionsController {
 		const executionId = req.params.id;
 
 		return await this.executionService.stop(executionId, workflowIds);
+	}
+
+	/**
+	 * Stops executions based on the provided filter
+	 *
+	 * @returns { stopped: number } - The amount of actually stopped executions, potentially lower if some executions finished naturally.
+	 */
+	@Post('/stopMany')
+	async stopMany(req: ExecutionRequest.StopMany) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+
+		// Return early to avoid expensive db query
+		if (accessibleWorkflowIds.length === 0) return { stopped: 0 };
+
+		const stopped = await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
+		return { stopped };
 	}
 
 	@Post('/:id/retry')

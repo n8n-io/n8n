@@ -1,5 +1,11 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	getProxyAgent,
+	makeN8nLlmFailedAttemptHandler,
+	N8nLlmTracing,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
+import {
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -7,13 +13,8 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { getProxyAgent } from '@utils/httpProxyAgent';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
-
 import type { OpenAICompatibleCredential } from '../../../types/types';
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
-import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
-import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatXAiGrok implements INodeType {
 	description: INodeTypeDescription = {
@@ -116,6 +117,10 @@ export class LmChatXAiGrok implements INodeType {
 					},
 				},
 				default: 'grok-2-vision-1212',
+				builderHint: {
+					message:
+						'Default to the latest flagship Grok (grok-4.20-0309-reasoning, or grok-4.20-multi-agent-0309 for agent workloads). Avoid grok-4, grok-2, and grok-1 variants.',
+				},
 			},
 			{
 				displayName: 'Options',
@@ -226,10 +231,14 @@ export class LmChatXAiGrok implements INodeType {
 			responseFormat?: 'text' | 'json_object';
 		};
 
+		const timeout = options.timeout;
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
-				dispatcher: getProxyAgent(credentials.url),
+				dispatcher: getProxyAgent(credentials.url, {
+					headersTimeout: timeout,
+					bodyTimeout: timeout,
+				}),
 			},
 		};
 
@@ -237,7 +246,7 @@ export class LmChatXAiGrok implements INodeType {
 			apiKey: credentials.apiKey,
 			model: modelName,
 			...options,
-			timeout: options.timeout ?? 60000,
+			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],

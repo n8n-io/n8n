@@ -556,7 +556,7 @@ export const documentFields: INodeProperties[] = [
 						name: 'objectId',
 						type: 'string',
 						description:
-							'The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href="https://developers.google.com/docs/api/reference/rest/v1/PositionedObject">documentation</a>',
+							'The ID of the positioned object to delete (An object that is tied to a paragraph and positioned relative to its beginning), See the Google <a href="https://developers.google.com/docs/api/reference/rest/v1/documents#positionedobject" target="_blank">documentation</a>',
 						default: '',
 						displayOptions: {
 							show: {

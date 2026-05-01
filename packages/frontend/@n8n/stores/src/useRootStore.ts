@@ -24,6 +24,7 @@ export type RootStoreState = {
 	maxExecutionTimeout: number;
 	versionCli: string;
 	oauthCallbackUrls: object;
+	jwksUri: string;
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
@@ -31,7 +32,7 @@ export type RootStoreState = {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {
@@ -52,6 +53,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		maxExecutionTimeout: Number.MAX_SAFE_INTEGER,
 		versionCli: '0.0.0',
 		oauthCallbackUrls: {},
+		jwksUri: '',
 		n8nMetadata: {},
 		pushRef: randomString(10).toLowerCase(),
 		urlBaseWebhook: 'http://localhost:5678/',
@@ -101,6 +103,8 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 	const versionCli = computed(() => state.value.versionCli);
 
 	const OAuthCallbackUrls = computed(() => state.value.oauthCallbackUrls);
+
+	const jwksUri = computed(() => state.value.jwksUri);
 
 	const restUrl = computed(() => `${state.value.baseUrl}${state.value.restEndpoint}`);
 
@@ -188,6 +192,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		state.value.oauthCallbackUrls = value;
 	};
 
+	const setJwksUri = (value: string) => {
+		state.value.jwksUri = value;
+	};
+
 	const setN8nMetadata = (value: RootStoreState['n8nMetadata']) => {
 		state.value.n8nMetadata = value;
 	};
@@ -198,6 +206,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 
 	const setBinaryDataMode = (value: RootStoreState['binaryDataMode']) => {
 		state.value.binaryDataMode = value;
+	};
+
+	const setPushRef = (value: string) => {
+		state.value.pushRef = value;
 	};
 
 	// #endregion
@@ -221,6 +233,7 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		defaultLocale,
 		binaryDataMode,
 		OAuthCallbackUrls,
+		jwksUri,
 		executionTimeout,
 		maxExecutionTimeout,
 		timezone,
@@ -240,8 +253,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		setVersionCli,
 		setInstanceId,
 		setOauthCallbackUrls,
+		setJwksUri,
 		setN8nMetadata,
 		setDefaultLocale,
 		setBinaryDataMode,
+		setPushRef,
 	};
 });

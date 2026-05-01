@@ -1,24 +1,36 @@
 import type { AuthenticationMethod, ProjectRelation } from '@n8n/api-types';
 import type { AuthProviderType, User, IWorkflowDb } from '@n8n/db';
 import type {
+	CancellationReason,
 	IPersonalizationSurveyAnswersV4,
 	IRun,
 	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
+	JsonValue,
+	WorkflowExecuteMode,
+	WorkflowSettings,
 } from 'n8n-workflow';
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
+import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
 
 import type { AiEventMap } from './ai.event-map';
+
+export type WorkflowActionSource = 'ui' | 'api' | 'n8n-mcp' | 'n8n-ai';
 
 export type UserLike = {
 	id: string;
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: {
+	role?: {
 		slug: string;
 	};
+};
+
+export type ProjectSummary = {
+	id: string;
+	name: string;
 };
 
 export type RelayEventMap = {
@@ -39,6 +51,13 @@ export type RelayEventMap = {
 	'first-production-workflow-succeeded': {
 		projectId: string;
 		workflowId: string;
+		userId: string | null;
+	};
+
+	'instance-first-production-workflow-failed': {
+		projectId: string;
+		workflowId: string;
+		workflowName: string;
 		userId: string;
 	};
 
@@ -62,6 +81,7 @@ export type RelayEventMap = {
 		projectId: string;
 		projectType: string;
 		uiContext?: string;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-deleted': {
@@ -86,11 +106,35 @@ export type RelayEventMap = {
 		user: UserLike;
 		workflow: IWorkflowDb;
 		publicApi: boolean;
+		previousWorkflow?: IWorkflowDb;
+		aiBuilderAssisted?: boolean;
+		settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;
+		source?: WorkflowActionSource;
+	};
+
+	'workflow-activated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+		source?: WorkflowActionSource;
+	};
+
+	'workflow-deactivated': {
+		user: UserLike;
+		workflowId: string;
+		workflow: IWorkflowDb;
+		publicApi: boolean;
+		deactivatedVersionId: string | null;
+		source?: WorkflowActionSource;
 	};
 
 	'workflow-pre-execute': {
 		executionId: string;
 		data: IWorkflowExecutionDataProcess /* main process */ | IWorkflowBase /* worker */;
+		mode: WorkflowExecuteMode;
+		projectId?: string;
+		projectName?: string;
 	};
 
 	'workflow-post-execute': {
@@ -98,12 +142,40 @@ export type RelayEventMap = {
 		userId?: string;
 		workflow: IWorkflowBase;
 		runData?: IRun;
+		projectId?: string;
+		projectName?: string;
 	};
 
 	'workflow-sharing-updated': {
 		workflowId: string;
 		userIdSharer: string;
 		userIdList: string[];
+	};
+
+	'workflow-executed': {
+		user?: UserLike;
+		workflowId: string;
+		workflowName: string;
+		executionId: string;
+		source:
+			| 'user-manual'
+			| 'user-retry'
+			| 'webhook'
+			| 'trigger'
+			| 'error'
+			| 'cli'
+			| 'integrated'
+			| 'evaluation'
+			| 'chat';
+	};
+
+	'workflow-version-updated': {
+		user: UserLike;
+		workflowId: string;
+		workflowName: string;
+		versionId: string;
+		versionName?: string | null;
+		versionDescription?: string | null;
 	};
 
 	// #endregion
@@ -162,6 +234,15 @@ export type RelayEventMap = {
 		fieldsChanged: string[];
 	};
 
+	'user-mfa-enabled': {
+		user: UserLike;
+	};
+
+	'user-mfa-disabled': {
+		user: UserLike;
+		disableMethod: 'mfaCode' | 'recoveryCode';
+	};
+
 	'user-signed-up': {
 		user: UserLike;
 		userType: AuthProviderType;
@@ -206,7 +287,17 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'user-retried-execution': {
+		userId: string;
+		publicApi: boolean;
+	};
+
 	'user-retrieved-workflow': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-workflow-version': {
 		userId: string;
 		publicApi: boolean;
 	};
@@ -239,6 +330,7 @@ export type RelayEventMap = {
 			| 'Reset password'
 			| 'New user invite'
 			| 'Resend invite'
+			| 'Workflow auto-deactivated'
 			| 'Workflow shared'
 			| 'Credentials shared'
 			| 'Project shared';
@@ -264,6 +356,7 @@ export type RelayEventMap = {
 		path: string;
 		method: string;
 		apiVersion: string;
+		userAgent?: string;
 	};
 
 	// #endregion
@@ -277,6 +370,7 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
+			| 'Workflow auto-deactivated'
 			| 'Credentials shared'
 			| 'Project shared';
 		publicApi: boolean;
@@ -294,6 +388,8 @@ export type RelayEventMap = {
 		projectId?: string;
 		projectType?: string;
 		uiContext?: string;
+		isDynamic?: boolean;
+		usesExternalSecrets?: boolean;
 	};
 
 	'credentials-shared': {
@@ -309,6 +405,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		isDynamic?: boolean;
+		usesExternalSecrets?: boolean;
 	};
 
 	'credentials-deleted': {
@@ -365,6 +463,50 @@ export type RelayEventMap = {
 		executionId: string;
 	};
 
+	'execution-cancelled': {
+		executionId: string;
+		workflowId?: string;
+		workflowName?: string;
+		reason: CancellationReason;
+	};
+
+	'execution-deleted': {
+		user: UserLike;
+		executionIds: string[];
+		deleteBefore?: Date;
+	};
+
+	'execution-waiting': {
+		executionId: string;
+		workflowId: string;
+	};
+
+	'execution-resumed': {
+		executionId: string;
+		workflowId: string;
+		resumeSource: 'webhook';
+		responseAt: Date;
+	};
+
+	'execution-data-revealed': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
+	};
+
+	'execution-data-reveal-failure': {
+		user: UserLike;
+		executionId: string;
+		workflowId: string;
+		ipAddress: string;
+		userAgent: string;
+		redactionPolicy: WorkflowSettings.RedactionPolicy;
+		rejectionReason: string;
+	};
+
 	// #endregion
 
 	// #region Project
@@ -399,6 +541,7 @@ export type RelayEventMap = {
 		readOnlyInstance: boolean;
 		repoType: 'github' | 'gitlab' | 'other';
 		connected: boolean;
+		connectionType: 'ssh' | 'https';
 	};
 
 	'source-control-user-started-pull-ui': {
@@ -453,7 +596,26 @@ export type RelayEventMap = {
 
 	// #region Variable
 
-	'variable-created': {};
+	'variable-created': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
+		projectId?: string;
+	};
+
+	'variable-updated': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
+		projectId?: string;
+	};
+
+	'variable-deleted': {
+		user: UserLike;
+		variableId: string;
+		variableKey: string;
+		projectId?: string;
+	};
 
 	// #endregion
 
@@ -465,6 +627,57 @@ export type RelayEventMap = {
 		isValid: boolean;
 		isNew: boolean;
 		errorMessage?: string;
+	};
+
+	'external-secrets-provider-reloaded': {
+		vaultType: string;
+	};
+
+	'external-secrets-connection-created': {
+		userId: string;
+		userRole?: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-updated': {
+		userId: string;
+		userRole?: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-deleted': {
+		userId: string;
+		userRole?: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-connection-tested': {
+		userId: string;
+		userRole?: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+		isValid: boolean;
+		errorMessage?: string;
+	};
+
+	'external-secrets-connection-reloaded': {
+		userId: string;
+		userRole?: string;
+		providerKey: string;
+		vaultType: string;
+		projects: ProjectSummary[];
+	};
+
+	'external-secrets-system-roles-toggled': {
+		userId: string;
+		enabled: boolean;
 	};
 
 	// #endregion
@@ -499,6 +712,135 @@ export type RelayEventMap = {
 
 	'login-failed-due-to-ldap-disabled': {
 		userId: string;
+	};
+
+	// #endregion
+
+	// #region SSO
+
+	'sso-user-project-access-updated': {
+		projectsRemoved: number;
+		projectsAdded: number;
+		userId: string;
+	};
+
+	'sso-user-instance-role-updated': {
+		role: string;
+		userId: string;
+	};
+
+	// #endregion
+
+	// #region Role Mapping
+
+	'expression-mapping-roles-resolved': {
+		userId: string;
+		userEmail: string;
+		provider: 'oidc' | 'saml' | 'ldap';
+		instanceRole: {
+			role: string;
+			previousRole: string;
+			changed: boolean;
+			matchedRuleId: string | null;
+			expression: string | null;
+			isFallback: boolean;
+		};
+		projectRoles: Array<{
+			projectId: string;
+			role: string;
+			previousRole: string | null;
+			changed: boolean;
+			matchedRuleId: string;
+			expression: string;
+		}>;
+		removedProjectIds: string[];
+	};
+
+	'role-mapping-rule-created': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+		expression: string;
+		role: string;
+	};
+
+	'role-mapping-rule-updated': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+		patchedFields: string[];
+	};
+
+	'role-mapping-rule-deleted': {
+		user: UserLike;
+		ruleId: string;
+		ruleType: 'instance' | 'project';
+	};
+
+	'role-mapping-rules-bulk-deleted': {
+		ruleType: 'instance' | 'project';
+		count: number;
+		reason: 'strategy-switch';
+	};
+
+	// #endregion
+
+	// #region Token exchange
+
+	'token-exchange-succeeded': {
+		subject: string;
+		actor?: string;
+		scopes?: string;
+		resource?: string;
+		grantType: string;
+		kid?: string;
+		issuer: string;
+		tokenId?: string;
+		clientIp: string;
+	};
+
+	'token-exchange-failed': {
+		subject?: string;
+		failureReason: TokenExchangeFailureReason;
+		grantType: string;
+		clientIp: string;
+	};
+
+	'embed-login': {
+		subject: string;
+		issuer: string;
+		kid: string;
+		clientIp: string;
+	};
+
+	'embed-login-failed': {
+		failureReason: TokenExchangeFailureReason;
+		clientIp: string;
+	};
+
+	'token-exchange-identity-linked': {
+		userId: string;
+		sub: string;
+		email: string;
+		kid: string;
+		issuer: string;
+	};
+
+	'token-exchange-user-provisioned': {
+		userId: string;
+		sub: string;
+		email: string;
+		role: string;
+		kid: string;
+		issuer: string;
+	};
+
+	'token-exchange-role-updated': {
+		userId: string;
+		previousRole: string;
+		newRole: string;
+		kid: string;
+		issuer: string;
 	};
 
 	// #endregion
@@ -542,6 +884,68 @@ export type RelayEventMap = {
 		workflowId: string;
 		hostId: string;
 		jobId: string;
+	};
+
+	// #endregion
+
+	// #region workflow history compaction
+	'history-compacted': {
+		workflowsProcessed: number;
+		totalVersionsSeen: number;
+		totalVersionsDeleted: number;
+		errorCount: number;
+		durationMs: number;
+		windowStartIso: string;
+		windowEndIso: string;
+		compactionStartTime: Date;
+	};
+	// #endregion
+
+	// #region Data Tables
+
+	'data-table-deleted': {
+		dataTableId: string;
+		projectId: string;
+	};
+
+	// #endregion
+
+	// #region Folders
+
+	'folder-deleted': {
+		folderId: string;
+		projectId: string;
+	};
+
+	// #endregion
+
+	// #region Instance Policies
+
+	'instance-policies-updated': {
+		user: UserLike;
+		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing';
+		value: boolean;
+	};
+
+	// #endregion
+
+	// #region Custom Roles
+
+	'custom-role-created': {
+		userId: string;
+		roleSlug: string;
+		scopes: string[];
+	};
+
+	'custom-role-updated': {
+		userId: string;
+		roleSlug: string;
+		scopes: string[];
+	};
+
+	'custom-role-deleted': {
+		userId: string;
+		roleSlug: string;
 	};
 
 	// #endregion

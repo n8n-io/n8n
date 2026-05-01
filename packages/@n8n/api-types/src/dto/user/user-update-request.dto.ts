@@ -1,6 +1,7 @@
 import xss from 'xss';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 const xssCheck = (value: string) =>
 	value ===
@@ -28,4 +29,8 @@ export class UserUpdateRequestDto extends Z.class({
 	firstName: nameSchema().optional(),
 	lastName: nameSchema().optional(),
 	mfaCode: z.string().optional(),
+	/**
+	 * The current password is required when changing the email address and MFA is disabled.
+	 */
+	currentPassword: z.string().optional(),
 }) {}

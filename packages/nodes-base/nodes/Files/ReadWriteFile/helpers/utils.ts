@@ -1,5 +1,6 @@
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import path from 'node:path';
 
 export function errorMapper(
 	this: IExecuteFunctions,
@@ -38,4 +39,17 @@ export function escapeSpecialCharacters(str: string) {
 	str = str.replace(/[()]/g, '\\$&');
 
 	return str;
+}
+
+export function normalizeFileSelector(fileSelectorRaw: string) {
+	let fileSelector = String(fileSelectorRaw);
+
+	const isWindows = /^[a-zA-Z]:/.test(fileSelector);
+	if (isWindows) {
+		fileSelector = path.win32.normalize(fileSelector).replace(/\\/g, '/');
+	}
+
+	fileSelector = escapeSpecialCharacters(fileSelector);
+
+	return fileSelector;
 }

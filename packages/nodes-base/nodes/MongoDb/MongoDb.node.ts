@@ -75,7 +75,9 @@ export class MongoDb implements INodeType {
 						);
 					}
 
-					const client = await connectMongoClient(connectionString, credentials);
+					// Note: ICredentialTestFunctions doesn't have a way to get the Node instance
+					// so we set the version to 0
+					const client = await connectMongoClient(connectionString, 0, credentials);
 
 					const { databases } = await client.db().admin().listDatabases();
 
@@ -101,8 +103,10 @@ export class MongoDb implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mongoDb');
-		const { database, connectionString } = validateAndResolveMongoCredentials(this, credentials);
-		const client = await connectMongoClient(connectionString, credentials);
+		const node = this.getNode();
+		const { database, connectionString } = validateAndResolveMongoCredentials(node, credentials);
+		const nodeVersion = node.typeVersion;
+		const client = await connectMongoClient(connectionString, nodeVersion, credentials);
 		let returnData: INodeExecutionData[] = [];
 
 		try {
@@ -110,7 +114,6 @@ export class MongoDb implements INodeType {
 
 			const items = this.getInputData();
 			const operation = this.getNodeParameter('operation', 0);
-			const nodeVersion = this.getNode().typeVersion;
 
 			let itemsLength = items.length ? 1 : 0;
 			let fallbackPairedItems: IPairedItemData[] | null = null;
@@ -485,6 +488,7 @@ export class MongoDb implements INodeType {
 					try {
 						const collection = this.getNodeParameter('collection', i) as string;
 						const indexName = this.getNodeParameter('indexNameRequired', i) as string;
+						const indexType = this.getNodeParameter('indexType', i) as string;
 						const definition = JSON.parse(
 							this.getNodeParameter('indexDefinition', i) as string,
 						) as Record<string, unknown>;
@@ -492,6 +496,7 @@ export class MongoDb implements INodeType {
 						await mdb.collection(collection).createSearchIndex({
 							name: indexName,
 							definition,
+							type: indexType,
 						});
 
 						returnData.push({

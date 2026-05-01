@@ -1,0 +1,71 @@
+{
+	"name": "Google Contacts Get All Search Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": true,
+				"fields": ["names", "emailAddresses"],
+				"useQuery": true,
+				"query": "John",
+				"rawData": false
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-getall-search",
+			"name": "Get All Contacts Search",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get All Contacts Search": [
+			{
+				"json": {
+					"resourceName": "people/c123456789",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": {
+						"displayName": "John Doe",
+						"familyName": "Doe",
+						"givenName": "John"
+					},
+					"emailAddresses": {
+						"work": ["john@example.com"]
+					},
+					"contactId": "c123456789"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get All Contacts Search",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

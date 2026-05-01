@@ -1,9 +1,7 @@
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 import { defineConfig, mergeConfig } from 'vite';
-import components from 'unplugin-vue-components/vite';
 import icons from 'unplugin-icons/vite';
-import iconsResolver from 'unplugin-icons/resolver';
 import { vitestConfig } from '@n8n/vitest-config/frontend';
 import svgLoader from 'vite-svg-loader';
 
@@ -33,15 +31,6 @@ export default mergeConfig(
 			icons({
 				compiler: 'vue3',
 				autoInstall: true,
-			}),
-			components({
-				dirs: [],
-				dts: false,
-				resolvers: [
-					iconsResolver({
-						prefix: 'Icon',
-					}),
-				],
 			}),
 		],
 		resolve: {

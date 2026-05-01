@@ -7,22 +7,43 @@ import { Config, Env, Nested } from '../decorators';
 export const LOG_SCOPES = [
 	'concurrency',
 	'external-secrets',
+	'instance-registry',
 	'license',
+	'mcp',
 	'multi-main-setup',
 	'pruning',
 	'pubsub',
 	'push',
+	'quick-connect',
 	'redis',
 	'scaling',
 	'waiting-executions',
 	'task-runner',
+	'task-runner-js',
+	'task-runner-py',
 	'insights',
 	'workflow-activation',
 	'ssh-client',
 	'data-table',
 	'cron',
 	'community-nodes',
-	'legacy-sqlite-execution-recovery',
+	'chat-hub',
+	'breaking-changes',
+	'circuit-breaker',
+	'source-control',
+	'dynamic-credentials',
+	'workflow-history-compaction',
+	'data-table-csv-import',
+	'ssrf-protection',
+	'token-exchange',
+	'instance-ai',
+	'sub-agent-eval',
+	'instance-version-history',
+	'instance-settings-loader',
+	'instance-registry',
+	'expression-engine',
+	'encryption-key-manager',
+	'oauth-jwe',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
@@ -112,9 +133,11 @@ export class LoggingConfig {
 	 * - `redis`
 	 * - `scaling`
 	 * - `waiting-executions`
-	 * - `task-runner`
+	 * - `task-runner-js`
+	 * - `task-runner-py`
 	 * - `workflow-activation`
 	 * - `insights`
+	 * - `chat-hub`
 	 *
 	 * @example
 	 * `N8N_LOG_SCOPES=license`

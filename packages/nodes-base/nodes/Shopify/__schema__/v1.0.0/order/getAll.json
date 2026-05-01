@@ -1,6 +1,9 @@
 {
     "type": "object",
     "properties": {
+        "created_at": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
@@ -203,10 +206,13 @@
                                 }
                             }
                         }
+                    },
+                    "vendor": {
+                        "type": "string"
                     }
                 }
             }
         }
     },
-    "version": 4
+    "version": 6
 }

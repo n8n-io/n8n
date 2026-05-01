@@ -1,12 +1,11 @@
+import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
+import type { CompressionResponse } from './transport';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
 import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
-
-import type { CompressionResponse } from './FlushingTransport';
-import { McpServerManager } from './McpServer';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -46,12 +45,12 @@ export class McpTrigger extends Node {
 			header: 'Listen for MCP events',
 			executionsHelp: {
 				inactive:
-					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. <a data-key='activate'>Activate</a> the workflow, then make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
+					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Publish the workflow, then make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 				active:
 					"This trigger has two modes: test and production.<br /><br /><b>Use test mode while you build your workflow</b>. Click the 'execute step' button, then make an MCP request to the test URL. The executions will show up in the editor.<br /><br /><b>Use production mode to run your workflow automatically</b>. Since your workflow is activated, you can make requests to the production URL. These executions will show up in the <a data-key='executions'>executions list</a>, but not the editor.",
 			},
 			activationHint:
-				'Once you’ve finished building your workflow, run it without having to click this button by using the production URL.',
+				"Once you've finished building your workflow, run it without having to click this button by using the production URL.",
 		},
 		inputs: [
 			{
@@ -153,46 +152,55 @@ export class McpTrigger extends Node {
 			}
 			throw error;
 		}
-		const node = context.getNode();
-		// Get a url/tool friendly name for the server, based on the node name
-		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
 
-		const mcpServerManager: McpServerManager = McpServerManager.instance(context.logger);
+		const node = context.getNode();
+		const serverName = node.typeVersion > 1 ? nodeNameToToolName(node) : 'n8n-mcp-server';
+		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
-			// Sets up the transport and opens the long-lived connection. This resp
-			// will stay streaming, and is the channel that sends the events
-
-			// Prior to version 2.0, we use different paths for the setup and messages.
 			const postUrl =
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)
 					: req.path;
-			await mcpServerManager.createServerWithSSETransport(serverName, postUrl, resp);
+
+			const connectedTools = await getConnectedTools(context, true);
+			await mcpServer.handleSetupRequest(req, resp, serverName, postUrl, connectedTools);
 
 			return { noWebhookResponse: true };
 		} else if (webhookName === 'default') {
-			// Here we handle POST and DELETE requests.
-			// POST can be either:
-			// 1) Client calls in an established session using the SSE transport, or
-			// 2) Client calls in an established session using the StreamableHTTPServerTransport
-			// 3) Session setup requests using the StreamableHTTPServerTransport
-			// DELETE is used to terminate the session using the StreamableHTTPServerTransport
-
 			if (req.method === 'DELETE') {
-				await mcpServerManager.handleDeleteRequest(req, resp);
+				await mcpServer.handleDeleteRequest(req, resp);
 			} else {
-				// Check if there is a session and a transport is already established
-				const sessionId = mcpServerManager.getSessionId(req);
+				const sessionId = mcpServer.getSessionId(req);
 
-				if (sessionId && mcpServerManager.getTransport(sessionId)) {
+				context.logger.debug('MCP POST request received for existing session');
+
+				if (sessionId) {
 					const connectedTools = await getConnectedTools(context, true);
-					const wasToolCall = await mcpServerManager.handlePostMessage(req, resp, connectedTools);
-					if (wasToolCall) return { noWebhookResponse: true, workflowData: [[{ json: {} }]] };
+					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
+						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName);
+
+					if (wasToolCall) {
+						const workflowData = {
+							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
+							...(messageId && { mcpMessageId: messageId }),
+						};
+						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+					}
+
+					if (needsListToolsRelay && relaySessionId && messageId) {
+						const workflowData = {
+							mcpListToolsRelay: {
+								sessionId: relaySessionId,
+								messageId,
+								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
+							},
+						};
+						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+					}
 				} else {
-					// If no session is established, this is a setup request
-					// for the StreamableHTTPServerTransport, so we create a new transport
-					await mcpServerManager.createServerWithStreamableHTTPTransport(serverName, resp, req);
+					const connectedTools = await getConnectedTools(context, true);
+					await mcpServer.handleStreamableHttpSetup(req, resp, serverName, connectedTools);
 				}
 			}
 

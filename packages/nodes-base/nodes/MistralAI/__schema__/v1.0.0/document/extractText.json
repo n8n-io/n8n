@@ -1,0 +1,98 @@
+{
+    "type": "object",
+    "properties": {
+        "document_annotation": {
+            "type": "null"
+        },
+        "extractedText": {
+            "type": "string"
+        },
+        "model": {
+            "type": "string"
+        },
+        "pageCount": {
+            "type": "integer"
+        },
+        "pages": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "dimensions": {
+                        "type": "object",
+                        "properties": {
+                            "dpi": {
+                                "type": "integer"
+                            },
+                            "height": {
+                                "type": "integer"
+                            },
+                            "width": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "footer": {
+                        "type": "null"
+                    },
+                    "header": {
+                        "type": "null"
+                    },
+                    "hyperlinks": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "images": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "bottom_right_x": {
+                                    "type": "integer"
+                                },
+                                "bottom_right_y": {
+                                    "type": "integer"
+                                },
+                                "id": {
+                                    "type": "string"
+                                },
+                                "image_annotation": {
+                                    "type": "null"
+                                },
+                                "image_base64": {
+                                    "type": "null"
+                                },
+                                "top_left_x": {
+                                    "type": "integer"
+                                },
+                                "top_left_y": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "index": {
+                        "type": "integer"
+                    },
+                    "markdown": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "usage_info": {
+            "type": "object",
+            "properties": {
+                "doc_size_bytes": {
+                    "type": "integer"
+                },
+                "pages_processed": {
+                    "type": "integer"
+                }
+            }
+        }
+    },
+    "version": 1
+}

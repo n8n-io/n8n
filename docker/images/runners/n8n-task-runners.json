@@ -3,7 +3,7 @@
 		{
 			"runner-type": "javascript",
 			"workdir": "/home/runner",
-			"command": "/usr/bin/node",
+			"command": "/usr/local/bin/node",
 			"args": [
 				"--disallow-code-generation-from-strings",
 				"--disable-proto=delete",
@@ -13,12 +13,16 @@
 			"allowed-env": [
 				"PATH",
 				"GENERIC_TIMEZONE",
-				"N8N_RUNNERS_MAX_CONCURRENCY",
 				"NODE_OPTIONS",
+				"NODE_PATH",
+				"N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT",
+				"N8N_RUNNERS_TASK_TIMEOUT",
+				"N8N_RUNNERS_MAX_CONCURRENCY",
 				"N8N_SENTRY_DSN",
 				"N8N_VERSION",
 				"ENVIRONMENT",
-				"DEPLOYMENT_NAME"
+				"DEPLOYMENT_NAME",
+				"HOME"
 			],
 			"env-overrides": {
 				"NODE_FUNCTION_ALLOW_BUILTIN": "crypto",
@@ -30,18 +34,22 @@
 			"runner-type": "python",
 			"workdir": "/home/runner",
 			"command": "/opt/runners/task-runner-python/.venv/bin/python",
-			"args": ["-m", "src.main"],
+			"args": ["-I", "-B", "-X", "disable_remote_debug", "-m", "src.main"],
 			"health-check-server-port": "5682",
 			"allowed-env": [
 				"PATH",
 				"N8N_RUNNERS_LAUNCHER_LOG_LEVEL",
+				"N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT",
+				"N8N_RUNNERS_TASK_TIMEOUT",
+				"N8N_RUNNERS_MAX_CONCURRENCY",
 				"N8N_SENTRY_DSN",
 				"N8N_VERSION",
 				"ENVIRONMENT",
 				"DEPLOYMENT_NAME"
 			],
 			"env-overrides": {
-				"PYTHONPATH": "/opt/runners/task-runner-python"
+				"N8N_RUNNERS_STDLIB_ALLOW": "",
+				"N8N_RUNNERS_EXTERNAL_ALLOW": ""
 			}
 		}
 	]

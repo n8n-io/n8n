@@ -189,7 +189,7 @@ describe('UserManagementMailer', () => {
 
 				const callBody = nodeMailer.sendMail.mock.calls[index][0].body;
 				expect(callBody).toContain(
-					`You have been added to the ${project.name} project as ${sharee.role.replace('project:', '')}`,
+					`You have been added to the <b>${project.name}</b> project as ${sharee.role.replace('project:', '')}`,
 				);
 			});
 		});

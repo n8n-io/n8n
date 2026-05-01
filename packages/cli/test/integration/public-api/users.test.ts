@@ -2,6 +2,7 @@ import { testDb, mockInstance } from '@n8n/backend-test-utils';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { Telemetry } from '@/telemetry';
+import { createRole } from '@test-integration/db/roles';
 import {
 	createMember,
 	createMemberWithApiKey,
@@ -9,7 +10,6 @@ import {
 	getUserById,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
-import { createRole } from '@test-integration/db/roles';
 
 describe('Users in Public API', () => {
 	const testServer = setupTestServer({ endpointGroups: ['publicApi'] });
@@ -22,6 +22,114 @@ describe('Users in Public API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['User']);
+	});
+
+	describe('GET /users', () => {
+		it('if not authenticated, should reject', async () => {
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentWithApiKey('').get('/users');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(401);
+		});
+
+		it('should return users with roles', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+			const includeRole = true;
+
+			await createMember();
+			await createMember();
+			await createMember();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/users')
+				.query({ includeRole });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			const { data: users } = response.body;
+
+			expect(users).toHaveLength(4);
+			users.forEach((user: any) => {
+				expect(user).toHaveProperty('id');
+				expect(user).toHaveProperty('email');
+				expect(user).toHaveProperty('firstName');
+				expect(user).toHaveProperty('lastName');
+				expect(user).toHaveProperty('createdAt');
+				expect(user).toHaveProperty('updatedAt');
+				expect(user).toHaveProperty('isPending');
+				expect(user).toHaveProperty('role');
+			});
+
+			const members = users.filter((user: any) => user.role === 'global:member');
+			expect(members).toHaveLength(3);
+			const owners = users.filter((user: any) => user.role === 'global:owner');
+			expect(owners).toHaveLength(1);
+		});
+	});
+
+	describe('GET /users/:id', () => {
+		it('if not authenticated, should reject', async () => {
+			/**
+			 * Arrange
+			 */
+			const member = await createMember();
+
+			/**
+			 * Act
+			 */
+			const response = await testServer.publicApiAgentWithApiKey('').get(`/users/${member.id}`);
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(401);
+		});
+
+		it('should return a user with role', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+			const member = await createMember();
+			const includeRole = true;
+
+			/**
+			 * Act
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/users/${member.id}`)
+				.query({ includeRole });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			const returnedUser = response.body;
+
+			expect(returnedUser).toHaveProperty('id', member.id);
+			expect(returnedUser).toHaveProperty('email', member.email);
+			expect(returnedUser).toHaveProperty('firstName', member.firstName);
+			expect(returnedUser).toHaveProperty('lastName', member.lastName);
+			expect(returnedUser).toHaveProperty('createdAt');
+			expect(returnedUser).toHaveProperty('updatedAt');
+			expect(returnedUser).toHaveProperty('isPending', member.isPending);
+			expect(returnedUser).toHaveProperty('role', 'global:member');
+		});
 	});
 
 	describe('POST /users', () => {

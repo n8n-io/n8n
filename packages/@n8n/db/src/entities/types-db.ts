@@ -12,9 +12,14 @@ import type {
 	AnnotationVote,
 	ExecutionSummary,
 	IUser,
+	IDataObject,
+	IBinaryKeyData,
+	IPairedItemData,
 } from 'n8n-workflow';
+import { z } from 'zod';
 
 import type { CredentialsEntity } from './credentials-entity';
+import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
 import type { SharedCredentials } from './shared-credentials';
@@ -22,6 +27,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type UsageCount = {
 	usageCount: number;
@@ -53,6 +59,14 @@ export interface IExecutionBase {
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
 	waitTill?: Date | null;
+	storedAt: ExecutionDataStorageLocation;
+	/**
+	 * W3C trace context propagated with the execution so outbound spans can be
+	 * correlated across queue-mode boundaries.
+	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
+	 */
+	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 }
 
 // Required by PublicUser
@@ -75,12 +89,16 @@ export interface IWorkflowDb extends IWorkflowBase {
 	triggerCount: number;
 	tags?: TagEntity[];
 	parentFolder?: Folder | null;
+	activeVersion?: WorkflowHistory | null;
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
 	shared?: SharedCredentials[];
+	isGlobal?: boolean;
+	isResolvable?: boolean;
+	isManaged?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -89,6 +107,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
+	workflowVersionId?: string | null;
 	customData: Record<string, string>;
 	annotation: {
 		tags: ITagBase[];
@@ -115,6 +134,7 @@ export interface PublicUser {
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
+	isManagedByEnv?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -144,7 +164,10 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 }
 
 /** Payload for creating an execution. */
-export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+export type CreateExecutionPayload = Omit<
+	IExecutionDb,
+	'id' | 'createdAt' | 'startedAt' | 'storedAt'
+>;
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
@@ -169,10 +192,10 @@ export namespace ExecutionSummaries {
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
-	type FilterFields = Partial<{
+	export type FilterFields = Partial<{
 		id: string;
 		finished: boolean;
-		mode: string;
+		mode: WorkflowExecuteMode;
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
@@ -184,10 +207,21 @@ export namespace ExecutionSummaries {
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
 		projectId: string;
+		workflowVersionId: string;
 	}>;
 
+	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
+		FilterFields,
+		'startedAfter' | 'startedBefore' | 'workflowId' | 'status'
+	>; // parsed from query params
+
 	type AccessFields = {
-		accessibleWorkflowIds?: string[];
+		user?: User;
+		sharingOptions?: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		};
 	};
 
 	type RangeFields = {
@@ -213,7 +247,15 @@ export namespace ListQueryDb {
 	 * Slim workflow returned from a list query operation.
 	 */
 	export namespace Workflow {
-		type OptionalBaseFields = 'name' | 'active' | 'versionId' | 'createdAt' | 'updatedAt' | 'tags';
+		type OptionalBaseFields =
+			| 'name'
+			| 'active'
+			| 'versionId'
+			| 'activeVersionId'
+			| 'createdAt'
+			| 'updatedAt'
+			| 'tags'
+			| 'description';
 
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
@@ -272,7 +314,13 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-export type AuthProviderType = 'ldap' | 'email' | 'saml' | 'oidc'; // | 'google';
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc', 'token-exchange']);
+
+export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
+
+export function isAuthProviderType(value: string): value is AuthProviderType {
+	return ALL_AUTH_PROVIDERS.safeParse(value).success;
+}
 
 export type FolderWithWorkflowAndSubFolderCount = Folder & {
 	workflowCount?: boolean;
@@ -363,7 +411,26 @@ export type APIRequest<
 
 export type AuthenticationInformation = {
 	usedMfa: boolean;
+	// Indicates the user is logged in but hasn't completed required MFA enrollment
+	mfaEnrollmentRequired?: boolean;
 };
+
+/**
+ * Permission context carried by a scoped JWT issued via OAuth 2.0 token exchange.
+ * Present on AuthenticatedRequest only when authentication was performed via a
+ * scoped JWT; absent for API key and session auth.
+ *
+ * roles:    Role URNs from the issued token (e.g. ['project:editor']) — for audit logging only, not enforcement.
+ * scopes:   Concrete scopes resolved from those roles (e.g. ['workflow:create', 'workflow:read']).
+ * resource: Optional URN constraining which resource the token may access (e.g. 'urn:n8n:project:abc123').
+ * actor:    Actor identity for delegation — present when the token carries an `act` claim.
+ */
+export interface TokenGrant {
+	scopes: string[];
+	apiKeyScopes?: string[];
+	actor?: User;
+	subject: User;
+}
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -377,4 +444,21 @@ export type AuthenticatedRequest<
 	headers: express.Request['headers'] & {
 		'push-ref': string;
 	};
+	tokenGrant?: TokenGrant;
 };
+
+export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
+	return 'user' in req && req.user !== null;
+}
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
+}

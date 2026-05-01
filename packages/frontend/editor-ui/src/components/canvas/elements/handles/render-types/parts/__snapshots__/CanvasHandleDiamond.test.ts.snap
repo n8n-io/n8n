@@ -1,3 +1,0 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
-
-exports[`CanvasHandleDiamond > should render with default props 1`] = `"<div class="diamond"></div>"`;

@@ -1,12 +1,26 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
-import type { GenerateContentResponse, ImagenResponse } from '../../helpers/interfaces';
+import {
+	type GenerateContentRequest,
+	type GenerateContentResponse,
+	type ImagenResponse,
+	Modality,
+} from '../../helpers/interfaces';
+import { getFilenameFromMimeType } from '../../helpers/utils';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC('imageGenerationModelSearch'),
+	{
+		...modelRLC('imageGenerationModelSearch'),
+		displayOptions: { show: { '@version': [{ _cnd: { lt: 1.2 } }] } },
+	},
+	{
+		...modelRLC('imageGenerationModelSearch'),
+		default: { mode: 'list', value: 'models/gemini-3.1-flash-image-preview' },
+		displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+	},
 	{
 		displayName: 'Prompt',
 		name: 'prompt',
@@ -29,9 +43,13 @@ const properties: INodeProperties[] = [
 				displayName: 'Number of Images',
 				name: 'sampleCount',
 				default: 1,
-				description:
-					'Number of images to generate. Not supported by Gemini models, supported by Imagen models.',
+				description: 'Number of images to generate',
 				type: 'number',
+				displayOptions: {
+					show: {
+						'/modelId': [{ _cnd: { includes: 'imagen' } }],
+					},
+				},
 				typeOptions: {
 					minValue: 1,
 				},
@@ -67,9 +85,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (model.includes('gemini')) {
 		const generationConfig = {
-			responseModalities: ['IMAGE', 'TEXT'],
+			responseModalities: [Modality.IMAGE, Modality.TEXT],
 		};
-		const body = {
+		const body: GenerateContentRequest = {
 			contents: [
 				{
 					role: 'user',
@@ -84,12 +102,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		})) as GenerateContentResponse;
 		const promises = response.candidates.map(async (candidate) => {
 			const imagePart = candidate.content.parts.find((part) => 'inlineData' in part);
+			const mimeType = imagePart?.inlineData.mimeType;
+			const fileName = getFilenameFromMimeType(mimeType, 'image', 'png');
 			const buffer = Buffer.from(imagePart?.inlineData.data ?? '', 'base64');
-			const binaryData = await this.helpers.prepareBinaryData(
-				buffer,
-				'image.png',
-				imagePart?.inlineData.mimeType,
-			);
+			const binaryData = await this.helpers.prepareBinaryData(buffer, fileName, mimeType);
 			return {
 				binary: {
 					[binaryPropertyOutput]: binaryData,
@@ -103,7 +119,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 
 		return await Promise.all(promises);
-	} else if (model.includes('imagen') || model.includes('flash-image')) {
+	} else if (model.includes('imagen')) {
 		// Imagen models use a different endpoint and request/response structure
 		const sampleCount = this.getNodeParameter('options.sampleCount', i, 1) as number;
 		const body = {
@@ -121,10 +137,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		})) as ImagenResponse;
 
 		const promises = response.predictions.map(async (prediction) => {
+			const fileName = getFilenameFromMimeType(prediction.mimeType, 'image', 'png');
 			const buffer = Buffer.from(prediction.bytesBase64Encoded ?? '', 'base64');
 			const binaryData = await this.helpers.prepareBinaryData(
 				buffer,
-				'image.png',
+				fileName,
 				prediction.mimeType,
 			);
 			return {

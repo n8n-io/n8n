@@ -1,0 +1,85 @@
+{
+	"name": "Google Contacts Get All Connections Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "getAll",
+				"returnAll": true,
+				"fields": ["names", "emailAddresses"],
+				"useQuery": false,
+				"rawData": false
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-getall-connections",
+			"name": "Get All Contacts Connections",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get All Contacts Connections": [
+			{
+				"json": {
+					"resourceName": "people/c123456789",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": {
+						"displayName": "John Doe",
+						"familyName": "Doe",
+						"givenName": "John"
+					},
+					"emailAddresses": {
+						"work": ["john@example.com"]
+					},
+					"contactId": "c123456789"
+				}
+			},
+			{
+				"json": {
+					"resourceName": "people/c987654321",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": {
+						"displayName": "Jane Smith",
+						"familyName": "Smith",
+						"givenName": "Jane"
+					},
+					"emailAddresses": {
+						"work": ["jane@example.com"]
+					},
+					"contactId": "c987654321"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get All Contacts Connections",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

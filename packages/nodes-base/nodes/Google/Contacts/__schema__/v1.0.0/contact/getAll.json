@@ -27,9 +27,20 @@
                 }
             }
         },
+        "phoneNumbers": {
+            "type": "object",
+            "properties": {
+                "mobile": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "resourceName": {
             "type": "string"
         }
     },
-    "version": 4
+    "version": 6
 }

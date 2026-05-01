@@ -11,10 +11,91 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return [\n  {\n    \"uid\": \"a0e797c2-ffcf-495b-96f3-982f7bc4eae5\",\n    \"email\": \"Alfredo83@gmail.com\",\n    \"firstname\": \"Charlie\",\n    \"lastname\": \"Jacobi\",\n    \"password\": \"34~XLKdGit\",\n    \"Group\": 0\n  },\n  {\n    \"uid\": \"5713682e-4f32-47dc-ae89-ae4a8ac28a46\",\n    \"email\": \"Zachary43@yahoo.com\",\n    \"firstname\": \"Leonard\",\n    \"lastname\": \"Blick\",\n    \"password\": \"4sh5z!R\",\n    \"Group\": 0\n  },\n  {\n    \"uid\": \"1bb2a432-d2fb-48e4-a7b0-39030ef0d784\",\n    \"email\": \"Cory_Wilderman@yahoo.com\",\n    \"firstname\": \"Debra\",\n    \"lastname\": \"Corkery\",\n    \"password\": \"-8X1CKMFh\",\n    \"Group\": 1\n  },\n  {\n    \"uid\": \"4edb11bc-9256-4f26-9be6-f8b04e90ecb2\",\n    \"email\": \"Mindy_Murazik86@gmail.com\",\n    \"firstname\": \"Wendy\",\n    \"lastname\": \"Schiller\",\n    \"password\": \"WF373t,fe\",\n    \"Group\": 2\n  },\n  {\n    \"uid\": \"ec6efd3d-508c-4f1e-acae-c9467b74f5a6\",\n    \"email\": \"Darin_Vandervort@yahoo.com\",\n    \"firstname\": \"Dolores\",\n    \"lastname\": \"Walter\",\n    \"password\": \".45KCBk\",\n    \"Group\": 2\n  },\n  {\n    \"uid\": \"173ee780-4e4f-4164-aa39-41a0402cd2ad\",\n    \"email\": \"Claude.Grady6@gmail.com\",\n    \"firstname\": \"Leonard\",\n    \"lastname\": \"Krajcik\",\n    \"password\": \"6x6-MN8vch\",\n    \"Group\": null\n  },\n  {\n    \"uid\": \"b1f191d8-4f95-49f6-8533-042048b4c162\",\n    \"email\": \"Ismael_Volkman@hotmail.com\",\n    \"firstname\": \"Terri\",\n    \"lastname\": \"Kuphal\",\n    \"password\": \"62+BNNCk\",\n    \"Group\": null\n  },\n  {\n    \"uid\": \"ee8c6d18-1e77-435d-8c9a-5215141d7697\",\n    \"email\": \"Paulette.Hudson@hotmail.com\",\n    \"firstname\": \"Clinton\",\n    \"lastname\": \"Murphy\",\n    \"password\": \"2+R8IRxHL\",\n    \"Group\": null\n  },\n  {\n    \"uid\": \"feeb4357-0e20-4b15-9199-f161c23da1a2\",\n    \"email\": \"Guillermo.Kub33@gmail.com\",\n    \"firstname\": \"Edward\",\n    \"lastname\": \"Schaden\",\n    \"password\": \"Kv23S1_H\",\n    \"Group\": 0\n  },\n  {\n    \"uid\": \"676003ec-8a40-4105-8237-ba1d9eb51fc2\",\n    \"email\": \"Cindy.White@hotmail.com\",\n    \"firstname\": \"Esther\",\n    \"lastname\": \"Monahan\",\n    \"password\": \"5q$RyBhp\",\n    \"Group\": 2\n  }\n]"
+				"data": [
+					{
+						"uid": "a0e797c2-ffcf-495b-96f3-982f7bc4eae5",
+						"email": "Alfredo83@gmail.com",
+						"firstname": "Charlie",
+						"lastname": "Jacobi",
+						"password": "34~XLKdGit",
+						"Group": 0
+					},
+					{
+						"uid": "5713682e-4f32-47dc-ae89-ae4a8ac28a46",
+						"email": "Zachary43@yahoo.com",
+						"firstname": "Leonard",
+						"lastname": "Blick",
+						"password": "4sh5z!R",
+						"Group": 0
+					},
+					{
+						"uid": "1bb2a432-d2fb-48e4-a7b0-39030ef0d784",
+						"email": "Cory_Wilderman@yahoo.com",
+						"firstname": "Debra",
+						"lastname": "Corkery",
+						"password": "-8X1CKMFh",
+						"Group": 1
+					},
+					{
+						"uid": "4edb11bc-9256-4f26-9be6-f8b04e90ecb2",
+						"email": "Mindy_Murazik86@gmail.com",
+						"firstname": "Wendy",
+						"lastname": "Schiller",
+						"password": "WF373t,fe",
+						"Group": 2
+					},
+					{
+						"uid": "ec6efd3d-508c-4f1e-acae-c9467b74f5a6",
+						"email": "Darin_Vandervort@yahoo.com",
+						"firstname": "Dolores",
+						"lastname": "Walter",
+						"password": ".45KCBk",
+						"Group": 2
+					},
+					{
+						"uid": "173ee780-4e4f-4164-aa39-41a0402cd2ad",
+						"email": "Claude.Grady6@gmail.com",
+						"firstname": "Leonard",
+						"lastname": "Krajcik",
+						"password": "6x6-MN8vch",
+						"Group": null
+					},
+					{
+						"uid": "b1f191d8-4f95-49f6-8533-042048b4c162",
+						"email": "Ismael_Volkman@hotmail.com",
+						"firstname": "Terri",
+						"lastname": "Kuphal",
+						"password": "62+BNNCk",
+						"Group": null
+					},
+					{
+						"uid": "ee8c6d18-1e77-435d-8c9a-5215141d7697",
+						"email": "Paulette.Hudson@hotmail.com",
+						"firstname": "Clinton",
+						"lastname": "Murphy",
+						"password": "2+R8IRxHL",
+						"Group": null
+					},
+					{
+						"uid": "feeb4357-0e20-4b15-9199-f161c23da1a2",
+						"email": "Guillermo.Kub33@gmail.com",
+						"firstname": "Edward",
+						"lastname": "Schaden",
+						"password": "Kv23S1_H",
+						"Group": 0
+					},
+					{
+						"uid": "676003ec-8a40-4105-8237-ba1d9eb51fc2",
+						"email": "Cindy.White@hotmail.com",
+						"firstname": "Esther",
+						"lastname": "Monahan",
+						"password": "5q$RyBhp",
+						"Group": 2
+					}
+				]
 			},
-			"type": "n8n-nodes-base.code",
-			"typeVersion": 2,
+			"type": "n8n-nodes-testing.testData",
+			"typeVersion": 1,
 			"position": [-100, -80],
 			"id": "691f2744-8689-4b5c-91e7-2bb378691ecf",
 			"name": "sample data"

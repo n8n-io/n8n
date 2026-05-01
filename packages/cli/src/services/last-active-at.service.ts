@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { AuthenticatedRequest } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { AuthenticatedRequest, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { NextFunction, Response } from 'express';
 import { DateTime } from 'luxon';
@@ -14,15 +13,13 @@ export class LastActiveAtService {
 		private readonly logger: Logger,
 	) {}
 
-	async middleware(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+	async middleware(req: AuthenticatedRequest, _res: Response, next: NextFunction) {
 		if (req.user) {
 			this.updateLastActiveIfStale(req.user.id).catch((error: unknown) => {
 				this.logger.error('Failed to update last active timestamp', { error });
 			});
-			next();
-		} else {
-			res.status(401).json({ status: 'error', message: 'Unauthorized' });
 		}
+		next();
 	}
 
 	async updateLastActiveIfStale(userId: string) {

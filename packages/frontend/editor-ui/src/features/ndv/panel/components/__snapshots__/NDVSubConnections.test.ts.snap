@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`NDVSubConnections > should render container if possible connections 1`] = `
+"<div class="container">
+  <div class="connections" style="--possible-connections: 1;">
+    <div data-test-id="subnode-connection-group-ai_tool-0">
+      <div class="connectionType"><span class="connectionLabel">Tools</span>
+        <div>
+          <div class="connectedNodesWrapper" style="--nodes-length: 0;">
+            <div class="plusButton"><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="plus" variant="subtle" size="medium" loading="false" icononly="true" disabled="false" class="" data-test-id="add-subnode-ai_tool-0"></n8n-button-stub></span>
+              <!--teleport start-->
+              <!--teleport end-->
+            </div>
+            <!--v-if-->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>"
+`;

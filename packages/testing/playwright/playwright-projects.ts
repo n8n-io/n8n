@@ -1,71 +1,218 @@
 import type { Project } from '@playwright/test';
-import type { N8NConfig } from 'n8n-containers/n8n-test-container-creation';
+import type { N8NConfig } from 'n8n-containers/stack';
 
-// Tags that require test containers environment
-// These tests won't be run against local
-const CONTAINER_ONLY_TAGS = ['proxy', 'multi-node', 'postgres', 'queue', 'multi-main'];
-const CONTAINER_ONLY = new RegExp(`@capability:(${CONTAINER_ONLY_TAGS.join('|')})`);
+import {
+	CONTAINER_ONLY_CAPABILITIES,
+	CONTAINER_ONLY_MODES,
+	LICENSED_TAG,
+} from './fixtures/capabilities';
+import { getBackendUrl, getFrontendUrl } from './utils/url-helper';
 
-// Tags that need serial execution
-// These tests will be run AFTER the first run of the UI tests
-// In local run they are a "dependency" which means they will be skipped if earlier tests fail, not ideal but needed for isolation
-const SERIAL_EXECUTION = /@db:reset/;
+// Tests that require container environment (won't run against local n8n).
+// Matches:
+// - @capability:X - add-on features (email, proxy, source-control, etc.)
+// - @mode:X - infrastructure modes (postgres, queue, multi-main)
+// - @licensed - enterprise license features (log streaming, SSO, etc.)
+// - @db:reset - tests needing per-test database reset (requires isolated containers)
+const CONTAINER_ONLY = new RegExp(
+	[
+		`@capability:(${CONTAINER_ONLY_CAPABILITIES.join('|')})`,
+		`@mode:(${CONTAINER_ONLY_MODES.join('|')})`,
+		`@${LICENSED_TAG}`,
+		'@db:reset',
+	].join('|'),
+);
+
+// Escape hatch: allow `@capability:*` tests to run against a pre-started local
+// n8n. Fixtures that depend on container-provided services (proxy, mailpit,
+// etc.) must detect the no-container case and skip or fall back to direct
+// network calls. Used by `pnpm test:local:isolated` and similar workflows.
+const ALLOW_CONTAINER_ONLY = process.env.PLAYWRIGHT_ALLOW_CONTAINER_ONLY === 'true';
 
 const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
-	{ name: 'standard', config: {} },
+	{ name: 'sqlite', config: {} },
 	{ name: 'postgres', config: { postgres: true } },
-	{ name: 'queue', config: { queueMode: true } },
-	{ name: 'multi-main', config: { queueMode: { mains: 2, workers: 1 } } },
+	{ name: 'queue', config: { workers: 1 } },
+	{
+		name: 'multi-main',
+		config: { mains: 2, workers: 1, services: ['victoriaLogs', 'victoriaMetrics', 'vector'] },
+	},
+];
+
+// --- Benchmark profiles ---
+// Each profile represents a real-world n8n deployment configuration.
+// ONE test file runs in ALL profiles — adding a profile auto-expands coverage.
+
+const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 10);
+
+// Resource profiles matching realistic AWS instance types:
+// Main: m5.large (2 vCPU, 8GB RAM) — matches staging main
+// Workers: t3.medium (2 vCPU, 4GB RAM) — matches staging worker limits
+export const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
+export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
+
+export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
+
+const BENCHMARK_BASE_CONFIG: N8NConfig = {
+	// Postgres exporter scrapes DB internals into VictoriaMetrics — only meaningful for benchmarks.
+	services: [...OBSERVABILITY_SERVICES, 'postgresExporter'],
+	postgres: true,
+	resourceQuota: BENCHMARK_MAIN_RESOURCES,
+	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
+	env: {
+		N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS: 'true',
+	},
+};
+
+type BenchmarkProfile = { name: string; config: N8NConfig };
+
+// Benchmark profiles exercised in CI (see `test-e2e-infrastructure-reusable.yml`).
+// They scan `tests/infrastructure/benchmarks/`.
+const CI_BENCHMARK_PROFILES: BenchmarkProfile[] = [
+	{
+		name: 'direct',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				DB_POSTGRESDB_POOL_SIZE: '20',
+			},
+		},
+	},
+	{
+		name: 'queue',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+			},
+		},
+	},
+	{
+		name: 'queue-tuned',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+			workers: BENCHMARK_WORKER_COUNT,
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+				N8N_LOG_LEVEL: 'info',
+				DB_POSTGRESDB_POOL_SIZE: '30',
+				DB_POSTGRESDB_CONNECTION_TIMEOUT: '60000',
+				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+				EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
+			},
+		},
+	},
+];
+
+// Benchmark profiles that host local-only tests (model API keys, long runtimes,
+// reserved metric names). They scan `tests/infrastructure/benchmarks-local/` and
+// are intentionally left out of the CI matrix.
+const LOCAL_ONLY_BENCHMARK_PROFILES: BenchmarkProfile[] = [
+	{
+		name: 'memory-instanceai',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...OBSERVABILITY_SERVICES],
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				// Instance-AI module & model config
+				N8N_ENABLED_MODULES: 'instance-ai',
+				N8N_INSTANCE_AI_MODEL: process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.4-nano',
+				// Forward API keys to the container
+				...(process.env.N8N_AI_OPENAI_API_KEY && {
+					N8N_AI_OPENAI_API_KEY: process.env.N8N_AI_OPENAI_API_KEY,
+					OPENAI_API_KEY: process.env.N8N_AI_OPENAI_API_KEY,
+				}),
+				...(process.env.LANGSMITH_API_KEY && {
+					LANGSMITH_API_KEY: process.env.LANGSMITH_API_KEY,
+				}),
+				...(process.env.ANTHROPIC_API_KEY && {
+					ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+				}),
+				...(process.env.OPENROUTER_API_KEY && {
+					OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+				}),
+				...(process.env.CEREBRAS_API_KEY && {
+					CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
+				}),
+				// Sandbox config — forwarded from host env if present
+				...(process.env.N8N_INSTANCE_AI_SANDBOX_ENABLED && {
+					N8N_INSTANCE_AI_SANDBOX_ENABLED: process.env.N8N_INSTANCE_AI_SANDBOX_ENABLED,
+					N8N_INSTANCE_AI_SANDBOX_PROVIDER:
+						process.env.N8N_INSTANCE_AI_SANDBOX_PROVIDER ?? 'daytona',
+					N8N_INSTANCE_AI_SANDBOX_IMAGE: process.env.N8N_INSTANCE_AI_SANDBOX_IMAGE ?? '',
+				}),
+				...(process.env.DAYTONA_API_URL && {
+					DAYTONA_API_URL: process.env.DAYTONA_API_URL,
+				}),
+				...(process.env.DAYTONA_API_KEY && {
+					DAYTONA_API_KEY: process.env.DAYTONA_API_KEY,
+				}),
+			},
+		},
+	},
 ];
 
 export function getProjects(): Project[] {
-	const isLocal = !!process.env.N8N_BASE_URL;
+	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
 
 	if (isLocal) {
-		projects.push(
-			{
-				name: 'ui',
-				testDir: './tests/ui',
-				grepInvert: new RegExp([CONTAINER_ONLY.source, SERIAL_EXECUTION.source].join('|')),
-				fullyParallel: true,
-				use: { baseURL: process.env.N8N_BASE_URL },
-			},
-			{
-				name: 'ui:isolated',
-				testDir: './tests/ui',
-				grep: SERIAL_EXECUTION,
-				workers: 1,
-				use: { baseURL: process.env.N8N_BASE_URL },
-			},
-		);
+		projects.push({
+			name: 'e2e',
+			testDir: './tests/e2e',
+			grepInvert: ALLOW_CONTAINER_ONLY ? undefined : CONTAINER_ONLY,
+			fullyParallel: true,
+			use: { baseURL: getFrontendUrl() },
+		});
 	} else {
 		for (const { name, config } of CONTAINER_CONFIGS) {
 			projects.push(
 				{
-					name: `${name}:ui`,
-					testDir: './tests/ui',
-					grepInvert: SERIAL_EXECUTION,
-					timeout: name === 'standard' ? 60000 : 180000, // 60 seconds for standard container test, 180 for containers to allow startup etc
+					name: `${name}:e2e`,
+					testDir: './tests/e2e',
+					timeout: name === 'sqlite' ? 60000 : 180000, // 60 seconds for sqlite container test, 180 for other modes to allow startup
 					fullyParallel: true,
 					use: { containerConfig: config },
 				},
 				{
-					name: `${name}:ui:isolated`,
-					testDir: './tests/ui',
-					grep: SERIAL_EXECUTION,
-					workers: 1,
-					use: { containerConfig: config },
-				},
-				{
-					name: `${name}:chaos`,
-					testDir: './tests/chaos',
-					grep: new RegExp(`@mode:${name}`),
+					name: `${name}:infrastructure`,
+					testDir: './tests/infrastructure',
+					grep: new RegExp(`@mode:${name}|@capability:${name}`),
 					workers: 1,
 					timeout: 180000,
 					use: { containerConfig: config },
 				},
 			);
+		}
+
+		for (const { name, config } of CI_BENCHMARK_PROFILES) {
+			projects.push({
+				name: `benchmark-${name}:infrastructure`,
+				testDir: './tests/infrastructure/benchmarks',
+				workers: 1,
+				timeout: 600_000,
+				retries: 0,
+				use: { containerConfig: config },
+			});
+		}
+
+		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
+			projects.push({
+				name: `benchmark-${name}:infrastructure`,
+				testDir: './tests/infrastructure/benchmarks-local',
+				workers: 1,
+				timeout: 600_000,
+				retries: 0,
+				use: { containerConfig: config },
+			});
 		}
 	}
 
@@ -82,7 +229,10 @@ export function getProjects(): Project[] {
 		workers: 1,
 		timeout: 300000,
 		retries: 0,
-		use: { containerConfig: {} },
+		use: {
+			// Default container config for performance tests, equivalent to @cloud:starter
+			containerConfig: { resourceQuota: { memory: 0.75, cpu: 0.5 }, env: { E2E_TESTS: 'true' } },
+		},
 	});
 
 	return projects;

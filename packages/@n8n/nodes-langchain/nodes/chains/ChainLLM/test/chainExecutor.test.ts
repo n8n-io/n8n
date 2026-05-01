@@ -18,6 +18,7 @@ jest.mock('@utils/tracing', () => ({
 
 jest.mock('../methods/promptUtils', () => ({
 	createPromptTemplate: jest.fn(),
+	getAgentStepsParser: jest.fn(),
 }));
 
 describe('chainExecutor', () => {
@@ -26,6 +27,9 @@ describe('chainExecutor', () => {
 	beforeEach(() => {
 		mockContext = mock<IExecuteFunctions>();
 		mockContext.getExecutionCancelSignal = jest.fn().mockReturnValue(undefined);
+		mockContext.getNode = jest.fn().mockReturnValue({
+			typeVersion: 1.5,
+		});
 		jest.clearAllMocks();
 	});
 
@@ -75,6 +79,26 @@ describe('chainExecutor', () => {
 			};
 			const parser = chainExecutor.getOutputParserForLLM(model as unknown as BaseChatModel);
 			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
+		});
+
+		it('should return NaiveJsonOutputParser for models with metadata output_format set to json', () => {
+			const model = mock<BaseChatModel>({
+				metadata: {
+					output_format: 'json',
+				},
+			});
+			const parser = chainExecutor.getOutputParserForLLM(model);
+			expect(parser).toBeInstanceOf(NaiveJsonOutputParser);
+		});
+
+		it('should return StringOutputParser for models with metadata output_format not set to json', () => {
+			const model = mock<BaseChatModel>({
+				metadata: {
+					output_format: 'text',
+				},
+			});
+			const parser = chainExecutor.getOutputParserForLLM(model);
+			expect(parser).toBeInstanceOf(StringOutputParser);
 		});
 	});
 
@@ -241,7 +265,10 @@ describe('chainExecutor', () => {
 			expect(tracing.getTracingConfig).toHaveBeenCalledWith(mockContext);
 		});
 
-		it('should execute a chain with a single output parser', async () => {
+		it('should execute a chain with a single output parser and pass signal as config', async () => {
+			const abortController = new AbortController();
+			mockContext.getExecutionCancelSignal.mockReturnValue(abortController.signal);
+
 			const fakeLLM = new FakeLLM({ response: 'Test response' });
 			const mockPromptTemplate = new PromptTemplate({
 				template: '{query}\n{formatInstructions}',
@@ -282,6 +309,11 @@ describe('chainExecutor', () => {
 			});
 
 			expect(result).toEqual([{ result: 'Test response' }]);
+			// Signal must be in the config (2nd arg), NOT bundled in the input (1st arg)
+			expect(mockChain.invoke).toHaveBeenCalledWith(
+				{ query: 'Hello' },
+				{ signal: abortController.signal },
+			);
 		});
 
 		it('should wrap non-array responses in an array', async () => {
@@ -321,8 +353,10 @@ describe('chainExecutor', () => {
 			expect(result).toEqual([{ result: 'Test response' }]);
 		});
 
-		it('should pass the execution cancel signal to the chain', async () => {
-			// For this test, we'll just verify that getExecutionCancelSignal is called
+		it('should pass the execution cancel signal as config, not as input', async () => {
+			const abortController = new AbortController();
+			mockContext.getExecutionCancelSignal.mockReturnValue(abortController.signal);
+
 			const fakeLLM = new FakeLLM({ response: 'Test response' });
 			const mockPromptTemplate = new PromptTemplate({
 				template: '{query}',
@@ -353,7 +387,11 @@ describe('chainExecutor', () => {
 			});
 
 			expect(mockContext.getExecutionCancelSignal).toHaveBeenCalled();
-			expect(mockChain.invoke).toHaveBeenCalled();
+			// Signal must be in the config (2nd arg), NOT bundled in the input (1st arg)
+			expect(mockChain.invoke).toHaveBeenCalledWith(
+				{ query: 'Hello' },
+				{ signal: abortController.signal },
+			);
 		});
 
 		it('should support chat models', async () => {
@@ -456,6 +494,137 @@ describe('chainExecutor', () => {
 			});
 
 			expect(pipeOutputParserMock).toHaveBeenCalledWith(expect.any(JsonOutputParser));
+		});
+
+		it('should use getAgentStepsParser for version 1.9+ when output parser is provided', async () => {
+			mockContext.getNode = jest.fn().mockReturnValue({
+				typeVersion: 1.9,
+			});
+
+			const fakeLLM = new FakeChatModel({});
+			const mockOutputParser = mock<N8nOutputParser>({
+				getFormatInstructions: jest.fn().mockReturnValue('Format as JSON'),
+			});
+
+			const mockPromptTemplate = new PromptTemplate({
+				template: '{query}\n{formatInstructions}',
+				inputVariables: ['query'],
+				partialVariables: { formatInstructions: 'Format as JSON' },
+			});
+
+			const mockAgentStepsParser = jest.fn().mockResolvedValue({ result: 'parsed' });
+			(promptUtils.getAgentStepsParser as jest.Mock).mockReturnValue(mockAgentStepsParser);
+
+			const mockChain = {
+				invoke: jest.fn().mockResolvedValue({ result: 'parsed' }),
+			};
+			const withConfigMock = jest.fn().mockReturnValue(mockChain);
+			const pipeAgentStepsParserMock = jest.fn().mockReturnValue({
+				withConfig: withConfigMock,
+			});
+			const pipeMock = jest.fn().mockReturnValue({
+				pipe: pipeAgentStepsParserMock,
+			});
+
+			mockPromptTemplate.pipe = pipeMock;
+			fakeLLM.pipe = jest.fn();
+
+			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+
+			await executeChain({
+				context: mockContext,
+				itemIndex: 0,
+				query: 'Hello',
+				llm: fakeLLM,
+				outputParser: mockOutputParser,
+			});
+
+			expect(promptUtils.getAgentStepsParser).toHaveBeenCalledWith(mockOutputParser);
+			expect(pipeMock).toHaveBeenCalledWith(fakeLLM);
+			expect(pipeAgentStepsParserMock).toHaveBeenCalledWith(mockAgentStepsParser);
+		});
+
+		it('should use direct output parser for versions < 1.9 when output parser is provided', async () => {
+			mockContext.getNode = jest.fn().mockReturnValue({
+				typeVersion: 1.8,
+			});
+
+			const fakeLLM = new FakeChatModel({});
+			const mockOutputParser = mock<N8nOutputParser>({
+				getFormatInstructions: jest.fn().mockReturnValue('Format as JSON'),
+			});
+
+			const mockPromptTemplate = new PromptTemplate({
+				template: '{query}\n{formatInstructions}',
+				inputVariables: ['query'],
+				partialVariables: { formatInstructions: 'Format as JSON' },
+			});
+
+			const mockChain = {
+				invoke: jest.fn().mockResolvedValue({ result: 'parsed' }),
+			};
+			const withConfigMock = jest.fn().mockReturnValue(mockChain);
+			const pipeOutputParserMock = jest.fn().mockReturnValue({
+				withConfig: withConfigMock,
+			});
+			const pipeMock = jest.fn().mockReturnValue({
+				pipe: pipeOutputParserMock,
+			});
+
+			mockPromptTemplate.pipe = pipeMock;
+			fakeLLM.pipe = jest.fn();
+
+			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+
+			await executeChain({
+				context: mockContext,
+				itemIndex: 0,
+				query: 'Hello',
+				llm: fakeLLM,
+				outputParser: mockOutputParser,
+			});
+
+			expect(promptUtils.getAgentStepsParser).not.toHaveBeenCalled();
+			expect(pipeMock).toHaveBeenCalledWith(fakeLLM);
+			expect(pipeOutputParserMock).toHaveBeenCalledWith(mockOutputParser);
+		});
+
+		it('should handle fallback LLM with built-in tools', async () => {
+			const fakeLLM = new FakeChatModel({});
+			const fakeFallbackLLM = new FakeChatModel({});
+			const mockPromptTemplate = new PromptTemplate({
+				template: '{query}',
+				inputVariables: ['query'],
+			});
+
+			const mockChain = {
+				invoke: jest.fn().mockResolvedValue('Test response'),
+			};
+			const withConfigMock = jest.fn().mockReturnValue(mockChain);
+			const pipeStringOutputParserMock = jest.fn().mockReturnValue({
+				withConfig: withConfigMock,
+			});
+			const pipeMock = jest.fn().mockReturnValue({
+				pipe: pipeStringOutputParserMock,
+			});
+
+			mockPromptTemplate.pipe = pipeMock;
+			fakeLLM.pipe = jest.fn();
+			fakeLLM.withFallbacks = jest.fn().mockReturnValue(fakeLLM);
+			fakeFallbackLLM.pipe = jest.fn();
+
+			(promptUtils.createPromptTemplate as jest.Mock).mockResolvedValue(mockPromptTemplate);
+
+			await executeChain({
+				context: mockContext,
+				itemIndex: 0,
+				query: 'Hello',
+				llm: fakeLLM,
+				fallbackLlm: fakeFallbackLLM,
+			});
+
+			expect(fakeLLM.withFallbacks).toHaveBeenCalledWith([fakeFallbackLLM]);
+			expect(pipeMock).toHaveBeenCalled();
 		});
 	});
 });

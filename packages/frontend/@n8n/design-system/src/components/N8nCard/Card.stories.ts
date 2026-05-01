@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nCard from './Card.vue';
 import N8nButton from '../N8nButton/Button.vue';
@@ -6,8 +6,16 @@ import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nText from '../N8nText/Text.vue';
 
 export default {
-	title: 'Atoms/Card',
+	title: 'Core/Card',
 	component: N8nCard,
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A surface container with consistent padding and styling for grouped content.',
+			},
+		},
+	},
 };
 
 export const Default: StoryFn = (args, { argTypes }) => ({

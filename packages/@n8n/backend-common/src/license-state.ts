@@ -26,11 +26,22 @@ export class LicenseState {
 	// --------------------
 	//     core queries
 	// --------------------
-
-	isLicensed(feature: BooleanLicenseFeature) {
+	/*
+	 * If the feature is a string. checks if the feature is licensed
+	 * If the feature is an array of strings, it checks if any of the features are licensed
+	 */
+	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
 		this.assertProvider();
 
-		return this.licenseProvider.isLicensed(feature);
+		if (typeof feature === 'string') return this.licenseProvider.isLicensed(feature);
+
+		for (const featureName of feature) {
+			if (this.licenseProvider.isLicensed(featureName)) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
@@ -45,6 +56,14 @@ export class LicenseState {
 
 	isCustomRolesLicensed() {
 		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
+	}
+
+	isDynamicCredentialsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+	}
+
+	isPersonalSpacePolicyLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY);
 	}
 
 	isSharingLicensed() {
@@ -87,6 +106,10 @@ export class LicenseState {
 		return this.isLicensed('feat:aiCredits');
 	}
 
+	isAiGatewayLicensed() {
+		return this.isLicensed('feat:aiGateway');
+	}
+
 	isAdvancedExecutionFiltersLicensed() {
 		return this.isLicensed('feat:advancedExecutionFilters');
 	}
@@ -117,10 +140,6 @@ export class LicenseState {
 
 	isExternalSecretsLicensed() {
 		return this.isLicensed('feat:externalSecrets');
-	}
-
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed('feat:workflowHistory');
 	}
 
 	isAPIDisabled() {
@@ -165,6 +184,14 @@ export class LicenseState {
 
 	isWorkflowDiffsLicensed() {
 		return this.isLicensed('feat:workflowDiffs');
+	}
+
+	isDataRedactionLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DATA_REDACTION);
+	}
+
+	isProvisioningLicensed() {
+		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
 	// --------------------

@@ -18,7 +18,7 @@ export class ScenarioLoader {
 		const scenarios: Scenario[] = [];
 
 		for (const folder of scenarioFolders) {
-			if (filter && !folder.toLowerCase().includes(filter.toLowerCase())) {
+			if (filter && folder.toLowerCase() !== filter.toLowerCase()) {
 				continue;
 			}
 			const scenarioPath = path.join(pathToScenarios, folder);

@@ -1,0 +1,335 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`v2/components/DropdownMenuItem > rendering > should render checked item with checkmark 1`] = `
+<div
+  class="item"
+  data-reka-collection-item=""
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <!--v-if-->
+  
+  
+  <span
+    class="n8n-text text-dark size-medium regular item-label item-label"
+  >
+    
+    Checked Item
+    
+  </span>
+  
+  
+  
+  <svg
+    aria-hidden="true"
+    class="n8n-icon item-check"
+    data-icon="check"
+    focusable="false"
+    height="16px"
+    role="img"
+    viewBox="0 0 24 24"
+    width="16px"
+  >
+    <path
+      d="M20 6L9 17l-5-5"
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    />
+  </svg>
+  
+  
+  
+</div>
+`;
+
+exports[`v2/components/DropdownMenuItem > rendering > should render disabled item 1`] = `
+<div
+  aria-disabled="true"
+  class="item"
+  data-disabled=""
+  data-reka-collection-item=""
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <!--v-if-->
+  
+  
+  <span
+    class="n8n-text text-light size-medium regular item-label item-label"
+  >
+    
+    Disabled Item
+    
+  </span>
+  
+  
+  
+  <!--v-if-->
+  
+  
+  
+</div>
+`;
+
+exports[`v2/components/DropdownMenuItem > rendering > should render highlighted item 1`] = `
+<div
+  class="item highlighted"
+  data-reka-collection-item=""
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <!--v-if-->
+  
+  
+  <span
+    class="n8n-text text-dark size-medium regular item-label item-label"
+  >
+    
+    Highlighted Item
+    
+  </span>
+  
+  
+  
+  <!--v-if-->
+  
+  
+  
+</div>
+`;
+
+exports[`v2/components/DropdownMenuItem > rendering > should render item with emoji 1`] = `
+<div
+  class="item"
+  data-reka-collection-item=""
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <span
+    class="item-leading emoji"
+  >
+    🎉
+  </span>
+  
+  
+  <span
+    class="n8n-text text-dark size-medium regular item-label item-label"
+  >
+    
+    With Emoji
+    
+  </span>
+  
+  
+  
+  <!--v-if-->
+  
+  
+  
+</div>
+`;
+
+exports[`v2/components/DropdownMenuItem > rendering > should render item with icon 1`] = `
+<div
+  class="item"
+  data-reka-collection-item=""
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <svg
+    aria-hidden="true"
+    class="n8n-icon item-leading icon"
+    data-icon="user"
+    focusable="false"
+    height="16px"
+    role="img"
+    viewBox="0 0 24 24"
+    width="16px"
+  >
+    <g
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    >
+      <path
+        d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
+      />
+      <circle
+        cx="12"
+        cy="7"
+        r="4"
+      />
+    </g>
+  </svg>
+  
+  
+  <span
+    class="n8n-text text-dark size-medium regular item-label item-label"
+  >
+    
+    With Icon
+    
+  </span>
+  
+  
+  
+  <!--v-if-->
+  
+  
+  
+</div>
+`;
+
+exports[`v2/components/DropdownMenuItem > rendering > should render item with label 1`] = `
+<div
+  class="item"
+  data-reka-collection-item=""
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <!--v-if-->
+  
+  
+  <span
+    class="n8n-text text-dark size-medium regular item-label item-label"
+  >
+    
+    Test Item
+    
+  </span>
+  
+  
+  
+  <!--v-if-->
+  
+  
+  
+</div>
+`;
+
+exports[`v2/components/DropdownMenuItem > rendering > should render separator when divided is true 1`] = `
+<div
+  class="wrapper"
+>
+  <div
+    aria-orientation="horizontal"
+    class="separator"
+    role="separator"
+  >
+    
+    
+  </div>
+  
+  <!-- Regular item without children -->
+  <div
+    class="item"
+    data-reka-collection-item=""
+    role="menuitem"
+    tabindex="-1"
+  >
+    
+    
+    
+    
+    <!--v-if-->
+    
+    
+    <span
+      class="n8n-text text-dark size-medium regular item-label item-label"
+    >
+      
+      Divided Item
+      
+    </span>
+    
+    
+    
+    <!--v-if-->
+    
+    
+    
+  </div>
+  
+</div>
+`;
+
+exports[`v2/components/DropdownMenuItem > rendering > should render sub-menu trigger when has children 1`] = `
+<div
+  aria-controls=""
+  aria-expanded="false"
+  aria-haspopup="menu"
+  class="item sub-trigger"
+  data-reka-collection-item=""
+  data-state="closed"
+  id="reka-menu-sub-trigger-v-1"
+  role="menuitem"
+  tabindex="-1"
+>
+  
+  
+  
+  
+  <!--v-if-->
+  
+  
+  <span
+    class="n8n-text text-dark size-medium regular item-label item-label"
+  >
+    
+    Parent Item
+    
+  </span>
+  
+  <svg
+    aria-hidden="true"
+    class="n8n-icon sub-indicator"
+    data-icon="chevron-right"
+    focusable="false"
+    height="16px"
+    role="img"
+    viewBox="0 0 24 24"
+    width="16px"
+  >
+    <path
+      d="m9 18l6-6l-6-6"
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+    />
+  </svg>
+  
+  
+  
+</div>
+`;

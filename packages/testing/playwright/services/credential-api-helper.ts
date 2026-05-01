@@ -9,7 +9,7 @@ import { nanoid } from 'nanoid';
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
-interface CredentialResponse {
+export interface CredentialResponse {
 	id: string;
 	name: string;
 	type: string;
@@ -20,6 +20,7 @@ interface CredentialResponse {
 		projectId: string;
 		role: string;
 	}>;
+	isResolvable?: boolean;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -34,6 +35,10 @@ export class CredentialApiHelper {
 
 	/**
 	 * Create a new credential
+	 *
+	 * Notes:
+	 * - The `type` field is the credential type ID (e.g., 'notionApi'), which differs from the UI display name (e.g., 'Notion API').
+	 * - You can find available credential type IDs in the codebase under `packages/nodes-base/credentials/*.credentials.ts` and by inspecting node credential references (e.g., Notion nodes use `type: 'notionApi'`).
 	 */
 	async createCredential(credential: CreateCredentialDto): Promise<CredentialResponse> {
 		const response = await this.api.request.post('/rest/credentials', { data: credential });
@@ -59,6 +64,28 @@ export class CredentialApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to get credentials: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return Array.isArray(result) ? result : (result.data ?? []);
+	}
+
+	/**
+	 * Get credentials filtered by project ID
+	 */
+	async getCredentialsByProject(
+		projectId: string,
+		options?: { includeScopes?: boolean; includeData?: boolean },
+	): Promise<CredentialResponse[]> {
+		const params = new URLSearchParams();
+		params.set('includeScopes', String(options?.includeScopes ?? true));
+		params.set('includeData', String(options?.includeData ?? true));
+		params.set('filter', JSON.stringify({ projectId }));
+
+		const response = await this.api.request.get('/rest/credentials', { params });
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get credentials by project: ${await response.text()}`);
 		}
 
 		const result = await response.json();
@@ -144,6 +171,19 @@ export class CredentialApiHelper {
 
 		const result = await response.json();
 		return Array.isArray(result) ? result : (result.data ?? []);
+	}
+
+	/**
+	 * Share a credential with other projects/users
+	 */
+	async shareCredential(credentialId: string, shareWithIds: string[]): Promise<void> {
+		const response = await this.api.request.put(`/rest/credentials/${credentialId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share credential: ${await response.text()}`);
+		}
 	}
 
 	/**

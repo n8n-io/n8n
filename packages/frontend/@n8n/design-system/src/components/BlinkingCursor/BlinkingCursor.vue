@@ -5,10 +5,10 @@
 <style lang="scss">
 .blinking-cursor {
 	display: inline-block;
-	height: var(--font-size-m);
-	width: var(--spacing-3xs);
-	border-radius: var(--border-radius-small);
-	margin-left: var(--spacing-4xs);
+	height: var(--font-size--md);
+	width: var(--spacing--3xs);
+	border-radius: var(--radius--sm);
+	margin-left: var(--spacing--4xs);
 
 	animation: 1s blink step-end infinite;
 }
@@ -19,7 +19,7 @@
 		background-color: transparent;
 	}
 	50% {
-		background-color: var(--color-foreground-xdark);
+		background-color: var(--color--foreground--shade-2);
 	}
 }
 </style>

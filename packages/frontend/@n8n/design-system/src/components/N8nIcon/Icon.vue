@@ -1,15 +1,15 @@
 <script lang="ts" setup>
-import { computed, useCssModule } from 'vue';
+import { computed, shallowRef, useCssModule, watch } from 'vue';
 
-import type { IconSize, IconColor } from '@n8n/design-system/types/icon';
-
-import type { IconName } from './icons';
 import { deprecatedIconSet, updatedIconSet } from './icons';
+import type { IconName, NodeIconName } from './icons';
+import type { nodeIconSet as NodeIconSetType } from './node-icons';
+import type { IconSize, IconColor } from '../../types/icon';
 
 interface IconProps {
 	// component supports both deprecated and updated icon set to support project icons
 	// but only allow new icon names to be used in the future
-	icon: IconName;
+	icon: IconName | NodeIconName;
 	size?: IconSize | number;
 	spin?: boolean;
 	color?: IconColor;
@@ -44,6 +44,7 @@ const sizesInPixels: Record<IconSize, number> = {
 	medium: 14,
 	large: 16,
 	xlarge: 20,
+	xxlarge: 40,
 };
 
 const size = computed((): { height: string; width: string } => {
@@ -58,31 +59,60 @@ const size = computed((): { height: string; width: string } => {
 	};
 });
 
+// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
+const colorMap: Record<IconColor, string> = {
+	primary: '--color--primary',
+	secondary: '--color--secondary',
+	'text-dark': '--color--text--shade-1',
+	'text-base': '--color--text',
+	'text-light': '--color--text--tint-1',
+	'text-xlight': '--color--text--tint-2',
+	danger: '--color--danger',
+	success: '--color--success',
+	warning: '--color--warning',
+	'foreground-dark': '--color--foreground--shade-1',
+	'foreground-xdark': '--color--foreground--shade-2',
+};
+
 const styles = computed(() => {
 	const stylesToApply: Record<string, string> = {};
 
 	if (props.color) {
-		stylesToApply.color = `var(--color-${props.color})`;
+		stylesToApply.color = `var(${colorMap[props.color]})`;
 	}
 
 	if (props.strokeWidth) {
-		stylesToApply['--n8n-icon-stroke-width'] = `${props.strokeWidth}px`;
+		stylesToApply['--icon--stroke-width'] = `${props.strokeWidth}px`;
 	}
 
 	return stylesToApply;
 });
+
+const nodeIconSetRef = shallowRef<typeof NodeIconSetType | null>(null);
+
+watch(
+	() => props.icon,
+	async (icon) => {
+		if (typeof icon === 'string' && icon.startsWith('node:') && !nodeIconSetRef.value) {
+			const { nodeIconSet } = await import('./node-icons');
+			nodeIconSetRef.value = nodeIconSet;
+		}
+	},
+	{ immediate: true },
+);
+
+const resolvedComponent = computed(
+	() =>
+		nodeIconSetRef.value?.[props.icon as keyof typeof NodeIconSetType] ??
+		updatedIconSet[props.icon as keyof typeof updatedIconSet] ??
+		deprecatedIconSet[props.icon as keyof typeof deprecatedIconSet],
+);
 </script>
 
 <template>
 	<Component
-		:is="
-			updatedIconSet[icon as keyof typeof updatedIconSet] ??
-			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
-		"
-		v-if="
-			updatedIconSet[icon as keyof typeof updatedIconSet] ??
-			deprecatedIconSet[icon as keyof typeof deprecatedIconSet]
-		"
+		:is="resolvedComponent"
+		v-if="resolvedComponent"
 		:class="classes"
 		aria-hidden="true"
 		focusable="false"
@@ -98,7 +128,7 @@ const styles = computed(() => {
 .strokeWidth {
 	rect,
 	path {
-		stroke-width: var(--n8n-icon-stroke-width);
+		stroke-width: var(--icon--stroke-width);
 	}
 }
 

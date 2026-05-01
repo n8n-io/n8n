@@ -1,0 +1,48 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`N8nPromptInputSuggestions > renders correctly with default props 1`] = `
+<div>
+  <article
+    class="container"
+    data-test-id="workflow-suggestions"
+  >
+    <!-- Prompt input slot -->
+    <section
+      class="promptContainer"
+    >
+      
+      
+    </section>
+    <!-- Suggestion pills section -->
+    <section
+      aria-label="Workflow suggestions"
+      class="pillsContainer"
+      role="group"
+    >
+      
+      <button
+        class="suggestionPill"
+        type="button"
+      >
+        Test Suggestion 1
+      </button>
+      <button
+        class="suggestionPill"
+        type="button"
+      >
+        Test Suggestion 2
+      </button>
+      <button
+        class="suggestionPill"
+        type="button"
+      >
+        Test Suggestion 3
+      </button>
+      
+    </section>
+    <!-- Footer slot for optional content like "or" divider -->
+    
+    
+  </article>
+</div>
+`;

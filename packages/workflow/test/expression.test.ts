@@ -2,14 +2,18 @@
 
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { workflow } from './ExpressionExtensions/helpers';
+import { workflow, asDuration, asInterval } from './ExpressionExtensions/helpers';
 import { baseFixtures } from './ExpressionFixtures/base';
 import type { ExpressionTestEvaluation, ExpressionTestTransform } from './ExpressionFixtures/base';
 import * as Helpers from './helpers';
+import { ExpressionReservedVariableError } from '../src/errors/expression-reserved-variable.error';
 import { ExpressionError } from '../src/errors/expression.error';
+import { Expression } from '../src/expression';
 import { extendSyntax } from '../src/extensions/expression-extension';
+import { createRunExecutionData } from '../src';
 import type { INodeExecutionData } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
+import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {
@@ -31,6 +35,13 @@ describe('Expression', () => {
 			nodeTypes,
 		});
 		const expression = workflow.expression;
+
+		beforeAll(async () => {
+			await expression.acquireIsolate();
+		});
+		afterAll(async () => {
+			await expression.releaseIsolate();
+		});
 
 		const evaluate = (value: string) =>
 			expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', {});
@@ -85,32 +96,41 @@ describe('Expression', () => {
 			);
 
 			vi.useFakeTimers({ now: new Date() });
-			expect(evaluate('={{Interval.after(new Date(), 100)}}')).toEqual(
-				Interval.after(new Date(), 100),
-			);
+			const intervalResult = asInterval(evaluate('={{Interval.after(new Date(), 100)}}'));
+			expect(intervalResult).toBeInstanceOf(Interval);
+			expect(intervalResult.length('milliseconds')).toEqual(100);
 			vi.useRealTimers();
 
-			expect(evaluate('={{Duration.fromMillis(100)}}')).toEqual(Duration.fromMillis(100));
+			const durationResult = asDuration(evaluate('={{Duration.fromMillis(100)}}'));
+			expect(durationResult).toBeInstanceOf(Duration);
+			expect(durationResult.toMillis()).toEqual(100);
 
 			expect(evaluate('={{new Object()}}')).toEqual(new Object());
 
 			expect(evaluate('={{new Array()}}')).toEqual([]);
-			expect(evaluate('={{new Int8Array()}}')).toEqual(new Int8Array());
-			expect(evaluate('={{new Uint8Array()}}')).toEqual(new Uint8Array());
-			expect(evaluate('={{new Uint8ClampedArray()}}')).toEqual(new Uint8ClampedArray());
-			expect(evaluate('={{new Int16Array()}}')).toEqual(new Int16Array());
-			expect(evaluate('={{new Uint16Array()}}')).toEqual(new Uint16Array());
-			expect(evaluate('={{new Int32Array()}}')).toEqual(new Int32Array());
-			expect(evaluate('={{new Uint32Array()}}')).toEqual(new Uint32Array());
-			expect(evaluate('={{new Float32Array()}}')).toEqual(new Float32Array());
-			expect(evaluate('={{new Float64Array()}}')).toEqual(new Float64Array());
-			expect(evaluate('={{new BigInt64Array()}}')).toEqual(new BigInt64Array());
-			expect(evaluate('={{new BigUint64Array()}}')).toEqual(new BigUint64Array());
+			// Typed arrays: verify constructors are accessible and return correct length.
+			// We don't use toEqual(new Int8Array()) because the VM engine returns typed
+			// arrays from a different V8 realm, which breaks instanceof/toEqual despite
+			// being functionally identical. This is fine — typed arrays aren't a practical
+			// expression return type (they don't survive JSON serialization).
+			expect(evaluate('={{new Int8Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint8Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint8ClampedArray(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Int16Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint16Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Int32Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Uint32Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Float32Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new Float64Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new BigInt64Array(3).length}}')).toEqual(3);
+			expect(evaluate('={{new BigUint64Array(3).length}}')).toEqual(3);
 
 			expect(evaluate('={{new Map()}}')).toEqual(new Map());
-			expect(evaluate('={{new WeakMap()}}')).toEqual(new WeakMap());
+			// WeakMap/WeakSet are not structured-cloneable, so they can't cross
+			// the VM isolate boundary. Verify the constructors are accessible instead.
+			expect(evaluate('={{new WeakMap() instanceof WeakMap}}')).toEqual(true);
 			expect(evaluate('={{new Set()}}')).toEqual(new Set());
-			expect(evaluate('={{new WeakSet()}}')).toEqual(new WeakSet());
+			expect(evaluate('={{new WeakSet() instanceof WeakSet}}')).toEqual(true);
 
 			expect(evaluate('={{new Error()}}')).toEqual(new Error());
 			expect(evaluate('={{new TypeError()}}')).toEqual(new TypeError());
@@ -120,13 +140,16 @@ describe('Expression', () => {
 			expect(evaluate('={{new ReferenceError()}}')).toEqual(new ReferenceError());
 			expect(evaluate('={{new URIError()}}')).toEqual(new URIError());
 
-			expect(evaluate('={{Intl}}')).toEqual(Intl);
+			// Intl from the isolate is a different realm object; verify it's accessible
+			expect(evaluate('={{typeof Intl}}')).toEqual('object');
 
-			expect(evaluate('={{new String()}}')).toEqual(new String());
-			expect(evaluate("={{new RegExp('')}}")).toEqual(new RegExp(''));
+			expect(evaluate('={{new String().toString()}}')).toEqual('');
+			expect(evaluate("={{new RegExp('').source}}")).toEqual('(?:)');
 
-			expect(evaluate('={{Math}}')).toEqual(Math);
-			expect(evaluate('={{new Number()}}')).toEqual(new Number());
+			// Namespace objects (Math, Atomics) come from a different V8 realm in the
+			// VM engine, so toEqual fails despite identical content. Verify accessibility.
+			expect(evaluate('={{typeof Math}}')).toEqual('object');
+			expect(evaluate('={{new Number().valueOf()}}')).toEqual(0);
 			expect(evaluate("={{BigInt('1')}}")).toEqual(BigInt('1'));
 			expect(evaluate('={{Infinity}}')).toEqual(Infinity);
 			expect(evaluate('={{NaN}}')).toEqual(NaN);
@@ -136,12 +159,12 @@ describe('Expression', () => {
 			expect(evaluate("={{parseInt('1', 10)}}")).toEqual(parseInt('1', 10));
 
 			expect(evaluate('={{JSON.stringify({})}}')).toEqual(JSON.stringify({}));
-			expect(evaluate('={{new ArrayBuffer(10)}}')).toEqual(new ArrayBuffer(10));
-			expect(evaluate('={{new SharedArrayBuffer(10)}}')).toEqual(new SharedArrayBuffer(10));
-			expect(evaluate('={{Atomics}}')).toEqual(Atomics);
-			expect(evaluate('={{new DataView(new ArrayBuffer(1))}}')).toEqual(
-				new DataView(new ArrayBuffer(1)),
-			);
+			// ArrayBuffer, SharedArrayBuffer, DataView, and Atomics come from a
+			// different V8 realm in the VM engine. Verify accessibility instead.
+			expect(evaluate('={{new ArrayBuffer(10).byteLength}}')).toEqual(10);
+			expect(evaluate('={{new SharedArrayBuffer(10).byteLength}}')).toEqual(10);
+			expect(evaluate('={{typeof Atomics}}')).toEqual('object');
+			expect(evaluate('={{new DataView(new ArrayBuffer(1)).byteLength}}')).toEqual(1);
 
 			expect(evaluate("={{encodeURI('https://google.com')}}")).toEqual(
 				encodeURI('https://google.com'),
@@ -160,6 +183,13 @@ describe('Expression', () => {
 			expect(evaluate('={{Symbol(1).toString()}}')).toEqual(Symbol(1).toString());
 		});
 
+		it('should expose correct process properties in sandbox', () => {
+			expect(evaluate('={{process.version}}')).toMatch(/^v\d+\.\d+\.\d+/);
+			expect(evaluate('={{typeof process.pid}}')).toBe('number');
+			expect(evaluate('={{process.version}}')).not.toBe(process.pid);
+			expect(evaluate('={{process.version}}')).toBe(process.version);
+		});
+
 		it('should not able to do arbitrary code execution', () => {
 			const testFn = vi.fn();
 			Object.assign(global, { testFn });
@@ -171,6 +201,624 @@ describe('Expression', () => {
 			vi.useRealTimers();
 
 			expect(testFn).not.toHaveBeenCalled();
+		});
+
+		it('should include runIndex and itemIndex in error when .constructor is used', () => {
+			let thrownError: ExpressionError | undefined;
+			try {
+				expression.getParameterValue(
+					'={{ {}.constructor() }}',
+					null,
+					2,
+					3,
+					'node',
+					[],
+					'manual',
+					{},
+				);
+			} catch (e) {
+				thrownError = e as ExpressionError;
+			}
+
+			expect(thrownError).toBeInstanceOf(ExpressionError);
+			expect(thrownError?.context.runIndex).toBe(2);
+			expect(thrownError?.context.itemIndex).toBe(3);
+		});
+
+		describe('SafeObject security wrapper', () => {
+			it('should block Object.defineProperty', () => {
+				expect(evaluate('={{Object.defineProperty}}')).toBeUndefined();
+			});
+
+			it('should block Object.defineProperties', () => {
+				expect(evaluate('={{Object.defineProperties}}')).toBeUndefined();
+			});
+
+			it('should block Object.setPrototypeOf', () => {
+				expect(evaluate('={{Object.setPrototypeOf}}')).toBeUndefined();
+			});
+
+			it('should block Object.getPrototypeOf', () => {
+				expect(() => evaluate('={{Object.getPrototypeOf}}')).toThrow();
+			});
+
+			it('should block Object.getOwnPropertyDescriptor', () => {
+				expect(evaluate('={{Object.getOwnPropertyDescriptor}}')).toBeUndefined();
+			});
+
+			it('should block Object.getOwnPropertyDescriptors', () => {
+				expect(evaluate('={{Object.getOwnPropertyDescriptors}}')).toBeUndefined();
+			});
+
+			it('should block __defineGetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineSetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupSetter__ on Object', () => {
+				expect(() => evaluate('={{Object.__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
+			});
+
+			it('should allow safe Object methods', () => {
+				expect(evaluate('={{Object.keys({a: 1})}}')).toEqual(['a']);
+				expect(evaluate('={{Object.values({a: 1})}}')).toEqual([1]);
+				expect(evaluate('={{Object.entries({a: 1})}}')).toEqual([['a', 1]]);
+				expect(evaluate('={{Object.assign({}, {a: 1})}}')).toEqual({ a: 1 });
+				expect(evaluate('={{Object.fromEntries([["a", 1]])}}')).toEqual({ a: 1 });
+				expect(evaluate('={{Object.is(1, 1)}}')).toEqual(true);
+				expect(evaluate('={{Object.hasOwn({a: 1}, "a")}}')).toEqual(true);
+			});
+
+			it('should allow Object.create with single argument', () => {
+				// Object.create with null prototype
+				expect(evaluate('={{Object.create(null) !== null}}')).toEqual(true);
+			});
+
+			it('should prevent Object.defineProperty attack on Error.prepareStackTrace', () => {
+				// Object.defineProperty is undefined, so calling it returns undefined (no-op)
+				// The attack fails silently - prepareStackTrace is never set
+				const result = evaluate(
+					"={{Object.defineProperty(Error, 'prepareStackTrace', { value: (e, s) => s })}}",
+				);
+				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('SafeError security wrapper', () => {
+			it('should block Error.prepareStackTrace access', () => {
+				expect(() => evaluate('={{Error.prepareStackTrace}}')).toThrow();
+			});
+
+			it('should block Error.captureStackTrace access', () => {
+				// captureStackTrace is blocked by the SafeError proxy, returns undefined
+				expect(evaluate('={{Error.captureStackTrace}}')).toBeUndefined();
+			});
+
+			it('should block Error.stackTraceLimit access', () => {
+				// stackTraceLimit is blocked by the SafeError proxy, returns undefined
+				expect(evaluate('={{Error.stackTraceLimit}}')).toBeUndefined();
+			});
+
+			it('should block __defineGetter__ on Error', () => {
+				expect(() => evaluate('={{Error.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineSetter__ on Error', () => {
+				expect(() => evaluate('={{Error.__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should prevent setting Error.prepareStackTrace via assignment', () => {
+				// Assignment fails because the sanitizer blocks access to prepareStackTrace
+				expect(() =>
+					evaluate('={{Error.prepareStackTrace = (e, s) => s, Error.prepareStackTrace}}'),
+				).toThrow();
+			});
+
+			it('should allow normal Error functionality', () => {
+				expect(evaluate('={{new Error("test").message}}')).toEqual('test');
+				expect(evaluate('={{new Error("test") instanceof Error}}')).toEqual(true);
+			});
+		});
+
+		describe('Error subclass security wrappers', () => {
+			it('should block __defineGetter__ on TypeError', () => {
+				expect(() => evaluate('={{TypeError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineGetter__ on SyntaxError', () => {
+				expect(() => evaluate('={{SyntaxError.__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block prepareStackTrace on all error types', () => {
+				expect(() => evaluate('={{TypeError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{SyntaxError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{RangeError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{ReferenceError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{EvalError.prepareStackTrace}}')).toThrow();
+				expect(() => evaluate('={{URIError.prepareStackTrace}}')).toThrow();
+			});
+
+			it('should allow normal Error subclass functionality', () => {
+				expect(evaluate('={{new TypeError("test").message}}')).toEqual('test');
+				expect(evaluate('={{new TypeError("test").name}}')).toEqual('TypeError');
+				expect(evaluate('={{new SyntaxError("test") instanceof Error}}')).toEqual(true);
+			});
+		});
+
+		describe('RCE prevention', () => {
+			it('should block the Object.defineProperty + prepareStackTrace RCE attack', () => {
+				// This is the actual attack payload that was used
+				// Attack fails because Object.defineProperty is undefined,
+				// calling undefined(...) throws TypeError, and the expression returns undefined
+				const payload = `={{(() => {
+					Object.defineProperty(Error, 'prepareStackTrace', {
+						value: (e, stack) => {
+							try {
+								const g = stack[0].getThis();
+								if (!g || !g.global || !g.global.process) return "no_global";
+								const p = g.global.process;
+								const gbm = p.getBuiltinModule;
+								if (!gbm) return "no_gbm";
+								const cp = gbm('child_process');
+								return cp.execSync('echo pwned').toString();
+							} catch (x) {
+								return "err:" + x.message;
+							}
+						},
+						configurable: true
+					});
+					return new Error().stack;
+				})()}}`;
+
+				// Attack is blocked - make sure it throws
+				expect(() => evaluate(payload)).toThrowError(/due to security concerns/);
+			});
+
+			it('should block __defineGetter__ bypass attack', () => {
+				// Alternative attack using __defineGetter__ to set prepareStackTrace
+				// Attack fails because __defineGetter__ is blocked at AST level
+				const payload = `={{(() => {
+					Error.__defineGetter__('prepareStackTrace', function() {
+						return (e, stack) => 'ATTACK_WORKED';
+					});
+					return new Error().stack;
+				})()}}`;
+
+				// Attack is blocked at AST parsing level
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block getOwnPropertyDescriptor bypass attempt', () => {
+				// Attempt to read blocked properties via getOwnPropertyDescriptor
+				// getOwnPropertyDescriptor is undefined, calling it throws TypeError
+				const payload = `={{(() => {
+					const desc = Object.getOwnPropertyDescriptor(Error, 'prepareStackTrace');
+					return desc ? 'HAS_DESC' : 'NO_DESC';
+				})()}}`;
+
+				// getOwnPropertyDescriptor is undefined, calling undefined() throws
+				const result = evaluate(payload);
+				expect(result).toBeUndefined();
+			});
+
+			it('should block indirect access to defineProperty via bracket notation', () => {
+				expect(evaluate("={{Object['defineProperty']}}")).toBeUndefined();
+			});
+
+			it('should block storing defineProperty in a variable', () => {
+				// Even if you try to store it, you get undefined
+				const result = evaluate('={{(() => { const dp = Object.defineProperty; return dp; })()}}');
+				expect(result).toBeUndefined();
+			});
+
+			it('should block prototype pollution via __lookupGetter__ as bare identifier', () => {
+				const payload = `={{(() => {
+					const getProto = __lookupGetter__('__proto__');
+					const objProto = getProto.call({});
+					objProto['win'] = 1337;
+					const empty = {};
+					return empty['win'];
+				})()}}`;
+
+				// Now blocked at AST level when trying to call __lookupGetter__
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__lookupGetter__}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupSetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__lookupSetter__}}')).toThrow(
+					'Cannot access "__lookupSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineGetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__defineGetter__}}')).toThrow(
+					'Cannot access "__defineGetter__" due to security concerns',
+				);
+			});
+
+			it('should block __defineSetter__ as bare identifier', () => {
+				expect(() => evaluate('={{__defineSetter__}}')).toThrow(
+					'Cannot access "__defineSetter__" due to security concerns',
+				);
+			});
+
+			it('should block __lookupGetter__ on object literals', () => {
+				expect(() => evaluate('={{{}.__lookupGetter__("__proto__")}}')).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block prototype pollution RCE via __lookupGetter__ on object literal', () => {
+				const payload = `={{(() => {
+					const getProto = {}.__lookupGetter__("__proto__");
+					const setProto = getProto.call(new Set());
+					if (!setProto._has) {
+						setProto._has = setProto.has;
+						setProto.has = function (a) {
+							if (["construct" + "or"].includes(a)) {
+								return false;
+							}
+							try {
+								return this._has(a);
+							} catch {
+								return false;
+							}
+						};
+					}
+					return setProto;
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow(
+					'Cannot access "__lookupGetter__" due to security concerns',
+				);
+			});
+
+			it('should block TOCTOU bypass via custom toString()', () => {
+				const payload = `={{(() => {
+					function createBypass() {
+						let value = 'noop';
+						return {
+							toString: () => {
+								const current = value;
+								value = 'constructor';
+								return current;
+							}
+						}
+					}
+					return ({})[createBypass()][createBypass()]('return 1')();
+				})()}}`;
+
+				expect(evaluate(payload)).toBeUndefined();
+			});
+
+			it('should block `__sanitize` override attempt', () => {
+				const payload = `={{(() => {
+					__sanitize = a => a;
+					return this['const' + 'ructor']['const' + 'ructor']('return 1')();
+				})()}}`;
+
+				expect(() => evaluate(payload)).toThrow();
+			});
+
+			const reservedVariablePayloads: Array<[string, string]> = [
+				[
+					'`___n8n_data` declaration',
+					`={{(() => {
+						const ___n8n_data = {__sanitize: a => a};
+						return 1;
+					})()}}`,
+				],
+				[
+					'`__sanitize` declaration',
+					`={{(() => {
+						const __sanitize = a => a;
+						return 1;
+					})()}}`,
+				],
+				[
+					'array destructuring declaration',
+					`={{(() => {
+						const [___n8n_data] = [{ __sanitize: (v) => v }];
+						return 1;
+					})()}}`,
+				],
+				[
+					'object destructuring declaration',
+					`={{(() => {
+						const {a: ___n8n_data} = { a: { __sanitize: (v) => v } };
+						return 1;
+					})()}}`,
+				],
+				[
+					'function parameter identifier',
+					`={{((___n8n_data) => {
+						return ___n8n_data;
+					})({})}}`,
+				],
+				[
+					'function parameter object pattern',
+					`={{(({a: ___n8n_data}) => {
+						return ___n8n_data;
+					})({ a: { __sanitize: (v) => v } })}}`,
+				],
+				[
+					'function parameter array pattern',
+					`={{(([___n8n_data]) => {
+						return ___n8n_data;
+					})([{ __sanitize: (v) => v }])}}`,
+				],
+				[
+					'function parameter default value',
+					`={{((___n8n_data = { __sanitize: (v) => v }) => {
+						return ___n8n_data;
+					})()}}`,
+				],
+				[
+					'function parameter rest element',
+					`={{((...___n8n_data) => {
+						return ___n8n_data;
+					})(1)}}`,
+				],
+				[
+					'function declaration name',
+					`={{(() => {
+						function ___n8n_data() {}
+						return 1;
+					})()}}`,
+				],
+				[
+					'class declaration name',
+					`={{(() => {
+						class ___n8n_data {}
+						return 1;
+					})()}}`,
+				],
+				[
+					'catch object pattern parameter',
+					`={{(() => {
+						try {
+							throw { a: { __sanitize: (v) => v } };
+						} catch ({ a: ___n8n_data }) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'catch array pattern parameter',
+					`={{(() => {
+						try {
+							throw [{ __sanitize: (v) => v }];
+						} catch ([___n8n_data]) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'for-of object pattern declaration',
+					`={{(() => {
+						for (const { a: ___n8n_data } of [{ a: { __sanitize: (v) => v } }]) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'for-of assignment pattern target',
+					`={{(() => {
+						for ([___n8n_data] of [[{ __sanitize: (v) => v }]]) {
+							return ___n8n_data;
+						}
+					})()}}`,
+				],
+				[
+					'destructuring assignment target',
+					`={{(() => {
+						[___n8n_data] = [{ __sanitize: (v) => v }];
+						return ___n8n_data;
+					})()}}`,
+				],
+			];
+
+			for (const [name, payload] of reservedVariablePayloads) {
+				it(`should block reserved variable shadowing via ${name}`, () => {
+					expect(() => evaluate(payload)).toThrow(ExpressionReservedVariableError);
+				});
+			}
+
+			it('should block extend() constructor access on arrow functions', () => {
+				expect(() => evaluate('={{ extend((() => {}), "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extendOptional() constructor access on arrow functions', () => {
+				expect(() =>
+					evaluate('={{ extendOptional((() => {}), "constructor")("return 1")() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() constructor access on extend itself', () => {
+				expect(() => evaluate('={{ extend(extend, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on extendOptional', () => {
+				expect(() =>
+					evaluate('={{ extend(extendOptional, "constructor", ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() constructor access on isNaN', () => {
+				expect(() => evaluate('={{ extend(isNaN, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on parseFloat', () => {
+				expect(() => evaluate('={{ extend(parseFloat, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() __proto__ access', () => {
+				expect(() => evaluate('={{ extend({}, "__proto__", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() prototype access', () => {
+				expect(() => evaluate('={{ extend({}, "prototype", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() with custom toString() returning constructor', () => {
+				expect(() =>
+					evaluate('={{ extend((() => {}), {toString: () => "constructor"}, ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() with custom toString() returning __proto__', () => {
+				expect(() => evaluate('={{ extend({}, {toString: () => "__proto__"}, []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on arrow functions', () => {
+				expect(() => evaluate('={{ extend((() => {}), "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extendOptional() constructor access on arrow functions', () => {
+				expect(() =>
+					evaluate('={{ extendOptional((() => {}), "constructor")("return 1")() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() constructor access on extend itself', () => {
+				expect(() => evaluate('={{ extend(extend, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on extendOptional', () => {
+				expect(() =>
+					evaluate('={{ extend(extendOptional, "constructor", ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() constructor access on isNaN', () => {
+				expect(() => evaluate('={{ extend(isNaN, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() constructor access on parseFloat', () => {
+				expect(() => evaluate('={{ extend(parseFloat, "constructor", ["return 1"])() }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() __proto__ access', () => {
+				expect(() => evaluate('={{ extend({}, "__proto__", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() prototype access', () => {
+				expect(() => evaluate('={{ extend({}, "prototype", []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+
+			it('should block extend() with custom toString() returning constructor', () => {
+				expect(() =>
+					evaluate('={{ extend((() => {}), {toString: () => "constructor"}, ["return 1"])() }}'),
+				).toThrow(/due to security concerns/);
+			});
+
+			it('should block extend() with custom toString() returning __proto__', () => {
+				expect(() => evaluate('={{ extend({}, {toString: () => "__proto__"}, []) }}')).toThrow(
+					/due to security concerns/,
+				);
+			});
+		});
+
+		describe('additionalKeys', () => {
+			const node = workflow.nodes.node;
+
+			it('should resolve $credentials in expressions', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'={{$credentials.serviceRole}}',
+					'internal',
+					{ $credentials: { serviceRole: 'test-api-key' } },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe('test-api-key');
+			});
+
+			it('should resolve $credentials in template strings', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'=Bearer {{$credentials.serviceRole}}',
+					'internal',
+					{ $credentials: { serviceRole: 'test-api-key' } },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe('Bearer test-api-key');
+			});
+
+			it('should resolve primitive additionalKeys', () => {
+				const result = expression.getSimpleParameterValue(
+					node,
+					'={{$pageCount}}',
+					'internal',
+					{ $pageCount: 42 },
+					undefined,
+					'',
+				);
+
+				expect(result).toBe(42);
+			});
 		});
 	});
 
@@ -228,5 +876,246 @@ describe('Expression', () => {
 				vi.useRealTimers();
 			});
 		}
+	});
+
+	describe('resolveSimpleParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate expression with provided IWorkflowDataProxyData', async () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			// Create WorkflowDataProxy to get IWorkflowDataProxyData
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { value: 42 } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			// Test Expression with new API
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
+			const result = expression.resolveSimpleParameterValue('={{ $json.value * 2 }}', data, false);
+			await expression.releaseIsolate();
+
+			expect(result).toBe(84);
+		});
+
+		it('should handle non-expression values', () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+
+			// Non-expression value should be returned as-is
+			expect(expression.resolveSimpleParameterValue('plain string', data, false)).toBe(
+				'plain string',
+			);
+			expect(expression.resolveSimpleParameterValue(123, data, false)).toBe(123);
+			expect(expression.resolveSimpleParameterValue(true, data, false)).toBe(true);
+		});
+	});
+
+	describe('$() node reference through expression engine', () => {
+		const nodeTypes = Helpers.NodeTypes();
+
+		function createTestWorkflow(connected: boolean) {
+			return new Workflow({
+				id: 'test-dollar-ref',
+				name: 'Test',
+				nodes: [
+					{
+						id: 'source-id',
+						name: 'source',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'consumer-id',
+						name: 'consumer',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: {},
+					},
+				],
+				connections: connected
+					? { source: { main: [[{ node: 'consumer', type: 'main', index: 0 }]] } }
+					: {},
+				active: false,
+				nodeTypes,
+			});
+		}
+
+		const runExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					source: [
+						{
+							startTime: 1,
+							executionTime: 1,
+							executionIndex: 0,
+							source: [],
+							data: {
+								main: [[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }]],
+							},
+						},
+					],
+				},
+			},
+		});
+
+		it("should resolve $('source').item.json.city", async () => {
+			const testWorkflow = createTestWorkflow(true);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				const result = testWorkflow.expression.getParameterValue(
+					"={{ $('source').item.json.city }}",
+					runExecutionData,
+					0,
+					0,
+					'consumer',
+					[{ json: { city: 'Prague' }, pairedItem: { item: 0 } }],
+					'manual',
+					{},
+					{
+						node: testWorkflow.getNode('consumer')!,
+						data: {},
+						source: {
+							main: [{ previousNode: 'source', previousNodeOutput: 0, previousNodeRun: 0 }],
+						},
+					},
+				);
+
+				expect(result).toBe('Prague');
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+
+		it('should throw ExpressionError when nodes are not connected', async () => {
+			const testWorkflow = createTestWorkflow(false);
+
+			await testWorkflow.expression.acquireIsolate();
+			try {
+				expect(() =>
+					testWorkflow.expression.getParameterValue(
+						"={{ $('source').item.json.city }}",
+						runExecutionData,
+						0,
+						0,
+						'consumer',
+						[{ json: {} }],
+						'manual',
+						{},
+					),
+				).toThrow(ExpressionError);
+			} finally {
+				await testWorkflow.expression.releaseIsolate();
+			}
+		});
+	});
+
+	describe('getParameterValue with IWorkflowDataProxyData', () => {
+		it('should evaluate simple expression with provided IWorkflowDataProxyData', async () => {
+			const nodeTypes = Helpers.NodeTypes();
+			const workflow = new Workflow({
+				id: 'test',
+				name: 'Test',
+				nodes: [
+					{
+						id: '1',
+						name: 'TestNode',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				null,
+				0,
+				0,
+				'TestNode',
+				[{ json: { text: 'hello' } }],
+				{},
+				'manual',
+				{},
+			);
+			const data = dataProxy.getDataProxy();
+
+			const timezone = workflow.settings?.timezone ?? 'UTC';
+			const expression = new Expression(timezone);
+			await expression.acquireIsolate();
+			const result = expression.resolveSimpleParameterValue(
+				'={{ $json.text.toUpperCase() }}',
+				data,
+				false,
+			);
+			await expression.releaseIsolate();
+
+			expect(result).toBe('HELLO');
+		});
 	});
 });

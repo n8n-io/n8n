@@ -1,6 +1,7 @@
 import { UserUpdateRequestDto } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { AuthenticatedRequest, User, PublicUser } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import type { AuthenticatedRequest, User, PublicUser, AuthIdentity } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, InvalidAuthTokenRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -10,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { MeController } from '@/controllers/me.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -31,6 +33,11 @@ describe('MeController', () => {
 	mockInstance(License).isWithinUsersLimit.mockReturnValue(true);
 	const controller = Container.get(MeController);
 
+	beforeEach(() => {
+		// Default: user has no SSO identities (email-based auth)
+		userService.findSsoIdentity.mockResolvedValue(undefined);
+	});
+
 	describe('updateCurrentUser', () => {
 		it('should update the user in the DB, and issue a new cookie', async () => {
 			const user = mock<User>({
@@ -49,7 +56,7 @@ describe('MeController', () => {
 			const req = mock<AuthenticatedRequest>({ user, browserId });
 			const res = mock<Response>();
 			userRepository.findOneByOrFail.mockResolvedValue(user);
-			userRepository.findOneOrFail.mockResolvedValue(user);
+			userService.findUserWithAuthIdentities.mockResolvedValue(user);
 			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 
@@ -87,6 +94,7 @@ describe('MeController', () => {
 			const user = mock<User>({
 				id: '123',
 				password: 'password',
+				email: 'current@email.com',
 				authIdentities: [],
 				role: GLOBAL_OWNER_ROLE,
 				mfaEnabled: false,
@@ -103,9 +111,129 @@ describe('MeController', () => {
 				controller.updateCurrentUser(
 					req,
 					mock(),
-					mock({ email: 'valid@email.com', firstName: 'John', lastName: 'Potato' }),
+					mock({ email: user.email, firstName: 'John', lastName: 'Potato' }),
 				),
 			).rejects.toThrowError(new BadRequestError('Invalid email address'));
+		});
+
+		describe('when user is authenticated via LDAP or OIDC', () => {
+			it('should throw BadRequestError when LDAP user tries to change their profile', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'ldap@email.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				userService.findSsoIdentity.mockResolvedValue(mock<AuthIdentity>({ providerType: 'ldap' }));
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'ldap@email.com',
+							firstName: 'Jane',
+							lastName: 'Doe',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError('LDAP user may not change their profile information'),
+				);
+			});
+
+			it('should throw BadRequestError when OIDC user tries to change their profile', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'oidc@email.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				userService.findSsoIdentity.mockResolvedValue(mock<AuthIdentity>({ providerType: 'oidc' }));
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'new-oidc@email.com',
+							firstName: 'John',
+							lastName: 'Doe',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError('OIDC user may not change their profile information'),
+				);
+			});
+
+			it('should allow non-LDAP/OIDC users to update their profile', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'valid@email.com',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const payload = new UserUpdateRequestDto({
+					email: 'valid@email.com',
+					firstName: 'John',
+					lastName: 'Potato',
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+				const res = mock<Response>();
+
+				userRepository.findOneByOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+				await controller.updateCurrentUser(req, res, payload);
+
+				expect(userService.update).toHaveBeenCalled();
+			});
+
+			it('should block user with multiple identities if one is LDAP', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'multi@email.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					password: 'password',
+					authIdentities: [],
+					role: GLOBAL_OWNER_ROLE,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				// User has multiple identities, one of which is LDAP - findSsoIdentity returns the SSO one
+				userService.findSsoIdentity.mockResolvedValue(mock<AuthIdentity>({ providerType: 'ldap' }));
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'multi@email.com',
+							firstName: 'Jane',
+							lastName: 'Doe',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError('LDAP user may not change their profile information'),
+				);
+			});
 		});
 
 		describe('when mfa is enabled', () => {
@@ -172,7 +300,7 @@ describe('MeController', () => {
 				const req = mock<AuthenticatedRequest>({ user, browserId });
 				const res = mock<Response>();
 				userRepository.findOneByOrFail.mockResolvedValue(user);
-				userRepository.findOneOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
 				jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
 				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
 				mockMfaService.validateMfa.mockResolvedValue(true);
@@ -190,6 +318,215 @@ describe('MeController', () => {
 
 				expect(result).toEqual({});
 			});
+		});
+
+		describe('when mfa is disabled and email is being changed', () => {
+			const oldPasswordPlain = 'old_password';
+			const passwordHash = '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6'; // Hashed 'old_password'
+
+			it('should throw BadRequestError if currentPassword is missing', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						new UserUpdateRequestDto({
+							email: 'michel-new@email.com',
+							firstName: 'Michel',
+							lastName: 'n8n',
+						}),
+					),
+				).rejects.toThrowError(new BadRequestError('Current password is required to change email'));
+			});
+
+			it('should throw BadRequestError if currentPassword is not a string', async () => {
+				const user = mock<User>({
+					id: '123',
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				await expect(
+					controller.updateCurrentUser(req, mock(), {
+						email: 'michel-new@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+						currentPassword: 123 as any,
+					} as any),
+				).rejects.toThrowError(new BadRequestError('Current password is required to change email'));
+			});
+
+			it('should throw BadRequestError if currentPassword is incorrect', async () => {
+				const user = mock<User>({
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+
+				await expect(
+					controller.updateCurrentUser(
+						req,
+						mock(),
+						mock({
+							email: 'michel-new@email.com',
+							firstName: 'Michel',
+							lastName: 'n8n',
+							currentPassword: 'wrong-password',
+						}),
+					),
+				).rejects.toThrowError(
+					new BadRequestError(
+						'Unable to update profile. Please check your credentials and try again.',
+					),
+				);
+			});
+
+			it('should update the user email if currentPassword is correct', async () => {
+				const user = mock<User>({
+					email: 'michel-old@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+				const res = mock<Response>();
+				userRepository.findOneByOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+				const result = await controller.updateCurrentUser(
+					req,
+					res,
+					mock({
+						email: 'michel-new@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+						currentPassword: oldPasswordPlain,
+					}),
+				);
+
+				expect(userService.update).toHaveBeenCalled();
+				expect(result).toEqual({});
+			});
+
+			it('should not require currentPassword when email is not being changed', async () => {
+				const user = mock<User>({
+					email: 'michel@email.com',
+					password: passwordHash,
+					mfaEnabled: false,
+				});
+				const req = mock<AuthenticatedRequest>({ user, browserId });
+				const res = mock<Response>();
+				userRepository.findOneByOrFail.mockResolvedValue(user);
+				userService.findUserWithAuthIdentities.mockResolvedValue(user);
+				jest.spyOn(jwt, 'sign').mockImplementation(() => 'new-signed-token');
+				userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+				const result = await controller.updateCurrentUser(
+					req,
+					res,
+					new UserUpdateRequestDto({
+						email: 'michel@email.com',
+						firstName: 'Michel',
+						lastName: 'n8n',
+					}),
+				);
+
+				expect(userService.update).toHaveBeenCalled();
+				expect(result).toEqual({});
+			});
+		});
+	});
+
+	describe('when user is managed by env', () => {
+		const globalConfig = Container.get(GlobalConfig);
+
+		beforeEach(() => {
+			globalConfig.instanceSettingsLoader.ownerManagedByEnv = true;
+			globalConfig.instanceSettingsLoader.ownerEmail = 'managed@example.com';
+		});
+
+		afterEach(() => {
+			globalConfig.instanceSettingsLoader.ownerManagedByEnv = false;
+			globalConfig.instanceSettingsLoader.ownerEmail = '';
+		});
+
+		it('should reject profile update for env-managed user', async () => {
+			const user = mock<User>({
+				id: '123',
+				email: 'managed@example.com',
+				password: 'password',
+				role: GLOBAL_OWNER_ROLE,
+			});
+			const req = mock<AuthenticatedRequest>({ user, browserId });
+
+			await expect(
+				controller.updateCurrentUser(
+					req,
+					mock(),
+					mock({ email: user.email, firstName: 'John', lastName: 'Doe' }),
+				),
+			).rejects.toThrowError(
+				new ForbiddenError(
+					'This account is managed via environment variables and cannot be modified through the API',
+				),
+			);
+		});
+
+		it('should reject password update for env-managed user', async () => {
+			const req = mock<AuthenticatedRequest>({
+				user: mock<User>({
+					email: 'managed@example.com',
+					password: '$2a$10$ffitcKrHT.Ls.m9FfWrMrOod76aaI0ogKbc3S96Q320impWpCbgj6',
+				}),
+			});
+
+			await expect(
+				controller.updatePassword(
+					req,
+					mock(),
+					mock({ currentPassword: 'old_password', newPassword: 'NewPassword123' }),
+				),
+			).rejects.toThrowError(
+				new ForbiddenError(
+					'This account is managed via environment variables and cannot be modified through the API',
+				),
+			);
+		});
+
+		it('should allow profile update for non-env-managed owner', async () => {
+			const user = mock<User>({
+				id: '456',
+				email: 'other-owner@example.com',
+				password: 'password',
+				authIdentities: [],
+				role: GLOBAL_OWNER_ROLE,
+				mfaEnabled: false,
+			});
+			const req = mock<AuthenticatedRequest>({ user, browserId });
+			const res = mock<Response>();
+			userRepository.findOneByOrFail.mockResolvedValue(user);
+			userService.findUserWithAuthIdentities.mockResolvedValue(user);
+			jest.spyOn(jwt, 'sign').mockImplementation(() => 'signed-token');
+			userService.toPublic.mockResolvedValue({} as unknown as PublicUser);
+
+			await controller.updateCurrentUser(
+				req,
+				res,
+				mock({ email: user.email, firstName: 'Other', lastName: 'Owner' }),
+			);
+
+			expect(userService.update).toHaveBeenCalled();
 		});
 	});
 

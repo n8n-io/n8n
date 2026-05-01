@@ -1,4 +1,4 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
+import type { IBinaryData, IExecuteFunctions } from 'n8n-workflow';
 
 /** Chunk size to use for streaming. 256Kb */
 const CHUNK_SIZE = 256 * 1024;
@@ -11,13 +11,13 @@ const CHUNK_SIZE = 256 * 1024;
 export async function getBinaryDataFile(
 	ctx: IExecuteFunctions,
 	itemIdx: number,
-	binaryPropertyName: string,
+	binaryPropertyData: string | IBinaryData,
 ) {
-	const binaryData = ctx.helpers.assertBinaryData(itemIdx, binaryPropertyName);
+	const binaryData = ctx.helpers.assertBinaryData(itemIdx, binaryPropertyData);
 
 	const fileContent = binaryData.id
 		? await ctx.helpers.getBinaryStream(binaryData.id, CHUNK_SIZE)
-		: await ctx.helpers.getBinaryDataBuffer(itemIdx, binaryPropertyName);
+		: await ctx.helpers.getBinaryDataBuffer(itemIdx, binaryPropertyData);
 
 	return {
 		filename: binaryData.fileName,
