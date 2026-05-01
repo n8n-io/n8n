@@ -73,6 +73,8 @@ describe('surfaceMcpToNewCloudUsers store', () => {
 
 		expect(firstOpenDismissedStorage.value).toBe('true');
 		expect(store.hasDismissedFirstOpenModal).toBe(true);
+		expect(firstOpenSeenStorage.value).toBe('true');
+		expect(store.hasSeenFirstEligibleOpen).toBe(true);
 	});
 
 	it('tracks copied parameter payload with the current variant', () => {

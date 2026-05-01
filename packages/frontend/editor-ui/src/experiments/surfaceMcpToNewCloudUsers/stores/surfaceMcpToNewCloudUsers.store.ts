@@ -47,6 +47,7 @@ export const useSurfaceMcpToNewCloudUsersStore = defineStore(
 		}
 
 		function dismissFirstOpenModal() {
+			markFirstEligibleOpenSeen();
 			firstOpenDismissedStorage.value = 'true';
 		}
 
