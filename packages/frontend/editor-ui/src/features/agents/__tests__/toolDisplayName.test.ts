@@ -5,7 +5,7 @@ import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 describe('formatToolNameForDisplay', () => {
 	it('formats snake_case builder tool names as readable labels', () => {
 		expect(formatToolNameForDisplay('create_skill')).toBe('Create skill');
-		expect(formatToolNameForDisplay('ask_llm')).toBe('Ask llm');
+		expect(formatToolNameForDisplay('ask_llm')).toBe('Ask LLM');
 		expect(formatToolNameForDisplay('build_custom_tool')).toBe('Build custom tool');
 	});
 

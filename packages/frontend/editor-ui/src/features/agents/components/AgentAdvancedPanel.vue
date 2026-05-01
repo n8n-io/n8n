@@ -22,6 +22,7 @@ import {
 	type ReasoningEffort,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const i18n = useI18n();
 
@@ -127,14 +128,10 @@ const thinkingDisabledReason = computed(() =>
 
 <template>
 	<div :class="$style.panel" data-testid="agent-behavior-panel">
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">{{
-				i18n.baseText('agents.builder.advanced.title')
-			}}</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('agents.builder.advanced.description') }}
-			</N8nText>
-		</div>
+		<AgentPanelHeader
+			:title="i18n.baseText('agents.builder.advanced.title')"
+			:description="i18n.baseText('agents.builder.advanced.description')"
+		/>
 
 		<div :class="$style.row">
 			<div :class="$style.rowLabel">
@@ -236,13 +233,6 @@ const thinkingDisabledReason = computed(() =>
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--2xs);
 }
 
 .row {

@@ -12,10 +12,11 @@ import {
 	N8nActionDropdown,
 	N8nBreadcrumbs,
 	N8nButton,
+	N8nDropdown,
 	N8nIcon,
-	N8nNavigationDropdown,
 } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { N8nDropdownOption } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
@@ -59,6 +60,7 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
+
 		label: props.projectName ?? i18n.baseText('agents.builder.header.projectFallback'),
 		href: router.resolve(projectRoute.value).href,
 	},
@@ -66,28 +68,21 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
-type SwitcherMenuItem = {
-	id: string;
-	title: string;
-	disabled?: boolean;
-	isDivider?: false;
-};
-
-const switcherMenu = computed<SwitcherMenuItem[]>(() => {
+const switcherOptions = computed<Array<N8nDropdownOption<string>>>(() => {
 	const list = agentsList.value ?? [];
 	const others = list.filter((a) => a.id !== props.agentId);
 	if (others.length === 0) {
 		return [
 			{
-				id: '__empty__',
-				title: i18n.baseText('agents.builder.header.switcher.empty'),
+				value: '__empty__',
+				label: i18n.baseText('agents.builder.header.switcher.empty'),
 				disabled: true,
 			},
 		];
 	}
 	return others.map((a) => ({
-		id: a.id,
-		title: a.name,
+		value: a.id,
+		label: a.name,
 	}));
 });
 
@@ -104,25 +99,26 @@ function onBreadcrumbSelect(item: PathItem) {
 
 <template>
 	<header :class="$style.header" data-testid="agent-builder-header">
-		<N8nBreadcrumbs :items="breadcrumbItems" theme="small" @item-selected="onBreadcrumbSelect">
+		<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
 			<template #append>
 				<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
-				<N8nNavigationDropdown
-					:menu="switcherMenu"
-					submenu-class="agent-header-switcher-menu"
+				<N8nDropdown
+					:options="switcherOptions"
 					data-testid="agent-header-switcher"
 					@select="onSwitcherSelect"
 				>
-					<N8nButton
-						variant="ghost"
-						size="xsmall"
-						:class="$style.switcherButton"
-						:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
-					>
-						<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
-						<N8nIcon icon="chevron-down" :size="12" />
-					</N8nButton>
-				</N8nNavigationDropdown>
+					<template #trigger>
+						<N8nButton
+							variant="ghost"
+							size="small"
+							:class="$style.switcherButton"
+							:aria-label="i18n.baseText('agents.builder.header.switcher.ariaLabel')"
+						>
+							<span :class="$style.switcherLabel">{{ agentDisplayName }}</span>
+							<N8nIcon icon="chevron-down" :size="14" />
+						</N8nButton>
+					</template>
+				</N8nDropdown>
 			</template>
 		</N8nBreadcrumbs>
 		<div :class="$style.right">
@@ -150,7 +146,7 @@ function onBreadcrumbSelect(item: PathItem) {
 			<N8nActionDropdown
 				:items="headerActions"
 				activator-icon="ellipsis"
-				activator-size="small"
+				activator-size="medium"
 				data-testid="agent-header-actions"
 				@select="(item: string) => emit('header-action', item)"
 			/>
@@ -163,16 +159,15 @@ function onBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	background-color: var(--color--background--light-3);
+	padding: var(--spacing--xs) var(--spacing--md);
+	background-color: var(--background--surface);
 	border-bottom: var(--border);
 	flex-shrink: 0;
-	box-sizing: content-box;
-	height: var(--height--sm);
+	height: var(--height--4xl);
 }
 
 .crumbSeparator {
-	color: var(--color--text--tint-2);
+	color: var(--border-color);
 	margin: 0 var(--spacing--4xs);
 	user-select: none;
 }
@@ -180,11 +175,9 @@ function onBreadcrumbSelect(item: PathItem) {
 /* N8nButton owns chrome/hover/focus; we just override the breadcrumb-bold weight
    and add gap between the label and chevron. */
 .switcherButton {
-	--button--height: auto;
-	--button--padding: 0;
-
+	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
-	font-weight: var(--font-weight--bold);
+	margin-top: var(--spacing--5xs);
 }
 
 .switcherLabel {
@@ -203,15 +196,7 @@ function onBreadcrumbSelect(item: PathItem) {
 
 .saveStatus {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	user-select: none;
-}
-
-/* Scope the scroll behavior to the inner el-menu — element-plus renders the
-   popper as `.agent-header-switcher-menu > .el-menu`. Putting overflow on the
-   outer popper produced a second nested scroll area. */
-:global(.agent-header-switcher-menu) :global(.el-menu) {
-	max-height: calc(5 * 36px);
-	overflow-y: auto;
 }
 </style>

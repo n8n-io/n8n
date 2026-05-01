@@ -4,5 +4,8 @@ export function formatToolNameForDisplay(toolName: string | undefined): string {
 	if (!normalized) return '';
 
 	const lowerCased = normalized.toLocaleLowerCase();
-	return lowerCased.charAt(0).toLocaleUpperCase() + lowerCased.slice(1);
+	return (lowerCased.charAt(0).toLocaleUpperCase() + lowerCased.slice(1)).replace(
+		/\bllm\b/g,
+		'LLM',
+	);
 }

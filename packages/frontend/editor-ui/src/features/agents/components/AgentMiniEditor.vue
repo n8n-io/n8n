@@ -60,7 +60,6 @@ watch(
 
 <style module>
 .editor {
-	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
 	overflow: hidden;
 }

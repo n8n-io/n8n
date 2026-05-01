@@ -66,7 +66,7 @@ function onAddTrigger() {
 			data-testid="agent-quick-action-add-tool"
 			@click="onAddTool"
 		>
-			<N8nIcon icon="sparkles" :size="12" :class="$style.quickActionIcon" />
+			<N8nIcon icon="wrench" size="medium" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTool') }}
 		</button>
 		<button
@@ -75,7 +75,7 @@ function onAddTrigger() {
 			data-testid="agent-quick-action-add-trigger"
 			@click="onAddTrigger"
 		>
-			<N8nIcon icon="zap" :size="12" :class="$style.quickActionIcon" />
+			<N8nIcon icon="zap" size="medium" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTrigger') }}
 		</button>
 	</div>
@@ -87,7 +87,7 @@ function onAddTrigger() {
 .row {
 	display: flex;
 	flex-wrap: wrap;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--spacing--2xs);
 	width: 100%;
 }
