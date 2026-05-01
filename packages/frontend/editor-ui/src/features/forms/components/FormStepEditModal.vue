@@ -26,7 +26,7 @@ const nodeId = props.data?.nodeId as string;
 
 const node = computed(() => workflowsStore.workflow.nodes.find((n) => n.id === nodeId));
 const isTrigger = computed(() => node.value?.type === FORM_TRIGGER_NODE_TYPE);
-const title = i18n.baseText('formStep.editForm');
+const title = computed(() => node.value?.name ?? i18n.baseText('formStep.editForm'));
 
 const applyToAll = computed({
 	get: () => appearance.scope.value === 'all',
@@ -175,7 +175,9 @@ function onReset() {
 					<!-- Right: controls -->
 					<div :class="$style.controlsPane">
 						<div :class="$style.headerRow">
-							<span :class="$style.nodeName">{{ node?.name }}</span>
+							<span :class="$style.themesLabel">{{
+								i18n.baseText('formStep.appearance.themeLabel')
+							}}</span>
 							<ElSelect
 								:model-value="appearance.activeTheme.value"
 								size="small"
@@ -247,10 +249,10 @@ function onReset() {
 	width: 200px;
 }
 
-.nodeName {
-	font-size: var(--font-size--xl);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
+.themesLabel {
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--regular);
+	color: var(--color--text--tint-1);
 }
 
 .scopeControl {

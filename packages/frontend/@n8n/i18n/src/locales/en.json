@@ -4386,6 +4386,7 @@
 	"formStep.unsavedChanges.discard": "Discard",
 	"formStep.appearance.scope.current": "Current",
 	"formStep.appearance.scope.all": "All",
+	"formStep.appearance.themeLabel": "Theme",
 	"formStep.appearance.reset": "Reset",
 	"formStep.appearance.save": "Save",
 	"formStep.appearance.group.page": "Page",
