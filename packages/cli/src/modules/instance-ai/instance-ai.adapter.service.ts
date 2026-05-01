@@ -85,6 +85,7 @@ import {
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	type ExecutionError,
 	NodeHelpers,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -105,6 +106,7 @@ import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
@@ -170,6 +172,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -212,6 +215,7 @@ export class InstanceAiAdapterService {
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
 			logger: this.logger,
+			nodeTypesProvider: this.nodeTypes,
 		};
 	}
 
@@ -734,11 +738,24 @@ export class InstanceAiAdapterService {
 					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
 					: findTriggerNode(nodes);
 
+				// Force-save AI-initiated executions so that follow-up
+				// `executions(list/get/debug)` calls can read the result, regardless of
+				// instance-wide or per-workflow save settings. Manual mode is gated by
+				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
+				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode
 						? getExecutionModeForTrigger(triggerNode)
 						: ('manual' as WorkflowExecuteMode),
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+						},
+					},
 					userId: user.id,
 					pushRef,
 				};
@@ -1673,6 +1690,21 @@ export class InstanceAiAdapterService {
 							}
 							result.builderHint.inputs = inputs;
 						}
+						if (n.builderHint.outputs) {
+							const outputs: Record<
+								string,
+								{ required?: boolean; displayOptions?: Record<string, unknown> }
+							> = {};
+							for (const [key, config] of Object.entries(n.builderHint.outputs)) {
+								outputs[key] = {
+									...(config.required !== undefined ? { required: config.required } : {}),
+									...(config.displayOptions
+										? { displayOptions: config.displayOptions as Record<string, unknown> }
+										: {}),
+								};
+							}
+							result.builderHint.outputs = outputs;
+						}
 					}
 					return result;
 				});
@@ -2450,7 +2482,8 @@ export async function extractExecutionResult(
 	}
 
 	// Extract error if present
-	const errorMessage = execution.data?.resultData?.error?.message;
+	const error = execution.data?.resultData?.error;
+	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
 
 	return {
 		executionId,
@@ -2463,6 +2496,48 @@ export async function extractExecutionResult(
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
 	};
+}
+
+/**
+ * NodeApiError.messages can hold large API response bodies; cap formatted
+ * errors so a single failure doesn't blow up the agent's context window.
+ */
+const MAX_ERROR_CHARS = 4_000;
+
+/**
+ * `.description` and `.messages[]` carry upstream API response content, so
+ * they're gated behind the AI privacy setting. `.message` stays — it's
+ * sanitized (STATUS_CODE_MESSAGES) and lets the LLM recognize the failure.
+ *
+ * Accesses fields structurally: persisted errors lose their prototype on
+ * `unflattenData`, so `instanceof Error` is false in production.
+ */
+export function formatExecutionError(
+	error: ExecutionError,
+	includeUpstreamDetails: boolean,
+): string {
+	const parts: string[] = [];
+	if (error.message) parts.push(error.message);
+
+	if (includeUpstreamDetails) {
+		if (error.description && error.description !== error.message) {
+			parts.push(error.description);
+		}
+		if ('messages' in error && error.messages.length > 0) {
+			parts.push(`Details: ${error.messages.join(' | ')}`);
+		}
+	} else {
+		const hasDescription = !!error.description && error.description !== error.message;
+		const hasMessages = 'messages' in error && error.messages.length > 0;
+		if (hasDescription || hasMessages) {
+			parts.push(
+				'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)',
+			);
+		}
+	}
+
+	const combined = parts.join(' — ') || 'Unknown error';
+	return combined.length > MAX_ERROR_CHARS ? `${combined.slice(0, MAX_ERROR_CHARS)}…` : combined;
 }
 
 /**
@@ -2771,13 +2846,12 @@ export async function extractExecutionDebugInfo(
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (!lastRun) continue;
 
-			const hasError = lastRun.error !== undefined;
 			const nodeType = nodeTypeMap.get(nodeName) ?? 'unknown';
 
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: hasError ? 'error' : 'success',
+				status: lastRun.error !== undefined ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:
@@ -2787,14 +2861,11 @@ export async function extractExecutionDebugInfo(
 			});
 
 			// Capture the first failed node with its error and input data
-			if (hasError && !failedNode) {
+			if (lastRun.error !== undefined && !failedNode) {
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
-					error:
-						lastRun.error instanceof Error
-							? lastRun.error.message
-							: String(lastRun.error ?? 'Unknown error'),
+					error: formatExecutionError(lastRun.error, includeOutputData),
 					inputData: includeOutputData
 						? (() => {
 								const inputItems = lastRun.data?.main
