@@ -275,7 +275,7 @@ onBeforeUnmount(() => {
 .pane {
 	display: flex;
 	flex-direction: column;
-	height: 320px;
+	height: 280px;
 	flex-shrink: 0;
 	border: var(--border);
 	border-radius: var(--radius);
