@@ -8,7 +8,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { brandfetchApiRequest } from './GenericFunctions';
+import { brandfetchApiRequest, fetchAndPrepareBinaryData } from './GenericFunctions';
 
 export class BrandfetchV2 implements INodeType {
 	description: INodeTypeDescription;
@@ -99,6 +99,19 @@ export class BrandfetchV2 implements INodeType {
 						'The identifier of the brand. Format depends on the selected Type (e.g. apple.com, AAPL, BTC, US0378331005).',
 					required: true,
 				},
+				{
+					displayName: 'Download',
+					name: 'download',
+					type: 'boolean',
+					default: false,
+					required: true,
+					displayOptions: {
+						show: {
+							operation: ['logo'],
+						},
+					},
+					description: 'Whether to download all logo files as binary data',
+				},
 			],
 		};
 	}
@@ -125,11 +138,59 @@ export class BrandfetchV2 implements INodeType {
 					);
 					responseData.push.apply(responseData, executionData);
 				} else if (operation === 'logo') {
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(response.logos as IDataObject),
-						{ itemData: { item: i } },
-					);
-					responseData.push.apply(responseData, executionData);
+					const download = this.getNodeParameter('download', i);
+
+					if (download) {
+						const newItem: INodeExecutionData = {
+							json: {},
+							binary: {},
+						};
+
+						if (items[i].binary !== undefined) {
+							Object.assign(newItem.binary!, items[i].binary);
+						}
+
+						newItem.json = response.logos;
+
+						const logoUrls = (response.logos as IDataObject[]) ?? [];
+						let matchCounter = 0;
+
+						for (const logoUrl of logoUrls) {
+							const imageType = logoUrl.type as string | undefined;
+							if (!imageType) continue;
+							const formats = (logoUrl.formats as IDataObject[]) ?? [];
+							for (const logoFormat of formats) {
+								const format = logoFormat.format as string | undefined;
+								if (!format || !logoFormat.src) continue;
+								const suffix = matchCounter === 0 ? '' : `_${matchCounter}`;
+								await fetchAndPrepareBinaryData.call(
+									this,
+									imageType,
+									format,
+									logoFormat,
+									identifier,
+									newItem,
+									suffix,
+								);
+								matchCounter++;
+							}
+						}
+
+						if (Object.keys(newItem.binary!).length === 0) {
+							delete newItem.binary;
+						}
+
+						const executionData = this.helpers.constructExecutionMetaData([newItem], {
+							itemData: { item: i },
+						});
+						responseData.push.apply(responseData, executionData);
+					} else {
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(response.logos as IDataObject),
+							{ itemData: { item: i } },
+						);
+						responseData.push.apply(responseData, executionData);
+					}
 				} else if (operation === 'colors') {
 					const executionData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray(response.colors as IDataObject),
