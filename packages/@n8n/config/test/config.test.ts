@@ -291,6 +291,7 @@ describe('GlobalConfig', () => {
 			snapshotPruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			confirmationTimeout: 600_000,
+			terminalResponseGuardDisabled: false,
 		},
 		queue: {
 			health: {
