@@ -21,6 +21,11 @@ const COLUMNS: Column[] = [
 		format: (v) => v.toFixed(1),
 	},
 	{
+		header: 'tail/s',
+		suffixes: ['tail-exec-per-sec'],
+		format: (v) => v.toFixed(1),
+	},
+	{
 		header: 'actions/s',
 		suffixes: ['actions-per-sec'],
 		format: (v) => v.toFixed(1),

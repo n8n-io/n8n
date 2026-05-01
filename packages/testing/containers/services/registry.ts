@@ -9,7 +9,7 @@ import { mailpit, createMailpitHelper } from './mailpit';
 import { mysqlService } from './mysql';
 import { ngrok } from './ngrok';
 import { createObservabilityHelper } from './observability';
-import { postgres } from './postgres';
+import { postgres, createPostgresHelper } from './postgres';
 import { postgresExporter } from './postgres-exporter';
 import { proxy, createProxyHelper } from './proxy';
 import { redis } from './redis';
@@ -44,6 +44,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 };
 
 export const helperFactories: Partial<HelperFactories> = {
+	postgres: createPostgresHelper,
 	mailpit: createMailpitHelper,
 	gitea: createGiteaHelper,
 	keycloak: createKeycloakHelper,

@@ -43,73 +43,92 @@ const CONTAINER_CONFIGS: Array<{ name: string; config: N8NConfig }> = [
 // Each profile represents a real-world n8n deployment configuration.
 // ONE test file runs in ALL profiles — adding a profile auto-expands coverage.
 
-const BENCHMARK_WORKER_COUNT = parseInt(process.env.KAFKA_LOAD_WORKERS ?? '3', 10);
+// Standard benchmark resource profile.
+// Main:    2 vCPU, 4 GB RAM
+// Worker:  1 vCPU, 2 GB RAM
+// Standard topology: 1 main + 3 workers (queue mode) for everything except
+// the single-instance-ceiling spec, which runs direct mode.
+// Total host budget at 1m+3w: 5 vCPU + 10 GB for n8n, plus ~3 GB for postgres/kafka/redis/observability.
+export const BENCHMARK_MAIN_RESOURCES = { memory: 4, cpu: 2 };
+export const BENCHMARK_WORKER_RESOURCES = { memory: 2, cpu: 1 };
 
-// Resource profiles matching realistic AWS instance types:
-// Main: m5.large (2 vCPU, 8GB RAM) — matches staging main
-// Workers: t3.medium (2 vCPU, 4GB RAM) — matches staging worker limits
-export const BENCHMARK_MAIN_RESOURCES = { memory: 8, cpu: 2 };
-export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
+/** Default worker count for queue-mode benchmark specs. */
+export const STANDARD_WORKER_COUNT = 3;
 
 export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
 
-const BENCHMARK_BASE_CONFIG: N8NConfig = {
+export const BENCHMARK_BASE_CONFIG: N8NConfig = {
 	// Postgres exporter scrapes DB internals into VictoriaMetrics — only meaningful for benchmarks.
 	services: [...OBSERVABILITY_SERVICES, 'postgresExporter'],
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
+	// Distribute load across all mains. UI tests stick to the default `first`
+	// policy so debugging hits a single predictable backend.
+	lbPolicy: 'round_robin',
 	env: {
 		N8N_METRICS_INCLUDE_MESSAGE_EVENT_BUS_METRICS: 'true',
 	},
 };
 
+/**
+ * Standard env for queue-mode benchmark specs.
+ *
+ * Aligned with internal n8n production config for connection timeouts, lock
+ * durations, and Bull/Redis tuning. NODE_OPTIONS heap size fits within the
+ * smaller worker container (2 GB) since env applies to both main and worker.
+ */
+export const STANDARD_QUEUE_ENV = {
+	N8N_LOG_LEVEL: 'error',
+	N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
+	DB_POSTGRESDB_POOL_SIZE: '10',
+	DB_POSTGRESDB_CONNECTION_TIMEOUT: '300000',
+	DB_PING_INTERVAL_SECONDS: '5',
+	N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+	QUEUE_BULL_REDIS_KEEP_ALIVE: 'true',
+	QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD: '60000',
+	QUEUE_WORKER_LOCK_DURATION: '300000',
+	QUEUE_WORKER_LOCK_RENEW_TIME: '20000',
+	QUEUE_WORKER_STALLED_INTERVAL: '60000',
+	QUEUE_RECOVERY_INTERVAL: '0',
+	EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
+	UV_THREADPOOL_SIZE: '32',
+	N8N_DIAGNOSTICS_ENABLED: 'false',
+	NODE_OPTIONS: '--max-old-space-size=1536',
+} as const;
+
+/** Standard env for direct-mode (single-instance) benchmark specs. */
+export const STANDARD_DIRECT_ENV = {
+	N8N_LOG_LEVEL: 'error',
+	DB_POSTGRESDB_POOL_SIZE: '10',
+	DB_POSTGRESDB_CONNECTION_TIMEOUT: '300000',
+	N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+	EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
+	UV_THREADPOOL_SIZE: '32',
+	N8N_DIAGNOSTICS_ENABLED: 'false',
+	NODE_OPTIONS: '--max-old-space-size=3072',
+} as const;
+
 type BenchmarkProfile = { name: string; config: N8NConfig };
 
-// Benchmark profiles exercised in CI (see `test-e2e-infrastructure-reusable.yml`).
-// They scan `tests/infrastructure/benchmarks/`.
-const CI_BENCHMARK_PROFILES: BenchmarkProfile[] = [
-	{
-		name: 'direct',
-		config: {
-			...BENCHMARK_BASE_CONFIG,
-			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-			env: {
-				...BENCHMARK_BASE_CONFIG.env,
-				DB_POSTGRESDB_POOL_SIZE: '20',
-			},
-		},
+// Single benchmarking project. Each spec declares its own `containerConfig`
+// via `test.use({ containerConfig: ... })`. The project's default below is
+// used for specs that do not override and matches the previous `direct-tuned`
+// profile so existing specs continue to run unchanged during migration.
+const BENCHMARKING_DEFAULT_CONFIG: N8NConfig = {
+	...BENCHMARK_BASE_CONFIG,
+	services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
+	env: {
+		...BENCHMARK_BASE_CONFIG.env,
+		N8N_LOG_LEVEL: 'error',
+		DB_POSTGRESDB_POOL_SIZE: '30',
+		DB_POSTGRESDB_CONNECTION_TIMEOUT: '60000',
+		N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
+		EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
+		UV_THREADPOOL_SIZE: '32',
+		N8N_DIAGNOSTICS_ENABLED: 'false',
 	},
-	{
-		name: 'queue',
-		config: {
-			...BENCHMARK_BASE_CONFIG,
-			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-			workers: BENCHMARK_WORKER_COUNT,
-			env: {
-				...BENCHMARK_BASE_CONFIG.env,
-				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
-			},
-		},
-	},
-	{
-		name: 'queue-tuned',
-		config: {
-			...BENCHMARK_BASE_CONFIG,
-			services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-			workers: BENCHMARK_WORKER_COUNT,
-			env: {
-				...BENCHMARK_BASE_CONFIG.env,
-				N8N_METRICS_INCLUDE_QUEUE_METRICS: 'true',
-				N8N_LOG_LEVEL: 'info',
-				DB_POSTGRESDB_POOL_SIZE: '30',
-				DB_POSTGRESDB_CONNECTION_TIMEOUT: '60000',
-				N8N_CONCURRENCY_PRODUCTION_LIMIT: '20',
-				EXECUTIONS_DATA_SAVE_ON_SUCCESS: 'none',
-			},
-		},
-	},
-];
+};
 
 // Benchmark profiles that host local-only tests (model API keys, long runtimes,
 // reserved metric names). They scan `tests/infrastructure/benchmarks-local/` and
@@ -193,16 +212,14 @@ export function getProjects(): Project[] {
 			);
 		}
 
-		for (const { name, config } of CI_BENCHMARK_PROFILES) {
-			projects.push({
-				name: `benchmark-${name}:infrastructure`,
-				testDir: './tests/infrastructure/benchmarks',
-				workers: 1,
-				timeout: 600_000,
-				retries: 0,
-				use: { containerConfig: config },
-			});
-		}
+		projects.push({
+			name: 'benchmarking:infrastructure',
+			testDir: './tests/infrastructure/benchmarks',
+			workers: 1,
+			timeout: 600_000,
+			retries: 0,
+			use: { containerConfig: BENCHMARKING_DEFAULT_CONFIG },
+		});
 
 		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
 			projects.push({

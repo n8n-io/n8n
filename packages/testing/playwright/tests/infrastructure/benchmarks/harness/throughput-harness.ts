@@ -2,19 +2,15 @@ import { expect } from '@playwright/test';
 import type { TestInfo } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
+import { reportDiagnostics, reportPgQueryBreakdown, setupBenchmarkRun } from './orchestration';
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
-	sampleExecutionDurations,
-	buildMetrics,
 	attachThroughputResults,
-	waitForThroughput,
-	getBaselineCounter,
-	collectDiagnostics,
-	attachDiagnostics,
-	formatDiagnosticValue,
-	resolveMetricQuery,
+	buildMetrics,
+	executeLoad,
+	sampleExecutionDurations,
 } from '../../../../utils/benchmark';
-import type { TriggerHandle, NodeOutputSize, TriggerType } from '../../../../utils/benchmark';
+import type { BenchmarkDimensions, TriggerHandle, TriggerType } from '../../../../utils/benchmark';
 import { attachMetric } from '../../../../utils/performance-helper';
 
 export interface ThroughputTestOptions {
@@ -23,8 +19,6 @@ export interface ThroughputTestOptions {
 	services: ServiceHelpers;
 	testInfo: TestInfo;
 	messageCount: number;
-	nodeCount: number;
-	nodeOutputSize: NodeOutputSize;
 	timeoutMs: number;
 	/** Trigger type recorded as a dimension in BigQuery */
 	trigger: TriggerType;
@@ -32,104 +26,64 @@ export interface ThroughputTestOptions {
 	metricQuery?: string;
 	plan?: { memory: number; cpu: number };
 	workerPlan?: { memory: number; cpu: number };
-}
-
-function deriveMode(testInfo: TestInfo): string {
-	return testInfo.project.name.replace(':infrastructure', '').replace('benchmark-', '');
+	/** Worker count for the resource summary. Falls back to the project's containerConfig.workers when omitted. */
+	workers?: number;
 }
 
 /**
- * Runs a single throughput test: preloads messages, activates workflow, measures drain rate.
+ * Runs a single preload+drain throughput test.
  *
- * Orchestration: create workflow → preload → baseline → activate → measure throughput → diagnostics → report.
- * Call this inside a `test()` body after setting up the trigger driver.
+ * Shape: setup → executeLoad({ type: 'preloaded' }) → measure → report.
+ *
+ * The dispatch and per-load-type behavior live in `executeLoad`. This harness
+ * adds throughput-specific extras: resource summary in the log output and
+ * the throughput metric set (`exec-per-sec`, `tail-exec-per-sec`, etc.) for
+ * BigQuery, distinct from the load-test metric set.
  */
 export async function runThroughputTest(options: ThroughputTestOptions): Promise<void> {
-	const {
-		handle,
-		api,
-		services,
-		testInfo,
-		messageCount,
-		nodeCount,
-		nodeOutputSize,
-		timeoutMs,
-		trigger,
-		plan,
-		workerPlan,
-	} = options;
-	const metricQuery = options.metricQuery ?? resolveMetricQuery(testInfo);
-
+	const { handle, api, services, testInfo, messageCount, timeoutMs, trigger, plan, workerPlan } =
+		options;
 	testInfo.setTimeout(timeoutMs + 120_000);
 
-	const mode = deriveMode(testInfo);
+	const { nodeCount, nodeOutputSize } = handle.scenario;
+
 	const workers =
+		options.workers ??
 		(testInfo.project.use as { containerConfig?: { workers?: number } }).containerConfig?.workers ??
 		0;
 
-	const dimensions = {
+	const dimensions: BenchmarkDimensions = {
 		trigger,
 		nodes: nodeCount,
-		output: nodeOutputSize,
 		messages: messageCount,
-		mode,
 	};
+	if (nodeOutputSize !== undefined) dimensions.output = nodeOutputSize;
 
-	let resourceSummary = '';
-	const wp = workerPlan ?? plan;
-	if (plan && wp) {
-		resourceSummary =
-			workers > 0
-				? `  Mode: queue (1 main + ${workers} workers)\n` +
-					`  Main: ${plan.memory}GB RAM, ${plan.cpu} CPU\n` +
-					`  Workers: ${wp.memory}GB RAM, ${wp.cpu} CPU each\n` +
-					`  Total: ${(plan.memory + wp.memory * workers).toFixed(1)}GB RAM, ${plan.cpu + wp.cpu * workers} CPU`
-				: `  Resources: ${plan.memory}GB RAM, ${plan.cpu} CPU`;
-	}
-
-	const obs = services.observability;
-
-	const { workflowId, createdWorkflow } = await api.workflows.createWorkflowFromDefinition(
-		handle.workflow,
-		{ makeUnique: true },
-	);
-
-	// Preload queue
-	const publishResult = await handle.preload(messageCount);
-	console.log(
-		`[BENCH-${mode}] Preloaded ${publishResult.totalPublished} messages in ${publishResult.publishDurationMs}ms`,
-	);
-
-	// Wait for VictoriaMetrics, then record baseline
-	await obs.metrics.waitForMetric('n8n_version_info', {
-		timeoutMs: 30_000,
-		intervalMs: 2000,
-		predicate: (results: unknown[]) => results.length > 0,
-	});
-	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery);
-
-	// Activate and wait for readiness
-	await api.workflows.activate(workflowId, createdWorkflow.versionId!);
-	await handle.waitForReady({ timeoutMs: 30_000 });
-
-	// Measure throughput
-	console.log(
-		`[BENCH-${mode}] Draining ${messageCount} messages through ${nodeCount}-node (${nodeOutputSize}) workflow (timeout: ${timeoutMs}ms)`,
-	);
-	const result = await waitForThroughput(obs.metrics, {
-		expectedCount: messageCount,
-		nodeCount,
-		timeoutMs,
-		baselineValue: baselineCounter,
-		metricQuery,
+	const setup = await setupBenchmarkRun({
+		api,
+		services,
+		testInfo,
+		handle,
+		metricQuery: options.metricQuery,
 	});
 
-	// Attach throughput results
+	const exec = await executeLoad(
+		{ type: 'preloaded', count: messageCount },
+		{
+			handle,
+			metrics: services.observability.metrics,
+			baselineCounter: setup.baselineCounter,
+			metricQuery: setup.metricQuery,
+			timeoutMs,
+			nodeCount,
+		},
+	);
+	const result = exec.throughputResult;
+
 	await attachThroughputResults(testInfo, dimensions, result);
 
-	// Execution duration sampling — provides p50/p95/p99 latency percentiles.
-	// May be empty when EXECUTIONS_DATA_SAVE_ON_SUCCESS=none.
-	const durations = await sampleExecutionDurations(api.workflows, workflowId);
+	// Latency percentiles — only when EXECUTIONS_DATA_SAVE_ON_SUCCESS leaves rows behind.
+	const durations = await sampleExecutionDurations(api.workflows, setup.workflowId);
 	if (durations.length > 0) {
 		const durationMetrics = buildMetrics(result.totalCompleted, 0, result.durationMs, durations);
 		await attachMetric(testInfo, 'duration-avg', durationMetrics.avgDurationMs, 'ms', dimensions);
@@ -138,33 +92,47 @@ export async function runThroughputTest(options: ThroughputTestOptions): Promise
 		await attachMetric(testInfo, 'duration-p99', durationMetrics.p99DurationMs, 'ms', dimensions);
 	}
 
-	// Diagnostics
-	const diagnostics = await collectDiagnostics(obs.metrics, result.durationMs);
-	await attachDiagnostics(testInfo, dimensions, diagnostics);
-	const fmt = formatDiagnosticValue;
-	console.log(
-		`[DIAG-${mode}] ${testInfo.title}\n` +
-			`  Event Loop Lag: ${fmt(diagnostics.eventLoopLag, 's')}\n` +
-			`  PG Transactions/s: ${fmt(diagnostics.pgTxRate, ' tx/s')}\n` +
-			`  PG Rows Inserted/s: ${fmt(diagnostics.pgInsertRate, ' rows/s')}\n` +
-			`  PG Active Connections: ${fmt(diagnostics.pgActiveConnections)}\n` +
-			`  Queue Waiting: ${fmt(diagnostics.queueWaiting)}\n` +
-			`  Queue Active: ${fmt(diagnostics.queueActive)}\n` +
-			`  Queue Completed/s: ${fmt(diagnostics.queueCompletedRate, ' jobs/s')}\n` +
-			`  Queue Failed/s: ${fmt(diagnostics.queueFailedRate, ' jobs/s')}`,
-	);
+	await reportDiagnostics({
+		testInfo,
+		services,
+		durationMs: result.durationMs,
+		dimensions,
+	});
+	await reportPgQueryBreakdown({ services, durationMs: result.durationMs });
 
-	// Summary
+	const resourceSummary = formatResourceSummary({ workers, plan, workerPlan });
+
 	console.log(
-		`[BENCH-${mode} RESULT] ${testInfo.title}\n` +
-			`  Profile: ${mode}\n` +
+		`[BENCH RESULT] ${testInfo.title}\n` +
 			`${resourceSummary}\n` +
-			`  Nodes: ${nodeCount} (${nodeOutputSize}) | Messages: ${messageCount}\n` +
+			`  Nodes: ${nodeCount} (${nodeOutputSize ?? 'noop'}) | Messages: ${messageCount}\n` +
 			`  Completed: ${result.totalCompleted}/${messageCount}\n` +
-			`  Throughput: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
-			`  Peak: ${result.peakExecPerSec.toFixed(1)} exec/s | ${result.peakActionsPerSec.toFixed(1)} actions/s\n` +
+			`  Sustained avg: ${result.avgExecPerSec.toFixed(1)} exec/s | ${result.actionsPerSec.toFixed(1)} actions/s\n` +
+			`  Tail 60s:      ${result.tailExecPerSec.toFixed(1)} exec/s | ${result.tailActionsPerSec.toFixed(1)} actions/s\n` +
 			`  Duration: ${(result.durationMs / 1000).toFixed(1)}s`,
 	);
 
-	expect(result.totalCompleted).toBeGreaterThan(0);
+	// Fail loudly on partial completion — a stalled run produces misleading numbers
+	// even with the stall-detection bail-out, because the reported throughput is
+	// calculated over only the messages that actually made it through.
+	expect(result.totalCompleted).toBe(messageCount);
+}
+
+function formatResourceSummary(opts: {
+	workers: number;
+	plan?: { memory: number; cpu: number };
+	workerPlan?: { memory: number; cpu: number };
+}): string {
+	const { workers, plan } = opts;
+	const wp = opts.workerPlan ?? plan;
+	if (!plan || !wp) return '';
+	if (workers > 0) {
+		return (
+			`  Mode: queue (1 main + ${workers} workers)\n` +
+			`  Main: ${plan.memory}GB RAM, ${plan.cpu} CPU\n` +
+			`  Workers: ${wp.memory}GB RAM, ${wp.cpu} CPU each\n` +
+			`  Total: ${(plan.memory + wp.memory * workers).toFixed(1)}GB RAM, ${plan.cpu + wp.cpu * workers} CPU`
+		);
+	}
+	return `  Resources: ${plan.memory}GB RAM, ${plan.cpu} CPU`;
 }
