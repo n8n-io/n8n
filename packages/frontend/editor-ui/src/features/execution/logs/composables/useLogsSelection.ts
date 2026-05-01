@@ -12,13 +12,13 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { shallowRef, watch } from 'vue';
-import { computed } from 'vue';
+import { shallowRef, watch, computed } from 'vue';
 import type { Ref, ComputedRef } from 'vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 
 export function useLogsSelection(
@@ -37,9 +37,12 @@ export function useLogsSelection(
 	const logsStore = useLogsStore();
 	const uiStore = useUIStore();
 	const canvasStore = useCanvasStore();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	const workflowId = useWorkflowId();
+	const injectedWorkflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(
+		() =>
+			injectedWorkflowDocumentStore?.value ??
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
 
 	function syncSelectionToCanvasIfEnabled(value: LogEntry) {

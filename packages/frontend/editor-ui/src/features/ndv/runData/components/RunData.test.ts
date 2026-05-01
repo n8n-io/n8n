@@ -1412,7 +1412,7 @@ describe('RunData', () => {
 				},
 				...(redactionInfo ? { redactionInfo } : {}),
 			},
-		} as IExecutionResponse;
+		} as unknown as IExecutionResponse;
 		useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
 		const workflowExecutionSession = useWorkflowExecutionSessionStore(
 			createWorkflowExecutionSessionId(testWorkflowId),

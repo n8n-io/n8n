@@ -21,7 +21,7 @@ import {
 	nodeTypes,
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
+import { WorkflowStateKey } from '@/app/constants';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -37,6 +37,12 @@ import * as useChatMessaging from '@/features/execution/logs/composables/useChat
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import type { IWorkflowDb } from '@/Interface';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showMessage = vi.fn();
@@ -84,9 +90,52 @@ describe('LogsPanel', () => {
 
 	let aiChatExecutionResponse: typeof aiChatExecutionResponseTemplate;
 
+	function getWorkflowExecutionSession() {
+		return useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId('test-workflow-id'));
+	}
+
+	function setWorkflowExecutionData(execution: IExecutionResponse | null) {
+		const workflowExecutionSession = getWorkflowExecutionSession();
+
+		if (!execution) {
+			[workflowExecutionSession.activeExecutionId, workflowExecutionSession.displayedExecutionId]
+				.filter((executionId): executionId is string => !!executionId)
+				.forEach((executionId) => {
+					useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
+				});
+			workflowExecutionSession.setPendingExecution(null);
+			workflowExecutionSession.setActiveExecutionId(undefined);
+			workflowExecutionSession.clearDisplayedExecution();
+			return;
+		}
+
+		useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+		if (execution.status === 'running' || execution.status === 'waiting') {
+			workflowExecutionSession.setActiveExecutionId(execution.id);
+		} else {
+			workflowExecutionSession.setActiveExecutionId(undefined);
+			workflowExecutionSession.setDisplayedExecutionId(execution.id);
+		}
+	}
+
 	function hydrateDocumentStore(workflow: IWorkflowDb) {
 		const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow-id'));
 		store.hydrate(workflow);
+	}
+
+	function renameNodeInWorkflowStores(currentName: string, newName: string) {
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId('test-workflow-id'),
+		);
+		const workflow = workflowDocumentStore.cloneWorkflowObject();
+		workflow.renameNode(currentName, newName);
+		workflowDocumentStore.setNodes(Object.values(workflow.nodes));
+		workflowDocumentStore.setConnections(workflow.connectionsBySourceNode);
+		const workflowExecutionSession = getWorkflowExecutionSession();
+		workflowExecutionSession
+			.getActiveExecutionDataStore()
+			?.renameExecutionDataNode(currentName, newName);
+		workflowExecutionSession.renameExecutionSessionNode(currentName, newName);
 	}
 
 	function render() {
@@ -125,7 +174,7 @@ describe('LogsPanel', () => {
 
 		workflowsStore = mockedStore(useWorkflowsStore);
 		workflowState = useWorkflowState();
-		workflowState.setWorkflowExecutionData(null);
+		setWorkflowExecutionData(null);
 
 		logsStore = mockedStore(useLogsStore);
 		logsStore.toggleOpen(false);
@@ -186,7 +235,7 @@ describe('LogsPanel', () => {
 	it('should render only output panel of selected node by default', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = aiManualWorkflow;
-		workflowState.setWorkflowExecutionData(aiManualExecutionResponse);
+		setWorkflowExecutionData(aiManualExecutionResponse);
 
 		const rendered = render();
 
@@ -200,7 +249,7 @@ describe('LogsPanel', () => {
 	it('should render both input and output panel of selected node by default if it is sub node', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = aiChatWorkflow;
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -243,7 +292,7 @@ describe('LogsPanel', () => {
 
 	it('should open log details panel when a log entry is clicked in the logs overview panel', async () => {
 		workflowsStore.workflow = aiChatWorkflow;
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -260,7 +309,7 @@ describe('LogsPanel', () => {
 
 	it("should show the button to toggle panel in the header of log details panel when it's opened", async () => {
 		workflowsStore.workflow = aiChatWorkflow;
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -325,9 +374,9 @@ describe('LogsPanel', () => {
 	it('should reflect changes to execution data in workflow store if execution is in progress', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = aiChatWorkflow;
-		workflowState.setWorkflowExecutionData({
+		setWorkflowExecutionData({
 			...aiChatExecutionResponse,
-			id: IN_PROGRESS_EXECUTION_ID,
+			id: '567',
 			status: 'running',
 			finished: false,
 			startedAt: new Date('2025-04-20T12:34:50.000Z'),
@@ -345,7 +394,7 @@ describe('LogsPanel', () => {
 		expect(rendered.getByText(/Running/)).toBeInTheDocument();
 		expect(rendered.queryByText('AI Agent')).not.toBeInTheDocument();
 
-		workflowsStore.addNodeExecutionStartedData({
+		useExecutionDataStore(createExecutionDataId('567')).addNodeExecutionStartedData({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			data: { executionIndex: 0, startTime: Date.parse('2025-04-20T12:34:51.000Z'), source: [] },
@@ -363,7 +412,7 @@ describe('LogsPanel', () => {
 		expect(lastTreeItem.getByText('AI Agent')).toBeInTheDocument();
 		expect(lastTreeItem.getByText(/Running/)).toBeInTheDocument();
 
-		workflowsStore.updateNodeExecutionStatus({
+		useExecutionDataStore(createExecutionDataId('567')).updateNodeExecutionStatus({
 			nodeName: 'AI Agent',
 			executionId: '567',
 			itemCountByConnectionType: { ai_agent: [1] },
@@ -382,8 +431,8 @@ describe('LogsPanel', () => {
 		expect(await lastTreeItem.findByText('Success')).toBeInTheDocument();
 		expect(lastTreeItem.getByText('in 33ms')).toBeInTheDocument();
 
-		workflowState.setWorkflowExecutionData({
-			...workflowsStore.workflowExecutionData!,
+		setWorkflowExecutionData({
+			...getWorkflowExecutionSession().activeExecution!,
 			id: '1234',
 			status: 'success',
 			finished: true,
@@ -402,7 +451,7 @@ describe('LogsPanel', () => {
 
 		workflowsStore.workflow = deepCopy(aiChatWorkflow);
 		logsStore.toggleOpen(true);
-		workflowState.setWorkflowExecutionData({
+		setWorkflowExecutionData({
 			...aiChatExecutionResponse,
 			id: '2345',
 			status: 'success',
@@ -426,7 +475,7 @@ describe('LogsPanel', () => {
 	it('should open NDV if the button is clicked', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = aiChatWorkflow;
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 		const aiAgentRow = (await rendered.findAllByRole('treeitem'))[0];
@@ -445,7 +494,7 @@ describe('LogsPanel', () => {
 	it('should toggle subtree when chevron icon button is pressed', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = aiChatWorkflow;
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 		const overview = within(rendered.getByTestId('logs-overview'));
@@ -472,7 +521,7 @@ describe('LogsPanel', () => {
 	it('should toggle input and output panel when the button is clicked', async () => {
 		logsStore.toggleOpen(true);
 		workflowsStore.workflow = aiChatWorkflow;
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -494,8 +543,6 @@ describe('LogsPanel', () => {
 	});
 
 	it('should show new name when a node is renamed', async () => {
-		const canvasOperations = useCanvasOperations();
-
 		logsStore.toggleOpen(true);
 
 		// Create deep copy so that renaming doesn't affect other test cases
@@ -503,7 +550,7 @@ describe('LogsPanel', () => {
 		workflow.id = 'test-workflow-id';
 		workflowsStore.workflow = workflow;
 		hydrateDocumentStore(workflow);
-		workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+		setWorkflowExecutionData(aiChatExecutionResponse);
 
 		const rendered = render();
 
@@ -514,7 +561,7 @@ describe('LogsPanel', () => {
 		).toBeInTheDocument();
 		expect(within(rendered.getByRole('tree')).getByText('AI Model')).toBeInTheDocument();
 
-		await canvasOperations.renameNode('AI Model', 'Renamed!!');
+		renameNodeInWorkflowStores('AI Model', 'Renamed!!');
 
 		await waitFor(() => {
 			expect(
@@ -528,7 +575,7 @@ describe('LogsPanel', () => {
 		beforeEach(() => {
 			logsStore.toggleOpen(true);
 			workflowsStore.workflow = aiChatWorkflow;
-			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+			setWorkflowExecutionData(aiChatExecutionResponse);
 		});
 
 		it('should allow to select previous and next row via keyboard shortcut', async () => {
@@ -582,13 +629,11 @@ describe('LogsPanel', () => {
 		});
 
 		it("should automatically select a log for the selected node on canvas even after it's renamed", async () => {
-			const canvasOperations = useCanvasOperations();
-
 			const workflow = deepCopy(aiChatWorkflow);
 			workflow.id = 'test-workflow-id';
 			workflowsStore.workflow = workflow;
 			hydrateDocumentStore(workflow);
-			workflowState.setWorkflowExecutionData(aiChatExecutionResponse);
+			setWorkflowExecutionData(aiChatExecutionResponse);
 
 			logsStore.toggleLogSelectionSync(true);
 
@@ -598,7 +643,7 @@ describe('LogsPanel', () => {
 				expect(await findByRole('treeitem', { selected: true })).toHaveTextContent(/AI Model/),
 			);
 
-			await canvasOperations.renameNode('AI Agent', 'Renamed Agent');
+			renameNodeInWorkflowStores('AI Agent', 'Renamed Agent');
 			uiStore.lastSelectedNode = 'Renamed Agent';
 
 			await rerender({});

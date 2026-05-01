@@ -184,7 +184,7 @@ describe('useToolParameters', () => {
 						},
 					},
 				},
-			} as IExecutionResponse);
+			} as unknown as IExecutionResponse);
 			useWorkflowExecutionSessionStore(
 				createWorkflowExecutionSessionId('test-workflow'),
 			).setActiveExecutionId('execution-id');

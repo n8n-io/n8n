@@ -6,6 +6,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import MessageWithButtons from '@n8n/chat/components/MessageWithButtons.vue';
@@ -20,9 +21,14 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
 import { type INode, type INodeParameters, NodeHelpers } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 interface ChatState {
 	currentSessionId: ComputedRef<string>;
@@ -47,10 +53,16 @@ export function useChatState(
 ): ChatState {
 	const locale = useI18n();
 	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	const workflowId = useWorkflowId();
+	const injectedWorkflowDocumentStore = injectWorkflowDocumentStore();
+	const workflowDocumentStore = computed(
+		() =>
+			injectedWorkflowDocumentStore?.value ??
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
-	const workflowState = injectWorkflowState();
+	const workflowExecutionSession = computed(() =>
+		useWorkflowExecutionSessionStore(createWorkflowExecutionSessionId(workflowId.value)),
+	);
 	const rootStore = useRootStore();
 	const logsStore = useLogsStore();
 	const router = useRouter();
@@ -144,7 +156,7 @@ export function useChatState(
 		}
 
 		// Must have a valid workflow ID (for new workflows, this might not be set until saved)
-		if (!workflowsStore.workflowId && !workflowsStore.isNewWorkflow) {
+		if (!workflowId.value && !workflowsStore.isNewWorkflow) {
 			return false;
 		}
 
@@ -156,12 +168,12 @@ export function useChatState(
 			return '';
 		}
 
-		const workflowId = workflowsStore.workflowId;
-		if (!workflowId) {
+		const currentWorkflowId = workflowId.value;
+		if (!currentWorkflowId) {
 			return '';
 		}
 
-		const url = `${rootStore.webhookTestUrl}/${workflowId}/${effectiveSessionId.value}`;
+		const url = `${rootStore.webhookTestUrl}/${currentWorkflowId}/${effectiveSessionId.value}`;
 
 		return url;
 	});
@@ -200,8 +212,18 @@ export function useChatState(
 			}
 
 			// Clear any existing execution to allow fresh webhook registration
-			workflowState.setWorkflowExecutionData(null);
-			workflowState.setActiveExecutionId(undefined);
+			const executionIds = new Set(
+				[
+					workflowExecutionSession.value.activeExecutionId,
+					workflowExecutionSession.value.displayedExecutionId,
+				].filter((executionId): executionId is string => !!executionId),
+			);
+			executionIds.forEach((executionId) => {
+				useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
+			});
+			workflowExecutionSession.value.setPendingExecution(null);
+			workflowExecutionSession.value.setActiveExecutionId(undefined);
+			workflowExecutionSession.value.clearDisplayedExecution();
 
 			// Use the useRunWorkflow composable to properly register the webhook
 			// Only include destinationNode if set for partial execution support
@@ -211,13 +233,13 @@ export function useChatState(
 				sessionId: effectiveSessionId.value,
 			};
 
-			if (workflowsStore.chatPartialExecutionDestinationNode) {
+			if (workflowExecutionSession.value.chatPartialExecutionDestinationNode) {
 				runWorkflowOptions.destinationNode = {
-					nodeName: workflowsStore.chatPartialExecutionDestinationNode,
+					nodeName: workflowExecutionSession.value.chatPartialExecutionDestinationNode,
 					mode: 'inclusive',
 				};
 				// Clear after use so subsequent messages run full workflow
-				workflowsStore.chatPartialExecutionDestinationNode = null;
+				workflowExecutionSession.value.setChatPartialExecutionDestinationNode(null);
 			}
 
 			const response = await runWorkflow(runWorkflowOptions);
@@ -325,19 +347,30 @@ export function useChatState(
 
 	const restoredChatMessages = computed(() =>
 		restoreChatHistory(
-			workflowsStore.workflowExecutionData,
+			workflowExecutionSession.value.activeExecution,
 			locale.baseText('chat.window.chat.response.empty'),
 			locale.baseText('chat.window.chat.response.redacted'),
 		),
 	);
 
 	function refreshSession() {
-		workflowState.setWorkflowExecutionData(null);
+		const executionIds = new Set(
+			[
+				workflowExecutionSession.value.activeExecutionId,
+				workflowExecutionSession.value.displayedExecutionId,
+			].filter((executionId): executionId is string => !!executionId),
+		);
+		executionIds.forEach((executionId) => {
+			useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
+		});
+		workflowExecutionSession.value.setPendingExecution(null);
+		workflowExecutionSession.value.setActiveExecutionId(undefined);
+		workflowExecutionSession.value.clearDisplayedExecution();
 		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
 		// Clear partial execution destination to allow full workflow execution
-		workflowsStore.chatPartialExecutionDestinationNode = null;
+		workflowExecutionSession.value.setChatPartialExecutionDestinationNode(null);
 
 		if (logsStore.isOpen) {
 			chatEventBus.emit('focusInput');
@@ -347,13 +380,13 @@ export function useChatState(
 	function displayExecution(executionId: string) {
 		const route = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
-			params: { workflowId: workflowsStore.workflowId, executionId },
+			params: { workflowId: workflowId.value, executionId },
 		});
 		window.open(route.href, '_blank');
 	}
 
 	watch(
-		() => workflowsStore.workflowId,
+		() => workflowId.value,
 		(_newWorkflowId, prevWorkflowId) => {
 			if (!prevWorkflowId) {
 				return;

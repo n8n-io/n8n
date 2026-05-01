@@ -578,7 +578,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 
 		workflowExecutionSession.value
-			.getVisibleExecutionDataStore()
+			.getActiveExecutionDataStore()
 			?.renameExecutionDataNode(nameData.old, nameData.new);
 		workflowExecutionSession.value.renameExecutionSessionNode(nameData.old, nameData.new);
 

@@ -24,7 +24,7 @@ import {
 	NodeConnectionTypes,
 	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
-import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
+import type { AssignmentCollectionValue, IConnections, IRunData } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { SLACK_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '../constants';
@@ -38,7 +38,7 @@ import {
 	useWorkflowExecutionSessionStore,
 } from '@/app/stores/workflowExecutionSession.store';
 
-function setWorkflowRunData(runData: IRunData | null) {
+function setWorkflowRunData(runData: IRunData | Record<string, unknown> | null) {
 	const executionDataStore = useExecutionDataStore(createExecutionDataId('execution-id'));
 	const workflowExecutionSession = useWorkflowExecutionSessionStore(
 		createWorkflowExecutionSessionId('test-workflow'),
@@ -50,7 +50,7 @@ function setWorkflowRunData(runData: IRunData | null) {
 	}
 	executionDataStore.execution = {
 		id: 'execution-id',
-		data: { resultData: { runData } },
+		data: { resultData: { runData: runData as IRunData } },
 	} as IExecutionResponse;
 	workflowExecutionSession.setActiveExecutionId('execution-id');
 }

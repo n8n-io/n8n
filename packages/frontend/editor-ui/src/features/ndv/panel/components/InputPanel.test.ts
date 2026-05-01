@@ -1,7 +1,6 @@
 import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import {
@@ -14,8 +13,13 @@ import {
 import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
 import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
@@ -67,8 +71,6 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes, connections });
-	const workflowStore = useWorkflowsStore();
-	const workflowState = useWorkflowState();
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.hydrate(workflow);
@@ -76,24 +78,13 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
 	if (pinData) {
-		workflowStore.workflow.pinData = Object.fromEntries(nodes.map((n) => [n.name, pinData]));
+		workflowDocumentStore.setPinData(Object.fromEntries(nodes.map((n) => [n.name, pinData])));
 	}
 
 	if (runData) {
-		workflowState.setWorkflowExecutionData({
-			id: '',
-			workflowData: {
-				id: '',
-				name: '',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: '',
-				updatedAt: '',
-				nodes,
-				connections,
-				versionId: '',
-			},
+		const execution = {
+			id: 'execution-id',
+			workflowData: workflow,
 			finished: false,
 			mode: 'trigger',
 			status: 'success',
@@ -102,7 +93,11 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			data: createRunExecutionData({
 				resultData: { runData },
 			}),
-		});
+		} as IExecutionResponse;
+		useExecutionDataStore(createExecutionDataId(execution.id)).execution = execution;
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflow.id),
+		).setActiveExecutionId(execution.id);
 	}
 
 	const workflowObject = createTestWorkflowObject({

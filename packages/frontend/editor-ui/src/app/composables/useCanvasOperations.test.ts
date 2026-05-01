@@ -68,6 +68,10 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 import { useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -214,9 +218,7 @@ describe('useCanvasOperations', () => {
 
 		const workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.id = workflowId;
-		workflowDocumentStoreInstance = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
+		workflowDocumentStoreInstance = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 		// These actions are stubbed by createTestingPinia, so provide safe defaults.
 		// Tests that need custom behavior can override via vi.spyOn.
@@ -1379,7 +1381,13 @@ describe('useCanvasOperations', () => {
 
 	describe('deleteNode', () => {
 		it('should delete node and track history', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowExecutionSession = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowId),
+			);
+			const clearNodeExecutionDataSpy = vi.spyOn(
+				workflowExecutionSession,
+				'clearActiveNodeExecutionData',
+			);
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
@@ -1397,14 +1405,20 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: true });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
+			expect(clearNodeExecutionDataSpy).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 				new RemoveNodeCommand(node, expect.any(Number)),
 			);
 		});
 
 		it('should delete node without tracking history', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowExecutionSession = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowId),
+			);
+			const clearNodeExecutionDataSpy = vi.spyOn(
+				workflowExecutionSession,
+				'clearActiveNodeExecutionData',
+			);
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
@@ -1423,12 +1437,19 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: false });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
+			expect(clearNodeExecutionDataSpy).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).not.toHaveBeenCalled();
 		});
 
 		it('should connect adjacent nodes when deleting a node surrounded by other nodes', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowExecutionSession = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowId),
+			);
+			const clearNodeExecutionDataSpy = vi.spyOn(
+				workflowExecutionSession,
+				'clearActiveNodeExecutionData',
+			);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			nodeTypesStore.nodeTypes = {
@@ -1490,12 +1511,19 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
+			expect(clearNodeExecutionDataSpy).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 
 		it('should handle nodes with null connections for unconnected indexes', () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
+			const workflowExecutionSession = useWorkflowExecutionSessionStore(
+				createWorkflowExecutionSessionId(workflowId),
+			);
+			const clearNodeExecutionDataSpy = vi.spyOn(
+				workflowExecutionSession,
+				'clearActiveNodeExecutionData',
+			);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			nodeTypesStore.nodeTypes = {
@@ -1564,7 +1592,7 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
+			expect(clearNodeExecutionDataSpy).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 	});
@@ -5535,8 +5563,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			expect(
-				useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId))
-					.addToMeta,
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).addToMeta,
 			).toHaveBeenCalledWith({
 				templateId: 'template-id',
 			});
@@ -5595,8 +5622,7 @@ describe('useCanvasOperations', () => {
 			});
 
 			expect(
-				useWorkflowDocumentStore(createWorkflowDocumentId(useWorkflowsStore().workflowId))
-					.addToMeta,
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).addToMeta,
 			).toHaveBeenCalledWith({
 				templateId: 'template-id',
 			});
@@ -5648,11 +5674,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
@@ -5713,11 +5743,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
@@ -5782,11 +5816,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
@@ -5855,11 +5893,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
@@ -5924,11 +5966,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
@@ -6009,11 +6055,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
@@ -6084,11 +6134,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(
@@ -6172,11 +6226,15 @@ describe('useCanvasOperations', () => {
 				},
 			});
 			setActivePinia(pinia);
+			useWorkflowsStore().workflow.id = workflowId;
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowId)).hydrate(
+				useWorkflowsStore().workflow,
+			);
 
 			workflowState = useWorkflowState();
 			vi.mocked(injectWorkflowState).mockReturnValue(workflowState);
 			workflowDocumentStoreInstance = useWorkflowDocumentStore(
-				createWorkflowDocumentId(useWorkflowsStore().workflowId),
+				createWorkflowDocumentId(workflowId),
 			);
 			vi.mocked(workflowDocumentStoreInstance.getConnectedNodes).mockReturnValue([]);
 			vi.mocked(workflowDocumentStoreInstance.getNodeByName).mockImplementation(

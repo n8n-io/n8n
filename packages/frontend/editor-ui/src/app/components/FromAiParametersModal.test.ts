@@ -154,7 +154,7 @@ describe('FromAiParametersModal', () => {
 		useExecutionDataStore(createExecutionDataId('execution-id')).setExecution({
 			id: 'execution-id',
 			...mockRunData,
-		} as IExecutionResponse);
+		} as unknown as IExecutionResponse);
 		useWorkflowExecutionSessionStore(
 			createWorkflowExecutionSessionId('test-workflow'),
 		).setActiveExecutionId('execution-id');

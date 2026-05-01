@@ -13,7 +13,7 @@ export function useWorkflowId() {
 		if (!route) return '';
 		if (route.name === VIEWS.DEMO || route.name === VIEWS.DEMO_DIFF) return 'demo';
 
-		const workflowId = route.params.workflowId;
+		const workflowId = route.params?.workflowId;
 		return (Array.isArray(workflowId) ? workflowId[0] : workflowId) ?? '';
 	});
 }

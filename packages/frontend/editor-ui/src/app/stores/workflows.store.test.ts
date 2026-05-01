@@ -33,6 +33,11 @@ import { waitFor } from '@testing-library/vue';
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import {
+	createWorkflowExecutionSessionId,
+	useWorkflowExecutionSessionStore,
+} from '@/app/stores/workflowExecutionSession.store';
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -108,6 +113,14 @@ describe('useWorkflowsStore', () => {
 		uiStore = useUIStore();
 		track.mockReset();
 	});
+
+	function setActiveExecution(execution: IExecutionResponse) {
+		workflowsStore.workflow.id = 'test-workflow-id';
+		useExecutionDataStore(createExecutionDataId(execution.id)).setExecution(execution);
+		useWorkflowExecutionSessionStore(
+			createWorkflowExecutionSessionId(workflowsStore.workflow.id),
+		).setActiveExecutionId(execution.id);
+	}
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.id).toBe('');
@@ -234,9 +247,11 @@ describe('useWorkflowsStore', () => {
 
 		it('should return runData when execution data contains resultData', () => {
 			const expectedRunData = { node1: [{}, {}], node2: [{}] };
-			workflowsStore.workflowExecutionData = {
+			const execution = {
+				id: 'active-execution',
 				data: { resultData: { runData: expectedRunData } },
 			} as unknown as IExecutionResponse;
+			setActiveExecution(execution);
 
 			const runData = workflowsStore.getWorkflowRunData;
 			expect(runData).toEqual(expectedRunData);
@@ -252,9 +267,11 @@ describe('useWorkflowsStore', () => {
 		});
 
 		it('should return null when node name is not present in workflow run data', () => {
-			workflowsStore.workflowExecutionData = {
+			const execution = {
+				id: 'active-execution',
 				data: { resultData: { runData: {} } },
 			} as unknown as IExecutionResponse;
+			setActiveExecution(execution);
 
 			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
 			expect(resultData).toBeNull();
@@ -262,9 +279,11 @@ describe('useWorkflowsStore', () => {
 
 		it('should return result data when node name is present in workflow run data', () => {
 			const expectedData = [{}, {}];
-			workflowsStore.workflowExecutionData = {
+			const execution = {
+				id: 'active-execution',
 				data: { resultData: { runData: { Node1: expectedData } } },
 			} as unknown as IExecutionResponse;
+			setActiveExecution(execution);
 
 			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
 			expect(resultData).toEqual(expectedData);
@@ -1176,7 +1195,8 @@ describe('useWorkflowsStore', () => {
 			const nodeName = 'Rename me';
 			const newName = 'Renamed';
 
-			workflowsStore.workflowExecutionData = {
+			const execution = {
+				id: 'active-execution',
 				data: {
 					resultData: {
 						runData: {
@@ -1257,7 +1277,7 @@ describe('useWorkflowsStore', () => {
 				},
 			} as unknown as IExecutionResponse;
 
-			workflowsStore.workflow.id = 'test-workflow-id';
+			setActiveExecution(execution);
 
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflow.id),
