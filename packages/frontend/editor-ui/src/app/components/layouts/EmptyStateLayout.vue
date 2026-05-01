@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useWorkflowsEmptyState } from '@/features/workflows/composables/useWorkflowsEmptyState';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
+import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
+import { MCP_ONBOARDING_MODAL_KEY } from '@/features/ai/mcpAccess/mcp.constants';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import RecommendedTemplatesSection from '@/features/workflows/templates/recommendations/components/RecommendedTemplatesSection.vue';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
@@ -22,16 +26,21 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const route = useRoute();
 const bannersStore = useBannersStore();
+const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const projectPages = useProjectPages();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
+const mcpStore = useMCPStore();
+const surfaceMcpStore = useSurfaceMcpToNewCloudUsersStore();
 const readyToRunStore = useReadyToRunStore();
 
 const {
 	showAppSelection,
 	showBuilderPrompt,
 	showRecommendedTemplatesInline,
+	showMcpTile,
+	showMcpReminder,
 	builderHeading,
 	emptyStateHeading,
 	emptyStateDescription,
@@ -81,6 +90,24 @@ const handleBuilderPromptSubmit = async (prompt: string) => {
 
 const handleAppSelectionContinue = () => {
 	credentialsAppSelectionStore.dismiss();
+};
+
+watch(
+	showMcpTile,
+	(value, previousValue) => {
+		if (value && !previousValue) {
+			surfaceMcpStore.trackSurfaced('tile');
+		}
+	},
+	{ immediate: true },
+);
+
+const openMcpOnboardingFromTile = () => {
+	surfaceMcpStore.trackOpened('tile');
+	uiStore.openModalWithData({
+		name: MCP_ONBOARDING_MODAL_KEY,
+		data: { surface: 'tile' },
+	});
 };
 </script>
 
@@ -157,12 +184,62 @@ const handleAppSelectionContinue = () => {
 					<N8nText tag="p" size="large" color="text-base">
 						{{ emptyStateDescription }}
 					</N8nText>
+					<N8nText
+						v-if="showMcpReminder"
+						size="small"
+						color="text-light"
+						data-test-id="mcp-onboarding-reminder"
+						:class="$style.reminder"
+					>
+						{{ i18n.baseText('workflows.empty.mcp.reminder') }}
+					</N8nText>
 
 					<!-- Two cards or single card depending on ready-to-run availability -->
 					<div
 						v-if="canCreateWorkflow"
-						:class="[$style.actionCardsContainer, { [$style.singleCard]: !showReadyToRunCard }]"
+						:class="[
+							$style.actionCardsContainer,
+							{
+								[$style.singleCard]: !showReadyToRunCard && !showMcpTile,
+								[$style.threeCards]: showReadyToRunCard && showMcpTile,
+							},
+						]"
 					>
+						<N8nCard
+							v-if="showMcpTile"
+							:class="$style.actionCard"
+							hoverable
+							data-test-id="mcp-onboarding-card"
+							@click="openMcpOnboardingFromTile"
+						>
+							<div :class="$style.cardContent">
+								<N8nIcon
+									:class="$style.cardIcon"
+									icon="mcp"
+									color="foreground-dark"
+									:stroke-width="1.5"
+								/>
+								<N8nText size="large" class="mt-xs">
+									{{
+										i18n.baseText(
+											mcpStore.mcpAccessEnabled
+												? 'workflows.empty.mcp.tile.enabledTitle'
+												: 'workflows.empty.mcp.tile.title',
+										)
+									}}
+								</N8nText>
+								<N8nText size="small" color="text-light">
+									{{
+										i18n.baseText(
+											mcpStore.mcpAccessEnabled
+												? 'workflows.empty.mcp.tile.enabledDescription'
+												: 'workflows.empty.mcp.tile.description',
+										)
+									}}
+								</N8nText>
+							</div>
+						</N8nCard>
+
 						<!-- Card 1: Try AI workflow (conditional) -->
 						<N8nCard
 							v-if="showReadyToRunCard"
@@ -278,11 +355,19 @@ const handleAppSelectionContinue = () => {
 		grid-template-columns: 192px;
 	}
 
+	&.threeCards {
+		grid-template-columns: repeat(3, 192px);
+	}
+
 	@media (max-width: vars.$breakpoint-xs) {
 		grid-template-columns: 1fr;
 		gap: var(--spacing--md);
 		margin-top: var(--spacing--lg);
 	}
+}
+
+.reminder {
+	margin-top: var(--spacing--xs);
 }
 
 .actionCard {

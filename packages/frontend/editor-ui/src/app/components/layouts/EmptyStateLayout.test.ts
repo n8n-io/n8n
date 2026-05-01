@@ -7,8 +7,12 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import userEvent from '@testing-library/user-event';
 import type { IUser } from '@n8n/rest-api-client/api/users';
+import { ref } from 'vue';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -22,6 +26,17 @@ vi.mock('vue-router', () => ({
 		template: '<a><slot /></a>',
 	},
 }));
+
+const mcpEligibility = ref(true);
+
+vi.mock(
+	'@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility',
+	() => ({
+		useSurfaceMcpToNewCloudUsersEligibility: vi.fn(() => ({
+			isEligible: mcpEligibility,
+		})),
+	}),
+);
 
 const renderComponent = createComponentRenderer(EmptyStateLayout, {
 	pinia: createTestingPinia(),
@@ -45,6 +60,9 @@ describe('EmptyStateLayout', () => {
 		typeof mockedStore<typeof useRecommendedTemplatesStore>
 	>;
 	let bannersStore: ReturnType<typeof mockedStore<typeof useBannersStore>>;
+	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
+	let mcpStore: ReturnType<typeof mockedStore<typeof useMCPStore>>;
+	let surfaceMcpStore: ReturnType<typeof mockedStore<typeof useSurfaceMcpToNewCloudUsersStore>>;
 
 	beforeEach(() => {
 		usersStore = mockedStore(useUsersStore);
@@ -52,6 +70,9 @@ describe('EmptyStateLayout', () => {
 		sourceControlStore = mockedStore(useSourceControlStore);
 		recommendedTemplatesStore = mockedStore(useRecommendedTemplatesStore);
 		bannersStore = mockedStore(useBannersStore);
+		uiStore = mockedStore(useUIStore);
+		mcpStore = mockedStore(useMCPStore);
+		surfaceMcpStore = mockedStore(useSurfaceMcpToNewCloudUsersStore);
 
 		usersStore.currentUser = {
 			id: '1',
@@ -76,6 +97,11 @@ describe('EmptyStateLayout', () => {
 		} as unknown as ReturnType<typeof useSourceControlStore>['preferences'];
 
 		bannersStore.bannersHeight = 0;
+		mcpStore.mcpAccessEnabled = false;
+		mcpEligibility.value = true;
+		surfaceMcpStore.isTileVariant = false;
+		surfaceMcpStore.isFirstOpenModalVariant = false;
+		surfaceMcpStore.hasDismissedFirstOpenModal = false;
 
 		// Default: feature disabled (control variant)
 		recommendedTemplatesStore.isFeatureEnabled = false;
@@ -164,6 +190,37 @@ describe('EmptyStateLayout', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('new-workflow-card')).toBeInTheDocument();
+		});
+
+		it('renders the MCP card for the tile variant', () => {
+			surfaceMcpStore.isTileVariant = true;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('mcp-onboarding-card')).toBeInTheDocument();
+		});
+
+		it('opens the onboarding modal when the MCP card is clicked', async () => {
+			surfaceMcpStore.isTileVariant = true;
+			const { getByTestId } = renderComponent();
+
+			await userEvent.click(getByTestId('mcp-onboarding-card'));
+
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: 'mcpOnboardingModal',
+				data: { surface: 'tile' },
+			});
+		});
+
+		it('renders the passive reminder after first-open dismissal', () => {
+			surfaceMcpStore.isFirstOpenModalVariant = true;
+			surfaceMcpStore.hasDismissedFirstOpenModal = true;
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('mcp-onboarding-reminder')).toHaveTextContent(
+				'You can enable this later in Settings > MCP.',
+			);
 		});
 
 		it('should emit click:add event when workflow card is clicked', async () => {

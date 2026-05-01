@@ -6,6 +6,8 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useRecommendedTemplatesStore } from '@/features/workflows/templates/recommendations/recommendedTemplates.store';
 import { useEmptyStateBuilderPromptStore } from '@/experiments/emptyStateBuilderPrompt/stores/emptyStateBuilderPrompt.store';
 import { useCredentialsAppSelectionStore } from '@/experiments/credentialsAppSelection/stores/credentialsAppSelection.store';
+import { useSurfaceMcpToNewCloudUsersEligibility } from '@/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpToNewCloudUsersEligibility';
+import { useSurfaceMcpToNewCloudUsersStore } from '@/experiments/surfaceMcpToNewCloudUsers/stores/surfaceMcpToNewCloudUsers.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { IUser } from 'n8n-workflow';
 
@@ -22,6 +24,8 @@ export function useWorkflowsEmptyState() {
 	const recommendedTemplatesStore = useRecommendedTemplatesStore();
 	const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 	const credentialsAppSelectionStore = useCredentialsAppSelectionStore();
+	const surfaceMcpStore = useSurfaceMcpToNewCloudUsersStore();
+	const { isEligible: isSurfaceMcpEligible } = useSurfaceMcpToNewCloudUsersEligibility();
 
 	const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 	const personalProject = computed(() => projectsStore.personalProject);
@@ -58,6 +62,24 @@ export function useWorkflowsEmptyState() {
 			credentialsAppSelectionStore.isFeatureEnabled &&
 			!readOnlyEnv.value &&
 			projectPermissions.value.workflow.create
+		);
+	});
+
+	const showMcpTile = computed(() => {
+		return (
+			isSurfaceMcpEligible.value &&
+			surfaceMcpStore.isTileVariant &&
+			!showAppSelection.value &&
+			!showBuilderPrompt.value &&
+			!showRecommendedTemplatesInline.value
+		);
+	});
+
+	const showMcpReminder = computed(() => {
+		return (
+			isSurfaceMcpEligible.value &&
+			surfaceMcpStore.isFirstOpenModalVariant &&
+			surfaceMcpStore.hasDismissedFirstOpenModal
 		);
 	});
 
@@ -105,6 +127,8 @@ export function useWorkflowsEmptyState() {
 		showAppSelection,
 		showBuilderPrompt,
 		showRecommendedTemplatesInline,
+		showMcpTile,
+		showMcpReminder,
 		builderHeading,
 		emptyStateHeading,
 		emptyStateDescription,
