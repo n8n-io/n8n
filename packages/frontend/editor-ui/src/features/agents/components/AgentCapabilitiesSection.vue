@@ -2,7 +2,7 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
-import { N8nButton, N8nCard, N8nHeading, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nCard, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
@@ -42,20 +42,14 @@ const nodeTypesStore = useNodeTypesStore();
 
 const { catalog } = useAgentIntegrationsCatalog();
 
-const TEMP_TRIGGER_STUBS = [
-	{ type: 'slack', label: 'Slack', icon: 'slack' },
-	{ type: 'telegram', label: 'Telegram', icon: 'telegram' },
-	{ type: 'linear', label: 'Linear', icon: 'linear' },
-];
-
 const TRIGGER_ICONS: Record<string, string> = {
 	slack: 'slack',
 	telegram: 'telegram',
 	linear: 'linear',
 };
 
-const triggerRows = computed(() => [
-	...props.connectedTriggers.map((trigger) => {
+const triggerRows = computed(() =>
+	props.connectedTriggers.map((trigger) => {
 		const integration = catalog.value?.find(({ type }) => type === trigger);
 		return {
 			type: trigger,
@@ -70,8 +64,7 @@ const triggerRows = computed(() => [
 				(trigger === AGENT_SCHEDULE_TRIGGER_TYPE ? 'clock' : 'zap'),
 		};
 	}),
-	...TEMP_TRIGGER_STUBS,
-]);
+);
 
 const hasTriggers = computed(() => triggerRows.value.length > 0);
 const hasTools = computed(() => props.tools.length > 0);

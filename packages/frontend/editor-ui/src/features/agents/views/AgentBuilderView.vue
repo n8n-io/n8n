@@ -1106,7 +1106,7 @@ function onSwitchAgent(nextAgentId: string) {
 							/>
 						</div>
 
-						<!-- Agent tab: consolidated cards -->
+						<!-- Agent tab: consolidated panels -->
 						<div v-if="activeMainTab === 'agent'" :class="$style.agentCards">
 							<AgentCapabilitiesSection
 								:config="localConfig"
@@ -1128,14 +1128,14 @@ function onSwitchAgent(nextAgentId: string) {
 								@update:connected-triggers="onConnectedTriggersUpdate"
 								@trigger-added="onTriggerAdded"
 							/>
-							<N8nCard variant="outlined" :class="$style.card">
+							<div :class="$style.panel">
 								<AgentInfoPanel
 									:config="localConfig"
 									:disabled="isBuildChatStreaming"
 									embedded
 									@update:config="onConfigFieldUpdate"
 								/>
-							</N8nCard>
+							</div>
 
 							<N8nCard variant="outlined" :class="$style.card">
 								<AgentMemoryPanel
@@ -1172,10 +1172,10 @@ function onSwitchAgent(nextAgentId: string) {
 
 						<!-- Evaluations tab (placeholder) -->
 						<div v-else data-testid="agent-evaluations-panel">
-							<N8nCard variant="outlined" :class="$style.card">
+							<div :class="$style.panel">
 								<N8nHeading size="medium">Evaluations</N8nHeading>
 								<N8nText color="text-light"> Evaluations functionality is coming soon. </N8nText>
-							</N8nCard>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -1384,6 +1384,12 @@ function onSwitchAgent(nextAgentId: string) {
 	padding: var(--spacing--lg);
 	width: 100%;
 	margin: 0 auto;
+}
+
+.panel {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
 }
 
 .card {
