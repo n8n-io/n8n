@@ -15,6 +15,12 @@ const props = defineProps<{
 	inheritedTitle?: string;
 	inheritedDescription?: string;
 	inheritedSubmitLabel?: string;
+	isCompletion?: boolean;
+	respondWith?: string;
+	completionTitle?: string;
+	completionMessage?: string;
+	redirectUrl?: string;
+	responseText?: string;
 }>();
 
 const emit = defineEmits<{
@@ -22,6 +28,10 @@ const emit = defineEmits<{
 	'update:formTitle': [value: string];
 	'update:formDescription': [value: string];
 	'update:submitLabel': [value: string];
+	'update:completionTitle': [value: string];
+	'update:completionMessage': [value: string];
+	'update:redirectUrl': [value: string];
+	'update:responseText': [value: string];
 	selectField: [id: string | null];
 	selectFormElement: [el: 'title' | 'description' | 'submit'];
 	deleteField: [id: string];
@@ -40,69 +50,119 @@ const isEmpty = computed(() => props.fields.length === 0);
 <template>
 	<div :class="$style.canvas" @click="emit('selectField', null)">
 		<div :class="$style.card">
-			<input
-				:value="formTitle"
-				:placeholder="inheritedTitle || i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
-				:class="$style.titleInput"
-				autocomplete="off"
-				@input="emit('update:formTitle', ($event.target as HTMLInputElement).value)"
-				@click.stop
-				@focus="emit('selectFormElement', 'title')"
-			/>
+			<!-- Completion: Show Completion Screen / Return Binary File -->
+			<template v-if="isCompletion && (respondWith === 'text' || respondWith === 'returnBinary')">
+				<input
+					:value="completionTitle"
+					:placeholder="i18n.baseText('formStep.fields.canvas.completionTitlePlaceholder')"
+					:class="$style.titleInput"
+					autocomplete="off"
+					@input="emit('update:completionTitle', ($event.target as HTMLInputElement).value)"
+					@click.stop
+					@focus="emit('selectFormElement', 'title')"
+				/>
+				<textarea
+					:value="completionMessage"
+					:placeholder="i18n.baseText('formStep.fields.canvas.completionMessagePlaceholder')"
+					:class="$style.descriptionInput"
+					rows="2"
+					@input="emit('update:completionMessage', ($event.target as HTMLTextAreaElement).value)"
+					@click.stop
+					@focus="emit('selectFormElement', 'description')"
+				/>
+			</template>
 
-			<textarea
-				:value="formDescription"
-				:placeholder="
-					inheritedDescription || i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')
-				"
-				:class="$style.descriptionInput"
-				rows="2"
-				@input="emit('update:formDescription', ($event.target as HTMLTextAreaElement).value)"
-				@click.stop
-				@focus="emit('selectFormElement', 'description')"
-			/>
-
-			<!-- Fields list -->
-			<Draggable
-				v-model="localFields"
-				item-key="_id"
-				:group="{ name: 'form-fields', pull: true, put: true }"
-				handle=".drag-handle"
-				:class="[$style.fieldList, { [$style.empty]: isEmpty }]"
-				ghost-class="drag-ghost"
-				@click.stop
-			>
-				<template #item="{ element }">
-					<FormFieldRow
-						:field="element"
-						:selected="selectedFieldId === element._id"
-						:has-error="(fieldErrors[element._id]?.length ?? 0) > 0"
-						@select="emit('selectField', element._id)"
-						@delete="emit('deleteField', element._id)"
-					/>
-				</template>
-				<template #footer>
-					<div v-if="isEmpty" :class="$style.emptyState">
-						{{ i18n.baseText('formStep.fields.canvas.emptyState') }}
-					</div>
-				</template>
-			</Draggable>
-
-			<!-- Submit button -->
-			<div :class="$style.submitRow" @click.stop>
-				<div
-					:class="$style.submitInput"
-					contenteditable="true"
-					:data-placeholder="
-						inheritedSubmitLabel || i18n.baseText('formStep.fields.canvas.submitPlaceholder')
-					"
-					@input="emit('update:submitLabel', ($event.target as HTMLElement).textContent ?? '')"
-					@focus="emit('selectFormElement', 'submit')"
-					@keydown.enter.prevent
-				>
-					{{ submitLabel }}
+			<!-- Completion: Redirect to URL -->
+			<template v-else-if="isCompletion && respondWith === 'redirect'">
+				<div :class="$style.completionInfo">
+					<span :class="$style.completionInfoLabel">{{
+						i18n.baseText('formStep.fields.canvas.redirectTo')
+					}}</span>
+					<span :class="$style.completionInfoValue">{{
+						redirectUrl || i18n.baseText('formStep.fields.canvas.redirectUrlPlaceholder')
+					}}</span>
 				</div>
-			</div>
+			</template>
+
+			<!-- Completion: Show Text -->
+			<template v-else-if="isCompletion && respondWith === 'showText'">
+				<textarea
+					:value="responseText"
+					:placeholder="i18n.baseText('formStep.fields.canvas.responseTextPlaceholder')"
+					:class="[$style.descriptionInput, $style.responseTextArea]"
+					rows="4"
+					@input="emit('update:responseText', ($event.target as HTMLTextAreaElement).value)"
+					@click.stop
+					@focus="emit('selectFormElement', 'title')"
+				/>
+			</template>
+
+			<!-- Regular form page -->
+			<template v-else>
+				<input
+					:value="formTitle"
+					:placeholder="inheritedTitle || i18n.baseText('formStep.fields.canvas.titlePlaceholder')"
+					:class="$style.titleInput"
+					autocomplete="off"
+					@input="emit('update:formTitle', ($event.target as HTMLInputElement).value)"
+					@click.stop
+					@focus="emit('selectFormElement', 'title')"
+				/>
+
+				<textarea
+					:value="formDescription"
+					:placeholder="
+						inheritedDescription || i18n.baseText('formStep.fields.canvas.descriptionPlaceholder')
+					"
+					:class="$style.descriptionInput"
+					rows="2"
+					@input="emit('update:formDescription', ($event.target as HTMLTextAreaElement).value)"
+					@click.stop
+					@focus="emit('selectFormElement', 'description')"
+				/>
+
+				<!-- Fields list -->
+				<Draggable
+					v-model="localFields"
+					item-key="_id"
+					:group="{ name: 'form-fields', pull: true, put: true }"
+					handle=".drag-handle"
+					:class="[$style.fieldList, { [$style.empty]: isEmpty }]"
+					ghost-class="drag-ghost"
+					@click.stop
+				>
+					<template #item="{ element }">
+						<FormFieldRow
+							:field="element"
+							:selected="selectedFieldId === element._id"
+							:has-error="(fieldErrors[element._id]?.length ?? 0) > 0"
+							@select="emit('selectField', element._id)"
+							@delete="emit('deleteField', element._id)"
+						/>
+					</template>
+					<template #footer>
+						<div v-if="isEmpty" :class="$style.emptyState">
+							{{ i18n.baseText('formStep.fields.canvas.emptyState') }}
+						</div>
+					</template>
+				</Draggable>
+
+				<!-- Submit button -->
+				<div :class="$style.submitRow" @click.stop>
+					<div
+						:class="$style.submitInput"
+						contenteditable="true"
+						:data-placeholder="
+							inheritedSubmitLabel || i18n.baseText('formStep.fields.canvas.submitPlaceholder')
+						"
+						@input="emit('update:submitLabel', ($event.target as HTMLElement).textContent ?? '')"
+						@focus="emit('selectFormElement', 'submit')"
+						@keydown.enter.prevent
+					>
+						{{ submitLabel }}
+					</div>
+				</div>
+			</template>
 		</div>
 	</div>
 </template>
@@ -183,6 +243,34 @@ const isEmpty = computed(() => props.fields.length === 0);
 	text-align: center;
 	font-size: var(--font-size--2xs);
 	color: var(--color--text--tint-2);
+}
+
+.responseTextArea {
+	text-align: left;
+	min-height: 80px;
+}
+
+.completionInfo {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--5xs);
+	padding: var(--spacing--md) 0;
+}
+
+.completionInfoLabel {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.completionInfoValue {
+	font-size: var(--font-size--sm);
+	color: var(--color--text--tint-1);
+	word-break: break-all;
 }
 
 .submitRow {

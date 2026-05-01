@@ -17,6 +17,12 @@ const props = defineProps<{
 	inheritedTitle?: string;
 	inheritedDescription?: string;
 	inheritedSubmitLabel?: string;
+	isCompletion?: boolean;
+	respondWith?: string;
+	completionTitle?: string;
+	completionMessage?: string;
+	redirectUrl?: string;
+	responseText?: string;
 	hasUnsavedChanges: boolean;
 	isSaving: boolean;
 }>();
@@ -26,6 +32,10 @@ const emit = defineEmits<{
 	'update:formTitle': [value: string];
 	'update:formDescription': [value: string];
 	'update:submitLabel': [value: string];
+	'update:completionTitle': [value: string];
+	'update:completionMessage': [value: string];
+	'update:redirectUrl': [value: string];
+	'update:responseText': [value: string];
 	save: [];
 }>();
 
@@ -106,11 +116,76 @@ const limitSelectionOptions: Array<{ value: string; labelKey: BaseTextKey }> = [
 <template>
 	<div :class="$style.panel">
 		<!-- Empty state -->
-		<div v-if="!field && !selectedFormElement" :class="$style.emptyState">
+		<div v-if="!isCompletion && !field && !selectedFormElement" :class="$style.emptyState">
 			<N8nIcon icon="mouse-pointer" size="xlarge" />
 			<span :class="$style.emptyStateText">{{
 				i18n.baseText('formStep.fields.props.emptyState')
 			}}</span>
+		</div>
+
+		<!-- Completion properties (always shown for completion nodes) -->
+		<div v-else-if="isCompletion" :class="$style.propsScroll">
+			<h4 :class="$style.sectionTitle">
+				{{ i18n.baseText('formStep.fields.props.completionSettings') }}
+			</h4>
+
+			<!-- Show Completion Screen / Return Binary File -->
+			<template v-if="respondWith === 'text' || respondWith === 'returnBinary'">
+				<div :class="$style.row">
+					<label :class="$style.label">{{
+						i18n.baseText('formStep.fields.props.completionTitle')
+					}}</label>
+					<N8nInput
+						:model-value="completionTitle ?? ''"
+						size="small"
+						:placeholder="i18n.baseText('formStep.fields.canvas.completionTitlePlaceholder')"
+						@update:model-value="(v) => emit('update:completionTitle', v)"
+					/>
+				</div>
+				<div :class="$style.row">
+					<label :class="$style.label">{{
+						i18n.baseText('formStep.fields.props.completionMessage')
+					}}</label>
+					<N8nInput
+						:model-value="completionMessage ?? ''"
+						type="textarea"
+						:rows="3"
+						:placeholder="i18n.baseText('formStep.fields.canvas.completionMessagePlaceholder')"
+						@update:model-value="(v) => emit('update:completionMessage', v)"
+					/>
+				</div>
+			</template>
+
+			<!-- Redirect to URL -->
+			<template v-else-if="respondWith === 'redirect'">
+				<div :class="$style.row">
+					<label :class="$style.label">{{
+						i18n.baseText('formStep.fields.props.redirectUrl')
+					}}</label>
+					<N8nInput
+						:model-value="redirectUrl ?? ''"
+						size="small"
+						:placeholder="i18n.baseText('formStep.fields.canvas.redirectUrlPlaceholder')"
+						@update:model-value="(v) => emit('update:redirectUrl', v)"
+					/>
+				</div>
+			</template>
+
+			<!-- Show Text -->
+			<template v-else-if="respondWith === 'showText'">
+				<div :class="$style.row">
+					<label :class="$style.label">{{
+						i18n.baseText('formStep.fields.props.responseText')
+					}}</label>
+					<N8nInput
+						:model-value="responseText ?? ''"
+						type="textarea"
+						:rows="4"
+						:placeholder="i18n.baseText('formStep.fields.canvas.responseTextPlaceholder')"
+						@update:model-value="(v) => emit('update:responseText', v)"
+					/>
+				</div>
+			</template>
 		</div>
 
 		<!-- Form-level properties (title / description / submit) -->

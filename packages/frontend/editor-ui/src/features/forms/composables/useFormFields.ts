@@ -138,10 +138,16 @@ export function useFormFields(nodeId: string) {
 	// Local state
 	// -------------------------------------------------------------------------
 
+	const respondWith = ref<string>('text');
+
 	const fields = ref<FormFieldDraft[]>([]);
 	const formTitle = ref('');
 	const formDescription = ref('');
 	const submitLabel = ref('');
+	const completionTitle = ref('');
+	const completionMessage = ref('');
+	const redirectUrl = ref('');
+	const responseText = ref('');
 	const selectedFieldId = ref<string | null>(null);
 	const selectedFormElement = ref<'title' | 'description' | 'submit' | null>(null);
 
@@ -154,17 +160,25 @@ export function useFormFields(nodeId: string) {
 		const params = node.value.parameters;
 		const options = params.options as INodeParameters | undefined;
 
-		const rawFields = (params.formFields as { values?: INodeParameters[] })?.values ?? [];
-		fields.value = rawFields.map(fromNodeParam);
-
-		if (isTrigger.value) {
-			formTitle.value = (params.formTitle as string) || '';
-			formDescription.value = (params.formDescription as string) || '';
+		if (isCompletion.value) {
+			respondWith.value = (params.respondWith as string) || 'text';
+			completionTitle.value = (params.completionTitle as string) || '';
+			completionMessage.value = (params.completionMessage as string) || '';
+			redirectUrl.value = (params.redirectUrl as string) || '';
+			responseText.value = (params.responseText as string) || '';
 		} else {
-			formTitle.value = (options?.formTitle as string) || '';
-			formDescription.value = (options?.formDescription as string) || '';
+			const rawFields = (params.formFields as { values?: INodeParameters[] })?.values ?? [];
+			fields.value = rawFields.map(fromNodeParam);
+
+			if (isTrigger.value) {
+				formTitle.value = (params.formTitle as string) || '';
+				formDescription.value = (params.formDescription as string) || '';
+			} else {
+				formTitle.value = (options?.formTitle as string) || '';
+				formDescription.value = (options?.formDescription as string) || '';
+			}
+			submitLabel.value = (options?.buttonLabel as string) || '';
 		}
-		submitLabel.value = (options?.buttonLabel as string) || '';
 		selectedFieldId.value = null;
 	}
 
@@ -198,6 +212,15 @@ export function useFormFields(nodeId: string) {
 	}
 
 	const hasUnsavedChanges = computed(() => {
+		if (isCompletion.value) {
+			const p = node.value?.parameters ?? {};
+			if (respondWith.value !== ((p.respondWith as string) || 'text')) return true;
+			if (completionTitle.value !== ((p.completionTitle as string) || '')) return true;
+			if (completionMessage.value !== ((p.completionMessage as string) || '')) return true;
+			if (redirectUrl.value !== ((p.redirectUrl as string) || '')) return true;
+			if (responseText.value !== ((p.responseText as string) || '')) return true;
+			return false;
+		}
 		if (formTitle.value !== savedTitle()) return true;
 		if (formDescription.value !== savedDescription()) return true;
 		if (submitLabel.value !== savedSubmitLabel()) return true;
@@ -303,27 +326,40 @@ export function useFormFields(nodeId: string) {
 		const target = workflowsStore.workflow.nodes[nodeIdx];
 		const newParams = { ...target.parameters };
 
-		// formFields fixed collection
-		newParams.formFields = { values: fields.value.map(toNodeParam) };
-
-		// title / description
-		if (isTrigger.value) {
-			newParams.formTitle = formTitle.value;
-			newParams.formDescription = formDescription.value;
+		if (isCompletion.value) {
+			newParams.respondWith = respondWith.value;
+			const rw = respondWith.value;
+			if (rw === 'text' || rw === 'returnBinary') {
+				newParams.completionTitle = completionTitle.value;
+				newParams.completionMessage = completionMessage.value;
+			} else if (rw === 'redirect') {
+				newParams.redirectUrl = redirectUrl.value;
+			} else if (rw === 'showText') {
+				newParams.responseText = responseText.value;
+			}
 		} else {
+			// formFields fixed collection
+			newParams.formFields = { values: fields.value.map(toNodeParam) };
+
+			// title / description
+			if (isTrigger.value) {
+				newParams.formTitle = formTitle.value;
+				newParams.formDescription = formDescription.value;
+			} else {
+				const opts = { ...((newParams.options as Record<string, unknown>) ?? {}) };
+				if (formTitle.value) opts.formTitle = formTitle.value;
+				else delete opts.formTitle;
+				if (formDescription.value) opts.formDescription = formDescription.value;
+				else delete opts.formDescription;
+				newParams.options = opts as INodeParameters;
+			}
+
+			// button label (always in options)
 			const opts = { ...((newParams.options as Record<string, unknown>) ?? {}) };
-			if (formTitle.value) opts.formTitle = formTitle.value;
-			else delete opts.formTitle;
-			if (formDescription.value) opts.formDescription = formDescription.value;
-			else delete opts.formDescription;
+			if (submitLabel.value) opts.buttonLabel = submitLabel.value;
+			else delete opts.buttonLabel;
 			newParams.options = opts as INodeParameters;
 		}
-
-		// button label (always in options)
-		const opts = { ...((newParams.options as Record<string, unknown>) ?? {}) };
-		if (submitLabel.value) opts.buttonLabel = submitLabel.value;
-		else delete opts.buttonLabel;
-		newParams.options = opts as INodeParameters;
 
 		workflowsStore.workflow.nodes[nodeIdx].parameters = newParams;
 		nodeHelpers.updateNodeParameterIssuesByName(target.name);
@@ -344,6 +380,11 @@ export function useFormFields(nodeId: string) {
 		formTitle,
 		formDescription,
 		submitLabel,
+		completionTitle,
+		completionMessage,
+		redirectUrl,
+		responseText,
+		respondWith,
 		inheritedTitle,
 		inheritedDescription,
 		inheritedSubmitLabel,

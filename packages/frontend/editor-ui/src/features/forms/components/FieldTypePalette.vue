@@ -1,5 +1,7 @@
 <script lang="ts" setup>
+import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import type { BaseTextKey } from '@n8n/i18n';
 import Draggable from 'vuedraggable';
 import { N8nIcon } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
@@ -8,11 +10,19 @@ import { FIELD_TYPES_WITH_OPTIONS } from '../composables/useFormFields';
 
 const emit = defineEmits<{
 	add: [type: FormFieldType];
+	'update:selected': [value: string];
+}>();
+
+type FieldTypeDescriptor = { type: FormFieldType; icon: IconName; labelKey: string };
+type SelectableItem = { value: string; icon: IconName; labelKey: BaseTextKey };
+
+const props = defineProps<{
+	selectableItems?: SelectableItem[];
+	selected?: string;
+	title?: BaseTextKey;
 }>();
 
 const i18n = useI18n();
-
-type FieldTypeDescriptor = { type: FormFieldType; icon: IconName; labelKey: string };
 
 const FIELD_TYPES: FieldTypeDescriptor[] = [
 	{ type: 'text', icon: 'case-upper', labelKey: 'formStep.fields.type.text' },
@@ -29,6 +39,8 @@ const FIELD_TYPES: FieldTypeDescriptor[] = [
 	{ type: 'hiddenField', icon: 'eye-off', labelKey: 'formStep.fields.type.hiddenField' },
 ];
 
+const paletteTitle = computed(() => i18n.baseText(props.title ?? 'formStep.fields.palette.title'));
+
 function cloneType(descriptor: FieldTypeDescriptor) {
 	return {
 		_id: crypto.randomUUID(),
@@ -44,8 +56,28 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 
 <template>
 	<div :class="$style.palette">
-		<h4 :class="$style.title">{{ i18n.baseText('formStep.fields.palette.title') }}</h4>
+		<h4 :class="$style.title">{{ paletteTitle }}</h4>
+
+		<!-- Selectable mode (e.g. completion types) -->
+		<div v-if="selectableItems" :class="$style.list">
+			<div
+				v-for="item in selectableItems"
+				:key="item.value"
+				:class="[
+					$style.card,
+					$style.cardSelectable,
+					{ [$style.cardSelected]: selected === item.value },
+				]"
+				@click="emit('update:selected', item.value)"
+			>
+				<N8nIcon :icon="item.icon" size="large" :class="$style.cardIcon" />
+				<span :class="$style.cardLabel">{{ i18n.baseText(item.labelKey) }}</span>
+			</div>
+		</div>
+
+		<!-- Draggable field type mode -->
 		<Draggable
+			v-else
 			:list="FIELD_TYPES"
 			item-key="type"
 			:group="{ name: 'form-fields', pull: 'clone', put: false }"
@@ -99,6 +131,9 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--5xs) var(--spacing--2xs);
+	min-height: calc(
+		var(--spacing--3xs) * 2 + var(--spacing--xs)
+	); // matches addBtn height (6+12+6=24px)
 	border-radius: var(--radius);
 	border: var(--border-width) var(--border-style) var(--color--foreground--tint-1);
 	background: var(--color--background);
@@ -120,6 +155,19 @@ function cloneType(descriptor: FieldTypeDescriptor) {
 	&:active {
 		cursor: grabbing;
 	}
+}
+
+.cardSelectable {
+	cursor: pointer;
+
+	&:active {
+		cursor: pointer;
+	}
+}
+
+.cardSelected {
+	border-color: var(--color--primary--tint-1);
+	background: var(--color--primary--tint-3);
 }
 
 .cardIcon {
