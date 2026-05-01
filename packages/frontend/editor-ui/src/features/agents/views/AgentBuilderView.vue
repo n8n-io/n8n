@@ -107,7 +107,7 @@ const {
  * Everything below the header is empty until we know the right starting state.
  */
 const initialized = ref(false);
-const { selectedSection, showRawSection, onTreeSelect, toggleRawSection } = useAgentSectionNav();
+const { selectedSection, onTreeSelect } = useAgentSectionNav();
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
 const {
@@ -604,77 +604,6 @@ watch(
 
 function exitContinueMode() {
 	clearContinueSessionParam();
-}
-
-/**
- * Whether the current tab has a non-raw custom view that the user can flip
- * away from. For plain JSON slices the toggle isn't offered (it's already raw).
- */
-const canToggleRaw = computed(() => {
-	const key = selectedSection.value;
-	if (!key) return false;
-	if (!localConfig.value) return false;
-	if (key === AGENT_SECTION_KEY || key === ADVANCED_SECTION_KEY || key === 'memory') return true;
-	return customToolSelection.value !== null;
-});
-
-const AGENT_RAW_PICK_KEYS = ['name', 'model', 'credential', 'instructions'];
-const sectionViewOptions = [
-	{ label: 'Config', value: 'form' as const, icon: 'list' },
-	{ label: 'Raw', value: 'raw' as const, icon: 'json' },
-];
-
-const sectionViewOptionIcons = {
-	form: 'list',
-	raw: 'json',
-} as const;
-
-/** Path passed to AgentSectionEditor when `showRawSection` is on. */
-const rawSectionPath = computed<string | null>(() => {
-	const key = selectedSection.value;
-	if (!key) return null;
-	// `__agent` is synthetic — its raw view uses `pickKeys` instead.
-	if (key === AGENT_SECTION_KEY) return null;
-	// `__advanced` maps to the `config` subtree in raw view.
-	if (key === ADVANCED_SECTION_KEY) return 'config';
-	return key;
-});
-
-const rawPickKeys = computed<string[] | null>(() =>
-	selectedSection.value === AGENT_SECTION_KEY ? AGENT_RAW_PICK_KEYS : null,
-);
-
-const rawSectionTitle = computed(() => {
-	switch (selectedSection.value) {
-		case AGENT_SECTION_KEY:
-			return locale.baseText('agents.builder.agent.title');
-		case ADVANCED_SECTION_KEY:
-			return locale.baseText('agents.builder.advanced.title');
-		case 'memory':
-			return 'Memory';
-		default:
-			return '';
-	}
-});
-
-const rawSectionDescription = computed(() => {
-	switch (selectedSection.value) {
-		case AGENT_SECTION_KEY:
-			return locale.baseText('agents.builder.agent.description');
-		case ADVANCED_SECTION_KEY:
-			return locale.baseText('agents.builder.advanced.description');
-		case 'memory':
-			return 'Conversation memory configuration';
-		default:
-			return '';
-	}
-});
-
-const sectionViewMode = computed(() => (showRawSection.value ? 'raw' : 'form'));
-
-function setSectionViewMode(mode: 'form' | 'raw') {
-	if ((mode === 'raw') === showRawSection.value) return;
-	toggleRawSection();
 }
 
 function onOpenToolFromList(index: number) {
@@ -1178,57 +1107,8 @@ function onSwitchAgent(nextAgentId: string) {
 							<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
 								{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
 							</span>
-							<N8nRadioButtons
-								v-if="canToggleRaw && isToolSliceSelection"
-								:class="$style.viewModeToggleInline"
-								:model-value="sectionViewMode"
-								:options="sectionViewOptions"
-								data-testid="agent-section-raw-toggle"
-								@update:model-value="setSectionViewMode"
-							>
-								<template #option="option">
-									<span :class="$style.viewModeOption">
-										<N8nIcon :icon="sectionViewOptionIcons[option.value]" :size="14" />
-										<span>{{ option.label }}</span>
-									</span>
-								</template>
-							</N8nRadioButtons>
 						</div>
-						<N8nRadioButtons
-							v-if="canToggleRaw && !isToolSliceSelection"
-							:class="$style.viewModeToggle"
-							:model-value="sectionViewMode"
-							:options="sectionViewOptions"
-							data-testid="agent-section-raw-toggle"
-							@update:model-value="setSectionViewMode"
-						>
-							<template #option="option">
-								<span :class="$style.viewModeOption">
-									<N8nIcon :icon="sectionViewOptionIcons[option.value]" :size="14" />
-									<span>{{ option.label }}</span>
-								</span>
-							</template>
-						</N8nRadioButtons>
-						<div v-if="showRawSection && canToggleRaw" :class="$style.rawPanel">
-							<AgentPanelHeader
-								v-if="rawSectionTitle"
-								:title="rawSectionTitle"
-								:description="rawSectionDescription"
-							/>
-							<AgentSectionEditor
-								:class="$style.rawPanelEditor"
-								:config="localConfig"
-								:section-path="rawSectionPath"
-								:pick-keys="rawPickKeys"
-								:offset-copy-for-toggle="true"
-								:read-only="isBuildChatStreaming"
-								@update:config="onSectionEditorUpdate"
-							/>
-						</div>
-						<AgentCustomToolViewer
-							v-else-if="customToolSelection"
-							:code="customToolSelection.code"
-						/>
+						<AgentCustomToolViewer v-if="customToolSelection" :code="customToolSelection.code" />
 						<AgentSkillViewer
 							v-else-if="selectedSkill"
 							:skill="selectedSkill.skill"
@@ -1522,22 +1402,6 @@ function onSwitchAgent(nextAgentId: string) {
 	color: var(--text-color);
 }
 
-.rawPanel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--lg);
-	overflow-y: auto;
-	height: 100%;
-	width: 100%;
-	min-height: 0;
-}
-
-.rawPanelEditor {
-	flex: 1;
-	min-height: 0;
-}
-
 .backBtn {
 	display: inline-flex;
 	align-items: center;
@@ -1556,24 +1420,5 @@ function onSwitchAgent(nextAgentId: string) {
 	&:hover {
 		background: var(--background--hover);
 	}
-}
-
-.viewModeToggleInline {
-	position: static;
-	top: auto;
-	right: auto;
-}
-
-.viewModeToggle {
-	position: absolute;
-	top: var(--spacing--2xl);
-	right: var(--spacing--xl);
-	z-index: 1;
-}
-
-.viewModeOption {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
 }
 </style>
