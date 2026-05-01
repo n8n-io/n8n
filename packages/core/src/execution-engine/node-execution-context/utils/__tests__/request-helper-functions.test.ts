@@ -377,11 +377,35 @@ describe('Request Helper Functions', () => {
 				expect.objectContaining({
 					url: 'https://example.com',
 					method: 'POST',
-					headers: { accept: '*/*', 'content-type': 'application/json' },
+					headers: {
+						accept: '*/*',
+						'content-type': 'application/json',
+						'User-Agent': 'n8n',
+					},
 					data: { key: 'value' },
 					maxRedirects: 0,
 				}),
 			);
+		});
+
+		test('should set default User-Agent when none provided', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'n8n' });
+		});
+
+		test('should preserve a caller-supplied User-Agent header', async () => {
+			const axiosOptions = await parseRequestObject({
+				url: 'https://example.com',
+				method: 'GET',
+				headers: { 'User-Agent': 'MyCustomNode/1.0' },
+			});
+
+			expect(axiosOptions.headers).toMatchObject({ 'User-Agent': 'MyCustomNode/1.0' });
+			expect(axiosOptions.headers).not.toMatchObject({ 'User-Agent': 'n8n' });
 		});
 
 		test('should set correct headers for FormData', async () => {
@@ -1631,6 +1655,218 @@ describe('Request Helper Functions', () => {
 					true,
 				),
 			).rejects.toThrow('Failed to acquire OAuth2 access token');
+		});
+	});
+
+	describe('requestOAuth2 - preAuthentication', () => {
+		const baseUrl = 'https://api.example.com';
+		const tokenUrl = 'https://auth.example.com';
+		const mockThis = mockDeep<IAllExecuteFunctions>();
+		const mockNode = mockDeep<INode>();
+		const mockAdditionalData = mockDeep<IWorkflowExecuteAdditionalData>();
+
+		const credentialData = () => ({
+			clientId: 'client-id',
+			clientSecret: 'client-secret',
+			grantType: 'authorizationCode',
+			authUrl: `${tokenUrl}/auth`,
+			accessTokenUrl: `${tokenUrl}/token`,
+			authentication: 'body',
+			scope: 'openid',
+			oauthTokenData: {
+				access_token: 'raw-token',
+				refresh_token: 'old-refresh',
+				token_type: 'bearer',
+			},
+		});
+
+		beforeEach(() => {
+			nock.cleanAll();
+			jest.resetAllMocks();
+			mockNode.name = 'test-node';
+			mockNode.credentials = {
+				testOAuth2: { id: 'cred-id', name: 'cred-name' },
+			};
+		});
+
+		test('initial path: signs request with token transformed by preAuthentication', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue({
+				oauthTokenData: {
+					access_token: 'transformed-token',
+					token_type: 'bearer',
+				},
+			});
+
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockAdditionalData.credentialsHelper.runPreAuthentication).toHaveBeenCalled();
+			const preAuthCall = mockAdditionalData.credentialsHelper.runPreAuthentication.mock.calls[0];
+			expect(preAuthCall[2]).toBe('testOAuth2');
+			// runPreAuthentication is the non-persisting variant — must not call updateCredentials
+			expect(mockAdditionalData.credentialsHelper.updateCredentials).not.toHaveBeenCalled();
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer transformed-token' }),
+				}),
+			);
+		});
+
+		test('initial path: undefined preAuthentication leaves request untouched', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue(undefined);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenCalledWith(
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer raw-token' }),
+				}),
+			);
+		});
+
+		test('refresh path: retry signs with preAuthentication-transformed refreshed token and persists it', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+
+			// preAuthentication is called twice (initial + refresh). Initial returns undefined
+			// so the 401 fires; refresh returns a transformed token.
+			mockAdditionalData.credentialsHelper.runPreAuthentication
+				.mockResolvedValueOnce(undefined)
+				.mockResolvedValueOnce({
+					oauthTokenData: {
+						access_token: 'transformed-refreshed',
+						refresh_token: 'new-refresh',
+						token_type: 'bearer',
+					},
+				});
+
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'raw-refreshed',
+				refresh_token: 'new-refresh',
+				token_type: 'bearer',
+			});
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('401'), { response: { status: 401 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			const result = await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ ok: true });
+			expect(mockThis.helpers.httpRequest).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					headers: expect.objectContaining({
+						Authorization: 'Bearer transformed-refreshed',
+					}),
+				}),
+			);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!.testOAuth2,
+				'testOAuth2',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({ access_token: 'transformed-refreshed' }),
+				}),
+				mockAdditionalData,
+			);
+		});
+
+		test('refresh path: undefined preAuthentication signs retry with raw refreshed token', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue(undefined);
+
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'raw-refreshed',
+				token_type: 'bearer',
+			});
+
+			mockThis.helpers.httpRequest.mockRejectedValueOnce(
+				Object.assign(new Error('401'), { response: { status: 401 } }),
+			);
+			mockThis.helpers.httpRequest.mockResolvedValueOnce({ ok: true });
+
+			await requestOAuth2.call(
+				mockThis,
+				'testOAuth2',
+				{ method: 'GET', url: `${baseUrl}/data` },
+				mockNode,
+				mockAdditionalData,
+				undefined,
+				true,
+			);
+
+			expect(mockThis.helpers.httpRequest).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					headers: expect.objectContaining({ Authorization: 'Bearer raw-refreshed' }),
+				}),
+			);
+		});
+
+		test('refreshOAuth2Token: returns transformed data after preAuthentication', async () => {
+			mockThis.getCredentials.mockResolvedValue(credentialData());
+			mockAdditionalData.credentialsHelper.runPreAuthentication.mockResolvedValue({
+				oauthTokenData: {
+					access_token: 'transformed-refreshed',
+					refresh_token: 'new-refresh',
+					token_type: 'bearer',
+				},
+			});
+
+			nock(tokenUrl).post('/token').reply(200, {
+				access_token: 'raw-refreshed',
+				refresh_token: 'new-refresh',
+				token_type: 'bearer',
+			});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'testOAuth2',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ access_token: 'transformed-refreshed' }));
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledWith(
+				mockNode.credentials!.testOAuth2,
+				'testOAuth2',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({ access_token: 'transformed-refreshed' }),
+				}),
+				mockAdditionalData,
+			);
 		});
 	});
 

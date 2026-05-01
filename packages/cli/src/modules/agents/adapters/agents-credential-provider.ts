@@ -36,7 +36,7 @@ export class AgentsCredentialProvider implements CredentialProvider {
 			throw new Error(`Credential "${credentialIdOrName}" not found or not accessible`);
 		}
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		const apiKey = typeof data.apiKey === 'string' ? data.apiKey : '';
 
 		return { ...data, apiKey };

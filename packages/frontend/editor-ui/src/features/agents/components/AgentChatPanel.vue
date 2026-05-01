@@ -227,7 +227,11 @@ onBeforeUnmount(() => {
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
-			/>
+			>
+				<template #footer-start>
+					<slot name="footer-start" />
+				</template>
+			</ChatInputBase>
 		</div>
 	</aside>
 </template>
@@ -237,7 +241,7 @@ onBeforeUnmount(() => {
 	position: relative;
 	width: 400px;
 	min-width: 400px;
-	border-left: var(--border-width) var(--border-style) var(--color--foreground);
+	border-left: var(--border);
 	display: flex;
 	flex-direction: column;
 }
@@ -252,8 +256,7 @@ onBeforeUnmount(() => {
 }
 
 .inputArea {
-	padding: var(--spacing--xs) var(--spacing--sm) var(--spacing--sm);
-	border-top: var(--border);
+	padding: var(--spacing--xs) var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
@@ -278,6 +281,6 @@ onBeforeUnmount(() => {
 
 .errorBannerDetail {
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 </style>

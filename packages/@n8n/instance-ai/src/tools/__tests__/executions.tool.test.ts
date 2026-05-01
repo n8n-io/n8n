@@ -279,6 +279,50 @@ describe('executions tool', () => {
 				timeout: undefined,
 			});
 		});
+
+		describe('allowedRunWorkflowIds scope', () => {
+			it('runs without HITL when always_allow + workflow id is in the allow-list', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-1']),
+				});
+				(context.executionService.run as jest.Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+				const suspendFn = jest.fn();
+
+				const tool = createExecutionsTool(context);
+				await tool.execute!(
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).not.toHaveBeenCalled();
+				expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
+					timeout: undefined,
+				});
+			});
+
+			it('still requires HITL approval when always_allow is set but workflow id is NOT in the allow-list', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					allowedRunWorkflowIds: new Set(['wf-other']),
+				});
+				(context.workflowService.get as jest.Mock).mockResolvedValue({ name: 'Off-scope WF' });
+				const suspendFn = jest.fn();
+
+				const tool = createExecutionsTool(context);
+				const result = await tool.execute!(
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toMatchObject({ denied: true, reason: 'Awaiting confirmation' });
+			});
+		});
 	});
 
 	// ── debug ───────────────────────────────────────────────────────────────

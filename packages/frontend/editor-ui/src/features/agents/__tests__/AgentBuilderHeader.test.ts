@@ -1,12 +1,16 @@
 /* eslint-disable import-x/no-extraneous-dependencies, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access -- test-only patterns */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mount, flushPromises } from '@vue/test-utils';
+import { mount, flushPromises, type VueWrapper } from '@vue/test-utils';
 import { ref } from 'vue';
 
 import type { AgentResource } from '../types';
 
 const ensureLoadedMock = vi.fn();
 const agentsListRef = ref<AgentResource[] | null>(null);
+const routerPush = vi.fn();
+const routerResolve = vi.fn((to: { params?: { projectId?: string } }) => ({
+	href: `/projects/${to.params?.projectId ?? ''}/workflows`,
+}));
 
 vi.mock('../composables/useProjectAgentsList', () => ({
 	useProjectAgentsList: () => ({
@@ -22,11 +26,53 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push: vi.fn() }),
+	useRouter: () => ({ push: routerPush, resolve: routerResolve }),
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
+vi.mock('@n8n/design-system', () => ({
+	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
+	N8nButton: { template: '<button><slot /></button>', props: ['variant', 'size'] },
+	N8nBreadcrumbs: {
+		name: 'N8nBreadcrumbs',
+		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
+		props: ['items'],
+		emits: ['itemSelected'],
+	},
+	N8nDropdown: {
+		name: 'N8nDropdown',
+		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
+		props: ['options'],
+		emits: ['select'],
+	},
+	'n8n-dropdown': {
+		name: 'N8nDropdown',
+		template: '<div data-testid="agent-header-switcher"><slot name="trigger" /></div>',
+		props: ['options'],
+		emits: ['select'],
+	},
+	N8nActionDropdown: {
+		name: 'ActionDropdown',
+		template: '<div data-testid="stub-action-dropdown" />',
+		props: ['items', 'activatorIcon'],
+		emits: ['select'],
+	},
+}));
+
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
+
+type DropdownStubWrapper = VueWrapper<{
+	options: Array<{ value: string; label?: string; disabled?: boolean }>;
+	$options: unknown;
+	$emit: (event: 'select', value: string) => void;
+}>;
+
+function getSwitcherOptions(wrapper: ReturnType<typeof mountHeader>) {
+	const switcher = wrapper.findComponent(
+		'[data-testid="agent-header-switcher"]',
+	) as DropdownStubWrapper;
+	return switcher.vm.options;
+}
 
 const baseAgent = {
 	id: 'a1',
@@ -35,36 +81,16 @@ const baseAgent = {
 } as unknown as AgentResource;
 
 const globalStubs = {
-	N8nIcon: { template: '<i v-bind="$attrs"></i>', props: ['icon', 'size'] },
-	N8nBreadcrumbs: {
-		name: 'N8nBreadcrumbs',
-		template: '<div data-testid="stub-breadcrumbs"><slot name="append" /></div>',
-		props: ['items'],
-	},
-	N8nNavigationDropdown: {
-		name: 'N8nNavigationDropdown',
-		template: '<div data-testid="stub-nav-dropdown"><slot /></div>',
-		props: ['menu'],
-		emits: ['select'],
-	},
-	// N8nActionDropdown has no defineOptions name; Vue infers it as 'ActionDropdown' from filename
-	ActionDropdown: {
-		name: 'ActionDropdown',
-		template: '<div data-testid="stub-action-dropdown" />',
-		props: ['items', 'activatorIcon'],
-		emits: ['select'],
-	},
 	AgentPublishButton: {
 		name: 'AgentPublishButton',
 		template: '<div data-testid="stub-publish" />',
-		props: ['agent', 'projectId', 'agentId', 'isSaving'],
-		emits: ['published', 'unpublished'],
+		props: ['agent', 'projectId', 'agentId', 'isSaving', 'beforeRevertToPublished'],
+		emits: ['published', 'unpublished', 'reverted'],
 	},
 };
 
 function mountHeader(
 	overrides: Partial<{
-		chatColumnCollapsed: boolean;
 		agent: AgentResource | null;
 		projectName: string | null;
 		headerActions: unknown[];
@@ -77,7 +103,6 @@ function mountHeader(
 			agentId: 'a1',
 			projectName: 'projectName' in overrides ? (overrides.projectName ?? null) : 'My project',
 			headerActions: (overrides.headerActions ?? []) as Array<{ id: string; label: string }>,
-			chatColumnCollapsed: overrides.chatColumnCollapsed ?? false,
 		},
 		global: { stubs: globalStubs },
 	});
@@ -86,28 +111,22 @@ function mountHeader(
 describe('AgentBuilderHeader', () => {
 	beforeEach(() => {
 		ensureLoadedMock.mockReset();
+		routerPush.mockReset();
+		routerResolve.mockClear();
 		agentsListRef.value = null;
 	});
 
-	it('renders the back button, toggle, breadcrumbs, publish and action dropdown', () => {
+	it('renders breadcrumbs, publish and action dropdown', () => {
 		const wrapper = mountHeader();
-		expect(wrapper.find('[data-testid="agent-header-back"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-header-toggle-chat"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-breadcrumbs"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="stub-publish"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-header-actions"]').exists()).toBe(true);
 	});
 
-	it('emits back when the back button is clicked', async () => {
+	it('uses the horizontal dots action menu icon', () => {
 		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-back"]').trigger('click');
-		expect(wrapper.emitted('back')).toBeTruthy();
-	});
-
-	it('emits toggle-chat-column when the toggle is clicked', async () => {
-		const wrapper = mountHeader();
-		await wrapper.find('[data-testid="agent-header-toggle-chat"]').trigger('click');
-		expect(wrapper.emitted('toggle-chat-column')).toBeTruthy();
+		const action = wrapper.findComponent({ name: 'ActionDropdown' });
+		expect(action.props('activatorIcon')).toBe('ellipsis');
 	});
 
 	it('passes a single project breadcrumb (agent rendered as switcher button)', () => {
@@ -117,6 +136,20 @@ describe('AgentBuilderHeader', () => {
 		expect(items.map((i) => i.id)).toEqual(['p1']);
 		// Agent name should surface in the switcher button, not the breadcrumb.
 		expect(wrapper.text()).toContain('Darwin');
+	});
+
+	it('links the project breadcrumb to the project workflows page', () => {
+		const wrapper = mountHeader();
+		const bc = wrapper.findComponent({ name: 'N8nBreadcrumbs' });
+		const items = bc.props('items') as Array<{ href: string }>;
+		expect(items[0].href).toBe('/projects/p1/workflows');
+
+		bc.vm.$emit('itemSelected', { id: 'p1' });
+
+		expect(routerPush).toHaveBeenCalledWith({
+			name: 'ProjectsWorkflows',
+			params: { projectId: 'p1' },
+		});
 	});
 
 	it('falls back to the project fallback label when projectName is null', () => {
@@ -145,9 +178,8 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
 		const wrapper = mountHeader();
 		await flushPromises();
-		const nav = wrapper.findComponent({ name: 'N8nNavigationDropdown' });
-		const menu = nav.props('menu') as Array<{ id: string; disabled?: boolean }>;
-		expect(menu.map((m) => m.id)).toEqual(['a2']);
+		const options = getSwitcherOptions(wrapper);
+		expect(options.map((option) => option.value)).toEqual(['a2']);
 	});
 
 	it('shows a disabled "No other agents" entry when the project has only this agent', async () => {
@@ -155,20 +187,21 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
 		const wrapper = mountHeader();
 		await flushPromises();
-		const nav = wrapper.findComponent({ name: 'N8nNavigationDropdown' });
-		const menu = nav.props('menu') as Array<{ id: string; title: string; disabled?: boolean }>;
-		expect(menu).toHaveLength(1);
-		expect(menu[0].disabled).toBe(true);
-		expect(menu[0].title).toBe('agents.builder.header.switcher.empty');
+		const options = getSwitcherOptions(wrapper);
+		expect(options).toHaveLength(1);
+		expect(options[0].disabled).toBe(true);
+		expect(options[0].label).toBe('agents.builder.header.switcher.empty');
 	});
 
-	it('forwards published/unpublished up', async () => {
+	it('forwards publish events up', async () => {
 		const wrapper = mountHeader();
 		const publish = wrapper.findComponent({ name: 'AgentPublishButton' });
 		publish.vm.$emit('published', { ...baseAgent, name: 'Darwin v2' });
 		publish.vm.$emit('unpublished', baseAgent);
+		publish.vm.$emit('reverted', baseAgent);
 		expect(wrapper.emitted('published')).toBeTruthy();
 		expect(wrapper.emitted('unpublished')).toBeTruthy();
+		expect(wrapper.emitted('reverted')).toBeTruthy();
 	});
 
 	it('forwards header-action from the action dropdown', async () => {
@@ -183,7 +216,9 @@ describe('AgentBuilderHeader', () => {
 		ensureLoadedMock.mockResolvedValue(agentsListRef.value);
 		const wrapper = mountHeader();
 		await flushPromises();
-		const nav = wrapper.findComponent({ name: 'N8nNavigationDropdown' });
+		const nav = wrapper.findComponent(
+			'[data-testid="agent-header-switcher"]',
+		) as DropdownStubWrapper;
 		nav.vm.$emit('select', 'a2');
 		expect(wrapper.emitted('switch-agent')).toEqual([['a2']]);
 	});

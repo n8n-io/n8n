@@ -4,7 +4,7 @@ import { N8nText, N8nButton, N8nSelect } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
 import { ElSwitch } from 'element-plus';
 import type { AgentJsonConfig } from '../types';
-import shared from '../styles/agent-panel.module.scss';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
 type StorageType = MemoryConfig['storage'];
@@ -111,13 +111,14 @@ function onRangeAfterChange(event: Event) {
 
 <template>
 	<div
-		:class="[$style.container, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:class="[$style.container, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Memory</N8nText>
-			<N8nText size="small" color="text-light">Conversation memory configuration</N8nText>
-		</div>
+		<AgentPanelHeader
+			:class="$style.header"
+			title="Memory"
+			description="Conversation memory configuration"
+		/>
 		<!-- Configured + enabled state -->
 		<template v-if="memory !== null">
 			<!-- Storage type -->
@@ -232,13 +233,6 @@ function onRangeAfterChange(event: Event) {
 	opacity: 0.6;
 }
 
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--2xs);
-}
-
 .row {
 	display: flex;
 	align-items: center;
@@ -250,17 +244,17 @@ function onRangeAfterChange(event: Event) {
 	width: 70px;
 	text-align: center;
 	padding: var(--spacing--4xs) var(--spacing--3xs);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border: var(--border);
 	border-radius: var(--radius);
-	background-color: var(--color--foreground--tint-2);
-	color: var(--color--text);
+	background-color: var(--background--hover);
+	color: var(--text-color);
 	font-size: var(--font-size--sm);
 	font-family: var(--font-family);
 	outline: none;
 }
 
 .inlineInput:focus {
-	border-color: var(--color--primary);
+	border-color: var(--background--brand);
 }
 
 .inlineSelect {
@@ -269,7 +263,7 @@ function onRangeAfterChange(event: Event) {
 
 .divider {
 	border: none;
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	border-top: var(--border);
 	margin: var(--spacing--2xs) 0;
 }
 
@@ -288,7 +282,7 @@ function onRangeAfterChange(event: Event) {
 	justify-content: center;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--xl);
-	border: var(--border-width) dashed var(--color--foreground);
+	border: var(--border-width) dashed var(--border-color);
 	border-radius: var(--radius--lg);
 	text-align: center;
 	max-width: 360px;

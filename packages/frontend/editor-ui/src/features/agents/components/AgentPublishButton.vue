@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nActionDropdown, N8nButton, N8nIconButton } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n } from '@n8n/i18n';
 import { useAgentPublish } from '../composables/useAgentPublish';
 import type { AgentResource } from '../types';
@@ -10,15 +11,17 @@ const props = defineProps<{
 	projectId: string;
 	agentId: string;
 	isSaving?: boolean;
+	beforeRevertToPublished?: () => Promise<void> | void;
 }>();
 
 const emit = defineEmits<{
 	published: [agent: AgentResource];
 	unpublished: [agent: AgentResource];
+	reverted: [agent: AgentResource];
 }>();
 
 const locale = useI18n();
-const { publish, unpublish, publishing } = useAgentPublish();
+const { publish, unpublish, revertToPublished, publishing } = useAgentPublish();
 
 type AgentPublishState = 'not-published' | 'published-no-changes' | 'published-with-changes';
 
@@ -56,19 +59,32 @@ const buttonConfig = computed(() => {
 	}
 });
 
-const dropdownActions = computed(() => [
-	{
-		id: 'publish',
-		label: locale.baseText('agents.publish.dropdown.publish'),
-		disabled: !buttonConfig.value.enabled || publishing.value || props.isSaving,
-	},
-	{
+const dropdownActions = computed(() => {
+	const actions: Array<ActionDropdownItem<string>> = [
+		{
+			id: 'publish',
+			label: locale.baseText('agents.publish.dropdown.publish'),
+			disabled: !buttonConfig.value.enabled || publishing.value || props.isSaving,
+		},
+	];
+
+	if (props.agent?.publishedVersion) {
+		actions.push({
+			id: 'revert-to-published',
+			label: locale.baseText('agents.publish.dropdown.revertToPublished'),
+			disabled: publishing.value || props.isSaving,
+		});
+	}
+
+	actions.push({
 		id: 'unpublish',
 		label: locale.baseText('agents.publish.dropdown.unpublish'),
 		disabled: !props.agent?.publishedVersion || publishing.value || props.isSaving,
 		divided: true,
-	},
-]);
+	});
+
+	return actions;
+});
 
 async function onPublishClick() {
 	if (!buttonConfig.value.enabled || props.isSaving) return;
@@ -79,6 +95,13 @@ async function onPublishClick() {
 async function onDropdownSelect(action: string) {
 	if (action === 'publish') {
 		await onPublishClick();
+		return;
+	}
+	if (action === 'revert-to-published') {
+		if (!props.agent?.publishedVersion || props.isSaving) return;
+		await props.beforeRevertToPublished?.();
+		const updated = await revertToPublished(props.projectId, props.agentId);
+		if (updated) emit('reverted', updated);
 		return;
 	}
 	if (action !== 'unpublish') return;
@@ -93,8 +116,7 @@ async function onDropdownSelect(action: string) {
 			:class="$style.groupButtonLeft"
 			:loading="publishing"
 			:disabled="!buttonConfig.enabled || isSaving"
-			variant="subtle"
-			size="small"
+			variant="ghost"
 			data-testid="publish-agent-button"
 			@click="onPublishClick"
 		>
@@ -121,8 +143,7 @@ async function onDropdownSelect(action: string) {
 			<template #activator>
 				<N8nIconButton
 					:class="$style.groupButtonRight"
-					variant="subtle"
-					size="small"
+					variant="ghost"
 					icon="chevron-down"
 					:aria-label="locale.baseText('agents.publish.dropdown.ariaLabel')"
 					data-testid="agent-publish-dropdown-trigger"
@@ -135,6 +156,8 @@ async function onDropdownSelect(action: string) {
 <style module lang="scss">
 .buttonGroup {
 	display: inline-flex;
+	border: var(--border);
+	border-radius: var(--radius--3xs);
 }
 
 .groupButtonLeft,
@@ -152,6 +175,7 @@ async function onDropdownSelect(action: string) {
 .groupButtonRight {
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+	border-left: var(--border);
 }
 
 .buttonGroup:has(.groupButtonLeft:not(:disabled):hover) .groupButtonRight {
@@ -167,15 +191,15 @@ async function onDropdownSelect(action: string) {
 }
 
 .indicatorPublished {
-	background-color: var(--color--success);
+	background-color: var(--text-color--success);
 }
 
 .indicatorPublishedText {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
 .indicatorChanges {
-	background-color: var(--color--warning);
+	background-color: var(--text-color--warning);
 }
 
 .flex {

@@ -117,6 +117,8 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'dataTable:listProject',
 	'dataTable:readRow',
 	'dataTable:writeRow',
+	'dataTable:readColumn',
+	'dataTable:writeColumn',
 	'role:manage',
 	'mcp:manage',
 	'mcp:oauth',

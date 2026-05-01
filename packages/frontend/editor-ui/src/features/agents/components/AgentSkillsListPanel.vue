@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+	N8nCard,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentSkill } from '../types';
-import shared from '../styles/agent-panel.module.scss';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -26,35 +33,33 @@ const totalCount = computed(() => props.skills.length);
 
 <template>
 	<div
-		:class="[$style.panel, shared.scrollbarThin, props.disabled && $style.disabled]"
+		:class="[$style.panel, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 		data-testid="agent-skills-list-panel"
 	>
-		<div :class="$style.header">
-			<div :class="$style.headerText">
-				<N8nText tag="h3" size="large" :bold="true">{{
-					i18n.baseText('agents.builder.skills.title')
-				}}</N8nText>
-				<N8nText size="small" color="text-light">
-					{{
-						i18n.baseText('agents.builder.skills.count', {
-							adjustToNumber: totalCount,
-							interpolate: { count: String(totalCount) },
-						})
-					}}
-				</N8nText>
-			</div>
-			<N8nButton
-				type="primary"
-				size="small"
-				:disabled="props.disabled"
-				data-testid="agent-skills-add"
-				@click="emit('add-skill')"
-			>
-				<template #prefix><N8nIcon icon="plus" :size="14" /></template>
-				{{ i18n.baseText('agents.builder.skills.add') }}
-			</N8nButton>
-		</div>
+		<AgentPanelHeader
+			:class="$style.header"
+			:title="i18n.baseText('agents.builder.skills.title')"
+			:description="
+				i18n.baseText('agents.builder.skills.count', {
+					adjustToNumber: totalCount,
+					interpolate: { count: String(totalCount) },
+				})
+			"
+		>
+			<template #actions>
+				<N8nButton
+					type="primary"
+					size="small"
+					:disabled="props.disabled"
+					data-testid="agent-skills-add"
+					@click="emit('add-skill')"
+				>
+					<template #prefix><N8nIcon icon="plus" :size="14" /></template>
+					{{ i18n.baseText('agents.builder.skills.add') }}
+				</N8nButton>
+			</template>
+		</AgentPanelHeader>
 
 		<div v-if="totalCount === 0" :class="$style.empty">
 			<N8nText size="small" color="text-light">{{
@@ -63,10 +68,11 @@ const totalCount = computed(() => props.skills.length);
 		</div>
 
 		<div v-else :class="$style.rows">
-			<div
+			<N8nCard
 				v-for="{ id, skill } in skills"
 				:key="id"
 				:class="$style.row"
+				hoverable
 				role="button"
 				tabindex="0"
 				data-testid="agent-skills-list-row"
@@ -74,32 +80,34 @@ const totalCount = computed(() => props.skills.length);
 				@keydown.enter.prevent="emit('open-skill', id)"
 				@keydown.space.prevent="emit('open-skill', id)"
 			>
-				<N8nIcon icon="sparkles" :size="14" :class="$style.skillIcon" />
-				<div :class="$style.labels">
-					<N8nText size="small" color="text-dark" :class="$style.name">{{
-						skill.name || id
-					}}</N8nText>
-					<N8nText
-						v-if="skill.description"
-						size="small"
-						color="text-light"
-						:class="$style.description"
-						>{{ skill.description }}</N8nText
-					>
-				</div>
-				<N8nTooltip :content="i18n.baseText('agents.builder.skills.remove')" placement="top">
-					<N8nIconButton
-						icon="trash-2"
-						variant="ghost"
-						size="mini"
-						text
-						:aria-label="i18n.baseText('agents.builder.skills.remove')"
-						data-testid="agent-skills-list-remove"
-						@click.stop="emit('remove-skill', id)"
-					/>
-				</N8nTooltip>
-				<N8nIcon icon="chevron-right" :size="14" :class="$style.chevron" />
-			</div>
+				<template #prepend>
+					<N8nIcon icon="sparkles" :size="14" :class="$style.skillIcon" />
+				</template>
+
+				<N8nText size="small" color="text-dark" :class="$style.name">{{
+					skill.name || id
+				}}</N8nText>
+				<N8nText
+					v-if="skill.description"
+					size="small"
+					color="text-light"
+					:class="$style.description"
+					>{{ skill.description }}</N8nText
+				>
+
+				<template #append>
+					<N8nTooltip :content="i18n.baseText('agents.builder.skills.remove')" placement="top">
+						<N8nIconButton
+							icon="trash-2"
+							variant="ghost"
+							text
+							:aria-label="i18n.baseText('agents.builder.skills.remove')"
+							data-testid="agent-skills-list-remove"
+							@click.stop="emit('remove-skill', id)"
+						/>
+					</N8nTooltip>
+				</template>
+			</N8nCard>
 		</div>
 	</div>
 </template>
@@ -119,21 +127,6 @@ const totalCount = computed(() => props.skills.length);
 	overflow-y: auto;
 }
 
-.header {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-}
-
-.headerText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-	min-width: 0;
-}
-
 .empty {
 	padding: var(--spacing--lg);
 	text-align: center;
@@ -146,46 +139,36 @@ const totalCount = computed(() => props.skills.length);
 }
 
 .row {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	background: transparent;
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text);
-	text-align: left;
-	cursor: pointer;
-	width: 100%;
+	--card--append--width: auto;
 
-	&:hover {
-		border-color: var(--color--foreground--shade-1);
+	:global(.n8n-card-append) {
+		gap: var(--spacing--2xs);
 	}
 }
 
 .skillIcon {
 	flex-shrink: 0;
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 }
 
-.labels {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-	flex: 1;
-	min-width: 0;
+.name {
+	font-weight: var(--font-weight--medium);
+	margin-bottom: var(--spacing--4xs);
 }
 
 .name,
 .description {
+	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
+	max-width: 80%;
 }
 
 .chevron {
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 	flex-shrink: 0;
 }
 </style>

@@ -28,8 +28,13 @@ export interface SubmitWorkflowAttempt {
 	success: boolean;
 	/** Workflow ID assigned by n8n after a successful save. */
 	workflowId?: string;
-	/** Node types of all trigger nodes in the submitted workflow. */
-	triggerNodeTypes?: string[];
+	/**
+	 * Trigger nodes in the submitted workflow, each carrying name + type.
+	 * Populated by a conservative detector (known-mockable allow-list plus
+	 * any node type ending in `Trigger`); surfaces to the build outcome so
+	 * the orchestrator can choose a `verify-built-workflow` `inputData` shape.
+	 */
+	triggerNodes?: Array<{ nodeName: string; nodeType: string }>;
 	/** Node names whose credentials were mocked. */
 	mockedNodeNames?: string[];
 	/** Credential types that were mocked (not resolved to real credentials). */
@@ -56,6 +61,32 @@ const WEBHOOK_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.mcpTrigger',
 	'@n8n/n8n-nodes-langchain.chatTrigger',
 ]);
+
+/**
+ * Node types the bypassPlan post-build verify flow can exercise without user
+ * approval (verify-built-workflow injects sidecar pin data matching each
+ * trigger's production output shape). Kept in sync with the per-trigger
+ * inputData shape block in the orchestrator system prompt.
+ */
+const KNOWN_MOCKABLE_TRIGGER_TYPES = new Set([
+	'n8n-nodes-base.webhook',
+	'n8n-nodes-base.formTrigger',
+	'n8n-nodes-base.scheduleTrigger',
+	'@n8n/n8n-nodes-langchain.chatTrigger',
+]);
+
+/**
+ * Whether a node's type should be surfaced in `SubmitWorkflowAttempt.triggerNodes`
+ * so the orchestrator can decide if it can verify the build without user input.
+ * Known-mockable types feed the post-build verify step directly; other `*Trigger`
+ * suffix types are included for visibility but skipped by the verify step.
+ * Exported for direct unit coverage.
+ */
+export function isTriggerNodeType(nodeType: string | undefined): boolean {
+	if (!nodeType) return false;
+	if (KNOWN_MOCKABLE_TRIGGER_TYPES.has(nodeType)) return true;
+	return nodeType.endsWith('Trigger') || nodeType.endsWith('trigger');
+}
 
 /**
  * Ensure webhook nodes have a webhookId so n8n registers clean URL paths.
@@ -277,8 +308,13 @@ export function createSubmitWorkflowTool(
 				nodeName: w.nodeName,
 			}));
 
-			// Server-side schema validation (Zod checks against node type definitions)
-			const schemaValidation = validateWorkflow(buildOutput.workflow);
+			// Server-side schema validation (Zod checks against node type definitions).
+			// strictMode is hardcoded on at AI-builder call sites — we want every
+			// catchable bug surfaced as a blocking error so the agent can self-correct.
+			const schemaValidation = validateWorkflow(buildOutput.workflow, {
+				nodeTypesProvider: context.nodeTypesProvider,
+				strictMode: true,
+			});
 			for (const issue of [...schemaValidation.errors, ...schemaValidation.warnings]) {
 				allWarnings.push({
 					code: issue.code,
@@ -341,18 +377,21 @@ export function createSubmitWorkflowTool(
 
 			// Save
 			let savedId: string;
-			const opts = projectId ? { projectId } : undefined;
 			try {
 				if (workflowId) {
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						workflowId,
 						json,
-						opts,
+						projectId ? { projectId } : undefined,
 					);
 					savedId = updated.id;
 				} else {
-					const created = await context.workflowService.createFromWorkflowJSON(json, opts);
+					const created = await context.workflowService.createFromWorkflowJSON(json, {
+						...(projectId ? { projectId } : {}),
+						markAsAiTemporary: true,
+					});
 					savedId = created.id;
+					(context.aiCreatedWorkflowIds ??= new Set<string>()).add(created.id);
 				}
 			} catch (error) {
 				const errors = [
@@ -375,10 +414,13 @@ export function createSubmitWorkflowTool(
 				});
 			}
 
-			const triggers = (json.nodes ?? []).filter(
-				(n) => n.type?.endsWith?.('Trigger') || n.type?.endsWith?.('trigger'),
-			);
-			const triggerNodeTypes = triggers.map((t) => t.type).filter(Boolean);
+			const triggerNodes = (json.nodes ?? [])
+				.filter((n) => isTriggerNodeType(n.type))
+				.map((n) => ({ nodeName: n.name, nodeType: n.type }))
+				.filter(
+					(t): t is { nodeName: string; nodeType: string } =>
+						Boolean(t.nodeName) && Boolean(t.nodeType),
+				);
 
 			// Scan node parameters for unresolved placeholder values
 			const hasPlaceholders = (json.nodes ?? []).some((n) => hasPlaceholderDeep(n.parameters));
@@ -386,7 +428,7 @@ export function createSubmitWorkflowTool(
 			await reportAttempt({
 				success: true,
 				workflowId: savedId,
-				triggerNodeTypes,
+				triggerNodes,
 				mockedNodeNames: hasMockedCredentials ? mockResult.mockedNodeNames : undefined,
 				mockedCredentialTypes: hasMockedCredentials ? mockResult.mockedCredentialTypes : undefined,
 				mockedCredentialsByNode: hasMockedCredentials

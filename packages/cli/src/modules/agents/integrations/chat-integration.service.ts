@@ -342,7 +342,7 @@ export class ChatIntegrationService {
 		if (!credential) {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
-		const decrypted = this.credentialsService.decrypt(credential, true);
+		const decrypted = await this.credentialsService.decrypt(credential, true);
 		return decrypted as Record<string, unknown>;
 	}
 

@@ -11,7 +11,6 @@ import {
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import { CHAT_MESSAGE_STATUS } from '../constants';
-import shared from '../styles/agent-panel.module.scss';
 
 const props = defineProps<{
 	messages: ChatMessage[];
@@ -123,7 +122,7 @@ watch(
 </script>
 
 <template>
-	<div ref="scrollRef" :class="[$style.messages, shared.scrollbarThin]" @scroll.passive="onScroll">
+	<div ref="scrollRef" :class="$style.messages" @scroll.passive="onScroll">
 		<template v-for="group in displayGroups" :key="group.id">
 			<div v-if="group.kind === 'toolRun'" :class="[$style.message, $style.assistant]">
 				<div :class="$style.content">
@@ -245,9 +244,18 @@ watch(
 	min-height: 0;
 	overflow-y: auto;
 	padding: var(--spacing--lg) var(--spacing--md) var(--spacing--sm);
+	padding-bottom: var(--spacing--xl);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+	scrollbar-color: transparent transparent;
+
+	mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+
+	&:hover,
+	&:focus-within {
+		scrollbar-color: var(--border) transparent;
+	}
 }
 
 .message {
@@ -285,7 +293,7 @@ watch(
 .chatMessageUser {
 	padding: var(--spacing--2xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
-	background-color: var(--color--background);
+	background-color: var(--background--subtle);
 	white-space: pre-wrap;
 	width: fit-content;
 	max-width: 100%;
@@ -294,13 +302,13 @@ watch(
 .chatMessageError {
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--lg);
-	background-color: var(--color--danger--tint-4);
-	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
-	color: var(--color--danger);
+	background-color: var(--background--danger);
+	border: var(--border-width) var(--border-style) var(--border-color--danger);
+	color: var(--text-color--danger);
 }
 
 .markdownContent {
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
@@ -320,7 +328,7 @@ watch(
 
 .thinkingSummary {
 	cursor: pointer;
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 	font-style: italic;
 	display: flex;
 	align-items: center;
@@ -332,7 +340,7 @@ watch(
 	white-space: pre-wrap;
 	font-family: inherit;
 	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtle);
 	max-height: 150px;
 	overflow-y: auto;
 }

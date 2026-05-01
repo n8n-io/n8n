@@ -124,7 +124,7 @@ export class ImportService {
 				workflow.active = false;
 				workflow.activeVersionId = null;
 
-				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
+				const upsertResult = await tx.upsert<WorkflowEntity>(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
@@ -330,7 +330,7 @@ export class ImportService {
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {
-			const lines = this.cipher.decrypt(block, customEncryptionKey).split(/\r?\n/);
+			const lines = (await this.cipher.decryptV2(block, customEncryptionKey)).split(/\r?\n/);
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -654,8 +654,9 @@ export class ImportService {
 
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
-		const importMigrations = this.cipher
-			.decrypt(migrationsFileContent, customEncryptionKey)
+		const importMigrations = (
+			await this.cipher.decryptV2(migrationsFileContent, customEncryptionKey)
+		)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())

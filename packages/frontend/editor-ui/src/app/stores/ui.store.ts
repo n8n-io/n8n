@@ -301,6 +301,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const addFirstStepOnLoad = ref<boolean>(false);
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const areNotificationsSuppressed = ref(false);
+	const allowErrorNotificationsWhenSuppressed = ref(false);
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -631,8 +632,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews.value[view] = notifications;
 	};
 
-	const setNotificationsSuppressed = (suppressed: boolean) => {
+	const setNotificationsSuppressed = (suppressed: boolean, options?: { allowErrors?: boolean }) => {
 		areNotificationsSuppressed.value = suppressed;
+		allowErrorNotificationsWhenSuppressed.value = suppressed && options?.allowErrors === true;
 	};
 
 	function resetLastInteractedWith() {
@@ -758,6 +760,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		isAnyModalOpen,
 		pendingNotificationsForViews,
 		areNotificationsSuppressed,
+		allowErrorNotificationsWhenSuppressed,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,

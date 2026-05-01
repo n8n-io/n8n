@@ -28,6 +28,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		passwordMinLength: 8,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
@@ -173,6 +174,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
 	const isAgentsNodeToolsFeatureEnabled = computed(() =>
 		isAgentModuleActive('node-tools-searcher'),
+	);
+
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
 	);
 
 	const isCustomRolesFeatureEnabled = computed(
@@ -458,5 +463,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isAgentsNodeToolsFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

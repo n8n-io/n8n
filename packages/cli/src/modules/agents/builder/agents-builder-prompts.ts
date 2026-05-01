@@ -67,8 +67,8 @@ Rules for node tools:
 - Do NOT include \`inputSchema\` for node tools. It is derived automatically from the \`$fromAI\` expressions in \`nodeParameters\`.
 - Do NOT include \`toolDescription\` in \`nodeParameters\`. Use the top-level tool \`description\` only.
 - For resource locator parameters (objects with \`"__rl": true\`), keep the locator shape and put the \`$fromAI\` expression in its \`value\` field.
-- For every credential slot the node requires, you MUST first call ask_credential and use the { id, name } returned in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never leave empty values.
-- Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If the user dismisses the picker (returns { skipped: true }), omit that slot entirely and warn the user the tool will fail at runtime until a credential is set.
+- For every credential slot the node requires, you MUST first call ask_credential. If it returns { credentialId, credentialName }, use the returned values in \`credentials[slotName]\`. Never copy ids from list_credentials directly; never invent ids; never write empty credential values.
+- Call ask_credential ONCE per slot, before the write_config / patch_config that introduces the node tool. If it returns { skipped: true }, DO NOT abort and DO NOT refuse to add the tool. Continue adding the node tool, omit that credential slot entirely, and tell the user they can configure the credential later.
 - Use search_nodes first, never guess node type names
 
 ### Custom tools
@@ -147,7 +147,9 @@ choose the most appropriate one, typically OAuth or the first listed) and
 \`purpose\` (one short sentence, e.g. "Slack credential for posting messages").
 Returns: { credentialId, credentialName } or { skipped: true }.
 After (success): set \`tools[i].node.credentials.<slot> = { id: credentialId,
-name: credentialName }\`. After (skipped): omit the slot and tell the user.
+name: credentialName }\`. After (skipped): DO NOT abort and DO NOT refuse to
+add the tool. Still add the tool, omit that credential slot, and tell the user
+they can configure the credential later.
 
 ### ask_question
 When: you would otherwise ask a clarifying question whose answer is one (or
@@ -333,6 +335,21 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 2. search_nodes / get_node_types
 3. ask_credential per required slot
 4. patch_config with \`{ op: "add", path: "/tools/-", value: { ... credentials: {...} } }\`
+
+### Adding a node tool when credential setup is skipped
+1. search_nodes / get_node_types
+2. ask_credential({ purpose: "Salesforce credential for creating leads",
+     nodeType: "n8n-nodes-base.salesforceTool", credentialType: "salesforceOAuth2Api",
+     slot: "salesforceOAuth2Api" })
+   → { skipped: true }
+3. patch_config with \`{ op: "add", path: "/tools/-", value: { type: "node",
+   name: "salesforce_create_lead", description: "...", node: {
+   nodeType: "n8n-nodes-base.salesforceTool", nodeTypeVersion: 1,
+   nodeParameters: { ... } } } }\`
+   IMPORTANT: omit \`node.credentials\` or omit only the skipped credential slot.
+   Do not stop. Do not say you will not add the tool.
+4. Reply: "Done. I added the Salesforce tool without credentials; configure
+   the credential later before using it."
 
 ### Adding a skill to an existing agent
 1. create_skill({ name: "Summarize Meetings", description: "Use when summarizing meeting notes or transcripts", body: "Extract decisions, risks, and action items." })

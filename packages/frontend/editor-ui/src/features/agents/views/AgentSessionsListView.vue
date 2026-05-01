@@ -6,14 +6,14 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
-import shared from '@/features/agents/styles/agent-panel.module.scss';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nActionDropdown, N8nButton, N8nTableBase, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
+import AgentPanelHeader from '../components/AgentPanelHeader.vue';
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -114,14 +114,13 @@ async function loadMore() {
 </script>
 
 <template>
-	<div :class="[$style.wrapper, shared.scrollbarThin]">
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Executions</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ sessionsStore.threads.length }}
-				{{ sessionsStore.threads.length === 1 ? 'execution' : 'executions' }}
-			</N8nText>
-		</div>
+	<div :class="$style.wrapper">
+		<AgentPanelHeader
+			title="Executions"
+			:description="`${sessionsStore.threads.length} ${
+				sessionsStore.threads.length === 1 ? 'execution' : 'executions'
+			}`"
+		/>
 		<div :class="$style.tableContainer">
 			<N8nTableBase>
 				<thead>
@@ -202,12 +201,6 @@ async function loadMore() {
 	overflow-y: auto;
 }
 
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-}
-
 .tableContainer {
 	width: 100%;
 	overflow-x: auto;
@@ -217,7 +210,7 @@ async function loadMore() {
 	cursor: pointer;
 
 	&:hover {
-		background-color: var(--color--foreground--tint-2);
+		background-color: var(--background--hover);
 	}
 }
 </style>

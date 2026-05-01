@@ -190,7 +190,7 @@ export class AgentsBuilderSettingsService {
 		);
 		if (!credential) return null;
 
-		const data = this.credentialsService.decrypt(credential, true);
+		const data = await this.credentialsService.decrypt(credential, true);
 		// Reuse the shared credential mapper used by the agent runtime
 		// (`from-json-config.ts`). It normalises field names per provider so
 		// Azure OpenAI, AWS Bedrock, OpenAI-compatible base URLs, etc. all work.

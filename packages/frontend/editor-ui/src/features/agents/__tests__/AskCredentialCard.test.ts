@@ -37,6 +37,7 @@ const NodeCredentialsStub = {
 		projectId: { type: String, default: '' },
 		standalone: { type: Boolean, default: false },
 		hideIssues: { type: Boolean, default: false },
+		skipAutoSelect: { type: Boolean, default: false },
 		readonly: { type: Boolean, default: false },
 	},
 	emits: ['credentialSelected'],
@@ -47,6 +48,7 @@ const NodeCredentialsStub = {
 			:data-project-id="projectId"
 			:data-standalone="String(standalone)"
 			:data-hide-issues="String(hideIssues)"
+			:data-skip-auto-select="String(skipAutoSelect)"
 			:data-readonly="String(readonly)"
 			:data-node-type="node?.type"
 		>
@@ -113,10 +115,11 @@ describe('AskCredentialCard', () => {
 		expect(stub.attributes('data-project-id')).toBe('p1');
 		expect(stub.attributes('data-standalone')).toBe('true');
 		expect(stub.attributes('data-hide-issues')).toBe('true');
+		expect(stub.attributes('data-skip-auto-select')).toBe('true');
 		expect(stub.attributes('data-readonly')).toBe('false');
 	});
 
-	it('emits skipped: true when Cancel is pressed', async () => {
+	it('emits skipped: true when Skip is pressed', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
 
@@ -127,37 +130,32 @@ describe('AskCredentialCard', () => {
 		expect(emitted[0][0]).toEqual({ skipped: true });
 	});
 
-	it('emits the chosen credential when the confirm button is clicked after a pick', async () => {
+	it('emits the chosen credential as soon as a credential is picked', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
 
-		// Confirm is disabled until a credential is selected.
-		const confirmBtn = wrapper.find('[data-testid="ask-credential-confirm"]');
-		expect((confirmBtn.element as HTMLButtonElement).disabled).toBe(true);
+		expect(wrapper.find('[data-testid="ask-credential-confirm"]').exists()).toBe(false);
 
 		await wrapper.find('[data-testid="stub-pick-credential"]').trigger('click');
-		await wrapper.find('[data-testid="ask-credential-confirm"]').trigger('click');
 
 		const emitted = wrapper.emitted('submit') as unknown[][];
 		expect(emitted[0][0]).toEqual({ credentialId: 'cred-1', credentialName: 'Acme Slack' });
 	});
 
-	it('clears the selection when NodeCredentials emits an empty credentials map', async () => {
+	it('does not emit when NodeCredentials emits an empty credentials map', async () => {
 		const wrapper = mountCard();
 		await flushPromises();
 
-		await wrapper.find('[data-testid="stub-pick-credential"]').trigger('click');
 		await wrapper.find('[data-testid="stub-clear-credential"]').trigger('click');
 
-		const confirmBtn = wrapper.find('[data-testid="ask-credential-confirm"]');
-		expect((confirmBtn.element as HTMLButtonElement).disabled).toBe(true);
+		expect(wrapper.emitted('submit')).toBeFalsy();
 	});
 
-	it('does not render the confirm button when disabled', async () => {
+	it('does not render the skip button when disabled', async () => {
 		const wrapper = mountCard({ disabled: true });
 		await flushPromises();
 
-		expect(wrapper.find('[data-testid="ask-credential-confirm"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="ask-credential-skip"]').exists()).toBe(false);
 	});
 
 	it('forwards the disabled flag to NodeCredentials as readonly', async () => {

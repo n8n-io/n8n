@@ -105,6 +105,7 @@ onMounted(fetchAgents);
 
 		<template #default="{ data }">
 			<AgentCard
+				class="mb-2xs"
 				:agent="data"
 				:project-id="projectId"
 				@select="onSelectAgent"

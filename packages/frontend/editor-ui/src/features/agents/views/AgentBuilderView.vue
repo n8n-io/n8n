@@ -1,21 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
-import {
-	onBeforeRouteLeave,
-	onBeforeRouteUpdate,
-	useRoute,
-	useRouter,
-	type RouteLocationNormalized,
-} from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
 	N8nButton,
+	N8nDropdown,
 	N8nIcon,
-	N8nNavigationDropdown,
 	N8nRadioButtons,
 	N8nResizeWrapper,
-	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import type { N8nDropdownOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -24,12 +18,11 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { MODAL_CONFIRM, MODAL_CANCEL } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
 	deleteAgent,
-	publishAgent,
 	updateAgentSkill,
 	createAgentSkill,
 } from '../composables/useAgentApi';
@@ -46,7 +39,6 @@ import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentSectionNav } from '../composables/useAgentSectionNav';
-import shared from '../styles/agent-panel.module.scss';
 import { agentsEventBus } from '../agents.eventBus';
 import {
 	AGENT_BUILDER_VIEW,
@@ -59,7 +51,6 @@ import {
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_ADD_TRIGGER_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
-	PROJECT_AGENTS,
 } from '../constants';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
@@ -77,6 +68,7 @@ import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentEvalsPanel from '../components/AgentEvalsPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
+import AgentPanelHeader from '../components/AgentPanelHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -87,7 +79,7 @@ const telemetry = useTelemetry();
 const sessionsStore = useAgentSessionsStore();
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
-const { showError } = useToast();
+const { showError, showMessage } = useToast();
 const { isBuilderConfigured, fetchStatus: fetchBuilderStatus } = useAgentBuilderStatus();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
 
@@ -131,16 +123,25 @@ const {
 	onNewChat,
 } = useAgentBuilderSession();
 
+const sessionOptions = computed<Array<N8nDropdownOption<string>>>(() =>
+	sessionMenu.value.map((item) => ({
+		value: item.id,
+		label: item.when ? `${item.label} · ${item.when}` : (item.label ?? item.title),
+		disabled: item.disabled,
+	})),
+);
+
 const {
+	builderRef,
 	chatColumnCollapsed,
 	chatColumnWidth,
 	treeColumnWidth,
 	gridColumns,
 	onChatColumnResize,
 	onTreeColumnResize,
-	onToggleChatColumn,
 	resizeGridSize,
 } = useAgentBuilderLayout();
+chatColumnCollapsed.value = false;
 
 // Config
 const { config, fetchConfig, updateConfig } = useAgentConfig();
@@ -176,6 +177,9 @@ watch(
 );
 
 const projectName = computed<string | null>(() => {
+	if (projectsStore.personalProject?.id === projectId.value) {
+		return locale.baseText('projects.menu.personal');
+	}
 	const current = projectsStore.currentProject;
 	if (current && current.id === projectId.value) return current.name ?? null;
 	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
@@ -233,6 +237,13 @@ function onPublished(updated: AgentResource) {
 
 function onUnpublished(updated: AgentResource) {
 	agent.value = updated;
+}
+
+async function onReverted(updated: AgentResource) {
+	agent.value = updated;
+	agentName.value = updated.name;
+	await fetchConfig(projectId.value, agentId.value);
+	builderTelemetry.captureToolsBaseline();
 }
 
 /**
@@ -463,9 +474,8 @@ async function onHeaderAction(action: string) {
 			return;
 		}
 
-		// Clear local agent state BEFORE router.replace so `hasUnpublishedChanges`
-		// is false and the route-leave guard doesn't intercept the navigation to
-		// ask about publishing a now-deleted agent.
+		// Clear local agent state before router.replace so the component teardown
+		// doesn't keep rendering data for an agent that no longer exists.
 		agent.value = null;
 		localConfig.value = null;
 		agentsEventBus.emit('agentUpdated');
@@ -494,79 +504,6 @@ async function onHeaderAction(action: string) {
 		}
 	}
 }
-
-const hasUnpublishedChanges = computed(
-	() =>
-		!!agent.value?.publishedVersion &&
-		agent.value.versionId !== agent.value.publishedVersion.publishedFromVersionId,
-);
-
-async function guardUnpublishedChanges(
-	from: RouteLocationNormalized,
-	next: (proceed?: boolean) => void,
-) {
-	if (!hasUnpublishedChanges.value) {
-		next();
-		return;
-	}
-
-	// The route may already be advancing (especially for in-component param
-	// updates), so resolve project/agent ids from the route we're leaving
-	// rather than the live computed refs.
-	const leavingProjectId = String(from.params.projectId ?? projectId.value);
-	const leavingAgentId = String(from.params.agentId ?? agentId.value);
-
-	const response = await openAgentConfirmationModal({
-		title: locale.baseText('agents.builder.unsavedPublish.modal.title'),
-		description: locale.baseText('agents.builder.unsavedPublish.modal.description'),
-		confirmButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.publish'),
-		cancelButtonText: locale.baseText('agents.builder.unsavedPublish.modal.button.leave'),
-	});
-
-	if (response === MODAL_CONFIRM) {
-		try {
-			// Drain the autosave pipeline first: cancel any scheduled-but-not-fired save,
-			// and await any in-flight one. Without this, a save that fires after publish
-			// would bump versionId and mark the agent dirty immediately after publishing.
-			await settleAutosave();
-			if (!localConfig.value) return;
-			await saveConfig({
-				type: 'config',
-				projectId: leavingProjectId,
-				agentId: leavingAgentId,
-				config: deepCopy(localConfig.value),
-			});
-			builderTelemetry.flushConfigEdits();
-			const updated = await publishAgent(
-				rootStore.restApiContext,
-				leavingProjectId,
-				leavingAgentId,
-			);
-			builderTelemetry.trackPublished(updated.publishedVersion?.schema);
-		} catch (error) {
-			showError(error, locale.baseText('agents.builder.unsavedPublish.error'));
-			return; // stay on page
-		}
-		next();
-	} else if (response === MODAL_CANCEL) {
-		next();
-	}
-	// MODAL_CLOSE (X / Escape) → don't call next(), stay on page
-}
-
-onBeforeRouteLeave(async (_to, from, next) => {
-	await guardUnpublishedChanges(from, next);
-});
-
-// In-component agent switches (same route, different :agentId) don't fire
-// `onBeforeRouteLeave`, so wire the same publish-or-discard prompt here too.
-onBeforeRouteUpdate(async (to, from, next) => {
-	if (to.params.agentId === from.params.agentId) {
-		next();
-		return;
-	}
-	await guardUnpublishedChanges(from, next);
-});
 
 async function initialize() {
 	initialized.value = false;
@@ -670,18 +607,75 @@ function exitContinueMode() {
 }
 
 /**
- * Whether the current tab can flip to a raw JSON view. Only the custom-tool
- * tabs offer this toggle — everything else uses the dedicated "Raw" entry at
- * the bottom of the tree, which shows the full agent config.
+ * Whether the current tab has a non-raw custom view that the user can flip
+ * away from. For plain JSON slices the toggle isn't offered (it's already raw).
  */
 const canToggleRaw = computed(() => {
-	if (!selectedSection.value) return false;
+	const key = selectedSection.value;
+	if (!key) return false;
 	if (!localConfig.value) return false;
+	if (key === AGENT_SECTION_KEY || key === ADVANCED_SECTION_KEY || key === 'memory') return true;
 	return customToolSelection.value !== null;
 });
 
+const AGENT_RAW_PICK_KEYS = ['name', 'model', 'credential', 'instructions'];
+const sectionViewOptions = [
+	{ label: 'Config', value: 'form' as const, icon: 'list' },
+	{ label: 'Raw', value: 'raw' as const, icon: 'json' },
+];
+
+const sectionViewOptionIcons = {
+	form: 'list',
+	raw: 'json',
+} as const;
+
 /** Path passed to AgentSectionEditor when `showRawSection` is on. */
-const rawSectionPath = computed<string | null>(() => selectedSection.value);
+const rawSectionPath = computed<string | null>(() => {
+	const key = selectedSection.value;
+	if (!key) return null;
+	// `__agent` is synthetic — its raw view uses `pickKeys` instead.
+	if (key === AGENT_SECTION_KEY) return null;
+	// `__advanced` maps to the `config` subtree in raw view.
+	if (key === ADVANCED_SECTION_KEY) return 'config';
+	return key;
+});
+
+const rawPickKeys = computed<string[] | null>(() =>
+	selectedSection.value === AGENT_SECTION_KEY ? AGENT_RAW_PICK_KEYS : null,
+);
+
+const rawSectionTitle = computed(() => {
+	switch (selectedSection.value) {
+		case AGENT_SECTION_KEY:
+			return locale.baseText('agents.builder.agent.title');
+		case ADVANCED_SECTION_KEY:
+			return locale.baseText('agents.builder.advanced.title');
+		case 'memory':
+			return 'Memory';
+		default:
+			return '';
+	}
+});
+
+const rawSectionDescription = computed(() => {
+	switch (selectedSection.value) {
+		case AGENT_SECTION_KEY:
+			return locale.baseText('agents.builder.agent.description');
+		case ADVANCED_SECTION_KEY:
+			return locale.baseText('agents.builder.advanced.description');
+		case 'memory':
+			return 'Conversation memory configuration';
+		default:
+			return '';
+	}
+});
+
+const sectionViewMode = computed(() => (showRawSection.value ? 'raw' : 'form'));
+
+function setSectionViewMode(mode: 'form' | 'raw') {
+	if ((mode === 'raw') === showRawSection.value) return;
+	toggleRawSection();
+}
 
 function onOpenToolFromList(index: number) {
 	selectedSection.value = `tools.${index}`;
@@ -736,6 +730,10 @@ function onOpenAddSkillModal() {
 						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
 					});
 					selectedSection.value = `skills.${id}`;
+					showMessage({
+						title: locale.baseText('agents.builder.skills.added'),
+						type: 'success',
+					});
 				})();
 			},
 		},
@@ -930,13 +928,6 @@ function onContinueLoaded(count: number) {
 	}
 }
 
-function onHeaderBack() {
-	void router.push({
-		name: PROJECT_AGENTS,
-		params: { projectId: projectId.value },
-	});
-}
-
 function onSwitchAgent(nextAgentId: string) {
 	if (!nextAgentId || nextAgentId === agentId.value) return;
 	void router.push({
@@ -954,13 +945,12 @@ function onSwitchAgent(nextAgentId: string) {
 			:agent-id="agentId"
 			:project-name="projectName"
 			:header-actions="headerActions"
-			:chat-column-collapsed="chatColumnCollapsed"
 			:save-status="saveStatus"
-			@back="onHeaderBack"
-			@toggle-chat-column="onToggleChatColumn"
+			:before-revert-to-published="settleAutosave"
 			@header-action="onHeaderAction"
 			@published="onPublished"
 			@unpublished="onUnpublished"
+			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
 		<div ref="builderRef" :class="$style.builder" :style="{ gridTemplateColumns: gridColumns }">
@@ -984,38 +974,41 @@ function onSwitchAgent(nextAgentId: string) {
 						:class="$style.sessionHeader"
 						data-testid="agent-chat-session-header"
 					>
-						<N8nNavigationDropdown
-							:menu="sessionMenu"
-							submenu-class="agent-chat-session-menu"
+						<N8nDropdown
+							:options="sessionOptions"
 							data-testid="agent-chat-session-picker"
 							@select="onSessionPick"
 						>
-							<button
-								type="button"
-								:class="$style.sessionTitleBtn"
-								:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
-								data-testid="agent-chat-session-picker-btn"
-							>
-								<N8nIcon icon="history" :size="14" />
-								<span :class="$style.sessionTitleText">{{ currentSessionTitle }}</span>
-								<N8nIcon icon="chevron-down" :size="12" />
-							</button>
-							<template v-for="item in sessionMenu" :key="item.id" #[`item.append.${item.id}`]>
-								<span v-if="item.label" :class="$style.sessionItemLabel">{{ item.label }}</span>
-								<span v-if="item.when" :class="$style.sessionItemWhen">{{ item.when }}</span>
+							<template #trigger>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									:class="$style.sessionTitleBtn"
+									:aria-label="locale.baseText('agents.builder.chat.sessionPicker.ariaLabel')"
+									data-testid="agent-chat-session-picker-btn"
+								>
+									{{ currentSessionTitle }}
+									<N8nIcon icon="chevron-down" color="text-light" :size="12" />
+								</N8nButton>
 							</template>
-						</N8nNavigationDropdown>
-						<button
-							v-if="currentSessionHasMessages"
-							type="button"
-							:class="$style.newChatBtn"
-							:aria-label="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
-							data-testid="agent-chat-new-chat-btn"
-							@click="onNewChat"
+						</N8nDropdown>
+						<N8nTooltip
+							placement="left"
+							:content="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
 						>
-							<N8nIcon icon="plus" :size="14" />
-							<span>{{ locale.baseText('agents.builder.chat.newChat.label') }}</span>
-						</button>
+							<N8nButton
+								v-if="currentSessionHasMessages"
+								variant="ghost"
+								iconOnly
+								size="small"
+								:class="$style.newChatBtn"
+								:aria-label="locale.baseText('agents.builder.chat.newChat.ariaLabel')"
+								data-testid="agent-chat-new-chat-btn"
+								@click="onNewChat"
+							>
+								<N8nIcon icon="plus" :size="14" />
+							</N8nButton>
+						</N8nTooltip>
 					</div>
 					<div :class="$style.chatBody">
 						<AgentChatPanel
@@ -1035,49 +1028,46 @@ function onSwitchAgent(nextAgentId: string) {
 							@continue-loaded="onContinueLoaded"
 							@open-build="onOpenBuildFromChat"
 						>
-							<template #above-input>
-								<div :class="$style.quickActionsRow">
-									<div :class="$style.quickActionsStart"></div>
-									<N8nTooltip
-										v-if="initialized"
-										:class="$style.chatModeToggle"
-										:disabled="isBuilt"
-										:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
-										:show-after="100"
-										placement="top"
+							<template #footer-start>
+								<N8nTooltip
+									v-if="initialized"
+									:class="$style.chatModeToggle"
+									:disabled="isBuilt"
+									:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+									:show-after="100"
+									placement="top"
+								>
+									<N8nRadioButtons
+										:model-value="chatMode"
+										:options="chatModeOptions"
+										:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+										data-testid="agent-chat-mode-toggle"
+										@update:model-value="setChatMode"
 									>
-										<N8nRadioButtons
-											:model-value="chatMode"
-											:options="chatModeOptions"
-											:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-											data-testid="agent-chat-mode-toggle"
-											@update:model-value="setChatMode"
-										>
-											<template #option="option">
-												<span :class="$style.chatModeOption">
-													<N8nIcon
-														v-if="option.value === 'build' && isBuildChatStreaming"
-														icon="loader-circle"
-														:size="14"
-														:spin="true"
-													/>
-													<N8nIcon
-														v-else-if="option.value === 'test' && !isBuilt"
-														icon="triangle-alert"
-														:size="14"
-														:class="$style.chatModeLockedIcon"
-													/>
-													<N8nIcon
-														v-else
-														:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
-														:size="14"
-													/>
-													<span>{{ option.label }}</span>
-												</span>
-											</template>
-										</N8nRadioButtons>
-									</N8nTooltip>
-								</div>
+										<template #option="option">
+											<span :class="$style.chatModeOption">
+												<N8nIcon
+													v-if="option.value === 'build' && isBuildChatStreaming"
+													icon="loader-circle"
+													:size="14"
+													:spin="true"
+												/>
+												<N8nIcon
+													v-else-if="option.value === 'test' && !isBuilt"
+													icon="triangle-alert"
+													:size="14"
+													:class="$style.chatModeLockedIcon"
+												/>
+												<N8nIcon
+													v-else
+													:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+													:size="14"
+												/>
+												<span>{{ option.label }}</span>
+											</span>
+										</template>
+									</N8nRadioButtons>
+								</N8nTooltip>
 							</template>
 						</AgentChatPanel>
 						<AgentChatPanel
@@ -1108,46 +1098,48 @@ function onSwitchAgent(nextAgentId: string) {
 										@trigger-added="onTriggerAdded"
 										@agent-published="onPublished"
 									/>
-									<N8nTooltip
-										v-if="initialized"
-										:class="$style.chatModeToggle"
-										:disabled="isBuilt"
-										:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
-										:show-after="100"
-										placement="top"
-									>
-										<N8nRadioButtons
-											:model-value="chatMode"
-											:options="chatModeOptions"
-											:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
-											data-testid="agent-chat-mode-toggle"
-											@update:model-value="setChatMode"
-										>
-											<template #option="option">
-												<span :class="$style.chatModeOption">
-													<N8nIcon
-														v-if="option.value === 'build' && isBuildChatStreaming"
-														icon="loader-circle"
-														:size="14"
-														:spin="true"
-													/>
-													<N8nIcon
-														v-else-if="option.value === 'test' && !isBuilt"
-														icon="triangle-alert"
-														:size="14"
-														:class="$style.chatModeLockedIcon"
-													/>
-													<N8nIcon
-														v-else
-														:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
-														:size="14"
-													/>
-													<span>{{ option.label }}</span>
-												</span>
-											</template>
-										</N8nRadioButtons>
-									</N8nTooltip>
 								</div>
+							</template>
+							<template #footer-start>
+								<N8nTooltip
+									v-if="initialized"
+									:class="$style.chatModeToggle"
+									:disabled="isBuilt"
+									:content="locale.baseText('agents.builder.chatMode.test.lockedTooltip')"
+									:show-after="100"
+									placement="top"
+								>
+									<N8nRadioButtons
+										:model-value="chatMode"
+										:options="chatModeOptions"
+										:aria-label="locale.baseText('agents.builder.chatMode.ariaLabel')"
+										data-testid="agent-chat-mode-toggle"
+										@update:model-value="setChatMode"
+									>
+										<template #option="option">
+											<span :class="$style.chatModeOption">
+												<N8nIcon
+													v-if="option.value === 'build' && isBuildChatStreaming"
+													icon="loader-circle"
+													:size="14"
+													:spin="true"
+												/>
+												<N8nIcon
+													v-else-if="option.value === 'test' && !isBuilt"
+													icon="triangle-alert"
+													:size="14"
+													:class="$style.chatModeLockedIcon"
+												/>
+												<N8nIcon
+													v-else
+													:icon="option.value === 'build' ? 'wand-sparkles' : 'message-square'"
+													:size="14"
+												/>
+												<span>{{ option.label }}</span>
+											</span>
+										</template>
+									</N8nRadioButtons>
+								</N8nTooltip>
 							</template>
 						</AgentChatPanel>
 						<AgentBuilderUnconfiguredEmptyState
@@ -1164,185 +1156,184 @@ function onSwitchAgent(nextAgentId: string) {
 				data-testid="agent-builder-editor-column"
 			>
 				<div :class="$style.panelArea">
-					<div
-						v-if="isToolSliceSelection || isSkillSliceSelection"
-						:class="$style.panelToolbar"
-						data-testid="agent-tool-header"
-					>
-						<button
-							type="button"
-							:class="$style.backBtn"
-							:aria-label="
-								isSkillSliceSelection
-									? locale.baseText('agents.builder.skills.back')
-									: locale.baseText('agents.builder.tools.back')
-							"
-							data-testid="agent-tool-back"
-							@click="selectedSection = isSkillSliceSelection ? 'skills' : 'tools'"
+					<div :class="$style.panelAreaContainer">
+						<div
+							v-if="isToolSliceSelection || isSkillSliceSelection"
+							:class="$style.panelToolbar"
+							data-testid="agent-tool-header"
 						>
-							<N8nIcon icon="arrow-left" :size="16" />
-						</button>
-						<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
-							{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
-						</span>
-						<button
-							v-if="canToggleRaw && isToolSliceSelection"
-							type="button"
-							:class="[
-								$style.rawToggle,
-								$style.rawToggleInline,
-								showRawSection && $style.rawToggleActive,
-							]"
-							:aria-pressed="showRawSection"
-							:title="showRawSection ? 'Show formatted view' : 'Show raw JSON'"
-							data-testid="agent-section-raw-toggle"
-							@click="toggleRawSection"
-						>
-							<N8nIcon icon="code" :size="12" />
-							<span>Raw</span>
-						</button>
-					</div>
-					<AgentSectionEditor
-						v-if="showRawSection && canToggleRaw"
-						:config="localConfig"
-						:section-path="rawSectionPath"
-						:offset-copy-for-toggle="true"
-						:read-only="isBuildChatStreaming"
-						@update:config="onSectionEditorUpdate"
-					/>
-					<AgentCustomToolViewer v-else-if="customToolSelection" :code="customToolSelection.code" />
-					<AgentSkillViewer
-						v-else-if="selectedSkill"
-						:skill="selectedSkill.skill"
-						:disabled="isBuildChatStreaming"
-						@update:skill="onSkillUpdate"
-					/>
-					<AgentAdvancedPanel
-						v-else-if="selectedSection === ADVANCED_SECTION_KEY"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentEvalsPanel v-else-if="selectedSection === EVALS_SECTION_KEY" />
-					<AgentInfoPanel
-						v-else-if="selectedSection === AGENT_SECTION_KEY"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentSessionsListView
-						v-else-if="selectedSection === EXECUTIONS_SECTION_KEY"
-						data-testid="agent-executions-panel"
-					/>
-					<AgentToolsListPanel
-						v-else-if="selectedSection === 'tools'"
-						:tools="localConfig?.tools ?? []"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@open-tool="onOpenToolFromList"
-						@add-tool="onOpenAddToolModal"
-						@remove-tool="onRemoveTool"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentSkillsListPanel
-						v-else-if="selectedSection === 'skills'"
-						:skills="appliedSkills"
-						:disabled="isBuildChatStreaming"
-						@open-skill="onOpenSkillFromList"
-						@add-skill="onOpenAddSkillModal"
-						@remove-skill="onRemoveSkill"
-					/>
-					<div
-						v-else-if="selectedTriggerType"
-						:class="[$style.triggersTab, shared.scrollbarThin]"
-						data-testid="agent-triggers-tab"
-					>
-						<AgentIntegrationsPanel
-							:key="`integrations-focus-${agentId}`"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:agent-name="agentName"
-							:is-published="Boolean(agent?.publishedVersion)"
-							:focus-type="selectedTriggerType"
-							@update:connected-triggers="onConnectedTriggersUpdate"
-							@trigger-added="onTriggerAdded"
-						/>
-					</div>
-					<div
-						v-else-if="selectedSection === 'triggers'"
-						:class="[$style.triggersTab, shared.scrollbarThin]"
-						data-testid="agent-triggers-tab"
-					>
-						<div :class="$style.triggersHeader">
-							<div :class="$style.triggersHeaderText">
-								<N8nText tag="h3" size="large" :bold="true"
-									>{{ locale.baseText('agents.builder.triggers.title') }}
-								</N8nText>
-								<N8nText size="small" color="text-light">
-									{{ locale.baseText('agents.builder.triggers.description') }}
-								</N8nText>
-							</div>
-							<N8nButton
-								type="primary"
-								size="small"
-								data-testid="agent-triggers-add"
-								@click="onOpenAddTriggerModal"
+							<button
+								type="button"
+								:class="$style.backBtn"
+								:aria-label="
+									isSkillSliceSelection
+										? locale.baseText('agents.builder.skills.back')
+										: locale.baseText('agents.builder.tools.back')
+								"
+								data-testid="agent-tool-back"
+								@click="selectedSection = isSkillSliceSelection ? 'skills' : 'tools'"
 							>
-								<template #prefix>
-									<N8nIcon icon="plus" :size="14" />
+								<N8nIcon icon="arrow-left" :size="16" />
+							</button>
+							<span :class="$style.panelToolbarTitle" data-testid="agent-tool-header-title">
+								{{ isSkillSliceSelection ? skillHeaderTitle : toolHeaderTitle }}
+							</span>
+							<N8nRadioButtons
+								v-if="canToggleRaw && isToolSliceSelection"
+								:class="$style.viewModeToggleInline"
+								:model-value="sectionViewMode"
+								:options="sectionViewOptions"
+								data-testid="agent-section-raw-toggle"
+								@update:model-value="setSectionViewMode"
+							>
+								<template #option="option">
+									<span :class="$style.viewModeOption">
+										<N8nIcon :icon="sectionViewOptionIcons[option.value]" :size="14" />
+										<span>{{ option.label }}</span>
+									</span>
 								</template>
-								{{ locale.baseText('agents.builder.triggers.add') }}
-							</N8nButton>
+							</N8nRadioButtons>
+						</div>
+						<N8nRadioButtons
+							v-if="canToggleRaw && !isToolSliceSelection"
+							:class="$style.viewModeToggle"
+							:model-value="sectionViewMode"
+							:options="sectionViewOptions"
+							data-testid="agent-section-raw-toggle"
+							@update:model-value="setSectionViewMode"
+						>
+							<template #option="option">
+								<span :class="$style.viewModeOption">
+									<N8nIcon :icon="sectionViewOptionIcons[option.value]" :size="14" />
+									<span>{{ option.label }}</span>
+								</span>
+							</template>
+						</N8nRadioButtons>
+						<div v-if="showRawSection && canToggleRaw" :class="$style.rawPanel">
+							<AgentPanelHeader
+								v-if="rawSectionTitle"
+								:title="rawSectionTitle"
+								:description="rawSectionDescription"
+							/>
+							<AgentSectionEditor
+								:class="$style.rawPanelEditor"
+								:config="localConfig"
+								:section-path="rawSectionPath"
+								:pick-keys="rawPickKeys"
+								:offset-copy-for-toggle="true"
+								:read-only="isBuildChatStreaming"
+								@update:config="onSectionEditorUpdate"
+							/>
+						</div>
+						<AgentCustomToolViewer
+							v-else-if="customToolSelection"
+							:code="customToolSelection.code"
+						/>
+						<AgentSkillViewer
+							v-else-if="selectedSkill"
+							:skill="selectedSkill.skill"
+							:disabled="isBuildChatStreaming"
+							@update:skill="onSkillUpdate"
+						/>
+						<AgentAdvancedPanel
+							v-else-if="selectedSection === ADVANCED_SECTION_KEY"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentEvalsPanel v-else-if="selectedSection === EVALS_SECTION_KEY" />
+						<AgentInfoPanel
+							v-else-if="selectedSection === AGENT_SECTION_KEY"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentSessionsListView
+							v-else-if="selectedSection === EXECUTIONS_SECTION_KEY"
+							data-testid="agent-executions-panel"
+						/>
+						<AgentToolsListPanel
+							v-else-if="selectedSection === 'tools'"
+							:tools="localConfig?.tools ?? []"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@open-tool="onOpenToolFromList"
+							@add-tool="onOpenAddToolModal"
+							@remove-tool="onRemoveTool"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentSkillsListPanel
+							v-else-if="selectedSection === 'skills'"
+							:skills="appliedSkills"
+							:disabled="isBuildChatStreaming"
+							@open-skill="onOpenSkillFromList"
+							@add-skill="onOpenAddSkillModal"
+							@remove-skill="onRemoveSkill"
+						/>
+						<div
+							v-else-if="selectedTriggerType"
+							:class="$style.triggersTab"
+							data-testid="agent-triggers-tab"
+						>
+							<AgentIntegrationsPanel
+								:key="`integrations-focus-${agentId}`"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:agent-name="agentName"
+								:is-published="Boolean(agent?.publishedVersion)"
+								:focus-type="selectedTriggerType"
+								@update:connected-triggers="onConnectedTriggersUpdate"
+								@trigger-added="onTriggerAdded"
+							/>
 						</div>
 						<div
-							v-if="connectedTriggers.length === 0"
-							:class="$style.triggersEmptyState"
-							data-testid="agent-triggers-empty-state"
+							v-else-if="selectedSection === 'triggers'"
+							:class="$style.triggersTab"
+							data-testid="agent-triggers-tab"
 						>
-							<N8nIcon icon="zap" :size="32" :class="$style.triggersEmptyIcon" />
-							<N8nText size="medium" bold>
-								{{ locale.baseText('agents.builder.triggers.empty.title') }}
-							</N8nText>
-							<N8nText size="small" color="text-light" :class="$style.triggersEmptyDescription">
-								{{ locale.baseText('agents.builder.triggers.empty.description') }}
-							</N8nText>
-							<N8nButton
-								type="primary"
-								size="small"
-								data-testid="agent-triggers-empty-add"
-								@click="onOpenAddTriggerModal"
+							<AgentPanelHeader
+								:title="locale.baseText('agents.builder.triggers.title')"
+								:description="locale.baseText('agents.builder.triggers.description')"
 							>
-								<template #prefix>
-									<N8nIcon icon="plus" :size="14" />
+								<template #actions>
+									<N8nButton
+										type="primary"
+										size="small"
+										data-testid="agent-triggers-add"
+										@click="onOpenAddTriggerModal"
+									>
+										<template #prefix>
+											<N8nIcon icon="plus" :size="14" />
+										</template>
+										{{ locale.baseText('agents.builder.triggers.add') }}
+									</N8nButton>
 								</template>
-								{{ locale.baseText('agents.builder.triggers.add') }}
-							</N8nButton>
+							</AgentPanelHeader>
+							<AgentIntegrationsPanel
+								:key="`integrations-connected-${agentId}`"
+								:project-id="projectId"
+								:agent-id="agentId"
+								:agent-name="agentName"
+								:is-published="Boolean(agent?.publishedVersion)"
+								:only-connected="true"
+								@update:connected-triggers="onConnectedTriggersUpdate"
+								@trigger-added="onTriggerAdded"
+							/>
 						</div>
-						<AgentIntegrationsPanel
+						<AgentMemoryPanel
+							v-else-if="selectedSection === 'memory'"
+							:config="localConfig"
+							:disabled="isBuildChatStreaming"
+							@update:config="onConfigFieldUpdate"
+						/>
+						<AgentSectionEditor
 							v-else
-							:key="`integrations-connected-${agentId}`"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:agent-name="agentName"
-							:is-published="Boolean(agent?.publishedVersion)"
-							:only-connected="true"
-							@update:connected-triggers="onConnectedTriggersUpdate"
-							@trigger-added="onTriggerAdded"
+							:config="localConfig"
+							:section-path="selectedSection === CONFIG_JSON_SECTION_KEY ? null : selectedSection"
+							:read-only="isBuildChatStreaming"
+							@update:config="onSectionEditorUpdate"
 						/>
 					</div>
-					<AgentMemoryPanel
-						v-else-if="selectedSection === 'memory'"
-						:config="localConfig"
-						:disabled="isBuildChatStreaming"
-						@update:config="onConfigFieldUpdate"
-					/>
-					<AgentSectionEditor
-						v-else
-						:config="localConfig"
-						:section-path="selectedSection === CONFIG_JSON_SECTION_KEY ? null : selectedSection"
-						:read-only="isBuildChatStreaming"
-						@update:config="onSectionEditorUpdate"
-					/>
 				</div>
 			</section>
 
@@ -1355,10 +1346,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:supported-directions="['left']"
 				@resize="onTreeColumnResize"
 			>
-				<aside
-					:class="[$style.treeColumn, shared.scrollbarThin]"
-					data-testid="agent-builder-tree-column"
-				>
+				<aside :class="$style.treeColumn" data-testid="agent-builder-tree-column">
 					<AgentConfigTree
 						:config="localConfig"
 						:selected-key="selectedSection"
@@ -1397,6 +1385,7 @@ function onSwitchAgent(nextAgentId: string) {
 	position: relative;
 	display: flex;
 	flex-direction: column;
+	background-color: var(--background--surface);
 	border-right: var(--border);
 	height: 100%;
 	min-height: 0;
@@ -1406,14 +1395,10 @@ function onSwitchAgent(nextAgentId: string) {
 
 .quickActionsRow {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
+	justify-content: center;
 	gap: var(--spacing--2xs);
-}
-
-.quickActionsStart {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .sessionHeader {
@@ -1422,35 +1407,8 @@ function onSwitchAgent(nextAgentId: string) {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--3xs) var(--spacing--sm);
+	height: var(--height--2xl);
 	border-bottom: var(--border);
-	min-height: 36px;
-}
-
-.sessionTitleBtn {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	max-width: 100%;
-	min-width: 0;
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	background: transparent;
-	border: var(--border-width) var(--border-style) transparent;
-	border-radius: var(--radius);
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
-	cursor: pointer;
-	line-height: var(--line-height--md);
-
-	&:hover {
-		background: var(--color--background--light-2);
-		border-color: var(--color--foreground);
-	}
-
-	&:focus-visible {
-		outline: none;
-		border-color: var(--color--primary);
-	}
 }
 
 .sessionTitleText {
@@ -1459,87 +1417,8 @@ function onSwitchAgent(nextAgentId: string) {
 	white-space: nowrap;
 }
 
-.newChatBtn {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	background: transparent;
-	border: var(--border-width) var(--border-style) transparent;
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	cursor: pointer;
-	line-height: var(--line-height--md);
-
-	&:hover {
-		background: var(--color--background--light-2);
-		color: var(--color--text);
-		border-color: var(--color--foreground);
-	}
-}
-
-.quickActionsRow > :first-child {
-	flex: 1;
-	min-width: 0;
-}
-
-/* The session picker can grow with the thread list — cap it at ~5 visible rows
-   so it never eats the whole viewport. `.agent-chat-session-menu` is the
-   popper class we pass through to `N8nNavigationDropdown`'s submenuClass prop;
-   it's teleported, so the rule has to escape the CSS-module scope. */
-:global(.agent-chat-session-menu) :global(.el-menu) {
-	max-height: 220px;
-	max-width: 360px;
-	min-width: 280px;
-	overflow-y: auto;
-	scrollbar-width: thin;
-	scrollbar-color: var(--color--foreground--shade-1) transparent;
-}
-
-/* Each row is title (truncated) + right-aligned timestamp. We render both
-   inside the design-system's append slot (the bare title text node can't host
-   an ellipsis); override the slot wrapper's right-align so the row flexes
-   across the full menu width instead of clinging to the right edge. */
-:global(.agent-chat-session-menu) :global(.el-menu-item) {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	overflow: hidden;
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu-item) > span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex: 1;
-	min-width: 0;
-	margin-left: 0;
-	padding-left: 0;
-}
-
-.sessionItemLabel {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.sessionItemWhen {
-	margin-left: auto;
-	flex-shrink: 0;
-	color: var(--color--text--tint-2);
-	font-size: var(--font-size--2xs);
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar {
-	width: 6px;
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu)::-webkit-scrollbar-thumb {
-	background: var(--color--foreground--shade-1);
-	border-radius: 999px;
+.sessionTitleBtn {
+	margin-left: calc(var(--spacing--5xs) * -1);
 }
 
 .chatModeToggle {
@@ -1553,7 +1432,7 @@ function onSwitchAgent(nextAgentId: string) {
 }
 
 .chatModeLockedIcon {
-	color: var(--color--warning);
+	color: var(--text-color--warning);
 }
 
 .chatBody {
@@ -1571,6 +1450,7 @@ function onSwitchAgent(nextAgentId: string) {
 .treeColumn {
 	display: flex;
 	flex-direction: column;
+	background-color: var(--background--surface);
 	border-left: var(--border);
 	height: 100%;
 	min-height: 0;
@@ -1580,6 +1460,7 @@ function onSwitchAgent(nextAgentId: string) {
 .editorColumn {
 	display: flex;
 	flex-direction: column;
+	background-color: var(--background--surface);
 	min-height: 0;
 	min-width: 0;
 }
@@ -1593,48 +1474,24 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow-y: auto;
 }
 
-.triggersHeader {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-}
-
-.triggersHeaderText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	flex: 1;
-	min-width: 0;
-}
-
-.triggersEmptyState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--2xl) var(--spacing--lg);
-	border: 1px dashed var(--color--foreground);
-	border-radius: var(--radius);
-	text-align: center;
-}
-
-.triggersEmptyIcon {
-	color: var(--color--text--tint-2);
-	margin-bottom: var(--spacing--2xs);
-}
-
-.triggersEmptyDescription {
-	max-width: 360px;
-}
-
 .panelArea {
 	position: relative;
 	flex: 1;
 	min-height: 0;
 	display: flex;
 	flex-direction: column;
+	background-color: light-dark(
+		var(--color--background--light-1),
+		var(--color--background--light-2)
+	);
+}
+
+.panelAreaContainer {
+	position: relative;
+	max-width: 56rem;
+	width: 100%;
+	padding: var(--spacing--sm);
+	margin: 0 auto;
 }
 
 .panelArea > * {
@@ -1661,9 +1518,24 @@ function onSwitchAgent(nextAgentId: string) {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	font-family: var(--font-family--monospace, monospace);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--text-color);
+}
+
+.rawPanel {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--lg);
+	overflow-y: auto;
+	height: 100%;
+	width: 100%;
+	min-height: 0;
+}
+
+.rawPanelEditor {
+	flex: 1;
+	min-height: 0;
 }
 
 .backBtn {
@@ -1677,47 +1549,31 @@ function onSwitchAgent(nextAgentId: string) {
 	border: var(--border);
 	border-color: transparent;
 	border-radius: var(--radius);
-	color: var(--color--text);
+	color: var(--text-color);
 	cursor: pointer;
 	flex-shrink: 0;
 
 	&:hover {
-		background: var(--color--background--light-2);
+		background: var(--background--hover);
 	}
 }
 
-.rawToggleInline {
+.viewModeToggleInline {
 	position: static;
 	top: auto;
 	right: auto;
 }
 
-.rawToggle {
+.viewModeToggle {
 	position: absolute;
-	top: var(--spacing--sm);
-	right: var(--spacing--md);
+	top: var(--spacing--2xl);
+	right: var(--spacing--xl);
 	z-index: 1;
+}
+
+.viewModeOption {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background: var(--color--background);
-	border: var(--border);
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	line-height: var(--line-height--md);
-	cursor: pointer;
-
-	&:hover {
-		background: var(--color--background--light-2);
-		color: var(--color--text);
-	}
-}
-
-.rawToggleActive {
-	background: var(--color--background--light-3);
-	color: var(--color--text);
-	border-color: var(--color--foreground);
 }
 </style>

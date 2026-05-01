@@ -26,6 +26,7 @@ import {
 import { Container, Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import {
+	deepCopy,
 	OperationalError,
 	UserError,
 	type ExecuteAgentData,
@@ -329,6 +330,40 @@ export class AgentsService {
 		Container.get(AgentScheduleService).deregister(agentId);
 
 		this.logger.debug('Unpublished SDK agent', { agentId, projectId });
+		return agent;
+	}
+
+	async revertToPublishedAgent(agentId: string, projectId: string): Promise<Agent> {
+		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!agent) {
+			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+
+		const publishedVersion = agent.publishedVersion;
+		if (!publishedVersion) {
+			throw new ConflictError(`Agent "${agentId}" is not published`);
+		}
+
+		await this.agentRepository.manager.transaction(async (trx) => {
+			agent.schema = publishedVersion.schema ? deepCopy(publishedVersion.schema) : null;
+			agent.tools = deepCopy(publishedVersion.tools ?? {});
+			agent.skills = deepCopy(publishedVersion.skills ?? {});
+			agent.model = publishedVersion.model;
+			agent.provider = publishedVersion.provider;
+			agent.credentialId = publishedVersion.credentialId;
+			agent.versionId = publishedVersion.publishedFromVersionId;
+
+			if (agent.schema) {
+				agent.name = agent.schema.name;
+				agent.description = agent.schema.description ?? null;
+			}
+
+			await trx.save(agent);
+		});
+
+		this.clearRuntimes(agentId);
+
+		this.logger.debug('Reverted SDK agent to published version', { agentId, projectId });
 		return agent;
 	}
 

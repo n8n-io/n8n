@@ -11,7 +11,7 @@
 import { computed } from 'vue';
 import { N8nCard, N8nText, N8nIcon } from '@n8n/design-system';
 import type { AgentSchema } from '../types';
-import shared from '../styles/agent-panel.module.scss';
+import AgentPanelHeader from './AgentPanelHeader.vue';
 
 const props = withDefaults(defineProps<{ schema?: AgentSchema | null }>(), {
 	schema: null,
@@ -21,13 +21,11 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 </script>
 
 <template>
-	<div :class="[$style.panel, shared.scrollbarThin]" data-testid="agent-evals-panel">
-		<div :class="$style.header">
-			<N8nText tag="h3" size="large" :bold="true">Evaluations</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ evals.length }} evaluation{{ evals.length === 1 ? '' : 's' }} configured in code
-			</N8nText>
-		</div>
+	<div :class="$style.panel" data-testid="agent-evals-panel">
+		<AgentPanelHeader
+			title="Evaluations"
+			:description="`${evals.length} evaluation${evals.length === 1 ? '' : 's'} configured in code`"
+		/>
 
 		<template v-if="evals.length > 0">
 			<N8nCard v-for="evalItem in evals" :key="evalItem.name" :class="$style.evalCard">
@@ -78,13 +76,6 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 	width: 100%;
 }
 
-.header {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--4xs);
-	margin-bottom: var(--spacing--2xs);
-}
-
 .evalCard {
 	display: flex;
 	flex-direction: column;
@@ -105,20 +96,20 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 }
 
 .badgeCheck {
-	background-color: var(--color--primary--tint-3);
-	color: var(--color--primary--shade-1);
+	background-color: var(--color--orange-100);
+	color: var(--background--brand--active);
 }
 
 .badgeJudge {
-	background-color: var(--color--secondary--tint-2);
-	color: var(--color--secondary--shade-1);
+	background-color: var(--color--purple-100);
+	color: var(--color--purple-700);
 }
 
 .credentialRow {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
-	color: var(--color--text--tint-2);
+	color: var(--text-color--subtler);
 }
 
 .keyIcon {
@@ -130,14 +121,14 @@ const evals = computed(() => props.schema?.evaluations ?? []);
 	flex-direction: column;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--sm);
-	border: var(--border-width) dashed var(--color--foreground);
+	border: var(--border-width) dashed var(--border-color);
 	border-radius: var(--radius);
 }
 
 .code {
 	font-family: var(--font-family--monospace, 'SF Mono', monospace);
 	font-size: var(--font-size--2xs);
-	background-color: var(--color--background--shade-1);
+	background-color: var(--background--active);
 	padding: 0 var(--spacing--5xs);
 	border-radius: var(--radius--sm);
 }

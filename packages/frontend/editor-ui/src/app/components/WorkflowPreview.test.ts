@@ -1,7 +1,7 @@
 import type { Mock, MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { waitFor } from '@testing-library/vue';
-import type { ExecutionSummary } from 'n8n-workflow';
+import { jsonParse, type ExecutionSummary } from 'n8n-workflow';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi, IWorkflowDb } from '@/Interface';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
@@ -19,6 +19,14 @@ let consoleErrorSpy: MockInstance;
 
 const sendPostMessageCommand = (command: string) => {
 	window.postMessage(`{"command":"${command}"}`, '*');
+};
+
+const expectIframePostMessage = (expectedPayload: Record<string, unknown>) => {
+	const payloads = postMessageSpy.mock.calls
+		.filter(([payload, targetOrigin]) => typeof payload === 'string' && targetOrigin === '*')
+		.map(([payload]) => jsonParse(payload as string));
+
+	expect(payloads).toEqual(expect.arrayContaining([expect.objectContaining(expectedPayload)]));
 };
 
 describe('WorkflowPreview', () => {
@@ -105,18 +113,42 @@ describe('WorkflowPreview', () => {
 		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
-			expect(postMessageSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					command: 'openWorkflow',
-					workflow,
-					canOpenNDV: true,
-					hideNodeIssues: false,
-					suppressNotifications: false,
-					projectId: 'test-project-id',
-				}),
-				'*',
-			);
+			expectIframePostMessage({
+				command: 'openWorkflow',
+				workflow,
+				canOpenNDV: true,
+				hideNodeIssues: false,
+				suppressNotifications: false,
+				allowErrorNotifications: false,
+				projectId: 'test-project-id',
+			});
 			expect(focusSpy).toHaveBeenCalled();
+		});
+	});
+
+	it('should pass allowErrorNotifications using PostMessage when enabled', async () => {
+		const nodes = [{ name: 'Start' }] as INodeUi[];
+		const workflow = { nodes } as IWorkflowDb;
+		renderComponent({
+			pinia,
+			props: {
+				workflow,
+				allowErrorNotifications: true,
+			},
+		});
+
+		sendPostMessageCommand('n8nReady');
+
+		await waitFor(() => {
+			expectIframePostMessage({
+				command: 'openWorkflow',
+				workflow,
+				canOpenNDV: true,
+				hideNodeIssues: false,
+				suppressNotifications: false,
+				allowErrorNotifications: true,
+				projectId: 'test-project-id',
+			});
 		});
 	});
 
@@ -149,16 +181,13 @@ describe('WorkflowPreview', () => {
 		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
-			expect(postMessageSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					command: 'openExecution',
-					executionId,
-					executionMode: '',
-					canOpenNDV: true,
-					projectId: 'test-project-id',
-				}),
-				'*',
-			);
+			expectIframePostMessage({
+				command: 'openExecution',
+				executionId,
+				executionMode: '',
+				canOpenNDV: true,
+				projectId: 'test-project-id',
+			});
 		});
 	});
 
@@ -179,24 +208,18 @@ describe('WorkflowPreview', () => {
 		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
-			expect(postMessageSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					command: 'openExecution',
-					executionId,
-					executionMode: '',
-					canOpenNDV: true,
-					projectId: 'test-project-id',
-				}),
-				'*',
-			);
+			expectIframePostMessage({
+				command: 'openExecution',
+				executionId,
+				executionMode: '',
+				canOpenNDV: true,
+				projectId: 'test-project-id',
+			});
 
-			expect(postMessageSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					command: 'setActiveExecution',
-					executionId: 'abc',
-				}),
-				'*',
-			);
+			expectIframePostMessage({
+				command: 'setActiveExecution',
+				executionId: 'abc',
+			});
 		});
 	});
 
@@ -217,17 +240,15 @@ describe('WorkflowPreview', () => {
 		sendPostMessageCommand('n8nReady');
 
 		await waitFor(() => {
-			expect(postMessageSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					command: 'openWorkflow',
-					workflow,
-					canOpenNDV: true,
-					hideNodeIssues: false,
-					suppressNotifications: false,
-					projectId: 'test-project-id',
-				}),
-				'*',
-			);
+			expectIframePostMessage({
+				command: 'openWorkflow',
+				workflow,
+				canOpenNDV: true,
+				hideNodeIssues: false,
+				suppressNotifications: false,
+				allowErrorNotifications: false,
+				projectId: 'test-project-id',
+			});
 		});
 
 		sendPostMessageCommand('openNDV');
@@ -255,17 +276,15 @@ describe('WorkflowPreview', () => {
 		});
 		sendPostMessageCommand('n8nReady');
 		await waitFor(() => {
-			expect(postMessageSpy).toHaveBeenCalledWith(
-				JSON.stringify({
-					command: 'openWorkflow',
-					workflow,
-					canOpenNDV: false,
-					hideNodeIssues: false,
-					suppressNotifications: false,
-					projectId: 'test-project-id',
-				}),
-				'*',
-			);
+			expectIframePostMessage({
+				command: 'openWorkflow',
+				workflow,
+				canOpenNDV: false,
+				hideNodeIssues: false,
+				suppressNotifications: false,
+				allowErrorNotifications: false,
+				projectId: 'test-project-id',
+			});
 		});
 	});
 

@@ -71,6 +71,7 @@ import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/
 import type { IResponseError } from '@/interfaces';
 
 import { binaryToString } from './binary-helper-functions';
+import { applyDefaultOutboundUserAgent } from './outbound-user-agent';
 import { parseIncomingMessage } from './parse-incoming-message';
 // Imported for side effects: sets axios defaults and registers the request interceptor
 import './request-helpers/axios-config';
@@ -400,6 +401,8 @@ export async function parseRequestObject(requestObject: IRequestOptions, ssrfBri
 		axiosConfig.validateStatus = () => true;
 	}
 
+	applyDefaultOutboundUserAgent(axiosConfig);
+
 	/**
 	 * Missing properties:
 	 * encoding (need testing)
@@ -607,15 +610,7 @@ export function convertN8nRequestToAxios(
 		}
 	}
 
-	const userAgentHeader = searchForHeader(axiosRequest, 'user-agent');
-	// If key exists, then the user has set both accept
-	// header and the json flag. Header should take precedence.
-	if (!userAgentHeader) {
-		axiosRequest.headers = {
-			...axiosRequest.headers,
-			'User-Agent': 'n8n',
-		};
-	}
+	applyDefaultOutboundUserAgent(axiosRequest);
 
 	if (n8nRequest.ignoreHttpStatusErrors) {
 		const ignoreHttpStatusErrors = n8nRequest.ignoreHttpStatusErrors;
@@ -734,6 +729,23 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 	});
 }
 
+function buildSigningToken(
+	client: ClientOAuth2,
+	tokenData: ClientOAuth2TokenData,
+	oAuth2Options?: IOAuth2Options,
+): ClientOAuth2Token {
+	const accessToken = get(tokenData, oAuth2Options?.property as string) || tokenData.accessToken;
+	const refreshToken = tokenData.refreshToken;
+	return client.createToken(
+		{
+			...tokenData,
+			...(accessToken ? { access_token: accessToken } : {}),
+			...(refreshToken ? { refresh_token: refreshToken } : {}),
+		},
+		oAuth2Options?.tokenType || tokenData.tokenType,
+	);
+}
+
 interface RefreshOAuth2TokenContext {
 	credentials: OAuth2CredentialData;
 	token: ClientOAuth2Token;
@@ -742,10 +754,20 @@ interface RefreshOAuth2TokenContext {
 	additionalData: IWorkflowExecuteAdditionalData;
 	oAuth2Options?: IOAuth2Options;
 	logger: WorkflowLogger;
+	helpers: IAllExecuteFunctions['helpers'];
 }
 
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
-	const { credentials, token, credentialsType, node, additionalData, oAuth2Options, logger } = ctx;
+	const {
+		credentials,
+		token,
+		credentialsType,
+		node,
+		additionalData,
+		oAuth2Options,
+		logger,
+		helpers,
+	} = ctx;
 	const tokenRefreshOptions: IDataObject = {};
 	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 		const body: IDataObject = {
@@ -774,6 +796,26 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 	);
 
 	credentials.oauthTokenData = newToken.data;
+
+	// Apply preAuthentication so custom credential types extending oAuth2Api can transform
+	// refreshed token data (e.g. extracting a claim from a decrypted JWE/JWT) before signing.
+	// runPreAuthentication runs on every refresh without persisting — the transformed
+	// oauthTokenData is persisted by the updateCredentialsOauthTokenData call below.
+	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
+		{ helpers },
+		credentials as unknown as ICredentialDataDecryptedObject,
+		credentialsType,
+	);
+	let signingToken = newToken;
+	if (preAuthData) {
+		Object.assign(credentials, preAuthData);
+		signingToken = buildSigningToken(
+			token.client,
+			credentials.oauthTokenData as ClientOAuth2TokenData,
+			oAuth2Options,
+		);
+	}
+
 	if (!node.credentials?.[credentialsType]) {
 		throw new ApplicationError('Node does not have credential type', {
 			extra: { nodeName: node.name, credentialType: credentialsType },
@@ -788,7 +830,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		additionalData,
 	);
 
-	return newToken;
+	return signingToken;
 }
 
 function resolveTokenExpiredStatusCode(
@@ -861,17 +903,20 @@ export async function requestOAuth2(
 		oauthTokenData = data;
 	}
 
-	const accessToken =
-		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
-	const refreshToken = oauthTokenData.refreshToken;
-	const token = oAuthClient.createToken(
-		{
-			...oauthTokenData,
-			...(accessToken ? { access_token: accessToken } : {}),
-			...(refreshToken ? { refresh_token: refreshToken } : {}),
-		},
-		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+	// Apply preAuthentication for custom OAuth2 credential types extending oAuth2Api.
+	// Enables transforming token data on every request (e.g. extracting a claim from a
+	// decrypted JWE/JWT) as a pure in-memory transform — no DB write per request.
+	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
+		{ helpers: this.helpers },
+		credentials as unknown as ICredentialDataDecryptedObject,
+		credentialsType,
 	);
+	if (preAuthData) {
+		Object.assign(credentials, preAuthData);
+		oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
+	}
+
+	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 
 	(requestOptions as IRequestOptions).rejectUnauthorized = !credentials.ignoreSSLIssues;
 
@@ -899,6 +944,7 @@ export async function requestOAuth2(
 		additionalData,
 		oAuth2Options,
 		logger: this.logger,
+		helpers: this.helpers,
 	};
 
 	const retryWithNewToken = async (
@@ -1037,17 +1083,7 @@ export async function refreshOAuth2Token(
 
 	const oAuthClient = createOAuth2Client(credentials);
 	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	const accessToken =
-		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
-	const refreshToken = oauthTokenData.refreshToken;
-	const token = oAuthClient.createToken(
-		{
-			...oauthTokenData,
-			...(accessToken ? { access_token: accessToken } : {}),
-			...(refreshToken ? { refresh_token: refreshToken } : {}),
-		},
-		oAuth2Options?.tokenType || oauthTokenData.tokenType,
-	);
+	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 
 	const newToken = await refreshOrFetchToken({
 		credentials,
@@ -1057,6 +1093,7 @@ export async function refreshOAuth2Token(
 		additionalData,
 		oAuth2Options,
 		logger: this.logger,
+		helpers: this.helpers,
 	});
 
 	return newToken.data;
@@ -1572,6 +1609,14 @@ export const getRequestHelperFunctions = (
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
 			}
+			if (additionalData.otel?.injectTraceHeaders) {
+				requestOptions.headers ??= {};
+				additionalData.otel.injectTraceHeaders(
+					additionalData.executionId!,
+					node.name,
+					requestOptions.headers as Record<string, string>,
+				);
+			}
 			return await httpRequest(requestOptions, additionalData.ssrfBridge);
 		},
 		requestWithAuthenticationPaginated,
@@ -1617,6 +1662,15 @@ export const getRequestHelperFunctions = (
 					'legacy',
 				);
 				if (evalMockResponse !== undefined) return evalMockResponse;
+			}
+			if (additionalData.otel?.injectTraceHeaders) {
+				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
+				target.headers ??= {};
+				additionalData.otel.injectTraceHeaders(
+					additionalData.executionId!,
+					node.name,
+					target.headers as Record<string, string>,
+				);
 			}
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
 		},

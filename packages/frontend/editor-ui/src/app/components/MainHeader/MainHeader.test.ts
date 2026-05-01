@@ -26,7 +26,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRoute: vi.fn().mockReturnValue({
-		params: { name: 'test' },
+		params: { workflowId: 'test' },
 		query: {},
 		meta: {
 			nodeView: true,
@@ -37,7 +37,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		replace: vi.fn(),
 		currentRoute: {
 			value: {
-				params: { name: 'test' },
+				params: { workflowId: 'test' },
 				query: {},
 			},
 		},

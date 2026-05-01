@@ -164,7 +164,7 @@ export const AgentsModule: FrontendModuleDescription = {
 			{
 				label: 'Agents',
 				value: AGENTS_LIST_VIEW,
-				tag: 'Preview',
+				preview: true,
 				to: {
 					name: AGENTS_LIST_VIEW,
 				},
@@ -174,7 +174,7 @@ export const AgentsModule: FrontendModuleDescription = {
 			{
 				label: 'Agents',
 				value: PROJECT_AGENTS,
-				tag: 'Preview',
+				preview: true,
 				dynamicRoute: {
 					name: PROJECT_AGENTS,
 					includeProjectId: true,
@@ -194,7 +194,7 @@ export const AgentsModule: FrontendModuleDescription = {
 			icon: 'robot',
 			label: i18n.baseText('settings.agentBuilder.title'),
 			position: 'top',
-			beta: true,
+			preview: true,
 			route: { to: { name: AGENT_BUILDER_SETTINGS_VIEW } },
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });

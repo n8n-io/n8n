@@ -139,7 +139,7 @@ async function initializeRoute() {
 		await router
 			.replace({
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: workflow.value.id, executionId: executions.value[0].id },
+				params: { workflowId: workflow.value.id, executionId: executions.value[0].id },
 				query: route.query,
 			})
 			.catch(() => {});
@@ -241,14 +241,14 @@ async function onExecutionDelete(id?: string) {
 				await router
 					.replace({
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: workflow.value.id, executionId: nextExecution.id },
+						params: { workflowId: workflow.value.id, executionId: nextExecution.id },
 					})
 					.catch(() => {});
 			} else {
 				// If there are no executions left, show empty state
 				await router.replace({
 					name: VIEWS.EXECUTION_HOME,
-					params: { name: workflow.value.id },
+					params: { workflowId: workflow.value.id },
 				});
 			}
 		}
@@ -302,11 +302,14 @@ async function onLoadMore(): Promise<void> {
 	}
 }
 
+const hasMore = computed(
+	() =>
+		!executionsStore.executionsFilters.status?.includes('running') &&
+		executions.value.length < executionsStore.executionsCount,
+);
+
 async function loadMore(): Promise<void> {
-	if (
-		!!executionsStore.executionsFilters.status?.includes('running') ||
-		executions.value.length >= executionsStore.executionsCount
-	) {
+	if (!hasMore.value) {
 		return;
 	}
 
@@ -337,6 +340,7 @@ async function loadMore(): Promise<void> {
 		:workflow="workflow"
 		:loading="loading"
 		:loading-more="loadingMore"
+		:has-more="hasMore"
 		@execution:stop="onExecutionStop"
 		@execution:delete="onExecutionDelete"
 		@execution:retry="onExecutionRetry"

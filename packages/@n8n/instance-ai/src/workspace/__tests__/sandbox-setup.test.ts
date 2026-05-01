@@ -1,5 +1,57 @@
+import { jsonParse } from 'n8n-workflow';
+
 import type { SearchableNodeDescription } from '../../types';
 import { formatNodeCatalogLine } from '../sandbox-setup';
+
+function loadSandboxPackageJson(linkSdk: boolean): {
+	dependencies: Record<string, string>;
+	devDependencies: Record<string, string>;
+} {
+	jest.resetModules();
+	if (linkSdk) {
+		process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK = '1';
+	} else {
+		delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+	}
+
+	let packageJson = '';
+	jest.isolateModules(() => {
+		const sandboxSetup = jest.requireActual<{ PACKAGE_JSON: string }>('../sandbox-setup');
+		packageJson = sandboxSetup.PACKAGE_JSON;
+	});
+
+	return jsonParse<{
+		dependencies: Record<string, string>;
+		devDependencies: Record<string, string>;
+	}>(packageJson);
+}
+
+describe('PACKAGE_JSON', () => {
+	const originalLinkSdk = process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+
+	afterEach(() => {
+		jest.resetModules();
+		if (originalLinkSdk === undefined) {
+			delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+		} else {
+			process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK = originalLinkSdk;
+		}
+	});
+
+	it('should include a registry SDK dependency when workspace SDK linking is disabled', () => {
+		const packageJson = loadSandboxPackageJson(false);
+
+		expect(packageJson.dependencies['@n8n/workflow-sdk']).toBeDefined();
+		expect(packageJson.dependencies.tsx).toBeDefined();
+	});
+
+	it('should omit the registry SDK dependency when workspace SDK linking is enabled', () => {
+		const packageJson = loadSandboxPackageJson(true);
+
+		expect(packageJson.dependencies).not.toHaveProperty('@n8n/workflow-sdk');
+		expect(packageJson.dependencies.tsx).toBeDefined();
+	});
+});
 
 describe('formatNodeCatalogLine', () => {
 	it('should format a basic node with a string version', () => {

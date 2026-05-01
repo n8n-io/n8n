@@ -248,6 +248,11 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 				workingTools.value = [...workingTools.value, savedRef];
 				toolTelemetry.trackAdded(savedRef);
 				commit();
+				uiStore.closeModal(props.modalName);
+				toast.showMessage({
+					title: i18n.baseText('agents.tools.added'),
+					type: 'success',
+				});
 			},
 		},
 	});
@@ -389,6 +394,7 @@ function commit() {
 							:node-type="nodeType"
 							mode="available"
 							@add="handleAddTool(nodeType)"
+							:class="$style.toolsListItem"
 						/>
 					</div>
 				</div>
@@ -471,6 +477,10 @@ function commit() {
 .toolsList {
 	display: flex;
 	flex-direction: column;
+}
+
+.toolsListItem {
+	padding-block: var(--spacing--sm);
 }
 
 .emptyState {

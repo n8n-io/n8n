@@ -39,6 +39,7 @@ describe('AgentsController route access scopes', () => {
 		['createSkill', 'agent:update'],
 		['updateSkill', 'agent:update'],
 		['deleteSkill', 'agent:update'],
+		['revertToPublished', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(metadata.routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});

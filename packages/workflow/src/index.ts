@@ -55,6 +55,7 @@ export {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	isDomainAllowed,
+	getCredentialAllowedDomains,
 	isCommunityPackageName,
 	dedupe,
 	sanitizeFilename,

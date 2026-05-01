@@ -1,8 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import type { FrontendModuleSettings } from '@n8n/api-types';
+import type { FrontendModuleSettings, InstanceAiUserPreferencesResponse } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -19,8 +17,17 @@ vi.mock('@/app/composables/useToast', () => ({
 
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
-		addEventListener: vi.fn(),
+		addEventListener: vi.fn().mockReturnValue(() => {}),
+		isConnected: false,
 	}),
+}));
+
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn().mockReturnValue(false),
+}));
+
+vi.mock('@n8n/i18n', () => ({
+	i18n: { baseText: (key: string) => key },
 }));
 
 const mockFetchSettings = vi.fn();
@@ -39,20 +46,28 @@ vi.mock('../instanceAi.settings.api', () => ({
 	fetchServiceCredentials: (...args: unknown[]) => mockFetchServiceCredentials(...args),
 }));
 
+const mockGetGatewayStatus = vi.fn();
 vi.mock('../instanceAi.api', () => ({
 	createGatewayLink: vi.fn(),
-	getGatewayStatus: vi.fn(),
+	disconnectGatewaySession: vi.fn(),
+	getGatewayStatus: (...args: unknown[]) => mockGetGatewayStatus(...args),
 }));
 
-vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: vi.fn().mockReturnValue(false),
-}));
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 function setModuleSettings(
 	settingsStore: ReturnType<typeof useSettingsStore>,
 	instanceAi: FrontendModuleSettings['instance-ai'],
 ) {
 	settingsStore.moduleSettings = { 'instance-ai': instanceAi };
+}
+
+function setUserPreference(
+	store: ReturnType<typeof useInstanceAiSettingsStore>,
+	prefs: Partial<InstanceAiUserPreferencesResponse> | null,
+) {
+	(store as unknown as { preferences: typeof prefs }).preferences = prefs;
 }
 
 describe('useInstanceAiSettingsStore', () => {
@@ -298,6 +313,87 @@ describe('useInstanceAiSettingsStore', () => {
 			expect(ms?.cloudManaged).toBe(true);
 			expect(ms?.proxyEnabled).toBe(true);
 			expect(ms?.enabled).toBe(true);
+		});
+	});
+
+	describe('connections', () => {
+		it('is empty when the gateway is disabled for the user', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: true,
+				proxyEnabled: false,
+				optinModalDismissed: false,
+				cloudManaged: false,
+			});
+
+			expect(store.connections).toEqual([]);
+		});
+
+		it('shows a disconnected Computer Use row when enabled but not paired', () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				optinModalDismissed: false,
+				cloudManaged: false,
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+
+			expect(store.connections).toHaveLength(1);
+			expect(store.connections[0]).toMatchObject({
+				type: 'computer-use',
+				status: 'disconnected',
+			});
+		});
+
+		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				optinModalDismissed: false,
+				cloudManaged: false,
+			});
+			mockGetGatewayStatus.mockResolvedValue({
+				connected: true,
+				directory: '/Users/test/project',
+				hostIdentifier: 'host-1',
+				toolCategories: [{ name: 'browser', enabled: true }],
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+			await store.fetchGatewayStatus();
+
+			expect(store.connections).toHaveLength(2);
+			expect(store.connections[0]).toMatchObject({
+				type: 'computer-use',
+				name: '/Users/test/project',
+				status: 'connected',
+			});
+			expect(store.connections[1]).toMatchObject({
+				type: 'browser-use',
+				status: 'connected',
+			});
+		});
+
+		it('omits the Browser Use row when connected without a browser tool category', async () => {
+			setModuleSettings(settingsStore, {
+				enabled: true,
+				localGatewayDisabled: false,
+				proxyEnabled: false,
+				optinModalDismissed: false,
+				cloudManaged: false,
+			});
+			mockGetGatewayStatus.mockResolvedValue({
+				connected: true,
+				directory: '/Users/test/project',
+				hostIdentifier: 'host-1',
+				toolCategories: [{ name: 'filesystem', enabled: true }],
+			});
+			setUserPreference(store, { localGatewayDisabled: false });
+			await store.fetchGatewayStatus();
+
+			expect(store.connections).toHaveLength(1);
+			expect(store.connections[0].type).toBe('computer-use');
 		});
 	});
 });

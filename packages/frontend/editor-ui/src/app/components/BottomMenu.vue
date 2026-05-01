@@ -180,6 +180,7 @@ function onLogout() {
 					:data-test-id="`main-sidebar-${item.id}`"
 					:item="item"
 					:compact="isCollapsed"
+					:class="item.id === 'resource-center' ? $style.resourceCenterMenuItem : undefined"
 					@click="() => handleSelect(item.id)"
 				/>
 			</template>
@@ -200,6 +201,12 @@ function onLogout() {
 
 .bottomMenuItems {
 	padding: var(--spacing--3xs);
+}
+
+.resourceCenterMenuItem {
+	:global(.n8n-text) {
+		color: var(--color--primary);
+	}
 }
 
 .popover {

@@ -13,10 +13,11 @@ import type { AgentJsonToolRef } from '../types';
 import type { IWorkflowDb } from '@/Interface';
 
 const showErrorMock = vi.fn();
+const showMessageMock = vi.fn();
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: showErrorMock,
-		showMessage: vi.fn(),
+		showMessage: showMessageMock,
 		showToast: vi.fn(),
 	}),
 }));
@@ -50,6 +51,7 @@ vi.mock('@n8n/i18n', () => {
 				'agents.tools.connected': 'Connected',
 				'agents.tools.connect': 'Connect',
 				'agents.tools.configure': 'Configure',
+				'agents.tools.added': 'Tool added',
 				'agents.tools.addCredentials': 'Add credentials',
 			};
 			return map[key] ?? key;
@@ -214,6 +216,7 @@ describe('AgentToolsModal', () => {
 		getWorkflowMock.mockReset();
 		getWorkflowMock.mockResolvedValue({ id: 'wf-1', name: 'Daily sales digest', nodes: [] });
 		showErrorMock.mockReset();
+		showMessageMock.mockReset();
 
 		uiStore.openModal(MODAL_NAME);
 		uiStore.closeModal = vi.fn();
@@ -375,6 +378,8 @@ describe('AgentToolsModal', () => {
 		const [tools] = onConfirm.mock.calls[0];
 		expect(tools).toHaveLength(1);
 		expect(tools[0]).toStrictEqual(configuredRef);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		expect(showMessageMock).toHaveBeenCalledWith({ title: 'Tool added', type: 'success' });
 	});
 
 	it('shows the available tools count in the section heading', () => {
@@ -645,6 +650,8 @@ describe('AgentToolsModal', () => {
 			const [tools] = onConfirm.mock.calls[0];
 			expect(tools).toHaveLength(1);
 			expect(tools[0]).toStrictEqual(savedRef);
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Tool added', type: 'success' });
 		});
 	});
 });

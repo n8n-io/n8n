@@ -6,13 +6,16 @@ import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import { computed, ref, watch } from 'vue';
 import SubagentStepTimeline from './SubagentStepTimeline.vue';
 import TimelineStepButton from './TimelineStepButton.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = defineProps<{
 	agentNode: InstanceAiAgentNode;
 }>();
 
+const settingsStore = useSettingsStore();
+
 const isActive = computed(() => props.agentNode.status === 'active');
-const isExpanded = ref(false);
+const isExpanded = ref(settingsStore.isCloudDeployment);
 
 const isError = computed(() => props.agentNode.status === 'error');
 
@@ -46,21 +49,15 @@ watch(
 	<!-- Collapsible timeline -->
 	<CollapsibleRoot v-slot="{ open: isOpen }" v-model:open="isExpanded">
 		<CollapsibleTrigger as-child>
-			<TimelineStepButton size="medium">
-				<template #icon="{ isHovered }">
-					<template v-if="!isHovered && isActive">
-						<N8nIcon icon="spinner" color="primary" size="small" transform-origin="center" spin />
-					</template>
-					<template v-else>
-						<N8nIcon v-if="!isOpen" icon="chevron-right" size="small" />
-						<N8nIcon v-else icon="chevron-down" size="small" />
-					</template>
+			<TimelineStepButton :loading="isActive" size="medium">
+				<template #icon>
+					<N8nIcon :icon="isOpen ? 'chevron-down' : 'chevron-right'" size="small" />
 				</template>
-				<span :class="{ [$style.shimmer]: isActive }">{{ sectionTitle }}</span>
+				{{ sectionTitle }}
 			</TimelineStepButton>
 		</CollapsibleTrigger>
 		<div v-if="!isOpen && isActive && peekEntries.length" :class="$style.content">
-			<SubagentStepTimeline :agent-node="props.agentNode" :visible-entries="peekEntries" />
+			<SubagentStepTimeline :agent-node="props.agentNode" :visible-entries="peekEntries" peek />
 		</div>
 		<AnimatedCollapsibleContent :class="$style.content">
 			<SubagentStepTimeline :agent-node="props.agentNode" />
@@ -77,29 +74,5 @@ watch(
 	padding-left: var(--spacing--2xs);
 	border-left: var(--border);
 	margin-left: var(--spacing--xs);
-}
-
-// Shimmer animation for active section headers
-.shimmer {
-	background: linear-gradient(
-		90deg,
-		var(--color--text--tint-1) 25%,
-		var(--color--text--tint-2) 50%,
-		var(--color--text--tint-1) 75%
-	);
-	background-size: 200% 100%;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
 }
 </style>

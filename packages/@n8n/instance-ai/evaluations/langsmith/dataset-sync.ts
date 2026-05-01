@@ -1,39 +1,20 @@
 // ---------------------------------------------------------------------------
 // LangSmith dataset sync
 //
-// Syncs JSON test case files from the repo to a LangSmith dataset.
-// Uses derived IDs (fileSlug/scenarioName) so examples are stable across
-// runs, enabling experiment comparison over time.
+// Syncs JSON test case files from the repo to a LangSmith dataset. Existing
+// examples are found by inputs (testCaseFile + scenarioName) and updated in
+// place; new scenarios get a random UUID. Stale examples are left in place
+// — LangSmith's soft-delete tombstones UUIDs, which historically caused 409
+// conflicts on resurrection; manual orphan cleanup happens via UI or MCP.
 // ---------------------------------------------------------------------------
 
-import { createHash } from 'crypto';
+import { randomUUID } from 'crypto';
 import type { Client } from 'langsmith';
 import type { Example, KVMap } from 'langsmith/schemas';
 import { z } from 'zod';
 
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
-
-// Bump this if existing IDs get tombstoned by LangSmith soft-delete and need
-// to be regenerated fresh. UUIDs for the same derivedId stay stable within a
-// version, so experiment comparison still works.
-const UUID_VERSION = 'v2';
-
-/**
- * Generate a deterministic UUID from a string.
- * Same input always produces the same UUID, so example IDs are stable across runs.
- */
-function deterministicUuid(input: string): string {
-	const hash = createHash('sha256').update(`${UUID_VERSION}:${input}`).digest('hex');
-	// Format as UUID v4 shape (8-4-4-4-12)
-	return [
-		hash.slice(0, 8),
-		hash.slice(8, 12),
-		'4' + hash.slice(13, 16),
-		'8' + hash.slice(17, 20),
-		hash.slice(20, 32),
-	].join('-');
-}
 
 /**
  * Shape of the inputs passed to the target function for each scenario.
@@ -64,10 +45,12 @@ export type DatasetExampleMetadata = z.infer<typeof datasetExampleMetadataSchema
  * Sync JSON test cases to a LangSmith dataset.
  *
  * - Creates the dataset if it doesn't exist
- * - Diffs local scenarios against existing examples
- * - Creates, updates, or deletes examples to match
+ * - Finds existing examples by (testCaseFile, scenarioName) and updates in place
+ * - Creates new scenarios with a random UUID
  * - Orders examples round-robin across test cases for optimal parallelism
  * - Assigns each example to a split (test case file slug) for UI filtering
+ *
+ * Never deletes. Orphan cleanup is manual (LangSmith UI or MCP).
  *
  * Returns the dataset name for use with evaluate().
  */
@@ -110,13 +93,11 @@ export async function syncDataset(
 	}
 
 	// Diff and sync
-	const currentIds = new Set<string>();
 	const toCreate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
 	const toUpdate: Array<{ id: string; inputs: KVMap; metadata: KVMap; split: string }> = [];
 
 	for (const scenario of scenarios) {
 		const derivedId = `${scenario.testCaseFile}/${scenario.scenarioName}`;
-		currentIds.add(derivedId);
 
 		const inputs: DatasetExampleInputs = {
 			prompt: scenario.prompt,
@@ -149,24 +130,11 @@ export async function syncDataset(
 			}
 		} else {
 			toCreate.push({
-				id: deterministicUuid(derivedId),
+				id: randomUUID(),
 				inputs,
 				metadata,
 				split: scenario.testCaseFile,
 			});
-		}
-	}
-
-	// Only delete stale examples on a full sync (no filter). With a filter,
-	// we're only syncing a subset and mustn't delete the others.
-	// LangSmith also soft-deletes, which tombstones the UUID and prevents
-	// recreation with the same ID on a later full run.
-	const toDelete: string[] = [];
-	if (!filter) {
-		for (const [derivedId, example] of existingByDerivedId) {
-			if (!currentIds.has(derivedId)) {
-				toDelete.push(example.id);
-			}
 		}
 	}
 
@@ -196,12 +164,7 @@ export async function syncDataset(
 		logger.info(`  Updated ${String(toUpdate.length)} example(s)`);
 	}
 
-	if (toDelete.length > 0) {
-		await lsClient.deleteExamples(toDelete);
-		logger.info(`  Deleted ${String(toDelete.length)} stale example(s)`);
-	}
-
-	if (toCreate.length === 0 && toUpdate.length === 0 && toDelete.length === 0) {
+	if (toCreate.length === 0 && toUpdate.length === 0) {
 		logger.info('  Dataset up to date');
 	}
 

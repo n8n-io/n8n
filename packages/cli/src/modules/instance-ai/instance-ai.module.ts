@@ -44,7 +44,7 @@ export class InstanceAiModule implements ModuleInterface {
 		const globalConfig = Container.get(GlobalConfig);
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
-		const enabled = service.isEnabled();
+		const enabled = settingsService.isAgentEnabled();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
 		const optinModalDismissed = settingsService.getAdminSettings().optinModalDismissed;
 		return {
