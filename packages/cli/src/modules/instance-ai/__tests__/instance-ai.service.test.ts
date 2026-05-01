@@ -19,6 +19,80 @@ jest.mock('@n8n/instance-ai', () => {
 		createAllTools: jest.fn(),
 		createMemory: jest.fn(),
 		mapMastraChunkToEvent: jest.fn(),
+		InstanceAiTerminalResponseGuard: class {
+			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
+
+			evaluateTerminal(
+				_events: unknown[],
+				status: 'completed' | 'cancelled' | 'errored',
+				options: { errorMessage?: string } = {},
+			) {
+				if (status === 'errored') {
+					return {
+						status,
+						visibilitySource: 'none',
+						action: 'emit',
+						reason: 'errored-silent',
+						event: {
+							type: 'error',
+							runId: this.options.runId,
+							agentId: this.options.rootAgentId,
+							responseId: `terminal-fallback:${this.options.runId}:${status}`,
+							payload: {
+								content:
+									options.errorMessage ??
+									'I hit an error before I could finish that response. Please try again.',
+							},
+						},
+					};
+				}
+
+				return {
+					status,
+					visibilitySource: 'none',
+					action: 'emit',
+					reason: status === 'cancelled' ? 'cancelled-silent' : 'completed-silent',
+					event: {
+						type: 'text-delta',
+						runId: this.options.runId,
+						agentId: this.options.rootAgentId,
+						responseId: `terminal-fallback:${this.options.runId}:${status}`,
+						payload: { text: `fallback:${status}` },
+					},
+				};
+			}
+
+			evaluateWaiting(_events: unknown[], confirmationEvent?: { payload?: { message?: string } }) {
+				if (confirmationEvent?.payload?.message) {
+					return {
+						status: 'waiting',
+						visibilitySource: 'confirmation-ui',
+						action: 'none',
+						reason: 'confirmation-visible',
+					};
+				}
+
+				return {
+					status: 'waiting',
+					visibilitySource: 'none',
+					action: 'emit',
+					reason: 'confirmation-invalid',
+					event: {
+						type: 'error',
+						runId: this.options.runId,
+						agentId: this.options.rootAgentId,
+						responseId: `terminal-fallback:${this.options.runId}:waiting`,
+						payload: {
+							content:
+								'I need your input to continue, but I could not display the prompt. Please try again.',
+						},
+					},
+				};
+			}
+		},
+		TerminalOutcomeStorage: class {
+			constructor(_memory: unknown) {}
+		},
 	};
 });
 jest.mock('@mastra/core/agent', () => ({}));
@@ -33,6 +107,8 @@ jest.mock('@mastra/memory', () => ({
 jest.mock('@mastra/core/workflows', () => ({}));
 
 import type { User } from '@n8n/db';
+import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
+import type { TerminalOutcome } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -78,6 +154,154 @@ function createCheckpointService(): ServiceInternals {
 }
 
 const fakeUser = { id: 'user-1' } as User;
+
+type TerminalOutcomeServiceInternals = {
+	replayUndeliveredTerminalOutcomes: (threadId: string) => Promise<void>;
+	createTerminalOutcomeStorage: jest.Mock;
+	instanceAiConfig: { terminalResponseGuardDisabled: boolean };
+	dbSnapshotStorage: {
+		getLatest: jest.Mock;
+		save: jest.Mock;
+		updateLast: jest.Mock;
+	};
+	eventBus: {
+		getEventsForRun: jest.Mock;
+		publish: jest.Mock;
+	};
+	telemetry: { track: jest.Mock };
+	logger: { warn: jest.Mock };
+	pendingTerminalOutcomes: Map<string, TerminalOutcome>;
+};
+
+function createTerminalOutcomeService(
+	outcomes: TerminalOutcome[],
+	snapshotTree?: InstanceAiAgentNode,
+): TerminalOutcomeServiceInternals {
+	const storage = {
+		getUndelivered: jest.fn(async () => outcomes),
+		markDelivered: jest.fn(async () => {}),
+	};
+	const service = Object.create(InstanceAiService.prototype) as TerminalOutcomeServiceInternals;
+	service.instanceAiConfig = { terminalResponseGuardDisabled: false };
+	service.createTerminalOutcomeStorage = jest.fn(() => storage);
+	service.dbSnapshotStorage = {
+		getLatest: jest.fn(async () =>
+			snapshotTree
+				? {
+						tree: snapshotTree,
+						runId: 'run-1',
+						messageGroupId: 'group-1',
+						runIds: ['run-1'],
+					}
+				: undefined,
+		),
+		save: jest.fn(async () => {}),
+		updateLast: jest.fn(async () => {}),
+	};
+	service.eventBus = {
+		getEventsForRun: jest.fn(() => []),
+		publish: jest.fn(),
+	};
+	service.telemetry = { track: jest.fn() };
+	service.logger = { warn: jest.fn() };
+	service.pendingTerminalOutcomes = new Map();
+	return service;
+}
+
+type TerminalGuardOrderServiceInternals = {
+	evaluateTerminalResponse: (
+		threadId: string,
+		runId: string,
+		status: 'completed' | 'cancelled' | 'errored',
+		options?: { messageGroupId?: string; errorMessage?: string },
+	) => void;
+	evaluateWaitingResponse: (
+		threadId: string,
+		runId: string,
+		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
+		options?: { messageGroupId?: string },
+	) => { reason: string } | undefined;
+	finishInvalidConfirmationRun: (args: {
+		threadId: string;
+		runId: string;
+		abortController: AbortController;
+		snapshotStorage: unknown;
+	}) => Promise<{ status: string; reason?: string }>;
+	publishRunFinish: (
+		threadId: string,
+		runId: string,
+		status: 'completed' | 'cancelled' | 'errored',
+	) => void;
+	instanceAiConfig: { terminalResponseGuardDisabled: boolean };
+	runState: {
+		getRunIdsForMessageGroup: jest.Mock;
+		cancelThread: jest.Mock;
+	};
+	eventBus: {
+		events: InstanceAiEvent[];
+		getEventsForRun: jest.Mock;
+		getEventsForRuns: jest.Mock;
+		publish: jest.Mock;
+	};
+	telemetry: { track: jest.Mock };
+	logger: { warn: jest.Mock };
+	finalizeRunTracing: jest.Mock;
+	saveAgentTreeSnapshot: jest.Mock;
+};
+
+function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
+	const events: InstanceAiEvent[] = [];
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as TerminalGuardOrderServiceInternals;
+	service.instanceAiConfig = { terminalResponseGuardDisabled: false };
+	service.runState = {
+		getRunIdsForMessageGroup: jest.fn(() => ['run-1']),
+		cancelThread: jest.fn(),
+	};
+	service.eventBus = {
+		events,
+		getEventsForRun: jest.fn(() => events),
+		getEventsForRuns: jest.fn(() => events),
+		publish: jest.fn((_threadId: string, event: InstanceAiEvent) => {
+			events.push(event);
+		}),
+	};
+	service.telemetry = { track: jest.fn() };
+	service.logger = { warn: jest.fn() };
+	service.finalizeRunTracing = jest.fn(async () => {});
+	service.saveAgentTreeSnapshot = jest.fn(async () => {});
+	return service;
+}
+
+function makeTerminalOutcome(overrides: Partial<TerminalOutcome> = {}): TerminalOutcome {
+	return {
+		id: 'group-1:task-1:completed',
+		threadId: 'thread-a',
+		runId: 'run-1',
+		messageGroupId: 'group-1',
+		correlationId: 'message-1',
+		taskId: 'task-1',
+		agentId: 'agent-builder',
+		status: 'completed',
+		userFacingMessage: 'The background workflow-builder task finished.',
+		createdAt: '2026-05-01T00:00:00.000Z',
+		...overrides,
+	};
+}
+
+function makeAgentTree(): InstanceAiAgentNode {
+	return {
+		agentId: 'agent-001',
+		role: 'orchestrator',
+		status: 'completed',
+		textContent: 'Initial response',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [{ type: 'text', content: 'Initial response' }],
+	};
+}
 
 describe('InstanceAiService — pending checkpoint re-entry', () => {
 	describe('queuePendingCheckpointReentry', () => {
@@ -181,5 +405,170 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 
 			expect(service.reenterCheckpointById).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('InstanceAiService — terminal outcome replay', () => {
+	it('replays undelivered background outcomes into the persisted agent tree', async () => {
+		const outcome = makeTerminalOutcome();
+		const service = createTerminalOutcomeService([outcome], makeAgentTree());
+
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
+
+		expect(service.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
+		const updatedTree = service.dbSnapshotStorage.updateLast.mock
+			.calls[0][1] as InstanceAiAgentNode;
+		expect(updatedTree.textContent).toContain(outcome.userFacingMessage);
+		expect(updatedTree.timeline).toContainEqual({
+			type: 'text',
+			content: outcome.userFacingMessage,
+			responseId: `background-outcome:${outcome.id}`,
+		});
+		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
+			'thread-a',
+			outcome.id,
+			expect.any(String),
+		);
+		expect(service.eventBus.publish).not.toHaveBeenCalled();
+	});
+
+	it('deduplicates replay by response id only', async () => {
+		const outcome = makeTerminalOutcome({ id: 'group-1:task-2:completed' });
+		const tree = makeAgentTree();
+		tree.textContent = `${tree.textContent}\n\n${outcome.userFacingMessage}`;
+		tree.timeline.push({
+			type: 'text',
+			content: outcome.userFacingMessage,
+			responseId: 'background-outcome:different-id',
+		});
+		const service = createTerminalOutcomeService([outcome], tree);
+
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
+
+		const updatedTree = service.dbSnapshotStorage.updateLast.mock
+			.calls[0][1] as InstanceAiAgentNode;
+		expect(
+			updatedTree.timeline.filter(
+				(entry) => entry.type === 'text' && entry.content === outcome.userFacingMessage,
+			),
+		).toHaveLength(2);
+		expect(updatedTree.timeline).toContainEqual({
+			type: 'text',
+			content: outcome.userFacingMessage,
+			responseId: `background-outcome:${outcome.id}`,
+		});
+	});
+
+	it('creates a snapshot when replay has no prior agent tree', async () => {
+		const outcome = makeTerminalOutcome({ status: 'failed' });
+		const service = createTerminalOutcomeService([outcome]);
+
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
+
+		expect(service.dbSnapshotStorage.save).toHaveBeenCalledTimes(1);
+		const savedTree = service.dbSnapshotStorage.save.mock.calls[0][1] as InstanceAiAgentNode;
+		expect(savedTree.status).toBe('error');
+		expect(savedTree.textContent).toBe(outcome.userFacingMessage);
+		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
+			'thread-a',
+			outcome.id,
+			expect.any(String),
+		);
+	});
+
+	it('publishes the deterministic line when snapshot replay fails', async () => {
+		const outcome = makeTerminalOutcome();
+		const service = createTerminalOutcomeService([outcome], makeAgentTree());
+		service.dbSnapshotStorage.updateLast.mockRejectedValue(new Error('storage unavailable'));
+
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'text-delta',
+			runId: outcome.runId,
+			agentId: 'agent-001',
+			responseId: `background-outcome:${outcome.id}`,
+			payload: { text: outcome.userFacingMessage },
+		});
+		expect(service.createTerminalOutcomeStorage().markDelivered).not.toHaveBeenCalled();
+	});
+
+	it('checks persisted outcomes on repeated replay calls', async () => {
+		const service = createTerminalOutcomeService([]);
+		const storage = service.createTerminalOutcomeStorage();
+		service.createTerminalOutcomeStorage.mockClear();
+
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
+
+		expect(service.createTerminalOutcomeStorage).toHaveBeenCalledTimes(2);
+		expect(storage.getUndelivered).toHaveBeenCalledTimes(2);
+	});
+});
+
+describe('InstanceAiService — terminal response guard wiring', () => {
+	it('publishes fallback output before run-finish on a silent completed run', () => {
+		const service = createTerminalGuardOrderService();
+
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+		});
+		service.publishRunFinish('thread-a', 'run-1', 'completed');
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual([
+			'text-delta',
+			'run-finish',
+		]);
+	});
+
+	it('publishes fallback error before run-finish on a silent failed run', () => {
+		const service = createTerminalGuardOrderService();
+
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'errored', {
+			messageGroupId: 'group-1',
+			errorMessage: 'Safe user-facing error',
+		});
+		service.publishRunFinish('thread-a', 'run-1', 'errored');
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+	});
+
+	it('clears malformed confirmation suspension and finishes the run after the guard error', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+
+		const decision = service.evaluateWaitingResponse('thread-a', 'run-1', undefined, {
+			messageGroupId: 'group-1',
+		});
+		if (decision?.reason === 'confirmation-invalid') {
+			await service.finishInvalidConfirmationRun({
+				threadId: 'thread-a',
+				runId: 'run-1',
+				abortController,
+				snapshotStorage: {},
+			});
+		}
+
+		expect(decision?.reason).toBe('confirmation-invalid');
+		expect(service.runState.cancelThread).toHaveBeenCalledWith('thread-a');
+		expect(abortController.signal.aborted).toBe(true);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.eventBus.events.at(-1)).toMatchObject({
+			type: 'run-finish',
+			payload: { status: 'error' },
+		});
+	});
+
+	it('does not emit guard output when the kill switch is disabled', () => {
+		const service = createTerminalGuardOrderService();
+		service.instanceAiConfig.terminalResponseGuardDisabled = true;
+
+		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+		});
+		service.publishRunFinish('thread-a', 'run-1', 'completed');
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['run-finish']);
 	});
 });
