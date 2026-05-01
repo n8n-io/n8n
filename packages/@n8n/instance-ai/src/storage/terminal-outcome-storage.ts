@@ -21,8 +21,6 @@ const terminalOutcomeSchema = z.object({
 	deliveredAt: z.string().optional(),
 });
 
-const terminalOutcomeRecordSchema = z.record(terminalOutcomeSchema);
-
 export type TerminalOutcome = z.infer<typeof terminalOutcomeSchema>;
 
 export class TerminalOutcomeStorage {
@@ -78,6 +76,11 @@ export class TerminalOutcomeStorage {
 }
 
 function parseOutcomes(raw: unknown): Record<string, TerminalOutcome> {
-	const result = terminalOutcomeRecordSchema.safeParse(raw);
-	return result.success ? result.data : {};
+	if (!raw || typeof raw !== 'object') return {};
+	const outcomes: Record<string, TerminalOutcome> = {};
+	for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+		const parsed = terminalOutcomeSchema.safeParse(value);
+		if (parsed.success) outcomes[key] = parsed.data;
+	}
+	return outcomes;
 }
