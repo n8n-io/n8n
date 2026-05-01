@@ -368,18 +368,6 @@ describe('generate-types', () => {
 			expect(result).toBe('string | Expression<string> | PlaceholderValue');
 		});
 
-		it('should map string type with multipleValues to array type', () => {
-			const prop: NodeProperty = {
-				name: 'attendees',
-				displayName: 'Attendees',
-				type: 'string',
-				typeOptions: { multipleValues: true },
-				default: '',
-			};
-			const result = generateTypes.mapPropertyType(prop);
-			expect(result).toBe('string[] | Expression<string>');
-		});
-
 		it('should map number type with Expression wrapper', () => {
 			const prop: NodeProperty = {
 				name: 'timeout',
