@@ -10,6 +10,7 @@ import { correctNodeOperations } from './correct-node-operations';
 import { descriptiveNodeNames } from './descriptive-node-names';
 import { expressionsReferenceExistingNodes } from './expressions-reference-existing-nodes';
 import { fulfillsUserRequest } from './fulfills-user-request';
+import { gmailFullContentWhenNeeded } from './gmail-full-content-when-needed';
 import { handlesMultipleItems } from './handles-multiple-items';
 import { hasNodes } from './has-nodes';
 import { hasStartNode } from './has-start-node';
@@ -49,6 +50,7 @@ export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	toolsHaveParameters,
 	noUnreachableNodes,
 	validNodeConfig,
+	gmailFullContentWhenNeeded,
 ];
 
 export const LLM_CHECKS: BinaryCheck[] = [
