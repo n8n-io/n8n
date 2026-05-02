@@ -11,6 +11,10 @@ on:
       - 'pnpm-workspace.yaml'
       - '.github/workflows/build-benchmark-image.yml'
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
