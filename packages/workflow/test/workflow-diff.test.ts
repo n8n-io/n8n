@@ -197,7 +197,8 @@ describe('compareWorkflowsNodes', () => {
 
 		expect(diff.size).toBe(1);
 		expect(diff.get('1')?.status).toBe(NodeDiffStatus.Modified);
-		expect(diff.get('1')?.node).toEqual(baseNodes[0]);
+		// Modified nodes should return the target (new) node, not the base (old) node
+		expect(diff.get('1')?.node).toEqual(targetNodes[0]);
 	});
 
 	it('should detect added nodes', () => {
@@ -285,6 +286,67 @@ describe('compareWorkflowsNodes', () => {
 		expect(diff.get('2')?.status).toBe(NodeDiffStatus.Modified);
 		expect(diff.get('3')?.status).toBe(NodeDiffStatus.Deleted);
 		expect(diff.get('4')?.status).toBe(NodeDiffStatus.Added);
+	});
+
+	// N8N-9961: Bug - Diff view sidebar icon shows old node type instead of current node type
+	describe('N8N-9961: modified nodes should return target node, not base node', () => {
+		it('should return target node for modified nodes (name change)', () => {
+			const baseNodes = [createTestNode('node-1', { name: 'Original Name' })];
+			const targetNodes = [createTestNode('node-1', { name: 'Modified Name' })];
+
+			const diff = compareWorkflowsNodes(baseNodes, targetNodes);
+
+			expect(diff.get('node-1')?.status).toBe(NodeDiffStatus.Modified);
+			// Should return the TARGET node (new), not the BASE node (old)
+			expect(diff.get('node-1')?.node).toEqual(targetNodes[0]);
+			expect(diff.get('node-1')?.node.name).toBe('Modified Name');
+		});
+
+		it('should return target node for modified nodes (type change)', () => {
+			// Simulates the bug scenario: node type changed from Edit Fields to Google Calendar
+			const baseNodes = [
+				createTestNode('node-1', {
+					type: 'n8n-nodes-base.set',
+					name: 'Edit Fields',
+					parameters: { mode: 'manual' },
+				}),
+			];
+			const targetNodes = [
+				createTestNode('node-1', {
+					type: 'n8n-nodes-base.googleCalendar',
+					name: 'Google Calendar',
+					parameters: { operation: 'get' },
+				}),
+			];
+
+			const diff = compareWorkflowsNodes(baseNodes, targetNodes);
+
+			expect(diff.get('node-1')?.status).toBe(NodeDiffStatus.Modified);
+			// Should return the TARGET node (Google Calendar), not the BASE node (Edit Fields)
+			expect(diff.get('node-1')?.node).toEqual(targetNodes[0]);
+			expect(diff.get('node-1')?.node.type).toBe('n8n-nodes-base.googleCalendar');
+			expect(diff.get('node-1')?.node.name).toBe('Google Calendar');
+		});
+
+		it('should return target node when parameters are modified', () => {
+			const baseNodes = [
+				createTestNode('node-1', {
+					parameters: { value: 'old' },
+				}),
+			];
+			const targetNodes = [
+				createTestNode('node-1', {
+					parameters: { value: 'new' },
+				}),
+			];
+
+			const diff = compareWorkflowsNodes(baseNodes, targetNodes);
+
+			expect(diff.get('node-1')?.status).toBe(NodeDiffStatus.Modified);
+			// Should return the TARGET node with updated parameters
+			expect(diff.get('node-1')?.node).toEqual(targetNodes[0]);
+			expect(diff.get('node-1')?.node.parameters).toEqual({ value: 'new' });
+		});
 	});
 });
 
