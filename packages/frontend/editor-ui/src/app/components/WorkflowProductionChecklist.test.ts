@@ -36,7 +36,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
 		useRouter: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({}));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal<typeof import('@n8n/i18n')>();
 	return {
 		...actual,
 		useI18n: () => ({

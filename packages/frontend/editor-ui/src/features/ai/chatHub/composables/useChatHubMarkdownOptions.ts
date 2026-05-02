@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 import { type HLJSApi } from 'highlight.js';
-import type { default as HighlightModule } from 'highlight.js';
 import { computed, ref } from 'vue';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
@@ -15,7 +14,7 @@ let hljsInstance: HLJSApi | undefined;
 let asyncImport:
 	| {
 			status: 'inProgress';
-			promise: Promise<[typeof HighlightModule, typeof LanguageModules]>;
+			promise: Promise<[HLJSApi, typeof LanguageModules]>;
 	  }
 	| { status: 'uninitialized' }
 	| { status: 'done' } = { status: 'uninitialized' };
@@ -104,14 +103,17 @@ export function useChatHubMarkdownOptions(
 		}
 
 		try {
-			const promise = Promise.all([import('highlight.js'), import('./languageModules')]);
+			const promise = Promise.all([
+				import('highlight.js').then(({ default: highlight }) => highlight),
+				import('./languageModules'),
+			]);
 
 			asyncImport = { status: 'inProgress', promise };
 
-			const [hljs, languages] = await asyncImport.promise;
+			const [hljs, languages] = await promise;
 
 			asyncImport = { status: 'done' };
-			hljsInstance = hljs.default.newInstance();
+			hljsInstance = hljs.newInstance();
 
 			for (const [lang, module] of Object.entries(languages)) {
 				hljsInstance.registerLanguage(lang, module);

@@ -54,7 +54,7 @@ vi.mock('@n8n/i18n', () => ({
 
 // Mock workflowHistory API
 vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal<typeof import('@n8n/rest-api-client/api/workflowHistory')>();
 	return {
 		...actual,
 		getWorkflowVersionsByIds: vi.fn(),

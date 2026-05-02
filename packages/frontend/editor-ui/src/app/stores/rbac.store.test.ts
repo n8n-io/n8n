@@ -4,7 +4,7 @@ import type { Scope } from '@n8n/permissions';
 import { hasScope } from '@n8n/permissions';
 
 vi.mock('@n8n/permissions', async () => {
-	const { hasScope } = await vi.importActual('@n8n/permissions');
+	const { hasScope } = await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions');
 	return {
 		hasScope: vi.fn().mockImplementation(hasScope),
 	};

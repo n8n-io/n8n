@@ -9,7 +9,7 @@ import { VIEWS } from '@/app/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal<typeof import('vue-router')>();
 	return {
 		...actual,
 		useRouter: vi.fn().mockReturnValue({ push: vi.fn() }),

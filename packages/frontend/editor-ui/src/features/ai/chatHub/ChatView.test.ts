@@ -110,7 +110,7 @@ const mockRouterPush = vi.fn((route) => {
 });
 
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal<typeof import('vue-router')>();
 
 	return {
 		...actual,

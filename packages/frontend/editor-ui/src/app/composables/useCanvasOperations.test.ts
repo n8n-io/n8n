@@ -80,7 +80,7 @@ const mockRoute = reactive({
 const mockRouterReplace = vi.fn();
 
 vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
+	...(await importOriginal<typeof import('vue-router')>()),
 	useRoute: () => mockRoute,
 	useRouter: () => ({
 		replace: mockRouterReplace,
@@ -91,7 +91,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
-	const actual = await importOriginal();
+	const actual = await importOriginal<typeof import('n8n-workflow')>();
 	return {
 		...actual,
 		TelemetryHelpers: {
@@ -109,7 +109,7 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 });
 
 vi.mock('@vueuse/core', async (importOriginal) => {
-	const original = await importOriginal();
+	const original = await importOriginal<typeof import('@vueuse/core')>();
 	const copySpy = vi.fn();
 	return {
 		...original,
