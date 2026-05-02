@@ -5,7 +5,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import ToolSettingsModal from './ToolSettingsModal.vue';
 import type { INode } from 'n8n-workflow';
-import { waitFor } from '@testing-library/vue';
+import { cleanup, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { defineComponent, onMounted, ref } from 'vue';
 
@@ -72,35 +72,20 @@ function createToolSettingsStub(emitValid: boolean) {
 	});
 }
 
-const ElDialogStub = {
+const ModalStub = {
 	template: `
 		<div role="dialog">
 			<slot name="header" />
-			<slot />
+			<slot name="content" />
 			<slot name="footer" />
+			<slot />
 		</div>
 	`,
-	props: [
-		'modelValue',
-		'beforeClose',
-		'class',
-		'center',
-		'width',
-		'showClose',
-		'closeOnClickModal',
-		'closeOnPressEscape',
-		'style',
-		'appendTo',
-		'lockScroll',
-		'appendToBody',
-		'dataTestId',
-		'modalClass',
-		'zIndex',
-	],
+	props: ['name', 'title', 'loading', 'width', 'showClose', 'customClass'],
 };
 
 const sharedStubs = {
-	ElDialog: ElDialogStub,
+	Modal: ModalStub,
 	NodeIcon: { template: '<div />' },
 };
 
@@ -130,6 +115,7 @@ describe('ToolSettingsModal', () => {
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 
 	beforeEach(() => {
+		cleanup();
 		vi.clearAllMocks();
 
 		createTestingPinia({ stubActions: false });

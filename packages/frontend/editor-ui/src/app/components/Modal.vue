@@ -38,6 +38,7 @@ const props = withDefaults(
 		closeOnPressEscape?: boolean;
 		appendToBody?: boolean;
 		lockScroll?: boolean;
+		modal?: boolean;
 	}>(),
 	{
 		title: '',
@@ -54,6 +55,7 @@ const props = withDefaults(
 		closeOnPressEscape: true,
 		appendToBody: false,
 		lockScroll: true,
+		modal: true,
 	},
 );
 
@@ -162,7 +164,7 @@ function onInteractOutside(event: Event) {
 <template>
 	<N8nDialog
 		:open="uiStore.modalsById[name]?.open"
-		:modal="lockScroll"
+		:modal="modal"
 		:disable-outside-pointer-events="closeOnClickModal"
 		:show-close-button="showClose"
 		:content-test-id="`${name}-modal`"
@@ -173,7 +175,7 @@ function onInteractOutside(event: Event) {
 			[getCustomClass()]: true,
 		}"
 		:content-style="styles"
-		:aria-label="title || name"
+		:aria-label="$slots.header || title ? undefined : name"
 		:aria-description="subtitle"
 		@update:open="onUpdateOpen"
 		@escape-key-down="onEscapeKeyDown"

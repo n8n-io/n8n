@@ -423,6 +423,7 @@ onMounted(async () => {
 		width="500"
 		:class="$style.container"
 		:event-bus="modalBus"
+		:modal="false"
 	>
 		<template #content>
 			<p
