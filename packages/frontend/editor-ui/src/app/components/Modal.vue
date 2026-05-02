@@ -3,11 +3,9 @@ import { computed, onMounted, onBeforeUnmount } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ModalKey } from '@/Interface';
-import { useStyles } from '@/app/composables/useStyles';
 
 import {
 	N8nDialog,
-	N8nDialogContent,
 	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -61,12 +59,11 @@ const props = withDefaults(
 
 const emit = defineEmits<{ enter: [] }>();
 
-const { APP_Z_INDEXES } = useStyles();
-
 const styles = computed(() => {
 	const modalStyles: { [prop: string]: string } = {};
 	if (props.width) {
 		modalStyles['--dialog--width'] = props.width;
+		modalStyles['--dialog--max-width'] = props.width;
 	}
 	if (props.height) {
 		modalStyles['--dialog--height'] = props.height;
@@ -168,51 +165,49 @@ function onInteractOutside(event: Event) {
 		:modal="lockScroll"
 		:disable-outside-pointer-events="closeOnClickModal"
 		:show-close-button="showClose"
+		:content-test-id="`${name}-modal`"
+		:content-class="{
+			'dialog-wrapper': true,
+			scrollable: scrollable,
+			centered: center,
+			[getCustomClass()]: true,
+		}"
+		:content-style="styles"
+		:aria-label="title || name"
+		:aria-description="subtitle"
 		@update:open="onUpdateOpen"
 		@escape-key-down="onEscapeKeyDown"
 		@interact-outside="onInteractOutside"
 	>
-		<N8nDialogContent
-			:data-test-id="`${name}-modal`"
-			:class="{
-				'dialog-wrapper': true,
-				scrollable: scrollable,
-				centered: center,
-				[getCustomClass()]: true,
-			}"
-			:style="styles"
-			:z-index="APP_Z_INDEXES.MODALS"
-		>
-			<template v-if="$slots.header">
-				<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
-			</template>
-			<N8nDialogHeader v-else-if="title">
-				<div :class="centerTitle ? $style.centerTitle : ''">
-					<div v-if="title">
-						<N8nDialogTitle>
-							<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
-						</N8nDialogTitle>
-					</div>
-					<N8nDialogDescription v-if="subtitle" :class="$style.subtitle">
-						<N8nHeading tag="h3" size="small" color="text-light">{{ subtitle }}</N8nHeading>
-					</N8nDialogDescription>
+		<template v-if="$slots.header">
+			<slot v-if="!loading" name="header" v-bind="{ closeDialog }" />
+		</template>
+		<N8nDialogHeader v-else-if="title">
+			<div :class="centerTitle ? $style.centerTitle : ''">
+				<div v-if="title">
+					<N8nDialogTitle>
+						<N8nHeading tag="h1" size="xlarge">{{ title }}</N8nHeading>
+					</N8nDialogTitle>
 				</div>
-			</N8nDialogHeader>
-			<div
-				class="modal-content"
-				@keydown.stop
-				@keydown.enter="handleEnter"
-				@keydown.esc="onCloseDialog"
-			>
-				<slot v-if="!loading" name="content" />
-				<div v-else :class="$style.loader">
-					<N8nSpinner />
-				</div>
+				<N8nDialogDescription v-if="subtitle" :class="$style.subtitle">
+					<N8nHeading tag="h3" size="small" color="text-light">{{ subtitle }}</N8nHeading>
+				</N8nDialogDescription>
 			</div>
-			<N8nDialogFooter v-if="!loading && $slots.footer" :class="$style.footer">
-				<slot name="footer" :close="closeDialog" />
-			</N8nDialogFooter>
-		</N8nDialogContent>
+		</N8nDialogHeader>
+		<div
+			class="modal-content"
+			@keydown.stop
+			@keydown.enter="handleEnter"
+			@keydown.esc="onCloseDialog"
+		>
+			<slot v-if="!loading" name="content" />
+			<div v-else :class="$style.loader">
+				<N8nSpinner />
+			</div>
+		</div>
+		<N8nDialogFooter v-if="!loading && $slots.footer" :class="$style.footer">
+			<slot name="footer" :close="closeDialog" />
+		</N8nDialogFooter>
 	</N8nDialog>
 </template>
 
@@ -265,5 +260,11 @@ function onInteractOutside(event: Event) {
 
 .footer {
 	margin-top: var(--spacing--lg);
+	width: 100%;
+
+	/** If in it's own container, makes sure the footer takes all the available space and pushes the content to the top if needed */
+	> div:only-child {
+		flex: 1;
+	}
 }
 </style>

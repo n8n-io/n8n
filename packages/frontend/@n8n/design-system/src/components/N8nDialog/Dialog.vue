@@ -65,6 +65,18 @@ export interface DialogProps {
 	 */
 	ariaDescription?: string;
 	/**
+	 * Additional class applied to the dialog content element.
+	 */
+	contentClass?: unknown;
+	/**
+	 * Additional styles applied to the dialog content element.
+	 */
+	contentStyle?: unknown;
+	/**
+	 * Test id applied to the dialog content element.
+	 */
+	contentTestId?: string;
+	/**
 	 * Shorthand for rendering a dialog header with a title.
 	 * Alternative to using N8nDialogHeader and N8nDialogTitle as children.
 	 */
@@ -116,6 +128,9 @@ const handleOpenChange = (value: boolean) => {
 				:show-close-button="showCloseButton"
 				:aria-label="ariaLabel"
 				:aria-description="ariaDescription"
+				:class="contentClass"
+				:style="contentStyle"
+				:data-test-id="contentTestId"
 				@escape-key-down="emit('escapeKeyDown', $event)"
 				@interact-outside="emit('interactOutside', $event)"
 				@open-auto-focus="emit('openAutoFocus', $event)"

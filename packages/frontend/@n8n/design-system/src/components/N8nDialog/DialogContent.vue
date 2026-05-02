@@ -57,7 +57,7 @@ export interface DialogContentEmits {
 }
 
 const props = withDefaults(defineProps<DialogContentProps>(), {
-	size: 'medium',
+	size: 'large',
 	trapFocus: true,
 	disableOutsidePointerEvents: true,
 	showCloseButton: true,
@@ -156,7 +156,7 @@ function handleInteractOutside(e: Event) {
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
-	width: 100%;
+	width: var(--dialog--width, 100%);
 	padding: var(--spacing--lg);
 	border-radius: var(--radius--lg);
 	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-800));
@@ -185,7 +185,7 @@ function handleInteractOutside(e: Event) {
 .small {
 	--dialog--max-width: calc(100dvw - var(--spacing--lg));
 
-	@media (min-width: 640px) {
+	@media (min-width: 768px) {
 		--dialog--max-width: 360px;
 	}
 }
@@ -193,7 +193,7 @@ function handleInteractOutside(e: Event) {
 .medium {
 	--dialog--max-width: calc(100dvw - var(--spacing--lg));
 
-	@media (min-width: 640px) {
+	@media (min-width: 768px) {
 		--dialog--max-width: 480px;
 	}
 }
@@ -201,7 +201,7 @@ function handleInteractOutside(e: Event) {
 .large {
 	--dialog--max-width: calc(100dvw - var(--spacing--lg));
 
-	@media (min-width: 640px) {
+	@media (min-width: 768px) {
 		--dialog--max-width: 564px;
 	}
 }
@@ -209,15 +209,15 @@ function handleInteractOutside(e: Event) {
 .xlarge {
 	--dialog--max-width: calc(100dvw - var(--spacing--lg));
 
-	@media (min-width: 640px) {
-		--dialog--max-width: 640px;
+	@media (min-width: 768px) {
+		--dialog--max-width: 768px;
 	}
 }
 
 .\32xlarge {
 	--dialog--max-width: calc(100dvw - var(--spacing--lg));
 
-	@media (min-width: 640px) {
+	@media (min-width: 768px) {
 		--dialog--max-width: 780px;
 	}
 }
