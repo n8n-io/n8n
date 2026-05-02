@@ -158,7 +158,6 @@ const fakeUser = { id: 'user-1' } as User;
 type TerminalOutcomeServiceInternals = {
 	replayUndeliveredTerminalOutcomes: (threadId: string) => Promise<void>;
 	createTerminalOutcomeStorage: jest.Mock;
-	instanceAiConfig: { terminalResponseGuardDisabled: boolean };
 	dbSnapshotStorage: {
 		getLatest: jest.Mock;
 		save: jest.Mock;
@@ -182,7 +181,6 @@ function createTerminalOutcomeService(
 		markDelivered: jest.fn(async () => {}),
 	};
 	const service = Object.create(InstanceAiService.prototype) as TerminalOutcomeServiceInternals;
-	service.instanceAiConfig = { terminalResponseGuardDisabled: false };
 	service.createTerminalOutcomeStorage = jest.fn(() => storage);
 	service.dbSnapshotStorage = {
 		getLatest: jest.fn(async () =>
@@ -232,7 +230,6 @@ type TerminalGuardOrderServiceInternals = {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 	) => void;
-	instanceAiConfig: { terminalResponseGuardDisabled: boolean };
 	runState: {
 		getRunIdsForMessageGroup: jest.Mock;
 		cancelThread: jest.Mock;
@@ -254,7 +251,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	const service = Object.create(
 		InstanceAiService.prototype,
 	) as unknown as TerminalGuardOrderServiceInternals;
-	service.instanceAiConfig = { terminalResponseGuardDisabled: false };
 	service.runState = {
 		getRunIdsForMessageGroup: jest.fn(() => ['run-1']),
 		cancelThread: jest.fn(),
@@ -558,17 +554,5 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			type: 'run-finish',
 			payload: { status: 'error' },
 		});
-	});
-
-	it('does not emit guard output when the kill switch is disabled', () => {
-		const service = createTerminalGuardOrderService();
-		service.instanceAiConfig.terminalResponseGuardDisabled = true;
-
-		service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
-			messageGroupId: 'group-1',
-		});
-		service.publishRunFinish('thread-a', 'run-1', 'completed');
-
-		expect(service.eventBus.events.map((event) => event.type)).toEqual(['run-finish']);
 	});
 });

@@ -1409,10 +1409,6 @@ export class InstanceAiService {
 		return { memory, taskStorage, plannedTaskService };
 	}
 
-	private isTerminalResponseGuardEnabled(): boolean {
-		return !this.instanceAiConfig?.terminalResponseGuardDisabled;
-	}
-
 	private evaluateTerminalResponse(
 		threadId: string,
 		runId: string,
@@ -1424,8 +1420,6 @@ export class InstanceAiService {
 			errorMessage?: string;
 		} = {},
 	): TerminalResponseDecision | undefined {
-		if (!this.isTerminalResponseGuardEnabled()) return undefined;
-
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
 			rootAgentId: ORCHESTRATOR_AGENT_ID,
@@ -1450,8 +1444,6 @@ export class InstanceAiService {
 		confirmationEvent: Extract<InstanceAiEvent, { type: 'confirmation-request' }> | undefined,
 		options: { messageGroupId?: string; correlationId?: string } = {},
 	): TerminalResponseDecision | undefined {
-		if (!this.isTerminalResponseGuardEnabled()) return undefined;
-
 		const guard = new InstanceAiTerminalResponseGuard({
 			runId,
 			rootAgentId: ORCHESTRATOR_AGENT_ID,
@@ -1576,8 +1568,6 @@ export class InstanceAiService {
 	}
 
 	async replayUndeliveredTerminalOutcomes(threadId: string): Promise<void> {
-		if (!this.isTerminalResponseGuardEnabled()) return;
-
 		const storage = this.createTerminalOutcomeStorage();
 		const persistedOutcomes = await storage.getUndelivered(threadId).catch((error) => {
 			this.logger.warn('Failed to load undelivered Instance AI terminal outcomes', {
@@ -1678,8 +1668,6 @@ export class InstanceAiService {
 	}
 
 	private async recordBackgroundTerminalOutcome(task: ManagedBackgroundTask): Promise<void> {
-		if (!this.isTerminalResponseGuardEnabled()) return;
-
 		const outcome = this.buildBackgroundTerminalOutcome(task);
 		let persisted = false;
 		try {
