@@ -91,11 +91,6 @@ function toolDescription(tool: AgentJsonToolRef) {
 	return tool.description;
 }
 
-function toolChipText(tool: AgentJsonToolRef, index: number) {
-	const description = toolDescription(tool);
-	return description ? `${toolLabel(tool, index)} • ${description}` : toolLabel(tool, index);
-}
-
 function toolNodeType(tool: AgentJsonToolRef) {
 	const node = toolRefToNode(tool);
 	if (!node) return null;
