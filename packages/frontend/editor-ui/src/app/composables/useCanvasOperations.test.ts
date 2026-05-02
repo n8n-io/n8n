@@ -4640,6 +4640,7 @@ describe('useCanvasOperations', () => {
 						position: [300, 300] as [number, number],
 						webhookId: 'second-webhook',
 						parameters: {
+							path: 'second-webhook',
 							options: {
 								path: 'second-webhook',
 							},
@@ -4666,6 +4667,7 @@ describe('useCanvasOperations', () => {
 				expect(workflow.nodes![0].parameters.path).toBe(workflow.nodes![0].webhookId);
 				expect(workflow.nodes![1].name).toBe('Execute Workflow Trigger 2');
 				expect(workflow.nodes![1].webhookId).not.toBe('second-webhook');
+				expect(workflow.nodes![1].parameters.path).toBe(workflow.nodes![1].webhookId);
 				expect((workflow.nodes![1].parameters.options as { path: string }).path).toBe(
 					workflow.nodes![1].webhookId,
 				);
