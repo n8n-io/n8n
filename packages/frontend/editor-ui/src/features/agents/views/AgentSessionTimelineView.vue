@@ -1,11 +1,14 @@
 <script lang="ts" setup>
 import { truncate } from '@n8n/utils';
 import { useToast } from '@/app/composables/useToast';
+import { VIEWS } from '@/app/constants';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
 import {
 	AGENT_BUILDER_VIEW,
 	CONTINUE_SESSION_ID_PARAM,
-	EXECUTIONS_SECTION_KEY,
+	AGENT_SESSION_DETAIL_VIEW,
 } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import type {
@@ -25,9 +28,11 @@ import {
 } from '@/features/agents/session-timeline.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nIconButton, N8nInput } from '@n8n/design-system';
+import { N8nBreadcrumbs, N8nButton, N8nDropdownMenu, N8nIcon, N8nInput } from '@n8n/design-system';
+import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
+import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -35,6 +40,7 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
+const projectsStore = useProjectsStore();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -83,7 +89,7 @@ const filterOptions = computed<FilterOption[]>(() => {
 	return Array.from(counts.entries()).map(([key, count]) => ({
 		key,
 		label: labelForKey(key),
-		color: colorByKey.get(key) ?? 'var(--color--foreground)',
+		color: colorByKey.get(key) ?? 'var(--border-color)',
 		count,
 	}));
 });
@@ -111,12 +117,73 @@ const sessionTitle = computed(() => {
 	return truncate(threadTitleOf(thread.value), 64);
 });
 
+const projectName = computed<string | null>(() => {
+	if (projectsStore.personalProject?.id === projectId.value) {
+		return i18n.baseText('projects.menu.personal');
+	}
+	const current = projectsStore.currentProject;
+	if (current && current.id === projectId.value) return current.name ?? null;
+	const match = projectsStore.myProjects.find((p) => p.id === projectId.value);
+	return match?.name ?? null;
+});
+
+const projectRoute = computed<RouteLocationRaw>(() => ({
+	name: VIEWS.PROJECTS_WORKFLOWS,
+	params: { projectId: projectId.value },
+}));
+
+const agentRoute = computed<RouteLocationRaw>(() => ({
+	name: AGENT_BUILDER_VIEW,
+	params: { projectId: projectId.value, agentId: agentId.value },
+}));
+
+const breadcrumbItems = computed<PathItem[]>(() => [
+	{
+		id: projectId.value,
+		label: projectName.value ?? i18n.baseText('agents.builder.header.projectFallback'),
+		href: router.resolve(projectRoute.value).href,
+	},
+	{
+		id: agentId.value,
+		label: thread.value?.agentName ?? '…',
+		href: router.resolve(agentRoute.value).href,
+	},
+]);
+
+interface SessionDropdownData {
+	date: string;
+	active: boolean;
+}
+
+const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropdownData>>>(() => {
+	const sessions = sessionsStore.threads;
+	if (sessions.length === 0) {
+		return [
+			{
+				id: '__empty__',
+				label: i18n.baseText('agentSessions.empty'),
+				disabled: true,
+			},
+		];
+	}
+	return sessions.map((session) => ({
+		id: session.id,
+		label: truncate(threadTitleOf(session), 64),
+		class: session.id === threadId.value ? 'session-dropdown-item-active' : undefined,
+		data: {
+			date: formatDate(session.updatedAt),
+			active: session.id === threadId.value,
+		},
+	}));
+});
+
 const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
 
 onMounted(async () => {
 	try {
+		void sessionsStore.fetchThreads(projectId.value, agentId.value);
 		const result = await sessionsStore.getThreadDetail(
 			projectId.value,
 			threadId.value,
@@ -137,12 +204,10 @@ function formatDuration(ms: number): string {
 	return `${(ms / 1000).toFixed(1)}s`;
 }
 
-function goBack() {
-	void router.push({
-		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-		query: { section: EXECUTIONS_SECTION_KEY },
-	});
+function formatDate(fullDate: string): string {
+	if (!fullDate) return '';
+	const { date, time } = convertToDisplayDate(fullDate);
+	return `${date} ${time}`;
 }
 
 function continueChat() {
@@ -152,21 +217,62 @@ function continueChat() {
 		query: { [CONTINUE_SESSION_ID_PARAM]: threadId.value },
 	});
 }
+
+function onBreadcrumbSelect(item: PathItem) {
+	if (item.id === projectId.value) {
+		void router.push(projectRoute.value);
+	} else if (item.id === agentId.value) {
+		void router.push(agentRoute.value);
+	}
+}
+
+function onSessionSelect(nextThreadId: string) {
+	if (nextThreadId === '__empty__' || nextThreadId === threadId.value) return;
+	void router.push({
+		name: AGENT_SESSION_DETAIL_VIEW,
+		params: { projectId: projectId.value, agentId: agentId.value, threadId: nextThreadId },
+	});
+}
 </script>
 
 <template>
 	<div :class="$style.view">
 		<div :class="$style.topBar">
 			<div :class="$style.topBarLeft">
-				<N8nIconButton
-					icon="arrow-left"
-					variant="ghost"
-					size="small"
-					:aria-label="i18n.baseText('agentSessions.timeline.backToAgent')"
-					data-test-id="session-timeline-back"
-					@click="goBack"
-				/>
-				<span :class="$style.sessionTitle">{{ sessionTitle }}</span>
+				<N8nBreadcrumbs :items="breadcrumbItems" theme="medium" @item-selected="onBreadcrumbSelect">
+					<template #append>
+						<span :class="$style.crumbSeparator" aria-hidden="true">/</span>
+						<N8nDropdownMenu
+							:items="sessionOptions"
+							placement="bottom-start"
+							:extra-popper-class="$style.sessionDropdownMenu"
+							data-testid="session-header-switcher"
+							@select="onSessionSelect"
+						>
+							<template #trigger>
+								<N8nButton
+									variant="ghost"
+									size="small"
+									:class="$style.switcherButton"
+									:aria-label="i18n.baseText('agentSessions.sessionName')"
+								>
+									<span :class="$style.switcherLabel">{{ sessionTitle }}</span>
+									<N8nIcon icon="chevron-down" :size="14" />
+								</N8nButton>
+							</template>
+							<template #item-label="{ item }">
+								<span :class="$style.sessionDropdownName">
+									{{ item.label }}
+								</span>
+							</template>
+							<template #item-trailing="{ item }">
+								<span v-if="item.data?.date" :class="$style.sessionDropdownDate">
+									{{ item.data.date }}
+								</span>
+							</template>
+						</N8nDropdownMenu>
+					</template>
+				</N8nBreadcrumbs>
 			</div>
 			<div v-if="thread" :class="$style.topBarRight">
 				<span>
@@ -284,12 +390,12 @@ function continueChat() {
 .topBar {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	background-color: var(--color--foreground--tint-2);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--md);
+	background-color: var(--background--surface);
+	border-bottom: var(--border);
 	flex-shrink: 0;
-	box-sizing: content-box;
-	height: var(--height--sm);
+	height: var(--height--4xl);
 }
 .topBarLeft {
 	display: flex;
@@ -302,15 +408,55 @@ function continueChat() {
 	align-items: center;
 	gap: var(--spacing--3xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--text-color--subtler);
+	margin-left: auto;
 }
 .sep {
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
+}
+.crumbSeparator {
+	color: var(--border-color);
+	margin: 0 var(--spacing--4xs);
+	user-select: none;
+}
+.switcherButton {
+	font-size: var(--font-size--sm);
+	gap: var(--spacing--4xs);
+	margin-top: var(--spacing--5xs);
+}
+.switcherLabel {
+	max-width: 200px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.sessionDropdownMenu {
+	min-width: 360px;
+}
+:global(.session-dropdown-item-active),
+:global(.session-dropdown-item-active:hover),
+:global(.session-dropdown-item-active:focus),
+:global(.session-dropdown-item-active[data-highlighted]) {
+	background-color: var(--background--active);
+}
+.sessionDropdownName {
+	display: block;
+	max-width: 60%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.sessionDropdownDate {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--3xs);
+	text-align: right;
+	white-space: nowrap;
+	margin-left: auto;
 }
 .sessionTitle {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	color: var(--text-color);
 }
 .continueButton {
 	display: inline-flex;
@@ -319,14 +465,14 @@ function continueChat() {
 	margin-left: var(--spacing--2xs);
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	background: none;
-	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border: var(--border);
 	border-radius: var(--radius);
-	color: var(--color--primary);
+	color: var(--background--brand);
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	cursor: pointer;
 	&:hover {
-		background-color: var(--color--foreground--tint-1);
+		background-color: var(--background--hover);
 	}
 }
 .subHeader {
@@ -334,7 +480,7 @@ function continueChat() {
 	align-items: center;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	background-color: var(--color--foreground--tint-2);
+	background-color: var(--background--subtle);
 	flex-shrink: 0;
 }
 .triggerInfo {
@@ -342,13 +488,13 @@ function continueChat() {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+	color: var(--text-color);
 	white-space: nowrap;
 }
 .divider {
 	width: 1px;
 	height: 16px;
-	background-color: var(--color--foreground);
+	background-color: var(--border-color);
 	flex-shrink: 0;
 }
 .search {
@@ -378,6 +524,6 @@ function continueChat() {
 }
 .loading {
 	padding: var(--spacing--sm);
-	color: var(--color--text--tint-1);
+	color: var(--text-color--subtler);
 }
 </style>
