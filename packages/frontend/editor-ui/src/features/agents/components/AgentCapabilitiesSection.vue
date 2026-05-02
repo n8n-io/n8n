@@ -81,16 +81,6 @@ function toolIcon(tool: AgentJsonToolRef) {
 	return 'globe';
 }
 
-function toolDescription(tool: AgentJsonToolRef) {
-	if (tool.type === 'node') {
-		const node = toolRefToNode(tool);
-		const firstCred = node ? Object.values(node.credentials ?? {})[0] : undefined;
-		return firstCred?.name ?? i18n.baseText('agents.tools.noCredentials');
-	}
-
-	return tool.description;
-}
-
 function toolNodeType(tool: AgentJsonToolRef) {
 	const node = toolRefToNode(tool);
 	if (!node) return null;
