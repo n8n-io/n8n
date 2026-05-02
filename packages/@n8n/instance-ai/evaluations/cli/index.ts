@@ -14,13 +14,14 @@ import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult } from 'langsmith/evaluation';
 import type { Example, Run } from 'langsmith/schemas';
 import { traceable } from 'langsmith/traceable';
-import pLimit from 'p-limit';
 import { join } from 'path';
 import { z } from 'zod';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
+import { LaneAllocator } from './lane-allocator';
+import { expandWithIterations, partitionRoundRobin } from './lanes';
 import { N8nClient } from '../clients/n8n-client';
 import { seedCredentials, cleanupCredentials } from '../credentials/seeder';
 import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
@@ -112,21 +113,46 @@ const runInputsSchema = z
 /** Target input shape with the iteration index we inject for multi-run. */
 type TargetInputs = DatasetExampleInputs & { _iteration?: number };
 
+interface Lane {
+	client: N8nClient;
+	preRunWorkflowIds: Set<string>;
+	claimedWorkflowIds: Set<string>;
+	seedResult: { seededTypes: string[]; credentialIds: string[] };
+}
+
+interface RunConfig {
+	args: ReturnType<typeof parseCliArgs>;
+	lanes: Lane[];
+	logger: EvalLogger;
+}
+
 async function main(): Promise<void> {
 	const args = parseCliArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
 
-	const client = new N8nClient(args.baseUrl);
-	logger.info(`Authenticating with ${args.baseUrl}...`);
-	await client.login(args.email, args.password);
-	logger.success('Authenticated');
+	// One lane per base URL. The LangSmith path then uses a work-stealing
+	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
+	// path partitions test cases statically per lane.
+	const lanes: Lane[] = await Promise.all(
+		args.baseUrls.map(async (baseUrl, idx) => {
+			const tag =
+				args.baseUrls.length > 1
+					? ` [lane ${String(idx + 1)}/${String(args.baseUrls.length)}]`
+					: '';
+			const client = new N8nClient(baseUrl);
+			logger.info(`Authenticating with ${baseUrl}...${tag}`);
+			await client.login(args.email, args.password);
+			logger.success(`Authenticated${tag}`);
 
-	logger.info('Seeding credentials...');
-	const seedResult = await seedCredentials(client, undefined, logger);
-	logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)`);
+			logger.info(`Seeding credentials...${tag}`);
+			const seedResult = await seedCredentials(client, undefined, logger);
+			logger.info(`Seeded ${String(seedResult.credentialIds.length)} credential(s)${tag}`);
 
-	const preRunWorkflowIds = await snapshotWorkflowIds(client);
-	const claimedWorkflowIds = new Set<string>();
+			const preRunWorkflowIds = await snapshotWorkflowIds(client);
+			const claimedWorkflowIds = new Set<string>();
+			return { client, preRunWorkflowIds, claimedWorkflowIds, seedResult };
+		}),
+	);
 
 	const startTime = Date.now();
 
@@ -137,24 +163,10 @@ async function main(): Promise<void> {
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
-			evaluation = await runWithLangSmith({
-				args,
-				client,
-				preRunWorkflowIds,
-				claimedWorkflowIds,
-				logger,
-				seedResult,
-			});
+			evaluation = await runWithLangSmith({ args, lanes, logger });
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
-			evaluation = await runDirectLoop({
-				args,
-				client,
-				preRunWorkflowIds,
-				claimedWorkflowIds,
-				logger,
-				seedResult,
-			});
+			evaluation = await runDirectLoop({ args, lanes, logger });
 		}
 
 		const totalDuration = Date.now() - startTime;
@@ -164,7 +176,11 @@ async function main(): Promise<void> {
 		console.log(`Report:  ${htmlPath}`);
 		printSummary(evaluation);
 	} finally {
-		await cleanupCredentials(client, seedResult.credentialIds).catch(() => {});
+		await Promise.all(
+			lanes.map(async (lane) => {
+				await cleanupCredentials(lane.client, lane.seedResult.credentialIds).catch(() => {});
+			}),
+		);
 	}
 }
 
@@ -172,78 +188,110 @@ async function main(): Promise<void> {
 // LangSmith mode: evaluate() with dataset sync, tracing, experiments
 // ---------------------------------------------------------------------------
 
-interface RunConfig {
-	args: ReturnType<typeof parseCliArgs>;
-	client: N8nClient;
-	preRunWorkflowIds: Set<string>;
-	claimedWorkflowIds: Set<string>;
-	logger: EvalLogger;
-	seedResult: { seededTypes: string[]; credentialIds: string[] };
-}
-
 async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> {
-	const { args, client, preRunWorkflowIds, claimedWorkflowIds, logger } = config;
+	const { args, lanes, logger } = config;
 
 	const lsClient = new Client();
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, args.filter);
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
 
-	const buildLimiter = pLimit(MAX_CONCURRENT_BUILDS);
-	// Keyed by `${iteration}:${prompt}` so the same prompt gets a fresh build
-	// per iteration — pass@k captures real builder variance.
-	const buildCache = new Map<string, Promise<BuildResult>>();
-	const buildDurations = new Map<string, number>();
+	// LaneState carries the allocator-managed counters (activeBuilds,
+	// inflightPrompts) plus the lane's traced LangSmith wrappers. `runner` is
+	// the underlying Lane (n8n client, credential state) — named distinctly so
+	// it doesn't shadow the iteration variable `lane` in lanes.map().
+	interface LaneState {
+		runner: Lane;
+		activeBuilds: number;
+		inflightPrompts: Set<string>;
+		tracedBuild: (prompt: string) => Promise<BuildResult>;
+		tracedExecute: (execArgs: {
+			workflowId: string;
+			scenario: TestScenario;
+			workflowJsons: BuildResult['workflowJsons'];
+		}) => Promise<Awaited<ReturnType<typeof executeScenario>>>;
+	}
 
-	// Traceable wraps the actual build call *inside* the limiter — otherwise the
-	// LangSmith span would include queue-wait time, which accumulates across
-	// iterations as later builds queue behind earlier ones.
-	const tracedBuildWorkflow = traceable(
-		async (prompt: string) =>
-			await buildWorkflow({
-				client,
-				prompt,
-				timeoutMs: args.timeoutMs,
-				preRunWorkflowIds,
-				claimedWorkflowIds,
-				logger,
-			}),
-		{ name: 'workflow_build', run_type: 'chain', client: lsClient },
-	);
+	const laneStates: LaneState[] = lanes.map((lane, idx) => {
+		const laneNum = idx + 1;
+		const laneTag = lanes.length > 1 ? ` [lane ${String(laneNum)}/${String(lanes.length)}]` : '';
+		return {
+			runner: lane,
+			activeBuilds: 0,
+			inflightPrompts: new Set<string>(),
+			tracedBuild: traceable(
+				async (prompt: string) =>
+					await buildWorkflow({
+						client: lane.client,
+						prompt,
+						timeoutMs: args.timeoutMs,
+						preRunWorkflowIds: lane.preRunWorkflowIds,
+						claimedWorkflowIds: lane.claimedWorkflowIds,
+						logger,
+						laneTag,
+					}),
+				{
+					name: 'workflow_build',
+					run_type: 'chain',
+					client: lsClient,
+					metadata: { lane: laneNum },
+				},
+			),
+			tracedExecute: traceable(
+				async (execArgs: {
+					workflowId: string;
+					scenario: TestScenario;
+					workflowJsons: BuildResult['workflowJsons'];
+				}) =>
+					await executeScenario(
+						lane.client,
+						execArgs.workflowId,
+						execArgs.scenario,
+						execArgs.workflowJsons,
+						logger,
+						args.timeoutMs,
+					),
+				{
+					name: 'scenario_execution',
+					run_type: 'chain',
+					client: lsClient,
+					metadata: { lane: laneNum },
+				},
+			),
+		};
+	});
+
+	// Work-stealing: each build acquires a lane that isn't already running its
+	// prompt, runs there (capped per-lane), then releases. Scenarios re-use the
+	// lane that built their workflow.
+	const allocator = new LaneAllocator(laneStates, MAX_CONCURRENT_BUILDS);
+	const buildCache = new Map<
+		string,
+		Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }>
+	>();
+	const buildDurations = new Map<string, number>();
 
 	async function getOrBuild(
 		prompt: string,
 		iteration: number,
-	): Promise<{ build: BuildResult; buildDurationMs?: number }> {
+	): Promise<{ build: BuildResult; lane: LaneState; buildDurationMs: number }> {
 		const key = `${String(iteration)}:${prompt}`;
 		const existing = buildCache.get(key);
-		if (existing) return { build: await existing };
-		const promise = buildLimiter(async () => {
-			const start = Date.now();
-			const build = await tracedBuildWorkflow(prompt);
-			buildDurations.set(key, Date.now() - start);
-			return build;
-		});
+		if (existing) return await existing;
+		const promise = (async () => {
+			const lane = await allocator.acquire(prompt);
+			try {
+				const start = Date.now();
+				const build = await lane.tracedBuild(prompt);
+				const buildDurationMs = Date.now() - start;
+				buildDurations.set(key, buildDurationMs);
+				return { build, lane, buildDurationMs };
+			} finally {
+				allocator.release(lane, prompt);
+			}
+		})();
 		buildCache.set(key, promise);
-		const build = await promise;
-		return { build, buildDurationMs: buildDurations.get(key) };
+		return await promise;
 	}
-
-	const traceableExecute = traceable(
-		async (execArgs: {
-			workflowId: string;
-			scenario: TestScenario;
-			workflowJsons: BuildResult['workflowJsons'];
-		}) =>
-			await executeScenario(
-				client,
-				execArgs.workflowId,
-				execArgs.scenario,
-				execArgs.workflowJsons,
-				logger,
-				args.timeoutMs,
-			),
-		{ name: 'scenario_execution', run_type: 'chain', client: lsClient },
-	);
 
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
 		const iteration = inputs._iteration ?? 0;
@@ -254,7 +302,11 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 			successCriteria: inputs.successCriteria,
 		};
 
-		const { build, buildDurationMs } = await getOrBuild(inputs.prompt, iteration);
+		const {
+			build,
+			lane: builtOnLane,
+			buildDurationMs,
+		} = await getOrBuild(inputs.prompt, iteration);
 
 		if (!build.success || !build.workflowId) {
 			return {
@@ -274,7 +326,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
 		let result;
 		try {
-			result = await traceableExecute({
+			result = await builtOnLane.tracedExecute({
 				workflowId: build.workflowId,
 				scenario,
 				workflowJsons: build.workflowJsons,
@@ -356,7 +408,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	const experimentPrefix = args.experimentName ?? computeExperimentPrefix();
 
 	logger.info(
-		`Starting evaluate() with concurrency=${String(args.concurrency)}, builds limited to ${String(MAX_CONCURRENT_BUILDS)}, iterations=${String(args.iterations)}`,
+		`Starting evaluate() with concurrency=${String(args.concurrency)}, ${String(lanes.length)} lane(s) × ${String(MAX_CONCURRENT_BUILDS)} concurrent builds, iterations=${String(args.iterations)}`,
 	);
 
 	// Always filter the LangSmith dataset by the local file slugs. The local
@@ -381,6 +433,7 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 				filter: args.filter ?? 'all',
 				concurrency: args.concurrency,
 				maxBuilds: MAX_CONCURRENT_BUILDS,
+				lanes: lanes.length,
 				iterations: args.iterations,
 				...buildCIMetadata(),
 			},
@@ -417,10 +470,10 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 	} finally {
 		if (!args.keepWorkflows) {
 			await Promise.all(
-				[...buildCache.values()].map(async (buildPromise) => {
+				[...buildCache.values()].map(async (promise) => {
 					try {
-						const build = await buildPromise;
-						await cleanupBuild(client, build, logger);
+						const { build, lane } = await promise;
+						await cleanupBuild(lane.runner.client, build, logger);
 					} catch {
 						// Best-effort
 					}
@@ -431,14 +484,10 @@ async function runWithLangSmith(config: RunConfig): Promise<MultiRunEvaluation> 
 }
 
 /**
- * Expand a source example stream into N copies, tagging each with `_iteration`
- * so the target function can key its build cache by iteration and we can
- * reshape runs back into per-iteration groups afterwards. All N copies share
- * the source example's id, so LangSmith's UI groups them naturally by
- * `reference_example_id` — useful for pass@k visualization.
- *
- * The source is buffered into memory once before the first yield: we need to
- * emit each example N times, and an AsyncIterable can only be consumed once.
+ * Expand a source example stream into N copies, tagging each with `_iteration`.
+ * Round-robins scenarios across test cases and iter-interleaves per scenario
+ * so the in-flight set spans both dimensions. Concentration is handled by the
+ * work-stealing allocator at build time.
  */
 async function* expandExamplesForIterations(
 	source: AsyncIterable<Example>,
@@ -446,11 +495,12 @@ async function* expandExamplesForIterations(
 ): AsyncIterable<Example> {
 	const cached: Example[] = [];
 	for await (const ex of source) cached.push(ex);
-	for (let i = 0; i < iterations; i++) {
-		for (const ex of cached) {
-			yield { ...ex, inputs: { ...ex.inputs, _iteration: i } };
-		}
-	}
+	yield* expandWithIterations(
+		cached,
+		(ex) => (typeof ex.inputs?.testCaseFile === 'string' ? ex.inputs.testCaseFile : 'unknown'),
+		iterations,
+		(ex, i) => ({ ...ex, inputs: { ...ex.inputs, _iteration: i } }),
+	);
 }
 
 function filteredExamplesIterable(
@@ -639,7 +689,7 @@ function reshapeLangSmithRuns(
 // ---------------------------------------------------------------------------
 
 async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
-	const { args, client, preRunWorkflowIds, claimedWorkflowIds, logger, seedResult } = config;
+	const { args, lanes, logger } = config;
 
 	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(args.filter);
 	if (testCasesWithFiles.length === 0) {
@@ -652,30 +702,47 @@ async function runDirectLoop(config: RunConfig): Promise<MultiRunEvaluation> {
 		0,
 	);
 	logger.info(
-		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s) × ${String(args.iterations)} iteration(s)`,
+		`Running ${String(testCasesWithFiles.length)} test case(s) with ${String(totalScenarios)} scenario(s) × ${String(args.iterations)} iteration(s) across ${String(lanes.length)} lane(s)`,
 	);
+
+	// Distribute test cases across lanes by source-order index. Each bucket carries
+	// the original index so we can re-sort lane outputs back to source order — the
+	// aggregator indexes per-iteration results positionally.
+	const indexed = testCasesWithFiles.map((tc, origIdx) => ({ tc, origIdx }));
+	const buckets = partitionRoundRobin(indexed, lanes.length);
 
 	const allRunResults: WorkflowTestCaseResult[][] = [];
 	for (let iter = 0; iter < args.iterations; iter++) {
 		if (args.iterations > 1) {
 			logger.info(`--- Iteration #${String(iter + 1)}/${String(args.iterations)} ---`);
 		}
-		const results = await runWithConcurrency(
-			testCasesWithFiles,
-			async ({ testCase }) =>
-				await runWorkflowTestCase({
-					client,
-					testCase,
-					timeoutMs: args.timeoutMs,
-					seededCredentialTypes: seedResult.seededTypes,
-					preRunWorkflowIds,
-					claimedWorkflowIds,
-					logger,
-					keepWorkflows: args.keepWorkflows,
-				}),
-			MAX_CONCURRENT_BUILDS,
+		const laneResults = await Promise.all(
+			lanes.map(async (lane, laneIdx) => {
+				const bucket = buckets[laneIdx];
+				const laneTag =
+					lanes.length > 1 ? ` [lane ${String(laneIdx + 1)}/${String(lanes.length)}]` : '';
+				const results = await runWithConcurrency(
+					bucket,
+					async ({ tc }) =>
+						await runWorkflowTestCase({
+							client: lane.client,
+							testCase: tc.testCase,
+							timeoutMs: args.timeoutMs,
+							seededCredentialTypes: lane.seedResult.seededTypes,
+							preRunWorkflowIds: lane.preRunWorkflowIds,
+							claimedWorkflowIds: lane.claimedWorkflowIds,
+							logger,
+							keepWorkflows: args.keepWorkflows,
+							laneTag,
+						}),
+					MAX_CONCURRENT_BUILDS,
+				);
+				return bucket.map((b, i) => ({ origIdx: b.origIdx, result: results[i] }));
+			}),
 		);
-		allRunResults.push(results);
+		const flat = laneResults.flat();
+		flat.sort((a, b) => a.origIdx - b.origIdx);
+		allRunResults.push(flat.map((x) => x.result));
 	}
 
 	return aggregateResults(allRunResults, args.iterations);

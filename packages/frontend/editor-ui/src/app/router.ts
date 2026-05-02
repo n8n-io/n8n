@@ -71,6 +71,8 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
+const SettingsEncryptionKeys = async () =>
+	await import('@/features/settings/encryption-keys/views/SettingsEncryptionKeys.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
@@ -921,6 +923,31 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'sso',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'encryption-keys',
+				name: VIEWS.ENCRYPTION_KEYS_SETTINGS,
+				component: SettingsEncryptionKeys,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'encryptionKey:manage',
+						},
+						custom: () => {
+							const { check } = useEnvFeatureFlag();
+							return check.value('ENCRYPTION_KEY_ROTATION');
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'encryption-keys',
 							};
 						},
 					},
