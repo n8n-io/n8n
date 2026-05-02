@@ -6,7 +6,7 @@ import SessionTimelineTable from '../components/SessionTimelineTable.vue';
 import type { TimelineItem } from '../session-timeline.types';
 
 vi.mock('@n8n/design-system', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@n8n/design-system')>()),
+	...(await importOriginal()),
 	N8nRecycleScroller: {
 		name: 'N8nRecycleScroller',
 		props: ['items'],

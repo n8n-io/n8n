@@ -9,8 +9,7 @@ import { VIEWS } from '@/app/constants';
 import { DATA_TABLE_DETAILS } from '@/features/core/dataTable/constants';
 
 vi.mock('vue-router', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const actual = await importOriginal<typeof import('vue-router')>();
+	const actual = await importOriginal();
 	return {
 		...actual,
 		useRouter: vi.fn().mockReturnValue({ push: vi.fn() }),

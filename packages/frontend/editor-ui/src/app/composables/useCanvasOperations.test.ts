@@ -91,8 +91,7 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const actual = await importOriginal<typeof import('n8n-workflow')>();
+	const actual = await importOriginal();
 	return {
 		...actual,
 		TelemetryHelpers: {
@@ -110,8 +109,7 @@ vi.mock('n8n-workflow', async (importOriginal) => {
 });
 
 vi.mock('@vueuse/core', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const original = await importOriginal<typeof import('@vueuse/core')>();
+	const original = await importOriginal();
 	const copySpy = vi.fn();
 	return {
 		...original,

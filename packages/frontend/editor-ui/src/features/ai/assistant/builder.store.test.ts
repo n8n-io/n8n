@@ -54,8 +54,7 @@ vi.mock('@n8n/i18n', () => ({
 
 // Mock workflowHistory API
 vi.mock('@n8n/rest-api-client/api/workflowHistory', async (importOriginal) => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const actual = await importOriginal<typeof import('@n8n/rest-api-client/api/workflowHistory')>();
+	const actual = await importOriginal();
 	return {
 		...actual,
 		getWorkflowVersionsByIds: vi.fn(),
