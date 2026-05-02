@@ -929,10 +929,14 @@ export function getNodeParameters(
 					if (typeof propertyValues !== 'object' || Array.isArray(propertyValues)) {
 						continue;
 					}
+					// Skip if the value is not an array (e.g. an unresolved expression string like '={{ $json.items }}').
+					// for-of on a string iterates characters, producing N default items instead of the real value.
+					const itemValues = (propertyValues as INodeParameters)[itemName];
+					if (!Array.isArray(itemValues)) {
+						continue;
+					}
 					// Iterate over all items as it contains multiple ones
-					for (const nodeValue of (propertyValues as INodeParameters)[
-						itemName
-					] as INodeParameters[]) {
+					for (const nodeValue of itemValues as INodeParameters[]) {
 						nodePropertyOptions = nodeProperties.options!.find(
 							(nodePropertyOptions) => nodePropertyOptions.name === itemName,
 						) as INodePropertyCollection;
