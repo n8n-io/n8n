@@ -303,7 +303,7 @@ export function resultFromPostStreamError(input: {
 	workItemId: string;
 	runId: string;
 	taskId: string;
-}): BackgroundTaskResult | undefined {
+}): { text: string; outcome: WorkflowBuildOutcome } | undefined {
 	const attempt = latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath);
 	if (!attempt) return undefined;
 
@@ -641,7 +641,14 @@ export async function startBuildWorkflowAgentTask(
 								runId: context.runId,
 								taskId,
 							});
-							if (recovered) return recovered;
+							if (recovered) {
+								await promoteMainWorkflow(
+									domainContext,
+									context.logger,
+									recovered.outcome.workflowId,
+								);
+								return recovered;
+							}
 							throw error;
 						}
 
@@ -667,6 +674,11 @@ export async function startBuildWorkflowAgentTask(
 								taskId,
 							});
 							if (recovered) {
+								await promoteMainWorkflow(
+									domainContext,
+									context.logger,
+									recovered.outcome.workflowId,
+								);
 								return {
 									text: recovered.text,
 									outcome: await finalBuildOutcome(context, workItemId, recovered.outcome),
@@ -728,6 +740,11 @@ export async function startBuildWorkflowAgentTask(
 										taskId,
 									});
 									if (recovered) {
+										await promoteMainWorkflow(
+											domainContext,
+											context.logger,
+											recovered.outcome.workflowId,
+										);
 										return {
 											text: recovered.text,
 											outcome: await finalBuildOutcome(context, workItemId, recovered.outcome),
