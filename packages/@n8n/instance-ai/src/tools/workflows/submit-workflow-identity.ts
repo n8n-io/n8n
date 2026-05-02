@@ -125,25 +125,32 @@ export function wrapSubmitExecuteWithIdentity(
 ): SubmitExecute {
 	const pending = new Map<string, Promise<string>>();
 
-	return async (input) => {
-		const resolvedPath = resolvePath(input.filePath);
+	async function blockedByTerminalRemediation(
+		workflowId: string | undefined,
+	): Promise<SubmitWorkflowOutput | undefined> {
 		const terminalRemediation = terminalRemediationFromState(
 			await options.getWorkflowLoopState?.(),
 			options.currentRunId,
 		);
-		if (terminalRemediation) {
-			options.onGuardFired?.({
-				workflowId: input.workflowId,
-				category: terminalRemediation.category,
-				attemptCount: terminalRemediation.attemptCount,
-				reason: terminalRemediation.reason,
-			});
-			return {
-				success: false,
-				errors: [terminalRemediation.guidance],
-				remediation: terminalRemediation,
-			};
-		}
+		if (!terminalRemediation) return undefined;
+
+		options.onGuardFired?.({
+			workflowId,
+			category: terminalRemediation.category,
+			attemptCount: terminalRemediation.attemptCount,
+			reason: terminalRemediation.reason,
+		});
+		return {
+			success: false,
+			errors: [terminalRemediation.guidance],
+			remediation: terminalRemediation,
+		};
+	}
+
+	return async (input) => {
+		const resolvedPath = resolvePath(input.filePath);
+		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
+		if (terminalResult) return terminalResult;
 
 		const existing = pending.get(resolvedPath);
 
@@ -165,6 +172,9 @@ export function wrapSubmitExecuteWithIdentity(
 					}),
 				};
 			}
+			const terminalAfterWait = await blockedByTerminalRemediation(boundId);
+			if (terminalAfterWait) return terminalAfterWait;
+
 			const result = await underlying({ ...input, workflowId: boundId });
 			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
 		}

@@ -266,6 +266,56 @@ describe('wrapSubmitExecuteWithIdentity', () => {
 		expect(execute).toHaveBeenCalledTimes(1);
 	});
 
+	it('re-checks terminal remediation after awaiting an in-flight submit', async () => {
+		let release: () => void = () => {};
+		const gate = new Promise<void>((res) => {
+			release = res;
+		});
+		const terminalState: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			workflowId: 'wf_1',
+			phase: 'verifying',
+			status: 'active',
+			source: 'create',
+			rebuildAttempts: 0,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+		};
+		const getWorkflowLoopState = jest
+			.fn<Promise<WorkflowLoopState | undefined>, []>()
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce(undefined)
+			.mockResolvedValueOnce(terminalState);
+		const execute = jest.fn(async (input: SubmitWorkflowInput): Promise<SubmitWorkflowOutput> => {
+			await gate;
+			return { success: true, workflowId: input.workflowId ?? 'wf_1' };
+		});
+		const wrapped = wrapSubmitExecuteWithIdentity(execute, resolvePath, {
+			currentRunId: 'run_1',
+			getWorkflowLoopState,
+		});
+
+		const first = wrapped({});
+		await Promise.resolve();
+		await Promise.resolve();
+		const second = wrapped({});
+		await Promise.resolve();
+		release();
+
+		await expect(first).resolves.toMatchObject({ success: true, workflowId: 'wf_1' });
+		await expect(second).resolves.toMatchObject({
+			success: false,
+			remediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+			},
+		});
+		expect(execute).toHaveBeenCalledTimes(1);
+	});
+
 	it('marks the third pre-save failed submit as terminal', async () => {
 		const tracker = createPreSaveBudgetTracker();
 		const execute = async (): Promise<SubmitWorkflowOutput> => {

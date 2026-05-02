@@ -418,6 +418,8 @@ function normalizeRunState(state: WorkflowLoopState, runId: string | undefined):
 	return {
 		...state,
 		runId,
+		phase: 'building',
+		status: 'active',
 		successfulSubmitSeen: false,
 		preSaveSubmitFailures: 0,
 		postSubmitRemediationSubmitsUsed: 0,

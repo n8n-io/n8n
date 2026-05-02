@@ -52,7 +52,10 @@ import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
-import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
+import {
+	type SubmitWorkflowAttempt,
+	type SubmitWorkflowOutput,
+} from '../workflows/submit-workflow.tool';
 
 /**
  * Clear the AI-builder temporary marker from the build's main workflow so the
@@ -334,6 +337,41 @@ export function resultFromLaterFailedMainSubmit(input: {
 		text,
 		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, preservedAttempt, text),
 	};
+}
+
+function isFreshAttemptForHash(
+	attempt: SubmitWorkflowAttempt | undefined,
+	sourceHash: string,
+): attempt is SubmitWorkflowAttempt {
+	return attempt?.sourceHash === sourceHash;
+}
+
+export function attemptFromAutoResubmit(input: {
+	latestAttempt: SubmitWorkflowAttempt | undefined;
+	resubmit: SubmitWorkflowOutput;
+	filePath: string;
+	sourceHash: string;
+}): SubmitWorkflowAttempt | undefined {
+	if (isFreshAttemptForHash(input.latestAttempt, input.sourceHash)) {
+		return input.latestAttempt;
+	}
+	if (input.resubmit.success) return undefined;
+	return {
+		filePath: input.filePath,
+		sourceHash: input.sourceHash,
+		success: false,
+		errors: input.resubmit.errors,
+		remediation: input.resubmit.remediation,
+	};
+}
+
+function shouldRecoverSavedWorkflowAfterFailedSubmit(attempt: SubmitWorkflowAttempt): boolean {
+	return attempt.remediation?.shouldEdit !== false;
+}
+
+function formatSubmitWorkflowErrors(output: SubmitWorkflowOutput, fallback: string): string {
+	const errors = output.errors?.join(' ') ?? '';
+	return errors.length > 0 ? errors : fallback;
 }
 
 export interface StartBuildWorkflowAgentInput {
@@ -701,15 +739,20 @@ export async function startBuildWorkflowAgentTask(
 							if (submitTool && 'execute' in submitTool) {
 								const resubmit = await (
 									submitTool as {
-										execute: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+										execute: (args: Record<string, unknown>) => Promise<SubmitWorkflowOutput>;
 									}
 								).execute({
 									filePath: mainWorkflowPath,
 									workflowId: mainWorkflowAttempt.workflowId,
 								});
 
-								const refreshedAttempt = submitAttempts.get(mainWorkflowPath);
-								if (refreshedAttempt?.success) {
+								const refreshedAttempt = attemptFromAutoResubmit({
+									latestAttempt: submitAttempts.get(mainWorkflowPath),
+									resubmit,
+									filePath: mainWorkflowPath,
+									sourceHash: currentMainWorkflowHash,
+								});
+								if (resubmit.success && refreshedAttempt?.success) {
 									await promoteMainWorkflow(
 										domainContext,
 										context.logger,
@@ -727,10 +770,12 @@ export async function startBuildWorkflowAgentTask(
 
 								const resubmitErrors =
 									refreshedAttempt?.errors?.join(' ') ??
-									(typeof resubmit?.errors === 'string'
-										? resubmit.errors
-										: 'Auto-re-submit failed.');
-								if (refreshedAttempt && !refreshedAttempt.success) {
+									formatSubmitWorkflowErrors(resubmit, 'Auto-re-submit failed.');
+								if (
+									refreshedAttempt &&
+									!refreshedAttempt.success &&
+									shouldRecoverSavedWorkflowAfterFailedSubmit(refreshedAttempt)
+								) {
 									const recovered = resultFromLaterFailedMainSubmit({
 										failedAttempt: refreshedAttempt,
 										submitAttempts: submitAttemptHistory,

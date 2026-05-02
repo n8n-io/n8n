@@ -18,12 +18,16 @@ import {
 import type { OrchestrationContext, InstanceAiContext } from '../../../types';
 import { createRemediation } from '../../../workflow-loop';
 import type { WorkflowBuildOutcome, WorkflowLoopState } from '../../../workflow-loop';
-import type { SubmitWorkflowAttempt } from '../../workflows/submit-workflow.tool';
+import type {
+	SubmitWorkflowAttempt,
+	SubmitWorkflowOutput,
+} from '../../workflows/submit-workflow.tool';
 
 const {
 	recordSuccessfulWorkflowBuilds,
 	resultFromPostStreamError,
 	resultFromLaterFailedMainSubmit,
+	attemptFromAutoResubmit,
 	withTerminalLoopState,
 	createBuildWorkflowAgentTool,
 } =
@@ -327,6 +331,61 @@ describe('withTerminalLoopState', () => {
 				reason: 'mocked_credentials_or_placeholders',
 			},
 		});
+	});
+});
+
+describe('attemptFromAutoResubmit', () => {
+	it('ignores a stale successful attempt when terminal guard blocked the resubmit', () => {
+		const staleAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'old-hash',
+			success: true,
+			workflowId: 'WF_123',
+		};
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'post_submit_budget_exhausted',
+			guidance: 'Stop editing.',
+		});
+		const resubmit: SubmitWorkflowOutput = {
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		};
+
+		const attempt = attemptFromAutoResubmit({
+			latestAttempt: staleAttempt,
+			resubmit,
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+		});
+
+		expect(attempt).toEqual({
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+	});
+
+	it('returns the fresh submit attempt when it matches the edited source hash', () => {
+		const freshAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: true,
+			workflowId: 'WF_456',
+		};
+
+		const attempt = attemptFromAutoResubmit({
+			latestAttempt: freshAttempt,
+			resubmit: { success: true, workflowId: 'WF_456' },
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+		});
+
+		expect(attempt).toBe(freshAttempt);
 	});
 });
 

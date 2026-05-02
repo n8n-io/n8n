@@ -233,6 +233,44 @@ describe('handleBuildOutcome', () => {
 		});
 	});
 
+	it('resets blocked phase/status when a reused work item receives a new run', () => {
+		const state = makeState({
+			runId: 'run_previous',
+			phase: 'blocked',
+			status: 'blocked',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+			lastRemediation: createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+				guidance: 'Stop editing.',
+			}),
+		});
+
+		const result = handleBuildOutcome(state, [], {
+			...makeOutcome({
+				runId: 'run_current',
+				submitted: false,
+				failureSignature: 'validation failed',
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			}),
+		});
+
+		expect(result.action.type).toBe('continue_building');
+		expect(result.state.runId).toBe('run_current');
+		expect(result.state.phase).toBe('building');
+		expect(result.state.status).toBe('active');
+		expect(result.state.preSaveSubmitFailures).toBe(1);
+		expect(result.state.postSubmitRemediationSubmitsUsed).toBe(0);
+		expect(result.state.lastFailureSignature).toBeUndefined();
+	});
+
 	it('starts post-submit remediation budget at zero after successful submit with mocked credentials', () => {
 		const state = makeState({ runId: 'run_1', preSaveSubmitFailures: 2 });
 		const result = handleBuildOutcome(state, [], {
