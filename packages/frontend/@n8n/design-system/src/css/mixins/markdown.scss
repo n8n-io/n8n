@@ -99,7 +99,7 @@
 		font-size: var(--font-size--sm);
 		padding: calc(var(--markdown--spacing) * 0.25) calc(var(--markdown--spacing) * 0.5);
 		line-height: var(--line-height--lg);
-		background-color: var(--chat--message--pre--background);
+		background-color: var(--background--subtle);
 		border-radius: var(--radius--sm);
 		font-variant-ligatures: none;
 	}
@@ -117,7 +117,7 @@
 		white-space: pre-wrap;
 		box-sizing: border-box;
 		padding: calc(var(--markdown--spacing) * 2);
-		background: var(--chat--message--pre--background);
+		background: var(--background--subtle);
 		border-radius: var(--radius--lg);
 		position: relative;
 
@@ -219,7 +219,7 @@
 	}
 
 	thead {
-		border-bottom-width: 1px;
+		border-bottom-width: var(--border-width);
 		border-bottom-style: solid;
 		border-bottom-color: var(--color--neutral-300);
 	}
@@ -243,7 +243,7 @@
 	}
 
 	tbody tr {
-		border-bottom-width: 1px;
+		border-bottom-width: var(--border-width);
 		border-bottom-style: solid;
 		border-bottom-color: var(--color--neutral-200);
 	}
@@ -269,7 +269,7 @@
 	}
 
 	tfoot {
-		border-top-width: 1px;
+		border-top-width: var(--border-width);
 		border-top-style: solid;
 		border-top-color: var(--color--neutral-300);
 	}

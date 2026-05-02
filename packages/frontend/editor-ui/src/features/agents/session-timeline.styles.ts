@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'vue';
 import type { EventKind } from './session-timeline.types';
+import { chartBlockColor } from './session-timeline.utils';
 type TimelinePillKind = EventKind | 'idle';
 
 export function pillColors(
@@ -23,27 +24,6 @@ export function pillColors(
 			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
 		default:
 			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
-	}
-}
-
-function chartBlockColor(kind: EventKind): string {
-	switch (kind) {
-		case 'user':
-			return 'var(--color--blue-600)';
-		case 'agent':
-			return 'var(--color--purple-600)';
-		case 'tool':
-			return 'var(--color--green-600)';
-		case 'workflow':
-			return 'var(--color--orange-600)';
-		case 'node':
-			return 'var(--color--neutral-600)';
-		case 'working-memory':
-			return 'var(--color--mint-600)';
-		case 'suspension':
-			return 'var(--color--yellow-600)';
-		default:
-			return 'var(--color--neutral-600)';
 	}
 }
 

@@ -135,7 +135,7 @@ const label = computed((): string => {
 	> span {
 		overflow: hidden;
 		text-overflow: ellipsis;
-		line-height: 1.2; /* restore normal line height so descenders aren't clipped */
+		line-height: var(--line-height--sm);
 	}
 }
 

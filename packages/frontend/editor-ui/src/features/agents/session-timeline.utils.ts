@@ -109,6 +109,20 @@ export function kindColorToken(kind: EventKind): string {
 	return COLOR_MAP[kind];
 }
 
+const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
+	user: 'var(--color--blue-600)',
+	agent: 'var(--color--purple-600)',
+	tool: 'var(--color--green-600)',
+	node: 'var(--color--neutral-600)',
+	workflow: 'var(--color--orange-600)',
+	'working-memory': 'var(--color--mint-600)',
+	suspension: 'var(--color--yellow-600)',
+};
+
+export function chartBlockColor(kind: EventKind): string {
+	return CHART_BLOCK_COLOR_MAP[kind];
+}
+
 /**
  * i18n keys for built-in tools that should render as a friendly label rather
  * than their raw machine name. Returns `null` for any tool not in the map so

@@ -24,7 +24,7 @@ import {
 	computeIdleRanges,
 	sessionBounds,
 	itemFilterKey,
-	kindColorToken,
+	chartBlockColor,
 	filteredTimelineItemIndexes,
 } from '@/features/agents/session-timeline.utils';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
@@ -96,7 +96,7 @@ const filterOptions = computed<FilterOption[]>(() => {
 	for (const item of items.value) {
 		const key = itemFilterKey(item);
 		counts.set(key, (counts.get(key) ?? 0) + 1);
-		if (!colorByKey.has(key)) colorByKey.set(key, kindColorToken(item.kind));
+		if (!colorByKey.has(key)) colorByKey.set(key, chartBlockColor(item.kind));
 	}
 	return Array.from(counts.entries()).map(([key, count]) => ({
 		key,
