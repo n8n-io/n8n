@@ -108,8 +108,7 @@ const triggerIcon = computed((): 'slack' | 'bolt-filled' => {
 const triggerLabel = computed((): string => {
 	const source = triggerSource.value;
 	if (!source) return '';
-	const name = source.charAt(0).toUpperCase() + source.slice(1);
-	return i18n.baseText('agentSessions.timeline.triggeredVia', { interpolate: { source: name } });
+	return source.charAt(0).toUpperCase() + source.slice(1);
 });
 
 const sessionTitle = computed(() => {
@@ -275,14 +274,24 @@ function onSessionSelect(nextThreadId: string) {
 				</N8nBreadcrumbs>
 			</div>
 			<div v-if="thread" :class="$style.topBarRight">
-				<span>
-					{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}
-					{{ i18n.baseText('agentSessions.drawer.tokens').toLowerCase() }}
+				<span v-if="triggerSource" :class="$style.metricItem">
+					<N8nIcon :icon="triggerIcon" :size="12" />
+					<span>{{ triggerLabel }}</span>
 				</span>
 				<span :class="$style.sep">·</span>
-				<span>${{ thread.totalCost.toFixed(4) }}</span>
+				<span :class="$style.metricItem">
+					<N8nIcon icon="circle-dollar-sign" :size="12" />
+					<span>
+						{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t (${{
+							thread.totalCost.toFixed(4)
+						}})
+					</span>
+				</span>
 				<span :class="$style.sep">·</span>
-				<span>{{ formatDuration(thread.totalDuration) }}</span>
+				<span :class="$style.metricItem">
+					<N8nIcon icon="clock" :size="12" />
+					<span>{{ formatDuration(thread.totalDuration) }}</span>
+				</span>
 				<button
 					v-if="triggerSource === 'chat'"
 					:class="$style.continueButton"
@@ -295,20 +304,10 @@ function onSessionSelect(nextThreadId: string) {
 		</div>
 
 		<div v-if="!loading" :class="$style.subHeader">
-			<div v-if="triggerSource" :class="$style.triggerInfo">
-				<N8nIcon :icon="triggerIcon" :size="12" />
-				<span>{{ triggerLabel }}</span>
-			</div>
-			<span v-if="triggerSource" :class="$style.divider" aria-hidden="true" />
-			<SessionEventFilter
-				:available="filterOptions"
-				:selected="selectedFilters"
-				@update="(next) => (selectedFilters = next)"
-			/>
 			<div :class="$style.search">
 				<N8nInput
+					size="medium"
 					v-model="searchQuery"
-					size="mini"
 					:placeholder="i18n.baseText('agentSessions.timeline.searchPlaceholder')"
 					clearable
 				>
@@ -317,6 +316,11 @@ function onSessionSelect(nextThreadId: string) {
 					</template>
 				</N8nInput>
 			</div>
+			<SessionEventFilter
+				:available="filterOptions"
+				:selected="selectedFilters"
+				@update="(next) => (selectedFilters = next)"
+			/>
 		</div>
 
 		<div v-if="!loading && items.length > 0" :class="$style.chartRow">
@@ -414,6 +418,12 @@ function onSessionSelect(nextThreadId: string) {
 .sep {
 	color: var(--text-color--subtler);
 }
+.metricItem {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
 .crumbSeparator {
 	color: var(--border-color);
 	margin: 0 var(--spacing--4xs);
@@ -478,32 +488,21 @@ function onSessionSelect(nextThreadId: string) {
 .subHeader {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) var(--spacing--sm);
-	background-color: var(--background--subtle);
-	flex-shrink: 0;
-}
-.triggerInfo {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	font-size: var(--font-size--2xs);
-	color: var(--text-color);
-	white-space: nowrap;
-}
-.divider {
-	width: 1px;
-	height: 16px;
-	background-color: var(--border-color);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--md);
+	background-color: var(--background--surface);
+	border-bottom: var(--border);
 	flex-shrink: 0;
 }
 .search {
-	width: 220px;
+	flex: 1;
+	min-width: 0;
 }
 .chartRow {
 	padding: var(--spacing--sm) var(--spacing--lg);
 	border-bottom: var(--border);
 	flex-shrink: 0;
+	background-color: var(--background--surface);
 }
 .panels {
 	display: flex;

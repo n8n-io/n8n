@@ -24,7 +24,7 @@ export function pillStyle(kind: EventKind): CSSProperties {
 
 export function chartBlockStyle(kind: EventKind): CSSProperties {
 	return {
-		backgroundColor: `color-mix(in srgb, ${kindColorToken(kind)} var(--color--session-timeline-block-bg-alpha), transparent)`,
+		'--session-timeline-chart-block-color': `color-mix(in srgb, ${kindColorToken(kind)} var(--color--session-timeline-block-bg-alpha), transparent)`,
 	};
 }
 

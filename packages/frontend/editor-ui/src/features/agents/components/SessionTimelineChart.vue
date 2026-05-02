@@ -199,7 +199,6 @@ function onClick(index: number, item: TimelineItem): void {
 	gap: 1px;
 	height: 28px;
 	width: 100%;
-	background-color: var(--color--foreground--tint-2);
 	border-radius: var(--radius);
 }
 
@@ -213,6 +212,13 @@ function onClick(index: number, item: TimelineItem): void {
 	display: flex;
 	align-items: stretch;
 	min-width: 24px;
+	transition:
+		opacity,
+		transform var(--duration--snappy) var(--easing--ease-out);
+}
+
+.chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
+	opacity: 0.6;
 }
 
 .cell > span {
@@ -262,16 +268,13 @@ function onClick(index: number, item: TimelineItem): void {
 	border: none;
 	border-radius: var(--radius--sm);
 	padding: 0;
+	background-color: var(--session-timeline-chart-block-color);
 	cursor: pointer;
 	transition: filter 0.15s;
-
-	&:hover {
-		filter: brightness(1.1);
-	}
 }
 
 .selected {
-	outline: 2px solid var(--color--warning);
+	outline: 2px solid var(--session-timeline-chart-block-color);
 	outline-offset: 1px;
 	/* Lift above neighbouring idle stripes so the highlight outline doesn't
 	   get covered by the adjacent .idle background. */
