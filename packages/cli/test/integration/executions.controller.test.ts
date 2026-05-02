@@ -71,6 +71,80 @@ describe('GET /executions', () => {
 		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
 		expect(response.body.data.results[0].scopes).toContain('workflow:execute');
 	});
+
+	// Regression test for GHC-8107
+	// Bug: filtering by workflowId alone returns empty results when paginating
+	// The issue occurs when the default filter (projectId) is replaced with a workflowId filter
+	test('should return all executions when filtering by workflowId with pagination', async () => {
+		testServer.license.enable('feat:sharing');
+
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const workflow = await createWorkflow({}, teamProject);
+
+		// Create many executions to simulate "lots of webhooks" mentioned in bug report
+		const executions = [];
+		for (let i = 0; i < 50; i++) {
+			executions.push(await createSuccessfulExecution(workflow));
+		}
+
+		// Filter by workflowId alone - should return all executions with count
+		const responseByWorkflowId = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.query({
+				filter: JSON.stringify({ workflowId: workflow.id }),
+				limit: '20',
+			})
+			.expect(200);
+
+		expect(responseByWorkflowId.body.data.count).toBe(50);
+		expect(responseByWorkflowId.body.data.results.length).toBe(20);
+
+		// Fetch second page using lastId from first page
+		const lastId = responseByWorkflowId.body.data.results[19].id;
+		const responseSecondPage = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.query({
+				filter: JSON.stringify({ workflowId: workflow.id }),
+				lastId,
+				limit: '20',
+			})
+			.expect(200);
+
+		expect(responseSecondPage.body.data.count).toBe(50);
+		expect(responseSecondPage.body.data.results.length).toBe(20);
+
+		// Fetch third page
+		const lastId2 = responseSecondPage.body.data.results[19].id;
+		const responseThirdPage = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.query({
+				filter: JSON.stringify({ workflowId: workflow.id }),
+				lastId: lastId2,
+				limit: '20',
+			})
+			.expect(200);
+
+		expect(responseThirdPage.body.data.count).toBe(50);
+		expect(responseThirdPage.body.data.results.length).toBe(10);
+
+		// Control test: filter by both workflowId and projectId
+		const responseByBoth = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.query({
+				filter: JSON.stringify({ workflowId: workflow.id, projectId: teamProject.id }),
+				limit: '20',
+			})
+			.expect(200);
+
+		expect(responseByBoth.body.data.count).toBe(50);
+		expect(responseByBoth.body.data.results.length).toBe(20);
+	});
 });
 
 describe('GET /executions/:id', () => {
