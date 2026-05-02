@@ -591,7 +591,6 @@ const limitSelectionOptions: Array<{ value: string; labelKey: BaseTextKey }> = [
 	padding-top: var(--spacing--sm);
 	padding-left: var(--spacing--2xs);
 	padding-right: var(--spacing--3xs);
-	border-top: var(--border);
 	margin-top: auto;
 }
 

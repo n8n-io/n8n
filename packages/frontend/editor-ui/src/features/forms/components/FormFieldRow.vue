@@ -64,8 +64,10 @@ const hiddenCount = computed(() =>
 		<div :class="$style.content">
 			<div :class="$style.header">
 				<N8nIcon :icon="FIELD_TYPE_ICONS[field.fieldType]" size="large" :class="$style.typeIcon" />
-				<span :class="$style.labelText">{{ label }}</span>
-				<span v-if="field.requiredField" :class="$style.requiredBadge">*</span>
+				<div :class="$style.labelGroup">
+					<span :class="$style.labelText">{{ label }}</span>
+					<span v-if="field.requiredField" :class="$style.requiredBadge">*</span>
+				</div>
 				<button
 					:class="$style.deleteBtn"
 					:title="i18n.baseText('formStep.fields.deleteField')"
@@ -253,9 +255,16 @@ const hiddenCount = computed(() =>
 	color: var(--color--text--tint-1);
 }
 
-.labelText {
+.labelGroup {
 	flex: 1;
 	min-width: 0;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	overflow: hidden;
+}
+
+.labelText {
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
@@ -266,7 +275,7 @@ const hiddenCount = computed(() =>
 
 .requiredBadge {
 	flex-shrink: 0;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--md);
 	color: var(--color--danger);
 	line-height: 1;
 }
