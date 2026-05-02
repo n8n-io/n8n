@@ -345,5 +345,6 @@ export function useFormAppearance(nodeId: string) {
 		reset,
 		save,
 		onIframeLoad,
+		fetchPreview,
 	};
 }

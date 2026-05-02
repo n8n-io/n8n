@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nRadioButtons, N8nSwitch2 } from '@n8n/design-system';
 import { ElSelect, ElOption } from 'element-plus';
@@ -102,6 +102,11 @@ async function beforeClose(): Promise<boolean> {
 
 const appearance = useFormAppearance(nodeId);
 
+// Always refresh preview when switching to Appearance so field changes are reflected.
+watch(activeTab, (tab) => {
+	if (tab === 'appearance') void appearance.fetchPreview();
+});
+
 const themeOptions = computed(() => {
 	const named = [
 		{ value: 'light', label: i18n.baseText('formStep.appearance.theme.light') },
@@ -157,7 +162,7 @@ function onReset() {
 				/>
 
 				<!-- Appearance tab -->
-				<div v-show="activeTab === 'appearance'" :class="$style.appearanceLayout">
+				<div v-if="activeTab === 'appearance'" :class="$style.appearanceLayout">
 					<!-- Left: live preview -->
 					<div :class="$style.previewPane">
 						<iframe
