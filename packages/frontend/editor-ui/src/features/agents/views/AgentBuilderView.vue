@@ -651,10 +651,11 @@ function onOpenAddToolModal() {
 	});
 }
 
-function onOpenAddTriggerModal() {
+function onOpenAddTriggerModal(initialTriggerType?: string) {
 	uiStore.openModalWithData({
 		name: AGENT_ADD_TRIGGER_MODAL_KEY,
 		data: {
+			initialTriggerType,
 			projectId: projectId.value,
 			agentId: agentId.value,
 			agentName: agentName.value,

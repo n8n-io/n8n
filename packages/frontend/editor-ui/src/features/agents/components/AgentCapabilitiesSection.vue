@@ -28,7 +28,7 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'open-tool': [index: number];
 	'open-skill': [id: string];
-	'open-trigger': [];
+	'open-trigger': [triggerType: string];
 	'add-tool': [];
 	'add-skill': [];
 	'add-trigger': [];
@@ -122,7 +122,7 @@ function toolNodeType(tool: AgentJsonToolRef) {
 						type="button"
 						:class="$style.chip"
 						data-testid="agent-capabilities-trigger-row"
-						@click="emit('open-trigger')"
+						@click="emit('open-trigger', trigger.type)"
 					>
 						<N8nIcon :icon="trigger.icon" :size="16" :class="$style.chipIcon" />
 						<N8nText size="small" color="text-dark" :class="$style.chipText">
@@ -158,30 +158,25 @@ function toolNodeType(tool: AgentJsonToolRef) {
 				</N8nText>
 
 				<div :class="$style.chips">
-					<N8nTooltip
+					<button
 						v-for="(tool, index) in tools"
 						:key="`tool-${index}`"
-						:content="toolChipText(tool, index)"
-						placement="top"
+						type="button"
+						:class="$style.chip"
+						data-testid="agent-capabilities-tool-row"
+						@click="emit('open-tool', index)"
 					>
-						<button
-							type="button"
-							:class="$style.chip"
-							data-testid="agent-capabilities-tool-row"
-							@click="emit('open-tool', index)"
-						>
-							<NodeIcon
-								v-if="toolNodeType(tool)"
-								:node-type="toolNodeType(tool)"
-								:size="16"
-								:class="$style.nodeIcon"
-							/>
-							<N8nIcon v-else :icon="toolIcon(tool)" :size="16" :class="$style.chipIcon" />
-							<N8nText size="small" color="text-dark" :class="$style.chipText">
-								{{ toolLabel(tool, index) }}
-							</N8nText>
-						</button>
-					</N8nTooltip>
+						<NodeIcon
+							v-if="toolNodeType(tool)"
+							:node-type="toolNodeType(tool)"
+							:size="16"
+							:class="$style.nodeIcon"
+						/>
+						<N8nIcon v-else :icon="toolIcon(tool)" :size="16" :class="$style.chipIcon" />
+						<N8nText size="small" color="text-dark" :class="$style.chipText">
+							{{ toolLabel(tool, index) }}
+						</N8nText>
+					</button>
 
 					<N8nTooltip
 						:disabled="!hasTools"
