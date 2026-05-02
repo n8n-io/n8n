@@ -388,9 +388,7 @@ useKeybindings({
 	flex-direction: column;
 	border-right: var(--border);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
-	transition:
-		width var(--duration--snappy) var(--easing--ease-out),
-		height var(--duration--snappy) var(--easing--ease-out);
+	transition: width var(--duration--snappy) var(--easing--ease-out);
 	will-change: width;
 
 	&.sideMenuCollapsed {
