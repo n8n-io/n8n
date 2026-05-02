@@ -1,5 +1,5 @@
 ---
-name: conventions
+name: n8n:conventions
 description: Quick reference for n8n patterns. Full docs /AGENTS.md
 ---
 

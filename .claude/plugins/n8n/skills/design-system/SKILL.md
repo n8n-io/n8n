@@ -1,5 +1,5 @@
 ---
-name: design-system
+name: n8n:design-system
 description: Guidelines on using Design System styles and components. Use when working on .vue files in packages/frontend. Triggers for tasks that include component architecture, styling, UI changes, or feature work.
 ---
 
