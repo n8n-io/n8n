@@ -430,9 +430,11 @@ function onSessionSelect(nextThreadId: string) {
 					@select="selectTimelineItem"
 				/>
 			</div>
-			<div v-if="selectedItem" :class="$style.detailPanel">
-				<SessionDetailPanel :item="selectedItem" @close="selectTimelineItem(null)" />
-			</div>
+			<Transition name="session-detail-panel">
+				<div v-if="selectedItem" :class="$style.detailPanel">
+					<SessionDetailPanel :item="selectedItem" @close="selectTimelineItem(null)" />
+				</div>
+			</Transition>
 		</div>
 	</div>
 </template>
@@ -582,11 +584,39 @@ function onSessionSelect(nextThreadId: string) {
 	height: 100%;
 }
 .detailPanel {
-	flex: 4;
+	flex: 0 0 40%;
+	min-width: 0;
 	overflow-y: auto;
-	/* Border on the panel boundary when present; if the panel is hidden
-	   (no selection) the table fills the full width without any divider. */
 	border-left: var(--border);
+	background-color: var(--background--surface);
+}
+
+:global(.session-detail-panel-enter-active),
+:global(.session-detail-panel-leave-active) {
+	transition:
+		flex-basis var(--duration--snappy) var(--easing--ease-out),
+		opacity var(--duration--snappy) var(--easing--ease-out),
+		transform var(--duration--snappy) var(--easing--ease-out);
+	overflow: hidden;
+}
+:global(.session-detail-panel-enter-from),
+:global(.session-detail-panel-leave-to) {
+	flex-basis: 0;
+	opacity: 0;
+	transform: translateX(var(--spacing--sm));
+	border-left-color: transparent;
+}
+:global(.session-detail-panel-enter-to),
+:global(.session-detail-panel-leave-from) {
+	flex-basis: 40%;
+	opacity: 1;
+	transform: translateX(0);
+}
+@media (prefers-reduced-motion: reduce) {
+	:global(.session-detail-panel-enter-active),
+	:global(.session-detail-panel-leave-active) {
+		transition: none;
+	}
 }
 .loading {
 	padding: var(--spacing--sm);

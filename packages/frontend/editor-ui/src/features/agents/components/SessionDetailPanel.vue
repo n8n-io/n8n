@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
-import { N8nButton, N8nIconButton } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nText, N8nCard } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import RichInteractionCard from './RichInteractionCard.vue';
@@ -114,7 +114,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	<div :class="$style.panel">
 		<template v-if="item">
 			<div :class="$style.header">
-				<span>
+				<N8nText bold>
 					<template v-if="item.kind === 'workflow'">{{
 						item.workflowName ?? formatToolNameForDisplay(item.toolName)
 					}}</template>
@@ -132,7 +132,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						i18n.baseText('agentSessions.timeline.agent')
 					}}</template>
 					<template v-else>{{ i18n.baseText('agentSessions.timeline.suspended') }}</template>
-				</span>
+				</N8nText>
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
@@ -141,93 +141,98 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					@click="emit('close')"
 				/>
 			</div>
+			<div :class="$style.container">
+				<N8nCard>
+					<dl v-if="item.timestamp" :class="$style.infoRow">
+						<dt :class="$style.label">{{ i18n.baseText('agentSessions.timeline.created') }}</dt>
+						<dd :class="$style.value">{{ formatTimestamp(item.timestamp) }}</dd>
+					</dl>
+					<div :class="$style.executionButton" v-if="fullExecutionHref">
+						<N8nButton
+							variant="outline"
+							size="small"
+							:label="i18n.baseText('agentSessions.workflowLog.openFull')"
+							data-test-id="open-full-execution"
+							@click="openFullExecution"
+						/>
+					</div>
+				</N8nCard>
 
-			<div :class="$style.info">
-				<div v-if="item.timestamp" :class="$style.infoRow">
-					<span :class="$style.label">{{ i18n.baseText('agentSessions.timeline.created') }}</span>
-					<span :class="$style.value">{{ formatTimestamp(item.timestamp) }}</span>
-				</div>
-				<div :class="$style.executionButton">
-					<N8nButton
-						v-if="fullExecutionHref"
-						variant="outline"
-						size="small"
-						:label="i18n.baseText('agentSessions.workflowLog.openFull')"
-						data-test-id="open-full-execution"
-						@click="openFullExecution"
-					/>
+				<div :class="$style.output">
+					<N8nText bold color="text-light">Output</N8nText>
+					<template v-if="item.kind === 'workflow'">
+						<WorkflowExecutionLogViewer
+							v-if="item.workflowExecutionId && item.workflowId"
+							:key="`${item.workflowId}:${item.workflowExecutionId}`"
+							:workflow-id="item.workflowId"
+							:workflow-execution-id="item.workflowExecutionId"
+						/>
+						<div
+							v-else-if="item.workflowTriggerType === 'form' && workflowFormOutput"
+							data-test-id="wf-form-card"
+							:class="$style.formCard"
+						>
+							<p>{{ workflowFormOutput.message }}</p>
+							<a
+								:href="workflowFormOutput.formUrl"
+								target="_blank"
+								rel="noopener"
+								:class="$style.formLink"
+								>{{ i18n.baseText('agentSessions.timeline.openForm') }}</a
+							>
+						</div>
+						<div v-else data-test-id="wf-error-fallback" :class="$style.errorFallback">
+							<div :class="$style.errorBanner">
+								{{ i18n.baseText('agentSessions.timeline.workflowError') }}
+							</div>
+							<!-- eslint-disable vue/no-v-html -->
+							<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
+							<!-- eslint-enable vue/no-v-html -->
+						</div>
+					</template>
+
+					<template v-else-if="item.kind === 'tool'">
+						<template v-if="item.toolName === 'rich_interaction'">
+							<RichInteractionCard :input="item.toolInput" :output="item.toolOutput" />
+						</template>
+						<template v-else>
+							<div>
+								<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
+								<!-- eslint-disable vue/no-v-html -->
+								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
+								<!-- eslint-enable vue/no-v-html -->
+							</div>
+							<div>
+								<div :class="$style.label">
+									{{ i18n.baseText('agentSessions.timeline.output') }}
+								</div>
+								<!-- eslint-disable vue/no-v-html -->
+								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
+								<!-- eslint-enable vue/no-v-html -->
+							</div>
+						</template>
+					</template>
+
+					<template v-else-if="item.kind === 'node'">
+						<ToolIoView
+							:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
+							:input="item.toolInput"
+							:output="item.toolOutput"
+							:node-type="item.nodeType"
+							:node-type-version="item.nodeTypeVersion"
+							:node-parameters="item.nodeParameters"
+						/>
+					</template>
+
+					<template v-else-if="item.kind === 'working-memory'">
+						<pre :class="$style.json">{{ item.content }}</pre>
+					</template>
+
+					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
+						<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
+					</template>
 				</div>
 			</div>
-
-			<template v-if="item.kind === 'workflow'">
-				<WorkflowExecutionLogViewer
-					v-if="item.workflowExecutionId && item.workflowId"
-					:key="`${item.workflowId}:${item.workflowExecutionId}`"
-					:workflow-id="item.workflowId"
-					:workflow-execution-id="item.workflowExecutionId"
-				/>
-				<div
-					v-else-if="item.workflowTriggerType === 'form' && workflowFormOutput"
-					data-test-id="wf-form-card"
-					:class="$style.formCard"
-				>
-					<p>{{ workflowFormOutput.message }}</p>
-					<a
-						:href="workflowFormOutput.formUrl"
-						target="_blank"
-						rel="noopener"
-						:class="$style.formLink"
-						>{{ i18n.baseText('agentSessions.timeline.openForm') }}</a
-					>
-				</div>
-				<div v-else data-test-id="wf-error-fallback" :class="$style.errorFallback">
-					<div :class="$style.errorBanner">
-						{{ i18n.baseText('agentSessions.timeline.workflowError') }}
-					</div>
-					<!-- eslint-disable vue/no-v-html -->
-					<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-					<!-- eslint-enable vue/no-v-html -->
-				</div>
-			</template>
-
-			<template v-else-if="item.kind === 'tool'">
-				<template v-if="item.toolName === 'rich_interaction'">
-					<RichInteractionCard :input="item.toolInput" :output="item.toolOutput" />
-				</template>
-				<template v-else>
-					<div>
-						<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
-						<!-- eslint-disable vue/no-v-html -->
-						<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
-						<!-- eslint-enable vue/no-v-html -->
-					</div>
-					<div>
-						<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.output') }}</div>
-						<!-- eslint-disable vue/no-v-html -->
-						<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-						<!-- eslint-enable vue/no-v-html -->
-					</div>
-				</template>
-			</template>
-
-			<template v-else-if="item.kind === 'node'">
-				<ToolIoView
-					:name="(item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)) || 'node'"
-					:input="item.toolInput"
-					:output="item.toolOutput"
-					:node-type="item.nodeType"
-					:node-type-version="item.nodeTypeVersion"
-					:node-parameters="item.nodeParameters"
-				/>
-			</template>
-
-			<template v-else-if="item.kind === 'working-memory'">
-				<pre :class="$style.json">{{ item.content }}</pre>
-			</template>
-
-			<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
-				<VueMarkdown :source="item.content ?? ''" :class="$style.markdown" />
-			</template>
 		</template>
 
 		<div v-else :class="$style.empty">{{ i18n.baseText('agentSessions.timeline.selectItem') }}</div>
@@ -235,20 +240,41 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 </template>
 
 <style module lang="scss">
+@use '@n8n/design-system/css/mixins' as ds-mixins;
+
 .panel {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--sm);
-	overflow-y: auto;
+	height: 100%;
+	min-height: 0;
 }
 
 .header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text);
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	background-color: var(--background--surface);
+	border-bottom: var(--border);
+	flex-shrink: 0;
+	height: var(--height--4xl);
+}
+
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	padding: var(--spacing--sm);
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.output {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .info {
@@ -280,7 +306,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 .executionButton {
 	padding-top: var(--spacing--xs);
 	display: flex;
-	justify-content: end;
+	justify-content: start;
 }
 
 .json {
@@ -324,105 +350,19 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	padding: var(--spacing--sm);
 }
 
-/*
- * Markdown rendering for User/Agent message content. Surrounding global resets
- * zero out list padding, which collapsed nested bullets to the same x-position
- * as their parents — restore sensible spacing and indents for lists, headings,
- * paragraphs, and inline code so multi-level bullet output reads correctly.
- */
 .markdown {
-	color: inherit;
-	font-size: var(--font-size--xs);
+	@include ds-mixins.markdown-content;
+
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 
-	p,
-	ul,
-	ol,
-	pre,
-	blockquote {
-		margin: var(--spacing--2xs) 0;
-
-		&:first-child {
-			margin-top: 0;
-		}
-
-		&:last-child {
-			margin-bottom: 0;
-		}
-	}
-
-	ul,
-	ol {
-		padding-left: var(--spacing--md);
-		list-style-position: outside;
-	}
-
-	ul {
-		list-style-type: disc;
-	}
-
-	ol {
-		list-style-type: decimal;
-	}
-
-	li {
-		margin: var(--spacing--5xs) 0;
-	}
-
-	ul ul,
-	ol ol,
-	ul ol,
-	ol ul {
-		margin-top: var(--spacing--5xs);
+	> *:last-child {
 		margin-bottom: 0;
-		padding-left: var(--spacing--sm);
 	}
 
-	ul ul {
-		list-style-type: circle;
-	}
-
-	ul ul ul {
-		list-style-type: square;
-	}
-
-	strong,
-	b {
-		font-weight: var(--font-weight--bold);
-		color: var(--color--text--shade-1);
-	}
-
-	a {
-		color: var(--color--primary);
-		text-decoration: underline;
-	}
-
-	code {
-		font-family: monospace;
-		font-size: var(--font-size--2xs);
-		padding: 0 var(--spacing--5xs);
-		background-color: var(--color--foreground--tint-2);
-		border-radius: var(--radius--sm);
-	}
-
-	pre {
-		font-family: monospace;
-		font-size: var(--font-size--2xs);
-		padding: var(--spacing--2xs);
-		background-color: var(--color--foreground--tint-2);
-		border-radius: var(--radius);
-		overflow-x: auto;
-
-		code {
-			padding: 0;
-			background: none;
-		}
-	}
-
-	blockquote {
-		border-left: 2px solid var(--color--foreground--shade-1);
-		padding-left: var(--spacing--2xs);
-		color: var(--color--text--tint-1);
+	> *:first-child {
+		margin-top: 0;
 	}
 }
 </style>
