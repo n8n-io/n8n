@@ -70,6 +70,7 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z
 		.object({
 			type: z.literal('node'),
+			id: z.string().min(1).optional(),
 			name: z.string().min(1),
 			description: z.string().optional(),
 			node: NodeConfigSchema,

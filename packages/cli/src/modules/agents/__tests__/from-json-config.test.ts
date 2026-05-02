@@ -599,6 +599,34 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
+	it('allows frontend stable ids on node tool configs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			tools: [
+				{
+					type: 'node',
+					id: 'tool-ref-1',
+					name: 'http_request',
+					description: 'Make an HTTP request',
+					node: {
+						nodeType: 'n8n-nodes-base.httpRequestTool',
+						nodeTypeVersion: 4,
+						nodeParameters: {
+							url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url', 'The URL to request', 'string') }}",
+						},
+					},
+				},
+			],
+		};
+
+		const parsed = AgentJsonConfigSchema.parse(config);
+
+		expect(parsed.tools?.[0]).toMatchObject({ type: 'node', id: 'tool-ref-1' });
+	});
+
 	it('rejects custom tool ref with invalid id (uppercase)', () => {
 		const config = {
 			name: 'test',
