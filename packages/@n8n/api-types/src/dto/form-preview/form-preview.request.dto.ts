@@ -13,4 +13,7 @@ export class FormPreviewRequestDto extends Z.class({
 	customCss: z.string().optional(),
 	appendAttribution: z.boolean().optional(),
 	isCompletion: z.boolean().optional(),
+	respondWith: z.string().optional(),
+	responseText: z.string().optional(),
+	redirectUrl: z.string().optional(),
 }) {}

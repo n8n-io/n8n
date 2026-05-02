@@ -21,16 +21,17 @@ export class FormPreviewController {
 			]
 				.filter(Boolean)
 				.join('\n');
+			const respondWith = body.respondWith ?? 'text';
 			res.render('form-trigger-completion', {
 				title: body.formTitle,
 				message: body.formDescription,
 				formTitle: body.formTitle,
 				appendAttribution: body.appendAttribution ?? true,
 				n8nWebsiteLink: `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`,
-				responseText: '',
+				responseText: respondWith === 'showText' ? (body.responseText ?? '') : '',
 				responseBinary: encodeURIComponent(JSON.stringify('')),
 				dangerousCustomCss: completionCss,
-				redirectUrl: undefined,
+				redirectUrl: respondWith === 'redirect' ? body.redirectUrl : undefined,
 			});
 			return;
 		}

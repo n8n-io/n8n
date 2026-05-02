@@ -169,6 +169,9 @@ export function useFormAppearance(nodeId: string) {
 				formDescription: (params.completionMessage as string) ?? '',
 				formFields: [],
 				isCompletion: true,
+				respondWith: (params.respondWith as string) || 'text',
+				responseText: (params.responseText as string) || '',
+				redirectUrl: (params.redirectUrl as string) || '',
 				nodeVersion: node.value.typeVersion,
 				customCss: assembledCss.value,
 				appendAttribution: localAppendAttribution.value,
@@ -211,9 +214,31 @@ export function useFormAppearance(nodeId: string) {
 	function onIframeLoad() {
 		const iframe = iframeEl.value;
 		if (!iframe?.contentDocument) return;
-		const contentH = iframe.contentDocument.documentElement.scrollHeight;
-		const paneH = iframe.parentElement?.clientHeight ?? 0;
-		iframe.style.height = `${Math.max(contentH, paneH)}px`;
+
+		// Override any viewport-relative height (e.g. injected `body { height: 100vh }`)
+		// so scrollHeight reflects actual content height rather than the collapsed viewport.
+		const doc = iframe.contentDocument;
+		doc.documentElement.style.height = 'auto';
+		if (doc.body) doc.body.style.height = 'auto';
+
+		function updateHeight() {
+			if (!iframe?.contentDocument) return;
+			const contentH = Math.max(
+				iframe.contentDocument.documentElement.scrollHeight,
+				iframe.contentDocument.body?.scrollHeight ?? 0,
+			);
+			const paneH = iframe.parentElement?.clientHeight ?? 0;
+			iframe.style.height = `${Math.max(contentH, paneH)}px`;
+		}
+
+		updateHeight();
+
+		doc.querySelectorAll('img').forEach((img) => {
+			if (!img.complete) {
+				img.addEventListener('load', updateHeight, { once: true });
+				img.addEventListener('error', updateHeight, { once: true });
+			}
+		});
 	}
 
 	const debouncedFetchPreview = useDebounceFn(
