@@ -194,6 +194,17 @@ async function finalBuildOutcome(
 	);
 }
 
+export async function finalizeBuildResult(
+	context: OrchestrationContext,
+	workItemId: string,
+	result: { text: string; outcome: WorkflowBuildOutcome },
+): Promise<{ text: string; outcome: WorkflowBuildOutcome }> {
+	return {
+		text: result.text,
+		outcome: await finalBuildOutcome(context, workItemId, result.outcome),
+	};
+}
+
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
 You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
@@ -365,8 +376,10 @@ export function attemptFromAutoResubmit(input: {
 	};
 }
 
-function shouldRecoverSavedWorkflowAfterFailedSubmit(attempt: SubmitWorkflowAttempt): boolean {
-	return attempt.remediation?.shouldEdit !== false;
+export function shouldRecoverSavedWorkflowAfterFailedSubmit(
+	attempt: SubmitWorkflowAttempt,
+): boolean {
+	return attempt.remediation?.shouldEdit === false;
 }
 
 function formatSubmitWorkflowErrors(output: SubmitWorkflowOutput, fallback: string): string {
@@ -685,7 +698,7 @@ export async function startBuildWorkflowAgentTask(
 									context.logger,
 									recovered.outcome.workflowId,
 								);
-								return recovered;
+								return await finalizeBuildResult(context, workItemId, recovered);
 							}
 							throw error;
 						}
@@ -717,10 +730,7 @@ export async function startBuildWorkflowAgentTask(
 									context.logger,
 									recovered.outcome.workflowId,
 								);
-								return {
-									text: recovered.text,
-									outcome: await finalBuildOutcome(context, workItemId, recovered.outcome),
-								};
+								return await finalizeBuildResult(context, workItemId, recovered);
 							}
 
 							const errorText =
@@ -790,10 +800,7 @@ export async function startBuildWorkflowAgentTask(
 											context.logger,
 											recovered.outcome.workflowId,
 										);
-										return {
-											text: recovered.text,
-											outcome: await finalBuildOutcome(context, workItemId, recovered.outcome),
-										};
+										return await finalizeBuildResult(context, workItemId, recovered);
 									}
 								}
 								const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
