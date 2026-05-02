@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { N8nIcon, N8nTooltip, type IconName } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
@@ -8,10 +9,7 @@ import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey } from '../session-timeline.utils';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
-import {
-	pillStyle as kindPillStyle,
-	rowBorderColor as kindRowBorderColor,
-} from '../session-timeline.styles';
+import { rowBorderColor as kindRowBorderColor } from '../session-timeline.styles';
 
 const props = defineProps<{
 	item: TimelineItem;
@@ -38,7 +36,7 @@ const infoText = computed((): string => {
 	switch (it.kind) {
 		case 'user':
 		case 'agent':
-			return truncate(it.content ?? '', 120);
+			return truncate(it.content ?? '', 500);
 		case 'tool': {
 			const key = builtinToolLabelKey(it.toolName, it.toolOutput);
 			return key ? i18n.baseText(key) : formatToolNameForDisplay(it.toolName);
@@ -77,17 +75,57 @@ const label = computed((): string => {
 	}
 });
 
-const pillStyle = computed(() => kindPillStyle(props.item.kind));
+const icon = computed((): IconName => {
+	switch (props.item.kind) {
+		case 'user':
+			return 'user';
+		case 'agent':
+			return 'bot';
+		case 'tool':
+			return 'wrench';
+		case 'workflow':
+			return 'workflow';
+		case 'node':
+			return 'box';
+		case 'working-memory':
+			return 'brain';
+		case 'suspension':
+			return 'clock';
+		default:
+			return 'info';
+	}
+});
+
+const iconStyle = computed(() => {
+	switch (props.item.kind) {
+		case 'user':
+			return { backgroundColor: 'var(--color--blue-200)', color: 'var(--color--blue-950)' };
+		case 'agent':
+			return { backgroundColor: 'var(--color--purple-200)', color: 'var(--color--purple-950)' };
+		case 'tool':
+			return { backgroundColor: 'var(--color--green-200)', color: 'var(--color--green-950)' };
+		case 'workflow':
+			return { backgroundColor: 'var(--color--orange-200)', color: 'var(--color--orange-950)' };
+		case 'node':
+			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
+		case 'working-memory':
+			return { backgroundColor: 'var(--color--mint-200)', color: 'var(--color--mint-950)' };
+		case 'suspension':
+			return { backgroundColor: 'var(--color--yellow-200)', color: 'var(--color--yellow-950)' };
+		default:
+			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
+	}
+});
 const rowBorderColor = computed(() => kindRowBorderColor(props.item.kind));
 </script>
 
 <template>
-	<div
-		:class="[$style.row, selected && $style.selected]"
-		:style="{ borderLeftColor: rowBorderColor }"
-		@click="emit('select')"
-	>
-		<span :class="$style.pill" :style="pillStyle">{{ label }}</span>
+	<div :class="[$style.row, selected && $style.selected]" @click="emit('select')">
+		<N8nTooltip :content="label" placement="top">
+			<span :class="$style.iconWrapper" :style="iconStyle">
+				<N8nIcon :icon="icon" size="small" />
+			</span>
+		</N8nTooltip>
 		<div :class="$style.info">
 			<template v-if="item.kind === 'workflow' && workflowHref">
 				<a
@@ -110,39 +148,32 @@ const rowBorderColor = computed(() => kindRowBorderColor(props.item.kind));
 <style module lang="scss">
 .row {
 	display: grid;
-	/* Fixed pill column wide enough to fit the widest label ("Workflow",
-	   "Suspended", "Assistant") at 3xs/bold with horizontal padding. */
-	grid-template-columns: 88px 1fr auto;
+	grid-template-columns: auto 1fr auto;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	padding: var(--spacing--2xs) var(--spacing--sm);
-	border-left: 3px solid transparent;
+	height: var(--height--xl);
 	cursor: pointer;
 	font-size: var(--font-size--sm);
-	line-height: var(--line-height--lg);
+	border-radius: var(--radius--3xs);
 
 	&:hover {
-		background-color: var(--color--foreground--tint-2);
+		background-color: var(--background--hover);
 	}
 }
 
 .selected {
-	background-color: var(--color--foreground--tint-2);
-	outline: 2px solid var(--color--warning);
-	outline-offset: -2px;
+	background-color: var(--background--active);
 }
 
-.pill {
-	/* justify-self: start keeps the pill anchored to the left of the fixed
-	   pill column; the inline-flex sizes the pill to its text content only. */
+.iconWrapper {
 	justify-self: start;
 	display: inline-flex;
 	align-items: center;
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
+	justify-content: center;
+	width: var(--height--2xs);
+	height: var(--height--2xs);
 	border-radius: var(--radius--lg);
-	white-space: nowrap;
 }
 
 .info {
@@ -159,6 +190,7 @@ const rowBorderColor = computed(() => kindRowBorderColor(props.item.kind));
 	> span {
 		overflow: hidden;
 		text-overflow: ellipsis;
+		line-height: 1.2; /* restore normal line height so descenders aren't clipped */
 	}
 }
 

@@ -512,7 +512,7 @@ function onSessionSelect(nextThreadId: string) {
 .tablePanel {
 	flex: 6;
 	overflow-y: auto;
-	padding: var(--spacing--sm) 0;
+	height: 100%;
 }
 .detailPanel {
 	flex: 4;

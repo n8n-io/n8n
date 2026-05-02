@@ -121,6 +121,9 @@ const rows = computed<Row[]>(() => {
 .table {
 	display: flex;
 	flex-direction: column;
+	background-color: var(--background--surface);
+	padding: var(--spacing--4xs);
+	height: 100%;
 }
 
 .idleRow {
