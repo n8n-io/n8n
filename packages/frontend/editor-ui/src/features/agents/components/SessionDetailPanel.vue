@@ -1,9 +1,17 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import VueMarkdown from 'vue-markdown-render';
-import { N8nButton, N8nIconButton, N8nText, N8nCard } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIconButton,
+	N8nText,
+	N8nCard,
+	N8nIcon,
+	N8nTooltip,
+} from '@n8n/design-system';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import RichInteractionCard from './RichInteractionCard.vue';
@@ -17,6 +25,8 @@ const i18n = useI18n();
 const router = useRouter();
 
 const props = defineProps<{ item: TimelineItem | null }>();
+const copiedBlock = ref<string | null>(null);
+let copiedResetTimer: ReturnType<typeof setTimeout> | null = null;
 
 const fullExecutionHref = computed((): string => {
 	if (
@@ -59,6 +69,24 @@ function ensureParsed(value: unknown): unknown {
 	return value;
 }
 
+function stringifyJson(value: unknown): string {
+	const parsed = ensureParsed(value);
+	if (typeof parsed === 'string') return parsed;
+	return JSON.stringify(parsed, null, 2) ?? String(parsed);
+}
+
+async function copyJsonBlock(id: string, value: unknown): Promise<void> {
+	try {
+		await navigator.clipboard.writeText(stringifyJson(value));
+		copiedBlock.value = id;
+		if (copiedResetTimer) clearTimeout(copiedResetTimer);
+		copiedResetTimer = setTimeout(() => {
+			copiedBlock.value = null;
+			copiedResetTimer = null;
+		}, 1500);
+	} catch {}
+}
+
 function escapeHtml(text: string): string {
 	return text
 		.replace(/&/g, '&amp;')
@@ -98,6 +126,30 @@ const toolDisplayName = computed((): string => {
 	return key ? i18n.baseText(key) : formatToolNameForDisplay(props.item.toolName);
 });
 
+const headerTitle = computed((): string => {
+	const item = props.item;
+	if (!item) return '';
+	if (item.kind === 'workflow') return item.workflowName ?? formatToolNameForDisplay(item.toolName);
+	if (item.kind === 'tool') return toolDisplayName.value;
+	if (item.kind === 'node') return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
+	if (item.kind === 'working-memory') return i18n.baseText('agentSessions.timeline.memory');
+	if (item.kind === 'user') return i18n.baseText('agentSessions.timeline.user');
+	if (item.kind === 'agent') return i18n.baseText('agentSessions.timeline.agent');
+	return i18n.baseText('agentSessions.timeline.suspended');
+});
+
+const headerIcon = computed((): IconName => {
+	const item = props.item;
+	if (!item) return 'info';
+	if (item.kind === 'workflow') return 'workflow';
+	if (item.kind === 'tool') return 'wrench';
+	if (item.kind === 'node') return 'box';
+	if (item.kind === 'working-memory') return 'brain';
+	if (item.kind === 'user') return 'user';
+	if (item.kind === 'agent') return 'bot';
+	return 'clock';
+});
+
 const workflowFormOutput = computed((): { formUrl: string; message: string } | null => {
 	const o = props.item?.toolOutput;
 	if (typeof o !== 'object' || o === null) return null;
@@ -114,29 +166,13 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	<div :class="$style.panel">
 		<template v-if="item">
 			<div :class="$style.header">
-				<N8nText bold>
-					<template v-if="item.kind === 'workflow'">{{
-						item.workflowName ?? formatToolNameForDisplay(item.toolName)
-					}}</template>
-					<template v-else-if="item.kind === 'tool'">{{ toolDisplayName }}</template>
-					<template v-else-if="item.kind === 'node'">{{
-						item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName)
-					}}</template>
-					<template v-else-if="item.kind === 'working-memory'">{{
-						i18n.baseText('agentSessions.timeline.memory')
-					}}</template>
-					<template v-else-if="item.kind === 'user'">{{
-						i18n.baseText('agentSessions.timeline.user')
-					}}</template>
-					<template v-else-if="item.kind === 'agent'">{{
-						i18n.baseText('agentSessions.timeline.agent')
-					}}</template>
-					<template v-else>{{ i18n.baseText('agentSessions.timeline.suspended') }}</template>
-				</N8nText>
+				<div :class="$style.headerTitle">
+					<N8nIcon :icon="headerIcon" :size="16" />
+					<N8nText bold>{{ headerTitle }}</N8nText>
+				</div>
 				<N8nIconButton
 					icon="x"
 					variant="ghost"
-					size="small"
 					data-test-id="detail-close"
 					@click="emit('close')"
 				/>
@@ -159,7 +195,6 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 				</N8nCard>
 
 				<div :class="$style.output">
-					<N8nText bold color="text-light">Output</N8nText>
 					<template v-if="item.kind === 'workflow'">
 						<WorkflowExecutionLogViewer
 							v-if="item.workflowExecutionId && item.workflowId"
@@ -185,9 +220,33 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 							<div :class="$style.errorBanner">
 								{{ i18n.baseText('agentSessions.timeline.workflowError') }}
 							</div>
-							<!-- eslint-disable vue/no-v-html -->
-							<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-							<!-- eslint-enable vue/no-v-html -->
+							<div :class="$style.codeBlock">
+								<div :class="$style.codeBlockCopy">
+									<N8nTooltip
+										:content="
+											copiedBlock === 'workflow-output'
+												? i18n.baseText('agents.builder.addTrigger.copied')
+												: i18n.baseText('agents.builder.addTrigger.copy')
+										"
+									>
+										<N8nButton
+											variant="outline"
+											size="small"
+											icon-only
+											:icon="copiedBlock === 'workflow-output' ? 'check' : 'copy'"
+											:aria-label="
+												copiedBlock === 'workflow-output'
+													? i18n.baseText('agents.builder.addTrigger.copied')
+													: i18n.baseText('agents.builder.addTrigger.copy')
+											"
+											@click="copyJsonBlock('workflow-output', item.toolOutput)"
+										/>
+									</N8nTooltip>
+								</div>
+								<!-- eslint-disable vue/no-v-html -->
+								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
+								<!-- eslint-enable vue/no-v-html -->
+							</div>
 						</div>
 					</template>
 
@@ -198,17 +257,65 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 						<template v-else>
 							<div>
 								<div :class="$style.label">{{ i18n.baseText('agentSessions.timeline.input') }}</div>
-								<!-- eslint-disable vue/no-v-html -->
-								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
-								<!-- eslint-enable vue/no-v-html -->
+								<div :class="$style.codeBlock">
+									<div :class="$style.codeBlockCopy">
+										<N8nTooltip
+											:content="
+												copiedBlock === 'tool-input'
+													? i18n.baseText('agents.builder.addTrigger.copied')
+													: i18n.baseText('agents.builder.addTrigger.copy')
+											"
+										>
+											<N8nButton
+												variant="outline"
+												size="small"
+												icon-only
+												:icon="copiedBlock === 'tool-input' ? 'check' : 'copy'"
+												:aria-label="
+													copiedBlock === 'tool-input'
+														? i18n.baseText('agents.builder.addTrigger.copied')
+														: i18n.baseText('agents.builder.addTrigger.copy')
+												"
+												@click="copyJsonBlock('tool-input', item.toolInput)"
+											/>
+										</N8nTooltip>
+									</div>
+									<!-- eslint-disable vue/no-v-html -->
+									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolInput))" />
+									<!-- eslint-enable vue/no-v-html -->
+								</div>
 							</div>
 							<div>
 								<div :class="$style.label">
 									{{ i18n.baseText('agentSessions.timeline.output') }}
 								</div>
-								<!-- eslint-disable vue/no-v-html -->
-								<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
-								<!-- eslint-enable vue/no-v-html -->
+								<div :class="$style.codeBlock">
+									<div :class="$style.codeBlockCopy">
+										<N8nTooltip
+											:content="
+												copiedBlock === 'tool-output'
+													? i18n.baseText('agents.builder.addTrigger.copied')
+													: i18n.baseText('agents.builder.addTrigger.copy')
+											"
+										>
+											<N8nButton
+												variant="outline"
+												size="small"
+												icon-only
+												:icon="copiedBlock === 'tool-output' ? 'check' : 'copy'"
+												:aria-label="
+													copiedBlock === 'tool-output'
+														? i18n.baseText('agents.builder.addTrigger.copied')
+														: i18n.baseText('agents.builder.addTrigger.copy')
+												"
+												@click="copyJsonBlock('tool-output', item.toolOutput)"
+											/>
+										</N8nTooltip>
+									</div>
+									<!-- eslint-disable vue/no-v-html -->
+									<pre :class="$style.json" v-html="highlightJson(ensureParsed(item.toolOutput))" />
+									<!-- eslint-enable vue/no-v-html -->
+								</div>
 							</div>
 						</template>
 					</template>
@@ -225,7 +332,31 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					</template>
 
 					<template v-else-if="item.kind === 'working-memory'">
-						<pre :class="$style.json">{{ item.content }}</pre>
+						<div :class="$style.codeBlock">
+							<div :class="$style.codeBlockCopy">
+								<N8nTooltip
+									:content="
+										copiedBlock === 'working-memory'
+											? i18n.baseText('agents.builder.addTrigger.copied')
+											: i18n.baseText('agents.builder.addTrigger.copy')
+									"
+								>
+									<N8nButton
+										variant="outline"
+										size="small"
+										icon-only
+										:icon="copiedBlock === 'working-memory' ? 'check' : 'copy'"
+										:aria-label="
+											copiedBlock === 'working-memory'
+												? i18n.baseText('agents.builder.addTrigger.copied')
+												: i18n.baseText('agents.builder.addTrigger.copy')
+										"
+										@click="copyJsonBlock('working-memory', item.content)"
+									/>
+								</N8nTooltip>
+							</div>
+							<pre :class="$style.json">{{ item.content }}</pre>
+						</div>
 					</template>
 
 					<template v-else-if="item.kind === 'user' || item.kind === 'agent'">
@@ -259,6 +390,21 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);
+}
+
+.headerTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
+	color: var(--text-color);
+}
+
+.headerTitle > span:last-child {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .container {
@@ -309,14 +455,38 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	justify-content: start;
 }
 
+.codeBlock {
+	position: relative;
+}
+
+.codeBlockCopy {
+	position: absolute;
+	top: var(--spacing--sm);
+	right: var(--spacing--lg);
+	z-index: 1;
+	opacity: 0;
+	transition: opacity var(--duration--snappy) var(--easing--ease-out);
+
+	.codeBlock:hover &,
+	.codeBlock:focus-within & {
+		opacity: 1;
+	}
+}
+
 .json {
-	font-family: monospace;
-	font-size: var(--font-size--2xs);
-	white-space: pre;
-	background-color: var(--color--foreground--tint-2);
-	padding: var(--spacing--2xs);
-	border-radius: var(--radius);
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+	white-space: pre-wrap;
+	word-break: break-word;
+	margin: 0;
+	background-color: var(--background--subtle);
+	padding: var(--spacing--sm);
+	padding-right: calc(var(--spacing--2xl) + var(--spacing--lg));
+	border-radius: var(--radius--3xs);
 	overflow-x: auto;
+	color: var(--color--text--tint-1);
+	margin-top: var(--spacing--2xs);
 }
 
 .formCard {
@@ -364,5 +534,24 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 	> *:first-child {
 		margin-top: 0;
 	}
+}
+</style>
+
+<style lang="scss">
+.json-key {
+	color: var(--color--primary);
+}
+
+.json-string {
+	color: var(--color--success);
+}
+
+.json-number {
+	color: var(--color--warning);
+}
+
+.json-bool {
+	color: var(--color--text--tint-1);
+	font-style: italic;
 }
 </style>
