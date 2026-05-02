@@ -1,14 +1,15 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { truncate } from '@n8n/utils';
 import { useI18n } from '@n8n/i18n';
-import { N8nTooltip } from '@n8n/design-system';
+import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import { builtinToolLabelKey, formatDuration, itemFilterKey } from '../session-timeline.utils';
-import { chartBlockStyle, pillStyle as kindPillStyle } from '../session-timeline.styles';
+import { chartBlockStyle } from '../session-timeline.styles';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import SessionTimelinePill from './SessionTimelinePill.vue';
 
 const props = defineProps<{
 	items: TimelineItem[];
@@ -19,11 +20,18 @@ const props = defineProps<{
 	selectedIndex: number | null;
 }>();
 
+const SCROLL_PADDING = 48;
+
 const emit = defineEmits<{ select: [index: number] }>();
 
 const i18n = useI18n();
+const chartRef = ref<HTMLElement | null>(null);
+const activePopover = ref<{ segment: Segment; reference: HTMLElement } | null>(null);
+const popoverOpen = ref(false);
 
 const INSTANT_MS = 100;
+const POPOVER_SHOW_DELAY_MS = 300;
+let showPopoverTimer: ReturnType<typeof setTimeout> | null = null;
 
 type Segment =
 	| { kind: 'event'; item: TimelineItem; index: number; duration: number }
@@ -67,10 +75,6 @@ function eventStyle(item: TimelineItem): CSSProperties {
 		style.pointerEvents = 'none';
 	}
 	return style;
-}
-
-function pillStyle(item: TimelineItem): CSSProperties {
-	return kindPillStyle(item.kind);
 }
 
 function popoverLabel(item: TimelineItem): string {
@@ -142,10 +146,125 @@ function onClick(index: number, item: TimelineItem): void {
 	if (isDimmed(item)) return;
 	emit('select', index);
 }
+
+function showPopover(segment: Segment, event: MouseEvent | FocusEvent): void {
+	if (!(event.currentTarget instanceof HTMLElement)) return;
+	const reference = event.currentTarget;
+	clearShowPopoverTimer();
+	showPopoverTimer = setTimeout(() => {
+		activePopover.value = { segment, reference };
+		popoverOpen.value = true;
+	}, POPOVER_SHOW_DELAY_MS);
+}
+
+function clearShowPopoverTimer(): void {
+	if (!showPopoverTimer) return;
+	clearTimeout(showPopoverTimer);
+	showPopoverTimer = null;
+}
+
+function showSelectedPopover(): void {
+	const selectedIndex = props.selectedIndex;
+	if (selectedIndex === null) {
+		popoverOpen.value = false;
+		activePopover.value = null;
+		return;
+	}
+
+	const segment = segments.value.find((seg) => seg.kind === 'event' && seg.index === selectedIndex);
+	const reference = chartRef.value?.querySelector<HTMLElement>(
+		`[data-timeline-index="${selectedIndex}"]`,
+	);
+
+	if (segment && reference) {
+		activePopover.value = { segment, reference };
+		popoverOpen.value = true;
+	}
+}
+
+function scrollSelectedIntoView(): void {
+	const selectedIndex = props.selectedIndex;
+	const chart = chartRef.value;
+	if (selectedIndex === null || !chart) return;
+
+	const selectedBlock = chart.querySelector<HTMLElement>(
+		`[data-timeline-index="${selectedIndex}"]`,
+	);
+	if (!selectedBlock) return;
+
+	const blockLeft = selectedBlock.offsetLeft;
+	const blockRight = blockLeft + selectedBlock.offsetWidth;
+	const viewportLeft = chart.scrollLeft;
+	const viewportRight = viewportLeft + chart.clientWidth;
+
+	if (blockLeft - SCROLL_PADDING < viewportLeft) {
+		chart.scrollLeft = Math.max(0, blockLeft - SCROLL_PADDING);
+	} else if (blockRight + SCROLL_PADDING > viewportRight) {
+		chart.scrollLeft = blockRight + SCROLL_PADDING - chart.clientWidth;
+	}
+}
+
+function hidePopover(segment: Segment): void {
+	clearShowPopoverTimer();
+	if (segment.kind === 'event' && segment.index === props.selectedIndex) {
+		showSelectedPopover();
+		return;
+	}
+
+	popoverOpen.value = false;
+	activePopover.value = null;
+}
+
+watch(
+	() => props.selectedIndex,
+	() => {
+		clearShowPopoverTimer();
+		void nextTick(() => {
+			scrollSelectedIntoView();
+			showSelectedPopover();
+		});
+	},
+);
+
+onBeforeUnmount(clearShowPopoverTimer);
 </script>
 
 <template>
-	<div :class="$style.chart">
+	<div ref="chartRef" :class="$style.chart">
+		<HoverCardRoot :open="popoverOpen" :close-delay="0">
+			<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
+			<HoverCardTrigger as="span" :class="$style.popoverTrigger" />
+			<HoverCardPortal>
+				<HoverCardContent
+					:reference="activePopover?.reference"
+					side="top"
+					align="center"
+					:side-offset="8"
+					:class="$style.tooltipContent"
+				>
+					<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
+						<SessionTimelinePill
+							kind="idle"
+							:label="i18n.baseText('agentSessions.timeline.idle')"
+							show-label
+						/>
+						<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
+					</div>
+					<div v-else-if="activePopover" :class="$style.popoverInner">
+						<SessionTimelinePill
+							:kind="activePopover.segment.item.kind"
+							:label="popoverLabel(activePopover.segment.item)"
+							show-label
+						/>
+						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
+						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
+							{{ popoverDuration(activePopover.segment.item) }}
+						</span>
+						<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
+					</div>
+				</HoverCardContent>
+			</HoverCardPortal>
+		</HoverCardRoot>
 		<div
 			v-for="(seg, segIdx) in segments"
 			:key="segIdx"
@@ -153,41 +272,29 @@ function onClick(index: number, item: TimelineItem): void {
 			:class="$style.cell"
 			:style="cellStyle(seg)"
 		>
-			<N8nTooltip placement="top" :show-after="100" :content-class="$style.tooltipContent">
-				<template v-if="seg.kind === 'idle'">
-					<div data-test-id="timeline-idle" :class="$style.idle">
-						<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
-					</div>
-				</template>
-				<template v-else>
-					<button
-						type="button"
-						data-test-id="timeline-block"
-						:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
-						:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
-						:style="eventStyle(seg.item)"
-						@click="onClick(seg.index, seg.item)"
-					/>
-				</template>
-				<template #content>
-					<div v-if="seg.kind === 'idle'" :class="$style.popoverInner">
-						<span :class="[$style.popoverPill, $style.idlePill]">
-							{{ i18n.baseText('agentSessions.timeline.idle') }}
-						</span>
-						<span :class="$style.popoverMeta">{{ idleDuration(seg.range) }}</span>
-					</div>
-					<div v-else :class="$style.popoverInner">
-						<span :class="$style.popoverPill" :style="pillStyle(seg.item)">
-							{{ popoverLabel(seg.item) }}
-						</span>
-						<span :class="$style.popoverName">{{ popoverName(seg.item) }}</span>
-						<span v-if="popoverDuration(seg.item)" :class="$style.popoverMeta">
-							{{ popoverDuration(seg.item) }}
-						</span>
-						<span :class="$style.popoverMeta">{{ popoverTime(seg.item) }}</span>
-					</div>
-				</template>
-			</N8nTooltip>
+			<div
+				v-if="seg.kind === 'idle'"
+				data-test-id="timeline-idle"
+				:class="$style.idle"
+				@mouseenter="showPopover(seg, $event)"
+				@mouseleave="hidePopover(seg)"
+			>
+				<span :class="$style.idleFill">{{ i18n.baseText('agentSessions.timeline.idle') }}</span>
+			</div>
+			<button
+				v-else
+				type="button"
+				data-test-id="timeline-block"
+				:data-timeline-index="seg.index"
+				:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
+				:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
+				:style="eventStyle(seg.item)"
+				@mouseenter="showPopover(seg, $event)"
+				@mouseleave="hidePopover(seg)"
+				@focus="showPopover(seg, $event)"
+				@blur="hidePopover(seg)"
+				@click="onClick(seg.index, seg.item)"
+			/>
 		</div>
 	</div>
 </template>
@@ -199,19 +306,26 @@ function onClick(index: number, item: TimelineItem): void {
 	gap: 1px;
 	height: 28px;
 	width: 100%;
+	overflow-x: auto;
+	scrollbar-width: none;
+	scroll-padding-inline: var(--spacing--lg);
 	border-radius: var(--radius);
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
 }
 
 /*
  * Each segment lives inside a flex .cell that owns the inline flex sizing.
- * The TooltipTrigger span (a real DOM element with a measurable bounding rect
- * — required by reka-ui's positioning) fills the cell, and the block/idle
- * inside fills the span.
+ * Hover/focus popover positioning is handled by one shared HoverCard above,
+ * anchored to the active block/idle element.
  */
 .cell {
 	display: flex;
 	align-items: stretch;
 	min-width: 24px;
+	flex-shrink: 0;
 	transition:
 		opacity,
 		transform var(--duration--snappy) var(--easing--ease-out);
@@ -219,13 +333,6 @@ function onClick(index: number, item: TimelineItem): void {
 
 .chart:has(.block:hover, .block.selected) .block:not(:hover):not(.selected) {
 	opacity: 0.6;
-}
-
-.cell > span {
-	display: flex;
-	flex: 1 0 0;
-	align-items: stretch;
-	min-width: 0;
 }
 
 .idle {
@@ -256,11 +363,6 @@ function onClick(index: number, item: TimelineItem): void {
 	letter-spacing: 0.02em;
 }
 
-.idlePill {
-	background-color: var(--color--foreground--tint-1);
-	color: var(--color--text--tint-1);
-}
-
 .block {
 	position: relative;
 	flex: 1 0 0;
@@ -287,33 +389,34 @@ function onClick(index: number, item: TimelineItem): void {
  * mode. Also remove the 180px max-width so our single-line row layout
  * (pill · name · duration · time) doesn't wrap.
  */
+.popoverTrigger {
+	display: none;
+}
+
 .tooltipContent {
 	max-width: none;
-	/* foreground--tint-2 is a raised surface (also used by the chart strip
-	   and top bar) that stands out from page bg in BOTH light and dark mode. */
-	background: var(--color--foreground--tint-2);
+	min-height: var(--height--sm);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--md);
+	border-radius: var(--radius--xs);
+	box-shadow: var(--shadow--sm);
+	word-wrap: break-word;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 999;
+	background: var(--background--surface);
 	border: var(--border);
 	color: var(--color--text);
-
-	/* Match the arrow fill to the tooltip bg so the pointer doesn't show
-	   as the wrong color against the panel. */
-	svg {
-		fill: var(--color--foreground--tint-2);
-	}
 }
 
 .popoverInner {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
 	white-space: nowrap;
-}
-
-.popoverPill {
-	font-size: var(--font-size--3xs);
-	font-weight: var(--font-weight--bold);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	border-radius: var(--radius--lg);
 }
 
 .popoverName {

@@ -25,13 +25,16 @@ import {
 	sessionBounds,
 	itemFilterKey,
 	kindColorToken,
+	filteredTimelineItemIndexes,
 } from '@/features/agents/session-timeline.utils';
+import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 import type { FilterOption, TimelineItem } from '@/features/agents/session-timeline.types';
 import { useI18n } from '@n8n/i18n';
 import { N8nBreadcrumbs, N8nButton, N8nDropdownMenu, N8nIcon, N8nInput } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
+import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
 const i18n = useI18n();
@@ -41,6 +44,7 @@ const router = useRouter();
 const toast = useToast();
 const sessionsStore = useAgentSessionsStore();
 const projectsStore = useProjectsStore();
+const activeElement = useActiveElement();
 
 const projectId = computed(() => route.params.projectId as string);
 const agentId = computed(() => route.params.agentId as string);
@@ -50,6 +54,7 @@ const thread = ref<ExecutionThread | null>(null);
 const executions = ref<ThreadExecution[]>([]);
 const loading = ref(true);
 const selectedIndex = ref<number | null>(null);
+const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
 
@@ -71,8 +76,15 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.node');
 		case 'working-memory':
 			return i18n.baseText('agentSessions.timeline.memory');
+		case 'working-memory-updated':
+			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspension');
+		case 'suspension-waiting':
+			return i18n.baseText('agentSessions.timeline.waitingForUser');
+		case 'agentSessions.timeline.tool.richInteraction':
+		case 'agentSessions.timeline.tool.richInteractionDisplay':
+			return i18n.baseText(key);
 		default:
 			return key;
 	}
@@ -179,6 +191,76 @@ const sessionOptions = computed<Array<DropdownMenuItemProps<string, SessionDropd
 const selectedItem = computed<TimelineItem | null>(() =>
 	selectedIndex.value !== null ? (items.value[selectedIndex.value] ?? null) : null,
 );
+
+const visibleItemIndexes = computed(() =>
+	filteredTimelineItemIndexes(items.value, selectedFilters.value, searchQuery.value, labelForKey),
+);
+
+function moveSelectedIndex(direction: 1 | -1) {
+	const indexes = visibleItemIndexes.value;
+	if (indexes.length === 0) return;
+
+	if (highlightedIndex.value === null || !indexes.includes(highlightedIndex.value)) {
+		highlightedIndex.value = direction === 1 ? indexes[0] : indexes[indexes.length - 1];
+		return;
+	}
+
+	const currentVisibleIndex = indexes.indexOf(highlightedIndex.value);
+	const nextVisibleIndex = currentVisibleIndex + direction;
+	if (nextVisibleIndex < 0 || nextVisibleIndex >= indexes.length) return;
+	highlightedIndex.value = indexes[nextVisibleIndex];
+}
+
+function moveSelectedIndexToBoundary(direction: 1 | -1) {
+	const indexes = visibleItemIndexes.value;
+	if (indexes.length === 0) return;
+	highlightedIndex.value = direction === 1 ? indexes[indexes.length - 1] : indexes[0];
+}
+
+function selectTimelineItem(index: number | null) {
+	selectedIndex.value = index;
+	highlightedIndex.value = index;
+}
+
+function onKeyDown(event: KeyboardEvent) {
+	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
+
+	if (event.key === 'Escape') {
+		if (selectedIndex.value !== null || highlightedIndex.value !== null) {
+			event.preventDefault();
+			selectTimelineItem(null);
+		}
+		return;
+	}
+
+	if (event.key === 'ArrowDown') {
+		event.preventDefault();
+		if (event.metaKey) {
+			moveSelectedIndexToBoundary(1);
+		} else {
+			moveSelectedIndex(1);
+		}
+	} else if (event.key === 'ArrowUp') {
+		event.preventDefault();
+		if (event.metaKey) {
+			moveSelectedIndexToBoundary(-1);
+		} else {
+			moveSelectedIndex(-1);
+		}
+	}
+}
+
+useEventListener(document, 'keydown', onKeyDown);
+
+function onKeyUp(event: KeyboardEvent) {
+	if (activeElement.value && shouldIgnoreCanvasShortcut(activeElement.value)) return;
+	if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+	if (highlightedIndex.value === selectedIndex.value) return;
+	event.preventDefault();
+	selectedIndex.value = highlightedIndex.value;
+}
+
+useEventListener(document, 'keyup', onKeyUp);
 
 onMounted(async () => {
 	try {
@@ -330,8 +412,8 @@ function onSessionSelect(nextThreadId: string) {
 				:session-start="bounds.start"
 				:session-end="bounds.end"
 				:visible-kinds="selectedFilters"
-				:selected-index="selectedIndex"
-				@select="(idx) => (selectedIndex = idx)"
+				:selected-index="highlightedIndex"
+				@select="selectTimelineItem"
 			/>
 		</div>
 
@@ -342,46 +424,29 @@ function onSessionSelect(nextThreadId: string) {
 					v-else
 					:items="items"
 					:idle-ranges="idleRanges"
-					:selected-index="selectedIndex"
+					:selected-index="highlightedIndex"
 					:visible-kinds="selectedFilters"
 					:search-query="searchQuery"
-					@select="(idx) => (selectedIndex = idx)"
+					@select="selectTimelineItem"
 				/>
 			</div>
 			<div v-if="selectedItem" :class="$style.detailPanel">
-				<SessionDetailPanel :item="selectedItem" @close="selectedIndex = null" />
+				<SessionDetailPanel :item="selectedItem" @close="selectTimelineItem(null)" />
 			</div>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
-/*
- * Theme-aware colour intensity variables for the session timeline. Defined on
- * `body` (rather than `.view`) so that content teleported out of the component
- * subtree — e.g. the chart's `N8nTooltip` popovers — picks them up too.
- *
- * Light mode: high alpha so kind colours read as solid pills/blocks.
- * Dark mode: lower alpha so the colours sit naturally on the dark surface.
- */
 :global(body) {
-	--color--session-timeline-pill-bg-alpha: 70%;
 	--color--session-timeline-block-bg-alpha: 75%;
-	--color--session-timeline-row-border-alpha: 70%;
-	--color--session-timeline-pill-text: white;
 }
 :global(body[data-theme='dark']) {
-	--color--session-timeline-pill-bg-alpha: 40%;
 	--color--session-timeline-block-bg-alpha: 45%;
-	--color--session-timeline-row-border-alpha: 45%;
-	--color--session-timeline-pill-text: white;
 }
 @media (prefers-color-scheme: dark) {
 	:global(body:not([data-theme])) {
-		--color--session-timeline-pill-bg-alpha: 40%;
 		--color--session-timeline-block-bg-alpha: 45%;
-		--color--session-timeline-row-border-alpha: 45%;
-		--color--session-timeline-pill-text: white;
 	}
 }
 
@@ -411,7 +476,9 @@ function onSessionSelect(nextThreadId: string) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+	user-select: none;
 	color: var(--text-color--subtler);
 	margin-left: auto;
 }
