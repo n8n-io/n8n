@@ -27,6 +27,12 @@ are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
 (e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
 See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
+Non-Claude agents should treat these as documentation and read them manually when relevant:
+- Commands: `.claude/plugins/n8n/commands/`
+- Skills: `.claude/plugins/n8n/skills/`
+- Agents: `.claude/plugins/n8n/agents/`
+- Overview: `.claude/plugins/n8n/README.md`
+
 ## Essential Commands
 
 ### Building

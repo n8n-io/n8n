@@ -1,62 +1,30 @@
-# Design System Style Review Rules
+---
+name:design-system-rules
+description: Guidelines on using Design System styles and components. Use when working on .vue files in packages/frontend. Triggers for tasks that include component architecture, styling, UI changes, or feature work.
+---
 
-Use these rules when working in `packages/frontend/` and `packages/frontend/@n8n/design-system/`.
-Always follow guidance in `packages/frontend/@n8n/design-system/src/styleguide/*.mdx`.
+# Design System
 
-## 1) Token source priority
+Comprehensive guide for building, styling, and using components in the frontend.
 
-Prefer this order when choosing visual values:
+## When to Apply
+Reference these guidelines when:
+- Working on `.{vue|css|scss}` files in `packages/frontend`
+- Adding new components to `packages/frontend/@n8n/design-system`
+- Refactoring styles for Vue components
+- Implementing new UI components or features
+- Reviewing changes to UI
 
-1. Semantic tokens from
-   `packages/frontend/@n8n/design-system/src/css/_tokens.scss`
-2. Primitives from
-   `packages/frontend/@n8n/design-system/src/css/_primitives.scss`
-3. Hard-coded values only when no suitable token exists
+## Rules
+- Follow guidelines in `packages/frontend/@n8n/design-system/src/styleguide/*.mdx`
+- ALWAYS use CSS variables for styles from `packages/frontend/@n8n/design-system/src/css/_tokens.scss` or `packages/frontend/@n8n/design-system/src/css/_primtivies.scss`. Use hard-coded values only when no suitable tokens.
+- ALWAYS prefer using existing components from `packages/frontend/@n8n/design-system/src/components`. Prefer components that aren't marked `@deprecated`.
+- When reviewing UI changes or adding new components, follow `rules/web-interface-guidelines.md`
+- Use `light-dark()` when alternating colors for ligh/dark mode
 
-If no token exists, request a short rationale in the PR.
-
-## 2) Hard-coded visual values
-
-Flag hard-coded visual values and suggest token alternatives. This includes:
-
-- Colors (`#fff`, `rgb()`, `hsl()`, `oklch()`)
-- Spacing and sizing (`px`, `rem`, numeric layout constants in styles)
-- Radius, border widths/styles, and shadows
-- Typography values (font size, weight, line-height)
-- Motion values (durations and easing like `cubic-bezier(...)`)
-
-Severity: strong warning (expected migration to tokens/primitives when possible).
-
-## 3) Legacy token usage
-
-In `_tokens.scss`, the compatibility section labeled
-"Legacy tokens (kept for compatibility)" is considered legacy usage.
-
-When new or modified code uses these legacy token families, flag it as a
-migration opportunity and recommend semantic token usage where available.
-
-Severity: strong warning (discourage new usage, allow compatibility paths).
-
-## 4) Deprecated style and component surfaces
-
-Flag new usage of deprecated/legacy style surfaces in design-system components,
-for example:
-
-- `Button.legacy.scss` and legacy button override classes
-- Legacy button variants/types (for example `highlight`, `highlight-fill`)
-- Legacy component variants that exist for compatibility (for example legacy
-  tabs variant)
-
-Severity: strong warning (prefer modern semantic variants/components).
-
-## 5) Token substitution changes
-
-If a PR changes one token reference to another (for example
-`--text-color` -> `--text-color--subtle`), flag it as a soft warning.
-
-Ask for intent in the PR description/comment:
-
-- Intentional design adjustment, or
-- Potential accidental visual regression
-
-Do not treat token substitution as a hard failure by default.
+## Examples
+- "Add a modal dialog for confirming workflow deletion" → Use `N8nDialog`
+- "Add a dropdown to select workflow status" → Use `N8nDropdown` or `N8nSelect`
+- "Add button with + icon to add new tiem" → Wrap `N8nButton` with `iconOnly` prop with `N8nTooltip` and wrap in `N8nTooltip`. Use `N8nIcon` and proper aria-label.
+- "Add a destructive action button" → use `N8nButton` with `variant="destructive"`
+- Make background color white/black → Use `var(--background--surface)` for white on light mode and "black" on dark mode
