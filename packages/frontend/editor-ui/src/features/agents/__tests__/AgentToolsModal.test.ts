@@ -32,6 +32,7 @@ vi.mock('virtual:node-popularity-data', () => ({
 		{ id: 'n8n-nodes-base.slack', popularity: 100 },
 		{ id: 'n8n-nodes-base.gmail', popularity: 90 },
 		{ id: 'n8n-nodes-base.github', popularity: 50 },
+		{ id: 'toolWikipedia', popularity: 40 },
 	],
 }));
 
@@ -123,6 +124,16 @@ const GITHUB: INodeTypeDescription = {
 	credentials: [{ name: 'githubApi', required: true }],
 };
 
+const WIKIPEDIA: INodeTypeDescription = {
+	...SLACK,
+	displayName: 'Wikipedia',
+	name: 'toolWikipedia',
+	description: 'Search Wikipedia',
+	defaults: { name: 'Wikipedia' },
+	properties: [{ displayName: 'Notice', name: 'notice', type: 'notice', default: '' }],
+	credentials: [],
+};
+
 const NODE_WITH_INPUTS: INodeTypeDescription = {
 	...SLACK,
 	name: 'n8n-nodes-base.subagent',
@@ -197,6 +208,7 @@ describe('AgentToolsModal', () => {
 			if (name === SLACK.name) return SLACK;
 			if (name === GMAIL.name) return GMAIL;
 			if (name === GITHUB.name) return GITHUB;
+			if (name === WIKIPEDIA.name) return WIKIPEDIA;
 			if (name === NODE_WITH_INPUTS.name) return NODE_WITH_INPUTS;
 			return null;
 		});
@@ -350,6 +362,57 @@ describe('AgentToolsModal', () => {
 			node: { nodeType: SLACK.name },
 		});
 		expect(typeof payload.data.onConfirm).toBe('function');
+	});
+
+	it('adds setup-less node tools directly without opening the config modal', async () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [WIKIPEDIA.name],
+		};
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderComponent(defaultProps([], onConfirm));
+
+		const available = getByTestId('agent-tools-available-list');
+		await fireEvent.click(available.querySelector('button')!);
+
+		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
+		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const [tools] = onConfirm.mock.calls[0];
+		expect(tools).toEqual([
+			expect.objectContaining({
+				type: 'node',
+				name: 'Wikipedia',
+				node: {
+					nodeType: WIKIPEDIA.name,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
+			}),
+		]);
+		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		expect(showMessageMock).toHaveBeenCalledWith({ title: 'Tool added', type: 'success' });
+	});
+
+	it('uniquifies setup-less node tool names when adding duplicates directly', async () => {
+		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+			[NodeConnectionTypes.AiTool]: [WIKIPEDIA.name],
+		};
+		const existing: AgentJsonToolRef = {
+			type: 'node',
+			name: 'Wikipedia',
+			node: {
+				nodeType: WIKIPEDIA.name,
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+			},
+		};
+		const onConfirm = vi.fn();
+		const { getByTestId } = renderComponent(defaultProps([existing], onConfirm));
+
+		const available = getByTestId('agent-tools-available-list');
+		await fireEvent.click(available.querySelector('button')!);
+
+		const [tools] = onConfirm.mock.calls[0];
+		expect(tools[1]).toMatchObject({ name: 'Wikipedia (1)' });
 	});
 
 	it('appends the configured tool to workingTools once the config modal saves', async () => {

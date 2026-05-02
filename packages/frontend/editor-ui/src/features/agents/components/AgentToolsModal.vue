@@ -12,7 +12,12 @@ import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants';
 import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
-import { NodeConnectionTypes, type INode, type INodeTypeDescription } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type INode,
+	type INodeProperties,
+	type INodeTypeDescription,
+} from 'n8n-workflow';
 import {
 	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
 	SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
@@ -82,6 +87,29 @@ function hasInputs(nodeType: INodeTypeDescription): boolean {
 	if (Array.isArray(inputs)) return inputs.length > 0;
 	// Expression-based inputs are considered non-empty.
 	return true;
+}
+
+function hasRequiredCredentials(nodeType: INodeTypeDescription): boolean {
+	return (nodeType.credentials ?? []).some((credential) => credential.required !== false);
+}
+
+function isConfigurableParameter(parameter: INodeProperties): boolean {
+	return parameter.type !== 'notice' && parameter.type !== 'hidden';
+}
+
+function needsSetup(nodeType: INodeTypeDescription): boolean {
+	return (
+		hasRequiredCredentials(nodeType) || (nodeType.properties ?? []).some(isConfigurableParameter)
+	);
+}
+
+function makeUniqueName(baseName: string, existingNames: string[]): string {
+	if (!existingNames.includes(baseName)) return baseName;
+	let counter = 1;
+	while (existingNames.includes(`${baseName} (${counter})`)) {
+		counter++;
+	}
+	return `${baseName} (${counter})`;
 }
 
 /**
@@ -236,6 +264,17 @@ const filteredAvailableWorkflows = computed(() => {
 
 // --- Actions ---------------------------------------------------------------
 
+function addToolRef(savedRef: AgentJsonToolRef) {
+	workingTools.value = [...workingTools.value, savedRef];
+	toolTelemetry.trackAdded(savedRef);
+	commit();
+	uiStore.closeModal(props.modalName);
+	toast.showMessage({
+		title: i18n.baseText('agents.tools.added'),
+		type: 'success',
+	});
+}
+
 function openConfigForNewRef(newRef: AgentJsonToolRef) {
 	// Connect → open the config panel first. The ref only enters workingTools
 	// once the user hits Save, so a cancelled config leaves the list untouched.
@@ -245,14 +284,7 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 			toolRef: newRef,
 			existingToolNames: getExistingToolNames(workingTools.value),
 			onConfirm: (savedRef: AgentJsonToolRef) => {
-				workingTools.value = [...workingTools.value, savedRef];
-				toolTelemetry.trackAdded(savedRef);
-				commit();
-				uiStore.closeModal(props.modalName);
-				toast.showMessage({
-					title: i18n.baseText('agents.tools.added'),
-					type: 'success',
-				});
+				addToolRef(savedRef);
 			},
 		},
 	});
@@ -260,7 +292,20 @@ function openConfigForNewRef(newRef: AgentJsonToolRef) {
 
 function handleAddTool(nodeType: INodeTypeDescription) {
 	toolTelemetry.trackAddStarted('node');
-	openConfigForNewRef(nodeTypeToNewToolRef(nodeType));
+	const newRef = nodeTypeToNewToolRef(nodeType);
+
+	if (needsSetup(nodeType)) {
+		openConfigForNewRef(newRef);
+		return;
+	}
+
+	addToolRef({
+		...newRef,
+		name: makeUniqueName(
+			newRef.name ?? nodeType.displayName,
+			getExistingToolNames(workingTools.value),
+		),
+	});
 }
 
 async function handleAddWorkflow(workflow: IWorkflowDb) {
