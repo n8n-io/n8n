@@ -160,4 +160,11 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.reason).toBe('confirmation-invalid');
 		expect(decision.event?.type).toBe('error');
 	});
+
+	it('does not emit fallback when prior root text precedes a valid confirmation', () => {
+		const decision = guard().evaluateWaiting([runStart(), rootText()], confirmation());
+
+		expect(decision.action).toBe('none');
+		expect(decision.reason).toBe('already-visible');
+	});
 });

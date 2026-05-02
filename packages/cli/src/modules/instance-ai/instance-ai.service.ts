@@ -2698,10 +2698,7 @@ export class InstanceAiService {
 					return;
 				}
 
-				if (
-					result.confirmationEvent &&
-					(!waitingDecision || waitingDecision.reason === 'confirmation-visible')
-				) {
+				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(threadId, result.confirmationEvent);
 					this.eventBus.publish(threadId, result.confirmationEvent);
 				}
@@ -3230,10 +3227,7 @@ export class InstanceAiService {
 					return;
 				}
 
-				if (
-					result.confirmationEvent &&
-					(!waitingDecision || waitingDecision.reason === 'confirmation-visible')
-				) {
+				if (result.confirmationEvent) {
 					this.trackConfirmationRequest(opts.threadId, result.confirmationEvent);
 					this.eventBus.publish(opts.threadId, result.confirmationEvent);
 				}
