@@ -23,6 +23,7 @@ import {
 	connectMcpClient,
 	getAllTools,
 	getAuthHeaders,
+	isStructuredContent,
 	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
@@ -375,6 +376,7 @@ export class McpClientTool implements INodeType {
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
 		if (!mcpTools?.length) {
+			await client.close();
 			return setError(
 				new NodeOperationError(node, 'MCP Server returned no tools', {
 					itemIndex,
@@ -384,34 +386,39 @@ export class McpClientTool implements INodeType {
 			);
 		}
 
-		const tools = mcpTools.map((tool) => {
-			const prefixedName = buildMcpToolName(node.name, tool.name);
-			return logWrapper(
-				mcpToolToDynamicTool(
-					{ ...tool, name: prefixedName },
-					createCallTool(
-						tool.name,
-						client,
-						config.timeout,
-						(errorMessage) => {
-							const error = new NodeOperationError(node, errorMessage, { itemIndex });
-							void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
-							this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
-								error,
-							});
-						},
-						() => this.getExecutionCancelSignal(),
+		try {
+			const tools = mcpTools.map((tool) => {
+				const prefixedName = buildMcpToolName(node.name, tool.name);
+				return logWrapper(
+					mcpToolToDynamicTool(
+						{ ...tool, name: prefixedName },
+						createCallTool(
+							tool.name,
+							client,
+							config.timeout,
+							(errorMessage) => {
+								const error = new NodeOperationError(node, errorMessage, { itemIndex });
+								void this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
+								this.logger.error(`McpClientTool: Tool "${tool.name}" failed to execute`, {
+									error,
+								});
+							},
+							() => this.getExecutionCancelSignal(),
+						),
 					),
-				),
-				this,
-			);
-		});
+					this,
+				);
+			});
 
-		this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
+			this.logger.debug(`McpClientTool: Connected to MCP Server with ${tools.length} tools`);
 
-		const toolkit = new StructuredToolkit(tools);
+			const toolkit = new StructuredToolkit(tools);
 
-		return { response: toolkit, closeFunction: async () => await client.close() };
+			return { response: toolkit, closeFunction: async () => await client.close() };
+		} catch (e) {
+			await client.close();
+			throw e;
+		}
 	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
@@ -474,6 +481,9 @@ export class McpClientTool implements INodeType {
 						returnData.push({
 							json: {
 								response: result.content as IDataObject,
+								...(isStructuredContent(result.structuredContent) && {
+									structuredContent: result.structuredContent,
+								}),
 							},
 							pairedItem: {
 								item: itemIndex,

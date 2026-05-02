@@ -13,13 +13,15 @@ import {
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY, VIEWS } from '@/app/constants';
 
 const i18n = useI18n();
+const router = useRouter();
 const documentTitle = useDocumentTitle();
 const telemetry = useTelemetry();
 const aiGatewayStore = useAiGatewayStore();
@@ -30,11 +32,11 @@ const isAppending = ref(false);
 const offset = ref(0);
 const PAGE_SIZE = 50;
 
-const creditsRemaining = computed(() => aiGatewayStore.creditsRemaining);
-const creditsBadgeText = computed(() =>
-	creditsRemaining.value !== undefined
-		? i18n.baseText('aiGateway.credentialMode.creditsShort', {
-				interpolate: { count: String(creditsRemaining.value) },
+const walletBalance = computed(() => aiGatewayStore.balance);
+const walletBadgeText = computed(() =>
+	walletBalance.value !== undefined
+		? i18n.baseText('aiGateway.wallet.balanceRemaining', {
+				interpolate: { balance: `$${Number(walletBalance.value).toFixed(2)}` },
 			})
 		: undefined,
 );
@@ -81,8 +83,8 @@ const tableHeaders = ref<Array<TableHeader<AiGatewayUsageEntry>>>([
 		resize: false,
 	},
 	{
-		title: i18n.baseText('settings.n8nConnect.usage.col.credits'),
-		key: 'creditsDeducted',
+		title: i18n.baseText('settings.n8nConnect.usage.col.cost'),
+		key: 'cost',
 		width: 100,
 		disableSort: true,
 		resize: false,
@@ -107,6 +109,29 @@ function rowId(row: AiGatewayUsageEntry, index: number): string {
 	return `${row.timestamp}-${row.model}-${row.provider}-${index}`;
 }
 
+function rowExecutionId(row: AiGatewayUsageEntry): string | undefined {
+	return row.metadata?.executionId;
+}
+
+function rowWorkflowId(row: AiGatewayUsageEntry): string | undefined {
+	return row.metadata?.workflowId;
+}
+
+function isRowClickable(row: AiGatewayUsageEntry): boolean {
+	return Boolean(rowExecutionId(row) && rowWorkflowId(row));
+}
+
+function onRowClick(row: AiGatewayUsageEntry): void {
+	const executionId = rowExecutionId(row);
+	const workflowId = rowWorkflowId(row);
+	if (executionId && workflowId) {
+		void router.push({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { workflowId, executionId },
+		});
+	}
+}
+
 async function load(): Promise<void> {
 	isAppending.value = false;
 	offset.value = 0;
@@ -119,7 +144,7 @@ async function load(): Promise<void> {
 }
 
 async function refresh(): Promise<void> {
-	await load();
+	await Promise.all([aiGatewayStore.fetchWallet(), load()]);
 }
 
 async function loadMore(): Promise<void> {
@@ -137,7 +162,7 @@ async function loadMore(): Promise<void> {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.n8nConnect.title'));
-	await Promise.all([aiGatewayStore.fetchCredits(), load()]);
+	await refresh();
 });
 </script>
 
@@ -148,9 +173,9 @@ onMounted(async () => {
 				<div :class="$style.headingRow">
 					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.n8nConnect.title') }}</N8nHeading>
 					<N8nActionPill
-						v-if="creditsBadgeText"
+						v-if="walletBadgeText"
 						size="medium"
-						:text="creditsBadgeText"
+						:text="walletBadgeText"
 						data-test-id="ai-gateway-header-credits-badge"
 					/>
 				</div>
@@ -159,7 +184,7 @@ onMounted(async () => {
 				</N8nText>
 			</div>
 			<N8nButton
-				:label="i18n.baseText('settings.n8nConnect.credits.topUp')"
+				:label="i18n.baseText('settings.n8nConnect.wallet.topUp')"
 				icon="hand-coins"
 				variant="solid"
 				data-test-id="ai-gateway-topup-button"
@@ -206,9 +231,17 @@ onMounted(async () => {
 					:items-length="entries.length"
 					:loading="isLoading && isAppending"
 					:item-value="rowId"
+					:row-props="(row) => (isRowClickable(row) ? { class: $style.clickableRow } : {})"
+					@click:row="(_, { item }) => onRowClick(item)"
 				>
 					<template #[`item.timestamp`]="{ item }">
-						{{ formatDate(item.timestamp) }}
+						<N8nTooltip
+							v-if="isRowClickable(item)"
+							:content="i18n.baseText('settings.n8nConnect.usage.openExecution')"
+						>
+							<span>{{ formatDate(item.timestamp) }}</span>
+						</N8nTooltip>
+						<span v-else>{{ formatDate(item.timestamp) }}</span>
 					</template>
 					<template #[`item.provider`]="{ item }">
 						<span :class="$style.providerBadge">
@@ -224,8 +257,8 @@ onMounted(async () => {
 					<template #[`item.outputTokens`]="{ item }">
 						{{ formatTokens(item.outputTokens) }}
 					</template>
-					<template #[`item.creditsDeducted`]="{ item }">
-						{{ item.creditsDeducted }}
+					<template #[`item.cost`]="{ item }">
+						{{ `$${Number(item.cost).toFixed(4)}` }}
 					</template>
 				</N8nDataTableServer>
 
@@ -299,6 +332,14 @@ onMounted(async () => {
 .gatewayUsageTable {
 	tr:last-child {
 		border-bottom: none !important;
+	}
+}
+
+.clickableRow {
+	cursor: pointer;
+
+	&:hover td {
+		background-color: var(--color--background--light-2);
 	}
 }
 

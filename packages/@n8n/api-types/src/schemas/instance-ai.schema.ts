@@ -112,6 +112,13 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/**
+	 * Workflow IDs the run-finish reap soft-deleted — intermediate
+	 * stepping-stones the agent created but never promoted to the main
+	 * deliverable. Surfaced to the UI so the artifacts panel can dim these
+	 * entries and label them as archived.
+	 */
+	archivedWorkflowIds: z.array(z.string()).optional(),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
@@ -431,13 +438,13 @@ export const toolCategorySchema = z.object({
 });
 export type ToolCategory = z.infer<typeof toolCategorySchema>;
 
-export const instanceAiGatewayCapabilitiesSchema = z.object({
+export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
 	hostIdentifier: z.string().optional(),
 	toolCategories: z.array(toolCategorySchema).default([]),
-});
-export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
+}) {}
+export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
@@ -448,10 +455,10 @@ export const filesystemRequestPayloadSchema = z.object({
 	toolCall: mcpToolCallRequestSchema,
 });
 
-export const instanceAiFilesystemResponseSchema = z.object({
+export class InstanceAiFilesystemResponseDto extends Z.class({
 	result: mcpToolCallResultSchema.optional(),
 	error: z.string().optional(),
-});
+}) {}
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
@@ -466,7 +473,13 @@ export const threadTitleUpdatedPayloadSchema = z.object({
 // Event schema (Zod discriminated union — single source of truth)
 // ---------------------------------------------------------------------------
 
-const eventBase = { runId: z.string(), agentId: z.string(), userId: z.string().optional() };
+const eventBase = {
+	runId: z.string(),
+	agentId: z.string(),
+	userId: z.string().optional(),
+	/** Anthropic API response ID (msg_01...) — groups events from the same LLM response. */
+	responseId: z.string().optional(),
+};
 
 export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('run-start'), ...eventBase, payload: runStartPayloadSchema }),
@@ -538,24 +551,24 @@ export type InstanceAiThreadTitleUpdatedEvent = Extract<
 	{ type: 'thread-title-updated' }
 >;
 
-export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
+export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesystemResponseDto>;
 
 // ---------------------------------------------------------------------------
 // API types
 // ---------------------------------------------------------------------------
 
 const instanceAiAttachmentSchema = z.object({
-	data: z.string(),
-	mimeType: z.string(),
-	fileName: z.string(),
+	data: z.string().max(700_000), // ~512 KB decoded + base64 overhead
+	mimeType: z.string().max(100),
+	fileName: z.string().max(300),
 });
 
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
 export class InstanceAiSendMessageRequest extends Z.class({
-	message: z.string().min(1),
+	message: z.string().default(''),
 	researchMode: z.boolean().optional(),
-	attachments: z.array(instanceAiAttachmentSchema).optional(),
+	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 }) {}
@@ -660,9 +673,9 @@ export interface InstanceAiToolCallState {
 }
 
 export type InstanceAiTimelineEntry =
-	| { type: 'text'; content: string }
-	| { type: 'tool-call'; toolCallId: string }
-	| { type: 'child'; agentId: string };
+	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'tool-call'; toolCallId: string; responseId?: string }
+	| { type: 'child'; agentId: string; responseId?: string };
 
 export interface InstanceAiAgentNode {
 	agentId: string;
@@ -902,6 +915,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	optinModalDismissed: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -921,6 +935,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	optinModalDismissed: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------
@@ -957,7 +972,7 @@ const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
 const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'update-tasks') return 'tasks';
+	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
@@ -984,6 +999,8 @@ export interface InstanceAiEvalInterceptedRequest {
 
 export interface InstanceAiEvalNodeResult {
 	output: unknown;
+	/** Full count of output items (`output` is truncated for artifact size) */
+	outputCount?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
@@ -1012,3 +1029,41 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 }) {}
+
+// ---------------------------------------------------------------------------
+// Sub-agent evaluation endpoint
+// ---------------------------------------------------------------------------
+
+export class InstanceAiEvalSubAgentRequest extends Z.class({
+	/** Role name from the server's sub-agent registry (currently: "builder"). */
+	role: z.string().min(1).max(64),
+	/** The task the sub-agent should perform. */
+	prompt: z.string().min(1).max(10_000),
+	/** Optional model override. Defaults to the server's configured Instance AI model. */
+	modelId: z.string().min(1).optional(),
+	/** Max agent steps. Defaults to 40. */
+	maxSteps: z.number().int().positive().max(200).optional(),
+	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
+	timeoutMs: z.number().int().positive().max(600_000).optional(),
+}) {}
+
+export interface InstanceAiEvalToolCall {
+	toolName: string;
+	args: unknown;
+}
+
+export interface InstanceAiEvalToolResult {
+	toolName: string;
+	result: unknown;
+	isError: boolean;
+}
+
+export interface InstanceAiEvalSubAgentResponse {
+	text: string;
+	toolCalls: InstanceAiEvalToolCall[];
+	toolResults: InstanceAiEvalToolResult[];
+	capturedWorkflowIds: string[];
+	durationMs: number;
+	stopReason?: string;
+	error?: string;
+}

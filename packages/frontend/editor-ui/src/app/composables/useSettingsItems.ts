@@ -9,6 +9,7 @@ import { useUIStore } from '../stores/ui.store';
 import { useSettingsStore } from '../stores/settings.store';
 import { hasPermission } from '../utils/rbac/permissions';
 import { MIGRATION_REPORT_TARGET_VERSION } from '@n8n/api-types';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export function useSettingsItems() {
 	const router = useRouter();
@@ -16,7 +17,8 @@ export function useSettingsItems() {
 	const uiStore = useUIStore();
 	const settingsStore = useSettingsStore();
 	const { canUserAccessRouteByName } = useUserHelpers(router);
-	const { creditsRemaining } = useAiGateway();
+	const { balance } = useAiGateway();
+	const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 	const settingsItems = computed<IMenuItem[]>(() => {
 		const menuItems: IMenuItem[] = [
@@ -62,9 +64,9 @@ export function useSettingsItems() {
 					settingsStore.isAiGatewayEnabled && canUserAccessRouteByName(VIEWS.AI_GATEWAY_SETTINGS),
 				route: { to: { name: VIEWS.AI_GATEWAY_SETTINGS } },
 				creditsTag:
-					creditsRemaining.value !== undefined
-						? i18n.baseText('aiGateway.credentialMode.creditsShort', {
-								interpolate: { count: String(creditsRemaining.value) },
+					balance.value !== undefined
+						? i18n.baseText('aiGateway.wallet.balanceRemaining', {
+								interpolate: { balance: `$${Number(balance.value).toFixed(2)}` },
 							})
 						: undefined,
 			},
@@ -118,6 +120,16 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
 			},
 			{
+				id: 'settings-encryption-keys',
+				icon: 'key-round',
+				label: i18n.baseText('settings.encryptionKeys'),
+				position: 'top',
+				available:
+					envFeatureFlagCheck.value('ENCRYPTION_KEY_ROTATION') &&
+					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
+				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
+			},
+			{
 				id: 'settings-security',
 				icon: 'shield',
 				label: i18n.baseText('settings.security'),
@@ -132,6 +144,16 @@ export function useSettingsItems() {
 				position: 'top',
 				available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 				route: { to: { name: VIEWS.LDAP_SETTINGS } },
+			},
+			{
+				id: 'settings-instance-registry',
+				icon: 'server',
+				label: i18n.baseText('settings.instanceRegistry'),
+				position: 'top',
+				available:
+					envFeatureFlagCheck.value('INSTANCE_REGISTRY') &&
+					canUserAccessRouteByName(VIEWS.INSTANCE_REGISTRY),
+				route: { to: { name: VIEWS.INSTANCE_REGISTRY } },
 			},
 			{
 				id: 'settings-workersview',

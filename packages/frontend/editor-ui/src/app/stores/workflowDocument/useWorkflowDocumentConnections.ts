@@ -5,6 +5,7 @@ import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CHANGE_ACTION } from './types';
 import type { ChangeEvent } from './types';
+import * as workflowUtils from 'n8n-workflow/common';
 
 // --- Event types ---
 
@@ -21,6 +22,7 @@ export type ConnectionsChangeEvent =
 
 export interface WorkflowDocumentConnectionsDeps {
 	getNodeById: (id: string) => INodeUi | undefined;
+	syncWorkflowObject: (connections: IConnections) => void;
 }
 
 // --- Composable ---
@@ -41,11 +43,64 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	// -----------------------------------------------------------------------
 
 	function applySetConnections(value: IConnections) {
-		workflowsStore.setConnections(value);
+		workflowsStore.workflow.connections = value;
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 	}
 
 	function applyAddConnection(data: { connection: IConnection[] }) {
-		workflowsStore.addConnection(data);
+		if (data.connection.length !== 2) return;
+
+		const sourceData: IConnection = data.connection[0];
+		const destinationData: IConnection = data.connection[1];
+		const wfConnections = workflowsStore.workflow.connections;
+
+		if (!wfConnections.hasOwnProperty(sourceData.node)) {
+			wfConnections[sourceData.node] = {};
+		}
+
+		if (!wfConnections[sourceData.node].hasOwnProperty(sourceData.type)) {
+			wfConnections[sourceData.node] = {
+				...wfConnections[sourceData.node],
+				[sourceData.type]: [],
+			};
+		}
+
+		if (wfConnections[sourceData.node][sourceData.type].length < sourceData.index + 1) {
+			for (
+				let i = wfConnections[sourceData.node][sourceData.type].length;
+				i <= sourceData.index;
+				i++
+			) {
+				wfConnections[sourceData.node][sourceData.type].push([]);
+			}
+		}
+
+		const checkProperties = ['index', 'node', 'type'] as Array<keyof IConnection>;
+		let connectionExists = false;
+		const nodeConnections = wfConnections[sourceData.node][sourceData.type];
+		const connectionsToCheck = nodeConnections[sourceData.index];
+
+		if (connectionsToCheck) {
+			connectionLoop: for (const existingConnection of connectionsToCheck) {
+				for (const prop of checkProperties) {
+					if (existingConnection[prop] !== destinationData[prop]) {
+						continue connectionLoop;
+					}
+				}
+				connectionExists = true;
+				break;
+			}
+		}
+
+		if (!connectionExists) {
+			nodeConnections[sourceData.index] = nodeConnections[sourceData.index] ?? [];
+			const connections = nodeConnections[sourceData.index];
+			if (connections) {
+				connections.push(destinationData);
+			}
+		}
+
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.ADD,
 			payload: { connection: data.connection },
@@ -54,7 +109,28 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	}
 
 	function applyRemoveConnection(data: { connection: IConnection[] }) {
-		workflowsStore.removeConnection(data);
+		const sourceData = data.connection[0];
+		const destinationData = data.connection[1];
+		const wfConnections = workflowsStore.workflow.connections;
+
+		if (!wfConnections.hasOwnProperty(sourceData.node)) return;
+		if (!wfConnections[sourceData.node].hasOwnProperty(sourceData.type)) return;
+		if (wfConnections[sourceData.node][sourceData.type].length < sourceData.index + 1) return;
+
+		const connections = wfConnections[sourceData.node][sourceData.type][sourceData.index];
+		if (!connections) return;
+
+		for (const index in connections) {
+			if (
+				connections[index].node === destinationData.node &&
+				connections[index].type === destinationData.type &&
+				connections[index].index === destinationData.index
+			) {
+				connections.splice(Number.parseInt(index, 10), 1);
+			}
+		}
+
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { connection: data.connection },
@@ -66,7 +142,37 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 		node: INodeUi,
 		opts?: { preserveInputConnections?: boolean; preserveOutputConnections?: boolean },
 	) {
-		workflowsStore.removeAllNodeConnection(node, opts);
+		const preserveInput = opts?.preserveInputConnections ?? false;
+		const preserveOutput = opts?.preserveOutputConnections ?? false;
+		const wfConnections = workflowsStore.workflow.connections;
+
+		if (!preserveOutput) {
+			delete wfConnections[node.name];
+		}
+
+		if (!preserveInput) {
+			for (const sourceNode of Object.keys(wfConnections)) {
+				for (const type of Object.keys(wfConnections[sourceNode])) {
+					for (const sourceIndex of Object.keys(wfConnections[sourceNode][type])) {
+						const connectionsToRemove =
+							wfConnections[sourceNode][type][Number.parseInt(sourceIndex, 10)];
+						if (connectionsToRemove) {
+							const indexesToRemove: string[] = [];
+							for (const connectionIndex of Object.keys(connectionsToRemove)) {
+								if (connectionsToRemove[Number.parseInt(connectionIndex, 10)].node === node.name) {
+									indexesToRemove.push(connectionIndex);
+								}
+							}
+							for (const index of indexesToRemove) {
+								connectionsToRemove.splice(Number.parseInt(index, 10), 1);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 		void onConnectionsChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { nodeName: node.name },
@@ -75,39 +181,32 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 	}
 
 	function applyRemoveAllConnections() {
-		workflowsStore.setConnections({});
+		workflowsStore.workflow.connections = {};
+		deps.syncWorkflowObject(workflowsStore.workflow.connections);
 	}
 
 	// -----------------------------------------------------------------------
 	// Read API
 	// -----------------------------------------------------------------------
 
-	const connectionsBySourceNode = computed<IConnections>(
-		() => workflowsStore.connectionsBySourceNode,
-	);
+	const connectionsBySourceNode = computed(() => workflowsStore.workflow.connections);
 
-	const connectionsByDestinationNode = computed<IConnections>(
-		() => workflowsStore.connectionsByDestinationNode,
+	const connectionsByDestinationNode = computed<IConnections>(() =>
+		workflowUtils.mapConnectionsByDestination(workflowsStore.workflow.connections),
 	);
 
 	function outgoingConnectionsByNodeName(nodeName: string): INodeConnections {
-		return workflowsStore.outgoingConnectionsByNodeName(nodeName);
+		if (connectionsBySourceNode.value.hasOwnProperty(nodeName)) {
+			return connectionsBySourceNode.value[nodeName] as unknown as INodeConnections;
+		}
+		return {};
 	}
 
 	function incomingConnectionsByNodeName(nodeName: string): INodeConnections {
-		return workflowsStore.incomingConnectionsByNodeName(nodeName);
-	}
-
-	function nodeHasOutputConnection(nodeName: string): boolean {
-		return workflowsStore.nodeHasOutputConnection(nodeName);
-	}
-
-	function isNodeInOutgoingNodeConnections(
-		rootNodeName: string,
-		searchNodeName: string,
-		depth = -1,
-	): boolean {
-		return workflowsStore.isNodeInOutgoingNodeConnections(rootNodeName, searchNodeName, depth);
+		if (connectionsByDestinationNode.value.hasOwnProperty(nodeName)) {
+			return connectionsByDestinationNode.value[nodeName] as unknown as INodeConnections;
+		}
+		return {};
 	}
 
 	// -----------------------------------------------------------------------
@@ -149,9 +248,6 @@ export function useWorkflowDocumentConnections(deps: WorkflowDocumentConnections
 		connectionsByDestinationNode,
 		outgoingConnectionsByNodeName,
 		incomingConnectionsByNodeName,
-		nodeHasOutputConnection,
-		isNodeInOutgoingNodeConnections,
-
 		// Write
 		setConnections,
 		addConnection,

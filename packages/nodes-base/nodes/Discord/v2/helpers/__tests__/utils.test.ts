@@ -252,6 +252,42 @@ describe('Discord V2 Utils', () => {
 			});
 		});
 
+		it('should use filename as filename and mimeType as content-type in file parts', async () => {
+			const files: IDataObject[] = [{ inputFieldName: 'document' }];
+			const jsonPayload: IDataObject = { content: 'Test' };
+			const itemIndex = 0;
+
+			const binaryData = {
+				data: 'base64data',
+				mimeType: 'application/pdf',
+				fileName: 'report.pdf',
+				fileExtension: 'pdf',
+			};
+
+			mockExecuteFunctions.helpers.assertBinaryData = jest.fn().mockReturnValue(binaryData);
+			mockExecuteFunctions.helpers.getBinaryDataBuffer = jest
+				.fn()
+				.mockResolvedValue(Buffer.from('pdf content'));
+			mockExecuteFunctions.getNode = jest.fn().mockReturnValue({ name: 'Discord' });
+
+			const result = await prepareMultiPartForm.call(
+				mockExecuteFunctions,
+				files,
+				jsonPayload,
+				itemIndex,
+			);
+
+			const body = result.getBuffer().toString();
+
+			// File part should have the actual filename, not the mime type
+			expect(body).toContain('filename="report.pdf"');
+			// File part should have the actual mime type, not the filename
+			expect(body).toContain('Content-Type: application/pdf');
+			// Sanity check: the values must not be swapped
+			expect(body).not.toContain('filename="application/pdf"');
+			expect(body).not.toContain('Content-Type: report.pdf');
+		});
+
 		it('should handle empty files array', async () => {
 			const files: IDataObject[] = [];
 			const jsonPayload: IDataObject = { content: 'Test message no files' };

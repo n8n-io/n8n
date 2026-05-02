@@ -18,7 +18,8 @@ jobs:
     name: Post Metrics Comment
     if: >-
       github.event_name == 'pull_request' &&
-      !github.event.pull_request.head.repo.fork
+      !github.event.pull_request.head.repo.fork &&
+      github.repository == 'n8n-io/n8n'
     runs-on: ubuntu-slim
     continue-on-error: true
     permissions:
@@ -34,7 +35,9 @@ jobs:
           QA_METRICS_WEBHOOK_USER: ${{ secrets.QA_METRICS_WEBHOOK_USER }}
           QA_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_METRICS_WEBHOOK_PASSWORD }}
           GITHUB_TOKEN: ${{ github.token }}
+          METRICS: ${{ inputs.metrics }}
+          BASELINE_DAYS: ${{ inputs.baseline-days }}
         run: |
           node .github/scripts/post-qa-metrics-comment.mjs \
-            --metrics "${{ inputs.metrics }}" \
-            --baseline-days "${{ inputs.baseline-days }}"
+            --metrics "$METRICS" \
+            --baseline-days "$BASELINE_DAYS"

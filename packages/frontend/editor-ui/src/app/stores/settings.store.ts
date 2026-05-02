@@ -28,6 +28,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		passwordMinLength: 8,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
@@ -124,7 +125,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
 
-	const aiGatewayCreditsQuota = computed(() => settings.value.aiGateway?.creditsQuota ?? 0);
+	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -150,7 +151,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
-	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+	const isChatFeatureEnabled = computed(
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+	);
+
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
+	);
 
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
@@ -289,6 +296,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
+		rootStore.setJwksUri(fetchedSettings.jwksUri);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
@@ -415,7 +423,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		aiCreditsQuota,
 		isAiDataSharingEnabled,
 		isAiGatewayEnabled,
-		aiGatewayCreditsQuota,
+		aiGatewayBudget,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
@@ -433,5 +441,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

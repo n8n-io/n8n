@@ -282,6 +282,7 @@ export = {
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
 						publishIfActive: true,
+						source: 'api',
 					},
 				);
 
@@ -305,12 +306,12 @@ export = {
 			const { versionId, name, description } = req.body;
 
 			try {
-				const workflow = await Container.get(WorkflowService).activateWorkflow(
-					req.user,
-					id,
-					{ versionId, name, description },
-					true,
-				);
+				const workflow = await Container.get(WorkflowService).activateWorkflow(req.user, id, {
+					versionId,
+					name,
+					description,
+					source: 'api',
+				});
 
 				return res.json(workflow);
 			} catch (error) {
@@ -332,7 +333,7 @@ export = {
 
 			try {
 				const workflow = await Container.get(WorkflowService).deactivateWorkflow(req.user, id, {
-					publicApi: true,
+					source: 'api',
 				});
 
 				return res.json(workflow);

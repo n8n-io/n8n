@@ -7,9 +7,10 @@ import jwt from 'jsonwebtoken';
 import { TrustedKeyService } from '@/modules/token-exchange/services/trusted-key.service';
 import { TokenExchangeConfig } from '@/modules/token-exchange/token-exchange.config';
 import { TOKEN_EXCHANGE_GRANT_TYPE } from '@/modules/token-exchange/token-exchange.schemas';
-import type {
-	IssuedJwtPayload,
-	TokenExchangeSuccessResponse,
+import {
+	TOKEN_EXCHANGE_ISSUER,
+	type IssuedJwtPayload,
+	type TokenExchangeSuccessResponse,
 } from '@/modules/token-exchange/token-exchange.types';
 import { JwtService } from '@/services/jwt.service';
 import { InstanceSettings } from 'n8n-core';
@@ -145,7 +146,7 @@ describe('POST /auth/oauth/token', () => {
 
 		// Issued token is valid and has correct claims
 		const decoded = jwtService.verify<IssuedJwtPayload>(body.access_token);
-		expect(decoded.iss).toBe('n8n');
+		expect(decoded.iss).toBe(TOKEN_EXCHANGE_ISSUER);
 		expect(decoded.sub).toEqual(expect.any(String));
 		expect(decoded.act).toBeUndefined();
 		expect(decoded.scope).toBeUndefined();

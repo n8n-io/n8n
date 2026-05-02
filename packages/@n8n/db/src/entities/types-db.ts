@@ -60,6 +60,13 @@ export interface IExecutionBase {
 	status: ExecutionStatus;
 	waitTill?: Date | null;
 	storedAt: ExecutionDataStorageLocation;
+	/**
+	 * W3C trace context propagated with the execution so outbound spans can be
+	 * correlated across queue-mode boundaries.
+	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
+	 */
+	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
 }
 
 // Required by PublicUser
@@ -419,9 +426,10 @@ export type AuthenticationInformation = {
  * actor:    Actor identity for delegation — present when the token carries an `act` claim.
  */
 export interface TokenGrant {
-	roles?: string[];
 	scopes: string[];
-	actor?: { userId: string };
+	apiKeyScopes?: string[];
+	actor?: User;
+	subject: User;
 }
 
 export type AuthenticatedRequest<
@@ -438,6 +446,10 @@ export type AuthenticatedRequest<
 	};
 	tokenGrant?: TokenGrant;
 };
+
+export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
+	return 'user' in req && req.user !== null;
+}
 
 /**
  * Simplified to prevent excessively deep type instantiation error from

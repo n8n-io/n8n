@@ -5,6 +5,7 @@ import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	INode,
 	INodeProperties,
 } from 'n8n-workflow';
 import { isCommunityPackageName } from 'n8n-workflow';
@@ -29,6 +30,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import Banner from '@/app/components/Banner.vue';
 import CopyInput from '@/app/components/CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
+import EnvFeatureFlag from '@/features/shared/envFeatureFlag/EnvFeatureFlag.vue';
 import GoogleAuthButton from './GoogleAuthButton.vue';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
@@ -70,6 +72,7 @@ type Props = {
 	managedOauthAvailable?: boolean;
 	useCustomOauth?: boolean;
 	isQuickConnectMode?: boolean;
+	contextNode?: INode | null;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -176,6 +179,8 @@ const oAuthCallbackUrl = computed(() => {
 			: 'oauth1';
 	return rootStore.OAuthCallbackUrls[oauthType as keyof {}];
 });
+
+const jwksUri = computed(() => rootStore.jwksUri);
 
 const showOAuthSuccessBanner = computed(() => {
 	return (
@@ -286,6 +291,7 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 				:show-managed-oauth-options="managedOauthAvailable"
 				:quick-connect-available="quickConnectAvailable"
 				:is-quick-connect-mode="isQuickConnectMode"
+				:context-node="contextNode"
 				@update:auth-type="onAuthTypeChange"
 			/>
 
@@ -444,6 +450,17 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						"
 						:redact-value="true"
 					/>
+
+					<EnvFeatureFlag name="OAUTH2_JWE">
+						<CopyInput
+							v-if="isOAuthType && !isManagedOAuth"
+							:label="i18n.baseText('credentialEdit.credentialConfig.jwksUri.label')"
+							:value="jwksUri"
+							:copy-button-text="i18n.baseText('credentialEdit.credentialConfig.clickToCopy')"
+							:hint="i18n.baseText('credentialEdit.credentialConfig.jwksUri.hint')"
+							:toast-title="i18n.baseText('credentialEdit.credentialConfig.jwksUri.copiedToast')"
+						/>
+					</EnvFeatureFlag>
 				</template>
 				<EnterpriseEdition v-else :features="[EnterpriseEditionFeature.Sharing]">
 					<div>

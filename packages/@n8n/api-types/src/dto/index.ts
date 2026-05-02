@@ -21,10 +21,12 @@ export type {
 export { AiGatewayUsageQueryDto } from './ai/ai-gateway-usage-response.dto';
 export type {
 	AiGatewayUsageEntry,
+	AiGatewayUsageMetadata,
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
 export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
 export { BinaryDataQueryDto } from './binary-data/binary-data-query.dto';
@@ -163,11 +165,12 @@ export {
 	type RoleProjectMembersResponse,
 } from './roles/role-project-members-response.dto';
 
-export { OidcConfigDto } from './oidc/config.dto';
+export { OidcConfigDto, OIDC_PROMPT_VALUES } from './oidc/config.dto';
 export { TestOidcConfigResponseDto } from './oidc/test-oidc-config-response.dto';
 
 export { CreateDataTableDto } from './data-table/create-data-table.dto';
 export { UpdateDataTableDto } from './data-table/update-data-table.dto';
+export { PublicApiCreateDataTableDto } from './data-table/public-api-create-data-table.dto';
 export { UpdateDataTableRowDto } from './data-table/update-data-table-row.dto';
 export { DeleteDataTableRowsDto } from './data-table/delete-data-table-rows.dto';
 export { UpsertDataTableRowDto } from './data-table/upsert-data-table-row.dto';
@@ -184,6 +187,10 @@ export { AddDataTableRowsDto } from './data-table/add-data-table-rows.dto';
 export { AddDataTableColumnDto } from './data-table/add-data-table-column.dto';
 export { MoveDataTableColumnDto } from './data-table/move-data-table-column.dto';
 export { RenameDataTableColumnDto } from './data-table/rename-data-table-column.dto';
+export {
+	updateDataTableColumnSchema,
+	type UpdateDataTableColumnDto,
+} from './data-table/update-data-table-column.dto';
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
@@ -217,3 +224,7 @@ export {
 
 export { VersionSinceDateQueryDto } from './instance-version-history/version-since-date-query.dto';
 export { VersionQueryDto } from './instance-version-history/version-query.dto';
+
+export { CreateEncryptionKeyDto } from './encryption/create-encryption-key.dto';
+export { ListEncryptionKeysQueryDto } from './encryption/list-encryption-keys-query.dto';
+export type { EncryptionKeyResponseDto } from './encryption/encryption-key-response.dto';

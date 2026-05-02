@@ -106,9 +106,16 @@ export type {
 	ModelLimits,
 } from './sdk/catalog';
 export { SqliteMemory } from './storage/sqlite-memory';
+export {
+	UPDATE_WORKING_MEMORY_TOOL_NAME,
+	WORKING_MEMORY_DEFAULT_INSTRUCTION,
+} from './runtime/working-memory';
 export type { SqliteMemoryConfig } from './storage/sqlite-memory';
 export { PostgresMemory } from './storage/postgres-memory';
 export type { PostgresMemoryConfig } from './storage/postgres-memory';
+
+export { createModel } from './runtime/model-factory';
+export { generateTitleFromMessage } from './runtime/title-generation';
 
 export { Workspace } from './workspace';
 export { BaseFilesystem } from './workspace';

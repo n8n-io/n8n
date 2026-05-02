@@ -104,9 +104,7 @@ export function useNodeExecution(
 	const workflowState = injectWorkflowState();
 
 	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
@@ -133,7 +131,9 @@ export function useNodeExecution(
 	const isChatNode = computed(() => nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE);
 
 	const isChatChild = computed(() =>
-		nodeRef.value ? workflowsStore.checkIfNodeHasChatParent(nodeRef.value.name) : false,
+		nodeRef.value
+			? workflowDocumentStore.value.checkIfNodeHasChatParent(nodeRef.value.name)
+			: false,
 	);
 
 	const isFormTriggerNode = computed(() => nodeType.value?.name === FORM_TRIGGER_NODE_TYPE);
@@ -299,7 +299,7 @@ export function useNodeExecution(
 			}
 
 			// Update node with generated code
-			workflowDocumentStore.value?.updateNodeProperties({
+			workflowDocumentStore.value.updateNodeProperties({
 				name: nodeRef.value.name,
 				properties: {
 					parameters: {
@@ -343,10 +343,10 @@ export function useNodeExecution(
 
 	function chatTriggerHasInputData(): boolean {
 		if (!nodeRef.value) return false;
-		const startNode = workflowsStore.workflowObject.getStartNode(nodeRef.value.name);
+		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
 		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
 		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
-		const hasPinData = !!workflowDocumentStore.value?.pinData?.[startNode.name];
+		const hasPinData = !!workflowDocumentStore.value.pinData?.[startNode.name];
 		return hasRunData || hasPinData;
 	}
 

@@ -33,11 +33,9 @@ const logsStore = useLogsStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
+	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
-const workflowName = computed(() => workflowDocumentStore.value?.name ?? '');
+const workflowName = computed(() => workflowDocumentStore.value.name);
 
 const {
 	height,
@@ -59,7 +57,7 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
-const { currentSessionId, messages, refreshSession, displayExecution } = useChatState(
+const { currentSessionId, chatOptions, refreshSession, displayExecution } = useChatState(
 	props.isReadOnly,
 );
 
@@ -170,7 +168,7 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 			>
 				<div ref="container" :class="$style.container" tabindex="-1">
 					<N8nResizeWrapper
-						v-if="hasChat && (!props.isReadOnly || messages.length > 0)"
+						v-if="hasChat && (!props.isReadOnly || (chatOptions.messageHistory ?? []).length > 0)"
 						:supported-directions="['right']"
 						:is-resizing-enabled="isOpen"
 						:width="chatPanelWidth"

@@ -23,6 +23,8 @@ import type {
 import { Workflow, UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
 import { SharedWorkflowRepository, User } from '@n8n/db';
@@ -40,7 +42,7 @@ type ListSearchMethod = (
 type LoadOptionsMethod = (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 type ActionHandlerMethod = (
 	this: ILoadOptionsFunctions,
-	payload?: string,
+	payload?: string | IDataObject,
 ) => Promise<NodeParameterValueType>;
 type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMapperFields>;
 
@@ -58,9 +60,13 @@ export class DynamicNodeParametersService {
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
+		private credentialsFinderService: CredentialsFinderService,
 	) {}
 
-	async refineResourceIds(user: User, payload: { projectId?: string; workflowId?: string }) {
+	async refineResourceIds(
+		user: User,
+		payload: { projectId?: string; workflowId?: string; credentials?: INodeCredentials },
+	) {
 		// We want to avoid relying on generic project:read permissions to enable
 		// a future with fine-grained permission control dependent on the respective resource
 		// For now we use the dataTable:listProject scope as this is the existing consumer of
@@ -77,25 +83,41 @@ export class DynamicNodeParametersService {
 			payload.projectId = undefined;
 		}
 
-		if (!payload.workflowId) return;
+		if (payload.workflowId) {
+			const hasAccess = await userHasScopes(user, ['workflow:read'], false, {
+				workflowId: payload.workflowId,
+			});
 
-		const hasAccess = await userHasScopes(user, ['workflow:read'], false, {
-			workflowId: payload.workflowId,
-		});
-
-		if (!hasAccess) {
-			this.logger.warn(
-				`Scrubbed inaccessible workflowId ${payload.workflowId} from DynamicNodeParameters request`,
-			);
-			payload.workflowId = undefined;
-			return;
+			if (!hasAccess) {
+				this.logger.warn(
+					`Scrubbed inaccessible workflowId ${payload.workflowId} from DynamicNodeParameters request`,
+				);
+				payload.workflowId = undefined;
+			} else if (payload.projectId === undefined) {
+				const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(
+					payload.workflowId,
+				);
+				payload.projectId = project?.id;
+			}
 		}
 
-		if (payload.projectId === undefined) {
-			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(
-				payload.workflowId,
-			);
-			payload.projectId = project?.id;
+		if (payload.credentials) {
+			const credentialIds = Object.values(payload.credentials)
+				.map((details) => details.id)
+				.filter((id): id is string => id !== undefined && id !== null);
+
+			if (credentialIds.length > 0) {
+				const accessibleIds = await this.credentialsFinderService.findCredentialIdsWithScopeForUser(
+					credentialIds,
+					user,
+					['credential:read'],
+				);
+
+				const forbiddenId = credentialIds.find((id) => !accessibleIds.has(id));
+				if (forbiddenId !== undefined) {
+					throw new ForbiddenError();
+				}
+			}
 		}
 	}
 
@@ -115,7 +137,7 @@ export class DynamicNodeParametersService {
 		// Need to use untyped call since `this` usage is widespread and we don't have `strictBindCallApply`
 		// enabled in `tsconfig.json`
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs);
+		return await method.call(thisArgs);
 	}
 
 	/** Returns the available options via a loadOptions param */
@@ -216,7 +238,7 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs, filter, paginationToken);
+		return await method.call(thisArgs, filter, paginationToken);
 	}
 
 	/** Returns the available mapping fields for the ResourceMapper component */
@@ -232,9 +254,7 @@ export class DynamicNodeParametersService {
 		const method = this.getMethod('resourceMapping', methodName, nodeType);
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
-		return this.removeDuplicateResourceMappingFields(
-			(await method.call(thisArgs)) as ResourceMapperFields,
-		);
+		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
 	}
 
 	/** Returns the available workflow input mapping fields for the ResourceMapper component */
@@ -247,9 +267,7 @@ export class DynamicNodeParametersService {
 		const nodeType = this.getNodeType(nodeTypeAndVersion);
 		const method = this.getMethod('localResourceMapping', methodName, nodeType);
 		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
-		return this.removeDuplicateResourceMappingFields(
-			(await method.call(thisArgs)) as ResourceMapperFields,
-		);
+		return this.removeDuplicateResourceMappingFields(await method.call(thisArgs));
 	}
 
 	/** Returns the result of the action handler */
@@ -267,7 +285,7 @@ export class DynamicNodeParametersService {
 		const workflow = this.getWorkflow(nodeTypeAndVersion, currentNodeParameters, credentials);
 		const thisArgs = this.getThisArg(path, additionalData, workflow);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return method.call(thisArgs, payload);
+		return await method.call(thisArgs, payload);
 	}
 
 	private getMethod(
@@ -301,12 +319,39 @@ export class DynamicNodeParametersService {
 		methodName: string,
 		nodeType: INodeType,
 	): NodeMethod {
-		const method = nodeType.methods?.[type]?.[methodName] as NodeMethod;
+		const methodsOfType = nodeType.methods?.[type];
+		const method = methodsOfType?.[methodName] as NodeMethod;
 		if (typeof method !== 'function') {
-			throw new UnexpectedError('Node type does not have method defined', {
-				tags: { nodeType: nodeType.description.name },
-				extra: { methodName },
-			});
+			const available = methodsOfType ? Object.keys(methodsOfType) : [];
+
+			// Cross-reference: if the requested type has nothing (or lacks this
+			// method), surface other method-type registrations so callers can
+			// self-correct when they picked the wrong methodType. E.g. asking
+			// for `loadOptions.listModels` on a node that only has
+			// `listSearch.searchModels` now returns both pieces of information.
+			const otherTypesWithMethods: string[] = [];
+			for (const [otherType, otherMethods] of Object.entries(nodeType.methods ?? {})) {
+				if (otherType === type || !otherMethods) continue;
+				const names = Object.keys(otherMethods);
+				if (names.length > 0) {
+					otherTypesWithMethods.push(`${otherType}: ${names.join(', ')}`);
+				}
+			}
+
+			const availableText =
+				available.length > 0 ? available.join(', ') : `<no ${type} methods declared>`;
+			const otherTypesText =
+				otherTypesWithMethods.length > 0
+					? ` Other method types on this node — ${otherTypesWithMethods.join('; ')}.`
+					: '';
+
+			throw new UnexpectedError(
+				`Node type "${nodeType.description.name}" has no ${type} method named "${methodName}". Available ${type} methods: ${availableText}.${otherTypesText}`,
+				{
+					tags: { nodeType: nodeType.description.name },
+					extra: { methodName, type, available, otherTypes: otherTypesWithMethods },
+				},
+			);
 		}
 		return method;
 	}

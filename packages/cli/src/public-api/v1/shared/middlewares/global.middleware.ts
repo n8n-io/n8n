@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import type express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -85,22 +86,21 @@ export const validCursor = (
 	return next();
 };
 
-export type ScopeTaggedMiddleware = ((...args: unknown[]) => unknown) & {
+export type ScopeTaggedMiddleware = Middleware & {
 	__apiKeyScope: ApiKeyScope;
 };
 
-function tagMiddleware(
-	middleware: (...args: unknown[]) => unknown,
-	apiKeyScope: ApiKeyScope,
-): ScopeTaggedMiddleware {
+export type Middleware = (req: Request, res: Response, next: NextFunction) => unknown;
+
+function tagMiddleware(middleware: Middleware, apiKeyScope: ApiKeyScope): ScopeTaggedMiddleware {
 	const tagged: ScopeTaggedMiddleware = Object.assign(
-		(req: unknown, res: unknown, next: unknown) => middleware(req, res, next),
+		(req: Request, res: Response, next: NextFunction) => middleware(req, res, next),
 		{ __apiKeyScope: apiKeyScope },
 	);
 	return tagged;
 }
 
-function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
+function makePublicApiScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 	return async (
 		req: AuthenticatedRequest,
 		res: express.Response,
@@ -113,7 +113,7 @@ function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 			return;
 		}
 
-		if (!tokenGrant.scopes.includes(endpointScope)) {
+		if (!tokenGrant.apiKeyScopes?.includes(endpointScope)) {
 			res.status(403).json({ message: 'Forbidden' });
 			return;
 		}
@@ -124,13 +124,13 @@ function makeScopeEnforcementMiddleware(endpointScope: ApiKeyScope) {
 }
 
 export const publicApiScope = (apiKeyScope: ApiKeyScope) =>
-	tagMiddleware(makeScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
+	tagMiddleware(makePublicApiScopeEnforcementMiddleware(apiKeyScope), apiKeyScope);
 
 export const apiKeyHasScopeWithGlobalScopeFallback = (
 	config: { scope: ApiKeyScope & Scope } | { apiKeyScope: ApiKeyScope; globalScope: Scope },
 ) => {
 	const scope = 'scope' in config ? config.scope : config.apiKeyScope;
-	return tagMiddleware(makeScopeEnforcementMiddleware(scope), scope);
+	return tagMiddleware(makePublicApiScopeEnforcementMiddleware(scope), scope);
 };
 
 export const validLicenseWithUserQuota = (
