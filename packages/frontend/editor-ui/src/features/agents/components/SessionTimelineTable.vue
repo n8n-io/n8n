@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { ComponentPublicInstance } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nRecycleScroller } from '@n8n/design-system';
 import SessionTimelineRow from './SessionTimelineRow.vue';
@@ -22,9 +21,6 @@ const emit = defineEmits<{ select: [index: number] }>();
 
 const i18n = useI18n();
 const tableRef = ref<HTMLElement | null>(null);
-const scrollerRef = ref<
-	ComponentPublicInstance<{ scrollItemIntoView: (itemKey: string) => void }> | undefined
->();
 const canScrollUp = ref(false);
 const canScrollDown = ref(false);
 let scrollContainer: HTMLElement | null = null;
@@ -108,6 +104,54 @@ function bindScrollContainer() {
 	updateScrollMask();
 }
 
+function visibleRowElement(rowId: string): HTMLElement | undefined {
+	const visibleRows = tableRef.value?.querySelectorAll<HTMLElement>('[data-timeline-row-id]');
+
+	return Array.from(visibleRows ?? []).find((element) => element.dataset.timelineRowId === rowId);
+}
+
+function scrollVisibleRowIntoView(rowId: string): boolean {
+	if (!scrollContainer) return false;
+
+	const rowElement = visibleRowElement(rowId);
+	if (!rowElement) return false;
+
+	const containerRect = scrollContainer.getBoundingClientRect();
+	const rowRect = rowElement.getBoundingClientRect();
+
+	if (rowRect.top - SCROLL_PADDING < containerRect.top) {
+		scrollContainer.scrollTop -= containerRect.top - rowRect.top + SCROLL_PADDING;
+	} else if (rowRect.bottom + SCROLL_PADDING > containerRect.bottom) {
+		scrollContainer.scrollTop += rowRect.bottom - containerRect.bottom + SCROLL_PADDING;
+	}
+
+	return true;
+}
+
+function scrollRowIntoView(rowId: string) {
+	if (!scrollContainer) return;
+	if (scrollVisibleRowIntoView(rowId)) return;
+
+	const rowIndex = rows.value.findIndex((row) => row.id === rowId);
+	if (rowIndex === -1) return;
+
+	const rowTop = rowIndex * ROW_HEIGHT;
+	const rowBottom = rowTop + ROW_HEIGHT;
+	const viewportTop = scrollContainer.scrollTop;
+	const viewportBottom = viewportTop + scrollContainer.clientHeight;
+
+	if (rowTop - SCROLL_PADDING < viewportTop) {
+		scrollContainer.scrollTop = Math.max(0, rowTop - SCROLL_PADDING);
+	} else if (rowBottom + SCROLL_PADDING > viewportBottom) {
+		scrollContainer.scrollTop = rowBottom + SCROLL_PADDING - scrollContainer.clientHeight;
+	}
+
+	void nextTick(() => {
+		scrollVisibleRowIntoView(rowId);
+		updateScrollMask();
+	});
+}
+
 watch(
 	() => rows.value.length,
 	() => {
@@ -131,7 +175,7 @@ watch(
 	(selectedIndex) => {
 		if (selectedIndex === null) return;
 		void nextTick(() => {
-			scrollerRef.value?.scrollItemIntoView(`event-${selectedIndex}`);
+			scrollRowIntoView(`event-${selectedIndex}`);
 			updateScrollMask();
 		});
 	},
@@ -147,24 +191,23 @@ watch(
 			canScrollDown && $style.canScrollDown,
 		]"
 	>
-		<N8nRecycleScroller
-			v-if="rows.length > 0"
-			ref="scrollerRef"
-			:items="rows"
-			:item-size="ROW_HEIGHT"
-			:scroll-padding="SCROLL_PADDING"
-			item-key="id"
-		>
+		<N8nRecycleScroller v-if="rows.length > 0" :items="rows" :item-size="ROW_HEIGHT" item-key="id">
 			<template #default="{ item: row }">
 				<div
 					v-if="row.kind === 'event'"
 					data-test-id="timeline-row"
+					:data-timeline-row-id="row.id"
 					:class="$style.rowWrapper"
 					@click="emit('select', row.index)"
 				>
 					<SessionTimelineRow :item="row.item" :selected="props.selectedIndex === row.index" />
 				</div>
-				<div v-else data-test-id="timeline-idle-row" :class="$style.idleRow">
+				<div
+					v-else
+					data-test-id="timeline-idle-row"
+					:data-timeline-row-id="row.id"
+					:class="$style.idleRow"
+				>
 					<span :class="$style.idlePill">
 						{{ i18n.baseText('agentSessions.timeline.idle') }} ·
 						{{ formatDuration(row.range.end - row.range.start) }}

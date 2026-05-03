@@ -9,12 +9,10 @@ interface RecycleScrollerProps {
 	items: Item[];
 	itemKey: Key;
 	offset?: number;
-	scrollPadding?: number;
 }
 
 const props = withDefaults(defineProps<RecycleScrollerProps>(), {
 	offset: 2,
-	scrollPadding: 0,
 });
 
 const wrapperRef = ref<HTMLElement | null>(null);
@@ -184,28 +182,6 @@ function onScroll() {
 
 	scrollTop.value = wrapperRef.value.scrollTop;
 }
-
-function scrollItemIntoView(itemKey: Item[Key]) {
-	if (!wrapperRef.value) return;
-
-	const itemPosition = itemPositionCache.value[itemKey];
-	const itemSize = itemSizeCache.value[itemKey] ?? props.itemSize;
-	if (itemPosition === undefined) return;
-
-	const viewportTop = wrapperRef.value.scrollTop;
-	const viewportBottom = viewportTop + wrapperRef.value.clientHeight;
-	const itemBottom = itemPosition + itemSize;
-
-	if (itemPosition - props.scrollPadding < viewportTop) {
-		wrapperRef.value.scrollTop = Math.max(0, itemPosition - props.scrollPadding);
-	} else if (itemBottom + props.scrollPadding > viewportBottom) {
-		wrapperRef.value.scrollTop = itemBottom + props.scrollPadding - wrapperRef.value.clientHeight;
-	}
-
-	scrollTop.value = wrapperRef.value.scrollTop;
-}
-
-defineExpose({ scrollItemIntoView });
 </script>
 
 <template>
