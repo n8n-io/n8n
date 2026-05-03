@@ -32,4 +32,14 @@ describe('useAgentBuilderLayout', () => {
 		expect(layout.chatColumnCollapsed.value).toBe(false);
 		expect(layout.chatColumnWidth.value).toBe(320);
 	});
+
+	it('clamps chat resize events to preserve the minimum editor width', () => {
+		const layout = useAgentBuilderLayout();
+		layout.builderRef.value = { offsetWidth: 1000 } as HTMLElement;
+
+		layout.onChatColumnResize({ width: 900 });
+
+		expect(layout.chatColumnCollapsed.value).toBe(false);
+		expect(layout.chatColumnWidth.value).toBe(580);
+	});
 });

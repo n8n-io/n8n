@@ -129,7 +129,7 @@ const sessionOptions = computed<Array<N8nDropdownOption<string>>>(() =>
 	})),
 );
 
-const { chatColumnCollapsed, chatColumnWidth, onChatColumnResize, resizeGridSize } =
+const { builderRef, chatColumnCollapsed, chatColumnWidth, onChatColumnResize, resizeGridSize } =
 	useAgentBuilderLayout();
 chatColumnCollapsed.value = false;
 const builderStyle = computed(() => ({
@@ -878,7 +878,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
-		<div :class="$style.builder" :style="builderStyle">
+		<div ref="builderRef" :class="$style.builder" :style="builderStyle">
 			<!-- Column 1: chat -->
 			<N8nResizeWrapper
 				:class="$style.chatColumnResizeWrapper"
