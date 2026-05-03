@@ -229,6 +229,12 @@ export abstract class ICredentialsHelper {
 		credentialsExpired: boolean,
 	): Promise<ICredentialDataDecryptedObject | undefined>;
 
+	abstract runPreAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+	): Promise<ICredentialDataDecryptedObject | undefined>;
+
 	abstract getCredentials(
 		nodeCredentials: INodeCredentialsDetails,
 		type: string,

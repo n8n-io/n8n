@@ -266,10 +266,15 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  # Depends on prepare-docker so the eval workflow can load the SHA-keyed image cache.
+  # prepare-docker may be skipped (its filter excludes .github/**); the eval falls back to a local build.
   instance-ai-workflow-evals:
     name: Instance AI Workflow Evals
-    needs: install-and-build
+    needs: [install-and-build, prepare-docker]
     if: >-
+      !cancelled() &&
+      needs.install-and-build.result == 'success' &&
+      (needs.prepare-docker.result == 'success' || needs.prepare-docker.result == 'skipped') &&
       needs.install-and-build.outputs.instance_ai_workflow_eval == 'true' &&
       github.repository == 'n8n-io/n8n' &&
       (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork)
