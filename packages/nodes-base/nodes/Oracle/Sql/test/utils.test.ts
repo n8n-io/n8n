@@ -11,7 +11,7 @@ import {
 	getOutBindDefsForExecute,
 } from '../helpers/utils';
 
-const integratedTests = process.env.ORACLE_INTEG_TESTS ?? false;
+const stressTests = process.env.ORACLE_STRESS_TESTS ?? false;
 
 describe('Test addSortRules', () => {
 	it('should ORDER BY ASC', () => {
@@ -241,12 +241,121 @@ describe('Test getBindParameters ', () => {
 	});
 });
 
-// Regression coverage for https://github.com/n8n-io/n8n/issues/26985 needs enough items to
-// fail if the implementation appends with push.apply(...) or push(...largeArray).
-const describeStackOverflowRegression = integratedTests ? describe : describe.skip;
+describe('Test configureQueryRunner', () => {
+	it('should append out-bind execution data one item at a time without spread push', async () => {
+		const pushSpy = jest.spyOn(Array.prototype, 'push');
+		const outBinds = [
+			[[1], ['Alice']],
+			[[2], ['Bob']],
+			[[3], ['Charlie']],
+		];
+		const executeMany = jest.fn().mockResolvedValue({ outBinds });
+		const close = jest.fn().mockResolvedValue(undefined);
+		const connection = { executeMany, close };
+		const getConnection = jest.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const expectedEntries: INodeExecutionData[] = [];
+		const constructExecutionMetaData = jest
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => {
+				const item = data[0];
+				if (item) expectedEntries[expectedEntries.length] = item;
+				return item ? [item, item, item] : [];
+			});
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
 
-describeStackOverflowRegression('configureQueryRunner stack overflow regression', () => {
+		let result: INodeExecutionData[] = [];
+		let executionDataPushCalls: unknown[][] = [];
+		try {
+			const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+			result = await queryRunner(
+				[
+					{
+						query: 'INSERT INTO "TEST" ("COL1", "COL2") VALUES (:0, :1)',
+						executeManyValues: [{}, {}, {}],
+						outputColumns: ['COL1', 'COL2'],
+					},
+				],
+				[],
+				{
+					operation: 'insert',
+					stmtBatching: 'single',
+				},
+			);
+			executionDataPushCalls = pushSpy.mock.calls.filter(
+				([entry]) => entry && expectedEntries.includes(entry as INodeExecutionData),
+			);
+		} finally {
+			pushSpy.mockRestore();
+		}
+
+		expect(result).toHaveLength(9);
+		expect(result[0]?.json).toMatchObject({ COL1: 1, COL2: 'Alice' });
+		expect(result[8]?.json).toMatchObject({ COL1: 3, COL2: 'Charlie' });
+		expect(executionDataPushCalls).toHaveLength(9);
+		expect(executionDataPushCalls.every((call) => call.length === 1)).toBe(true);
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(3);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it('should return select execution data from the concat path', async () => {
+		const concatSpy = jest.spyOn(Array.prototype, 'concat');
+		const rows = [{ COL1: 1 }, { COL1: 2 }, { COL1: 3 }];
+		const executionData = rows.map((row) => ({ json: row }));
+		const execute = jest.fn().mockResolvedValue({ rows });
+		const close = jest.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = jest.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = jest.fn().mockImplementation(() => executionData);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
+
+		let result: INodeExecutionData[] = [];
+		try {
+			const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+			result = await queryRunner(
+				[
+					{
+						query: 'SELECT COL1 FROM TEST',
+					},
+				],
+				[],
+				{
+					operation: 'select',
+					stmtBatching: 'independently',
+				},
+			);
+			expect(concatSpy).toHaveBeenCalledWith(executionData);
+		} finally {
+			concatSpy.mockRestore();
+		}
+
+		expect(result).toHaveLength(3);
+		expect(result[0]?.json).toMatchObject({ COL1: 1 });
+		expect(result[2]?.json).toMatchObject({ COL1: 3 });
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('configureQueryRunner stack overflow regression', () => {
 	it('should handle large out bind datasets without stack overflow', async () => {
+		if (!stressTests) return;
+
 		const chunkSize = 250_000;
 		const outBinds = [[[42]]];
 		const executeMany = jest.fn().mockResolvedValue({ outBinds });
@@ -289,6 +398,8 @@ describeStackOverflowRegression('configureQueryRunner stack overflow regression'
 	});
 
 	it('should handle large select result sets without stack overflow', async () => {
+		if (!stressTests) return;
+
 		const chunkSize = 250_000;
 		const rows = Array.from({ length: chunkSize }, (_, index) => ({ COL1: index }));
 		const execute = jest.fn().mockResolvedValue({ rows });
