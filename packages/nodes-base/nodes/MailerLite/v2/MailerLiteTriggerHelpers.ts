@@ -28,11 +28,8 @@ export function verifySignature(this: IWebhookFunctions): boolean {
 				return null;
 			}
 			const hmac = createHmac('sha256', secret);
-			if (Buffer.isBuffer(req.rawBody) || typeof req.rawBody === 'string') {
-				hmac.update(req.rawBody);
-			} else {
-				return null;
-			}
+			const payload = Buffer.isBuffer(req.rawBody) ? req.rawBody : Buffer.from(req.rawBody);
+			hmac.update(payload);
 			return hmac.digest('hex');
 		},
 		skipIfNoExpectedSignature: !secret || typeof secret !== 'string',

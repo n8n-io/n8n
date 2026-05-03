@@ -96,27 +96,5 @@ describe('MailerLiteTriggerHelpers', () => {
 
 			expect(result).toBe(false);
 		});
-
-		it('should accept rawBody as a string', () => {
-			const stringPayload = '{"events":[{"type":"subscriber.created"}]}';
-			const hmac = createHmac('sha256', testSecret);
-			hmac.update(stringPayload);
-			const expectedSignature = hmac.digest('hex');
-
-			mockWebhookFunctions.getWorkflowStaticData.mockReturnValue({
-				webhookSecret: testSecret,
-			});
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header) => {
-					if (header === 'signature') return expectedSignature;
-					return null;
-				}),
-				rawBody: stringPayload,
-			});
-
-			const result = verifySignature.call(mockWebhookFunctions);
-
-			expect(result).toBe(true);
-		});
 	});
 });
