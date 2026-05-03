@@ -120,4 +120,103 @@ describe('SettingsEncryptionKeys', () => {
 			expect(showError).toHaveBeenCalledWith(error, expect.any(String));
 		});
 	});
+
+	describe('filter popover', () => {
+		const seedKeys = () => {
+			const store = mockedStore(useEncryptionKeysStore);
+			store.keys = [makeKey()];
+			store.visibleKeys = store.keys;
+			store.fetchKeys.mockResolvedValue(undefined);
+			return store;
+		};
+
+		const openPopover = async () => {
+			const trigger = await screen.findByRole('button', { name: 'Filter' });
+			await fireEvent.click(trigger);
+		};
+
+		it('hides the Clear button when no filter is active', async () => {
+			seedKeys();
+			renderComponent(SettingsEncryptionKeys);
+
+			await openPopover();
+
+			expect(await screen.findByRole('button', { name: 'Apply' })).toBeVisible();
+			expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
+		});
+
+		it('shows the Clear button when a filter is active', async () => {
+			const store = seedKeys();
+			store.filters = { activatedFrom: '2025-06-01', activatedTo: '2025-12-15' };
+			renderComponent(SettingsEncryptionKeys);
+
+			await openPopover();
+
+			expect(await screen.findByRole('button', { name: 'Apply' })).toBeVisible();
+			expect(screen.getByRole('button', { name: 'Clear' })).toBeVisible();
+		});
+
+		it('commits the seeded filter to the store when Apply is clicked', async () => {
+			const store = seedKeys();
+			store.filters = { activatedFrom: '2025-06-01', activatedTo: '2025-12-15' };
+			renderComponent(SettingsEncryptionKeys);
+
+			await openPopover();
+			await fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
+
+			expect(store.setFilters).toHaveBeenCalledWith({
+				activatedFrom: '2025-06-01',
+				activatedTo: '2025-12-15',
+			});
+		});
+
+		it('resets the store and closes the popover when Clear is clicked', async () => {
+			const store = seedKeys();
+			store.filters = { activatedFrom: '2025-06-01', activatedTo: '2025-12-15' };
+			renderComponent(SettingsEncryptionKeys);
+
+			await openPopover();
+			await fireEvent.click(await screen.findByRole('button', { name: 'Clear' }));
+
+			expect(store.resetFilters).toHaveBeenCalledTimes(1);
+			await waitFor(() => {
+				expect(screen.queryByRole('button', { name: 'Apply' })).not.toBeInTheDocument();
+			});
+		});
+
+		it('does not commit changes when the popover is dismissed without Apply', async () => {
+			const store = seedKeys();
+			renderComponent(SettingsEncryptionKeys);
+
+			await openPopover();
+			await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+			expect(store.setFilters).not.toHaveBeenCalled();
+		});
+
+		it('re-seeds the draft from the store on every open', async () => {
+			const store = seedKeys();
+			store.filters = { activatedFrom: '2025-06-01', activatedTo: null };
+			renderComponent(SettingsEncryptionKeys);
+
+			// First open + Apply commits the seeded value.
+			await openPopover();
+			await fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
+			expect(store.setFilters).toHaveBeenLastCalledWith({
+				activatedFrom: '2025-06-01',
+				activatedTo: null,
+			});
+
+			// Mutate the store as if another code path changed the filter.
+			store.filters = { activatedFrom: '2025-12-15', activatedTo: null };
+
+			// Re-open + Apply must commit the NEW seeded value, proving re-seed.
+			await openPopover();
+			await fireEvent.click(await screen.findByRole('button', { name: 'Apply' }));
+			expect(store.setFilters).toHaveBeenLastCalledWith({
+				activatedFrom: '2025-12-15',
+				activatedTo: null,
+			});
+		});
+	});
 });

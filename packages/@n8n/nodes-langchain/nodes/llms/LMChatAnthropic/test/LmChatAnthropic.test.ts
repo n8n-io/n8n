@@ -4,7 +4,7 @@
 import { ChatAnthropic } from '@langchain/anthropic';
 import { makeN8nLlmFailedAttemptHandler, N8nLlmTracing, getProxyAgent } from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
-import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
+import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
@@ -79,7 +79,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -570,13 +570,12 @@ describe('LmChatAnthropic', () => {
 			});
 		});
 
-		it('should have Claude Sonnet 4.6 as default for v1.4+ resource locator', () => {
+		it('should have Claude Sonnet 4.6 as default for v1.4 resource locator', () => {
 			const v14ModelField = lmChatAnthropic.description.properties.find(
 				(p) =>
 					p.name === 'model' &&
 					p.type === 'resourceLocator' &&
-					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
-						1.4,
+					p.displayOptions?.show?.['@version']?.[0] === 1.4,
 			);
 
 			expect(v14ModelField).toBeDefined();
@@ -585,6 +584,242 @@ describe('LmChatAnthropic', () => {
 				value: 'claude-sonnet-4-6',
 				cachedResultName: 'Claude Sonnet 4.6',
 			});
+		});
+	});
+
+	describe('thinking modes (v1.5)', () => {
+		it('should not set thinking-related invocationKwargs when thinkingMode is disabled', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return { thinkingMode: 'disabled', temperature: 0.5, topK: 10, topP: 0.8 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-4-6',
+					temperature: 0.5,
+					topK: 10,
+					topP: 0.8,
+					invocationKwargs: {},
+				}),
+			);
+		});
+
+		it('should configure adaptive thinking with default effort (medium)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return { thinkingMode: 'adaptive' };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-4-6',
+					invocationKwargs: {
+						thinking: { type: 'adaptive' },
+						output_config: { effort: 'medium' },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it.each(['low', 'medium', 'high', 'xhigh', 'max'] as const)(
+			'should forward effort=%s for adaptive mode',
+			async (effort) => {
+				const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+					if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
+					if (paramName === 'options') return { thinkingMode: 'adaptive', effort };
+					return undefined;
+				});
+
+				await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+				expect(MockedChatAnthropic).toHaveBeenCalledWith(
+					expect.objectContaining({
+						invocationKwargs: expect.objectContaining({
+							thinking: { type: 'adaptive' },
+							output_config: { effort },
+						}),
+					}),
+				);
+			},
+		);
+
+		it('should keep legacy enabled+budget payload for manual thinkingMode on Sonnet 4.6', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return { thinkingMode: 'manual', thinkingBudget: 2048, maxTokensToSample: 4096 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					model: 'claude-sonnet-4-6',
+					invocationKwargs: {
+						thinking: { type: 'enabled', budget_tokens: 2048 },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should strip temperature/topK/topP from constructor when model is Opus 4.7 (disabled mode)', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
+				if (paramName === 'options')
+					return { thinkingMode: 'disabled', temperature: 0.5, topK: 40, topP: 0.9 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			const callArgs = MockedChatAnthropic.mock.calls[0][0]!;
+			expect(callArgs.model).toBe('claude-opus-4-7-20251101');
+			expect(callArgs).not.toHaveProperty('temperature');
+			expect(callArgs).not.toHaveProperty('topK');
+			expect(callArgs).not.toHaveProperty('topP');
+		});
+
+		it('should throw NodeOperationError when manual mode is selected on Opus 4.7', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.5 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
+				if (paramName === 'options') return { thinkingMode: 'manual', thinkingBudget: 2048 };
+				return undefined;
+			});
+
+			await expect(lmChatAnthropic.supplyData.call(mockContext, 0)).rejects.toThrow(
+				NodeOperationError,
+			);
+			expect(MockedChatAnthropic).not.toHaveBeenCalled();
+		});
+
+		it('should still emit legacy thinking payload when thinking=true on v1.4', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options')
+					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					invocationKwargs: {
+						thinking: { type: 'enabled', budget_tokens: 1500 },
+						max_tokens: 4096,
+						top_k: undefined,
+						top_p: undefined,
+						temperature: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should emit empty invocationKwargs when thinking=false on v1.4', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.4 });
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-6';
+				if (paramName === 'options') return { thinking: false };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({ invocationKwargs: {} }),
+			);
+		});
+
+		it('should describe v1.5 model field, thinkingMode, and gated effort fields', () => {
+			const properties = lmChatAnthropic.description.properties;
+
+			const v15ModelField = properties.find(
+				(p) =>
+					p.name === 'model' &&
+					p.type === 'resourceLocator' &&
+					(p.displayOptions?.show?.['@version']?.[0] as { _cnd?: { gte?: number } })?._cnd?.gte ===
+						1.5,
+			);
+			expect(v15ModelField).toBeDefined();
+			expect(v15ModelField!.default).toEqual({
+				mode: 'list',
+				value: 'claude-sonnet-4-6',
+				cachedResultName: 'Claude Sonnet 4.6',
+			});
+
+			const optionsField = properties.find((p) => p.name === 'options' && p.type === 'collection');
+			expect(optionsField).toBeDefined();
+
+			const innerOptions = (optionsField as { options: INodeProperties[] }).options;
+
+			const thinkingMode = innerOptions.find((o) => o.name === 'thinkingMode');
+			expect(thinkingMode).toBeDefined();
+			expect(thinkingMode!.type).toBe('options');
+			const modeValues = (thinkingMode as { options: Array<{ value: string }> }).options.map(
+				(o) => o.value,
+			);
+			expect(modeValues).toEqual(['disabled', 'adaptive', 'manual']);
+
+			const effortFields = innerOptions.filter((o) => o.name === 'effort');
+			expect(effortFields).toHaveLength(2);
+
+			const opusEffort = effortFields.find((f) => {
+				const cnd = (
+					f.displayOptions?.show?.['/model.value']?.[0] as {
+						_cnd?: { includes?: string };
+					}
+				)?._cnd;
+				return cnd?.includes === 'opus';
+			});
+			expect(opusEffort).toBeDefined();
+			expect(
+				(opusEffort as { options: Array<{ value: string }> }).options.map((o) => o.value),
+			).toEqual(['low', 'medium', 'high', 'xhigh', 'max']);
+
+			const nonOpusEffort = effortFields.find((f) => {
+				const cnd = (
+					f.displayOptions?.show?.['/model.value']?.[0] as {
+						_cnd?: { regex?: string };
+					}
+				)?._cnd;
+				return typeof cnd?.regex === 'string';
+			});
+			expect(nonOpusEffort).toBeDefined();
+			expect(
+				(nonOpusEffort as { options: Array<{ value: string }> }).options.map((o) => o.value),
+			).toEqual(['low', 'medium', 'high']);
 		});
 	});
 
