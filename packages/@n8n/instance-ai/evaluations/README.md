@@ -147,9 +147,9 @@ Every run produces:
 When `LANGSMITH_API_KEY` is set, every eval run automatically compares its results against the most recent pinned baseline (any experiment whose name starts with `instance-ai-baseline-`). Two output files are written:
 
 - `eval-results.json` — structured data only, including `comparison.result` when a baseline was found.
-- `eval-comparison.md` — the comparison rendered as markdown, ready to drop into a PR comment. Only written when a comparison was produced.
+- `eval-pr-comment.md` — the full PR comment rendered as markdown, including the alert, aggregate, comparison sections, per-test-case results, and failure details. Always written; falls back to a no-baseline summary when no comparison ran.
 
-The CI PR-comment step appends `eval-comparison.md` to the existing eval comment. The console output uses a separate aligned-text formatter (no markdown noise in the terminal).
+The CI PR-comment step uses `eval-pr-comment.md` as the entire comment body (no jq assembly in the workflow). The console output uses a separate aligned-text formatter — same data, no markdown noise in the terminal.
 
 ### Refreshing the baseline
 
