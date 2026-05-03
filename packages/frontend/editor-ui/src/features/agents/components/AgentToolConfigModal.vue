@@ -308,10 +308,15 @@ function handleNodeNameUpdate(name: string) {
 }
 
 .contentWrapper {
+	--agent-tool-config-content-max-height: min(
+		calc(var(--spacing--5xl) * 2),
+		calc(var(--dialog--max-height) - var(--spacing--5xl))
+	);
+
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	max-height: 60vh;
+	max-height: var(--agent-tool-config-content-max-height);
 	overflow: hidden;
 	margin-right: calc(-1 * var(--spacing--lg));
 	padding: var(--spacing--md) 0;
@@ -322,7 +327,7 @@ function handleNodeNameUpdate(name: string) {
 }
 
 .codeContentWrapper {
-	height: 60vh;
+	height: var(--agent-tool-config-content-max-height);
 	margin-right: 0;
 	padding-bottom: 0;
 }

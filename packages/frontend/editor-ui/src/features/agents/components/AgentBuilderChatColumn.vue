@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { N8nButton, N8nDropdown, N8nIcon, N8nTooltip } from '@n8n/design-system';
-import type { N8nDropdownOption } from '@n8n/design-system';
+import { computed } from 'vue';
+import { N8nButton, N8nDropdownMenu, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import type { DropdownMenuItemProps, N8nDropdownOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
@@ -11,7 +12,7 @@ import AgentBuilderChatModeToggle from './AgentBuilderChatModeToggle.vue';
 import AgentChatPanel from './AgentChatPanel.vue';
 import AgentChatQuickActions from './AgentChatQuickActions.vue';
 
-defineProps<{
+const props = defineProps<{
 	initialized: boolean;
 	projectId: string;
 	agentId: string;
@@ -48,6 +49,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const sessionMenuMaxHeight = 'calc((var(--spacing--xl) * 5) + var(--spacing--xs))';
+
+const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
+	props.sessionOptions.map((option) => ({
+		id: option.value,
+		label: option.label,
+		disabled: option.disabled,
+	})),
+);
 </script>
 
 <template>
@@ -61,8 +71,11 @@ const i18n = useI18n();
 			:class="$style.sessionHeader"
 			data-testid="agent-chat-session-header"
 		>
-			<N8nDropdown
-				:options="sessionOptions"
+			<N8nDropdownMenu
+				:items="sessionMenuItems"
+				:max-height="sessionMenuMaxHeight"
+				:extra-popper-class="$style.sessionMenu"
+				placement="bottom-start"
 				data-testid="agent-chat-session-picker"
 				@select="emit('session-select', $event)"
 			>
@@ -77,7 +90,7 @@ const i18n = useI18n();
 						<N8nIcon icon="chevron-down" color="text-light" :size="12" />
 					</N8nButton>
 				</template>
-			</N8nDropdown>
+			</N8nDropdownMenu>
 			<N8nTooltip
 				placement="left"
 				:content="i18n.baseText('agents.builder.chat.newChat.ariaLabel')"
@@ -219,28 +232,11 @@ const i18n = useI18n();
 	}
 }
 
-:global(.agent-chat-session-menu) :global(.el-menu) {
-	max-height: 220px;
-	max-width: 360px;
-	min-width: 280px;
-	overflow-y: auto;
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu-item) {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	overflow: hidden;
-}
-
-:global(.agent-chat-session-menu) :global(.el-menu-item) > span {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	flex: 1;
-	min-width: 0;
-	margin-left: 0;
-	padding-left: 0;
+.sessionMenu {
+	width: min(
+		calc(var(--spacing--5xl) + var(--spacing--3xl)),
+		calc(100vw - var(--spacing--xl))
+	) !important;
 }
 
 .chatBody {
