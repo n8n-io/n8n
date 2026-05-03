@@ -52,7 +52,7 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.wrapper" data-testid="agent-custom-tool-viewer">
+	<div :class="$style.wrapper" data-test-id="agent-custom-tool-viewer">
 		<div ref="container" :class="$style.editor"></div>
 	</div>
 </template>

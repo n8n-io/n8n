@@ -36,6 +36,7 @@ const props = defineProps<{
 		agentId: string;
 		agentName: string;
 		isPublished: boolean;
+		initialTriggerType?: string;
 		connectedTriggers: string[];
 		onConnectedTriggersChange: (triggers: string[]) => void;
 		onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) => void;
@@ -58,7 +59,7 @@ const publishedDuringSession = ref(false);
 const isPublishedLocal = computed(() => publishedDuringSession.value || props.data.isPublished);
 
 const integrations = ref<ChatIntegrationDescriptor[]>([]);
-const selectedTriggerType = ref<string>('');
+const selectedTriggerType = ref<string>(props.data.initialTriggerType ?? '');
 
 const {
 	statuses,

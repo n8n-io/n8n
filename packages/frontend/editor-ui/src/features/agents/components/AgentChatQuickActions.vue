@@ -6,11 +6,11 @@
  *   - Add trigger: opens `AgentAddTriggerModal` and re-emits connected-trigger
  *     updates + trigger-added events upward.
  */
-import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_ADD_TRIGGER_MODAL_KEY } from '../constants';
 import type { AgentJsonToolRef, AgentResource } from '../types';
+import AgentChipButton from './AgentChipButton.vue';
 
 const props = defineProps<{
 	tools: AgentJsonToolRef[];
@@ -64,48 +64,31 @@ function onAddTrigger() {
 
 <template>
 	<div :class="$style.row" data-testid="agent-chat-quick-actions">
-		<button
-			type="button"
-			:class="$style.quickActionButton"
+		<AgentChipButton
+			variant="suggestion"
+			icon="wrench"
 			data-testid="agent-quick-action-add-tool"
 			@click="onAddTool"
 		>
-			<N8nIcon icon="wrench" size="medium" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTool') }}
-		</button>
-		<button
-			type="button"
-			:class="$style.quickActionButton"
+		</AgentChipButton>
+		<AgentChipButton
+			variant="suggestion"
+			icon="zap"
 			data-testid="agent-quick-action-add-trigger"
 			@click="onAddTrigger"
 		>
-			<N8nIcon icon="zap" size="medium" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTrigger') }}
-		</button>
+		</AgentChipButton>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '../../ai/shared/styles/prompt-suggestion-buttons' as promptSuggestions;
-
 .row {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: flex-start;
 	gap: var(--spacing--2xs);
 	width: 100%;
-}
-
-.quickActionButton {
-	@include promptSuggestions.prompt-suggestion-button;
-}
-
-.quickActionIcon {
-	@include promptSuggestions.prompt-suggestion-icon;
-
-	.quickActionButton:hover &,
-	.quickActionButton:focus-visible & {
-		opacity: 1;
-	}
 }
 </style>
