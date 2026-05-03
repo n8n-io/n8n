@@ -410,6 +410,7 @@ onMounted(async () => {
 					</N8nText>
 					<N8nSelect
 						v-model="selectedTriggerType"
+						:class="[$style.triggerPicker, selectedIcon ? $style.triggerPickerWithIcon : undefined]"
 						:placeholder="i18n.baseText('agents.builder.addTrigger.picker.placeholder')"
 						size="medium"
 						data-testid="agent-add-trigger-picker"
@@ -422,8 +423,10 @@ onMounted(async () => {
 							:label="i18n.baseText('agents.schedule.title')"
 						>
 							<span :class="$style.optionRow">
-								<N8nIcon :icon="SCHEDULE_ICON" :size="16" />
-								{{ i18n.baseText('agents.schedule.title') }}
+								<N8nIcon :icon="SCHEDULE_ICON" :size="16" :class="$style.optionIcon" />
+								<span :class="$style.optionLabel">
+									{{ i18n.baseText('agents.schedule.title') }}
+								</span>
 							</span>
 						</N8nOption>
 						<N8nOption
@@ -433,8 +436,12 @@ onMounted(async () => {
 							:label="integration.label"
 						>
 							<span :class="$style.optionRow">
-								<N8nIcon :icon="toIconName(integration.icon)" :size="16" />
-								{{ integration.label }}
+								<N8nIcon
+									:icon="toIconName(integration.icon)"
+									:size="16"
+									:class="$style.optionIcon"
+								/>
+								<span :class="$style.optionLabel">{{ integration.label }}</span>
 							</span>
 						</N8nOption>
 					</N8nSelect>
@@ -629,11 +636,33 @@ onMounted(async () => {
 	gap: var(--spacing--2xs);
 }
 
-.optionRow {
-	display: inline-flex;
+.triggerPicker :global(.el-input .el-input__prefix) {
+	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	left: var(--spacing--xs);
+}
+
+.triggerPicker.triggerPickerWithIcon :global(.el-input .el-input__inner) {
+	padding-left: calc(var(--spacing--xl) + var(--spacing--2xs));
+}
+
+.optionRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 	padding: 0 var(--spacing--3xs);
+}
+
+.optionIcon {
+	flex: 0 0 auto;
+}
+
+.optionLabel {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .placeholderState {
