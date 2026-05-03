@@ -36,7 +36,9 @@ const getAsCodeAction = z.object({
 });
 
 const deleteAction = z.object({
-	action: z.literal('delete').describe('Archive a workflow by ID (soft delete)'),
+	action: z
+		.literal('delete')
+		.describe('Archive a workflow by ID (soft delete — recoverable by the user)'),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -230,7 +232,6 @@ async function handleDelete(
 		return { success: false, denied: true, reason: 'User denied the action' };
 	}
 
-	// Approved or always_allow — execute
 	await context.workflowService.archive(input.workflowId);
 	return { success: true };
 }

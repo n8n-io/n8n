@@ -289,6 +289,8 @@ describe('VirtualSchema.vue', () => {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflow.id),
 		);
+		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+		workflowDocumentStore.setName(workflowsStore.workflow.name);
 
 		renderComponent = createComponentRenderer(VirtualSchema, {
 			global: {

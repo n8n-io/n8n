@@ -20,7 +20,7 @@ import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow'
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
@@ -68,6 +68,7 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 
 describe('RunData', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowDocumentStore: MockedStore<() => ReturnType<typeof useWorkflowDocumentStore>>;
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
 	let ndvStore: MockedStore<typeof useNDVStore>;
@@ -1359,7 +1360,7 @@ describe('RunData', () => {
 			stubActions: false,
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
-				[STORES.NDV]: {
+				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
@@ -1403,19 +1404,17 @@ describe('RunData', () => {
 		ndvStore = mockedStore(useNDVStore);
 
 		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		workflowsStore.getNodeByName.mockReturnValue(workflowNodes[0]);
+		const testWorkflowId = workflowId ?? 'test-workflow';
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
+		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(workflowNodes[0]);
 
 		// Mock ndvStore methods
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
-		const testWorkflowId = workflowId ?? 'test-workflow';
 		workflowsStore.workflow.id = testWorkflowId;
 
 		if (pinnedData) {
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(testWorkflowId),
-			);
 			workflowDocumentStore.pinNodeData('Test Node', pinnedData);
 		}
 

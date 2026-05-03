@@ -137,6 +137,7 @@ import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { N8nCallout, N8nCanvasThinkingPill, N8nCanvasCollaborationPill } from '@n8n/design-system';
+import { useWorkflowHelpers } from '../composables/useWorkflowHelpers';
 
 defineOptions({
 	name: 'NodeView',
@@ -200,6 +201,7 @@ const collaborationStore = useCollaborationStore();
 const emptyStateBuilderPromptStore = useEmptyStateBuilderPromptStore();
 const chatPanelStore = useChatPanelStore();
 const chatHubPanelStore = useChatHubPanelStore();
+const workflowHelpers = useWorkflowHelpers();
 
 // Initialize activity detection for collaboration
 useActivityDetection();
@@ -244,8 +246,6 @@ const {
 	fetchWorkflowDataFromUrl,
 	resetWorkspace,
 	initializeWorkspace,
-	editableWorkflow,
-	editableWorkflowObject,
 	lastClickPosition,
 	startChat,
 	addNodesAndConnections,
@@ -292,7 +292,7 @@ const isCanvasReadOnly = computed(() => {
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
-		editableWorkflow.value.isArchived ||
+		(workflowDocumentStore?.value?.isArchived ?? false) ||
 		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
 });
@@ -301,7 +301,7 @@ const canExecuteOnCanvas = computed(() => {
 	if (isDemoRoute.value) {
 		return route.query.canExecute === 'true';
 	}
-	if (editableWorkflow.value.isArchived) return false;
+	if (workflowDocumentStore?.value?.isArchived) return false;
 	if (builderStore.streaming) return false;
 	return !!(workflowPermissions.value.execute ?? projectPermissions.value.workflow.execute);
 });
@@ -395,7 +395,11 @@ async function openWorkflow(data: IWorkflowDb) {
  */
 
 const triggerNodes = computed(() => {
-	return editableWorkflow.value.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type));
+	return (
+		workflowDocumentStore?.value?.allNodes.filter((node) =>
+			nodeTypesStore.isTriggerNode(node.type),
+		) ?? []
+	);
 });
 
 const containsTriggerNodes = computed(() => triggerNodes.value.length > 0);
@@ -1069,8 +1073,18 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
+
 async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
-	const webhookUrl = await workflowsStore.getWebhookUrl(id, webhookType);
+	const node = workflowDocumentStore?.value?.getNodeById(id);
+
+	if (!node) return;
+
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (!nodeType?.webhooks?.length) return;
+
+	const webhook = nodeType.webhooks[0];
+	const webhookUrl = await workflowHelpers.getWebhookUrl(webhook, node, webhookType);
+
 	if (!webhookUrl) return;
 
 	void clipboard.copy(webhookUrl);
@@ -1197,13 +1211,15 @@ function onRunWorkflowButtonMouseLeave() {
  */
 
 const chatTriggerNode = computed(() => {
-	return editableWorkflow.value.nodes.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+	return workflowDocumentStore?.value?.allNodes.find(
+		(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+	);
 });
 
 const containsChatTriggerNodes = computed(() => {
 	return (
 		!isExecutionWaitingForWebhook.value &&
-		!!editableWorkflow.value.nodes.find(
+		!!workflowDocumentStore?.value?.allNodes.find(
 			(node) =>
 				[MANUAL_CHAT_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(node.type) &&
 				node.disabled !== true,
@@ -1265,7 +1281,9 @@ function onToggleChat() {
  * Evaluation
  */
 const evaluationTriggerNode = computed(() => {
-	return editableWorkflow.value.nodes.find((node) => node.type === EVALUATION_TRIGGER_NODE_TYPE);
+	return workflowDocumentStore?.value?.allNodes.find(
+		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
+	);
 });
 
 /**
@@ -1407,7 +1425,7 @@ async function onSaveFromWithinExecutionDebug() {
 
 	await router.replace({
 		name: VIEWS.WORKFLOW,
-		params: { name: workflowId.value },
+		params: { workflowId: workflowId.value },
 	});
 }
 
@@ -1536,7 +1554,7 @@ async function handlePendingBuilderPrompt() {
  */
 
 function updateNodeRoute(nodeId: string) {
-	const nodeUi = workflowsStore.findNodeByPartialId(nodeId);
+	const nodeUi = workflowDocumentStore?.value?.findNodeByPartialId(nodeId);
 	if (nodeUi) {
 		setNodeActive(nodeUi.id, 'other');
 	} else {
@@ -1547,20 +1565,24 @@ function updateNodeRoute(nodeId: string) {
 		});
 		void router.replace({
 			name: route.name,
-			params: { name: workflowId.value },
+			params: { workflowId: workflowId.value },
 			query: route.query,
 		});
 	}
 }
 
-watch([() => route.name, () => route.params.name], () => {
+watch([() => route.name, () => route.params.workflowId], () => {
 	// Handle route-specific actions (query actions, debug mode event binding, node issues)
 	initializeRoute();
 });
 
 watch(
 	() => {
-		return isLoading.value || isCanvasReadOnly.value || editableWorkflow.value.nodes.length !== 0;
+		return (
+			isLoading.value ||
+			isCanvasReadOnly.value ||
+			(workflowDocumentStore?.value?.allNodes ?? []).length !== 0
+		);
 	},
 	(isReadOnlyOrLoading) => {
 		if (isReadOnlyOrLoading) {
@@ -1615,7 +1637,7 @@ watch(
 		if (nodeId !== route.params.nodeId) {
 			await router.replace({
 				name: route.name,
-				params: { name: workflowId.value, nodeId },
+				params: { workflowId: workflowId.value, nodeId },
 				query: route.query,
 			});
 		}
@@ -1670,7 +1692,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 	const isNavigatingBetweenWorkflows =
 		[VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(from.name as VIEWS) &&
 		[VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(to.name as VIEWS) &&
-		from.params.name !== to.params.name;
+		from.params.workflowId !== to.params.workflowId;
 
 	const shouldSkipPrompt =
 		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
@@ -1689,7 +1711,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 				const savedWorkflowId = workflowId.value;
 				await router.replace({
 					name: VIEWS.WORKFLOW,
-					params: { name: savedWorkflowId },
+					params: { workflowId: savedWorkflowId },
 				});
 				await router.push(to);
 				return false;
@@ -1773,11 +1795,9 @@ onBeforeUnmount(() => {
 <template>
 	<div :class="$style.wrapper">
 		<WorkflowCanvas
-			v-if="editableWorkflow && editableWorkflowObject && !isLoading"
-			:id="editableWorkflow.id"
+			v-if="!isLoading"
+			:id="workflowDocumentStore?.workflowId"
 			ref="canvas"
-			:workflow="editableWorkflow"
-			:workflow-object="editableWorkflowObject"
 			:fallback-nodes="fallbackNodes"
 			:show-fallback-nodes="showFallbackNodes"
 			:event-bus="canvasEventBus"
@@ -1923,7 +1943,6 @@ onBeforeUnmount(() => {
 			<Suspense>
 				<LazyNodeDetailsView
 					v-if="!isNDVV2"
-					:workflow-object="editableWorkflowObject"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					:renaming="false"
@@ -1936,7 +1955,6 @@ onBeforeUnmount(() => {
 			<Suspense>
 				<LazyNodeDetailsViewV2
 					v-if="isNDVV2"
-					:workflow-object="editableWorkflowObject"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="nodeHelpers.isProductionExecutionPreview.value"
 					@rename-node="onRenameNode"

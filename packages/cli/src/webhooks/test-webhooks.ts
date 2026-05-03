@@ -1,4 +1,3 @@
-import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
@@ -13,16 +12,7 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 
-import { authAllowlistedNodes } from './constants';
-import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
-import { WebhookService } from './webhook.service';
-import type {
-	IWebhookResponseCallbackData,
-	IWebhookManager,
-	WebhookAccessControlOptions,
-	WebhookRequest,
-} from './webhook.types';
-
+import { TEST_WEBHOOK_TIMEOUT } from '@/constants';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
 import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
@@ -36,6 +26,19 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+import { WebhookResponse } from './webhook-response';
+
+import { authAllowlistedNodes } from './constants';
+import { matchesExpectedNodeType } from './node-type-matcher';
+import type { ExpectedWebhookNodeType } from './node-type-matcher';
+import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import { WebhookService } from './webhook.service';
+import type {
+	IWebhookResponseCallbackData,
+	IWebhookManager,
+	WebhookAccessControlOptions,
+	WebhookRequest,
+} from './webhook.types';
 
 const SINGLE_WEBHOOK_TRIGGERS = [
 	'n8n-nodes-base.telegramTrigger',
@@ -67,7 +70,8 @@ export class TestWebhooks implements IWebhookManager {
 	async executeWebhook(
 		request: WebhookRequest,
 		response: express.Response,
-	): Promise<IWebhookResponseCallbackData> {
+		expectedNodeType?: ExpectedWebhookNodeType,
+	): Promise<IWebhookResponseCallbackData | WebhookResponse> {
 		const httpMethod = request.method;
 
 		let path = removeTrailingSlash(request.params.path);
@@ -97,6 +101,17 @@ export class TestWebhooks implements IWebhookManager {
 				if (segment.startsWith(':')) {
 					request.params[segment.slice(1)] = segments[index];
 				}
+			});
+		}
+
+		if (
+			expectedNodeType &&
+			!matchesExpectedNodeType(expectedNodeType, webhook.webhookDescription.nodeType)
+		) {
+			throw new WebhookNotFoundError({
+				path,
+				httpMethod,
+				webhookMethods: await this.getWebhookMethods(path),
 			});
 		}
 
@@ -144,7 +159,7 @@ export class TestWebhooks implements IWebhookManager {
 						undefined, // executionId
 						request,
 						response,
-						(error: Error | null, data: IWebhookResponseCallbackData) => {
+						(error: Error | null, data: IWebhookResponseCallbackData | WebhookResponse) => {
 							if (error !== null) reject(error);
 							else resolve(data);
 						},

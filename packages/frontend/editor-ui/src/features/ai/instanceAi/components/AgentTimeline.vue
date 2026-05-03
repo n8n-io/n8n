@@ -12,6 +12,7 @@ import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimel
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -243,8 +244,17 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				</ToolCallStep>
 			</template>
 
-			<!-- Child agent — flat section -->
-			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
+			<!-- Child agent — flat section. Running builder sub-agents are
+				 extracted and rendered at the bottom of the conversation by
+				 InstanceAiView; once a builder finishes it reappears here in its
+				 chronological slot. -->
+			<template
+				v-else-if="
+					entry.type === 'child' &&
+					childrenById[entry.agentId] &&
+					!isActiveBuilderAgent(childrenById[entry.agentId])
+				"
+			>
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
 				<!-- Planner child: render PlanReviewPanel below the agent section -->
@@ -279,6 +289,7 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						:name="resolveArtifactName(artifact)"
 						:resource-id="artifact.resourceId"
 						:project-id="artifact.projectId"
+						:archived="store.producedArtifacts.get(artifact.resourceId)?.archived"
 						:metadata="formatArtifactMetadata(artifact)"
 					/>
 				</template>

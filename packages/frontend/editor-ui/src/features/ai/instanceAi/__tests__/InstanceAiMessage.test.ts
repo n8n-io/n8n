@@ -195,38 +195,6 @@ describe('InstanceAiMessage', () => {
 		expect(getByText('Recalling conversation...')).toBeInTheDocument();
 	});
 
-	it('should show background task indicator when child has active status and not streaming', () => {
-		const { getByText } = renderComponent({
-			props: {
-				message: makeMessage({
-					isStreaming: false,
-					agentTree: makeAgentTree({
-						status: 'completed',
-						children: [makeAgentTree({ agentId: 'child-1', status: 'active' })],
-					}),
-				}),
-			},
-		});
-
-		expect(getByText('Working in the background...')).toBeInTheDocument();
-	});
-
-	it('should NOT show background task indicator during streaming', () => {
-		const { queryByText } = renderComponent({
-			props: {
-				message: makeMessage({
-					isStreaming: true,
-					agentTree: makeAgentTree({
-						status: 'active',
-						children: [makeAgentTree({ agentId: 'child-1', status: 'active' })],
-					}),
-				}),
-			},
-		});
-
-		expect(queryByText('Working in the background...')).not.toBeInTheDocument();
-	});
-
 	it('should render agent activity tree when agentTree is present', () => {
 		const { getByTestId } = renderComponent({
 			props: {

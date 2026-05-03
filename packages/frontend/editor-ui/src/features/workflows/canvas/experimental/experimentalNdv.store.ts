@@ -2,6 +2,10 @@ import { computed, ref, shallowRef } from 'vue';
 import { defineStore } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
+import {
 	type Dimensions,
 	type FitView,
 	type GraphNode,
@@ -16,6 +20,9 @@ import { CANVAS_ZOOMED_VIEW_EXPERIMENT, NDV_IN_FOCUS_PANEL_EXPERIMENT } from '@/
 
 export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	const workflowStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId)),
+	);
 	const postHogStore = usePostHog();
 	const isZoomedViewEnabled = computed(
 		() =>
@@ -42,13 +49,12 @@ export const useExperimentalNdvStore = defineStore('experimentalNdv', () => {
 	}
 
 	function collapseAllNodes() {
-		collapsedNodes.value = workflowStore.allNodes.reduce<Partial<Record<string, boolean>>>(
-			(acc, node) => {
-				acc[node.id] = true;
-				return acc;
-			},
-			{},
-		);
+		collapsedNodes.value = (workflowDocumentStore.value?.allNodes ?? []).reduce<
+			Partial<Record<string, boolean>>
+		>((acc, node) => {
+			acc[node.id] = true;
+			return acc;
+		}, {});
 	}
 
 	function expandAllNodes() {

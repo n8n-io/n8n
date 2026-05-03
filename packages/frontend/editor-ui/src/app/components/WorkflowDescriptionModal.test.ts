@@ -459,7 +459,7 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show base tooltip when MCP is disabled', async () => {
 			// Ensure MCP is disabled
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false };
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false, mcpManagedByEnv: false };
 
 			const { getByTestId } = renderModal({
 				props: {
@@ -486,7 +486,7 @@ describe('WorkflowDescriptionModal', () => {
 		it('should show MCP tooltip when MCP is enabled', async () => {
 			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true };
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true, mcpManagedByEnv: false };
 
 			const { getByTestId } = renderModal({
 				props: {

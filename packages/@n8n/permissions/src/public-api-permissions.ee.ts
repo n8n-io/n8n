@@ -62,7 +62,13 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableRow:upsert',
 	'folder:create',
 	'folder:delete',
+	'folder:read',
+	'folder:update',
 	'folder:list',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
 	'insights:read',
 ];
 
@@ -106,7 +112,13 @@ export const MEMBER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'dataTableRow:upsert',
 	'folder:create',
 	'folder:delete',
+	'folder:read',
+	'folder:update',
 	'folder:list',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
 	'insights:read',
 ];
 
@@ -150,6 +162,10 @@ export const API_KEY_SCOPES_FOR_IMPLICIT_PERSONAL_PROJECT: ApiKeyScope[] = [
 	'dataTableRow:update',
 	'dataTableRow:delete',
 	'dataTableRow:upsert',
+	'dataTableColumn:create',
+	'dataTableColumn:read',
+	'dataTableColumn:update',
+	'dataTableColumn:delete',
 	'insights:read',
 ];
 

@@ -4,6 +4,7 @@ import { InstanceSettings } from '@/instance-settings';
 import { mockInstance } from '@test/utils';
 
 import { Cipher } from '../cipher';
+import { EncryptionKeyProxy, type IEncryptionKeyProvider } from '../encryption-key-proxy';
 
 describe('Cipher', () => {
 	mockInstance(InstanceSettings, { encryptionKey: 'test_key' });
@@ -54,6 +55,20 @@ describe('Cipher', () => {
 		it('should fail to decrypt with a non-instance key', () => {
 			const encrypted = cipher.encryptWithInstanceKey('random-string');
 			expect(() => cipher.decryptWithKey(encrypted, 'some-other-key', 'aes-256-cbc')).toThrow();
+		});
+	});
+
+	describe('encryptDEKWithInstanceKey / decryptDEKWithInstanceKey', () => {
+		it('should roundtrip a 32-byte hex key using GCM', () => {
+			const plaintextDEK = '11'.repeat(32);
+			const encrypted = cipher.encryptDEKWithInstanceKey(plaintextDEK);
+			expect(cipher.decryptDEKWithInstanceKey(encrypted)).toEqual(plaintextDEK);
+		});
+
+		it('should produce ciphertext not interoperable with decryptWithInstanceKey (CBC)', () => {
+			const plaintextDEK = '11'.repeat(32);
+			const encrypted = cipher.encryptDEKWithInstanceKey(plaintextDEK);
+			expect(() => cipher.decryptWithInstanceKey(encrypted)).toThrow();
 		});
 	});
 
@@ -163,6 +178,144 @@ describe('Cipher', () => {
 			expect(() => cipher.decryptWithKey(buf.toString('base64'), gcmKey, 'aes-256-gcm')).toThrow(
 				'Unsupported GCM ciphertext version',
 			);
+		});
+	});
+
+	describe('encryptV2 / decryptV2 (proxy-aware)', () => {
+		const instanceKeyForProxy = 'test_key';
+		const plaintextDataKey = '11'.repeat(32);
+		const encryptionKeyProxy = Container.get(EncryptionKeyProxy);
+
+		const withProvider = (provider: Partial<IEncryptionKeyProvider>) => {
+			encryptionKeyProxy.setProvider(provider as IEncryptionKeyProvider);
+		};
+
+		afterEach(() => {
+			jest.restoreAllMocks();
+			encryptionKeyProxy.setProvider(undefined);
+		});
+
+		it('should use active key and embed keyId prefix when proxy is registered and feature flag is on', async () => {
+			const keyId = 'test-uuid-1234';
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+
+			withProvider({
+				getActiveKey: async () => ({
+					id: keyId,
+					value: encryptedDataKey,
+					algorithm: 'aes-256-gcm',
+				}),
+				getKeyById: async () => null,
+				getLegacyKey: async () => ({
+					id: 'legacy',
+					value: encryptedDataKey,
+					algorithm: 'aes-256-cbc',
+				}),
+			});
+
+			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const encrypted = await cipher.encryptV2('hello');
+				expect(encrypted.startsWith(`${keyId}:`)).toBe(true);
+
+				const ciphertext = encrypted.slice(keyId.length + 1);
+				const decrypted = cipher.decryptWithKey(ciphertext, plaintextDataKey, 'aes-256-gcm');
+				expect(decrypted).toEqual('hello');
+			} finally {
+				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
+			}
+		});
+
+		it('should decrypt using keyId from prefix when proxy is registered', async () => {
+			const keyId = 'test-uuid-5678';
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+			const ciphertext = cipher.encryptWithKey('world', plaintextDataKey, 'aes-256-gcm');
+			const prefixed = `${keyId}:${ciphertext}`;
+
+			withProvider({
+				getActiveKey: async () => ({
+					id: keyId,
+					value: encryptedDataKey,
+					algorithm: 'aes-256-gcm',
+				}),
+				getKeyById: async (id: string) =>
+					id === keyId ? { id, value: encryptedDataKey, algorithm: 'aes-256-gcm' } : null,
+				getLegacyKey: async () => ({
+					id: 'legacy',
+					value: encryptedDataKey,
+					algorithm: 'aes-256-cbc',
+				}),
+			});
+
+			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const decrypted = await cipher.decryptV2(prefixed);
+				expect(decrypted).toEqual('world');
+			} finally {
+				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
+			}
+		});
+
+		it('should use legacy CBC key for unprefixed data when proxy is registered', async () => {
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(instanceKeyForProxy);
+			const legacyCiphertext = cipher.encryptWithKey(
+				'legacy-data',
+				instanceKeyForProxy,
+				'aes-256-cbc',
+			);
+
+			withProvider({
+				getActiveKey: async () => ({
+					id: 'active',
+					value: encryptedDataKey,
+					algorithm: 'aes-256-cbc',
+				}),
+				getKeyById: async () => null,
+				getLegacyKey: async () => ({
+					id: 'legacy',
+					value: encryptedDataKey,
+					algorithm: 'aes-256-cbc',
+				}),
+			});
+
+			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const decrypted = await cipher.decryptV2(legacyCiphertext);
+				expect(decrypted).toEqual('legacy-data');
+			} finally {
+				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
+			}
+		});
+
+		it('should bypass proxy when customEncryptionKey is provided', async () => {
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
+			withProvider({
+				getActiveKey: async () => ({
+					id: 'should-not-be-called',
+					value: encryptedDataKey,
+					algorithm: 'aes-256-gcm',
+				}),
+				getKeyById: async () => null,
+				getLegacyKey: async () => ({
+					id: 'should-not-be-called',
+					value: encryptedDataKey,
+					algorithm: 'aes-256-gcm',
+				}),
+			});
+
+			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const encrypted = await cipher.encryptV2('bypass-test', 'custom-key');
+				expect(encrypted.includes(':')).toBe(false);
+				const decrypted = await cipher.decryptV2(encrypted, 'custom-key');
+				expect(decrypted).toEqual('bypass-test');
+			} finally {
+				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
+			}
 		});
 	});
 });

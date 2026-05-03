@@ -129,22 +129,6 @@ export async function startDetachedDelegateTask(
 	const subAgentId = input.agentId ?? `agent-delegate-${nanoid(6)}`;
 	const taskId = input.taskId ?? `delegate-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role,
-			tools: input.tools,
-			taskId,
-			kind: 'delegate',
-			title: input.title,
-			subtitle: truncateLabel(input.spec),
-			goal: input.spec,
-		},
-	});
-
 	const briefingMessage = await buildDelegateBriefing(
 		context,
 		role,
@@ -167,13 +151,16 @@ export async function startDetachedDelegateTask(
 	});
 	const tracedTools = traceSubAgentTools(context, validTools, role);
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role,
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
+		dedupeKey: { role, plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = createSubAgent({
@@ -223,6 +210,40 @@ export async function startDetachedDelegateTask(
 					return await result.text;
 				});
 			});
+		},
+	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Delegation already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start delegation: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role,
+			tools: input.tools,
+			taskId,
+			kind: 'delegate',
+			title: input.title,
+			subtitle: truncateLabel(input.spec),
+			goal: input.spec,
 		},
 	});
 

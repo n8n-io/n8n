@@ -80,11 +80,11 @@ describe('useWorkflowDocumentNodes', () => {
 			expect(workflowDocumentNodes.getNodeByName('MyNode')?.id).toBe(node.id);
 		});
 
-		it('nodes set via setNodes are readable via getNodes', () => {
+		it('nodes set via setNodes are readable via allNodes', () => {
 			const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
 			workflowDocumentNodes.setNodes([createNode({ name: 'A' }), createNode({ name: 'B' })]);
 
-			const nodes = workflowDocumentNodes.getNodes();
+			const nodes = workflowDocumentNodes.allNodes.value;
 			expect(nodes).toHaveLength(2);
 		});
 
@@ -588,5 +588,27 @@ describe('useWorkflowDocumentNodes', () => {
 				payload: { name: '', id: 'nonexistent' },
 			});
 		});
+	});
+
+	describe('findNodeByPartialId', () => {
+		test.each([
+			[[], 'D', undefined],
+			[['A', 'B', 'C'], 'D', undefined],
+			[['A', 'B', 'C'], 'B', 1],
+			[['AA', 'BB', 'CC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'B', 1],
+			[['AA', 'BB', 'BC'], 'BC', 2],
+		] as Array<[string[], string, number | undefined]>)(
+			'with input %s , %s returns node with index %s',
+			(ids, id, expectedIndex) => {
+				const nodes = ids.map((x) => createNode({ id: x, name: x }));
+				const workflowDocumentNodes = useWorkflowDocumentNodes(deps);
+				workflowDocumentNodes.setNodes(nodes);
+
+				expect(workflowDocumentNodes.findNodeByPartialId(id)?.id).toBe(
+					nodes[expectedIndex ?? -1]?.id,
+				);
+			},
+		);
 	});
 });
