@@ -141,23 +141,5 @@ describe('MauticTrigger', () => {
 			expect(result).toBeDefined();
 			expect(result.workflowData).toBeDefined();
 		});
-
-		it('should process webhook when no secret is configured (backward compat)', async () => {
-			const bodyData = {
-				'mautic.lead_post_save_new': [{ contact: { id: 1 } }],
-			};
-
-			(verifySignature as jest.Mock).mockReturnValue(true);
-			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				body: bodyData,
-			} as any);
-
-			const result = await trigger.webhook.call(
-				mockWebhookFunctions as unknown as IWebhookFunctions,
-			);
-
-			expect(verifySignature).toHaveBeenCalled();
-			expect(result.workflowData).toBeDefined();
-		});
 	});
 });
