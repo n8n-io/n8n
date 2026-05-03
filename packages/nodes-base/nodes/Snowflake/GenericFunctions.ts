@@ -15,7 +15,7 @@ const commonConnectionFields = [
 
 export type SnowflakeCredential = Pick<
 	snowflake.ConnectionOptions,
-	(typeof commonConnectionFields)[number]
+	(typeof commonConnectionFields)[number] | 'host'
 > &
 	(
 		| {
@@ -50,6 +50,11 @@ const extractPrivateKey = (credential: { privateKey: string; passphrase?: string
 
 export const getConnectionOptions = (credential: SnowflakeCredential) => {
 	const connectionOptions: snowflake.ConnectionOptions = pick(credential, commonConnectionFields);
+	// Keep host out of commonConnectionFields so blank values can be trimmed and skipped.
+	const originHostname = credential.host?.trim();
+	if (originHostname) {
+		connectionOptions.host = originHostname;
+	}
 	if (credential.authentication === 'keyPair') {
 		connectionOptions.authenticator = 'SNOWFLAKE_JWT';
 		connectionOptions.username = credential.username;
