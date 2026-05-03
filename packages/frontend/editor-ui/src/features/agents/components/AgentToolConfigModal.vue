@@ -28,6 +28,7 @@ import {
 	updateToolRefFromNode,
 	updateWorkflowToolRef,
 } from '../composables/useAgentToolRefAdapter';
+import AgentJsonEditor from './AgentJsonEditor.vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -56,7 +57,6 @@ const initialNode = computed<INode | null>(() =>
 const initialName = computed(() => props.data.toolRef.name ?? initialNode.value?.name ?? '');
 const nodeName = ref(initialName.value);
 
-const toolJson = computed(() => JSON.stringify(props.data.toolRef, null, 2));
 const viewOptions = computed(() => [
 	{ label: 'Config', value: 'config' as const },
 	{ label: 'Raw', value: 'raw' as const },
@@ -149,14 +149,21 @@ function handleNodeNameUpdate(name: string) {
 			</div>
 		</template>
 		<template #content>
-			<div :class="$style.contentWrapper">
+			<div :class="[$style.contentWrapper, activeView === 'raw' && $style.rawContentWrapper]">
 				<N8nRadioButtons
 					:model-value="activeView"
 					:options="viewOptions"
 					:class="$style.viewToggle"
 					@update:model-value="activeView = $event"
 				/>
-				<pre v-show="activeView === 'raw'" :class="$style.codePreview">{{ toolJson }}</pre>
+				<AgentJsonEditor
+					v-show="activeView === 'raw'"
+					:value="data.toolRef"
+					read-only
+					:show-read-only-overlay="false"
+					:class="$style.rawEditor"
+					copy-button-test-id="agent-tool-json-copy"
+				/>
 				<div v-show="activeView === 'config'" :class="$style.configureTab">
 					<WorkflowToolConfigContent
 						v-if="isWorkflowTool"
@@ -259,6 +266,11 @@ function handleNodeNameUpdate(name: string) {
 	}
 }
 
+.rawContentWrapper {
+	margin-right: 0;
+	padding-bottom: 0;
+}
+
 .configureTab {
 	display: flex;
 	flex: 1;
@@ -270,19 +282,11 @@ function handleNodeNameUpdate(name: string) {
 	align-self: flex-start;
 }
 
-.codePreview {
+.rawEditor {
 	flex: 1;
+	width: 100%;
 	min-height: 0;
-	margin: 0;
-	padding: var(--spacing--sm);
-	overflow: auto;
-	border: var(--border);
-	border-radius: var(--radius);
-	background: var(--background--base);
-	color: var(--text-color--base);
-	font-family: var(--font-family-monospace);
-	font-size: var(--font-size--xs);
-	line-height: var(--line-height--md);
-	white-space: pre;
+	min-width: 0;
+	overflow: hidden;
 }
 </style>

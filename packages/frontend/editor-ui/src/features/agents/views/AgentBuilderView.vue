@@ -62,7 +62,7 @@ import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import AgentChatQuickActions from '../components/AgentChatQuickActions.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
-import AgentConfigJsonEditor from '../components/AgentConfigJsonEditor.vue';
+import AgentJsonEditor from '../components/AgentJsonEditor.vue';
 import AgentPanelHeader from '../components/AgentPanelHeader.vue';
 
 type AgentBuilderMainTab = 'agent' | 'executions' | 'evaluations' | 'raw';
@@ -1167,10 +1167,11 @@ function onSwitchAgent(nextAgentId: string) {
 						/>
 
 						<div v-else-if="activeMainTab === 'raw'">
-							<AgentConfigJsonEditor
-								:config="localConfig"
+							<AgentJsonEditor
+								:value="localConfig"
 								:read-only="isBuildChatStreaming"
-								@update:config="onConfigFieldUpdate"
+								copy-button-test-id="agent-config-json-copy"
+								@update:value="onConfigFieldUpdate"
 							/>
 						</div>
 
