@@ -50,7 +50,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	}
 
 	function getWorkflowUrl(workflowId: string) {
-		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { name: workflowId } });
+		const { href } = router.resolve({ name: VIEWS.WORKFLOW, params: { workflowId } });
 		return href;
 	}
 

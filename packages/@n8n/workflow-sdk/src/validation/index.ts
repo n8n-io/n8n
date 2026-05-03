@@ -1,3 +1,4 @@
+import get from 'lodash/get';
 import type { INodeTypes, IConnections as N8nIConnections, IDisplayOptions } from 'n8n-workflow';
 import { mapConnectionsByDestination } from 'n8n-workflow';
 
@@ -34,6 +35,8 @@ export type ValidationErrorCode =
 	| 'SUBNODE_NOT_CONNECTED'
 	| 'SUBNODE_PARAMETER_MISMATCH'
 	| 'UNSUPPORTED_SUBNODE_INPUT'
+	| 'MISSING_REQUIRED_INPUT'
+	| 'INVALID_OUTPUT_FOR_MODE'
 	| 'MAX_NODES_EXCEEDED'
 	| 'INVALID_EXPRESSION_PATH'
 	| 'PARTIAL_EXPRESSION_PATH'
@@ -491,6 +494,10 @@ export function validateWorkflow(
 		validateSubnodeParameters(json, options.nodeTypesProvider, warnings);
 		// Validate parent nodes actually support their connected AI input types
 		validateParentSupportsInputs(json, options.nodeTypesProvider, warnings);
+		// Validate required AI inputs on parent nodes are actually connected
+		validateRequiredInputsConnected(json, options.nodeTypesProvider, errors);
+		// Validate that emitted connection types are actually exposed by the source node's mode
+		validateOutputUsage(json, options.nodeTypesProvider, warnings);
 	}
 
 	// Merge node input-count consistency
@@ -659,6 +666,16 @@ function validateSubnodeParameters(
 					);
 
 					if (!matches) {
+						// `displayOptions` on `builderHint.inputs[type]` can describe
+						// either subnode-relative params (e.g. ai_vectorStore wants
+						// vector-store mode='retrieve-as-tool') or parent-relative
+						// params (e.g. ai_memory wants chatTrigger mode='hostedChat').
+						// If every mismatched param is absent from the subnode, those
+						// params don't belong to the subnode at all — blaming it is a
+						// false-positive misdirect. Defer to validateParentSupportsInputs.
+						const subnodeOwnsAnyParam = mismatches.some((m) => m.actual !== undefined);
+						if (!subnodeOwnsAnyParam) continue;
+
 						const sdkFn = AI_CONNECTION_TO_SDK_FUNCTION[connectionType] || connectionType;
 
 						// Build error message with actual parameter names from displayOptions
@@ -696,12 +713,37 @@ function buildConditionSummary(
 	const parts: string[] = [];
 	for (const [paramName, expectedValues] of Object.entries(displayOptions.show)) {
 		if (!expectedValues) continue;
-		const actual = parentParams[paramName];
+		// Use lodash get so nested paths (e.g. 'options.loadPreviousSession')
+		// resolve correctly — direct property access would read the literal
+		// dotted key and report 'undefined' even when the nested value is set.
+		const actual = get(parentParams, paramName);
 		const expectedStr = (expectedValues as unknown[]).map((v) => `'${String(v)}'`).join(' or ');
 		parts.push(`${paramName} should be ${expectedStr} (currently '${String(actual)}')`);
 	}
 
 	return parts.length > 0 ? `Required: ${parts.join(', ')}.` : '';
+}
+
+/**
+ * Build a description of which parameters TRIGGERED a requirement.
+ * Used by `MISSING_REQUIRED_INPUT` where the displayOptions conditions are
+ * already satisfied (that's why the requirement applies) — the agent needs
+ * to know which params caused it so it can choose between satisfying the
+ * requirement or backing out by changing those params.
+ */
+function buildTriggeringConditionSummary(
+	displayOptions: IDisplayOptions,
+	parentParams: Record<string, unknown>,
+): string {
+	if (!displayOptions.show) return '';
+
+	const parts: string[] = [];
+	for (const [paramName, _expectedValues] of Object.entries(displayOptions.show)) {
+		const actual = get(parentParams, paramName);
+		parts.push(`${paramName}='${String(actual)}'`);
+	}
+
+	return parts.join(', ');
 }
 
 /**
@@ -772,7 +814,7 @@ function validateParentSupportsInputs(
 					warnings.push(
 						new ValidationWarning(
 							'UNSUPPORTED_SUBNODE_INPUT',
-							`'${subnodeName}' is connected to '${parentNode.name}' as ${subnodeField}, but '${parentNode.name}' does not support ${subnodeField} in its current configuration. ${conditionDetails}`,
+							`'${parentNode.name}' has a ${subnodeField} subnode ('${subnodeName}') connected, but its current configuration does not accept one. ${conditionDetails} These parameters must be set on '${parentNode.name}' itself, NOT on the ${subnodeField} subnode. Alternatively, remove the ${subnodeField} connection if this capability isn't needed.`,
 							parentNode.name,
 							undefined,
 							undefined,
@@ -781,6 +823,191 @@ function validateParentSupportsInputs(
 					);
 				}
 			}
+		}
+	}
+}
+
+/**
+ * Validate that required AI inputs declared in a parent node's builderHint.inputs
+ * are actually connected.
+ *
+ * For each parent node with a builderHint.inputs entry that has `required: true`,
+ * check whether its displayOptions (if any) match the parent's current parameters;
+ * if so, require that a connection of that AI type terminates at the parent.
+ * Emits a fatal error when the connection is missing — without it, the workflow
+ * silently passes validation but breaks at runtime (see INS-136: chat trigger
+ * with `loadPreviousSession: 'memory'` but no memory subnode connected).
+ */
+function validateRequiredInputsConnected(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	errors: ValidationError[],
+): void {
+	const connectionsByDest = mapConnectionsByDestination(
+		json.connections as unknown as N8nIConnections,
+	);
+
+	for (const parentNode of json.nodes) {
+		if (!parentNode.name) continue;
+
+		const version =
+			typeof parentNode.typeVersion === 'string'
+				? parseFloat(parentNode.typeVersion)
+				: (parentNode.typeVersion ?? 1);
+
+		const parentNodeType = nodeTypesProvider.getByNameAndVersion(parentNode.type, version);
+		const builderHintInputs = parentNodeType?.description?.builderHint?.inputs;
+		if (!builderHintInputs) continue;
+
+		const parentContext: DisplayOptionsContext = {
+			parameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+			nodeVersion: version,
+			rootParameters: (parentNode.parameters ?? {}) as Record<string, unknown>,
+		};
+
+		for (const [connectionType, inputConfig] of Object.entries(builderHintInputs)) {
+			if (!connectionType.startsWith('ai_')) continue;
+			if (!inputConfig?.required) continue;
+
+			if (inputConfig.displayOptions) {
+				const conditionsMet = matchesDisplayOptions(
+					parentContext,
+					inputConfig.displayOptions as DisplayOptions,
+				);
+				if (!conditionsMet) continue;
+			}
+
+			const incoming = connectionsByDest[parentNode.name]?.[connectionType];
+			const hasConnection =
+				Array.isArray(incoming) && incoming.some((slot) => Array.isArray(slot) && slot.length > 0);
+			if (hasConnection) continue;
+
+			const subnodeField = AI_CONNECTION_TO_SUBNODE_FIELD[connectionType] || connectionType;
+			const triggerDetails = inputConfig.displayOptions
+				? ` (triggered by ${buildTriggeringConditionSummary(
+						inputConfig.displayOptions,
+						(parentNode.parameters ?? {}) as Record<string, unknown>,
+					)})`
+				: '';
+			const alternative = inputConfig.displayOptions
+				? ` Either connect a ${subnodeField} subnode, or change those parameters to remove the requirement.`
+				: '';
+
+			errors.push(
+				new ValidationError(
+					'MISSING_REQUIRED_INPUT',
+					`'${parentNode.name}' requires a ${subnodeField} subnode connected to its ${connectionType} input${triggerDetails}, but none is connected.${alternative}`,
+					parentNode.name,
+					undefined,
+					'major',
+				),
+			);
+		}
+	}
+}
+
+/**
+ * Render an outgoing connection type as the SDK syntax that produces it, so warning
+ * messages speak the LLM agent's vocabulary instead of raw `main` / `ai_*` types.
+ *
+ * `target` flips the phrasing between describing the wiring already used by the source
+ * (e.g. `wired with .to()`) and describing where the source SHOULD attach instead
+ * (e.g. `subnodes.tools`).
+ */
+function describeOutputWiring(connectionType: string, target = false): string {
+	if (connectionType === 'main') return target ? '.to(...)' : 'wired with .to()';
+	const field = AI_CONNECTION_TO_SUBNODE_FIELD[connectionType];
+	if (field) return target ? `subnodes.${field}` : `attached as subnodes.${field}`;
+	return target ? connectionType : `connected via ${connectionType}`;
+}
+
+/**
+ * Return the connection type from `outputsHint` whose displayOptions match the source
+ * node's current parameters — i.e. the output the node actually exposes given how it's
+ * configured. Used to suggest the correct wiring fix in `INVALID_OUTPUT_FOR_MODE`.
+ */
+function findEnabledAlternativeOutput(
+	outputsHint: Record<string, { displayOptions?: IDisplayOptions } | undefined>,
+	ctx: DisplayOptionsContext,
+	excludeType: string,
+): string | undefined {
+	for (const [type, cfg] of Object.entries(outputsHint)) {
+		if (type === excludeType) continue;
+		if (!cfg) continue;
+		if (cfg.displayOptions && !matchesDisplayOptions(ctx, cfg.displayOptions as DisplayOptions)) {
+			continue;
+		}
+		return type;
+	}
+	return undefined;
+}
+
+/**
+ * Validate that connections leaving a node use connection types the node's current
+ * parameters actually expose. Driven by `builderHint.outputs` declared on the source node.
+ *
+ * Example: a vector store in `mode: 'retrieve'` exposes only `ai_vectorStore`. If the workflow
+ * has a `main` connection out of that node, this emits `INVALID_OUTPUT_FOR_MODE` because
+ * `builderHint.outputs.main.displayOptions` requires `mode` ∈ ['insert', 'load', 'update'].
+ */
+function validateOutputUsage(
+	json: WorkflowJSON,
+	nodeTypesProvider: INodeTypes,
+	warnings: ValidationWarning[],
+): void {
+	for (const sourceNode of json.nodes) {
+		if (!sourceNode.name) continue;
+
+		const outgoing = json.connections[sourceNode.name];
+		if (!outgoing) continue;
+
+		const version =
+			typeof sourceNode.typeVersion === 'string'
+				? parseFloat(sourceNode.typeVersion)
+				: (sourceNode.typeVersion ?? 1);
+
+		const nodeType = nodeTypesProvider.getByNameAndVersion(sourceNode.type, version);
+		const outputsHint = nodeType?.description?.builderHint?.outputs;
+		if (!outputsHint) continue;
+
+		const ctx: DisplayOptionsContext = {
+			parameters: (sourceNode.parameters ?? {}) as Record<string, unknown>,
+			nodeVersion: version,
+			rootParameters: (sourceNode.parameters ?? {}) as Record<string, unknown>,
+		};
+
+		for (const [connectionType, cfg] of Object.entries(outputsHint)) {
+			// No displayOptions => assume the node always emits this connection type.
+			if (!cfg?.displayOptions) continue;
+
+			const edges = outgoing[connectionType];
+			if (!edges) continue;
+			const hasEdges = edges.some((slot) => Array.isArray(slot) && slot.length > 0);
+			if (!hasEdges) continue;
+
+			const enabled = matchesDisplayOptions(ctx, cfg.displayOptions as DisplayOptions);
+			if (enabled) continue;
+
+			const conditionDetails = buildConditionSummary(
+				cfg.displayOptions,
+				(sourceNode.parameters ?? {}) as Record<string, unknown>,
+			);
+			const usedWiring = describeOutputWiring(connectionType);
+			const enabledAlt = findEnabledAlternativeOutput(outputsHint, ctx, connectionType);
+			const altSuggestion = enabledAlt
+				? ` To use this node as-is, attach it as ${describeOutputWiring(enabledAlt, true)} of a parent (it exposes ${enabledAlt} in this configuration).`
+				: '';
+
+			warnings.push(
+				new ValidationWarning(
+					'INVALID_OUTPUT_FOR_MODE',
+					`'${sourceNode.name}' is ${usedWiring} but its current parameters disable that output. ${conditionDetails}${altSuggestion}`,
+					sourceNode.name,
+					undefined,
+					undefined,
+					'major',
+				),
+			);
 		}
 	}
 }

@@ -86,12 +86,22 @@ After writing any workflow with IF, Switch, or Filter nodes, verify:
 
 ### AI Agent with Subnodes — use factory functions in subnodes config
 \`\`\`javascript
+const chatTrigger = trigger({
+  type: '@n8n/n8n-nodes-langchain.chatTrigger',
+  version: 1.3,
+  config: {
+    name: 'Chat Trigger',
+    parameters: { public: false },
+    output: [{ sessionId: 'chat-session-id', chatInput: 'Hello' }]
+  }
+});
+
 const model = languageModel({
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
   version: 1.3,
   config: {
     name: 'OpenAI Chat Model',
-    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-4o-mini' } },
+    parameters: { model: { __rl: true, mode: 'list', value: 'gpt-5.4' } },
     credentials: { openAiApi: ${openAiCredExample} }
   }
 });
@@ -108,6 +118,19 @@ const parser = outputParser({
   }
 });
 
+const memoryNode = memory({
+  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+  version: 1.3,
+  config: {
+    name: 'Conversation Memory',
+    parameters: {
+      sessionIdType: 'customKey',
+      sessionKey: nodeJson(chatTrigger, 'sessionId'),
+      contextWindowLength: 10
+    }
+  }
+});
+
 const agent = node({
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
@@ -119,11 +142,12 @@ const agent = node({
       hasOutputParser: true,
       options: { systemMessage: 'You are an expert...' }
     },
-    subnodes: { model: model, outputParser: parser }
+    subnodes: { model: model, memory: memoryNode, outputParser: parser }
   }
 });
 \`\`\`
 WRONG: \`.to(agent, { connectionType: 'ai_languageModel' })\` — subnodes MUST be in the config object.
+For values inside AI subnodes, use explicit references such as \`nodeJson(triggerNode, 'sessionId')\` instead of \`$json.sessionId\`. For Chat Trigger memory specifically, \`sessionIdType: 'fromInput'\` is also valid.
 
 ### Code Node
 \`\`\`javascript
@@ -225,10 +249,6 @@ export default workflow('id', 'name')
   .add(scheduleTrigger).to(processNode);
 \`\`\`
 
-### Web App (SPA served from a webhook)
-
-When the workflow serves HTML from a webhook (dashboards, admin UIs, custom forms), call \`templates(action="best-practices", technique="web_app")\` for the full file-based HTML pattern, data-injection recipe, multi-route architecture, and a complete multi-route dashboard example. Embedding large HTML inline in Code nodes breaks at ~20KB — always use the file-based pattern from the guide.
-
 ### Google Sheets — documentId and sheetName (RLC fields)
 
 These are Resource Locator fields that require the \`__rl\` object format:
@@ -274,17 +294,24 @@ const SANDBOX_WORKFLOW_RULES = `Follow these rules strictly when generating work
    - Example: \`credentials: { slackApi: { id: 'yXYBqho73obh58ZS', name: 'Slack Bot' } }\`
    - The key (e.g. \`slackApi\`) is the credential **type** from the node type definition
 
-2. **Handle empty outputs with \`alwaysOutputData: true\`**
-   - Nodes that query data (Data Table get, Google Sheets lookup, HTTP Request, etc.) may return 0 items
-   - When a node returns 0 items, all downstream nodes are SKIPPED — the workflow chain breaks silently
-   - Set \`alwaysOutputData: true\` on any node whose output feeds downstream nodes and might return empty results
-   - Common cases: fresh/empty Data Tables, filtered queries, conditional lookups, API searches with no matches
-   - Example: \`config: { ..., alwaysOutputData: true }\`
+2. **Trust empty item lists — don't synthesize fake items**
+   - When a query returns 0 items, downstream nodes simply don't run for that execution. For scheduled or polling triggers this is the correct "nothing to do this round" signal — the next run will execute normally when data appears.
+   - DO NOT add \`alwaysOutputData: true\` just to "keep the chain alive." Forcing an empty \`{}\` item downstream is what causes \`undefined\` reads, failed HTTP calls to \`GET undefined\`, and Code-node crashes on missing fields.
+   - DO NOT add an IF gate before a loop to check "has items?" — loops (\`splitInBatches\`, per-item nodes, \`filter\`) already no-op on empty input. The gate is redundant and adds a failure surface.
+   - \`alwaysOutputData: true\` is only correct when you specifically need a downstream branch to run on the "empty" case — e.g. a dedicated "no matches found" notification path. In that case, pair it with an \`IF\` that explicitly checks for the empty case and routes accordingly. Never use it as a default.
+   - To drop invalid items mid-pipeline, use a \`filter\` node. A \`filter\` that rejects everything emits 0 items and the chain correctly stops — no \`IF\` + \`splitInBatches\` composition needed.
 
 3. **Use \`executeOnce: true\` for single-execution nodes**
    - When a node receives N items but should only execute once (not N times), set \`executeOnce: true\`
    - Common cases: sending a summary notification, generating a report, calling an API that doesn't need per-item execution
-   - Example: \`config: { ..., executeOnce: true }\``;
+   - Example: \`config: { ..., executeOnce: true }\`
+
+4. **Pick the right control-flow primitive**
+   - **Per-item loop with side effects (fetch, embed, write)** → \`splitInBatches\` with \`batchSize: 1\` feeding the per-item work, loop back via \`nextBatch\`. No \`IF\` gate before it.
+   - **Drop items that don't match a predicate** → \`filter\`. It emits 0 items when nothing matches, and the chain stops cleanly.
+   - **Two mutually exclusive paths that both do real work** → \`IF\` (\`onTrue\` / \`onFalse\`).
+   - **Many mutually exclusive paths keyed off a value** → \`switch\` (\`onCase\`).
+   - Nested control flow is supported: \`ifNode.onTrue(loopBuilder)\`, \`switchNode.onCase(0, loopBuilder)\`, and \`splitInBatches(sib).onEachBatch(ifElseBuilder)\` all compile and wire correctly. Use them when the semantics genuinely call for it, not as a workaround for empty-list handling.`;
 
 function composeSdkRulesAndPatterns(mode: 'tool' | 'sandbox'): string {
 	// Shared WORKFLOW_SDK_PATTERNS uses `newCredential('X')` throughout. That
@@ -596,8 +623,10 @@ n8n normalizes column names to snake_case (e.g., \`dayName\` → \`day_name\`). 
 
 4. **Resolve real resource IDs**: Check the node schemas from step 3 for parameters with \`searchListMethod\` or \`loadOptionsMethod\`. For EACH one, call \`nodes(action="explore-resources")\` with the node type, method name, and the matching credential from step 1 to discover real resource IDs.
    - **This is mandatory for: calendars, spreadsheets, channels, folders, models, databases, and any other list-based parameter.** Do NOT assume values like "primary", "default", or "General" — always look up the real ID.
+   - **LLM models in particular** (OpenAI, Anthropic, Groq, etc.): always call \`explore-resources\` with the node's \`@searchListMethod\` when a credential for that provider is attached. The live list reflects what the credential can actually access — free/cheap tiers are often limited (e.g. an OpenAI free-tier key may only return \`gpt-5-mini\`). Picking a model ID that the credential can't access produces a broken workflow. The list is sorted newest-first; use the \`@builderHint\` as selection guidance (e.g. "prefer the GPT-5.4 family") over the live results, not as a hard-coded pick.
    - Example: Google Calendar's \`calendar\` parameter uses \`searchListMethod: getCalendars\`. Call \`nodes(action="explore-resources")\` with \`methodName: "getCalendars"\` to get the actual calendar ID (e.g., "user@example.com"), not "primary".
    - **Never use \`placeholder()\` or fake IDs for discoverable resources.** Create them via a setup workflow instead (see "Setup Workflows" section). For user-provided values, follow the placeholder rules in "SDK Code Rules".
+   - **If \`explore-resources\` returns more than one match and the user did not name a specific one, use \`placeholder('Select <resource>')\` for that parameter** (e.g. \`placeholder('Select a calendar')\`, \`placeholder('Select a Slack channel')\`). Picking one silently is a guess; the setup wizard surfaces placeholders so the user can choose after the build. Only pick a single match without prompting.
    - If the resource can't be created via n8n (e.g., Slack channels), explain clearly in your summary what the user needs to set up.
 
 5. **Write workflow code** to \`${workspaceRoot}/src/workflow.ts\`.
@@ -635,8 +664,16 @@ Follow the **Compositional Workflow Pattern** above. The process becomes:
 Do NOT produce visible output until the final step. All reasoning happens internally.
 
 ## Modifying Existing Workflows
-When modifying an existing workflow, the current code is **already pre-loaded** into \`${workspaceRoot}/src/workflow.ts\` with SDK imports. You can:
-- Read it with \`read_file\` to see the current code
+When modifying an existing workflow, the current code is **already pre-loaded** into \`${workspaceRoot}/src/workflow.ts\` with SDK imports.
+
+**Pre-flight check before any edit**: If the change introduces a node type not already in the file, or touches parameter values you haven't just looked up (model IDs, RLC values, enum selections, credential types, versions, etc.), call \`nodes(action="type-definition")\` first. Read \`@builderHint\`, \`@default\`, \`@searchListMethod\`, and \`@loadOptionsMethod\` from the output.
+
+**Live credential-backed lookups are the source of truth for RLC/list parameters.** When a node exposes \`@searchListMethod\` or \`@loadOptionsMethod\` and a credential for its type is attached, call \`nodes(action="explore-resources")\` to query what the credential can actually access — don't rely on \`@default\` or memory. Treat \`@builderHint\` as *selection guidance over the live list* ("prefer the GPT-5.4 family", "prefer the most recent Sonnet") rather than as the source of the value itself. When no credential is attached, fall back to \`@default\`. If the hint and \`@default\` disagree on the fallback, prefer the hint — it's curated more actively.
+
+Do not guess method names for \`explore-resources\`, and do not fill parameter values in from memory, even when the node or parameter feels familiar. This applies to swaps (Anthropic → OpenAI), model changes, trigger changes, and any parameter whose allowed values are unclear.
+
+Steps:
+- Read the current code with \`read_file\`
 - Edit using \`edit_file\` for targeted changes or \`write_file\` for full rewrites (always use absolute paths)
 - Run tsc → submit-workflow with the \`workflowId\`
 - Do NOT call \`workflows(action="get-as-code")\` — the file is already populated

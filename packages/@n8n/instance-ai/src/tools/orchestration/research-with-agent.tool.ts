@@ -66,22 +66,6 @@ export async function startResearchAgentTask(
 	const subAgentId = input.agentId ?? `agent-researcher-${nanoid(6)}`;
 	const taskId = input.taskId ?? `research-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'web-researcher',
-			tools: Object.keys(researchTools),
-			taskId,
-			kind: 'researcher',
-			title: 'Researching',
-			subtitle: truncateLabel(input.goal),
-			goal: input.goal,
-		},
-	});
-
 	const briefing = await buildSubAgentBriefing({
 		task: input.goal,
 		conversationContext: input.conversationContext,
@@ -102,13 +86,16 @@ export async function startResearchAgentTask(
 	});
 	const tracedResearchTools = traceSubAgentTools(context, researchTools, 'web-researcher');
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'web-researcher',
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
+		dedupeKey: { role: 'web-researcher', plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, drainCorrections, waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
@@ -165,6 +152,40 @@ export async function startResearchAgentTask(
 					return await text;
 				});
 			});
+		},
+	});
+
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Research already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start research: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'web-researcher',
+			tools: Object.keys(researchTools),
+			taskId,
+			kind: 'researcher',
+			title: 'Researching',
+			subtitle: truncateLabel(input.goal),
+			goal: input.goal,
 		},
 	});
 

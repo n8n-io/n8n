@@ -53,11 +53,13 @@ describe('useFavoriteNavItems', () => {
 			const { favoriteWorkflowItems } = useFavoriteNavItems();
 
 			expect(favoriteWorkflowItems.value).toHaveLength(1);
-			expect(favoriteWorkflowItems.value[0]).toMatchObject({
+			expect(favoriteWorkflowItems.value[0].resourceId).toBe('wf-1');
+			expect(favoriteWorkflowItems.value[0].resourceType).toBe('workflow');
+			expect(favoriteWorkflowItems.value[0].menuItem).toMatchObject({
 				id: 'favorite-workflow-wf-1',
 				label: 'Workflow 1',
 				icon: 'log-in',
-				route: { to: { name: VIEWS.WORKFLOW, params: { name: 'wf-1' } } },
+				route: { to: { name: VIEWS.WORKFLOW, params: { workflowId: 'wf-1' } } },
 			});
 		});
 
@@ -80,7 +82,9 @@ describe('useFavoriteNavItems', () => {
 			const { favoriteProjectItems } = useFavoriteNavItems();
 
 			expect(favoriteProjectItems.value).toHaveLength(1);
-			expect(favoriteProjectItems.value[0]).toMatchObject({
+			expect(favoriteProjectItems.value[0].resourceId).toBe('proj-1');
+			expect(favoriteProjectItems.value[0].resourceType).toBe('project');
+			expect(favoriteProjectItems.value[0].menuItem).toMatchObject({
 				id: 'proj-1',
 				label: 'My Project',
 				icon: 'layers',
@@ -96,7 +100,7 @@ describe('useFavoriteNavItems', () => {
 
 			const { favoriteProjectItems } = useFavoriteNavItems();
 
-			expect(favoriteProjectItems.value[0].icon).toBe('layers');
+			expect(favoriteProjectItems.value[0].menuItem.icon).toBe('layers');
 		});
 
 		it('should use raw resourceId as item id (no prefix)', () => {
@@ -106,7 +110,7 @@ describe('useFavoriteNavItems', () => {
 
 			const { favoriteProjectItems } = useFavoriteNavItems();
 
-			expect(favoriteProjectItems.value[0].id).toBe('proj-1');
+			expect(favoriteProjectItems.value[0].menuItem.id).toBe('proj-1');
 		});
 	});
 
@@ -124,7 +128,9 @@ describe('useFavoriteNavItems', () => {
 			const { favoriteDataTableItems } = useFavoriteNavItems();
 
 			expect(favoriteDataTableItems.value).toHaveLength(1);
-			expect(favoriteDataTableItems.value[0]).toMatchObject({
+			expect(favoriteDataTableItems.value[0].resourceId).toBe('dt-1');
+			expect(favoriteDataTableItems.value[0].resourceType).toBe('dataTable');
+			expect(favoriteDataTableItems.value[0].menuItem).toMatchObject({
 				id: 'favorite-datatable-dt-1',
 				label: 'My Table',
 				icon: 'table',
@@ -167,7 +173,9 @@ describe('useFavoriteNavItems', () => {
 			const { favoriteFolderItems } = useFavoriteNavItems();
 
 			expect(favoriteFolderItems.value).toHaveLength(1);
-			expect(favoriteFolderItems.value[0]).toMatchObject({
+			expect(favoriteFolderItems.value[0].resourceId).toBe('folder-1');
+			expect(favoriteFolderItems.value[0].resourceType).toBe('folder');
+			expect(favoriteFolderItems.value[0].menuItem).toMatchObject({
 				id: 'favorite-folder-folder-1',
 				label: 'My Folder',
 				icon: 'folder',
@@ -303,6 +311,17 @@ describe('useFavoriteNavItems', () => {
 			onFavoriteWorkflowClick();
 
 			expect(projectsStore.setCurrentProject).toHaveBeenCalledWith(null);
+		});
+	});
+
+	describe('onUnpinFavorite', () => {
+		it('should call toggleFavorite with the given resourceId and resourceType', async () => {
+			favoritesStore.toggleFavorite.mockResolvedValue();
+
+			const { onUnpinFavorite } = useFavoriteNavItems();
+			await onUnpinFavorite('wf-1', 'workflow');
+
+			expect(favoritesStore.toggleFavorite).toHaveBeenCalledWith('wf-1', 'workflow');
 		});
 	});
 });
