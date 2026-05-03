@@ -217,7 +217,6 @@ function onRangeAfterChange(event: Event) {
 .container {
 	display: flex;
 	flex-direction: column;
-	/*padding: var(--spacing--lg);*/
 	gap: var(--spacing--lg);
 	width: 100%;
 	height: 100%;

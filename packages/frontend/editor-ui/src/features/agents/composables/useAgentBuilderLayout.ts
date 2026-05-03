@@ -1,4 +1,4 @@
-import { useDebounceFn, useElementSize } from '@vueuse/core';
+import { useDebounceFn } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 import { DEBOUNCE_TIME, getDebounceTime } from '@/app/constants/durations';
 
@@ -6,15 +6,9 @@ const CHAT_COLLAPSED_KEY = 'agentBuilder.chatColumnCollapsed';
 const CHAT_WIDTH_KEY = 'agentBuilder.chatColumnWidth';
 const DEFAULT_CHAT_WIDTH = 460;
 const MIN_CHAT_WIDTH = 320;
-const MIN_EDITOR_WIDTH = 420;
 const RESIZE_GRID_SIZE = 8;
 
 export function useAgentBuilderLayout() {
-	const builderRef = ref<HTMLElement | null>(null);
-	const { width: observedBuilderWidth } = useElementSize(builderRef);
-	const builderWidth = computed(
-		() => observedBuilderWidth.value || builderRef.value?.offsetWidth || 0,
-	);
 	const chatColumnCollapsed = ref(
 		typeof window !== 'undefined' && window.localStorage?.getItem(CHAT_COLLAPSED_KEY) === '1',
 	);
@@ -25,10 +19,6 @@ export function useAgentBuilderLayout() {
 	const writeChatColumnWidth = useDebounceFn((width: number) => {
 		writeStoredNumber(CHAT_WIDTH_KEY, width);
 	}, getDebounceTime(DEBOUNCE_TIME.UI.RESIZE));
-
-	const maxChatWidth = computed(() =>
-		Math.max(MIN_CHAT_WIDTH, builderWidth.value - MIN_EDITOR_WIDTH),
-	);
 
 	watch(chatColumnCollapsed, (v) => {
 		try {
@@ -42,41 +32,15 @@ export function useAgentBuilderLayout() {
 		void writeChatColumnWidth(width);
 	});
 
-	watch([builderRef, builderWidth], () => clampPanelWidths(), { immediate: true });
-
-	const gridColumns = computed(() =>
-		chatColumnCollapsed.value
-			? `0 minmax(${MIN_EDITOR_WIDTH}px, 1fr)`
-			: `${chatColumnWidth.value}px minmax(${MIN_EDITOR_WIDTH}px, 1fr)`,
-	);
-
-	function onToggleChatColumn() {
-		chatColumnCollapsed.value = !chatColumnCollapsed.value;
-		clampPanelWidths();
-	}
-
 	function onChatColumnResize({ width }: { width: number }) {
 		chatColumnCollapsed.value = false;
-		expandedChatColumnWidth.value = clamp(width, MIN_CHAT_WIDTH, maxChatWidth.value);
-		clampPanelWidths();
-	}
-
-	function clampPanelWidths() {
-		if (builderWidth.value <= 0) return;
-		expandedChatColumnWidth.value = clamp(
-			expandedChatColumnWidth.value,
-			MIN_CHAT_WIDTH,
-			maxChatWidth.value,
-		);
+		expandedChatColumnWidth.value = Math.max(width, MIN_CHAT_WIDTH);
 	}
 
 	return {
-		builderRef,
 		chatColumnCollapsed,
 		chatColumnWidth,
-		gridColumns,
 		onChatColumnResize,
-		onToggleChatColumn,
 		resizeGridSize: RESIZE_GRID_SIZE,
 	};
 }
@@ -100,8 +64,4 @@ function writeStoredNumber(key: string, value: number) {
 	} catch {
 		// localStorage may throw in private-browsing modes; silently ignore.
 	}
-}
-
-function clamp(value: number, min: number, max: number) {
-	return Math.max(min, Math.min(value, max));
 }

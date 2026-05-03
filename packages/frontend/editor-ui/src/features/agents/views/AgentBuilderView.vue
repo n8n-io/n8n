@@ -132,6 +132,9 @@ const sessionOptions = computed<Array<N8nDropdownOption<string>>>(() =>
 const { chatColumnCollapsed, chatColumnWidth, onChatColumnResize, resizeGridSize } =
 	useAgentBuilderLayout();
 chatColumnCollapsed.value = false;
+const builderStyle = computed(() => ({
+	'--agent-chat-column-width': `${chatColumnWidth.value}px`,
+}));
 
 // Main tab state (Agent, Executions, Evaluations)
 const selectedSection = ref<AgentBuilderSection>(null);
@@ -172,12 +175,19 @@ const activeMainTab = computed<AgentBuilderMainTab>({
 const mainTabOptions = computed(() => [
 	{ label: locale.baseText('agents.builder.header.tab.agent'), value: 'agent' as const },
 	{ label: locale.baseText('agents.builder.header.tab.executions'), value: 'executions' as const },
-	{ label: 'Raw', value: 'raw' as const },
+	{
+		label: locale.baseText('agents.builder.header.tab.evaluations'),
+		value: 'evaluations' as const,
+	},
+	{ label: locale.baseText('agents.builder.header.tab.raw'), value: 'raw' as const },
 ]);
 
-const executionsDescription = computed(
-	() =>
-		`${sessionsStore.threads.length} ${sessionsStore.threads.length === 1 ? 'execution' : 'executions'}`,
+const executionsCount = computed(() => sessionsStore.threads.length);
+const executionsDescription = computed(() =>
+	locale.baseText('agents.builder.executions.count', {
+		adjustToNumber: executionsCount.value,
+		interpolate: { count: String(executionsCount.value) },
+	}),
 );
 
 // Config
@@ -868,7 +878,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
-		<div :class="$style.builder">
+		<div :class="$style.builder" :style="builderStyle">
 			<!-- Column 1: chat -->
 			<N8nResizeWrapper
 				:class="$style.chatColumnResizeWrapper"
@@ -1080,13 +1090,13 @@ function onSwitchAgent(nextAgentId: string) {
 							/>
 							<AgentPanelHeader
 								v-else-if="activeMainTab === 'executions'"
-								title="Executions"
+								:title="locale.baseText('agents.builder.header.tab.executions')"
 								:description="executionsDescription"
 							/>
 							<AgentPanelHeader
 								v-else-if="activeMainTab === 'raw'"
-								title="Raw"
-								description="Agent JSON configuration"
+								:title="locale.baseText('agents.builder.header.tab.raw')"
+								:description="locale.baseText('agents.builder.raw.description')"
 							/>
 							<div v-else />
 							<N8nRadioButtons
@@ -1100,34 +1110,36 @@ function onSwitchAgent(nextAgentId: string) {
 
 						<!-- Agent tab: consolidated panels -->
 						<div v-if="activeMainTab === 'agent'" :class="$style.agentCards">
-							<AgentCapabilitiesSection
-								:config="localConfig"
-								:tools="localConfig?.tools ?? []"
-								:skills="appliedSkills"
-								:connected-triggers="connectedTriggers"
-								:disabled="isBuildChatStreaming"
-								:project-id="projectId"
-								:agent-id="agentId"
-								:is-published="Boolean(agent?.publishedVersion)"
-								@open-tool="onOpenToolFromList"
-								@open-skill="onOpenSkillFromList"
-								@open-trigger="onOpenAddTriggerModal"
-								@add-tool="onOpenAddToolModal"
-								@add-skill="onOpenAddSkillModal"
-								@add-trigger="onOpenAddTriggerModal"
-								@remove-tool="onRemoveTool"
-								@remove-skill="onRemoveSkill"
-								@update:connected-triggers="onConnectedTriggersUpdate"
-								@trigger-added="onTriggerAdded"
-							/>
-							<div :class="$style.panel">
+							<N8nCard variant="outlined" :class="$style.card">
+								<AgentCapabilitiesSection
+									:config="localConfig"
+									:tools="localConfig?.tools ?? []"
+									:skills="appliedSkills"
+									:connected-triggers="connectedTriggers"
+									:disabled="isBuildChatStreaming"
+									:project-id="projectId"
+									:agent-id="agentId"
+									:is-published="Boolean(agent?.publishedVersion)"
+									@open-tool="onOpenToolFromList"
+									@open-skill="onOpenSkillFromList"
+									@open-trigger="onOpenAddTriggerModal"
+									@add-tool="onOpenAddToolModal"
+									@add-skill="onOpenAddSkillModal"
+									@add-trigger="onOpenAddTriggerModal"
+									@remove-tool="onRemoveTool"
+									@remove-skill="onRemoveSkill"
+									@update:connected-triggers="onConnectedTriggersUpdate"
+									@trigger-added="onTriggerAdded"
+								/>
+							</N8nCard>
+							<N8nCard variant="outlined" :class="$style.card">
 								<AgentInfoPanel
 									:config="localConfig"
 									:disabled="isBuildChatStreaming"
 									embedded
 									@update:config="onConfigFieldUpdate"
 								/>
-							</div>
+							</N8nCard>
 
 							<N8nCard variant="outlined" :class="$style.card">
 								<AgentMemoryPanel
@@ -1165,8 +1177,12 @@ function onSwitchAgent(nextAgentId: string) {
 						<!-- Evaluations tab (placeholder) -->
 						<div v-else data-testid="agent-evaluations-panel">
 							<div :class="$style.panel">
-								<N8nHeading size="medium">Evaluations</N8nHeading>
-								<N8nText color="text-light"> Evaluations functionality is coming soon. </N8nText>
+								<N8nHeading size="medium">{{
+									locale.baseText('agents.builder.header.tab.evaluations')
+								}}</N8nHeading>
+								<N8nText color="text-light">
+									{{ locale.baseText('agents.builder.evaluations.comingSoon') }}
+								</N8nText>
 							</div>
 						</div>
 					</div>
@@ -1283,21 +1299,6 @@ function onSwitchAgent(nextAgentId: string) {
 	padding-left: 0;
 }
 
-.sessionItemLabel {
-	flex: 1;
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.sessionItemWhen {
-	margin-left: auto;
-	flex-shrink: 0;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--2xs);
-}
-
 .chatModeToggle {
 	flex-shrink: 0;
 }
@@ -1388,9 +1389,5 @@ function onSwitchAgent(nextAgentId: string) {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-}
-
-.rawCard {
-	display: flex;
 }
 </style>

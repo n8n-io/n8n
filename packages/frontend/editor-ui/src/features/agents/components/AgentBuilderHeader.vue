@@ -25,8 +25,6 @@ import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
 import type { AgentResource } from '../types';
 
-export type AgentBuilderMainTab = 'agent' | 'executions' | 'evaluations';
-
 const props = defineProps<{
 	agent: AgentResource | null;
 	projectId: string;

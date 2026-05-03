@@ -1,40 +1,35 @@
-import { nextTick } from 'vue';
 import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 
 describe('useAgentBuilderLayout', () => {
 	const chatCollapsedKey = 'agentBuilder.chatColumnCollapsed';
 	const chatWidthKey = 'agentBuilder.chatColumnWidth';
 
-	let container: HTMLElement;
-
 	beforeEach(() => {
 		window.localStorage.removeItem(chatCollapsedKey);
 		window.localStorage.removeItem(chatWidthKey);
-
-		container = document.createElement('div');
-		Object.defineProperty(container, 'offsetWidth', {
-			configurable: true,
-			get() {
-				return 1200;
-			},
-		});
 	});
 
-	it('reserves chat width while collapsed so expanding keeps the editor above minimum width', async () => {
+	it('reserves chat width while collapsed so expanding restores the stored width', () => {
 		window.localStorage.setItem(chatCollapsedKey, '1');
 		window.localStorage.setItem(chatWidthKey, '460');
 
 		const layout = useAgentBuilderLayout();
-		layout.builderRef.value = container;
-		await nextTick();
 
 		expect(layout.chatColumnCollapsed.value).toBe(true);
 		expect(layout.chatColumnWidth.value).toBe(320);
 
-		layout.onToggleChatColumn();
-		await nextTick();
+		layout.chatColumnCollapsed.value = false;
 
 		expect(layout.chatColumnCollapsed.value).toBe(false);
-		expect(layout.gridColumns.value).toBe('460px minmax(420px, 1fr)');
+		expect(layout.chatColumnWidth.value).toBe(460);
+	});
+
+	it('clamps chat resize events to the minimum width', () => {
+		const layout = useAgentBuilderLayout();
+
+		layout.onChatColumnResize({ width: 280 });
+
+		expect(layout.chatColumnCollapsed.value).toBe(false);
+		expect(layout.chatColumnWidth.value).toBe(320);
 	});
 });

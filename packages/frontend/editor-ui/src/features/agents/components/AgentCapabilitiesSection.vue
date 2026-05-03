@@ -2,8 +2,8 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
-import { N8nButton, N8nCard, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { IconName } from '@n8n/design-system/components/N8nIcon';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
@@ -43,11 +43,15 @@ const nodeTypesStore = useNodeTypesStore();
 
 const { catalog } = useAgentIntegrationsCatalog();
 
-const TRIGGER_ICONS: Record<string, IconName> = {
-	slack: 'slack',
-	telegram: 'telegram',
-	linear: 'linear',
-};
+function isIconName(icon: unknown): icon is IconName {
+	return typeof icon === 'string' && icon in updatedIconSet;
+}
+
+function triggerIcon(trigger: string, integrationIcon?: string): IconName {
+	if (isIconName(integrationIcon)) return integrationIcon;
+	if (trigger === AGENT_SCHEDULE_TRIGGER_TYPE) return 'clock';
+	return 'zap';
+}
 
 const triggerRows = computed<Array<{ type: string; label: string; icon: IconName }>>(() =>
 	props.connectedTriggers.map((trigger) => {
@@ -59,10 +63,7 @@ const triggerRows = computed<Array<{ type: string; label: string; icon: IconName
 				(trigger === AGENT_SCHEDULE_TRIGGER_TYPE
 					? i18n.baseText('agents.schedule.title')
 					: trigger),
-			icon:
-				TRIGGER_ICONS[trigger] ??
-				(integration?.icon as IconName | undefined) ??
-				(trigger === AGENT_SCHEDULE_TRIGGER_TYPE ? 'clock' : 'zap'),
+			icon: triggerIcon(trigger, integration?.icon),
 		};
 	}),
 );
@@ -94,150 +95,142 @@ function toolNodeType(tool: AgentJsonToolRef) {
 		:inert="props.disabled || undefined"
 		data-testid="agent-capabilities-section"
 	>
-		<N8nCard variant="outlined" :class="$style.card">
-			<div :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.triggers.title') }}
-				</N8nText>
+		<div :class="$style.capabilityRow">
+			<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				{{ i18n.baseText('agents.builder.triggers.title') }}
+			</N8nText>
 
-				<div :class="$style.chips">
-					<button
-						v-for="trigger in triggerRows"
-						:key="trigger.type"
-						type="button"
-						:class="$style.chip"
-						data-testid="agent-capabilities-trigger-row"
-						@click="emit('open-trigger', trigger.type)"
-					>
-						<N8nIcon :icon="trigger.icon" :size="16" :class="$style.chipIcon" />
-						<N8nText size="small" color="text-dark" :class="$style.chipText">
-							{{ trigger.label }}
-						</N8nText>
-					</button>
+			<div :class="$style.chips">
+				<button
+					v-for="trigger in triggerRows"
+					:key="trigger.type"
+					type="button"
+					:class="$style.chip"
+					data-testid="agent-capabilities-trigger-row"
+					@click="emit('open-trigger', trigger.type)"
+				>
+					<N8nIcon :icon="trigger.icon" :size="16" :class="$style.chipIcon" />
+					<N8nText size="small" color="text-dark" :class="$style.chipText">
+						{{ trigger.label }}
+					</N8nText>
+				</button>
 
-					<N8nTooltip
-						:disabled="!hasTriggers"
-						:content="i18n.baseText('agents.builder.triggers.add')"
-						placement="top"
+				<N8nTooltip
+					:disabled="!hasTriggers"
+					:content="i18n.baseText('agents.builder.triggers.add')"
+					placement="top"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						:icon-only="hasTriggers"
+						:disabled="props.disabled"
+						data-testid="agent-capabilities-add-trigger"
+						@click="emit('add-trigger')"
 					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							:icon-only="hasTriggers"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-trigger"
-							@click="emit('add-trigger')"
-						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							<template v-if="!hasTriggers">
-								{{ i18n.baseText('agents.builder.triggers.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
-				</div>
+						<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
+						<template v-if="!hasTriggers">
+							{{ i18n.baseText('agents.builder.triggers.add') }}
+						</template>
+					</N8nButton>
+				</N8nTooltip>
 			</div>
+		</div>
 
-			<div :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.tools.title') }}
-				</N8nText>
+		<div :class="$style.capabilityRow">
+			<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				{{ i18n.baseText('agents.builder.tools.title') }}
+			</N8nText>
 
-				<div :class="$style.chips">
-					<button
-						v-for="(tool, index) in tools"
-						:key="`tool-${index}`"
-						type="button"
-						:class="$style.chip"
-						data-testid="agent-capabilities-tool-row"
-						@click="emit('open-tool', index)"
+			<div :class="$style.chips">
+				<button
+					v-for="(tool, index) in tools"
+					:key="`tool-${index}`"
+					type="button"
+					:class="$style.chip"
+					data-testid="agent-capabilities-tool-row"
+					@click="emit('open-tool', index)"
+				>
+					<NodeIcon
+						v-if="toolNodeType(tool)"
+						:node-type="toolNodeType(tool)"
+						:size="16"
+						:class="$style.nodeIcon"
+					/>
+					<N8nIcon v-else :icon="toolIcon(tool)" :size="16" :class="$style.chipIcon" />
+					<N8nText size="small" color="text-dark" :class="$style.chipText">
+						{{ toolLabel(tool, index) }}
+					</N8nText>
+				</button>
+
+				<N8nTooltip
+					:disabled="!hasTools"
+					:content="i18n.baseText('agents.builder.tools.add')"
+					placement="top"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						:icon-only="hasTools"
+						:disabled="props.disabled"
+						data-testid="agent-capabilities-add-tool"
+						@click="emit('add-tool')"
 					>
-						<NodeIcon
-							v-if="toolNodeType(tool)"
-							:node-type="toolNodeType(tool)"
-							:size="16"
-							:class="$style.nodeIcon"
-						/>
-						<N8nIcon v-else :icon="toolIcon(tool)" :size="16" :class="$style.chipIcon" />
-						<N8nText size="small" color="text-dark" :class="$style.chipText">
-							{{ toolLabel(tool, index) }}
-						</N8nText>
-					</button>
-
-					<N8nTooltip
-						:disabled="!hasTools"
-						:content="i18n.baseText('agents.builder.tools.add')"
-						placement="top"
-					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							:icon-only="hasTools"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-tool"
-							@click="emit('add-tool')"
-						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							<template v-if="!hasTools">
-								{{ i18n.baseText('agents.builder.tools.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
-				</div>
+						<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
+						<template v-if="!hasTools">
+							{{ i18n.baseText('agents.builder.tools.add') }}
+						</template>
+					</N8nButton>
+				</N8nTooltip>
 			</div>
+		</div>
 
-			<div :class="$style.capabilityRow">
-				<N8nText size="small" color="text-light" :class="$style.rowLabel">
-					{{ i18n.baseText('agents.builder.skills.title') }}
-				</N8nText>
+		<div :class="$style.capabilityRow">
+			<N8nText size="small" color="text-light" :class="$style.rowLabel">
+				{{ i18n.baseText('agents.builder.skills.title') }}
+			</N8nText>
 
-				<div :class="$style.chips">
-					<button
-						v-for="{ id, skill } in skills"
-						:key="id"
-						type="button"
-						:class="$style.chip"
-						data-testid="agent-capabilities-skill-row"
-						@click="emit('open-skill', id)"
+			<div :class="$style.chips">
+				<button
+					v-for="{ id, skill } in skills"
+					:key="id"
+					type="button"
+					:class="$style.chip"
+					data-testid="agent-capabilities-skill-row"
+					@click="emit('open-skill', id)"
+				>
+					<N8nIcon icon="sparkles" :size="16" :class="$style.chipIcon" />
+					<N8nText size="small" color="text-dark" :class="$style.chipText">
+						{{ skill.name || id }}
+					</N8nText>
+				</button>
+
+				<N8nTooltip
+					:disabled="!hasSkills"
+					:content="i18n.baseText('agents.builder.skills.add')"
+					placement="top"
+				>
+					<N8nButton
+						variant="ghost"
+						size="medium"
+						:icon-only="hasSkills"
+						:disabled="props.disabled"
+						data-testid="agent-capabilities-add-skill"
+						@click="emit('add-skill')"
 					>
-						<N8nIcon icon="sparkles" :size="16" :class="$style.chipIcon" />
-						<N8nText size="small" color="text-dark" :class="$style.chipText">
-							{{ skill.name || id }}
-						</N8nText>
-					</button>
-
-					<N8nTooltip
-						:disabled="!hasSkills"
-						:content="i18n.baseText('agents.builder.skills.add')"
-						placement="top"
-					>
-						<N8nButton
-							variant="ghost"
-							size="medium"
-							:icon-only="hasSkills"
-							:disabled="props.disabled"
-							data-testid="agent-capabilities-add-skill"
-							@click="emit('add-skill')"
-						>
-							<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-							<template v-if="!hasSkills">
-								{{ i18n.baseText('agents.builder.skills.add') }}
-							</template>
-						</N8nButton>
-					</N8nTooltip>
-				</div>
+						<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
+						<template v-if="!hasSkills">
+							{{ i18n.baseText('agents.builder.skills.add') }}
+						</template>
+					</N8nButton>
+				</N8nTooltip>
 			</div>
-		</N8nCard>
+		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 .section {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-}
-
-.card {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--md);
