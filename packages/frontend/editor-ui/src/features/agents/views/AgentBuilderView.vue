@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import type { N8nDropdownOption } from '@n8n/design-system';
+import { N8nResizeWrapper, type N8nDropdownOption } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -10,7 +10,8 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, MODAL_CONFIRM } from '@/app/constants';
+import { useResizablePanel } from '@/app/composables/useResizablePanel';
 import { deepCopy } from 'n8n-workflow';
 import {
 	getAgent,
@@ -41,6 +42,11 @@ import { agentsEventBus } from '../agents.eventBus';
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+
+const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
+const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
+const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
+const AGENT_EDITOR_MIN_WIDTH = 360;
 
 const route = useRoute();
 const router = useRouter();
@@ -110,6 +116,7 @@ const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilder
 const { config, fetchConfig, updateConfig } = useAgentConfig();
 const localConfig = ref<AgentJsonConfig | null>(null);
 const connectedTriggers = ref<string[]>([]);
+const builderContainer = useTemplateRef<HTMLElement>('builderContainer');
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
 
@@ -128,6 +135,21 @@ const builderTelemetry = useAgentBuilderTelemetry({
  * instead of the builder.
  */
 const isBuilt = computed(() => !!localConfig.value?.instructions?.trim());
+
+function getMaxChatPanelWidth(containerWidth: number): number {
+	return Math.max(
+		AGENT_CHAT_PANEL_MIN_WIDTH,
+		Math.min(AGENT_CHAT_PANEL_MAX_WIDTH, containerWidth - AGENT_EDITOR_MIN_WIDTH),
+	);
+}
+
+const chatPanelResizer = useResizablePanel(LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANEL_WIDTH, {
+	container: builderContainer,
+	defaultSize: (containerWidth) =>
+		Math.min(AGENT_CHAT_PANEL_DEFAULT_WIDTH, getMaxChatPanelWidth(containerWidth)),
+	minSize: AGENT_CHAT_PANEL_MIN_WIDTH,
+	maxSize: getMaxChatPanelWidth,
+});
 
 watch(
 	config,
@@ -788,41 +810,62 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
-		<div :class="$style.builder">
-			<AgentBuilderChatColumn
-				:initialized="initialized"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:agent-name="agentName"
-				:agent="agent"
-				:local-config="localConfig"
-				:connected-triggers="connectedTriggers"
-				:chat-mode="chatMode"
-				:chat-mode-opened="chatModeOpened"
-				:chat-mode-options="chatModeOptions"
-				:effective-session-id="effectiveSessionId"
-				:current-session-title="currentSessionTitle"
-				:current-session-has-messages="currentSessionHasMessages"
-				:session-options="sessionOptions"
-				:initial-prompt="initialPrompt"
-				:is-built="isBuilt"
-				:is-builder-configured="isBuilderConfigured"
-				:is-build-chat-streaming="isBuildChatStreaming"
-				:is-published="Boolean(agent?.publishedVersion)"
-				@session-select="onSessionPick"
-				@new-chat="onNewChat"
-				@config-updated="onConfigUpdated"
-				@continue-loaded="onContinueLoaded"
-				@open-build="onOpenBuildFromChat"
-				@chat-mode-change="setChatMode"
-				@update:streaming="onBuildChatStreamingChange"
-				@update:tools="onQuickActionAddTool"
-				@update:connected-triggers="onConnectedTriggersUpdate"
-				@trigger-added="onTriggerAdded"
-				@agent-published="onPublished"
-			/>
+		<div
+			ref="builderContainer"
+			:class="{
+				[$style.builder]: true,
+				[$style.isResizingChat]: chatPanelResizer.isResizing.value,
+			}"
+		>
+			<N8nResizeWrapper
+				:class="$style.chatResizer"
+				:width="chatPanelResizer.size.value"
+				:style="{ width: `${chatPanelResizer.size.value}px` }"
+				:supported-directions="['right']"
+				:min-width="AGENT_CHAT_PANEL_MIN_WIDTH"
+				:max-width="AGENT_CHAT_PANEL_MAX_WIDTH"
+				:grid-size="8"
+				outset
+				data-testid="agent-builder-chat-resizer"
+				@resize="chatPanelResizer.onResize"
+				@resizeend="chatPanelResizer.onResizeEnd"
+			>
+				<AgentBuilderChatColumn
+					:initialized="initialized"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent-name="agentName"
+					:agent="agent"
+					:local-config="localConfig"
+					:connected-triggers="connectedTriggers"
+					:chat-mode="chatMode"
+					:chat-mode-opened="chatModeOpened"
+					:chat-mode-options="chatModeOptions"
+					:effective-session-id="effectiveSessionId"
+					:current-session-title="currentSessionTitle"
+					:current-session-has-messages="currentSessionHasMessages"
+					:session-options="sessionOptions"
+					:initial-prompt="initialPrompt"
+					:is-built="isBuilt"
+					:is-builder-configured="isBuilderConfigured"
+					:is-build-chat-streaming="isBuildChatStreaming"
+					:is-published="Boolean(agent?.publishedVersion)"
+					@session-select="onSessionPick"
+					@new-chat="onNewChat"
+					@config-updated="onConfigUpdated"
+					@continue-loaded="onContinueLoaded"
+					@open-build="onOpenBuildFromChat"
+					@chat-mode-change="setChatMode"
+					@update:streaming="onBuildChatStreamingChange"
+					@update:tools="onQuickActionAddTool"
+					@update:connected-triggers="onConnectedTriggersUpdate"
+					@trigger-added="onTriggerAdded"
+					@agent-published="onPublished"
+				/>
+			</N8nResizeWrapper>
 
 			<AgentBuilderEditorColumn
+				:class="$style.editorColumn"
 				v-model:active-main-tab="activeMainTab"
 				:local-config="localConfig"
 				:agent="agent"
@@ -858,10 +901,49 @@ function onSwitchAgent(nextAgentId: string) {
 }
 
 .builder {
-	display: grid;
+	display: flex;
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
-	grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
+}
+
+.chatResizer {
+	flex-shrink: 0;
+
+	:global([data-test-id='resize-handle']) {
+		width: var(--spacing--xs) !important;
+		right: calc(var(--spacing--xs) / -2) !important;
+
+		&::after {
+			content: '';
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			width: var(--spacing--5xs);
+			height: var(--spacing--xl);
+			border-radius: var(--radius--4xs);
+			background: var(--color--foreground);
+			opacity: 0;
+			transform: translate(-50%, -50%);
+			transition: opacity 0.15s ease;
+		}
+
+		&:hover::after {
+			opacity: 1;
+		}
+	}
+}
+
+.isResizingChat {
+	.chatResizer {
+		:global([data-test-id='resize-handle'])::after {
+			opacity: 1;
+		}
+	}
+}
+
+.editorColumn {
+	flex: 1 1 auto;
+	min-width: 0;
 }
 </style>
