@@ -1166,7 +1166,7 @@ function onSwitchAgent(nextAgentId: string) {
 							data-testid="agent-executions-panel"
 						/>
 
-						<div v-else-if="activeMainTab === 'raw'">
+						<div v-else-if="activeMainTab === 'raw'" :class="$style.rawPanel">
 							<AgentJsonEditor
 								:value="localConfig"
 								:read-only="isBuildChatStreaming"
@@ -1349,6 +1349,8 @@ function onSwitchAgent(nextAgentId: string) {
 
 .panelAreaContainer {
 	position: relative;
+	display: flex;
+	flex-direction: column;
 	max-width: 72rem;
 	width: 100%;
 	padding: var(--spacing--sm);
@@ -1357,6 +1359,7 @@ function onSwitchAgent(nextAgentId: string) {
 }
 
 .panelHeaderRow {
+	flex-shrink: 0;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
@@ -1369,6 +1372,13 @@ function onSwitchAgent(nextAgentId: string) {
 	> .mainTabs {
 		margin-left: auto;
 	}
+}
+
+.rawPanel {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	width: 100%;
 }
 
 .agentCards {

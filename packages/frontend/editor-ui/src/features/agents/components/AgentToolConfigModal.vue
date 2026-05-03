@@ -267,6 +267,7 @@ function handleNodeNameUpdate(name: string) {
 }
 
 .rawContentWrapper {
+	height: 60vh;
 	margin-right: 0;
 	padding-bottom: 0;
 }
