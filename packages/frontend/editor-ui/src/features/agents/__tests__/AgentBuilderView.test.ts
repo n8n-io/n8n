@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
-import type { AgentJsonSkillRef, AgentJsonToolRef } from '../types';
+import type { AgentJsonSkillRef, AgentJsonToolRef, CustomToolEntry } from '../types';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -570,6 +570,52 @@ describe('AgentBuilderView — three-column shell', () => {
 		const wrapper = await renderView();
 		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
 		expect(header.props('projectName')).toBe('Personal');
+	});
+
+	it('opens the tool config modal with the custom tool source', async () => {
+		const customTool: CustomToolEntry = {
+			code: 'export async function run() {\n\treturn "ok";\n}',
+			descriptor: {
+				name: 'Lookup customer',
+				description: 'Finds a customer',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			},
+		};
+		const toolRef: AgentJsonToolRef = { type: 'custom', id: 'custom_tool' };
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tools: [toolRef],
+		};
+		mockConfig.value = { ...intendedConfig };
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				tools: {
+					custom_tool: customTool,
+				},
+			}),
+		);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('open-tool', 0);
+		await nextTick();
+
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'agentToolConfigModal',
+				data: expect.objectContaining({
+					toolRef,
+					customTool,
+				}),
+			}),
+		);
 	});
 
 	it('shows applied skills and opens a skill modal from the capabilities section', async () => {

@@ -683,10 +683,12 @@ function onOpenToolFromList(index: number) {
 	const tools = localConfig.value?.tools ?? [];
 	const tool = tools[index];
 	if (!tool) return;
+	const customTool = tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
 		data: {
 			toolRef: tool,
+			customTool,
 			existingToolNames: tools
 				.map((ref, i) => (i === index ? null : ref.name))
 				.filter((name): name is string => !!name),

@@ -7,6 +7,7 @@
  *   - `type: 'node'`   → shared `NodeToolSettingsContent` (NDV-style param form)
  *   - `type: 'workflow'` → small `WorkflowToolConfigContent` (description +
  *                          allOutputs toggle)
+ *   - `type: 'custom'` → read-only TypeScript source viewer
  *
  * On Save, edits are merged back into the ref:
  *   - Node tools round-trip via `updateToolRefFromNode`.
@@ -18,22 +19,30 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import NodeToolSettingsContent from '@/features/shared/toolConfig/NodeToolSettingsContent.vue';
 import WorkflowToolConfigContent from './WorkflowToolConfigContent.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nInlineTextEdit, N8nRadioButtons } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInlineTextEdit,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { INode } from 'n8n-workflow';
 
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonToolRef, CustomToolEntry } from '../types';
 import {
 	toolRefToNode,
 	updateToolRefFromNode,
 	updateWorkflowToolRef,
 } from '../composables/useAgentToolRefAdapter';
 import AgentJsonEditor from './AgentJsonEditor.vue';
+import AgentCustomToolViewer from './AgentCustomToolViewer.vue';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		toolRef: AgentJsonToolRef;
+		customTool?: CustomToolEntry;
 		existingToolNames?: string[];
 		onConfirm: (updatedRef: AgentJsonToolRef) => void;
 		onRemove?: () => void;
@@ -44,18 +53,27 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 
 const isWorkflowTool = computed(() => props.data.toolRef.type === 'workflow');
+const isCustomTool = computed(() => props.data.toolRef.type === 'custom');
 
 const nodeContentRef = ref<InstanceType<typeof NodeToolSettingsContent> | null>(null);
 const workflowContentRef = ref<InstanceType<typeof WorkflowToolConfigContent> | null>(null);
 const isValid = ref(false);
 const activeView = ref<'config' | 'raw'>('config');
 
-/** Derive an INode view of a node-type ref once. Null for workflow refs. */
+/** Derive an INode view of a node-type ref once. Null for workflow/custom refs. */
 const initialNode = computed<INode | null>(() =>
-	isWorkflowTool.value ? null : toolRefToNode(props.data.toolRef),
+	isWorkflowTool.value || isCustomTool.value ? null : toolRefToNode(props.data.toolRef),
 );
 const initialName = computed(() => props.data.toolRef.name ?? initialNode.value?.name ?? '');
 const nodeName = ref(initialName.value);
+const customToolCode = computed(() => props.data.customTool?.code ?? '');
+const customToolTitle = computed(
+	() =>
+		props.data.customTool?.descriptor.name ??
+		props.data.toolRef.name ??
+		props.data.toolRef.id ??
+		i18n.baseText('agents.builder.tree.customBadge'),
+);
 
 const viewOptions = computed(() => [
 	{ label: 'Config', value: 'config' as const },
@@ -63,14 +81,21 @@ const viewOptions = computed(() => [
 ]);
 
 /** Gate the modal render — for node tools we need a resolvable node; workflow
- *  tools always render since their data is self-contained in the ref. */
-const canRender = computed(() => isWorkflowTool.value || initialNode.value !== null);
+ *  and custom tools render from data that is already on the ref/agent. */
+const canRender = computed(
+	() => isCustomTool.value || isWorkflowTool.value || initialNode.value !== null,
+);
 
 function closeDialog() {
 	uiStore.closeModal(props.modalName);
 }
 
 function handleConfirm() {
+	if (isCustomTool.value) {
+		closeDialog();
+		return;
+	}
+
 	if (isWorkflowTool.value) {
 		const wc = workflowContentRef.value;
 		if (!wc) return;
@@ -101,6 +126,8 @@ function handleRemove() {
 }
 
 function handleChangeName(name: string) {
+	if (isCustomTool.value) return;
+
 	if (isWorkflowTool.value) {
 		workflowContentRef.value?.handleChangeName(name);
 	} else {
@@ -140,47 +167,64 @@ function handleNodeNameUpdate(name: string) {
 					:size="20"
 					:class="$style.workflowHeaderIcon"
 				/>
+				<N8nIcon v-else-if="isCustomTool" icon="code" :size="20" :class="$style.customHeaderIcon" />
 				<N8nInlineTextEdit
+					v-if="!isCustomTool"
 					:model-value="nodeName"
 					:max-width="400"
 					:class="$style.title"
 					@update:model-value="handleChangeName"
 				/>
+				<N8nText v-else :class="$style.title">
+					{{ customToolTitle }}
+				</N8nText>
 			</div>
 		</template>
 		<template #content>
-			<div :class="[$style.contentWrapper, activeView === 'raw' && $style.rawContentWrapper]">
-				<N8nRadioButtons
-					:model-value="activeView"
-					:options="viewOptions"
-					:class="$style.viewToggle"
-					@update:model-value="activeView = $event"
+			<div
+				:class="[
+					$style.contentWrapper,
+					(isCustomTool || activeView === 'raw') && $style.codeContentWrapper,
+				]"
+			>
+				<AgentCustomToolViewer
+					v-if="isCustomTool"
+					:code="customToolCode"
+					:class="$style.customToolViewer"
 				/>
-				<AgentJsonEditor
-					v-show="activeView === 'raw'"
-					:value="data.toolRef"
-					read-only
-					:show-read-only-overlay="false"
-					:class="$style.rawEditor"
-					copy-button-test-id="agent-tool-json-copy"
-				/>
-				<div v-show="activeView === 'config'" :class="$style.configureTab">
-					<WorkflowToolConfigContent
-						v-if="isWorkflowTool"
-						ref="workflowContentRef"
-						:initial-ref="data.toolRef"
-						@update:valid="handleValidUpdate"
-						@update:node-name="handleNodeNameUpdate"
+				<template v-else>
+					<N8nRadioButtons
+						:model-value="activeView"
+						:options="viewOptions"
+						:class="$style.viewToggle"
+						@update:model-value="activeView = $event"
 					/>
-					<NodeToolSettingsContent
-						v-else-if="initialNode"
-						ref="nodeContentRef"
-						:initial-node="initialNode"
-						:existing-tool-names="data.existingToolNames"
-						@update:valid="handleValidUpdate"
-						@update:node-name="handleNodeNameUpdate"
+					<AgentJsonEditor
+						v-show="activeView === 'raw'"
+						:value="data.toolRef"
+						read-only
+						:show-read-only-overlay="false"
+						:class="$style.rawEditor"
+						copy-button-test-id="agent-tool-json-copy"
 					/>
-				</div>
+					<div v-show="activeView === 'config'" :class="$style.configureTab">
+						<WorkflowToolConfigContent
+							v-if="isWorkflowTool"
+							ref="workflowContentRef"
+							:initial-ref="data.toolRef"
+							@update:valid="handleValidUpdate"
+							@update:node-name="handleNodeNameUpdate"
+						/>
+						<NodeToolSettingsContent
+							v-else-if="initialNode"
+							ref="nodeContentRef"
+							:initial-node="initialNode"
+							:existing-tool-names="data.existingToolNames"
+							@update:valid="handleValidUpdate"
+							@update:node-name="handleNodeNameUpdate"
+						/>
+					</div>
+				</template>
 			</div>
 		</template>
 		<template #footer>
@@ -196,9 +240,14 @@ function handleNodeNameUpdate(name: string) {
 				</N8nButton>
 				<div :class="$style.footerActions">
 					<N8nButton variant="subtle" @click="handleCancel">
-						{{ i18n.baseText('agents.toolConfig.cancel') }}
+						{{
+							isCustomTool
+								? i18n.baseText('generic.close')
+								: i18n.baseText('agents.toolConfig.cancel')
+						}}
 					</N8nButton>
 					<N8nButton
+						v-if="!isCustomTool"
 						variant="solid"
 						:disabled="!isValid"
 						data-test-id="agent-tool-config-save"
@@ -229,6 +278,12 @@ function handleNodeNameUpdate(name: string) {
 	flex-shrink: 0;
 	flex-grow: 0;
 	color: var(--color--primary);
+}
+
+.customHeaderIcon {
+	flex-shrink: 0;
+	flex-grow: 0;
+	color: var(--color--text--tint-1);
 }
 
 .title {
@@ -266,7 +321,7 @@ function handleNodeNameUpdate(name: string) {
 	}
 }
 
-.rawContentWrapper {
+.codeContentWrapper {
 	height: 60vh;
 	margin-right: 0;
 	padding-bottom: 0;
@@ -286,6 +341,13 @@ function handleNodeNameUpdate(name: string) {
 .rawEditor {
 	flex: 1;
 	width: 100%;
+	min-height: 0;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.customToolViewer {
+	flex: 1;
 	min-height: 0;
 	min-width: 0;
 	overflow: hidden;
