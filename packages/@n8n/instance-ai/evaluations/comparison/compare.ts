@@ -256,18 +256,25 @@ function compareFailureCategories(
 	const baseTotal = baseline.trialTotal ?? 0;
 	if (prTotal === 0 || baseTotal === 0) return [];
 
-	const allCategories = new Set([
-		...Object.keys(pr.failureCategoryTotals),
-		...Object.keys(baseline.failureCategoryTotals),
-	]);
-
-	const out: FailureCategoryComparison[] = [];
-	for (const category of allCategories) {
+	// Surface unrecognised values so we notice when the verifier adds a new
+	// category (or starts emitting noise we should clean up). Doesn't enter
+	// the comparison output; the renderer only knows about KNOWN_FAILURE_CATEGORIES.
+	for (const category of Object.keys(pr.failureCategoryTotals)) {
 		if (!KNOWN_FAILURE_CATEGORIES.has(category)) {
 			console.warn(`[comparison] dropping unknown failureCategory "${category}"`);
-			continue;
 		}
+	}
+	for (const category of Object.keys(baseline.failureCategoryTotals)) {
+		if (!KNOWN_FAILURE_CATEGORIES.has(category)) {
+			console.warn(`[comparison] dropping unknown failureCategory "${category}"`);
+		}
+	}
 
+	// Always emit a row for every known category, even if both sides are 0.
+	// The renderer can decide whether to suppress 0/0 rows; this gives readers
+	// a complete picture of the failure-type taxonomy by default.
+	const out: FailureCategoryComparison[] = [];
+	for (const category of KNOWN_FAILURE_CATEGORIES) {
 		const prCount = pr.failureCategoryTotals[category] ?? 0;
 		const baselineCount = baseline.failureCategoryTotals[category] ?? 0;
 		out.push({

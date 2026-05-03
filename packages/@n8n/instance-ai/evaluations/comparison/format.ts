@@ -88,10 +88,11 @@ export function formatComparisonMarkdown(
 			lines.push('');
 		}
 
-		const notableCats = comparison.failureCategories.filter((c) => c.notable);
-		if (notableCats.length > 0) {
-			lines.push(...renderFailureCategorySection(notableCats));
-		}
+		// Always render the breakdown when comparison data is available — the
+		// renderer drops 0/0 rows itself, so empty categories don't pollute
+		// the output but the reader still sees the full taxonomy of what's
+		// tracked.
+		lines.push(...renderFailureCategorySection(comparison.failureCategories));
 	}
 
 	lines.push(...renderPerTestCaseDetails(evaluation));
@@ -124,39 +125,39 @@ function formatTopAlert(_evaluation: MultiRunEvaluation, comparison?: Comparison
 	const soft = softRegressions(comparison).length;
 	const watch = watchList(comparison).length;
 	const imps = improvements(comparison).length;
+	const stable = countByVerdict(comparison, 'stable');
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
 
-	const parts: string[] = [];
-	if (hard > 0) parts.push(`**${hard} regression${hard === 1 ? '' : 's'}**`);
-	if (soft > 0) parts.push(`${soft} soft`);
-	if (watch > 0) parts.push(`${watch} notable`);
-	if (imps > 0) parts.push(`${imps} improvement${imps === 1 ? '' : 's'}`);
+	// Always include all five tier counts so readers see what's being tracked,
+	// not just what's > 0. The hard count is bolded when nonzero for emphasis.
+	const summary = [
+		hard > 0 ? `**${hard} regression${hard === 1 ? '' : 's'}**` : '0 regressions',
+		`${soft} soft`,
+		`${watch} notable`,
+		`${imps} improvement${imps === 1 ? '' : 's'}`,
+		`${stable} stable`,
+	].join(', ');
 
 	let icon: string;
 	let alertKind: 'CAUTION' | 'WARNING' | 'NOTE' | 'TIP';
-	let summary: string;
 
 	if (hard > 0) {
 		icon = '🔴';
 		alertKind = 'CAUTION';
-		summary = `${parts.join(', ')}. Pass rate ${aggDeltaText} vs master.`;
 	} else if (soft > 0) {
 		icon = '🟡';
 		alertKind = 'WARNING';
-		summary = `${parts.join(', ')} to investigate. Pass rate ${aggDeltaText} vs master.`;
-	} else if (watch > 0 || imps > 0) {
-		icon = imps > 0 && watch === 0 ? '🟢' : '🔵';
-		alertKind = imps > 0 && watch === 0 ? 'TIP' : 'NOTE';
-		summary = `No regressions${parts.length ? `. ${parts.join(', ')}` : ''}. Pass rate ${aggDeltaText} vs master.`;
+	} else if (watch > 0) {
+		icon = '🔵';
+		alertKind = 'NOTE';
 	} else {
 		icon = '🟢';
 		alertKind = 'TIP';
-		summary = `No regressions. ${countByVerdict(comparison, 'stable')} stable. Pass rate ${aggDeltaText} vs master.`;
 	}
 
-	return `> [!${alertKind}]\n> ${icon} ${summary}`;
+	return `> [!${alertKind}]\n> ${icon} ${summary}. Pass rate ${aggDeltaText} vs master.`;
 }
 
 function formatAggregateBlock(
@@ -238,19 +239,27 @@ function renderScenarioSection(
 	return lines;
 }
 
-function renderFailureCategorySection(notable: FailureCategoryComparison[]): string[] {
+function renderFailureCategorySection(categories: FailureCategoryComparison[]): string[] {
+	// Drop rows that are 0/0 on both sides — they carry no signal for the
+	// reader. Categories with non-zero count on either side are kept so the
+	// reader sees the full picture even if not "notable".
+	const rows = categories.filter((c) => c.prCount > 0 || c.baselineCount > 0);
+	if (rows.length === 0) return [];
+
 	const lines: string[] = [];
-	lines.push('#### Failure types shifted');
+	lines.push('#### Failure breakdown');
 	lines.push('');
-	lines.push('| Category | PR | Baseline | Δ |');
-	lines.push('|---|---|---|---|');
-	for (const c of notable) {
+	lines.push('| Category | PR | Baseline | Δ | |');
+	lines.push('|---|---|---|---|---|');
+	for (const c of rows) {
 		const isNew = c.baselineCount === 0 && c.prCount > 0;
 		const label = isNew ? `\`${c.category}\` 🆕` : `\`${c.category}\``;
 		const delta = c.delta * 100;
 		const sign = delta >= 0 ? '+' : '';
+		const arrow = delta > 0 ? ' ↑' : delta < 0 ? ' ↓' : '';
+		const notableMarker = c.notable ? '**notable**' : '';
 		lines.push(
-			`| ${label} | ${c.prCount} (${pct(c.prRate)}%) | ${c.baselineCount} (${pct(c.baselineRate)}%) | ${sign}${delta.toFixed(1)}pp |`,
+			`| ${label} | ${c.prCount} (${pct(c.prRate)}%) | ${c.baselineCount} (${pct(c.baselineRate)}%) | ${sign}${delta.toFixed(1)}pp${arrow} | ${notableMarker} |`,
 		);
 	}
 	lines.push('');
@@ -499,20 +508,25 @@ export function formatComparisonTerminal(
 			lines.push('');
 		}
 
-		const notableCats = comparison.failureCategories.filter((c) => c.notable);
-		if (notableCats.length > 0) {
-			lines.push(TERMINAL_INDENT + 'failure-category drift');
-			lines.push(formatTerminalCategoryTable(notableCats));
+		// Always render the breakdown when comparison data is available — same
+		// rationale as the markdown side. The terminal table drops 0/0 rows
+		// itself.
+		const breakdownRows = comparison.failureCategories.filter(
+			(c) => c.prCount > 0 || c.baselineCount > 0,
+		);
+		if (breakdownRows.length > 0) {
+			lines.push(TERMINAL_INDENT + 'failure breakdown');
+			lines.push(formatTerminalCategoryTable(breakdownRows));
 			lines.push('');
 		}
 
+		// Stable count is already in the verdict line; surface only the rarer
+		// outcomes here.
 		const flaky = countByVerdict(comparison, 'unreliable_baseline');
 		const noData = countByVerdict(comparison, 'insufficient_data');
-		const stable = countByVerdict(comparison, 'stable');
 		const otherParts: string[] = [];
 		if (flaky > 0) otherParts.push(`${flaky} on flaky baseline`);
 		if (noData > 0) otherParts.push(`${noData} no data`);
-		if (stable > 0) otherParts.push(`${stable} stable`);
 		if (otherParts.length > 0) {
 			lines.push(TERMINAL_INDENT + 'other: ' + otherParts.join(' · '));
 		}
@@ -528,20 +542,20 @@ function formatTerminalVerdictLine(comparison?: ComparisonResult): string {
 	const soft = softRegressions(comparison).length;
 	const watch = watchList(comparison).length;
 	const imps = improvements(comparison).length;
+	const stable = countByVerdict(comparison, 'stable');
 
 	const aggDelta = comparison.aggregate.delta * 100;
 	const aggDeltaText = `${aggDelta >= 0 ? '+' : ''}${aggDelta.toFixed(1)}pp`;
 
-	const parts: string[] = [];
-	if (hard > 0) parts.push(`${hard} regression${hard === 1 ? '' : 's'}`);
-	if (soft > 0) parts.push(`${soft} soft`);
-	if (watch > 0) parts.push(`${watch} notable`);
-	if (imps > 0) parts.push(`${imps} improvement${imps === 1 ? '' : 's'}`);
+	const summary = [
+		`${hard} regression${hard === 1 ? '' : 's'}`,
+		`${soft} soft`,
+		`${watch} notable`,
+		`${imps} improvement${imps === 1 ? '' : 's'}`,
+		`${stable} stable`,
+	].join(', ');
 
-	if (hard === 0 && soft === 0 && watch === 0 && imps === 0) {
-		return `▶ No regressions. ${countByVerdict(comparison, 'stable')} stable. Pass rate ${aggDeltaText} vs master.`;
-	}
-	return `▶ ${parts.join(', ')}. Pass rate ${aggDeltaText} vs master.`;
+	return `▶ ${summary}. Pass rate ${aggDeltaText} vs master.`;
 }
 
 function formatTerminalAggregate(

@@ -132,7 +132,7 @@ describe('compareBuckets', () => {
 		expect(cats.find((c) => c.category === 'builder_issue')?.notable).toBe(false);
 	});
 
-	it('drops unknown categories with a console warning', () => {
+	it('drops unknown categories with a console warning, keeps all known categories', () => {
 		const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)], {
 			totals: { '-': 5, builder_issue: 2 },
@@ -143,7 +143,15 @@ describe('compareBuckets', () => {
 			trialTotal: 10,
 		});
 		const cats = compareBuckets(pr, base).failureCategories;
-		expect(cats.map((c) => c.category)).toEqual(['builder_issue']);
+		// All five known categories are always present (some at 0/0 — renderer
+		// drops those). The unknown `-` category is dropped here with a warning.
+		expect(cats.map((c) => c.category).sort()).toEqual([
+			'build_failure',
+			'builder_issue',
+			'framework_issue',
+			'mock_issue',
+			'verification_failure',
+		]);
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining('"-"'));
 		warn.mockRestore();
 	});

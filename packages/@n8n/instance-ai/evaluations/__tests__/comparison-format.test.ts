@@ -115,13 +115,14 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/\+100pp ↑/);
 	});
 
-	it('uses TIP alert with "No regressions" when everything is stable', () => {
+	it('uses TIP alert with "0 regressions" when everything is stable', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10)]);
 		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
 
 		expect(md).toMatch(/> \[!TIP\]/);
-		expect(md).toMatch(/No regressions/);
+		expect(md).toMatch(/0 regressions/);
+		expect(md).toMatch(/1 stable/);
 		expect(md).not.toMatch(/#### Regressions/);
 	});
 
@@ -166,8 +167,38 @@ describe('formatComparisonMarkdown', () => {
 			trialTotal: 290,
 		};
 		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
-		expect(md).toMatch(/#### Failure types shifted/);
+		expect(md).toMatch(/#### Failure breakdown/);
 		expect(md).toMatch(/`framework_issue` 🆕/);
+		expect(md).toMatch(/\*\*notable\*\*/);
+	});
+
+	it('always includes all five tier counts in the alert line', () => {
+		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
+		const base = bucket('master', [s('a', 'happy', 8, 10)]);
+		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		expect(md).toMatch(/0 regressions, 0 soft, 0 notable, 0 improvements, 1 stable/);
+	});
+
+	it('renders the failure breakdown for non-notable categories with non-zero counts', () => {
+		// 50/100 vs 50/100 — no scenario regression, but still has builder_issue
+		// counts on both sides (non-notable but non-zero).
+		const pr: ExperimentBucket = {
+			experimentName: 'pr',
+			scenarios: new Map([['a/happy', { ...s('a', 'happy', 50, 100) }]]),
+			failureCategoryTotals: { builder_issue: 25 },
+			trialTotal: 100,
+		};
+		const base: ExperimentBucket = {
+			experimentName: 'master',
+			scenarios: new Map([['a/happy', { ...s('a', 'happy', 50, 100) }]]),
+			failureCategoryTotals: { builder_issue: 22 },
+			trialTotal: 100,
+		};
+		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		expect(md).toMatch(/#### Failure breakdown/);
+		expect(md).toMatch(/`builder_issue`/);
+		// builder_issue isn't notable here, so no "notable" marker.
+		expect(md).not.toMatch(/builder_issue.*notable/);
 	});
 });
 
