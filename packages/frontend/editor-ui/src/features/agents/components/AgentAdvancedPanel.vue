@@ -12,7 +12,7 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
-	N8nIconButton,
+	N8nCollapsiblePanel,
 	N8nInput,
 	N8nSelect,
 	N8nSwitch2,
@@ -41,12 +41,7 @@ const props = withDefaults(
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
-const isCollapsed = ref(props.collapsible);
-
-function toggleCollapsed() {
-	if (!props.collapsible) return;
-	isCollapsed.value = !isCollapsed.value;
-}
+const isExpanded = ref(!props.collapsible);
 
 const provider = computed(() => parseProvider(props.config?.model));
 const capabilities = computed(
@@ -144,22 +139,14 @@ const thinkingDisabledReason = computed(() =>
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-behavior-panel">
-		<div :class="$style.header">
-			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
-			<N8nIconButton
-				v-if="props.collapsible"
-				variant="ghost"
-				size="small"
-				:icon="isCollapsed ? 'chevron-down' : 'chevron-up'"
-				:aria-expanded="!isCollapsed"
-				:aria-label="i18n.baseText('agents.builder.advanced.title')"
-				data-testid="agent-advanced-collapse-toggle"
-				@click="toggleCollapsed"
-			/>
-		</div>
-
-		<template v-if="!isCollapsed">
+	<N8nCollapsiblePanel
+		v-model="isExpanded"
+		:class="$style.panel"
+		:title="i18n.baseText('agents.builder.advanced.title')"
+		:disabled="!props.collapsible"
+		data-testid="agent-behavior-panel"
+	>
+		<div :class="$style.content">
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
 					<N8nText size="small" :bold="true">{{
@@ -251,25 +238,36 @@ const thinkingDisabledReason = computed(() =>
 					@update:model-value="(v) => onApprovalToggle(Boolean(v))"
 				/>
 			</div>
-		</template>
-	</div>
+		</div>
+	</N8nCollapsiblePanel>
 </template>
 
 <style module>
 .panel {
-	overflow-y: auto;
-	height: 100%;
+	width: 100%;
+}
+
+.panel.panel {
+	border: 0;
+	border-radius: 0;
+	background-color: transparent;
+	scroll-margin-bottom: 0;
+}
+
+.panel.panel > :first-child {
+	padding: 0;
+	min-height: auto;
+}
+
+.panel.panel > [data-state] > :first-child {
+	padding: var(--spacing--sm) 0 0;
+}
+
+.content {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
 }
 
 .row {

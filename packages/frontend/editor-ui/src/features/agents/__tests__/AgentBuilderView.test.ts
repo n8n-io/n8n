@@ -269,7 +269,7 @@ const commonStubs = {
 	AgentAdvancedPanel: {
 		name: 'AgentAdvancedPanel',
 		template: '<div data-testid="stub-agent-advanced-panel" />',
-		props: ['config', 'disabled'],
+		props: ['config', 'disabled', 'collapsible'],
 		emits: ['update:config'],
 	},
 	AgentMemoryPanel: {
