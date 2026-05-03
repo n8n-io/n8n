@@ -5,6 +5,13 @@ import SessionEventFilter from '../components/SessionEventFilter.vue';
 import type { FilterOption } from '../session-timeline.types';
 
 vi.mock('@n8n/design-system', () => ({
+	N8nButton: { template: '<button><slot /></button>' },
+	N8nPopover: {
+		props: ['open'],
+		emits: ['update:open'],
+		template:
+			'<div><div @click="$emit(\'update:open\', true)"><slot name="trigger" /></div><div v-if="open"><slot name="content" /></div></div>',
+	},
 	N8nIcon: { template: '<span />' },
 }));
 
