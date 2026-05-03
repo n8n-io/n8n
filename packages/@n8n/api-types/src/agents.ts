@@ -106,17 +106,28 @@ export interface NodeToolConfig {
 	credentials?: Record<string, { id: string; name: string }>;
 }
 
-export interface AgentJsonToolRef {
-	type: 'custom' | 'workflow' | 'node';
-	id?: string;
-	workflow?: string;
+interface BaseAgentJsonToolRef {
 	name?: string;
 	description?: string;
-	node?: NodeToolConfig;
-	inputSchema?: Record<string, unknown>;
 	requireApproval?: boolean;
-	allOutputs?: boolean;
 }
+
+export type AgentJsonToolRef =
+	| (BaseAgentJsonToolRef & {
+			type: 'custom';
+			id: string;
+	  })
+	| (BaseAgentJsonToolRef & {
+			type: 'workflow';
+			id?: never;
+			workflow?: string;
+			allOutputs?: boolean;
+	  })
+	| (BaseAgentJsonToolRef & {
+			type: 'node';
+			id?: never;
+			node?: NodeToolConfig;
+	  });
 
 export interface AgentJsonSkillRef {
 	type: 'skill';

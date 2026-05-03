@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { v4 as uuidv4 } from 'uuid';
 import Modal from '@/app/components/Modal.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
@@ -33,7 +34,6 @@ import { AGENT_TOOL_CONFIG_MODAL_KEY } from '../constants';
 import {
 	getExistingToolNames,
 	nodeTypeToNewToolRef,
-	replaceToolRefInList,
 	toolRefToNode,
 	workflowToNewToolRef,
 } from '../composables/useAgentToolRefAdapter';
@@ -62,14 +62,31 @@ const toolTelemetry = useAgentToolTelemetry(props.data.agentId);
 
 const nodePopularityMap = new Map(nodePopularity.map((node) => [node.id, node.popularity]));
 
+interface WorkingToolEntry {
+	localId: string;
+	ref: AgentJsonToolRef;
+}
+
+function toWorkingToolEntries(
+	tools: AgentJsonToolRef[],
+	existingEntries: WorkingToolEntry[] = [],
+): WorkingToolEntry[] {
+	return tools.map((ref, index) => ({
+		localId: existingEntries[index]?.localId ?? uuidv4(),
+		ref,
+	}));
+}
+
 // Local working copy — all edits go here; saved to config via onConfirm.
-const workingTools = ref<AgentJsonToolRef[]>([...props.data.tools]);
+const workingToolEntries = ref<WorkingToolEntry[]>(toWorkingToolEntries(props.data.tools));
 watch(
 	() => props.data.tools,
 	(tools) => {
-		workingTools.value = [...tools];
+		workingToolEntries.value = toWorkingToolEntries(tools, workingToolEntries.value);
 	},
 );
+
+const workingTools = computed(() => workingToolEntries.value.map(({ ref }) => ref));
 
 const searchQuery = ref('');
 const debouncedSearchQuery = ref('');
@@ -175,6 +192,7 @@ const availableWorkflows = computed<IWorkflowDb[]>(() =>
 
 /** Configured tools annotated with their node-type description (for the icon + fallback name). */
 interface ConfiguredToolView {
+	localId: string;
 	ref: AgentJsonToolRef;
 	node: INode;
 	nodeType: INodeTypeDescription;
@@ -183,7 +201,7 @@ interface ConfiguredToolView {
 
 const configuredTools = computed<ConfiguredToolView[]>(() => {
 	const out: ConfiguredToolView[] = [];
-	for (const ref of workingTools.value) {
+	for (const { localId, ref } of workingToolEntries.value) {
 		if (ref.type !== 'node') continue;
 		const node = toolRefToNode(ref);
 		if (!node) continue;
@@ -194,6 +212,7 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 		// treated identically to how the workflow editor paints its red border.
 		const issues = nodeHelpers.getNodeCredentialIssues(node as INodeUi, nodeType);
 		out.push({
+			localId,
 			ref,
 			node,
 			nodeType,
@@ -205,15 +224,21 @@ const configuredTools = computed<ConfiguredToolView[]>(() => {
 
 /** Connected workflow tools — mirrors `configuredTools` for the Connected section. */
 interface ConfiguredWorkflowView {
+	localId: string;
 	ref: AgentJsonToolRef;
 	name: string;
 	description?: string;
 }
 
+interface WorkingWorkflowEntry extends WorkingToolEntry {
+	ref: WorkflowToolRef;
+}
+
 const configuredWorkflows = computed<ConfiguredWorkflowView[]>(() =>
-	workingTools.value
-		.filter((t): t is WorkflowToolRef => t.type === 'workflow')
-		.map((ref) => ({
+	workingToolEntries.value
+		.filter((entry): entry is WorkingWorkflowEntry => entry.ref.type === 'workflow')
+		.map(({ localId, ref }) => ({
+			localId,
 			ref,
 			name: ref.name ?? (ref.workflow as string),
 			description: ref.description,
@@ -265,7 +290,7 @@ const filteredAvailableWorkflows = computed(() => {
 // --- Actions ---------------------------------------------------------------
 
 function addToolRef(savedRef: AgentJsonToolRef) {
-	workingTools.value = [...workingTools.value, savedRef];
+	workingToolEntries.value = [...workingToolEntries.value, { localId: uuidv4(), ref: savedRef }];
 	toolTelemetry.trackAdded(savedRef);
 	commit();
 	uiStore.closeModal(props.modalName);
@@ -345,7 +370,8 @@ async function handleAddWorkflow(workflow: IWorkflowDb) {
 	openConfigForNewRef(workflowToNewToolRef(workflow));
 }
 
-function handleConfigureTool(toolRef: AgentJsonToolRef) {
+function handleConfigureTool(tool: ConfiguredToolView | ConfiguredWorkflowView) {
+	const toolRef = tool.ref;
 	// Node name collision check feeds the shared form's uniqueness logic.
 	uiStore.openModalWithData({
 		name: AGENT_TOOL_CONFIG_MODAL_KEY,
@@ -353,11 +379,9 @@ function handleConfigureTool(toolRef: AgentJsonToolRef) {
 			toolRef,
 			existingToolNames: getExistingToolNames(workingTools.value, toolRef),
 			onConfirm: (updatedRef: AgentJsonToolRef) => {
-				// Match by stable `id` (with reference fallback for legacy refs)
-				// against `workingTools` at confirm time — the array may have
-				// been reassigned by the `props.data.tools` watch while the modal
-				// was open, making any snapshot-captured references stale.
-				workingTools.value = replaceToolRefInList(workingTools.value, toolRef, updatedRef);
+				workingToolEntries.value = workingToolEntries.value.map((entry) =>
+					entry.localId === tool.localId ? { ...entry, ref: updatedRef } : entry,
+				);
 				toolTelemetry.trackEdited(updatedRef);
 				commit();
 			},
@@ -403,24 +427,24 @@ function commit() {
 				>
 					<div :class="$style.toolsList" data-test-id="agent-tools-connected-list">
 						<AgentToolItem
-							v-for="(tool, index) in filteredConfiguredTools"
-							:key="tool.ref.id ?? `node-${index}`"
+							v-for="tool in filteredConfiguredTools"
+							:key="tool.localId"
 							:node-type="tool.nodeType"
 							:configured-node="tool.node"
 							:missing-credentials="tool.missingCredentials"
 							mode="configured"
 							:class="$style.toolsListItem"
-							@configure="handleConfigureTool(tool.ref)"
+							@configure="handleConfigureTool(tool)"
 						/>
 						<WorkflowToolRow
-							v-for="(wf, index) in filteredConfiguredWorkflows"
-							:key="wf.ref.id ?? `wf-${index}`"
+							v-for="wf in filteredConfiguredWorkflows"
+							:key="wf.localId"
 							mode="configured"
 							:name="wf.name"
 							:description="wf.description"
 							row-test-id="agent-tools-connected-workflow-row"
 							configure-test-id="agent-tools-connected-workflow-configure"
-							@configure="handleConfigureTool(wf.ref)"
+							@configure="handleConfigureTool(wf)"
 						/>
 					</div>
 				</div>

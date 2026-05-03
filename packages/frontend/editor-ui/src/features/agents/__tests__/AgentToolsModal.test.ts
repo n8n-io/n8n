@@ -72,7 +72,8 @@ vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: mockConfirm }),
 }));
 
-vi.mock('uuid', () => ({ v4: () => 'mock-uuid' }));
+const uuidMockState = vi.hoisted(() => ({ counter: 0 }));
+vi.mock('uuid', () => ({ v4: () => `mock-uuid-${++uuidMockState.counter}` }));
 
 // Stand-in for the canvas credential validator — see AgentToolsPanel.test for
 // the rationale. Minimal honoring of the `required` flag is enough to cover
@@ -198,6 +199,7 @@ describe('AgentToolsModal', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		uuidMockState.counter = 0;
 		createTestingPinia({ stubActions: false });
 
 		nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -377,6 +379,7 @@ describe('AgentToolsModal', () => {
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 		const [tools] = onConfirm.mock.calls[0];
+		expect(tools[0].id).toBeUndefined();
 		expect(tools).toEqual([
 			expect.objectContaining({
 				type: 'node',
@@ -433,7 +436,6 @@ describe('AgentToolsModal', () => {
 				nodeParameters: { resource: 'message' },
 				credentials: { slackApi: { id: 'c-1', name: 'Prod Slack' } },
 			},
-			inputSchema: { type: 'object', properties: {} },
 		};
 		payload.data.onConfirm(configuredRef);
 

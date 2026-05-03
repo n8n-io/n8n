@@ -599,7 +599,7 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('allows frontend stable ids on node tool configs', () => {
+	it('rejects id on node tool configs', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
@@ -622,9 +622,18 @@ describe('AgentJsonConfigSchema', () => {
 			],
 		};
 
-		const parsed = AgentJsonConfigSchema.parse(config);
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
 
-		expect(parsed.tools?.[0]).toMatchObject({ type: 'node', id: 'tool-ref-1' });
+	it('rejects id on workflow tool configs', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are helpful',
+			tools: [{ type: 'workflow', id: 'tool-ref-1', workflow: 'Send Welcome Email' }],
+		};
+
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
 	it('rejects custom tool ref with invalid id (uppercase)', () => {

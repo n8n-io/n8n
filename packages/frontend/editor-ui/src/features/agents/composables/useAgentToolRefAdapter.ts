@@ -26,20 +26,6 @@ function pickLatestVersion(version: number | number[]): number {
 }
 
 /**
- * Strip the trailing `Tool` suffix from a Tool-variant name.
- *
- * Kept as a utility for legacy config migration only. We no longer apply it on
- * read or write — the executor now tolerates both base and Tool-variant names
- * (via `isUsableAsAgentTool` + `supplyData` routing), and the config form
- * relies on the Tool-variant description to surface the AI codex that
- * enables the "Let the model define this parameter" override button
- * (`canBeContentOverride` in `fromAIOverride.utils.ts`).
- */
-export function toBaseNodeType(name: string): string {
-	return name.endsWith('Tool') ? name.slice(0, -'Tool'.length) : name;
-}
-
-/**
  * Convert the config's strict credential map (`{ id: string; name: string }`)
  * to `INodeCredentials` (`id: string | null`) for rendering.
  */
@@ -75,7 +61,7 @@ export function toolRefToNode(ref: AgentJsonToolRef): INode | null {
 	if (ref.type !== 'node' || !ref.node) return null;
 
 	return {
-		id: ref.id ?? uuidv4(),
+		id: uuidv4(),
 		name: ref.name ?? ref.node.nodeType,
 		type: ref.node.nodeType,
 		typeVersion: ref.node.nodeTypeVersion,
@@ -90,10 +76,6 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 	const version = pickLatestVersion(nodeType.version);
 	return {
 		type: 'node',
-		// Stable id assigned on creation so the modal's `onConfirm` callback can
-		// locate this ref in the current tools array by identity, even if the
-		// array has been rebuilt by an intervening reactive update.
-		id: uuidv4(),
 		// Display name may carry the " Tool" suffix the variant adds — strip it
 		// so the sidebar + config modal show the service name, not "Slack Tool".
 		name: nodeType.displayName.replace(/ Tool$/, ''),
@@ -110,17 +92,13 @@ export function nodeTypeToNewToolRef(nodeType: INodeTypeDescription): AgentJsonT
 
 /**
  * Merge edits made to an `INode` back into the original ref (preserving extra
- * fields). Node tool configs do not persist `inputSchema`; the backend derives
- * the runtime schema from `$fromAI` expressions or node introspection.
+ * fields).
  */
 export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): AgentJsonToolRef {
 	if (original.type !== 'node' || !original.node) return original;
 
-	const originalWithoutInputSchema = { ...original };
-	delete originalWithoutInputSchema.inputSchema;
-
 	return {
-		...originalWithoutInputSchema,
+		...original,
 		name: node.name,
 		node: {
 			...original.node,
@@ -141,32 +119,11 @@ export function updateToolRefFromNode(original: AgentJsonToolRef, node: INode): 
 export function workflowToNewToolRef(workflow: IWorkflowDb): AgentJsonToolRef {
 	return {
 		type: 'workflow',
-		// Stable id: see `nodeTypeToNewToolRef` for rationale.
-		id: uuidv4(),
 		workflow: workflow.name,
 		name: workflow.name,
 		description: workflow.description ?? '',
 		allOutputs: false,
 	};
-}
-
-/**
- * Replace a tool ref in a list, identifying it by its stable `id` when
- * available and falling back to reference equality for legacy refs created
- * before ids were assigned. Relying purely on reference equality is brittle
- * when the tools array can be rebuilt between open-time and confirm-time of
- * the config modal (e.g. another reactive update landing mid-edit) — every
- * element then has a fresh reference and the map would silently no-op.
- */
-export function replaceToolRefInList(
-	tools: AgentJsonToolRef[],
-	target: AgentJsonToolRef,
-	replacement: AgentJsonToolRef,
-): AgentJsonToolRef[] {
-	if (target.id) {
-		return tools.map((t) => (t.id === target.id ? replacement : t));
-	}
-	return tools.map((t) => (t === target ? replacement : t));
 }
 
 /**

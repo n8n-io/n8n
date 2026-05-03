@@ -56,21 +56,22 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 			.regex(/^[a-z0-9_-]+$/),
 		requireApproval: z.boolean().optional(),
 	}),
-	z.object({
-		type: z.literal('workflow'),
-		workflow: z.string().min(1),
-		name: z.string().optional(),
-		description: z.string().optional(),
-		requireApproval: z.boolean().optional(),
-		allOutputs: z
-			.boolean()
-			.optional()
-			.describe('Whether to return all node outputs instead of just the last node'),
-	}),
+	z
+		.object({
+			type: z.literal('workflow'),
+			workflow: z.string().min(1),
+			name: z.string().optional(),
+			description: z.string().optional(),
+			requireApproval: z.boolean().optional(),
+			allOutputs: z
+				.boolean()
+				.optional()
+				.describe('Whether to return all node outputs instead of just the last node'),
+		})
+		.strict(),
 	z
 		.object({
 			type: z.literal('node'),
-			id: z.string().min(1).optional(),
 			name: z.string().min(1),
 			description: z.string().optional(),
 			node: NodeConfigSchema,
