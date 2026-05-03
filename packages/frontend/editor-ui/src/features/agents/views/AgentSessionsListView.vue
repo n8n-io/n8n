@@ -13,7 +13,6 @@ import { useRoute, useRouter } from 'vue-router';
 
 import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
-import AgentPanelHeader from '../components/AgentPanelHeader.vue';
 
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
@@ -115,12 +114,6 @@ async function loadMore() {
 
 <template>
 	<div :class="$style.wrapper">
-		<AgentPanelHeader
-			title="Executions"
-			:description="`${sessionsStore.threads.length} ${
-				sessionsStore.threads.length === 1 ? 'execution' : 'executions'
-			}`"
-		/>
 		<div :class="$style.tableContainer">
 			<N8nTableBase>
 				<thead>

@@ -1,17 +1,19 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nText, N8nButton, N8nSelect } from '@n8n/design-system';
+import { N8nText, N8nSelect, N8nSwitch } from '@n8n/design-system';
 import N8nOption from '@n8n/design-system/components/N8nOption';
-import { ElSwitch } from 'element-plus';
 import type { AgentJsonConfig } from '../types';
-import AgentPanelHeader from './AgentPanelHeader.vue';
 
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
 type StorageType = MemoryConfig['storage'];
 
-const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
-	disabled: false,
-});
+const props = withDefaults(
+	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
+	{
+		disabled: false,
+		embedded: false,
+	},
+);
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
@@ -57,6 +59,14 @@ function onDisableMemory() {
 	emit('update:config', {
 		memory: { ...(props.config?.memory ?? { storage: 'n8n' as const }), enabled: false },
 	});
+}
+
+function onMemoryToggle(enabled: boolean) {
+	if (enabled) {
+		onEnableMemory();
+	} else {
+		onDisableMemory();
+	}
 }
 
 function onSemanticRecallToggle(enabled: boolean) {
@@ -114,11 +124,16 @@ function onRangeAfterChange(event: Event) {
 		:class="[$style.container, props.disabled && $style.disabled]"
 		:inert="props.disabled || undefined"
 	>
-		<AgentPanelHeader
-			:class="$style.header"
-			title="Memory"
-			description="Conversation memory configuration"
-		/>
+		<div :class="$style.header">
+			<N8nText tag="h3" :bold="true">Memory</N8nText>
+			<N8nSwitch
+				:model-value="memory !== null"
+				:disabled="props.disabled"
+				data-testid="agent-memory-toggle"
+				@update:model-value="onMemoryToggle"
+			/>
+		</div>
+
 		<!-- Configured + enabled state -->
 		<template v-if="memory !== null">
 			<!-- Storage type -->
@@ -154,10 +169,10 @@ function onRangeAfterChange(event: Event) {
 
 				<div :class="$style.row">
 					<N8nText size="small" :bold="true">Semantic recall</N8nText>
-					<ElSwitch
+					<N8nSwitch
 						:model-value="semanticRecallEnabled"
 						data-testid="agent-semantic-recall-toggle"
-						@update:model-value="(v) => onSemanticRecallToggle(Boolean(v))"
+						@update:model-value="onSemanticRecallToggle"
 					/>
 				</div>
 
@@ -194,24 +209,6 @@ function onRangeAfterChange(event: Event) {
 					</div>
 				</template>
 			</template>
-
-			<hr :class="$style.divider" />
-
-			<N8nButton type="tertiary" size="small" @click="onDisableMemory"> Disable memory </N8nButton>
-		</template>
-
-		<!-- Empty / disabled state -->
-		<template v-else>
-			<div :class="$style.emptyState">
-				<div :class="$style.emptyCard">
-					<N8nText size="small" color="text-light">
-						Enable memory to give the agent conversation history across turns.
-					</N8nText>
-					<N8nButton type="primary" data-testid="enable-memory-btn" @click="onEnableMemory">
-						Enable Memory
-					</N8nButton>
-				</div>
-			</div>
 		</template>
 	</div>
 </template>
@@ -220,11 +217,17 @@ function onRangeAfterChange(event: Event) {
 .container {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--lg);
-	gap: var(--spacing--xs);
+	gap: var(--spacing--lg);
 	width: 100%;
 	height: 100%;
 	overflow-y: auto;
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 }
 
 /* Scoped overlay — header stays interactive so the heading and toggle can render. */
@@ -265,26 +268,5 @@ function onRangeAfterChange(event: Event) {
 	border: none;
 	border-top: var(--border);
 	margin: var(--spacing--2xs) 0;
-}
-
-.emptyState {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--xl);
-	height: 100%;
-}
-
-.emptyCard {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--xl);
-	border: var(--border-width) dashed var(--border-color);
-	border-radius: var(--radius--lg);
-	text-align: center;
-	max-width: 360px;
 }
 </style>

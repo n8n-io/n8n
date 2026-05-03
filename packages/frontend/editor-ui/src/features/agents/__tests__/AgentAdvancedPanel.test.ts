@@ -21,6 +21,18 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 });
 
 const globalStubs = {
+	N8nCollapsiblePanel: {
+		props: ['modelValue', 'title', 'disabled'],
+		emits: ['update:modelValue'],
+		template: `
+			<section>
+				<button :disabled="disabled" @click="$emit('update:modelValue', !modelValue)">
+					{{ title }}
+				</button>
+				<div v-show="modelValue"><slot /></div>
+			</section>
+		`,
+	},
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	N8nInput: {

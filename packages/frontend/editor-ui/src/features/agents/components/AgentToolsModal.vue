@@ -409,6 +409,7 @@ function commit() {
 							:configured-node="tool.node"
 							:missing-credentials="tool.missingCredentials"
 							mode="configured"
+							:class="$style.toolsListItem"
 							@configure="handleConfigureTool(tool.ref)"
 						/>
 						<WorkflowToolRow

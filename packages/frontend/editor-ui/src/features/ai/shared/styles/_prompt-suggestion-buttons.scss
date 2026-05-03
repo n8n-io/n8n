@@ -4,8 +4,8 @@
 	gap: var(--spacing--4xs);
 	padding: var(--spacing--3xs) var(--spacing--xs);
 	border: var(--border);
-	border-radius: var(--radius--xs);
-	background: light-dark(var(--color--foreground--tint-2), var(--color--foreground--tint-1));
+	border-radius: var(--radius--full);
+	background: light-dark(var(--background--surface), var(--background--subtle));
 	box-shadow: var(--shadow--xs);
 	color: var(--text-color--subtle);
 	font-size: var(--font-size--2xs);

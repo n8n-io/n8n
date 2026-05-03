@@ -6,7 +6,7 @@
  */
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { N8nInput, N8nText } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
 	ChatHubConversationModel,
@@ -33,9 +33,13 @@ import {
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import AgentMiniEditor from './AgentMiniEditor.vue';
 
-const props = withDefaults(defineProps<{ config: AgentJsonConfig | null; disabled?: boolean }>(), {
-	disabled: false,
-});
+const props = withDefaults(
+	defineProps<{ config: AgentJsonConfig | null; disabled?: boolean; embedded?: boolean }>(),
+	{
+		disabled: false,
+		embedded: false,
+	},
+);
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
 
 const i18n = useI18n();
@@ -102,30 +106,9 @@ function onSelectCredential(provider: ChatHubProvider, credentialId: string | nu
 	}
 }
 
-const name = ref(props.config?.name ?? '');
-const description = ref(props.config?.description ?? '');
 const instructions = ref(props.config?.instructions ?? '');
 
-// Watch each editable field individually so an external update to (say)
-// `name` doesn't snap `instructions` back to whatever the saved config holds
-// while the user is mid-keystroke. The previous deep watcher reset every
-// local ref on any change to the whole config object — that races the
-// debounced emit pipeline and can drop in-flight characters from another
-// field. Each watcher is also a no-op when the new value already matches the
-// local ref, which keeps the cursor stable for the field actually being
-// edited.
-watch(
-	() => props.config?.name ?? '',
-	(value) => {
-		if (value !== name.value) name.value = value;
-	},
-);
-watch(
-	() => props.config?.description ?? '',
-	(value) => {
-		if (value !== description.value) description.value = value;
-	},
-);
+// Keep the local editor stable while external config updates arrive.
 watch(
 	() => props.config?.instructions ?? '',
 	(value) => {
@@ -133,27 +116,9 @@ watch(
 	},
 );
 
-const emitName = useDebounceFn((value: string) => {
-	emit('update:config', { name: value });
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.TEXT_CHANGE));
-
-const emitDescription = useDebounceFn((value: string) => {
-	emit('update:config', { description: value || undefined });
-}, getDebounceTime(DEBOUNCE_TIME.INPUT.TEXT_CHANGE));
-
 const emitInstructions = useDebounceFn(() => {
 	emit('update:config', { instructions: instructions.value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
-
-function onNameInput(value: string) {
-	name.value = value;
-	void emitName(value);
-}
-
-function onDescriptionInput(value: string) {
-	description.value = value;
-	void emitDescription(value);
-}
 
 function onInstructionsInput(value: string) {
 	instructions.value = value;
@@ -164,39 +129,10 @@ function onInstructionsInput(value: string) {
 <template>
 	<div :class="$style.panel" data-testid="agent-info-panel">
 		<AgentPanelHeader
+			v-if="!props.embedded"
 			:title="i18n.baseText('agents.builder.agent.title')"
 			:description="i18n.baseText('agents.builder.agent.description')"
 		/>
-
-		<div :class="$style.field">
-			<label :class="$style.label"
-				><N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.agent.name.label')
-				}}</N8nText></label
-			>
-			<N8nInput
-				:model-value="name"
-				:placeholder="i18n.baseText('agents.builder.agent.name.placeholder')"
-				:disabled="props.disabled"
-				data-testid="agent-name-input"
-				@update:model-value="onNameInput"
-			/>
-		</div>
-
-		<div :class="$style.field">
-			<label :class="$style.label"
-				><N8nText size="small" :bold="true">{{
-					i18n.baseText('agents.builder.agent.description.label')
-				}}</N8nText></label
-			>
-			<N8nInput
-				:model-value="description"
-				:placeholder="i18n.baseText('agents.builder.agent.description.placeholder')"
-				:disabled="props.disabled"
-				data-testid="agent-description-input"
-				@update:model-value="onDescriptionInput"
-			/>
-		</div>
 
 		<div :class="[$style.field, props.disabled && shared.disabledOverlay]">
 			<label :class="$style.label"
@@ -229,7 +165,7 @@ function onInstructionsInput(value: string) {
 				:model-value="instructions"
 				language="markdown"
 				:readonly="props.disabled"
-				max-height="100%"
+				max-height="640px"
 				min-height="160px"
 				@update:model-value="onInstructionsInput"
 			/>
@@ -244,7 +180,6 @@ function onInstructionsInput(value: string) {
 
 <style module>
 .panel {
-	padding: var(--spacing--lg);
 	overflow-y: auto;
 	height: 100%;
 	display: flex;
