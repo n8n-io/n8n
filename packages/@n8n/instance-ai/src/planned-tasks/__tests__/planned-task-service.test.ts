@@ -62,13 +62,17 @@ function makeTask(overrides: Partial<PlannedTask> = {}): PlannedTask {
 			...overrides,
 		} as PlannedTask;
 	}
-	const kind = overrides.kind ?? ('handoff' in overrides ? overrides.handoff?.kind : undefined) ?? 'build-workflow';
+	const kind =
+		overrides.kind ??
+		('handoff' in overrides ? overrides.handoff?.kind : undefined) ??
+		'build-workflow';
 	return {
 		id,
 		title: 'Test task',
 		kind,
 		deps: [],
-		handoff: 'handoff' in overrides && overrides.handoff ? overrides.handoff : makeHandoff(id, kind),
+		handoff:
+			'handoff' in overrides && overrides.handoff ? overrides.handoff : makeHandoff(id, kind),
 		...overrides,
 	} as PlannedTask;
 }
@@ -95,13 +99,17 @@ function makeTaskRecord(overrides: Partial<PlannedTaskRecord> = {}): PlannedTask
 			...overrides,
 		} as PlannedTaskRecord;
 	}
-	const kind = overrides.kind ?? ('handoff' in overrides ? overrides.handoff?.kind : undefined) ?? 'build-workflow';
+	const kind =
+		overrides.kind ??
+		('handoff' in overrides ? overrides.handoff?.kind : undefined) ??
+		'build-workflow';
 	return {
 		id,
 		title: 'Test task',
 		kind,
 		deps: [],
-		handoff: 'handoff' in overrides && overrides.handoff ? overrides.handoff : makeHandoff(id, kind),
+		handoff:
+			'handoff' in overrides && overrides.handoff ? overrides.handoff : makeHandoff(id, kind),
 		status: 'planned',
 		...overrides,
 	} as PlannedTaskRecord;

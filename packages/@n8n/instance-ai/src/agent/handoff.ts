@@ -250,15 +250,17 @@ export function toSpecString(handoff: PlannedHandoff): string {
 	}
 }
 
-export function toPlannedTaskArg(task: {
-	id: string;
-	title: string;
-	deps: string[];
-	tools?: string[];
-} & (
-	| { kind: 'checkpoint'; spec: string }
-	| { kind?: PlannedHandoffKind; handoff: PlannedHandoff }
-)): PlannedTaskArg {
+export function toPlannedTaskArg(
+	task: {
+		id: string;
+		title: string;
+		deps: string[];
+		tools?: string[];
+	} & (
+		| { kind: 'checkpoint'; spec: string }
+		| { kind?: PlannedHandoffKind; handoff: PlannedHandoff }
+	),
+): PlannedTaskArg {
 	if (task.kind === 'checkpoint') {
 		return {
 			id: task.id,
