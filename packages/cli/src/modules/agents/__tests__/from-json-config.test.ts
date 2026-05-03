@@ -113,9 +113,9 @@ describe('buildFromJson()', () => {
 		expect(agent.snapshot.tools.some((t) => t.name === 'my_search')).toBe(true);
 	});
 
-	it('injects attached skill names and descriptions, but not bodies, into instructions', async () => {
+	it('injects attached skill names, descriptions, and ids into instructions, but not bodies', async () => {
 		const config = makeConfig({
-			skills: [{ type: 'skill', id: 'summarize_notes' }],
+			skills: [{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }],
 		});
 
 		const agent = await buildFromJson(
@@ -126,7 +126,7 @@ describe('buildFromJson()', () => {
 				credentialProvider: makeMockCredentialProvider(),
 				memoryFactory: makeMockMemoryFactory(),
 				skills: {
-					summarize_notes: {
+					skill_0Ab9ZkLm3Pq7Xy2N: {
 						name: 'Summarize notes',
 						description: 'Use for meeting notes and transcripts',
 						instructions: 'Extract decisions and action items.',
@@ -136,9 +136,15 @@ describe('buildFromJson()', () => {
 		);
 
 		const instructions = agent.snapshot.instructions ?? '';
-		expect(instructions).toContain('summarize_notes: Summarize notes');
-		expect(instructions).toContain('Use for meeting notes and transcripts');
-		expect(instructions).toContain('load_skill');
+		expect(instructions).toContain('Skill loading protocol:');
+		expect(instructions).toContain('Skills are optional instruction packs, not execution tools');
+		expect(instructions).toContain('Available skills:');
+		expect(instructions).toContain('name: Summarize notes');
+		expect(instructions).toContain('description: Use for meeting notes and transcripts');
+		expect(instructions).toContain('id: skill_0Ab9ZkLm3Pq7Xy2N');
+		expect(instructions).toContain("call load_skill once with that skill's id");
+		expect(instructions).toContain('do not call load_skill again');
+		expect(instructions).toContain('Do not load a skill just because it is listed here');
 		expect(instructions).not.toContain('Extract decisions and action items.');
 	});
 
@@ -171,6 +177,8 @@ describe('buildFromJson()', () => {
 
 		const loadSkill = agent.declaredTools.find((t) => t.name === 'load_skill');
 		expect(loadSkill).toBeDefined();
+		expect(loadSkill?.description).not.toContain('Summarize notes');
+		expect(loadSkill?.systemInstruction).toBeUndefined();
 
 		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
 			ok: true,
@@ -636,13 +644,13 @@ describe('AgentJsonConfigSchema', () => {
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
 
-	it('rejects custom tool ref with invalid id (uppercase)', () => {
+	it('rejects custom tool ref with invalid id characters', () => {
 		const config = {
 			name: 'test',
 			model: 'anthropic/claude-sonnet-4-5',
 			credential: 'my-key',
 			instructions: '',
-			tools: [{ type: 'custom', id: 'MyTool' }],
+			tools: [{ type: 'custom', id: 'tool id' }],
 		};
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});

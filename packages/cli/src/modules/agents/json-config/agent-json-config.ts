@@ -44,7 +44,7 @@ const AgentJsonSkillConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
-		.regex(/^[a-z0-9_-]+$/),
+		.regex(/^[A-Za-z0-9_-]+$/),
 });
 
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
@@ -53,7 +53,7 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 		id: z
 			.string()
 			.min(1)
-			.regex(/^[a-z0-9_-]+$/),
+			.regex(/^[A-Za-z0-9_-]+$/),
 		requireApproval: z.boolean().optional(),
 	}),
 	z

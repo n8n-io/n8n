@@ -706,7 +706,11 @@ describe('AgentBuilderView — three-column shell', () => {
 		};
 		mockConfig.value = { ...intendedConfig };
 		getAgentMock.mockResolvedValueOnce(makeAgentResponse({ skills: {} }));
-		createAgentSkillMock.mockResolvedValueOnce({ skill, versionId: 'v2' });
+		createAgentSkillMock.mockResolvedValueOnce({
+			id: 'skill_0Ab9ZkLm3Pq7Xy2N',
+			skill,
+			versionId: 'v2',
+		});
 
 		const wrapper = await renderView();
 		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('add-skill');
@@ -718,15 +722,14 @@ describe('AgentBuilderView — three-column shell', () => {
 				data: expect.objectContaining({
 					projectId: 'p1',
 					agentId: 'a1',
-					existingSkillIds: [],
 				}),
 			}),
 		);
 
 		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { id: string; skill: typeof skill }) => void;
+			onConfirm: (payload: { skill: typeof skill }) => void;
 		};
-		modalData.onConfirm({ id: 'summarize_meetings', skill });
+		modalData.onConfirm({ skill });
 		await flushPromises();
 		await nextTick();
 
@@ -734,9 +737,9 @@ describe('AgentBuilderView — three-column shell', () => {
 			localConfig: { tools?: AgentJsonToolRef[]; skills?: AgentJsonSkillRef[] };
 		};
 		expect(vm.localConfig.tools).toEqual([{ type: 'custom', id: 'custom_tool' }]);
-		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'summarize_meetings' }]);
+		expect(vm.localConfig.skills).toEqual([{ type: 'skill', id: 'skill_0Ab9ZkLm3Pq7Xy2N' }]);
 		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
-			{ id: 'summarize_meetings', skill },
+			{ id: 'skill_0Ab9ZkLm3Pq7Xy2N', skill },
 		]);
 		expect(showMessageMock).toHaveBeenCalledWith({
 			title: 'agents.builder.skills.added',
