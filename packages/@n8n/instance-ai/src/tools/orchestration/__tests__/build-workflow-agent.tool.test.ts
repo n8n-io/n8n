@@ -220,6 +220,27 @@ describe('resultFromPostStreamError', () => {
 			},
 		});
 	});
+
+	it('uses the planned task key on recovered outcomes when supplied', () => {
+		const result = resultFromPostStreamError({
+			error: new Error('Stream ended unexpectedly'),
+			submitAttempts: [
+				{
+					filePath: MAIN_PATH,
+					sourceHash: 'abc',
+					success: true,
+					workflowId: 'WF_123',
+				},
+			],
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			taskId: 'background_task',
+			taskKey: 'planned_build',
+			startTime: Date.now(),
+		});
+
+		expect(result?.outcome?.taskKey).toBe('planned_build');
+	});
 });
 
 describe('builderRenderers', () => {

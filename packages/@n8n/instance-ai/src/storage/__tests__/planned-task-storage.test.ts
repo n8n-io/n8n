@@ -4,6 +4,7 @@ jest.mock('../thread-patch', () => ({
 	patchThread: jest.fn(),
 }));
 
+import { DELEGATE_DEFAULT_INSTRUCTIONS } from '../../agent/handoff';
 import type { PlannedTaskGraph } from '../../types';
 import { PlannedTaskStorage } from '../planned-task-storage';
 import { patchThread } from '../thread-patch';
@@ -97,6 +98,86 @@ describe('PlannedTaskStorage', () => {
 
 			const loaded = await storage.get('thread-1');
 			expect(loaded).toBeNull();
+		});
+
+		it('normalizes legacy flat task records into typed handoffs', async () => {
+			(memory.getThreadById as jest.Mock).mockResolvedValue({
+				metadata: {
+					instanceAiPlannedTasks: {
+						planRunId: 'run-legacy',
+						status: 'active',
+						tasks: [
+							{
+								id: 'build-legacy',
+								title: 'Build workflow',
+								kind: 'build-workflow',
+								spec: 'Build a Slack notifier',
+								workflowId: 'wf-existing',
+								deps: [],
+								status: 'planned',
+							},
+							{
+								id: 'research-legacy',
+								title: 'Research Slack scopes',
+								kind: 'research',
+								spec: 'Focus on OAuth scopes',
+								deps: [],
+								status: 'planned',
+							},
+							{
+								id: 'delegate-legacy',
+								title: 'Check node schema',
+								kind: 'delegate',
+								spec: 'Inspect the Slack node schema',
+								tools: ['nodes'],
+								deps: [],
+								status: 'planned',
+							},
+						],
+					},
+				},
+			});
+
+			const loaded = await storage.get('thread-1');
+			expect(loaded).not.toBeNull();
+			if (!loaded) throw new Error('Expected legacy graph to normalize');
+
+			const build = loaded.tasks.find((task) => task.id === 'build-legacy');
+			expect(build?.kind).toBe('build-workflow');
+			if (build?.kind !== 'build-workflow') throw new Error('Expected normalized build task');
+			expect(build.handoff).toEqual({
+				taskKey: 'build-legacy',
+				kind: 'build-workflow',
+				input: {
+					goal: 'Build a Slack notifier',
+					workflowId: 'wf-existing',
+					workItemId: 'wi_build-legacy',
+					sandboxMode: true,
+				},
+			});
+
+			const research = loaded.tasks.find((task) => task.id === 'research-legacy');
+			expect(research?.kind).toBe('research');
+			if (research?.kind !== 'research') throw new Error('Expected normalized research task');
+			expect(research.handoff).toEqual({
+				taskKey: 'research-legacy',
+				kind: 'research',
+				input: { goal: 'Research Slack scopes', constraints: 'Focus on OAuth scopes' },
+			});
+
+			const delegate = loaded.tasks.find((task) => task.id === 'delegate-legacy');
+			expect(delegate?.kind).toBe('delegate');
+			if (delegate?.kind !== 'delegate') throw new Error('Expected normalized delegate task');
+			expect(delegate.handoff).toEqual({
+				taskKey: 'delegate-legacy',
+				kind: 'delegate',
+				input: {
+					role: 'Check node schema',
+					instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
+					goal: 'Inspect the Slack node schema',
+					toolNames: ['nodes'],
+				},
+			});
 		});
 	});
 

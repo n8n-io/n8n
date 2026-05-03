@@ -238,13 +238,14 @@ function buildOutcome(
 function buildBuilderOutcome(
 	workItemId: string,
 	taskId: string,
+	taskKey: string,
 	attempt: SubmitWorkflowAttempt | undefined,
 	finalText: string,
 	startTime: number,
 ): SubAgentOutcome {
 	const payload = buildOutcome(workItemId, taskId, attempt, finalText);
 	return {
-		taskKey: taskId,
+		taskKey,
 		kind: 'build-workflow',
 		status: payload.submitted ? 'completed' : 'failed',
 		resultText: finalText,
@@ -274,6 +275,7 @@ export function resultFromPostStreamError(input: {
 	mainWorkflowPath: string;
 	workItemId: string;
 	taskId: string;
+	taskKey?: string;
 	startTime: number;
 }): BackgroundTaskResult | undefined {
 	let attempt: SubmitWorkflowAttempt | undefined;
@@ -290,7 +292,14 @@ export function resultFromPostStreamError(input: {
 	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildBuilderOutcome(input.workItemId, input.taskId, attempt, text, input.startTime),
+		outcome: buildBuilderOutcome(
+			input.workItemId,
+			input.taskId,
+			input.taskKey ?? input.taskId,
+			attempt,
+			text,
+			input.startTime,
+		),
 	};
 }
 
@@ -301,6 +310,7 @@ export interface StartBuildWorkflowAgentInput {
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
+	handoff?: Extract<SubAgentHandoff, { kind: 'build-workflow' }>;
 }
 
 export interface StartedWorkflowBuildTask {
@@ -386,22 +396,24 @@ export async function startBuildWorkflowAgentTask(
 
 	const subAgentId = input.agentId ?? `agent-builder-${nanoid(6)}`;
 	const taskId = input.taskId ?? `build-${nanoid(8)}`;
-	const workItemId = `wi_${nanoid(8)}`;
+	const plannedHandoff = input.handoff;
+	const workItemId = plannedHandoff?.input.workItemId ?? `wi_${nanoid(8)}`;
 
-	const { workflowId } = input;
+	const workflowId = plannedHandoff?.input.workflowId ?? input.workflowId;
 
 	const builderInput: BuilderHandoffInput = {
-		goal: input.task,
+		...(plannedHandoff?.input ?? {}),
+		goal: plannedHandoff?.input.goal ?? input.task,
 		workflowId,
 		workItemId,
 		sandboxMode: useSandbox,
-		conversationContext: input.conversationContext,
+		conversationContext: plannedHandoff?.input.conversationContext ?? input.conversationContext,
 		...(availableCredentials && availableCredentials.length > 0
 			? { availableCredentials, credentialsSnapshotAt }
 			: {}),
 	};
 	const handoff: Extract<SubAgentHandoff, { kind: 'build-workflow' }> = {
-		taskKey: `build:${workflowId ?? 'new'}`,
+		taskKey: plannedHandoff?.taskKey ?? `build:${workflowId ?? 'new'}`,
 		kind: 'build-workflow',
 		input: builderInput,
 	};
@@ -414,9 +426,9 @@ export async function startBuildWorkflowAgentTask(
 		plannedTaskId: input.plannedTaskId,
 		workItemId,
 		inputs: {
-			task: input.task,
-			workflowId: input.workflowId,
-			conversationContext: input.conversationContext,
+			task: builderInput.goal,
+			workflowId,
+			conversationContext: builderInput.conversationContext,
 		},
 	});
 
@@ -431,7 +443,7 @@ export async function startBuildWorkflowAgentTask(
 		dedupeKey: {
 			role: 'workflow-builder',
 			plannedTaskId: input.plannedTaskId,
-			workflowId: input.workflowId,
+			workflowId,
 		},
 		// When the orchestrator spawns a builder inside a checkpoint follow-up
 		// (e.g. to patch a runtime bug the verify exposed), tag the task so the
@@ -578,6 +590,7 @@ export async function startBuildWorkflowAgentTask(
 								mainWorkflowPath,
 								workItemId,
 								taskId,
+								taskKey: handoff.taskKey,
 								startTime,
 							});
 							if (recovered) return recovered;
@@ -592,7 +605,14 @@ export async function startBuildWorkflowAgentTask(
 							const text = 'Error: workflow builder finished without submitting /src/workflow.ts.';
 							return {
 								text,
-								outcome: buildBuilderOutcome(workItemId, taskId, undefined, text, startTime),
+								outcome: buildBuilderOutcome(
+									workItemId,
+									taskId,
+									handoff.taskKey,
+									undefined,
+									text,
+									startTime,
+								),
 							};
 						}
 
@@ -605,6 +625,7 @@ export async function startBuildWorkflowAgentTask(
 								outcome: buildBuilderOutcome(
 									workItemId,
 									taskId,
+									handoff.taskKey,
 									mainWorkflowAttempt,
 									text,
 									startTime,
@@ -638,6 +659,7 @@ export async function startBuildWorkflowAgentTask(
 										outcome: buildBuilderOutcome(
 											workItemId,
 											taskId,
+											handoff.taskKey,
 											refreshedAttempt,
 											finalText,
 											startTime,
@@ -656,6 +678,7 @@ export async function startBuildWorkflowAgentTask(
 									outcome: buildBuilderOutcome(
 										workItemId,
 										taskId,
+										handoff.taskKey,
 										refreshedAttempt ?? undefined,
 										text,
 										startTime,
@@ -674,6 +697,7 @@ export async function startBuildWorkflowAgentTask(
 							outcome: buildBuilderOutcome(
 								workItemId,
 								taskId,
+								handoff.taskKey,
 								mainWorkflowAttempt,
 								finalText,
 								startTime,
@@ -783,10 +807,10 @@ export async function startBuildWorkflowAgentTask(
 			taskId,
 			kind: 'builder',
 			title: 'Building workflow',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: input.workflowId
-				? { type: 'workflow' as const, id: input.workflowId }
+			subtitle: truncateLabel(builderInput.goal),
+			goal: builderInput.goal,
+			targetResource: workflowId
+				? { type: 'workflow' as const, id: workflowId }
 				: { type: 'workflow' as const },
 		},
 	});

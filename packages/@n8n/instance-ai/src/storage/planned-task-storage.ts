@@ -2,6 +2,7 @@ import type { Memory } from '@mastra/memory';
 import { z } from 'zod';
 
 import {
+	DELEGATE_DEFAULT_INSTRUCTIONS,
 	builderHandoffInputSchema,
 	dataTableHandoffInputSchema,
 	delegateHandoffInputSchema,
@@ -45,51 +46,53 @@ const plannedTaskKindSchema = z.enum([
 
 const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
 
-const plannedTaskRecordSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	kind: plannedTaskKindSchema,
-	deps: z.array(z.string()),
-	tools: z.array(z.string()).optional(),
-	handoff: plannedHandoffSchema.optional(),
-	spec: z.string().optional(),
-	status: plannedTaskStatusSchema,
-	agentId: z.string().optional(),
-	backgroundTaskId: z.string().optional(),
-	result: z.string().optional(),
-	error: z.string().optional(),
-	outcome: z.unknown().optional(),
-	startedAt: z.number().optional(),
-	finishedAt: z.number().optional(),
-}).superRefine((task, ctx) => {
-	if (task.kind === 'checkpoint') {
-		if (!task.spec) {
+const plannedTaskRecordSchema = z
+	.object({
+		id: z.string(),
+		title: z.string(),
+		kind: plannedTaskKindSchema,
+		deps: z.array(z.string()),
+		tools: z.array(z.string()).optional(),
+		handoff: plannedHandoffSchema.optional(),
+		spec: z.string().optional(),
+		status: plannedTaskStatusSchema,
+		agentId: z.string().optional(),
+		backgroundTaskId: z.string().optional(),
+		result: z.string().optional(),
+		error: z.string().optional(),
+		outcome: z.unknown().optional(),
+		startedAt: z.number().optional(),
+		finishedAt: z.number().optional(),
+	})
+	.superRefine((task, ctx) => {
+		if (task.kind === 'checkpoint') {
+			if (!task.spec) {
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: 'Checkpoint tasks must include spec instructions',
+					path: ['spec'],
+				});
+			}
+			return;
+		}
+
+		if (!task.handoff) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: 'Checkpoint tasks must include spec instructions',
-				path: ['spec'],
+				message: 'Sub-agent tasks must include a typed handoff',
+				path: ['handoff'],
+			});
+			return;
+		}
+
+		if (task.handoff.kind !== task.kind) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Task kind must match handoff kind',
+				path: ['handoff', 'kind'],
 			});
 		}
-		return;
-	}
-
-	if (!task.handoff) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			message: 'Sub-agent tasks must include a typed handoff',
-			path: ['handoff'],
-		});
-		return;
-	}
-
-	if (task.handoff.kind !== task.kind) {
-		ctx.addIssue({
-			code: z.ZodIssueCode.custom,
-			message: 'Task kind must match handoff kind',
-			path: ['handoff', 'kind'],
-		});
-	}
-});
+	});
 
 const plannedTaskGraphSchema = z.object({
 	planRunId: z.string(),
@@ -98,12 +101,105 @@ const plannedTaskGraphSchema = z.object({
 	tasks: z.array(plannedTaskRecordSchema),
 });
 
+const legacyPlannedTaskRecordSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	kind: plannedTaskKindSchema,
+	spec: z.string(),
+	deps: z.array(z.string()),
+	tools: z.array(z.string()).optional(),
+	workflowId: z.string().optional(),
+	status: plannedTaskStatusSchema,
+	agentId: z.string().optional(),
+	backgroundTaskId: z.string().optional(),
+	result: z.string().optional(),
+	error: z.string().optional(),
+	outcome: z.unknown().optional(),
+	startedAt: z.number().optional(),
+	finishedAt: z.number().optional(),
+});
+
+const legacyPlannedTaskGraphSchema = z.object({
+	planRunId: z.string(),
+	messageGroupId: z.string().optional(),
+	status: z.enum(['awaiting_approval', 'active', 'awaiting_replan', 'completed', 'cancelled']),
+	tasks: z.array(legacyPlannedTaskRecordSchema),
+});
+
+type LegacyPlannedTaskRecord = z.infer<typeof legacyPlannedTaskRecordSchema>;
+
+function normalizeLegacyTask(task: LegacyPlannedTaskRecord): unknown {
+	if (task.kind === 'checkpoint') return task;
+
+	switch (task.kind) {
+		case 'delegate':
+			return {
+				...task,
+				handoff: {
+					taskKey: task.id,
+					kind: 'delegate',
+					input: {
+						role: task.title,
+						instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
+						goal: task.spec,
+						toolNames: task.tools ?? [],
+					},
+				},
+			};
+		case 'build-workflow':
+			return {
+				...task,
+				handoff: {
+					taskKey: task.id,
+					kind: 'build-workflow',
+					input: {
+						goal: task.spec,
+						workflowId: task.workflowId,
+						workItemId: `wi_${task.id}`,
+						sandboxMode: true,
+					},
+				},
+			};
+		case 'manage-data-tables':
+			return {
+				...task,
+				handoff: {
+					taskKey: task.id,
+					kind: 'manage-data-tables',
+					input: { goal: task.spec },
+				},
+			};
+		case 'research':
+			return {
+				...task,
+				handoff: {
+					taskKey: task.id,
+					kind: 'research',
+					input: { goal: task.title, constraints: task.spec },
+				},
+			};
+	}
+}
+
+function normalizeLegacyGraph(raw: unknown): PlannedTaskGraph | null {
+	const legacy = legacyPlannedTaskGraphSchema.safeParse(raw);
+	if (!legacy.success) return null;
+
+	const normalized = {
+		...legacy.data,
+		tasks: legacy.data.tasks.map(normalizeLegacyTask),
+	};
+	const result = plannedTaskGraphSchema.safeParse(normalized);
+	return result.success ? (result.data as unknown as PlannedTaskGraph) : null;
+}
+
 function parseGraph(raw: unknown): PlannedTaskGraph | null {
 	const result = plannedTaskGraphSchema.safeParse(raw);
-	// The storage schema's outcome is validated loosely (passthrough with
-	// string kind) so writer-enforced typed outcomes round-trip without
-	// needing the storage layer to mirror the full `SubAgentOutcome` union.
-	return result.success ? (result.data as unknown as PlannedTaskGraph) : null;
+	if (result.success) return result.data as unknown as PlannedTaskGraph;
+
+	// Master stored planned tasks as flat `kind/spec/tools/workflowId` records.
+	// Keep those in-flight graphs readable after upgrading to typed handoffs.
+	return normalizeLegacyGraph(raw);
 }
 
 export class PlannedTaskStorage {

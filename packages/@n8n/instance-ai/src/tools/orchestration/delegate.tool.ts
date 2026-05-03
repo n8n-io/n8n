@@ -66,6 +66,7 @@ function resolveDelegateTools(
 }
 
 function buildDelegateHandoff(params: {
+	taskKey?: string;
 	role: string;
 	instructions: string;
 	goal: string;
@@ -81,7 +82,7 @@ function buildDelegateHandoff(params: {
 		artifacts: params.artifacts as Record<string, unknown> | undefined,
 		conversationContext: params.conversationContext,
 	};
-	return { taskKey: `delegate:${params.role}`, kind: 'delegate', input };
+	return { taskKey: params.taskKey ?? `delegate:${params.role}`, kind: 'delegate', input };
 }
 
 /** Merge the delegate's `artifacts` map with resolved resource IDs so the child sees a flat object. */
@@ -115,6 +116,7 @@ export interface DetachedDelegateTaskInput {
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
+	handoff?: Extract<SubAgentHandoff, { kind: 'delegate' }>;
 }
 
 export interface DetachedDelegateTaskResult {
@@ -127,7 +129,8 @@ export async function startDetachedDelegateTask(
 	context: OrchestrationContext,
 	input: DetachedDelegateTaskInput,
 ): Promise<DetachedDelegateTaskResult> {
-	if (input.tools.length === 0) {
+	const toolNames = input.handoff?.input.toolNames ?? input.tools;
+	if (toolNames.length === 0) {
 		return {
 			result: 'Delegation failed: "tools" must contain at least one tool name',
 			taskId: '',
@@ -135,7 +138,7 @@ export async function startDetachedDelegateTask(
 		};
 	}
 
-	const { validTools, errors } = resolveDelegateTools(context, input.tools);
+	const { validTools, errors } = resolveDelegateTools(context, toolNames);
 	if (errors.length > 0) {
 		return {
 			result: `Delegation failed: ${errors.join('; ')}`,
@@ -152,18 +155,21 @@ export async function startDetachedDelegateTask(
 		};
 	}
 
-	const role = buildRoleKey(input.title) || 'delegate-worker';
+	const role = buildRoleKey(input.handoff?.input.role ?? input.title) || 'delegate-worker';
 	const subAgentId = input.agentId ?? `agent-delegate-${nanoid(6)}`;
 	const taskId = input.taskId ?? `delegate-${nanoid(8)}`;
 
-	const handoff = buildDelegateHandoff({
-		role,
-		instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
-		goal: input.spec,
-		toolNames: input.tools,
-		artifacts: input.artifacts,
-		conversationContext: input.conversationContext,
-	});
+	const handoff =
+		input.handoff ??
+		buildDelegateHandoff({
+			role,
+			instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
+			goal: input.spec,
+			toolNames,
+			artifacts: input.artifacts,
+			conversationContext: input.conversationContext,
+		});
+	const handoffInput = handoff.input;
 	const briefingMessage = await renderDelegateBriefing(context, handoff);
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
@@ -173,9 +179,9 @@ export async function startDetachedDelegateTask(
 		plannedTaskId: input.plannedTaskId,
 		inputs: {
 			title: input.title,
-			briefing: input.spec,
-			tools: input.tools,
-			conversationContext: input.conversationContext,
+			briefing: handoffInput.goal,
+			tools: toolNames,
+			conversationContext: handoffInput.conversationContext,
 		},
 	});
 	const tracedTools = traceSubAgentTools(context, validTools, role);
@@ -195,7 +201,7 @@ export async function startDetachedDelegateTask(
 				const subAgent = createSubAgent({
 					agentId: subAgentId,
 					role,
-					instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
+					instructions: handoffInput.instructions,
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,
@@ -266,12 +272,12 @@ export async function startDetachedDelegateTask(
 		payload: {
 			parentId: context.orchestratorAgentId,
 			role,
-			tools: input.tools,
+			tools: toolNames,
 			taskId,
 			kind: 'delegate',
 			title: input.title,
-			subtitle: truncateLabel(input.spec),
-			goal: input.spec,
+			subtitle: truncateLabel(handoffInput.goal),
+			goal: handoffInput.goal,
 		},
 	});
 

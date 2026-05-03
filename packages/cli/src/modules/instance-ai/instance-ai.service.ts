@@ -143,18 +143,36 @@ interface MessageTraceFinalization {
 	error?: string;
 }
 
-type DispatchablePlannedTaskHandoff =
-	| { kind: 'build-workflow'; input: { goal: string; workflowId?: string } }
-	| { kind: 'manage-data-tables'; input: { goal: string } }
-	| { kind: 'research'; input: { goal: string; constraints?: string } }
-	| { kind: 'delegate'; input: { goal: string; toolNames: string[] } };
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
-type DispatchablePlannedTaskRecord = PlannedTaskRecord & {
-	handoff: DispatchablePlannedTaskHandoff;
-};
+function projectOutcomeForFollowUp(outcome: PlannedTaskRecord['outcome']): unknown {
+	if (!isPlainObject(outcome)) return outcome;
+	const payload = outcome.payload;
+	if (outcome.kind === 'build-workflow' && isPlainObject(payload)) {
+		return {
+			...payload,
+			subAgent: {
+				taskKey: outcome.taskKey,
+				status: outcome.status,
+				resultText: outcome.resultText,
+				durationMs: outcome.durationMs,
+				toolCallCount: outcome.toolCallCount,
+				toolErrorCount: outcome.toolErrorCount,
+				blockers: outcome.blockers,
+				stoppingReason: outcome.stoppingReason,
+			},
+		};
+	}
+	return outcome;
+}
 
-function hasPlannedTaskHandoff(task: PlannedTaskRecord): task is DispatchablePlannedTaskRecord {
-	return task.kind !== 'checkpoint' && 'handoff' in task;
+function workflowIdFromOutcome(outcome: PlannedTaskRecord['outcome']): string | undefined {
+	const projected = projectOutcomeForFollowUp(outcome);
+	if (!isPlainObject(projected)) return undefined;
+	const workflowId = projected.workflowId;
+	return typeof workflowId === 'string' && workflowId.length > 0 ? workflowId : undefined;
 }
 
 @Service()
@@ -1294,7 +1312,7 @@ export class InstanceAiService {
 				status: task.status,
 				result: task.result,
 				error: task.error,
-				outcome: task.outcome,
+				outcome: projectOutcomeForFollowUp(task.outcome),
 			})),
 		};
 
@@ -1318,7 +1336,7 @@ export class InstanceAiService {
 					kind: t.kind,
 					status: t.status,
 					result: t.result,
-					outcome: t.outcome,
+					outcome: projectOutcomeForFollowUp(t.outcome),
 				}));
 			payload.checkpoint = {
 				id: checkpoint.id,
@@ -1558,45 +1576,55 @@ export class InstanceAiService {
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
 	): Promise<void> {
-		if (!hasPlannedTaskHandoff(task)) return;
-
-		const { handoff } = task;
+		if (task.kind === 'checkpoint' || task.handoff === undefined) return;
 
 		// Plan approval authorizes the task-family's non-destructive tools,
 		// so the sub-agent can execute without a redundant second confirmation.
-		const taskContext = this.createPlannedTaskContext(handoff.kind, context);
+		const taskContext = this.createPlannedTaskContext(task.kind, context);
 
 		let started: { taskId: string; agentId: string; result: string } | null = null;
 
-		switch (handoff.kind) {
-			case 'build-workflow':
+		switch (task.kind) {
+			case 'build-workflow': {
+				const { handoff } = task;
 				started = await startBuildWorkflowAgentTask(taskContext, {
 					task: handoff.input.goal,
 					workflowId: handoff.input.workflowId,
 					plannedTaskId: task.id,
+					handoff,
 				});
 				break;
-			case 'manage-data-tables':
+			}
+			case 'manage-data-tables': {
+				const { handoff } = task;
 				started = await startDataTableAgentTask(taskContext, {
 					task: handoff.input.goal,
 					plannedTaskId: task.id,
+					handoff,
 				});
 				break;
-			case 'research':
+			}
+			case 'research': {
+				const { handoff } = task;
 				started = await startResearchAgentTask(taskContext, {
 					goal: handoff.input.goal,
 					constraints: handoff.input.constraints,
 					plannedTaskId: task.id,
+					handoff,
 				});
 				break;
-			case 'delegate':
+			}
+			case 'delegate': {
+				const { handoff } = task;
 				started = await startDetachedDelegateTask(taskContext, {
 					title: task.title,
 					spec: handoff.input.goal,
 					tools: handoff.input.toolNames,
 					plannedTaskId: task.id,
+					handoff,
 				});
 				break;
+			}
 		}
 
 		if (!started?.taskId) {
@@ -1659,8 +1687,8 @@ export class InstanceAiService {
 			const allowed = new Set<string>();
 			for (const task of graph.tasks) {
 				if (!deps.has(task.id)) continue;
-				const workflowId = task.outcome?.workflowId;
-				if (typeof workflowId === 'string' && workflowId.length > 0) {
+				const workflowId = workflowIdFromOutcome(task.outcome);
+				if (workflowId) {
 					allowed.add(workflowId);
 				}
 			}

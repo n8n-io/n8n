@@ -623,11 +623,14 @@ interface PlannedTaskBase {
 	tools?: string[];
 }
 
-export interface SubAgentPlannedTask extends PlannedTaskBase {
-	kind: PlannedHandoffKind;
-	/** Typed handoff this task dispatches when scheduled. `handoff.taskKey === id`. */
-	handoff: PlannedHandoff;
-}
+export type SubAgentPlannedTask = PlannedTaskBase &
+	{
+		[K in PlannedHandoffKind]: {
+			kind: K;
+			/** Typed handoff this task dispatches when scheduled. `handoff.taskKey === id`. */
+			handoff: Extract<PlannedHandoff, { kind: K }>;
+		};
+	}[PlannedHandoffKind];
 
 export interface CheckpointPlannedTask extends PlannedTaskBase {
 	kind: 'checkpoint';

@@ -46,6 +46,7 @@ export interface StartDataTableAgentInput {
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
+	handoff?: Extract<SubAgentHandoff, { kind: 'manage-data-tables' }>;
 }
 
 export interface StartedBackgroundAgentTask {
@@ -77,6 +78,15 @@ export async function startDataTableAgentTask(
 
 	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
 	const taskId = input.taskId ?? `datatable-${nanoid(8)}`;
+	const handoff: Extract<SubAgentHandoff, { kind: 'manage-data-tables' }> = input.handoff ?? {
+		taskKey: `datatable:${taskId}`,
+		kind: 'manage-data-tables',
+		input: {
+			goal: input.task,
+			conversationContext: input.conversationContext,
+		},
+	};
+	const dataTableInput = handoff.input;
 
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
@@ -85,8 +95,8 @@ export async function startDataTableAgentTask(
 		taskId,
 		plannedTaskId: input.plannedTaskId,
 		inputs: {
-			task: input.task,
-			conversationContext: input.conversationContext,
+			task: dataTableInput.goal,
+			conversationContext: dataTableInput.conversationContext,
 		},
 	});
 	const tracedDataTableTools = traceSubAgentTools(context, dataTableTools, 'data-table-manager');
@@ -127,18 +137,7 @@ export async function startDataTableAgentTask(
 
 				registerWithMastra(subAgentId, subAgent, context.storage);
 
-				const briefing = await renderHandoff(
-					{
-						taskKey: `datatable:${taskId}`,
-						kind: 'manage-data-tables',
-						input: {
-							goal: input.task,
-							conversationContext: input.conversationContext,
-						},
-					},
-					context,
-					dataTableRenderers,
-				);
+				const briefing = await renderHandoff(handoff, context, dataTableRenderers);
 
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
@@ -204,8 +203,8 @@ export async function startDataTableAgentTask(
 			taskId,
 			kind: 'data-table',
 			title: 'Managing data table',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
+			subtitle: truncateLabel(dataTableInput.goal),
+			goal: dataTableInput.goal,
 			targetResource: { type: 'data-table' as const },
 		},
 	});

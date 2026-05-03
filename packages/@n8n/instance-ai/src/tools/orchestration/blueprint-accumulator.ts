@@ -15,7 +15,7 @@ import type {
 	BlueprintResearchItem,
 	BlueprintWorkflowItem,
 } from './blueprint.schema';
-import { DELEGATE_DEFAULT_INSTRUCTIONS, type PlannedHandoff } from '../../agent/handoff';
+import { DELEGATE_DEFAULT_INSTRUCTIONS } from '../../agent/handoff';
 import type { PlannedTask } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -40,10 +40,6 @@ export function formatTableSchema(dt: BlueprintDataTableItem): string {
 	return `Table '${dt.name}': ${cols}`;
 }
 
-function makeHandoff(id: string, handoff: Omit<PlannedHandoff, 'taskKey'>): PlannedHandoff {
-	return { ...handoff, taskKey: id } as PlannedHandoff;
-}
-
 function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTask {
 	const goal =
 		dt.columns && dt.columns.length > 0
@@ -55,7 +51,7 @@ function dataTableItemToTask(dt: BlueprintDataTableItem): PlannedTask {
 		title,
 		kind: 'manage-data-tables',
 		deps: dt.dependsOn,
-		handoff: makeHandoff(dt.id, { kind: 'manage-data-tables', input: { goal } }),
+		handoff: { taskKey: dt.id, kind: 'manage-data-tables', input: { goal } },
 	};
 }
 
@@ -110,7 +106,8 @@ function workflowItemToTask(
 		title: `Build '${wf.name}' workflow`,
 		kind: 'build-workflow',
 		deps: inferredDeps,
-		handoff: makeHandoff(wf.id, {
+		handoff: {
+			taskKey: wf.id,
 			kind: 'build-workflow',
 			input: {
 				goal: specParts.join('\n'),
@@ -118,7 +115,7 @@ function workflowItemToTask(
 				workItemId: `wi_${wf.id}`,
 				sandboxMode: true,
 			},
-		}),
+		},
 	};
 }
 
@@ -128,10 +125,11 @@ function researchItemToTask(ri: BlueprintResearchItem): PlannedTask {
 		title: ri.question,
 		kind: 'research',
 		deps: ri.dependsOn,
-		handoff: makeHandoff(ri.id, {
+		handoff: {
+			taskKey: ri.id,
 			kind: 'research',
 			input: { goal: ri.question, constraints: ri.constraints },
-		}),
+		},
 	};
 }
 
@@ -142,7 +140,8 @@ function delegateItemToTask(di: BlueprintDelegateItem): PlannedTask {
 		kind: 'delegate',
 		deps: di.dependsOn,
 		tools: di.requiredTools,
-		handoff: makeHandoff(di.id, {
+		handoff: {
+			taskKey: di.id,
 			kind: 'delegate',
 			input: {
 				role: di.title,
@@ -150,7 +149,7 @@ function delegateItemToTask(di: BlueprintDelegateItem): PlannedTask {
 				goal: di.description,
 				toolNames: di.requiredTools,
 			},
-		}),
+		},
 	};
 }
 

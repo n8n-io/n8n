@@ -3,7 +3,7 @@ import { taskListSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-import { DELEGATE_DEFAULT_INSTRUCTIONS, type PlannedHandoff } from '../../agent/handoff';
+import { DELEGATE_DEFAULT_INSTRUCTIONS } from '../../agent/handoff';
 import type { OrchestrationContext, PlannedTask } from '../../types';
 
 const plannedTaskSchema = z.object({
@@ -26,68 +26,80 @@ const plannedTaskSchema = z.object({
 
 type PlanToolTask = z.infer<typeof plannedTaskSchema>;
 
-/** Translate a flat LLM-authored task entry into a typed `PlannedHandoff`. */
-function toPlannedHandoff(task: PlanToolTask): PlannedHandoff {
+function toPlannedTask(task: PlanToolTask): PlannedTask {
 	switch (task.kind) {
 		case 'delegate':
 			return {
-				taskKey: task.id,
+				id: task.id,
+				title: task.title,
 				kind: 'delegate',
-				input: {
-					role: task.title,
-					instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
-					goal: task.spec,
-					toolNames: task.tools ?? [],
+				deps: task.deps,
+				...(task.tools ? { tools: task.tools } : {}),
+				handoff: {
+					taskKey: task.id,
+					kind: 'delegate',
+					input: {
+						role: task.title,
+						instructions: DELEGATE_DEFAULT_INSTRUCTIONS,
+						goal: task.spec,
+						toolNames: task.tools ?? [],
+					},
 				},
 			};
 		case 'build-workflow':
 			return {
-				taskKey: task.id,
+				id: task.id,
+				title: task.title,
 				kind: 'build-workflow',
-				input: {
-					goal: task.spec,
-					workflowId: task.workflowId,
-					workItemId: `wi_${task.id}`,
-					sandboxMode: true,
+				deps: task.deps,
+				...(task.tools ? { tools: task.tools } : {}),
+				handoff: {
+					taskKey: task.id,
+					kind: 'build-workflow',
+					input: {
+						goal: task.spec,
+						workflowId: task.workflowId,
+						workItemId: `wi_${task.id}`,
+						sandboxMode: true,
+					},
 				},
 			};
 		case 'manage-data-tables':
 			return {
-				taskKey: task.id,
+				id: task.id,
+				title: task.title,
 				kind: 'manage-data-tables',
-				input: { goal: task.spec },
+				deps: task.deps,
+				...(task.tools ? { tools: task.tools } : {}),
+				handoff: {
+					taskKey: task.id,
+					kind: 'manage-data-tables',
+					input: { goal: task.spec },
+				},
 			};
 		case 'research':
 			return {
-				taskKey: task.id,
+				id: task.id,
+				title: task.title,
 				kind: 'research',
-				input: { goal: task.title, constraints: task.spec },
+				deps: task.deps,
+				...(task.tools ? { tools: task.tools } : {}),
+				handoff: {
+					taskKey: task.id,
+					kind: 'research',
+					input: { goal: task.title, constraints: task.spec },
+				},
 			};
 		case 'checkpoint':
-			throw new Error('Checkpoint tasks run in the orchestrator and do not have a handoff');
+			return {
+				id: task.id,
+				title: task.title,
+				kind: 'checkpoint',
+				spec: task.spec,
+				deps: task.deps,
+				...(task.tools ? { tools: task.tools } : {}),
+			};
 	}
-}
-
-function toPlannedTask(task: PlanToolTask): PlannedTask {
-	if (task.kind === 'checkpoint') {
-		return {
-			id: task.id,
-			title: task.title,
-			kind: 'checkpoint',
-			spec: task.spec,
-			deps: task.deps,
-			...(task.tools ? { tools: task.tools } : {}),
-		};
-	}
-
-	return {
-		id: task.id,
-		title: task.title,
-		kind: task.kind,
-		deps: task.deps,
-		...(task.tools ? { tools: task.tools } : {}),
-		handoff: toPlannedHandoff(task),
-	};
 }
 
 const planInputSchema = z.object({

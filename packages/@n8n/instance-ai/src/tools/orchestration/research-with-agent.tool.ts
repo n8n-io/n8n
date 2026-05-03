@@ -52,6 +52,7 @@ export interface StartResearchAgentInput {
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
+	handoff?: Extract<SubAgentHandoff, { kind: 'research' }>;
 }
 
 export interface StartedResearchAgentTask {
@@ -79,20 +80,18 @@ export async function startResearchAgentTask(
 
 	const subAgentId = input.agentId ?? `agent-researcher-${nanoid(6)}`;
 	const taskId = input.taskId ?? `research-${nanoid(8)}`;
-
-	const briefing = await renderHandoff(
-		{
-			taskKey: `research:${taskId}`,
-			kind: 'research',
-			input: {
-				goal: input.goal,
-				constraints: input.constraints,
-				conversationContext: input.conversationContext,
-			},
+	const handoff: Extract<SubAgentHandoff, { kind: 'research' }> = input.handoff ?? {
+		taskKey: `research:${taskId}`,
+		kind: 'research',
+		input: {
+			goal: input.goal,
+			constraints: input.constraints,
+			conversationContext: input.conversationContext,
 		},
-		context,
-		researchRenderers,
-	);
+	};
+	const researchInput = handoff.input;
+
+	const briefing = await renderHandoff(handoff, context, researchRenderers);
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'web-researcher',
@@ -100,9 +99,9 @@ export async function startResearchAgentTask(
 		taskId,
 		plannedTaskId: input.plannedTaskId,
 		inputs: {
-			goal: input.goal,
-			constraints: input.constraints,
-			conversationContext: input.conversationContext,
+			goal: researchInput.goal,
+			constraints: researchInput.constraints,
+			conversationContext: researchInput.conversationContext,
 		},
 	});
 	const tracedResearchTools = traceSubAgentTools(context, researchTools, 'web-researcher');
@@ -205,8 +204,8 @@ export async function startResearchAgentTask(
 			taskId,
 			kind: 'researcher',
 			title: 'Researching',
-			subtitle: truncateLabel(input.goal),
-			goal: input.goal,
+			subtitle: truncateLabel(researchInput.goal),
+			goal: researchInput.goal,
 		},
 	});
 
