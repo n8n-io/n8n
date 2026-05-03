@@ -10,6 +10,7 @@ import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill } from '../types';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import AgentChipButton from './AgentChipButton.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -76,7 +77,7 @@ function toolLabel(tool: AgentJsonToolRef, index: number) {
 	return tool.name || `${tool.type}-${index + 1}`;
 }
 
-function toolIcon(tool: AgentJsonToolRef) {
+function toolIcon(tool: AgentJsonToolRef): IconName {
 	if (tool.type === 'workflow') return 'workflow';
 	if (tool.type === 'custom') return 'code';
 	return 'globe';
@@ -87,6 +88,15 @@ function toolNodeType(tool: AgentJsonToolRef) {
 	if (!node) return null;
 	return nodeTypesStore.getNodeType(node.type, node.typeVersion) ?? null;
 }
+
+const toolRows = computed(() =>
+	props.tools.map((tool, index) => ({
+		index,
+		label: toolLabel(tool, index),
+		nodeType: toolNodeType(tool),
+		fallbackIcon: toolIcon(tool),
+	})),
+);
 </script>
 
 <template>
@@ -101,19 +111,15 @@ function toolNodeType(tool: AgentJsonToolRef) {
 			</N8nText>
 
 			<div :class="$style.chips">
-				<button
+				<AgentChipButton
 					v-for="trigger in triggerRows"
 					:key="trigger.type"
-					type="button"
-					:class="$style.chip"
+					:icon="trigger.icon"
 					data-testid="agent-capabilities-trigger-row"
 					@click="emit('open-trigger', trigger.type)"
 				>
-					<N8nIcon :icon="trigger.icon" :size="16" :class="$style.chipIcon" />
-					<N8nText size="small" color="text-dark" :class="$style.chipText">
-						{{ trigger.label }}
-					</N8nText>
-				</button>
+					{{ trigger.label }}
+				</AgentChipButton>
 
 				<N8nTooltip
 					:disabled="!hasTriggers"
@@ -143,25 +149,26 @@ function toolNodeType(tool: AgentJsonToolRef) {
 			</N8nText>
 
 			<div :class="$style.chips">
-				<button
-					v-for="(tool, index) in tools"
-					:key="`tool-${index}`"
-					type="button"
-					:class="$style.chip"
-					data-testid="agent-capabilities-tool-row"
-					@click="emit('open-tool', index)"
-				>
-					<NodeIcon
-						v-if="toolNodeType(tool)"
-						:node-type="toolNodeType(tool)"
-						:size="16"
-						:class="$style.nodeIcon"
-					/>
-					<N8nIcon v-else :icon="toolIcon(tool)" :size="16" :class="$style.chipIcon" />
-					<N8nText size="small" color="text-dark" :class="$style.chipText">
-						{{ toolLabel(tool, index) }}
-					</N8nText>
-				</button>
+				<template v-for="tool in toolRows" :key="`tool-${tool.index}`">
+					<AgentChipButton
+						v-if="tool.nodeType"
+						data-testid="agent-capabilities-tool-row"
+						@click="emit('open-tool', tool.index)"
+					>
+						<template #icon>
+							<NodeIcon :node-type="tool.nodeType" :size="16" />
+						</template>
+						{{ tool.label }}
+					</AgentChipButton>
+					<AgentChipButton
+						v-else
+						:icon="tool.fallbackIcon"
+						data-testid="agent-capabilities-tool-row"
+						@click="emit('open-tool', tool.index)"
+					>
+						{{ tool.label }}
+					</AgentChipButton>
+				</template>
 
 				<N8nTooltip
 					:disabled="!hasTools"
@@ -191,19 +198,15 @@ function toolNodeType(tool: AgentJsonToolRef) {
 			</N8nText>
 
 			<div :class="$style.chips">
-				<button
+				<AgentChipButton
 					v-for="{ id, skill } in skills"
 					:key="id"
-					type="button"
-					:class="$style.chip"
+					icon="sparkles"
 					data-testid="agent-capabilities-skill-row"
 					@click="emit('open-skill', id)"
 				>
-					<N8nIcon icon="sparkles" :size="16" :class="$style.chipIcon" />
-					<N8nText size="small" color="text-dark" :class="$style.chipText">
-						{{ skill.name || id }}
-					</N8nText>
-				</button>
+					{{ skill.name || id }}
+				</AgentChipButton>
 
 				<N8nTooltip
 					:disabled="!hasSkills"
@@ -262,43 +265,6 @@ function toolNodeType(tool: AgentJsonToolRef) {
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
 	min-width: 0;
-}
-
-.chip {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	height: var(--height--md);
-	padding: var(--spacing--xs);
-	border: var(--border);
-	border-radius: var(--radius--full);
-	background: light-dark(var(--background--surface), var(--background--subtle));
-	box-shadow: var(--shadow--xs);
-	font-family: inherit;
-	cursor: pointer;
-}
-
-.chip:hover {
-	background-color: var(--background--hover);
-}
-
-.chipText {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--medium);
-	padding-right: var(--spacing--4xs);
-}
-
-.chipIcon {
-	flex-shrink: 0;
-	color: var(--text-color--subtler);
-}
-
-.nodeIcon {
-	flex-shrink: 0;
 }
 
 .disabled {
