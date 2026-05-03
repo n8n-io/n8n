@@ -86,7 +86,11 @@ const rows = computed<Row[]>(() => {
 });
 
 function updateScrollMask() {
-	if (!scrollContainer) return;
+	if (!scrollContainer) {
+		canScrollUp.value = false;
+		canScrollDown.value = false;
+		return;
+	}
 	canScrollUp.value = scrollContainer.scrollTop > 0;
 	canScrollDown.value =
 		scrollContainer.scrollTop + scrollContainer.clientHeight < scrollContainer.scrollHeight - 1;
@@ -144,6 +148,7 @@ watch(
 		]"
 	>
 		<N8nRecycleScroller
+			v-if="rows.length > 0"
 			ref="scrollerRef"
 			:items="rows"
 			:item-size="ROW_HEIGHT"
@@ -167,6 +172,9 @@ watch(
 				</div>
 			</template>
 		</N8nRecycleScroller>
+		<div v-else data-test-id="timeline-empty" :class="$style.empty">
+			{{ i18n.baseText('executionsLandingPage.noResults') }}
+		</div>
 	</div>
 </template>
 
@@ -179,6 +187,15 @@ watch(
 
 .rowWrapper {
 	width: 100%;
+}
+
+.empty {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
 }
 
 .table :global(.recycle-scroller-wrapper) {

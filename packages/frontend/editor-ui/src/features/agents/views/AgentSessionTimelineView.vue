@@ -33,7 +33,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nBreadcrumbs, N8nButton, N8nDropdownMenu, N8nIcon, N8nInput } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useActiveElement, useEventListener } from '@vueuse/core';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
 
@@ -57,6 +57,7 @@ const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
 const selectedFilters = ref<Set<string>>(new Set());
 const searchQuery = ref('');
+let loadThreadDetailRequestId = 0;
 
 const items = computed<TimelineItem[]>(() => flattenExecutionsToTimelineItems(executions.value));
 const idleRanges = computed(() => computeIdleRanges(items.value));
@@ -262,22 +263,41 @@ function onKeyUp(event: KeyboardEvent) {
 
 useEventListener(document, 'keyup', onKeyUp);
 
-onMounted(async () => {
+async function loadThreadDetail() {
+	const currentProjectId = projectId.value;
+	const currentAgentId = agentId.value;
+	const currentThreadId = threadId.value;
+	const requestId = ++loadThreadDetailRequestId;
+
+	thread.value = null;
+	executions.value = [];
+	selectedFilters.value = new Set();
+	searchQuery.value = '';
+	selectTimelineItem(null);
+	loading.value = true;
+
+	void sessionsStore.fetchThreads(currentProjectId, currentAgentId);
+
 	try {
-		void sessionsStore.fetchThreads(projectId.value, agentId.value);
 		const result = await sessionsStore.getThreadDetail(
-			projectId.value,
-			threadId.value,
-			agentId.value,
+			currentProjectId,
+			currentThreadId,
+			currentAgentId,
 		);
+		if (requestId !== loadThreadDetailRequestId) return;
 		thread.value = result.thread;
 		executions.value = result.executions;
 	} catch (error) {
+		if (requestId !== loadThreadDetailRequestId) return;
 		toast.showError(error, i18n.baseText('agentSessions.showError.load'));
 	} finally {
-		loading.value = false;
+		if (requestId === loadThreadDetailRequestId) {
+			loading.value = false;
+		}
 	}
-});
+}
+
+watch([projectId, agentId, threadId], loadThreadDetail, { immediate: true });
 
 function formatDuration(ms: number): string {
 	if (!ms || ms <= 0) return '0ms';
