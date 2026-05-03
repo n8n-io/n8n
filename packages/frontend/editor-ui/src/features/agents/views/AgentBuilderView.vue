@@ -25,7 +25,6 @@ import { useAgentConfirmationModal } from '../composables/useAgentConfirmationMo
 import { useAgentConfig } from '../composables/useAgentConfig';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentSessionsStore } from '../agentSessions.store';
-import { useAgentBuilderLayout } from '../composables/useAgentBuilderLayout';
 import { useAgentBuilderSession } from '../composables/useAgentBuilderSession';
 import { useAgentChatMode, type ChatMode } from '../composables/useAgentChatMode';
 import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
@@ -101,13 +100,6 @@ const sessionOptions = computed<Array<N8nDropdownOption<string>>>(() =>
 		disabled: item.disabled,
 	})),
 );
-
-const { chatColumnCollapsed, chatColumnWidth, onChatColumnResize, resizeGridSize } =
-	useAgentBuilderLayout();
-chatColumnCollapsed.value = false;
-const builderStyle = computed(() => ({
-	'--agent-chat-column-width': `${chatColumnWidth.value}px`,
-}));
 
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
@@ -796,7 +788,7 @@ function onSwitchAgent(nextAgentId: string) {
 			@reverted="onReverted"
 			@switch-agent="onSwitchAgent"
 		/>
-		<div ref="builderRef" :class="$style.builder" :style="builderStyle">
+		<div :class="$style.builder">
 			<AgentBuilderChatColumn
 				:initialized="initialized"
 				:project-id="projectId"
@@ -805,9 +797,6 @@ function onSwitchAgent(nextAgentId: string) {
 				:agent="agent"
 				:local-config="localConfig"
 				:connected-triggers="connectedTriggers"
-				:chat-column-collapsed="chatColumnCollapsed"
-				:chat-column-width="chatColumnWidth"
-				:resize-grid-size="resizeGridSize"
 				:chat-mode="chatMode"
 				:chat-mode-opened="chatModeOpened"
 				:chat-mode-options="chatModeOptions"
@@ -820,7 +809,6 @@ function onSwitchAgent(nextAgentId: string) {
 				:is-builder-configured="isBuilderConfigured"
 				:is-build-chat-streaming="isBuildChatStreaming"
 				:is-published="Boolean(agent?.publishedVersion)"
-				@resize="onChatColumnResize"
 				@session-select="onSessionPick"
 				@new-chat="onNewChat"
 				@config-updated="onConfigUpdated"
@@ -874,6 +862,6 @@ function onSwitchAgent(nextAgentId: string) {
 	height: 100%;
 	min-height: 0;
 	overflow: hidden;
-	grid-template-columns: var(--agent-chat-column-width, 460px) 1fr;
+	grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
 }
 </style>
