@@ -33,7 +33,7 @@ export function useNodeCommands(options: {
 	const i18n = useI18n();
 	const { lastQuery } = options;
 
-	const { addNodes, setNodeActive, editableWorkflow } = useCanvasOperations();
+	const { addNodes, setNodeActive } = useCanvasOperations();
 	const nodeTypesStore = useNodeTypesStore();
 	const credentialsStore = useCredentialsStore();
 	const sourceControlStore = useSourceControlStore();
@@ -139,7 +139,7 @@ export function useNodeCommands(options: {
 	};
 
 	const openNodeCommands = computed<CommandBarItem[]>(() => {
-		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, false));
+		return workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeCommand(node, false));
 	});
 
 	const rootOpenNodeCommandItems = computed<CommandBarItem[]>(() => {
@@ -147,7 +147,7 @@ export function useNodeCommands(options: {
 			return [];
 		}
 
-		return editableWorkflow.value.nodes.map((node) => buildOpenNodeCommand(node, true));
+		return workflowDocumentStore.value.allNodes.map((node) => buildOpenNodeCommand(node, true));
 	});
 
 	const nodeCommands = computed<CommandBarItem[]>(() => {

@@ -36,6 +36,7 @@ import {
 } from '../../agent/handoff';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
+import { TEMPERATURE } from '../../constants/model-settings';
 import type { Logger } from '../../logger';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
@@ -55,22 +56,6 @@ import { buildCredentialSnapshot, type CredentialMap } from '../workflows/resolv
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
 import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
 
-/** Trigger types that cannot be test-fired programmatically (need an external request). */
-const UNTESTABLE_TRIGGERS = new Set([
-	'n8n-nodes-base.webhook',
-	'n8n-nodes-base.formTrigger',
-	'@n8n/n8n-nodes-langchain.mcpTrigger',
-	'@n8n/n8n-nodes-langchain.chatTrigger',
-]);
-
-/** Human-readable label derived from a node type string, e.g. "n8n-nodes-base.formTrigger" → "form" */
-function triggerLabel(nodeType: string): string {
-	const short = nodeType.split('.').pop() ?? nodeType;
-	return short.replace(/Trigger$/i, '').toLowerCase() || short.toLowerCase();
-}
-
-const UNTESTABLE_TRIGGER_LABELS = [...UNTESTABLE_TRIGGERS].map(triggerLabel).join(', ');
-
 const DETACHED_BUILDER_REQUIREMENTS = `## Detached Task Contract
 
 You are running as a detached background task. Do not stop after a successful submit — verify the workflow works.
@@ -79,8 +64,12 @@ You are running as a detached background task. Do not stop after a successful su
 
 Your job is done when ONE of these is true:
 - the workflow is verified (ran successfully)
-- the workflow uses only event triggers (${UNTESTABLE_TRIGGER_LABELS}) and cannot be runtime-tested — stop after a successful submit. Do NOT publish it; the orchestrator will handle setup and publishing.
 - you are blocked after one repair attempt per unique failure
+
+Do NOT stop after a successful submit without verifying. Every trigger type is testable:
+manual / schedule via \`executions(action="run")\`; event-based triggers (form, webhook,
+chat, mcp, linear, github, slack, etc.) via \`verify-built-workflow\` with an \`inputData\`
+payload. The pin-data adapter injects it as the trigger node's output.
 
 ### Submit discipline
 
@@ -89,8 +78,13 @@ The system tracks file hashes. If you edit the code and then call \`executions(a
 
 ### Verification
 
-- If submit-workflow returned mocked credentials, call verify-built-workflow with the workItemId
-- Otherwise call \`executions(action="run")\` to test (skip for trigger-only workflows). For event-based triggers (Linear, GitHub, Slack, etc.), pass \`inputData\` with sample data matching the trigger's expected output shape — the system injects it as the trigger node's output.
+- If submit-workflow returned mocked credentials, call \`verify-built-workflow\` with the workItemId.
+- Otherwise pick based on trigger type:
+  - **Manual / Schedule** — \`executions(action="run")\`.
+  - **Form Trigger** — \`verify-built-workflow\` with \`inputData\` as a flat field map, e.g. \`{name: "Alice", email: "a@b.c"}\`. Do NOT wrap in \`formFields\` — production Form Trigger emits fields directly on \`$json\`, and the adapter rejects wrapped payloads.
+  - **Webhook** — \`verify-built-workflow\` with \`inputData\` as the body payload, e.g. \`{event: "signup", userId: "..."}\`. Adapter wraps it under \`body\`; downstream expressions use \`$json.body.<field>\`.
+  - **Chat Trigger** — \`verify-built-workflow\` with \`{chatInput: "user message"}\`.
+  - **Other event triggers (Linear, GitHub, Slack, MCP, etc.)** — \`verify-built-workflow\` with \`inputData\` matching the trigger's expected payload shape.
 - If verification fails, call \`executions(action="debug")\`, fix the code, re-submit, and retry once
 - If the same failure signature repeats, stop and explain the block
 
@@ -193,12 +187,13 @@ export function recordSuccessfulWorkflowBuilds(
 	};
 }
 
-function detectTriggerType(attempt: SubmitWorkflowAttempt | undefined): TriggerType {
-	if (!attempt?.triggerNodeTypes || attempt.triggerNodeTypes.length === 0) {
-		return 'manual_or_testable';
-	}
-	const allUntestable = attempt.triggerNodeTypes.every((t) => UNTESTABLE_TRIGGERS.has(t));
-	return allUntestable ? 'trigger_only' : 'manual_or_testable';
+function detectTriggerType(_attempt: SubmitWorkflowAttempt | undefined): TriggerType {
+	// Every trigger type the builder can produce is testable — manual/schedule via
+	// `executions(action="run")`, event-based via `verify-built-workflow` with inputData.
+	// `trigger_only` is reserved for workflows the builder could not fully wire
+	// (e.g. unresolved placeholders), which is detected separately via
+	// `hasUnresolvedPlaceholders` in buildOutcome().
+	return 'manual_or_testable';
 }
 
 function buildOutcome(
@@ -355,7 +350,6 @@ export async function startBuildWorkflowAgentTask(
 			'credentials',
 			'executions',
 			'data-tables',
-			'templates',
 			'ask-user',
 		];
 
@@ -376,7 +370,6 @@ export async function startBuildWorkflowAgentTask(
 			'nodes',
 			'workflows',
 			'data-tables',
-			'templates',
 			'ask-user',
 			...(context.researchMode ? ['research'] : []),
 		];
@@ -394,25 +387,6 @@ export async function startBuildWorkflowAgentTask(
 	const subAgentId = input.agentId ?? `agent-builder-${nanoid(6)}`;
 	const taskId = input.taskId ?? `build-${nanoid(8)}`;
 	const workItemId = `wi_${nanoid(8)}`;
-
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'workflow-builder',
-			tools: Object.keys(builderTools),
-			taskId,
-			kind: 'builder',
-			title: 'Building workflow',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: input.workflowId
-				? { type: 'workflow' as const, id: input.workflowId }
-				: { type: 'workflow' as const },
-		},
-	});
 
 	const { workflowId } = input;
 
@@ -446,7 +420,7 @@ export async function startBuildWorkflowAgentTask(
 		},
 	});
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
@@ -454,6 +428,18 @@ export async function startBuildWorkflowAgentTask(
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
 		workItemId,
+		dedupeKey: {
+			role: 'workflow-builder',
+			plannedTaskId: input.plannedTaskId,
+			workflowId: input.workflowId,
+		},
+		// When the orchestrator spawns a builder inside a checkpoint follow-up
+		// (e.g. to patch a runtime bug the verify exposed), tag the task so the
+		// safety net doesn't pre-emptively fail the checkpoint and the
+		// settlement path can re-enter the checkpoint context instead of a
+		// bare background-task-completed shell.
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, drainCorrections, waitForCorrection): Promise<BackgroundTaskResult> =>
 			await withTraceContextActor(traceContext, async () => {
 				const startTime = Date.now();
@@ -557,6 +543,7 @@ export async function startBuildWorkflowAgentTask(
 								const stream = await subAgent.stream(briefing, {
 									maxSteps: MAX_STEPS.BUILDER,
 									abortSignal: signal,
+									modelSettings: { temperature: TEMPERATURE.BUILDER },
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
@@ -731,6 +718,7 @@ export async function startBuildWorkflowAgentTask(
 						const stream = await subAgent.stream(briefing, {
 							maxSteps: MAX_STEPS.BUILDER,
 							abortSignal: signal,
+							modelSettings: { temperature: TEMPERATURE.BUILDER },
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
 							},
@@ -766,6 +754,43 @@ export async function startBuildWorkflowAgentTask(
 			}),
 	});
 
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Workflow build already in progress (task: ${spawnOutcome.existing.taskId}). Acknowledge and wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start build: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom builder card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'workflow-builder',
+			tools: Object.keys(builderTools),
+			taskId,
+			kind: 'builder',
+			title: 'Building workflow',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: input.workflowId
+				? { type: 'workflow' as const, id: input.workflowId }
+				: { type: 'workflow' as const },
+		},
+	});
+
 	return {
 		result: `Workflow build started (task: ${taskId}). Reply with one short sentence — e.g. name what's being built. Do NOT summarize the plan or list details.`,
 		taskId,
@@ -791,21 +816,164 @@ export const buildWorkflowAgentInputSchema = z.object({
 		.describe(
 			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
 		),
+	bypassPlan: z
+		.boolean()
+		.optional()
+		.describe(
+			'Set to true for any edit to an existing workflow — adding/removing/rewiring a node, changing an expression, swapping a credential, changing a schedule, fixing a Code node. Requires an existing `workflowId` and a one-sentence `reason`. The orchestrator verifies the result afterwards via `verify-built-workflow` when the trigger is mockable. ' +
+				'A runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups: new workflow builds, multi-workflow work, and data-table schema changes must go through `plan` so the build gets its orchestrator-run checkpoint.',
+		),
+	reason: z
+		.string()
+		.optional()
+		.describe(
+			'One sentence explaining why the planner is being bypassed (e.g. "swap Slack channel on workflow X", "fix Code node shape issue"). Required when bypassPlan is true.',
+		),
 });
+
+const buildWorkflowAgentSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: z.literal('warning'),
+});
+
+const buildWorkflowAgentResumeSchema = z.object({
+	approved: z.boolean(),
+});
+
+/**
+ * Replan / checkpoint follow-ups have already paid the planner's discovery cost
+ * and carry the checkpoint task graph from the original plan — direct builder
+ * calls in those contexts are legitimate (e.g. retry the one failing task).
+ */
+function isPostPlanFollowUp(context: OrchestrationContext): boolean {
+	return context.isReplanFollowUp === true || context.isCheckpointFollowUp === true;
+}
+
+function isBuildViaPlanGuardEnabled(): boolean {
+	const raw = process.env.N8N_INSTANCE_AI_ENFORCE_BUILD_VIA_PLAN;
+	if (raw === undefined) return true;
+	return raw.toLowerCase() !== 'false' && raw !== '0';
+}
+
+async function resolveWorkflowNameForEditConfirmation(
+	context: OrchestrationContext,
+	workflowId: string,
+): Promise<string> {
+	try {
+		const workflow = await context.domainContext?.workflowService.get(workflowId);
+		const workflowName = workflow?.name?.trim();
+		return workflowName && workflowName.length > 0 ? workflowName : workflowId;
+	} catch {
+		return workflowId;
+	}
+}
 
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'build-workflow-with-agent',
 		description:
 			'Build or modify an n8n workflow using a specialized builder agent. ' +
-			'The agent handles node discovery, schema lookups, code generation, ' +
-			'and validation internally.',
+			'The agent handles node discovery, schema lookups, code generation, and validation internally. ' +
+			'For edits to an existing workflow, call directly with `bypassPlan: true`, the existing `workflowId`, and a one-sentence `reason` — the orchestrator runs a lightweight verify afterwards. ' +
+			'For new workflows, multi-workflow builds, or data-table schema changes, go through `plan` — ' +
+			'a runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups, because those paths need the orchestrator-run checkpoint for end-to-end verification.',
 		inputSchema: buildWorkflowAgentInputSchema,
 		outputSchema: z.object({
 			result: z.string(),
 			taskId: z.string(),
 		}),
-		execute: async (input: z.infer<typeof buildWorkflowAgentInputSchema>) => {
+		suspendSchema: buildWorkflowAgentSuspendSchema,
+		resumeSchema: buildWorkflowAgentResumeSchema,
+		execute: async (
+			input: z.infer<typeof buildWorkflowAgentInputSchema>,
+			ctx?: { agent?: { resumeData?: unknown; suspend?: unknown } },
+		) => {
+			const isPostPlanFollowUpRun = isPostPlanFollowUp(context);
+			if (isBuildViaPlanGuardEnabled() && !isPostPlanFollowUpRun) {
+				if (!input.bypassPlan) {
+					context.logger.warn(
+						'build-workflow-with-agent called outside plan/replan context — rejecting',
+						{
+							threadId: context.threadId,
+							hasWorkflowId: Boolean(input.workflowId),
+						},
+					);
+					return {
+						result:
+							'Error: direct builder calls require `bypassPlan: true` + an existing ' +
+							'`workflowId` + a one-sentence `reason`. Use that combination for any edit to ' +
+							'an existing workflow. For new workflows, multi-workflow builds, or data-table ' +
+							'schema changes, call `plan` with a `build-workflow` task instead — the planner ' +
+							'discovers credentials, data tables, and best practices, and schedules an ' +
+							'orchestrator-run verification checkpoint.',
+						taskId: '',
+					};
+				}
+				if (!input.workflowId) {
+					return {
+						result:
+							'Error: `bypassPlan: true` is for edits to an EXISTING workflow and requires a ' +
+							'`workflowId`. New workflow builds must go through `plan` so an orchestrator-run ' +
+							'verification checkpoint is scheduled. Call `plan` with a `build-workflow` task ' +
+							'instead.',
+						taskId: '',
+					};
+				}
+				if (!input.reason || input.reason.trim().length === 0) {
+					return {
+						result:
+							'Error: `bypassPlan: true` requires a one-sentence `reason` describing the edit ' +
+							'(e.g. "swap Slack channel", "fix Code node shape issue").',
+						taskId: '',
+					};
+				}
+				context.logger.warn('build-workflow-with-agent bypassing plan with bypassPlan=true', {
+					threadId: context.threadId,
+					workflowId: input.workflowId,
+					reason: input.reason,
+				});
+			}
+
+			if (input.workflowId && !isPostPlanFollowUpRun && context.domainContext) {
+				const updateWorkflowPermission =
+					context.domainContext.permissions?.updateWorkflow ?? 'require_approval';
+				if (updateWorkflowPermission === 'blocked') {
+					return { result: 'Action blocked by admin', taskId: '' };
+				}
+
+				const isOwnInFlightWorkflow =
+					context.domainContext.aiCreatedWorkflowIds?.has(input.workflowId) ?? false;
+
+				if (!isOwnInFlightWorkflow) {
+					const resumeData = ctx?.agent?.resumeData as
+						| z.infer<typeof buildWorkflowAgentResumeSchema>
+						| undefined;
+					const suspend = ctx?.agent?.suspend as
+						| ((payload: z.infer<typeof buildWorkflowAgentSuspendSchema>) => Promise<void>)
+						| undefined;
+					const needsApproval = updateWorkflowPermission !== 'always_allow';
+
+					if (needsApproval && (resumeData === undefined || resumeData === null)) {
+						const workflowName = await resolveWorkflowNameForEditConfirmation(
+							context,
+							input.workflowId,
+						);
+						const reason = input.reason?.trim();
+						await suspend?.({
+							requestId: nanoid(),
+							message: `Edit existing workflow "${workflowName}" (ID: ${input.workflowId})?${reason ? ` Reason: ${reason}` : ''}`,
+							severity: 'warning',
+						});
+						return { result: '', taskId: '' };
+					}
+
+					if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
+						return { result: 'User declined the workflow edit.', taskId: '' };
+					}
+				}
+			}
+
 			const result = await startBuildWorkflowAgentTask(context, input);
 			return { result: result.result, taskId: result.taskId };
 		},

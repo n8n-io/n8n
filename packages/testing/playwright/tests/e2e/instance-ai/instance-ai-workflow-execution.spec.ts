@@ -15,6 +15,9 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "run button visibility test"',
 			);
 
+			// New builds route through the planner and pause for user approval.
+			await n8n.instanceAi.approveBuildPlan();
+
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
 				timeout: 120_000,
@@ -32,6 +35,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "full execution test"',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -53,6 +58,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "node execution test"',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -83,6 +90,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "ndv output test"',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({
@@ -117,6 +126,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger connected to a set node called "re-run test"',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			// Wait for preview to show canvas nodes
 			await expect(n8n.instanceAi.getPreviewCanvasNodes().first()).toBeVisible({

@@ -35,47 +35,66 @@ const plannedHandoffSchema = z.discriminatedUnion('kind', [
 	}),
 ]);
 
-const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
+const plannedTaskKindSchema = z.enum([
+	'delegate',
+	'build-workflow',
+	'manage-data-tables',
+	'research',
+	'checkpoint',
+]);
 
-// The outcome envelope stored on PlannedTaskRecord. Loose on the payload because
-// today only the builder populates it with a typed WorkflowBuildOutcome — other
-// kinds may add typed payloads later without a schema migration.
-const subAgentOutcomeStorageSchema = z
-	.object({
-		taskKey: z.string(),
-		kind: z.string(),
-		status: z.enum(['completed', 'failed', 'cancelled']),
-		resultText: z.string(),
-		durationMs: z.number(),
-		toolCallCount: z.number(),
-		toolErrorCount: z.number(),
-		blockers: z.array(z.string()).optional(),
-		stoppingReason: z.string().optional(),
-		payload: z.unknown().optional(),
-		planSubmitted: z.boolean().optional(),
-	})
-	.passthrough();
+const plannedTaskStatusSchema = z.enum(['planned', 'running', 'succeeded', 'failed', 'cancelled']);
 
 const plannedTaskRecordSchema = z.object({
 	id: z.string(),
 	title: z.string(),
+	kind: plannedTaskKindSchema,
 	deps: z.array(z.string()),
 	tools: z.array(z.string()).optional(),
-	handoff: plannedHandoffSchema,
+	handoff: plannedHandoffSchema.optional(),
+	spec: z.string().optional(),
 	status: plannedTaskStatusSchema,
 	agentId: z.string().optional(),
 	backgroundTaskId: z.string().optional(),
 	result: z.string().optional(),
 	error: z.string().optional(),
-	outcome: subAgentOutcomeStorageSchema.optional(),
+	outcome: z.unknown().optional(),
 	startedAt: z.number().optional(),
 	finishedAt: z.number().optional(),
+}).superRefine((task, ctx) => {
+	if (task.kind === 'checkpoint') {
+		if (!task.spec) {
+			ctx.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: 'Checkpoint tasks must include spec instructions',
+				path: ['spec'],
+			});
+		}
+		return;
+	}
+
+	if (!task.handoff) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'Sub-agent tasks must include a typed handoff',
+			path: ['handoff'],
+		});
+		return;
+	}
+
+	if (task.handoff.kind !== task.kind) {
+		ctx.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: 'Task kind must match handoff kind',
+			path: ['handoff', 'kind'],
+		});
+	}
 });
 
 const plannedTaskGraphSchema = z.object({
 	planRunId: z.string(),
 	messageGroupId: z.string().optional(),
-	status: z.enum(['active', 'awaiting_replan', 'completed', 'cancelled']),
+	status: z.enum(['awaiting_approval', 'active', 'awaiting_replan', 'completed', 'cancelled']),
 	tasks: z.array(plannedTaskRecordSchema),
 });
 

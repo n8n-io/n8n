@@ -10,6 +10,7 @@ export const EXPRESSION_REFERENCE = `Available variables inside \`expr('{{ ... }
 
 - \`$json\` — current item's JSON data from the immediate predecessor node
 - \`$('NodeName').item.json\` — access any node's output by name
+- \`nodeJson(node, 'field.path')\` — SDK helper that creates \`={{ $('NodeName').item.json.field.path }}\`
 - \`$input.first()\` — first item from immediate predecessor
 - \`$input.all()\` — all items from immediate predecessor
 - \`$input.item\` — current item being processed
@@ -35,4 +36,16 @@ Dynamic data from other nodes — \`$()\` MUST always be inside \`{{ }}\`, never
 
 - WRONG: \`expr('{{ ' + JSON.stringify($('Source').all().map(i => i.json.name)) + ' }}')\` — $() outside {{ }}
 - CORRECT: \`expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')\` — $() inside {{ }}
-- CORRECT: \`expr('{{ { "fields": [{ "values": $("Fetch Projects").all().map(i => ({ option: i.json.name })) }] } }}')\` — complex JSON inside {{ }}`;
+- CORRECT: \`expr('{{ { "fields": [{ "values": $("Fetch Projects").all().map(i => ({ option: i.json.name })) }] } }}')\` — complex JSON inside {{ }}
+
+When \`$json\` is unsafe - use \`nodeJson(node, 'path')\` or \`$('NodeName').item.json.path\` instead:
+
+- AI Agent subnodes: memory, language model, parser, retriever, vector store, and tool subnodes do not have the same immediate predecessor context as a main-flow node.
+  WRONG: \`sessionKey: expr('{{ $json.chatId }}')\`
+  CORRECT: \`sessionKey: nodeJson(telegramTrigger, 'message.chat.id')\`
+- Multi-branch fan-in: if a node receives data after IF/Switch/Merge-style branching, \`$json\` only means the current incoming item and may not contain the source field you need.
+  WRONG: \`expr('{{ $json.userId }}')\`
+  CORRECT: \`nodeJson(userLookup, 'user.id')\`
+- Further-upstream data: if the value comes from any node other than the immediate main predecessor, reference that node explicitly.
+  WRONG: \`expr('{{ $json.email }}')\`
+  CORRECT: \`nodeJson(formTrigger, 'body.email')\``;

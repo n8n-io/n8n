@@ -100,6 +100,7 @@ export type DataTableHandoffInput = z.infer<typeof dataTableHandoffInputSchema>;
 export const plannerHandoffInputSchema = z.object({
 	recentMessages: z.array(recentMessageSchema),
 	guidance: z.string().optional(),
+	timeZone: z.string().optional(),
 });
 export type PlannerHandoffInput = z.infer<typeof plannerHandoffInputSchema>;
 
@@ -231,7 +232,7 @@ function extractConversationContext(h: SubAgentHandoff): string | undefined {
 export interface PlannedTaskArg {
 	id: string;
 	title: string;
-	kind: PlannedHandoffKind;
+	kind: PlannedHandoffKind | 'checkpoint';
 	spec: string;
 	deps: string[];
 	tools?: string[];
@@ -254,8 +255,21 @@ export function toPlannedTaskArg(task: {
 	title: string;
 	deps: string[];
 	tools?: string[];
-	handoff: PlannedHandoff;
-}): PlannedTaskArg {
+} & (
+	| { kind: 'checkpoint'; spec: string }
+	| { kind?: PlannedHandoffKind; handoff: PlannedHandoff }
+)): PlannedTaskArg {
+	if (task.kind === 'checkpoint') {
+		return {
+			id: task.id,
+			title: task.title,
+			kind: 'checkpoint',
+			spec: task.spec,
+			deps: task.deps,
+			...(task.tools ? { tools: task.tools } : {}),
+		};
+	}
+
 	const workflowId =
 		task.handoff.kind === 'build-workflow' ? task.handoff.input.workflowId : undefined;
 	return {

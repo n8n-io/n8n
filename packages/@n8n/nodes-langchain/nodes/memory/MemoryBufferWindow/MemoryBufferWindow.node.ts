@@ -16,6 +16,7 @@ import {
 	sessionKeyProperty,
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
+	scopedSessionHint,
 } from '../descriptions';
 
 class MemoryChatBufferSingleton {
@@ -78,7 +79,7 @@ export class MemoryBufferWindow implements INodeType {
 		icon: 'node:simple-memory',
 		iconColor: 'black',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Stores in n8n memory, so no credentials required',
 		defaults: {
 			name: 'Simple Memory',
@@ -148,6 +149,7 @@ export class MemoryBufferWindow implements INodeType {
 				},
 			},
 			expressionSessionKeyProperty(1.3),
+			scopedSessionHint(1.4),
 			sessionKeyProperty,
 			contextWindowLengthProperty,
 		],

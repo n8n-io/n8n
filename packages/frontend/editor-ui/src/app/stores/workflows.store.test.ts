@@ -16,7 +16,7 @@ import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 import { createEmptyRunExecutionData, createRunExecutionData, deepCopy } from 'n8n-workflow';
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { PushPayload } from '@n8n/api-types';
 import { flushPromises } from '@vue/test-utils';
@@ -111,92 +111,6 @@ describe('useWorkflowsStore', () => {
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.id).toBe('');
-	});
-
-	describe('workflowValidationIssues', () => {
-		it('collects issues only from connected, enabled nodes', () => {
-			const connections: IConnections = {
-				Start: {
-					main: [
-						[
-							{
-								node: 'Fetch',
-								type: 'main',
-								index: 0,
-							},
-						],
-					],
-				},
-			};
-
-			workflowsStore.workflow.nodes = [
-				{
-					id: 'start',
-					name: 'Start',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					parameters: {},
-					position: [0, 0],
-				},
-				{
-					id: 'fetch',
-					name: 'Fetch',
-					type: 'n8n-nodes-base.httpRequest',
-					typeVersion: 1,
-					parameters: {},
-					issues: {
-						parameters: {
-							url: ['Missing URL', 'Invalid URL.'],
-						},
-						credentials: {
-							httpBasicAuth: ['Credentials not set'],
-						},
-					},
-					position: [300, 0],
-				},
-				{
-					id: 'orphan',
-					name: 'Disconnected',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					parameters: {},
-					issues: {
-						parameters: { field: ['Should be ignored'] },
-					},
-					position: [0, 400],
-				},
-				{
-					id: 'disabled',
-					name: 'Disabled Node',
-					type: 'n8n-nodes-base.set',
-					typeVersion: 1,
-					disabled: true,
-					parameters: {},
-					issues: {
-						parameters: { field: ['Disabled issue'] },
-					},
-					position: [0, 600],
-				},
-			];
-			workflowsStore.workflow.connections = connections;
-
-			const issues = workflowsStore.workflowValidationIssues;
-			expect(issues).toEqual([
-				{ node: 'Fetch', type: 'parameters', value: ['Missing URL', 'Invalid URL.'] },
-				{ node: 'Fetch', type: 'credentials', value: ['Credentials not set'] },
-			]);
-		});
-	});
-
-	describe('formatIssueMessage', () => {
-		it('joins array entries and trims trailing period', () => {
-			const message = workflowsStore.formatIssueMessage(['Missing URL', 'Invalid value.']);
-			expect(message).toBe('Missing URL, Invalid value');
-		});
-
-		it('returns string representation for non-array values', () => {
-			expect(workflowsStore.formatIssueMessage('Simple issue.')).toBe('Simple issue.');
-		});
 	});
 
 	describe('allWorkflows', () => {
@@ -326,53 +240,6 @@ describe('useWorkflowsStore', () => {
 
 			const runData = workflowsStore.getWorkflowRunData;
 			expect(runData).toEqual(expectedRunData);
-		});
-	});
-
-	describe('nodesIssuesExist', () => {
-		it('should return true when a node has issues and connected', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1', issues: { error: ['Error message'] } },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			workflowsStore.workflow.connections = {
-				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(true);
-		});
-
-		it('should return false when node has issues but it is not connected', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1', issues: { error: ['Error message'] } },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false when no nodes have issues', () => {
-			workflowsStore.workflow.nodes = [
-				{ name: 'Node1' },
-				{ name: 'Node2' },
-			] as unknown as IWorkflowDb['nodes'];
-
-			workflowsStore.workflow.connections = {
-				Node1: { main: [[{ node: 'Node2' } as IConnection]] },
-			};
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
-		});
-
-		it('should return false when there are no nodes', () => {
-			workflowsStore.workflow.nodes = [];
-
-			const hasIssues = workflowsStore.nodesIssuesExist;
-			expect(hasIssues).toBe(false);
 		});
 	});
 
@@ -834,9 +701,12 @@ describe('useWorkflowsStore', () => {
 		it('should add node success run data', () => {
 			useWorkflowState().setWorkflowExecutionData(executionResponse);
 
-			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
-				type: 'n8n-nodes-base.manualTrigger',
-			});
+			workflowsStore.workflow.nodes.push(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
 
 			// ACT
 			workflowsStore.updateNodeExecutionStatus(successEvent);
@@ -928,9 +798,12 @@ describe('useWorkflowsStore', () => {
 			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
-			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
-				type: 'n8n-nodes-base.manualTrigger',
-			});
+			workflowsStore.workflow.nodes.push(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
 
 			// ACT
 			workflowsStore.updateNodeExecutionStatus(successEvent);
@@ -986,9 +859,12 @@ describe('useWorkflowsStore', () => {
 			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
-			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
-				type: 'n8n-nodes-base.manualTrigger',
-			});
+			workflowsStore.workflow.nodes.push(
+				mock<INodeUi>({
+					name: successEvent.nodeName,
+					type: 'n8n-nodes-base.manualTrigger',
+				}),
+			);
 
 			// ACT
 			workflowsStore.updateNodeExecutionStatus(successEventWithExecutionIndex);
