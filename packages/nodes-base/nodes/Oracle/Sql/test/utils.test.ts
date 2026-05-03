@@ -12,6 +12,8 @@ import {
 } from '../helpers/utils';
 
 const stressTests = process.env.ORACLE_STRESS_TESTS ?? false;
+const { skip: describeSkip } = describe;
+const describeStackOverflowRegression = stressTests ? describe : describeSkip;
 
 describe('Test addSortRules', () => {
 	it('should ORDER BY ASC', () => {
@@ -352,10 +354,8 @@ describe('Test configureQueryRunner', () => {
 	});
 });
 
-describe('configureQueryRunner stack overflow regression', () => {
+describeStackOverflowRegression('configureQueryRunner stack overflow regression', () => {
 	it('should handle large out bind datasets without stack overflow', async () => {
-		if (!stressTests) return;
-
 		const chunkSize = 250_000;
 		const outBinds = [[[42]]];
 		const executeMany = jest.fn().mockResolvedValue({ outBinds });
@@ -398,8 +398,6 @@ describe('configureQueryRunner stack overflow regression', () => {
 	});
 
 	it('should handle large select result sets without stack overflow', async () => {
-		if (!stressTests) return;
-
 		const chunkSize = 250_000;
 		const rows = Array.from({ length: chunkSize }, (_, index) => ({ COL1: index }));
 		const execute = jest.fn().mockResolvedValue({ rows });
