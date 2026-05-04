@@ -1,6 +1,8 @@
-import { mockLogger } from '@n8n/backend-test-utils';
+import { Logger } from '@n8n/backend-common';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { Settings, SettingsRepository } from '@n8n/db';
 import { captor, mock } from 'jest-mock-extended';
+import { OperationalError } from 'n8n-workflow';
 
 import type { License } from '@/license';
 import {
@@ -8,11 +10,12 @@ import {
 	DummyProvider,
 	ErrorProvider,
 	FailedProvider,
+	HangingUpdateProvider,
 	MockProviders,
 } from '@test/external-secrets/utils';
 import { mockCipher } from '@test/mocking';
 
-import { EXTERNAL_SECRETS_DB_KEY } from '../constants';
+import { EXTERNAL_SECRETS_DB_KEY, EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS } from '../constants';
 import { ExternalSecretsManager } from '../external-secrets-manager.ee';
 import type { ExternalSecretsSettings } from '../types';
 
@@ -168,6 +171,21 @@ describe('External Secrets Manager', () => {
 			expect(result).toBe(true);
 		});
 
+		test('should return false when provider update hangs until timeout', async () => {
+			mockProvidersInstance.setProviders({
+				dummy: HangingUpdateProvider,
+			});
+
+			const initPromise = manager.init();
+			await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS);
+			await initPromise;
+
+			const updatePromise = manager.updateProvider('dummy');
+			await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS);
+
+			await expect(updatePromise).resolves.toBe(false);
+		});
+
 		test('should return false if provider is not connected', async () => {
 			mockProvidersInstance.setProviders({
 				dummy: ErrorProvider,
@@ -188,6 +206,56 @@ describe('External Secrets Manager', () => {
 			const result = await manager.updateProvider('dummy');
 
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('updateSecrets timeout', () => {
+		test('should complete refresh when provider update never resolves', async () => {
+			mockProvidersInstance.setProviders({
+				dummy: HangingUpdateProvider,
+			});
+
+			const initPromise = manager.init();
+			await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS);
+			await initPromise;
+
+			expect(manager.initialized).toBe(true);
+
+			const updatePromise = manager.updateSecrets();
+			await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS);
+			await updatePromise;
+		});
+
+		test('should log OperationalError when provider update times out', async () => {
+			mockProvidersInstance.setProviders({
+				dummy: HangingUpdateProvider,
+			});
+
+			const scopedLogger = mock<Logger>();
+			const rootLogger = mockInstance(Logger);
+			rootLogger.scoped.mockReturnValue(scopedLogger);
+
+			manager = new ExternalSecretsManager(
+				rootLogger,
+				mock(),
+				settingsRepo,
+				license,
+				mockProvidersInstance,
+				cipher,
+				mock(),
+				mock(),
+			);
+
+			const initPromise = manager.init();
+			await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS);
+			await initPromise;
+
+			expect(scopedLogger.error).toHaveBeenCalledWith(
+				expect.stringContaining('Error updating secrets provider'),
+				expect.objectContaining({
+					error: expect.any(OperationalError),
+				}),
+			);
 		});
 	});
 
