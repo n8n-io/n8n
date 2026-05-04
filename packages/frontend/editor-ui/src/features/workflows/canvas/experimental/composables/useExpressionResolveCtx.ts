@@ -53,7 +53,7 @@ export function useExpressionResolveCtx(node: ComputedRef<INodeUi | null | undef
 		return {
 			localResolve: true,
 			envVars: environmentsStore.variablesAsObject,
-			workflow: workflowDocumentStore.value.getSnapshot(),
+			workflow: workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 			execution,
 			nodeName,
 			additionalKeys: {},

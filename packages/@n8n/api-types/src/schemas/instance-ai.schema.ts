@@ -735,6 +735,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	updatedAt: string;
 	metadata?: Record<string, unknown>;
 }
 

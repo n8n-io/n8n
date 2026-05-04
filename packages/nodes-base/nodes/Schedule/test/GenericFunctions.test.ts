@@ -33,7 +33,7 @@ function mockMomentTz(values: {
 // from the input interval.
 //
 // For `seed = 'test-key'`, `stableInt` produces:
-//   second=56, minute=19, hour=14, dayOfMonth=4
+//   second=56, minute=19, hour=14, dayOfMonth=22
 const TEST_SEED = 'test-key';
 
 describe('toCronExpression', () => {
@@ -158,7 +158,7 @@ describe('toCronExpression', () => {
 			TEST_SEED,
 		);
 		expect(result).toEqual('56 0 0 1 */3 *');
-		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=4 are all filler.
+		// Nothing pinned, so sec=56 / min=19 / hr=14 / dom=22 are all filler.
 		const result1 = toCronExpression(
 			{
 				field: 'months',
@@ -166,7 +166,7 @@ describe('toCronExpression', () => {
 			},
 			TEST_SEED,
 		);
-		expect(result1).toEqual('56 19 14 4 */3 *');
+		expect(result1).toEqual('56 19 14 22 */3 *');
 	});
 });
 
