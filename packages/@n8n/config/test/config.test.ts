@@ -535,6 +535,8 @@ describe('GlobalConfig', () => {
 			samlLoginEnabled: false,
 			logStreamingManagedByEnv: false,
 			logStreamingDestinations: '',
+			mcpManagedByEnv: false,
+			mcpAccessEnabled: false,
 		},
 	} satisfies GlobalConfigShape;
 

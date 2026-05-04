@@ -1,6 +1,7 @@
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
+import { getNDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
@@ -64,7 +65,7 @@ describe('SqlEditor.vue', () => {
 				[STORES.SETTINGS]: {
 					settings: SETTINGS_STORE_DEFAULT_STATE.settings,
 				},
-				[STORES.NDV]: {
+				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
 					activeNodeName: 'Test Node',
 					hasInputData: true,
 					isInputPanelEmpty: false,
@@ -88,7 +89,6 @@ describe('SqlEditor.vue', () => {
 
 		const workflowsStore = useWorkflowsStore();
 		workflowsStore.workflow.id = 'test-workflow';
-		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),

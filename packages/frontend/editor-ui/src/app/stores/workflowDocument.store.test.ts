@@ -6,7 +6,7 @@
  * Individual composable behavior is tested in their own test files.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { setActivePinia, createPinia, getActivePinia } from 'pinia';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IConnections } from 'n8n-workflow';
 import type { ITag, WorkflowHistory } from '@n8n/rest-api-client';
@@ -14,6 +14,7 @@ import type { Scope } from '@n8n/permissions';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	disposeWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -64,6 +65,27 @@ describe('workflowDocument.store orchestration', () => {
 		expect(workflowDocumentStore.allNodes).toHaveLength(0);
 		expect(workflowDocumentStore.connectionsBySourceNode).toEqual({});
 		expect(workflowDocumentStore.pinData).toEqual({});
+	});
+
+	it('disposeWorkflowDocumentStore disposes the instance and clears scoped state', () => {
+		const workflowDocumentId = createWorkflowDocumentId('test-wf');
+		const workflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+		const pinia = getActivePinia();
+		const disposeSpy = vi.spyOn(workflowDocumentStore, '$dispose');
+
+		workflowDocumentStore.setName('Stale workflow name');
+
+		expect(pinia?.state.value[workflowDocumentStore.$id]).toBeDefined();
+
+		disposeWorkflowDocumentStore(workflowDocumentStore);
+
+		expect(disposeSpy).toHaveBeenCalledOnce();
+		expect(pinia?.state.value[workflowDocumentStore.$id]).toBeUndefined();
+
+		const recreatedWorkflowDocumentStore = useWorkflowDocumentStore(workflowDocumentId);
+
+		expect(recreatedWorkflowDocumentStore).not.toBe(workflowDocumentStore);
+		expect(recreatedWorkflowDocumentStore.name).toBe('');
 	});
 
 	it('node mutation triggers markStateDirty on UI store', () => {

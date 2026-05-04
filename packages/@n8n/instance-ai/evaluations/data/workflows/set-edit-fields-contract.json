@@ -1,0 +1,14 @@
+{
+	"prompt": "Every day, fetch one post from the JSONPlaceholder API (GET https://jsonplaceholder.typicode.com/posts/1). Then use an Edit Fields (Set) node, not a Code node, to add a field called caption from the post title and a field called source with the value jsonplaceholder, while preserving all original fields from the HTTP response. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "medium",
+	"tags": ["build", "schedule", "http-request", "set", "data-transformation"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "preserve-fields",
+			"description": "HTTP data is reshaped with Set/Edit Fields while preserving the original response fields",
+			"dataSetup": "The HTTP Request node returns a single JSON object with id=42, userId=7, title='Launch day', and body='Ship it'.",
+			"successCriteria": "The workflow executes without errors. Judge the executed output values, not whether Set node parameters are literal or expression strings. The data reshaping is done with an Edit Fields/Set node, not a Code node. The final executed output contains the original id, userId, title, and body fields, plus caption resolving to 'Launch day' and source resolving to 'jsonplaceholder'. The Set/Edit Fields node uses mode='manual', valid manual assignments, and includeOtherFields=true to preserve existing input fields; it must not use keepAllExistingFields as a mode or manually re-map every original field as a substitute for includeOtherFields."
+		}
+	]
+}
