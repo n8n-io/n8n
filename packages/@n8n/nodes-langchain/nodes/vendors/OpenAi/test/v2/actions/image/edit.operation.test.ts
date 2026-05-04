@@ -1,21 +1,35 @@
-import FormData from 'form-data';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/edit.operation';
+import { Mocked } from 'vitest';
 
 vi.mock('../../../../helpers/binary-data');
 vi.mock('../../../../transport');
-vi.mock('form-data', () => vi.fn());
 
-const mockFormData = vi.mocked(FormData);
+const { mockFormDataAppend, mockFormDataGetHeaders, lastFormDataInstance } = vi.hoisted(() => ({
+	mockFormDataAppend: vi.fn(),
+	mockFormDataGetHeaders: vi.fn(),
+	lastFormDataInstance: { current: null as unknown },
+}));
+
+vi.mock('form-data', () => {
+	class MockFormData {
+		constructor() {
+			lastFormDataInstance.current = this;
+		}
+		append = mockFormDataAppend;
+		getHeaders = mockFormDataGetHeaders;
+	}
+	return { default: MockFormData };
+});
 
 describe('Image Edit Operation', () => {
-	let mockExecuteFunctions: vi.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockFormDataInstance: vi.Mocked<FormData>;
+	let mockFormDataInstance: Mocked<FormData>;
 	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
 	const getBinaryDataFileSpy = vi.spyOn(binaryDataHelpers, 'getBinaryDataFile');
 
@@ -33,12 +47,7 @@ describe('Image Edit Operation', () => {
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.helpers.prepareBinaryData = vi.fn();
 		mockExecuteFunctions.helpers.binaryToBuffer = vi.fn();
-
-		mockFormDataInstance = {
-			append: vi.fn(),
-			getHeaders: vi.fn().mockReturnValue({ 'content-type': 'multipart/form-data' }),
-		} as unknown as vi.Mocked<FormData>;
-		mockFormData.mockImplementation(() => mockFormDataInstance);
+		mockFormDataGetHeaders.mockReturnValue({ 'content-type': 'multipart/form-data' });
 	});
 
 	afterEach(() => {
@@ -79,34 +88,28 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
+			mockFormDataInstance = lastFormDataInstance.current as Mocked<FormData>;
 
 			expect(getBinaryDataFileSpy).toHaveBeenCalledWith(mockExecuteFunctions, 0, 'image_data');
 			expect(mockExecuteFunctions.helpers.binaryToBuffer).toHaveBeenCalledWith(
 				mockBinaryFile.fileContent,
 			);
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
-				'image',
-				mockBinaryFile.fileContent,
-				{
-					filename: 'test.png',
-					contentType: 'image/png',
-				},
-			);
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
-				'prompt',
-				'Add a rainbow to this landscape',
-			);
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('model', 'dall-e-2');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('n', '1');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('size', '1024x1024');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('response_format', 'url');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('image', mockBinaryFile.fileContent, {
+				filename: 'test.png',
+				contentType: 'image/png',
+			});
+			expect(mockFormDataAppend).toHaveBeenCalledWith('prompt', 'Add a rainbow to this landscape');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('model', 'dall-e-2');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('n', '1');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('size', '1024x1024');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('response_format', 'url');
 
 			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/edits', {
 				option: { formData: mockFormDataInstance },
@@ -225,7 +228,7 @@ describe('Image Edit Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('n', '3');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('n', '3');
 			expect(result).toHaveLength(3);
 			expect(result[0].json.url).toBe('https://example.com/edited-image-1.png');
 			expect(result[1].json.url).toBe('https://example.com/edited-image-2.png');
@@ -283,15 +286,15 @@ describe('Image Edit Operation', () => {
 			);
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(2, mockExecuteFunctions, 0, 'mask_data');
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('image', mockImageFile.fileContent, {
+			expect(mockFormDataAppend).toHaveBeenCalledWith('image', mockImageFile.fileContent, {
 				filename: 'test.png',
 				contentType: 'image/png',
 			});
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('mask', mockMaskFile.fileContent, {
+			expect(mockFormDataAppend).toHaveBeenCalledWith('mask', mockMaskFile.fileContent, {
 				filename: 'mask.png',
 				contentType: 'image/png',
 			});
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('user', 'test-user-123');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('user', 'test-user-123');
 
 			expect(result).toHaveLength(1);
 		});
@@ -362,32 +365,24 @@ describe('Image Edit Operation', () => {
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(1, mockExecuteFunctions, 0, 'image1');
 			expect(getBinaryDataFileSpy).toHaveBeenNthCalledWith(2, mockExecuteFunctions, 0, 'image2');
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
-				'image[]',
-				mockBinaryFile1.fileContent,
-				{
-					filename: 'image1.jpg',
-					contentType: 'image/jpeg',
-				},
-			);
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
-				'image[]',
-				mockBinaryFile2.fileContent,
-				{
-					filename: 'image2.png',
-					contentType: 'image/png',
-				},
-			);
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
+			expect(mockFormDataAppend).toHaveBeenCalledWith('image[]', mockBinaryFile1.fileContent, {
+				filename: 'image1.jpg',
+				contentType: 'image/jpeg',
+			});
+			expect(mockFormDataAppend).toHaveBeenCalledWith('image[]', mockBinaryFile2.fileContent, {
+				filename: 'image2.png',
+				contentType: 'image/png',
+			});
+			expect(mockFormDataAppend).toHaveBeenCalledWith(
 				'prompt',
 				'Transform this image with AI magic',
 			);
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('model', 'gpt-image-1');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('background', 'transparent');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('input_fidelity', 'high');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('output_format', 'webp');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('output_compression', '85');
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('quality', 'high');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('model', 'gpt-image-1');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('background', 'transparent');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('input_fidelity', 'high');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('output_format', 'webp');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('output_compression', '85');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('quality', 'high');
 
 			expect(result).toEqual([
 				{
@@ -445,14 +440,10 @@ describe('Image Edit Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith(
-				'image[]',
-				mockBinaryFile.fileContent,
-				{
-					filename: 'data.png',
-					contentType: 'image/png',
-				},
-			);
+			expect(mockFormDataAppend).toHaveBeenCalledWith('image[]', mockBinaryFile.fileContent, {
+				filename: 'data.png',
+				contentType: 'image/png',
+			});
 			expect(result).toHaveLength(1);
 		});
 	});
@@ -535,7 +526,7 @@ describe('Image Edit Operation', () => {
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
-			expect(mockFormDataInstance.append).toHaveBeenCalledWith('output_compression', '0');
+			expect(mockFormDataAppend).toHaveBeenCalledWith('output_compression', '0');
 			expect(result).toHaveLength(1);
 		});
 
@@ -572,9 +563,9 @@ describe('Image Edit Operation', () => {
 
 			await execute.call(mockExecuteFunctions, 0);
 
-			expect(mockFormDataInstance.append).not.toHaveBeenCalledWith('n', '0');
-			expect(mockFormDataInstance.append).not.toHaveBeenCalledWith('size', '');
-			expect(mockFormDataInstance.append).not.toHaveBeenCalledWith('quality', '');
+			expect(mockFormDataAppend).not.toHaveBeenCalledWith('n', '0');
+			expect(mockFormDataAppend).not.toHaveBeenCalledWith('size', '');
+			expect(mockFormDataAppend).not.toHaveBeenCalledWith('quality', '');
 		});
 	});
 
@@ -611,8 +602,9 @@ describe('Image Edit Operation', () => {
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
 
 			await execute.call(mockExecuteFunctions, 0);
+			mockFormDataInstance = lastFormDataInstance.current as Mocked<FormData>;
 
-			expect(mockFormDataInstance.getHeaders).toHaveBeenCalled();
+			expect(mockFormDataGetHeaders).toHaveBeenCalled();
 			expect(apiRequestSpy).toHaveBeenCalledWith('POST', '/images/edits', {
 				option: { formData: mockFormDataInstance },
 				headers: { 'content-type': 'multipart/form-data' },
