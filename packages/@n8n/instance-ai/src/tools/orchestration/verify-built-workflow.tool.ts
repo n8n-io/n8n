@@ -27,6 +27,28 @@ function stringifyForToolOutput(value: unknown): string {
 	}
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function unwrapUntrustedData(value: string): unknown {
+	const match = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/i.exec(value);
+	if (!match) return value;
+	const content = match[1];
+	if (content === undefined) return value;
+
+	try {
+		const parsed: unknown = JSON.parse(content);
+		return parsed;
+	} catch {
+		return value;
+	}
+}
+
+function outputForInspection(nodeOutput: unknown): unknown {
+	return typeof nodeOutput === 'string' ? unwrapUntrustedData(nodeOutput) : nodeOutput;
+}
+
 interface DataTableWriteNode {
 	nodeName: string;
 	dataTableId: string;
@@ -88,13 +110,14 @@ async function extractDataTableWriteNodes(
 function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
 	const ids: number[] = [];
 	const visit = (value: unknown): void => {
-		if (!value) return;
-		if (Array.isArray(value)) {
-			for (const item of value) visit(item);
+		const inspected = outputForInspection(value);
+		if (!inspected) return;
+		if (Array.isArray(inspected)) {
+			for (const item of inspected) visit(item);
 			return;
 		}
-		if (typeof value !== 'object') return;
-		const row = value as Record<string, unknown>;
+		if (!isRecord(inspected)) return;
+		const row = inspected;
 		if (row.json !== undefined) {
 			visit(row.json);
 			return;
@@ -106,9 +129,25 @@ function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
 	return ids;
 }
 
+function getCountFromMetadata(value: unknown): number | undefined {
+	if (!isRecord(value)) return undefined;
+
+	for (const key of ['totalItems', '_itemCount']) {
+		const count = value[key];
+		if (typeof count === 'number' && Number.isFinite(count) && count >= 0) {
+			return count;
+		}
+	}
+
+	return undefined;
+}
+
 function countOutputItems(nodeOutput: unknown): number | undefined {
-	if (Array.isArray(nodeOutput)) return nodeOutput.length;
-	if (nodeOutput === undefined || nodeOutput === null) return 0;
+	const output = outputForInspection(nodeOutput);
+	if (Array.isArray(output)) return output.length;
+	const metadataCount = getCountFromMetadata(output);
+	if (metadataCount !== undefined) return metadataCount;
+	if (output === undefined || output === null) return 0;
 	return 1;
 }
 
@@ -385,6 +424,24 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				};
 			}
 
+			if (!buildOutcome.workflowId) {
+				return {
+					success: false,
+					error: `Build outcome ${input.workItemId} does not include a workflow ID.`,
+				};
+			}
+
+			if (buildOutcome.workflowId !== input.workflowId) {
+				return {
+					success: false,
+					error:
+						`Build outcome ${input.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
+						`but verification was requested for workflow ${input.workflowId}.`,
+				};
+			}
+
+			const workflowId = buildOutcome.workflowId;
+
 			// Pre-verify: enumerate the dataTable write nodes in the workflow and
 			// snapshot current row IDs for each insert-touched table. The delete
 			// set comes from each insert node's own output after verify (so
@@ -394,7 +451,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// `cleanupInsertedRowsByNodeOutput` for the rationale.
 			const writeNodes = await extractDataTableWriteNodes(
 				context.domainContext.workflowService,
-				input.workflowId,
+				workflowId,
 			);
 			const preSnapshots = await snapshotRowIdsPerTable(
 				context.domainContext.dataTableService,
@@ -402,14 +459,10 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				context.logger,
 			);
 
-			const result = await context.domainContext.executionService.run(
-				input.workflowId,
-				input.inputData,
-				{
-					timeout: input.timeout,
-					pinData: buildOutcome.verificationPinData as Record<string, unknown[]> | undefined,
-				},
-			);
+			const result = await context.domainContext.executionService.run(workflowId, input.inputData, {
+				timeout: input.timeout,
+				pinData: buildOutcome.verificationPinData as Record<string, unknown[]> | undefined,
+			});
 
 			// Treat `waiting` as success when the workflow produced output and recorded
 			// no error. `waiting` is a terminal-ish state for several legitimate flows:
@@ -460,7 +513,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			if (cleanedRows > 0) {
 				context.logger.debug?.('verify-built-workflow: cleaned up inserted rows', {
 					workItemId: input.workItemId,
-					workflowId: input.workflowId,
+					workflowId,
 					cleanedRows,
 				});
 			}

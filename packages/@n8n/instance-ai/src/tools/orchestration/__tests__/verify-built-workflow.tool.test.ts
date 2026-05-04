@@ -42,6 +42,10 @@ function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): Workfl
 	};
 }
 
+function wrapExecutionOutput(value: unknown): string {
+	return `<untrusted_data source="execution-output" label="node:test">\n${JSON.stringify(value, null, 2)}\n</untrusted_data>`;
+}
+
 function makeContext(
 	outcome: WorkflowBuildOutcome | undefined,
 	runResult: ExecutionRunResult,
@@ -315,6 +319,36 @@ describe('verify-built-workflow tool', () => {
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});
 
+	it('rejects verification when the requested workflow does not match the build outcome', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ workflowId: 'wf-2' }), {
+			executionId: 'exec-mismatch',
+			status: 'success',
+			data: { 'Manual Trigger': [{ json: { ok: true } }] },
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('belongs to workflow wf-2');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
+	});
+
+	it('rejects verification when the build outcome has no workflow ID', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome({ workflowId: undefined }), {
+			executionId: 'exec-missing-workflow',
+			status: 'success',
+			data: { 'Manual Trigger': [{ json: { ok: true } }] },
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.error).toContain('does not include a workflow ID');
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(updateBuildOutcome).not.toHaveBeenCalled();
+	});
+
 	it('swallows storage errors when persisting verification', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-3',
@@ -326,6 +360,36 @@ describe('verify-built-workflow tool', () => {
 
 		expect(result.success).toBe(true);
 		expect(result.executionId).toBe('exec-3');
+	});
+
+	it('counts wrapped execution output items in previews and persisted evidence', async () => {
+		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
+			executionId: 'exec-wrapped',
+			status: 'success',
+			data: {
+				'Set Rows': wrapExecutionOutput([{ id: 1 }, { id: 2 }]),
+				'Large Export': wrapExecutionOutput({
+					totalItems: 5,
+					truncated: true,
+					items: [{ id: 3 }],
+				}),
+				'Large Transform': wrapExecutionOutput({
+					_itemCount: 7,
+					_truncated: true,
+					_firstItemPreview: { id: 4 },
+				}),
+			},
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(result.nodePreviews).toEqual([
+			expect.objectContaining({ nodeName: 'Set Rows', itemCount: 2 }),
+			expect.objectContaining({ nodeName: 'Large Export', itemCount: 5 }),
+			expect.objectContaining({ nodeName: 'Large Transform', itemCount: 7 }),
+		]);
+		expect(updateBuildOutcome.mock.calls[0][1].verification?.evidence?.producedOutputRows).toBe(14);
 	});
 
 	it('cleans up rows inserted by the verification run, reading row IDs from the node output', async () => {
@@ -365,6 +429,37 @@ describe('verify-built-workflow tool', () => {
 		expect(call).toBeDefined();
 		expect(call[0]).toBe('tbl-leads');
 		expect(call[1]).toEqual({
+			type: 'or',
+			filters: [{ columnName: 'id', condition: 'eq', value: 3 }],
+		});
+	});
+
+	it('cleans up inserted rows when the execution output is wrapped', async () => {
+		const { ctx, deleteRows } = makeContext(
+			makeBuildOutcome(),
+			{
+				executionId: 'exec-wrapped-insert',
+				status: 'success',
+				data: {
+					'Insert Lead': wrapExecutionOutput([{ id: 3, name: 'Test' }]),
+				},
+			},
+			{
+				workflowNodes: [
+					{
+						name: 'Insert Lead',
+						type: 'n8n-nodes-base.dataTable',
+						parameters: { operation: 'insert', dataTableId: 'tbl-leads' },
+					},
+				],
+				tableRows: { 'tbl-leads': [{ id: 1 }, { id: 2 }] },
+			},
+		);
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(true);
+		expect(deleteRows.mock.calls[0][1]).toEqual({
 			type: 'or',
 			filters: [{ columnName: 'id', condition: 'eq', value: 3 }],
 		});

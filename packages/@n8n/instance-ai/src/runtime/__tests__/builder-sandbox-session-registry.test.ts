@@ -106,6 +106,46 @@ describe('BuilderSandboxSessionRegistry', () => {
 		expect(registry.acquireByWorkflowId('thread-1', 'workflow-1')).toBeUndefined();
 	});
 
+	it('keeps the newer workflow alias when cleaning up an older session', async () => {
+		const cleanupOne = jest.fn(async () => {});
+		const cleanupTwo = jest.fn(async () => {});
+		const registry = new BuilderSandboxSessionRegistry(10_000);
+		const oldSession = createSession(registry, cleanupOne);
+
+		expect(oldSession).toBeDefined();
+		await registry.release(oldSession!.sessionId, {
+			keep: true,
+			reason: 'test_release',
+		});
+
+		const newSession = registry.create({
+			threadId: 'thread-1',
+			workflowId: 'workflow-1',
+			workItemId: 'wi_2',
+			builderThreadId: 'builder-thread-2',
+			builderResourceId: 'user-1:workflow-builder',
+			builderWorkspace: makeBuilderWorkspace(cleanupTwo),
+			root: '/workspace',
+		});
+
+		expect(newSession).toBeDefined();
+		await registry.release(newSession!.sessionId, {
+			keep: true,
+			reason: 'test_release',
+		});
+
+		await registry.release(oldSession!.sessionId, {
+			keep: false,
+			reason: 'replaced',
+		});
+
+		expect(cleanupOne).toHaveBeenCalledTimes(1);
+		expect(registry.acquireByWorkflowId('thread-1', 'workflow-1')?.sessionId).toBe(
+			newSession!.sessionId,
+		);
+		expect(cleanupTwo).not.toHaveBeenCalled();
+	});
+
 	it('cleans up sessions for a single thread', async () => {
 		const cleanupOne = jest.fn(async () => {});
 		const cleanupTwo = jest.fn(async () => {});

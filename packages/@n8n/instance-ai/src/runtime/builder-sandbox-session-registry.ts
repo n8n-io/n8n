@@ -126,7 +126,7 @@ export class BuilderSandboxSessionRegistry {
 		if (!session) return;
 
 		if (session.workflowId && session.workflowId !== workflowId) {
-			this.byThreadWorkflowId.delete(sessionKey(session.threadId, session.workflowId));
+			this.deleteWorkflowAliasForSession(session);
 		}
 
 		session.workflowId = workflowId;
@@ -204,14 +204,21 @@ export class BuilderSandboxSessionRegistry {
 		session.cleanupTimer.unref();
 	}
 
+	private deleteWorkflowAliasForSession(session: BuilderSandboxSessionInternal): void {
+		if (!session.workflowId) return;
+
+		const key = sessionKey(session.threadId, session.workflowId);
+		if (this.byThreadWorkflowId.get(key) === session.sessionId) {
+			this.byThreadWorkflowId.delete(key);
+		}
+	}
+
 	private async cleanupSession(sessionId: string, _reason: string): Promise<void> {
 		const session = this.sessions.get(sessionId);
 		if (!session) return;
 
 		this.sessions.delete(session.sessionId);
-		if (session.workflowId) {
-			this.byThreadWorkflowId.delete(sessionKey(session.threadId, session.workflowId));
-		}
+		this.deleteWorkflowAliasForSession(session);
 
 		if (session.cleanupTimer) {
 			clearTimeout(session.cleanupTimer);
