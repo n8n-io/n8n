@@ -5,9 +5,11 @@ import { AGENT_SCHEDULE_TRIGGER_TYPE } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon';
 import { useI18n } from '@n8n/i18n';
-import { computed } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, watch } from 'vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
 import type { AgentSkill } from '../types';
+import { getIntegrationStatus } from '../composables/useAgentApi';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
 import AgentChipButton from './AgentChipButton.vue';
@@ -22,8 +24,15 @@ const props = withDefaults(
 		projectId: string;
 		agentId: string;
 		isPublished: boolean;
+		/**
+		 * Bumped by the parent whenever the underlying agent config changes
+		 * (e.g. the builder LLM patched the integrations array). Triggers a
+		 * re-fetch of the connected-trigger list so the chips reflect the
+		 * persisted state without waiting for a tab switch.
+		 */
+		reloadToken?: number;
 	}>(),
-	{ disabled: false },
+	{ disabled: false, reloadToken: 0 },
 );
 
 const emit = defineEmits<{
@@ -41,8 +50,43 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const nodeTypesStore = useNodeTypesStore();
+const rootStore = useRootStore();
 
-const { catalog } = useAgentIntegrationsCatalog();
+const { catalog, ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();
+
+/**
+ * Refetch the connected-integration list and emit it upward so the parent
+ * `connectedTriggers` ref stays in sync after the builder LLM mutates the
+ * agent config. Mirrors `useAgentBuilderTelemetry.fetchInitialTriggersBaseline`
+ * — same endpoint, same shape, same filter against known trigger types — so
+ * the initial load and the post-write refresh produce identical results.
+ */
+async function refreshConnectedTriggers() {
+	try {
+		const integrations = await ensureIntegrationsCatalog(props.projectId).catch(() => []);
+		const knownTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+		const result = await getIntegrationStatus(
+			rootStore.restApiContext,
+			props.projectId,
+			props.agentId,
+		);
+		const connected = (result.integrations ?? [])
+			.map((i) => i.type)
+			.filter((t) => knownTypes.includes(t))
+			.sort();
+		emit('update:connected-triggers', connected);
+	} catch {
+		// Non-fatal: leave the chips at their last known value.
+	}
+}
+
+watch(
+	() => props.reloadToken,
+	(next, prev) => {
+		if (next === prev) return;
+		void refreshConnectedTriggers();
+	},
+);
 
 function isIconName(icon: unknown): icon is IconName {
 	return typeof icon === 'string' && icon in updatedIconSet;

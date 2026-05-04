@@ -883,6 +883,7 @@ function onSwitchAgent(nextAgentId: string) {
 				:is-build-chat-streaming="isBuildChatStreaming"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
+				:integrations-reload-token="integrationsReloadToken"
 				@update:config="onConfigFieldUpdate"
 				@open-tool="onOpenToolFromList"
 				@open-skill="onOpenSkillFromList"
