@@ -1,14 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nIcon, N8nText } from '@n8n/design-system';
-import { formatDeltaPercent, getDeltaTone, type DeltaTone } from '../../evaluation.utils';
+import {
+	formatDeltaPercent,
+	getDeltaTone,
+	type DeltaTone,
+	type MetricCategory,
+} from '../../evaluation.utils';
 
 const props = defineProps<{
 	delta: number | undefined;
+	category?: MetricCategory;
 }>();
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
-const label = computed(() => formatDeltaPercent(props.delta));
+const label = computed(() => formatDeltaPercent(props.delta, { category: props.category }));
 const icon = computed(() => (tone.value === 'negative' ? 'arrow-down' : 'arrow-up'));
 </script>
 
@@ -27,9 +33,10 @@ const icon = computed(() => (tone.value === 'negative' ? 'arrow-down' : 'arrow-u
 .badge {
 	display: inline-flex;
 	align-items: center;
+	align-self: center;
 	gap: var(--spacing--3xs);
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border-radius: var(--border-radius--base);
+	border-radius: 9999px; // pill — no design-system token for fully rounded
 	line-height: 1;
 }
 

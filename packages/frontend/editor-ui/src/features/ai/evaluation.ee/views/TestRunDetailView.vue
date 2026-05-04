@@ -75,6 +75,14 @@ const metricTones = computed<Record<string, DeltaTone>>(() => {
 
 const metricSources = computed(() => evaluationStore.metricSourceByKey);
 
+const caseValuesByKey = computed<Record<string, Array<number | boolean | undefined>>>(() => {
+	const result: Record<string, Array<number | boolean | undefined>> = {};
+	for (const name of getUserDefinedMetricNames(run.value?.metrics)) {
+		result[name] = orderedTestCases.value.map((testCase) => testCase.metrics?.[name]);
+	}
+	return result;
+});
+
 const openRelatedExecution = (testCase: TestCaseExecutionRecord) => {
 	const executionId = testCase.executionId;
 	if (!executionId) return;
@@ -179,6 +187,7 @@ onMounted(async () => {
 			:current-metrics="run?.metrics"
 			:previous-metrics="previousRun?.metrics"
 			:metric-sources="metricSources"
+			:case-values-by-key="caseValuesByKey"
 			class="mb-m"
 		/>
 
@@ -241,12 +250,12 @@ onMounted(async () => {
 }
 
 .runHeading {
-	font-size: 36px;
+	font-size: var(--font-size--2xl);
 	line-height: 1.1;
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text);
 	margin: 0;
-	letter-spacing: -0.01em;
+	letter-spacing: var(--letter-spacing--tight);
 }
 
 .capitalized {

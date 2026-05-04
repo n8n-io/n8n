@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nExternalLink, N8nText } from '@n8n/design-system';
-import { formatTokens } from '../../evaluation.utils';
+import { formatDuration, formatTokens } from '../../evaluation.utils';
 
 const props = defineProps<{
 	index: number;
@@ -18,9 +18,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 
 const tokensLabel = computed(() => formatTokens(props.tokens));
-const durationLabel = computed(() =>
-	props.durationMs !== undefined ? `${props.durationMs}ms` : '–',
-);
+const durationLabel = computed(() => formatDuration(props.durationMs));
 const hasMetadata = computed(() => props.tokens !== undefined || props.durationMs !== undefined);
 </script>
 

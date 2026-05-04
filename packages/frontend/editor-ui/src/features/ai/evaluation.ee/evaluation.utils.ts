@@ -105,17 +105,39 @@ export function formatTokens(tokens: number | undefined): string {
 }
 
 /**
+ * Built-in AI-based metric handlers (correctness, helpfulness) return integer
+ * scores 1–5 — see `nodes-base/nodes/Evaluation/utils/metricHandlers.ts`.
+ * The other built-in handlers (stringSimilarity, categorization, toolsUsed)
+ * return 0–1.
+ */
+export type MetricScale = 'oneToFive' | 'normalized';
+
+export function getMetricScale(category: MetricCategory | undefined): MetricScale {
+	return category === 'aiBased' ? 'oneToFive' : 'normalized';
+}
+
+/**
  * Formats a numeric metric value as a percentage string e.g. "94%".
  *
- * Heuristic: values within [-1, 1] are treated as 0–1 normalized scores and
- * scaled to percent; values outside that range are assumed to already be in
- * percent and rendered as-is. Edge case: a metric reporting 1.5 (out of range)
- * renders as "2%" — acceptable for V1 since metrics are conventionally 0–1.
+ * The conversion depends on the metric's category:
+ * - `aiBased` (correctness/helpfulness): integer 1–5 → `value / 5 * 100`,
+ *   so a perfect 5 renders as "100%" and 1 as "20%".
+ * - Anything else (heuristic built-ins, custom metrics, or no category):
+ *   heuristic — values within [-1, 1] are 0–1 normalized scores scaled to
+ *   percent; values outside that range are assumed to already be percentages.
  */
-export function formatMetricPercent(value: number | boolean | undefined): string {
+export function formatMetricPercent(
+	value: number | boolean | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
 	const num = normalizeMetricValue(value);
 	if (num === undefined || Number.isNaN(num)) return '–';
-	const scaled = Math.abs(num) <= 1 ? num * 100 : num;
+	const scaled =
+		getMetricScale(options.category) === 'oneToFive'
+			? (num / 5) * 100
+			: Math.abs(num) <= 1
+				? num * 100
+				: num;
 	return `${Math.round(scaled)}%`;
 }
 
@@ -148,15 +170,89 @@ export function getMetricCategory(metric: string | undefined): MetricCategory {
 	}
 }
 
+function formatScoreNumerator(value: number): string {
+	const rounded = Math.round(value * 10) / 10;
+	return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(1);
+}
+
+/**
+ * Returns the raw score in `x/y` form for a single per-case row. Only AI-based
+ * metrics surface this — normalized 0–1 metrics are hidden because the
+ * percentage already conveys the same information.
+ */
+export function formatMetricRawScore(
+	value: number | boolean | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
+	if (getMetricScale(options.category) !== 'oneToFive') return '';
+	const num = normalizeMetricValue(value);
+	if (num === undefined || Number.isNaN(num)) return '';
+	return `${formatScoreNumerator(num)}/5`;
+}
+
+/**
+ * Returns the run-level totals as a collapsed sum, e.g.
+ *   - `13/15`  for AI-based 1–5 metrics (sum of scores / 5 × case count)
+ *   - `1.11/6` for normalized 0–1 metrics (sum of scores / case count)
+ * Surfaces under each strip card so the user can see the totals that
+ * summed into the aggregated percentage.
+ */
+export function formatMetricRawScoreSum(
+	values: Array<number | boolean | undefined>,
+	options: { category?: MetricCategory } = {},
+): string {
+	const usable = values
+		.map(normalizeMetricValue)
+		.filter((v): v is number => v !== undefined && !Number.isNaN(v));
+	if (usable.length === 0) return '';
+	const isOneToFive = getMetricScale(options.category) === 'oneToFive';
+	const perCaseMax = isOneToFive ? 5 : 1;
+	const numeratorSum = usable.reduce((sum, value) => sum + value, 0);
+	const denominator = perCaseMax * usable.length;
+	const numeratorDisplay = isOneToFive
+		? formatScoreNumerator(numeratorSum)
+		: numeratorSum.toFixed(2);
+	return `${numeratorDisplay}/${denominator}`;
+}
+
 /**
  * Formats a delta in percentage points with a leading sign, e.g. "+4%" / "-28%".
+ * Mirrors `formatMetricPercent` — for 1–5-scale metrics a delta of +1 (e.g.
+ * 4 → 5) becomes +20%; for normalized 0–1 metrics +0.04 becomes +4%.
  */
-export function formatDeltaPercent(delta: number | undefined): string {
+export function formatDeltaPercent(
+	delta: number | undefined,
+	options: { category?: MetricCategory } = {},
+): string {
 	if (delta === undefined || Number.isNaN(delta)) return '';
-	const scaled = Math.abs(delta) <= 1 ? delta * 100 : delta;
+	const scaled =
+		getMetricScale(options.category) === 'oneToFive'
+			? (delta / 5) * 100
+			: Math.abs(delta) <= 1
+				? delta * 100
+				: delta;
 	const rounded = Math.round(scaled);
 	const sign = rounded > 0 ? '+' : '';
 	return `${sign}${rounded}%`;
+}
+
+/**
+ * Formats a duration in milliseconds as a compact human label:
+ *   - `< 1s`         → "Xms" (e.g. "243ms")
+ *   - `1s` – `< 60s` → "X.Xs", trailing `.0` dropped (e.g. "8s", "1.2s")
+ *   - `>= 60s`       → "Xm Ys", `Ys` omitted when zero (e.g. "1m 30s", "2m")
+ */
+export function formatDuration(ms: number | undefined): string {
+	if (ms === undefined || Number.isNaN(ms) || ms < 0) return '–';
+	if (ms < 1000) return `${Math.round(ms)}ms`;
+	const totalSeconds = ms / 1000;
+	if (totalSeconds < 60) {
+		const rounded = Math.round(totalSeconds * 10) / 10;
+		return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`;
+	}
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = Math.round(totalSeconds - minutes * 60);
+	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
 /**

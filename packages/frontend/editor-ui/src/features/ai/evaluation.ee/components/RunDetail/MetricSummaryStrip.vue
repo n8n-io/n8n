@@ -13,6 +13,11 @@ const props = defineProps<{
 	currentMetrics: Record<string, number | boolean> | null | undefined;
 	previousMetrics: Record<string, number | boolean> | null | undefined;
 	metricSources?: Record<string, MetricSource>;
+	/**
+	 * Per-metric arrays of per-test-case raw values. Used to surface a sum
+	 * form ("x1+x2+x3 / y1+y2+y3") under AI-based metric cards.
+	 */
+	caseValuesByKey?: Record<string, Array<number | boolean | undefined>>;
 }>();
 
 const metricNames = computed(() => getUserDefinedMetricNames(props.currentMetrics));
@@ -26,6 +31,7 @@ const cards = computed(() =>
 			delta: computeDelta(props.currentMetrics?.[name], props.previousMetrics?.[name]),
 			category: source?.category,
 			sourceNodeName: source?.nodeName,
+			caseValues: props.caseValuesByKey?.[name] ?? [],
 		};
 	}),
 );
@@ -47,6 +53,7 @@ const cards = computed(() =>
 				:delta="card.delta"
 				:category="card.category"
 				:source-node-name="card.sourceNodeName"
+				:case-values="card.caseValues"
 			/>
 		</div>
 	</ElScrollbar>

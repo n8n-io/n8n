@@ -5,8 +5,8 @@ import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	formatMetricLabel,
 	formatMetricPercent,
+	formatMetricRawScore,
 	getUserDefinedMetricNames,
-	normalizeMetricValue,
 	type DeltaTone,
 	type MetricSource,
 } from '../../evaluation.utils';
@@ -31,10 +31,11 @@ const rows = computed(() =>
 		return {
 			name,
 			label: formatMetricLabel(name),
-			value: normalizeMetricValue(props.metrics?.[name]),
 			tone,
 			category: source?.category,
 			sourceNodeName: source?.nodeName,
+			percent: formatMetricPercent(props.metrics?.[name], { category: source?.category }),
+			rawScore: formatMetricRawScore(props.metrics?.[name], { category: source?.category }),
 		};
 	}),
 );
@@ -69,7 +70,8 @@ const rows = computed(() =>
 					</div>
 				</td>
 				<td :class="[$style.cell, $style.numeric, $style[`tone-${row.tone}`]]">
-					{{ formatMetricPercent(row.value) }}
+					<span>{{ row.percent }}</span>
+					<span v-if="row.rawScore" :class="$style.rawScore">{{ row.rawScore }}</span>
 				</td>
 			</tr>
 		</tbody>
@@ -87,7 +89,7 @@ const rows = computed(() =>
 
 .headerCell {
 	text-align: left;
-	padding: var(--spacing--xs) var(--spacing--sm);
+	padding: var(--spacing--xs) var(--spacing--md);
 	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight--regular);
 	font-size: var(--font-size--xs);
@@ -95,13 +97,9 @@ const rows = computed(() =>
 }
 
 .cell {
-	padding: var(--spacing--2xs) var(--spacing--sm);
+	padding: var(--spacing--sm) var(--spacing--md);
 	background-color: var(--color--background--light-3);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-2);
-
-	&:last-child {
-		border-bottom: none;
-	}
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 tr:last-child .cell {
@@ -120,6 +118,12 @@ tr:last-child .cell {
 
 .checkIcon {
 	color: var(--icon-color--success);
+}
+
+.rawScore {
+	color: var(--color--text--tint-1);
+	font-weight: var(--font-weight--regular);
+	margin-left: var(--spacing--2xs);
 }
 
 .tone-default {

@@ -4,6 +4,7 @@ import { N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	formatMetricLabel,
 	formatMetricPercent,
+	formatMetricRawScoreSum,
 	getDeltaTone,
 	type DeltaTone,
 	type MetricCategory,
@@ -17,11 +18,22 @@ const props = defineProps<{
 	delta: number | undefined;
 	category?: MetricCategory;
 	sourceNodeName?: string;
+	/**
+	 * Per-test-case raw values for this metric. Used to render the
+	 * "x1+x2+x3 / y1+y2+y3" sum form for AI-based metrics — hidden for
+	 * normalized 0–1 metrics where the percentage already conveys the score.
+	 */
+	caseValues?: Array<number | boolean | undefined>;
 }>();
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
-const formattedValue = computed(() => formatMetricPercent(props.currentValue));
+const formattedValue = computed(() =>
+	formatMetricPercent(props.currentValue, { category: props.category }),
+);
 const formattedLabel = computed(() => formatMetricLabel(props.name));
+const formattedSumScore = computed(() =>
+	formatMetricRawScoreSum(props.caseValues ?? [], { category: props.category }),
+);
 </script>
 
 <template>
@@ -34,7 +46,8 @@ const formattedLabel = computed(() => formatMetricLabel(props.name));
 		</div>
 		<div :class="$style.valueRow">
 			<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
-			<TrendDeltaBadge :delta="delta" />
+			<span v-if="formattedSumScore" :class="$style.sumScore">{{ formattedSumScore }}</span>
+			<TrendDeltaBadge :delta="delta" :category="category" />
 		</div>
 	</div>
 </template>
@@ -45,7 +58,7 @@ const formattedLabel = computed(() => formatMetricLabel(props.name));
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	padding: var(--spacing--md) var(--spacing--lg);
-	border-right: var(--border-width) var(--border-style) var(--color--foreground--tint-2);
+	border-right: var(--border-width) var(--border-style) var(--color--foreground);
 	flex: 1 1 0;
 	min-width: 0;
 
@@ -72,16 +85,24 @@ const formattedLabel = computed(() => formatMetricLabel(props.name));
 
 .valueRow {
 	display: flex;
-	align-items: center;
+	align-items: flex-end;
 	gap: var(--spacing--sm);
 	flex-wrap: wrap;
 }
 
 .value {
-	font-size: 56px;
+	font-size: var(--font-size--2xl);
 	line-height: 1;
+	font-weight: var(--font-weight--bold);
+	letter-spacing: var(--letter-spacing--tight);
+}
+
+.sumScore {
+	font-size: var(--font-size--md);
+	line-height: 1;
+	color: var(--color--text--tint-1);
+	font-variant-numeric: tabular-nums;
 	font-weight: var(--font-weight--regular);
-	letter-spacing: -0.02em;
 }
 
 .tone-default {
