@@ -279,7 +279,10 @@ async function handleContinue() {
 
 	isSubmitted.value = true;
 
-	const success = await store.confirmAction(props.requestId, true, undefined, credentials);
+	const success = await store.confirmAction(props.requestId, {
+		kind: 'credentialSelection',
+		credentials,
+	});
 	if (success) {
 		store.resolveConfirmation(props.requestId, 'approved');
 	} else {
@@ -293,7 +296,10 @@ async function handleLater() {
 	isSubmitted.value = true;
 	isDeferred.value = true;
 
-	const success = await store.confirmAction(props.requestId, false);
+	const success = await store.confirmAction(props.requestId, {
+		kind: 'approval',
+		approved: false,
+	});
 	if (success) {
 		store.resolveConfirmation(props.requestId, 'deferred');
 	} else {

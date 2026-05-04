@@ -15,10 +15,24 @@ import {
 	type InstanceAiPermissions,
 } from '@n8n/api-types';
 
-import type { InstanceAiContext, OrchestrationContext } from '../../../types';
-import type { SubmitWorkflowAttempt } from '../../workflows/submit-workflow.tool';
+import type { OrchestrationContext, InstanceAiContext } from '../../../types';
+import { createRemediation } from '../../../workflow-loop';
+import type { WorkflowBuildOutcome, WorkflowLoopState } from '../../../workflow-loop';
+import type {
+	SubmitWorkflowAttempt,
+	SubmitWorkflowOutput,
+} from '../../workflows/submit-workflow.tool';
 
-const { resultFromPostStreamError, createBuildWorkflowAgentTool, recordSuccessfulWorkflowBuilds } =
+const {
+	recordSuccessfulWorkflowBuilds,
+	resultFromPostStreamError,
+	resultFromLaterFailedMainSubmit,
+	attemptFromAutoResubmit,
+	withTerminalLoopState,
+	finalizeBuildResult,
+	shouldRecoverSavedWorkflowAfterFailedSubmit,
+	createBuildWorkflowAgentTool,
+} =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
 
@@ -104,6 +118,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -123,6 +138,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts: [],
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -144,6 +160,7 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -165,13 +182,14 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
 		expect(result).toBeUndefined();
 	});
 
-	it('preserves an earlier successful main-path submit when a later submit failed', () => {
+	it('does not preserve an earlier main-path submit when a later submit failed with code-fixable remediation', () => {
 		const submitAttempts: SubmitWorkflowAttempt[] = [
 			{
 				filePath: MAIN_PATH,
@@ -184,6 +202,11 @@ describe('resultFromPostStreamError', () => {
 				sourceHash: 'b',
 				success: false,
 				errors: ['validation failed'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
 			},
 		];
 
@@ -192,6 +215,40 @@ describe('resultFromPostStreamError', () => {
 			submitAttempts,
 			mainWorkflowPath: MAIN_PATH,
 			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeUndefined();
+	});
+
+	it('preserves an earlier main-path submit when a later submit failed with terminal remediation', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['setup required'],
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Stop editing and route to setup.',
+				}),
+			},
+		];
+
+		const result = resultFromPostStreamError({
+			error: new Error('Unauthorized'),
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
 			taskId: 'task_test',
 		});
 
@@ -200,6 +257,309 @@ describe('resultFromPostStreamError', () => {
 			workflowId: 'WF_123',
 			submitted: true,
 		});
+	});
+
+	it('preserves an earlier saved workflow when the final submit attempt failed with terminal remediation', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['setup required after later edit'],
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Stop editing and route to setup.',
+				}),
+			},
+		];
+
+		const result = resultFromLaterFailedMainSubmit({
+			failedAttempt: submitAttempts[1],
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeDefined();
+		expect(result!.text).toContain('A later submit failed');
+		expect(result!.outcome).toMatchObject({
+			workItemId: 'wi_test',
+			taskId: 'task_test',
+			workflowId: 'WF_123',
+			submitted: true,
+		});
+	});
+
+	it('does not preserve an earlier saved workflow when the final submit failure is code-fixable', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['validation failed after later edit'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			},
+		];
+
+		const result = resultFromLaterFailedMainSubmit({
+			failedAttempt: submitAttempts[1],
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeUndefined();
+	});
+
+	it('marks unresolved placeholder submits as saved workflows needing setup', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'abc',
+				success: true,
+				workflowId: 'WF_123',
+				hasUnresolvedPlaceholders: true,
+			},
+		];
+
+		const result = resultFromPostStreamError({
+			error: new Error('Stopped after submit'),
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result!.outcome).toMatchObject({
+			workflowId: 'WF_123',
+			submitted: true,
+			needsUserInput: true,
+			blockingReason:
+				'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
+			remediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+			},
+		});
+	});
+});
+
+describe('withTerminalLoopState', () => {
+	it('marks a saved workflow as needing user input when verification is blocked by setup', () => {
+		const outcome: WorkflowBuildOutcome = {
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+			workflowId: 'wf_123',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			summary: 'Submitted workflow.',
+		};
+		const state: WorkflowLoopState = {
+			workItemId: 'wi_test',
+			threadId: 'thread_1',
+			runId: 'run_test',
+			workflowId: 'wf_123',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		};
+
+		expect(withTerminalLoopState(outcome, state)).toMatchObject({
+			submitted: true,
+			workflowId: 'wf_123',
+			needsUserInput: true,
+			blockingReason: 'Route to setup.',
+			remediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+			},
+		});
+	});
+});
+
+describe('finalizeBuildResult', () => {
+	it('applies terminal loop state to recovered saved-workflow results', async () => {
+		const remediation = createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance: 'Route to setup.',
+		});
+		const context = createMockContext({
+			workflowTaskService: {
+				getWorkflowLoopState: jest.fn().mockResolvedValue({
+					workItemId: 'wi_test',
+					threadId: 'thread_1',
+					runId: 'run_test',
+					workflowId: 'wf_123',
+					phase: 'blocked',
+					status: 'blocked',
+					source: 'create',
+					rebuildAttempts: 0,
+					successfulSubmitSeen: true,
+					postSubmitRemediationSubmitsUsed: 0,
+					lastRemediation: remediation,
+				}),
+			} as unknown as OrchestrationContext['workflowTaskService'],
+		});
+		const result = await finalizeBuildResult(context, 'wi_test', {
+			text: 'Recovered workflow.',
+			outcome: {
+				workItemId: 'wi_test',
+				runId: 'run_test',
+				taskId: 'task_test',
+				workflowId: 'wf_123',
+				submitted: true,
+				triggerType: 'manual_or_testable',
+				needsUserInput: false,
+				summary: 'Recovered workflow.',
+			},
+		});
+
+		expect(context.workflowTaskService?.getWorkflowLoopState).toHaveBeenCalledWith('wi_test');
+		expect(result).toMatchObject({
+			text: 'Recovered workflow.',
+			outcome: {
+				submitted: true,
+				workflowId: 'wf_123',
+				needsUserInput: true,
+				blockingReason: 'Route to setup.',
+				remediation: {
+					category: 'needs_setup',
+					shouldEdit: false,
+					reason: 'mocked_credentials_or_placeholders',
+				},
+			},
+		});
+	});
+});
+
+describe('shouldRecoverSavedWorkflowAfterFailedSubmit', () => {
+	it('recovers only when the failed submit carries terminal remediation', () => {
+		const terminalAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Stop editing.'],
+			remediation: createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+				guidance: 'Stop editing.',
+			}),
+		};
+		const codeFixableAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Fix the workflow code.'],
+			remediation: createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'validation_failed',
+				guidance: 'Fix the workflow code and submit again.',
+			}),
+		};
+		const unclassifiedAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Unknown submit failure.'],
+		};
+
+		expect(shouldRecoverSavedWorkflowAfterFailedSubmit(terminalAttempt)).toBe(true);
+		expect(shouldRecoverSavedWorkflowAfterFailedSubmit(codeFixableAttempt)).toBe(false);
+		expect(shouldRecoverSavedWorkflowAfterFailedSubmit(unclassifiedAttempt)).toBe(false);
+	});
+});
+
+describe('attemptFromAutoResubmit', () => {
+	it('ignores a stale successful attempt when terminal guard blocked the resubmit', () => {
+		const staleAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'old-hash',
+			success: true,
+			workflowId: 'WF_123',
+		};
+		const remediation = createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'post_submit_budget_exhausted',
+			guidance: 'Stop editing.',
+		});
+		const resubmit: SubmitWorkflowOutput = {
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		};
+
+		const attempt = attemptFromAutoResubmit({
+			latestAttempt: staleAttempt,
+			resubmit,
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+		});
+
+		expect(attempt).toEqual({
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: false,
+			errors: ['Stop editing.'],
+			remediation,
+		});
+	});
+
+	it('returns the fresh submit attempt when it matches the edited source hash', () => {
+		const freshAttempt: SubmitWorkflowAttempt = {
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+			success: true,
+			workflowId: 'WF_456',
+		};
+
+		const attempt = attemptFromAutoResubmit({
+			latestAttempt: freshAttempt,
+			resubmit: { success: true, workflowId: 'WF_456' },
+			filePath: MAIN_PATH,
+			sourceHash: 'new-hash',
+		});
+
+		expect(attempt).toBe(freshAttempt);
 	});
 });
 

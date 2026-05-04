@@ -14,7 +14,7 @@ import SetupWizard from '../components/SetupWizard/SetupWizard.vue';
 
 import { N8nCallout, N8nLink, N8nText } from '@n8n/design-system';
 const props = defineProps<{
-	name: string;
+	workflowId: string;
 }>();
 
 const usageStore = useUsageStore();
@@ -34,7 +34,7 @@ const isProtectedEnvironment = computed(() => {
 
 const runs = computed(() => {
 	return Object.values(evaluationStore.testRunsById ?? {}).filter(
-		({ workflowId }) => workflowId === props.name,
+		({ workflowId }) => workflowId === props.workflowId,
 	);
 });
 
@@ -47,13 +47,13 @@ const showWizard = computed(() => !hasRuns.value);
 // Method to run a test - will be used by the SetupWizard component
 async function runTest() {
 	try {
-		await evaluationStore.startTestRun(props.name);
+		await evaluationStore.startTestRun(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
 		return;
 	}
 	try {
-		await evaluationStore.fetchTestRuns(props.name);
+		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
@@ -70,7 +70,7 @@ const evaluationsQuotaExceeded = computed(() => {
 const { isReady } = useAsyncState(async () => {
 	try {
 		await usageStore.getLicenseInfo();
-		await evaluationStore.fetchTestRuns(props.name);
+		await evaluationStore.fetchTestRuns(props.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantFetchTestRuns'));
 	}
@@ -82,7 +82,7 @@ watch(
 		if (ready) {
 			if (showWizard.value) {
 				telemetry.track('User viewed tests tab', {
-					workflow_id: props.name,
+					workflow_id: props.workflowId,
 					test_type: 'evaluation',
 					view: 'setup',
 					trigger_set_up: evaluationStore.evaluationTriggerExists,
@@ -92,7 +92,7 @@ watch(
 				});
 			} else {
 				telemetry.track('User viewed tests tab', {
-					workflow_id: props.name,
+					workflow_id: props.workflowId,
 					test_type: 'evaluation',
 					view: 'overview',
 					run_count: runs.value.length,

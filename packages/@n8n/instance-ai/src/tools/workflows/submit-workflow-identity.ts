@@ -28,8 +28,85 @@ import {
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
+import {
+	MAX_PRE_SAVE_SUBMIT_FAILURES,
+	createRemediation,
+	terminalRemediationFromState,
+} from '../../workflow-loop/remediation';
+import type {
+	RemediationMetadata,
+	WorkflowLoopState,
+} from '../../workflow-loop/workflow-loop-state';
 
 export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>;
+
+interface SubmitGuardOptions {
+	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	currentRunId?: string;
+	onGuardFired?: (event: {
+		workflowId?: string;
+		category: RemediationMetadata['category'];
+		attemptCount?: number;
+		reason?: string;
+	}) => void;
+}
+
+interface SubmitBudgetTracker {
+	recordAttempt(attempt: SubmitWorkflowAttempt): SubmitWorkflowAttempt;
+	applyToOutput(path: string, output: SubmitWorkflowOutput): SubmitWorkflowOutput;
+}
+
+export function createPreSaveBudgetTracker(): SubmitBudgetTracker {
+	const failuresByPath = new Map<string, number>();
+
+	function blockRemediation(attemptCount: number): RemediationMetadata {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'pre_save_submit_budget_exhausted',
+			attemptCount,
+			remainingSubmitFixes: 0,
+			guidance:
+				'The workflow could not be saved after three submit attempts. Stop editing and explain the blocker to the user.',
+		});
+	}
+
+	return {
+		recordAttempt(attempt) {
+			if (attempt.success) {
+				failuresByPath.delete(attempt.filePath);
+				return attempt;
+			}
+
+			const attemptCount = (failuresByPath.get(attempt.filePath) ?? 0) + 1;
+			failuresByPath.set(attempt.filePath, attemptCount);
+			if (attemptCount < MAX_PRE_SAVE_SUBMIT_FAILURES) return attempt;
+
+			return {
+				...attempt,
+				remediation: blockRemediation(attemptCount),
+				errors: [
+					...(attempt.errors ?? []),
+					'Submit remediation budget exhausted for this workflow file.',
+				],
+			};
+		},
+
+		applyToOutput(path, output) {
+			if (output.success) return output;
+			const attemptCount = failuresByPath.get(path) ?? 0;
+			if (attemptCount < MAX_PRE_SAVE_SUBMIT_FAILURES) return output;
+			return {
+				...output,
+				remediation: blockRemediation(attemptCount),
+				errors: [
+					...(output.errors ?? []),
+					'Submit remediation budget exhausted for this workflow file.',
+				],
+			};
+		},
+	};
+}
 
 /**
  * Wrap a submit-workflow `execute` with per-filePath identity enforcement.
@@ -44,11 +121,37 @@ export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkfl
 export function wrapSubmitExecuteWithIdentity(
 	underlying: SubmitExecute,
 	resolvePath: (rawFilePath: string | undefined) => string,
+	options: SubmitGuardOptions & { budgetTracker?: SubmitBudgetTracker } = {},
 ): SubmitExecute {
 	const pending = new Map<string, Promise<string>>();
 
+	async function blockedByTerminalRemediation(
+		workflowId: string | undefined,
+	): Promise<SubmitWorkflowOutput | undefined> {
+		const terminalRemediation = terminalRemediationFromState(
+			await options.getWorkflowLoopState?.(),
+			options.currentRunId,
+		);
+		if (!terminalRemediation) return undefined;
+
+		options.onGuardFired?.({
+			workflowId,
+			category: terminalRemediation.category,
+			attemptCount: terminalRemediation.attemptCount,
+			reason: terminalRemediation.reason,
+		});
+		return {
+			success: false,
+			errors: [terminalRemediation.guidance],
+			remediation: terminalRemediation,
+		};
+	}
+
 	return async (input) => {
 		const resolvedPath = resolvePath(input.filePath);
+		const terminalResult = await blockedByTerminalRemediation(input.workflowId);
+		if (terminalResult) return terminalResult;
+
 		const existing = pending.get(resolvedPath);
 
 		if (existing) {
@@ -60,9 +163,20 @@ export function wrapSubmitExecuteWithIdentity(
 				return {
 					success: false,
 					errors: [`Previous submit-workflow for this file failed: ${message}`],
+					remediation: createRemediation({
+						category: 'code_fixable',
+						shouldEdit: true,
+						reason: 'previous_submit_failed',
+						guidance:
+							'The previous submit-workflow call for this file failed. Fix the workflow code and submit again.',
+					}),
 				};
 			}
-			return await underlying({ ...input, workflowId: boundId });
+			const terminalAfterWait = await blockedByTerminalRemediation(boundId);
+			if (terminalAfterWait) return terminalAfterWait;
+
+			const result = await underlying({ ...input, workflowId: boundId });
+			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
 		}
 
 		let resolveFn: ((id: string) => void) | undefined;
@@ -84,7 +198,7 @@ export function wrapSubmitExecuteWithIdentity(
 				rejectFn?.(new Error(result.errors?.join(' ') ?? 'submit-workflow failed'));
 				pending.delete(resolvedPath);
 			}
-			return result;
+			return options.budgetTracker?.applyToOutput(resolvedPath, result) ?? result;
 		} catch (error) {
 			rejectFn?.(error);
 			pending.delete(resolvedPath);
@@ -103,12 +217,18 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 	credentialMap?: CredentialMap;
 	onAttempt: (attempt: SubmitWorkflowAttempt) => Promise<void> | void;
 	root: string;
+	currentRunId?: string;
+	getWorkflowLoopState?: () => Promise<WorkflowLoopState | undefined>;
+	onGuardFired?: SubmitGuardOptions['onGuardFired'];
 }) {
+	const budgetTracker = createPreSaveBudgetTracker();
 	const underlying = createSubmitWorkflowTool(
 		args.context,
 		args.workspace,
 		args.credentialMap,
-		args.onAttempt,
+		async (attempt) => {
+			await args.onAttempt(budgetTracker.recordAttempt(attempt));
+		},
 	);
 
 	const underlyingExecute = underlying.execute as SubmitExecute | undefined;
@@ -116,8 +236,15 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		throw new Error('createSubmitWorkflowTool returned a tool without an execute handler');
 	}
 
-	const wrappedExecute = wrapSubmitExecuteWithIdentity(underlyingExecute, (rawFilePath) =>
-		resolveSandboxWorkflowFilePath(rawFilePath, args.root),
+	const wrappedExecute = wrapSubmitExecuteWithIdentity(
+		underlyingExecute,
+		(rawFilePath) => resolveSandboxWorkflowFilePath(rawFilePath, args.root),
+		{
+			budgetTracker,
+			currentRunId: args.currentRunId,
+			getWorkflowLoopState: args.getWorkflowLoopState,
+			onGuardFired: args.onGuardFired,
+		},
 	);
 
 	return createTool({
