@@ -2050,6 +2050,7 @@ export class InstanceAiService {
 				context,
 				orchestrationContext,
 				mcpServers,
+				mcpManager: this.mcpClientManager,
 				memoryConfig,
 				memory,
 				disableDeferredTools: true,
