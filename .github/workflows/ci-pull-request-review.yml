@@ -87,15 +87,22 @@ jobs:
               );
             }
 
-            const { data: status } = await octokit.rest.repos.getCombinedStatusForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref,
-              per_page: 100,
-            });
+            const refsToCheck = [context.payload.pull_request?.head?.sha].filter(Boolean);
 
-            const reviewStatus = status.statuses.find((stat) => stat.context.includes('UI Review'));
+            let reviewStatus;
+            for (const ref of refsToCheck) {
+              const { data: status } = await octokit.rest.repos.getCombinedStatusForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref,
+                per_page: 100,
+              });
 
+              reviewStatus = status.statuses.find((stat) => stat.context.includes('UI Review'));
+              if (reviewStatus) {
+                break;
+              }
+            }
 
             if (!reviewStatus) {
               throw new Error('Chromatic UI Review check run was not found on this PR commit.');
