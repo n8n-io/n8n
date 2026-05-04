@@ -24,14 +24,8 @@ const props = withDefaults(
 		 * what the agent actually listens on.
 		 */
 		onlyConnected?: boolean;
-		/**
-		 * Bumped by the parent whenever the underlying agent config changes
-		 * (e.g. the builder LLM patched the integrations array). Triggers a
-		 * refetch of integration status, credentials, and the schedule card.
-		 */
-		reloadToken?: number;
 	}>(),
-	{ focusType: null, isPublished: false, onlyConnected: false, reloadToken: 0 },
+	{ focusType: null, isPublished: false, onlyConnected: false },
 );
 
 const visibleConfigs = computed(() => {
@@ -325,14 +319,6 @@ watch(credentialModalOpen, (isOpen, wasOpen) => {
 onMounted(async () => {
 	await Promise.all([fetchStatus(), fetchCredentials()]);
 });
-
-watch(
-	() => props.reloadToken,
-	async (next, prev) => {
-		if (next === prev) return;
-		await Promise.all([fetchStatus(), fetchCredentials()]);
-	},
-);
 </script>
 
 <template>
@@ -342,7 +328,6 @@ watch(
 			:project-id="projectId"
 			:agent-id="agentId"
 			:is-published="isPublished"
-			:reload-token="reloadToken"
 			@status-change="onScheduleStatusChange"
 			@trigger-added="onScheduleTriggerAdded"
 		/>
