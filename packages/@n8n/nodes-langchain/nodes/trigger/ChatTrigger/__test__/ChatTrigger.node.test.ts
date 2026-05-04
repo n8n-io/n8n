@@ -11,6 +11,9 @@ jest.mock('../GenericFunctions', () => ({
 	validateAuth: jest.fn().mockResolvedValue(undefined as never),
 }));
 
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
+
 describe('ChatTrigger Node', () => {
 	const mockContext = mock<IWebhookFunctions>();
 	const mockRequest = mock<Request>();
@@ -65,6 +68,21 @@ describe('ChatTrigger Node', () => {
 				return defaultValue;
 			},
 		);
+	});
+
+	describe('description', () => {
+		it('should tell builders to keep inbound authentication disabled unless requested', () => {
+			const authParam = chatTrigger.description.properties.find(
+				(property) => property.name === 'authentication',
+			);
+
+			expect(authParam).toMatchObject({
+				default: 'none',
+				builderHint: {
+					message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		});
 	});
 
 	describe('webhook method', () => {

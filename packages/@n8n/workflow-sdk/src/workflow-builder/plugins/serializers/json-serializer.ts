@@ -103,8 +103,22 @@ function serializeNode(
 
 	// Add optional properties
 	if (config.credentials) {
-		// Serialize credentials to ensure newCredential() markers are converted to JSON
-		n8nNode.credentials = deepCopy(config.credentials);
+		if (typeof config.credentials !== 'object') {
+			// Real workflows occasionally carry credentials as a primitive (e.g. the
+			// post-redaction string `"[REDACTED]"`). Pass through unchanged.
+			n8nNode.credentials = deepCopy(config.credentials);
+		} else {
+			// `NodeConfig.credentials` is typed wide (also accepts PlaceholderValue)
+			// at the public API. By this point `normalizeNodeConfig` has rewritten any
+			// placeholder() markers to newCredential() markers, so no __placeholder
+			// values remain at runtime. Narrow the value type for the serializer.
+			const resolvable: NonNullable<NodeJSON['credentials']> = {};
+			for (const [key, value] of Object.entries(config.credentials)) {
+				if (value && typeof value === 'object' && '__placeholder' in value) continue;
+				resolvable[key] = value;
+			}
+			n8nNode.credentials = deepCopy(resolvable);
+		}
 	}
 	if (config.disabled) {
 		n8nNode.disabled = config.disabled;
