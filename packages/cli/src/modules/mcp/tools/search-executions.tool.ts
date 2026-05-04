@@ -51,7 +51,9 @@ const outputSchema = {
 			}),
 		)
 		.describe('List of executions matching the query'),
-	count: z.number().int().min(0).describe('Total number of executions matching the filters'),
+	count: z
+		.union([z.literal(-1), z.number().int().min(0)])
+		.describe('Total matching executions, or -1 if the count is unavailable'),
 	estimated: z.boolean().describe('Whether the count is an estimate (for large datasets)'),
 	error: z.string().optional().describe('Error message if the query failed'),
 } satisfies z.ZodRawShape;
