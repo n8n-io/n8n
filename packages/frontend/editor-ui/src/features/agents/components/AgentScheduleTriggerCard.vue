@@ -139,9 +139,7 @@ async function onDisconnect() {
 	clearErrors();
 
 	try {
-		if (lastSavedActive.value) {
-			await deactivateScheduleIntegration(rootStore.restApiContext, props.projectId, props.agentId);
-		}
+		await deactivateScheduleIntegration(rootStore.restApiContext, props.projectId, props.agentId);
 		const config = await saveCronConfig('');
 		if (!config) return;
 		applyConfig({ ...config, active: false, cronExpression: '' });
