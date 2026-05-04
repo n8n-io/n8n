@@ -63,17 +63,6 @@ export function createEvalsTool(context: InstanceAiContext) {
 					workflowId: input.workflowId,
 					...(input.projectId ? { projectId: input.projectId } : {}),
 					detectedAiNodes: detection.aiNodeNames,
-					proposedGraphSummary: {
-						evalTriggerName: 'EvaluationTrigger',
-						setOutputsNodeName: 'EvaluationSetOutputs',
-						setMetricsNodeName: 'EvaluationSetMetrics',
-					},
-					datasetOptions: {
-						suggestedColumns: {
-							input: shape.suggestedInputColumns,
-							output: shape.suggestedOutputColumns,
-						},
-					},
 					suggestedMetrics: shape.suggestedMetrics,
 				});
 				return { success: false };

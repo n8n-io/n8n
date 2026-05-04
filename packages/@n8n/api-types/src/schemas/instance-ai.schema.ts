@@ -315,6 +315,18 @@ export const instanceAiEvalMetricProposalSchema = z.object({
 });
 export type InstanceAiEvalMetricProposal = z.infer<typeof instanceAiEvalMetricProposalSchema>;
 
+/**
+ * Renderable content of the eval-propose confirmation card.
+ * Reused by both the confirmation envelope (`evalsPropose` field below) and
+ * the suspend schema (`instanceAiEvalsProposeSuspendSchema` further down) so
+ * the two surfaces cannot drift.
+ */
+export const instanceAiEvalsProposeContentSchema = z.object({
+	detectedAiNodes: z.array(z.string()),
+	suggestedMetrics: z.array(instanceAiEvalMetricProposalSchema),
+});
+export type InstanceAiEvalsProposeContent = z.infer<typeof instanceAiEvalsProposeContentSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -376,22 +388,7 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
-	evalsPropose: z
-		.object({
-			detectedAiNodes: z.array(z.string()),
-			proposedGraphSummary: z.object({
-				evalTriggerName: z.string(),
-				setOutputsNodeName: z.string(),
-				setMetricsNodeName: z.string(),
-			}),
-			datasetOptions: z.object({
-				suggestedColumns: z.object({
-					input: z.array(z.string()),
-					output: z.array(z.string()),
-				}),
-			}),
-			suggestedMetrics: z.array(instanceAiEvalMetricProposalSchema),
-		})
+	evalsPropose: instanceAiEvalsProposeContentSchema
 		.optional()
 		.describe('Eval-propose suspend payload — present when the `evals` tool suspends.'),
 });
@@ -664,21 +661,7 @@ export interface InstanceAiConfirmation {
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
 	/** Eval-propose suspend payload — present when the `evals` tool suspends. */
-	evalsPropose?: {
-		detectedAiNodes: string[];
-		proposedGraphSummary: {
-			evalTriggerName: string;
-			setOutputsNodeName: string;
-			setMetricsNodeName: string;
-		};
-		datasetOptions: {
-			suggestedColumns: {
-				input: string[];
-				output: string[];
-			};
-		};
-		suggestedMetrics: InstanceAiEvalMetricProposal[];
-	};
+	evalsPropose?: InstanceAiEvalsProposeContent;
 }
 
 export interface InstanceAiToolCallState {
@@ -1103,30 +1086,16 @@ export interface InstanceAiEvalSubAgentResponse {
 // Evals proposal schemas (suspend/resume for `evals(action="propose")`)
 // ---------------------------------------------------------------------------
 
-// NOTE: `instanceAiEvalMetricKindSchema` and `instanceAiEvalMetricProposalSchema`
-// are defined earlier in this file so they can be referenced from the
-// confirmation payload schema; re-export aliases are kept below for
-// historical call sites.
+// `instanceAiEvalMetricKindSchema`, `instanceAiEvalMetricProposalSchema`, and
+// `instanceAiEvalsProposeContentSchema` are defined earlier in this file so the
+// confirmation payload can reference them.
 
-export const instanceAiEvalsProposeSuspendSchema = z.object({
+export const instanceAiEvalsProposeSuspendSchema = instanceAiEvalsProposeContentSchema.extend({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
 	workflowId: z.string(),
 	projectId: z.string().optional(),
-	detectedAiNodes: z.array(z.string()),
-	proposedGraphSummary: z.object({
-		evalTriggerName: z.string(),
-		setOutputsNodeName: z.string(),
-		setMetricsNodeName: z.string(),
-	}),
-	datasetOptions: z.object({
-		suggestedColumns: z.object({
-			input: z.array(z.string()),
-			output: z.array(z.string()),
-		}),
-	}),
-	suggestedMetrics: z.array(instanceAiEvalMetricProposalSchema),
 });
 export type InstanceAiEvalsProposeSuspend = z.infer<typeof instanceAiEvalsProposeSuspendSchema>;
 

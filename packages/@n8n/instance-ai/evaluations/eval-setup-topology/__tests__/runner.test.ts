@@ -268,8 +268,6 @@ describe('eval setup topology runner helpers', () => {
 						requestId: 'request-1',
 						evalsPropose: {
 							detectedAiNodes: ['AI Agent'],
-							proposedGraphSummary: {},
-							datasetOptions: {},
 							suggestedMetrics: [],
 						},
 					},

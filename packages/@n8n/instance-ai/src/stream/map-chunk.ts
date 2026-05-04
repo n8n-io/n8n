@@ -298,9 +298,7 @@ export function mapMastraChunkToEvent(
 		let evalsPropose: InstanceAiConfirmation['evalsPropose'] | undefined;
 		if (
 			Array.isArray(suspendPayload.detectedAiNodes) &&
-			Array.isArray(suspendPayload.suggestedMetrics) &&
-			isRecord(suspendPayload.proposedGraphSummary) &&
-			isRecord(suspendPayload.datasetOptions)
+			Array.isArray(suspendPayload.suggestedMetrics)
 		) {
 			const detectedAiNodes = suspendPayload.detectedAiNodes.filter(
 				(name): name is string => typeof name === 'string',
@@ -308,30 +306,9 @@ export function mapMastraChunkToEvent(
 			const metricsParse = z
 				.array(instanceAiEvalMetricProposalSchema)
 				.safeParse(suspendPayload.suggestedMetrics);
-			const proposedGraphSummaryParse = z
-				.object({
-					evalTriggerName: z.string(),
-					setOutputsNodeName: z.string(),
-					setMetricsNodeName: z.string(),
-				})
-				.safeParse(suspendPayload.proposedGraphSummary);
-			const datasetOptionsParse = z
-				.object({
-					suggestedColumns: z.object({
-						input: z.array(z.string()),
-						output: z.array(z.string()),
-					}),
-				})
-				.safeParse(suspendPayload.datasetOptions);
-			if (
-				metricsParse.success &&
-				proposedGraphSummaryParse.success &&
-				datasetOptionsParse.success
-			) {
+			if (metricsParse.success) {
 				evalsPropose = {
 					detectedAiNodes,
-					proposedGraphSummary: proposedGraphSummaryParse.data,
-					datasetOptions: datasetOptionsParse.data,
 					suggestedMetrics: metricsParse.data,
 				};
 			}

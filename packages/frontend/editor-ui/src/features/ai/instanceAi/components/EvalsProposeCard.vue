@@ -20,17 +20,6 @@ import ConfirmationFooter from './ConfirmationFooter.vue';
 
 interface EvalsProposePayload {
 	detectedAiNodes: string[];
-	proposedGraphSummary: {
-		evalTriggerName: string;
-		setOutputsNodeName: string;
-		setMetricsNodeName: string;
-	};
-	datasetOptions: {
-		suggestedColumns: {
-			input: string[];
-			output: string[];
-		};
-	};
 	suggestedMetrics: InstanceAiEvalMetricProposal[];
 }
 
