@@ -118,14 +118,9 @@ export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
 		| Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>
 		| undefined;
 	for (const [key, value] of Object.entries(creds)) {
-		if (
-			value &&
-			typeof value === 'object' &&
-			'__placeholder' in value &&
-			(value as PlaceholderValue).__placeholder === true
-		) {
+		if (value && typeof value === 'object' && '__placeholder' in value) {
 			normalizedCreds ??= { ...creds };
-			normalizedCreds[key] = new NewCredentialImpl((value as PlaceholderValue).hint);
+			normalizedCreds[key] = new NewCredentialImpl(value.hint);
 		}
 	}
 

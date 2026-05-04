@@ -32,8 +32,8 @@
 
 import { v4 as uuid } from 'uuid';
 
-import { createFromAIExpression } from '../../expression';
 import { normalizeNodeConfig } from './node-builder';
+import { createFromAIExpression } from '../../expression';
 import type {
 	NodeConfig,
 	NodeInput,
