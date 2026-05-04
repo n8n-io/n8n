@@ -26,10 +26,6 @@ vi.mock('@n8n/i18n', () => ({
 	}),
 }));
 
-vi.mock('@vueuse/core', () => ({
-	useDebounceFn: (fn: () => void) => fn,
-}));
-
 vi.mock('../composables/useAgentApi', () => ({
 	getScheduleIntegration: getScheduleIntegrationMock,
 	updateScheduleIntegration: updateScheduleIntegrationMock,
@@ -47,16 +43,28 @@ const STUBS = {
 		template: '<span v-bind="$attrs"><slot /></span>',
 		props: ['size', 'bold', 'tag'],
 	},
+	N8nIcon: {
+		template: '<i />',
+		props: ['icon', 'size'],
+	},
 	N8nButton: {
 		template:
 			'<button :disabled="disabled" :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\')"><slot /></button>',
-		props: ['disabled', 'loading', 'variant'],
+		props: ['disabled', 'loading', 'variant', 'type'],
 		emits: ['click'],
 	},
 	N8nInput: {
 		template:
 			'<textarea v-if="type === \'textarea\'" :value="modelValue" :data-testid="$attrs[\'data-testid\']" @input="$emit(\'update:modelValue\', $event.target.value)" /><input v-else :value="modelValue" :data-testid="$attrs[\'data-testid\']" @input="$emit(\'update:modelValue\', $event.target.value)" />',
 		props: ['modelValue', 'type', 'rows', 'disabled', 'placeholder'],
+		emits: ['update:modelValue'],
+	},
+	N8nSwitch2: {
+		template:
+			'<input type="checkbox" :checked="modelValue" :disabled="disabled" ' +
+			':data-testid="$attrs[\'data-testid\']" ' +
+			'@change="$emit(\'update:modelValue\', $event.target.checked)" />',
+		props: ['modelValue', 'disabled', 'size'],
 		emits: ['update:modelValue'],
 	},
 };
@@ -101,7 +109,7 @@ describe('AgentScheduleTriggerCard', () => {
 		return wrapper;
 	}
 
-	it('loads the persisted cron state and emits the active status', async () => {
+	it('loads the persisted cron state and emits the configured status', async () => {
 		getScheduleIntegrationMock.mockResolvedValue({
 			active: true,
 			cronExpression: '*/5 * * * *',
@@ -117,9 +125,15 @@ describe('AgentScheduleTriggerCard', () => {
 	});
 
 	it('activates the schedule after saving the current config and emits trigger-added', async () => {
+		getScheduleIntegrationMock.mockResolvedValueOnce({
+			active: false,
+			cronExpression: '',
+		});
 		const wrapper = await renderComponent();
 
-		await wrapper.find('[data-testid="schedule-activate-button"]').trigger('click');
+		await wrapper.find('[data-testid="schedule-cron-input"]').setValue('* * * * *');
+		await wrapper.find('[data-testid="schedule-active-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="schedule-save-button"]').trigger('click');
 		await flushPromises();
 
 		expect(updateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
@@ -127,6 +141,7 @@ describe('AgentScheduleTriggerCard', () => {
 		});
 		expect(activateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('trigger-added')).toBeTruthy();
+		expect(wrapper.emitted('saved')).toBeTruthy();
 		expect(wrapper.emitted('status-change')?.at(-1)).toEqual([true]);
 	});
 
@@ -134,27 +149,29 @@ describe('AgentScheduleTriggerCard', () => {
 		updateScheduleIntegrationMock.mockRejectedValueOnce(new Error('Temporary outage'));
 		const wrapper = await renderComponent();
 
-		await wrapper.find('[data-testid="schedule-activate-button"]').trigger('click');
+		await wrapper.find('[data-testid="schedule-active-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="schedule-save-button"]').trigger('click');
 		await flushPromises();
 
 		expect(wrapper.text()).toContain('Temporary outage');
 		expect(
-			wrapper.find('[data-testid="schedule-activate-button"]').attributes('disabled'),
+			wrapper.find('[data-testid="schedule-save-button"]').attributes('disabled'),
 		).toBeUndefined();
 		expect(activateScheduleIntegrationMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('saved')).toBeUndefined();
 
 		updateScheduleIntegrationMock.mockResolvedValueOnce({
 			active: false,
 			cronExpression: '* * * * *',
 		});
 
-		await wrapper.find('[data-testid="schedule-activate-button"]').trigger('click');
+		await wrapper.find('[data-testid="schedule-save-button"]').trigger('click');
 		await flushPromises();
 
 		expect(activateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 	});
 
-	it('autosaves cron changes', async () => {
+	it('saves cron changes when Save is clicked', async () => {
 		updateScheduleIntegrationMock.mockImplementation(async (_ctx, _projectId, _agentId, data) => ({
 			active: false,
 			cronExpression: data.cronExpression,
@@ -163,10 +180,22 @@ describe('AgentScheduleTriggerCard', () => {
 
 		await wrapper.find('[data-testid="schedule-cron-input"]').setValue('*/10 * * * *');
 		await flushPromises();
+		expect(updateScheduleIntegrationMock).not.toHaveBeenCalled();
+
+		await wrapper.find('[data-testid="schedule-save-button"]').trigger('click');
+		await flushPromises();
 
 		expect(updateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
 			cronExpression: '*/10 * * * *',
 		});
+	});
+
+	it('keeps cancel enabled when there are no changes', async () => {
+		const wrapper = await renderComponent();
+
+		expect(
+			wrapper.find('[data-testid="schedule-cancel-button"]').attributes('disabled'),
+		).toBeUndefined();
 	});
 
 	it('shows invalid cron errors below the cron input and clears them on cron edit', async () => {
@@ -174,6 +203,7 @@ describe('AgentScheduleTriggerCard', () => {
 		updateScheduleIntegrationMock.mockRejectedValueOnce(new Error('Invalid cron expression'));
 
 		await wrapper.find('[data-testid="schedule-cron-input"]').setValue('not-a-cron');
+		await wrapper.find('[data-testid="schedule-save-button"]').trigger('click');
 		await flushPromises();
 
 		expect(wrapper.find('[data-testid="schedule-cron-error"]').text()).toBe(
@@ -192,8 +222,51 @@ describe('AgentScheduleTriggerCard', () => {
 	it('disables activation when the agent is not published', async () => {
 		const wrapper = await renderComponent({ isPublished: false });
 
-		expect(wrapper.find('[data-testid="schedule-activate-button"]').attributes('disabled')).toBe(
-			'',
+		await wrapper.find('[data-testid="schedule-active-toggle"]').trigger('click');
+
+		expect(wrapper.find('[data-testid="schedule-save-button"]').attributes('disabled')).toBe('');
+	});
+
+	it('deactivates through the active toggle without removing the configured schedule', async () => {
+		getScheduleIntegrationMock.mockResolvedValueOnce({
+			active: true,
+			cronExpression: '* * * * *',
+		});
+		updateScheduleIntegrationMock.mockResolvedValueOnce({
+			active: false,
+			cronExpression: '* * * * *',
+		});
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-testid="schedule-active-toggle"]').trigger('click');
+		await wrapper.find('[data-testid="schedule-save-button"]').trigger('click');
+		await flushPromises();
+
+		expect(deactivateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(wrapper.emitted('status-change')?.at(-1)).toEqual([true]);
+	});
+
+	it('disconnects a configured schedule trigger from the trigger list', async () => {
+		getScheduleIntegrationMock.mockResolvedValueOnce({
+			active: true,
+			cronExpression: '* * * * *',
+		});
+		updateScheduleIntegrationMock.mockImplementationOnce(
+			async (_ctx, _projectId, _agentId, data) => ({
+				active: false,
+				cronExpression: data.cronExpression,
+			}),
 		);
+		const wrapper = await renderComponent();
+
+		await wrapper.find('[data-testid="schedule-disconnect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(deactivateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(updateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
+			cronExpression: '',
+		});
+		expect(wrapper.emitted('status-change')?.at(-1)).toEqual([false]);
+		expect(wrapper.emitted('saved')).toBeTruthy();
 	});
 });

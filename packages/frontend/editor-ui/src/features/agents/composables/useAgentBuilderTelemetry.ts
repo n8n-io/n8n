@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
+import { AGENT_SCHEDULE_TRIGGER_TYPE, isAgentScheduleIntegration } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { getIntegrationStatus } from './useAgentApi';
 import {
@@ -8,6 +9,7 @@ import {
 	toolIdentifiersFromConfig,
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
+import { syncAgentIntegrationStatusCache } from './useAgentIntegrationStatus';
 import { useAgentTelemetry, type AgentConfigPart } from './useAgentTelemetry';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
@@ -246,10 +248,29 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 				deps.projectId.value,
 				deps.agentId.value,
 			);
-			const connected = (result.integrations ?? [])
+			const integrations = [...(result.integrations ?? [])];
+			const hasConfiguredSchedule =
+				knownTriggerTypes.includes(AGENT_SCHEDULE_TRIGGER_TYPE) &&
+				(deps.localConfig.value?.integrations ?? []).some(
+					(integration) =>
+						isAgentScheduleIntegration(integration) && integration.cronExpression.trim() !== '',
+				);
+			if (
+				hasConfiguredSchedule &&
+				!integrations.some((integration) => integration.type === AGENT_SCHEDULE_TRIGGER_TYPE)
+			) {
+				integrations.push({ type: AGENT_SCHEDULE_TRIGGER_TYPE });
+			}
+			const connected = integrations
 				.map((i) => i.type)
 				.filter((t) => knownTriggerTypes.includes(t))
 				.sort();
+			syncAgentIntegrationStatusCache(
+				deps.projectId.value,
+				deps.agentId.value,
+				knownTriggerTypes,
+				integrations,
+			);
 			triggersBaseline.value = connected;
 			return connected;
 		} catch {

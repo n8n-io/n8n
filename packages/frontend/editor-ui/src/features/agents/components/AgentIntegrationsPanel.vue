@@ -236,8 +236,8 @@ async function fetchStatus() {
 	emitConnectedTriggers();
 }
 
-function onScheduleStatusChange(active: boolean) {
-	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = active ? 'connected' : 'disconnected';
+function onScheduleStatusChange(configured: boolean) {
+	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = configured ? 'connected' : 'disconnected';
 	connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
 	emitConnectedTriggers();
 }
