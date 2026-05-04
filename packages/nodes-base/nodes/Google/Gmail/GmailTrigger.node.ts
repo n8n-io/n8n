@@ -363,6 +363,7 @@ export class GmailTrigger implements INodeType {
 			includeDrafts = filters.includeDrafts ?? true;
 		}
 		const includeSelfSentArchivedEmails = options.includeSelfSentArchivedEmails ?? false;
+		delete options.includeSelfSentArchivedEmails;
 
 		const fetchAndProcessMessage = async (
 			messageId: string,
