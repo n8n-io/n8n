@@ -202,9 +202,11 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Disconnect every active integration. Used on leader stepdown so a
-	 * demoted main releases all chat sessions before another main takes over.
+	 * Disconnect every active integration. Called on `leader-stepdown` so a
+	 * demoted main releases all chat sessions (Telegram setWebhook, polling, etc.)
+	 * before another main takes over.
 	 */
+	@OnLeaderStepdown()
 	async disconnectAll(): Promise<void> {
 		const keys = [...this.connections.keys()];
 		for (const key of keys) {
@@ -352,9 +354,11 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Reconnect all agents that have integrations configured.
-	 * Called on startup to restore connections.
+	 * Reconnect all agents that have integrations configured. Called on startup
+	 * (gated by `InstanceSettings.isLeader` in `AgentsModule.init()`) and on
+	 * `leader-takeover` in multi-main mode.
 	 */
+	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
 		// Only reconnect integrations for published agents — an unpublished agent must not
 		// receive events, so we don't even load it.
@@ -403,28 +407,6 @@ export class ChatIntegrationService {
 				}
 			}
 		}
-	}
-
-	/**
-	 * On leader takeover, activate all chat integrations on this instance.
-	 * Fires only in multi-main mode when this instance becomes the leader
-	 * after startup (e.g. failover). Initial-startup activation happens in
-	 * `AgentsModule.init()`, which is gated by `InstanceSettings.isLeader`.
-	 */
-	@OnLeaderTakeover()
-	async onLeaderTakeover(): Promise<void> {
-		this.logger.info('[ChatIntegrationService] Leader takeover — reconnecting integrations');
-		await this.reconnectAll();
-	}
-
-	/**
-	 * On leader stepdown, tear down every active integration so the new leader
-	 * can claim them without races (Telegram setWebhook, polling, etc.).
-	 */
-	@OnLeaderStepdown()
-	async onLeaderStepdown(): Promise<void> {
-		this.logger.info('[ChatIntegrationService] Leader stepdown — disconnecting integrations');
-		await this.disconnectAll();
 	}
 
 	// ---------------------------------------------------------------------------

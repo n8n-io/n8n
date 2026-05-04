@@ -2,6 +2,8 @@
 import type { AgentCredentialIntegration } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import { MultiMainMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import type { Agent } from '../../entities/agent.entity';
@@ -149,42 +151,14 @@ describe('ChatIntegrationService', () => {
 	});
 
 	describe('leader event handlers', () => {
-		it('reconnects all on leader takeover', async () => {
-			const service = buildService();
-			const reconnectSpy = jest.spyOn(service, 'reconnectAll').mockResolvedValue();
+		it('registers leader event handlers via decorators', () => {
+			const events = Container.get(MultiMainMetadata)
+				.getHandlers()
+				.filter((h) => h.eventHandlerClass === ChatIntegrationService)
+				.map((h) => h.eventName);
 
-			await service.onLeaderTakeover();
-
-			expect(reconnectSpy).toHaveBeenCalledTimes(1);
-		});
-
-		it('disconnects all on leader stepdown', async () => {
-			const service = buildService();
-			const disconnectSpy = jest.spyOn(service, 'disconnectAll').mockResolvedValue();
-
-			await service.onLeaderStepdown();
-
-			expect(disconnectSpy).toHaveBeenCalledTimes(1);
-		});
-
-		it('registers @OnLeaderTakeover and @OnLeaderStepdown handlers', () => {
-			// Decorator runs at import time and registers metadata; we assert that
-			// importing the service module results in both handlers being registered
-			// for ChatIntegrationService.
-			// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-			const { Container } = require('@n8n/di');
-			// eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
-			const { MultiMainMetadata } = require('@n8n/decorators');
-			const handlers = Container.get(MultiMainMetadata).getHandlers();
-			const matches = handlers.filter(
-				(h: { eventHandlerClass: unknown; methodName: string; eventName: string }) =>
-					h.eventHandlerClass === ChatIntegrationService,
-			);
-			expect(
-				matches
-					.map((h: { eventName: string; methodName: string }) => `${h.eventName}:${h.methodName}`)
-					.sort(),
-			).toEqual(['leader-stepdown:onLeaderStepdown', 'leader-takeover:onLeaderTakeover']);
+			expect(events).toContain('leader-takeover');
+			expect(events).toContain('leader-stepdown');
 		});
 	});
 });
