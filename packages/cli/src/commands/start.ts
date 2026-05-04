@@ -11,7 +11,7 @@ import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { McpServer } from '@n8n/n8n-nodes-langchain/mcp/core';
 import glob from 'fast-glob';
-import { createReadStream, createWriteStream, existsSync } from 'fs';
+import { createReadStream, createWriteStream, existsSync, readFileSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
 import { jsonParse, sleep, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
@@ -148,6 +148,45 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		return configMetaTags;
 	}
 
+	/**
+	 * Resolves the operator-supplied custom CSS into a `<style>` tag, or empty
+	 * string if none is configured. Path takes precedence over inline; on path
+	 * read failure the inline fallback (if any) is used.
+	 */
+	private generateCustomCssTag(): string {
+		const { customCssPath, customCss } = this.globalConfig.branding;
+
+		let payload = '';
+		let source: 'path' | 'inline' | 'none' = 'none';
+
+		if (customCssPath) {
+			try {
+				payload = readFileSync(customCssPath, 'utf-8');
+				source = 'path';
+			} catch (error) {
+				this.logger.warn(
+					`Failed to read N8N_CUSTOM_CSS_PATH at "${customCssPath}", falling back to N8N_CUSTOM_CSS if set`,
+					{ error: error instanceof Error ? error.message : String(error) },
+				);
+			}
+		}
+
+		if (source === 'none' && customCss) {
+			payload = customCss;
+			source = 'inline';
+		}
+
+		if (source === 'none') return '';
+
+		this.logger.info(`Injecting custom CSS into editor-ui (source: ${source})`);
+
+		// Prevent `</style>` (case-insensitive, with optional whitespace) inside the
+		// payload from breaking out of the surrounding tag. Operators are trusted,
+		// but a stray closing tag in user CSS would still corrupt the page.
+		const sanitized = payload.replace(/<\/style/gi, '<\\/style');
+		return `<style data-source="n8n-custom-css">${sanitized}</style>`;
+	}
+
 	private async generateStaticAssets() {
 		// Read the index file and replace the path placeholder
 		const n8nPath = this.globalConfig.path;
@@ -159,6 +198,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				return `${acc}<script src="${curr}"></script>`;
 			}, '');
 		}
+
+		const customCssTag = this.generateCustomCssTag();
 
 		const closingTitleTag = '</title>';
 		const { staticCacheDir } = this.instanceSettings;
@@ -180,6 +221,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 							ignoreCase: false,
 						}),
 						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
+							ignoreCase: false,
+						}),
+						replaceStream('<!--CUSTOM_CSS_PLACEHOLDER-->', customCssTag, {
 							ignoreCase: false,
 						}),
 					);

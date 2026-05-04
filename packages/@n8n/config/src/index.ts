@@ -4,6 +4,7 @@ import { AiAssistantConfig } from './configs/ai-assistant.config';
 import { AiBuilderConfig } from './configs/ai-builder.config';
 import { AiConfig } from './configs/ai.config';
 import { AuthConfig } from './configs/auth.config';
+import { BrandingConfig } from './configs/branding.config';
 import { CacheConfig } from './configs/cache.config';
 import { ChatHubConfig } from './configs/chat-hub.config';
 import { ChatTriggerConfig } from './configs/chat-trigger.config';
@@ -196,6 +197,9 @@ export class GlobalConfig {
 
 	@Nested
 	hiringBanner: HiringBannerConfig;
+
+	@Nested
+	branding: BrandingConfig;
 
 	@Nested
 	personalization: PersonalizationConfig;

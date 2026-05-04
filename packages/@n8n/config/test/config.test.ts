@@ -62,6 +62,10 @@ describe('GlobalConfig', () => {
 		hiringBanner: {
 			enabled: true,
 		},
+		branding: {
+			customCssPath: '',
+			customCss: '',
+		},
 		personalization: {
 			enabled: true,
 		},
