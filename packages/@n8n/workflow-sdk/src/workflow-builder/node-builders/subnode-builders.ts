@@ -33,6 +33,7 @@
 import { v4 as uuid } from 'uuid';
 
 import { createFromAIExpression } from '../../expression';
+import { normalizeNodeConfig } from './node-builder';
 import type {
 	NodeConfig,
 	NodeInput,
@@ -103,7 +104,7 @@ class SubnodeInstanceImpl<
 	) {
 		this.type = type;
 		this.version = version;
-		this.config = { ...config };
+		this.config = normalizeNodeConfig(config);
 		this.id = id ?? uuid();
 		this.name = name ?? config.name ?? generateNodeName(type);
 		this._subnodeType = subnodeType;
