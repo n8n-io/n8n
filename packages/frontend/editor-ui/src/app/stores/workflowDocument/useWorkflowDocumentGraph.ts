@@ -8,7 +8,7 @@ import {
 	type NodeConnectionType,
 	type Workflow,
 } from 'n8n-workflow';
-import type { Ref } from 'vue';
+import { type Ref } from 'vue';
 
 // --- Composable ---
 
