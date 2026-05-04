@@ -345,8 +345,6 @@ Examples:
 
 Path syntax: \`/field\` for top-level fields, \`/nested/field\` for nested, \`/array/0\` for index, \`/array/-\` to append.
 
-For array item edits/removals, include a preceding \`test\` op for an identifying
-field such as \`/tools/1/name\` or \`/skills/0/id\` before replacing/removing.
 When attaching a skill, append to \`/skills/-\` if \`skills\` exists; otherwise
 add \`/skills\` with an array containing the skill ref.
 
