@@ -205,6 +205,59 @@ describe('AgentsService', () => {
 			).rejects.toThrow('Invalid agent config: Missing skill bodies: missing_skill');
 			expect(agentRepository.save).not.toHaveBeenCalled();
 		});
+
+		it('rejects an active schedule integration when the agent is unpublished', async () => {
+			const configWithActiveSchedule = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				integrations: [
+					{
+						type: 'schedule',
+						active: true,
+						cronExpression: '0 9 * * *',
+						wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+					},
+				],
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithActiveSchedule,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ publishedVersion: null }));
+
+			await expect(
+				service.updateConfig(agentId, projectId, configWithActiveSchedule),
+			).rejects.toThrow(
+				'Invalid agent config: schedule integration cannot be active until the agent is published',
+			);
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('allows an inactive schedule integration on an unpublished agent', async () => {
+			const configWithInactiveSchedule = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				integrations: [
+					{
+						type: 'schedule',
+						active: false,
+						cronExpression: '0 9 * * *',
+						wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+					},
+				],
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithInactiveSchedule,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ publishedVersion: null }));
+
+			await expect(
+				service.updateConfig(agentId, projectId, configWithInactiveSchedule),
+			).resolves.toBeDefined();
+		});
 	});
 
 	describe('publishAgent', () => {
@@ -333,6 +386,60 @@ describe('AgentsService', () => {
 
 			expect(result.publishedVersion).toBe(publishedVersion);
 			expect(result).toBe(agent);
+		});
+
+		it('connects persisted credential integrations after publishing', async () => {
+			const integrations: AgentIntegration[] = [
+				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{
+					type: 'schedule',
+					active: false,
+					cronExpression: '0 9 * * *',
+					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+				},
+			];
+			const agent = makeAgent({ integrations });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(
+				makePublishedVersion(),
+			);
+
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
+			Container.set(ChatIntegrationService, chatIntegrationService);
+
+			await service.publishAgent(agentId, projectId, userId);
+
+			expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(
+				agent,
+				[],
+				[{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' }],
+			);
+		});
+
+		it('does not call syncToConfig when no credential integrations are persisted', async () => {
+			const agent = makeAgent({
+				integrations: [
+					{
+						type: 'schedule',
+						active: false,
+						cronExpression: '0 9 * * *',
+						wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+					},
+				],
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(
+				makePublishedVersion(),
+			);
+
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
+			Container.set(ChatIntegrationService, chatIntegrationService);
+
+			await service.publishAgent(agentId, projectId, userId);
+
+			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
 		});
 	});
 

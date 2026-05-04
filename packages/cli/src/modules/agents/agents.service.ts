@@ -8,6 +8,7 @@ import type {
 } from '@n8n/agents';
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
+	isAgentCredentialIntegration,
 	isAgentScheduleIntegration,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
@@ -55,8 +56,10 @@ import { AGENT_THREAD_PREFIX } from './builder/builder-tool-names';
 import { Agent } from './entities/agent.entity';
 import { ExecutionRecorder } from './execution-recorder';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
+import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
 import { AgentJsonConfigSchema, isNodeToolsEnabled } from './json-config/agent-json-config';
 import type {
 	AgentJsonConfig,
@@ -290,6 +293,24 @@ export class AgentsService {
 		// Evict any cached draft runtime so integration executions pick up
 		// the new published snapshot on their next request.
 		this.clearRuntimes(agentId);
+
+		// Wake up any chat integrations that were persisted while the agent
+		// was a draft. ChatIntegrationService.syncToConfig gates connect on
+		// publish, so the entries sat dormant on agent.integrations; passing
+		// previous=[] makes every persisted integration an addition.
+		const credentialIntegrations = (agent.integrations ?? []).filter(isAgentCredentialIntegration);
+		if (credentialIntegrations.length > 0) {
+			// eslint-disable-next-line import-x/no-cycle
+			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+			await Container.get(ChatIntegrationService)
+				.syncToConfig(agent, [], credentialIntegrations)
+				.catch((error) =>
+					this.logger.warn('Failed to connect integrations on publish', {
+						agentId,
+						error,
+					}),
+				);
+		}
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
 
@@ -1092,10 +1113,11 @@ export class AgentsService {
 	async getConfig(agentId: string, projectId: string): Promise<AgentJsonConfig> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
-		if (!entity.schema) {
+		const config = composeJsonConfig(entity);
+		if (!config) {
 			throw new UserError('Agent has no JSON config yet.');
 		}
-		return entity.schema;
+		return config;
 	}
 
 	/**
@@ -1159,9 +1181,13 @@ export class AgentsService {
 
 		this.validateConfigRefs(result.config, entity);
 
-		entity.schema = result.config;
+		const previousIntegrations = entity.integrations ?? [];
+		const { schemaConfig, integrations: nextIntegrations } = decomposeJsonConfig(result.config);
+
+		entity.schema = schemaConfig as AgentJsonConfig;
 		entity.name = result.config.name;
 		entity.description = result.config.description ?? null;
+		entity.integrations = nextIntegrations;
 		markAgentDraftDirty(entity);
 
 		// Remove tool entries that are no longer referenced in the config
@@ -1187,8 +1213,10 @@ export class AgentsService {
 		const saved = await this.agentRepository.save(entity);
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
+		await syncAgentIntegrations(saved, previousIntegrations, nextIntegrations, this.logger);
+
 		return {
-			config: result.config,
+			config: composeJsonConfig(saved) ?? result.config,
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
@@ -1346,6 +1374,19 @@ export class AgentsService {
 		if (missingToolIds.length > 0) {
 			throw new UserError(
 				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
+			);
+		}
+
+		// Mirror AgentScheduleService.activate(): a schedule integration cannot be
+		// active until the agent has a published version. Otherwise the persisted
+		// config can claim active=true while the cron registration silently
+		// refuses to register.
+		const activeUnpublishedSchedule = (config.integrations ?? []).some(
+			(integration) => isAgentScheduleIntegration(integration) && integration.active,
+		);
+		if (activeUnpublishedSchedule && !entity.publishedVersion) {
+			throw new UserError(
+				'Invalid agent config: schedule integration cannot be active until the agent is published',
 			);
 		}
 	}
