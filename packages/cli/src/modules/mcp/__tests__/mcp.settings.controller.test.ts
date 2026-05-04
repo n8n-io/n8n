@@ -2,6 +2,7 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type { Response } from 'express';
 import { mock, mockDeep } from 'jest-mock-extended';
 
@@ -400,6 +401,29 @@ describe('McpSettingsController', () => {
 						workflowIds,
 					}),
 			).toThrow();
+		});
+	});
+
+	describe('RBAC scope decorators', () => {
+		const getRouteScope = (handlerName: string) => {
+			const metadata = Container.get(ControllerRegistryMetadata);
+			const route = metadata.getRouteMetadata(McpSettingsController, handlerName);
+			return route.accessScope;
+		};
+
+		test('getMcpEligibleWorkflows is gated by mcp:manage GlobalScope', () => {
+			const scope = getRouteScope('getMcpEligibleWorkflows');
+			expect(scope).toEqual({ scope: 'mcp:manage', globalOnly: true });
+		});
+
+		test('toggleWorkflowsMCPAccess is gated by mcp:manage GlobalScope', () => {
+			const scope = getRouteScope('toggleWorkflowsMCPAccess');
+			expect(scope).toEqual({ scope: 'mcp:manage', globalOnly: true });
+		});
+
+		test('updateSettings is still gated by mcp:manage GlobalScope', () => {
+			const scope = getRouteScope('updateSettings');
+			expect(scope).toEqual({ scope: 'mcp:manage', globalOnly: true });
 		});
 	});
 });

@@ -59,6 +59,7 @@ export class McpSettingsController {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
 	}
 
+	@GlobalScope('mcp:manage')
 	@Get('/workflows', { middlewares: listQueryMiddleware })
 	async getMcpEligibleWorkflows(req: ListQuery.Request, res: Response) {
 		const options: ListQuery.Options = {
@@ -82,7 +83,7 @@ export class McpSettingsController {
 		res.json({ count, data: workflows });
 	}
 
-	// Ideally we would use ProjectScope here but it only works if projectId is a URL parameter
+	@GlobalScope('mcp:manage')
 	@Patch('/workflows/toggle-access')
 	async toggleWorkflowsMCPAccess(
 		req: AuthenticatedRequest,
