@@ -268,14 +268,11 @@ export class ExecutionService {
 		if (lastNodeExecuted) {
 			// Remove the old error and the data of the last run of the node that it can be replaced
 			delete data.executionData!.resultData.error;
-			const { length } = data.executionData!.resultData.runData[lastNodeExecuted];
-			if (
-				length > 0 &&
-				data.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined
-			) {
+			const nodeRunData = data.executionData!.resultData.runData?.[lastNodeExecuted];
+			if (nodeRunData && nodeRunData.length > 0 && nodeRunData[nodeRunData.length - 1].error !== undefined) {
 				// Remove results only if it is an error.
 				// If we are retrying due to a crash, the information is simply success info from last node
-				data.executionData!.resultData.runData[lastNodeExecuted].pop();
+				nodeRunData.pop();
 				// Stack will determine what to run next
 			}
 		}
