@@ -28,6 +28,3 @@ export const NDVStoreKey: InjectionKey<ShallowRef<ReturnType<typeof useNDVStore>
 	Symbol('NDVStore');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
 export const AiBuilderScrollToBottomKey: InjectionKey<() => void> = Symbol('ChatScrollToBottom');
-export const BaseLayoutContentIsolatedKey: InjectionKey<Ref<boolean>> = Symbol(
-	'BaseLayoutContentIsolated',
-);

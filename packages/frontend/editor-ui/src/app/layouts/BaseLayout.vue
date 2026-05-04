@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import { onMounted, provide, ref, useTemplateRef } from 'vue';
-import { BaseLayoutContentIsolatedKey } from '@/app/constants/injectionKeys';
+import { onMounted, useTemplateRef } from 'vue';
 
 const layoutRef = useTemplateRef('layout');
 
 const emit = defineEmits<{
 	mounted: [Element];
 }>();
-
-const contentIsolated = ref(true);
-provide(BaseLayoutContentIsolatedKey, contentIsolated);
 
 onMounted(() => {
 	if (layoutRef.value) emit('mounted', layoutRef.value);
@@ -27,7 +23,7 @@ onMounted(() => {
 		<aside v-if="!!$slots.sidebar" id="sidebar" :class="$style.sidebar">
 			<slot name="sidebar" />
 		</aside>
-		<main id="content" :class="[$style.content, { [$style.contentIsolated]: contentIsolated }]">
+		<main id="content" :class="$style.content">
 			<div :class="$style.contentWrapper">
 				<slot />
 			</div>
@@ -88,10 +84,13 @@ onMounted(() => {
 	align-items: center;
 	overflow: auto;
 	grid-area: content;
-}
-
-.contentIsolated {
 	isolation: isolate;
+
+	// Lift the stacking context while the workflow preview iframe NDV is
+	// fullscreen so its `z-index` can paint above the sidebar.
+	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
+		isolation: auto;
+	}
 }
 
 .contentWrapper {

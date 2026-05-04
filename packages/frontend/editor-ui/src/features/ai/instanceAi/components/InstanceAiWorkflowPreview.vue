@@ -21,7 +21,6 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'iframe-ready': [];
-	'update:ndv-open': [open: boolean];
 }>();
 
 const i18n = useI18n();
@@ -196,7 +195,6 @@ defineExpose({ relayPushEvent });
 			:suppress-notifications="true"
 			:allow-error-notifications="true"
 			loader-type="spinner"
-			@update:ndv-open="(open) => emit('update:ndv-open', open)"
 		/>
 
 		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
