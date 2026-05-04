@@ -17,6 +17,7 @@ import {
 	Workflow,
 	Node,
 	UserError,
+	AI_VENDOR_NODE_TYPES,
 	createEmptyRunExecutionData,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
@@ -70,15 +71,7 @@ const OPERATION_BLACKLIST = [SEND_AND_WAIT_OPERATION, 'dispatchAndWait'];
  * the LM Chat sub-models (`lmChatOpenAi`, etc.), or generic LangChain helpers
  * like summarization — those have different semantics.
  */
-export const AGENT_PROVIDER_NODE_WHITELIST = new Set<string>([
-	'@n8n/n8n-nodes-langchain.openAi',
-	'@n8n/n8n-nodes-langchain.anthropic',
-	'@n8n/n8n-nodes-langchain.googleGemini',
-	'@n8n/n8n-nodes-langchain.alibabaCloud',
-	'@n8n/n8n-nodes-langchain.minimax',
-	'@n8n/n8n-nodes-langchain.ollama',
-	'@n8n/n8n-nodes-langchain.moonshot',
-]);
+export const AGENT_PROVIDER_NODE_WHITELIST = new Set<string>([...AI_VENDOR_NODE_TYPES]);
 
 export function isAgentProviderNode(nodeType: string): boolean {
 	return AGENT_PROVIDER_NODE_WHITELIST.has(nodeType);
