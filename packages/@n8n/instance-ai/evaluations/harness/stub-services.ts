@@ -2,10 +2,15 @@
 // Stub InstanceAiContext services for in-process workflow-build evals.
 //
 // The goal is to run createInstanceAgent without a running n8n instance.
-// Services return minimal data — just enough for the `build-workflow` tool
-// path to succeed. The workflow JSON is captured via
-// `workflowService.createFromWorkflowJSON` and exposed on the capture array
-// returned from `createStubServices`.
+// `nodeService` is wired to the same node catalogue (`nodes.json`) and the
+// same production resolvers (`resolveNodeTypeDefinition`,
+// `listNodeDiscriminators`) that the real adapter uses, so the agent sees
+// real node metadata — properties, type-definition source, discriminators
+// — rather than a stripped-down stub. Other services (workflows,
+// credentials, executions, data-tables) return minimal canned data — just
+// enough for the `build-workflow` tool path to succeed. The workflow JSON
+// is captured via `workflowService.createFromWorkflowJSON` and exposed on
+// the capture array returned from `createStubServices`.
 // ---------------------------------------------------------------------------
 
 /* eslint-disable @typescript-eslint/require-await */
@@ -16,9 +21,17 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
-import { promises as fs } from 'node:fs';
+import { existsSync, promises as fs } from 'node:fs';
 import path from 'node:path';
 
+// Production resolver functions (pure — only depend on `node:fs` and
+// `@n8n/backend-common`'s `safeJoinPath`). Imported via deep relative path
+// so the eval stays in lock-step with the real adapter; if production
+// changes how it reads `dist/node-definitions/`, evals follow automatically.
+import {
+	listNodeDiscriminators,
+	resolveNodeTypeDefinition,
+} from '../../../../cli/src/modules/instance-ai/node-definition-resolver';
 import type {
 	InstanceAiContext,
 	InstanceAiCredentialService,
@@ -26,6 +39,7 @@ import type {
 	InstanceAiExecutionService,
 	InstanceAiNodeService,
 	InstanceAiWorkflowService,
+	NodeDescription,
 	SearchableNodeDescription,
 	WorkflowDetail,
 } from '../../src/types';
@@ -54,7 +68,8 @@ export interface CreateStubServicesOptions {
 export async function createStubServices(
 	options: CreateStubServicesOptions,
 ): Promise<StubServiceHandle> {
-	const searchableNodes = await loadSearchableNodes(options.nodesJsonPath);
+	const { searchableNodes, descriptionsByName } = await loadNodeCatalogue(options.nodesJsonPath);
+	const nodeDefinitionDirs = resolveEvalNodeDefinitionDirs();
 	const capturedWorkflows: WorkflowJSON[] = [];
 
 	const workflowService: InstanceAiWorkflowService = {
@@ -111,34 +126,62 @@ export async function createStubServices(
 	};
 
 	const nodeService: InstanceAiNodeService = {
-		async listAvailable() {
-			return searchableNodes.map((node) => ({
-				name: node.name,
-				displayName: node.displayName,
-				description: node.description,
-				group: [],
-				// Version arrays list supported versions in ascending order; the
-				// latest is the last entry. Returning [0] would surface a stale
-				// version to the agent.
-				version: Array.isArray(node.version)
-					? (node.version[node.version.length - 1] ?? 1)
-					: node.version,
-			}));
+		async listAvailable(opts) {
+			const all = searchableNodes.map((node) => {
+				const desc = descriptionsByName.get(node.name);
+				return {
+					name: node.name,
+					displayName: node.displayName,
+					description: node.description,
+					group: desc?.group ?? [],
+					// Version arrays list supported versions in ascending order; the
+					// latest is the last entry. Returning [0] would surface a stale
+					// version to the agent.
+					version: Array.isArray(node.version)
+						? (node.version[node.version.length - 1] ?? 1)
+						: node.version,
+				};
+			});
+			if (!opts?.query) return all;
+			const q = opts.query.toLowerCase();
+			return all.filter(
+				(n) =>
+					n.displayName.toLowerCase().includes(q) ||
+					n.name.toLowerCase().includes(q) ||
+					n.description.toLowerCase().includes(q),
+			);
 		},
 		async getDescription(nodeType: string) {
-			return {
-				name: nodeType,
-				displayName: nodeType,
-				description: '',
-				group: [],
-				version: 1,
-				properties: [],
-				inputs: ['main'],
-				outputs: ['main'],
-			};
+			const desc = descriptionsByName.get(nodeType);
+			if (!desc) {
+				throw new Error(`Node type ${nodeType} not found`);
+			}
+			return desc;
 		},
 		async listSearchable() {
 			return searchableNodes;
+		},
+		// Real type-definition source from `dist/node-definitions/`. Falls back
+		// to a clear message when the nodes packages haven't been built yet
+		// (`pnpm build` from the repo root produces them) — matches production's
+		// behavior when node-definition dirs are missing.
+		getNodeTypeDefinition: async (nodeType, opts) => {
+			if (nodeDefinitionDirs.length === 0) {
+				return {
+					content: '',
+					error:
+						'Node type definitions are not available in this eval run. ' +
+						'Run `pnpm build` in packages/nodes-base and packages/@n8n/nodes-langchain ' +
+						'to generate dist/node-definitions/.',
+				};
+			}
+			const result = resolveNodeTypeDefinition(nodeType, nodeDefinitionDirs, opts);
+			if (result.error) return { content: '', error: result.error };
+			return { content: result.content, version: result.version };
+		},
+		listDiscriminators: async (nodeType) => {
+			if (nodeDefinitionDirs.length === 0) return null;
+			return listNodeDiscriminators(nodeType, nodeDefinitionDirs);
 		},
 	};
 
@@ -241,7 +284,13 @@ export async function createStubServices(
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function loadSearchableNodes(jsonPath: string): Promise<SearchableNodeDescription[]> {
+interface NodeCatalogue {
+	searchableNodes: SearchableNodeDescription[];
+	/** Indexed by node `name` for O(1) `getDescription` lookups. */
+	descriptionsByName: Map<string, NodeDescription>;
+}
+
+async function loadNodeCatalogue(jsonPath: string): Promise<NodeCatalogue> {
 	let content: string;
 	try {
 		content = await fs.readFile(jsonPath, 'utf8');
@@ -261,7 +310,17 @@ async function loadSearchableNodes(jsonPath: string): Promise<SearchableNodeDesc
 		throw new Error(`Expected ${jsonPath} to contain a JSON array of node descriptions.`);
 	}
 
-	return parsed.map((entry) => coerceSearchableNode(entry));
+	const searchableNodes: SearchableNodeDescription[] = [];
+	const descriptionsByName = new Map<string, NodeDescription>();
+	for (const entry of parsed) {
+		const searchable = coerceSearchableNode(entry);
+		searchableNodes.push(searchable);
+		// `coerceNodeDescription` mirrors the production adapter's mapping in
+		// `instance-ai.adapter.service.ts#getDescription`. Keep the two in sync
+		// when adding new fields to `NodeDescription`.
+		descriptionsByName.set(searchable.name, coerceNodeDescription(entry, searchable));
+	}
+	return { searchableNodes, descriptionsByName };
 }
 
 function coerceSearchableNode(entry: unknown): SearchableNodeDescription {
@@ -295,6 +354,92 @@ function coerceSearchableNode(entry: unknown): SearchableNodeDescription {
 		// builder hints so eval runs see the same metadata as production.
 		...(codex ? { codex } : {}),
 		...(builderHint ? { builderHint } : {}),
+	};
+}
+
+/**
+ * Build a `NodeDescription` from a raw `nodes.json` entry, mirroring the
+ * shape produced by the production adapter (`instance-ai.adapter.service.ts`
+ * `getDescription`). The eval reuses the searchable-node coercion for the
+ * fields they share (name/displayName/description/version) and adds the
+ * richer fields the agent's tools rely on (properties, credentials, inputs,
+ * outputs, webhooks, polling, triggerPanel).
+ */
+function coerceNodeDescription(
+	entry: unknown,
+	searchable: SearchableNodeDescription,
+): NodeDescription {
+	const record: Record<string, unknown> = isRecord(entry) ? entry : {};
+	const group = coerceStringList(record.group) ?? [];
+	const versionField = searchable.version;
+	const version = Array.isArray(versionField)
+		? (versionField[versionField.length - 1] ?? 1)
+		: versionField;
+
+	const properties = Array.isArray(record.properties)
+		? record.properties.flatMap((p): NodeDescription['properties'] => {
+				if (!isRecord(p) || typeof p.name !== 'string' || typeof p.type !== 'string') return [];
+				const displayName = typeof p.displayName === 'string' ? p.displayName : p.name;
+				const required = typeof p.required === 'boolean' ? p.required : undefined;
+				const description = typeof p.description === 'string' ? p.description : undefined;
+				const options = Array.isArray(p.options)
+					? p.options.flatMap((o): Array<{ name: string; value: string | number | boolean }> => {
+							if (!isRecord(o) || !('name' in o) || !('value' in o)) return [];
+							const optName = typeof o.name === 'string' ? o.name : String(o.name);
+							const optValue = o.value;
+							if (
+								typeof optValue !== 'string' &&
+								typeof optValue !== 'number' &&
+								typeof optValue !== 'boolean'
+							) {
+								return [];
+							}
+							return [{ name: optName, value: optValue }];
+						})
+					: undefined;
+				return [
+					{
+						displayName,
+						name: p.name,
+						type: p.type,
+						...(required !== undefined ? { required } : {}),
+						...(description !== undefined ? { description } : {}),
+						default: p.default,
+						...(options ? { options } : {}),
+					},
+				];
+			})
+		: [];
+
+	const credentials = Array.isArray(record.credentials)
+		? record.credentials.flatMap((c): NonNullable<NodeDescription['credentials']> => {
+				if (!isRecord(c) || typeof c.name !== 'string') return [];
+				return [
+					{
+						name: c.name,
+						...(typeof c.required === 'boolean' ? { required: c.required } : {}),
+						...(isRecord(c.displayOptions) ? { displayOptions: c.displayOptions } : {}),
+					},
+				];
+			})
+		: undefined;
+
+	const inputs = coerceStringList(searchable.inputs) ?? ['main'];
+	const outputs = coerceStringList(searchable.outputs) ?? ['main'];
+
+	return {
+		name: searchable.name,
+		displayName: searchable.displayName,
+		description: searchable.description,
+		group,
+		version,
+		properties,
+		...(credentials && credentials.length > 0 ? { credentials } : {}),
+		inputs,
+		outputs,
+		...(Array.isArray(record.webhooks) ? { webhooks: record.webhooks } : {}),
+		...(typeof record.polling === 'boolean' ? { polling: record.polling } : {}),
+		...(record.triggerPanel !== undefined ? { triggerPanel: record.triggerPanel } : {}),
 	};
 }
 
@@ -398,4 +543,24 @@ export function defaultNodesJsonPath(): string {
 		'evaluations',
 	);
 	return path.join(siblingPackage, 'nodes.json');
+}
+
+/**
+ * Resolve the workspace-relative `dist/node-definitions/` directories the
+ * production resolver expects. Production reads them via
+ * `require.resolve('n8n-nodes-base/package.json')`, but adding those heavy
+ * packages as direct deps of `instance-ai` just for evals is wasteful — the
+ * eval already lives in the monorepo, so we walk up to `packages/` and
+ * point at the built dist dirs directly.
+ *
+ * Returns an empty array if neither package has been built. Callers should
+ * surface a clear error rather than silently degrading the agent's view.
+ */
+export function resolveEvalNodeDefinitionDirs(): string[] {
+	const packagesRoot = path.resolve(__dirname, '..', '..', '..', '..');
+	const candidates = [
+		path.join(packagesRoot, 'nodes-base', 'dist', 'node-definitions'),
+		path.join(packagesRoot, '@n8n', 'nodes-langchain', 'dist', 'node-definitions'),
+	];
+	return candidates.filter((dir) => existsSync(dir));
 }

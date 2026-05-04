@@ -437,6 +437,14 @@ async function writeOutputs(
 		if (typeof primary === 'number') {
 			primaryPassSum += primary;
 			primaryPassCount++;
+		} else if (!record.build.success) {
+			// A build failure means the agent had its chance and produced no
+			// workflow — that's a failed attempt at the pairwise criteria, not
+			// a measurement gap. Count it as 0 so the pass rate isn't inflated
+			// by silently dropping failures from the denominator. Judge errors
+			// (build succeeded but the panel threw) are still excluded — those
+			// are tooling problems, not builder problems.
+			primaryPassCount++;
 		}
 		const diag = record.feedback.find((f) => f.metric === 'pairwise_diagnostic')?.score;
 		if (typeof diag === 'number') {
