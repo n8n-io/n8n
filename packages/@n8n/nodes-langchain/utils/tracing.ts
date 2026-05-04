@@ -1,6 +1,14 @@
-import type { BaseCallbackConfig } from '@langchain/core/callbacks/manager';
+import type { BaseCallbackConfig, Callbacks } from '@langchain/core/callbacks/manager';
+import { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
+import { Client } from 'langsmith';
 import type { FieldType, IExecuteFunctions, ISupplyDataFunctions, Logger } from 'n8n-workflow';
 import { jsonParse, validateFieldType } from 'n8n-workflow';
+
+interface LangSmithConfig {
+	apiKey: string;
+	apiUrl?: string;
+	project?: string;
+}
 
 interface TracingConfig {
 	additionalMetadata?: Record<string, unknown>;
@@ -80,6 +88,19 @@ export function buildTracingMetadata(
 	return additionalMetadata;
 }
 
+function getLangSmithConfigFromContext(
+	context: IExecuteFunctions | ISupplyDataFunctions,
+): LangSmithConfig | undefined {
+	// Access langsmithConfig from additionalData via duck-typing.
+	// The execution context internally holds additionalData which is populated
+	// during workflow execution setup in packages/cli.
+	const ctx = context as unknown as {
+		additionalData?: { langsmithConfig?: LangSmithConfig };
+	};
+	if (!ctx.additionalData) return undefined;
+	return ctx.additionalData.langsmithConfig;
+}
+
 export function getTracingConfig(
 	context: IExecuteFunctions | ISupplyDataFunctions,
 	config: TracingConfig = {},
@@ -89,6 +110,24 @@ export function getTracingConfig(
 			? context.getParentCallbackManager()
 			: undefined;
 
+	const langsmithConfig = getLangSmithConfigFromContext(context);
+
+	let callbacks: Callbacks | undefined = parentRunManager;
+
+	if (langsmithConfig?.apiKey) {
+		const client = new Client({
+			apiKey: langsmithConfig.apiKey,
+			apiUrl: langsmithConfig.apiUrl || undefined,
+		});
+
+		const tracer = new LangChainTracer({
+			client,
+			projectName: langsmithConfig.project ?? 'default',
+		});
+
+		callbacks = parentRunManager ? [parentRunManager, tracer] : [tracer];
+	}
+
 	return {
 		runName: `[${context.getWorkflow().name}] ${context.getNode().name}`,
 		metadata: {
@@ -97,6 +136,6 @@ export function getTracingConfig(
 			node: context.getNode().name,
 			...(config.additionalMetadata ?? {}),
 		},
-		callbacks: parentRunManager,
+		callbacks,
 	};
 }

@@ -758,5 +758,97 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 			expect(additionalData.workflowSettings).toBe(workflowSettings);
 		});
+
+		describe('LangSmith config loading', () => {
+			beforeEach(() => {
+				credentialsHelper.getDecrypted.mockReset();
+			});
+
+			it('should load langsmithConfig when langsmithCredentialId is provided', async () => {
+				credentialsHelper.getDecrypted.mockResolvedValue({
+					apiKey: 'ls-test-key-123',
+					apiUrl: 'https://api.smith.langchain.com',
+				});
+
+				const additionalData = await getBase({
+					workflowSettings: {
+						langsmithCredentialId: 'cred-123',
+						langsmithProject: 'my-project',
+					},
+				});
+
+				expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+					expect.anything(),
+					{ id: 'cred-123', name: '' },
+					'langSmithApi',
+					'internal',
+				);
+				expect(additionalData.langsmithConfig).toEqual({
+					apiKey: 'ls-test-key-123',
+					apiUrl: 'https://api.smith.langchain.com',
+					project: 'my-project',
+				});
+			});
+
+			it('should set langsmithConfig with empty apiKey when only project is provided', async () => {
+				const additionalData = await getBase({
+					workflowSettings: {
+						langsmithProject: 'my-project',
+					},
+				});
+
+				expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+				expect(additionalData.langsmithConfig).toEqual({
+					apiKey: '',
+					project: 'my-project',
+				});
+			});
+
+			it('should not set langsmithConfig when neither credentialId nor project is provided', async () => {
+				const additionalData = await getBase({
+					workflowSettings: {
+						executionTimeout: 300,
+					},
+				});
+
+				expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
+				expect(additionalData.langsmithConfig).toBeUndefined();
+			});
+
+			it('should handle credential loading failure gracefully', async () => {
+				credentialsHelper.getDecrypted.mockRejectedValue(
+					new Error('Credential not found'),
+				);
+
+				const additionalData = await getBase({
+					workflowSettings: {
+						langsmithCredentialId: 'invalid-cred',
+						langsmithProject: 'my-project',
+					},
+				});
+
+				expect(additionalData.langsmithConfig).toBeUndefined();
+			});
+
+			it('should pass langsmithProject as project in config', async () => {
+				credentialsHelper.getDecrypted.mockResolvedValue({
+					apiKey: 'ls-test-key-123',
+					apiUrl: 'https://custom.langsmith.example.com',
+				});
+
+				const additionalData = await getBase({
+					workflowSettings: {
+						langsmithCredentialId: 'cred-456',
+						langsmithProject: 'custom-project',
+					},
+				});
+
+				expect(additionalData.langsmithConfig).toEqual({
+					apiKey: 'ls-test-key-123',
+					apiUrl: 'https://custom.langsmith.example.com',
+					project: 'custom-project',
+				});
+			});
+		});
 	});
 });
