@@ -212,7 +212,7 @@ describe('searchFilesTool', () => {
 			).rejects.toThrow('escapes');
 		});
 
-		it.each(['node_modules', '.git', 'dist'])(
+		it.each(['node_modules', 'Node_Modules', '.git', 'dist'])(
 			'rejects direct search roots under excluded directory %s',
 			async (dirPath) => {
 				await expect(searchFilesTool.execute({ dirPath, query: 'foo' }, CONTEXT)).rejects.toThrow(

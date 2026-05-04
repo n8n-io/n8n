@@ -205,6 +205,14 @@ describe('buildFilesystemResource — settings self-protection', () => {
 		).rejects.toThrow('excluded from filesystem reads');
 	});
 
+	it('matches excluded directory segments case-insensitively', async () => {
+		mockRealpath([[BASE, BASE]]);
+
+		await expect(
+			buildFilesystemResource(BASE, 'Node_Modules/pkg/index.js', 'filesystemRead', 'Read file'),
+		).rejects.toThrow('excluded from filesystem reads');
+	});
+
 	it('does not apply excluded segment policy to filesystemWrite resources', async () => {
 		mockRealpath([[BASE, BASE]]);
 

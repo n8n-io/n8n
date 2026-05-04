@@ -162,7 +162,7 @@ describe('readFileTool', () => {
 			).rejects.toThrow('escapes');
 		});
 
-		it.each(['node_modules/foo/.env', '.git/config', 'dist/bundle.js'])(
+		it.each(['node_modules/foo/.env', 'Node_Modules/foo/.env', '.git/config', 'dist/bundle.js'])(
 			'rejects direct reads under excluded directory %s',
 			async (filePath) => {
 				await expect(readFileTool.execute({ filePath }, CONTEXT)).rejects.toThrow(

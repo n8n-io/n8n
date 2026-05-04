@@ -6,8 +6,8 @@ import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
 import {
-	EXCLUDED_DIRS,
 	buildFilesystemResource,
+	isExcludedDirName,
 	isLikelyBinaryContent,
 	resolveReadablePath,
 } from './fs-utils';
@@ -85,7 +85,7 @@ async function collectFiles(
 	const entries = await fs.readdir(dir, { withFileTypes: true });
 
 	for (const entry of entries) {
-		if (EXCLUDED_DIRS.has(entry.name) && entry.isDirectory()) continue;
+		if (isExcludedDirName(entry.name) && entry.isDirectory()) continue;
 
 		const fullPath = path.join(dir, entry.name);
 		const relativePath = path.relative(basePath, fullPath);

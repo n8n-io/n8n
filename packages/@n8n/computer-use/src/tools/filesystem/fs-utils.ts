@@ -29,6 +29,9 @@ export const EXCLUDED_DIRS = new Set([
 	'.output',
 	'.svelte-kit',
 ]);
+const NORMALIZED_EXCLUDED_DIRS = new Set(
+	[...EXCLUDED_DIRS].map((segment) => segment.toLowerCase()),
+);
 
 export interface TreeEntry {
 	path: string;
@@ -86,7 +89,7 @@ export async function scanDirectory(
 				break;
 			}
 
-			if (EXCLUDED_DIRS.has(entry.name) && entry.isDirectory()) continue;
+			if (isExcludedDirName(entry.name) && entry.isDirectory()) continue;
 			if (entry.name.startsWith('.') && !isAllowedDotFile(entry.name)) continue;
 
 			const entryRelPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
@@ -138,10 +141,14 @@ function isAllowedDotFile(name: string): boolean {
 export function assertNoExcludedSegments(absolutePath: string, basePath: string): void {
 	const relativePath = path.relative(path.resolve(basePath), path.resolve(absolutePath));
 	const segments = relativePath.split(path.sep).filter(Boolean);
-	const excludedSegment = segments.find((segment) => EXCLUDED_DIRS.has(segment));
+	const excludedSegment = segments.find(isExcludedDirName);
 	if (excludedSegment) {
 		throw new Error(`Access denied: "${excludedSegment}" is excluded from filesystem reads`);
 	}
+}
+
+export function isExcludedDirName(segment: string): boolean {
+	return NORMALIZED_EXCLUDED_DIRS.has(segment.toLowerCase());
 }
 
 export function isLikelyBinaryContent(buffer: Buffer): boolean {
