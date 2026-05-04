@@ -53,7 +53,6 @@ const copyDebugInfoToClipboard = async () => {
 		type: 'info',
 		duration: 5000,
 	});
-	await instanceRegistryStore.fetchClusterInfo();
 	await clipboard.copy(debugInfo.generateDebugInfo());
 };
 </script>
