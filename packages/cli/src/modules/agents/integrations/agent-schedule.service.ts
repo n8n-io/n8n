@@ -8,7 +8,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository } from '@n8n/db';
-import { OnShutdown } from '@n8n/decorators';
+import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { CronJob } from 'cron';
 import { randomUUID } from 'crypto';
@@ -137,6 +137,7 @@ export class AgentScheduleService {
 		return this.getConfig(saved);
 	}
 
+	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
 		const agents = await this.agentRepository.findPublished();
 		this.logger.debug('[AgentScheduleService] Reconnecting active schedules', {
@@ -236,6 +237,7 @@ export class AgentScheduleService {
 		this.logger.info('[AgentScheduleService] Deregistered schedule trigger', { agentId });
 	}
 
+	@OnLeaderStepdown()
 	@OnShutdown()
 	stopAll(): void {
 		for (const [agentId] of this.jobs) {

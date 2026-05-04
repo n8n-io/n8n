@@ -2,6 +2,8 @@
 import { DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT, type AgentIntegration } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
+import { MultiMainMetadata } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -265,5 +267,17 @@ describe('AgentScheduleService', () => {
 		await jest.advanceTimersByTimeAsync(60 * 1000);
 
 		expect(agentsService.executeForSchedulePublished).toHaveBeenCalledTimes(1);
+	});
+
+	describe('leader event handlers', () => {
+		it('registers leader event handlers via decorators', () => {
+			const events = Container.get(MultiMainMetadata)
+				.getHandlers()
+				.filter((h) => h.eventHandlerClass === AgentScheduleService)
+				.map((h) => h.eventName);
+
+			expect(events).toContain('leader-takeover');
+			expect(events).toContain('leader-stepdown');
+		});
 	});
 });
