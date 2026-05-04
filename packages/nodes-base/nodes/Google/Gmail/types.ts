@@ -64,6 +64,7 @@ export type GmailWorkflowStaticDataDictionary = Record<string, GmailWorkflowStat
 export type GmailTriggerOptions = Partial<{
 	dataPropertyAttachmentsPrefixName: string;
 	downloadAttachments: boolean;
+	includeSelfSentArchivedEmails: boolean;
 }>;
 
 export type GmailTriggerFilters = Partial<{
