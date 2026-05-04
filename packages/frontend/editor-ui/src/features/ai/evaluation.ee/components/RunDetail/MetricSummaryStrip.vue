@@ -5,22 +5,29 @@ import {
 	computeDelta,
 	getUserDefinedMetricNames,
 	normalizeMetricValue,
+	type MetricSource,
 } from '../../evaluation.utils';
 import MetricSummaryCard from './MetricSummaryCard.vue';
 
 const props = defineProps<{
 	currentMetrics: Record<string, number | boolean> | null | undefined;
 	previousMetrics: Record<string, number | boolean> | null | undefined;
+	metricSources?: Record<string, MetricSource>;
 }>();
 
 const metricNames = computed(() => getUserDefinedMetricNames(props.currentMetrics));
 
 const cards = computed(() =>
-	metricNames.value.map((name) => ({
-		name,
-		currentValue: normalizeMetricValue(props.currentMetrics?.[name]),
-		delta: computeDelta(props.currentMetrics?.[name], props.previousMetrics?.[name]),
-	})),
+	metricNames.value.map((name) => {
+		const source = props.metricSources?.[name];
+		return {
+			name,
+			currentValue: normalizeMetricValue(props.currentMetrics?.[name]),
+			delta: computeDelta(props.currentMetrics?.[name], props.previousMetrics?.[name]),
+			category: source?.category,
+			sourceNodeName: source?.nodeName,
+		};
+	}),
 );
 </script>
 
@@ -38,6 +45,8 @@ const cards = computed(() =>
 				:name="card.name"
 				:current-value="card.currentValue"
 				:delta="card.delta"
+				:category="card.category"
+				:source-node-name="card.sourceNodeName"
 			/>
 		</div>
 	</ElScrollbar>

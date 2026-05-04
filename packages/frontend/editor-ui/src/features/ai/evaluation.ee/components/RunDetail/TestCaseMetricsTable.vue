@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
+	formatMetricLabel,
 	formatMetricPercent,
 	getUserDefinedMetricNames,
 	normalizeMetricValue,
 	type DeltaTone,
+	type MetricSource,
 } from '../../evaluation.utils';
 
 const props = defineProps<{
@@ -17,6 +19,7 @@ const props = defineProps<{
 	 * metric that's declining run-over-run is highlighted everywhere it appears.
 	 */
 	metricTones: Record<string, DeltaTone>;
+	metricSources?: Record<string, MetricSource>;
 }>();
 
 const locale = useI18n();
@@ -24,10 +27,14 @@ const locale = useI18n();
 const rows = computed(() =>
 	getUserDefinedMetricNames(props.metrics).map((name) => {
 		const tone = props.metricTones[name] ?? 'default';
+		const source = props.metricSources?.[name];
 		return {
 			name,
+			label: formatMetricLabel(name),
 			value: normalizeMetricValue(props.metrics?.[name]),
 			tone,
+			category: source?.category,
+			sourceNodeName: source?.nodeName,
 		};
 	}),
 );
@@ -48,7 +55,18 @@ const rows = computed(() =>
 		<tbody>
 			<tr v-for="row in rows" :key="row.name">
 				<td :class="$style.cell">
-					<N8nText size="medium">{{ row.name }}</N8nText>
+					<div :class="$style.labelRow">
+						<N8nText size="medium" bold>{{ row.label }}</N8nText>
+						<N8nTooltip v-if="row.sourceNodeName" :content="row.sourceNodeName" placement="top">
+							<N8nIcon icon="circle-check" :class="$style.checkIcon" size="small" />
+						</N8nTooltip>
+						<N8nIcon
+							v-else-if="row.category"
+							icon="circle-check"
+							:class="$style.checkIcon"
+							size="small"
+						/>
+					</div>
 				</td>
 				<td :class="[$style.cell, $style.numeric, $style[`tone-${row.tone}`]]">
 					{{ formatMetricPercent(row.value) }}
@@ -78,8 +96,8 @@ const rows = computed(() =>
 }
 
 .cell {
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-bottom: var(--border-width) var(--border-style) var(--color--foreground);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-2);
 
 	&:last-child {
 		border-bottom: none;
@@ -92,6 +110,16 @@ tr:last-child .cell {
 
 .numeric {
 	text-align: right;
+}
+
+.labelRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.checkIcon {
+	color: var(--icon-color--success);
 }
 
 .tone-default {

@@ -1,3 +1,4 @@
+import startCase from 'lodash/startCase';
 import type { JsonValue } from 'n8n-workflow';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import type { TestTableColumn } from './components/shared/TestTableBase.vue';
@@ -16,6 +17,26 @@ export type Column =
 export type Header = TestTableColumn<TestCaseExecutionRecord & { index: number }>;
 
 export type DeltaTone = 'positive' | 'negative' | 'default';
+
+/**
+ * Categories surfaced as a badge on each metric. Mirrors the values of the
+ * Evaluation node's `metric` parameter (see `Description.node.ts`).
+ */
+export type MetricCategory =
+	| 'aiBased'
+	| 'stringSimilarity'
+	| 'categorization'
+	| 'toolsUsed'
+	| 'custom';
+
+/**
+ * Metadata pulled from the workflow's `setMetrics` Evaluation nodes — keyed
+ * by the metric name as it appears in the run output.
+ */
+export type MetricSource = {
+	category: MetricCategory;
+	nodeName: string;
+};
 
 export const SHORT_TABLE_CELL_MIN_WIDTH = 125;
 const LONG_TABLE_CELL_MIN_WIDTH = 250;
@@ -96,6 +117,35 @@ export function formatMetricPercent(value: number | boolean | undefined): string
 	if (num === undefined || Number.isNaN(num)) return '–';
 	const scaled = Math.abs(num) <= 1 ? num * 100 : num;
 	return `${Math.round(scaled)}%`;
+}
+
+/**
+ * Formats a metric key for display (snake_case / camelCase → Title Case).
+ * `count_accuracy` → "Count Accuracy", `helpfulness` → "Helpfulness".
+ */
+export function formatMetricLabel(name: string): string {
+	return startCase(name);
+}
+
+/**
+ * Maps the raw `metric` parameter value of an Evaluation node to its display
+ * category. `correctness` and `helpfulness` collapse into "AI-based" since
+ * they're both LLM-as-judge metrics.
+ */
+export function getMetricCategory(metric: string | undefined): MetricCategory {
+	switch (metric) {
+		case 'correctness':
+		case 'helpfulness':
+			return 'aiBased';
+		case 'stringSimilarity':
+			return 'stringSimilarity';
+		case 'categorization':
+			return 'categorization';
+		case 'toolsUsed':
+			return 'toolsUsed';
+		default:
+			return 'custom';
+	}
 }
 
 /**

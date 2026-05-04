@@ -79,4 +79,13 @@ const hasMetadata = computed(() => props.tokens !== undefined || props.durationM
 .dot {
 	color: var(--color--text--tint-1);
 }
+
+.header :global(.open-execution-link) {
+	color: var(--color--primary);
+	font-weight: var(--font-weight--medium);
+
+	&:hover {
+		color: var(--color--primary--shade-1);
+	}
+}
 </style>

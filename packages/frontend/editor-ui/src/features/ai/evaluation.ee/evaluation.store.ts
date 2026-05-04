@@ -12,6 +12,15 @@ import {
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { getMetricCategory, type MetricSource } from './evaluation.utils';
+
+const BUILTIN_METRIC_DEFAULT_NAMES: Record<string, string> = {
+	correctness: 'Correctness',
+	helpfulness: 'Helpfulness',
+	stringSimilarity: 'String similarity',
+	categorization: 'Categorization',
+	toolsUsed: 'Tools Used',
+};
 
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
@@ -84,6 +93,67 @@ export const useEvaluationStore = defineStore(
 
 		const evaluationSetOutputsNodeExist = computed(() => {
 			return evaluationNodeExist('setOutputs');
+		});
+
+		/**
+		 * For each metric the current workflow's `setMetrics` Evaluation nodes
+		 * emit, returns the category and source-node name. Used by the run
+		 * detail page to badge each metric with its origin.
+		 *
+		 * Built-in metric nodes (correctness/helpfulness/stringSimilarity/
+		 * categorization/toolsUsed) emit a single key — `options.metricName`
+		 * if set, otherwise the metric's default name. `customMetrics` nodes
+		 * (and pre-4.7 nodes) emit one key per assignment in `metrics.assignments`.
+		 */
+		const metricSourceByKey = computed<Record<string, MetricSource>>(() => {
+			const map: Record<string, MetricSource> = {};
+
+			for (const node of workflowDocumentStore.value.allNodes) {
+				if (node.type !== EVALUATION_NODE_TYPE) continue;
+
+				const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+				if (!nodeType) continue;
+
+				const resolved = NodeHelpers.getNodeParameters(
+					nodeType.properties,
+					node.parameters,
+					true,
+					false,
+					node,
+					nodeType,
+				);
+				if (resolved?.operation !== 'setMetrics') continue;
+
+				const metricType =
+					typeof resolved.metric === 'string' && resolved.metric.length > 0
+						? resolved.metric
+						: 'customMetrics';
+
+				if (metricType === 'customMetrics') {
+					const assignments = (
+						resolved.metrics as { assignments?: Array<{ name?: string }> } | undefined
+					)?.assignments;
+					if (!Array.isArray(assignments)) continue;
+
+					for (const assignment of assignments) {
+						const key = assignment?.name;
+						if (typeof key !== 'string' || key.length === 0) continue;
+						if (map[key]) continue;
+						map[key] = { category: 'custom', nodeName: node.name };
+					}
+				} else {
+					const overriddenName = (resolved.options as { metricName?: string } | undefined)
+						?.metricName;
+					const key =
+						typeof overriddenName === 'string' && overriddenName.length > 0
+							? overriddenName
+							: BUILTIN_METRIC_DEFAULT_NAMES[metricType];
+					if (!key || map[key]) continue;
+					map[key] = { category: getMetricCategory(metricType), nodeName: node.name };
+				}
+			}
+
+			return map;
 		});
 
 		// Methods
@@ -186,6 +256,7 @@ export const useEvaluationStore = defineStore(
 			evaluationTriggerExists,
 			evaluationSetMetricsNodeExist,
 			evaluationSetOutputsNodeExist,
+			metricSourceByKey,
 
 			// Methods
 			fetchTestCaseExecutions,

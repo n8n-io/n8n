@@ -1,24 +1,37 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
-import { formatMetricPercent, getDeltaTone, type DeltaTone } from '../../evaluation.utils';
+import {
+	formatMetricLabel,
+	formatMetricPercent,
+	getDeltaTone,
+	type DeltaTone,
+	type MetricCategory,
+} from '../../evaluation.utils';
+import MetricCategoryBadge from './MetricCategoryBadge.vue';
 import TrendDeltaBadge from './TrendDeltaBadge.vue';
 
 const props = defineProps<{
 	name: string;
 	currentValue: number | boolean | undefined;
 	delta: number | undefined;
+	category?: MetricCategory;
+	sourceNodeName?: string;
 }>();
 
 const tone = computed<DeltaTone>(() => getDeltaTone(props.delta));
 const formattedValue = computed(() => formatMetricPercent(props.currentValue));
+const formattedLabel = computed(() => formatMetricLabel(props.name));
 </script>
 
 <template>
 	<div :class="$style.card" data-test-id="metric-summary-card">
-		<N8nTooltip :content="name" placement="top">
-			<N8nText size="small" :class="$style.title">{{ name }}</N8nText>
-		</N8nTooltip>
+		<div :class="$style.titleRow">
+			<N8nTooltip :content="sourceNodeName ? `${name} · ${sourceNodeName}` : name" placement="top">
+				<N8nText size="small" :class="$style.title">{{ formattedLabel }}</N8nText>
+			</N8nTooltip>
+			<MetricCategoryBadge v-if="category" :category="category" />
+		</div>
 		<div :class="$style.valueRow">
 			<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
 			<TrendDeltaBadge :delta="delta" />
@@ -31,8 +44,8 @@ const formattedValue = computed(() => formatMetricPercent(props.currentValue));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--md);
-	border-right: var(--border-width) var(--border-style) var(--color--foreground);
+	padding: var(--spacing--md) var(--spacing--lg);
+	border-right: var(--border-width) var(--border-style) var(--color--foreground--tint-2);
 	flex: 1 1 0;
 	min-width: 0;
 
@@ -41,24 +54,34 @@ const formattedValue = computed(() => formatMetricPercent(props.currentValue));
 	}
 }
 
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex-wrap: wrap;
+	min-width: 0;
+}
+
 .title {
 	color: var(--color--text);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	min-width: 0;
 }
 
 .valueRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--sm);
 	flex-wrap: wrap;
 }
 
 .value {
-	font-size: var(--font-size--3xl);
+	font-size: 56px;
 	line-height: 1;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--regular);
+	letter-spacing: -0.02em;
 }
 
 .tone-default {

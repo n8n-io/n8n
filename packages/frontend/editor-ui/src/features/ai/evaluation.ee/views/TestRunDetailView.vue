@@ -7,12 +7,11 @@ import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useEvaluationStore } from '../evaluation.store';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import orderBy from 'lodash/orderBy';
 import { getErrorBaseKey } from '../evaluation.constants';
-import { N8nCallout, N8nHeading, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import {
 	computeDelta,
 	getDeltaTone,
@@ -26,7 +25,6 @@ import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
 const router = useRouter();
 const toast = useToast();
 const evaluationStore = useEvaluationStore();
-const workflowsListStore = useWorkflowsListStore();
 const locale = useI18n();
 const telemetry = useTelemetry();
 
@@ -36,9 +34,6 @@ const hasFailedTestCases = ref<boolean>(false);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = useInjectWorkflowId();
-const workflowName = computed(
-	() => workflowsListStore.getWorkflowById(workflowId.value)?.name ?? '',
-);
 
 const run = computed(() => evaluationStore.testRunsById[runId.value]);
 const runErrorDetails = computed(() => {
@@ -77,6 +72,8 @@ const metricTones = computed<Record<string, DeltaTone>>(() => {
 	}
 	return tones;
 });
+
+const metricSources = computed(() => evaluationStore.metricSourceByKey);
 
 const openRelatedExecution = (testCase: TestCaseExecutionRecord) => {
 	const executionId = testCase.executionId;
@@ -142,17 +139,10 @@ onMounted(async () => {
 	<div :class="$style.container" data-test-id="test-definition-run-detail">
 		<div :class="$style.header">
 			<button :class="$style.backButton" @click="router.back()">
-				<N8nIcon icon="arrow-left" />
-				<N8nHeading size="large" :bold="true">{{
-					locale.baseText('evaluation.listRuns.runListHeader', {
-						interpolate: {
-							name: workflowName,
-						},
-					})
-				}}</N8nHeading>
+				<N8nIcon icon="arrow-left" size="small" />
+				<N8nText size="medium">{{ locale.baseText('evaluation.runDetail.backToRuns') }}</N8nText>
 			</button>
-			<span :class="$style.headerSeparator">/</span>
-			<N8nHeading size="large" :bold="true">
+			<h1 :class="$style.runHeading">
 				{{
 					locale.baseText('evaluation.listRuns.testCasesListHeader', {
 						interpolate: {
@@ -160,7 +150,7 @@ onMounted(async () => {
 						},
 					})
 				}}
-			</N8nHeading>
+			</h1>
 		</div>
 
 		<N8nCallout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
@@ -188,6 +178,7 @@ onMounted(async () => {
 		<MetricSummaryStrip
 			:current-metrics="run?.metrics"
 			:previous-metrics="previousRun?.metrics"
+			:metric-sources="metricSources"
 			class="mb-m"
 		/>
 
@@ -204,6 +195,7 @@ onMounted(async () => {
 				:test-case="testCase"
 				:index="index + 1"
 				:metric-tones="metricTones"
+				:metric-sources="metricSources"
 				@view="openRelatedExecution"
 			/>
 		</div>
@@ -226,30 +218,35 @@ onMounted(async () => {
 
 .header {
 	display: flex;
-	align-items: center;
+	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--lg);
 }
 
 .backButton {
-	display: flex;
+	display: inline-flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
 	padding: 0;
 	border: none;
 	background: none;
 	cursor: pointer;
-	color: var(--color--text);
+	color: var(--color--text--tint-1);
 	transition: color 0.1s ease-in-out;
+	width: fit-content;
 
 	&:hover {
 		color: var(--color--primary);
 	}
 }
 
-.headerSeparator {
-	font-size: var(--font-size--xl);
-	color: var(--color--text--tint-1);
+.runHeading {
+	font-size: 36px;
+	line-height: 1.1;
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	margin: 0;
+	letter-spacing: -0.01em;
 }
 
 .capitalized {

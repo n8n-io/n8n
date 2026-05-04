@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { TestCaseExecutionRecord } from '../../evaluation.api';
-import { computeDurationMs, type DeltaTone } from '../../evaluation.utils';
+import { computeDurationMs, type DeltaTone, type MetricSource } from '../../evaluation.utils';
 import TestCaseHeader from './TestCaseHeader.vue';
 import TestCaseMetricsTable from './TestCaseMetricsTable.vue';
 
@@ -9,6 +9,7 @@ const props = defineProps<{
 	testCase: TestCaseExecutionRecord;
 	index: number;
 	metricTones: Record<string, DeltaTone>;
+	metricSources?: Record<string, MetricSource>;
 }>();
 
 const emit = defineEmits<{
@@ -36,7 +37,11 @@ const durationMs = computed(() => {
 			:execution-id="testCase.executionId"
 			@view="emit('view', testCase)"
 		/>
-		<TestCaseMetricsTable :metrics="testCase.metrics" :metric-tones="metricTones" />
+		<TestCaseMetricsTable
+			:metrics="testCase.metrics"
+			:metric-tones="metricTones"
+			:metric-sources="metricSources"
+		/>
 	</article>
 </template>
 

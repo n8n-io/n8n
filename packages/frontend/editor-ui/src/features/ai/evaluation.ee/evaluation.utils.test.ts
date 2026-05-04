@@ -5,10 +5,12 @@ import {
 	computeDelta,
 	computeDurationMs,
 	formatDeltaPercent,
+	formatMetricLabel,
 	formatMetricPercent,
 	formatTokens,
 	getDefaultOrderedColumns,
 	getDeltaTone,
+	getMetricCategory,
 	getTestCasesColumns,
 	getTestTableHeaders,
 	getUserDefinedMetricNames,
@@ -1289,6 +1291,33 @@ describe('utils', () => {
 		});
 		it('returns undefined when end is missing', () => {
 			expect(computeDurationMs('2023-10-01T10:00:00Z', undefined)).toBeUndefined();
+		});
+	});
+
+	describe('formatMetricLabel', () => {
+		it('Title-cases snake_case input', () => {
+			expect(formatMetricLabel('count_accuracy')).toBe('Count Accuracy');
+		});
+		it('Title-cases camelCase input', () => {
+			expect(formatMetricLabel('helpfulness')).toBe('Helpfulness');
+			expect(formatMetricLabel('stringSimilarity')).toBe('String Similarity');
+		});
+	});
+
+	describe('getMetricCategory', () => {
+		it('collapses correctness and helpfulness into aiBased', () => {
+			expect(getMetricCategory('correctness')).toBe('aiBased');
+			expect(getMetricCategory('helpfulness')).toBe('aiBased');
+		});
+		it('returns the matching category for built-in heuristic metrics', () => {
+			expect(getMetricCategory('stringSimilarity')).toBe('stringSimilarity');
+			expect(getMetricCategory('categorization')).toBe('categorization');
+			expect(getMetricCategory('toolsUsed')).toBe('toolsUsed');
+		});
+		it('falls back to custom for unknown values', () => {
+			expect(getMetricCategory('customMetrics')).toBe('custom');
+			expect(getMetricCategory(undefined)).toBe('custom');
+			expect(getMetricCategory('madeUpType')).toBe('custom');
 		});
 	});
 });
