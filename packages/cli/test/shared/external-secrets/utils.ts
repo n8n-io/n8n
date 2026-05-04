@@ -100,6 +100,13 @@ export class AnotherDummyProvider extends DummyProvider {
 	name = 'another_dummy';
 }
 
+/** Simulates a store whose `update()` never settles (e.g. hung HTTP client). */
+export class HangingUpdateProvider extends DummyProvider {
+	async update(): Promise<void> {
+		await new Promise(() => {});
+	}
+}
+
 export class ErrorProvider extends SecretsProvider {
 	secrets: Record<string, string> = {};
 
