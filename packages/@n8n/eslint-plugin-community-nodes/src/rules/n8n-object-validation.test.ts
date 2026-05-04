@@ -36,6 +36,11 @@ ruleTester.run('n8n-object-validation', N8nObjectValidationRule, {
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"] }, "config": { "n8n": "ignored" } }',
 		},
+		{
+			name: 'objects nested inside arrays are not treated as the package root',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"] }, "contributors": [{ "name": "Jane" }, { "name": "John" }] }',
+		},
 	],
 	invalid: [
 		{
