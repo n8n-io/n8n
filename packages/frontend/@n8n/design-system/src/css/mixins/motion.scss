@@ -24,10 +24,26 @@
 		ease-in-out infinite;
 }
 
-// Slide fade - combined slide and fade for dropdowns/menus
-@mixin slide-fade {
-	animation: slideFade var(--animation--slide-fade--duration, var(--duration--snappy))
-		var(--easing--ease-out);
+@mixin opacity-pulse {
+	animation: opacityPulse var(--animation--opacity-pulse--duration, var(--duration--base))
+		var(--animation--opacity-pulse--easing, ease-in-out) infinite;
+}
+
+@mixin popover-in {
+	animation: popoverIn var(--animation--popover-in--duration, var(--duration--snappy))
+		var(--animation--popover-in--easing, var(--easing--ease-out));
+}
+
+@mixin collapsible-slide-down {
+	animation: collapsibleSlideDown
+		var(--animation--collapsible-slide--duration, var(--duration--snappy))
+		var(--animation--collapsible-slide--easing, var(--easing--ease-out));
+}
+
+@mixin collapsible-slide-up {
+	animation: collapsibleSlideUp
+		var(--animation--collapsible-slide--duration, var(--duration--snappy))
+		var(--animation--collapsible-slide--easing, var(--easing--ease-out));
 }
 
 // Fade in - simple opacity fade for entrance animations
@@ -66,14 +82,28 @@
 	}
 }
 
-@keyframes slideFade {
+@keyframes opacityPulse {
+	0%,
+	100% {
+		opacity: var(--animation--opacity-pulse--opacity-start, 1);
+	}
+	50% {
+		opacity: var(--animation--opacity-pulse--opacity-end, 0.4);
+	}
+}
+
+@keyframes popoverIn {
 	from {
 		opacity: 0;
-		transform: translateY(var(--animation--slide-fade--translate, -4px)) scaleY(0.95);
+		transform: translate(
+				var(--animation--popover-in--translate-x, 0),
+				var(--animation--popover-in--translate-y, 0)
+			)
+			scale(var(--animation--popover-in--scale, 0.96));
 	}
 	to {
 		opacity: 1;
-		transform: translateY(0) scaleY(1);
+		transform: translate(0, 0) scale(1);
 	}
 }
 
@@ -88,21 +118,32 @@
 	}
 }
 
-// Reverse slide animations for exit transitions
-@keyframes slideFadeUp {
+@keyframes collapsibleSlideDown {
 	from {
-		opacity: 1;
-		transform: translateY(0) scaleY(1);
+		height: 0;
 	}
 	to {
-		opacity: 0;
-		transform: translateY(var(--animation--slide-fade--translate, -4px)) scaleY(0.95);
+		height: var(--reka-collapsible-content-height);
+	}
+}
+
+@keyframes collapsibleSlideUp {
+	from {
+		height: var(--reka-collapsible-content-height);
+	}
+	to {
+		height: 0;
 	}
 }
 
 // Pulse glow - expanding glow effect for loading states (used by N8nPulse)
 @mixin pulse-glow {
 	animation: pulseGlow var(--animation--pulse-glow--duration, 6s) infinite
+		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
+}
+
+@mixin pulse-glow-delayed {
+	animation: pulseGlowDelayed var(--animation--pulse-glow--duration, 6s) infinite
 		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
 }
 
@@ -123,6 +164,24 @@
 	}
 }
 
+@keyframes pulseGlowDelayed {
+	0%,
+	16.66% {
+		box-shadow: 0 0 0 0
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+	}
+	50% {
+		box-shadow: 0 0 0 60px
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+	}
+	83.3% {
+		box-shadow: 0 0 0 66px transparent;
+	}
+	83.4% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
 // Fade animation for simple opacity transitions
 @mixin fade {
 	animation: fade var(--animation--fade--duration, var(--duration--snappy));
@@ -134,5 +193,40 @@
 	}
 	to {
 		opacity: 0;
+	}
+}
+
+@mixin blink-background {
+	animation: blinkBackground var(--animation--blink-background--duration, var(--duration--slow))
+		step-end infinite;
+}
+
+@keyframes blinkBackground {
+	from,
+	to {
+		background-color: var(--animation--blink-background--color-start, transparent);
+	}
+	50% {
+		background-color: var(
+			--animation--blink-background--color-end,
+			var(--color--foreground--shade-2)
+		);
+	}
+}
+
+@mixin typing-blink {
+	animation: typingBlink var(--animation--typing-blink--duration, 1.2s) infinite;
+}
+
+@keyframes typingBlink {
+	0%,
+	80%,
+	100% {
+		opacity: var(--animation--typing-blink--opacity-start, 0.35);
+		transform: translateY(0);
+	}
+	40% {
+		opacity: var(--animation--typing-blink--opacity-end, 1);
+		transform: translateY(var(--animation--typing-blink--translate, -2px));
 	}
 }

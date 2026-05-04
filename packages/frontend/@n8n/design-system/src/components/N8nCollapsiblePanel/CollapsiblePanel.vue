@@ -80,6 +80,8 @@ const isOpen = computed({
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .collapsiblePanel {
 	position: relative;
 	border: var(--border-width) var(--border-style) var(--color--foreground);
@@ -211,13 +213,23 @@ const isOpen = computed({
 	}
 
 	&[data-state='open'] {
-		animation: slideDown var(--animation--duration--collapse, var(--animation--duration))
-			var(--animation--easing);
+		--animation--collapsible-slide--duration: var(
+			--animation--duration--collapse,
+			var(--animation--duration)
+		);
+		--animation--collapsible-slide--easing: var(--animation--easing);
+
+		@include motion.collapsible-slide-down;
 	}
 
 	&[data-state='closed'] {
-		animation: slideUp var(--animation--duration--collapse, var(--animation--duration))
-			var(--animation--easing);
+		--animation--collapsible-slide--duration: var(
+			--animation--duration--collapse,
+			var(--animation--duration)
+		);
+		--animation--collapsible-slide--easing: var(--animation--easing);
+
+		@include motion.collapsible-slide-up;
 	}
 
 	> :first-child {
@@ -227,23 +239,5 @@ const isOpen = computed({
 
 .noAnimation {
 	--animation--duration--collapse: 0s;
-}
-
-@keyframes slideDown {
-	from {
-		height: 0;
-	}
-	to {
-		height: var(--reka-collapsible-content-height);
-	}
-}
-
-@keyframes slideUp {
-	from {
-		height: var(--reka-collapsible-content-height);
-	}
-	to {
-		height: 0;
-	}
 }
 </style>
