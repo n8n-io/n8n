@@ -11,6 +11,13 @@
 // baseline.
 // ---------------------------------------------------------------------------
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-redundant-type-constituents, @typescript-eslint/no-base-to-string */
+// `SimpleWorkflow` is imported from `ai-workflow-builder.ee` via deep relative
+// paths; the `@/*` alias used inside that package collides with instance-ai's
+// own `@/*` mapping during transitive type-checking, so the type resolves to
+// `error` here. The `csvCell()` helper also calls `String(value)` on `unknown`
+// values by design.
+
 import { ChatAnthropic } from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { Client as LangSmithClient } from 'langsmith';

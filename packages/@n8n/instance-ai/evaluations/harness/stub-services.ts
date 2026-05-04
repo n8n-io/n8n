@@ -8,7 +8,13 @@
 // returned from `createStubServices`.
 // ---------------------------------------------------------------------------
 
+/* eslint-disable @typescript-eslint/require-await */
+// Stub methods must be `async` to satisfy the InstanceAi*Service interfaces
+// even though they synchronously return canned data — there's nothing to
+// await here.
+
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -248,7 +254,9 @@ async function loadSearchableNodes(jsonPath: string): Promise<SearchableNodeDesc
 		);
 	}
 
-	const parsed: unknown = JSON.parse(content);
+	const parsed = jsonParse<unknown>(content, {
+		errorMessage: `Could not parse node catalogue at ${jsonPath} as JSON`,
+	});
 	if (!Array.isArray(parsed)) {
 		throw new Error(`Expected ${jsonPath} to contain a JSON array of node descriptions.`);
 	}

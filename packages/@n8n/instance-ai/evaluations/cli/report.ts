@@ -75,7 +75,7 @@ interface ResultRecord {
 	prompt: string;
 	dos?: string;
 	donts?: string;
-	workflow: unknown | null;
+	workflow: unknown;
 	build: {
 		success: boolean;
 		errorClass?: string;
@@ -229,6 +229,10 @@ function formatJson(value: unknown): string {
 	try {
 		return JSON.stringify(value, null, 2);
 	} catch {
+		// Fallback when `value` is non-serialisable (e.g. has a circular ref).
+		// `String(value)` may produce '[object Object]' but it's the only way
+		// to surface *something* in the report instead of throwing.
+		// eslint-disable-next-line @typescript-eslint/no-base-to-string
 		return String(value);
 	}
 }

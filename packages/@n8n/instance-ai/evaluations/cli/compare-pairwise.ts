@@ -35,7 +35,7 @@ export interface BuilderRecord {
 	exampleId?: string;
 	dos?: string;
 	donts?: string;
-	workflow: unknown | null;
+	workflow: unknown;
 	durationMs: number;
 	success: boolean;
 	errorClass?: string;
@@ -77,7 +77,7 @@ interface IAResultRecord {
 	prompt: string;
 	dos?: string;
 	donts?: string;
-	workflow: unknown | null;
+	workflow: unknown;
 	build: {
 		success: boolean;
 		errorClass?: string;

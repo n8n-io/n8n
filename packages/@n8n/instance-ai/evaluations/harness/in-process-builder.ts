@@ -20,6 +20,14 @@
 // first suspension and the builder never completes.
 // ---------------------------------------------------------------------------
 
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await */
+// `normalizeWorkflow` returns `SimpleWorkflow`, imported transitively from
+// `ai-workflow-builder.ee` whose `@/*` alias collides with instance-ai's own
+// `@/*` mapping; the type resolves to `error` here even though runtime is
+// correct. The `waitForConfirmation` callback must be async to satisfy the
+// resumable-stream control contract even though the auto-approve path has
+// nothing to await.
+
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { InMemoryStore } from '@mastra/core/storage';
