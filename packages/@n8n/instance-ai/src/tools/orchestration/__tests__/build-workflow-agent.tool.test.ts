@@ -189,7 +189,7 @@ describe('resultFromPostStreamError', () => {
 		expect(result).toBeUndefined();
 	});
 
-	it('preserves an earlier successful main-path submit when a later submit failed', () => {
+	it('does not preserve an earlier main-path submit when a later submit failed with code-fixable remediation', () => {
 		const submitAttempts: SubmitWorkflowAttempt[] = [
 			{
 				filePath: MAIN_PATH,
@@ -202,6 +202,44 @@ describe('resultFromPostStreamError', () => {
 				sourceHash: 'b',
 				success: false,
 				errors: ['validation failed'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			},
+		];
+
+		const result = resultFromPostStreamError({
+			error: new Error('Unauthorized'),
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeUndefined();
+	});
+
+	it('preserves an earlier main-path submit when a later submit failed with terminal remediation', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['setup required'],
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Stop editing and route to setup.',
+				}),
 			},
 		];
 
@@ -221,7 +259,7 @@ describe('resultFromPostStreamError', () => {
 		});
 	});
 
-	it('preserves an earlier saved workflow when the final submit attempt failed', () => {
+	it('preserves an earlier saved workflow when the final submit attempt failed with terminal remediation', () => {
 		const submitAttempts: SubmitWorkflowAttempt[] = [
 			{
 				filePath: MAIN_PATH,
@@ -233,7 +271,12 @@ describe('resultFromPostStreamError', () => {
 				filePath: MAIN_PATH,
 				sourceHash: 'b',
 				success: false,
-				errors: ['validation failed after later edit'],
+				errors: ['setup required after later edit'],
+				remediation: createRemediation({
+					category: 'needs_setup',
+					shouldEdit: false,
+					guidance: 'Stop editing and route to setup.',
+				}),
 			},
 		];
 
@@ -254,6 +297,39 @@ describe('resultFromPostStreamError', () => {
 			workflowId: 'WF_123',
 			submitted: true,
 		});
+	});
+
+	it('does not preserve an earlier saved workflow when the final submit failure is code-fixable', () => {
+		const submitAttempts: SubmitWorkflowAttempt[] = [
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'a',
+				success: true,
+				workflowId: 'WF_123',
+			},
+			{
+				filePath: MAIN_PATH,
+				sourceHash: 'b',
+				success: false,
+				errors: ['validation failed after later edit'],
+				remediation: createRemediation({
+					category: 'code_fixable',
+					shouldEdit: true,
+					guidance: 'Fix code and resubmit.',
+				}),
+			},
+		];
+
+		const result = resultFromLaterFailedMainSubmit({
+			failedAttempt: submitAttempts[1],
+			submitAttempts,
+			mainWorkflowPath: MAIN_PATH,
+			workItemId: 'wi_test',
+			runId: 'run_test',
+			taskId: 'task_test',
+		});
+
+		expect(result).toBeUndefined();
 	});
 
 	it('marks unresolved placeholder submits as saved workflows needing setup', () => {

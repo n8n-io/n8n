@@ -303,12 +303,25 @@ function latestSuccessfulMainSubmit(
 	return undefined;
 }
 
+function latestMainSubmit(
+	submitAttempts: SubmitWorkflowAttempt[],
+	mainWorkflowPath: string,
+): SubmitWorkflowAttempt | undefined {
+	for (let i = submitAttempts.length - 1; i >= 0; i--) {
+		const attempt = submitAttempts[i];
+		if (attempt.filePath === mainWorkflowPath) {
+			return attempt;
+		}
+	}
+	return undefined;
+}
+
 /**
  * When the builder's stream errors mid-run, recover a successful-submit outcome
  * from the submit-attempt history so the orchestrator doesn't redo a build that
- * already produced a workflow. Scans in reverse so a later failed submit for
- * the main path cannot mask an earlier success. Returns undefined when nothing
- * was successfully submitted yet — the caller should rethrow in that case.
+ * already produced a workflow. A later main-path submit failure is only
+ * recoverable when remediation has already determined that more code edits
+ * should stop; code-fixable validation/build failures must surface as failures.
  */
 export function resultFromPostStreamError(input: {
 	error: unknown;
@@ -318,7 +331,14 @@ export function resultFromPostStreamError(input: {
 	runId: string;
 	taskId: string;
 }): { text: string; outcome: WorkflowBuildOutcome } | undefined {
-	const attempt = latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath);
+	const latestAttempt = latestMainSubmit(input.submitAttempts, input.mainWorkflowPath);
+	if (!latestAttempt) return undefined;
+
+	const attempt = latestAttempt.success
+		? latestAttempt
+		: shouldRecoverSavedWorkflowAfterFailedSubmit(latestAttempt)
+			? latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath)
+			: undefined;
 	if (!attempt) return undefined;
 
 	const errorText = input.error instanceof Error ? input.error.message : String(input.error);
@@ -337,6 +357,8 @@ export function resultFromLaterFailedMainSubmit(input: {
 	runId: string;
 	taskId: string;
 }): { text: string; outcome: WorkflowBuildOutcome } | undefined {
+	if (!shouldRecoverSavedWorkflowAfterFailedSubmit(input.failedAttempt)) return undefined;
+
 	const preservedAttempt = latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath);
 	if (!preservedAttempt) return undefined;
 
