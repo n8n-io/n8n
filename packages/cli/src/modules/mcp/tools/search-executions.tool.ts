@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
 import { getMcpWorkflow } from './workflow-validation.utils';
@@ -150,16 +151,18 @@ export const createSearchExecutionsTool = (
 				structuredContent: payload,
 				content: [{ type: 'text', text: JSON.stringify(payload) }],
 			};
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+		} catch (er) {
+			const error = er instanceof Error ? er : new Error(String(er));
+			const isAccessError = error instanceof WorkflowAccessError;
 
 			telemetryPayload.results = {
 				success: false,
-				error: errorMessage,
+				error: error.message,
+				error_reason: isAccessError ? error.reason : undefined,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data: [], count: 0, estimated: false, error: errorMessage };
+			const output = { data: [], count: 0, estimated: false, error: error.message };
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output) }],
 				structuredContent: output,
