@@ -64,8 +64,23 @@ function resolveHostDepVersion(name: string): string {
  *      `npm install` RUN layer's hash changes, and the sandbox service
  *      rebuilds the image. Floating `'*'` never changes the bytes, so stale
  *      images are reused indefinitely.
+ *
+ * When `N8N_INSTANCE_AI_SANDBOX_LINK_SDK=1` is set we deliberately fall
+ * back to `latest` instead of the host version. The image's npm install
+ * runs *before* the host SDK can be packed and uploaded, so a host version
+ * that has not been published yet (e.g., a dev's freshly-bumped workspace
+ * version) would otherwise fail the image build with `npm install` non-zero.
+ * Both invariants above are intentionally relaxed in this mode: cache
+ * stability is irrelevant for dev iteration, and the post-creation
+ * `--force` install overrides whichever `latest` resolved to.
  */
-const SANDBOX_SDK_VERSION = resolveHostDepVersion('@n8n/workflow-sdk');
+const SANDBOX_SDK_VERSION = resolveSandboxSdkVersion();
+
+function resolveSandboxSdkVersion(): string {
+	const linkFlag = process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
+	if (linkFlag === '1' || linkFlag === 'true') return 'latest';
+	return resolveHostDepVersion('@n8n/workflow-sdk');
+}
 const SANDBOX_TSX_VERSION = resolveHostDepVersion('tsx');
 
 /**

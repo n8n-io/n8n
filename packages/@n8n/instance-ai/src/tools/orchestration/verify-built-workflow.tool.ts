@@ -21,6 +21,39 @@ import type {
 	WorkflowBuildOutcome,
 } from '../../workflow-loop/workflow-loop-state';
 
+const DEFAULT_NODE_PREVIEW_CHARS = 600;
+
+function stringifyForToolOutput(value: unknown): string {
+	if (typeof value === 'string') return value;
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function unwrapUntrustedData(value: string): unknown {
+	const match = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/i.exec(value);
+	if (!match) return value;
+	const content = match[1];
+	if (content === undefined) return value;
+
+	try {
+		const parsed: unknown = JSON.parse(content);
+		return parsed;
+	} catch {
+		return value;
+	}
+}
+
+function outputForInspection(nodeOutput: unknown): unknown {
+	return typeof nodeOutput === 'string' ? unwrapUntrustedData(nodeOutput) : nodeOutput;
+}
+
 interface DataTableWriteNode {
 	nodeName: string;
 	dataTableId: string;
@@ -82,13 +115,14 @@ async function extractDataTableWriteNodes(
 function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
 	const ids: number[] = [];
 	const visit = (value: unknown): void => {
-		if (!value) return;
-		if (Array.isArray(value)) {
-			for (const item of value) visit(item);
+		const inspected = outputForInspection(value);
+		if (!inspected) return;
+		if (Array.isArray(inspected)) {
+			for (const item of inspected) visit(item);
 			return;
 		}
-		if (typeof value !== 'object') return;
-		const row = value as Record<string, unknown>;
+		if (!isRecord(inspected)) return;
+		const row = inspected;
 		if (row.json !== undefined) {
 			visit(row.json);
 			return;
@@ -98,6 +132,76 @@ function extractRowIdsFromNodeOutput(nodeOutput: unknown): number[] {
 	};
 	visit(nodeOutput);
 	return ids;
+}
+
+function getCountFromMetadata(value: unknown): number | undefined {
+	if (!isRecord(value)) return undefined;
+
+	for (const key of ['totalItems', '_itemCount']) {
+		const count = value[key];
+		if (typeof count === 'number' && Number.isFinite(count) && count >= 0) {
+			return count;
+		}
+	}
+
+	return undefined;
+}
+
+function countOutputItems(nodeOutput: unknown): number | undefined {
+	const output = outputForInspection(nodeOutput);
+	if (Array.isArray(output)) return output.length;
+	const metadataCount = getCountFromMetadata(output);
+	if (metadataCount !== undefined) return metadataCount;
+	if (output === undefined || output === null) return 0;
+	return 1;
+}
+
+function previewValue(value: unknown, maxChars: number): { preview: string; truncated: boolean } {
+	const serialized = stringifyForToolOutput(value);
+	if (maxChars <= 0) {
+		return { preview: '', truncated: serialized.length > 0 };
+	}
+	if (serialized.length <= maxChars) {
+		return { preview: serialized, truncated: false };
+	}
+	return { preview: `${serialized.slice(0, maxChars)}...`, truncated: true };
+}
+
+function buildNodePreviews(
+	resultData: Record<string, unknown> | undefined,
+	maxChars: number,
+): Array<{
+	nodeName: string;
+	itemCount?: number;
+	preview: string;
+	truncated: boolean;
+	chars: number;
+}> {
+	if (!resultData) return [];
+
+	return Object.entries(resultData).map(([nodeName, nodeOutput]) => {
+		const serialized = stringifyForToolOutput(nodeOutput);
+		const preview = previewValue(nodeOutput, maxChars);
+		return {
+			nodeName,
+			itemCount: countOutputItems(nodeOutput),
+			preview: preview.preview,
+			truncated: preview.truncated,
+			chars: serialized.length,
+		};
+	});
+}
+
+function countProducedOutputRows(
+	resultData: Record<string, unknown> | undefined,
+): number | undefined {
+	if (!resultData) return undefined;
+	let count = 0;
+	for (const nodeOutput of Object.values(resultData)) {
+		const itemCount = countOutputItems(nodeOutput);
+		if (itemCount !== undefined) count += itemCount;
+	}
+	return count;
 }
 
 /**
@@ -270,6 +374,17 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.max(600_000)
 		.optional()
 		.describe('Max wait time in milliseconds (default 300000)'),
+	includeData: z
+		.boolean()
+		.optional()
+		.describe('Set true only when you need the full execution data payload. Default false.'),
+	maxDataChars: z
+		.number()
+		.int()
+		.min(0)
+		.max(20_000)
+		.optional()
+		.describe('Max characters per node preview in the compact response (default 600).'),
 });
 
 const remediationOutputSchema = z
@@ -372,6 +487,18 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			executionId: z.string().optional(),
 			success: z.boolean(),
 			status: z.enum(['running', 'success', 'error', 'waiting', 'unknown']).optional(),
+			nodesExecuted: z.array(z.string()).optional(),
+			nodePreviews: z
+				.array(
+					z.object({
+						nodeName: z.string(),
+						itemCount: z.number().optional(),
+						preview: z.string(),
+						truncated: z.boolean(),
+						chars: z.number(),
+					}),
+				)
+				.optional(),
 			data: z.record(z.unknown()).optional(),
 			error: z.string().optional(),
 			remediation: remediationOutputSchema,
@@ -419,6 +546,24 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				};
 			}
 
+			if (!buildOutcome.workflowId) {
+				return {
+					success: false,
+					error: `Build outcome ${input.workItemId} does not include a workflow ID.`,
+				};
+			}
+
+			if (buildOutcome.workflowId !== input.workflowId) {
+				return {
+					success: false,
+					error:
+						`Build outcome ${input.workItemId} belongs to workflow ${buildOutcome.workflowId}, ` +
+						`but verification was requested for workflow ${input.workflowId}.`,
+				};
+			}
+
+			const workflowId = buildOutcome.workflowId;
+
 			// Pre-verify: enumerate the dataTable write nodes in the workflow and
 			// snapshot current row IDs for each insert-touched table. The delete
 			// set comes from each insert node's own output after verify (so
@@ -428,7 +573,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			// `cleanupInsertedRowsByNodeOutput` for the rationale.
 			const writeNodes = await extractDataTableWriteNodes(
 				context.domainContext.workflowService,
-				input.workflowId,
+				workflowId,
 			);
 			const preSnapshots = await snapshotRowIdsPerTable(
 				context.domainContext.dataTableService,
@@ -436,14 +581,10 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				context.logger,
 			);
 
-			const result = await context.domainContext.executionService.run(
-				input.workflowId,
-				input.inputData,
-				{
-					timeout: input.timeout,
-					pinData: buildOutcome.verificationPinData as Record<string, unknown[]> | undefined,
-				},
-			);
+			const result = await context.domainContext.executionService.run(workflowId, input.inputData, {
+				timeout: input.timeout,
+				pinData: buildOutcome.verificationPinData as Record<string, unknown[]> | undefined,
+			});
 
 			// Treat `waiting` as success when the workflow produced output and recorded
 			// no error. `waiting` is a terminal-ish state for several legitimate flows:
@@ -490,6 +631,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						failureSignature: success ? undefined : result.error,
 						evidence: {
 							nodesExecuted: nodesExecuted && nodesExecuted.length > 0 ? nodesExecuted : undefined,
+							producedOutputRows: countProducedOutputRows(result.data),
 							errorMessage: success ? undefined : result.error,
 						},
 						verifiedAt: new Date().toISOString(),
@@ -502,7 +644,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			if (cleanedRows > 0) {
 				context.logger.debug?.('verify-built-workflow: cleaned up inserted rows', {
 					workItemId: input.workItemId,
-					workflowId: input.workflowId,
+					workflowId,
 					cleanedRows,
 				});
 			}
@@ -512,7 +654,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 					await context.workflowTaskService.reportVerificationVerdict({
 						workItemId: input.workItemId,
 						runId: context.runId,
-						workflowId: input.workflowId,
+						workflowId,
 						executionId: result.executionId || undefined,
 						verdict:
 							remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
@@ -524,7 +666,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				} catch (error) {
 					context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
 						workItemId: input.workItemId,
-						workflowId: input.workflowId,
+						workflowId,
 						error: error instanceof Error ? error.message : String(error),
 					});
 				}
@@ -533,7 +675,7 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 						thread_id: context.threadId,
 						run_id: context.runId,
 						work_item_id: input.workItemId,
-						workflow_id: input.workflowId,
+						workflow_id: workflowId,
 						category: remediation.category,
 						attempt_count: remediation.attemptCount,
 						reason: remediation.reason,
@@ -541,17 +683,21 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				} catch (error) {
 					context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
 						workItemId: input.workItemId,
-						workflowId: input.workflowId,
+						workflowId,
 						error: error instanceof Error ? error.message : String(error),
 					});
 				}
 			}
 
+			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
+			const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
 			return {
 				executionId: result.executionId || undefined,
 				success,
 				status: result.status,
-				data: result.data,
+				nodesExecuted,
+				nodePreviews: buildNodePreviews(result.data, maxDataChars),
+				...(input.includeData ? { data: result.data } : {}),
 				error: result.error,
 				remediation,
 				guidance: remediation?.guidance,

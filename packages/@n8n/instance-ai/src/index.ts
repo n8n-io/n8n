@@ -79,6 +79,8 @@ export type {
 	ManagedBackgroundTask,
 	SpawnManagedBackgroundTaskOptions,
 } from './runtime/background-task-manager';
+export { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
+export type { BuilderSandboxSession } from './runtime/builder-sandbox-session-registry';
 export { RunStateRegistry } from './runtime/run-state-registry';
 export type {
 	ActiveRunState,

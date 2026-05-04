@@ -48,7 +48,7 @@ function loadSetupSandboxWorkspaceWithFsMocks(
 
 	let sandboxSetup: { setupSandboxWorkspace: SetupSandboxWorkspace } | undefined;
 	jest.isolateModules(() => {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		sandboxSetup = require('../sandbox-setup') as {
 			setupSandboxWorkspace: SetupSandboxWorkspace;
 		};
