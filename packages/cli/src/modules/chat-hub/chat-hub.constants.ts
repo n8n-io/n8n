@@ -3,6 +3,7 @@ import type {
 	ChatHubVectorStoreProvider,
 	ChatModelMetadataDto,
 } from '@n8n/api-types';
+import { getParseableAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { ExecutionStatus, INodeTypeNameVersion } from 'n8n-workflow';
 import {
 	CHAT_HUB_VECTOR_STORE_PG_VECTOR_NODE_TYPE,
@@ -682,30 +683,40 @@ const TEXT_APPLICATION_MIME_TYPES = [
 	'application/rtf',
 ];
 
-/** Resolves inputModalities into MIME type string for the API response */
+/**
+ * Resolves inputModalities into a MIME-type allow-list for the API response.
+ *
+ * The `'file'` modality used to map to wildcard-everything, which let any
+ * file type through, including binaries we cannot extract content from
+ * (.docx, .xlsx, .zip). It now resolves to the curated list of formats we
+ * have parsers for, plus media types declared via the other modalities.
+ */
 function resolveAllowedMimeTypes(modalities: ChatHubInputModality[]): string {
-	if (modalities.includes('file')) {
-		return '*/*';
-	}
+	const mimeTypes = new Set<string>();
 
-	const mimeTypes: string[] = [];
+	if (modalities.includes('file')) {
+		// Parsers handle these (csv, json, pdf, docx, xlsx, html, etc.)
+		for (const mt of getParseableAttachmentMimeTypes()) mimeTypes.add(mt);
+	}
 
 	for (const modality of modalities) {
 		if (modality === 'text') {
-			mimeTypes.push('text/*', ...TEXT_COMMON_MIME_TYPES, ...TEXT_APPLICATION_MIME_TYPES);
+			mimeTypes.add('text/*');
+			for (const mt of TEXT_COMMON_MIME_TYPES) mimeTypes.add(mt);
+			for (const mt of TEXT_APPLICATION_MIME_TYPES) mimeTypes.add(mt);
 		}
 		if (modality === 'image') {
-			mimeTypes.push('image/*');
+			mimeTypes.add('image/*');
 		}
 		if (modality === 'audio') {
-			mimeTypes.push('audio/*');
+			mimeTypes.add('audio/*');
 		}
 		if (modality === 'video') {
-			mimeTypes.push('video/*');
+			mimeTypes.add('video/*');
 		}
 	}
 
-	return mimeTypes.join(',');
+	return [...mimeTypes].join(',');
 }
 
 export function getModelMetadata(

@@ -17,6 +17,10 @@ jest.mock('@n8n/instance-ai', () => ({
 	})),
 }));
 
+// The controller imports validation helpers via the parsers subpath so they
+// don't pull in Mastra. Re-export the real implementation for the test.
+jest.mock('@n8n/instance-ai/parsers', () => jest.requireActual('@n8n/instance-ai/parsers'));
+
 jest.mock('../eval/execution.service', () => ({
 	EvalExecutionService: jest.fn(),
 }));
@@ -191,6 +195,40 @@ describe('InstanceAiController', () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
 
 			await expect(controller.chat(req, res, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
+		});
+
+		it('should reject unsupported attachment types before starting a run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			const badPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [{ data: '', mimeType: 'application/zip', fileName: 'archive.zip' }],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, badPayload)).rejects.toMatchObject({
+				message: expect.stringContaining('archive.zip'),
+			});
+			expect(instanceAiService.startRun).not.toHaveBeenCalled();
+		});
+
+		it('should accept supported attachment types and start the run', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-3');
+			const goodPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'see attached',
+				attachments: [
+					{ data: '', mimeType: 'application/pdf', fileName: 'doc.pdf' },
+					{ data: '', mimeType: 'image/png', fileName: 'photo.png' },
+				],
+				timeZone: 'UTC',
+			});
+
+			await expect(controller.chat(req, res, THREAD_ID, goodPayload)).resolves.toEqual({
+				runId: 'run-3',
+			});
+			expect(instanceAiService.startRun).toHaveBeenCalled();
 		});
 	});
 

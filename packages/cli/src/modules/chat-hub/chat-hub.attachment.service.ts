@@ -24,6 +24,11 @@ export class ChatHubAttachmentService {
 	/**
 	 * Validates that attachments conform to the model's upload policy.
 	 * Throws BadRequestError if uploads are disallowed or a MIME type is rejected.
+	 *
+	 * An empty `allowedFilesMimeTypes` string is treated as "no restriction"
+	 * (legacy/custom-agent escape hatch). For LLM-provider models the resolver
+	 * always returns a curated list, so the no-restriction branch is not used
+	 * in normal flows.
 	 */
 	validateAttachments(
 		attachments: ChatAttachment[],
@@ -41,7 +46,8 @@ export class ChatHubAttachmentService {
 		for (const attachment of attachments) {
 			if (!this.isAllowedMimeType(attachment.mimeType, allowedFilesMimeTypes)) {
 				throw new BadRequestError(
-					`File type "${attachment.mimeType}" is not allowed. Allowed types: ${allowedFilesMimeTypes}`,
+					`File type "${attachment.mimeType}" is not allowed for "${attachment.fileName}". ` +
+						`Allowed types: ${allowedFilesMimeTypes}`,
 				);
 			}
 		}

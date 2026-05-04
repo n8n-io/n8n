@@ -34,6 +34,7 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
 import { EvalExecutionService } from './eval/execution.service';
@@ -132,6 +133,21 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
 			throw new BadRequestError('Either message or attachments must be provided');
+		}
+
+		if (payload.attachments && payload.attachments.length > 0) {
+			try {
+				validateAttachmentMimeTypes(payload.attachments);
+			} catch (error) {
+				if (error instanceof UnsupportedAttachmentError) {
+					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
+					throw new BadRequestError(
+						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
+							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				throw error;
+			}
 		}
 
 		// Verify the requesting user owns this thread (or it's new)

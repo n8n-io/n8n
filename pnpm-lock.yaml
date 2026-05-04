@@ -1648,6 +1648,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      mammoth:
+        specifier: 1.11.0
+        version: 1.11.0
       n8n-workflow:
         specifier: workspace:*
         version: link:../../workflow
@@ -1663,6 +1666,9 @@ importers:
       turndown:
         specifier: ^7.2.0
         version: 7.2.2
+      xlsx:
+        specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
+        version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
       zod:
         specifier: 3.25.67
         version: 3.25.67

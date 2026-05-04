@@ -25,7 +25,17 @@
       "import": "./src/index.ts",
       "types": "./dist/index.d.ts"
     },
+    "./parsers": {
+      "require": "./dist/parsers/index.js",
+      "import": "./src/parsers/index.ts",
+      "types": "./dist/parsers/index.d.ts"
+    },
     "./evaluations": "./evaluations/index.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "parsers": ["dist/parsers/index.d.ts"]
+    }
   },
   "dependencies": {
     "@daytonaio/sdk": "0.149.0",
@@ -42,9 +52,11 @@
     "linkedom": "^0.18.9",
     "luxon": "catalog:",
     "csv-parse": "5.5.0",
+    "mammoth": "1.11.0",
     "nanoid": "catalog:",
     "p-limit": "^3.1.0",
     "pdf-parse": "^1.1.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "turndown": "^7.2.0",
     "zod": "catalog:",
     "@ai-sdk/provider-v5": "npm:@ai-sdk/provider@2.0.0",

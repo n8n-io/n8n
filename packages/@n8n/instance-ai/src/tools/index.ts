@@ -1,4 +1,4 @@
-import { isStructuredAttachment } from '../parsers/structured-file-parser';
+import { isParseableAttachment } from '../parsers/structured-file-parser';
 import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
@@ -38,7 +38,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
-		...(context.currentUserAttachments?.some(isStructuredAttachment)
+		...(context.currentUserAttachments?.some(isParseableAttachment)
 			? { 'parse-file': createParseFileTool(context) }
 			: {}),
 	};

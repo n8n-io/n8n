@@ -109,6 +109,23 @@ function onAttach() {
 	activePromptRef.value?.fileInputRef?.click();
 }
 
+function isMimeTypeAllowed(mimeType: string, allowed: string): boolean {
+	if (!allowed || allowed === '*/*') return true;
+	const patterns = allowed
+		.split(',')
+		.map((p) => p.trim())
+		.filter(Boolean);
+	for (const pattern of patterns) {
+		if (pattern === mimeType) return true;
+		if (pattern.endsWith('/*')) {
+			const prefix = pattern.slice(0, pattern.indexOf('/'));
+			if (mimeType.startsWith(`${prefix}/`)) return true;
+		}
+		// Match extension-based entries (".pdf", ".docx") against the file extension elsewhere.
+	}
+	return false;
+}
+
 function handleFileSelect(e: Event) {
 	const target = e.target as HTMLInputElement;
 	const files = target.files;
@@ -117,9 +134,30 @@ function handleFileSelect(e: Event) {
 		return;
 	}
 
-	// Store File objects directly instead of converting to base64
+	const allowed = props.selectedModel?.metadata.allowedFilesMimeTypes ?? '';
+	const accepted: File[] = [];
+	const rejected: File[] = [];
+
 	for (const file of Array.from(files)) {
+		if (isMimeTypeAllowed(file.type, allowed)) {
+			accepted.push(file);
+		} else {
+			rejected.push(file);
+		}
+	}
+
+	for (const file of accepted) {
 		attachments.value.push(file);
+	}
+
+	for (const file of rejected) {
+		toast.showMessage({
+			type: 'warning',
+			title: i18n.baseText('chatHub.chat.attachments.unsupported.title'),
+			message: i18n.baseText('chatHub.chat.attachments.unsupported.toast', {
+				interpolate: { fileName: file.name },
+			}),
+		});
 	}
 
 	// Reset input
