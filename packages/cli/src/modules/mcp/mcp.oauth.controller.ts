@@ -13,6 +13,7 @@ import { UrlService } from '@/services/url.service';
 
 import { McpOAuthService, SUPPORTED_SCOPES } from './mcp-oauth-service';
 import { MCP_ACCESS_DISABLED_ERROR_MESSAGE } from './mcp.constants';
+import { buildMcpClientLimitReachedMessage } from './mcp.errors';
 import { McpSettingsService } from './mcp.settings.service';
 
 const mcpOAuthService = Container.get(McpOAuthService);
@@ -34,18 +35,22 @@ const mcpEnabledGuard: RequestHandler = async (_req, res, next) => {
 };
 
 /**
- * Pre-check guard for the unauthenticated DCR endpoint. Returns a structured
- * 503 with a descriptive `error_description` when the instance is at the
- * registered-client cap, so clients get a meaningful error instead of the
- * SDK's generic 500 server_error.
+ * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
+ * a structured `server_error` response when the instance is at the
+ * registered-client cap. The post-insert rollback in `enforceClientLimit`
+ * throws `McpClientLimitReachedError` (a `ServerError` subclass) so the SDK
+ * surfaces the same body shape on the race path. Both paths return HTTP 500
+ * because the SDK's register handler hardcodes 500 for `ServerError`.
  */
 const mcpClientLimitGuard: RequestHandler = async (_req, res, next) => {
 	if (await mcpOAuthService.isClientLimitReached()) {
 		const limit = globalConfig.endpoints.mcpMaxRegisteredClients;
-		logger.warn('MCP OAuth client registration rejected: instance limit reached', { limit });
-		res.status(503).json({
+		logger.warn('MCP OAuth client registration rejected: instance limit reached (pre-check)', {
+			limit,
+		});
+		res.status(500).json({
 			error: 'server_error',
-			error_description: `This n8n instance has reached its maximum of ${limit} registered MCP clients. Ask an administrator to revoke unused clients or raise N8N_MCP_MAX_REGISTERED_CLIENTS.`,
+			error_description: buildMcpClientLimitReachedMessage(limit),
 		});
 		return;
 	}

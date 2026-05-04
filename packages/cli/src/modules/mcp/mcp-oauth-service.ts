@@ -19,6 +19,7 @@ import { OAuthClientRepository } from './database/repositories/oauth-client.repo
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { McpClientLimitReachedError } from './mcp.errors';
 import { OAuthSessionService } from './oauth-session.service';
 
 export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
@@ -100,17 +101,21 @@ export class McpOAuthService implements OAuthServerProvider {
 	/**
 	 * Check count after insert to avoid race condition between count() and insert().
 	 * If over limit, rolls back by deleting the just-inserted client.
+	 *
+	 * Throws `McpClientLimitReachedError` (a `ServerError` subclass), which the
+	 * MCP SDK's register handler will surface as a 500 with our descriptive body
+	 * — matching the response shape of the pre-check guard at the route layer.
 	 */
 	private async enforceClientLimit(clientId: string): Promise<void> {
 		const clientCount = await this.oauthClientRepository.count();
 		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
 		if (clientCount > limit) {
 			await this.oauthClientRepository.delete({ id: clientId });
-			this.logger.warn('MCP OAuth client registration rejected: instance limit reached', {
-				limit,
-				clientCount,
-			});
-			throw new Error(`Maximum number of registered clients (${limit}) reached`);
+			this.logger.warn(
+				'MCP OAuth client registration rejected: instance limit reached (post-insert rollback)',
+				{ limit, clientCount },
+			);
+			throw new McpClientLimitReachedError(limit);
 		}
 	}
 
