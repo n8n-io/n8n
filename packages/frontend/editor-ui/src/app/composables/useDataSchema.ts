@@ -26,9 +26,10 @@ import {
 	type ITaskDataConnections,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { DATA_TYPE_ICON_MAP } from '@/app/constants';
+import { DEFAULT_SETTINGS } from '../stores/workflowDocument/useWorkflowDocumentSettings';
 
 export function useDataSchema() {
 	function getSchema(
@@ -554,6 +555,11 @@ export const useFlattenSchema = () => {
 				return acc;
 			}
 
+			const workflowsStore = useWorkflowsStore();
+			const workflowDocumentStore = computed(() =>
+				useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+			);
+
 			acc = acc.concat(
 				flattenSchema({
 					isDataEmpty: item.isDataEmpty,
@@ -567,7 +573,9 @@ export const useFlattenSchema = () => {
 					expressionPrefix: getNodeParentExpression({
 						nodeName: item.node.name,
 						distanceFromActive: item.depth,
-						binaryMode: useWorkflowsStore().workflow.settings?.binaryMode,
+						binaryMode:
+							workflowDocumentStore.value.getSettingsSnapshot().binaryMode ??
+							DEFAULT_SETTINGS.binaryMode,
 					}),
 				}),
 			);

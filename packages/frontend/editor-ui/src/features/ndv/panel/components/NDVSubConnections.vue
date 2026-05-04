@@ -64,7 +64,9 @@ const nodeData = computed(
 const ndvStore = useNDVStore();
 
 const workflowObjectAccessors = computed(() =>
-	workflowDocumentStore?.value ? workflowDocumentStore.value.getSnapshot() : undefined,
+	workflowDocumentStore?.value
+		? workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot()
+		: undefined,
 );
 
 const nodeInputIssues = computed(() => {
