@@ -12,10 +12,12 @@ import {
 	type TaskList,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ErrorReporter } from 'n8n-core';
 import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
+
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UrlService } from '@/services/url.service';
@@ -185,7 +187,7 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 
 @Service()
 export class InstanceAiService {
-	private readonly mcpClientManager = new McpClientManager();
+	private readonly mcpClientManager: McpClientManager;
 
 	private readonly instanceAiConfig: InstanceAiConfig;
 
@@ -271,6 +273,8 @@ export class InstanceAiService {
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
+		ssrfProtectionConfig: SsrfProtectionConfig,
+		ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -279,6 +283,16 @@ export class InstanceAiService {
 		const restEndpoint = globalConfig.endpoints.rest;
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
+
+		// MCP URL validation reuses the global SSRF policy, but only when the
+		// admin has opted in via N8N_SSRF_PROTECTION_ENABLED. Mirrors how
+		// workflow URL imports and the HTTP Request node treat the same flag
+		// (workflow-execute-additional-data.ts:557, workflows.controller.ts:702).
+		// Protocol whitelisting is always-on regardless of this flag — see
+		// McpClientManager.validateConfigs.
+		this.mcpClientManager = new McpClientManager(
+			ssrfProtectionConfig.enabled ? ssrfProtectionService : undefined,
+		);
 
 		this.startConfirmationTimeoutSweep();
 	}
