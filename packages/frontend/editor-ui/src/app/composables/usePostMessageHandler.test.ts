@@ -130,6 +130,7 @@ describe('usePostMessageHandler', () => {
 			const { setup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -142,6 +143,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -155,6 +157,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -172,6 +175,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 
 			setup();
@@ -192,6 +196,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -215,6 +220,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -246,6 +252,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -277,6 +284,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -305,6 +313,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -330,6 +339,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -352,6 +362,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -385,6 +396,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -421,6 +433,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: storeRef,
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -452,6 +465,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -481,6 +495,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -508,6 +523,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -553,6 +569,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -587,6 +604,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: storeRef,
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -627,6 +645,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: storeRef,
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -662,6 +681,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -689,6 +709,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -730,6 +751,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 
@@ -747,6 +769,7 @@ describe('usePostMessageHandler', () => {
 			const { setup, cleanup } = usePostMessageHandler({
 				workflowState,
 				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
 			});
 			setup();
 

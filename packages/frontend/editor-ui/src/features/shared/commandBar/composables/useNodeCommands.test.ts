@@ -14,6 +14,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { createTestNode } from '@/__tests__/mocks';
 
 vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
@@ -228,18 +229,18 @@ describe('useNodeCommands', () => {
 		it('should populate open node children with workflow nodes', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
 			store.setNodes([
-				{
+				createTestNode({
 					id: 'node-1',
 					name: 'Start',
 					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
-				} as never,
-				{
+				}),
+				createTestNode({
 					id: 'node-2',
 					name: 'HTTP Request',
 					type: 'n8n-nodes-base.httpRequest',
 					typeVersion: 1,
-				} as never,
+				}),
 			]);
 
 			const { commands } = useNodeCommands({
@@ -309,12 +310,12 @@ describe('useNodeCommands', () => {
 		beforeEach(() => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('123'));
 			store.setNodes([
-				{
+				createTestNode({
 					id: 'node-1',
 					name: 'Start',
 					type: 'n8n-nodes-base.manualTrigger',
 					typeVersion: 1,
-				} as never,
+				}),
 			]);
 		});
 

@@ -503,6 +503,17 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 			return entity;
 		});
 		const saved = await this.messageRepo.save(entities);
+
+		// Bump updatedAt on each parent thread so the chat list orders by last
+		// activity. Without this, an existing thread that receives a new message
+		// keeps its original updatedAt and stays buried in the "Older" group.
+		const threadIds = [
+			...new Set(messages.map((m) => m.threadId).filter((id): id is string => !!id)),
+		];
+		if (threadIds.length > 0) {
+			await this.threadRepo.update(threadIds, { updatedAt: new Date() });
+		}
+
 		return { messages: saved.map((e) => this.entityToMessage(e)) };
 	}
 

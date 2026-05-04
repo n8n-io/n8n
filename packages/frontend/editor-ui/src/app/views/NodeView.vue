@@ -292,7 +292,7 @@ const isCanvasReadOnly = computed(() => {
 		isReadOnlyEnvironment.value ||
 		collaborationStore.shouldBeReadOnly ||
 		!(workflowPermissions.value.update ?? projectPermissions.value.workflow.update) ||
-		workflowDocumentStore?.value?.isArchived ||
+		(workflowDocumentStore?.value?.isArchived ?? false) ||
 		(builderStore.streaming && !builderStore.isHelpStreaming)
 	);
 });
@@ -611,6 +611,10 @@ function removeWorkflowSavedEventBindings() {
 
 async function onCreateWorkflow() {
 	await router.push({ name: VIEWS.NEW_WORKFLOW });
+}
+
+async function onSaveWorkflow() {
+	await workflowSaving.saveCurrentWorkflow({});
 }
 
 function onRenameNode(name: string) {
@@ -1844,6 +1848,7 @@ onBeforeUnmount(() => {
 			@cut:nodes="onCutNodes"
 			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
+			@save:workflow="onSaveWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"
