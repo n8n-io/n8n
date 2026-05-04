@@ -205,6 +205,59 @@ describe('AgentsService', () => {
 			).rejects.toThrow('Invalid agent config: Missing skill bodies: missing_skill');
 			expect(agentRepository.save).not.toHaveBeenCalled();
 		});
+
+		it('rejects an active schedule integration when the agent is unpublished', async () => {
+			const configWithActiveSchedule = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				integrations: [
+					{
+						type: 'schedule',
+						active: true,
+						cronExpression: '0 9 * * *',
+						wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+					},
+				],
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithActiveSchedule,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ publishedVersion: null }));
+
+			await expect(
+				service.updateConfig(agentId, projectId, configWithActiveSchedule),
+			).rejects.toThrow(
+				'Invalid agent config: schedule integration cannot be active until the agent is published',
+			);
+			expect(agentRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('allows an inactive schedule integration on an unpublished agent', async () => {
+			const configWithInactiveSchedule = {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				integrations: [
+					{
+						type: 'schedule',
+						active: false,
+						cronExpression: '0 9 * * *',
+						wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+					},
+				],
+			} as AgentJsonConfig;
+			jest.spyOn(service, 'validateConfig').mockResolvedValue({
+				valid: true,
+				config: configWithInactiveSchedule,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent({ publishedVersion: null }));
+
+			await expect(
+				service.updateConfig(agentId, projectId, configWithInactiveSchedule),
+			).resolves.toBeDefined();
+		});
 	});
 
 	describe('publishAgent', () => {

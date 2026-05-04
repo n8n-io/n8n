@@ -56,4 +56,17 @@ describe('AgentIntegrationSchema', () => {
 		});
 		expect(result.success).toBe(false);
 	});
+
+	it('rejects a schedule integration whose cronExpression is malformed', () => {
+		const malformed = ['not-a-cron', '* * *', '99 99 * * *'];
+		for (const cron of malformed) {
+			const result = AgentIntegrationSchema.safeParse({
+				type: 'schedule',
+				active: false,
+				cronExpression: cron,
+				wakeUpPrompt: 'go',
+			});
+			expect(result.success).toBe(false);
+		}
+	});
 });

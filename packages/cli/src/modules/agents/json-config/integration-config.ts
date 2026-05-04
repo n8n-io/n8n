@@ -1,10 +1,15 @@
 import { z } from 'zod';
 
+import { isValidCronExpression } from '../integrations/cron-validation';
+
 export const AgentScheduleIntegrationSchema = z
 	.object({
 		type: z.literal('schedule'),
 		active: z.boolean(),
-		cronExpression: z.string().min(1, 'cronExpression is required'),
+		cronExpression: z
+			.string()
+			.min(1, 'cronExpression is required')
+			.refine(isValidCronExpression, { message: 'Invalid cron expression' }),
 		wakeUpPrompt: z.string().min(1, 'wakeUpPrompt is required'),
 	})
 	.strict();

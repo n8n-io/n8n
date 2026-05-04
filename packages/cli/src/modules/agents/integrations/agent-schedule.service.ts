@@ -10,7 +10,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ProjectRelationRepository } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { CronJob, validateCronExpression } from 'cron';
+import { CronJob } from 'cron';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 
@@ -22,6 +22,7 @@ import { AgentsCredentialProvider } from '../adapters/agents-credential-provider
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
+import { isValidCronExpression } from './cron-validation';
 
 @Service()
 export class AgentScheduleService {
@@ -261,9 +262,7 @@ export class AgentScheduleService {
 	}
 
 	private assertCronExpressionIsValid(cronExpression: string): void {
-		const validation = validateCronExpression(cronExpression);
-
-		if (!validation.valid) {
+		if (!isValidCronExpression(cronExpression)) {
 			throw new BadRequestError('Invalid cron expression');
 		}
 	}

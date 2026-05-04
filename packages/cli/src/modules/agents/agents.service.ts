@@ -1375,6 +1375,19 @@ export class AgentsService {
 				`Invalid agent config: Missing custom tool definitions: ${missingToolIds.join(', ')}`,
 			);
 		}
+
+		// Mirror AgentScheduleService.activate(): a schedule integration cannot be
+		// active until the agent has a published version. Otherwise the persisted
+		// config can claim active=true while the cron registration silently
+		// refuses to register.
+		const activeUnpublishedSchedule = (config.integrations ?? []).some(
+			(integration) => isAgentScheduleIntegration(integration) && integration.active,
+		);
+		if (activeUnpublishedSchedule && !entity.publishedVersion) {
+			throw new UserError(
+				'Invalid agent config: schedule integration cannot be active until the agent is published',
+			);
+		}
 	}
 
 	private getMissingCustomToolIds(
