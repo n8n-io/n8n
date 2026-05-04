@@ -16,7 +16,13 @@ import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
-import { buildMcpToolName, createCallTool, getSelectedTools, mcpToolToDynamicTool } from './utils';
+import {
+	buildMcpToolName,
+	createCallTool,
+	getErrorDescriptionFromToolCall,
+	getSelectedTools,
+	mcpToolToDynamicTool,
+} from './utils';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
@@ -126,7 +132,8 @@ export class McpClientTool implements INodeType {
 			dark: 'file:../mcp.dark.svg',
 		},
 		group: ['output'],
-		version: [1, 1.1, 1.2],
+		version: [1, 1.1, 1.2, 1.3],
+		defaultVersion: 1.3,
 		description: 'Connect tools from an MCP Server',
 		defaults: {
 			name: 'MCP Client',
@@ -478,6 +485,13 @@ export class McpClientTool implements INodeType {
 							timeout: config.timeout,
 							signal: this.getExecutionCancelSignal(),
 						});
+
+						if (node.typeVersion >= 1.3 && result.isError) {
+							const errorMessage =
+								getErrorDescriptionFromToolCall(result) ?? `Tool "${tool.name}" returned an error`;
+							throw new NodeOperationError(node, errorMessage, { itemIndex });
+						}
+
 						returnData.push({
 							json: {
 								response: result.content as IDataObject,

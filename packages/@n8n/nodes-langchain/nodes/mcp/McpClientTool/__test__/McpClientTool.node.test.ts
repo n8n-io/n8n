@@ -926,6 +926,151 @@ describe('McpClientTool', () => {
 			);
 		});
 
+		it('should treat isError: true as success on version 1.2 (legacy behavior)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'simulated tool-level error' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			const result = await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(result).toEqual([
+				[
+					{
+						json: { response: [{ type: 'text', text: 'simulated tool-level error' }] },
+						pairedItem: { item: 0 },
+					},
+				],
+			]);
+		});
+
+		it('should throw NodeOperationError when tool result has isError: true (version 1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'text', text: 'simulated tool-level error' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'simulated tool-level error',
+			);
+		});
+
+		it('should throw generic error when isError: true with no text content (version 1.3+)', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				isError: true,
+				content: [{ type: 'image', data: 'abc', mimeType: 'image/png' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+
+			const mockNode = mock<INode>({ typeVersion: 1.3, type: 'mcpClientTool', name: 'MCP Client' });
+			const mockExecuteFunctions = mock<any>({
+				getNode: jest.fn(() => mockNode),
+				getInputData: jest.fn(() => [
+					{
+						json: {
+							tool: buildMcpToolName('MCP Client', 'get_weather'),
+							location: 'Berlin',
+						},
+					},
+				]),
+				getNodeParameter: jest.fn((key) => {
+					const params: Record<string, any> = {
+						include: 'all',
+						includeTools: [],
+						excludeTools: [],
+						authentication: 'none',
+						serverTransport: 'httpStreamable',
+						endpointUrl: 'https://test.com/mcp',
+						'options.timeout': 60000,
+					};
+					return params[key];
+				}),
+			});
+
+			await expect(new McpClientTool().execute.call(mockExecuteFunctions)).rejects.toThrow(
+				'Tool "get_weather" returned an error',
+			);
+		});
+
 		it('should not execute if tool name does not match', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
 			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
