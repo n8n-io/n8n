@@ -698,11 +698,9 @@ export class InstanceAiController {
 			key && userId !== ENV_GATEWAY_USER_ID
 				? this.instanceAiService.getGatewaySessionRotateAfter(userId, key)
 				: null;
-		let rotationClose = false;
 		const sessionRotationTimer = sessionRotateAfter
 			? setTimeout(
 					() => {
-						rotationClose = true;
 						res.end();
 					},
 					Math.max(0, sessionRotateAfter.getTime() - Date.now()),
@@ -718,7 +716,6 @@ export class InstanceAiController {
 			clearInterval(keepAlive);
 			if (sessionRotationTimer) clearTimeout(sessionRotationTimer);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
-				if (rotationClose) return;
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',

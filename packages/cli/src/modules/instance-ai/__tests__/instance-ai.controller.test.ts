@@ -1066,7 +1066,7 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
 		});
 
-		it('should close SSE at session rotation without sending a disconnected push', async () => {
+		it('should close SSE at session rotation and send a disconnected push if reconnect grace expires', async () => {
 			jest.useFakeTimers();
 			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
@@ -1094,10 +1094,22 @@ describe('InstanceAiController', () => {
 				USER_ID,
 				expect.any(Function),
 			);
+			expect(push.sendToUsers).not.toHaveBeenCalled();
 
 			const onDisconnect = instanceAiService.startDisconnectTimer.mock.calls[0]?.[1];
 			onDisconnect?.();
-			expect(push.sendToUsers).not.toHaveBeenCalled();
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: {
+						connected: false,
+						directory: null,
+						hostIdentifier: null,
+						toolCategories: [],
+					},
+				},
+				[USER_ID],
+			);
 		});
 	});
 
