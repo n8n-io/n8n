@@ -593,44 +593,46 @@ onMounted(async () => {
 		</template>
 
 		<template v-if="currentIntegration" #footer>
-			<div :class="$style.footerActions">
-				<template v-if="!isConnected(currentIntegration.type)">
+			<div :class="$style.footer">
+				<div :class="$style.footerActions">
+					<template v-if="!isConnected(currentIntegration.type)">
+						<N8nButton
+							variant="outline"
+							size="small"
+							:data-testid="`${currentIntegration.type}-create-another-credential`"
+							@click="onCreateCredential(currentIntegration)"
+						>
+							<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
+							{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
+						</N8nButton>
+						<N8nButton
+							variant="solid"
+							:disabled="
+								!selectedCredentials[currentIntegration.type] ||
+								isLoading(currentIntegration.type) ||
+								publishing
+							"
+							:loading="isLoading(currentIntegration.type) || publishing"
+							size="small"
+							:data-testid="`${currentIntegration.type}-connect-button`"
+							@click="onConnect(currentIntegration.type)"
+						>
+							<template #prefix><N8nIcon icon="plug" size="xsmall" /></template>
+							{{ i18n.baseText('agents.builder.addTrigger.connect') }}
+						</N8nButton>
+					</template>
 					<N8nButton
-						variant="outline"
+						v-else
+						variant="destructive"
+						:loading="isLoading(currentIntegration.type)"
 						size="small"
-						:data-testid="`${currentIntegration.type}-create-another-credential`"
-						@click="onCreateCredential(currentIntegration)"
+						:data-testid="`${currentIntegration.type}-disconnect-button`"
+						@click="onDisconnect(currentIntegration.type)"
 					>
-						<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
-						{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
+						<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
+						{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
 					</N8nButton>
-					<N8nButton
-						variant="solid"
-						:disabled="
-							!selectedCredentials[currentIntegration.type] ||
-							isLoading(currentIntegration.type) ||
-							publishing
-						"
-						:loading="isLoading(currentIntegration.type) || publishing"
-						size="small"
-						:data-testid="`${currentIntegration.type}-connect-button`"
-						@click="onConnect(currentIntegration.type)"
-					>
-						<template #prefix><N8nIcon icon="plug" size="xsmall" /></template>
-						{{ i18n.baseText('agents.builder.addTrigger.connect') }}
-					</N8nButton>
-				</template>
-				<N8nButton
-					v-else
-					variant="destructive"
-					:loading="isLoading(currentIntegration.type)"
-					size="small"
-					:data-testid="`${currentIntegration.type}-disconnect-button`"
-					@click="onDisconnect(currentIntegration.type)"
-				>
-					<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
-					{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
-				</N8nButton>
+				</div>
 			</div>
 		</template>
 	</Modal>
@@ -720,12 +722,16 @@ onMounted(async () => {
 	min-width: 0;
 }
 
+.footer {
+	display: flex;
+	gap: var(--spacing--2xs);
+	justify-content: space-between;
+}
+
 .footerActions {
 	display: flex;
-	align-items: center;
-	justify-content: flex-end;
 	gap: var(--spacing--2xs);
-	width: 100%;
+	margin-left: auto;
 }
 
 .connectedSection {
