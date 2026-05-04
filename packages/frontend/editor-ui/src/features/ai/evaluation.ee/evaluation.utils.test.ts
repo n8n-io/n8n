@@ -1393,6 +1393,11 @@ describe('utils', () => {
 			expect(formatDuration(90000)).toBe('1m 30s');
 			expect(formatDuration(125000)).toBe('2m 5s');
 		});
+		it('promotes to minutes when sub-60s rounds up to exactly 60', () => {
+			// 59.999s would otherwise render as "60s" — should be "1m" instead.
+			expect(formatDuration(59999)).toBe('1m');
+			expect(formatDuration(59950)).toBe('1m');
+		});
 		it('returns – for missing or invalid input', () => {
 			expect(formatDuration(undefined)).toBe('–');
 			expect(formatDuration(NaN)).toBe('–');

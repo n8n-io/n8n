@@ -239,7 +239,7 @@ export function formatDeltaPercent(
 /**
  * Formats a duration in milliseconds as a compact human label:
  *   - `< 1s`         → "Xms" (e.g. "243ms")
- *   - `1s` – `< 60s` → "X.Xs", trailing `.0` dropped (e.g. "8s", "1.2s")
+ *   - `1s` – `< 60s` → "Xs" or "X.Xs" (trailing `.0` dropped, e.g. "8s", "1.2s")
  *   - `>= 60s`       → "Xm Ys", `Ys` omitted when zero (e.g. "1m 30s", "2m")
  */
 export function formatDuration(ms: number | undefined): string {
@@ -248,10 +248,14 @@ export function formatDuration(ms: number | undefined): string {
 	const totalSeconds = ms / 1000;
 	if (totalSeconds < 60) {
 		const rounded = Math.round(totalSeconds * 10) / 10;
-		return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`;
+		// Edge case: 59.95s–59.999s rounds to 60 — promote to minutes branch.
+		if (rounded < 60) {
+			return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`;
+		}
 	}
-	const minutes = Math.floor(totalSeconds / 60);
-	const seconds = Math.round(totalSeconds - minutes * 60);
+	const totalRoundedSeconds = Math.round(totalSeconds);
+	const minutes = Math.floor(totalRoundedSeconds / 60);
+	const seconds = totalRoundedSeconds - minutes * 60;
 	return seconds === 0 ? `${minutes}m` : `${minutes}m ${seconds}s`;
 }
 
