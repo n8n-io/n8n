@@ -1,0 +1,216 @@
+<!--
+  Premier Detailing — Booking Form Embed
+  Drop this into a Wix HTML iframe element on premierdetailing.ca/book
+  (or host on a subdomain like book.premierdetailing.ca).
+
+  On submit, posts JSON to your n8n webhook:
+    POST https://<your-n8n-domain>/webhook/premier-detailing-lead
+
+  Replace WEBHOOK_URL below with your actual n8n webhook URL after deploying workflow 01.
+
+  Style is bare-bones — Charlie/Kabir or your designer can theme it inside the iframe to match the site.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Book — Premier Detailing</title>
+<style>
+  :root {
+    --pd-bg: #0e0e10;
+    --pd-card: #16161a;
+    --pd-fg: #f5f5f7;
+    --pd-muted: #8b8b95;
+    --pd-accent: #c8a25a;
+    --pd-border: #2a2a30;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--pd-bg); color: var(--pd-fg); font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif;
+    margin: 0; padding: 24px;
+  }
+  .pd-card {
+    max-width: 560px; margin: 0 auto; background: var(--pd-card);
+    border: 1px solid var(--pd-border); border-radius: 16px; padding: 28px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .pd-sub { color: var(--pd-muted); font-size: 14px; margin: 0 0 24px; }
+  label { display: block; font-size: 13px; color: var(--pd-muted); margin: 14px 0 6px; }
+  input[type=text], input[type=email], input[type=tel], input[type=date], select, textarea {
+    width: 100%; padding: 11px 13px; background: #0b0b0d; border: 1px solid var(--pd-border);
+    border-radius: 10px; color: var(--pd-fg); font-size: 15px; font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 88px; }
+  .pd-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pd-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  fieldset {
+    border: 1px solid var(--pd-border); border-radius: 12px; padding: 12px 14px 14px;
+    margin: 18px 0 6px;
+  }
+  legend { padding: 0 6px; font-size: 13px; color: var(--pd-muted); }
+  .pd-check { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; }
+  .pd-check input { accent-color: var(--pd-accent); width: 18px; height: 18px; }
+  button {
+    width: 100%; margin-top: 22px; padding: 14px;
+    background: var(--pd-accent); color: #1a1a1d; border: 0; border-radius: 10px;
+    font-weight: 600; font-size: 15px; cursor: pointer; letter-spacing: 0.01em;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .pd-note { font-size: 12px; color: var(--pd-muted); margin-top: 12px; line-height: 1.5; }
+  .pd-success {
+    display: none; padding: 18px; border-radius: 10px; background: #14241c; color: #9ad9b8;
+    border: 1px solid #1f3d2e; margin-top: 16px;
+  }
+  .pd-error {
+    display: none; padding: 14px; border-radius: 10px; background: #2a1414; color: #e89a9a;
+    border: 1px solid #3d1f1f; margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="pd-card">
+  <h1>book a detail.</h1>
+  <p class="pd-sub">tell us the basics — we'll text you a quote within minutes.</p>
+
+  <form id="pd-form" autocomplete="on">
+    <div class="pd-row">
+      <div>
+        <label for="first_name">first name</label>
+        <input type="text" id="first_name" name="first_name" required>
+      </div>
+      <div>
+        <label for="last_name">last name</label>
+        <input type="text" id="last_name" name="last_name" required>
+      </div>
+    </div>
+
+    <div class="pd-row">
+      <div>
+        <label for="phone">phone (Canadian mobile)</label>
+        <input type="tel" id="phone" name="phone" required pattern="[\d\s\-\(\)\+]{10,}" placeholder="519-555-1234">
+      </div>
+      <div>
+        <label for="email">email</label>
+        <input type="email" id="email" name="email" required>
+      </div>
+    </div>
+
+    <fieldset>
+      <legend>your vehicle</legend>
+      <div class="pd-row-3">
+        <div>
+          <label for="year">year</label>
+          <input type="text" id="year" name="year" required placeholder="2020" pattern="\d{4}">
+        </div>
+        <div>
+          <label for="make">make</label>
+          <input type="text" id="make" name="make" required placeholder="Toyota">
+        </div>
+        <div>
+          <label for="model">model</label>
+          <input type="text" id="model" name="model" required placeholder="RAV4">
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>services — select all that apply</legend>
+      <label class="pd-check"><input type="checkbox" name="services" value="full_in_and_out"> Full In & Out</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="premier_package"> Premier Package</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="interior_detail"> Interior Detail</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="exterior_detail"> Exterior Detail (Wash, Clay, Seal)</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="paint_enhancement"> Paint Enhancement Package</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="paint_correction_1step"> 1-Step Paint Correction</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="paint_correction_2step"> 2-Step Paint Correction (by quote)</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="paint_correction_3step"> 3-Step Paint Correction (by quote)</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="ceramic_2yr"> 2-Year Ceramic Coating</label>
+      <label class="pd-check"><input type="checkbox" name="services" value="ceramic_lifetime"> Lifetime Warranty Ceramic (by quote)</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>add-ons</legend>
+      <label class="pd-check"><input type="checkbox" name="addons" value="pet_hair_t1"> Pet Hair — light</label>
+      <label class="pd-check"><input type="checkbox" name="addons" value="pet_hair_t2"> Pet Hair — moderate</label>
+      <label class="pd-check"><input type="checkbox" name="addons" value="pet_hair_t3"> Pet Hair — heavy</label>
+      <label class="pd-check"><input type="checkbox" name="addons" value="odor_removal"> Odor Removal</label>
+      <label class="pd-check"><input type="checkbox" name="addons" value="interior_ceramic"> Interior Ceramic Coating</label>
+      <label class="pd-check"><input type="checkbox" name="addons" value="engine_bay"> Engine Bay Detail</label>
+      <label class="pd-check"><input type="checkbox" name="addons" value="glass_ceramic_windshield"> Glass Ceramic — Windshield</label>
+      <label class="pd-check"><input type="checkbox" name="addons" value="glass_ceramic_all"> Glass Ceramic — All Glass</label>
+    </fieldset>
+
+    <div class="pd-row">
+      <div>
+        <label for="city">city</label>
+        <input type="text" id="city" name="city" required value="Stratford">
+      </div>
+      <div>
+        <label for="postal">postal code</label>
+        <input type="text" id="postal" name="postal" placeholder="N5A">
+      </div>
+    </div>
+
+    <label for="preferred_date">preferred date (optional)</label>
+    <input type="date" id="preferred_date" name="preferred_date">
+
+    <label for="photos">photo links (optional — paste cloud links if it helps us quote)</label>
+    <input type="text" id="photos" name="photos" placeholder="optional">
+
+    <label for="notes">anything else?</label>
+    <textarea id="notes" name="notes" placeholder="pets, smoke, special requests, where the truck will be parked..."></textarea>
+
+    <button type="submit" id="submit-btn">get my quote</button>
+    <p class="pd-note">we'll text you within minutes during service hours (7am–9pm). $50 deposit holds your spot, applied to your total. cancellation: 24h+ notice for free reschedule.</p>
+
+    <div class="pd-success" id="pd-success">
+      thanks — we got it. charlie or kabir will text you shortly with a quote and time slots. keep an eye on your phone.
+    </div>
+    <div class="pd-error" id="pd-error">
+      something went sideways. text us at <a href="sms:5197781310" style="color:var(--pd-accent)">519-778-1310</a> and we'll sort it out.
+    </div>
+  </form>
+</div>
+
+<script>
+  const WEBHOOK_URL = 'https://YOUR-N8N-DOMAIN/webhook/premier-detailing-lead';
+  const form = document.getElementById('pd-form');
+  const btn = document.getElementById('submit-btn');
+  const ok = document.getElementById('pd-success');
+  const err = document.getElementById('pd-error');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true;
+    btn.textContent = 'sending...';
+
+    const fd = new FormData(form);
+    const services = fd.getAll('services');
+    const addons = fd.getAll('addons');
+    const payload = {};
+    fd.forEach((v, k) => {
+      if (k === 'services' || k === 'addons') return;
+      payload[k] = v;
+    });
+    payload.services = services;
+    payload.addons = addons;
+
+    try {
+      const res = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Source': 'wix-form' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('http ' + res.status);
+      ok.style.display = 'block';
+      err.style.display = 'none';
+      form.style.display = 'none';
+    } catch (e2) {
+      err.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'get my quote';
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,179 @@
+{
+  "currency": "CAD",
+  "vehicleSizes": {
+    "S": { "label": "Coupe / Compact", "examples": ["Civic", "Corolla", "Mazda 3"] },
+    "M": { "label": "Small SUV / Large Sedan", "examples": ["RAV4", "CR-V", "Camry", "Accord"] },
+    "L": { "label": "Truck / Medium SUV", "examples": ["F-150", "Silverado", "Highlander", "Pilot"] },
+    "XL": { "label": "Minivan / Large SUV / Large Truck", "examples": ["Sienna", "Suburban", "Expedition", "F-250"] }
+  },
+  "services": {
+    "interior_detail": {
+      "name": "Interior Detail",
+      "category": "interior",
+      "price": { "S": 249, "M": 289, "L": 349, "XL": 389 },
+      "duration_hr": { "S": [2, 3], "M": [2.5, 3], "L": [3, 4], "XL": [3.5, 5] },
+      "description": "Mobile interior detailing. Vacuum carpets, mats, seats, trunk, hard-to-reach areas. Clean and wipe down all interior surfaces — dash, console, door panels, cupholders, vents, trim. Removes built-up dust, light stains, grime, and debris. Deep clean on high-touch areas.",
+      "auto_quotable": true
+    },
+    "exterior_detail": {
+      "name": "Exterior Detail (Wash, Clay, Seal)",
+      "category": "exterior",
+      "price": { "S": 129, "M": 139, "L": 159, "XL": 179 },
+      "duration_hr": { "S": [1, 1], "M": [1, 1.5], "L": [1.5, 1.5], "XL": [2, 2] },
+      "description": "Full hand wash, clay bar treatment to pull embedded contaminants, then a durable paint sealant for gloss, water beading, and protection. Great for drivers who want shine without stepping into full paint correction.",
+      "auto_quotable": true
+    },
+    "full_in_and_out": {
+      "name": "Full In & Out Package",
+      "category": "package",
+      "price": { "S": 299, "M": 339, "L": 399, "XL": 449 },
+      "duration_hr": { "S": [2.5, 4], "M": [3, 4.5], "L": [4, 5], "XL": [4.5, 6] },
+      "description": "Complete interior reset + deep exterior clean in one appointment. Vacuum, wipe-down, all interior surfaces, plus full wash, decontamination, and sealant on the outside. Best all-around full detail.",
+      "auto_quotable": true
+    },
+    "premier_package": {
+      "name": "Premier Package",
+      "category": "package",
+      "price": { "S": 547, "M": 647, "L": 807, "XL": 907 },
+      "duration_hr": { "S": [3.5, 5], "M": [4.5, 5.5], "L": [5, 6], "XL": [5.5, 7] },
+      "description": "Our ultimate fixed-price package — interior + exterior detail, engine bay, glass ceramic sealant, interior ceramic coating, and odor removal if needed. Premium results, all-in-one service.",
+      "auto_quotable": true
+    },
+    "paint_enhancement": {
+      "name": "Paint Enhancement Package",
+      "category": "exterior",
+      "price": { "S": 389, "M": 449, "L": 509, "XL": 569 },
+      "duration_hr": { "S": [2, 4], "M": [3, 4], "L": [4, 5], "XL": [4, 6] },
+      "description": "Middle ground between basic detail and full correction. Full exterior wash, paint decontamination, sealant, 1-step paint correction, and ceramic glass sealant. Removes light defects and boosts gloss.",
+      "auto_quotable": true
+    },
+    "paint_correction_1step": {
+      "name": "1-Step Paint Correction",
+      "category": "correction",
+      "price": { "S": 349, "M": 409, "L": 469, "XL": 529 },
+      "duration_hr": { "S": [2, 4], "M": [3, 4], "L": [4, 5], "XL": [4, 6] },
+      "description": "Improves gloss, clarity, and removes light swirls, haze, and minor defects. Wash, decon, polish, one correction stage. Great daily-driver upgrade before adding a ceramic.",
+      "auto_quotable": true
+    },
+    "paint_correction_2step": {
+      "name": "2-Step Paint Correction",
+      "category": "correction",
+      "price": { "S": null, "M": null, "L": null, "XL": null },
+      "duration_hr": { "S": null, "M": null, "L": null, "XL": null },
+      "description": "Cutting stage to reduce deeper swirls and oxidation, followed by a polishing stage to refine. Dramatic improvement on neglected paint. By quote only — needs a photo or in-person look.",
+      "auto_quotable": false,
+      "quote_note": "Requires photos. Routes to owner."
+    },
+    "paint_correction_3step": {
+      "name": "3-Step Paint Correction + Unique Defects",
+      "category": "correction",
+      "price": { "S": null, "M": null, "L": null, "XL": null },
+      "duration_hr": { "S": null, "M": null, "L": null, "XL": null },
+      "description": "Most intensive paint restoration. Multi-stage refinement to chase the deepest gloss and clarity. Best finish achievable before ceramic coating. By quote only.",
+      "auto_quotable": false,
+      "quote_note": "Requires photos and in-person inspection. Routes to owner."
+    },
+    "ceramic_2yr": {
+      "name": "2-Year Ceramic Coating",
+      "category": "ceramic",
+      "price": { "S": 589, "M": 649, "L": 779, "XL": 869 },
+      "duration_hr": { "S": [4, 6], "M": [5, 7], "L": [6, 8], "XL": [7, 9] },
+      "description": "Long-lasting paint protection with strong water beading, easier maintenance, and deep glossy finish. Includes full wash, decon, prep, and coating application.",
+      "auto_quotable": true,
+      "requires_paint_prep": true
+    },
+    "ceramic_lifetime": {
+      "name": "Lifetime Warranty Ceramic Coating",
+      "category": "ceramic",
+      "price": { "S": null, "M": null, "L": null, "XL": null },
+      "duration_hr": { "S": null, "M": null, "L": null, "XL": null },
+      "description": "Highest level of long-term paint protection. Premium ceramic system, durable protective layer, max gloss and chemical resistance. By quote only — requires paint inspection.",
+      "auto_quotable": false,
+      "quote_note": "TBD pricing. Routes to owner."
+    },
+    "engine_bay": {
+      "name": "Engine Bay Detail",
+      "category": "addon",
+      "price": { "S": 50, "M": 50, "L": 70, "XL": 70 },
+      "duration_hr": { "S": [0.5, 0.75], "M": [0.5, 0.75], "L": [0.75, 1], "XL": [0.75, 1] },
+      "description": "Safely cleans and dresses the engine bay. Removes dust, grime, leaves, built-up dirt. Better look, easier maintenance, easier inspections.",
+      "auto_quotable": true
+    },
+    "glass_ceramic_windshield": {
+      "name": "Glass Ceramic Sealant — Windshield Only",
+      "category": "addon",
+      "price": { "S": 49, "M": 49, "L": 69, "XL": 69 },
+      "duration_hr": { "S": [0.5, 0.5], "M": [0.5, 0.5], "L": [0.5, 0.75], "XL": [0.5, 0.75] },
+      "description": "2-year durable protection for the windshield. Better visibility, water repellency, easier maintenance.",
+      "auto_quotable": true
+    },
+    "glass_ceramic_all": {
+      "name": "Glass Ceramic Sealant — All Glass",
+      "category": "addon",
+      "price": { "S": 99, "M": 99, "L": 119, "XL": 119 },
+      "duration_hr": { "S": [0.75, 1], "M": [0.75, 1], "L": [1, 1.25], "XL": [1, 1.25] },
+      "description": "2-year durable protection on all windows. Improves wet-weather visibility across the whole vehicle.",
+      "auto_quotable": true
+    },
+    "interior_ceramic": {
+      "name": "Interior Ceramic Coating",
+      "category": "addon",
+      "price": { "S": 100, "M": 100, "L": 130, "XL": 130 },
+      "duration_hr_added": { "S": 0.33, "M": 0.33, "L": 0.5, "XL": 0.5 },
+      "description": "Protects interior surfaces from daily wear. Cleaner, newer-looking, easier to maintain. Premium upgrade for new vehicles or clients who want interior protection long-term.",
+      "auto_quotable": true,
+      "requires": "interior_detail or full_in_and_out or premier_package"
+    },
+    "odor_removal": {
+      "name": "Odor Removal",
+      "category": "addon",
+      "price": { "S": 60, "M": 60, "L": 80, "XL": 80 },
+      "duration_hr_added": { "S": 0.5, "M": 0.5, "L": 0.5, "XL": 0.5 },
+      "description": "Targets and reduces odors at the source — food, smoke, pets, moisture, general buildup. Best paired with a full interior detail.",
+      "auto_quotable": true,
+      "requires": "interior_detail or full_in_and_out or premier_package"
+    },
+    "pet_hair_t1": {
+      "name": "Pet Hair Removal — Tier 1 (light)",
+      "category": "addon",
+      "price": { "S": 25, "M": 25, "L": 30, "XL": 35 },
+      "duration_hr_added": { "S": 0.33, "M": 0.33, "L": 0.5, "XL": 0.5 },
+      "description": "Light pet hair — surface shedding, manageable.",
+      "auto_quotable": true,
+      "requires": "interior_detail or full_in_and_out or premier_package"
+    },
+    "pet_hair_t2": {
+      "name": "Pet Hair Removal — Tier 2 (moderate)",
+      "category": "addon",
+      "price": { "S": 50, "M": 50, "L": 60, "XL": 60 },
+      "duration_hr_added": { "S": 0.6, "M": 0.6, "L": 0.75, "XL": 0.75 },
+      "description": "Moderate pet hair — embedded in carpets and seats.",
+      "auto_quotable": true,
+      "requires": "interior_detail or full_in_and_out or premier_package"
+    },
+    "pet_hair_t3": {
+      "name": "Pet Hair Removal — Tier 3 (heavy)",
+      "category": "addon",
+      "price": { "S": 70, "M": 70, "L": 100, "XL": 110 },
+      "duration_hr_added": { "S": 1, "M": 1, "L": 1.25, "XL": 1.5 },
+      "description": "Heavy pet hair — caked into upholstery, requires extensive extraction.",
+      "auto_quotable": true,
+      "requires": "interior_detail or full_in_and_out or premier_package"
+    }
+  },
+  "deposit": {
+    "amount": 50,
+    "currency": "CAD",
+    "policy": "Required to hold the spot. Trusted repeat clients can be flagged 'deposit_waived' in the customer record.",
+    "refundable": false
+  },
+  "policy": {
+    "confirmation_deadline": "9pm the night before",
+    "free_reschedule_window_hours": 24,
+    "late_cancel_window_hours": 3,
+    "no_show_wait_minutes": 30,
+    "weather_reschedule": "Free, priority rebooking",
+    "service_hours": { "open": "07:00", "close": "21:00", "tz": "America/Toronto" },
+    "season": { "start_month": 4, "end_month": 8, "note": "Apr 1 - Aug 31. Mobile only. Off-season inquiries route to owner with a 'next season waitlist' message." }
+  }
+}

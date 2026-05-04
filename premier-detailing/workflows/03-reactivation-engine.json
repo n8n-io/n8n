@@ -1,0 +1,301 @@
+{
+  "name": "Premier Detailing — 03 Reactivation Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 03 — Reactivation Engine\n\nFires daily at 7am America/Toronto. Pulls all customers from Square, classifies into 9 segments, AI drafts the SMS in Charlie's voice, and queues them to send during sane hours (9am–8pm). Plus a weekly fleet/dealership outreach nudge to the owners.\n\n**Segments:**\n1. 90-day in-season nudge\n2. 180-day in-season nudge\n3. 365-day winback (with 10% returning-customer rate)\n4. Pre-season early-access (Mar 15 + Apr 1)\n5. End-of-season ceramic push (Aug 1)\n6. Salt-season interior recovery (Apr 15)\n7. Maintenance plan upsell (after 3rd service)\n8. Family plan upsell (multi-vehicle households)\n9. Fleet/dealership outreach reminder (Slack to owners)\n\n**Exclusions:** customers tagged `do_not_engage`, `discount_seeker`, `complainer` are skipped.\n\n**Quiet hours:** never sends SMS before 9am or after 8pm Eastern. Schedules forward.\n\n**Credentials:** Anthropic, Twilio, Square, Slack.",
+        "height": 600,
+        "width": 720,
+        "color": 4
+      },
+      "id": "note-overview-03",
+      "name": "📋 Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, -380]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression" }],
+          "cronExpression": "0 7 * * *"
+        }
+      },
+      "id": "schedule-7am",
+      "name": "Daily 7am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-200, 240]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://connect.squareup.com/v2/customers",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "squareApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [{ "name": "limit", "value": "100" }]
+        },
+        "options": {}
+      },
+      "id": "square-customers",
+      "name": "Square: All Customers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 240]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://connect.squareup.com/v2/bookings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "squareApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "start_at_max", "value": "={{ $now.toISO() }}" },
+            { "name": "limit", "value": "200" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "square-bookings",
+      "name": "Square: Past Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 440]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Build customer activity index, classify each into a segment\nconst customers = $('Square: All Customers').first().json.customers || [];\nconst bookings = $('Square: Past Bookings').first().json.bookings || [];\n\nconst byCustomer = {};\nfor (const b of bookings) {\n  const id = b.customer_id;\n  if (!id) continue;\n  if (!byCustomer[id]) byCustomer[id] = [];\n  byCustomer[id].push(b);\n}\n\nconst now = new Date();\nconst monthIdx = now.getMonth() + 1; // 1-12\nconst inSeason = monthIdx >= 4 && monthIdx <= 8;\nconst today = now.toISOString().slice(0,10);\nconst monthDay = `${String(monthIdx).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;\n\nconst output = [];\nfor (const c of customers) {\n  const tags = (c.note || '').match(/tag:[a-z_]+/g) || [];\n  if (tags.includes('tag:do_not_engage') || tags.includes('tag:discount_seeker') || tags.includes('tag:complainer')) continue;\n  const cb = (byCustomer[c.id] || []).sort((a, b) => new Date(b.start_at) - new Date(a.start_at));\n  if (cb.length === 0) continue;\n  const last = cb[0];\n  const lastDate = new Date(last.start_at);\n  const daysSince = Math.floor((now - lastDate) / 86400000);\n  const lifetimeServices = cb.length;\n\n  let segment = null;\n  // Date-anchored segments\n  if (monthDay === '03-15' || monthDay === '04-01') segment = 'pre_season';\n  else if (monthDay === '08-01') segment = 'eos_ceramic';\n  else if (monthDay === '04-15' && daysSince > 120) segment = 'salt_recovery';\n  // Day-since-last segments (in-season only for routine nudges)\n  else if (inSeason && daysSince >= 85 && daysSince <= 95) segment = '90_day';\n  else if (inSeason && daysSince >= 175 && daysSince <= 185) segment = '180_day';\n  else if (inSeason && daysSince >= 360 && daysSince <= 370) segment = '365_day';\n  // Plan upsells (only fire monthly to avoid spam — gate by day == 5)\n  else if (now.getDate() === 5 && lifetimeServices >= 3 && !tags.includes('tag:on_plan')) segment = 'maintenance_upsell';\n  else if (now.getDate() === 12 && tags.includes('tag:multi_vehicle') && !tags.includes('tag:family_plan')) segment = 'family_upsell';\n\n  if (!segment) continue;\n  output.push({\n    json: {\n      customer_id: c.id,\n      first_name: c.given_name || '',\n      phone_e164: c.phone_number || '',\n      vehicle: (c.note || '').match(/vehicle:[^|]+/)?.[0]?.replace('vehicle:', '').trim() || 'your vehicle',\n      last_service_type: last.appointment_segments?.[0]?.service_variation_id || 'detail',\n      last_service_date: lastDate.toISOString().slice(0,10),\n      days_since: daysSince,\n      lifetime_services: lifetimeServices,\n      tags,\n      segment\n    }\n  });\n}\n\nreturn output;"
+      },
+      "id": "code-segment",
+      "name": "Classify into Segment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 340]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer: {{ JSON.stringify($json) }}\n\nDraft the reactivation SMS per your system prompt. Return JSON only.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=See prompts/reactivation-copywriter.md — paste full contents here.\n\nVoice rules from voice-style-guide.md apply.\n\nALWAYS return strict JSON matching the output schema."
+        }
+      },
+      "id": "agent-reactivate",
+      "name": "AI Agent — Draft Reactivation SMS",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [520, 340]
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "value": "claude-sonnet-4-6", "mode": "list" },
+        "options": { "temperature": 0.6, "maxTokensToSample": 1500 }
+      },
+      "id": "claude-reactivate",
+      "name": "Claude Sonnet (copy)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [520, 560]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst match = raw.match(/\\{[\\s\\S]*\\}/);\nif (!match) throw new Error('AI did not return JSON');\nconst parsed = JSON.parse(match[0]);\nif (parsed.skip) {\n  // Drop skipped customers\n  return [];\n}\n// Compute scheduled send time — clamp to 9am-8pm\nlet scheduled = parsed.scheduled_send_iso ? new Date(parsed.scheduled_send_iso) : new Date();\nconst hour = scheduled.getHours();\nif (hour < 9) scheduled.setHours(9, 0, 0, 0);\nif (hour >= 20) {\n  scheduled.setDate(scheduled.getDate() + 1);\n  scheduled.setHours(9, 0, 0, 0);\n}\nreturn (parsed.messages || []).map((body, i) => ({\n  json: {\n    customer_id: parsed.customer_id,\n    segment: parsed.segment,\n    send_via: parsed.send_via || 'sms',\n    to: $('Classify into Segment').itemMatching($itemIndex).json.phone_e164,\n    body,\n    scheduled_iso: scheduled.toISOString(),\n    delay_ms: i * 1500\n  }\n}));"
+      },
+      "id": "parse-reactivation",
+      "name": "Parse + Schedule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 340]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  { "leftValue": "={{ $json.send_via }}", "rightValue": "sms", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "sms"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  { "leftValue": "={{ $json.send_via }}", "rightValue": "slack", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "slack"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-channel",
+      "name": "Switch: SMS or Slack",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1000, 340]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_ms }}",
+        "unit": "ms"
+      },
+      "id": "wait-react",
+      "name": "Wait between texts",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1240, 240]
+    },
+    {
+      "parameters": {
+        "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+        "to": "={{ $json.to }}",
+        "toWhatsapp": false,
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "twilio-react-out",
+      "name": "Twilio: Send Reactivation SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1480, 240]
+    },
+    {
+      "parameters": {
+        "channel": "#owner-alerts",
+        "text": "={{ $json.body }}",
+        "otherOptions": {}
+      },
+      "id": "slack-fleet",
+      "name": "Slack: Fleet Pitch List",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1240, 440]
+    },
+    {
+      "parameters": {
+        "content": "## Weekly fleet outreach (Mondays 8am)\n\nThis side-trigger fires every Monday at 8am and posts a curated list of 3 fleet/dealer pitch targets to Slack.\n\nIt rotates through `data/fleet-targets.json` and won't repeat a target within 8 weeks.\n\nCharlie/Kabir do the in-person walk-ins. The system tracks last_pitched dates so the rotation doesn't repeat.",
+        "height": 280,
+        "width": 480,
+        "color": 5
+      },
+      "id": "note-fleet",
+      "name": "Note: Weekly fleet pitch",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, 760]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression" }],
+          "cronExpression": "0 8 * * 1"
+        }
+      },
+      "id": "schedule-monday",
+      "name": "Mondays 8am",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-200, 1040]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "filePath": "/data/fleet-targets.json"
+      },
+      "id": "load-fleet",
+      "name": "Load Fleet Targets",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [40, 1040]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Pick 3 targets that haven't been pitched in 8+ weeks (or ever)\nconst data = JSON.parse($input.first().json.data?.toString() || '{\"targets\":[]}');\nconst now = new Date();\nconst eightWeeksAgo = now.getTime() - (8 * 7 * 86400000);\n\nconst eligible = (data.targets || []).filter(t => {\n  if (t.do_not_pitch) return false;\n  if (!t.last_pitched) return true;\n  return new Date(t.last_pitched).getTime() < eightWeeksAgo;\n});\n\n// Sort by oldest pitch first (or never-pitched bubble up)\neligible.sort((a, b) => {\n  if (!a.last_pitched && !b.last_pitched) return 0;\n  if (!a.last_pitched) return -1;\n  if (!b.last_pitched) return 1;\n  return new Date(a.last_pitched) - new Date(b.last_pitched);\n});\n\nconst picks = eligible.slice(0, 3);\nif (picks.length === 0) return [{ json: { body: 'fleet pitch list: no eligible targets this week. add new ones to data/fleet-targets.json' } }];\n\nconst lines = picks.map((t, i) => `${i+1}. *${t.name}* (${t.city}) — ${t.angle}\\n   contact: ${t.contact}`).join('\\n');\nreturn [{\n  json: {\n    body: `:briefcase: *Fleet pitch list — week of ${now.toISOString().slice(0,10)}*\\n\\n${lines}\\n\\n_walk these in this week. update \\`data/fleet-targets.json\\` after each pitch with the date + status._`\n  }\n}];"
+      },
+      "id": "code-fleet-pick",
+      "name": "Pick 3 Targets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 1040]
+    },
+    {
+      "parameters": {
+        "channel": "#owner-alerts",
+        "text": "={{ $json.body }}",
+        "otherOptions": {}
+      },
+      "id": "slack-fleet-weekly",
+      "name": "Slack: Post Fleet Pitch List",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [520, 1040]
+    }
+  ],
+  "connections": {
+    "Daily 7am": {
+      "main": [[{ "node": "Square: All Customers", "type": "main", "index": 0 }, { "node": "Square: Past Bookings", "type": "main", "index": 0 }]]
+    },
+    "Square: All Customers": {
+      "main": [[{ "node": "Classify into Segment", "type": "main", "index": 0 }]]
+    },
+    "Square: Past Bookings": {
+      "main": [[{ "node": "Classify into Segment", "type": "main", "index": 0 }]]
+    },
+    "Classify into Segment": {
+      "main": [[{ "node": "AI Agent — Draft Reactivation SMS", "type": "main", "index": 0 }]]
+    },
+    "Claude Sonnet (copy)": {
+      "ai_languageModel": [[{ "node": "AI Agent — Draft Reactivation SMS", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent — Draft Reactivation SMS": {
+      "main": [[{ "node": "Parse + Schedule", "type": "main", "index": 0 }]]
+    },
+    "Parse + Schedule": {
+      "main": [[{ "node": "Switch: SMS or Slack", "type": "main", "index": 0 }]]
+    },
+    "Switch: SMS or Slack": {
+      "main": [
+        [{ "node": "Wait between texts", "type": "main", "index": 0 }],
+        [{ "node": "Slack: Fleet Pitch List", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait between texts": {
+      "main": [[{ "node": "Twilio: Send Reactivation SMS", "type": "main", "index": 0 }]]
+    },
+    "Mondays 8am": {
+      "main": [[{ "node": "Load Fleet Targets", "type": "main", "index": 0 }]]
+    },
+    "Load Fleet Targets": {
+      "main": [[{ "node": "Pick 3 Targets", "type": "main", "index": 0 }]]
+    },
+    "Pick 3 Targets": {
+      "main": [[{ "node": "Slack: Post Fleet Pitch List", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Toronto"
+  },
+  "versionId": "1.0.0",
+  "id": "premier-detailing-03-reactivation",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [{ "name": "premier-detailing" }, { "name": "reactivation" }]
+}

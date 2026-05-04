@@ -1,0 +1,385 @@
+{
+  "name": "Premier Detailing — 02 Review Harvester",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 02 — Review Harvester\n\n**Two triggers:**\n1. **Schedule** — every hour, finds appointments completed 22–26h ago. Pre-checks sentiment via AI (using job notes + recent SMS thread). If positive/neutral → send the 5-star Google review SMS. If negative/mixed → alert owners, do NOT send.\n2. **Twilio inbound webhook** — when the customer replies to the review-request SMS, AI classifies the reply and either thanks them, resends the link, or escalates to owner.\n\n**Plus:** the QR code on the in-person handoff card links to the same Google review URL — no automation needed there, just print the QR pointing to `{{REVIEW_LINK}}`.\n\n**Goal:** only ever ask happy customers. Funnel everyone else to the owners privately.\n\n**Credentials needed:** Anthropic, Twilio, Square (to read appointments), Slack/Gmail.",
+        "height": 480,
+        "width": 720,
+        "color": 4
+      },
+      "id": "note-overview-02",
+      "name": "📋 Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, -300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Hourly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-200, 240]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://connect.squareup.com/v2/bookings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "squareApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "start_at_min", "value": "={{ $now.minus({ hours: 26 }).toISO() }}" },
+            { "name": "start_at_max", "value": "={{ $now.minus({ hours: 22 }).toISO() }}" },
+            { "name": "location_id", "value": "={{ $env.SQUARE_LOCATION_ID }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "square-recent",
+      "name": "Square: Recent Completed Appointments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [40, 240]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Filter to completed appointments only, expand to one item per booking\nconst bookings = $input.first().json.bookings || [];\nreturn bookings\n  .filter(b => b.status === 'ACCEPTED' || b.status === 'NO_SHOW' === false)\n  .map(b => ({ json: { booking: b } }));"
+      },
+      "id": "code-filter-completed",
+      "name": "Filter Completed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 240]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://connect.squareup.com/v2/customers/{{ $json.booking.customer_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "squareApi",
+        "options": {}
+      },
+      "id": "square-customer",
+      "name": "Square: Get Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 240]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+          "to": "={{ $('Square: Get Customer').first().json.customer.phone_number }}"
+        },
+        "limit": 20
+      },
+      "id": "twilio-history",
+      "name": "Twilio: Recent SMS thread",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [760, 240]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Customer record: {{ JSON.stringify($('Square: Get Customer').first().json.customer) }}\n\nBooking just completed: {{ JSON.stringify($('Filter Completed').item.json.booking) }}\n\nRecent SMS thread (most recent first):\n{{ JSON.stringify($('Twilio: Recent SMS thread').all().map(i => ({ from: i.json.from, body: i.json.body, date: i.json.dateSent }))) }}\n\nMode: pre-send check. Should we send the review request? Return JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=See prompts/review-sentiment.md — paste full contents here.\n\nVoice rules from prompts/voice-style-guide.md apply.\n\nALWAYS return strict JSON matching the output schema."
+        }
+      },
+      "id": "agent-presend",
+      "name": "AI Agent — Pre-send Sentiment Check",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1000, 240]
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "value": "claude-haiku-4-5-20251001", "mode": "list" },
+        "options": { "temperature": 0.2, "maxTokensToSample": 1000 }
+      },
+      "id": "claude-presend",
+      "name": "Claude Haiku (sentiment)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1000, 460]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst match = raw.match(/\\{[\\s\\S]*\\}/);\nif (!match) throw new Error('AI did not return JSON');\nreturn [{ json: JSON.parse(match[0]) }];"
+      },
+      "id": "parse-sentiment",
+      "name": "Parse Sentiment JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 240]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            { "leftValue": "={{ $json.send_review_request }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-send-review",
+      "name": "IF: Send Review SMS?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1480, 240]
+    },
+    {
+      "parameters": {
+        "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+        "to": "={{ $('Square: Get Customer').first().json.customer.phone_number }}",
+        "toWhatsapp": false,
+        "message": "={{ $json.suggested_review_sms.replace('{review_link}', $env.GOOGLE_REVIEW_LINK) }}",
+        "options": {}
+      },
+      "id": "twilio-review-sms",
+      "name": "Twilio: Review Request SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1720, 140]
+    },
+    {
+      "parameters": {
+        "channel": "#owner-alerts",
+        "text": "=:warning: *Customer experience needs your attention*\n\n*Customer:* {{ $('Square: Get Customer').first().json.customer.given_name }} {{ $('Square: Get Customer').first().json.customer.family_name }}\n*Phone:* {{ $('Square: Get Customer').first().json.customer.phone_number }}\n*Sentiment:* {{ $json.sentiment }} ({{ $json.confidence }} confidence)\n\n*Summary:* {{ $json.summary }}\n\n*AI flag:* {{ $json.alert_message }}\n\n_Skipped review request. Reach out personally or paste a draft to send._",
+        "otherOptions": {}
+      },
+      "id": "slack-skipped",
+      "name": "Slack: Skipped Review Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1720, 340]
+    },
+    {
+      "parameters": {
+        "content": "## Reply handler (Twilio inbound webhook)\n\nThis branch fires when a customer replies to the review-request SMS. The AI classifies the reply and decides:\n- thank them\n- resend link\n- escalate to owner\n- handle unsubscribe\n\nSet up the Twilio inbound webhook URL in your Twilio console to point here once this workflow is deployed.",
+        "height": 240,
+        "width": 480,
+        "color": 5
+      },
+      "id": "note-reply",
+      "name": "Note: Reply handler",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, 700]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "premier-detailing-sms-inbound",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-inbound-sms",
+      "name": "Webhook — Inbound SMS",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 980],
+      "webhookId": "premier-detailing-sms-inbound"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+          "to": "={{ $json.body.From }}"
+        },
+        "limit": 20
+      },
+      "id": "twilio-history-2",
+      "name": "Twilio: Pull Thread Context",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [40, 980]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Inbound SMS: \"{{ $('Webhook — Inbound SMS').first().json.body.Body }}\"\nFrom: {{ $('Webhook — Inbound SMS').first().json.body.From }}\n\nRecent thread:\n{{ JSON.stringify($('Twilio: Pull Thread Context').all().map(i => ({ from: i.json.from, body: i.json.body }))) }}\n\nMode: reply handler. Classify and respond per system prompt. Return JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=See prompts/review-sentiment.md — paste full contents here.\n\nMODE: reply handler. Voice rules from voice-style-guide.md apply."
+        }
+      },
+      "id": "agent-reply",
+      "name": "AI Agent — Classify Reply",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [280, 980]
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "value": "claude-haiku-4-5-20251001", "mode": "list" },
+        "options": { "temperature": 0.3, "maxTokensToSample": 1000 }
+      },
+      "id": "claude-reply",
+      "name": "Claude Haiku (reply)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [280, 1180]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst match = raw.match(/\\{[\\s\\S]*\\}/);\nif (!match) throw new Error('AI did not return JSON');\nconst parsed = JSON.parse(match[0]);\nreturn (parsed.reply_messages || []).map((body, i) => ({\n  json: {\n    classification: parsed.classification,\n    alert_owners: parsed.alert_owners,\n    do_not_contact: parsed.do_not_contact,\n    summary: parsed.summary,\n    to: $('Webhook — Inbound SMS').first().json.body.From,\n    body,\n    delay_ms: i * 1500\n  }\n}));"
+      },
+      "id": "parse-reply",
+      "name": "Parse Reply Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 980]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_ms }}",
+        "unit": "ms"
+      },
+      "id": "wait-reply",
+      "name": "Wait between replies",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [760, 980]
+    },
+    {
+      "parameters": {
+        "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+        "to": "={{ $json.to }}",
+        "toWhatsapp": false,
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "twilio-reply-out",
+      "name": "Twilio: Send Reply",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1000, 980]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            { "leftValue": "={{ $json.alert_owners }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-alert",
+      "name": "IF: Alert Owners?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1240, 980]
+    },
+    {
+      "parameters": {
+        "channel": "#owner-alerts",
+        "text": "=:rotating_light: *Customer reply needs you* — {{ $json.classification }}\n\n*From:* {{ $json.to }}\n*Summary:* {{ $json.summary }}\n\nReview thread in Twilio + this Slack thread for context.",
+        "otherOptions": {}
+      },
+      "id": "slack-alert-reply",
+      "name": "Slack: Reply Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1480, 980]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
+      "id": "respond-inbound",
+      "name": "Respond to Twilio",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [40, 1180]
+    }
+  ],
+  "connections": {
+    "Hourly Schedule": {
+      "main": [[{ "node": "Square: Recent Completed Appointments", "type": "main", "index": 0 }]]
+    },
+    "Square: Recent Completed Appointments": {
+      "main": [[{ "node": "Filter Completed", "type": "main", "index": 0 }]]
+    },
+    "Filter Completed": {
+      "main": [[{ "node": "Square: Get Customer", "type": "main", "index": 0 }]]
+    },
+    "Square: Get Customer": {
+      "main": [[{ "node": "Twilio: Recent SMS thread", "type": "main", "index": 0 }]]
+    },
+    "Twilio: Recent SMS thread": {
+      "main": [[{ "node": "AI Agent — Pre-send Sentiment Check", "type": "main", "index": 0 }]]
+    },
+    "Claude Haiku (sentiment)": {
+      "ai_languageModel": [[{ "node": "AI Agent — Pre-send Sentiment Check", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent — Pre-send Sentiment Check": {
+      "main": [[{ "node": "Parse Sentiment JSON", "type": "main", "index": 0 }]]
+    },
+    "Parse Sentiment JSON": {
+      "main": [[{ "node": "IF: Send Review SMS?", "type": "main", "index": 0 }]]
+    },
+    "IF: Send Review SMS?": {
+      "main": [
+        [{ "node": "Twilio: Review Request SMS", "type": "main", "index": 0 }],
+        [{ "node": "Slack: Skipped Review Alert", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook — Inbound SMS": {
+      "main": [[{ "node": "Twilio: Pull Thread Context", "type": "main", "index": 0 }, { "node": "Respond to Twilio", "type": "main", "index": 0 }]]
+    },
+    "Twilio: Pull Thread Context": {
+      "main": [[{ "node": "AI Agent — Classify Reply", "type": "main", "index": 0 }]]
+    },
+    "Claude Haiku (reply)": {
+      "ai_languageModel": [[{ "node": "AI Agent — Classify Reply", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent — Classify Reply": {
+      "main": [[{ "node": "Parse Reply Output", "type": "main", "index": 0 }]]
+    },
+    "Parse Reply Output": {
+      "main": [[{ "node": "Wait between replies", "type": "main", "index": 0 }]]
+    },
+    "Wait between replies": {
+      "main": [[{ "node": "Twilio: Send Reply", "type": "main", "index": 0 }]]
+    },
+    "Twilio: Send Reply": {
+      "main": [[{ "node": "IF: Alert Owners?", "type": "main", "index": 0 }]]
+    },
+    "IF: Alert Owners?": {
+      "main": [
+        [{ "node": "Slack: Reply Alert", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Toronto"
+  },
+  "versionId": "1.0.0",
+  "id": "premier-detailing-02-review-harvester",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [{ "name": "premier-detailing" }, { "name": "reviews" }]
+}

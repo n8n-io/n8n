@@ -1,0 +1,34 @@
+{
+  "origin": {
+    "label": "Stratford, ON",
+    "lat": 43.3700,
+    "lng": -80.9821,
+    "note": "Stratford City Hall — used as the origin for distance calculations."
+  },
+  "rules": {
+    "free_zone_km": 5,
+    "minimum_travel_fee_cad": 20,
+    "per_km_rate_round_trip_cad": 1.0,
+    "auto_book_max_one_way_km": 30,
+    "owner_review_max_one_way_km": 45,
+    "hard_cap_one_way_km": 45
+  },
+  "formula": {
+    "description": "Travel fee is calculated on round-trip distance beyond the free zone. Free zone is Stratford + 5km radius (so 10km free round-trip).",
+    "pseudocode": "billable_round_trip_km = max(0, (one_way_km * 2) - (free_zone_km * 2)); fee = max(minimum_travel_fee_cad, billable_round_trip_km * per_km_rate_round_trip_cad); if one_way_km > 30 -> route to owner for case-by-case approval; if one_way_km > 45 -> auto-decline politely."
+  },
+  "examples": [
+    { "city": "Stratford", "one_way_km": 0, "fee_cad": 0, "auto_book": true },
+    { "city": "Sebringville", "one_way_km": 8, "fee_cad": 20, "auto_book": true, "note": "Min fee applies" },
+    { "city": "St. Marys", "one_way_km": 18, "fee_cad": 26, "auto_book": true },
+    { "city": "Mitchell", "one_way_km": 22, "fee_cad": 34, "auto_book": true },
+    { "city": "Tavistock", "one_way_km": 25, "fee_cad": 40, "auto_book": true },
+    { "city": "New Hamburg", "one_way_km": 31, "fee_cad": 52, "auto_book": false, "owner_review": true },
+    { "city": "Kitchener (close edge)", "one_way_km": 42, "fee_cad": 74, "auto_book": false, "owner_review": true },
+    { "city": "Waterloo / London", "one_way_km": 50, "fee_cad": null, "auto_book": false, "auto_decline": true }
+  ],
+  "exclusions": {
+    "trusted_customers_can_skip_deposit": true,
+    "fleet_dealership_custom_pricing": true
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "_note": "Curated list of fleet/dealership cold-pitch targets within auto-book range. Reactivation engine rotates through these weekly. Edit freely as Charlie/Kabir do walk-ins. Mark 'do_not_pitch' for refusals so they don't recycle.",
+  "targets": [
+    {
+      "id": "rosewood-toyota-stratford",
+      "name": "Rosewood Toyota Stratford",
+      "type": "new_car_dealer",
+      "city": "Stratford",
+      "angle": "New-vehicle prep + ceramic upsell at point of sale. They don't have a full-time detailer.",
+      "contact": "Sales manager — walk in Tue/Thu morning",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "stratford-mitsubishi",
+      "name": "Stratford Mitsubishi",
+      "type": "new_car_dealer",
+      "city": "Stratford",
+      "angle": "Service-loaner program — easy recurring weekly volume.",
+      "contact": "Service manager",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "stratford-kia",
+      "name": "Stratford Kia",
+      "type": "new_car_dealer",
+      "city": "Stratford",
+      "angle": "Pre-delivery inspection details + customer ceramic referrals.",
+      "contact": "Pre-delivery coordinator",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "stratford-hyundai",
+      "name": "Stratford Hyundai",
+      "type": "new_car_dealer",
+      "city": "Stratford",
+      "angle": "PDI + new-customer welcome package upsell.",
+      "contact": "GM",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "stratford-nissan",
+      "name": "Stratford Nissan",
+      "type": "new_car_dealer",
+      "city": "Stratford",
+      "angle": "Ceramic + paint protection upsell partnership.",
+      "contact": "F&I manager (they earn on add-ons)",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "stratford-ford",
+      "name": "Stratford Ford",
+      "type": "new_car_dealer",
+      "city": "Stratford",
+      "angle": "F-150 / Bronco buyers are prime ceramic + interior protection candidates.",
+      "contact": "Sales manager",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "sebringville-auto-sales",
+      "name": "Sebringville Auto Sales",
+      "type": "used_car_dealer",
+      "city": "Sebringville",
+      "angle": "~30 used cars/mo turning. Wholesale-rate exterior detail wins this lot.",
+      "contact": "Owner, walk-in",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "stratford-chrysler-dodge",
+      "name": "Stratford Chrysler Dodge Jeep Ram",
+      "type": "new_car_dealer",
+      "city": "Stratford",
+      "angle": "Ram + Jeep buyers — high ceramic conversion. Ask about their PDI process.",
+      "contact": "Sales manager",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "stratford-honda",
+      "name": "Stratford Honda (St. Marys Honda)",
+      "type": "new_car_dealer",
+      "city": "St. Marys",
+      "angle": "Within travel zone — Civic/CR-V volume.",
+      "contact": "Sales manager",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "fleet-stratford-taxi",
+      "name": "Stratford Taxi / Festival City Cabs",
+      "type": "fleet_operator",
+      "city": "Stratford",
+      "angle": "Weekly interior detail keeps the fleet professional. Negotiate flat per-vehicle rate.",
+      "contact": "Owner",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "fleet-stratford-festival",
+      "name": "Stratford Festival (executive vehicles)",
+      "type": "fleet_operator",
+      "city": "Stratford",
+      "angle": "Their visiting talent + executive cars. Premium tier customer with long-term volume.",
+      "contact": "Operations / facilities manager",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "fleet-uhaul",
+      "name": "U-Haul Stratford",
+      "type": "fleet_operator",
+      "city": "Stratford",
+      "angle": "Rental fleet between rentals — exterior + interior wipe-down.",
+      "contact": "Location manager",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    },
+    {
+      "id": "fleet-enterprise",
+      "name": "Enterprise Rent-A-Car Stratford",
+      "type": "fleet_operator",
+      "city": "Stratford",
+      "angle": "Same model — quick-turn between rentals. They detail in-house but overflow days are wins.",
+      "contact": "Branch manager",
+      "last_pitched": null,
+      "status": "pending",
+      "do_not_pitch": false
+    }
+  ]
+}

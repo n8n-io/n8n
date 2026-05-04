@@ -1,0 +1,428 @@
+{
+  "name": "Premier Detailing — 01 Lead to Quote & Booking",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 01 — Lead → AI Quote → Booking + Deposit\n\n**Trigger:** Wix form posts to the webhook below, OR Instagram/Facebook DM (via Meta webhook), OR an inbound SMS to the Twilio business number.\n\n**Flow:**\n1. Normalize the lead\n2. Geocode the city → distance from Stratford\n3. Pull next 7 days of available slots from Google Calendar (8hr crew cap)\n4. Claude AI Agent generates a structured quote (uses prompts/quote-agent.md)\n5. Decision: auto-book (≤30km) | owner-review (30–45km) | decline (>45km)\n6. Auto-book path → Square Appointment + Square deposit link + Calendar event + SMS confirmation\n7. Owner-review path → Slack/email alert with all context, no SMS to customer yet\n\n**Voice:** see prompts/voice-style-guide.md — every customer-facing SMS goes through the agent so it sounds like Charlie/Kabir.\n\n**Credentials needed:** Anthropic API, Twilio, Google Calendar, Square, Google Maps Geocoding, Slack (or Gmail).",
+        "height": 540,
+        "width": 720,
+        "color": 4
+      },
+      "id": "note-overview",
+      "name": "📋 Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, -340]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "premier-detailing-lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-lead",
+      "name": "Webhook — Lead Intake",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-200, 240],
+      "webhookId": "premier-detailing-lead"
+    },
+    {
+      "parameters": {
+        "content": "## Lead form fields expected\n\n```\nfirst_name, last_name, phone, email,\nyear, make, model,\nservices[],   // multi-select IDs from data/pricing.json\naddons[],     // multi-select IDs\ncity, postal,\nphotos[],     // optional URLs\nnotes,        // free text\npreferred_date  // optional ISO date\n```\n\nWix sends this as JSON. Custom form on book.premierdetailing.ca posts here too.",
+        "height": 320,
+        "width": 360,
+        "color": 7
+      },
+      "id": "note-form",
+      "name": "Note: Form fields",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, 380]
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            { "name": "first_name", "stringValue": "={{ $json.body.first_name?.trim() || $json.body.name?.split(' ')[0] || '' }}" },
+            { "name": "last_name", "stringValue": "={{ $json.body.last_name?.trim() || $json.body.name?.split(' ').slice(1).join(' ') || '' }}" },
+            { "name": "phone_raw", "stringValue": "={{ $json.body.phone }}" },
+            { "name": "phone_e164", "stringValue": "={{ '+1' + ($json.body.phone || '').replace(/\\D/g, '').replace(/^1/, '').slice(0, 10) }}" },
+            { "name": "email", "stringValue": "={{ $json.body.email?.toLowerCase().trim() }}" },
+            { "name": "vehicle_year", "stringValue": "={{ $json.body.year }}" },
+            { "name": "vehicle_make", "stringValue": "={{ $json.body.make }}" },
+            { "name": "vehicle_model", "stringValue": "={{ $json.body.model }}" },
+            { "name": "city", "stringValue": "={{ $json.body.city || 'Stratford' }}" },
+            { "name": "postal", "stringValue": "={{ $json.body.postal || '' }}" },
+            { "name": "notes", "stringValue": "={{ $json.body.notes || '' }}" },
+            { "name": "preferred_date", "stringValue": "={{ $json.body.preferred_date || '' }}" },
+            { "name": "lead_source", "stringValue": "={{ $json.headers?.['x-source'] || 'website' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-normalize",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [40, 240]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://maps.googleapis.com/maps/api/geocode/json",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "address", "value": "={{ $json.city + ', Ontario, Canada ' + $json.postal }}" },
+            { "name": "key", "value": "={{ $env.GOOGLE_MAPS_API_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-geocode",
+      "name": "Geocode City",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [280, 240]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Compute one-way distance from Stratford City Hall and travel fee\nconst origin = { lat: 43.3700, lng: -80.9821 };\nconst geo = $input.first().json.results?.[0]?.geometry?.location;\nconst lead = $('Normalize Lead').first().json;\n\nfunction haversine(a, b) {\n  const R = 6371;\n  const dLat = (b.lat - a.lat) * Math.PI / 180;\n  const dLng = (b.lng - a.lng) * Math.PI / 180;\n  const x = Math.sin(dLat/2)**2 + Math.cos(a.lat*Math.PI/180) * Math.cos(b.lat*Math.PI/180) * Math.sin(dLng/2)**2;\n  return 2 * R * Math.asin(Math.sqrt(x));\n}\n\nlet one_way_km = 0;\nlet geocode_ok = false;\nif (geo) {\n  one_way_km = Math.round(haversine(origin, geo) * 10) / 10;\n  geocode_ok = true;\n}\n\nconst FREE_KM = 5;\nconst MIN_FEE = 20;\nconst PER_KM = 1.0;\nconst AUTO_MAX = 30;\nconst HARD_CAP = 45;\n\nlet travel_fee = 0;\nlet decision_path = 'auto_book';\nlet decision_reason = 'in_zone';\n\nif (!geocode_ok) {\n  decision_path = 'owner_review';\n  decision_reason = 'geocode_failed';\n} else if (one_way_km <= FREE_KM) {\n  travel_fee = 0;\n} else if (one_way_km > HARD_CAP) {\n  decision_path = 'auto_decline';\n  decision_reason = 'out_of_service_area';\n} else {\n  const billable = (one_way_km * 2) - (FREE_KM * 2);\n  travel_fee = Math.max(MIN_FEE, Math.round(billable * PER_KM));\n  if (one_way_km > AUTO_MAX) {\n    decision_path = 'owner_review';\n    decision_reason = 'out_of_area_review';\n  }\n}\n\nreturn [{\n  json: {\n    ...lead,\n    geocode_ok,\n    one_way_km,\n    travel_fee,\n    decision_path,\n    decision_reason,\n    coords: geo || null\n  }\n}];"
+      },
+      "id": "code-distance",
+      "name": "Compute Distance & Travel Fee",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 240]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  { "leftValue": "={{ $json.decision_path }}", "rightValue": "auto_decline", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "decline"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  { "leftValue": "={{ $json.decision_path }}", "rightValue": "owner_review", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "owner"
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": true, "typeValidation": "loose" },
+                "conditions": [
+                  { "leftValue": "={{ $json.decision_path }}", "rightValue": "auto_book", "operator": { "type": "string", "operation": "equals" } }
+                ],
+                "combinator": "and"
+              },
+              "outputKey": "auto"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-decision",
+      "name": "Switch: Decision",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [760, 240]
+    },
+    {
+      "parameters": {
+        "calendar": { "__rl": true, "value": "premier-detailing-master", "mode": "list" },
+        "timeMin": "={{ $now.toISO() }}",
+        "timeMax": "={{ $now.plus({ days: 7 }).toISO() }}",
+        "options": { "singleEvents": true, "orderBy": "startTime" }
+      },
+      "id": "gcal-fetch",
+      "name": "GCal: Fetch Next 7 Days",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [1000, 140]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Compute available slots: 7am–9pm America/Toronto, 8hr crew cap, 30min buffer\nconst events = $input.all().map(i => i.json);\nconst lead = $('Compute Distance & Travel Fee').first().json;\n\nconst tz = 'America/Toronto';\nconst now = new Date();\nconst openHour = 7;\nconst closeHour = 21;\nconst dayCapHours = 8;\nconst bufferMin = 30;\n\nconst byDay = {};\nfor (const e of events) {\n  if (!e.start || !e.end) continue;\n  const d = new Date(e.start.dateTime || e.start.date).toISOString().slice(0,10);\n  const len = (new Date(e.end.dateTime) - new Date(e.start.dateTime)) / 3600000;\n  byDay[d] = (byDay[d] || 0) + len;\n}\n\nconst slots = [];\nfor (let i = 1; i <= 7 && slots.length < 6; i++) {\n  const d = new Date(now);\n  d.setDate(d.getDate() + i);\n  const dayKey = d.toISOString().slice(0,10);\n  const used = byDay[dayKey] || 0;\n  if (used >= dayCapHours) continue;\n  // propose 9am and 1pm slots if room\n  for (const startH of [9, 13]) {\n    if (slots.length >= 6) break;\n    const startISO = `${dayKey}T${String(startH).padStart(2,'0')}:00:00-04:00`;\n    slots.push({ start_iso: startISO, day_used_hr: used });\n  }\n}\n\nreturn [{ json: { ...lead, available_slots: slots } }];"
+      },
+      "id": "code-slots",
+      "name": "Compute Available Slots",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 140]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Lead intake payload:\n```json\n{{ JSON.stringify($json) }}\n```\n\nPricing reference (services + addons by vehicle size S/M/L/XL):\n```json\n{{ $('Load Pricing JSON').first().json }}\n```\n\nGenerate the structured quote response per your system prompt. Return JSON only.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "=See prompts/quote-agent.md — paste full contents here.\n\nThe voice rules from prompts/voice-style-guide.md are also part of your behavior.\n\nALWAYS return strict JSON matching the output schema. No prose outside JSON."
+        }
+      },
+      "id": "agent-quote",
+      "name": "AI Agent — Generate Quote",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.6,
+      "position": [1480, 140]
+    },
+    {
+      "parameters": {
+        "model": { "__rl": true, "value": "claude-sonnet-4-6", "mode": "list" },
+        "options": { "temperature": 0.4, "maxTokensToSample": 2000 }
+      },
+      "id": "claude-quote",
+      "name": "Claude Sonnet (quote)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.2,
+      "position": [1480, 360]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "filePath": "/data/pricing.json"
+      },
+      "id": "load-pricing",
+      "name": "Load Pricing JSON",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [1240, 340]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Parse the AI's structured JSON output\nconst raw = $input.first().json.output || $input.first().json.text || '';\nconst match = raw.match(/\\{[\\s\\S]*\\}/);\nif (!match) throw new Error('AI did not return JSON: ' + raw.slice(0, 200));\nconst quote = JSON.parse(match[0]);\nreturn [{ json: quote }];"
+      },
+      "id": "parse-quote",
+      "name": "Parse Quote JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, 140]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            { "leftValue": "={{ $json.decision }}", "rightValue": "auto_book", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-autobook",
+      "name": "IF: Auto-book?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1960, 140]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Send each AI-generated SMS message as a separate Twilio call (multi-text feel)\nconst quote = $input.first().json;\nconst items = (quote.messages || []).map((body, i) => ({\n  json: {\n    to: quote.customer.phone_e164,\n    body,\n    delay_ms: i * 1500,  // 1.5s between texts\n    quote_ref: quote\n  }\n}));\nreturn items;"
+      },
+      "id": "code-fanout-sms",
+      "name": "Fan out SMS messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 40]
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.delay_ms }}",
+        "unit": "ms"
+      },
+      "id": "wait-sms",
+      "name": "Wait between texts",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [2440, 40]
+    },
+    {
+      "parameters": {
+        "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+        "to": "={{ $json.to }}",
+        "toWhatsapp": false,
+        "message": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "twilio-quote-sms",
+      "name": "Twilio: Send Quote SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [2680, 40]
+    },
+    {
+      "parameters": {
+        "content": "## Auto-book path (≤30km, all auto-quotable)\n\nAfter the quote SMS goes out, this branch waits for the customer's reply. The reply arrives via the **Twilio inbound webhook** (separate workflow `04-inbound-sms-router` — see SETUP.md).\n\nFor the v1 build, the customer clicks the **Square booking link** in the quote SMS, which:\n1. Charges the $50 deposit\n2. Triggers a Square webhook → workflow `05-square-booking-confirmed`\n3. Creates the Google Calendar event and sends confirmation SMS\n\nThis keeps workflow 01 simple: it ends after quoting. Confirmation is its own short workflow.",
+        "height": 280,
+        "width": 540,
+        "color": 5
+      },
+      "id": "note-autobook",
+      "name": "Note: Auto-book path",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [2200, -240]
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "// Build the Square booking link with prefilled service + customer data\nconst q = $input.first().json;\nconst params = new URLSearchParams({\n  customer_name: `${q.customer.first_name} `,\n  customer_phone: q.customer.phone_e164,\n  service_ids: q.services.map(s => s.id).join(','),\n  total: q.totals.total,\n  deposit: q.totals.deposit_amount\n});\nreturn [{ json: { booking_url: `https://app.squareup.com/appointments/book/premier-detailing?${params.toString()}` } }];"
+      },
+      "id": "code-booking-link",
+      "name": "Build Square Booking Link",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 240]
+    },
+    {
+      "parameters": {
+        "channel": "#owner-alerts",
+        "text": "=*New booking quoted — auto-book path*\n\n*Customer:* {{ $('Parse Quote JSON').first().json.customer.first_name }} ({{ $('Parse Quote JSON').first().json.customer.phone_e164 }})\n*Vehicle:* {{ $('Parse Quote JSON').first().json.vehicle.year }} {{ $('Parse Quote JSON').first().json.vehicle.make }} {{ $('Parse Quote JSON').first().json.vehicle.model }} ({{ $('Parse Quote JSON').first().json.vehicle.size }})\n*Total:* ${{ $('Parse Quote JSON').first().json.totals.total }} CAD ({{ $('Parse Quote JSON').first().json.travel.fee }} travel)\n*Slots offered:* {{ $('Parse Quote JSON').first().json.slots_offered.map(s => s.human).join(' / ') }}",
+        "otherOptions": {}
+      },
+      "id": "slack-autobook-log",
+      "name": "Slack: Log auto-book quote",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [2680, 240]
+    },
+    {
+      "parameters": {
+        "channel": "#owner-alerts",
+        "text": "=:warning: *Lead needs your eyes — owner review*\n\n{{ $json.owner_alert?.body || 'See full payload below' }}\n\n*Reason:* {{ $json.reason }}\n*One-way distance:* {{ $('Compute Distance & Travel Fee').first().json.one_way_km }} km\n*Customer:* {{ $json.customer.first_name }} {{ $json.customer.phone_e164 }}\n*Vehicle:* {{ $json.vehicle.year }} {{ $json.vehicle.make }} {{ $json.vehicle.model }}\n*Estimated total:* ${{ $json.totals?.total }}\n*Notes:* {{ $('Normalize Lead').first().json.notes }}\n\n_Reply in this thread with `book` to auto-send the quote, or `pass` to politely decline._",
+        "otherOptions": {}
+      },
+      "id": "slack-owner-review",
+      "name": "Slack: Owner Review Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [1240, 540]
+    },
+    {
+      "parameters": {
+        "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+        "to": "={{ $('Compute Distance & Travel Fee').first().json.phone_e164 }}",
+        "toWhatsapp": false,
+        "message": "=hey {{ $('Compute Distance & Travel Fee').first().json.first_name }} its charlie. {{ $('Compute Distance & Travel Fee').first().json.city }} is a bit outside our usual range so i want to look at it personally before booking. ill text you back tonight with a real answer -- not a maybe.\n\n-- charlie",
+        "options": {}
+      },
+      "id": "twilio-owner-holding",
+      "name": "Twilio: Owner-Review Holding SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1480, 540]
+    },
+    {
+      "parameters": {
+        "from": "={{ $env.TWILIO_FROM_NUMBER }}",
+        "to": "={{ $json.phone_e164 }}",
+        "toWhatsapp": false,
+        "message": "=hey {{ $json.first_name }}, charlie here.\n\nunfortunately {{ $json.city }} is past our service area for mobile this season. when we open the shop in stratford (target: summer 2027) we'd love to have you. ill add you to the list so you hear from us first when that happens.\n\ncheers",
+        "options": {}
+      },
+      "id": "twilio-decline",
+      "name": "Twilio: Polite Decline SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1000, 740]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": true,\n  \"decision\": \"{{ $('Compute Distance & Travel Fee').first().json.decision_path }}\",\n  \"message\": \"Lead received — you'll get a text shortly\"\n}",
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [280, 40]
+    }
+  ],
+  "connections": {
+    "Webhook — Lead Intake": {
+      "main": [[{ "node": "Normalize Lead", "type": "main", "index": 0 }, { "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    },
+    "Normalize Lead": {
+      "main": [[{ "node": "Geocode City", "type": "main", "index": 0 }]]
+    },
+    "Geocode City": {
+      "main": [[{ "node": "Compute Distance & Travel Fee", "type": "main", "index": 0 }]]
+    },
+    "Compute Distance & Travel Fee": {
+      "main": [[{ "node": "Switch: Decision", "type": "main", "index": 0 }]]
+    },
+    "Switch: Decision": {
+      "main": [
+        [{ "node": "Twilio: Polite Decline SMS", "type": "main", "index": 0 }],
+        [{ "node": "Slack: Owner Review Alert", "type": "main", "index": 0 }, { "node": "Twilio: Owner-Review Holding SMS", "type": "main", "index": 0 }],
+        [{ "node": "GCal: Fetch Next 7 Days", "type": "main", "index": 0 }, { "node": "Load Pricing JSON", "type": "main", "index": 0 }]
+      ]
+    },
+    "GCal: Fetch Next 7 Days": {
+      "main": [[{ "node": "Compute Available Slots", "type": "main", "index": 0 }]]
+    },
+    "Compute Available Slots": {
+      "main": [[{ "node": "AI Agent — Generate Quote", "type": "main", "index": 0 }]]
+    },
+    "Load Pricing JSON": {
+      "main": [[{ "node": "AI Agent — Generate Quote", "type": "main", "index": 0 }]]
+    },
+    "Claude Sonnet (quote)": {
+      "ai_languageModel": [[{ "node": "AI Agent — Generate Quote", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "AI Agent — Generate Quote": {
+      "main": [[{ "node": "Parse Quote JSON", "type": "main", "index": 0 }]]
+    },
+    "Parse Quote JSON": {
+      "main": [[{ "node": "IF: Auto-book?", "type": "main", "index": 0 }]]
+    },
+    "IF: Auto-book?": {
+      "main": [
+        [{ "node": "Fan out SMS messages", "type": "main", "index": 0 }, { "node": "Build Square Booking Link", "type": "main", "index": 0 }],
+        [{ "node": "Slack: Owner Review Alert", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fan out SMS messages": {
+      "main": [[{ "node": "Wait between texts", "type": "main", "index": 0 }]]
+    },
+    "Wait between texts": {
+      "main": [[{ "node": "Twilio: Send Quote SMS", "type": "main", "index": 0 }]]
+    },
+    "Build Square Booking Link": {
+      "main": [[{ "node": "Slack: Log auto-book quote", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "timezone": "America/Toronto"
+  },
+  "versionId": "1.0.0",
+  "id": "premier-detailing-01-lead-to-booking",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [{ "name": "premier-detailing" }, { "name": "lead-intake" }]
+}
