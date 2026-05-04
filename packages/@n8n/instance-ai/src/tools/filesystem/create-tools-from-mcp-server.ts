@@ -13,6 +13,8 @@ import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
 import type { JSONSchema } from 'zod-from-json-schema-v3';
 
 import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
+import type { McpSchemaSanitizationError } from '../../agent/sanitize-mcp-schemas';
+import type { Logger } from '../../logger';
 import type { LocalMcpServer } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -77,6 +79,19 @@ function tryParseGatewayConfirmationRequired(
 // Factory
 // ---------------------------------------------------------------------------
 
+function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
+	return (error: McpSchemaSanitizationError) => {
+		logger?.warn('Skipped local gateway MCP tool with unsupported schema', {
+			toolName: error.details.toolName,
+			source: 'local gateway MCP',
+			path: error.details.path,
+			depth: error.details.depth,
+			maxDepth: error.details.maxDepth,
+			reason: error.message,
+		});
+	};
+}
+
 /**
  * Build Mastra tools dynamically from the MCP tools advertised by a connected
  * local MCP server (e.g. the computer-use daemon).
@@ -94,7 +109,7 @@ function tryParseGatewayConfirmationRequired(
  * The `toModelOutput` callback converts MCP content blocks (text and image)
  * into the AI SDK's multimodal format so the LLM receives images.
  */
-export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInput {
+export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: Logger): ToolsInput {
 	const tools: ToolsInput = {};
 
 	for (const mcpTool of server.getAvailableTools()) {
@@ -208,5 +223,5 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 		tools[toolName] = tool;
 	}
 
-	return sanitizeMcpToolSchemas(tools);
+	return sanitizeMcpToolSchemas(tools, { onError: warnSkippedLocalMcpSchema(logger) });
 }

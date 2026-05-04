@@ -6,10 +6,12 @@ import type { MastraCompositeStore } from '@mastra/core/storage';
 import { MCPClient } from '@mastra/mcp';
 import { nanoid } from 'nanoid';
 
-import { createMemory } from '../memory/memory-config';
+import type { Logger } from '../logger';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
 import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
+import type { McpSchemaSanitizationError } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
+import { createMemory } from '../memory/memory-config';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
@@ -131,7 +133,23 @@ function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor 
 	});
 }
 
-async function getMcpTools(mcpServers: McpServerConfig[]): Promise<ToolsInput> {
+function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
+	return (error: McpSchemaSanitizationError) => {
+		logger?.warn('Skipped MCP tool with unsupported schema', {
+			toolName: error.details.toolName,
+			source,
+			path: error.details.path,
+			depth: error.details.depth,
+			maxDepth: error.details.maxDepth,
+			reason: error.message,
+		});
+	};
+}
+
+async function getMcpTools(
+	mcpServers: McpServerConfig[],
+	logger: Logger | undefined,
+): Promise<ToolsInput> {
 	const key = JSON.stringify(mcpServers);
 	if (cachedMcpTools && cachedMcpServersKey === key) return cachedMcpTools;
 
@@ -145,12 +163,17 @@ async function getMcpTools(mcpServers: McpServerConfig[]): Promise<ToolsInput> {
 		id: `mcp-${nanoid(6)}`,
 		servers: buildMcpServers(mcpServers),
 	});
-	cachedMcpTools = sanitizeMcpToolSchemas(await mcpClient.listTools());
+	cachedMcpTools = sanitizeMcpToolSchemas(await mcpClient.listTools(), {
+		onError: warnSkippedMcpSchema(logger, 'external MCP'),
+	});
 	cachedMcpServersKey = key;
 	return cachedMcpTools;
 }
 
-async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<ToolsInput> {
+async function getBrowserMcpTools(
+	config: McpServerConfig | undefined,
+	logger: Logger | undefined,
+): Promise<ToolsInput> {
 	if (!config) return {};
 
 	const key = JSON.stringify(config);
@@ -160,7 +183,9 @@ async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<
 		id: `browser-mcp-${nanoid(6)}`,
 		servers: buildMcpServers([config]),
 	});
-	cachedBrowserMcpTools = sanitizeMcpToolSchemas(await browserClient.listTools());
+	cachedBrowserMcpTools = sanitizeMcpToolSchemas(await browserClient.listTools(), {
+		onError: warnSkippedMcpSchema(logger, 'browser MCP'),
+	});
 	cachedBrowserMcpKey = key;
 	return cachedBrowserMcpTools;
 }
@@ -195,8 +220,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	const orchestratorDomainTools = createOrchestratorDomainTools(context);
 
 	// Load MCP tools (cached — only spawns processes on first call or config change)
-	const mcpTools = await getMcpTools(mcpServers);
-	const browserMcpTools = await getBrowserMcpTools(orchestrationContext?.browserMcpConfig);
+	const mcpTools = await getMcpTools(mcpServers, context.logger);
+	const browserMcpTools = await getBrowserMcpTools(
+		orchestrationContext?.browserMcpConfig,
+		context.logger,
+	);
 
 	// Browser tool names — used to exclude them from the orchestrator's direct toolset.
 	// Browser tools are only accessible via browser-credential-setup (sub-agent) to prevent
@@ -257,9 +285,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
 	const rawLocalMcpTools = context.localMcpServer
 		? Object.fromEntries(
-				Object.entries(createToolsFromLocalMcpServer(context.localMcpServer)).filter(
-					([name]) => !browserToolNames.has(name),
-				),
+				Object.entries(
+					createToolsFromLocalMcpServer(context.localMcpServer, context.logger),
+				).filter(([name]) => !browserToolNames.has(name)),
 			)
 		: {};
 	const safeLocalMcpTools: ToolsInput = {};

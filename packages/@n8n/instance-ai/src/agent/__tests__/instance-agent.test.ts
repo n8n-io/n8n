@@ -82,8 +82,19 @@ const { createToolsFromLocalMcpServer } =
 	require('../../tools/filesystem/create-tools-from-mcp-server') as {
 		createToolsFromLocalMcpServer: jest.Mock;
 	};
+const { sanitizeMcpToolSchemas } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../sanitize-mcp-schemas') as {
+		sanitizeMcpToolSchemas: jest.Mock;
+	};
 
 type AgentToolConfig = { tools: Record<string, { id: string }> };
+type SanitizationOptions = {
+	onError?: (error: {
+		message: string;
+		details: { toolName?: string; path: string; depth: number; maxDepth: number };
+	}) => void;
+};
 
 function getLastAgentConfig(): AgentToolConfig {
 	const agentCalls = Agent.mock.calls as Array<[AgentToolConfig]>;
@@ -292,6 +303,56 @@ describe('createInstanceAgent', () => {
 			expect.objectContaining({
 				source: 'local gateway MCP',
 				toolName: 'custom-tool',
+			}),
+		);
+	});
+
+	it('logs MCP schema sanitization failures', async () => {
+		MCPClient.mockImplementation(() => ({
+			listTools: jest.fn().mockResolvedValue({
+				deep_tool: { id: 'external-deep' },
+			}),
+		}));
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-schema-log',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				logger,
+			},
+			orchestrationContext: {
+				runId: 'run-schema-log',
+				browserMcpConfig: undefined,
+			},
+			mcpServers: [{ name: 'test-server', command: 'test-command-run-schema-log' }],
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const sanitizeCalls = sanitizeMcpToolSchemas.mock.calls as Array<
+			[Record<string, unknown>, SanitizationOptions | undefined]
+		>;
+		const onError = sanitizeCalls.find(([, options]) => options?.onError)?.[1]?.onError;
+		onError?.({
+			message: 'MCP schema exceeds maximum depth of 32',
+			details: {
+				toolName: 'deep_tool',
+				path: '$.inputSchema',
+				depth: 33,
+				maxDepth: 32,
+			},
+		});
+
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsupported schema',
+			expect.objectContaining({
+				source: 'external MCP',
+				toolName: 'deep_tool',
+				path: '$.inputSchema',
 			}),
 		);
 	});
