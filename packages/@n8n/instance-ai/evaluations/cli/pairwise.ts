@@ -44,7 +44,6 @@ import { SnapshotManager } from '../../src/workspace/snapshot-manager';
 // ---------------------------------------------------------------------------
 
 interface PairwiseArgs {
-	backend: 'local' | 'langsmith';
 	dataset: string;
 	judges: number;
 	iterations: number;
@@ -67,11 +66,6 @@ function parseArgs(argv: string[]): PairwiseArgs {
 	};
 	const has = (flag: string): boolean => argv.includes(flag);
 
-	const backendRaw = get('--backend') ?? 'local';
-	if (backendRaw !== 'local' && backendRaw !== 'langsmith') {
-		throw new Error(`--backend must be "local" or "langsmith", got "${backendRaw}"`);
-	}
-
 	const iso = new Date().toISOString().replace(/[:.]/g, '-');
 	const defaultOutputDir = path.resolve(process.cwd(), '.output', 'pairwise', iso);
 
@@ -87,7 +81,6 @@ function parseArgs(argv: string[]): PairwiseArgs {
 	}
 
 	return {
-		backend: backendRaw,
 		dataset: get('--dataset') ?? DEFAULTS.DATASET_NAME,
 		judges: Number(get('--judges') ?? DEFAULTS.NUM_JUDGES),
 		iterations: Number(get('--iterations') ?? DEFAULTS.REPETITIONS),
@@ -149,17 +142,6 @@ interface DatasetExample {
 }
 
 async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<DatasetExample[]> {
-	if (args.backend === 'local') {
-		logger.info(`Loading local pairwise fixture (see evaluations/data/pairwise/local.json)`);
-		const localPath = path.resolve(__dirname, '..', 'data', 'pairwise', 'local.json');
-		const content = await fs.readFile(localPath, 'utf8');
-		const parsed = JSON.parse(content) as unknown;
-		if (!Array.isArray(parsed)) {
-			throw new Error(`Expected local.json to be a JSON array of examples`);
-		}
-		return parsed.map((entry, i) => coerceExample(entry, `local-${i}`));
-	}
-
 	logger.info(`Fetching dataset "${args.dataset}" from LangSmith`);
 	const lsClient = new LangSmithClient();
 	const examples: DatasetExample[] = [];
@@ -167,7 +149,7 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 		const inputs = isRecord(raw.inputs) ? raw.inputs : {};
 		// The notion-pairwise-workflows dataset stores criteria under
 		// `inputs.evals.{dos,donts}`. Older fixtures used `inputs.context.*`
-		// — read both paths so local and remote layouts both work.
+		// — read both paths so both layouts work.
 		const criteria = isRecord(inputs.evals)
 			? inputs.evals
 			: isRecord(inputs.context)
@@ -186,20 +168,6 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 		examples.push(example);
 	}
 	return examples;
-}
-
-function coerceExample(entry: unknown, fallbackId: string): DatasetExample {
-	if (!isRecord(entry)) throw new Error(`Invalid example entry: ${JSON.stringify(entry)}`);
-	const inputs = isRecord(entry.inputs) ? entry.inputs : entry;
-	const context = isRecord(inputs.context) ? inputs.context : {};
-	const prompt = typeof inputs.prompt === 'string' ? inputs.prompt : '';
-	if (!prompt) throw new Error(`Example ${fallbackId} is missing "prompt"`);
-	return {
-		id: typeof entry.id === 'string' ? entry.id : fallbackId,
-		prompt,
-		dos: typeof context.dos === 'string' ? context.dos : undefined,
-		donts: typeof context.donts === 'string' ? context.donts : undefined,
-	};
 }
 
 // ---------------------------------------------------------------------------
@@ -241,7 +209,6 @@ const EVAL_PROMPT_SUFFIX =
 	'\n\n---\n' +
 	'You are running inside an automated, non-interactive evaluation. ' +
 	'There is no human to answer follow-up questions. ' +
-	'Build a single workflow that best satisfies the request above and call `submit-workflow` before you finish. ' +
 	'Do not call `ask-user` and do not ask for clarification — pick reasonable defaults and proceed.';
 
 async function runExample(
@@ -506,7 +473,7 @@ async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
 	logger.info(
-		`pairwise eval: backend=${args.backend} dataset=${args.dataset} judges=${args.judges} iterations=${args.iterations}`,
+		`pairwise eval: dataset=${args.dataset} judges=${args.judges} iterations=${args.iterations}`,
 	);
 
 	const apiKey = process.env.N8N_AI_ANTHROPIC_KEY ?? process.env.ANTHROPIC_API_KEY;
@@ -613,13 +580,10 @@ async function main(): Promise<void> {
 	);
 	await regenerateReport(reportRoot, reportFile, logger);
 	logger.info(`Report: ${reportFile}`);
-
-	if (args.backend === 'langsmith') {
-		logger.info(
-			`Note: LangSmith feedback upload is not yet wired up — scores are in ${args.outputDir}. ` +
-				'Run scripts/upload-pairwise-to-langsmith.ts against summary.json to push results.',
-		);
-	}
+	logger.info(
+		`Note: LangSmith feedback upload is not yet wired up — scores are in ${args.outputDir}. ` +
+			'Run scripts/upload-pairwise-to-langsmith.ts against summary.json to push results.',
+	);
 }
 
 // ---------------------------------------------------------------------------

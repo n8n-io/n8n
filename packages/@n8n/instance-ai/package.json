@@ -12,7 +12,6 @@
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
-    "eval:pairwise:langsmith": "tsx evaluations/cli/pairwise.ts --backend langsmith",
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts"
