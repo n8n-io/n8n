@@ -9,16 +9,41 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  */
 export class CreateAgentTables1783000000000 implements ReversibleMigration {
 	async up({
-		schemaBuilder: { createTable, addColumns, dropColumns, column },
+		schemaBuilder: { createTable, addColumns, dropColumns, createIndex, column },
 		queryRunner,
 		escape,
 		runQuery,
+		isPostgres,
 	}: MigrationContext) {
 		const tablePrefix = escape.tableName('').replace(/"/g, '');
 
 		const columnExists = async (tableName: string, columnName: string) => {
 			const t = await queryRunner.getTable(`${tablePrefix}${tableName}`);
 			return t?.findColumnByName(columnName) !== undefined;
+		};
+
+		const findIndexByExactColumns = async (tableName: string, columnNames: string[]) => {
+			const t = await queryRunner.getTable(`${tablePrefix}${tableName}`);
+			return (
+				t?.indices.find(
+					(index) =>
+						index.columnNames.length === columnNames.length &&
+						columnNames.every(
+							(columnName, indexInList) => index.columnNames[indexInList] === columnName,
+						),
+				) ?? null
+			);
+		};
+
+		const hasIndexStartingWithColumns = async (tableName: string, columnNames: string[]) => {
+			const t = await queryRunner.getTable(`${tablePrefix}${tableName}`);
+			return (
+				t?.indices.some((index) =>
+					columnNames.every(
+						(columnName, indexInList) => index.columnNames[indexInList] === columnName,
+					),
+				) ?? false
+			);
 		};
 
 		await createTable('agents')
@@ -36,11 +61,16 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				column('skills').json.notNull.default("'{}'"),
 				column('versionId').varchar(36),
 			)
+			.withIndexOn('projectId')
 			.withForeignKey('projectId', {
 				tableName: 'project',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
+
+		if (!(await hasIndexStartingWithColumns('agents', ['projectId']))) {
+			await createIndex('agents', ['projectId']);
+		}
 
 		// Backfill missing columns for DBs that ran the older migrations
 		// before tools/skills/versionId existed.
@@ -96,13 +126,21 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				column('type').varchar(36),
 				column('content').text.notNull,
 			)
-			.withIndexOn('threadId')
 			.withIndexOn(['threadId', 'createdAt'])
 			.withForeignKey('threadId', {
 				tableName: 'agents_threads',
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			}).withTimestamps;
+
+		if (!(await hasIndexStartingWithColumns('agents_messages', ['threadId', 'createdAt']))) {
+			await createIndex('agents_messages', ['threadId', 'createdAt']);
+		}
+
+		const redundantThreadIdIndex = await findIndexByExactColumns('agents_messages', ['threadId']);
+		if (redundantThreadIdIndex) {
+			await queryRunner.dropIndex(`${tablePrefix}agents_messages`, redundantThreadIdIndex);
+		}
 
 		await createTable('agent_published_version')
 			.withColumns(
@@ -113,8 +151,6 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				column('provider').varchar(128),
 				column('credentialId').varchar(36),
 				column('publishedById').uuid,
-				column('createdAt').timestampTimezone().notNull,
-				column('updatedAt').timestampTimezone().notNull,
 				column('tools').json,
 				column('skills').json,
 			)
@@ -127,7 +163,17 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				tableName: 'user',
 				columnName: 'id',
 				onDelete: 'SET NULL',
-			});
+			}).withTimestamps;
+
+		if (isPostgres) {
+			const tableName = escape.tableName('agent_published_version');
+			await runQuery(
+				`ALTER TABLE ${tableName} ALTER COLUMN ${escape.columnName('createdAt')} SET DEFAULT CURRENT_TIMESTAMP(3)`,
+			);
+			await runQuery(
+				`ALTER TABLE ${tableName} ALTER COLUMN ${escape.columnName('updatedAt')} SET DEFAULT CURRENT_TIMESTAMP(3)`,
+			);
+		}
 
 		// Backfill missing columns for DBs that created agent_published_version
 		// before tools/skills were added.
