@@ -601,28 +601,6 @@ export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
 
-export interface InstanceAiConfirmResponse {
-	approved: boolean;
-	credentialId?: string;
-	credentials?: Record<string, string>;
-	/** Per-node credential assignments: `{ nodeName: { credType: credId } }`.
-	 *  Preferred over `credentials` when present — enables card-scoped selection. */
-	nodeCredentials?: Record<string, Record<string, string>>;
-	autoSetup?: { credentialType: string };
-	userInput?: string;
-	domainAccessAction?: DomainAccessAction;
-	resourceDecision?: string;
-	action?: 'apply' | 'test-trigger';
-	nodeParameters?: Record<string, Record<string, unknown>>;
-	testTriggerNode?: string;
-	answers?: Array<{
-		questionId: string;
-		selectedOptions: string[];
-		customText?: string;
-		skipped?: boolean;
-	}>;
-}
-
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
@@ -735,6 +713,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	updatedAt: string;
 	metadata?: Record<string, unknown>;
 }
 
