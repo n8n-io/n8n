@@ -195,6 +195,7 @@ export type VerificationResult = z.infer<typeof verificationResultSchema>;
 // ── WorkflowLoopAction ──────────────────────────────────────────────────────
 
 export type WorkflowLoopAction =
+	| { type: 'ignored'; reason: string }
 	| { type: 'continue_building'; reason: string }
 	| { type: 'verify'; workflowId: string }
 	| { type: 'rebuild'; workflowId: string; failureDetails: string }

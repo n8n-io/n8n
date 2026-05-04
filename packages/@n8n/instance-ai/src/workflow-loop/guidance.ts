@@ -9,6 +9,8 @@ export function formatWorkflowLoopGuidance(
 	options: WorkflowLoopGuidanceOptions = {},
 ): string {
 	switch (action.type) {
+		case 'ignored':
+			return `STALE REPORT IGNORED: ${action.reason}`;
 		case 'continue_building':
 			return `SUBMIT FAILED: ${action.reason}. Fix the workflow code and call \`submit-workflow\` again.`;
 		case 'done': {

@@ -64,7 +64,17 @@ export function handleBuildOutcome(
 	attempts: AttemptRecord[],
 	outcome: WorkflowBuildOutcome,
 ): TransitionResult {
-	const normalizedState = normalizeRunState(state, outcome.runId);
+	if (isStaleRunReport(state, outcome.runId)) {
+		const attempt = makeAttempt(state, 'build', attempts);
+		attempt.result = 'failure';
+		return {
+			state,
+			action: { type: 'ignored', reason: staleRunReportReason(state.runId, outcome.runId) },
+			attempt,
+		};
+	}
+
+	const normalizedState = state;
 	const attempt = makeAttempt(normalizedState, 'build', attempts);
 	const isRepairSubmit = Boolean(normalizedState.successfulSubmitSeen);
 	const postSubmitRemediationSubmitsUsed = isRepairSubmit
@@ -121,7 +131,6 @@ export function handleBuildOutcome(
 			'Builder failed to submit workflow';
 		const nextState: WorkflowLoopState = {
 			...normalizedState,
-			runId: outcome.runId ?? normalizedState.runId,
 			lastTaskId: outcome.taskId,
 			preSaveSubmitFailures,
 			postSubmitRemediationSubmitsUsed,
@@ -150,7 +159,6 @@ export function handleBuildOutcome(
 	const hasUnresolvedPlaceholders = outcome.hasUnresolvedPlaceholders ?? undefined;
 	const updatedState: WorkflowLoopState = {
 		...normalizedState,
-		runId: outcome.runId ?? normalizedState.runId,
 		workflowId: outcome.workflowId ?? normalizedState.workflowId,
 		lastTaskId: outcome.taskId,
 		mockedCredentialTypes: mockedCredentialTypes ?? normalizedState.mockedCredentialTypes,
@@ -201,7 +209,17 @@ export function handleVerificationVerdict(
 	attempts: AttemptRecord[],
 	verdict: VerificationResult,
 ): TransitionResult {
-	const normalizedState = normalizeRunState(state, verdict.runId);
+	if (isStaleRunReport(state, verdict.runId)) {
+		const attempt = makeAttempt(state, 'verify', attempts);
+		attempt.result = 'failure';
+		return {
+			state,
+			action: { type: 'ignored', reason: staleRunReportReason(state.runId, verdict.runId) },
+			attempt,
+		};
+	}
+
+	const normalizedState = state;
 	const attempt = makeAttempt(normalizedState, 'verify', attempts);
 	attempt.executionId = verdict.executionId;
 	attempt.failureSignature = verdict.failureSignature;
@@ -411,21 +429,12 @@ function escalateToRepair(
 	};
 }
 
-function normalizeRunState(state: WorkflowLoopState, runId: string | undefined): WorkflowLoopState {
-	if (!runId || state.runId === undefined || state.runId === runId) {
-		return { ...state, runId: runId ?? state.runId };
-	}
-	return {
-		...state,
-		runId,
-		phase: 'building',
-		status: 'active',
-		successfulSubmitSeen: false,
-		preSaveSubmitFailures: 0,
-		postSubmitRemediationSubmitsUsed: 0,
-		lastRemediation: undefined,
-		lastFailureSignature: undefined,
-	};
+function isStaleRunReport(state: WorkflowLoopState, runId: string | undefined): runId is string {
+	return Boolean(runId && state.runId && state.runId !== runId);
+}
+
+function staleRunReportReason(stateRunId: string | undefined, reportRunId: string): string {
+	return `Ignoring report from stale run "${reportRunId}" for active run "${stateRunId ?? 'unknown'}".`;
 }
 
 function withRemainingSubmitFixes(

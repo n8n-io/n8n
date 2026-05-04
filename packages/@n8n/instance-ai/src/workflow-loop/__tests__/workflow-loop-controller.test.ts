@@ -233,9 +233,9 @@ describe('handleBuildOutcome', () => {
 		});
 	});
 
-	it('resets blocked phase/status when a reused work item receives a new run', () => {
+	it('ignores stale build outcomes from a different run without resetting state', () => {
 		const state = makeState({
-			runId: 'run_previous',
+			runId: 'run_current',
 			phase: 'blocked',
 			status: 'blocked',
 			workflowId: 'wf_123',
@@ -251,7 +251,7 @@ describe('handleBuildOutcome', () => {
 
 		const result = handleBuildOutcome(state, [], {
 			...makeOutcome({
-				runId: 'run_current',
+				runId: 'run_previous',
 				submitted: false,
 				failureSignature: 'validation failed',
 				remediation: createRemediation({
@@ -262,13 +262,11 @@ describe('handleBuildOutcome', () => {
 			}),
 		});
 
-		expect(result.action.type).toBe('continue_building');
-		expect(result.state.runId).toBe('run_current');
-		expect(result.state.phase).toBe('building');
-		expect(result.state.status).toBe('active');
-		expect(result.state.preSaveSubmitFailures).toBe(1);
-		expect(result.state.postSubmitRemediationSubmitsUsed).toBe(0);
-		expect(result.state.lastFailureSignature).toBeUndefined();
+		expect(result.action.type).toBe('ignored');
+		expect(result.state).toBe(state);
+		expect(result.state.phase).toBe('blocked');
+		expect(result.state.status).toBe('blocked');
+		expect(result.state.postSubmitRemediationSubmitsUsed).toBe(2);
 	});
 
 	it('starts post-submit remediation budget at zero after successful submit with mocked credentials', () => {
@@ -379,6 +377,35 @@ describe('handleBuildOutcome', () => {
 // ── handleVerificationVerdict ───────────────────────────────────────────────
 
 describe('handleVerificationVerdict', () => {
+	it('ignores stale verification verdicts from a different run without resetting state', () => {
+		const state = makeState({
+			runId: 'run_current',
+			phase: 'blocked',
+			status: 'blocked',
+			workflowId: 'wf_123',
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+			lastRemediation: createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+				guidance: 'Stop editing.',
+			}),
+		});
+
+		const result = handleVerificationVerdict(state, [], {
+			...makeVerdict({
+				runId: 'run_previous',
+				verdict: 'verified',
+			}),
+		});
+
+		expect(result.action.type).toBe('ignored');
+		expect(result.state).toBe(state);
+		expect(result.state.phase).toBe('blocked');
+		expect(result.state.status).toBe('blocked');
+	});
+
 	it('transitions to done on verified', () => {
 		const state = makeState({ phase: 'verifying', workflowId: 'wf_123' });
 		const verdict = makeVerdict({ verdict: 'verified', executionId: 'exec_1' });
