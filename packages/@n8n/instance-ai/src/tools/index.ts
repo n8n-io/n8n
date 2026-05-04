@@ -8,6 +8,7 @@ import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mc
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
+import { createCompleteCheckpointTool } from './orchestration/complete-checkpoint.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
 import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
@@ -16,7 +17,6 @@ import { createVerifyBuiltWorkflowTool } from './orchestration/verify-built-work
 import { createResearchTool } from './research.tool';
 import { createAskUserTool } from './shared/ask-user.tool';
 import { createTaskControlTool } from './task-control.tool';
-import { createTemplatesTool } from './templates.tool';
 import { createApplyWorkflowCredentialsTool } from './workflows/apply-workflow-credentials.tool';
 import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createWorkflowsTool } from './workflows.tool';
@@ -35,7 +35,6 @@ export function createAllTools(context: InstanceAiContext) {
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context),
-		templates: createTemplatesTool(),
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
@@ -58,7 +57,6 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
 		workspace: createWorkspaceTool(context),
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),
-		templates: createTemplatesTool(),
 		'ask-user': createAskUserTool(),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 	};
@@ -75,6 +73,7 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 		'task-control': createTaskControlTool(context),
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
+		'complete-checkpoint': createCompleteCheckpointTool(context),
 		...(context.browserMcpConfig || hasGatewayBrowserTools(context)
 			? {
 					'browser-credential-setup': createBrowserCredentialSetupTool(context),

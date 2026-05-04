@@ -456,6 +456,73 @@ describe('establishExecutionContext', () => {
 				'parent-exec-123',
 			);
 		});
+
+		it('should skip hook augmentation when runtimeData is already set (queue-mode worker resume)', async () => {
+			// When the main process established the context before persisting,
+			// the worker fetches the execution with runtimeData already populated.
+			// The function must return immediately without re-running hook augmentation.
+			const existingContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1234567890,
+				source: 'webhook',
+				credentials: 'encrypted-credentials-blob',
+			};
+
+			const webhookNode = mock<INode>({
+				name: 'Webhook',
+				type: 'n8n-nodes-base.webhook',
+				parameters: {},
+			});
+
+			const runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: webhookNode,
+							data: {
+								main: [
+									[
+										{
+											json: {
+												headers: { authorization: 'original-header-value' },
+											},
+										},
+									],
+								],
+							},
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+					runtimeData: existingContext,
+				},
+			});
+
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData,
+				mockAdditionalData,
+				'webhook',
+			);
+
+			// runtimeData reference is preserved — same object, same values
+			expect(runExecutionData.executionData!.runtimeData).toBe(existingContext);
+			expect(runExecutionData.executionData!.runtimeData!.credentials).toBe(
+				'encrypted-credentials-blob',
+			);
+
+			// Trigger items are left untouched (hook augmentation was skipped).
+			// The main process already applied any transformations before persisting;
+			// this assertion just verifies the worker-side call is a no-op.
+			const headers = runExecutionData.executionData!.nodeExecutionStack[0].data.main[0]![0].json
+				.headers as Record<string, string>;
+			expect(headers.authorization).toBe('original-header-value');
+		});
 	});
 
 	describe('sub-workflow context inheritance', () => {

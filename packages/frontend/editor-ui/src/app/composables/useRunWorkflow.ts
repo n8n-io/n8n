@@ -189,7 +189,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				directParentNodes,
 				runData,
 				workflowData.pinData,
-				workflowDocumentStore.value.getSnapshot(),
+				workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
 			);
 
 			const { startNodeNames } = consolidatedData;
@@ -539,7 +539,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				// execution finished before it could be stopped
 				const executedData = {
 					data: execution.data,
-					workflowData: workflowsStore.workflow,
+					workflowData: workflowDocumentStore.value.getSnapshot(),
 					finished: execution.finished,
 					mode: execution.mode,
 					startedAt: execution.startedAt,

@@ -71,7 +71,7 @@ export class ExportService {
 				.join('\n');
 			await appendFile(
 				filePath,
-				this.cipher.encrypt(migrationsJsonl ?? '' + '\n', customEncryptionKey),
+				await this.cipher.encryptV2(migrationsJsonl ?? '' + '\n', customEncryptionKey),
 				'utf8',
 			);
 
@@ -198,7 +198,7 @@ export class ExportService {
 					.join('\n');
 				await appendFile(
 					filePath,
-					this.cipher.encrypt(entitiesJsonl, customEncryptionKey) + '\n',
+					(await this.cipher.encryptV2(entitiesJsonl, customEncryptionKey)) + '\n',
 					'utf8',
 				);
 

@@ -53,6 +53,7 @@ export class ModuleRegistry {
 		'token-exchange',
 		'instance-version-history',
 		'encryption-key-manager',
+		'oauth-jwe',
 	];
 
 	private readonly activeModules: string[] = [];
