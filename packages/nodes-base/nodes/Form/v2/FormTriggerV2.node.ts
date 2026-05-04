@@ -109,6 +109,10 @@ const descriptionV2: INodeTypeDescription = {
 				},
 			],
 			default: 'none',
+			builderHint: {
+				message:
+					"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.",
+			},
 		},
 		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
 		formTitle,
