@@ -86,6 +86,12 @@ describe('CommunityPackageRow', () => {
 		expect(getByText(/Test Author/)).toBeInTheDocument();
 	});
 
+	it('should render node icon when nodeDescription is present', () => {
+		const { getByTestId } = renderComponent({ props: { row: makeRow() } });
+
+		expect(getByTestId('node-icon')).toBeInTheDocument();
+	});
+
 	it('should link package name to npm', () => {
 		const { getByText } = renderComponent({ props: { row: makeRow() } });
 
@@ -253,7 +259,10 @@ describe('CommunityPackageRow', () => {
 				type: 'verified',
 				packageName: 'n8n-nodes-example',
 				nodeType: 'n8n-nodes-example.exampleNode',
-				telemetry: expect.objectContaining({ source: 'cnr settings browse' }),
+				telemetry: expect.objectContaining({
+					hasQuickConnect: false,
+					source: 'cnr settings browse',
+				}),
 			}),
 		);
 	});
@@ -323,15 +332,25 @@ describe('CommunityPackageRow', () => {
 		).not.toBeNull();
 	});
 
-	it('should not render install/update buttons when failedLoading', () => {
-		const { queryByTestId } = renderComponent({
+	it('should render failed-loading state instead of install/update buttons', () => {
+		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => true });
+
+		const { container, queryByTestId } = renderComponent({
 			props: {
-				row: makeRow({ isInstalled: true, failedLoading: true, updateAvailable: '2.0.0' }),
+				row: makeRow({
+					isInstalled: true,
+					failedLoading: true,
+					installedVersion: '1.0.0',
+					updateAvailable: '2.0.0',
+				}),
 			},
 		});
 
 		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
 		expect(queryByTestId('community-package-row__update')).not.toBeInTheDocument();
+		expect(
+			container.querySelector('svg[data-icon="triangle-alert"], [class*="triangle-alert"]'),
+		).not.toBeNull();
 	});
 
 	it('should render skeleton when loading is true', () => {
