@@ -44,6 +44,13 @@ async function findChromaticReviewUrl() {
 		}
 	}
 
+	if (!uiReviewUrl && process.env.BUILD_URL) {
+		uiReviewUrl = process.env.BUILD_URL.replace(
+			'https://www.chromatic.com/build?',
+			'https://www.chromatic.com/review?',
+		);
+	}
+
 	const output = {
 		ui_review_url: uiReviewUrl,
 	};
