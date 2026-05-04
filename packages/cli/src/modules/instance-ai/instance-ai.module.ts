@@ -19,6 +19,8 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
+		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service');
+		Container.get(InstanceAiEventRelay);
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller');
