@@ -20,16 +20,18 @@
 // first suspension and the builder never completes.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvent } from '@n8n/api-types';
 import { Agent } from '@mastra/core/agent';
 import { InMemoryStore } from '@mastra/core/storage';
+import type { InstanceAiEvent } from '@n8n/api-types';
+import { nanoid } from 'nanoid';
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
-import { nanoid } from 'nanoid';
 
+import { normalizeWorkflow } from './normalize-workflow';
+import { stringifyError, truncate } from './redact';
+import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
-
 import { registerWithMastra } from '../../src/agent/register-with-mastra';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
@@ -39,14 +41,11 @@ import { createSandboxBuilderAgentPrompt } from '../../src/tools/orchestration/b
 import { createSubmitWorkflowTool } from '../../src/tools/workflows/submit-workflow.tool';
 import type { ModelConfig } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
-import {
+import type {
 	BuilderSandboxFactory,
-	type BuilderWorkspace,
+	BuilderWorkspace,
 } from '../../src/workspace/builder-sandbox-factory';
 import { getWorkspaceRoot } from '../../src/workspace/sandbox-setup';
-import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
-import { normalizeWorkflow } from './normalize-workflow';
-import { stringifyError, truncate } from './redact';
 
 // ---------------------------------------------------------------------------
 // Public API

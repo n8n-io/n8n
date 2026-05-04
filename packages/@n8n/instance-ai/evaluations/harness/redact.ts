@@ -38,7 +38,7 @@ export function redactSecrets(value: unknown, depth = 0): unknown {
 	if (Array.isArray(value)) {
 		return value.map((entry) => redactSecrets(entry, depth + 1));
 	}
-	if (typeof value === 'object' && (value as object).constructor === Object) {
+	if (typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
 		const out: Record<string, unknown> = {};
 		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
 			out[k] = isSecretKey(k) ? '[REDACTED]' : redactSecrets(v, depth + 1);

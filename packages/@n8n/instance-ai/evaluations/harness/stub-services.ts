@@ -8,11 +8,10 @@
 // returned from `createStubServices`.
 // ---------------------------------------------------------------------------
 
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 
 import type {
 	InstanceAiContext,

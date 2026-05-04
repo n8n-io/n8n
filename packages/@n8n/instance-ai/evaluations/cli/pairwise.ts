@@ -11,21 +11,24 @@
 // baseline.
 // ---------------------------------------------------------------------------
 
+import { ChatAnthropic } from '@langchain/anthropic';
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { Client as LangSmithClient } from 'langsmith';
 import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
-
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { ChatAnthropic } from '@langchain/anthropic';
 import pLimit from 'p-limit';
-import { Client as LangSmithClient } from 'langsmith';
 
+import { loadRuns, renderDocument } from './report';
 import {
 	createPairwiseEvaluator,
 	type Feedback,
 	type SimpleWorkflow,
 } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 import { DEFAULTS } from '../../../ai-workflow-builder.ee/evaluations/support/constants';
-
+import type { Logger } from '../../src/logger';
+import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
+import type { SandboxConfig } from '../../src/workspace/create-workspace';
+import { SnapshotManager } from '../../src/workspace/snapshot-manager';
 import {
 	buildInProcess,
 	type InProcessBuildResult,
@@ -33,11 +36,6 @@ import {
 } from '../harness/in-process-builder';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
-import { loadRuns, renderDocument } from './report';
-import type { Logger } from '../../src/logger';
-import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
-import type { SandboxConfig } from '../../src/workspace/create-workspace';
-import { SnapshotManager } from '../../src/workspace/snapshot-manager';
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -557,7 +555,7 @@ async function main(): Promise<void> {
 	// Serialize incremental writes so concurrent example completions don't
 	// race on the same output files.
 	let writeQueue: Promise<unknown> = Promise.resolve();
-	const flushIncremental = (): Promise<unknown> => {
+	const flushIncremental = async (): Promise<unknown> => {
 		writeQueue = writeQueue.then(async () => {
 			const snapshot = [...records].sort((a, b) =>
 				a.exampleId === b.exampleId
@@ -576,7 +574,7 @@ async function main(): Promise<void> {
 			);
 			await regenerateReport(reportRoot, reportFile, logger);
 		});
-		return writeQueue;
+		return await writeQueue;
 	};
 
 	const work: Array<Promise<void>> = [];

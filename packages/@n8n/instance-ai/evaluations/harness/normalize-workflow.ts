@@ -14,6 +14,7 @@
 // ---------------------------------------------------------------------------
 
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { deepCopy } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
 
@@ -53,7 +54,7 @@ export function normalizeWorkflow(raw: WorkflowJSON): SimpleWorkflow {
 	// JSON round-trip strips the nominal type from `@n8n/workflow-sdk`
 	// so the plain object can be treated as `SimpleWorkflow` from
 	// `n8n-workflow`. Runtime shape is identical.
-	const plain: unknown = JSON.parse(JSON.stringify(shape));
+	const plain: unknown = deepCopy(shape);
 	return plain as SimpleWorkflow;
 }
 
