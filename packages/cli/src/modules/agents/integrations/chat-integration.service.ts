@@ -201,6 +201,17 @@ export class ChatIntegrationService {
 	}
 
 	/**
+	 * Disconnect every active integration. Used on leader stepdown so a
+	 * demoted main releases all chat sessions before another main takes over.
+	 */
+	async disconnectAll(): Promise<void> {
+		const keys = [...this.connections.keys()];
+		for (const key of keys) {
+			await this.disconnectOne(key);
+		}
+	}
+
+	/**
 	 * Diff the previous and next chat integrations of an agent and reconcile
 	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
 	 * after the builder writes a new integrations array, and by
