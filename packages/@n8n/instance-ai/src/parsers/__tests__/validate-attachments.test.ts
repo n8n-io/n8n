@@ -94,14 +94,14 @@ describe('validateAttachmentMimeTypes', () => {
 				{ data: '', mimeType: 'video/mp4', fileName: 'b.mp4' },
 			]);
 			fail('expected error to be thrown');
-		} catch (error) {
-			expect(error).toBeInstanceOf(UnsupportedAttachmentError);
-			const err = error as UnsupportedAttachmentError;
-			expect(err.unsupported).toEqual([
+		} catch (caught) {
+			expect(caught).toBeInstanceOf(UnsupportedAttachmentError);
+			const error = caught as UnsupportedAttachmentError;
+			expect(error.unsupported).toEqual([
 				{ fileName: 'a.zip', mimeType: 'application/zip' },
 				{ fileName: 'b.mp4', mimeType: 'video/mp4' },
 			]);
-			expect(err.supported.length).toBeGreaterThan(0);
+			expect(error.supported.length).toBeGreaterThan(0);
 		}
 	});
 });

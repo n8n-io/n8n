@@ -3,19 +3,19 @@ import * as XLSX from 'xlsx';
 import type { InstanceAiContext } from '../../../types';
 import { createParseFileTool } from '../parse-file.tool';
 
-const mockPdfParse = jest.fn();
+const mockPdfParse = jest.fn<Promise<{ text: string; numpages: number }>, [Buffer]>();
 jest.mock('pdf-parse', () => ({
 	__esModule: true,
-	default: (buffer: Buffer) => mockPdfParse(buffer),
+	default: async (buffer: Buffer) => await mockPdfParse(buffer),
 }));
 
-const mockExtractRawText = jest.fn();
+const mockExtractRawText = jest.fn<Promise<{ value: string; messages: unknown[] }>, [unknown]>();
 jest.mock('mammoth', () => ({
 	__esModule: true,
 	default: {
-		extractRawText: (input: { buffer: Buffer }) => mockExtractRawText(input),
+		extractRawText: async (input: { buffer: Buffer }) => await mockExtractRawText(input),
 	},
-	extractRawText: (input: { buffer: Buffer }) => mockExtractRawText(input),
+	extractRawText: async (input: { buffer: Buffer }) => await mockExtractRawText(input),
 }));
 
 // ---------------------------------------------------------------------------

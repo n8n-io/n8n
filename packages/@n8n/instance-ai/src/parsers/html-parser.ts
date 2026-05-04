@@ -45,22 +45,22 @@ export async function extractHtmlContent(
 
 	const html = decoded.toString('utf-8');
 
-	const { parseHTML } = await import('linkedom');
+	const linkedom = await import('linkedom');
 	const TurndownModule = await import('turndown');
 	const TurndownService = TurndownModule.default;
 
-	const dom = parseHTML(html);
-	const document = dom.document as unknown as StrippableDocument;
+	const dom = linkedom.parseHTML(html) as { document: StrippableDocument };
+	const htmlDocument: StrippableDocument = dom.document;
 
-	const title = document.querySelector('title')?.textContent?.trim() || undefined;
+	const title = htmlDocument.querySelector('title')?.textContent?.trim() ?? undefined;
 
 	for (const tag of STRIPPABLE_TAGS) {
-		for (const el of Array.from(document.querySelectorAll(tag))) {
+		for (const el of Array.from(htmlDocument.querySelectorAll(tag))) {
 			el.remove();
 		}
 	}
 
-	const sourceHtml = document.body?.innerHTML ?? '';
+	const sourceHtml = htmlDocument.body?.innerHTML ?? '';
 	const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 	const markdown = turndown.turndown(sourceHtml).trim();
 

@@ -1,13 +1,13 @@
 import { extractDocxText } from '../docx-parser';
 
-const mockExtractRawText = jest.fn();
+const mockExtractRawText = jest.fn<Promise<{ value: string; messages: unknown[] }>, [unknown]>();
 
 jest.mock('mammoth', () => ({
 	__esModule: true,
 	default: {
-		extractRawText: (input: { buffer: Buffer }) => mockExtractRawText(input),
+		extractRawText: async (input: { buffer: Buffer }) => await mockExtractRawText(input),
 	},
-	extractRawText: (input: { buffer: Buffer }) => mockExtractRawText(input),
+	extractRawText: async (input: { buffer: Buffer }) => await mockExtractRawText(input),
 }));
 
 function toBase64(content: string | Buffer): string {

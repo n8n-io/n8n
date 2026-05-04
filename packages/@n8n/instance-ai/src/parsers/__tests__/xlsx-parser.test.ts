@@ -1,6 +1,6 @@
-import { extractXlsxAsRows } from '../xlsx-parser';
-
 import * as XLSX from 'xlsx';
+
+import { extractXlsxAsRows } from '../xlsx-parser';
 
 function makeXlsxAttachment(
 	rows: Array<Record<string, string | number | boolean>>,

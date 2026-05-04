@@ -8,7 +8,6 @@ declare module 'pdf-parse' {
 		text: string;
 	}
 
-	function pdfParse(dataBuffer: Buffer): Promise<PdfParseResult>;
-
-	export default pdfParse;
+	// eslint-disable-next-line import-x/no-default-export -- pdf-parse exports a default function only
+	export default function pdfParse(dataBuffer: Buffer): Promise<PdfParseResult>;
 }

@@ -1,10 +1,10 @@
 import { extractPdfText } from '../pdf-parser';
 
-const mockPdfParse = jest.fn();
+const mockPdfParse = jest.fn<Promise<{ text: string; numpages: number }>, [Buffer]>();
 
 jest.mock('pdf-parse', () => ({
 	__esModule: true,
-	default: (buffer: Buffer) => mockPdfParse(buffer),
+	default: async (buffer: Buffer) => await mockPdfParse(buffer),
 }));
 
 function toBase64(content: string | Buffer): string {
