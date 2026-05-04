@@ -161,6 +161,7 @@ describe('GlobalConfig', () => {
 			logWriter: {
 				keepLogCount: 3,
 				logBaseName: 'n8nEventLog',
+				logFullPath: '',
 				maxFileSizeInKB: 10240,
 				maxMessagesPerParse: 10_000,
 				maxTotalMessagesPerFile: 500_000,
