@@ -86,12 +86,6 @@ const {
 const initialized = ref(false);
 const agentName = ref('');
 const agent = ref<AgentResource | null>(null);
-/**
- * Bumped whenever the builder LLM persists a config change so child panels
- * that fetch their own state (integrations, schedule trigger card) can
- * refetch instead of staying out of sync until the user navigates away.
- */
-const integrationsReloadToken = ref(0);
 const {
 	activeChatSessionId,
 	continueSessionId,
@@ -422,7 +416,12 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
-	integrationsReloadToken.value += 1;
+	// Refresh the connected-trigger list so chips reflect builder writes
+	// without waiting for a tab switch. Mirrors the initial baseline fetch.
+	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+	const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
+	if (connected) connectedTriggers.value = connected;
 	builderTelemetry.trackToolsAdded();
 }
 
@@ -883,7 +882,6 @@ function onSwitchAgent(nextAgentId: string) {
 				:is-build-chat-streaming="isBuildChatStreaming"
 				:main-tab-options="mainTabOptions"
 				:executions-description="executionsDescription"
-				:integrations-reload-token="integrationsReloadToken"
 				@update:config="onConfigFieldUpdate"
 				@open-tool="onOpenToolFromList"
 				@open-skill="onOpenSkillFromList"

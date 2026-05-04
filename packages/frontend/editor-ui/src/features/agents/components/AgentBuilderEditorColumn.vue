@@ -24,8 +24,6 @@ defineProps<{
 	connectedTriggers: string[];
 	isBuildChatStreaming: boolean;
 	executionsDescription: string;
-	/** Forwarded to AgentCapabilitiesSection so trigger chips refresh after builder writes. */
-	integrationsReloadToken?: number;
 }>();
 
 const emit = defineEmits<{
@@ -92,7 +90,6 @@ const i18n = useI18n();
 							:project-id="projectId"
 							:agent-id="agentId"
 							:is-published="Boolean(agent?.publishedVersion)"
-							:reload-token="integrationsReloadToken"
 							@open-tool="emit('open-tool', $event)"
 							@open-skill="emit('open-skill', $event)"
 							@open-trigger="emit('open-trigger', $event)"
