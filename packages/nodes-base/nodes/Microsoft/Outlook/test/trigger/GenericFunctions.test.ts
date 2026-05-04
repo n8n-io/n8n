@@ -284,6 +284,164 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				});
 			});
 
+			describe('folder filtering', () => {
+				const folderId1 = 'AAMkADYyN2Q4ZTZlLTQ2ZDk1';
+				const folderId2 = 'AAMkADYyN2Q4ZTZlLTQ2ZDk2';
+
+				describe('trigger mode', () => {
+					beforeEach(() => {
+						mockPollFunctions.getMode.mockReturnValue('trigger');
+						(microsoftApiRequestAllItems as jest.Mock).mockResolvedValue(mockMessages);
+					});
+
+					it('should query folder endpoint instead of /messages when foldersToInclude is set', async () => {
+						mockPollFunctions.getNodeParameter.mockImplementation(
+							(paramName: string, defaultValue?: any) => {
+								const params: Record<string, any> = {
+									filters: { foldersToInclude: [folderId1] },
+									options: {},
+									output: 'simple',
+								};
+								return params[paramName] ?? defaultValue;
+							},
+						);
+
+						await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+						expect(microsoftApiRequestAllItems).toHaveBeenCalledWith(
+							'value',
+							'GET',
+							`/mailFolders/${folderId1}/messages`,
+							undefined,
+							{
+								$select:
+									'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+								$filter: `receivedDateTime ge ${pollStartDate} and receivedDateTime lt ${pollEndDate}`,
+							},
+						);
+						expect(microsoftApiRequestAllItems).toHaveBeenCalledTimes(1);
+					});
+
+					it('should query each folder endpoint and merge results when multiple foldersToInclude are set', async () => {
+						const folder1Messages = [mockMessages[0]];
+						const folder2Messages = [mockMessages[1]];
+						(microsoftApiRequestAllItems as jest.Mock)
+							.mockResolvedValueOnce(folder1Messages)
+							.mockResolvedValueOnce(folder2Messages);
+
+						mockPollFunctions.getNodeParameter.mockImplementation(
+							(paramName: string, defaultValue?: any) => {
+								const params: Record<string, any> = {
+									filters: { foldersToInclude: [folderId1, folderId2] },
+									options: {},
+									output: 'raw',
+								};
+								return params[paramName] ?? defaultValue;
+							},
+						);
+
+						const result = await getPollResponse.call(
+							mockPollFunctions,
+							pollStartDate,
+							pollEndDate,
+						);
+
+						expect(microsoftApiRequestAllItems).toHaveBeenCalledTimes(2);
+						expect(microsoftApiRequestAllItems).toHaveBeenCalledWith(
+							'value',
+							'GET',
+							`/mailFolders/${folderId1}/messages`,
+							undefined,
+							expect.objectContaining({ $filter: expect.any(String) }),
+						);
+						expect(microsoftApiRequestAllItems).toHaveBeenCalledWith(
+							'value',
+							'GET',
+							`/mailFolders/${folderId2}/messages`,
+							undefined,
+							expect.objectContaining({ $filter: expect.any(String) }),
+						);
+						expect(result).toHaveLength(2); // one from each folder, merged
+					});
+
+					it('should not pass foldersToInclude to prepareFilterString', async () => {
+						mockPollFunctions.getNodeParameter.mockImplementation(
+							(paramName: string, defaultValue?: any) => {
+								const params: Record<string, any> = {
+									filters: { foldersToInclude: [folderId1], hasAttachments: true },
+									options: {},
+									output: 'simple',
+								};
+								return params[paramName] ?? defaultValue;
+							},
+						);
+
+						await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+						expect(prepareFilterString).toHaveBeenCalledWith({
+							filters: { hasAttachments: true },
+						});
+					});
+
+					it('should fall back to /messages when foldersToInclude contains only empty strings', async () => {
+						mockPollFunctions.getNodeParameter.mockImplementation(
+							(paramName: string, defaultValue?: any) => {
+								const params: Record<string, any> = {
+									filters: { foldersToInclude: ['', ''] },
+									options: {},
+									output: 'simple',
+								};
+								return params[paramName] ?? defaultValue;
+							},
+						);
+
+						await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+						expect(microsoftApiRequestAllItems).toHaveBeenCalledWith(
+							'value',
+							'GET',
+							'/messages',
+							undefined,
+							expect.objectContaining({ $filter: expect.any(String) }),
+						);
+					});
+				});
+
+				describe('manual mode', () => {
+					beforeEach(() => {
+						mockPollFunctions.getMode.mockReturnValue('manual');
+						(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
+					});
+
+					it('should use first folder endpoint with $top=1 in manual mode', async () => {
+						mockPollFunctions.getNodeParameter.mockImplementation(
+							(paramName: string, defaultValue?: any) => {
+								const params: Record<string, any> = {
+									filters: { foldersToInclude: [folderId1, folderId2] },
+									options: {},
+									output: 'simple',
+								};
+								return params[paramName] ?? defaultValue;
+							},
+						);
+
+						await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+						expect(microsoftApiRequest).toHaveBeenCalledWith(
+							'GET',
+							`/mailFolders/${folderId1}/messages`,
+							undefined,
+							{
+								$select:
+									'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+								$top: 1,
+							},
+						);
+						expect(microsoftApiRequestAllItems).not.toHaveBeenCalled();
+					});
+				});
+			});
+
 			describe('output formats', () => {
 				beforeEach(() => {
 					mockPollFunctions.getMode.mockReturnValue('manual');
@@ -486,7 +644,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 				const result = await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
-				expect(prepareFilterString).toHaveBeenCalledWith({ filters: undefined });
+				expect(prepareFilterString).toHaveBeenCalledWith({ filters: {} });
 				expect(result).toHaveLength(2);
 			});
 
