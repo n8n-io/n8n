@@ -226,6 +226,6 @@ const isOpen = computed({
 }
 
 .noAnimation {
-	--animation--duration--collapse: 0s;
+	--animation--collapsible-slide--duration: 0s;
 }
 </style>
