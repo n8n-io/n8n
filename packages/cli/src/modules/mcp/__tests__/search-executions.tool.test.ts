@@ -131,6 +131,20 @@ describe('search-executions MCP tool', () => {
 		expect(query.status).toEqual(['error', 'crashed']);
 	});
 
+	test('filters by time range', async () => {
+		await createTool().handler(
+			{
+				startedAfter: '2024-06-01T00:00:00.000Z',
+				startedBefore: '2024-06-07T23:59:59.999Z',
+			} as never,
+			{} as never,
+		);
+
+		const query = (executionService.findMcpRangeWithCount as jest.Mock).mock.calls[0][0];
+		expect(query.startedAfter).toBe('2024-06-01T00:00:00.000Z');
+		expect(query.startedBefore).toBe('2024-06-07T23:59:59.999Z');
+	});
+
 	test('respects limit parameter and clamps to max', async () => {
 		await createTool().handler({ limit: 500 } as never, {} as never);
 

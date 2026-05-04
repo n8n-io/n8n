@@ -19,6 +19,14 @@ const inputSchema = {
 		.array(z.enum(ExecutionStatusList))
 		.optional()
 		.describe('Filter by execution status(es)'),
+	startedAfter: z
+		.string()
+		.optional()
+		.describe('ISO 8601 timestamp — only return executions that started after this time'),
+	startedBefore: z
+		.string()
+		.optional()
+		.describe('ISO 8601 timestamp — only return executions that started before this time'),
 	limit: createLimitSchema(MAX_RESULTS),
 	lastId: z
 		.string()
@@ -70,15 +78,19 @@ export const createSearchExecutionsTool = (
 	handler: async ({
 		workflowId,
 		status,
+		startedAfter,
+		startedBefore,
 		limit = MAX_RESULTS,
 		lastId,
 	}: {
 		workflowId?: string;
 		status?: ExecutionStatus[];
+		startedAfter?: string;
+		startedBefore?: string;
 		limit?: number;
 		lastId?: string;
 	}) => {
-		const parameters = { workflowId, status, limit, lastId };
+		const parameters = { workflowId, status, startedAfter, startedBefore, limit, lastId };
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'search_executions',
@@ -105,6 +117,8 @@ export const createSearchExecutionsTool = (
 				order: { startedAt: 'DESC' as const },
 				...(workflowId ? { workflowId } : {}),
 				...(status?.length ? { status } : {}),
+				...(startedAfter ? { startedAfter } : {}),
+				...(startedBefore ? { startedBefore } : {}),
 			};
 
 			const { results, count, estimated } = await executionService.findMcpRangeWithCount(query);
