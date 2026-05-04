@@ -227,6 +227,18 @@ describe('WorkflowValidationService', () => {
 			expect(result.isValid).toBe(true);
 			expect(mockWorkflowRepository.get).not.toHaveBeenCalled();
 		});
+
+		// GHC-8115: Self-referencing workflows using {{ $workflow.id }} expression should be allowed
+		it('should allow self-referencing workflows using $workflow.id expression', async () => {
+			const nodes: INode[] = [
+				createExecuteWorkflowNode('Self Reference', { value: '={{ $workflow.id }}' }),
+			];
+
+			const result = await service.validateSubWorkflowReferences('parent-workflow-id', nodes);
+
+			expect(result.isValid).toBe(true);
+			expect(mockWorkflowRepository.get).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('validateForActivation', () => {
