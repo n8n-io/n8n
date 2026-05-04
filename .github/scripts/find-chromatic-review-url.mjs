@@ -1,10 +1,12 @@
 import { initGithub, writeGithubOutput } from './github-helpers.mjs';
 import { context } from '@actions/github';
 
+const retries = 12;
+
 async function findChromaticReviewUrl() {
 	const { octokit } = initGithub();
 
-	const refsToCheck = [context.sha, context.payload.pull_request?.head?.sha].filter(Boolean);
+	const refsToCheck = [context.payload.pull_request?.head?.sha].filter(Boolean);
 
 	const seenRefs = new Set();
 	const uniqueRefs = refsToCheck.filter((ref) => {
@@ -15,40 +17,31 @@ async function findChromaticReviewUrl() {
 
 	const findUiReviewCheck = async () => {
 		for (const ref of uniqueRefs) {
-			const { data } = await octokit.rest.checks.listForRef({
+			const { data: status } = await octokit.rest.repos.getCombinedStatusForRef({
 				owner: context.repo.owner,
 				repo: context.repo.repo,
 				ref,
 				per_page: 100,
 			});
 
-			const checkRun = data.check_runs.find((run) => {
-				const appSlug = run.app?.slug?.toLowerCase() ?? '';
-				const name = run.name ?? '';
-				return appSlug.includes('chromatic') && /ui review/i.test(name);
-			});
+			const reviewStatus = status.statuses.find((stat) => stat.context.includes('UI Review'));
 
-			if (checkRun?.details_url) return checkRun.details_url;
+			if (reviewStatus?.target_url) {
+				return reviewStatus.target_url;
+			}
 		}
 
 		return '';
 	};
 
 	let uiReviewUrl = '';
-	for (let attempt = 1; attempt <= 12; attempt++) {
+	for (let attempt = 1; attempt <= retries; attempt++) {
 		uiReviewUrl = await findUiReviewCheck();
 		if (uiReviewUrl) break;
 
-		if (attempt < 12) {
+		if (attempt < retries) {
 			await new Promise((resolve) => setTimeout(resolve, 5000));
 		}
-	}
-
-	if (!uiReviewUrl && process.env.BUILD_URL) {
-		uiReviewUrl = process.env.BUILD_URL.replace(
-			'https://www.chromatic.com/build?',
-			'https://www.chromatic.com/review?',
-		);
 	}
 
 	const output = {

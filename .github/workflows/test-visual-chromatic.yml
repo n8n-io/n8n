@@ -86,7 +86,6 @@ jobs:
         id: resolve_ui_review_url
         env:
           GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
-          BUILD_URL: ${{ needs.chromatic.outputs.build_url }}
         run: node ./.github/scripts/find-chromatic-review-url.mjs
 
 
