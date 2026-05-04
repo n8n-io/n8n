@@ -539,12 +539,6 @@ export class ExecutionService {
 	 *  - whether the count is an estimate or not
 	 */
 	private async getExecutionsCountForQuery(countQuery: ExecutionSummaries.CountQuery) {
-		return await this.getCountForQuery(
-			async () => await this.executionRepository.fetchCount(countQuery),
-		);
-	}
-
-	private async getCountForQuery(fetchCount: () => Promise<number>) {
 		if (this.globalConfig.database.type === 'postgresdb') {
 			const liveRows = await this.executionRepository.getLiveExecutionRowsOnPostgres();
 
@@ -556,7 +550,7 @@ export class ExecutionService {
 			}
 		}
 
-		const count = await fetchCount();
+		const count = await this.executionRepository.fetchCount(countQuery);
 
 		return { count, estimated: false };
 	}

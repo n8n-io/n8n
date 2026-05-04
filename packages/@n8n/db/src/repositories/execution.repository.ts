@@ -7,7 +7,6 @@ import type {
 	FindOneOptions,
 	FindOperator,
 	FindOptionsWhere,
-	ObjectLiteral,
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 import {
@@ -885,9 +884,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return [...summariesById.values()];
 	}
 
-	private async getSummariesFromAnnotatedQuery(
-		qb: SelectQueryBuilder<ObjectLiteral>,
-	): Promise<ExecutionSummary[]> {
+	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
+		// Due to performance reasons, we use custom query builder with raw SQL.
+		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
+		const qb = this.toQueryBuilderWithAnnotations(query);
+
 		const rawExecutionsWithTags: Array<
 			ExecutionSummary & {
 				annotation_id: number;
@@ -900,13 +901,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executions = this.reduceExecutionsWithAnnotations(rawExecutionsWithTags);
 
 		return executions.map((execution) => this.toSummary(execution));
-	}
-
-	async findManyByRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
-		// Due to performance reasons, we use custom query builder with raw SQL.
-		// IMPORTANT: it produces duplicate rows for executions with multiple tags, which we need to reduce manually
-		const qb = this.toQueryBuilderWithAnnotations(query, () => this.toQueryBuilder(query));
-		return await this.getSummariesFromAnnotatedQuery(qb);
 	}
 
 	// @tech_debt: These transformations should not be needed
@@ -1118,15 +1112,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	 *  this is intended, as we are working with raw query.
 	 *  The duplicates are reduced in the *reduceExecutionsWithAnnotations* method.
 	 */
-	private toQueryBuilderWithAnnotations(
-		query: ExecutionSummaries.Query,
-		buildBaseQuery: () => SelectQueryBuilder<ExecutionEntity>,
-	) {
+	private toQueryBuilderWithAnnotations(query: ExecutionSummaries.Query) {
 		const annotationFields = Object.keys(this.annotationFields).map(
 			(key) => `annotation.${key} AS "annotation_${key}"`,
 		);
 
-		const subQuery = buildBaseQuery().addSelect(annotationFields);
+		const subQuery = this.toQueryBuilder(query).addSelect(annotationFields);
 
 		// Ensure the join with annotations is made only once
 		// It might be already present as an inner join if the query includes filter by annotation tags
