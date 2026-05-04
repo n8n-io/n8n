@@ -11,10 +11,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
@@ -56,7 +56,6 @@ const props = defineProps<{
 	id: IWorkflowDb['id'];
 	tags: readonly string[];
 	name: IWorkflowDb['name'];
-	scopes: IWorkflowDb['scopes'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
 	description?: IWorkflowDb['description'];
@@ -82,7 +81,7 @@ const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
-const workflowState = injectWorkflowState();
+const workflowId = useInjectWorkflowId();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isTagsEditEnabled = ref(false);
@@ -104,7 +103,9 @@ const isNewWorkflow = computed(() => {
 	return !workflowsStore.isWorkflowSaved[props.id];
 });
 
-const workflowPermissions = computed(() => getResourcePermissions(props.scopes).workflow);
+const workflowPermissions = computed(
+	() => getResourcePermissions(workflowDocumentStore?.value?.scopes).workflow,
+);
 
 const readOnly = computed(
 	() => sourceControlStore.preferences.branchReadOnly || collaborationStore.shouldBeReadOnly,
@@ -212,7 +213,8 @@ function onNameSubmit(name: string) {
 	}
 
 	// Update workflow name in store and mark state as dirty
-	workflowState.setWorkflowName({ newName, setStateDirty: true });
+	workflowDocumentStore?.value?.setName(newName);
+	uiStore.markStateDirty('metadata');
 
 	documentTitle.setDocumentTitle(newName, 'IDLE');
 	renameInput.value?.forceCancel();
@@ -243,7 +245,7 @@ async function handleArchiveWorkflow() {
 
 	try {
 		const expectedChecksum =
-			props.id === workflowsStore.workflowId ? workflowDocumentStore?.value?.checksum : undefined;
+			props.id === workflowId.value ? workflowDocumentStore?.value?.checksum : undefined;
 		await workflowsStore.archiveWorkflow(props.id, expectedChecksum);
 		workflowDocumentStore?.value?.setActiveState({
 			activeVersionId: null,
@@ -255,10 +257,19 @@ async function handleArchiveWorkflow() {
 	}
 
 	uiStore.markStateClean();
-	toast.showMessage({
+	const archivedWorkflowId = props.id;
+	const archivedWorkflowName = props.name;
+	toast.showToast({
 		title: locale.baseText('mainSidebar.showMessage.handleArchive.title', {
-			interpolate: { workflowName: props.name },
+			interpolate: { workflowName: archivedWorkflowName },
 		}),
+		message: `<a href="#" data-test-id="archive-toast-delete-permanently-link">${locale.baseText('mainSidebar.showMessage.handleArchive.message')}</a>`,
+		onClick: (event) => {
+			if (event?.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				void deleteArchivedWorkflow(archivedWorkflowId, archivedWorkflowName);
+			}
+		},
 		type: 'success',
 	});
 
@@ -272,6 +283,42 @@ async function handleArchiveWorkflow() {
 	} else {
 		await router.push({ name: VIEWS.WORKFLOWS });
 	}
+}
+
+async function deleteArchivedWorkflow(id: IWorkflowDb['id'], name: IWorkflowDb['name']) {
+	const deleteConfirmed = await message.confirm(
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.message', {
+			interpolate: { workflowName: name },
+		}),
+		locale.baseText('mainSidebar.confirmMessage.workflowDelete.headline'),
+		{
+			type: 'warning',
+			confirmButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.confirmButtonText',
+			),
+			cancelButtonText: locale.baseText(
+				'mainSidebar.confirmMessage.workflowDelete.cancelButtonText',
+			),
+		},
+	);
+
+	if (deleteConfirmed !== MODAL_CONFIRM) {
+		return;
+	}
+
+	try {
+		await workflowsListStore.deleteWorkflow(id);
+	} catch (error) {
+		toast.showError(error, locale.baseText('generic.deleteWorkflowError'));
+		return;
+	}
+
+	toast.showMessage({
+		title: locale.baseText('mainSidebar.showMessage.handleSelect1.title', {
+			interpolate: { workflowName: name },
+		}),
+		type: 'success',
+	});
 }
 
 async function handleUnarchiveWorkflow() {
@@ -450,7 +497,7 @@ onBeforeUnmount(() => {
 		</span>
 
 		<ConnectionTracker class="actions">
-			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
+			<WorkflowProductionChecklist v-if="!isNewWorkflow" />
 			<WorkflowHeaderDraftPublishActions
 				:id="id"
 				ref="workflowHeaderActions"
@@ -510,7 +557,7 @@ $--header-spacing: 20px;
 .actions {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--md);
+	gap: var(--spacing--4xs);
 	flex-wrap: nowrap;
 }
 

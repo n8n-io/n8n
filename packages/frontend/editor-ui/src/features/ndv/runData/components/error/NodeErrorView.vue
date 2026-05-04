@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -49,6 +50,7 @@ const toast = useToast();
 const i18n = useI18n();
 const assistantHelpers = useAIAssistantHelpers();
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
@@ -57,7 +59,6 @@ const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
-const workflowId = computed(() => workflowsStore.workflowId);
 const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
 
 const displayCause = computed(() => {
@@ -416,7 +417,7 @@ const onOpenErrorNodeDetailClick = () => {
 		const link = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
-				name: props.error.workflowId,
+				workflowId: props.error.workflowId,
 				executionId: props.error.executionId,
 				nodeId: props.error.node.id,
 			},

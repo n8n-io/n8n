@@ -23,7 +23,7 @@ import {
 	N8nStructuredOutputParser,
 } from '@utils/output_parsers/N8nOutputParser';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import { NAIVE_FIX_PROMPT } from './prompt';
 
@@ -31,7 +31,7 @@ export class OutputParserStructured implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Structured Output Parser',
 		name: 'outputParserStructured',
-		icon: 'fa:code',
+		icon: 'node:structured-output-parser',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3],

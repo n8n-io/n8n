@@ -3,6 +3,7 @@ import { SyntaxKind, type Project, type SourceFile } from 'ts-morph';
 
 import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
+import { isMethodFix, isPropertyFix } from '../types.js';
 import type { Violation, FixResult } from '../types.js';
 import { getRelativePath } from '../utils/paths.js';
 
@@ -37,18 +38,18 @@ export class DeadCodeRule extends BaseRule {
 		];
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	analyze(project: Project, files: SourceFile[]): Violation[] {
 		const violations: Violation[] = [];
 
 		for (const file of files) {
-			const fileViolations = this.analyzeFile(file);
+			const fileViolations = this.analyzeFile(project, file);
 			violations.push(...fileViolations);
 		}
 
 		return violations;
 	}
 
-	private analyzeFile(file: SourceFile): Violation[] {
+	private analyzeFile(project: Project, file: SourceFile): Violation[] {
 		const violations: Violation[] = [];
 
 		for (const classDecl of file.getClasses()) {
@@ -62,8 +63,8 @@ export class DeadCodeRule extends BaseRule {
 			}
 
 			// Check individual members
-			violations.push(...this.checkUnusedMethods(file, classDecl, className));
-			violations.push(...this.checkUnusedProperties(file, classDecl, className));
+			violations.push(...this.checkUnusedMethods(project, file, classDecl, className));
+			violations.push(...this.checkUnusedProperties(project, file, classDecl, className));
 		}
 
 		return violations;
@@ -86,6 +87,7 @@ export class DeadCodeRule extends BaseRule {
 	}
 
 	private checkUnusedMethods(
+		project: Project,
 		file: SourceFile,
 		classDecl: ReturnType<SourceFile['getClasses']>[0],
 		className: string,
@@ -96,7 +98,10 @@ export class DeadCodeRule extends BaseRule {
 			if (method.hasModifier(SyntaxKind.PrivateKeyword)) continue;
 
 			const methodName = method.getName();
-			if (!this.hasExternalReferences(file, method)) {
+			if (
+				!this.hasExternalReferences(file, method) &&
+				!this.hasTextUsage(project, file, methodName)
+			) {
 				violations.push(
 					this.createViolation(
 						file,
@@ -115,6 +120,7 @@ export class DeadCodeRule extends BaseRule {
 	}
 
 	private checkUnusedProperties(
+		project: Project,
 		file: SourceFile,
 		classDecl: ReturnType<SourceFile['getClasses']>[0],
 		className: string,
@@ -125,7 +131,7 @@ export class DeadCodeRule extends BaseRule {
 			if (this.isPrivateOrProtected(prop)) continue;
 
 			const propName = prop.getName();
-			if (!this.hasExternalReferences(file, prop)) {
+			if (!this.hasExternalReferences(file, prop) && !this.hasTextUsage(project, file, propName)) {
 				violations.push(
 					this.createViolation(
 						file,
@@ -149,6 +155,23 @@ export class DeadCodeRule extends BaseRule {
 		return (
 			prop.hasModifier(SyntaxKind.PrivateKeyword) || prop.hasModifier(SyntaxKind.ProtectedKeyword)
 		);
+	}
+
+	/**
+	 * Text-based fallback for when ts-morph can't trace references through
+	 * complex generics (e.g. Playwright fixture type chains).
+	 * Searches all project files for `.memberName` followed by a non-word char.
+	 */
+	private hasTextUsage(project: Project, sourceFile: SourceFile, memberName: string): boolean {
+		const escaped = memberName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		const pattern = new RegExp(`\\.${escaped}\\b`);
+		for (const file of project.getSourceFiles()) {
+			if (file === sourceFile) continue;
+			if (pattern.test(file.getFullText())) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private hasExternalReferences(
@@ -237,7 +260,8 @@ export class DeadCodeRule extends BaseRule {
 
 		for (const violation of fileViolations) {
 			const fixData = violation.fixData;
-			if (!fixData || fixData.type === 'class' || fixData.type === 'edit') continue;
+			if (!fixData) continue;
+			if (!isMethodFix(fixData) && !isPropertyFix(fixData)) continue;
 
 			const classDecl = sourceFile.getClass(fixData.className);
 			if (!classDecl) continue;

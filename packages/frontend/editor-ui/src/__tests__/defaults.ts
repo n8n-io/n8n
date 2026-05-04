@@ -42,7 +42,7 @@ export const defaultSettings: FrontendSettings = {
 		externalSecrets: false,
 		workerView: false,
 		advancedPermissions: false,
-		apiKeyScopes: false,
+
 		workflowDiffs: false,
 		namedVersions: false,
 		provisioning: true,
@@ -53,6 +53,7 @@ export const defaultSettings: FrontendSettings = {
 		},
 		customRoles: false,
 		personalSpacePolicy: false,
+		dataRedaction: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -64,6 +65,7 @@ export const defaultSettings: FrontendSettings = {
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
+	jwksUri: '',
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',
 	posthog: {
@@ -87,9 +89,13 @@ export const defaultSettings: FrontendSettings = {
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
+		managedByEnv: false,
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
+	},
+	logStreaming: {
+		managedByEnv: false,
 	},
 	telemetry: {
 		enabled: false,
@@ -106,6 +112,7 @@ export const defaultSettings: FrontendSettings = {
 		smtpSetup: true,
 		authenticationMethod: 'email',
 		quota: 10,
+		passwordMinLength: 8,
 	},
 	versionCli: '',
 	nodeJsVersion: '',
@@ -123,6 +130,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
+	workflowsAutosaveDisabled: false,
 	variables: {
 		limit: -1,
 	},
@@ -169,6 +177,7 @@ export const defaultSettings: FrontendSettings = {
 		quota: 0,
 	},
 	activeModules: [],
+	canvasOnly: false,
 	envFeatureFlags: {},
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',

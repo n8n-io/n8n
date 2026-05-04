@@ -483,6 +483,94 @@ describe('GSuiteAdmin Node - user:create logic', () => {
 			{},
 		);
 	});
+
+	it('should not include unsafe properties for custom fields', async () => {
+		const mockCall = jest
+			.fn()
+			.mockResolvedValue({ id: 'user-125', primaryEmail: 'test3@example.com' });
+		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: jest.fn((paramName: string, _index?: number) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'create';
+					case 'domain':
+						return 'example.com';
+					case 'firstName':
+						return 'Bob';
+					case 'lastName':
+						return 'Johnson';
+					case 'password':
+						return 'Password789!';
+					case 'username':
+						return 'bjohnson';
+					case 'additionalFields':
+						return {
+							customFields: {
+								fieldValues: [
+									{
+										schemaName: '__proto__',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'prototype',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'constructor',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'validSchema',
+										fieldName: 'validField',
+										value: 'validValue',
+									},
+									{
+										schemaName: 'someSchema',
+										fieldName: '__proto__',
+										value: 'someValue',
+									},
+								],
+							},
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => [data],
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'POST',
+			'/directory/v1/users',
+			{
+				name: { familyName: 'Johnson', givenName: 'Bob' },
+				password: 'Password789!',
+				primaryEmail: 'bjohnson@example.com',
+				customSchemas: {
+					validSchema: {
+						validField: 'validValue',
+					},
+					someSchema: {},
+				},
+			},
+			{},
+		);
+	});
 });
 
 describe('GSuiteAdmin Node - user:update logic', () => {
@@ -694,6 +782,81 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 				});
 			}
 		}).toThrow("The parameter 'Username' is empty");
+	});
+
+	it('should not include unsafe properties for custom fields', async () => {
+		const mockCall = jest.fn().mockResolvedValue([{ success: true }]);
+		(googleApiRequest as jest.Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: jest.fn((paramName: string) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-123';
+					case 'updateFields':
+						return {
+							customFields: {
+								fieldValues: [
+									{
+										schemaName: '__proto__',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'prototype',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'constructor',
+										fieldName: 'someField',
+										value: 'someValue',
+									},
+									{
+										schemaName: 'validSchema',
+										fieldName: 'validField',
+										value: 'validValue',
+									},
+									{
+										schemaName: 'someSchema',
+										fieldName: '__proto__',
+										value: 'someValue',
+									},
+								],
+							},
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: any) => data,
+				constructExecutionMetaData: (data: any) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-123',
+			{
+				customSchemas: {
+					validSchema: {
+						validField: 'validValue',
+					},
+					someSchema: {},
+				},
+			},
+			{},
+		);
 	});
 });
 

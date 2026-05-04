@@ -48,8 +48,6 @@ try {
 		body: payload,
 	});
 
-	console.log(`Callback sent: ${response.status} ${response.statusText}`);
-
 	if (!response.ok) {
 		const body = await response.text();
 		console.error(`Callback failed: ${body}`);

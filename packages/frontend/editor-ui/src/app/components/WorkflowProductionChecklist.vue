@@ -7,7 +7,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ActionType, WorkflowSettings } from '@/app/composables/useWorkflowsCache';
 import { useWorkflowSettingsCache } from '@/app/composables/useWorkflowsCache';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { IWorkflowDb } from '@/Interface';
 import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
@@ -17,21 +16,17 @@ import {
 	ERROR_WORKFLOW_DOCS_URL,
 	TIME_SAVED_DOCS_URL,
 	TIME_SAVED_NODE_TYPE,
+	ERROR_TRIGGER_NODE_TYPE,
 } from '@/app/constants';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
-import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
-
-const props = defineProps<{
-	workflow: IWorkflowDb;
-}>();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -43,16 +38,15 @@ const message = useMessage();
 const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
-const { isEligibleForMcpAccess } = useMcp();
 const usersStore = useUsersStore();
 const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
 
+const nodes = computed(() => workflowDocumentStore?.value?.allNodes ?? []);
 const hasAINode = computed(() => {
-	const nodes = props.workflow.nodes;
-	return nodes.some((node) => {
+	return nodes.value.some((node) => {
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		return nodeType?.codex?.categories?.includes('AI');
 	});
@@ -63,18 +57,23 @@ const hasEvaluationSetOutputsNode = computed((): boolean => {
 });
 
 const hasErrorWorkflow = computed(() => {
-	return !!props.workflow.settings?.errorWorkflow;
+	const errorWorkflow = workflowDocumentStore?.value?.settings?.errorWorkflow;
+	return !!errorWorkflow;
 });
 
-const hasSavedTimeNodes = computed(() => {
-	if (!props.workflow?.nodes) return false;
-	return props.workflow.nodes.some(
-		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
+const isErrorWorkflow = computed(() => {
+	return nodes.value.some(
+		(node) => node.type === ERROR_TRIGGER_NODE_TYPE && node.disabled !== true,
 	);
 });
 
+const hasSavedTimeNodes = computed(() => {
+	return nodes.value.some((node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true);
+});
+
 const hasTimeSaved = computed(() => {
-	return props.workflow.settings?.timeSavedPerExecution !== undefined || hasSavedTimeNodes.value;
+	const timeSavedPerExecution = workflowDocumentStore?.value?.settings?.timeSavedPerExecution;
+	return timeSavedPerExecution !== undefined || hasSavedTimeNodes.value;
 });
 
 const isActivationModalOpen = computed(() => {
@@ -96,16 +95,13 @@ const isMcpAccessEnabled = computed(() => {
 	return settingsStore.moduleSettings.mcp?.mcpAccessEnabled ?? false;
 });
 
-const isWorkflowEligibleForMcpAccess = computed(() => {
-	return isEligibleForMcpAccess(props.workflow);
-});
-
 const canToggleInstanceMCPAccess = computed(() => isOwner.value || isAdmin.value);
 
 const availableActions = computed(() => {
-	if (!workflowDocumentStore?.value?.activeVersionId || workflowsCache.isCacheLoading.value) {
+	if (workflowsCache.isCacheLoading.value) {
 		return [];
 	}
+	const hasPublishedVersion = !!workflowDocumentStore?.value?.activeVersionId;
 
 	const actions: Array<{
 		id: ActionType;
@@ -117,7 +113,11 @@ const availableActions = computed(() => {
 	const suggestedActionSettings = cachedSettings.value?.suggestedActions ?? {};
 
 	// Error workflow action
-	if (!suggestedActionSettings.errorWorkflow?.ignored) {
+	if (
+		hasPublishedVersion &&
+		!isErrorWorkflow.value &&
+		!suggestedActionSettings.errorWorkflow?.ignored
+	) {
 		actions.push({
 			id: 'errorWorkflow',
 			title: i18n.baseText('workflowProductionChecklist.errorWorkflow.title'),
@@ -129,6 +129,7 @@ const availableActions = computed(() => {
 
 	// Evaluations action
 	if (
+		hasPublishedVersion &&
 		hasAINode.value &&
 		evaluationStore.isEvaluationEnabled &&
 		!suggestedActionSettings.evaluations?.ignored
@@ -143,7 +144,7 @@ const availableActions = computed(() => {
 	}
 
 	// Time saved action
-	if (!suggestedActionSettings.timeSaved?.ignored) {
+	if (hasPublishedVersion && !suggestedActionSettings.timeSaved?.ignored) {
 		actions.push({
 			id: 'timeSaved',
 			title: i18n.baseText('workflowProductionChecklist.timeSaved.title'),
@@ -168,7 +169,7 @@ const availableActions = computed(() => {
 		moreInfoLink: string;
 		completed: boolean;
 	} | null {
-		if (!isMcpModuleEnabled.value || !isWorkflowEligibleForMcpAccess.value) return null;
+		if (!isMcpModuleEnabled.value) return null;
 
 		const baseAction = {
 			title: i18n.baseText('mcp.productionChecklist.title'),
@@ -202,15 +203,17 @@ const availableActions = computed(() => {
 			...baseAction,
 			id: 'workflow-mcp-access',
 			description: i18n.baseText('mcp.productionChecklist.workflow.description'),
-			completed: props.workflow.settings?.availableInMCP ?? false,
+			completed: workflowDocumentStore?.value?.settings?.availableInMCP ?? false,
 		};
 	}
 });
 
 async function loadWorkflowSettings() {
-	if (props.workflow.id) {
+	if (workflowDocumentStore?.value?.workflowId) {
 		// todo add global config
-		cachedSettings.value = await workflowsCache.getMergedWorkflowSettings(props.workflow.id);
+		cachedSettings.value = await workflowsCache.getMergedWorkflowSettings(
+			workflowDocumentStore?.value.workflowId,
+		);
 	}
 }
 
@@ -220,7 +223,7 @@ async function handleActionClick(actionId: string) {
 			// Navigate to evaluations
 			await router.push({
 				name: VIEWS.EVALUATION_EDIT,
-				params: { name: props.workflow.id },
+				params: { workflowId: workflowDocumentStore?.value?.workflowId },
 			});
 			break;
 		case 'errorWorkflow':
@@ -254,7 +257,10 @@ async function handleIgnoreClick(actionId: string) {
 		return;
 	}
 
-	await workflowsCache.ignoreSuggestedAction(props.workflow.id, actionId);
+	await workflowsCache.ignoreSuggestedAction(
+		workflowDocumentStore?.value?.workflowId ?? '',
+		actionId,
+	);
 	await loadWorkflowSettings();
 
 	telemetry.track('user clicked ignore suggested action', {
@@ -311,7 +317,7 @@ watch(
 			}
 
 			// Update firstActivatedAt after opening popover
-			await workflowsCache.updateFirstActivatedAt(props.workflow.id);
+			await workflowsCache.updateFirstActivatedAt(workflowDocumentStore?.value?.workflowId ?? '');
 		}
 	},
 );

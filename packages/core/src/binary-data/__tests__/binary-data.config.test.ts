@@ -102,4 +102,72 @@ describe('BinaryDataConfig', () => {
 			);
 		});
 	});
+
+	describe('initialize()', () => {
+		const makeRepo = () =>
+			({
+				findActiveByType: jest.fn(),
+				insertOrIgnore: jest.fn().mockResolvedValue(undefined),
+			}) as {
+				findActiveByType: jest.Mock;
+				insertOrIgnore: jest.Mock;
+			};
+
+		afterEach(() => {
+			delete process.env.N8N_BINARY_DATA_SIGNING_SECRET;
+		});
+
+		it('should return early when N8N_BINARY_DATA_SIGNING_SECRET env var is set', async () => {
+			process.env.N8N_BINARY_DATA_SIGNING_SECRET = 'env-pinned-secret';
+			const repo = makeRepo();
+			const config = Container.get(BinaryDataConfig);
+
+			await config.initialize(repo);
+
+			expect(repo.findActiveByType).not.toHaveBeenCalled();
+			expect(repo.insertOrIgnore).not.toHaveBeenCalled();
+		});
+
+		it('should use the value from the active DB row when one exists', async () => {
+			const repo = makeRepo();
+			repo.findActiveByType.mockResolvedValue({ value: 'db-stored-secret' });
+			const config = Container.get(BinaryDataConfig);
+
+			await config.initialize(repo);
+
+			expect(config.signingSecret).toEqual('db-stored-secret');
+			expect(repo.findActiveByType).toHaveBeenCalledWith('signing.binary_data');
+			expect(repo.insertOrIgnore).not.toHaveBeenCalled();
+		});
+
+		it('should persist the derived signing secret when no active DB row exists', async () => {
+			const repo = makeRepo();
+			repo.findActiveByType.mockResolvedValue(null);
+			const config = Container.get(BinaryDataConfig);
+			const derivedSecret = config.signingSecret;
+
+			await config.initialize(repo);
+
+			expect(repo.insertOrIgnore).toHaveBeenCalledWith({
+				type: 'signing.binary_data',
+				value: derivedSecret,
+				status: 'active',
+				algorithm: null,
+			});
+			expect(config.signingSecret).toEqual(derivedSecret);
+		});
+
+		it('should use the winner row when a concurrent insert is ignored', async () => {
+			const repo = makeRepo();
+			repo.findActiveByType
+				.mockResolvedValueOnce(null)
+				.mockResolvedValueOnce({ value: 'winner-secret' });
+			repo.insertOrIgnore.mockResolvedValue(undefined);
+			const config = Container.get(BinaryDataConfig);
+
+			await config.initialize(repo);
+
+			expect(config.signingSecret).toEqual('winner-secret');
+		});
+	});
 });

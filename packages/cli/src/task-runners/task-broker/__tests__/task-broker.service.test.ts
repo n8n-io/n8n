@@ -714,6 +714,28 @@ describe('TaskBroker', () => {
 				nodeTypes,
 			});
 		});
+
+		it('should discard `requester:rpcresponse` for an already-cleaned-up task', async () => {
+			await expect(
+				taskBroker.handleRequesterRpcResponse('nonexistent', 'call1', 'success', {}),
+			).resolves.toBeUndefined();
+		});
+
+		it('should discard `requester:taskdataresponse` for an already-cleaned-up task', async () => {
+			await expect(
+				taskBroker.handleRequesterDataResponse('nonexistent', 'req1', {}),
+			).resolves.toBeUndefined();
+		});
+
+		it('should discard `requester:nodetypesresponse` for an already-cleaned-up task', async () => {
+			await expect(
+				taskBroker.handleRequesterNodeTypesResponse('nonexistent', 'req1', []),
+			).resolves.toBeUndefined();
+		});
+
+		it('should discard `sendTaskSettings` for an already-cleaned-up task', async () => {
+			await expect(taskBroker.sendTaskSettings('nonexistent', {})).resolves.toBeUndefined();
+		});
 	});
 
 	describe('task execution timeouts', () => {

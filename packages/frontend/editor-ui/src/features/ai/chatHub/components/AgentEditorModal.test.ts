@@ -5,15 +5,20 @@ import { mockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { TOOLS_MANAGER_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import AgentEditorModal from './AgentEditorModal.vue';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, fireEvent, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { ref } from 'vue';
-import type { ChatModelDto } from '@n8n/api-types';
+import type { ChatModelDto, FrontendModuleSettings } from '@n8n/api-types';
+import { createMockAgentDto, createMockKnowledgeItem } from '@/features/ai/chatHub/__test__/data';
 
-vi.mock('@n8n/i18n', () => {
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	const actual = await importOriginal<typeof import('@n8n/i18n')>();
 	const i18n = {
 		baseText: (key: string) => key,
 		nodeText: () => ({
@@ -32,9 +37,9 @@ vi.mock('@n8n/i18n', () => {
 		}),
 	};
 	return {
+		...actual,
 		useI18n: () => i18n,
 		i18n,
-		i18nInstance: { install: vi.fn() },
 	};
 });
 
@@ -61,8 +66,16 @@ vi.mock('@/features/ai/chatHub/composables/useCustomAgent', () => ({
 }));
 
 const mockFetchChatModels = vi.fn();
+const mockUploadAgentFilesApi = vi.fn();
+const mockUpdateAgentApi = vi.fn();
+const mockFetchAgentApi = vi.fn();
+const mockDeleteAgentFileApi = vi.fn();
 vi.mock('@/features/ai/chatHub/chat.api', () => ({
 	fetchChatModelsApi: (...args: unknown[]) => mockFetchChatModels(...args),
+	uploadAgentFilesApi: (...args: unknown[]) => mockUploadAgentFilesApi(...args),
+	updateAgentApi: (...args: unknown[]) => mockUpdateAgentApi(...args),
+	fetchAgentApi: (...args: unknown[]) => mockFetchAgentApi(...args),
+	deleteAgentFileApi: (...args: unknown[]) => mockDeleteAgentFileApi(...args),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -78,6 +91,8 @@ const MOCK_AGENT = {
 	credentialId: 'cred-1',
 	toolIds: ['tool-1'],
 	icon: { type: 'emoji' as const, value: '🤖' },
+	suggestedPrompts: [{ text: 'Hello', icon: { type: 'icon' as const, value: 'comment' } }],
+	files: [],
 };
 
 const MOCK_AGENT_MODEL: ChatModelDto = {
@@ -144,6 +159,10 @@ const sharedStubs = {
 	N8nIconPicker: {
 		template: '<div data-test-id="icon-picker" />',
 		props: ['modelValue', 'buttonTooltip'],
+	},
+	SuggestedPromptsEditor: {
+		template: '<div data-test-id="suggested-prompts-editor" />',
+		props: ['modelValue'],
 	},
 };
 
@@ -232,10 +251,12 @@ describe('AgentEditorModal', () => {
 			expect(getByText('chatHub.agent.editor.name.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.description.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.systemPrompt.label')).toBeTruthy();
+			expect(getByText('chatHub.agent.editor.suggestedPrompts.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.model.label')).toBeTruthy();
 			expect(getByText('chatHub.agent.editor.tools.label')).toBeTruthy();
 			expect(getByTestId('model-selector')).toBeTruthy();
 			expect(getByTestId('tools-selector')).toBeTruthy();
+			expect(getByTestId('suggested-prompts-editor')).toBeTruthy();
 		});
 
 		it('should have save button disabled when form is empty', () => {
@@ -317,6 +338,8 @@ describe('AgentEditorModal', () => {
 						provider: 'openai',
 						model: 'gpt-4',
 					}),
+					[], // newFiles
+					[], // removedFileKnowledgeIds
 					{ openai: 'cred-1' },
 				);
 				expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
@@ -342,11 +365,9 @@ describe('AgentEditorModal', () => {
 			await userEvent.click(saveButton);
 
 			await waitFor(() => {
-				expect(mockShowError).toHaveBeenCalledWith(
-					error,
-					'chatHub.agent.editor.error.save',
-					'Save failed',
-				);
+				expect(mockShowError).toHaveBeenCalledWith(error, 'chatHub.agent.editor.error.save', {
+					message: 'Save failed',
+				});
 			});
 		});
 	});
@@ -408,11 +429,9 @@ describe('AgentEditorModal', () => {
 			await userEvent.click(deleteButton);
 
 			await waitFor(() => {
-				expect(mockShowError).toHaveBeenCalledWith(
-					error,
-					'chatHub.agent.editor.error.delete',
-					'Delete failed',
-				);
+				expect(mockShowError).toHaveBeenCalledWith(error, 'chatHub.agent.editor.error.delete', {
+					message: 'Delete failed',
+				});
 			});
 		});
 	});
@@ -485,5 +504,168 @@ describe('AgentEditorModal', () => {
 		await userEvent.click(cancelButton);
 
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+	});
+
+	describe('files', () => {
+		const FILE_INDEXED = createMockKnowledgeItem({
+			id: 'file-indexed',
+			fileName: 'indexed.pdf',
+			status: 'indexed',
+		});
+		const FILE_INDEXING = createMockKnowledgeItem({
+			id: 'file-indexing',
+			fileName: 'indexing.pdf',
+			status: 'indexing',
+		});
+		const FILE_ERROR = createMockKnowledgeItem({
+			id: 'file-error',
+			fileName: 'error.pdf',
+			status: 'error',
+			error: 'Processing failed',
+		});
+		const MOCK_AGENT_DTO = createMockAgentDto({ id: 'agent-1', credentialId: 'cred-1' });
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			createTestingPinia({ stubActions: false });
+
+			const uiStore = useUIStore();
+			uiStore.openModal(MODAL_NAME);
+			uiStore.closeModal = vi.fn();
+
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+
+			// Enable semantic search experiment so the file input is rendered
+			const posthogStore = usePostHog();
+			posthogStore.isVariantEnabled = vi.fn().mockReturnValue(true);
+
+			// Set tiny max upload size so each 2-byte file gets its own chunk
+			const settingsStore = useSettingsStore();
+			settingsStore.moduleSettings = {
+				'chat-hub': {
+					agentUploadMaxSizeMb: 4 / (1024 * 1024),
+					semanticSearch: {
+						vectorStore: { provider: 'pinecone', credentialId: null },
+						embeddingModel: { provider: 'openai', credentialId: null },
+					},
+				},
+			} as FrontendModuleSettings;
+
+			mockUseCustomAgent.mockReturnValue({
+				isLoading: ref(false),
+				customAgent: ref(MOCK_AGENT),
+			});
+
+			mockFetchChatModels.mockResolvedValue({
+				openai: { models: [] },
+				anthropic: { models: [] },
+				google: { models: [] },
+				azureOpenAi: { models: [] },
+				azureEntraId: { models: [] },
+				ollama: { models: [] },
+				awsBedrock: { models: [] },
+			});
+			mockUpdateAgentApi.mockResolvedValue(undefined);
+			mockUploadAgentFilesApi.mockResolvedValue(MOCK_AGENT_DTO);
+			mockFetchAgentApi.mockResolvedValue(MOCK_AGENT_DTO);
+		});
+
+		it('shows callout and warn icon on indexed file when semantic search is not ready', async () => {
+			mockUseCustomAgent.mockReturnValue({
+				isLoading: ref(false),
+				customAgent: ref({ ...MOCK_AGENT, files: [FILE_INDEXED] }),
+			});
+
+			const { findByRole, getByText } = renderModal({
+				agentId: 'agent-1',
+				credentials: { openai: 'cred-1' },
+			});
+
+			await findByRole('alert');
+			expect(getByText('chatHub.agent.editor.files.unavailable')).toBeTruthy();
+		});
+
+		it('shows correct status indicators for indexing, error, and indexed-ready file rows', async () => {
+			const chatStore = useChatStore();
+			Object.defineProperty(chatStore, 'semanticSearchReadiness', {
+				get: () => ({ isReadyForCurrentUser: true }),
+				configurable: true,
+			});
+
+			mockUseCustomAgent.mockReturnValue({
+				isLoading: ref(false),
+				customAgent: ref({ ...MOCK_AGENT, files: [FILE_INDEXING, FILE_ERROR, FILE_INDEXED] }),
+			});
+
+			const { findByText, getByText, queryByText } = renderModal({
+				agentId: 'agent-1',
+				credentials: { openai: 'cred-1' },
+			});
+
+			await findByText('chatHub.agent.editor.files.indexing');
+			expect(getByText('chatHub.agent.editor.files.failed')).toBeTruthy();
+			expect(queryByText('chatHub.agent.editor.files.unavailable')).toBeNull();
+		});
+
+		it('should call the upload endpoint once per chunk when multiple files exceed the chunk size', async () => {
+			const { container, getByRole, findByRole } = renderModal({
+				agentId: 'agent-1',
+				credentials: { openai: 'cred-1' },
+			});
+
+			await findByRole('button', { name: 'chatHub.agent.editor.save' });
+
+			const files = [
+				new File(['ab'], 'doc1.pdf', { type: 'application/pdf' }),
+				new File(['ab'], 'doc2.pdf', { type: 'application/pdf' }),
+				new File(['ab'], 'doc3.pdf', { type: 'application/pdf' }),
+			];
+
+			const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+			Object.defineProperty(fileInput, 'files', { value: files, configurable: true });
+
+			await fireEvent.change(fileInput);
+			await userEvent.click(getByRole('button', { name: 'chatHub.agent.editor.save' }));
+			await waitFor(() => expect(mockUploadAgentFilesApi).toHaveBeenCalledTimes(2));
+
+			expect(mockUploadAgentFilesApi).toHaveBeenNthCalledWith(1, expect.anything(), 'agent-1', [
+				files[0],
+				files[1],
+			]);
+			expect(mockUploadAgentFilesApi).toHaveBeenNthCalledWith(2, expect.anything(), 'agent-1', [
+				files[2],
+			]);
+		});
+
+		it('should remove file row and call delete endpoint when trash button is clicked and saved', async () => {
+			mockUseCustomAgent.mockReturnValue({
+				isLoading: ref(false),
+				customAgent: ref({ ...MOCK_AGENT, files: [FILE_INDEXED] }),
+			});
+
+			const { findByText, queryByText, getByRole } = renderModal({
+				agentId: 'agent-1',
+				credentials: { openai: 'cred-1' },
+			});
+
+			const fileNameEl = await findByText('indexed.pdf');
+			const fileRow = fileNameEl.closest('div')!.parentElement!;
+			const trashButton = within(fileRow).getByRole('button');
+			await userEvent.click(trashButton);
+
+			expect(queryByText('indexed.pdf')).toBeNull();
+
+			await userEvent.click(getByRole('button', { name: 'chatHub.agent.editor.save' }));
+
+			await waitFor(() => {
+				expect(mockDeleteAgentFileApi).toHaveBeenCalledWith(
+					expect.anything(),
+					'agent-1',
+					FILE_INDEXED.id,
+				);
+			});
+		});
 	});
 });

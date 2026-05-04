@@ -280,11 +280,6 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.SAML);
 	}
 
-	/** @deprecated Use `LicenseState.isApiKeyScopesLicensed` instead. */
-	isApiKeyScopesEnabled() {
-		return this.isLicensed(LICENSE_FEATURES.API_KEY_SCOPES);
-	}
-
 	/** @deprecated Use `LicenseState.isAiAssistantLicensed` instead. */
 	isAiAssistantEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.AI_ASSISTANT);
@@ -451,6 +446,52 @@ export class License implements LicenseProvider {
 
 	getPlanName(): string {
 		return this.getValue('planName') ?? 'Community';
+	}
+
+	getExpiryDate(): Date | null {
+		try {
+			return this.manager?.getExpiryDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getTerminationDate(): Date | null {
+		try {
+			return this.manager?.getTerminationDate() ?? null;
+		} catch {
+			return null;
+		}
+	}
+
+	getExpiringInDays(): number | undefined {
+		const expiryDate = this.getExpiryDate();
+		if (!expiryDate) return undefined;
+
+		const expiryTime = expiryDate.getTime();
+		if (Number.isNaN(expiryTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = expiryTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already expired licenses instead of negative values
+		return Math.max(0, diffDays);
+	}
+
+	getTerminatingInDays(): number | undefined {
+		const terminationDate = this.getTerminationDate();
+		if (!terminationDate) return undefined;
+
+		const terminationTime = terminationDate.getTime();
+		if (Number.isNaN(terminationTime)) return undefined;
+
+		const now = new Date();
+		const diffMs = terminationTime - now.getTime();
+		const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+		// Return 0 for already terminated licenses instead of negative values
+		return Math.max(0, diffDays);
 	}
 
 	getInfo(): string {

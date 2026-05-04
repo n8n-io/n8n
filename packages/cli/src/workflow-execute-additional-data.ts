@@ -4,12 +4,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { ServiceIdentifier } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
 import type {
+	AiEvent,
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
@@ -35,7 +37,7 @@ import type {
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
-import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
+import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { FailedRunFactory } from '@/executions/failed-run-factory';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
@@ -47,6 +49,7 @@ import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
@@ -310,6 +313,10 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		// Propagate the root execution mode so nested subworkflows retain the original
+		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
+		additionalDataIntegrated.rootExecutionMode =
+			additionalData.rootExecutionMode ?? options.executionMode;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}
@@ -410,7 +417,7 @@ async function startExecution(
 	);
 }
 
-export function setExecutionStatus(status: ExecutionStatus) {
+export function setExecutionStatus(this: { executionId?: string }, status: ExecutionStatus) {
 	const logger = Container.get(Logger);
 	if (this.executionId === undefined) {
 		logger.debug(`Setting execution status "${status}" failed because executionId is undefined`);
@@ -420,7 +427,11 @@ export function setExecutionStatus(status: ExecutionStatus) {
 	Container.get(ActiveExecutions).setStatus(this.executionId, status);
 }
 
-export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) {
+export function sendDataToUI(
+	this: { pushRef?: string },
+	type: PushType,
+	data: IDataObject | IDataObject[],
+) {
 	const { pushRef } = this;
 	if (pushRef === undefined) {
 		return;
@@ -460,7 +471,9 @@ export async function getBase({
 	executionTimeoutTimestamp?: number;
 	workflowSettings?: IWorkflowSettings;
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
+	const urlService = Container.get(UrlService);
+	const urlBaseWebhook = urlService.getWebhookBaseUrl();
+	const instanceBaseUrl = urlService.getInstanceBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
@@ -473,7 +486,7 @@ export async function getBase({
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
-		instanceBaseUrl: urlBaseWebhook,
+		instanceBaseUrl: `${instanceBaseUrl}/`,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
@@ -481,6 +494,8 @@ export async function getBase({
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		workflowId,
+		projectId,
 		setExecutionStatus,
 		variables,
 		workflowSettings,
@@ -531,10 +546,17 @@ export async function getBase({
 				executeData,
 			);
 		},
-		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
-			eventService.emit(eventName, payload),
-		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
+			eventService.emit(eventName, payload);
+		},
+		getRunnerStatus: (taskType: string) =>
+			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).getRunnerStatus(taskType),
 	};
+
+	const ssrfConfig = Container.get(SsrfProtectionConfig);
+	if (ssrfConfig.enabled) {
+		additionalData.ssrfBridge = Container.get(SsrfProtectionService);
+	}
 
 	for (const [moduleName, moduleContext] of Container.get(ModuleRegistry).context.entries()) {
 		// @ts-expect-error Adding an index signature `[key: string]: unknown`

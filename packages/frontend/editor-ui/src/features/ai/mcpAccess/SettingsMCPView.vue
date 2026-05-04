@@ -16,7 +16,15 @@ import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue'
 import MCpHeaderActions from '@/features/ai/mcpAccess/components/header/MCPHeaderActions.vue';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
-import { N8nHeading, N8nTabs, N8nTooltip, N8nButton, N8nText, N8nLink } from '@n8n/design-system';
+import {
+	N8nHeading,
+	N8nTabs,
+	N8nTooltip,
+	N8nButton,
+	N8nText,
+	N8nLink,
+	N8nPreviewTag,
+} from '@n8n/design-system';
 import type { TabOptions } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
@@ -58,7 +66,7 @@ const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
-const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+const canToggleMCP = computed(() => (isOwner.value || isAdmin.value) && !mcpStore.mcpManagedByEnv);
 
 const showConnectWorkflowsButton = computed(() => {
 	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
@@ -206,7 +214,12 @@ onMounted(async () => {
 	<div :class="$style.container">
 		<header :class="$style['main-header']" data-test-id="mcp-settings-header">
 			<div :class="$style.headings">
-				<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+				<div :class="$style['heading-row']">
+					<N8nHeading size="2xlarge">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
+					<N8nTooltip :content="i18n.baseText('settings.mcp.preview.tooltip')">
+						<N8nPreviewTag size="medium" />
+					</N8nTooltip>
+				</div>
 				<div v-show="mcpStore.mcpAccessEnabled" data-test-id="mcp-settings-description">
 					<N8nText size="small" color="text-light">
 						{{ i18n.baseText('settings.mcp.description') }}.
@@ -226,6 +239,7 @@ onMounted(async () => {
 				:access-enabled="mcpStore.mcpAccessEnabled"
 				:toggle-disabled="!canToggleMCP"
 				:loading="mcpStatusLoading"
+				:managed-by-env="mcpStore.mcpManagedByEnv"
 				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
@@ -233,6 +247,7 @@ onMounted(async () => {
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
+			:managed-by-env="mcpStore.mcpManagedByEnv"
 			@turn-on-mcp="onToggleMCPAccess(true)"
 		/>
 		<div
@@ -309,6 +324,13 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	min-height: 60px;
+}
+
+.heading-row {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .tabs-header {

@@ -17,13 +17,19 @@ export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
 export const CLI_DIR = resolve(__dirname, '..');
+export const AI_ASSISTANT_SDK_DIR = dirname(dirname(require.resolve('@n8n_io/ai-assistant-sdk')));
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = dirname(require.resolve('n8n-nodes-base'));
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
 const packageJsonPath = join(CLI_DIR, 'package.json');
+const aiAssistantPackageJsonPath = join(AI_ASSISTANT_SDK_DIR, 'package.json');
 const n8nPackageJson = jsonParse<n8n.PackageJson>(readFileSync(packageJsonPath, 'utf8'));
+const aiAssistantPackageJson = jsonParse<n8n.PackageJson>(
+	readFileSync(aiAssistantPackageJsonPath, 'utf8'),
+);
 export const N8N_VERSION = n8nPackageJson.version;
+export const AI_ASSISTANT_SDK_VERSION = aiAssistantPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
@@ -81,8 +87,6 @@ export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
-export const CREDENTIAL_BLANKING_VALUE = '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6';
-
 export const UM_FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
 
@@ -96,6 +100,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'microsoftOAuth2Api',
 	'highLevelOAuth2Api',
 	'mcpOAuth2Api',
+	'wordpressOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

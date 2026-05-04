@@ -7,6 +7,7 @@ const baseQuickConnectOptionSchema = z.object({
 	text: z.string(),
 	quickConnectType: z.string(),
 	consentText: z.string().optional(),
+	consentCheckbox: z.string().optional(),
 	config: z.never().optional(),
 	backendFlowConfig: z.never().optional(),
 });
@@ -37,9 +38,9 @@ const quickConnectOptionSchema = z.union([
 export type QuickConnectOption = z.infer<typeof quickConnectOptionSchema>;
 
 const quickConnectOptionsSchema = z.string().pipe(
-	z.preprocess((input: string) => {
+	z.preprocess((input: unknown) => {
 		try {
-			return JSON.parse(input);
+			return JSON.parse(input as string);
 		} catch {
 			return [];
 		}

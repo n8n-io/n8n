@@ -3,8 +3,6 @@ import { ref, computed } from 'vue';
 import { N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
 import { useI18n } from '@n8n/i18n';
@@ -13,9 +11,10 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 const props = defineProps<{
 	modalName: string;
 	data: {
-		provider: ChatHubLLMProvider;
+		credentialType: string;
+		displayName: string;
 		initialValue: string | null;
-		onSelect: (provider: ChatHubLLMProvider, credentialId: string | null) => void;
+		onSelect: (credentialId: string | null) => void;
 	};
 }>();
 
@@ -25,7 +24,7 @@ const telemetry = useTelemetry();
 const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
-const credentialType = computed(() => PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider]);
+const displayName = computed(() => props.data.displayName);
 
 function onCredentialSelect(credentialId: string) {
 	selectedCredentialId.value = credentialId;
@@ -43,13 +42,13 @@ function onDeleteCredential(credentialId: string) {
 	selectedCredentialId.value = null;
 
 	if (credentialId === props.data.initialValue) {
-		props.data.onSelect(props.data.provider, null);
+		props.data.onSelect(null);
 	}
 }
 
 function onCredentialModalOpened(credentialId?: string) {
 	telemetry.track('User opened Credential modal', {
-		credential_type: credentialType.value,
+		credential_type: props.data.credentialType,
 		source: 'chat',
 		new_credential: !credentialId,
 		workflow_id: null,
@@ -58,7 +57,7 @@ function onCredentialModalOpened(credentialId?: string) {
 
 function onConfirm() {
 	if (selectedCredentialId.value) {
-		props.data.onSelect(props.data.provider, selectedCredentialId.value);
+		props.data.onSelect(selectedCredentialId.value);
 		modalBus.value.emit('close');
 	}
 }
@@ -80,7 +79,7 @@ function onCancel() {
 		<template #header>
 			<div :class="$style.header">
 				<CredentialIcon
-					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[data.provider]"
+					:credential-type-name="data.credentialType"
 					:size="24"
 					:class="$style.icon"
 				/>
@@ -88,7 +87,7 @@ function onCancel() {
 					{{
 						i18n.baseText('chatHub.credentials.selector.title', {
 							interpolate: {
-								provider: providerDisplayNames[data.provider],
+								provider: displayName,
 							},
 						})
 					}}
@@ -101,7 +100,7 @@ function onCancel() {
 					{{
 						i18n.baseText('chatHub.credentials.selector.chooseOrCreate', {
 							interpolate: {
-								provider: providerDisplayNames[data.provider],
+								provider: displayName,
 							},
 						})
 					}}
@@ -109,8 +108,8 @@ function onCancel() {
 				<div :class="$style.credentialContainer">
 					<CredentialPicker
 						:class="$style.credentialPicker"
-						:app-name="providerDisplayNames[data.provider]"
-						:credential-type="credentialType"
+						:app-name="displayName"
+						:credential-type="data.credentialType"
 						:selected-credential-id="selectedCredentialId"
 						:show-delete="true"
 						:hide-create-new="true"

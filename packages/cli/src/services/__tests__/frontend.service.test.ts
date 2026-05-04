@@ -3,7 +3,7 @@ import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
-import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -28,7 +28,7 @@ describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
 	const globalConfig = mock<GlobalConfig>({
 		database: { type: 'sqlite' },
-		endpoints: { rest: 'rest' },
+		endpoints: { rest: 'rest', health: '/healthz' },
 		diagnostics: { enabled: false },
 		templates: { enabled: false, host: '' },
 		nodes: {},
@@ -54,11 +54,17 @@ describe('FrontendService', () => {
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
 		workflowHistory: { pruneTime: 24 },
-		path: '',
+		path: '/',
 		sso: {
 			ldap: { loginEnabled: false },
 			saml: { loginEnabled: false },
 			oidc: { loginEnabled: false },
+		},
+		credentials: {
+			overwrite: { skipTypes: [] },
+		},
+		userManagement: {
+			password: { minLength: 8 },
 		},
 	});
 
@@ -113,7 +119,7 @@ describe('FrontendService', () => {
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
-		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),
+
 		getVariablesLimit: jest.fn().mockReturnValue(0),
 		getTeamProjectLimit: jest.fn().mockReturnValue(0),
 		isBinaryDataS3Licensed: jest.fn().mockReturnValue(false),
@@ -215,6 +221,28 @@ describe('FrontendService', () => {
 				}),
 			);
 		});
+
+		it('should surface logStreaming.managedByEnv from instanceSettingsLoader config', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: true,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: true });
+		});
+
+		it('should default logStreaming.managedByEnv to false when flag is off', async () => {
+			globalConfig.instanceSettingsLoader = {
+				logStreamingManagedByEnv: false,
+			} as GlobalConfig['instanceSettingsLoader'];
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.logStreaming).toEqual({ managedByEnv: false });
+		});
 	});
 
 	describe('getPublicSettings', () => {
@@ -226,6 +254,7 @@ describe('FrontendService', () => {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
+					passwordMinLength: 8,
 				},
 				sso: {
 					saml: { loginEnabled: false },
@@ -255,6 +284,7 @@ describe('FrontendService', () => {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
+					passwordMinLength: 8,
 				},
 				sso: {
 					saml: { loginEnabled: false },
@@ -278,6 +308,21 @@ describe('FrontendService', () => {
 			const settings = await service.getPublicSettings(true);
 
 			expect(settings).toEqual(expectedPublicSettings);
+		});
+
+		it('should expose configured passwordMinLength in settings', async () => {
+			(globalConfig as any).userManagement = { password: { minLength: 12 } };
+
+			const { service } = createMockService();
+			const settings = await service.getSettings();
+
+			expect(settings.userManagement.passwordMinLength).toBe(12);
+
+			const publicSettings = await service.getPublicSettings(false);
+			expect(publicSettings.userManagement.passwordMinLength).toBe(12);
+
+			// Restore default
+			(globalConfig as any).userManagement = { password: { minLength: 8 } };
 		});
 
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
@@ -482,6 +527,74 @@ describe('FrontendService', () => {
 				expect.arrayContaining(['n8n-nodes-base.duplicate@1', 'n8n-nodes-base.duplicate@2']),
 			);
 			expect(identifiers).toHaveLength(2);
+		});
+	});
+
+	describe('overwriteCredentialsProperties', () => {
+		afterEach(() => {
+			// Restore globalConfig.credentials to the default so other tests are unaffected
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			loadNodesAndCredentials.types = { credentials: [], nodes: [] };
+		});
+
+		it('should set __skipManagedCreation for types in the skip list', () => {
+			const skipCredential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			const normalCredential = {
+				name: 'slackOAuth2Api',
+				displayName: 'Slack OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = {
+				credentials: [skipCredential, normalCredential],
+				nodes: [],
+			};
+			(globalConfig as any).credentials = {
+				overwrite: { skipTypes: ['googleSheetsOAuth2Api'] },
+			};
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(skipCredential.__skipManagedCreation).toBe(true);
+			expect(normalCredential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should not set __skipManagedCreation when skip list is empty', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
+		});
+
+		it('should clear stale __skipManagedCreation when type is removed from skip list', () => {
+			const credential = {
+				name: 'googleSheetsOAuth2Api',
+				displayName: 'Google Sheets OAuth2 API',
+				properties: [],
+				__skipManagedCreation: true, // Previously set
+			} as ICredentialType;
+
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__skipManagedCreation).toBeUndefined();
 		});
 	});
 

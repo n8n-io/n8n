@@ -7,8 +7,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 export class EmbeddingsGoogleGemini implements INodeType {
 	description: INodeTypeDescription = {
@@ -110,7 +109,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 						property: 'model',
 					},
 				},
-				default: 'models/text-embedding-004',
+				default: 'models/gemini-embedding-001',
 			},
 		],
 	};
@@ -120,7 +119,7 @@ export class EmbeddingsGoogleGemini implements INodeType {
 		const modelName = this.getNodeParameter(
 			'modelName',
 			itemIndex,
-			'models/text-embedding-004',
+			'models/gemini-embedding-001',
 		) as string;
 		const credentials = await this.getCredentials('googlePalmApi');
 		const embeddings = new GoogleGenerativeAIEmbeddings({

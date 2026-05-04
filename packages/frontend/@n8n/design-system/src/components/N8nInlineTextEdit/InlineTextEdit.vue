@@ -147,7 +147,7 @@ defineExpose({ forceFocus, forceCancel });
 		width: calc(100% + var(--spacing--xs));
 		height: calc(100% + var(--spacing--2xs));
 		border-radius: var(--radius);
-		background-color: var(--color--foreground--tint-2);
+		background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 		opacity: 0;
 		z-index: 0;
 		transition: all 0.1s ease-in-out;

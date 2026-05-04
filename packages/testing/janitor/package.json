@@ -17,6 +17,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
 		"lint": "eslint . --quiet",
 		"lint:fix": "eslint . --fix",
 		"typecheck": "tsc --noEmit"
@@ -30,13 +32,14 @@
 	],
 	"license": "MIT",
 	"dependencies": {
+		"@n8n/rules-engine": "workspace:*",
 		"glob": "^10.0.0"
 	},
 	"peerDependencies": {
 		"ts-morph": ">=20.0.0"
 	},
 	"devDependencies": {
-		"@types/node": "^20.0.0",
+		"@types/node": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
 		"ts-morph": "catalog:",
 		"tsx": "catalog:",

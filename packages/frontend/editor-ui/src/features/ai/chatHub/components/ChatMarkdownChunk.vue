@@ -9,16 +9,22 @@ const {
 	source,
 	singlePre = false,
 	isButtonsDisabled = false,
+	footnoteStyle = 'pill',
 } = defineProps<{
 	source: ChatMessageContentChunk;
 	singlePre?: boolean;
 	isButtonsDisabled?: boolean;
+	footnoteStyle?: 'pill' | 'normal';
 }>();
 
 const emit = defineEmits<{ openArtifact: [title: string] }>();
 
 const styles = useCssModule();
-const markdown = useChatHubMarkdownOptions(styles.codeBlockActions, styles.tableContainer);
+const markdown = useChatHubMarkdownOptions(
+	styles.codeBlockActions,
+	styles.tableContainer,
+	footnoteStyle === 'pill' ? styles.footnoteRef : null,
+);
 const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 
 function getHoveredCodeBlockContent() {
@@ -99,14 +105,22 @@ defineExpose({
 	--markdown--spacing: var(--spacing--2xs);
 
 	display: block;
-	color: var(--color--text--shade-1);
+	color: inherit;
 
 	// Paragraphs and normal text
 	p,
 	li {
-		font-size: var(--font-size--md);
-		line-height: var(--line-height--xl);
+		font-size: inherit;
+		line-height: inherit;
 		margin: calc(var(--markdown--spacing) * 2) 0;
+
+		&:first-child {
+			margin-top: 0;
+		}
+
+		&:last-child {
+			margin-bottom: 0;
+		}
 	}
 
 	li {
@@ -160,7 +174,6 @@ defineExpose({
 	// Headings inside list items should have no top margin
 	li > :is(h1, h2, h3, h4, h5, h6, p, strong):first-child {
 		margin-top: 0;
-		display: inline-block;
 	}
 
 	// Strong/bold text
@@ -294,9 +307,9 @@ defineExpose({
 
 	// Ordered lists
 	ol {
-		padding-left: calc(var(--markdown--spacing) * 2);
+		padding-left: calc(var(--markdown--spacing) * 4);
 		list-style-type: decimal;
-		list-style-position: inside;
+		list-style-position: outside;
 		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {
@@ -311,9 +324,9 @@ defineExpose({
 
 	// Unordered lists
 	ul {
-		padding-left: calc(var(--markdown--spacing) * 2);
+		padding-left: calc(var(--markdown--spacing) * 4);
 		list-style-type: disc;
-		list-style-position: inside;
+		list-style-position: outside;
 		margin: calc(var(--markdown--spacing) * 2) 0;
 
 		li + li {
@@ -333,6 +346,21 @@ defineExpose({
 		margin-top: var(--markdown--spacing);
 		margin-bottom: 0;
 		padding-left: calc(var(--markdown--spacing) * 3);
+	}
+
+	// Footnote pill
+	.footnoteRef {
+		display: inline-block;
+		font-size: var(--font-size--3xs);
+		line-height: 1;
+		color: var(--color--text);
+		background: var(--color--foreground--tint-1);
+		border-radius: var(--radius--xl);
+		padding: var(--spacing--4xs) var(--spacing--2xs);
+		margin-inline: var(--spacing--5xs);
+		vertical-align: middle;
+		white-space: nowrap;
+		font-weight: var(--font-weight--regular);
 	}
 
 	// Tables

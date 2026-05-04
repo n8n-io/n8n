@@ -4,7 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { NodeConnectionTypes } from 'n8n-workflow';
-import { nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import ExperimentalEmbeddedNdvMapper from './ExperimentalEmbeddedNdvMapper.vue';
 import { useExperimentalNdvStore } from '../experimentalNdv.store';
 
@@ -22,7 +23,10 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 	it('should open the popover on hover if visibleOnHover is true', async () => {
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
-			global: { plugins: [createTestingPinia({ stubActions: false })] },
+			global: {
+				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				plugins: [createTestingPinia({ stubActions: false })],
+			},
 			props: {
 				workflow,
 				node,
@@ -40,7 +44,10 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 	it('should not open the popover on hover if visibleOnHover is false', async () => {
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
-			global: { plugins: [createTestingPinia({ stubActions: false })] },
+			global: {
+				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				plugins: [createTestingPinia({ stubActions: false })],
+			},
 			props: {
 				workflow,
 				node,
@@ -60,7 +67,10 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 		const store = useExperimentalNdvStore(pinia);
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
-			global: { plugins: [pinia] },
+			global: {
+				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				plugins: [pinia],
+			},
 			props: {
 				workflow,
 				node,
@@ -80,7 +90,10 @@ describe('ExperimentalEmbeddedNdvMapper', () => {
 	it('should close the popover on mouse leave if the popover is opened by hover', async () => {
 		const reference = document.createElement('div');
 		const rendered = render(ExperimentalEmbeddedNdvMapper, {
-			global: { plugins: [createTestingPinia({ stubActions: false })] },
+			global: {
+				provide: { [WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id') },
+				plugins: [createTestingPinia({ stubActions: false })],
+			},
 			props: {
 				workflow,
 				node,

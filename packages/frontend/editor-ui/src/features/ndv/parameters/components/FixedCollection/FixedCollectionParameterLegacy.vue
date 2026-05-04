@@ -407,14 +407,14 @@ const onDragChange = (optionName: string) => {
 const trackWorkflowInputFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id: workflowsStore.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
 
 const trackWorkflowInputFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id: workflowsStore.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
@@ -631,6 +631,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 				style="width: 100%"
 				variant="subtle"
 				v-if="parameter.options && parameter.options.length === 1"
+				size="small"
 				data-test-id="fixed-collection-add"
 				:label="getPlaceholderText"
 				@click="onAddButtonClick(parameter.options[0].name)"

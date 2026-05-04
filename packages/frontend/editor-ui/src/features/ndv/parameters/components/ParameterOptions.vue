@@ -27,6 +27,7 @@ interface Props {
 	value: NodeParameterValueType;
 	showOptions?: boolean;
 	showExpressionSelector?: boolean;
+	showFocusPanel?: boolean;
 	customActions?: Array<{ label: string; value: string; disabled?: boolean }>;
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
@@ -39,6 +40,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
 	showOptions: true,
 	showExpressionSelector: true,
+	showFocusPanel: true,
 	customActions: () => [],
 	iconOrientation: 'vertical',
 	loading: false,
@@ -73,6 +75,7 @@ const isInEmbeddedNdv = useIsInExperimentalNdv();
 const experimentalNdvStore = useExperimentalNdvStore();
 
 const canBeOpenedInFocusPanel = computed(() => {
+	if (!props.showFocusPanel) return false;
 	if (isChatHubToolContext) return false;
 	if (props.parameter.isNodeSetting || props.isReadOnly || props.isContentOverridden) {
 		return false;

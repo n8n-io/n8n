@@ -11,6 +11,7 @@ import type {
 import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
 
 import type {
+	CredentialResolutionResult,
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from './credential-resolution-provider.interface';
@@ -41,8 +42,7 @@ export class DynamicCredentialsProxy
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
-		canUseExternalSecrets?: boolean,
-	): Promise<ICredentialDataDecryptedObject> {
+	): Promise<CredentialResolutionResult> {
 		if (!this.resolvingProvider) {
 			if (credentialsResolveMetadata.isResolvable) {
 				this.logger.warn(
@@ -50,14 +50,13 @@ export class DynamicCredentialsProxy
 				);
 				throw new Error('No dynamic credential resolving provider set');
 			}
-			return staticData;
+			return { data: staticData, isDynamic: false };
 		}
 		return await this.resolvingProvider.resolveIfNeeded(
 			credentialsResolveMetadata,
 			staticData,
 			executionContext,
 			workflowSettings,
-			canUseExternalSecrets,
 		);
 	}
 
@@ -105,7 +104,7 @@ export class DynamicCredentialsProxy
 		let credentialContext: { version: 1; identity: string } | undefined;
 
 		if (executionContext?.credentials) {
-			const decrypted = cipher.decrypt(executionContext.credentials);
+			const decrypted = await cipher.decryptV2(executionContext.credentials);
 			credentialContext = toCredentialContext(decrypted) as { version: 1; identity: string };
 		}
 

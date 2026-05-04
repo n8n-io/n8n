@@ -287,6 +287,7 @@ describe('ExternalSecretsManager', () => {
 			providerKey: 'my-vault',
 			type: 'dummy',
 			encryptedSettings: 'encrypted-data',
+			isEnabled: true,
 			projectAccess: [],
 			createdAt: new Date(),
 			updatedAt: new Date(),
@@ -300,7 +301,7 @@ describe('ExternalSecretsManager', () => {
 
 			const decryptedSettings = { key: 'value' };
 			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedSettings));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedSettings));
 
 			const newProvider = new DummyProvider();
 			await newProvider.init({ connected: true, connectedAt: null, settings: {} });
@@ -318,7 +319,7 @@ describe('ExternalSecretsManager', () => {
 			expect(mockProviderRegistry.remove).toHaveBeenCalledWith('my-vault');
 
 			// Sets up new provider with decrypted settings
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('encrypted-data');
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 			expect(mockProviderLifecycle.initialize).toHaveBeenCalledWith('dummy', {
 				connected: true,
 				connectedAt: null,
@@ -358,7 +359,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should skip cache refresh when provider initialization fails', async () => {
 			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			// Provider initialization fails, so it won't be added to the registry
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -378,7 +379,7 @@ describe('ExternalSecretsManager', () => {
 
 		it('should broadcast reload even when no existing provider to tear down', async () => {
 			mockSecretsProviderConnectionRepository.findOne.mockResolvedValue(mockConnection as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const newProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -843,6 +844,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault-1',
 				type: 'dummy',
 				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -850,7 +852,7 @@ describe('ExternalSecretsManager', () => {
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider = new DummyProvider();
 			await dummyProvider.init({ connected: true, connectedAt: null, settings: {} });
@@ -866,6 +868,56 @@ describe('ExternalSecretsManager', () => {
 			expect(mockProviderRegistry.add).toHaveBeenCalledWith('my-vault-1', dummyProvider);
 		});
 
+		it('should tear down disabled providers but not re-setup them', async () => {
+			const enabledConnection = {
+				id: 1,
+				providerKey: 'vault-enabled',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: jest.fn(),
+			};
+			const disabledConnection = {
+				id: 2,
+				providerKey: 'vault-disabled',
+				type: 'dummy',
+				encryptedSettings: 'encrypted-data',
+				isEnabled: false,
+				projectAccess: [],
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				setUpdateDate: jest.fn(),
+			};
+
+			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([
+				enabledConnection,
+				disabledConnection,
+			] as any);
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
+
+			const dummyProvider = new DummyProvider();
+			await dummyProvider.init({ connected: true, connectedAt: null, settings: {} });
+			mockProviderLifecycle.initialize.mockResolvedValue({
+				success: true,
+				provider: dummyProvider,
+			});
+
+			await managerWithProjectMode.reloadAllProviders();
+
+			// Both should be torn down
+			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('vault-enabled');
+			expect(mockRetryManager.cancelRetry).toHaveBeenCalledWith('vault-disabled');
+			// Only enabled should be set up
+			expect(mockProviderRegistry.add).toHaveBeenCalledWith('vault-enabled', dummyProvider);
+			expect(mockProviderRegistry.add).not.toHaveBeenCalledWith(
+				'vault-disabled',
+				expect.anything(),
+			);
+		});
+
 		it('should support multiple connections of the same provider type', async () => {
 			const mockConnections = [
 				{
@@ -873,6 +925,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-1',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -883,6 +936,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-2',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -891,7 +945,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider1 = new DummyProvider();
 			const dummyProvider2 = new DummyProvider();
@@ -924,6 +978,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings,
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -931,7 +986,7 @@ describe('ExternalSecretsManager', () => {
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify(decryptedSettings));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedSettings));
 
 			const dummyProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -941,7 +996,7 @@ describe('ExternalSecretsManager', () => {
 
 			await managerWithProjectMode.reloadAllProviders();
 
-			expect(mockCipher.decrypt).toHaveBeenCalledWith(encryptedSettings);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(encryptedSettings);
 			expect(mockProviderLifecycle.initialize).toHaveBeenCalledWith('dummy', {
 				connected: true,
 				connectedAt: null,
@@ -956,6 +1011,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'provider-a',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -966,6 +1022,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'provider-b',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -974,7 +1031,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const providerA = new DummyProvider();
 			const providerB = new DummyProvider();
@@ -1008,6 +1065,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings: 'encrypted-data',
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1019,7 +1077,7 @@ describe('ExternalSecretsManager', () => {
 			mockProviderRegistry.add('my-vault', existingProvider);
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const newProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -1041,6 +1099,7 @@ describe('ExternalSecretsManager', () => {
 				providerKey: 'my-vault',
 				type: 'dummy',
 				encryptedSettings: 'invalid-encrypted-data',
+				isEnabled: true,
 				projectAccess: [],
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1048,7 +1107,7 @@ describe('ExternalSecretsManager', () => {
 			};
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue([mockConnection as any]);
-			mockCipher.decrypt.mockReturnValue('invalid-json{');
+			mockCipher.decryptV2.mockResolvedValue('invalid-json{');
 
 			await expect(managerWithProjectMode.reloadAllProviders()).rejects.toThrow(
 				'External Secrets Settings could not be decrypted',
@@ -1071,6 +1130,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-1',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1081,6 +1141,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-2',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1091,6 +1152,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-3',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-3',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1099,7 +1161,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider = new DummyProvider();
 			mockProviderLifecycle.initialize.mockResolvedValue({
@@ -1121,6 +1183,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-1',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-1',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1131,6 +1194,7 @@ describe('ExternalSecretsManager', () => {
 					providerKey: 'vault-2',
 					type: 'dummy',
 					encryptedSettings: 'encrypted-data-2',
+					isEnabled: true,
 					projectAccess: [],
 					createdAt: new Date(),
 					updatedAt: new Date(),
@@ -1139,7 +1203,7 @@ describe('ExternalSecretsManager', () => {
 			];
 
 			mockSecretsProviderConnectionRepository.findAll.mockResolvedValue(mockConnections as any);
-			mockCipher.decrypt.mockReturnValue(JSON.stringify({ key: 'value' }));
+			mockCipher.decryptV2.mockResolvedValue(JSON.stringify({ key: 'value' }));
 
 			const dummyProvider1 = new DummyProvider();
 			const dummyProvider2 = new DummyProvider();

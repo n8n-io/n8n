@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { getBatchingOptionFields } from '@utils/sharedFields';
+import { getBatchingOptionFields } from '@n8n/ai-utilities';
 
 import { processItem } from './processItem';
 
@@ -32,7 +32,7 @@ export class TextClassifier implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Text Classifier',
 		name: 'textClassifier',
-		icon: 'fa:tags',
+		icon: 'node:text-classifier',
 		iconColor: 'black',
 		group: ['transform'],
 		version: [1, 1.1],

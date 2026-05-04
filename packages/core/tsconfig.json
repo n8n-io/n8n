@@ -5,11 +5,9 @@
 	],
 	"compilerOptions": {
 		"lib": ["es2022"],
-		"rootDir": ".",
-		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./*"],
-			"@test/*": ["../test/*"]
+			"@/*": ["./src/*"],
+			"@test/*": ["./test/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,

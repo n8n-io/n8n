@@ -12,7 +12,7 @@ import { useRoute, useRouter } from 'vue-router';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
-import { useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
+import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/useN8nLocalStorage';
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import { ElPagination } from 'element-plus';
@@ -69,6 +69,8 @@ const props = withDefaults(
 		dontPerformSortingAndFiltering?: boolean;
 		hasEmptyState?: boolean;
 		uiConfig?: UIConfig;
+		tabKey?: LocalStorageTabKey;
+		persistKeyExclusions?: string[];
 	}>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
@@ -92,6 +94,8 @@ const props = withDefaults(
 			showFiltersDropdown: true,
 			sortEnabled: true,
 		}),
+		tabKey: 'workflows',
+		persistKeyExclusions: () => [],
 	},
 );
 
@@ -493,7 +497,7 @@ const savePaginationPreferences = async () => {
 		delete currentQuery.pageSize;
 	}
 
-	if (sortBy.value !== preferredSort.value) {
+	if (sortBy.value !== preferredSort.value && !props.persistKeyExclusions.includes(sortBy.value)) {
 		currentQuery.sort = sortBy.value;
 		preferredSort.value = sortBy.value;
 	} else {
@@ -502,9 +506,9 @@ const savePaginationPreferences = async () => {
 
 	n8nLocalStorage.saveProjectPreferencesToLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 		{
-			sort: sortBy.value,
+			sort: props.persistKeyExclusions.includes(sortBy.value) ? preferredSort.value : sortBy.value,
 			pageSize: rowsPerPage.value,
 		},
 	);
@@ -528,7 +532,7 @@ const loadPaginationPreferences = async () => {
 	// For now, only load workflow list preferences from local storage
 	const localStorageValues = n8nLocalStorage.loadProjectPreferencesFromLocalStorage(
 		(route.params.projectId as string) ?? '',
-		'workflows',
+		props.tabKey,
 	);
 
 	const emitPayload: SortingAndPaginationUpdates = {};
@@ -627,7 +631,7 @@ defineExpose({
 								:model-value="filtersModel.search"
 								:class="$style.search"
 								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="small"
+								size="medium"
 								clearable
 								data-test-id="resources-list-search"
 								@update:model-value="onSearch"
@@ -805,6 +809,12 @@ defineExpose({
 		display: flex;
 		gap: var(--spacing--4xs);
 		align-items: center;
+
+		input {
+			min-height: 0;
+			width: 196px;
+			height: 32px;
+		}
 	}
 
 	@include mixins.breakpoint('xs-only') {
@@ -817,10 +827,6 @@ defineExpose({
 .search {
 	max-width: 196px;
 	justify-self: end;
-
-	input {
-		height: 30px;
-	}
 
 	@include mixins.breakpoint('sm-and-down') {
 		max-width: 100%;
@@ -876,15 +882,6 @@ defineExpose({
 
 .datatable {
 	padding-bottom: var(--spacing--sm);
-}
-
-/** NOTE (@heymynameisrob): Style override to match button and text input height **/
-.resourceList {
-	height: var(--spacing--xl);
-
-	input[role='combobox'] {
-		height: var(--spacing--xl);
-	}
 }
 </style>
 

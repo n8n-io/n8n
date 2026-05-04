@@ -1,8 +1,14 @@
 import type { ElMessageBoxOptions, Action, MessageBoxInputData } from 'element-plus';
 import { ElMessageBox as MessageBox } from 'element-plus';
+import { h } from 'vue';
 import { sanitizeIfString } from '@/app/utils/htmlUtils';
+import { N8nCheckbox } from '@n8n/design-system';
 
 export type MessageBoxConfirmResult = 'confirm' | 'cancel';
+
+type AdditionalConfirmOptions = {
+	confirmationCheckboxMessage?: ElMessageBoxOptions['message'];
+};
 
 export function useMessage() {
 	const handleCancelOrClose = (e: Action | Error): Action => {
@@ -42,29 +48,63 @@ export function useMessage() {
 	async function confirm(
 		message: ElMessageBoxOptions['message'],
 		configOrTitle?: string | ElMessageBoxOptions,
-		config?: ElMessageBoxOptions,
+		config?: ElMessageBoxOptions & AdditionalConfirmOptions,
 	) {
-		const resolvedConfig = {
+		let content = sanitizeIfString(message);
+		let confirmedCheckbox = true;
+		const { confirmationCheckboxMessage, ...remainingConfig } = config ?? {};
+		const resolvedConfig: ElMessageBoxOptions = {
 			cancelButtonClass: 'btn--cancel',
 			confirmButtonClass: 'btn--confirm',
 			distinguishCancelAndClose: true,
 			showClose: config?.showClose ?? false,
 			closeOnClickModal: false,
 			dangerouslyUseHTMLString: true,
-			...(config ?? (typeof configOrTitle === 'object' ? configOrTitle : {})),
+			beforeClose: (action, _instance, done) => {
+				if (action !== 'confirm' || confirmedCheckbox) {
+					done();
+				}
+			},
+			...(config ? remainingConfig : typeof configOrTitle === 'object' ? configOrTitle : {}),
 		};
+
+		if (confirmationCheckboxMessage) {
+			confirmedCheckbox = false;
+			resolvedConfig.customClass = [resolvedConfig.customClass, 'with-confirmation-checkbox'].join(
+				' ',
+			);
+			content = h('div', [
+				h(
+					'div',
+					{
+						class: 'el-message-box__message__structured',
+					},
+					content,
+				),
+				h(
+					N8nCheckbox,
+					{
+						'onUpdate:modelValue': (checked: boolean) => {
+							confirmedCheckbox = checked;
+						},
+						required: true,
+					},
+					{
+						label: () => h('span', sanitizeIfString(confirmationCheckboxMessage)),
+					},
+				),
+			]);
+		}
 
 		if (typeof configOrTitle === 'string') {
 			return await MessageBox.confirm(
-				sanitizeIfString(message),
+				content,
 				sanitizeIfString(configOrTitle),
 				resolvedConfig,
 			).catch(handleCancelOrClose);
 		}
 
-		return await MessageBox.confirm(sanitizeIfString(message), resolvedConfig).catch(
-			handleCancelOrClose,
-		);
+		return await MessageBox.confirm(content, resolvedConfig).catch(handleCancelOrClose);
 	}
 
 	async function prompt(

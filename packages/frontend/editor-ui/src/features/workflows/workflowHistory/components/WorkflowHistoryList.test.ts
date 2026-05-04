@@ -24,12 +24,15 @@ const unnamedWorkflowHistoryDataFactory = (): WorkflowHistory => ({
 
 vi.stubGlobal(
 	'IntersectionObserver',
-	vi.fn(() => ({
-		disconnect: vi.fn(),
-		observe: vi.fn(),
-		takeRecords: vi.fn(),
-		unobserve: vi.fn(),
-	})),
+	class {
+		disconnect = vi.fn();
+
+		observe = vi.fn();
+
+		takeRecords = vi.fn();
+
+		unobserve = vi.fn();
+	},
 );
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
@@ -172,7 +175,7 @@ describe('WorkflowHistoryList', () => {
 	it('should delegate compare event from item', async () => {
 		const items = Array.from({ length: 3 }, namedWorkflowHistoryDataFactory);
 		const index = 1;
-		const activeVersionId = items[0].versionId;
+		const publishedVersionId = items[0].versionId;
 		const { getAllByTestId, emitted } = renderComponent({
 			pinia,
 			props: {
@@ -182,7 +185,7 @@ describe('WorkflowHistoryList', () => {
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneTimeInHours: -1,
-				activeVersionId,
+				publishedVersionId,
 				isWorkflowDiffsEnabled: true,
 			},
 		});

@@ -1,6 +1,7 @@
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { STORES } from '@n8n/stores';
+import { getNDVStoreId } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 
 import SqlEditor from '@/features/shared/editors/components/SqlEditor/SqlEditor.vue';
@@ -8,8 +9,19 @@ import { renderComponent, type RenderOptions } from '@/__tests__/render';
 import { waitFor } from '@testing-library/vue';
 import { userEvent } from '@testing-library/user-event';
 import { setActivePinia } from 'pinia';
+import { shallowRef } from 'vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import type { INodeUi } from '@/Interface';
+
+vi.mock('@/app/stores/workflowDocument.store', async () => {
+	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
+	return { ...actual, injectWorkflowDocumentStore: vi.fn() };
+});
 
 const EXPRESSION_OUTPUT_TEST_ID = 'inline-expression-editor-output';
 
@@ -53,7 +65,7 @@ describe('SqlEditor.vue', () => {
 				[STORES.SETTINGS]: {
 					settings: SETTINGS_STORE_DEFAULT_STATE.settings,
 				},
-				[STORES.NDV]: {
+				[getNDVStoreId(createWorkflowDocumentId('default'))]: {
 					activeNodeName: 'Test Node',
 					hasInputData: true,
 					isInputPanelEmpty: false,
@@ -66,6 +78,7 @@ describe('SqlEditor.vue', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
+						id: 'test',
 						nodes,
 						connections: {},
 					},
@@ -75,7 +88,13 @@ describe('SqlEditor.vue', () => {
 		setActivePinia(pinia);
 
 		const workflowsStore = useWorkflowsStore();
-		vi.mocked(workflowsStore).getNodeByName.mockReturnValue(nodes[0]);
+		workflowsStore.workflow.id = 'test-workflow';
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		);
+		vi.mocked(workflowDocumentStore).getNodeByName.mockReturnValue(nodes[0]);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 	});
 
 	afterAll(() => {

@@ -157,9 +157,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show SSH-specific fields when SSH protocol is selected', async () => {
 			await nextTick();
-			const { container, getByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, getByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 
@@ -179,9 +177,7 @@ describe('SettingsSourceControl', () => {
 
 		it('should show HTTPS-specific fields when HTTPS protocol is selected', async () => {
 			await nextTick();
-			const { container, queryByTestId } = renderComponent({
-				pinia,
-			});
+			const { container, queryByTestId } = renderComponent({ pinia });
 
 			await waitFor(() => expect(sourceControlStore.preferences.publicKey).not.toEqual(''));
 

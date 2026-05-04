@@ -84,8 +84,11 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 						shouldReport: true,
 					},
 				);
+
+				this.instanceSettings.markAsLeader();
+
+				this.emit('leader-takeover');
 			}
-			this.instanceSettings.markAsLeader();
 
 			this.logger.debug(`[Instance ID ${hostId}] Leader is this instance`);
 
@@ -153,7 +156,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 			const instance = Container.get(eventHandlerClass);
 			this.on(eventName, async () => {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-				return instance[methodName].call(instance);
+				return await instance[methodName].call(instance);
 			});
 		}
 	}

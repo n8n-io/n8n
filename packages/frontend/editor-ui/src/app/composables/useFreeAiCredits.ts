@@ -36,6 +36,7 @@ export function useFreeAiCredits() {
 	const userCanClaimOpenAiCredits = computed(
 		() =>
 			isAiCreditsEnabled.value &&
+			!settingsStore.isAiGatewayEnabled &&
 			!userHasOpenAiCredentialAlready.value &&
 			!userHasClaimedAiCreditsAlready.value,
 	);
@@ -60,11 +61,9 @@ export function useFreeAiCredits() {
 
 			return true;
 		} catch (e) {
-			toast.showError(
-				e,
-				i18n.baseText('freeAi.credits.showError.claim.title'),
-				i18n.baseText('freeAi.credits.showError.claim.message'),
-			);
+			toast.showError(e, i18n.baseText('freeAi.credits.showError.claim.title'), {
+				message: i18n.baseText('freeAi.credits.showError.claim.message'),
+			});
 			return false;
 		} finally {
 			claimingCredits.value = false;

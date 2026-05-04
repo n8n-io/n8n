@@ -414,7 +414,7 @@ const handleDelete = (optionName: string, index?: number) => {
 
 const trackFieldAdded = () => {
 	telemetry.track('User added workflow input field', {
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id: workflowsStore.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
@@ -422,7 +422,7 @@ const trackFieldAdded = () => {
 const trackFieldTypeChange = (parameterData: IUpdateInformation) => {
 	telemetry.track('User changed workflow input field type', {
 		type: parameterData.value,
-		workflow_id: workflowsStore.workflow.id,
+		workflow_id: workflowsStore.workflowId,
 		node_id: ndvStore.activeNode?.id,
 	});
 };
@@ -673,6 +673,7 @@ const onAddButtonClick = () => {
 					variant="subtle"
 					v-if="hasSingleOption"
 					icon="plus"
+					size="small"
 					:data-test-id="`fixed-collection-add-top-level-button`"
 					:label="placeholder"
 					:disabled="isAddDisabled"
@@ -691,6 +692,7 @@ const onAddButtonClick = () => {
 							class="n8n-button--highlightFill"
 							variant="subtle"
 							icon="plus"
+							size="small"
 							:label="placeholder"
 							:disabled="isAddDisabled"
 						/>
@@ -773,6 +775,7 @@ const onAddButtonClick = () => {
 							variant="subtle"
 							v-if="hasSingleOption"
 							icon="plus"
+							size="small"
 							:data-test-id="`fixed-collection-add-nested-button`"
 							:label="placeholder"
 							@click="onAddButtonClick"
@@ -789,6 +792,7 @@ const onAddButtonClick = () => {
 									class="n8n-button--highlightFill"
 									variant="subtle"
 									icon="plus"
+									size="small"
 									:label="placeholder"
 								/>
 							</template>

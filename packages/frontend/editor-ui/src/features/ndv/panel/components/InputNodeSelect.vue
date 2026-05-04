@@ -2,9 +2,9 @@
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { isPresent } from '@/app/utils/typesUtils';
-import type { IConnectedNode, Workflow } from 'n8n-workflow';
+import type { IConnectedNode } from 'n8n-workflow';
 import { computed } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
@@ -12,7 +12,6 @@ import { truncate } from '@n8n/utils/string/truncate';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 type Props = {
 	nodes: IConnectedNode[];
-	workflow: Workflow;
 	modelValue: string | null;
 };
 
@@ -23,11 +22,13 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const workflowsStore = useWorkflowsStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = useNDVStore();
 
-const selectedInputNode = computed(() => workflowsStore.getNodeByName(props.modelValue ?? ''));
+const selectedInputNode = computed(
+	() => workflowDocumentStore?.value?.getNodeByName(props.modelValue ?? '') ?? null,
+);
 
 const selectedInputNodeType = computed(() => {
 	const node = selectedInputNode.value;
@@ -40,7 +41,7 @@ const inputNodes = computed(
 	() =>
 		props.nodes
 			?.map((node) => {
-				const fullNode = workflowsStore.getNodeByName(node.name);
+				const fullNode = workflowDocumentStore?.value?.getNodeByName(node.name) ?? null;
 				if (!fullNode) return null;
 
 				return {
@@ -85,7 +86,7 @@ function getMultipleNodesText(nodeName: string): string {
 		return '';
 
 	const activeNodeConnections =
-		workflowsStore.connectionsByDestinationNode[activeNode.value.name].main || [];
+		workflowDocumentStore?.value?.connectionsByDestinationNode[activeNode.value.name]?.main ?? [];
 	// Collect indexes of connected nodes
 	const connectedInputIndexes = activeNodeConnections.reduce((acc: number[], node, index) => {
 		if (node?.[0] && node[0].node === nodeName) return [...acc, index];

@@ -121,6 +121,30 @@ describe('v2/components/DropdownMenuItem', () => {
 			});
 		});
 
+		it('should show title attribute when label is 20+ characters', async () => {
+			renderMenuItem({
+				id: 'test',
+				label: 'A very long label that exceeds twenty characters',
+			});
+
+			await waitFor(() => {
+				const label = document.querySelector('[role="menuitem"] .n8n-text');
+				expect(label).toHaveAttribute('title', 'A very long label that exceeds twenty characters');
+			});
+		});
+
+		it('should not show title attribute when label is under 20 characters', async () => {
+			renderMenuItem({
+				id: 'test',
+				label: 'Short label',
+			});
+
+			await waitFor(() => {
+				const label = document.querySelector('[role="menuitem"] .n8n-text');
+				expect(label).not.toHaveAttribute('title');
+			});
+		});
+
 		it('should render item with custom class', async () => {
 			renderMenuItem({
 				id: 'test',
