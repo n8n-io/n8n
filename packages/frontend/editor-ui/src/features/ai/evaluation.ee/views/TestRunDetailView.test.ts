@@ -16,6 +16,11 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+const trackMock = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
+
 const mockRouter = {
 	currentRoute: {
 		value: {
@@ -227,6 +232,22 @@ describe('TestRunDetailView', () => {
 			const badges = container.querySelectorAll('[data-test-id="trend-delta-badge"]');
 			// accuracy improved (positive), precision declined (negative); both should show a badge
 			expect(badges.length).toBe(2);
+		});
+	});
+
+	it('fires "User viewed run detail" telemetry on mount', async () => {
+		renderComponent();
+		await waitFor(() => {
+			expect(trackMock).toHaveBeenCalledWith('User viewed run detail', {
+				run_id: 'test-run-id',
+				workflow_id: 'test-workflow-id',
+				has_previous_run: true,
+				// `accuracy` and `precision` only — `getUserDefinedMetricNames`
+				// excludes predefined keys like `totalTokens`/`executionTime`.
+				metric_count: 2,
+				test_case_count: mockTestCases.length,
+				failed_test_case_count: 1,
+			});
 		});
 	});
 });

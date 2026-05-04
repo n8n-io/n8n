@@ -2,6 +2,7 @@
 import type { TestCaseExecutionRecord, TestRunRecord } from '../evaluation.api';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
@@ -27,6 +28,7 @@ const toast = useToast();
 const evaluationStore = useEvaluationStore();
 const workflowsListStore = useWorkflowsListStore();
 const locale = useI18n();
+const telemetry = useTelemetry();
 
 const isLoading = ref(true);
 const testCases = ref<TestCaseExecutionRecord[]>([]);
@@ -79,6 +81,11 @@ const metricTones = computed<Record<string, DeltaTone>>(() => {
 const openRelatedExecution = (testCase: TestCaseExecutionRecord) => {
 	const executionId = testCase.executionId;
 	if (!executionId) return;
+	telemetry.track('User opened execution from run detail', {
+		run_id: runId.value,
+		workflow_id: workflowId.value,
+		test_case_id: testCase.id,
+	});
 	const { href } = router.resolve({
 		name: VIEWS.EXECUTION_PREVIEW,
 		params: {
@@ -114,8 +121,20 @@ const fetchExecutionTestCases = async () => {
 	}
 };
 
+const trackViewedRunDetail = () => {
+	telemetry.track('User viewed run detail', {
+		run_id: runId.value,
+		workflow_id: workflowId.value,
+		has_previous_run: previousRun.value !== null,
+		metric_count: getUserDefinedMetricNames(run.value?.metrics).length,
+		test_case_count: testCases.value.length,
+		failed_test_case_count: testCases.value.filter((c) => c.status === 'error').length,
+	});
+};
+
 onMounted(async () => {
 	await fetchExecutionTestCases();
+	trackViewedRunDetail();
 });
 </script>
 
