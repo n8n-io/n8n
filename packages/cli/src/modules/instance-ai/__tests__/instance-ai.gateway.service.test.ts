@@ -34,11 +34,15 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			expect(token1).toBe(token2);
 		});
 
-		it('returns the active session key if one already exists', () => {
+		it('returns a new pairing token instead of exposing an active session key', () => {
 			const pairingToken = registry.generatePairingToken('user-a');
-			const sessionKey = registry.consumePairingToken('user-a', pairingToken);
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			const nextPairingToken = registry.generatePairingToken('user-a');
 
-			expect(registry.generatePairingToken('user-a')).toBe(sessionKey);
+			expect(nextPairingToken).toMatch(/^gw_/);
+			expect(nextPairingToken).not.toBe(sessionKey);
+			expect(registry.getUserIdForApiKey(sessionKey)).toBe('user-a');
+			expect(registry.getUserIdForApiKey(nextPairingToken)).toBe('user-a');
 		});
 
 		it('does not return an expired active session key', () => {
@@ -79,6 +83,19 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			registry.generatePairingToken('user-a');
 
 			expect(registry.consumePairingToken('user-a', 'wrong-token')).toBeNull();
+		});
+
+		it('revokes the previous active session when a new pairing token is consumed', () => {
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			const nextPairingToken = registry.generatePairingToken('user-a');
+
+			const nextSessionKey = registry.consumePairingToken('user-a', nextPairingToken);
+
+			expect(nextSessionKey).toMatch(/^sess_/);
+			expect(nextSessionKey).not.toBe(sessionKey);
+			expect(registry.getUserIdForApiKey(sessionKey)).toBeUndefined();
+			expect(registry.getUserIdForApiKey(nextSessionKey!)).toBe('user-a');
 		});
 	});
 

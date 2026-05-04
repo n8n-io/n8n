@@ -20,7 +20,12 @@ export const MCP_SCHEMA_MAX_NODES = 1_000;
 export const MCP_SCHEMA_MAX_OBJECT_PROPERTIES = 250;
 export const MCP_SCHEMA_MAX_UNION_OPTIONS = 100;
 
-type McpSchemaLimitType = 'depth' | 'nodes' | 'objectProperties' | 'unionOptions';
+type McpSchemaLimitType =
+	| 'depth'
+	| 'nodes'
+	| 'objectProperties'
+	| 'unionOptions'
+	| 'unsupportedType';
 
 export class McpSchemaSanitizationError extends Error {
 	constructor(
@@ -33,6 +38,7 @@ export class McpSchemaSanitizationError extends Error {
 			limit?: number;
 			limitType?: McpSchemaLimitType;
 			count?: number;
+			zodType?: string;
 		},
 	) {
 		super(message);
@@ -108,6 +114,43 @@ function createLimitError(
 		limitType,
 		count,
 	});
+}
+
+function createUnsupportedTypeError(
+	context: SanitizeContext,
+	schema: z.ZodTypeAny,
+): McpSchemaSanitizationError {
+	const definition = schema._def as { typeName?: unknown };
+	const zodType =
+		typeof definition.typeName === 'string' ? definition.typeName : schema.constructor.name;
+	return new McpSchemaSanitizationError(`MCP schema contains unsupported Zod type ${zodType}`, {
+		toolName: context.toolName,
+		path: context.path,
+		depth: context.depth,
+		maxDepth: context.maxDepth,
+		limitType: 'unsupportedType',
+		zodType,
+	});
+}
+
+function isSupportedLeafSchema(schema: z.ZodTypeAny): boolean {
+	return (
+		schema instanceof z.ZodString ||
+		schema instanceof z.ZodNumber ||
+		schema instanceof z.ZodNaN ||
+		schema instanceof z.ZodBigInt ||
+		schema instanceof z.ZodBoolean ||
+		schema instanceof z.ZodDate ||
+		schema instanceof z.ZodUndefined ||
+		schema instanceof z.ZodAny ||
+		schema instanceof z.ZodUnknown ||
+		schema instanceof z.ZodNever ||
+		schema instanceof z.ZodVoid ||
+		schema instanceof z.ZodLiteral ||
+		schema instanceof z.ZodEnum ||
+		schema instanceof z.ZodNativeEnum ||
+		schema instanceof z.ZodSymbol
+	);
 }
 
 function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z.ZodTypeAny {
@@ -346,6 +389,32 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		return z.object(newShape);
 	}
 
+	// ZodLazy - resolve during sanitization so limits and null-stripping still apply
+	if (schema instanceof z.ZodLazy) {
+		return sanitizeChild((schema as z.ZodLazy<z.ZodTypeAny>).schema, `${context.path}.lazy`);
+	}
+
+	// ZodIntersection - recurse into both sides
+	if (schema instanceof z.ZodIntersection) {
+		const intersection = schema as z.ZodIntersection<z.ZodTypeAny, z.ZodTypeAny>;
+		return z.intersection(
+			sanitizeChild(intersection._def.left, `${context.path}.left`),
+			sanitizeChild(intersection._def.right, `${context.path}.right`),
+		);
+	}
+
+	// ZodTuple - recurse into fixed and rest items
+	if (schema instanceof z.ZodTuple) {
+		const tuple = schema as z.AnyZodTuple;
+		const sanitizedItems = tuple.items.map((item, index) =>
+			sanitizeChild(item, `${context.path}.tuple[${index}]`),
+		);
+		const sanitizedTuple = z.tuple(sanitizedItems as [] | [z.ZodTypeAny, ...z.ZodTypeAny[]]);
+		return tuple._def.rest
+			? sanitizedTuple.rest(sanitizeChild(tuple._def.rest, `${context.path}.rest`))
+			: sanitizedTuple;
+	}
+
 	// ZodOptional — recurse into inner
 	if (schema instanceof z.ZodOptional) {
 		return sanitizeChild(
@@ -379,8 +448,59 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		);
 	}
 
-	// Leaf types (string, number, boolean, enum, literal, etc.) — pass through
-	return schema;
+	// ZodEffects - recurse into the source type. Effects are runtime behavior,
+	// but the provider only needs a safe JSON-compatible schema.
+	if (schema instanceof z.ZodEffects) {
+		return sanitizeChild(
+			(schema as z.ZodEffects<z.ZodTypeAny>).innerType(),
+			`${context.path}.effect`,
+		);
+	}
+
+	// ZodPipeline - recurse into both schemas so nested unsupported types cannot hide
+	if (schema instanceof z.ZodPipeline) {
+		const pipeline = schema as z.ZodPipeline<z.ZodTypeAny, z.ZodTypeAny>;
+		return z.pipeline(
+			sanitizeChild(pipeline._def.in, `${context.path}.pipeline.in`),
+			sanitizeChild(pipeline._def.out, `${context.path}.pipeline.out`),
+		);
+	}
+
+	// ZodReadonly / ZodBranded / ZodCatch - recurse into the inner type. The wrappers
+	// do not add useful provider-schema information, so preserving the safe inner
+	// schema is preferable to letting nested unsupported types slip through.
+	if (schema instanceof z.ZodReadonly) {
+		return sanitizeChild(
+			(schema as z.ZodReadonly<z.ZodTypeAny>).unwrap(),
+			`${context.path}.readonly`,
+		);
+	}
+	if (schema instanceof z.ZodBranded) {
+		return sanitizeChild(
+			(schema as z.ZodBranded<z.ZodTypeAny, string>).unwrap(),
+			`${context.path}.brand`,
+		);
+	}
+	if (schema instanceof z.ZodCatch) {
+		return sanitizeChild(
+			(schema as z.ZodCatch<z.ZodTypeAny>).removeCatch(),
+			`${context.path}.catch`,
+		);
+	}
+
+	if (
+		schema instanceof z.ZodMap ||
+		schema instanceof z.ZodSet ||
+		schema instanceof z.ZodPromise ||
+		schema instanceof z.ZodFunction
+	) {
+		throw createUnsupportedTypeError(context, schema);
+	}
+
+	// Leaf types (string, number, boolean, enum, literal, etc.) - pass through.
+	if (isSupportedLeafSchema(schema)) return schema;
+
+	throw createUnsupportedTypeError(context, schema);
 }
 
 /**

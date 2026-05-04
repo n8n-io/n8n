@@ -55,10 +55,7 @@ const tokenExpiresInSeconds = computed(() => {
 		const elapsedSeconds = Math.floor((nowMs.value - store.setupCommandFetchedAt) / 1000);
 		return Math.max(0, store.setupCommandTtlSeconds - elapsedSeconds);
 	}
-	if (!store.setupCommandExpiresAt) return null;
-	const expiresAtMs = Date.parse(store.setupCommandExpiresAt);
-	if (Number.isNaN(expiresAtMs)) return null;
-	return Math.max(0, Math.ceil((expiresAtMs - nowMs.value) / 1000));
+	return null;
 });
 
 const tokenExpiryText = computed(() => {
@@ -157,18 +154,13 @@ onMounted(() => {
 });
 
 watch(
-	() =>
-		[
-			store.setupCommandFetchedAt,
-			store.setupCommandTtlSeconds,
-			store.setupCommandExpiresAt,
-		] as const,
-	([fetchedAt, ttlSeconds, expiresAt]) => {
+	() => [store.setupCommandFetchedAt, store.setupCommandTtlSeconds] as const,
+	([fetchedAt, ttlSeconds]) => {
 		if (expiryTimer) {
 			clearInterval(expiryTimer);
 			expiryTimer = null;
 		}
-		if (!(fetchedAt !== null && ttlSeconds !== null) && !expiresAt) return;
+		if (!(fetchedAt !== null && ttlSeconds !== null)) return;
 		nowMs.value = Date.now();
 		expiryTimer = setInterval(() => {
 			nowMs.value = Date.now();
@@ -179,6 +171,7 @@ watch(
 
 onBeforeUnmount(() => {
 	if (expiryTimer) clearInterval(expiryTimer);
+	store.clearSetupCommand();
 });
 </script>
 

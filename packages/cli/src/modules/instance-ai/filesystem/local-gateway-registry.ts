@@ -77,6 +77,7 @@ export class LocalGatewayRegistry {
 	private createSession(userId: string, state: UserGatewayState): string {
 		const now = Date.now();
 		const sessionKey = this.generateUniqueKey('sess');
+		this.clearActiveSession(state);
 		state.activeSession = {
 			key: sessionKey,
 			createdAt: now,
@@ -119,9 +120,6 @@ export class LocalGatewayRegistry {
 	generatePairingToken(userId: string): string {
 		const state = this.getOrCreate(userId);
 		this.expireActiveSessionIfNeeded(state);
-		// If there's an active session key, return it so the daemon can reconnect
-		// without losing its authenticated session (e.g. after a page reload).
-		if (state.activeSession) return state.activeSession.key;
 
 		// Reuse existing valid token to prevent race conditions between concurrent callers.
 		const existing = this.getPairingToken(userId);

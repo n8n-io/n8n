@@ -325,6 +325,51 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(Object.keys(result)).toEqual([]);
 		});
 
+		it('should bound lazy schemas', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				lazyTool: { input: z.object({ payload: z.lazy(() => makeWideObject(4)) }) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxObjectProperties: 2,
+				onError,
+			});
+
+			expect(Object.keys(result)).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('lazyTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('objectProperties');
+		});
+
+		it('should sanitize tuple items', () => {
+			const tools = makeTools({
+				tupleTool: { input: z.object({ pair: z.tuple([z.string(), z.null()]) }) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools);
+			const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
+				.tupleTool.inputSchema;
+
+			expect(resultSchema.safeParse({ pair: ['ok', undefined] }).success).toBe(true);
+			expect(resultSchema.safeParse({ pair: ['ok', null] }).success).toBe(false);
+		});
+
+		it('should remove tools containing unsupported wrapper types', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				mapTool: { input: z.object({ values: z.map(z.string(), z.string()) }) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, { onError });
+
+			expect(Object.keys(result)).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('mapTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('unsupportedType');
+			expect(onErrorCalls[0]?.[0].details.zodType).toBe('ZodMap');
+		});
+
 		it('should remove a shallow MCP tool with too many object properties', () => {
 			const onError = jest.fn();
 			const tools = makeTools({

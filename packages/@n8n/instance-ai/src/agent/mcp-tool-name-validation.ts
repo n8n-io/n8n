@@ -13,6 +13,10 @@ export class McpToolNameValidationError extends Error {
 
 const MCP_TOOL_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 
+export function isSafeMcpIdentifierName(name: string): boolean {
+	return name.normalize('NFKC') === name && MCP_TOOL_NAME_PATTERN.test(name);
+}
+
 export function normalizeMcpToolName(name: string): string {
 	return name
 		.normalize('NFKC')
@@ -21,8 +25,7 @@ export function normalizeMcpToolName(name: string): string {
 }
 
 function validateMcpToolName(name: string, source: string): string {
-	const normalizedUnicode = name.normalize('NFKC');
-	if (normalizedUnicode !== name || !MCP_TOOL_NAME_PATTERN.test(name)) {
+	if (!isSafeMcpIdentifierName(name)) {
 		throw new McpToolNameValidationError(
 			`MCP tool "${name}" from ${source} has an invalid name`,
 			name,
@@ -30,6 +33,17 @@ function validateMcpToolName(name: string, source: string): string {
 		);
 	}
 	return normalizeMcpToolName(name);
+}
+
+function findReservedSuffix(name: string, claimedToolNames: Map<string, string>): string | null {
+	const lowerName = name.toLowerCase();
+	for (const claimedName of claimedToolNames.values()) {
+		const lowerClaimedName = claimedName.toLowerCase();
+		if (lowerName.endsWith(`_${lowerClaimedName}`) || lowerName.endsWith(`-${lowerClaimedName}`)) {
+			return claimedName;
+		}
+	}
+	return null;
 }
 
 export function createClaimedToolNames(names: Iterable<string>): Map<string, string> {
@@ -56,6 +70,14 @@ export function addSafeMcpTools(
 			if (claimedBy) {
 				throw new McpToolNameValidationError(
 					`MCP tool "${name}" from ${options.source} conflicts with "${claimedBy}"`,
+					name,
+					options.source,
+				);
+			}
+			const reservedSuffix = findReservedSuffix(name, options.claimedToolNames);
+			if (reservedSuffix) {
+				throw new McpToolNameValidationError(
+					`MCP tool "${name}" from ${options.source} uses reserved suffix "${reservedSuffix}"`,
 					name,
 					options.source,
 				);

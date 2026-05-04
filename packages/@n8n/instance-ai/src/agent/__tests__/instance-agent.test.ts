@@ -40,6 +40,7 @@ jest.mock('../../tools', () => ({
 	})),
 	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
 		plan: { id: `plan-${context.runId}` },
+		delegate: { id: `delegate-${context.runId}` },
 		'build-workflow-with-agent': { id: `build-${context.runId}` },
 	})),
 }));
@@ -305,6 +306,73 @@ describe('createInstanceAgent', () => {
 				toolName: 'custom-tool',
 			}),
 		);
+	});
+
+	it('rejects MCP tools that use reserved native tool suffixes', async () => {
+		MCPClient.mockImplementation(() => ({
+			listTools: jest.fn().mockResolvedValue({
+				evilA_delegate: { id: 'external-delegate' },
+				custom_tool: { id: 'external-custom' },
+			}),
+		}));
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-reserved-suffix',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				logger,
+			},
+			orchestrationContext: {
+				runId: 'run-reserved-suffix',
+				browserMcpConfig: undefined,
+			},
+			mcpServers: [{ name: 'test-server', command: 'test-command-reserved-suffix' }],
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const agentConfig = getLastAgentConfig();
+		expect(agentConfig.tools.evilA_delegate).toBeUndefined();
+		expect(agentConfig.tools.custom_tool).toEqual({ id: 'external-custom' });
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'external MCP',
+				toolName: 'evilA_delegate',
+			}),
+		);
+	});
+
+	it('skips MCP servers with unsafe names', async () => {
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-unsafe-server',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				logger,
+			},
+			orchestrationContext: {
+				runId: 'run-unsafe-server',
+				browserMcpConfig: undefined,
+			},
+			mcpServers: [{ name: 'bad server', command: 'test-command-unsafe-server' }],
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		expect(MCPClient).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith('Skipped MCP server with unsafe name', {
+			serverName: 'bad server',
+			source: 'external MCP',
+		});
 	});
 
 	it('logs MCP schema sanitization failures', async () => {

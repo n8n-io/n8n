@@ -11,6 +11,7 @@ import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
+	isSafeMcpIdentifierName,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
 import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
@@ -81,14 +82,31 @@ function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
 	};
 }
 
+function getSafeMcpServers(
+	configs: McpServerConfig[],
+	logger: Logger | undefined,
+	source: string,
+): McpServerConfig[] {
+	return configs.filter((config) => {
+		if (isSafeMcpIdentifierName(config.name)) return true;
+
+		logger?.warn('Skipped MCP server with unsafe name', {
+			serverName: config.name,
+			source,
+		});
+		return false;
+	});
+}
+
 async function getMcpTools(
 	mcpServers: McpServerConfig[],
 	logger: Logger | undefined,
 ): Promise<ToolsInput> {
-	const key = JSON.stringify(mcpServers);
+	const safeMcpServers = getSafeMcpServers(mcpServers, logger, 'external MCP');
+	const key = JSON.stringify(safeMcpServers);
 	if (cachedMcpTools && cachedMcpServersKey === key) return cachedMcpTools;
 
-	if (mcpServers.length === 0) {
+	if (safeMcpServers.length === 0) {
 		cachedMcpTools = {};
 		cachedMcpServersKey = key;
 		return cachedMcpTools;
@@ -96,7 +114,7 @@ async function getMcpTools(
 
 	const mcpClient = new MCPClient({
 		id: `mcp-${nanoid(6)}`,
-		servers: buildMcpServers(mcpServers),
+		servers: buildMcpServers(safeMcpServers),
 	});
 	cachedMcpTools = sanitizeMcpToolSchemas(await mcpClient.listTools(), {
 		onError: warnSkippedMcpSchema(logger, 'external MCP'),
@@ -111,12 +129,15 @@ async function getBrowserMcpTools(
 ): Promise<ToolsInput> {
 	if (!config) return {};
 
-	const key = JSON.stringify(config);
+	const [safeConfig] = getSafeMcpServers([config], logger, 'browser MCP');
+	if (!safeConfig) return {};
+
+	const key = JSON.stringify(safeConfig);
 	if (cachedBrowserMcpTools && cachedBrowserMcpKey === key) return cachedBrowserMcpTools;
 
 	const browserClient = new MCPClient({
 		id: `browser-mcp-${nanoid(6)}`,
-		servers: buildMcpServers([config]),
+		servers: buildMcpServers([safeConfig]),
 	});
 	cachedBrowserMcpTools = sanitizeMcpToolSchemas(await browserClient.listTools(), {
 		onError: warnSkippedMcpSchema(logger, 'browser MCP'),
@@ -179,7 +200,16 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 			reason: error.message,
 		});
 	};
-	const mcpContextToolNames = createClaimedToolNames(Object.keys(domainTools));
+
+	// Build orchestration tools (plan, delegate) - orchestrator-only
+	const orchestrationTools = orchestrationContext
+		? createOrchestrationTools(orchestrationContext)
+		: {};
+
+	const mcpContextToolNames = createClaimedToolNames([
+		...Object.keys(domainTools),
+		...Object.keys(orchestrationTools),
+	]);
 	addSafeMcpTools(allMcpTools, mcpTools, {
 		source: 'external MCP',
 		claimedToolNames: mcpContextToolNames,
@@ -190,11 +220,6 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		claimedToolNames: mcpContextToolNames,
 		warn: warnSkippedMcpTool,
 	});
-
-	// Build orchestration tools (plan, delegate) — orchestrator-only
-	const orchestrationTools = orchestrationContext
-		? createOrchestrationTools(orchestrationContext)
-		: {};
 
 	// Prevent MCP tools from shadowing domain or orchestration tools.
 	// A malicious/misconfigured MCP server could register a tool named "run-workflow"

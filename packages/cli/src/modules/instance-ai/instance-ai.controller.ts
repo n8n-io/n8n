@@ -698,9 +698,11 @@ export class InstanceAiController {
 			key && userId !== ENV_GATEWAY_USER_ID
 				? this.instanceAiService.getGatewaySessionRotateAfter(userId, key)
 				: null;
+		let rotationClose = false;
 		const sessionRotationTimer = sessionRotateAfter
 			? setTimeout(
 					() => {
+						rotationClose = true;
 						res.end();
 					},
 					Math.max(0, sessionRotateAfter.getTime() - Date.now()),
@@ -716,6 +718,7 @@ export class InstanceAiController {
 			clearInterval(keepAlive);
 			if (sessionRotationTimer) clearTimeout(sessionRotationTimer);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
+				if (rotationClose) return;
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',
@@ -768,8 +771,9 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/disconnect', { skipAuth: true })
-	gatewayDisconnect(req: Request) {
+	async gatewayDisconnect(req: Request) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		await this.assertGatewayEnabled(userId);
 
 		this.instanceAiService.clearDisconnectTimer(userId);
 		this.instanceAiService.disconnectGateway(userId);
@@ -785,13 +789,14 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/response/:requestId', { skipAuth: true })
-	gatewayResponse(
+	async gatewayResponse(
 		req: Request,
 		_res: Response,
 		@Param('requestId') requestId: string,
 		@Body payload: InstanceAiFilesystemResponseDto,
 	) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		await this.assertGatewayEnabled(userId);
 
 		const resolved = this.instanceAiService.resolveGatewayRequest(
 			userId,
