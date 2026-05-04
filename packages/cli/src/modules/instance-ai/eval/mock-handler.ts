@@ -356,10 +356,13 @@ async function callLlm(userPrompt: string, nodeConfig: string): Promise<MockResp
 // ---------------------------------------------------------------------------
 
 function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
+	// Distinguish "body omitted" (use default) from "body explicitly null" (LLM
+	// signalling an empty 204-style response). `??` would swallow null and
+	// substitute the default — wrong for empty-response endpoints.
 	switch (spec.type) {
 		case 'json':
 			return {
-				body: spec.body ?? { ok: true },
+				body: spec.body === undefined ? { ok: true } : spec.body,
 				headers: { 'content-type': 'application/json' },
 				statusCode: 200,
 			};
@@ -377,14 +380,14 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 
 		case 'error':
 			return {
-				body: spec.body ?? { error: 'Mock error' },
+				body: spec.body === undefined ? { error: 'Mock error' } : spec.body,
 				headers: { 'content-type': 'application/json' },
 				statusCode: spec.statusCode ?? 500,
 			};
 
 		default:
 			return {
-				body: spec.body ?? { ok: true },
+				body: spec.body === undefined ? { ok: true } : spec.body,
 				headers: { 'content-type': 'application/json' },
 				statusCode: 200,
 			};

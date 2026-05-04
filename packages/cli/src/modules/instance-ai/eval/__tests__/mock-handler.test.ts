@@ -10,7 +10,7 @@ const submitQueue: MockResponseSpec[] = [];
 const generateOverride: { fn?: () => Promise<unknown> } = {};
 const submitCapture: { handler?: (input: MockResponseSpec) => Promise<unknown> } = {};
 
-const mockGenerate = jest.fn(async () => {
+const mockGenerate = jest.fn(async (_prompt: string) => {
 	if (generateOverride.fn) return await generateOverride.fn();
 	const next = submitQueue.shift();
 	if (next && submitCapture.handler) {
@@ -19,11 +19,14 @@ const mockGenerate = jest.fn(async () => {
 	return { messages: [], finishReason: 'tool-calls' };
 });
 
-const mockAgent = {
-	tool: jest.fn(function (
-		this: typeof mockAgent,
-		builtTool: { _name?: string; _handler?: unknown },
-	) {
+interface MockAgent {
+	tool: jest.Mock;
+	providerTool: jest.Mock;
+	generate: typeof mockGenerate;
+}
+
+const mockAgent: MockAgent = {
+	tool: jest.fn(function (this: MockAgent, builtTool: { _name?: string; _handler?: unknown }) {
 		if (builtTool._name === 'submit_response') {
 			submitCapture.handler = builtTool._handler as (input: MockResponseSpec) => Promise<unknown>;
 		}
