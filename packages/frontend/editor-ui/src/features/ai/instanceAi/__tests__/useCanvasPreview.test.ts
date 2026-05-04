@@ -7,7 +7,6 @@ import type {
 } from '@n8n/api-types';
 import { useCanvasPreview } from '../useCanvasPreview';
 import type { ResourceEntry } from '../useResourceRegistry';
-import type { WorkflowExecutionState } from '../useExecutionPushEvents';
 
 // ---------------------------------------------------------------------------
 // Factories
@@ -120,10 +119,7 @@ function createMockRoute(threadId = 'thread-1') {
 // Test helper — create composable + flush
 // ---------------------------------------------------------------------------
 
-function setup(options?: {
-	storeOverrides?: Partial<MockStore>;
-	workflowExecutions?: Ref<Map<string, WorkflowExecutionState>>;
-}) {
+function setup(options?: { storeOverrides?: Partial<MockStore> }) {
 	const store = createMockStore();
 	if (options?.storeOverrides) Object.assign(store, options.storeOverrides);
 	const route = createMockRoute();
@@ -133,7 +129,6 @@ function setup(options?: {
 		store: store as any,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		route: route as any,
-		workflowExecutions: options?.workflowExecutions,
 	});
 
 	return { ...result, store, route };

@@ -665,6 +665,7 @@ function handleStop() {
 						:workflow-id="preview.activeWorkflowId.value"
 						:refresh-key="preview.workflowRefreshKey.value"
 						@iframe-ready="eventRelay.handleIframeReady"
+						@workflow-loaded="eventRelay.handleWorkflowLoaded"
 					/>
 					<InstanceAiDataTablePreview
 						v-if="preview.activeDataTableId.value"

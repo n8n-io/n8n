@@ -139,6 +139,7 @@ export interface InstanceAiHarness {
 	removeResource: (key: string) => void;
 	simulatePushEvent: (event: PushMessage) => void;
 	simulateIframeReady: () => Promise<void>;
+	simulateWorkflowLoaded: (wfId: string) => Promise<void>;
 	selectTab: (tabId: string) => void;
 	closePreview: () => void;
 	markUserSentMessage: () => void;
@@ -250,6 +251,11 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 
 	async function simulateIframeReady() {
 		eventRelay.handleIframeReady();
+		await nextTick();
+	}
+
+	async function simulateWorkflowLoaded(wfId: string) {
+		eventRelay.handleWorkflowLoaded(wfId);
 		await nextTick();
 	}
 
@@ -387,6 +393,7 @@ export async function createInstanceAiHarness(): Promise<InstanceAiHarness> {
 		removeResource,
 		simulatePushEvent,
 		simulateIframeReady,
+		simulateWorkflowLoaded,
 		selectTab: preview.selectTab,
 		closePreview: preview.closePreview,
 		markUserSentMessage: preview.markUserSentMessage,

@@ -125,47 +125,44 @@ export function useEventRelay({
 		},
 	);
 
-	// When the user switches to a tab that already has buffered events (e.g. the
-	// build agent ran the workflow during build, before this tab was active),
-	// replay them so the canvas reflects the run. Gated by `relayedCount` so a
-	// re-switch doesn't double-relay. `nextTick` lets WorkflowPreview send its
-	// `openWorkflow` first — the iframe needs the workflow loaded before it can
-	// apply execution events.
-	watch(activeWorkflowId, (wfId, prevWfId) => {
-		if (!wfId || wfId === prevWfId) return;
-		const entry = workflowExecutions.value.get(wfId);
-		if (!entry || entry.eventLog.length === 0) return;
+	/**
+	 * Called by InstanceAiWorkflowPreview after a workflow fetch resolves and
+	 * the new workflow has been sent to the iframe via `openWorkflow`. Replays
+	 * any buffered execution events for this workflow (typically: a build-phase
+	 * verification run that finished before the user opened the tab) so the
+	 * canvas paints them. The `relayedCount` cursor prevents double-relay if
+	 * `workflow-loaded` fires multiple times for the same workflow ref.
+	 */
+	function handleWorkflowLoaded(wfId: string) {
+		if (activeWorkflowId.value !== wfId) return; // user switched again
+		const current = workflowExecutions.value.get(wfId);
+		if (!current || current.eventLog.length === 0) return;
 
-		void nextTick(() => {
-			if (activeWorkflowId.value !== wfId) return; // user switched again
-			const current = workflowExecutions.value.get(wfId);
-			if (!current) return;
-			const log = current.eventLog;
-			const alreadyRelayed = relayedCount.get(wfId) ?? 0;
-			for (let i = alreadyRelayed; i < log.length; i++) {
-				relay(log[i]);
-			}
-			relayedCount.set(wfId, log.length);
+		const log = current.eventLog;
+		const alreadyRelayed = relayedCount.get(wfId) ?? 0;
+		for (let i = alreadyRelayed; i < log.length; i++) {
+			relay(log[i]);
+		}
+		relayedCount.set(wfId, log.length);
 
-			// If the run already finished while inactive, the eventLog has the
-			// per-node events but useExecutionPushEvents doesn't store
-			// `executionFinished` in the log — it just updates status. Send a
-			// synthetic one so the iframe clears its executing-node queue.
-			// Gated by `finishedSynthSent` so re-switching the tab doesn't
-			// double-fire it.
-			if (current.status !== 'running' && !finishedSynthSent.has(current.executionId)) {
-				finishedSynthSent.add(current.executionId);
-				relay({
-					type: 'executionFinished',
-					data: {
-						executionId: current.executionId,
-						workflowId: current.workflowId,
-						status: current.status,
-					},
-				} as PushMessage);
-			}
-		});
-	});
+		// If the run already finished while inactive, the eventLog has the
+		// per-node events but useExecutionPushEvents doesn't store
+		// `executionFinished` in the log — it just updates status. Send a
+		// synthetic one so the iframe clears its executing-node queue.
+		// Gated by `finishedSynthSent` so re-loading the same workflow
+		// doesn't double-fire it.
+		if (current.status !== 'running' && !finishedSynthSent.has(current.executionId)) {
+			finishedSynthSent.add(current.executionId);
+			relay({
+				type: 'executionFinished',
+				data: {
+					executionId: current.executionId,
+					workflowId: current.workflowId,
+					status: current.status,
+				},
+			} as PushMessage);
+		}
+	}
 
-	return { handleIframeReady };
+	return { handleIframeReady, handleWorkflowLoaded };
 }

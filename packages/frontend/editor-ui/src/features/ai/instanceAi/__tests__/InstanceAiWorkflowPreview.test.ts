@@ -117,6 +117,32 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
+	it('should emit workflow-loaded after fetch resolves', async () => {
+		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
+
+		const { emitted } = renderComponent({
+			props: { workflowId: 'wf-123' },
+		});
+
+		await waitFor(() => {
+			expect(emitted('workflow-loaded')).toBeTruthy();
+		});
+		expect(emitted('workflow-loaded')).toEqual([['wf-123']]);
+	});
+
+	it('should not emit workflow-loaded when fetch fails', async () => {
+		mockFetchWorkflow.mockRejectedValue(new Error('boom'));
+
+		const { emitted, getByText } = renderComponent({
+			props: { workflowId: 'wf-broken' },
+		});
+
+		await waitFor(() => {
+			expect(getByText('Could not load workflow')).toBeInTheDocument();
+		});
+		expect(emitted('workflow-loaded')).toBeUndefined();
+	});
+
 	it('should emit iframe-ready even when n8nReady has no pushRef', async () => {
 		const { emitted } = renderComponent({
 			props: { workflowId: null },

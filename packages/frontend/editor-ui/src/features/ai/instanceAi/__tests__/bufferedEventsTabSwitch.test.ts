@@ -39,10 +39,16 @@ describe('build-phase events survive tab activation', () => {
 		// Nothing relayed for wf-target yet (it wasn't active).
 		expect(h.relayedEvents).toHaveLength(0);
 
-		// User switches to the target tab — buffered events must replay onto
-		// the iframe so the canvas reflects the run.
+		// User switches to the target tab — but events must NOT replay yet,
+		// because openWorkflow hasn't been sent to the iframe yet.
 		h.selectTab('wf-target');
 		await h.flush();
+		expect(h.relayedEvents).toHaveLength(0);
+
+		// Once the new workflow has been loaded into the iframe (via
+		// `workflow-loaded` from InstanceAiWorkflowPreview), buffered events
+		// replay so the canvas reflects the run.
+		await h.simulateWorkflowLoaded('wf-target');
 
 		const relayedTypes = h.relayedEvents.map((e) => e.type);
 		expect(relayedTypes).toEqual([
@@ -64,16 +70,16 @@ describe('build-phase events survive tab activation', () => {
 		await h.flush();
 
 		h.selectTab('wf-target');
-		await h.flush();
+		await h.simulateWorkflowLoaded('wf-target');
 		const firstReplayCount = h.relayedEvents.length;
 		expect(firstReplayCount).toBeGreaterThan(0);
 
 		// Switch away and back — nothing new arrived, so the replay cursor
 		// should prevent re-sending the same events.
 		h.selectTab('wf-other');
-		await h.flush();
+		await h.simulateWorkflowLoaded('wf-other');
 		h.selectTab('wf-target');
-		await h.flush();
+		await h.simulateWorkflowLoaded('wf-target');
 
 		expect(h.relayedEvents).toHaveLength(firstReplayCount);
 	});

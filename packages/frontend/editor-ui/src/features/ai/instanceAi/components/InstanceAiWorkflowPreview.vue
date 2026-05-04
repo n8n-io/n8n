@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, watch, onBeforeUnmount, useTemplateRef } from 'vue';
+import { ref, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { N8nText, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PushMessage } from '@n8n/api-types';
@@ -18,6 +18,11 @@ const props = withDefaults(
 
 const emit = defineEmits<{
 	'iframe-ready': [];
+	/** Fires after a workflow fetch resolves and the new workflow has been
+	 * propagated to the embedded WorkflowPreview (which sends `openWorkflow` to
+	 * the iframe). Used by `useEventRelay` to gate buffered-event replay so the
+	 * iframe always receives `openWorkflow` before the `executionEvent`s. */
+	'workflow-loaded': [workflowId: string];
 }>();
 
 const i18n = useI18n();
@@ -64,6 +69,13 @@ async function fetchWorkflow(id: string) {
 		const result = await workflowsListStore.fetchWorkflow(id);
 		if (generation !== fetchGeneration) return;
 		workflow.value = result;
+		// Wait for Vue to propagate the new workflow to <WorkflowPreview>'s
+		// reactive watcher, which posts `openWorkflow` to the iframe. Emitting
+		// after this tick lets parents replay buffered execution events
+		// without racing the workflow load.
+		await nextTick();
+		if (generation !== fetchGeneration) return;
+		emit('workflow-loaded', id);
 	} catch {
 		if (generation !== fetchGeneration) return;
 		workflow.value = null;
