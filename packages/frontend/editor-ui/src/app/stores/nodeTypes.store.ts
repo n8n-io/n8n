@@ -5,6 +5,7 @@ import type {
 	ResourceLocatorRequestDto,
 	ResourceMapperFieldsRequestDto,
 } from '@n8n/api-types';
+import type { CommunityPackageSummary } from '@/features/settings/communityNodes/communityNodes.types';
 import * as nodeTypesApi from '@n8n/rest-api-client/api/nodeTypes';
 import {
 	HTTP_REQUEST_NODE_TYPE,
@@ -85,6 +86,31 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const communityNodesAndActions = computed(() => {
 		return actionsGenerator.generateMergedNodesAndActions(unofficialCommunityNodeTypes.value, []);
+	});
+
+	const vettedCommunityPackages = computed<CommunityPackageSummary[]>(() => {
+		const grouped = new Map<string, CommunityPackageSummary>();
+
+		for (const nodeType of vettedCommunityNodeTypes.value.values()) {
+			const existing = grouped.get(nodeType.packageName);
+			if (existing) {
+				existing.nodes.push(nodeType);
+				existing.isInstalled = existing.isInstalled || nodeType.isInstalled;
+			} else {
+				grouped.set(nodeType.packageName, {
+					packageName: nodeType.packageName,
+					authorName: nodeType.authorName,
+					description: nodeType.description,
+					isOfficialNode: nodeType.isOfficialNode,
+					isInstalled: nodeType.isInstalled,
+					numberOfDownloads: nodeType.numberOfDownloads,
+					npmVersion: nodeType.npmVersion,
+					nodes: [nodeType],
+				});
+			}
+		}
+
+		return Array.from(grouped.values()).sort((a, b) => a.packageName.localeCompare(b.packageName));
 	});
 
 	const allNodeTypes = computed(() => {
@@ -482,6 +508,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 		isConfigurableNode,
 		communityNodesAndActions,
 		communityNodeType,
+		vettedCommunityPackages,
 		fetchCommunityNodePreviews,
 		getResourceMapperFields,
 		getLocalResourceMapperFields,
