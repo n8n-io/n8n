@@ -4,7 +4,7 @@ import { computed, inject, readonly, ref } from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { ExecutionSummary } from 'n8n-workflow';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { WorkflowExecutionSessionStoreKey } from '@/app/constants/injectionKeys';
+import { WorkflowExecutionStateStoreKey } from '@/app/constants/injectionKeys';
 import {
 	createExecutionDataId,
 	disposeExecutionDataStore,
@@ -13,15 +13,15 @@ import {
 import { CHANGE_ACTION } from './workflowDocument/types';
 import type { ChangeAction, ChangeEvent } from './workflowDocument/types';
 
-export type WorkflowExecutionSessionId = string;
+export type WorkflowExecutionStateId = string;
 
-export type WorkflowExecutionSessionChangePayload = {
-	workflowId: WorkflowExecutionSessionId;
-	field: WorkflowExecutionSessionField;
+export type WorkflowExecutionStateChangePayload = {
+	workflowId: WorkflowExecutionStateId;
+	field: WorkflowExecutionStateField;
 };
 
 /** Discriminator for the field that changed (for fine-grained subscribers). */
-export type WorkflowExecutionSessionField =
+export type WorkflowExecutionStateField =
 	| 'activeExecutionId'
 	| 'displayedExecutionId'
 	| 'pendingExecution'
@@ -32,33 +32,32 @@ export type WorkflowExecutionSessionField =
 	| 'selectedTriggerNodeName'
 	| 'currentWorkflowExecutions'
 	| 'lastSuccessfulExecutionId'
-	| 'session';
+	| 'state';
 
-export type WorkflowExecutionSessionChangeEvent =
-	ChangeEvent<WorkflowExecutionSessionChangePayload>;
+export type WorkflowExecutionStateChangeEvent = ChangeEvent<WorkflowExecutionStateChangePayload>;
 
-export function createWorkflowExecutionSessionId(workflowId: string): WorkflowExecutionSessionId {
+export function createWorkflowExecutionStateId(workflowId: string): WorkflowExecutionStateId {
 	return workflowId;
 }
 
 /**
- * Gets the Pinia store id for a workflow-execution-session store.
+ * Gets the Pinia store id for a workflow-execution-state store.
  */
-export function getWorkflowExecutionSessionStoreId(id: WorkflowExecutionSessionId) {
-	return `${STORES.WORKFLOW_EXECUTION_SESSIONS}/${id}`;
+export function getWorkflowExecutionStateStoreId(id: WorkflowExecutionStateId) {
+	return `${STORES.WORKFLOW_EXECUTION_STATES}/${id}`;
 }
 
 /**
- * Creates a workflow-execution-session store keyed by workflow id.
+ * Creates a workflow-execution-state store keyed by workflow id.
  *
- * Owns per-workflow execution session state — active/displayed/previous
+ * Owns per-workflow execution UI state — active/displayed/previous
  * execution ids, the pending-execution scaffold, chat, debug, webhook wait,
  * trigger selection, current executions list, and last-successful-execution
  * reference. Reads route through `useExecutionDataStore` for execution payloads
  * (or fall back to `pendingExecution` while `activeExecutionId === null`).
  */
-export function useWorkflowExecutionSessionStore(id: WorkflowExecutionSessionId) {
-	return defineStore(getWorkflowExecutionSessionStoreId(id), () => {
+export function useWorkflowExecutionStateStore(id: WorkflowExecutionStateId) {
+	return defineStore(getWorkflowExecutionStateStoreId(id), () => {
 		const workflowId = id;
 
 		// --- State ---
@@ -87,10 +86,10 @@ export function useWorkflowExecutionSessionStore(id: WorkflowExecutionSessionId)
 		const currentWorkflowExecutions = ref<ExecutionSummary[]>([]);
 		const lastSuccessfulExecutionId = ref<string | null>(null);
 
-		const onWorkflowExecutionSessionChange = createEventHook<WorkflowExecutionSessionChangeEvent>();
+		const onWorkflowExecutionStateChange = createEventHook<WorkflowExecutionStateChangeEvent>();
 
-		function fireChange(action: ChangeAction, field: WorkflowExecutionSessionField) {
-			void onWorkflowExecutionSessionChange.trigger({
+		function fireChange(action: ChangeAction, field: WorkflowExecutionStateField) {
+			void onWorkflowExecutionStateChange.trigger({
 				action,
 				payload: { workflowId, field },
 			});
@@ -345,11 +344,11 @@ export function useWorkflowExecutionSessionStore(id: WorkflowExecutionSessionId)
 		}
 
 		/**
-		 * Renames session references to a node. Execution-data references
+		 * Renames state references to a node. Execution-data references
 		 * (executedNode, runData keys, etc.) live in the executionData store and
 		 * are renamed via its own `renameExecutionDataNode` method.
 		 */
-		function renameExecutionSessionNode(oldName: string, newName: string) {
+		function renameExecutionStateNode(oldName: string, newName: string) {
 			let touched = false;
 			if (selectedTriggerNodeName.value === oldName) {
 				selectedTriggerNodeName.value = newName;
@@ -359,10 +358,10 @@ export function useWorkflowExecutionSessionStore(id: WorkflowExecutionSessionId)
 				chatPartialExecutionDestinationNode.value = newName;
 				touched = true;
 			}
-			if (touched) fireChange(CHANGE_ACTION.UPDATE, 'session');
+			if (touched) fireChange(CHANGE_ACTION.UPDATE, 'state');
 		}
 
-		function resetExecutionSession() {
+		function resetExecutionState() {
 			activeExecutionId.value = undefined;
 			displayedExecutionId.value = undefined;
 			previousExecutionId.value = undefined;
@@ -374,7 +373,7 @@ export function useWorkflowExecutionSessionStore(id: WorkflowExecutionSessionId)
 			selectedTriggerNodeName.value = undefined;
 			currentWorkflowExecutions.value = [];
 			lastSuccessfulExecutionId.value = null;
-			fireChange(CHANGE_ACTION.DELETE, 'session');
+			fireChange(CHANGE_ACTION.DELETE, 'state');
 		}
 
 		return {
@@ -423,20 +422,20 @@ export function useWorkflowExecutionSessionStore(id: WorkflowExecutionSessionId)
 			resetChatMessages,
 			appendChatMessage,
 			setSelectedTriggerNodeName,
-			renameExecutionSessionNode,
-			resetExecutionSession,
+			renameExecutionStateNode,
+			resetExecutionState,
 			// Events
-			onWorkflowExecutionSessionChange: onWorkflowExecutionSessionChange.on,
+			onWorkflowExecutionStateChange: onWorkflowExecutionStateChange.on,
 		};
 	})();
 }
 
 /**
- * Disposes a workflow-execution-session store. Call when navigating between
+ * Disposes a workflow-execution-state store. Call when navigating between
  * workflows. Mirrors `disposeWorkflowDocumentStore`.
  */
-export function disposeWorkflowExecutionSessionStore(
-	store: ReturnType<typeof useWorkflowExecutionSessionStore>,
+export function disposeWorkflowExecutionStateStore(
+	store: ReturnType<typeof useWorkflowExecutionStateStore>,
 ) {
 	const pinia = getActivePinia();
 	store.$dispose();
@@ -447,9 +446,9 @@ export function disposeWorkflowExecutionSessionStore(
 }
 
 /**
- * Injects the active workflow-execution-session store from the component tree.
+ * Injects the active workflow-execution-state store from the component tree.
  * Returns null when not within a context that has provided the store.
  */
-export function injectWorkflowExecutionSessionStore() {
-	return inject(WorkflowExecutionSessionStoreKey, null);
+export function injectWorkflowExecutionStateStore() {
+	return inject(WorkflowExecutionStateStoreKey, null);
 }

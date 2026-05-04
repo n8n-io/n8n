@@ -6,37 +6,16 @@ import {
 	getExecutionDataStoreId,
 	disposeExecutionDataStore,
 } from '@/app/stores/executionData.store';
+import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 function createTestExecution(overrides: Partial<IExecutionResponse> = {}): IExecutionResponse {
-	return {
+	return createTestWorkflowExecutionResponse({
 		id: 'exec-1',
-		workflowId: 'wf-1',
 		finished: false,
-		mode: 'manual',
 		status: 'running',
-		createdAt: new Date(),
-		startedAt: new Date(),
-		workflowData: {
-			id: 'wf-1',
-			name: 'Test',
-			active: false,
-			activeVersionId: null,
-			isArchived: false,
-			createdAt: -1,
-			updatedAt: -1,
-			nodes: [],
-			connections: {},
-			settings: {},
-			tags: [],
-			pinData: {},
-			versionId: '',
-		},
-		data: {
-			resultData: { runData: {} },
-		},
 		...overrides,
-	} as IExecutionResponse;
+	});
 }
 
 describe('executionData.store', () => {
