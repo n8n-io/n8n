@@ -410,10 +410,6 @@ const handleClick = (event: MouseEvent) => {
 	align-items: center;
 	justify-content: center;
 	@include motion.spin;
-
-	@media (prefers-reduced-motion: reduce) {
-		animation: none;
-	}
 }
 
 /* TODO: Move to global animations css library */

@@ -10,46 +10,78 @@
 	-webkit-background-clip: text;
 	background-clip: text;
 	-webkit-text-fill-color: transparent;
-	animation: shimmer var(--animation--shimmer--duration, calc(var(--duration--base) * 3)) infinite;
+	animation: shimmer var(--animation--shimmer--duration, var(--duration--slow)) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 // Spin - continuous 360° rotation for loading indicators
 @mixin spin {
 	animation: spin var(--animation--spin--duration, var(--duration--base)) linear infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 // Skeleton pulse - opacity animation for skeleton loading states
 @mixin skeleton-pulse {
-	animation: skeleton-pulse var(--animation--skeleton-pulse--duration, var(--duration--snappy))
+	animation: skeleton-pulse var(--animation--skeleton-pulse--duration, var(--duration--slowest))
 		ease-in-out infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @mixin opacity-pulse {
-	animation: opacityPulse var(--animation--opacity-pulse--duration, var(--duration--base))
+	animation: opacityPulse var(--animation--opacity-pulse--duration, var(--duration--slow))
 		var(--animation--opacity-pulse--easing, ease-in-out) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @mixin popover-in {
 	animation: popoverIn var(--animation--popover-in--duration, var(--duration--snappy))
 		var(--animation--popover-in--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @mixin collapsible-slide-down {
 	animation: collapsibleSlideDown
 		var(--animation--collapsible-slide--duration, var(--duration--snappy))
 		var(--animation--collapsible-slide--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @mixin collapsible-slide-up {
 	animation: collapsibleSlideUp
 		var(--animation--collapsible-slide--duration, var(--duration--snappy))
 		var(--animation--collapsible-slide--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 // Fade in - simple opacity fade for entrance animations
 @mixin fade-in {
 	animation: fadeIn var(--animation--fade-in--duration, var(--duration--snappy))
 		var(--easing--ease-out);
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 // Keyframes
@@ -140,11 +172,19 @@
 @mixin pulse-glow {
 	animation: pulseGlow var(--animation--pulse-glow--duration, 6s) infinite
 		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @mixin pulse-glow-delayed {
 	animation: pulseGlowDelayed var(--animation--pulse-glow--duration, 6s) infinite
 		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @keyframes pulseGlow {
@@ -185,6 +225,10 @@
 // Fade animation for simple opacity transitions
 @mixin fade {
 	animation: fade var(--animation--fade--duration, var(--duration--snappy));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @keyframes fade {
@@ -196,9 +240,191 @@
 	}
 }
 
+@mixin fade-in-up {
+	animation: fadeInUp var(--animation--fade-in-up--duration, var(--duration--snappy))
+		var(--animation--fade-in-up--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-in-up--translate, var(--spacing--4xs)));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@mixin fade-in-down {
+	animation: fadeInDown var(--animation--fade-in-down--duration, var(--duration--snappy))
+		var(--animation--fade-in-down--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInDown {
+	from {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-in-down--translate, var(--spacing--4xs)));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@mixin fade-in-left {
+	animation: fadeInLeft var(--animation--fade-in-left--duration, var(--duration--snappy))
+		var(--animation--fade-in-left--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInLeft {
+	from {
+		opacity: 0;
+		transform: translateX(var(--animation--fade-in-left--translate, var(--spacing--4xs)));
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@mixin fade-in-right {
+	animation: fadeInRight var(--animation--fade-in-right--duration, var(--duration--snappy))
+		var(--animation--fade-in-right--easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeInRight {
+	from {
+		opacity: 0;
+		transform: translateX(var(--animation--fade-in-right--translate, var(--spacing--4xs)));
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+@mixin fade-out {
+	animation: fadeOut var(--animation--fade-out--duration, var(--duration--snappy))
+		var(--animation--fade-out--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOut {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
+
+@mixin fade-out-down {
+	animation: fadeOutDown var(--animation--fade-out-down--duration, var(--duration--snappy))
+		var(--animation--fade-out-down--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutDown {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-out-down--translate, var(--spacing--4xs)));
+	}
+}
+
+@mixin fade-out-up {
+	animation: fadeOutUp var(--animation--fade-out-up--duration, var(--duration--snappy))
+		var(--animation--fade-out-up--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutUp {
+	from {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-out-up--translate, var(--spacing--4xs)));
+	}
+}
+
+@mixin fade-out-left {
+	animation: fadeOutLeft var(--animation--fade-out-left--duration, var(--duration--snappy))
+		var(--animation--fade-out-left--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutLeft {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(var(--animation--fade-out-left--translate, var(--spacing--4xs)));
+	}
+}
+
+@mixin fade-out-right {
+	animation: fadeOutRight var(--animation--fade-out-right--duration, var(--duration--snappy))
+		var(--animation--fade-out-right--easing, var(--easing--ease-in));
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
+}
+
+@keyframes fadeOutRight {
+	from {
+		opacity: 1;
+		transform: translateX(0);
+	}
+	to {
+		opacity: 0;
+		transform: translateX(var(--animation--fade-out-right--translate, var(--spacing--4xs)));
+	}
+}
+
 @mixin blink-background {
 	animation: blinkBackground var(--animation--blink-background--duration, var(--duration--slow))
 		step-end infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @keyframes blinkBackground {
@@ -216,6 +442,10 @@
 
 @mixin typing-blink {
 	animation: typingBlink var(--animation--typing-blink--duration, 1.2s) infinite;
+
+	@media (prefers-reduced-motion: reduce) {
+		animation: none;
+	}
 }
 
 @keyframes typingBlink {
@@ -235,10 +465,20 @@
 	transition: width var(--animation--width-transition--duration, var(--duration--snappy))
 		var(--animation--width-transition--easing, var(--easing--ease-out));
 	will-change: width;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
 }
 
 @mixin height-transition {
 	transition: height var(--animation--height-transition--duration, var(--duration--snappy))
 		var(--animation--height-transition--easing, var(--easing--ease-out));
 	will-change: height;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+		will-change: auto;
+	}
 }
