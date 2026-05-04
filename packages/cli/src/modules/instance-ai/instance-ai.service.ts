@@ -284,12 +284,6 @@ export class InstanceAiService {
 		this.oauth2CallbackUrl = `${editorBaseUrl.replace(/\/$/, '')}/${restEndpoint}/oauth2-credential/callback`;
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 
-		// MCP URL validation reuses the global SSRF policy, but only when the
-		// admin has opted in via N8N_SSRF_PROTECTION_ENABLED. Mirrors how
-		// workflow URL imports and the HTTP Request node treat the same flag
-		// (workflow-execute-additional-data.ts:557, workflows.controller.ts:702).
-		// Protocol whitelisting is always-on regardless of this flag — see
-		// McpClientManager.validateConfigs.
 		this.mcpClientManager = new McpClientManager(
 			ssrfProtectionConfig.enabled ? ssrfProtectionService : undefined,
 		);
