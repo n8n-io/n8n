@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string">
-import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
+import { computed, getCurrentInstance, ref, useAttrs, useCssModule, type StyleValue } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
@@ -29,6 +29,8 @@ interface ActionDropdownProps {
 	disabled?: boolean;
 	extraPopperClass?: string;
 	maxHeight?: string | number;
+	modal?: boolean;
+	contentStyle?: StyleValue;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -41,6 +43,7 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	teleported: true,
 	disabled: false,
 	maxHeight: '',
+	modal: true,
 });
 
 const $style = useCssModule();
@@ -61,13 +64,13 @@ const getItemTestId = (id: T): string => {
 		return `${dropdownTestId.value}-item-${id}`;
 	}
 
-	return `action-dropdown-item-${id}`;
+	return `action-${id}`;
 };
 
 const items = computed((): Array<DropdownMenuItemProps<T, ActionDropdownItem<T>>> => {
 	return props.items.map((item) => ({
 		id: item.id,
-		testId: getItemTestId(item.id),
+		testId: item.testId ?? getItemTestId(item.id),
 		label: item.label,
 		icon: item.icon ? { type: 'icon' as const, value: item.icon } : undefined,
 		disabled: item.disabled,
@@ -119,6 +122,8 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:trigger="trigger"
 			:disabled="disabled"
 			:teleported="teleported"
+			:modal="modal"
+			:content-style="contentStyle"
 			:extra-popper-class="`${$style.shadow}${hideArrow ? ` ${$style.hideArrow}` : ''} ${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			@select="onSelect"

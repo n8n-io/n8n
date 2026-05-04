@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/** TODO: Move this to a proper ContextMenu. DS-333 **/
 import { useContextMenu } from '../composables/useContextMenu';
 import { type ContextMenuAction } from '../composables/useContextMenuItems';
 import { useStyles } from '@/app/composables/useStyles';
@@ -52,6 +53,13 @@ function onVisibleChange(open: boolean) {
 				data-test-id="context-menu"
 				:hide-arrow="target?.source !== 'node-button'"
 				:teleported="false"
+				:modal="false"
+				:content-style="{
+					position: 'fixed',
+					left: `${position[0]}px`,
+					top: `${position[1]}px`,
+					transform: 'none',
+				}"
 				@select="onActionSelect"
 				@visible-change="onVisibleChange"
 			>

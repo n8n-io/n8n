@@ -1,4 +1,4 @@
-import type { InjectionKey, Ref } from 'vue';
+import type { InjectionKey, Ref, StyleValue } from 'vue';
 
 import type { IconOrEmoji } from '../N8nIconPicker/types';
 
@@ -89,6 +89,8 @@ export interface DropdownMenuProps<T = string, D = never> {
 	teleported?: boolean;
 	/** Maximum height of the dropdown menu */
 	maxHeight?: string | number;
+	/** Additional inline styles for the dropdown content element */
+	contentStyle?: StyleValue;
 	/** Whether to show loading state */
 	loading?: boolean;
 	/** Number of skeleton items to show when loading */

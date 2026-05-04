@@ -103,7 +103,7 @@ const placementParts = computed(() => {
 	};
 });
 
-const contentStyle = computed(() => {
+const contentContainerStyle = computed(() => {
 	if (props.maxHeight) {
 		const maxHeightValue =
 			typeof props.maxHeight === 'number' ? `${props.maxHeight}px` : props.maxHeight;
@@ -316,7 +316,7 @@ defineExpose({ open, close });
 				:side="placementParts.side"
 				:align="placementParts.align"
 				:side-offset="5"
-				:style="contentStyle"
+				:style="[contentContainerStyle, props.contentStyle]"
 				:prioritize-position="true"
 				@keydown="handleContentKeydown"
 				@mouseleave="triggerHoverLeave"
