@@ -25,38 +25,34 @@ vi.mock('@langchain/community/vectorstores/chroma', () => {
 	return { Chroma, __state: state };
 });
 
-vi.mock(
-	'@n8n/ai-utilities',
-	() => ({
-		createVectorStoreNode: (config: {
-			getVectorStoreClient: (...args: unknown[]) => unknown;
-			populateVectorStore: (...args: unknown[]) => unknown;
-			methods: {
-				listSearch: {
-					chromaCollectionsSearch: (
-						this: ISupplyDataFunctions,
-					) => Promise<{ results: Array<{ name: string; value: string }> }>;
-				};
+vi.mock('@n8n/ai-utilities', () => ({
+	createVectorStoreNode: (config: {
+		getVectorStoreClient: (...args: unknown[]) => unknown;
+		populateVectorStore: (...args: unknown[]) => unknown;
+		methods: {
+			listSearch: {
+				chromaCollectionsSearch: (
+					this: ISupplyDataFunctions,
+				) => Promise<{ results: Array<{ name: string; value: string }> }>;
 			};
-		}) =>
-			class BaseNode {
-				async getVectorStoreClient(...args: unknown[]) {
-					return config.getVectorStoreClient.apply(config, args);
-				}
-				async populateVectorStore(...args: unknown[]) {
-					return config.populateVectorStore.apply(config, args);
-				}
-				async chromaCollectionsSearch(...args: unknown[]) {
-					return await config.methods.listSearch.chromaCollectionsSearch.apply(
-						this as any,
-						args as any,
-					);
-				}
-			},
-		metadataFilterField: {},
-	}),
-	{ virtual: true },
-);
+		};
+	}) =>
+		class BaseNode {
+			async getVectorStoreClient(...args: unknown[]) {
+				return config.getVectorStoreClient.apply(config, args);
+			}
+			async populateVectorStore(...args: unknown[]) {
+				return config.populateVectorStore.apply(config, args);
+			}
+			async chromaCollectionsSearch(...args: unknown[]) {
+				return await config.methods.listSearch.chromaCollectionsSearch.apply(
+					this as any,
+					args as any,
+				);
+			}
+		},
+	metadataFilterField: {},
+}));
 vi.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }), { virtual: true });
 
 const MockChromaClient = ChromaClient as vi.MockedClass<typeof ChromaClient>;
@@ -99,8 +95,12 @@ describe('VectorStoreChromaDB.node', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		MockChromaClient.mockReturnValue(mockChromaClientInstance as unknown as ChromaClient);
-		MockCloudClient.mockReturnValue(mockCloudClientInstance as unknown as CloudClient);
+		MockChromaClient.mockImplementation(function () {
+			return mockChromaClientInstance as unknown as ChromaClient;
+		});
+		MockCloudClient.mockImplementation(function () {
+			return mockCloudClientInstance as unknown as CloudClient;
+		});
 	});
 
 	describe('getVectorStoreClient', () => {
