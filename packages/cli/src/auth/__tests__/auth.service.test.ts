@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -39,9 +40,10 @@ describe('AuthService', () => {
 	const invalidAuthTokenRepository = mock<InvalidAuthTokenRepository>();
 	const mfaService = mock<MfaService>();
 	const license = mock<License>();
+	const logger = mock<Logger>();
 	const authService = new AuthService(
 		globalConfig,
-		mock(),
+		logger,
 		license,
 		jwtService,
 		urlService,
@@ -840,6 +842,32 @@ describe('AuthService', () => {
 
 			const resolvedUser = await authService.resolvePasswordResetToken(token);
 			expect(resolvedUser).toBeUndefined();
+		});
+
+		it('should never log the full JWT token on verification failure', async () => {
+			const expiredToken = authService.generatePasswordResetToken(user, '-1h');
+			await authService.resolvePasswordResetToken(expiredToken);
+			await authService.resolvePasswordResetToken('invalid-token');
+
+			// Collect every meta object passed to any log method
+			const allLogMeta = [
+				...logger.debug.mock.calls,
+				...logger.warn.mock.calls,
+				...logger.error.mock.calls,
+				...logger.info.mock.calls,
+			].map(([, meta]) => meta);
+
+			for (const meta of allLogMeta) {
+				if (meta && typeof meta === 'object') {
+					// The raw token must never appear as a property value
+					expect(meta).not.toHaveProperty('token');
+					// tokenPrefix should be the truncated form, not the full token
+					if ('tokenPrefix' in meta) {
+						expect((meta as { tokenPrefix: string }).tokenPrefix).not.toEqual(expiredToken);
+						expect((meta as { tokenPrefix: string }).tokenPrefix).toMatch(/^.{8}\.\.\.$/);
+					}
+				}
+			}
 		});
 
 		it('should not return a user if the user does not exist in the DB', async () => {

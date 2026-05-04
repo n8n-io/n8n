@@ -384,10 +384,11 @@ export class AuthService {
 		try {
 			decodedToken = this.jwtService.verify(token);
 		} catch (e) {
+			const tokenPrefix = token.substring(0, 8) + '...';
 			if (e instanceof TokenExpiredError) {
-				this.logger.debug('Reset password token expired', { token });
+				this.logger.debug('Reset password token expired', { tokenPrefix });
 			} else {
-				this.logger.debug('Error verifying token', { token });
+				this.logger.debug('Error verifying token', { tokenPrefix });
 			}
 			return;
 		}
@@ -400,7 +401,7 @@ export class AuthService {
 		if (!user) {
 			this.logger.debug(
 				'Request to resolve password token failed because no user was found for the provided user ID',
-				{ userId: decodedToken.sub, token },
+				{ userId: decodedToken.sub },
 			);
 			return;
 		}
