@@ -148,6 +148,26 @@ describe('createToolsFromLocalMcpServer', () => {
 				}),
 			);
 		});
+
+		it('skips compatibility-normalized non-ASCII tool names', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'ＴＯＯＬ' },
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools['ＴＯＯＬ']).toBeUndefined();
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'ＴＯＯＬ',
+				}),
+			);
+		});
 	});
 
 	describe('execute — first-call path', () => {

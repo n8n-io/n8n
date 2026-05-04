@@ -47,6 +47,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const setupCommand = ref<string | null>(null);
 	const setupCommandExpiresAt = ref<string | null>(null);
 	const setupCommandTtlSeconds = ref<number | null>(null);
+	const setupCommandFetchedAt = ref<number | null>(null);
 
 	const hasEverConnectedGateway = ref(
 		typeof localStorage !== 'undefined' &&
@@ -460,6 +461,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			setupCommand.value = result.command;
 			setupCommandExpiresAt.value = result.expiresAt;
 			setupCommandTtlSeconds.value = result.ttlSeconds;
+			setupCommandFetchedAt.value = Date.now();
 		} catch {
 			// Fallback handled in the component
 		}
@@ -518,6 +520,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		setupCommand,
 		setupCommandExpiresAt,
 		setupCommandTtlSeconds,
+		setupCommandFetchedAt,
 		hasEverConnectedGateway,
 		isGatewayConnected,
 		gatewayStatusLoaded,

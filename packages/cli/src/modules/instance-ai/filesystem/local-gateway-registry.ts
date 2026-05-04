@@ -194,6 +194,22 @@ export class LocalGatewayRegistry {
 		return this.createSession(userId, state);
 	}
 
+	/** Whether this active session key should be rotated on the next reconnect. */
+	isSessionKeyDueForRotation(userId: string, key: string): boolean {
+		const state = this.userGateways.get(userId);
+		if (!state?.activeSession || state.activeSession.key !== key) return false;
+		this.expireActiveSessionIfNeeded(state);
+		return !!state.activeSession && Date.now() >= state.activeSession.rotateAfter;
+	}
+
+	/** Get the time after which the active session key should be rotated. */
+	getSessionKeyRotateAfter(userId: string, key: string): Date | null {
+		const state = this.userGateways.get(userId);
+		if (!state?.activeSession || state.activeSession.key !== key) return null;
+		this.expireActiveSessionIfNeeded(state);
+		return state.activeSession?.key === key ? new Date(state.activeSession.rotateAfter) : null;
+	}
+
 	/** Clear the active session key (called on explicit disconnect). */
 	clearActiveSessionKey(userId: string): void {
 		const state = this.userGateways.get(userId);

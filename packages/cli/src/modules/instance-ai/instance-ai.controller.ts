@@ -649,8 +649,17 @@ export class InstanceAiController {
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request, res: FlushableResponse) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		const key = this.getGatewayKeyHeader(req);
+		const userId = this.validateGatewayApiKey(key);
 		await this.assertGatewayEnabled(userId);
+
+		if (
+			key &&
+			userId !== ENV_GATEWAY_USER_ID &&
+			this.instanceAiService.isGatewaySessionRotationDue(userId, key)
+		) {
+			throw new ForbiddenError('Local gateway session requires rotation');
+		}
 
 		const gateway = this.instanceAiService.getLocalGateway(userId);
 
@@ -685,6 +694,18 @@ export class InstanceAiController {
 			res.write(': ping\n\n');
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
+		const sessionRotateAfter =
+			key && userId !== ENV_GATEWAY_USER_ID
+				? this.instanceAiService.getGatewaySessionRotateAfter(userId, key)
+				: null;
+		const sessionRotationTimer = sessionRotateAfter
+			? setTimeout(
+					() => {
+						res.end();
+					},
+					Math.max(0, sessionRotateAfter.getTime() - Date.now()),
+				)
+			: null;
 
 		let cleanedUp = false;
 		const cleanup = () => {
@@ -693,6 +714,7 @@ export class InstanceAiController {
 			unsubscribeRequest();
 			unsubscribeDisconnect();
 			clearInterval(keepAlive);
+			if (sessionRotationTimer) clearTimeout(sessionRotationTimer);
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
 					{

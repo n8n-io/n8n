@@ -51,6 +51,10 @@ const nowMs = ref(Date.now());
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
 
 const tokenExpiresInSeconds = computed(() => {
+	if (store.setupCommandTtlSeconds !== null && store.setupCommandFetchedAt !== null) {
+		const elapsedSeconds = Math.floor((nowMs.value - store.setupCommandFetchedAt) / 1000);
+		return Math.max(0, store.setupCommandTtlSeconds - elapsedSeconds);
+	}
 	if (!store.setupCommandExpiresAt) return null;
 	const expiresAtMs = Date.parse(store.setupCommandExpiresAt);
 	if (Number.isNaN(expiresAtMs)) return null;
@@ -153,13 +157,18 @@ onMounted(() => {
 });
 
 watch(
-	() => store.setupCommandExpiresAt,
-	(expiresAt) => {
+	() =>
+		[
+			store.setupCommandFetchedAt,
+			store.setupCommandTtlSeconds,
+			store.setupCommandExpiresAt,
+		] as const,
+	([fetchedAt, ttlSeconds, expiresAt]) => {
 		if (expiryTimer) {
 			clearInterval(expiryTimer);
 			expiryTimer = null;
 		}
-		if (!expiresAt) return;
+		if (!(fetchedAt !== null && ttlSeconds !== null) && !expiresAt) return;
 		nowMs.value = Date.now();
 		expiryTimer = setInterval(() => {
 			nowMs.value = Date.now();

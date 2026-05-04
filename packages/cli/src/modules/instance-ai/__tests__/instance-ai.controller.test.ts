@@ -115,6 +115,8 @@ describe('InstanceAiController', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+		instanceAiService.isGatewaySessionRotationDue.mockReturnValue(false);
+		instanceAiService.getGatewaySessionRotateAfter.mockReturnValue(null);
 	});
 
 	afterEach(() => {
@@ -1020,6 +1022,7 @@ describe('InstanceAiController', () => {
 				write: jest.fn(),
 				flush: jest.fn(),
 				once: jest.fn(),
+				end: jest.fn(),
 			};
 			return res as unknown as Parameters<typeof controller.gatewayEvents>[1];
 		};
@@ -1036,6 +1039,18 @@ describe('InstanceAiController', () => {
 				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
 			).rejects.toThrow(ForbiddenError);
 
+			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
+		});
+
+		it('should reject reconnects when the session key is due for rotation', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.isGatewaySessionRotationDue.mockReturnValue(true);
+
+			await expect(
+				controller.gatewayEvents(makeGatewayReq('session-key'), makeFlushableRes()),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.getLocalGateway).not.toHaveBeenCalled();
 			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
 		});
 

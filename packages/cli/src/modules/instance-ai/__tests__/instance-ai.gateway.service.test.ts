@@ -116,6 +116,12 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
 
 			jest.setSystemTime(new Date('2026-01-01T01:00:00.000Z'));
+
+			expect(registry.isSessionKeyDueForRotation('user-a', sessionKey)).toBe(true);
+			expect(registry.getSessionKeyRotateAfter('user-a', sessionKey)).toEqual(
+				new Date('2026-01-01T01:00:00.000Z'),
+			);
+
 			const rotatedSessionKey = registry.rotateSessionKeyIfNeeded('user-a', sessionKey);
 
 			expect(rotatedSessionKey).toMatch(/^sess_/);
@@ -132,6 +138,7 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 
 			jest.setSystemTime(new Date('2026-01-01T00:59:59.000Z'));
 
+			expect(registry.isSessionKeyDueForRotation('user-a', sessionKey)).toBe(false);
 			expect(registry.rotateSessionKeyIfNeeded('user-a', sessionKey)).toBeNull();
 			expect(registry.getUserIdForApiKey(sessionKey)).toBe('user-a');
 		});

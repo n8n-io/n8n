@@ -1183,6 +1183,14 @@ export class InstanceAiService {
 		return this.gatewayRegistry.rotateSessionKeyIfNeeded(userId, key);
 	}
 
+	isGatewaySessionRotationDue(userId: string, key: string): boolean {
+		return this.gatewayRegistry.isSessionKeyDueForRotation(userId, key);
+	}
+
+	getGatewaySessionRotateAfter(userId: string, key: string): Date | null {
+		return this.gatewayRegistry.getSessionKeyRotateAfter(userId, key);
+	}
+
 	clearActiveSessionKey(userId: string): void {
 		this.gatewayRegistry.clearActiveSessionKey(userId);
 	}

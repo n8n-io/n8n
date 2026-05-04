@@ -1,7 +1,12 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
-import { buildFilesystemResource, resolveReadablePath, resolveSafePath } from './fs-utils';
+import {
+	buildFilesystemResource,
+	isLikelyBinaryContent,
+	resolveReadablePath,
+	resolveSafePath,
+} from './fs-utils';
 import * as config from '../../config';
 
 jest.mock('node:fs/promises');
@@ -150,6 +155,20 @@ describe('resolveSafePath', () => {
 		await expect(resolveSafePath(parentDir, 'sneaky-link/settings.json')).rejects.toThrow(
 			'Access denied',
 		);
+	});
+});
+
+describe('isLikelyBinaryContent', () => {
+	it('treats text as valid when a multibyte character crosses the sample boundary', () => {
+		const buffer = Buffer.concat([Buffer.alloc(8191, 'a'), Buffer.from('é')]);
+
+		expect(isLikelyBinaryContent(buffer)).toBe(false);
+	});
+
+	it('detects null bytes outside the sample boundary', () => {
+		const buffer = Buffer.concat([Buffer.alloc(8192, 'a'), Buffer.from([0])]);
+
+		expect(isLikelyBinaryContent(buffer)).toBe(true);
 	});
 });
 

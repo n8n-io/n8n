@@ -152,16 +152,16 @@ export function isExcludedDirName(segment: string): boolean {
 }
 
 export function isLikelyBinaryContent(buffer: Buffer): boolean {
-	const checkSlice = buffer.subarray(0, Math.min(BINARY_CHECK_SIZE, buffer.length));
-	if (checkSlice.length === 0) return false;
-	if (checkSlice.includes(0)) return true;
+	if (buffer.length === 0) return false;
+	if (buffer.includes(0)) return true;
 
 	try {
-		utf8Decoder.decode(checkSlice);
+		utf8Decoder.decode(buffer);
 	} catch {
 		return true;
 	}
 
+	const checkSlice = buffer.subarray(0, Math.min(BINARY_CHECK_SIZE, buffer.length));
 	let controlChars = 0;
 	for (const byte of checkSlice) {
 		const isAllowedControl = byte === 9 || byte === 10 || byte === 12 || byte === 13;

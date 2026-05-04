@@ -22,14 +22,14 @@ export function normalizeMcpToolName(name: string): string {
 
 function validateMcpToolName(name: string, source: string): string {
 	const normalizedUnicode = name.normalize('NFKC');
-	if (!MCP_TOOL_NAME_PATTERN.test(normalizedUnicode)) {
+	if (normalizedUnicode !== name || !MCP_TOOL_NAME_PATTERN.test(name)) {
 		throw new McpToolNameValidationError(
 			`MCP tool "${name}" from ${source} has an invalid name`,
 			name,
 			source,
 		);
 	}
-	return normalizeMcpToolName(normalizedUnicode);
+	return normalizeMcpToolName(name);
 }
 
 export function createClaimedToolNames(names: Iterable<string>): Map<string, string> {
