@@ -1,15 +1,16 @@
 import { mock } from 'jest-mock-extended';
+import { UserError } from 'n8n-workflow';
 
 import { OAuthJweServiceProxy, type OAuthJweDecryptHandler } from '@/oauth/oauth-jwe-service.proxy';
 
 describe('OAuthJweServiceProxy', () => {
-	it('returns input unchanged when no handler has been registered', async () => {
+	it('throws when no handler has been registered', async () => {
 		const proxy = new OAuthJweServiceProxy();
-		const input = { access_token: 'a' };
 
-		const result = await proxy.decryptOAuth2TokenData(input);
-
-		expect(result).toBe(input);
+		await expect(proxy.decryptOAuth2TokenData({ access_token: 'a' })).rejects.toThrow(UserError);
+		await expect(proxy.decryptOAuth2TokenData({ access_token: 'a' })).rejects.toThrow(
+			'OAuth2 JWE decryption was requested but the feature is not enabled on this instance',
+		);
 	});
 
 	it('delegates to the registered handler', async () => {

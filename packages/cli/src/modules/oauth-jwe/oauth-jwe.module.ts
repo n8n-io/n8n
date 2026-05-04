@@ -18,7 +18,9 @@ export class OAuthJweModule implements ModuleInterface {
 		Container.get(OAuthJweServiceProxy).setHandler(Container.get(OAuthJweDecryptService));
 
 		// Eager key bootstrap and the JWKS controller belong on main only.
-		// Workers lazily load the key via the cache on the first refresh that needs it.
+		// Workers lazily resolve the key on the first refresh that needs it; if
+		// the cache is cold and main hasn't generated yet, the partial unique
+		// index on `(type, algorithm)` serializes any concurrent generation.
 		if (Container.get(InstanceSettings).instanceType === 'main') {
 			const { OAuthJweKeyService } = await import('./oauth-jwe-key.service');
 			await Container.get(OAuthJweKeyService).initialize();
