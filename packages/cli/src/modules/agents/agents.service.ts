@@ -48,6 +48,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillsService } from './agent-skills.service';
 import { AgentsToolsService } from './agents-tools.service';
@@ -1229,12 +1230,13 @@ export class AgentsService {
 	async buildCustomTool(
 		agentId: string,
 		projectId: string,
-		toolId: string,
 		code: string,
 		descriptor: ToolDescriptor,
-	): Promise<{ ok: boolean; descriptor: ToolDescriptor }> {
+	): Promise<{ ok: boolean; id: string; descriptor: ToolDescriptor }> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
+
+		const toolId = generateAgentResourceId('tool', Object.keys(entity.tools ?? {}));
 
 		// Store tool code + descriptor. Registering the tool in the agent config
 		// (adding `{ type: "custom", id }` to `schema.tools`) is the caller's
@@ -1251,7 +1253,7 @@ export class AgentsService {
 
 		this.logger.debug('Built custom tool', { agentId, projectId, toolId });
 
-		return { ok: true, descriptor };
+		return { ok: true, id: toolId, descriptor };
 	}
 
 	async listSkills(agentId: string, projectId: string): Promise<Record<string, AgentSkill>> {
@@ -1265,10 +1267,9 @@ export class AgentsService {
 	async createSkill(
 		agentId: string,
 		projectId: string,
-		skillId: string,
 		skill: AgentSkill,
 	): Promise<AgentSkillMutationResponse> {
-		const result = await this.agentSkillsService.createSkill(agentId, projectId, skillId, skill);
+		const result = await this.agentSkillsService.createSkill(agentId, projectId, skill);
 		this.clearRuntimes(agentId);
 		return result;
 	}

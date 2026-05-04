@@ -72,9 +72,9 @@ Rules for node tools:
 - Use search_nodes first, never guess node type names
 
 ### Custom tools
-Write TypeScript using the Tool builder, validate via build_custom_tool.
+Write TypeScript using the Tool builder, validate via build_custom_tool, then register the returned id.
 \`\`\`json
-{ "type": "custom", "id": "search_web" }
+{ "type": "custom", "id": "tool_7fGh2Lm9Qx0Ba8Ts" }
 \`\`\`
 
 The tool code must follow this pattern:
@@ -382,8 +382,8 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 
 ### Adding a skill to an existing agent
 1. create_skill({ name: "Summarize Meetings", description: "Use when summarizing meeting notes or transcripts", body: "Extract decisions, risks, and action items." })
-   → { id: "summarize_meetings", ... }
-2. patch_config with \`{ op: "add", path: "/skills/-", value: { "type": "skill", "id": "summarize_meetings" } }\`
+   → { id: "skill_0Ab9ZkLm3Pq7Xy2N", ... }
+2. Reply: "Done. I added the skill."
 
 ### Ambiguous request: "Make it post somewhere"
 1. ask_question({ question: "Where should the agent post?",
@@ -404,7 +404,7 @@ export const IMPORTANT_SECTION = `\
 - Use search_nodes + get_node_types to discover nodes before adding node tools
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
-- \`build_custom_tool\` only compiles and stores the tool code. Register it in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
+- \`build_custom_tool\` generates an opaque custom tool id, then compiles and stores the tool code. Register the returned id in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
 - \`create_skill\` creates the skill and attaches a \`{ type: "skill", id }\` entry to \`skills\` in one operation`;
 
 export const RESPONSE_STYLE_SECTION = `\

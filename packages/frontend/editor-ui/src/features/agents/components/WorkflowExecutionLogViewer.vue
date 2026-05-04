@@ -327,7 +327,8 @@ onBeforeUnmount(() => {
 .pane {
 	display: flex;
 	flex-direction: column;
-	min-height: 220px;
+	height: 280px;
+	flex-shrink: 0;
 	border: var(--border);
 	border-radius: var(--radius);
 	overflow: hidden;
@@ -341,13 +342,19 @@ onBeforeUnmount(() => {
 	color: var(--color--text--tint-1);
 	text-transform: uppercase;
 	letter-spacing: 0.04em;
+	flex-shrink: 0;
 }
 
 /* RunData renders its actions (including the search icon) flush against the
    top of its container — add a little headroom so they don't sit right
-   under the pane title. */
+   under the pane title. `flex: 1; min-height: 0` constrains RunData to the
+   pane height so its internal `dataContainer` handles scrolling instead of
+   the pane growing to fit potentially-huge schema trees. */
 .pane > :not(.paneTitle):not(.errorPaneBody) {
 	padding-top: var(--spacing--2xs);
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
 }
 
 /* When the selected node has an error, NodeErrorView fills the output pane —

@@ -3,13 +3,13 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { Agent } from './entities/agent.entity';
 import type { AgentJsonConfig } from './json-config/agent-json-config';
 import { AgentRepository } from './repositories/agent.repository';
+import { generateAgentResourceId } from './utils/agent-resource-id';
 
 type AgentSkillEntries = Agent['skills'];
 
@@ -38,15 +38,15 @@ export class AgentSkillsService {
 	async createSkill(
 		agentId: string,
 		projectId: string,
-		skillId: string,
 		skill: AgentSkill,
 	): Promise<AgentSkillMutationResponse> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
-		if (entity.skills?.[skillId]) throw new ConflictError('Skill already exists');
 		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		this.validateSkill(skill);
+
+		const skillId = generateAgentResourceId('skill', Object.keys(entity.skills ?? {}));
 
 		entity.skills = {
 			...(entity.skills ?? {}),
@@ -62,7 +62,7 @@ export class AgentSkillsService {
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
 
-		return { skill, versionId: saved.versionId };
+		return { id: skillId, skill, versionId: saved.versionId };
 	}
 
 	async updateSkill(
@@ -90,7 +90,7 @@ export class AgentSkillsService {
 
 		this.logger.debug('Updated agent skill', { agentId, projectId, skillId });
 
-		return { skill: updated, versionId: saved.versionId };
+		return { id: skillId, skill: updated, versionId: saved.versionId };
 	}
 
 	async deleteSkill(agentId: string, projectId: string, skillId: string): Promise<void> {

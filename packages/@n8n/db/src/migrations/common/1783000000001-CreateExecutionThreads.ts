@@ -1,6 +1,13 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateExecutionThreads1780000000000 implements ReversibleMigration {
+/**
+ * Consolidated migration for execution threads. Replaces the unreleased
+ * branch migration 1780000000000-CreateExecutionThreads.
+ *
+ * Idempotent: existing DBs that already ran the older migration will
+ * detect the existing table/columns and no-op.
+ */
+export class CreateExecutionThreads1783000000001 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { createTable, dropNotNull, column },
 		escape,
@@ -9,7 +16,6 @@ export class CreateExecutionThreads1780000000000 implements ReversibleMigration 
 	}: MigrationContext) {
 		const tablePrefix = escape.tableName('').replace(/"/g, '');
 
-		// Create execution_threads table with all columns
 		const existingTable = await queryRunner.getTable(`${tablePrefix}execution_threads`);
 		if (!existingTable) {
 			await createTable('execution_threads')
@@ -33,7 +39,7 @@ export class CreateExecutionThreads1780000000000 implements ReversibleMigration 
 				}).withTimestamps;
 
 			// Add session/usage/title columns via ALTER TABLE (schema builder
-			// doesn't support default values or nullable in withColumns)
+			// doesn't emit defaults reliably across drivers for these types).
 			const tableName = escape.tableName('execution_threads');
 			const extraColumns: Array<{ name: string; type: string; spec: string }> = [
 				{ name: 'sessionNumber', type: 'integer', spec: 'NOT NULL DEFAULT 0' },
@@ -52,7 +58,6 @@ export class CreateExecutionThreads1780000000000 implements ReversibleMigration 
 			}
 		}
 
-		// Add threadId column to execution_entity if not already present
 		const executionTable = await queryRunner.getTable(`${tablePrefix}execution_entity`);
 		if (executionTable && !executionTable.findColumnByName('threadId')) {
 			const executionEntity = escape.tableName('execution_entity');
@@ -60,14 +65,18 @@ export class CreateExecutionThreads1780000000000 implements ReversibleMigration 
 			await runQuery(`ALTER TABLE ${executionEntity} ADD COLUMN ${threadId} varchar(36)`);
 		}
 
-		// Create index on threadId
 		const executionEntity = escape.tableName('execution_entity');
 		const threadId = escape.columnName('threadId');
 		const indexName = escape.indexName('IDX_execution_entity_threadId');
 		await runQuery(`CREATE INDEX IF NOT EXISTS ${indexName} ON ${executionEntity} (${threadId})`);
 
-		// Allow agent executions which have no associated workflow
-		await dropNotNull('execution_entity', 'workflowId');
+		// Allow agent executions which have no associated workflow.
+		// Re-fetch the table so the check sees freshly added columns.
+		const refreshedExecutionTable = await queryRunner.getTable(`${tablePrefix}execution_entity`);
+		const workflowIdCol = refreshedExecutionTable?.findColumnByName('workflowId');
+		if (workflowIdCol && !workflowIdCol.isNullable) {
+			await dropNotNull('execution_entity', 'workflowId');
+		}
 	}
 
 	async down({

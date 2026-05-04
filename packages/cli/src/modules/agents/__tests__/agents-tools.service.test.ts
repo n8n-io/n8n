@@ -161,6 +161,14 @@ describe('AgentsToolsService', () => {
 			expect(isAgentToolNodeType('n8n-nodes-base.httpRequestTool')).toBe(true);
 			expect(isAgentToolNodeType('n8n-nodes-base.slackHitlTool')).toBe(false);
 		});
+
+		it('admits whitelisted AI provider nodes (full vendor APIs)', () => {
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.openAi')).toBe(true);
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.anthropic')).toBe(true);
+			// Non-provider langchain nodes stay excluded.
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.lmChatOpenAi')).toBe(false);
+			expect(isAgentToolNodeType('@n8n/n8n-nodes-langchain.agent')).toBe(false);
+		});
 	});
 
 	describe('get_node_types handler', () => {

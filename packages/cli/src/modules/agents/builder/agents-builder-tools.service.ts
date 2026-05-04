@@ -1,6 +1,6 @@
 import { Tool } from '@n8n/agents';
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
-import { agentSkillSchema, skillNameToId } from '@n8n/api-types';
+import { agentSkillSchema } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
@@ -201,30 +201,30 @@ export class AgentsBuilderToolsService {
 	): BuiltTool[] {
 		const buildCustomToolTool = new Tool(BUILDER_TOOLS.BUILD_CUSTOM_TOOL)
 			.description(
-				'Compile and store a custom tool. Pass the tool ID and complete TypeScript source ' +
+				'Compile and store a custom tool. Pass the complete TypeScript source ' +
 					'using `export default new Tool(...)` builder chain. The code is validated in a ' +
 					'sandbox and saved against the agent, but this does NOT register the tool in the ' +
 					'agent config — follow up with patch_config (or write_config) to add a ' +
 					'`{ type: "custom", id }` entry to `tools` so the agent actually uses it. ' +
-					'Returns { ok: true, descriptor } or { ok: false, errors }.',
+					'Returns { ok: true, id, descriptor } or { ok: false, errors }.',
 			)
 			.input(
 				z.object({
-					id: z
-						.string()
-						.min(1)
-						.regex(/^[a-z0-9_-]+$/)
-						.describe('Tool ID (lowercase, underscores, hyphens)'),
 					code: z
 						.string()
 						.describe('Complete TypeScript source using export default new Tool(...)'),
 				}),
 			)
-			.handler(async ({ id, code }: { id: string; code: string }) => {
+			.handler(async ({ code }: { code: string }) => {
 				try {
 					const descriptor = await this.secureRuntime.describeToolSecurely(code);
-					await this.agentsService.buildCustomTool(agentId, projectId, id, code, descriptor);
-					return { ok: true, id, descriptor };
+					const built = await this.agentsService.buildCustomTool(
+						agentId,
+						projectId,
+						code,
+						descriptor,
+					);
+					return { ok: true, id: built.id, descriptor };
 				} catch (e) {
 					return {
 						ok: false,
@@ -260,7 +260,6 @@ export class AgentsBuilderToolsService {
 					description: string;
 					body: string;
 				}) => {
-					const id = skillNameToId(name);
 					const skill = { name, description, instructions: body };
 					const validation = agentSkillSchema.safeParse(skill);
 					if (!validation.success) {
@@ -268,8 +267,8 @@ export class AgentsBuilderToolsService {
 					}
 
 					try {
-						const created = await this.agentsService.createSkill(agentId, projectId, id, skill);
-						return { ok: true, id, skill: created.skill };
+						const created = await this.agentsService.createSkill(agentId, projectId, skill);
+						return { ok: true, id: created.id, skill: created.skill };
 					} catch (e) {
 						return {
 							ok: false,

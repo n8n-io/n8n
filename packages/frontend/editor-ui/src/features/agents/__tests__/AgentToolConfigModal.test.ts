@@ -116,7 +116,6 @@ function toolRef(overrides: Partial<AgentJsonToolRef['node']> = {}): AgentJsonTo
 			credentials: { slackApi: { id: 'cred-1', name: 'Prod Slack' } },
 			...overrides,
 		},
-		inputSchema: { type: 'object' },
 	};
 }
 
@@ -202,7 +201,7 @@ describe('AgentToolConfigModal', () => {
 		// Preserved fields from the original ref
 		expect(updated.type).toBe('node');
 		expect(updated.description).toBe(initial.description);
-		expect(updated.inputSchema).toBeUndefined();
+		expect(updated).not.toHaveProperty('inputSchema');
 		// Fields merged from the edited INode
 		expect(updated.node.nodeParameters).toEqual({ edited: true });
 		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
