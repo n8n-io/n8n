@@ -251,7 +251,7 @@ describe('useInstallNode', () => {
 			);
 		});
 
-		it('should install verified node as latest when unverified packages are enabled', async () => {
+		it('should install verified node with pinned version when unverified packages are enabled', async () => {
 			Object.defineProperty(settingsStore, 'isUnverifiedPackagesEnabled', {
 				value: true,
 				writable: true,
@@ -265,8 +265,12 @@ describe('useInstallNode', () => {
 			});
 
 			expect(result.success).toBe(true);
-			expect(communityNodesStore.installPackage).toHaveBeenCalledWith('test-package');
-			expect(nodeTypesStore.getCommunityNodeAttributes).not.toHaveBeenCalled();
+			expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith('test-node');
+			expect(communityNodesStore.installPackage).toHaveBeenCalledWith(
+				'test-package',
+				true,
+				'1.0.0',
+			);
 		});
 
 		it('should install unverified node without version regardless of unverifiedEnabled setting', async () => {
