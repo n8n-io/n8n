@@ -277,14 +277,14 @@ function renderPerTestCaseDetails(evaluation: MultiRunEvaluation): string[] {
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
 			const meanPassAtK = tc.scenarios.length
-				? Math.floor(
+				? Math.round(
 						(tc.scenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
 							tc.scenarios.length) *
 							100,
 					)
 				: 0;
 			const meanPassHatK = tc.scenarios.length
-				? Math.floor(
+				? Math.round(
 						(tc.scenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
 							tc.scenarios.length) *
 							100,

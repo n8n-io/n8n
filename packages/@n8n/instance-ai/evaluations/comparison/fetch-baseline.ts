@@ -82,7 +82,20 @@ export async function fetchBaselineBucket(
 	for await (const run of client.listRuns({ projectId: project.id, isRoot: true })) {
 		const inputs = inputsSchema.safeParse(run.inputs ?? {});
 		if (!inputs.success || !inputs.data.testCaseFile || !inputs.data.scenarioName) continue;
-		const outputs = outputsSchema.safeParse(run.outputs ?? {});
+		// Skip runs that never produced outputs (still running, crashed before
+		// completion, infra error). Without this guard, every field defaults
+		// (passed → false) would coerce them into "failed" trials and inflate
+		// the baseline failure count. Mirrors `parseTargetOutput` in cli/index.ts.
+		const rawOutputs = run.outputs;
+		if (
+			rawOutputs === null ||
+			rawOutputs === undefined ||
+			typeof rawOutputs !== 'object' ||
+			Object.keys(rawOutputs).length === 0
+		) {
+			continue;
+		}
+		const outputs = outputsSchema.safeParse(rawOutputs);
 		if (!outputs.success) continue;
 
 		const key = `${inputs.data.testCaseFile}/${inputs.data.scenarioName}`;
