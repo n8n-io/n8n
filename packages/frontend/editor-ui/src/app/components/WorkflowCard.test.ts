@@ -38,10 +38,12 @@ vi.mock('vue-router', () => {
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
+	const showToast = vi.fn();
 	return {
 		useToast: () => ({
 			showError,
 			showMessage,
+			showToast,
 		}),
 	};
 });
@@ -140,7 +142,7 @@ describe('WorkflowCard', () => {
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 
@@ -181,7 +183,7 @@ describe('WorkflowCard', () => {
 		await waitFor(() => {
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: data.id },
+				params: { workflowId: data.id },
 			});
 		});
 	});
@@ -370,7 +372,7 @@ describe('WorkflowCard', () => {
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
 	});
 
@@ -406,8 +408,59 @@ describe('WorkflowCard', () => {
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 		expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(data.id);
 		expect(toast.showError).not.toHaveBeenCalled();
-		expect(toast.showMessage).toHaveBeenCalledTimes(1);
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
 		expect(emitted()['workflow:archived']).toHaveLength(1);
+	});
+
+	it('should show a "Delete permanently" link in the archive toast that deletes the archived workflow', async () => {
+		const data = createWorkflow({
+			active: false,
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId, emitted, rerender } = renderComponent({ props: { data } });
+		await userEvent.click(getByTestId('workflow-card-actions'));
+		await userEvent.click(getByTestId('action-archive'));
+
+		expect(toast.showToast).toHaveBeenCalledTimes(1);
+		const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+		expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
+		expect(toastConfig.onClick).toBeDefined();
+
+		// Simulate v-for reuse: parent replaces props.data with a different workflow.
+		// The toast onClick must still delete the originally archived workflow.
+		await rerender({ data: createWorkflow({ id: 'different-id', name: 'Other Workflow' }) });
+
+		const anchor = document.createElement('a');
+		toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+		await waitFor(() => {
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+		});
+		expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(data.id);
+		expect(emitted()['workflow:deleted']).toHaveLength(1);
+	});
+
+	it('should not delete when "Delete permanently" confirmation is cancelled', async () => {
+		const data = createWorkflow({
+			active: false,
+			isArchived: false,
+			scopes: ['workflow:delete'],
+		});
+
+		const { getByTestId } = renderComponent({ props: { data } });
+		await userEvent.click(getByTestId('workflow-card-actions'));
+		await userEvent.click(getByTestId('action-archive'));
+
+		const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+		vi.mocked(message.confirm).mockResolvedValueOnce('cancel');
+
+		const anchor = document.createElement('a');
+		toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+		await waitFor(() => {
+			expect(message.confirm).toHaveBeenCalled();
+		});
+		expect(workflowsListStore.deleteWorkflow).not.toHaveBeenCalled();
 	});
 
 	it("should have 'Unarchive' action on archived workflows", async () => {

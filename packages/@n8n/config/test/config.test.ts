@@ -163,6 +163,7 @@ describe('GlobalConfig', () => {
 				logBaseName: 'n8nEventLog',
 				maxFileSizeInKB: 10240,
 				maxMessagesPerParse: 10_000,
+				maxTotalMessagesPerFile: 500_000,
 			},
 		},
 		externalHooks: {
@@ -203,6 +204,7 @@ describe('GlobalConfig', () => {
 			indexingEnabled: true,
 			indexingBatchSize: 10,
 			useWorkflowPublicationService: false,
+			autosaveDisabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -337,6 +339,7 @@ describe('GlobalConfig', () => {
 			taskTimeout: 300,
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
+			grantTokenTtl: 30,
 			insecureMode: false,
 		},
 		sentry: {
@@ -531,6 +534,10 @@ describe('GlobalConfig', () => {
 			samlMetadata: '',
 			samlMetadataUrl: '',
 			samlLoginEnabled: false,
+			logStreamingManagedByEnv: false,
+			logStreamingDestinations: '',
+			mcpManagedByEnv: false,
+			mcpAccessEnabled: false,
 		},
 	} satisfies GlobalConfigShape;
 

@@ -52,7 +52,7 @@ export class CredentialResolverWorkflowService {
 			throw new Error('Credential resolver implementation not found');
 		}
 		try {
-			const decryptedConfig = this.cipher.decrypt(resolver.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolver.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			return {

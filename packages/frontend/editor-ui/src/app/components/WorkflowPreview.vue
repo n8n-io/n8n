@@ -22,6 +22,7 @@ const props = withDefaults(
 		focusOnLoad?: boolean;
 		hideControls?: boolean;
 		suppressNotifications?: boolean;
+		allowErrorNotifications?: boolean;
 		canExecute?: boolean;
 	}>(),
 	{
@@ -37,6 +38,7 @@ const props = withDefaults(
 		focusOnLoad: true,
 		hideControls: false,
 		suppressNotifications: false,
+		allowErrorNotifications: false,
 		canExecute: false,
 	},
 );
@@ -95,6 +97,7 @@ const loadWorkflow = () => {
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
 				suppressNotifications: props.suppressNotifications,
+				allowErrorNotifications: props.allowErrorNotifications,
 				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
@@ -273,6 +276,7 @@ defineExpose({ iframeRef, reloadExecution: loadExecution });
 				[$style.show]: showPreview,
 			}"
 			:src="iframeSrc"
+			:data-ndv-open="nodeViewDetailsOpened || undefined"
 			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"

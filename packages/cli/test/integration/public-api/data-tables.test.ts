@@ -2,6 +2,7 @@ import { testDb, createTeamProject, linkUserToProject } from '@n8n/backend-test-
 import type { Project, User } from '@n8n/db';
 import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
@@ -1628,5 +1629,375 @@ describe('GET /data-tables with projectId filter', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].name).toBe('personal-only-table');
+	});
+});
+
+describe('GET /data-tables/:dataTableId/columns', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('get', '/data-tables/123/columns', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('get', '/data-tables/123/columns', 'abcXYZ'),
+	);
+
+	test('should list columns for a data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'columns-test',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+			],
+		});
+
+		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+
+		expect(response.statusCode).toBe(200);
+		expect(Array.isArray(response.body)).toBe(true);
+		expect(response.body).toHaveLength(3);
+		expect(response.body[0]).toHaveProperty('id');
+		expect(response.body[0]).toHaveProperty('name');
+		expect(response.body[0]).toHaveProperty('type');
+		expect(response.body[0]).toHaveProperty('index');
+		expect(response.body[0]).toHaveProperty('dataTableId', dataTable.id);
+	});
+
+	test('should return 404 for non-existing data table', async () => {
+		const nonExistentId = 'abcd1234efgh5678';
+		const response = await authOwnerAgent.get(`/data-tables/${nonExistentId}/columns`);
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user does not have access', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'owner-columns-table',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authMemberAgent.get(`/data-tables/${dataTable.id}/columns`);
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('POST /data-tables/:dataTableId/columns', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('post', '/data-tables/123/columns', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('post', '/data-tables/123/columns', 'abcXYZ'),
+	);
+
+	test('should add a column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'add-column-test',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/columns`).send({
+			name: 'email',
+			type: 'string',
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(response.body).toHaveProperty('id');
+		expect(response.body).toHaveProperty('name', 'email');
+		expect(response.body).toHaveProperty('type', 'string');
+		expect(response.body).toHaveProperty('index', 1);
+
+		const listResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		expect(listResponse.body).toHaveLength(2);
+	});
+
+	test('should fail with invalid column type', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'invalid-type-test',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/columns`).send({
+			name: 'data',
+			type: 'json',
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should fail with duplicate column name', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'dup-column-test',
+			columns: [{ name: 'existing', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/columns`).send({
+			name: 'existing',
+			type: 'number',
+		});
+
+		expect(response.statusCode).toBe(409);
+	});
+
+	test('should fail with system column name', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'system-col-test',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.post(`/data-tables/${dataTable.id}/columns`).send({
+			name: 'createdAt',
+			type: 'date',
+		});
+
+		expect(response.statusCode).toBe(409);
+	});
+
+	test('should return 403 when user does not have access', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'no-access-add-col',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authMemberAgent.post(`/data-tables/${dataTable.id}/columns`).send({
+			name: 'newcol',
+			type: 'string',
+		});
+
+		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('DELETE /data-tables/:dataTableId/columns/:columnId', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('delete', '/data-tables/123/columns/456', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('delete', '/data-tables/123/columns/456', 'abcXYZ'),
+	);
+
+	test('should delete a column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'delete-col-test',
+			columns: [
+				{ name: 'keep', type: 'string' },
+				{ name: 'remove', type: 'string' },
+			],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body.find((c: any) => c.name === 'remove').id;
+
+		const response = await authOwnerAgent.delete(
+			`/data-tables/${dataTable.id}/columns/${columnId}`,
+		);
+
+		expect(response.statusCode).toBe(204);
+		expect(response.body).toEqual({});
+
+		const afterResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		expect(afterResponse.body).toHaveLength(1);
+		expect(afterResponse.body[0].name).toBe('keep');
+	});
+
+	test('should return 404 for non-existing column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'delete-missing-col',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const response = await authOwnerAgent.delete(
+			`/data-tables/${dataTable.id}/columns/AAAAAAAAAAAAAAAA`,
+		);
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user does not have access', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'no-access-delete-col',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+
+		const response = await authMemberAgent.delete(
+			`/data-tables/${dataTable.id}/columns/${columnId}`,
+		);
+
+		expect(response.statusCode).toBe(403);
+
+		const afterResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		expect(afterResponse.body).toHaveLength(1);
+	});
+});
+
+describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('patch', '/data-tables/123/columns/456', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('patch', '/data-tables/123/columns/456', 'abcXYZ'),
+	);
+
+	test('should rename a column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'rename-column-test',
+			columns: [{ name: 'old_name', type: 'string' }],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${columnId}`)
+			.send({
+				name: 'new_name',
+			});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('id', columnId);
+		expect(response.body).toHaveProperty('name', 'new_name');
+		expect(response.body).toHaveProperty('index', 0);
+	});
+
+	test('should move a column', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'move-column-test',
+			columns: [
+				{ name: 'first', type: 'string' },
+				{ name: 'second', type: 'string' },
+				{ name: 'third', type: 'string' },
+			],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const secondColumn = columnsResponse.body.find((column: any) => column.name === 'second');
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${secondColumn.id}`)
+			.send({ index: 0 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('id', secondColumn.id);
+		expect(response.body).toHaveProperty('name', 'second');
+		expect(response.body).toHaveProperty('index', 0);
+
+		const afterResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		expect(afterResponse.body[0]).toHaveProperty('id', secondColumn.id);
+	});
+
+	test('should rename and move a column in one request', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'rename-move-column-test',
+			columns: [
+				{ name: 'alpha', type: 'string' },
+				{ name: 'beta', type: 'string' },
+				{ name: 'gamma', type: 'string' },
+			],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const betaColumn = columnsResponse.body.find((column: any) => column.name === 'beta');
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${betaColumn.id}`)
+			.send({ name: 'beta_renamed', index: 2 });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).toHaveProperty('id', betaColumn.id);
+		expect(response.body).toHaveProperty('name', 'beta_renamed');
+		expect(response.body).toHaveProperty('index', 2);
+
+		const afterResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		expect(afterResponse.body[2]).toHaveProperty('id', betaColumn.id);
+		expect(afterResponse.body[2]).toHaveProperty('name', 'beta_renamed');
+	});
+
+	test('should fail when no update fields are provided', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'empty-patch-column-test',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${columnId}`)
+			.send({});
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test('should fail with duplicate column name', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'duplicate-name-column-test',
+			columns: [
+				{ name: 'email', type: 'string' },
+				{ name: 'phone', type: 'string' },
+			],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const phoneColumn = columnsResponse.body.find((column: any) => column.name === 'phone');
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${phoneColumn.id}`)
+			.send({ name: 'email' });
+
+		expect(response.statusCode).toBe(409);
+		expect(response.body).toHaveProperty('message');
+	});
+
+	test.each(DATA_TABLE_SYSTEM_COLUMNS)(
+		'should fail with reserved system column name %s',
+		async (systemColumnName) => {
+			const dataTable = await createDataTable(ownerPersonalProject, {
+				name: `reserved-name-column-test-${systemColumnName}`,
+				columns: [{ name: 'custom_name', type: 'string' }],
+			});
+
+			const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+			const columnId = columnsResponse.body[0].id;
+
+			const response = await authOwnerAgent
+				.patch(`/data-tables/${dataTable.id}/columns/${columnId}`)
+				.send({ name: systemColumnName });
+
+			expect(response.statusCode).toBe(409);
+			expect(response.body).toHaveProperty('message');
+		},
+	);
+
+	test('should return 403 when user does not have access', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'no-access-update-col',
+			columns: [{ name: 'col1', type: 'string' }],
+		});
+
+		const columnsResponse = await authOwnerAgent.get(`/data-tables/${dataTable.id}/columns`);
+		const columnId = columnsResponse.body[0].id;
+
+		const response = await authMemberAgent
+			.patch(`/data-tables/${dataTable.id}/columns/${columnId}`)
+			.send({
+				name: 'updated_by_member',
+			});
+
+		expect(response.statusCode).toBe(403);
 	});
 });

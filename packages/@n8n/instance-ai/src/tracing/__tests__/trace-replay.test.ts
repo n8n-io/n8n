@@ -250,6 +250,29 @@ describe('TraceIndex', () => {
 		);
 	});
 
+	it('should scan forward for a matching tool when requested', () => {
+		const events: TraceEvent[] = [
+			makeToolCall(1, 'orchestrator', 'credentials'),
+			makeToolCall(2, 'orchestrator', 'build-workflow-with-agent'),
+			makeToolCall(3, 'orchestrator', 'plan'),
+		];
+
+		const index = new TraceIndex(events);
+
+		expect(index.nextMatching('orchestrator', 'plan')?.stepId).toBe(3);
+		expect(index.nextMatching('orchestrator', 'credentials')).toBeNull();
+	});
+
+	it('should return null from matching lookup when trace is exhausted or role is unknown', () => {
+		const events: TraceEvent[] = [makeToolCall(1, 'orchestrator', 'search-nodes')];
+
+		const index = new TraceIndex(events);
+
+		expect(index.nextMatching('unknown-role', 'search-nodes')).toBeNull();
+		expect(index.nextMatching('orchestrator', 'search-nodes')?.stepId).toBe(1);
+		expect(index.nextMatching('orchestrator', 'another-tool')).toBeNull();
+	});
+
 	it('should handle interleaved orchestrator and sub-agent calls', () => {
 		const events: TraceEvent[] = [
 			makeToolCall(1, 'orchestrator', 'tool-a'),

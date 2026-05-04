@@ -11,6 +11,7 @@ jest.mock('@n8n/instance-ai', () => ({
 
 import { mock } from 'jest-mock-extended';
 import type {
+	AiBuilderTemporaryWorkflowRepository,
 	User,
 	ExecutionRepository,
 	ProjectRepository,
@@ -31,6 +32,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { NodeTypes } from '@/node-types';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
@@ -75,6 +77,7 @@ const credentialsFinderService = mock<CredentialsFinderService>();
 const activeExecutions = mock<ActiveExecutions>();
 const workflowRunner = mock<WorkflowRunner>();
 const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+const nodeTypes = mock<NodeTypes>();
 const dataTableService = mock<DataTableService>();
 const dataTableRepository = mock<DataTableRepository>();
 const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -90,6 +93,7 @@ const executionPersistence = mock<ExecutionPersistence>();
 const eventService = mock<EventService>();
 const roleService = mock<RoleService>();
 const telemetry = mock<Telemetry>();
+const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
 
 const service = new InstanceAiAdapterService(
 	logger,
@@ -105,6 +109,7 @@ const service = new InstanceAiAdapterService(
 	activeExecutions,
 	workflowRunner,
 	loadNodesAndCredentials,
+	nodeTypes,
 	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
@@ -121,6 +126,7 @@ const service = new InstanceAiAdapterService(
 	eventService,
 	roleService,
 	telemetry,
+	aiBuilderTemporaryWorkflowRepository,
 );
 
 const user = mock<User>({

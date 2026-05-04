@@ -144,9 +144,9 @@ describe('init()', () => {
 
 describe('add()', () => {
 	describe('in single-main mode', () => {
-		test.each(['activate', 'update'])(
+		test.each<WorkflowActivateMode>(['activate', 'update'])(
 			"should add webhooks, triggers and pollers for workflow in '%s' activation mode",
-			async (mode: WorkflowActivateMode) => {
+			async (mode) => {
 				await activeWorkflowManager.init();
 
 				const dbWorkflow = await createActiveWorkflow();

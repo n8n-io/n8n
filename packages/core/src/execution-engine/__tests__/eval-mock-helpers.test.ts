@@ -191,6 +191,14 @@ describe('eval-mock-helpers', () => {
 			expect(result.oauthTokenData).toBeDefined();
 			expect(result.privateKey).toBeDefined();
 		});
+
+		it('should produce structurally valid JSON for properties of type "json"', () => {
+			const result = buildEvalMockCredentials([
+				credProp({ name: 'json', type: 'json', default: '' }),
+			]);
+
+			expect(() => JSON.parse(result.json as string)).not.toThrow();
+		});
 	});
 
 	// -----------------------------------------------------------------------
