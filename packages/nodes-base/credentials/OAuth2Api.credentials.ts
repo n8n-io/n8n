@@ -1,20 +1,5 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const jweFields: INodeProperties[] =
-	process.env.N8N_ENV_FEAT_OAUTH2_JWE === 'true'
-		? [
-				{
-					displayName: 'Encrypted Tokens (JWE)',
-					name: 'jweEnabled',
-					type: 'boolean',
-					default: false,
-					description:
-						'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected.',
-					doNotInherit: true,
-				},
-			]
-		: [];
-
 export class OAuth2Api implements ICredentialType {
 	name = 'oAuth2Api';
 
@@ -218,6 +203,29 @@ export class OAuth2Api implements ICredentialType {
 				'HTTP status code that indicates the token has expired. Some APIs return 403 instead of 401.',
 			doNotInherit: true,
 		},
-		...jweFields,
+		{
+			displayName: 'Encrypted Tokens (JWE)',
+			name: 'jweEnabled',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected. The field is hidden by the server unless the OAuth2 JWE feature is enabled.',
+			doNotInherit: true,
+		},
+		{
+			// `displayName` is filled in at runtime by FrontendService with the
+			// instance JWKS URI. Server-side gating drops both this notice and
+			// the toggle above when the OAuth2 JWE feature flag is off.
+			displayName: '',
+			name: 'jwksUriNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+				},
+			},
+			doNotInherit: true,
+		},
 	];
 }
