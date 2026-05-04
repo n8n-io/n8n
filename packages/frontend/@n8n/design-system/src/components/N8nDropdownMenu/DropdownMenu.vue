@@ -57,7 +57,6 @@ provide(
 
 // Handle controlled/uncontrolled state
 const internalOpen = ref(props.defaultOpen ?? false);
-const isControlled = computed(() => props.modelValue !== undefined);
 
 const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
@@ -89,11 +88,6 @@ const navigation = useMenuKeyboardNavigation({
 });
 
 const { highlightedIndex } = navigation;
-
-const openState = computed(() => {
-	if (isControlled.value || internalOpen.value) return internalOpen.value;
-	return props.modal ? undefined : internalOpen.value;
-});
 
 const placementParts = computed(() => {
 	const [sideValue, alignValue] = props.placement.split('-');
@@ -275,7 +269,7 @@ defineExpose({ open, close });
 </script>
 
 <template>
-	<DropdownMenuRoot :modal="modal" :open="openState" @update:open="handleOpenChange">
+	<DropdownMenuRoot :modal="modal" :open="internalOpen" @update:open="handleOpenChange">
 		<DropdownMenuTrigger as-child :disabled="disabled">
 			<span
 				v-if="slots.trigger"
