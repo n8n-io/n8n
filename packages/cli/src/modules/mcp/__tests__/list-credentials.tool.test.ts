@@ -126,6 +126,21 @@ describe('list-credentials MCP tool', () => {
 					filter: { name: 'prod', type: 'slackApi', projectId: 'proj-1' },
 				},
 				onlySharedWithMe: true,
+				includeGlobal: false,
+			});
+		});
+
+		test('disables includeGlobal when onlySharedWithMe is true so globals do not leak through', async () => {
+			const credentialsService = mockInstance(CredentialsService, {
+				getMany: jest.fn().mockResolvedValue([]),
+			});
+
+			await listCredentials(user, credentialsService, { onlySharedWithMe: true });
+
+			const [, optionsArg] = (credentialsService.getMany as jest.Mock).mock.calls[0];
+			expect(optionsArg).toMatchObject({
+				onlySharedWithMe: true,
+				includeGlobal: false,
 			});
 		});
 

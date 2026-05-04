@@ -179,7 +179,7 @@ export async function listCredentials(
 		listQueryOptions,
 		includeScopes: true,
 		includeData: false,
-		includeGlobal: true,
+		includeGlobal: !onlySharedWithMe,
 		onlySharedWithMe,
 	});
 
