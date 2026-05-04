@@ -71,8 +71,6 @@ export class BuilderSandboxSessionRegistry {
 
 	private readonly byThreadWorkflowId = new Map<string, string>();
 
-	private readonly byThreadWorkItemId = new Map<string, string>();
-
 	constructor(private readonly ttlMs: number) {}
 
 	get enabled(): boolean {
@@ -113,10 +111,6 @@ export class BuilderSandboxSessionRegistry {
 		};
 
 		this.sessions.set(session.sessionId, session);
-		this.byThreadWorkItemId.set(
-			sessionKey(session.threadId, session.workItemId),
-			session.sessionId,
-		);
 		if (session.workflowId) {
 			this.byThreadWorkflowId.set(
 				sessionKey(session.threadId, session.workflowId),
@@ -215,7 +209,6 @@ export class BuilderSandboxSessionRegistry {
 		if (!session) return;
 
 		this.sessions.delete(session.sessionId);
-		this.byThreadWorkItemId.delete(sessionKey(session.threadId, session.workItemId));
 		if (session.workflowId) {
 			this.byThreadWorkflowId.delete(sessionKey(session.threadId, session.workflowId));
 		}
