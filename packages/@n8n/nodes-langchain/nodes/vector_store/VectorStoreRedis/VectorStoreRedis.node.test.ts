@@ -213,7 +213,7 @@ describe('VectorStoreRedis.node', () => {
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
 			// Provide a base class method that ExtendedRedisVectorSearch will call via super
-			const RedisVectorStoreMod: any = vi.requireMock('@langchain/redis');
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
 			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
@@ -277,7 +277,7 @@ describe('VectorStoreRedis.node', () => {
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.requireMock('@langchain/redis');
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
 			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
@@ -317,7 +317,7 @@ describe('VectorStoreRedis.node', () => {
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.requireMock('@langchain/redis');
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
 			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
@@ -369,7 +369,7 @@ describe('VectorStoreRedis.node', () => {
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.requireMock('@langchain/redis');
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
 			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
@@ -435,7 +435,7 @@ describe('VectorStoreRedis.node', () => {
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.requireMock('@langchain/redis');
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
 			RedisVectorStoreMod.RedisVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context: any = {
@@ -492,7 +492,7 @@ describe('VectorStoreRedis.node', () => {
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = vi.requireMock('@langchain/redis');
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
 			RedisVectorStoreMod.RedisVectorStore.fromDocuments = vi
 				.fn()
 				.mockRejectedValue(new Error('fail'));
