@@ -1,4 +1,4 @@
-import { Logger, safeJoinPath } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -125,18 +125,14 @@ export class MessageEventBus extends EventEmitter {
 	}
 
 	private warnIfDefaultLocationEventLogsCoexist(processType: EventLogProcessType): void {
-		const suffix =
-			processType === 'worker'
-				? '-worker'
-				: processType === 'webhook-processor'
-					? '-webhook-processor'
-					: '';
-		const defaultBase = safeJoinPath(
-			this.instanceSettings.n8nFolder,
-			`${this.globalConfig.eventBus.logWriter.logBaseName}${suffix}`,
-		);
+		const { logFullBasePath: defaultBase, logFileName: defaultLogFile } = resolveEventLogPath({
+			logFullPath: '',
+			logBaseName: this.globalConfig.eventBus.logWriter.logBaseName,
+			instanceDir: this.instanceSettings.n8nFolder,
+			processType,
+		});
 		const candidates = [
-			`${defaultBase}.log`,
+			defaultLogFile,
 			...Array.from(
 				{ length: this.globalConfig.eventBus.logWriter.keepLogCount },
 				(_, i) => `${defaultBase}-${i + 1}.log`,
