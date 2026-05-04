@@ -26,7 +26,6 @@ import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import ResourceCenterTooltip from '@/experiments/resourceCenter/components/ResourceCenterTooltip.vue';
 import { useResourceCenterStore } from '@/experiments/resourceCenter/stores/resourceCenter.store';
-import { useInstanceRegistryStore } from '@/features/instanceRegistry/stores/instanceRegistry.store';
 import { LOCAL_STORAGE_SIDEBAR_WIDTH } from '@/app/constants';
 import { useSidebarExpandedExperiment } from '@/experiments/sidebarExpanded';
 import { trackTemplatesClick, TemplateClickSource } from '@/experiments/utils';
@@ -39,7 +38,6 @@ const uiStore = useUIStore();
 const versionsStore = useVersionsStore();
 const workflowsStore = useWorkflowsStore();
 const resourceCenterStore = useResourceCenterStore();
-const instanceRegistryStore = useInstanceRegistryStore();
 
 const i18n = useI18n();
 const router = useRouter();
@@ -237,7 +235,6 @@ watch(isCollapsed, () => {
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
 	if (isAiGatewayEnabled.value) void fetchWallet();
-	void instanceRegistryStore.fetchClusterInfo();
 
 	void nextTick(() => {
 		checkOverflow();
