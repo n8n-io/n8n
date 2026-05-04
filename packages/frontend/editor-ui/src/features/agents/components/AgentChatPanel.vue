@@ -162,7 +162,9 @@ const seedMessage = props.initialMessage;
 async function sendSeedMessage(message: string): Promise<void> {
 	try {
 		await props.beforeSend?.();
-		await sendMessage(message);
+		const sending = sendMessage(message);
+		emit('initial-consumed');
+		await sending;
 	} catch {
 		// Autosave errors are surfaced by the caller that owns the flush.
 	}
@@ -177,11 +179,8 @@ onMounted(() => {
 	// and wants us to seed it with the first message — there's no thread to
 	// load yet, and hitting the history endpoint would 404. The seed was
 	// already sent synchronously during setup (see the `seedMessage` block
-	// above) — here we just emit `initial-consumed` so the parent can clear
-	// its source ref. This guards against re-sending on HMR / any re-mount
-	// where the parent's prompt ref is still populated.
+	// above).
 	if (seedMessage) {
-		emit('initial-consumed');
 		return;
 	}
 	void loadHistory();

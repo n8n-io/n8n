@@ -116,4 +116,32 @@ describe('AgentChatPanel', () => {
 		expect(sendMessageMock).toHaveBeenCalledWith('update config');
 		expect(events).toEqual(['beforeSend', 'sendMessage']);
 	});
+
+	it('does not consume an initial message when beforeSend fails', async () => {
+		const beforeSend = vi.fn().mockRejectedValue(new Error('flush failed'));
+
+		const { default: AgentChatPanel } = await import('../components/AgentChatPanel.vue');
+		const wrapper = mount(AgentChatPanel, {
+			props: {
+				projectId: 'p1',
+				agentId: 'a1',
+				endpoint: 'build',
+				initialMessage: 'seed build prompt',
+				agentConfig: {
+					name: 'Agent',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Help.',
+				},
+				agentStatus: 'draft',
+				connectedTriggers: [],
+				beforeSend,
+			},
+		});
+
+		await flushPromises();
+
+		expect(beforeSend).toHaveBeenCalledTimes(1);
+		expect(sendMessageMock).not.toHaveBeenCalled();
+		expect(wrapper.emitted('initial-consumed')).toBeUndefined();
+	});
 });

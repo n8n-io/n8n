@@ -42,6 +42,8 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 	let autosaveInFlight: Promise<void> | null = null;
 	let saveStatusResetTimer: ReturnType<typeof setTimeout> | null = null;
 	let pendingSnapshot: TSnapshot | null = null;
+	let pendingSnapshotRevision = 0;
+	let latestSnapshotRevision = 0;
 	let lastSaveError: Error | null = null;
 
 	function toError(error: unknown): Error {
@@ -94,11 +96,13 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 
 	function scheduleAutosave(snapshot: TSnapshot) {
 		pendingSnapshot = snapshot;
+		pendingSnapshotRevision = ++latestSnapshotRevision;
 		if (autosaveTimer !== null) clearTimeout(autosaveTimer);
 		autosaveTimer = setTimeout(() => {
 			autosaveTimer = null;
 			const target = pendingSnapshot as TSnapshot;
 			pendingSnapshot = null;
+			pendingSnapshotRevision = 0;
 			void chainSave(target, false);
 		}, getDebounceTime(debounceMs));
 	}
@@ -118,13 +122,18 @@ export function useAgentConfigAutosave<TSnapshot>(params: UseAgentConfigAutosave
 		}
 
 		const target = pendingSnapshot;
+		const targetRevision = pendingSnapshotRevision;
 		pendingSnapshot = null;
+		pendingSnapshotRevision = 0;
 
 		if (target !== null) {
 			try {
 				await chainSave(target, true);
 			} catch (error) {
-				pendingSnapshot = target;
+				if (latestSnapshotRevision === targetRevision && pendingSnapshot === null) {
+					pendingSnapshot = target;
+					pendingSnapshotRevision = targetRevision;
+				}
 				throw error;
 			}
 			return;
