@@ -772,7 +772,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews,
 		areNotificationsSuppressed,
 		allowErrorNotificationsWhenSuppressed,
-		aiInitiatedExecutionIds,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,

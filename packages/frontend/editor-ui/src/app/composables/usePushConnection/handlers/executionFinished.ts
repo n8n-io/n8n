@@ -370,8 +370,7 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 			type: 'success',
 		});
 	} else if (execution.data?.resultData.error) {
-		// AI-initiated test executions surface failures in the builder UI, so the
-		// editor-level toast is redundant and confusing for the user.
+		// AI-initiated runs surface failures in the builder UI.
 		if (!useUIStore().isExecutionAiInitiated(execution.id)) {
 			const { message, title } = getExecutionErrorToastConfiguration({
 				error: execution.data.resultData.error,
