@@ -230,3 +230,15 @@
 		transform: translateY(var(--animation--typing-blink--translate, -2px));
 	}
 }
+
+@mixin width-transition {
+	transition: width var(--animation--width-transition--duration, var(--duration--snappy))
+		var(--animation--width-transition--easing, var(--easing--ease-out));
+	will-change: width;
+}
+
+@mixin height-transition {
+	transition: height var(--animation--height-transition--duration, var(--duration--snappy))
+		var(--animation--height-transition--easing, var(--easing--ease-out));
+	will-change: height;
+}

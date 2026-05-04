@@ -213,22 +213,10 @@ const isOpen = computed({
 	}
 
 	&[data-state='open'] {
-		--animation--collapsible-slide--duration: var(
-			--animation--duration--collapse,
-			var(--animation--duration)
-		);
-		--animation--collapsible-slide--easing: var(--animation--easing);
-
 		@include motion.collapsible-slide-down;
 	}
 
 	&[data-state='closed'] {
-		--animation--collapsible-slide--duration: var(
-			--animation--duration--collapse,
-			var(--animation--duration)
-		);
-		--animation--collapsible-slide--easing: var(--animation--easing);
-
 		@include motion.collapsible-slide-up;
 	}
 
