@@ -136,7 +136,9 @@ function createSandboxFactory(
 	};
 
 	const imageManager =
-		config.provider === 'daytona' ? new SnapshotManager(config.image, factoryLogger) : undefined;
+		config.provider === 'daytona'
+			? new SnapshotManager(config.image, factoryLogger, undefined)
+			: undefined;
 	return new BuilderSandboxFactory(config, imageManager, factoryLogger);
 }
 
@@ -289,6 +291,7 @@ async function runExample(
 	try {
 		const evaluator = createPairwiseEvaluator(judgeLlm, { numJudges: args.judges });
 		const feedback = await evaluator.evaluate(build.workflow, {
+			prompt: example.prompt,
 			dos: example.dos,
 			donts: example.donts,
 		});
