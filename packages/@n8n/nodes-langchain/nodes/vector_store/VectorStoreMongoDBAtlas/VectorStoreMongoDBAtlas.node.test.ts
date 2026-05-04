@@ -45,9 +45,11 @@ describe('VectorStoreMongoDBAtlas', () => {
 				connect: vi.fn().mockResolvedValue(undefined),
 				close: vi.fn().mockResolvedValue(undefined),
 			};
-			MockMongoClient.mockImplementationOnce(
-				() => mockClient as unknown as MongoClient,
-			).mockImplementationOnce(() => mockClient2 as unknown as MongoClient);
+			MockMongoClient.mockImplementationOnce(function () {
+				return mockClient as unknown as MongoClient;
+			}).mockImplementationOnce(function () {
+				return mockClient2 as unknown as MongoClient;
+			});
 			mockContext.getCredentials.mockResolvedValue({
 				configurationType: 'connectionString',
 				connectionString: 'mongodb://localhost:27017',
@@ -64,7 +66,9 @@ describe('VectorStoreMongoDBAtlas', () => {
 		});
 
 		it('should create client with connectionString config', async () => {
-			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
+			MockMongoClient.mockImplementation(function () {
+				return mockClient as unknown as MongoClient;
+			});
 			mockContext.getCredentials.mockResolvedValue({
 				configurationType: 'connectionString',
 				connectionString: 'mongodb://localhost:27017',
@@ -85,7 +89,9 @@ describe('VectorStoreMongoDBAtlas', () => {
 		});
 
 		it('should create client with values configuration and port specified', async () => {
-			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
+			MockMongoClient.mockImplementation(function () {
+				return mockClient as unknown as MongoClient;
+			});
 			mockContext.getCredentials.mockResolvedValue({
 				configurationType: 'values',
 				host: 'localhost',
@@ -110,7 +116,9 @@ describe('VectorStoreMongoDBAtlas', () => {
 		});
 
 		it('should create client with values configuration without port (Atlas format)', async () => {
-			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
+			MockMongoClient.mockImplementation(function () {
+				return mockClient as unknown as MongoClient;
+			});
 			mockContext.getCredentials.mockResolvedValue({
 				configurationType: 'values',
 				host: 'cluster0.mongodb.net',
@@ -151,7 +159,9 @@ describe('VectorStoreMongoDBAtlas', () => {
 					}),
 				}),
 			};
-			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
+			MockMongoClient.mockImplementation(function () {
+				return mockClient as unknown as MongoClient;
+			});
 
 			const context = mock<ILoadOptionsFunctions>({
 				getCredentials: vi.fn().mockResolvedValue({
@@ -184,7 +194,9 @@ describe('VectorStoreMongoDBAtlas', () => {
 					}),
 				}),
 			};
-			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
+			MockMongoClient.mockImplementation(function () {
+				return mockClient as unknown as MongoClient;
+			});
 
 			const context = mock<ILoadOptionsFunctions>({
 				getCredentials: vi.fn().mockResolvedValue({
