@@ -8,17 +8,17 @@ import type { AzureEntraCognitiveServicesOAuth2ApiCredential } from '../types';
 
 // Mock the N8nOAuth2TokenCredential
 vi.mock('../credentials/N8nOAuth2TokenCredential', () => ({
-	N8nOAuth2TokenCredential: vi.fn().mockImplementation(() => ({
-		getToken: vi.fn().mockResolvedValue({
+	N8nOAuth2TokenCredential: class N8nOAuth2TokenCredentialMock {
+		getToken = vi.fn().mockResolvedValue({
 			token: 'test-token',
 			expiresOnTimestamp: 1234567890,
-		}),
-		getDeploymentDetails: vi.fn().mockResolvedValue({
+		});
+		getDeploymentDetails = vi.fn().mockResolvedValue({
 			apiVersion: '2023-05-15',
 			endpoint: 'https://test.openai.azure.com',
 			resourceName: 'test-resource',
-		}),
-	})),
+		});
+	},
 }));
 
 const mockNode: INode = {
