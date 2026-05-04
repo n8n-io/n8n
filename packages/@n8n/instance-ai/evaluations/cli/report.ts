@@ -337,11 +337,16 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
 		? `<div class="error">${escapeHtml(record.build.errorMessage)}</div>`
 		: '';
 
+	const promptPreview = record.prompt.replace(/\s+/g, ' ').trim();
+
 	return `
 <details class="example ${statusCls}" id="${escapeAttr(exampleId)}">
   <summary>
     <span class="status">${statusLabel}</span>
-    <span class="example-id">${escapeHtml(record.exampleId)}</span>
+    <div class="summary-text">
+      <span class="prompt-preview" title="${escapeAttr(promptPreview)}">${escapeHtml(promptPreview)}</span>
+      <span class="example-id">${escapeHtml(record.exampleId)}</span>
+    </div>
     <span class="iteration">#${record.iteration}</span>
     <span class="duration">${record.build.durationMs}ms</span>
     <span class="badges">${renderFeedbackBadges(record.feedback)}</span>
@@ -428,14 +433,6 @@ function renderRun(run: Run, index: number): string {
 }
 
 export function renderDocument(runs: Run[]): string {
-	const runLinks = runs
-		.map((run, i) => {
-			const s = run.summary;
-			const pct = (s.totals.primaryPassRate * 100).toFixed(0);
-			return `<a href="#run-${i}"><span class="nav-exp">${escapeHtml(s.experimentName)}</span><span class="nav-time">${escapeHtml(s.startedAt)}</span><span class="nav-score">${pct}%</span></a>`;
-		})
-		.join('\n');
-
 	const body = runs.map((run, i) => renderRun(run, i)).join('\n');
 
 	return `<!DOCTYPE html>
@@ -463,12 +460,7 @@ export function renderDocument(runs: Run[]): string {
   }
   body { margin: 0; background: var(--bg); color: var(--fg); }
   header.top { position: sticky; top: 0; background: var(--card); border-bottom: 1px solid var(--border); padding: 12px 20px; z-index: 10; }
-  header.top h1 { margin: 0 0 6px 0; font-size: 18px; }
-  nav.runs { display: flex; flex-wrap: wrap; gap: 8px; }
-  nav.runs a { display: inline-flex; gap: 6px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; text-decoration: none; color: inherit; font-size: 12px; background: var(--subtle); }
-  nav.runs a:hover { border-color: var(--accent); color: var(--accent); }
-  nav.runs .nav-time { color: var(--muted); }
-  nav.runs .nav-score { font-weight: 600; }
+  header.top h1 { margin: 0; font-size: 18px; }
   main { padding: 20px; display: flex; flex-direction: column; gap: 32px; max-width: 1400px; margin: 0 auto; }
   section.run { background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   section.run header.run-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: var(--subtle); }
@@ -486,7 +478,7 @@ export function renderDocument(runs: Run[]): string {
     cursor: pointer;
     padding: 10px 20px;
     display: grid;
-    grid-template-columns: 60px minmax(0, 1fr) 40px 80px auto;
+    grid-template-columns: 160px minmax(0, 1fr) 40px 80px auto;
     gap: 12px;
     align-items: center;
     font-size: 13px;
@@ -500,11 +492,16 @@ export function renderDocument(runs: Run[]): string {
     border-radius: 3px;
     letter-spacing: 0.03em;
     text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
+  details.example > summary .summary-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  details.example > summary .prompt-preview { font-size: 13px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   details.ex-pass > summary .status { background: rgba(63,185,80,0.18); color: var(--pass); }
   details.ex-partial > summary .status { background: rgba(210,153,34,0.18); color: var(--partial); }
   details.ex-fail > summary .status { background: rgba(248,81,73,0.18); color: var(--fail); }
-  details.example > summary .example-id { font-family: ui-monospace, monospace; font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  details.example > summary .example-id { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   details.example > summary .iteration { color: var(--muted); font-size: 11px; }
   details.example > summary .duration { color: var(--muted); font-size: 11px; text-align: right; }
   details.example > summary .badges { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
@@ -562,7 +559,6 @@ export function renderDocument(runs: Run[]): string {
 <body>
 <header class="top">
   <h1>Instance AI — Pairwise Eval Report (${runs.length} run${runs.length === 1 ? '' : 's'})</h1>
-  <nav class="runs">${runLinks}</nav>
 </header>
 <main>${body}</main>
 <script>
