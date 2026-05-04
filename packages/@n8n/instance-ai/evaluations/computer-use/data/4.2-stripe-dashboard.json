@@ -1,0 +1,27 @@
+{
+	"id": "4.2-stripe-dashboard",
+	"category": "browser",
+	"prompt": "Can you check my Stripe dashboard and tell me what webhooks are currently configured?",
+	"budgets": { "maxToolCalls": 50, "maxDurationMs": 600000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "browser_navigate" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 50,
+			"maxToolResultTokensEst": 250000,
+			"maxSingleToolResultTokensEst": 60000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["stripe|webhook|dashboard\\.stripe"]
+		}
+	],
+	"tags": [
+		"browser",
+		"research",
+		"requires:browser-bootstrap",
+		"requires:third-party-account:stripe"
+	]
+}

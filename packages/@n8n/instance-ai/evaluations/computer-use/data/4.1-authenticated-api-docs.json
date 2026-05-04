@@ -1,0 +1,22 @@
+{
+	"id": "4.1-authenticated-api-docs",
+	"category": "browser",
+	"prompt": "I need to set up an HTTP Request node to call our internal API. The docs are at https://docs.n8n.io/api/ and I want to know what endpoints are available. Can you check?",
+	"budgets": { "maxToolCalls": 40, "maxDurationMs": 600000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "browser_navigate" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 40,
+			"maxToolResultTokensEst": 200000,
+			"maxSingleToolResultTokensEst": 50000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["endpoint|api|workflow|execution"]
+		}
+	],
+	"tags": ["browser", "research", "requires:browser-bootstrap"]
+}

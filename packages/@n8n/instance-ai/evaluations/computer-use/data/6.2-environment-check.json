@@ -1,0 +1,23 @@
+{
+	"id": "6.2-environment-check",
+	"category": "shell",
+	"prompt": "Can you check if I have Node.js and Python installed on my machine, and what versions?",
+	"budgets": { "maxToolCalls": 10, "maxDurationMs": 120000 },
+	"graders": [
+		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "shell_execute" },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 },
+		{
+			"type": "trace.budget",
+			"maxToolCalls": 10,
+			"maxToolResultTokensEst": 20000,
+			"maxSingleToolResultTokensEst": 10000
+		},
+		{
+			"type": "trace.finalTextMatches",
+			"anyOf": ["node", "python"],
+			"allOf": ["node", "python"]
+		}
+	],
+	"tags": ["shell", "regression"]
+}

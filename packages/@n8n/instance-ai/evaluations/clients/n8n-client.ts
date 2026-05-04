@@ -184,6 +184,39 @@ export class N8nClient {
 		await this.fetch(`/rest/instance-ai/threads/${threadId}`, { method: 'DELETE' });
 	}
 
+	// -- Computer-use gateway (pairing + status) -----------------------------
+
+	/**
+	 * Generate a one-shot pairing token for the local computer-use daemon.
+	 * POST /rest/instance-ai/gateway/create-link
+	 */
+	async createGatewayLink(): Promise<{ token: string; command: string }> {
+		const result = (await this.fetch('/rest/instance-ai/gateway/create-link', {
+			method: 'POST',
+		})) as { data: { token: string; command: string } };
+		return result.data;
+	}
+
+	/**
+	 * Read the local gateway status. The daemon flips this to `connected: true`
+	 * once it has registered its capabilities.
+	 * GET /rest/instance-ai/gateway/status
+	 */
+	async getGatewayStatus(): Promise<{
+		connected: boolean;
+		directory: string | null;
+		toolCategories: Array<{ name: string; enabled: boolean }>;
+	}> {
+		const result = (await this.fetch('/rest/instance-ai/gateway/status')) as {
+			data: {
+				connected: boolean;
+				directory: string | null;
+				toolCategories: Array<{ name: string; enabled: boolean }>;
+			};
+		};
+		return result.data;
+	}
+
 	// -- REST API (verification helpers) -------------------------------------
 
 	/**
