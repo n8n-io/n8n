@@ -203,7 +203,16 @@ export class ChatIntegrationService {
 	/**
 	 * Diff the previous and next chat integrations of an agent and reconcile
 	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
-	 * after the builder writes a new integrations array.
+	 * after the builder writes a new integrations array, and by
+	 * `AgentsService.publishAgent` to wake up integrations that were persisted
+	 * while the agent was still a draft.
+	 *
+	 * Disconnects of removed integrations always run (so unpublishing-then-
+	 * editing works). Connects of newly-added integrations are gated on
+	 * `agent.publishedVersion` — matching the controller's connect endpoint,
+	 * which rejects unpublished agents, and `reconnectAll`, which only restores
+	 * published agents. The integration entry stays persisted on the entity so
+	 * it can be picked up later by `publishAgent` calling this method again.
 	 *
 	 * Connection failures are logged at the call site — this method propagates
 	 * errors from disconnect but swallows connect errors per integration so a
@@ -232,12 +241,21 @@ export class ChatIntegrationService {
 			}
 		}
 
+		const additions = next.filter((i) => !previousKeys.has(key(i)));
+
+		if (additions.length > 0 && !agent.publishedVersion) {
+			this.logger.debug(
+				'[ChatIntegrationService] Skipping connect for unpublished agent — entry persisted, will connect on publish',
+				{ agentId: agent.id, pendingTypes: additions.map((i) => i.type) },
+			);
+			return;
+		}
+
 		// TODO: AgentCredentialIntegration has no record of *who* connected the
 		// integration, so we have no anchor user identity to decrypt credentials
 		// with on reconnect / sync. We fall back to probing project members until
 		// one has `credential:read` on the integration credential.
 		// Replace with a proper solution (fetching credentials should not depend on any specific user)
-		const additions = next.filter((i) => !previousKeys.has(key(i)));
 		const userIds = additions.length
 			? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(agent.projectId)
 			: [];

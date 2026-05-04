@@ -8,6 +8,7 @@ import type {
 } from '@n8n/agents';
 import {
 	AGENT_SCHEDULE_TRIGGER_TYPE,
+	isAgentCredentialIntegration,
 	isAgentScheduleIntegration,
 	type AgentSkill,
 	type AgentSkillMutationResponse,
@@ -291,6 +292,24 @@ export class AgentsService {
 		// Evict any cached draft runtime so integration executions pick up
 		// the new published snapshot on their next request.
 		this.clearRuntimes(agentId);
+
+		// Wake up any chat integrations that were persisted while the agent
+		// was a draft. ChatIntegrationService.syncToConfig gates connect on
+		// publish, so the entries sat dormant on agent.integrations; passing
+		// previous=[] makes every persisted integration an addition.
+		const credentialIntegrations = (agent.integrations ?? []).filter(isAgentCredentialIntegration);
+		if (credentialIntegrations.length > 0) {
+			// eslint-disable-next-line import-x/no-cycle
+			const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
+			await Container.get(ChatIntegrationService)
+				.syncToConfig(agent, [], credentialIntegrations)
+				.catch((error) =>
+					this.logger.warn('Failed to connect integrations on publish', {
+						agentId,
+						error,
+					}),
+				);
+		}
 
 		this.logger.debug('Published SDK agent', { agentId, projectId, userId });
 

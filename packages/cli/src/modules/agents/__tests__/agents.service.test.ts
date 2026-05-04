@@ -334,6 +334,60 @@ describe('AgentsService', () => {
 			expect(result.publishedVersion).toBe(publishedVersion);
 			expect(result).toBe(agent);
 		});
+
+		it('connects persisted credential integrations after publishing', async () => {
+			const integrations: AgentIntegration[] = [
+				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+				{
+					type: 'schedule',
+					active: false,
+					cronExpression: '0 9 * * *',
+					wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+				},
+			];
+			const agent = makeAgent({ integrations });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(
+				makePublishedVersion(),
+			);
+
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
+			Container.set(ChatIntegrationService, chatIntegrationService);
+
+			await service.publishAgent(agentId, projectId, userId);
+
+			expect(chatIntegrationService.syncToConfig).toHaveBeenCalledWith(
+				agent,
+				[],
+				[{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' }],
+			);
+		});
+
+		it('does not call syncToConfig when no credential integrations are persisted', async () => {
+			const agent = makeAgent({
+				integrations: [
+					{
+						type: 'schedule',
+						active: false,
+						cronExpression: '0 9 * * *',
+						wakeUpPrompt: DEFAULT_AGENT_SCHEDULE_WAKE_UP_PROMPT,
+					},
+				],
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			agentPublishedVersionRepository.savePublishedVersion.mockResolvedValue(
+				makePublishedVersion(),
+			);
+
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.syncToConfig.mockResolvedValue(undefined);
+			Container.set(ChatIntegrationService, chatIntegrationService);
+
+			await service.publishAgent(agentId, projectId, userId);
+
+			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('executeForChatPublished', () => {
