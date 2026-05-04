@@ -272,7 +272,9 @@
 @keyframes fadeInDown {
 	from {
 		opacity: 0;
-		transform: translateY(var(--animation--fade-in-down--translate, var(--spacing--4xs)));
+		transform: translateY(
+			calc(-1 * var(--animation--fade-in-down--translate, var(--spacing--4xs)))
+		);
 	}
 	to {
 		opacity: 1;
@@ -292,7 +294,9 @@
 @keyframes fadeInLeft {
 	from {
 		opacity: 0;
-		transform: translateX(var(--animation--fade-in-left--translate, var(--spacing--4xs)));
+		transform: translateX(
+			calc(-1 * var(--animation--fade-in-left--translate, var(--spacing--4xs)))
+		);
 	}
 	to {
 		opacity: 1;
@@ -374,7 +378,7 @@
 	}
 	to {
 		opacity: 0;
-		transform: translateY(var(--animation--fade-out-up--translate, var(--spacing--4xs)));
+		transform: translateY(calc(-1 * var(--animation--fade-out-up--translate, var(--spacing--4xs))));
 	}
 }
 
@@ -394,7 +398,9 @@
 	}
 	to {
 		opacity: 0;
-		transform: translateX(var(--animation--fade-out-left--translate, var(--spacing--4xs)));
+		transform: translateX(
+			calc(-1 * var(--animation--fade-out-left--translate, var(--spacing--4xs)))
+		);
 	}
 }
 

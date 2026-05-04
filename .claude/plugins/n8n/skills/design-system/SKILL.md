@@ -30,4 +30,4 @@ Reference these guidelines when:
 - "Add button with + icon to add new tiem" → Wrap `N8nButton` with `iconOnly` prop with `N8nTooltip` and wrap in `N8nTooltip`. Use `N8nIcon` and proper aria-label.
 - "Add a destructive action button" → use `N8nButton` with `variant="destructive"`
 - "Make background color white/black" → Use `var(--background--surface)` for white on light mode and "black" on dark mode
-- "Animate the title in gracefully" -> Use `fadeInUp` mixin from `motion.scss` with `var(--duration--base)`
+- "Animate the title in gracefully" -> Use `fade-in-up` mixin from `motion.scss` with `var(--duration--base)`
