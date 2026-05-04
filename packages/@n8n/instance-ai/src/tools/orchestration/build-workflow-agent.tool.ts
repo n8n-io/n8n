@@ -272,7 +272,10 @@ async function finalBuildOutcome(
 ): Promise<WorkflowBuildOutcome> {
 	const latestOutcome = await getLatestBuildOutcome(context, workItemId);
 	const loopState = await context.workflowTaskService?.getWorkflowLoopState(workItemId);
-	return withTerminalLoopState(mergeLatestVerificationIntoOutcome(outcome, latestOutcome), loopState);
+	return withTerminalLoopState(
+		mergeLatestVerificationIntoOutcome(outcome, latestOutcome),
+		loopState,
+	);
 }
 
 export async function finalizeBuildResult(
