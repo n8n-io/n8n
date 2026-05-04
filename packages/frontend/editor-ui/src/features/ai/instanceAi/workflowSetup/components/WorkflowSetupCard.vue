@@ -46,8 +46,8 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 	return nodeType.value.properties.filter((property) => names.has(property.name));
 });
 
-const useCredentialIcon = computed(
-	() => !!credentialType.value && parameterDefinitions.value.length === 0,
+const isCredentialOnlyCard = computed(
+	() => !!credentialType.value && card.value.parameterNames.length === 0,
 );
 
 const revealedIssues = ref(new Set<string>());
@@ -74,10 +74,10 @@ function getRootParameterName(parameterName: string) {
 }
 
 const displayName = computed(() => {
-	if (!credentialType.value) return card.value.node.name;
+	const credentialTypeName = credentialType.value;
+	if (!isCredentialOnlyCard.value || !credentialTypeName) return card.value.node.name;
 	const raw =
-		credentialsStore.getCredentialTypeByName(credentialType.value)?.displayName ??
-		credentialType.value;
+		credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ?? credentialTypeName;
 	const appName = getAppNameFromCredType(raw);
 	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
 });
@@ -136,7 +136,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 	<div :class="$style.card" data-test-id="instance-ai-workflow-setup-card">
 		<header :class="$style.header">
 			<CredentialIcon
-				v-if="useCredentialIcon"
+				v-if="isCredentialOnlyCard"
 				:credential-type-name="credentialType ?? null"
 				:size="16"
 			/>
