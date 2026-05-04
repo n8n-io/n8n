@@ -38,6 +38,7 @@ packages/testing/playwright/eval-results.json
 packages/@n8n/instance-ai/eval-results.json
 packages/@n8n/instance-ai/.eval-output/
 packages/@n8n/instance-ai/eval-pr-comment.md
+packages/@n8n/instance-ai/eval-setup-topology-results.json
 packages/testing/playwright/.playwright-browsers
 packages/testing/playwright/.playwright-cli
 test-results/

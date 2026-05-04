@@ -331,6 +331,13 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 			return { approved: true, credentials: request.credentials };
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'evalsPropose':
+			return {
+				approved: request.approved,
+				datasetChoice: request.datasetChoice,
+				existingDataTableId: request.existingDataTableId,
+				enabledMetricIds: request.enabledMetricIds,
+			};
 		case 'setupWorkflowApply':
 			return {
 				approved: true,
@@ -3588,6 +3595,9 @@ export class InstanceAiService {
 			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+			...(data.datasetChoice ? { datasetChoice: data.datasetChoice } : {}),
+			...(data.existingDataTableId ? { existingDataTableId: data.existingDataTableId } : {}),
+			...(data.enabledMetricIds ? { enabledMetricIds: data.enabledMetricIds } : {}),
 		};
 
 		// Pass the freshly revalidated user forward so downstream permission

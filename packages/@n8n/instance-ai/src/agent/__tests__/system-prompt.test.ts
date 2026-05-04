@@ -227,6 +227,19 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('manual eval setup flow', () => {
+		it('routes user-requested eval setup through evals and eval-setup agent', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**Add-evals flow**');
+			expect(prompt).toContain('Call `evals(action="propose")` directly');
+			expect(prompt).toContain('`shouldDelegateToEvalSetupAgent: true`');
+			expect(prompt).toContain('call `eval-setup-with-agent`');
+			expect(prompt).toContain('Do NOT call `build-workflow-with-agent` for this case');
+			expect(prompt).not.toContain('eval-data');
+		});
+	});
+
 	describe('multi-credential disambiguation guidance', () => {
 		it('instructs the orchestrator to ask once when a service has more than one credential of the same type', () => {
 			const prompt = getSystemPrompt({});

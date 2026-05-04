@@ -16,6 +16,7 @@ let timer: ReturnType<typeof setInterval> | null = null;
 const ROLE_LABELS: Record<string, string> = {
 	'workflow-builder': 'Building workflow',
 	'data-table-manager': 'Managing data tables',
+	'eval-setup': 'Setting up evals',
 };
 
 function deriveActivity(messages: InstanceAiMessage[]): { label: string; detail?: string } | null {

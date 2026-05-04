@@ -1,0 +1,16 @@
+{
+  "targets": [
+    {
+      "nodeName": "Angie, AI Assistant 👩🏻‍🏫",
+      "inputColumns": ["input"],
+      "expectedShape": {
+        "text": "input"
+      },
+      "expectedOutputColumns": ["expected_output"],
+      "actualOutputColumns": ["actual_output"],
+      "sideEffectNodes": ["Telegram"]
+    }
+  ],
+  "excludeTargets": ["Speech to Text"],
+  "metrics": ["correctness"]
+}

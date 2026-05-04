@@ -1,0 +1,7 @@
+[
+	{
+		"text": "Engineering shipped the new billing sync and needs QA on the retry path. Support reported three customers blocked by Slack OAuth refresh. Product decided to postpone the dashboard launch until Friday.",
+		"team": "engineering",
+		"expected_output": "A Slack-formatted daily digest under 500 characters that groups the key updates, calls out the OAuth blocker as urgent, and lists the dashboard launch follow-up."
+	}
+]

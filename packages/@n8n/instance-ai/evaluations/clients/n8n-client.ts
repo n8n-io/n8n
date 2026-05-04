@@ -46,9 +46,11 @@ export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
 
 /** A node as returned by the n8n REST API — the fields eval code reads. */
 export interface WorkflowNodeResponse {
+	id?: string;
 	name: string;
 	type: string;
 	typeVersion?: number;
+	position?: [number, number];
 	parameters?: Record<string, unknown>;
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -63,8 +65,40 @@ export interface WorkflowResponse {
 	description?: string;
 	nodes: WorkflowNodeResponse[];
 	connections: Record<string, unknown>;
+	settings?: Record<string, unknown>;
+	staticData?: Record<string, unknown>;
+	meta?: Record<string, unknown>;
 	pinData?: Record<string, unknown>;
 }
+
+export interface WorkflowCreatePayload {
+	name: string;
+	nodes: Array<WorkflowNodeResponse & Record<string, unknown>>;
+	connections: Record<string, unknown>;
+	settings?: Record<string, unknown> | null;
+	staticData?: Record<string, unknown> | null;
+	meta?: Record<string, unknown> | null;
+	pinData?: Record<string, unknown> | null;
+	projectId?: string;
+}
+
+export interface DataTableCreateColumn {
+	name: string;
+	type: 'string' | 'number' | 'boolean' | 'date';
+}
+
+export interface DataTableCreatePayload {
+	name: string;
+	columns: DataTableCreateColumn[];
+}
+
+export interface DataTableResponse {
+	id: string;
+	name: string;
+	columns?: Array<{ id?: string; name: string; type: string }>;
+}
+
+export type DataTableRowInput = Record<string, string | number | boolean | null>;
 
 interface WorkflowListItem {
 	id: string;
@@ -101,6 +135,23 @@ interface ThreadStatus {
 		runId?: string;
 		messageGroupId?: string;
 	}>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isThreadStatus(value: unknown): value is ThreadStatus {
+	return (
+		isRecord(value) &&
+		typeof value.hasActiveRun === 'boolean' &&
+		typeof value.isSuspended === 'boolean' &&
+		Array.isArray(value.backgroundTasks)
+	);
+}
+
+function isWrappedThreadStatus(value: unknown): value is { data: ThreadStatus } {
+	return isRecord(value) && isThreadStatus(value.data);
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +239,10 @@ export class N8nClient {
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
 	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+		const result = await this.fetch(`/rest/instance-ai/threads/${threadId}/status`);
+		if (isWrappedThreadStatus(result)) return result.data;
+		if (isThreadStatus(result)) return result;
+		throw new Error('Unexpected thread status response shape');
 	}
 
 	/**
@@ -268,6 +322,18 @@ export class N8nClient {
 			data: Array<{ id: string }>;
 		};
 		return Array.isArray(result.data) ? result.data.map((c) => c.id) : [];
+	}
+
+	/**
+	 * Create a workflow from an imported fixture.
+	 * POST /rest/workflows
+	 */
+	async createWorkflow(workflow: WorkflowCreatePayload): Promise<WorkflowResponse> {
+		const result = (await this.fetch('/rest/workflows', {
+			method: 'POST',
+			body: workflow,
+		})) as { data: WorkflowResponse };
+		return result.data;
 	}
 
 	/**
@@ -477,6 +543,36 @@ export class N8nClient {
 	async listDataTableIds(projectId: string): Promise<string[]> {
 		const dataTables = await this.listDataTables(projectId);
 		return dataTables.map((dt) => dt.id);
+	}
+
+	/**
+	 * Create a data table in a project.
+	 * POST /rest/projects/:projectId/data-tables
+	 */
+	async createDataTable(
+		projectId: string,
+		payload: DataTableCreatePayload,
+	): Promise<DataTableResponse> {
+		const result = (await this.fetch(`/rest/projects/${projectId}/data-tables`, {
+			method: 'POST',
+			body: payload,
+		})) as { data: DataTableResponse };
+		return result.data;
+	}
+
+	/**
+	 * Insert rows into a data table.
+	 * POST /rest/projects/:projectId/data-tables/:dataTableId/insert
+	 */
+	async insertDataTableRows(
+		projectId: string,
+		dataTableId: string,
+		rows: DataTableRowInput[],
+	): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}/insert`, {
+			method: 'POST',
+			body: { data: rows, returnType: 'count' },
+		});
 	}
 
 	/**

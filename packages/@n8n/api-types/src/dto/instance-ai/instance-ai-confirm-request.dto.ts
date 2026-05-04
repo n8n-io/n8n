@@ -55,6 +55,15 @@ const resourceDecisionConfirmSchema = z.object({
 	resourceDecision: instanceGatewayResourceDecisionSchema,
 });
 
+/** Eval setup proposal approval/denial. Carries the selected metric IDs on approval. */
+const evalsProposeConfirmSchema = z.object({
+	kind: z.literal('evalsPropose'),
+	approved: z.boolean(),
+	datasetChoice: z.enum(['link-existing', 'later']).optional(),
+	existingDataTableId: z.string().optional(),
+	enabledMetricIds: z.array(z.string()).optional(),
+});
+
 /** Per-node credential map: `Record<nodeName, Record<credentialType, credentialId>>`. */
 const nodeCredentialsRecord = z.record(credentialIdByTypeSchema).optional();
 /** Per-node parameter map: `Record<nodeName, Record<paramName, value>>`. */
@@ -84,6 +93,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
 	resourceDecisionConfirmSchema,
+	evalsProposeConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,
 ]);
