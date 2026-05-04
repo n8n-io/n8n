@@ -408,6 +408,23 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return aggregatedInsightsByTimeParser.parse(rawRows);
 	}
 
+	async getOldestPeriodStart(): Promise<Date | null> {
+		const result = await this.createQueryBuilder('insights')
+			.select('MIN(insights.periodStart)', 'oldest')
+			.getRawOne<{ oldest: Date | string | null }>();
+
+		if (result?.oldest === null || result?.oldest === undefined) {
+			return null;
+		}
+
+		const oldest =
+			result.oldest instanceof Date
+				? result.oldest
+				: new Date(result.oldest.replace(' ', 'T') + 'Z');
+
+		return Number.isNaN(oldest.getTime()) ? null : oldest;
+	}
+
 	async pruneOldData(maxAgeInDays: number): Promise<{ affected: number | null | undefined }> {
 		const thresholdDate = DateTime.now().minus({ days: maxAgeInDays }).startOf('day').toJSDate();
 		const result = await this.delete({

@@ -13,12 +13,14 @@ import {
 } from '@/__tests__/utils';
 import { within, screen, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { createProjectListItem } from '@/features/collaboration/projects/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type {
 	FrontendModuleSettings,
 	InsightsByTime,
 	InsightsByWorkflow,
+	InsightsDateRange,
 	InsightsSummaryType,
 } from '@n8n/api-types';
 import { INSIGHT_TYPES } from '@/features/execution/insights/insights.constants';
@@ -81,6 +83,9 @@ const moduleSettings: FrontendModuleSettings = {
 	insights: {
 		summary: true,
 		dashboard: true,
+		insightsPresetAvailability: {
+			oneYearRange: true,
+		},
 		dateRanges: [
 			{
 				key: 'day',
@@ -104,6 +109,24 @@ const moduleSettings: FrontendModuleSettings = {
 			},
 		],
 	},
+};
+
+const fullLicensedDateRanges: InsightsDateRange[] = [
+	{ key: 'day', licensed: true, granularity: 'hour' },
+	{ key: 'week', licensed: true, granularity: 'day' },
+	{ key: '2weeks', licensed: true, granularity: 'day' },
+	{ key: 'month', licensed: true, granularity: 'day' },
+	{ key: 'quarter', licensed: true, granularity: 'week' },
+	{ key: '6months', licensed: true, granularity: 'week' },
+	{ key: 'year', licensed: true, granularity: 'week' },
+];
+
+const setInsightsModuleSettings = (insights: FrontendModuleSettings['insights']) => {
+	const settingsStore = useSettingsStore();
+	settingsStore.moduleSettings = {
+		...settingsStore.moduleSettings,
+		insights,
+	};
 };
 
 const mockSummaryData: InsightsSummaryDisplay = [
@@ -464,6 +487,46 @@ describe('InsightsDashboard', () => {
 					...expectedRange,
 				},
 			});
+		});
+	});
+
+	describe('Insights date preset availability', () => {
+		it('shows all presets including one year when oneYearRange is true', async () => {
+			setInsightsModuleSettings({
+				summary: true,
+				dashboard: true,
+				dateRanges: fullLicensedDateRanges,
+				insightsPresetAvailability: { oneYearRange: true },
+			});
+
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			const picker = await openDatePicker(getByRole);
+
+			expect(within(picker).getByText('One year')).toBeInTheDocument();
+			expect(within(picker).getByText('6 months')).toBeInTheDocument();
+			expect(within(picker).getByText('Last 30 days')).toBeInTheDocument();
+		});
+
+		it('hides one year only when oneYearRange is false; six months stays visible', async () => {
+			setInsightsModuleSettings({
+				summary: true,
+				dashboard: true,
+				dateRanges: fullLicensedDateRanges,
+				insightsPresetAvailability: { oneYearRange: false },
+			});
+
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			const picker = await openDatePicker(getByRole);
+
+			expect(within(picker).getByText('Last 30 days')).toBeInTheDocument();
+			expect(within(picker).getByText('6 months')).toBeInTheDocument();
+			expect(within(picker).queryByText('One year')).not.toBeInTheDocument();
 		});
 	});
 

@@ -21,6 +21,7 @@ import {
 	watch,
 } from 'vue';
 import { useRoute } from 'vue-router';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
@@ -60,6 +61,7 @@ const props = defineProps<{
 
 const route = useRoute();
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
@@ -99,15 +101,19 @@ const maxLicensedDate =
 	insightsStore.dateRanges.toReversed().find((dateRange) => dateRange.licensed)?.key ?? 'week';
 
 const timeRangeLabels = getTimeRangeLabels();
-const presets = computed(() =>
-	insightsStore.dateRanges.map((item) => {
-		return {
+
+const presets = computed(() => {
+	const hasOneYearPreset =
+		settingsStore.moduleSettings.insights?.insightsPresetAvailability?.oneYearRange ?? true;
+
+	return insightsStore.dateRanges
+		.filter((item) => item.key !== 'year' || hasOneYearPreset)
+		.map((item) => ({
 			value: timeRangeMappings[item.key],
 			label: timeRangeLabels[item.key],
 			disabled: !item.licensed,
-		};
-	}),
-);
+		}));
+});
 
 const maximumValue = shallowRef(maxDate.copy());
 const minimumValue = shallowRef(

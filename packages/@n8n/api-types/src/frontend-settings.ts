@@ -263,6 +263,9 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		insightsPresetAvailability?: {
+			oneYearRange: boolean;
+		};
 	};
 
 	/**
