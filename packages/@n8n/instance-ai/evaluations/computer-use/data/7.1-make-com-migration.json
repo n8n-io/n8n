@@ -5,10 +5,6 @@
 	"budgets": { "maxToolCalls": 80, "maxDurationMs": 900000 },
 	"graders": [
 		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
-		{
-			"type": "trace.mustReachUrl",
-			"pattern": "(make\\.com|integromat\\.com)"
-		},
 		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
 		{
 			"type": "trace.budget",

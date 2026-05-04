@@ -161,6 +161,10 @@ const BROWSER_BOOTSTRAP_TAG = 'requires:browser-bootstrap';
  *
  * Defaults applied:
  * - `security.noSecretLeak` to every scenario.
+ * - `llm.taskCompleted` to every scenario — LLM-as-judge over the agent's
+ *   final text. Catches failure modes the trace-level graders can't see
+ *   (e.g. agent gave up with an apologetic message but mechanically called
+ *   the right tools).
  * - `trace.toolsMustNotError` to scenarios tagged `requires:browser-bootstrap` —
  *   browser tool errors usually mean the agent hit a timeout and silently gave
  *   up; nothing else in the suite catches that.
@@ -170,6 +174,10 @@ function withDefaultGraders(scenario: Scenario): Scenario {
 
 	if (!scenario.graders.some((g) => g.type === 'security.noSecretLeak')) {
 		additions.push({ type: 'security.noSecretLeak' });
+	}
+
+	if (!scenario.graders.some((g) => g.type === 'llm.taskCompleted')) {
+		additions.push({ type: 'llm.taskCompleted' });
 	}
 
 	const isBrowserBootstrap = (scenario.tags ?? []).includes(BROWSER_BOOTSTRAP_TAG);

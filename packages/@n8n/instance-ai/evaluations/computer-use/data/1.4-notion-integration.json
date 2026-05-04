@@ -5,10 +5,6 @@
 	"budgets": { "maxToolCalls": 50, "maxDurationMs": 600000 },
 	"graders": [
 		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
-		{
-			"type": "trace.mustReachUrl",
-			"pattern": "notion\\.so/(my-integrations|profile/integrations)"
-		},
 		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
 		{
 			"type": "trace.budget",

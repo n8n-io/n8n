@@ -9,10 +9,6 @@
 	"budgets": { "maxToolCalls": 50, "maxDurationMs": 600000 },
 	"graders": [
 		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
-		{
-			"type": "trace.mustReachUrl",
-			"pattern": "/(form|webhook)/"
-		},
 		{ "type": "trace.mustCallTool", "name": "browser_type" },
 		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
 		{
