@@ -6,16 +6,17 @@
  *   - Add trigger: opens `AgentAddTriggerModal` and re-emits connected-trigger
  *     updates + trigger-added events upward.
  */
-import { N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_ADD_TRIGGER_MODAL_KEY } from '../constants';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonToolRef, AgentResource } from '../types';
+import AgentChipButton from './AgentChipButton.vue';
 
 const props = defineProps<{
 	tools: AgentJsonToolRef[];
 	projectId: string;
 	agentId: string;
+	agentName: string;
 	isPublished: boolean;
 	connectedTriggers: string[];
 }>();
@@ -24,6 +25,7 @@ const emit = defineEmits<{
 	'update:tools': [tools: AgentJsonToolRef[]];
 	'update:connected-triggers': [triggers: string[]];
 	'trigger-added': [payload: { triggerType: string; triggers: string[] }];
+	'agent-published': [agent: AgentResource];
 }>();
 
 const i18n = useI18n();
@@ -47,12 +49,14 @@ function onAddTrigger() {
 		data: {
 			projectId: props.projectId,
 			agentId: props.agentId,
+			agentName: props.agentName,
 			isPublished: props.isPublished,
 			connectedTriggers: props.connectedTriggers,
 			onConnectedTriggersChange: (triggers: string[]) =>
 				emit('update:connected-triggers', triggers),
 			onTriggerAdded: (payload: { triggerType: string; triggers: string[] }) =>
 				emit('trigger-added', payload),
+			onAgentPublished: (agent: AgentResource) => emit('agent-published', agent),
 		},
 	});
 }
@@ -60,48 +64,31 @@ function onAddTrigger() {
 
 <template>
 	<div :class="$style.row" data-testid="agent-chat-quick-actions">
-		<button
-			type="button"
-			:class="$style.quickActionButton"
+		<AgentChipButton
+			variant="suggestion"
+			icon="wrench"
 			data-testid="agent-quick-action-add-tool"
 			@click="onAddTool"
 		>
-			<N8nIcon icon="wrench" size="medium" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTool') }}
-		</button>
-		<button
-			type="button"
-			:class="$style.quickActionButton"
+		</AgentChipButton>
+		<AgentChipButton
+			variant="suggestion"
+			icon="zap"
 			data-testid="agent-quick-action-add-trigger"
 			@click="onAddTrigger"
 		>
-			<N8nIcon icon="zap" size="medium" :class="$style.quickActionIcon" />
 			{{ i18n.baseText('agents.builder.quickActions.addTrigger') }}
-		</button>
+		</AgentChipButton>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '../../ai/shared/styles/prompt-suggestion-buttons' as promptSuggestions;
-
 .row {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: flex-start;
 	gap: var(--spacing--2xs);
 	width: 100%;
-}
-
-.quickActionButton {
-	@include promptSuggestions.prompt-suggestion-button;
-}
-
-.quickActionIcon {
-	@include promptSuggestions.prompt-suggestion-icon;
-
-	.quickActionButton:hover &,
-	.quickActionButton:focus-visible & {
-		opacity: 1;
-	}
 }
 </style>

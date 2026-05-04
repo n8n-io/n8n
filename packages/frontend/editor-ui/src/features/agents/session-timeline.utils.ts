@@ -1,5 +1,6 @@
 import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
 import type { ThreadExecution } from './composables/useAgentThreadsApi';
+import { formatToolNameForDisplay } from './utils/toolDisplayName';
 
 export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
 
@@ -29,6 +30,58 @@ export function itemFilterKey(item: TimelineItem): string {
 	return item.kind;
 }
 
+export type TimelineLabelResolver = (key: string) => string;
+
+export function timelineItemSearchText(
+	item: TimelineItem,
+	labelForKey: TimelineLabelResolver,
+): string {
+	const parts: Array<string | undefined> = [];
+
+	parts.push(labelForKey(itemFilterKey(item)));
+	if (item.kind === 'working-memory') {
+		parts.push(labelForKey('working-memory-updated'));
+	} else if (item.kind === 'suspension') {
+		parts.push(labelForKey('suspension-waiting'));
+	}
+
+	parts.push(item.content, item.toolName, item.workflowName, item.nodeDisplayName);
+	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
+
+	const toolKey = builtinToolLabelKey(item.toolName, item.toolOutput);
+	if (toolKey) parts.push(labelForKey(toolKey));
+
+	return parts
+		.filter((part): part is string => typeof part === 'string')
+		.join(' ')
+		.toLowerCase();
+}
+
+export function matchesSearch(
+	item: TimelineItem,
+	query: string,
+	labelForKey: TimelineLabelResolver,
+): boolean {
+	if (!query) return true;
+	return timelineItemSearchText(item, labelForKey).includes(query.toLowerCase());
+}
+
+export function filteredTimelineItemIndexes(
+	items: TimelineItem[],
+	visibleKinds: Set<string>,
+	searchQuery: string,
+	labelForKey: TimelineLabelResolver,
+): number[] {
+	return items
+		.map((item, index) => ({ item, index }))
+		.filter(
+			({ item }) =>
+				(visibleKinds.size === 0 || visibleKinds.has(itemFilterKey(item))) &&
+				matchesSearch(item, searchQuery.trim(), labelForKey),
+		)
+		.map(({ index }) => index);
+}
+
 export function sessionBounds(items: TimelineItem[]): { start: number; end: number } {
 	if (items.length === 0) return { start: 0, end: 1 };
 	let start = Infinity;
@@ -54,6 +107,20 @@ const COLOR_MAP: Record<EventKind, string> = {
 
 export function kindColorToken(kind: EventKind): string {
 	return COLOR_MAP[kind];
+}
+
+const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
+	user: 'var(--color--blue-600)',
+	agent: 'var(--color--purple-600)',
+	tool: 'var(--color--green-600)',
+	node: 'var(--color--neutral-600)',
+	workflow: 'var(--color--orange-600)',
+	'working-memory': 'var(--color--mint-600)',
+	suspension: 'var(--color--yellow-600)',
+};
+
+export function chartBlockColor(kind: EventKind): string {
+	return CHART_BLOCK_COLOR_MAP[kind];
 }
 
 /**

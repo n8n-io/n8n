@@ -44,10 +44,8 @@ const MODAL_NAME = 'AgentSkillModal';
 
 function renderModal({
 	onConfirm = vi.fn(),
-	existingSkillIds = [] as string[],
 }: {
-	onConfirm?: (payload: { id: string; skill: AgentSkill }) => void;
-	existingSkillIds?: string[];
+	onConfirm?: (payload: { id?: string; skill: AgentSkill }) => void;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -68,7 +66,6 @@ function renderModal({
 			data: {
 				projectId: 'p1',
 				agentId: 'a1',
-				existingSkillIds,
 				onConfirm,
 			},
 		},

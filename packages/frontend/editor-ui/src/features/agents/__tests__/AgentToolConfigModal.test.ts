@@ -7,7 +7,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { defineComponent, onMounted, ref, nextTick } from 'vue';
 
 import AgentToolConfigModal from '../components/AgentToolConfigModal.vue';
-import type { AgentJsonToolRef } from '../types';
+import type { AgentJsonToolRef, CustomToolEntry } from '../types';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -116,7 +116,6 @@ function toolRef(overrides: Partial<AgentJsonToolRef['node']> = {}): AgentJsonTo
 			credentials: { slackApi: { id: 'cred-1', name: 'Prod Slack' } },
 			...overrides,
 		},
-		inputSchema: { type: 'object' },
 	};
 }
 
@@ -124,10 +123,12 @@ function renderModal({
 	valid = false,
 	onConfirm = vi.fn(),
 	ref = toolRef(),
+	customTool,
 }: {
 	valid?: boolean;
 	onConfirm?: (updated: AgentJsonToolRef) => void;
 	ref?: AgentJsonToolRef;
+	customTool?: CustomToolEntry;
 } = {}) {
 	const renderComponent = createComponentRenderer(AgentToolConfigModal, {
 		global: {
@@ -136,13 +137,17 @@ function renderModal({
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
 				NodeToolSettingsContent: createToolSettingsStub(valid),
 				WorkflowToolConfigContent: createWorkflowToolConfigStub(valid),
+				AgentCustomToolViewer: {
+					props: ['code'],
+					template: '<pre data-test-id="agent-custom-tool-viewer">{{ code }}</pre>',
+				},
 			},
 		},
 	});
 	return renderComponent({
 		props: {
 			modalName: MODAL_NAME,
-			data: { toolRef: ref, existingToolNames: [], onConfirm },
+			data: { toolRef: ref, customTool, existingToolNames: [], onConfirm },
 		},
 	});
 }
@@ -196,7 +201,7 @@ describe('AgentToolConfigModal', () => {
 		// Preserved fields from the original ref
 		expect(updated.type).toBe('node');
 		expect(updated.description).toBe(initial.description);
-		expect(updated.inputSchema).toBeUndefined();
+		expect(updated).not.toHaveProperty('inputSchema');
 		// Fields merged from the edited INode
 		expect(updated.node.nodeParameters).toEqual({ edited: true });
 		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
@@ -215,11 +220,31 @@ describe('AgentToolConfigModal', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('does not render when the toolRef is a custom tool (no node, no workflow)', () => {
-		const { queryByTestId } = renderModal({
+	it('renders the custom tool TypeScript viewer for custom refs', () => {
+		const customTool: CustomToolEntry = {
+			code: 'export async function run() {\n\treturn "ok";\n}',
+			descriptor: {
+				name: 'Lookup customer',
+				description: 'Finds a customer',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			},
+		};
+
+		const { getByTestId, queryByTestId } = renderModal({
 			ref: { type: 'custom', id: 'custom-tool-1' },
+			customTool,
 		});
-		expect(queryByTestId('agent-tool-config-modal')).toBeNull();
+		expect(getByTestId('agent-custom-tool-viewer').textContent).toContain(customTool.code);
+		expect(queryByTestId('node-tool-settings-content')).toBeNull();
+		expect(queryByTestId('workflow-tool-config-content')).toBeNull();
+		expect(queryByTestId('agent-tool-config-save')).toBeNull();
 	});
 
 	it('renders the workflow-tool config content for workflow refs', () => {

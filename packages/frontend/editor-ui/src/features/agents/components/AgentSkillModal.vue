@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { skillNameToId } from '@n8n/api-types';
-import { N8nButton, N8nHeading } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
@@ -12,8 +11,10 @@ import AgentSkillViewer from './AgentSkillViewer.vue';
 export type AgentSkillModalData = {
 	projectId: string;
 	agentId: string;
-	existingSkillIds: string[];
-	onConfirm: (payload: { id: string; skill: AgentSkill }) => void;
+	skill?: AgentSkill;
+	skillId?: string;
+	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
+	onRemove?: (id: string) => void;
 };
 
 const props = defineProps<{
@@ -25,23 +26,14 @@ const i18n = useI18n();
 const uiStore = useUIStore();
 
 const skill = ref<AgentSkill>({
-	name: '',
-	description: '',
-	instructions: '',
+	name: props.data.skill?.name ?? '',
+	description: props.data.skill?.description ?? '',
+	instructions: props.data.skill?.instructions ?? '',
 });
 const submitted = ref(false);
 const formIsValid = ref(false);
 
-const existingSkillIds = computed(() => new Set(props.data.existingSkillIds));
-
-function makeUniqueSkillId(name: string): string {
-	const base = skillNameToId(name);
-	if (!existingSkillIds.value.has(base)) return base;
-
-	let suffix = 2;
-	while (existingSkillIds.value.has(`${base}_${suffix}`)) suffix++;
-	return `${base}_${suffix}`;
-}
+const isEditing = computed(() => !!props.data.skillId);
 
 const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() => {
 	const errors: Partial<Record<keyof AgentSkill, string>> = {};
@@ -92,9 +84,14 @@ function onSave() {
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
 	};
-	const skillId = makeUniqueSkillId(payload.name);
 
-	props.data.onConfirm({ id: skillId, skill: payload });
+	props.data.onConfirm({ id: props.data.skillId, skill: payload });
+	closeModal();
+}
+
+function onRemove() {
+	if (!props.data.skillId) return;
+	props.data.onRemove?.(props.data.skillId);
 	closeModal();
 }
 </script>
@@ -127,17 +124,28 @@ function onSave() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="closeModal">
-					{{ i18n.baseText('agents.builder.skills.create.cancel') }}
-				</N8nButton>
 				<N8nButton
-					variant="solid"
-					:disabled="!canSave"
-					data-testid="agent-skill-create-save"
-					@click="onSave"
+					v-if="isEditing && data.onRemove"
+					variant="subtle"
+					data-testid="agent-skill-remove"
+					@click="onRemove"
 				>
-					{{ i18n.baseText('agents.builder.skills.create.save') }}
+					<template #icon><N8nIcon icon="trash-2" :size="16" /></template>
+					{{ i18n.baseText('agents.builder.skills.remove') }}
 				</N8nButton>
+				<div :class="$style.footerActions">
+					<N8nButton variant="subtle" @click="closeModal">
+						{{ i18n.baseText('agents.builder.skills.create.cancel') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						:disabled="!canSave"
+						data-testid="agent-skill-create-save"
+						@click="onSave"
+					>
+						{{ i18n.baseText('agents.builder.skills.create.save') }}
+					</N8nButton>
+				</div>
 			</div>
 		</template>
 	</Modal>
@@ -158,7 +166,13 @@ function onSave() {
 
 .footer {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
+}
+
+.footerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 </style>

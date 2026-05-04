@@ -51,13 +51,17 @@ describe('AgentSkillsService', () => {
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		const result = await service.createSkill(agentId, projectId, 'summarize_notes', skill);
+		const result = await service.createSkill(agentId, projectId, skill);
 
-		expect(result).toEqual({ skill, versionId: agent.versionId });
-		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
-			summarize_notes: skill,
+		expect(result).toEqual({
+			id: expect.stringMatching(/^skill_[A-Za-z0-9]{16}$/),
+			skill,
+			versionId: agent.versionId,
 		});
-		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: 'summarize_notes' }]);
+		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+			[result.id]: skill,
+		});
+		expect(agent.schema?.skills).toEqual([{ type: 'skill', id: result.id }]);
 	});
 
 	it('loads one skill from the agent', async () => {
@@ -77,6 +81,7 @@ describe('AgentSkillsService', () => {
 		});
 
 		expect(result).toEqual({
+			id: 'summarize_notes',
 			skill: {
 				...skill,
 				description: 'Summarizes support notes',

@@ -293,14 +293,13 @@ export const createAgentSkill = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
-	skillId: string,
 	skill: AgentSkill,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
-		{ id: skillId, ...skill },
+		skill,
 	);
 };
 

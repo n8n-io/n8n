@@ -68,7 +68,7 @@ const integrationConfigs: IntegrationConfig[] = [
 	{
 		type: 'slack',
 		label: 'Slack',
-		icon: 'hashtag',
+		icon: 'slack',
 		description:
 			'Connect a Slack bot credential to allow this agent to receive and respond to Slack messages.',
 		connectedDescription: 'Your agent is connected to Slack and can receive messages.',
@@ -78,7 +78,7 @@ const integrationConfigs: IntegrationConfig[] = [
 	{
 		type: 'telegram',
 		label: 'Telegram',
-		icon: 'paper-plane',
+		icon: 'telegram',
 		description:
 			'Connect a Telegram bot credential to allow this agent to receive and respond to Telegram messages.',
 		connectedDescription: 'Your agent is connected to Telegram and can receive messages.',
@@ -88,7 +88,7 @@ const integrationConfigs: IntegrationConfig[] = [
 	{
 		type: 'linear',
 		label: 'Linear',
-		icon: 'list-checks',
+		icon: 'linear',
 		description:
 			'Connect a Linear API credential to let this agent respond to comments in Linear issues. ' +
 			'Point a Linear webhook at the URL below and paste its signing secret into the credential',

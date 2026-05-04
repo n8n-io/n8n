@@ -1,49 +1,71 @@
 <script setup lang="ts">
-import { ref, toRef, watch } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import { defaultKeymap, history } from '@codemirror/commands';
 import { json } from '@codemirror/lang-json';
 import { EditorView, lineNumbers, keymap } from '@codemirror/view';
+import { useI18n } from '@n8n/i18n';
 
 import { codeEditorTheme } from '@/features/shared/editors/components/CodeNodeEditor/theme';
 import { useCodeMirrorEditor } from '../composables/useCodeMirrorEditor';
 import type { AgentJsonConfig } from '../types';
 import shared from '../styles/agent-panel.module.scss';
+import AgentJsonCopyButton from './AgentJsonCopyButton.vue';
 
 const props = withDefaults(
 	defineProps<{
-		config: AgentJsonConfig | null;
+		value: unknown;
 		readOnly?: boolean;
+		showReadOnlyOverlay?: boolean;
+		copyButtonTestId?: string;
 	}>(),
 	{
 		readOnly: false,
+		showReadOnlyOverlay: true,
+		copyButtonTestId: 'agent-json-copy',
 	},
 );
 
 const emit = defineEmits<{
-	'update:config': [config: AgentJsonConfig];
+	'update:value': [value: AgentJsonConfig];
 }>();
 
+const i18n = useI18n();
 const jsonContainer = ref<HTMLDivElement>();
 const jsonError = ref('');
 
-function configToJson(config: AgentJsonConfig | null): string {
-	return config ? JSON.stringify(config, null, 2) : '';
+const jsonValue = computed(() => props.value);
+
+function valueToJson(value: unknown): string {
+	if (value === null || value === undefined) return '';
+	return JSON.stringify(value, null, 2) ?? '';
 }
 
+function isAgentJsonConfig(value: unknown): value is AgentJsonConfig {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const currentJson = ref(valueToJson(jsonValue.value));
+
 const debouncedJsonSave = useDebounceFn((text: string) => {
+	if (props.readOnly) return;
+
 	try {
-		const parsed = JSON.parse(text) as AgentJsonConfig;
+		const parsed: unknown = JSON.parse(text);
+		if (!isAgentJsonConfig(parsed)) {
+			jsonError.value = i18n.baseText('agents.builder.editor.invalidJson');
+			return;
+		}
 		jsonError.value = '';
-		emit('update:config', parsed);
+		emit('update:value', parsed);
 	} catch {
-		jsonError.value = 'Invalid JSON';
+		jsonError.value = i18n.baseText('agents.builder.editor.invalidJson');
 	}
 }, 800);
 
 const editor = useCodeMirrorEditor({
 	container: jsonContainer,
-	initialDoc: configToJson(props.config),
+	initialDoc: valueToJson(jsonValue.value),
 	readOnly: toRef(props, 'readOnly'),
 	extensions: [
 		json(),
@@ -54,18 +76,24 @@ const editor = useCodeMirrorEditor({
 		codeEditorTheme({ isReadOnly: false, maxHeight: '100%', minHeight: '100%', rows: -1 }),
 	],
 	onChange: (text) => {
+		currentJson.value = text;
 		void debouncedJsonSave(text);
 	},
 });
 
+function replaceJson(nextJson: string) {
+	editor.replaceDoc(nextJson);
+	currentJson.value = nextJson;
+}
+
 watch(
-	() => props.config,
-	(newConfig) => {
+	jsonValue,
+	(newValue) => {
 		const view = editor.getView();
 		if (!view) return;
 		// Don't stomp on the user's in-progress edit while they're typing.
-		if (view.hasFocus) return;
-		editor.replaceDoc(configToJson(newConfig));
+		if (!props.readOnly && view.hasFocus) return;
+		replaceJson(valueToJson(newValue));
 		jsonError.value = '';
 	},
 	{ deep: true },
@@ -74,16 +102,39 @@ watch(
 
 <template>
 	<div :class="$style.root">
+		<AgentJsonCopyButton
+			:content="currentJson"
+			:class="$style.copyButton"
+			:test-id="props.copyButtonTestId"
+		/>
 		<div v-if="jsonError" :class="$style.errorBanner">{{ jsonError }}</div>
-		<div ref="jsonContainer" :class="[$style.editorArea, readOnly && shared.disabledOverlay]" />
+		<div
+			ref="jsonContainer"
+			:class="[
+				$style.editorArea,
+				props.readOnly && props.showReadOnlyOverlay && shared.disabledOverlay,
+			]"
+		/>
 	</div>
 </template>
 
 <style module>
 .root {
+	position: relative;
 	display: flex;
 	flex-direction: column;
+	flex: 1;
+	width: 100%;
+	height: 100%;
 	min-height: 0;
+	overflow: hidden;
+}
+
+.copyButton {
+	position: absolute;
+	top: var(--spacing--xs);
+	right: var(--spacing--lg);
+	z-index: 1;
 }
 
 .errorBanner {
@@ -96,7 +147,7 @@ watch(
 
 .editorArea {
 	flex: 1;
-	min-height: 240px;
+	min-height: 0;
 	overflow: hidden;
 }
 
