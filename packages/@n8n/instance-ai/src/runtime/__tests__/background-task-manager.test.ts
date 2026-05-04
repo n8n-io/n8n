@@ -524,6 +524,7 @@ describe('BackgroundTaskManager', () => {
 			const cancelled = manager.cancelAll();
 
 			expect(cancelled).toHaveLength(2);
+			expect(cancelled.every((t) => t.status === 'cancelled')).toBe(true);
 			expect(manager.getRunningTasks('thread-1')).toHaveLength(0);
 			expect(manager.getRunningTasks('thread-2')).toHaveLength(0);
 		});
