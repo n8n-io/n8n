@@ -34,6 +34,7 @@ export {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
 	MCP_ARCHIVE_WORKFLOW_TOOL,
 	MCP_UPDATE_WORKFLOW_TOOL,
+	MCP_UPDATE_PARTIAL_WORKFLOW_TOOL,
 } from './code-builder';
 export type {
 	CodeBuilderGetToolOptions,
