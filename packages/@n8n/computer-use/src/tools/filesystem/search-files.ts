@@ -5,7 +5,12 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { EXCLUDED_DIRS, buildFilesystemResource, resolveReadablePath } from './fs-utils';
+import {
+	EXCLUDED_DIRS,
+	buildFilesystemResource,
+	isLikelyBinaryContent,
+	resolveReadablePath,
+} from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory to search in'),
@@ -44,7 +49,10 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 				const stat = await fs.stat(fullPath);
 				if (stat.size > MAX_FILE_SIZE) continue;
 
-				const content = await fs.readFile(fullPath, 'utf-8');
+				const fileContent = await fs.readFile(fullPath);
+				const buffer = Buffer.isBuffer(fileContent) ? fileContent : Buffer.from(fileContent);
+				if (isLikelyBinaryContent(buffer)) continue;
+				const content = buffer.toString('utf-8');
 				const lines = content.split('\n');
 
 				for (let i = 0; i < lines.length; i++) {

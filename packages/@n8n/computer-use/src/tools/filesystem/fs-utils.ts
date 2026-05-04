@@ -1,11 +1,15 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import { TextDecoder } from 'node:util';
 
 import { isProtectedSettingsPath } from '../../config';
 import type { AffectedResource } from '../types';
 
 const MAX_ENTRIES = 10_000;
 const DEFAULT_MAX_DEPTH = 8;
+const BINARY_CHECK_SIZE = 8192;
+const MAX_CONTROL_CHAR_RATIO = 0.3;
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
 
 export const EXCLUDED_DIRS = new Set([
 	'node_modules',
@@ -138,6 +142,28 @@ export function assertNoExcludedSegments(absolutePath: string, basePath: string)
 	if (excludedSegment) {
 		throw new Error(`Access denied: "${excludedSegment}" is excluded from filesystem reads`);
 	}
+}
+
+export function isLikelyBinaryContent(buffer: Buffer): boolean {
+	const checkSlice = buffer.subarray(0, Math.min(BINARY_CHECK_SIZE, buffer.length));
+	if (checkSlice.length === 0) return false;
+	if (checkSlice.includes(0)) return true;
+
+	try {
+		utf8Decoder.decode(checkSlice);
+	} catch {
+		return true;
+	}
+
+	let controlChars = 0;
+	for (const byte of checkSlice) {
+		const isAllowedControl = byte === 9 || byte === 10 || byte === 12 || byte === 13;
+		if (byte < 32 && !isAllowedControl) {
+			controlChars++;
+		}
+	}
+
+	return controlChars / checkSlice.length > MAX_CONTROL_CHAR_RATIO;
 }
 
 /**

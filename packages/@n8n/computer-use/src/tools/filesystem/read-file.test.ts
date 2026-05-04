@@ -139,6 +139,15 @@ describe('readFileTool', () => {
 			);
 		});
 
+		it('rejects binary files without null bytes', async () => {
+			mockStat(100);
+			mockReadFile(Buffer.from([0xff, 0xfe, 0xfd, 0xfc]));
+
+			await expect(readFileTool.execute({ filePath: 'binary.dat' }, CONTEXT)).rejects.toThrow(
+				'Binary file',
+			);
+		});
+
 		it('rejects files larger than 512KB', async () => {
 			mockStat(600 * 1024);
 

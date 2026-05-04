@@ -341,7 +341,7 @@ are client-agnostic.
 | Read-only | No write methods on interface |
 | File size | 512 KB max per read |
 | Line limits | 200 default, 500 max per read |
-| Binary detection | Null-byte check in first 8 KB |
+| Binary detection | Null-byte, UTF-8, and control-character checks |
 | Directory containment | `path.resolve()` + `fs.realpath()` when basePath is set |
 | Directory exclusions | Read/search/list/tree reject excluded path segments |
 | Auth | Timing-safe key comparison (`timingSafeEqual()`) |
