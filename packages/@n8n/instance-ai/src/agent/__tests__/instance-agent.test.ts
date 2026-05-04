@@ -64,21 +64,48 @@ jest.mock('../system-prompt', () => ({
 const { createInstanceAgent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../instance-agent') as typeof import('../instance-agent');
+const { Agent } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('@mastra/core/agent') as { Agent: jest.Mock };
 const { ToolSearchProcessor } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('@mastra/core/processors') as {
 		ToolSearchProcessor: jest.Mock;
 	};
-const { Agent } =
+const { MCPClient } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@mastra/core/agent') as { Agent: jest.Mock };
+	require('@mastra/mcp') as {
+		MCPClient: jest.Mock;
+	};
+const { createToolsFromLocalMcpServer } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('../../tools/filesystem/create-tools-from-mcp-server') as {
+		createToolsFromLocalMcpServer: jest.Mock;
+	};
+
+type AgentToolConfig = { tools: Record<string, { id: string }> };
+
+function getLastAgentConfig(): AgentToolConfig {
+	const agentCalls = Agent.mock.calls as Array<[AgentToolConfig]>;
+	const agentConfig = agentCalls.at(-1)?.[0];
+	if (!agentConfig) throw new Error('Expected Agent to be called');
+	return agentConfig;
+}
 
 describe('createInstanceAgent', () => {
-	it('creates a fresh deferred tool processor for each run-scoped toolset', async () => {
-		const memoryConfig = {
-			storage: { id: 'memory-store' },
-		} as never;
+	const memoryConfig = {
+		storage: { id: 'memory-store' },
+	} as never;
 
+	beforeEach(() => {
+		jest.clearAllMocks();
+		MCPClient.mockImplementation(() => ({
+			listTools: jest.fn().mockResolvedValue({}),
+		}));
+		createToolsFromLocalMcpServer.mockReturnValue({});
+	});
+
+	it('creates a fresh deferred tool processor for each run-scoped toolset', async () => {
 		const createOptions = (runId: string) =>
 			({
 				modelId: 'test-model',
@@ -112,7 +139,6 @@ describe('createInstanceAgent', () => {
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
 		Agent.mockClear();
-		const memoryConfig = { storage: { id: 'memory-store' } } as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
 		await createInstanceAgent({
@@ -138,5 +164,135 @@ describe('createInstanceAgent', () => {
 		const firstCall = calls[0];
 		expect(firstCall).toBeDefined();
 		expect(firstCall[0]).not.toHaveProperty('workspace');
+	});
+
+	it('keeps local gateway tools from shadowing native tools', async () => {
+		createToolsFromLocalMcpServer.mockReturnValue({
+			workflows: { id: 'local-workflows' },
+			read_file: { id: 'local-read-file' },
+		});
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-local',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				logger,
+				localMcpServer: {
+					getToolsByCategory: jest.fn().mockReturnValue([]),
+				},
+			},
+			orchestrationContext: {
+				runId: 'run-local',
+				browserMcpConfig: undefined,
+			},
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const agentConfig = getLastAgentConfig();
+		expect(agentConfig.tools.workflows).toEqual({ id: 'workflows-run-local' });
+		expect(agentConfig.tools.read_file).toEqual({ id: 'local-read-file' });
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'local gateway MCP',
+				toolName: 'workflows',
+			}),
+		);
+	});
+
+	it('rejects normalized lookalike names from external MCP tools', async () => {
+		MCPClient.mockImplementation(() => ({
+			listTools: jest.fn().mockResolvedValue({
+				ＰＬＡＮ: { id: 'external-plan' },
+				custom_tool: { id: 'external-custom' },
+			}),
+		}));
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-external',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				logger,
+			},
+			orchestrationContext: {
+				runId: 'run-external',
+				browserMcpConfig: undefined,
+			},
+			mcpServers: [{ name: 'test-server', command: 'test-command-run-external' }],
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const agentConfig = getLastAgentConfig();
+		expect(agentConfig.tools.plan).toEqual({ id: 'plan-run-external' });
+		expect(agentConfig.tools.custom_tool).toEqual({ id: 'external-custom' });
+		expect(agentConfig.tools.ＰＬＡＮ).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'external MCP',
+				toolName: 'ＰＬＡＮ',
+			}),
+		);
+	});
+
+	it('rejects invalid MCP tool names and collisions across MCP sources', async () => {
+		MCPClient.mockImplementation(() => ({
+			listTools: jest.fn().mockResolvedValue({
+				custom_tool: { id: 'external-custom' },
+				'bad tool': { id: 'bad-tool' },
+			}),
+		}));
+		createToolsFromLocalMcpServer.mockReturnValue({
+			'custom-tool': { id: 'local-custom' },
+		});
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-collision',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				logger,
+				localMcpServer: {
+					getToolsByCategory: jest.fn().mockReturnValue([]),
+				},
+			},
+			orchestrationContext: {
+				runId: 'run-collision',
+				browserMcpConfig: undefined,
+			},
+			mcpServers: [{ name: 'test-server', command: 'test-command-run-collision' }],
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const agentConfig = getLastAgentConfig();
+		expect(agentConfig.tools.custom_tool).toEqual({ id: 'external-custom' });
+		expect(agentConfig.tools['custom-tool']).toBeUndefined();
+		expect(agentConfig.tools['bad tool']).toBeUndefined();
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'external MCP',
+				toolName: 'bad tool',
+			}),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'local gateway MCP',
+				toolName: 'custom-tool',
+			}),
+		);
 	});
 });

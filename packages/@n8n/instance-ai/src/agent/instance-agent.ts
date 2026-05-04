@@ -13,6 +13,79 @@ import { getSystemPrompt } from './system-prompt';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
+
+export class McpToolNameValidationError extends Error {
+	constructor(
+		message: string,
+		readonly toolName: string,
+		readonly source: string,
+	) {
+		super(message);
+		this.name = 'McpToolNameValidationError';
+	}
+}
+
+const MCP_TOOL_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
+
+export function normalizeMcpToolName(name: string): string {
+	return name
+		.normalize('NFKC')
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, '');
+}
+
+function validateMcpToolName(name: string, source: string): string {
+	const normalizedUnicode = name.normalize('NFKC');
+	if (!MCP_TOOL_NAME_PATTERN.test(normalizedUnicode)) {
+		throw new McpToolNameValidationError(
+			`MCP tool "${name}" from ${source} has an invalid name`,
+			name,
+			source,
+		);
+	}
+	return normalizeMcpToolName(normalizedUnicode);
+}
+
+function createClaimedToolNames(names: Iterable<string>): Map<string, string> {
+	const claimed = new Map<string, string>();
+	for (const name of names) {
+		claimed.set(normalizeMcpToolName(name), name);
+	}
+	return claimed;
+}
+
+function addSafeMcpTools(
+	target: ToolsInput,
+	sourceTools: ToolsInput,
+	options: {
+		source: string;
+		claimedToolNames: Map<string, string>;
+		warn?: (error: McpToolNameValidationError) => void;
+	},
+): void {
+	for (const [name, tool] of Object.entries(sourceTools)) {
+		try {
+			const normalizedName = validateMcpToolName(name, options.source);
+			const claimedBy = options.claimedToolNames.get(normalizedName);
+			if (claimedBy) {
+				throw new McpToolNameValidationError(
+					`MCP tool "${name}" from ${options.source} conflicts with "${claimedBy}"`,
+					name,
+					options.source,
+				);
+			}
+			options.claimedToolNames.set(normalizedName, name);
+			target[name] = tool;
+		} catch (error) {
+			if (error instanceof McpToolNameValidationError) {
+				options.warn?.(error);
+				continue;
+			}
+			throw error;
+		}
+	}
+}
+
 function buildMcpServers(
 	configs: McpServerConfig[],
 ): Record<
@@ -136,12 +209,24 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// Store ALL MCP tools (external + browser) on orchestrationContext for sub-agents
 	// (browser-credential-setup, delegate). NOT given to the orchestrator directly.
 	const allMcpTools: ToolsInput = {};
-	const domainToolNames = new Set(Object.keys(domainTools));
-	for (const [name, tool] of Object.entries({ ...mcpTools, ...browserMcpTools })) {
-		if (!domainToolNames.has(name)) {
-			allMcpTools[name] = tool;
-		}
-	}
+	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
+		context.logger?.warn('Skipped MCP tool with unsafe name', {
+			toolName: error.toolName,
+			source: error.source,
+			reason: error.message,
+		});
+	};
+	const mcpContextToolNames = createClaimedToolNames(Object.keys(domainTools));
+	addSafeMcpTools(allMcpTools, mcpTools, {
+		source: 'external MCP',
+		claimedToolNames: mcpContextToolNames,
+		warn: warnSkippedMcpTool,
+	});
+	addSafeMcpTools(allMcpTools, browserMcpTools, {
+		source: 'browser MCP',
+		claimedToolNames: mcpContextToolNames,
+		warn: warnSkippedMcpTool,
+	});
 	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
 		orchestrationContext.mcpTools = allMcpTools;
 	}
@@ -160,27 +245,35 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		...Object.keys(orchestrationTools),
 	]);
 	const safeMcpTools: ToolsInput = {};
-	for (const [name, tool] of Object.entries(mcpTools)) {
-		if (reservedToolNames.has(name)) continue;
-		safeMcpTools[name] = tool;
-	}
+	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
+	addSafeMcpTools(safeMcpTools, mcpTools, {
+		source: 'external MCP',
+		claimedToolNames: claimedOrchestratorToolNames,
+		warn: warnSkippedMcpTool,
+	});
 
 	// ── Tool search: split tools into always-loaded core vs deferred ────────
 	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
 	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
-	const localMcpTools = context.localMcpServer
+	const rawLocalMcpTools = context.localMcpServer
 		? Object.fromEntries(
 				Object.entries(createToolsFromLocalMcpServer(context.localMcpServer)).filter(
 					([name]) => !browserToolNames.has(name),
 				),
 			)
 		: {};
+	const safeLocalMcpTools: ToolsInput = {};
+	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
+		source: 'local gateway MCP',
+		claimedToolNames: claimedOrchestratorToolNames,
+		warn: warnSkippedMcpTool,
+	});
 
 	const allOrchestratorTools: ToolsInput = {
 		...orchestratorDomainTools,
 		...orchestrationTools,
 		...safeMcpTools, // external MCP only — browser tools excluded
-		...localMcpTools, // gateway tools — browser tools excluded via browserToolNames
+		...safeLocalMcpTools, // gateway tools — browser tools excluded via browserToolNames
 	};
 	const tracedOrchestratorTools =
 		orchestrationContext?.tracing?.wrapTools(allOrchestratorTools, {
