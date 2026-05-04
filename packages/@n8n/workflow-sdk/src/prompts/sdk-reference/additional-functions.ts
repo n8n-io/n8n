@@ -20,5 +20,8 @@ export const ADDITIONAL_FUNCTIONS = `Additional SDK functions:
 - \`.onError(handler)\` — connects a node's error output to a handler node. Requires \`onError: 'continueErrorOutput'\` in the node config.
   Example: \`httpNode.onError(errorHandler)\` (with \`config: { onError: 'continueErrorOutput' }\`)
 
+- \`nodeJson(node, 'field.path')\` — creates an explicit expression reference to JSON data from a specific node. Use this instead of \`$json\` in AI Agent subnodes, fan-in nodes, or when reading further upstream data.
+  Example: \`sessionKey: nodeJson(telegramTrigger, 'message.chat.id')\`
+
 - Additional subnode factories (all follow the same pattern as \`languageModel()\` and \`tool()\`):
   \`memory()\`, \`outputParser()\`, \`embeddings()\`, \`vectorStore()\`, \`retriever()\`, \`documentLoader()\`, \`textSplitter()\``;

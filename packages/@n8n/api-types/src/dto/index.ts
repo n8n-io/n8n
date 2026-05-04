@@ -199,7 +199,12 @@ export {
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
 } from './oauth/oauth-client.dto';
-export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+export {
+	ProvisioningConfigDto,
+	ProvisioningConfigPatchDto,
+	type ProvisioningMode,
+	type ProvisioningModeFlags,
+} from './provisioning/config.dto';
 
 export {
 	SecuritySettingsDto,

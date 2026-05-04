@@ -66,7 +66,7 @@ const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
-const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
+const canToggleMCP = computed(() => (isOwner.value || isAdmin.value) && !mcpStore.mcpManagedByEnv);
 
 const showConnectWorkflowsButton = computed(() => {
 	return selectedTab.value === 'workflows' && availableWorkflows.value.length > 0;
@@ -239,6 +239,7 @@ onMounted(async () => {
 				:access-enabled="mcpStore.mcpAccessEnabled"
 				:toggle-disabled="!canToggleMCP"
 				:loading="mcpStatusLoading"
+				:managed-by-env="mcpStore.mcpManagedByEnv"
 				@disable-mcp-access="onToggleMCPAccess(!mcpStore.mcpAccessEnabled)"
 			/>
 		</header>
@@ -246,6 +247,7 @@ onMounted(async () => {
 			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
+			:managed-by-env="mcpStore.mcpManagedByEnv"
 			@turn-on-mcp="onToggleMCPAccess(true)"
 		/>
 		<div

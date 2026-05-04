@@ -25,6 +25,9 @@ jest.mock('@n8n/db', () => ({
 	CredentialsRepository: mock<CredentialsRepository>(),
 	TagRepository: mock<TagRepository>(),
 	DataSource: mock<DataSource>(),
+	// `DataTableColumn` (transitively imported by import.service) extends
+	// `WithTimestampsAndStringId`; provide a no-op so the class evaluates.
+	WithTimestampsAndStringId: class {},
 }));
 
 jest.mock('@/active-workflow-manager', () => ({
@@ -90,6 +93,8 @@ describe('ImportService', () => {
 		mockEntityManager.query = jest.fn().mockResolvedValue(undefined);
 		mockEntityManager.insert = jest.fn().mockResolvedValue(undefined);
 		mockEntityManager.upsert = jest.fn().mockResolvedValue(undefined);
+		// Passthrough so tests can read column fields off the result.
+		mockEntityManager.create = jest.fn().mockImplementation((_entity, data) => data);
 
 		// Mock transaction method
 		mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {

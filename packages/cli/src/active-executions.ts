@@ -78,6 +78,7 @@ export class ActiveExecutions {
 					workflowId: executionData.workflowData.id,
 					retryOf: executionData.retryOf ?? undefined,
 					tracingContext: executionData.tracingContext ?? null,
+					deduplicationKey: executionData.deduplicationKey,
 				};
 
 				const workflowId = executionData.workflowData.id;

@@ -125,7 +125,10 @@ export type {
 } from './workflow-loop';
 export { WorkflowLoopRuntime } from './workflow-loop/runtime';
 export { PlannedTaskCoordinator } from './planned-tasks/planned-task-service';
-export { applyPlannedTaskPermissions } from './planned-tasks/planned-task-permissions';
+export {
+	applyPlannedTaskPermissions,
+	PLANNED_TASK_PERMISSION_OVERRIDES,
+} from './planned-tasks/planned-task-permissions';
 export type {
 	InstanceAiContext,
 	InstanceAiWorkflowService,
@@ -152,6 +155,7 @@ export type {
 	PlannedTaskService,
 	OrchestrationContext,
 	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
 	BackgroundTaskResult,
 	InstanceAiToolTraceOptions,
 	InstanceAiTraceContext,
