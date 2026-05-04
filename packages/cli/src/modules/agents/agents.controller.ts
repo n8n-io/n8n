@@ -190,7 +190,7 @@ export class AgentsController {
 			instructions: payload.instructions,
 		};
 
-		return await this.agentsService.createSkill(agentId, projectId, payload.id, skill);
+		return await this.agentsService.createSkill(agentId, projectId, skill);
 	}
 
 	@Patch('/:agentId/skills/:skillId')

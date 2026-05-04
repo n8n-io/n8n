@@ -3,7 +3,6 @@ import { UpdateAgentSkillDto } from '../update-agent-skill.dto';
 
 describe('agent skill DTOs', () => {
 	const validSkill = {
-		id: 'summarize_notes',
 		name: 'Summarize Notes',
 		description: 'Summarizes meeting notes',
 		instructions: 'Extract decisions and action items.',

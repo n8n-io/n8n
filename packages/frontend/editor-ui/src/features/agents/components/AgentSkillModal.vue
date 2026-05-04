@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { skillNameToId } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nIcon } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
@@ -12,10 +11,9 @@ import AgentSkillViewer from './AgentSkillViewer.vue';
 export type AgentSkillModalData = {
 	projectId: string;
 	agentId: string;
-	existingSkillIds: string[];
 	skill?: AgentSkill;
 	skillId?: string;
-	onConfirm: (payload: { id: string; skill: AgentSkill }) => void;
+	onConfirm: (payload: { id?: string; skill: AgentSkill }) => void;
 	onRemove?: (id: string) => void;
 };
 
@@ -35,17 +33,7 @@ const skill = ref<AgentSkill>({
 const submitted = ref(false);
 const formIsValid = ref(false);
 
-const existingSkillIds = computed(() => new Set(props.data.existingSkillIds));
 const isEditing = computed(() => !!props.data.skillId);
-
-function makeUniqueSkillId(name: string): string {
-	const base = skillNameToId(name);
-	if (!existingSkillIds.value.has(base)) return base;
-
-	let suffix = 2;
-	while (existingSkillIds.value.has(`${base}_${suffix}`)) suffix++;
-	return `${base}_${suffix}`;
-}
 
 const validationErrors = computed<Partial<Record<keyof AgentSkill, string>>>(() => {
 	const errors: Partial<Record<keyof AgentSkill, string>> = {};
@@ -96,9 +84,8 @@ function onSave() {
 		description: skill.value.description.trim(),
 		instructions: skill.value.instructions,
 	};
-	const skillId = makeUniqueSkillId(payload.name);
 
-	props.data.onConfirm({ id: props.data.skillId ?? skillId, skill: payload });
+	props.data.onConfirm({ id: props.data.skillId, skill: payload });
 	closeModal();
 }
 

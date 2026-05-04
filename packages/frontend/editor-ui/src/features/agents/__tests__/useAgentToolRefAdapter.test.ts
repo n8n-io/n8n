@@ -4,7 +4,6 @@ import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 import {
 	nodeTypeToNewToolRef,
-	toBaseNodeType,
 	toolRefToNode,
 	updateToolRefFromNode,
 	updateWorkflowToolRef,
@@ -117,7 +116,8 @@ describe('useAgentToolRefAdapter', () => {
 		it('seeds empty parameters without persisting an input schema', () => {
 			const ref = nodeTypeToNewToolRef(makeNodeType());
 			expect(ref.node?.nodeParameters).toEqual({});
-			expect(ref.inputSchema).toBeUndefined();
+			expect(ref.id).toBeUndefined();
+			expect(ref).not.toHaveProperty('inputSchema');
 		});
 
 		it('persists the Tool-variant nodeType so the form gets the AI codex needed for $fromAI', () => {
@@ -154,7 +154,7 @@ describe('useAgentToolRefAdapter', () => {
 					properties: [],
 				} as Partial<INodeTypeDescription>),
 			);
-			expect(ref.inputSchema).toBeUndefined();
+			expect(ref).not.toHaveProperty('inputSchema');
 		});
 
 		it('does not persist an input schema for non-native tool nodes', () => {
@@ -168,21 +168,7 @@ describe('useAgentToolRefAdapter', () => {
 					] as INodeTypeDescription['properties'],
 				} as Partial<INodeTypeDescription>),
 			);
-			expect(ref.inputSchema).toBeUndefined();
-		});
-	});
-
-	describe('toBaseNodeType()', () => {
-		it('strips a trailing "Tool" suffix', () => {
-			expect(toBaseNodeType('n8n-nodes-base.slackTool')).toBe('n8n-nodes-base.slack');
-		});
-
-		it('returns the name unchanged when there is no suffix', () => {
-			expect(toBaseNodeType('n8n-nodes-base.slack')).toBe('n8n-nodes-base.slack');
-		});
-
-		it('does not strip an internal "Tool" that is not a suffix', () => {
-			expect(toBaseNodeType('n8n-nodes-base.toolCalculator')).toBe('n8n-nodes-base.toolCalculator');
+			expect(ref).not.toHaveProperty('inputSchema');
 		});
 	});
 
@@ -193,7 +179,6 @@ describe('useAgentToolRefAdapter', () => {
 				name: 'Slack',
 				description: 'Send a Slack message',
 				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
-				inputSchema: { type: 'object' },
 			};
 
 			const node: INode = {
@@ -218,7 +203,6 @@ describe('useAgentToolRefAdapter', () => {
 					credentials: undefined,
 				},
 			});
-			expect(updated.inputSchema).toBeUndefined();
 		});
 
 		it('drops credentials whose id is not yet persisted (null id)', () => {
@@ -280,12 +264,15 @@ describe('useAgentToolRefAdapter', () => {
 			expect(updateToolRefFromNode(workflowRef, node)).toBe(workflowRef);
 		});
 
-		it('drops persisted inputSchema when saving $fromAI overrides in nodeParameters', () => {
+		it('saves $fromAI overrides only in nodeParameters', () => {
 			const original: AgentJsonToolRef = {
 				type: 'node',
 				name: 'Slack',
-				node: { nodeType: 'n8n-nodes-base.slack', nodeTypeVersion: 1, nodeParameters: {} },
-				inputSchema: { type: 'object', properties: {} },
+				node: {
+					nodeType: 'n8n-nodes-base.slack',
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+				},
 			};
 
 			const node: INode = {
@@ -301,39 +288,8 @@ describe('useAgentToolRefAdapter', () => {
 			};
 
 			const updated = updateToolRefFromNode(original, node);
-
-			expect(updated.inputSchema).toBeUndefined();
+			expect(updated).not.toHaveProperty('inputSchema');
 			expect(updated.node?.nodeParameters).toEqual(node.parameters);
-		});
-
-		it('drops stale inputSchema when no $fromAI overrides remain', () => {
-			const original: AgentJsonToolRef = {
-				type: 'node',
-				name: 'Slack',
-				node: {
-					nodeType: 'n8n-nodes-base.slack',
-					nodeTypeVersion: 1,
-					nodeParameters: {},
-				},
-				inputSchema: {
-					type: 'object',
-					properties: { channel: { type: 'string', description: 'stale' } },
-					required: ['channel'],
-				},
-			};
-
-			const node: INode = {
-				id: 'n-1',
-				name: 'Slack',
-				type: 'n8n-nodes-base.slack',
-				typeVersion: 1,
-				position: [0, 0],
-				// No `$fromAI(...)` expression — user cleared the override.
-				parameters: { channel: '#general' },
-			};
-
-			const updated = updateToolRefFromNode(original, node);
-			expect(updated.inputSchema).toBeUndefined();
 		});
 	});
 
@@ -364,10 +320,7 @@ describe('useAgentToolRefAdapter', () => {
 				description: 'Ship a daily summary',
 				allOutputs: false,
 			});
-			// A stable id is assigned at creation so the config modal's onConfirm
-			// can match this ref even if the surrounding tools array is rebuilt.
-			expect(typeof ref.id).toBe('string');
-			expect(ref.id).not.toBe('');
+			expect(ref.id).toBeUndefined();
 		});
 
 		it('defaults description to empty when the workflow has none', () => {
@@ -377,7 +330,7 @@ describe('useAgentToolRefAdapter', () => {
 	});
 
 	describe('updateWorkflowToolRef()', () => {
-		it('merges edited fields into the ref, preserving type and workflow id', () => {
+		it('merges edited fields into the ref, preserving type and workflow reference', () => {
 			const original: AgentJsonToolRef = {
 				type: 'workflow',
 				workflow: 'Notify Sales',
