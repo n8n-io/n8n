@@ -9,9 +9,11 @@ import CommunityPackageRow from './CommunityPackageRow.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { CommunityPackageRowData } from '../communityNodes.types';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
 
 const mockInstallNode = vi.fn().mockResolvedValue({ success: true });
 const mockLoading = ref(false);
+const mockTrack = vi.fn();
 
 vi.mock('../composables/useInstallNode', () => ({
 	useInstallNode: vi.fn(() => ({
@@ -21,7 +23,7 @@ vi.mock('../composables/useInstallNode', () => ({
 }));
 
 vi.mock('@/app/composables/useTelemetry', () => ({
-	useTelemetry: vi.fn(() => ({ track: vi.fn() })),
+	useTelemetry: vi.fn(() => ({ track: mockTrack })),
 }));
 
 vi.mock('@/app/components/NodeIcon.vue', () => ({
@@ -74,6 +76,7 @@ describe('CommunityPackageRow', () => {
 		setActivePinia(pinia);
 		nodeTypesStore = useNodeTypesStore();
 		mockInstallNode.mockClear();
+		mockTrack.mockClear();
 		mockLoading.value = false;
 	});
 
@@ -81,6 +84,15 @@ describe('CommunityPackageRow', () => {
 		const { getByText } = renderComponent({ props: { row: makeRow() } });
 		expect(getByText('n8n-nodes-example')).toBeInTheDocument();
 		expect(getByText(/Test Author/)).toBeInTheDocument();
+	});
+
+	it('should link package name to npm', () => {
+		const { getByText } = renderComponent({ props: { row: makeRow() } });
+
+		expect(getByText('n8n-nodes-example').closest('a')).toHaveAttribute(
+			'href',
+			`${NPM_PACKAGE_DOCS_BASE_URL}n8n-nodes-example`,
+		);
 	});
 
 	it('should render description in byline', () => {
@@ -244,6 +256,26 @@ describe('CommunityPackageRow', () => {
 				telemetry: expect.objectContaining({ source: 'cnr settings browse' }),
 			}),
 		);
+	});
+
+	it('should track telemetry when Install is clicked', async () => {
+		const { getByTestId } = renderComponent({ props: { row: makeRow() } });
+
+		await fireEvent.click(getByTestId('community-package-row__install'));
+
+		expect(mockTrack).toHaveBeenCalledWith('user clicked cnr install button', {
+			package_name: 'n8n-nodes-example',
+			source: 'cnr settings browse',
+		});
+	});
+
+	it('should show installing label while install is loading', () => {
+		mockLoading.value = true;
+
+		const { getByTestId, getByText } = renderComponent({ props: { row: makeRow() } });
+
+		expect(getByTestId('community-package-row__install')).toBeInTheDocument();
+		expect(getByText('Installing...')).toBeInTheDocument();
 	});
 
 	it('should emit installed and flip to installed state after successful install', async () => {
