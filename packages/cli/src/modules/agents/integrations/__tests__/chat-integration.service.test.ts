@@ -105,5 +105,46 @@ describe('ChatIntegrationService', () => {
 			const service = buildService();
 			await expect(service.disconnectAll()).resolves.toBeUndefined();
 		});
+
+		it('continues disconnecting remaining connections when one shutdown rejects', async () => {
+			const service = buildService();
+			const shutdownA = jest.fn().mockRejectedValue(new Error('boom'));
+			const shutdownB = jest.fn().mockResolvedValue(undefined);
+			const disposeA = jest.fn();
+			const disposeB = jest.fn();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const internal = service as any;
+			internal.connections.set('agent-1:slack:cred-1', {
+				chat: {
+					shutdown: shutdownA,
+					webhooks: {},
+					onAction: jest.fn(),
+					onNewMention: jest.fn(),
+					onSubscribedMessage: jest.fn(),
+					initialize: jest.fn(),
+				},
+				bridge: { dispose: disposeA },
+			});
+			internal.connections.set('agent-2:telegram:cred-2', {
+				chat: {
+					shutdown: shutdownB,
+					webhooks: {},
+					onAction: jest.fn(),
+					onNewMention: jest.fn(),
+					onSubscribedMessage: jest.fn(),
+					initialize: jest.fn(),
+				},
+				bridge: { dispose: disposeB },
+			});
+
+			await expect(service.disconnectAll()).resolves.toBeUndefined();
+
+			expect(shutdownA).toHaveBeenCalledTimes(1);
+			expect(shutdownB).toHaveBeenCalledTimes(1);
+			expect(disposeA).toHaveBeenCalledTimes(1);
+			expect(disposeB).toHaveBeenCalledTimes(1);
+			expect(internal.connections.size).toBe(0);
+		});
 	});
 });
