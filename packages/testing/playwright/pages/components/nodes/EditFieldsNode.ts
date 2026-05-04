@@ -59,7 +59,7 @@ export class EditFieldsNode extends BasePage {
 	private async setFieldType(assignment: Locator, type: string): Promise<void> {
 		const typeSelect = assignment.getByTestId('assignment-type-select');
 		await typeSelect.waitFor({ state: 'visible' });
-		await typeSelect.click();
+		await typeSelect.getByRole('button').click();
 
 		const option = this.page
 			.getByTestId('assignment-type-select-dropdown')

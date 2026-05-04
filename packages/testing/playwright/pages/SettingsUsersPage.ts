@@ -69,11 +69,10 @@ export class SettingsUsersPage extends BasePage {
 
 	async selectAccountType(email: string, type: 'Admin' | 'Member') {
 		await this.clickAccountType(email);
-		const role = type === 'Admin' ? 'global:admin' : 'global:member';
 		await this.page
-			.getByTestId('user-role-dropdown')
+			.getByRole('menu')
 			.filter({ visible: true })
-			.getByTestId(`user-role-dropdown-item-${role}`)
+			.getByRole('menuitem', { name: new RegExp(`^${type}\\b`) })
 			.click();
 	}
 
