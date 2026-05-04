@@ -49,10 +49,6 @@ const durationMs = computed(() => {
 .card {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
-	padding: var(--spacing--md);
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--border-radius--base);
-	background-color: var(--color--background--light-3);
+	gap: var(--spacing--xs);
 }
 </style>
