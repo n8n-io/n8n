@@ -69,7 +69,7 @@ export class SettingsUsersPage extends BasePage {
 
 	async selectAccountType(email: string, type: 'Admin' | 'Member') {
 		await this.clickAccountType(email);
-		await this.page.getByRole('menuitem', { name: type }).click();
+		await this.getVisiblePopoverMenuItem(type).click();
 	}
 
 	async openActions(email: string) {
