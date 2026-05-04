@@ -15,6 +15,10 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 		registry = new LocalGatewayRegistry();
 	});
 
+	afterEach(() => {
+		jest.useRealTimers();
+	});
+
 	describe('generatePairingToken', () => {
 		it('creates a token and registers it in the reverse lookup', () => {
 			const token = registry.generatePairingToken('user-a');
@@ -35,6 +39,20 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			const sessionKey = registry.consumePairingToken('user-a', pairingToken);
 
 			expect(registry.generatePairingToken('user-a')).toBe(sessionKey);
+		});
+
+		it('does not return an expired active session key', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+
+			jest.setSystemTime(new Date('2026-01-02T00:00:01.000Z'));
+			const nextToken = registry.generatePairingToken('user-a');
+
+			expect(nextToken).toMatch(/^gw_/);
+			expect(nextToken).not.toBe(sessionKey);
+			expect(registry.getUserIdForApiKey(sessionKey)).toBeUndefined();
 		});
 
 		it('generates independent tokens for different users', () => {
@@ -73,6 +91,62 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 
 			expect(registry.getUserIdForApiKey(sessionKey)).toBeUndefined();
 			expect(registry.getActiveSessionKey('user-a')).toBeNull();
+		});
+	});
+
+	describe('session key lifecycle', () => {
+		it('expires active session keys from reverse lookup', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			registry.initGateway('user-a', CAPABILITIES);
+
+			jest.setSystemTime(new Date('2026-01-02T00:00:01.000Z'));
+
+			expect(registry.getUserIdForApiKey(sessionKey)).toBeUndefined();
+			expect(registry.getActiveSessionKey('user-a')).toBeNull();
+			expect(registry.getGatewayStatus('user-a').connected).toBe(false);
+		});
+
+		it('rotates a session key after the rotation window', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+
+			jest.setSystemTime(new Date('2026-01-01T01:00:00.000Z'));
+			const rotatedSessionKey = registry.rotateSessionKeyIfNeeded('user-a', sessionKey);
+
+			expect(rotatedSessionKey).toMatch(/^sess_/);
+			expect(rotatedSessionKey).not.toBe(sessionKey);
+			expect(registry.getUserIdForApiKey(sessionKey)).toBeUndefined();
+			expect(registry.getUserIdForApiKey(rotatedSessionKey!)).toBe('user-a');
+		});
+
+		it('keeps a session key before the rotation window', () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+
+			jest.setSystemTime(new Date('2026-01-01T00:59:59.000Z'));
+
+			expect(registry.rotateSessionKeyIfNeeded('user-a', sessionKey)).toBeNull();
+			expect(registry.getUserIdForApiKey(sessionKey)).toBe('user-a');
+		});
+
+		it('revokes pairing tokens, session keys, and the active gateway', () => {
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			registry.initGateway('user-a', CAPABILITIES);
+
+			expect(registry.revokeSession('user-a')).toBe(true);
+
+			expect(registry.getUserIdForApiKey(pairingToken)).toBeUndefined();
+			expect(registry.getUserIdForApiKey(sessionKey)).toBeUndefined();
+			expect(registry.getActiveSessionKey('user-a')).toBeNull();
+			expect(registry.getGatewayStatus('user-a').connected).toBe(false);
 		});
 	});
 

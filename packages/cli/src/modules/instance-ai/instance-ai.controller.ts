@@ -53,6 +53,7 @@ import { UrlService } from '@/services/url.service';
 type FlushableResponse = Response & { flush?: () => void };
 
 const KEEP_ALIVE_INTERVAL_MS = 15_000;
+const ENV_GATEWAY_USER_ID = 'env-gateway';
 
 @RestController('/instance-ai')
 export class InstanceAiController {
@@ -471,6 +472,18 @@ export class InstanceAiController {
 		if (payload.localGatewayDisabled !== undefined) {
 			await this.moduleRegistry.refreshModuleSettings('instance-ai');
 		}
+		if (
+			payload.localGatewayDisabled === true &&
+			this.instanceAiService.revokeGatewaySession(req.user.id)
+		) {
+			this.push.sendToUsers(
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				},
+				[req.user.id],
+			);
+		}
 		return result;
 	}
 
@@ -717,7 +730,11 @@ export class InstanceAiController {
 		);
 
 		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
+		const sessionKey =
+			key && userId !== ENV_GATEWAY_USER_ID
+				? (this.instanceAiService.consumePairingToken(userId, key) ??
+					this.instanceAiService.rotateSessionKeyIfNeeded(userId, key))
+				: null;
 		if (sessionKey) {
 			return { ok: true, sessionKey };
 		}
@@ -845,7 +862,7 @@ export class InstanceAiController {
 		if (this.gatewayApiKey) {
 			const expected = Buffer.from(this.gatewayApiKey);
 			if (expected.length === actual.length && timingSafeEqual(expected, actual)) {
-				return 'env-gateway';
+				return ENV_GATEWAY_USER_ID;
 			}
 		}
 

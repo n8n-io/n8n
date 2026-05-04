@@ -275,7 +275,8 @@ Two options:
   2. Daemon calls `POST /instance-ai/gateway/init` with the pairing token →
      server consumes the token and returns `{ ok: true, sessionKey }`.
   3. All subsequent requests (SSE, response) use the **session key** instead
-     of the consumed pairing token.
+     of the consumed pairing token. Session keys have an absolute expiry and
+     are rotated on reconnect when the rotation window has elapsed.
 
 ```
 create-link → pairingToken (5 min TTL, single-use)
@@ -342,7 +343,7 @@ are client-agnostic.
 | Directory containment | `path.resolve()` + `fs.realpath()` when basePath is set |
 | Auth | Timing-safe key comparison (`timingSafeEqual()`) |
 | Pairing token | One-time use, 5-min TTL, consumed on init |
-| Session key | Server-issued, replaces pairing token after init |
+| Session key | Server-issued, expires absolutely, rotates on reconnect |
 | Request timeout | 30s per gateway round-trip |
 | Keep-alive | 15s ping interval to detect stale connections |
 

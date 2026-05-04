@@ -117,6 +117,10 @@ describe('InstanceAiController', () => {
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 	});
 
+	afterEach(() => {
+		jest.useRealTimers();
+	});
+
 	describe('chat', () => {
 		const payload = mock<InstanceAiSendMessageRequest>({
 			message: 'hello',
@@ -615,10 +619,32 @@ describe('InstanceAiController', () => {
 			settingsService.updateUserPreferences.mockResolvedValue(
 				mock<InstanceAiUserPreferencesResponse>(),
 			);
+			instanceAiService.revokeGatewaySession.mockReturnValue(false);
 
 			await controller.updateUserPreferences(req, res, payload);
 
 			expect(moduleRegistry.refreshModuleSettings).toHaveBeenCalledWith('instance-ai');
+		});
+
+		it('should revoke the user gateway session when local gateway is disabled', async () => {
+			const payload = mock<InstanceAiUserPreferencesUpdateRequest>({
+				localGatewayDisabled: true,
+			});
+			settingsService.updateUserPreferences.mockResolvedValue(
+				mock<InstanceAiUserPreferencesResponse>(),
+			);
+			instanceAiService.revokeGatewaySession.mockReturnValue(true);
+
+			await controller.updateUserPreferences(req, res, payload);
+
+			expect(instanceAiService.revokeGatewaySession).toHaveBeenCalledWith(USER_ID);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				},
+				[USER_ID],
+			);
 		});
 
 		it('should not refresh module settings when localGatewayDisabled is not in payload', async () => {
@@ -911,6 +937,25 @@ describe('InstanceAiController', () => {
 			});
 
 			expect(result).toEqual({ ok: true, sessionKey: 'new-session-key' });
+		});
+
+		it('should return rotated session key on reconnect past rotation age', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.consumePairingToken.mockReturnValue(null);
+			instanceAiService.rotateSessionKeyIfNeeded.mockReturnValue('rotated-session-key');
+			const gatewayReq = makeGatewayReq('session-key', { rootPath: '/tmp' });
+
+			const result = await controller.gatewayInit(gatewayReq, res, {
+				rootPath: '/tmp',
+				tools: [],
+				toolCategories: [],
+			});
+
+			expect(result).toEqual({ ok: true, sessionKey: 'rotated-session-key' });
+			expect(instanceAiService.rotateSessionKeyIfNeeded).toHaveBeenCalledWith(
+				USER_ID,
+				'session-key',
+			);
 		});
 
 		it('should accept static env var key', async () => {

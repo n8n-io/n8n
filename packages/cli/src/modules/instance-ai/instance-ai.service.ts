@@ -1175,8 +1175,16 @@ export class InstanceAiService {
 		return this.gatewayRegistry.getActiveSessionKey(userId);
 	}
 
+	rotateSessionKeyIfNeeded(userId: string, key: string): string | null {
+		return this.gatewayRegistry.rotateSessionKeyIfNeeded(userId, key);
+	}
+
 	clearActiveSessionKey(userId: string): void {
 		this.gatewayRegistry.clearActiveSessionKey(userId);
+	}
+
+	revokeGatewaySession(userId: string): boolean {
+		return this.gatewayRegistry.revokeSession(userId);
 	}
 
 	getLocalGateway(userId: string): LocalGateway {
