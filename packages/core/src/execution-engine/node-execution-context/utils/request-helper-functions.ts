@@ -757,15 +757,15 @@ interface RefreshOAuth2TokenContext {
 	helpers: IAllExecuteFunctions['helpers'];
 }
 
-async function maybeDecryptOAuth2TokenData<T extends Record<string, unknown> | undefined>(
+async function decryptOAuth2TokenDataIfConfigured<T extends IDataObject | undefined>(
 	additionalData: IWorkflowExecuteAdditionalData,
 	tokenData: T,
 	jweEnabled: boolean,
 ): Promise<T | IDataObject> {
 	if (!jweEnabled) return tokenData;
 	const proxy = additionalData['oauth-jwe']?.oauthJweProxyProvider;
-	if (!proxy) return tokenData;
-	return await proxy.decryptOAuth2TokenData(tokenData as unknown as IDataObject);
+	if (!proxy || !tokenData) return tokenData;
+	return await proxy.decryptOAuth2TokenData(tokenData);
 }
 
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
@@ -806,7 +806,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 	);
 
-	const refreshedTokenData = await maybeDecryptOAuth2TokenData(
+	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
 		additionalData,
 		newToken.data,
 		credentials.jweEnabled === true,
@@ -907,7 +907,7 @@ export async function requestOAuth2(
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
-		const initialTokenData = (await maybeDecryptOAuth2TokenData(
+		const initialTokenData = (await decryptOAuth2TokenDataIfConfigured(
 			additionalData,
 			data,
 			credentials.jweEnabled === true,

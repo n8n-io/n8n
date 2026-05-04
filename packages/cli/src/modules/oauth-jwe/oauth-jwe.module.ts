@@ -12,17 +12,17 @@ function isFeatureFlagEnabled(): boolean {
 @BackendModule({ name: 'oauth-jwe' })
 export class OAuthJweModule implements ModuleInterface {
 	async init() {
-		const { OAuthJweKeyService } = await import('./oauth-jwe-key.service');
-		await Container.get(OAuthJweKeyService).initialize();
+		if (!isFeatureFlagEnabled()) return;
 
-		if (isFeatureFlagEnabled()) {
-			const { OAuthJweDecryptService } = await import('./oauth-jwe-decrypt.service');
-			Container.get(OAuthJweServiceProxy).setHandler(Container.get(OAuthJweDecryptService));
+		const { OAuthJweDecryptService } = await import('./oauth-jwe-decrypt.service');
+		Container.get(OAuthJweServiceProxy).setHandler(Container.get(OAuthJweDecryptService));
 
-			// Controller only runs on main; workers don't serve REST.
-			if (Container.get(InstanceSettings).instanceType === 'main') {
-				await import('./oauth-jwe.controller');
-			}
+		// Eager key bootstrap and the JWKS controller belong on main only.
+		// Workers lazily load the key via the cache on the first refresh that needs it.
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			const { OAuthJweKeyService } = await import('./oauth-jwe-key.service');
+			await Container.get(OAuthJweKeyService).initialize();
+			await import('./oauth-jwe.controller');
 		}
 	}
 
