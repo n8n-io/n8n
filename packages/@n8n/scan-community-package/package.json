@@ -4,6 +4,9 @@
   "description": "Static code analyser for n8n community packages",
   "license": "none",
   "bin": "scanner/cli.mjs",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
   "files": [
     "scanner"
   ],
