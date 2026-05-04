@@ -156,7 +156,10 @@ function createCheckpointService(): ServiceInternals {
 const fakeUser = { id: 'user-1' } as User;
 
 type TerminalOutcomeServiceInternals = {
-	replayUndeliveredTerminalOutcomes: (threadId: string) => Promise<void>;
+	replayUndeliveredTerminalOutcomes: (
+		threadId: string,
+		options?: { delivery?: 'snapshot' | 'event' },
+	) => Promise<void>;
 	createTerminalOutcomeStorage: jest.Mock;
 	dbSnapshotStorage: {
 		getLatest: jest.Mock;
@@ -428,6 +431,27 @@ describe('InstanceAiService — terminal outcome replay', () => {
 		expect(service.eventBus.publish).not.toHaveBeenCalled();
 	});
 
+	it('publishes recovered background outcomes when replaying for SSE delivery', async () => {
+		const outcome = makeTerminalOutcome();
+		const service = createTerminalOutcomeService([outcome], makeAgentTree());
+
+		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
+
+		expect(service.dbSnapshotStorage.updateLast).toHaveBeenCalledTimes(1);
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'text-delta',
+			runId: outcome.runId,
+			agentId: 'agent-001',
+			responseId: `background-outcome:${outcome.id}`,
+			payload: { text: outcome.userFacingMessage },
+		});
+		expect(service.createTerminalOutcomeStorage().markDelivered).toHaveBeenCalledWith(
+			'thread-a',
+			outcome.id,
+			expect.any(String),
+		);
+	});
+
 	it('deduplicates replay by response id only', async () => {
 		const outcome = makeTerminalOutcome({ id: 'group-1:task-2:completed' });
 		const tree = makeAgentTree();
@@ -477,7 +501,7 @@ describe('InstanceAiService — terminal outcome replay', () => {
 		const service = createTerminalOutcomeService([outcome], makeAgentTree());
 		service.dbSnapshotStorage.updateLast.mockRejectedValue(new Error('storage unavailable'));
 
-		await service.replayUndeliveredTerminalOutcomes('thread-a');
+		await service.replayUndeliveredTerminalOutcomes('thread-a', { delivery: 'event' });
 
 		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
 			type: 'text-delta',

@@ -406,7 +406,7 @@ export function isDisplayableConfirmationRequest(
 		case 'text':
 			return isNonEmptyString(payload.message);
 		case 'questions':
-			return hasItems(payload.questions) || isNonEmptyString(payload.introMessage);
+			return hasItems(payload.questions);
 		case 'plan-review':
 			return (
 				hasItems(payload.planItems) ||

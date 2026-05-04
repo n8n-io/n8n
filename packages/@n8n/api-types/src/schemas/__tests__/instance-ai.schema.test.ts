@@ -83,6 +83,18 @@ describe('isDisplayableConfirmationRequest', () => {
 		expect(isDisplayableConfirmationRequest(makeConfirmation({ message: '   ' }))).toBe(false);
 	});
 
+	it('does not treat intro-only questions prompts as displayable', () => {
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'questions',
+					message: '',
+					introMessage: 'A little context before the questions',
+				}),
+			),
+		).toBe(false);
+	});
+
 	it('recognizes typed display variants', () => {
 		expect(
 			isDisplayableConfirmationRequest(

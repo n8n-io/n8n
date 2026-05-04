@@ -143,7 +143,7 @@ export class InstanceAiTerminalResponseGuard {
 		confirmationEvent: InstanceAiConfirmationRequestEvent | undefined,
 	): TerminalResponseDecision {
 		const visibility = this.getVisibility(events);
-		if (visibility.hasFallback) {
+		if (visibility.hasCurrentRunFallback) {
 			return {
 				status: 'waiting',
 				visibilitySource: 'fallback',
@@ -179,6 +179,7 @@ export class InstanceAiTerminalResponseGuard {
 		hasRootText: boolean;
 		hasRootError: boolean;
 		hasFallback: boolean;
+		hasCurrentRunFallback: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
 		return {
@@ -190,6 +191,9 @@ export class InstanceAiTerminalResponseGuard {
 			),
 			hasFallback: events.some((event) =>
 				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:`),
+			),
+			hasCurrentRunFallback: currentRunEvents.some((event) =>
+				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:${this.options.runId}:`),
 			),
 		};
 	}

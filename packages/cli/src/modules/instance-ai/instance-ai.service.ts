@@ -1567,7 +1567,10 @@ export class InstanceAiService {
 		};
 	}
 
-	async replayUndeliveredTerminalOutcomes(threadId: string): Promise<void> {
+	async replayUndeliveredTerminalOutcomes(
+		threadId: string,
+		options: { delivery?: 'snapshot' | 'event' } = {},
+	): Promise<void> {
 		const storage = this.createTerminalOutcomeStorage();
 		const persistedOutcomes = await storage.getUndelivered(threadId).catch((error) => {
 			this.logger.warn('Failed to load undelivered Instance AI terminal outcomes', {
@@ -1583,29 +1586,14 @@ export class InstanceAiService {
 		for (const outcome of [...persistedOutcomes, ...inMemoryOutcomes]) {
 			outcomes.set(outcome.id, outcome);
 		}
+		const persistedOutcomeIds = new Set(persistedOutcomes.map((outcome) => outcome.id));
+		const delivery = options.delivery ?? 'snapshot';
 
 		for (const outcome of outcomes.values()) {
 			const responseId = getBackgroundOutcomeResponseId(outcome);
+			let snapshotDelivered = false;
 			try {
-				if (await this.persistTerminalOutcomeLineToSnapshot(outcome, responseId)) {
-					if (persistedOutcomes.some((persisted) => persisted.id === outcome.id)) {
-						await storage.markDelivered(threadId, outcome.id, new Date().toISOString());
-					}
-					this.pendingTerminalOutcomes.delete(outcome.id);
-					this.telemetry.track('instance_ai_terminal_response_decision', {
-						thread_id: threadId,
-						run_id: outcome.runId,
-						message_group_id: outcome.messageGroupId,
-						task_id: outcome.taskId,
-						source: 'terminal_outcome_replay',
-						status: outcome.status,
-						action: 'replay_snapshot',
-						visibility_source: 'background-outcome',
-					});
-					continue;
-				}
-
-				this.publishTerminalOutcomeLine(outcome, responseId);
+				snapshotDelivered = await this.persistTerminalOutcomeLineToSnapshot(outcome, responseId);
 			} catch (error) {
 				this.logger.warn('Failed to replay Instance AI terminal outcome', {
 					threadId,
@@ -1613,8 +1601,53 @@ export class InstanceAiService {
 					taskId: outcome.taskId,
 					error: getErrorMessage(error),
 				});
-				this.publishTerminalOutcomeLine(outcome, responseId);
+				if (delivery === 'event') {
+					const published = this.publishTerminalOutcomeLine(outcome, responseId);
+					this.telemetry.track('instance_ai_terminal_response_decision', {
+						thread_id: threadId,
+						run_id: outcome.runId,
+						message_group_id: outcome.messageGroupId,
+						task_id: outcome.taskId,
+						source: 'terminal_outcome_replay',
+						status: outcome.status,
+						action: published ? 'replay_event' : 'already-emitted',
+						visibility_source: 'background-outcome',
+					});
+				}
+				continue;
 			}
+
+			if (!snapshotDelivered) continue;
+
+			let action = 'replay_snapshot';
+			if (delivery === 'event') {
+				const published = this.publishTerminalOutcomeLine(outcome, responseId);
+				action = published ? 'replay_event' : 'already-emitted';
+			}
+
+			if (persistedOutcomeIds.has(outcome.id)) {
+				await storage
+					.markDelivered(threadId, outcome.id, new Date().toISOString())
+					.catch((error) => {
+						this.logger.warn('Failed to mark Instance AI terminal outcome as delivered', {
+							threadId,
+							runId: outcome.runId,
+							taskId: outcome.taskId,
+							error: getErrorMessage(error),
+						});
+					});
+			}
+			this.pendingTerminalOutcomes.delete(outcome.id);
+			this.telemetry.track('instance_ai_terminal_response_decision', {
+				thread_id: threadId,
+				run_id: outcome.runId,
+				message_group_id: outcome.messageGroupId,
+				task_id: outcome.taskId,
+				source: 'terminal_outcome_replay',
+				status: outcome.status,
+				action,
+				visibility_source: 'background-outcome',
+			});
 		}
 	}
 

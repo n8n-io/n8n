@@ -143,6 +143,25 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.reason).toBe('already-emitted');
 	});
 
+	it('does not let a prior retry fallback hide a malformed confirmation payload', () => {
+		const decision = guard().evaluateWaiting(
+			[
+				runStart(),
+				{
+					type: 'error',
+					runId: 'run-previous',
+					agentId: rootAgentId,
+					responseId: 'terminal-fallback:run-previous:errored',
+					payload: { content: 'Previous attempt failed.' },
+				},
+			],
+			confirmation({ inputType: 'plan-review', message: 'message-only plan' }),
+		);
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('confirmation-invalid');
+	});
+
 	it('treats displayable confirmation UI as visible waiting output', () => {
 		const decision = guard().evaluateWaiting([runStart()], confirmation());
 
