@@ -1141,7 +1141,7 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should not schedule autosave when autosave is disabled via environment variable', () => {
-			const autosaveStore = useWorkflowAutosaveStore();
+			const autosaveStore = useWorkflowSaveStore();
 			const settingsStore = mockedStore(useSettingsStore);
 
 			// Mock isAutosaveEnabled to return false (simulating N8N_WORKFLOWS_AUTOSAVE_DISABLED=true)
@@ -1160,7 +1160,7 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should schedule autosave when autosave is enabled via environment variable', () => {
-			const autosaveStore = useWorkflowAutosaveStore();
+			const autosaveStore = useWorkflowSaveStore();
 			const settingsStore = mockedStore(useSettingsStore);
 
 			// Mock isAutosaveEnabled to return true (default behavior)
