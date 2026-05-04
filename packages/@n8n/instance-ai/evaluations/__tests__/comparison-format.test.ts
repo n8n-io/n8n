@@ -179,6 +179,66 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/0 regressions, 0 soft, 0 notable, 0 improvements, 1 stable/);
 	});
 
+	it('renders a per-scenario breakdown collapsible inside the regression section', () => {
+		const evalWithFailures = evaluation({
+			totalRuns: 3,
+			testCases: [
+				{
+					prompt: 'a',
+					scenarios: [
+						{
+							name: 'happy',
+							passCount: 0,
+							passes: [false, false, false],
+							reasoning: 'Builder produced an unsupported node configuration',
+							failureCategory: 'builder_issue',
+						},
+					],
+				},
+			],
+		});
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalWithFailures, compareBuckets(pr, base));
+
+		expect(md).toMatch(/#### Regressions \(1\)/);
+		// The regression row's collapsible should appear inside the Regressions
+		// section, before the per-test-case section, and carry the same slug.
+		const regressionsIdx = md.indexOf('#### Regressions');
+		const perTcIdx = md.indexOf('Per-test-case results');
+		const breakdownIdx = md.indexOf('<code>a/happy</code>');
+		expect(breakdownIdx).toBeGreaterThan(regressionsIdx);
+		expect(breakdownIdx).toBeLessThan(perTcIdx);
+		expect(md).toMatch(/3 of 3 failed · 3× builder_issue/);
+		expect(md).toMatch(/Run 1 \[builder_issue\]: Builder produced/);
+	});
+
+	it('uses `file/scenario` slug headers in the bottom Failure details section', () => {
+		const evalWithFailures = evaluation({
+			totalRuns: 3,
+			testCases: [
+				{
+					prompt: 'Build a cross-team Linear report digest',
+					scenarios: [
+						{
+							name: 'no-cross-team-issues',
+							passCount: 0,
+							passes: [false, false, false],
+							reasoning: 'reason',
+							failureCategory: 'builder_issue',
+						},
+					],
+				},
+			],
+		});
+		const pr = bucket('pr', [s('cross-team-linear-report', 'no-cross-team-issues', 0, 3)]);
+		const base = bucket('master', [s('cross-team-linear-report', 'no-cross-team-issues', 10, 10)]);
+		const md = formatComparisonMarkdown(evalWithFailures, compareBuckets(pr, base));
+
+		expect(md).toMatch(/<summary>Failure details<\/summary>/);
+		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — 3 failed/);
+	});
+
 	it('renders the failure breakdown for non-notable categories with non-zero counts', () => {
 		// 50/100 vs 50/100 — no scenario regression, but still has builder_issue
 		// counts on both sides (non-notable but non-zero).

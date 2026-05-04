@@ -54,8 +54,15 @@ export function formatComparisonMarkdown(
 
 		const renderedAnyTable = hard.length > 0 || soft.length > 0 || imps.length > 0;
 
+		// Built once and reused across the regression-tier sections so each
+		// scenario row can carry a collapsible breakdown of its failed PR runs.
+		// Improvements skip the breakdown — they passed.
+		const failedIndex = buildFailedRunsIndex(evaluation);
+
 		if (hard.length > 0) {
-			lines.push(...renderScenarioSection('Regressions', '— high-confidence', hard, true));
+			lines.push(
+				...renderScenarioSection('Regressions', '— high-confidence', hard, true, failedIndex),
+			);
 		}
 		if (soft.length > 0) {
 			lines.push(
@@ -64,6 +71,7 @@ export function formatComparisonMarkdown(
 					'— investigate if related to your changes',
 					soft,
 					true,
+					failedIndex,
 				),
 			);
 		}
@@ -74,6 +82,7 @@ export function formatComparisonMarkdown(
 					'— large gap, no statistical flag',
 					watch,
 					false,
+					failedIndex,
 				),
 			);
 		}
@@ -102,7 +111,7 @@ export function formatComparisonMarkdown(
 		if (otherFindings.length > 0) lines.push(...otherFindings);
 	}
 
-	const failureDetails = renderFailureDetails(evaluation);
+	const failureDetails = renderFailureDetails(evaluation, comparison);
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
@@ -208,6 +217,7 @@ function renderScenarioSection(
 	subtitle: string,
 	scenarios: ScenarioComparison[],
 	withPValue: boolean,
+	failedIndex?: FailedScenarioEntry[],
 ): string[] {
 	const lines: string[] = [];
 	const headingLine = subtitle
@@ -235,6 +245,43 @@ function renderScenarioSection(
 		}
 		lines.push(`| ${cells.join(' | ')} |`);
 	}
+	lines.push('');
+
+	// Per-scenario failure breakdown — one collapsible per row that had failed
+	// PR runs. Lets the reader drill into each flagged scenario without
+	// hunting through a separate "Failure details" section.
+	if (failedIndex) {
+		for (const s of scenarios) {
+			const failedRuns = findFailedRunsForScenario(failedIndex, s.testCaseFile, s.scenarioName);
+			if (failedRuns.length === 0) continue;
+			lines.push(...renderScenarioFailureBreakdown(s, failedRuns));
+		}
+	}
+
+	return lines;
+}
+
+function renderScenarioFailureBreakdown(
+	s: ScenarioComparison,
+	failedRuns: FailedRunDetail[],
+): string[] {
+	const slug = `${s.testCaseFile}/${s.scenarioName}`;
+	const categoryMix = summarizeCategories(failedRuns);
+	const summaryParts = [`${failedRuns.length} of ${s.prTotal} failed`];
+	if (categoryMix) summaryParts.push(categoryMix);
+
+	const lines: string[] = [];
+	lines.push(`<details><summary><code>${slug}</code> — ${summaryParts.join(' · ')}</summary>`);
+	lines.push('');
+	for (const fr of failedRuns) {
+		const tag = fr.category ? ` [${fr.category}]` : '';
+		lines.push(`> Run ${fr.runIndex}${tag}: ${fr.reasoning.slice(0, 300)}`);
+		lines.push('>');
+	}
+	// Drop the trailing empty quote line.
+	if (lines[lines.length - 1] === '>') lines.pop();
+	lines.push('');
+	lines.push('</details>');
 	lines.push('');
 	return lines;
 }
@@ -365,7 +412,10 @@ function renderOtherFindings(comparison: ComparisonResult): string[] {
 	return lines;
 }
 
-function renderFailureDetails(evaluation: MultiRunEvaluation): string[] {
+function renderFailureDetails(
+	evaluation: MultiRunEvaluation,
+	comparison?: ComparisonResult,
+): string[] {
 	const failed: Array<{
 		tc: WorkflowTestCaseResult;
 		scenarioName: string;
@@ -383,12 +433,20 @@ function renderFailureDetails(evaluation: MultiRunEvaluation): string[] {
 	}
 	if (failed.length === 0) return [];
 
+	// Build a scenarioName -> testCaseFile lookup so each block can be headed
+	// with the same `file/scenario` slug used in the regression tables. Lets
+	// readers ctrl-F from a flagged row straight to its details.
+	const scenarioToFile = buildScenarioToFileMap(comparison);
+
 	const lines: string[] = [];
 	lines.push('<details><summary>Failure details</summary>');
 	lines.push('');
 	for (const { tc, scenarioName, failedRuns } of failed) {
-		const tcName = tc.testCase.prompt.slice(0, 70);
-		lines.push(`**${tcName} / ${scenarioName}** — ${failedRuns.length} failed`);
+		const fileSlug = scenarioToFile.get(scenarioName);
+		const slug = fileSlug
+			? `${fileSlug}/${scenarioName}`
+			: `${tc.testCase.prompt.slice(0, 50).trim()} / ${scenarioName}`;
+		lines.push(`**\`${slug}\`** — ${failedRuns.length} failed`);
 		for (const fr of failedRuns) {
 			const tag = fr.category ? ` [${fr.category}]` : '';
 			lines.push(`> Run${tag}: ${fr.reasoning.slice(0, 200)}`);
@@ -398,6 +456,103 @@ function renderFailureDetails(evaluation: MultiRunEvaluation): string[] {
 	lines.push('</details>');
 	lines.push('');
 	return lines;
+}
+
+// ---------------------------------------------------------------------------
+// Per-scenario failure lookup
+// ---------------------------------------------------------------------------
+//
+// The comparison carries per-scenario counts (passed / total) but not the
+// underlying reasoning text. The MultiRunEvaluation has the reasoning, but
+// keys testCases by reference identity rather than the `testCaseFile` slug
+// used in the comparison. We bridge the two here without modifying types or
+// the CLI: index failed runs by scenarioName, then disambiguate against the
+// testCaseFile slug when the same scenarioName appears under multiple files
+// (e.g. several test cases each defining a `happy-path`).
+
+interface FailedRunDetail {
+	category?: string;
+	reasoning: string;
+	runIndex: number; // 1-based for display
+}
+
+interface FailedScenarioEntry {
+	scenarioName: string;
+	testCasePrompt: string;
+	failedRuns: FailedRunDetail[];
+}
+
+function buildFailedRunsIndex(evaluation: MultiRunEvaluation): FailedScenarioEntry[] {
+	const entries: FailedScenarioEntry[] = [];
+	for (const tc of evaluation.testCases) {
+		for (const sa of tc.scenarios) {
+			const failedRuns: FailedRunDetail[] = [];
+			sa.runs.forEach((r, i) => {
+				if (!r.success) {
+					failedRuns.push({
+						category: r.failureCategory,
+						reasoning: r.reasoning,
+						runIndex: i + 1,
+					});
+				}
+			});
+			if (failedRuns.length > 0) {
+				entries.push({
+					scenarioName: sa.scenario.name,
+					testCasePrompt: tc.testCase.prompt,
+					failedRuns,
+				});
+			}
+		}
+	}
+	return entries;
+}
+
+function findFailedRunsForScenario(
+	index: FailedScenarioEntry[],
+	testCaseFile: string,
+	scenarioName: string,
+): FailedRunDetail[] {
+	const candidates = index.filter((e) => e.scenarioName === scenarioName);
+	if (candidates.length === 0) return [];
+	if (candidates.length === 1) return candidates[0].failedRuns;
+	// Multiple test cases share this scenario name. Score each candidate by
+	// how many slug words appear in its prompt; pick the top scorer. Falls
+	// back to the first candidate if no slug words match anything.
+	const slugWords = testCaseFile.split(/[-_]/).filter((w) => w.length > 2);
+	let best = candidates[0];
+	let bestScore = -1;
+	for (const c of candidates) {
+		const lower = c.testCasePrompt.toLowerCase();
+		const score = slugWords.reduce((acc, w) => acc + (lower.includes(w) ? 1 : 0), 0);
+		if (score > bestScore) {
+			best = c;
+			bestScore = score;
+		}
+	}
+	return best.failedRuns;
+}
+
+function summarizeCategories(failedRuns: FailedRunDetail[]): string | undefined {
+	const counts = new Map<string, number>();
+	for (const fr of failedRuns) {
+		if (fr.category) counts.set(fr.category, (counts.get(fr.category) ?? 0) + 1);
+	}
+	if (counts.size === 0) return undefined;
+	return [...counts.entries()]
+		.sort((a, b) => b[1] - a[1])
+		.map(([cat, n]) => `${n}× ${cat}`)
+		.join(', ');
+}
+
+function buildScenarioToFileMap(comparison?: ComparisonResult): Map<string, string> {
+	const map = new Map<string, string>();
+	if (!comparison) return map;
+	for (const s of comparison.scenarios) map.set(s.scenarioName, s.testCaseFile);
+	for (const s of comparison.prOnly) {
+		if (!map.has(s.scenarioName)) map.set(s.scenarioName, s.testCaseFile);
+	}
+	return map;
 }
 
 // ---------------------------------------------------------------------------
