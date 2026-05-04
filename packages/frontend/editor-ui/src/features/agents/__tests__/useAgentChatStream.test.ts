@@ -286,4 +286,25 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant.toolCalls?.[0].state).toBe('done');
 		expect(assistant.toolCalls?.[0].output).toBe(42);
 	});
+
+	it('renders working-memory-update as a completed memory tool step', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'working-memory-update', toolName: 'update_memory' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('remember this');
+		await nextTick();
+
+		const assistant = hook.messages.value[1];
+		expect(assistant.toolCalls).toEqual([
+			expect.objectContaining({
+				tool: 'update_memory',
+				state: 'done',
+			}),
+		]);
+		expect(assistant.status).toBe('success');
+	});
 });

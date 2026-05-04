@@ -7,6 +7,7 @@ describe('formatToolNameForDisplay', () => {
 		expect(formatToolNameForDisplay('create_skill')).toBe('Create skill');
 		expect(formatToolNameForDisplay('ask_llm')).toBe('Ask LLM');
 		expect(formatToolNameForDisplay('build_custom_tool')).toBe('Build custom tool');
+		expect(formatToolNameForDisplay('update_memory')).toBe('Update memory');
 	});
 
 	it('also handles hyphenated names and extra whitespace', () => {

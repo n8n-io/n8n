@@ -9,6 +9,8 @@ import type { Response } from 'express';
 
 export type FlushableResponse = Response & { flush?: () => void };
 
+const WORKING_MEMORY_UPDATE_TOOL_NAME = 'update_memory';
+
 /**
  * Side-effect callbacks for the agent builder. Keyed off discrete tool events
  * — no more `messageId` turn tracking. `toolInputStart` lets the builder
@@ -208,6 +210,9 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			if (sseMessage) ctx.send({ type: 'message', message: sseMessage });
 			return { suspended: false };
 		}
+		case 'working-memory-update':
+			ctx.send({ type: 'working-memory-update', toolName: WORKING_MEMORY_UPDATE_TOOL_NAME });
+			return { suspended: false };
 		case 'error': {
 			const errMsg = chunk.error instanceof Error ? chunk.error.message : String(chunk.error);
 			ctx.send({ type: 'error', message: errMsg });
