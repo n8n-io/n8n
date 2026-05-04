@@ -31,7 +31,7 @@ describe('ConcurrentExecutionsHeader', () => {
 	});
 
 	test.each([
-		[0, 5, 'No active executions'],
+		[0, 5, '0/5 active'],
 		[2, 5, '2/5 active'],
 	])(
 		'shows the correct text when there are %i running executions of %i',

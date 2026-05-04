@@ -28,17 +28,14 @@ const tooltipText = computed(() => {
 	return text;
 });
 
-const headerText = computed(() => {
-	if (props.runningExecutionsCount === 0) {
-		return i18n.baseText('executionsList.activeExecutions.none');
-	}
-	return i18n.baseText('executionsList.activeExecutions.header', {
+const headerText = computed(() =>
+	i18n.baseText('executionsList.activeExecutions.header', {
 		interpolate: {
 			running: props.runningExecutionsCount,
 			cap: props.concurrencyCap,
 		},
-	});
-});
+	}),
+);
 </script>
 
 <template>
