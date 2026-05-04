@@ -1,3 +1,26 @@
+## [1.123.38](https://github.com/n8n-io/n8n/compare/n8n@1.123.37...n8n@1.123.38) (2026-04-29)
+
+
+### Bug Fixes
+
+* **core:** Fix code node executions hanging when idle timer overlaps with task acceptance ([#29393](https://github.com/n8n-io/n8n/issues/29393)) ([4af49f1](https://github.com/n8n-io/n8n/commit/4af49f1d9eec95ba840fa40438f16b891db2bc98))
+* **core:** Fix task runner hanging when connection attempt fails ([#29441](https://github.com/n8n-io/n8n/issues/29441)) ([271af23](https://github.com/n8n-io/n8n/commit/271af23ef35d7b98f02676e0f3ccfa3bbc3747b6))
+
+
+### Features
+
+* **core:** Add --include and --exclude flags to import:credentials command ([#29465](https://github.com/n8n-io/n8n/issues/29465)) ([6aaf436](https://github.com/n8n-io/n8n/commit/6aaf436435211babd3d04c398d3f0fd34c1ff109))
+* **core:** Add --projectId filter to export:workflow and export:credentials commands ([#29373](https://github.com/n8n-io/n8n/issues/29373)) ([55cad3b](https://github.com/n8n-io/n8n/commit/55cad3babbff79e264f700e83e0a115991cddb76))
+
+
+## [1.123.37](https://github.com/n8n-io/n8n/compare/n8n@1.123.36...n8n@1.123.37) (2026-04-24)
+
+
+### Bug Fixes
+
+* **core:** Fix InstanceSettings.isMultiMain still returning false for multi-main cli command ([#29101](https://github.com/n8n-io/n8n/issues/29101)) ([31f5508](https://github.com/n8n-io/n8n/commit/31f55085e258ae44fba42cd110fb11f9c57fffd6))
+
+
 ## [1.123.36](https://github.com/n8n-io/n8n/compare/n8n@1.123.35...n8n@1.123.36) (2026-04-24)
 
 
