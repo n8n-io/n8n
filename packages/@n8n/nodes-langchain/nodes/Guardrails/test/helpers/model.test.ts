@@ -1,43 +1,71 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AgentExecutor } from '@langchain/classic/agents';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { GuardrailError } from '../../actions/types';
 import { getChatModel, runLLMValidation } from '../../helpers/model';
-import { ChatPromptTemplate } from '@langchain/core/prompts';
-import { StructuredOutputParser } from '@langchain/core/output_parsers';
 
-vi.mock('@langchain/core/prompts', () => ({
-	ChatPromptTemplate: {
-		fromMessages: vi.fn(() => ({
+const {
+	MockChatPromptTemplate,
+	MockAgentExecutor,
+	MockStructuredOutputParser,
+	MockOutputParserException,
+} = vi.hoisted(() => {
+	class MockChatPromptTemplate {
+		formatMessages = vi.fn(() => ({
 			format: vi.fn(),
 			pipe: vi.fn().mockReturnValue({
 				pipe: vi.fn().mockReturnValue({
 					invoke: vi.fn(),
 				}),
 			}),
-		})),
-	},
-}));
+		}));
+		static fromMessages = vi.fn(() => ({
+			pipe: vi.fn(),
+		}));
+	}
 
-vi.mock('@langchain/classic/agents', () => ({
-	AgentExecutor: vi.fn().mockImplementation(() => ({
-		invoke: vi.fn(),
-	})),
-	createToolCallingAgent: vi.fn(() => ({
-		streamRunnable: false,
-	})),
+	class MockAgentExecutor {
+		static invoke = vi.fn();
+	}
+
+	class MockStructuredOutputParser {
+		invoke = vi.fn();
+		getFormatInstructions = vi.fn().mockReturnValue('Format instructions');
+		static parse = vi.fn();
+	}
+
+	class MockOutputParserException {
+		message: string;
+		name: string;
+
+		constructor(message: string) {
+			this.message = message;
+			this.name = 'OutputParserException';
+		}
+	}
+
+	return {
+		MockChatPromptTemplate,
+		MockAgentExecutor,
+		MockStructuredOutputParser,
+		MockOutputParserException,
+	};
+});
+
+vi.mock('@langchain/core/prompts', () => ({
+	ChatPromptTemplate: MockChatPromptTemplate,
 }));
 
 vi.mock('@langchain/core/output_parsers', () => ({
-	StructuredOutputParser: vi.fn().mockImplementation(() => ({
-		invoke: vi.fn(),
-		getFormatInstructions: vi.fn().mockReturnValue('Format instructions'),
-	})),
-	OutputParserException: vi.fn().mockImplementation((message) => ({
-		message,
-		name: 'OutputParserException',
+	StructuredOutputParser: MockStructuredOutputParser,
+	OutputParserException: MockOutputParserException,
+}));
+
+vi.mock('@langchain/classic/agents', () => ({
+	AgentExecutor: MockAgentExecutor,
+	createToolCallingAgent: vi.fn(() => ({
+		streamRunnable: false,
 	})),
 }));
 
@@ -96,12 +124,8 @@ describe('model helper', () => {
 
 	describe('runLLMValidation', () => {
 		it('should return failed GuardrailResult when agent execution fails', async () => {
-			const mockAgentExecutor = {
-				invoke: vi.fn().mockRejectedValue(new Error('Agent execution failed')),
-			};
-
-			vi.mocked((await import('@langchain/classic/agents')).AgentExecutor).mockImplementation(
-				() => mockAgentExecutor as unknown as AgentExecutor,
+			vi.mocked(MockAgentExecutor.invoke).mockImplementation(
+				() => new Error('Agent execution failed'),
 			);
 
 			const result = await runLLMValidation('test-guardrail', 'Test input', {
@@ -123,13 +147,7 @@ describe('model helper', () => {
 		});
 
 		it('should return failed GuardrailResult when agent does not call tool', async () => {
-			const mockAgentExecutor = {
-				invoke: vi.fn().mockResolvedValue({}), // No tool call
-			};
-
-			vi.mocked((await import('@langchain/classic/agents')).AgentExecutor).mockImplementation(
-				() => mockAgentExecutor as unknown as AgentExecutor,
-			);
+			vi.mocked(MockAgentExecutor.invoke).mockImplementation(() => {});
 
 			const result = await runLLMValidation('test-guardrail', 'Test input', {
 				model: mockModel,
@@ -150,20 +168,17 @@ describe('model helper', () => {
 			const invokeMock = vi.fn().mockResolvedValue({
 				content: [{ type: 'text', text: '{"confidenceScore":0.6,"flagged":true}' }],
 			});
-			vi.mocked(ChatPromptTemplate.fromMessages).mockImplementationOnce(
+			vi.mocked(MockChatPromptTemplate.fromMessages).mockImplementationOnce(
 				() =>
 					({
 						pipe: vi.fn().mockReturnValue({ invoke: invokeMock }),
 					}) as unknown as any,
 			);
 
-			vi.mocked(StructuredOutputParser).mockImplementationOnce(
-				() =>
-					({
-						getFormatInstructions: vi.fn().mockReturnValue('Format instructions'),
-						parse: vi.fn().mockResolvedValue({ confidenceScore: 0.6, flagged: true }),
-					}) as unknown as any,
-			);
+			vi.mocked(MockStructuredOutputParser.parse).mockImplementationOnce(() => ({
+				confidenceScore: 0.6,
+				flagged: true,
+			}));
 
 			const model = { invoke: vi.fn() } as unknown as BaseChatModel;
 			await runLLMValidation('test-guardrail', 'Input text', {
