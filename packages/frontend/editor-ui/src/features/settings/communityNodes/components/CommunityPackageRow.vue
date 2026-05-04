@@ -75,6 +75,7 @@ const nodeCountLabel = computed(() =>
 );
 const downloadsLabel = computed(() =>
 	i18n.baseText('settings.communityNodes.row.downloadsLabel', {
+		adjustToNumber: props.row?.numberOfDownloads ?? 0,
 		interpolate: { count: formattedDownloads.value },
 	}),
 );

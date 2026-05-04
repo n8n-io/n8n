@@ -135,6 +135,13 @@ describe('CommunityPackageRow', () => {
 		expect(getByLabelText('1.2k downloads')).toBeInTheDocument();
 	});
 
+	it('should render singular downloads accessibility label', () => {
+		const { getByLabelText } = renderComponent({
+			props: { row: makeRow({ numberOfDownloads: 1 }) },
+		});
+		expect(getByLabelText('1 download')).toBeInTheDocument();
+	});
+
 	it('should render formatted downloads (M)', () => {
 		const { getByText } = renderComponent({
 			props: { row: makeRow({ numberOfDownloads: 2_500_000 }) },
@@ -411,7 +418,7 @@ describe('CommunityPackageRow', () => {
 		const { getByTestId, getByText } = renderComponent({ props: { row: makeRow() } });
 
 		expect(getByTestId('community-package-row__install')).toBeInTheDocument();
-		expect(getByText('Installing...')).toBeInTheDocument();
+		expect(getByText('Installing…')).toBeInTheDocument();
 	});
 
 	it('should emit installed and flip to installed state after successful install', async () => {
