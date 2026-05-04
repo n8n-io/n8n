@@ -1,21 +1,35 @@
-import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { DocumentGithubLoader } from '../DocumentGithubLoader.node';
 
-vi.mock('@langchain/textsplitters', () => ({
-	RecursiveCharacterTextSplitter: vi.fn().mockImplementation(() => ({
-		splitDocuments: vi.fn(
+const { MockRecursiveCharacterTextSplitter, MockGithubRepoLoader } = vi.hoisted(() => {
+	class MockRecursiveCharacterTextSplitter {
+		constructor(options: unknown) {
+			MockRecursiveCharacterTextSplitter.init(options);
+		}
+
+		static init = vi.fn();
+
+		splitDocuments = vi.fn(
 			async (docs: Array<{ [key: string]: unknown }>): Promise<Array<{ [key: string]: unknown }>> =>
 				docs.map((doc) => ({ ...doc, split: true })),
-		),
-	})),
+		);
+	}
+
+	class MockGithubRepoLoader {
+		load = vi.fn(async () => [{ pageContent: 'doc1' }, { pageContent: 'doc2' }]);
+	}
+
+	return { MockRecursiveCharacterTextSplitter, MockGithubRepoLoader };
+});
+
+vi.mock('@langchain/textsplitters', () => ({
+	RecursiveCharacterTextSplitter: MockRecursiveCharacterTextSplitter,
 }));
+
 vi.mock('@langchain/community/document_loaders/web/github', () => ({
-	GithubRepoLoader: vi.fn().mockImplementation(() => ({
-		load: vi.fn(async () => [{ pageContent: 'doc1' }, { pageContent: 'doc2' }]),
-	})),
+	GithubRepoLoader: MockGithubRepoLoader,
 }));
 
 const mockLogger = { debug: vi.fn() };
@@ -55,7 +69,7 @@ describe('DocumentGithubLoader', () => {
 		} as unknown as ISupplyDataFunctions;
 		await loader.supplyData.call(context, 0);
 
-		expect(RecursiveCharacterTextSplitter).toHaveBeenCalledWith({
+		expect(MockRecursiveCharacterTextSplitter.init).toHaveBeenCalledWith({
 			chunkSize: 1000,
 			chunkOverlap: 200,
 		});
