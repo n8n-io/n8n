@@ -30,7 +30,7 @@ import {
 	buildInProcess,
 	type InProcessBuildResult,
 	type ToolCallTrace,
-} from '../harness/in-process-orchestrator';
+} from '../harness/in-process-builder';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
 import type { Logger } from '../../src/logger';
@@ -257,37 +257,12 @@ async function runExample(
 		'chunks',
 		`${safeFilename(`${example.id}_${iteration}`)}.jsonl`,
 	);
-	let build: InProcessBuildResult;
-	try {
-		build = await buildInProcess({
-			prompt: example.prompt + EVAL_PROMPT_SUFFIX,
-			timeoutMs: args.timeoutMs,
-			logPath,
-			sandboxFactory,
-		});
-	} catch (error) {
-		// Final safety net — if buildInProcess throws (transient API errors,
-		// unhandled rejection from a deep async callback, etc.) we still want
-		// the rest of the pairwise to continue, with this example marked
-		// failed.
-		logger.error(
-			`[${example.id} #${iteration}] buildInProcess threw: ${error instanceof Error ? error.message : String(error)}`,
-		);
-		build = {
-			success: false,
-			extraWorkflows: [],
-			errorClass: 'agent_error',
-			errorMessage: error instanceof Error ? error.message : String(error),
-			durationMs: 0,
-			interactivity: {
-				askUserCount: 0,
-				planToolCount: 0,
-				autoApprovedSuspensions: 0,
-				mockedCredentialTypes: [],
-			},
-			toolCalls: [],
-		};
-	}
+	const build = await buildInProcess({
+		prompt: example.prompt + EVAL_PROMPT_SUFFIX,
+		timeoutMs: args.timeoutMs,
+		logPath,
+		sandboxFactory,
+	});
 
 	const record: ExampleRecord = {
 		exampleId: example.id,
@@ -503,18 +478,6 @@ async function writeOutputs(
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	const logger = createLogger(args.verbose);
-
-	// Mastra's stream consumer can leak transient network errors
-	// (undici `TypeError: terminated`, ECONNRESET, etc.) as unhandled
-	// promise rejections from deep async paths the harness can't `catch`.
-	// Without this hook, one flaky API call kills the entire pairwise run.
-	// The corresponding example will already have been recorded as
-	// `agent_error` by the per-example safety net in `runExample`.
-	process.on('unhandledRejection', (reason) => {
-		const message = reason instanceof Error ? reason.message : String(reason);
-		logger.warn(`Suppressed unhandled rejection during eval: ${message}`);
-	});
-
 	logger.info(
 		`pairwise eval: backend=${args.backend} dataset=${args.dataset} judges=${args.judges} iterations=${args.iterations}`,
 	);

@@ -69,8 +69,6 @@ export interface ToolCallTrace {
 	step: number;
 	toolCallId: string;
 	toolName: string;
-	/** Agent that emitted the tool-call event (root builder or a spawned sub-agent). */
-	agentId: string;
 	/** Truncated tool input. */
 	args?: unknown;
 	/** Truncated successful tool result (mutually exclusive with `error`). */
@@ -495,7 +493,6 @@ function createToolTraceCollector(): ToolTraceCollector {
 					step: stepCounter,
 					toolCallId: event.payload.toolCallId,
 					toolName: event.payload.toolName,
-					agentId: event.agentId,
 					args: truncate(event.payload.args, TOOL_TRACE_TRUNC),
 				};
 				traces.push(trace);
