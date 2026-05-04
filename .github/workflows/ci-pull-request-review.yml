@@ -87,41 +87,23 @@ jobs:
               );
             }
 
-            const refsToCheck = [context.sha, context.payload.pull_request?.head?.sha].filter(Boolean);
-            const uniqueRefs = [...new Set(refsToCheck)];
-            const checkRuns = [];
+            const { data: status } = await octokit.rest.repos.getCombinedStatusForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref,
+              per_page: 100,
+            });
 
-            for (const ref of uniqueRefs) {
-              const { data } = await github.rest.checks.listForRef({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref,
-                per_page: 100,
-              });
-              checkRuns.push(...data.check_runs);
-            }
+            const reviewStatus = status.statuses.find((stat) => stat.context.includes('UI Review'));
 
-            const uiReviewCheck =
-              checkRuns.find((run) => run.details_url === uiReviewUrl) ??
-              checkRuns.find((run) => {
-                const appSlug = run.app?.slug?.toLowerCase() ?? '';
-                const name = run.name ?? '';
-                return appSlug.includes('chromatic') && /ui review/i.test(name);
-              });
 
-            if (!uiReviewCheck) {
+            if (!reviewStatus) {
               throw new Error('Chromatic UI Review check run was not found on this PR commit.');
             }
 
-            if (uiReviewCheck.status !== 'completed') {
+            if (reviewStatus.state !== 'success') {
               throw new Error(
-                `Chromatic UI Review check is "${uiReviewCheck.status}". Approve in Chromatic and rerun checks.`,
-              );
-            }
-
-            if (uiReviewCheck.conclusion !== 'success') {
-              throw new Error(
-                `Chromatic UI Review check conclusion is "${uiReviewCheck.conclusion}". Approval is required before merge.`,
+                `Chromatic UI Review state is "${reviewStatus.state}". Approve in Chromatic and rerun checks.`,
               );
             }
 
