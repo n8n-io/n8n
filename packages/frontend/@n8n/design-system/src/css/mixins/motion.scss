@@ -1,0 +1,138 @@
+// Shimmer - animated gradient for loading/skeleton states
+@mixin shimmer {
+	background: linear-gradient(
+		135deg,
+		var(--animation--shimmer--background, var(--background--surface)),
+		var(--animation--shimmer--foreground, var(--text-color--subtle)),
+		var(--animation--shimmer--background, var(--background--surface))
+	);
+	background-size: 200% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	animation: shimmer var(--animation--shimmer--duration, calc(var(--duration--base) * 3)) infinite;
+}
+
+// Spin - continuous 360° rotation for loading indicators
+@mixin spin {
+	animation: spin var(--animation--spin--duration, var(--duration--base)) linear infinite;
+}
+
+// Skeleton pulse - opacity animation for skeleton loading states
+@mixin skeleton-pulse {
+	animation: skeleton-pulse var(--animation--skeleton-pulse--duration, var(--duration--snappy))
+		ease-in-out infinite;
+}
+
+// Slide fade - combined slide and fade for dropdowns/menus
+@mixin slide-fade {
+	animation: slideFade var(--animation--slide-fade--duration, var(--duration--snappy))
+		var(--easing--ease-out);
+}
+
+// Fade in - simple opacity fade for entrance animations
+@mixin fade-in {
+	animation: fadeIn var(--animation--fade-in--duration, var(--duration--snappy))
+		var(--easing--ease-out);
+}
+
+// Keyframes
+
+@keyframes shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
+
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+@keyframes skeleton-pulse {
+	0%,
+	100% {
+		opacity: var(--animation--skeleton-pulse--opacity-start, 1);
+	}
+	50% {
+		opacity: var(--animation--skeleton-pulse--opacity-end, 0.4);
+	}
+}
+
+@keyframes slideFade {
+	from {
+		opacity: 0;
+		transform: translateY(var(--animation--slide-fade--translate, -4px)) scaleY(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scaleY(1);
+	}
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(var(--animation--fade-in--translate, 8px));
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+// Reverse slide animations for exit transitions
+@keyframes slideFadeUp {
+	from {
+		opacity: 1;
+		transform: translateY(0) scaleY(1);
+	}
+	to {
+		opacity: 0;
+		transform: translateY(var(--animation--slide-fade--translate, -4px)) scaleY(0.95);
+	}
+}
+
+// Pulse glow - expanding glow effect for loading states (used by N8nPulse)
+@mixin pulse-glow {
+	animation: pulseGlow var(--animation--pulse-glow--duration, 6s) infinite
+		var(--animation--pulse-glow--easing, cubic-bezier(0.33, 1, 0.68, 1));
+}
+
+@keyframes pulseGlow {
+	0% {
+		box-shadow: 0 0 0 0
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0.4);
+	}
+	58.33% {
+		box-shadow: 0 0 0 60px
+			hsla(var(--color--primary--h), var(--color--primary--s), var(--color--primary--l), 0);
+	}
+	66.6% {
+		box-shadow: 0 0 0 66px transparent;
+	}
+	66.7% {
+		box-shadow: 0 0 0 0 transparent;
+	}
+}
+
+// Fade animation for simple opacity transitions
+@mixin fade {
+	animation: fade var(--animation--fade--duration, var(--duration--snappy));
+}
+
+@keyframes fade {
+	from {
+		opacity: 1;
+	}
+	to {
+		opacity: 0;
+	}
+}
