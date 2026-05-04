@@ -88,7 +88,6 @@ const rows = computed(() =>
 .headerCell {
 	text-align: left;
 	padding: var(--spacing--xs) var(--spacing--sm);
-	background-color: var(--color--background--light-3);
 	color: var(--color--text--tint-1);
 	font-weight: var(--font-weight--regular);
 	font-size: var(--font-size--xs);
@@ -97,6 +96,7 @@ const rows = computed(() =>
 
 .cell {
 	padding: var(--spacing--2xs) var(--spacing--sm);
+	background-color: var(--color--background--light-3);
 	border-bottom: var(--border-width) var(--border-style) var(--color--foreground--tint-2);
 
 	&:last-child {

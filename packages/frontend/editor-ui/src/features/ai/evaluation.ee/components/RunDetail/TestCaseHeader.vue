@@ -83,6 +83,7 @@ const hasMetadata = computed(() => props.tokens !== undefined || props.durationM
 .header :global(.open-execution-link) {
 	color: var(--color--primary);
 	font-weight: var(--font-weight--medium);
+	text-decoration: underline;
 
 	&:hover {
 		color: var(--color--primary--shade-1);
