@@ -2738,6 +2738,9 @@ importers:
       p-lazy:
         specifier: 3.1.0
         version: 3.1.0
+      p-limit:
+        specifier: ^3.1.0
+        version: 3.1.0
       pg:
         specifier: 'catalog:'
         version: 8.17.0

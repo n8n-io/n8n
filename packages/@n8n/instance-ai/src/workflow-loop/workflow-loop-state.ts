@@ -14,11 +14,26 @@ export const workflowLoopStatusSchema = z.enum(['active', 'completed', 'blocked'
 
 export const workflowLoopSourceSchema = z.enum(['create', 'modify']);
 
+export const remediationCategorySchema = z.enum(['code_fixable', 'needs_setup', 'blocked']);
+
+export const remediationMetadataSchema = z.object({
+	category: remediationCategorySchema,
+	shouldEdit: z.boolean(),
+	guidance: z.string(),
+	reason: z.string().optional(),
+	remainingSubmitFixes: z.number().int().min(0).optional(),
+	attemptCount: z.number().int().min(0).optional(),
+});
+
+export type RemediationCategory = z.infer<typeof remediationCategorySchema>;
+export type RemediationMetadata = z.infer<typeof remediationMetadataSchema>;
+
 // ── WorkflowLoopState ───────────────────────────────────────────────────────
 
 export const workflowLoopStateSchema = z.object({
 	workItemId: z.string(),
 	threadId: z.string(),
+	runId: z.string().optional(),
 	workflowId: z.string().optional(),
 	phase: workflowLoopPhaseSchema,
 	status: workflowLoopStatusSchema,
@@ -31,6 +46,10 @@ export const workflowLoopStateSchema = z.object({
 	mockedCredentialTypes: z.array(z.string()).optional(),
 	/** Whether the submitted workflow contains unresolved placeholder values (persisted across phases). */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	successfulSubmitSeen: z.boolean().optional(),
+	preSaveSubmitFailures: z.number().int().min(0).optional(),
+	postSubmitRemediationSubmitsUsed: z.number().int().min(0).optional(),
+	lastRemediation: remediationMetadataSchema.optional(),
 });
 
 export type WorkflowLoopPhase = z.infer<typeof workflowLoopPhaseSchema>;
@@ -54,6 +73,9 @@ export const attemptRecordSchema = z.object({
 	failureSignature: z.string().optional(),
 	diagnosis: z.string().optional(),
 	fixApplied: z.string().optional(),
+	remediationCategory: remediationCategorySchema.optional(),
+	remediationShouldEdit: z.boolean().optional(),
+	remediationGuidance: z.string().optional(),
 	createdAt: z.string(),
 });
 
@@ -104,6 +126,7 @@ export type TriggerNodeDescriptor = z.infer<typeof triggerNodeDescriptorSchema>;
 
 export const workflowBuildOutcomeSchema = z.object({
 	workItemId: z.string(),
+	runId: z.string().optional(),
 	taskId: z.string(),
 	workflowId: z.string().optional(),
 	submitted: z.boolean(),
@@ -127,6 +150,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	verificationPinData: z.record(z.array(z.record(z.unknown()))).optional(),
 	/** Whether any node parameters contain unresolved placeholder values. */
 	hasUnresolvedPlaceholders: z.boolean().optional(),
+	remediation: remediationMetadataSchema.optional(),
 	/**
 	 * Structured verification record from the most recent `verify-built-workflow` call
 	 * that executed inside the builder. Observability metadata only: checkpoints must
@@ -153,6 +177,7 @@ export const verificationVerdictSchema = z.enum([
 
 export const verificationResultSchema = z.object({
 	workItemId: z.string(),
+	runId: z.string().optional(),
 	workflowId: z.string(),
 	executionId: z.string().optional(),
 	verdict: verificationVerdictSchema,
@@ -160,6 +185,7 @@ export const verificationResultSchema = z.object({
 	failedNodeName: z.string().optional(),
 	diagnosis: z.string().optional(),
 	patch: z.record(z.unknown()).optional(),
+	remediation: remediationMetadataSchema.optional(),
 	summary: z.string(),
 });
 
@@ -169,6 +195,8 @@ export type VerificationResult = z.infer<typeof verificationResultSchema>;
 // ── WorkflowLoopAction ──────────────────────────────────────────────────────
 
 export type WorkflowLoopAction =
+	| { type: 'ignored'; reason: string }
+	| { type: 'continue_building'; reason: string }
 	| { type: 'verify'; workflowId: string }
 	| { type: 'rebuild'; workflowId: string; failureDetails: string }
 	| {

@@ -2,6 +2,8 @@ export {
 	workflowLoopPhaseSchema,
 	workflowLoopStatusSchema,
 	workflowLoopSourceSchema,
+	remediationCategorySchema,
+	remediationMetadataSchema,
 	workflowLoopStateSchema,
 	attemptActionSchema,
 	attemptResultSchema,
@@ -16,6 +18,8 @@ export type {
 	WorkflowLoopPhase,
 	WorkflowLoopStatus,
 	WorkflowLoopSource,
+	RemediationCategory,
+	RemediationMetadata,
 	WorkflowLoopState,
 	AttemptAction,
 	AttemptResult,
@@ -36,3 +40,10 @@ export {
 
 export { formatWorkflowLoopGuidance } from './guidance';
 export { WorkflowTaskCoordinator } from './workflow-task-service';
+export {
+	MAX_POST_SUBMIT_REMEDIATION_SUBMITS,
+	MAX_PRE_SAVE_SUBMIT_FAILURES,
+	createRemediation,
+	remainingPostSubmitRemediations,
+	terminalRemediationFromState,
+} from './remediation';

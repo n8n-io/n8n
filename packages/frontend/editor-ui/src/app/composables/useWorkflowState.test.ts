@@ -16,26 +16,28 @@ describe('useWorkflowState', () => {
 
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
-			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
-				status: 'running',
-				startedAt: new Date('2023-01-01T09:00:00Z'),
-				stoppedAt: undefined,
-				data: createRunExecutionData({
-					resultData: {
-						runData: {
-							node1: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'error' }),
-								createTestTaskData({ executionStatus: 'running' }),
-							],
-							node2: [
-								createTestTaskData({ executionStatus: 'success' }),
-								createTestTaskData({ executionStatus: 'waiting' }),
-							],
+			workflowsStore.setWorkflowExecutionData(
+				createTestWorkflowExecutionResponse({
+					status: 'running',
+					startedAt: new Date('2023-01-01T09:00:00Z'),
+					stoppedAt: undefined,
+					data: createRunExecutionData({
+						resultData: {
+							runData: {
+								node1: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'error' }),
+									createTestTaskData({ executionStatus: 'running' }),
+								],
+								node2: [
+									createTestTaskData({ executionStatus: 'success' }),
+									createTestTaskData({ executionStatus: 'waiting' }),
+								],
+							},
 						},
-					},
+					}),
 				}),
-			});
+			);
 		});
 
 		it('should remove non successful node runs', () => {

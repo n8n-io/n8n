@@ -41,13 +41,21 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { BackgroundTaskResult, InstanceAiContext, OrchestrationContext } from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
-import type { TriggerType, WorkflowBuildOutcome } from '../../workflow-loop';
+import {
+	createRemediation,
+	type TriggerType,
+	type WorkflowBuildOutcome,
+	type WorkflowLoopState,
+} from '../../workflow-loop';
 import type { BuilderWorkspace } from '../../workspace/builder-sandbox-factory';
 import { readFileViaSandbox } from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 import { buildCredentialMap, type CredentialMap } from '../workflows/resolve-credentials';
 import { createIdentityEnforcedSubmitWorkflowTool } from '../workflows/submit-workflow-identity';
-import { type SubmitWorkflowAttempt } from '../workflows/submit-workflow.tool';
+import {
+	type SubmitWorkflowAttempt,
+	type SubmitWorkflowOutput,
+} from '../workflows/submit-workflow.tool';
 
 /**
  * Clear the AI-builder temporary marker from the build's main workflow so the
@@ -111,6 +119,7 @@ function detectTriggerType(_attempt: SubmitWorkflowAttempt | undefined): Trigger
 
 function buildOutcome(
 	workItemId: string,
+	runId: string,
 	taskId: string,
 	attempt: SubmitWorkflowAttempt | undefined,
 	finalText: string,
@@ -118,27 +127,81 @@ function buildOutcome(
 	if (!attempt?.success) {
 		return {
 			workItemId,
+			runId,
 			taskId,
 			submitted: false,
 			triggerType: 'manual_or_testable',
 			needsUserInput: false,
 			failureSignature: attempt?.errors?.join('; '),
+			remediation: attempt?.remediation,
 			summary: finalText,
 		};
 	}
+	const placeholderRemediation = attempt.hasUnresolvedPlaceholders
+		? createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance:
+					'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
+			})
+		: undefined;
 	return {
 		workItemId,
+		runId,
 		taskId,
 		workflowId: attempt.workflowId,
 		submitted: true,
-		triggerType: attempt.hasUnresolvedPlaceholders ? 'trigger_only' : detectTriggerType(attempt),
-		needsUserInput: false,
+		triggerType: detectTriggerType(attempt),
+		needsUserInput: Boolean(placeholderRemediation),
+		blockingReason: placeholderRemediation?.guidance,
 		mockedNodeNames: attempt.mockedNodeNames,
 		mockedCredentialTypes: attempt.mockedCredentialTypes,
 		mockedCredentialsByNode: attempt.mockedCredentialsByNode,
 		verificationPinData: attempt.verificationPinData,
 		hasUnresolvedPlaceholders: attempt.hasUnresolvedPlaceholders,
+		remediation: placeholderRemediation ?? attempt.remediation,
 		summary: finalText,
+	};
+}
+
+export function withTerminalLoopState(
+	outcome: WorkflowBuildOutcome,
+	state: WorkflowLoopState | undefined,
+): WorkflowBuildOutcome {
+	const remediation = state?.lastRemediation;
+	if (!outcome.submitted || !remediation || remediation.shouldEdit) {
+		return outcome;
+	}
+
+	return {
+		...outcome,
+		workflowId: outcome.workflowId ?? state.workflowId,
+		needsUserInput: remediation.category === 'needs_setup',
+		blockingReason: remediation.guidance,
+		remediation,
+	};
+}
+
+async function finalBuildOutcome(
+	context: OrchestrationContext,
+	workItemId: string,
+	outcome: WorkflowBuildOutcome,
+): Promise<WorkflowBuildOutcome> {
+	return withTerminalLoopState(
+		outcome,
+		await context.workflowTaskService?.getWorkflowLoopState(workItemId),
+	);
+}
+
+export async function finalizeBuildResult(
+	context: OrchestrationContext,
+	workItemId: string,
+	result: { text: string; outcome: WorkflowBuildOutcome },
+): Promise<{ text: string; outcome: WorkflowBuildOutcome }> {
+	return {
+		text: result.text,
+		outcome: await finalBuildOutcome(context, workItemId, result.outcome),
 	};
 }
 
@@ -171,8 +234,10 @@ The system tracks file hashes. If you edit the code and then call \`executions(a
   - **Webhook** — \`verify-built-workflow\` with \`inputData\` as the body payload, e.g. \`{event: "signup", userId: "..."}\`. Adapter wraps it under \`body\`; downstream expressions use \`$json.body.<field>\`.
   - **Chat Trigger** — \`verify-built-workflow\` with \`{chatInput: "user message"}\`.
   - **Other event triggers (Linear, GitHub, Slack, MCP, etc.)** — \`verify-built-workflow\` with \`inputData\` matching the trigger's expected payload shape.
-- If verification fails, call \`executions(action="debug")\`, fix the code, re-submit, and retry once
-- If the same failure signature repeats, stop and explain the block
+- If verify-built-workflow returns remediation with \`shouldEdit: false\`, stop editing and follow its guidance.
+- If verification fails with \`shouldEdit: true\`, make one batched code repair and re-submit. Never exceed the remaining repair budget in the remediation metadata.
+- If verification fails otherwise, call \`executions(action="debug")\`, fix the code, re-submit, and retry once.
+- If the same failure signature repeats, stop and explain the block.
 
 ### Resource discovery
 
@@ -193,42 +258,162 @@ function hashContent(content: string | null): string {
 		.digest('hex');
 }
 
+function deterministicSuffix(seed: string, label: string, length: number): string {
+	return createHash('sha256')
+		.update(label)
+		.update('\0')
+		.update(seed)
+		.digest('hex')
+		.slice(0, length);
+}
+
+function shouldUseDeterministicBuilderIds(context: OrchestrationContext): boolean {
+	return process.env.E2E_TESTS === 'true' && context.tracing?.replayMode !== 'off';
+}
+
+function createDeterministicBuilderIds(input: StartBuildWorkflowAgentInput): {
+	subAgentId: string;
+	taskId: string;
+	workItemId: string;
+} {
+	const seed = JSON.stringify({
+		task: input.task,
+		workflowId: input.workflowId ?? '',
+		plannedTaskId: input.plannedTaskId ?? '',
+		conversationContext: input.conversationContext ?? '',
+	});
+
+	return {
+		subAgentId: `agent-builder-${deterministicSuffix(seed, 'agent', 6)}`,
+		taskId: `build-${deterministicSuffix(seed, 'task', 8)}`,
+		workItemId: `wi_${deterministicSuffix(seed, 'work-item', 8)}`,
+	};
+}
+
+function latestSuccessfulMainSubmit(
+	submitAttempts: SubmitWorkflowAttempt[],
+	mainWorkflowPath: string,
+): SubmitWorkflowAttempt | undefined {
+	for (let i = submitAttempts.length - 1; i >= 0; i--) {
+		const attempt = submitAttempts[i];
+		if (attempt.filePath === mainWorkflowPath && attempt.success && attempt.workflowId) {
+			return attempt;
+		}
+	}
+	return undefined;
+}
+
+function latestMainSubmit(
+	submitAttempts: SubmitWorkflowAttempt[],
+	mainWorkflowPath: string,
+): SubmitWorkflowAttempt | undefined {
+	for (let i = submitAttempts.length - 1; i >= 0; i--) {
+		const attempt = submitAttempts[i];
+		if (attempt.filePath === mainWorkflowPath) {
+			return attempt;
+		}
+	}
+	return undefined;
+}
+
 /**
  * When the builder's stream errors mid-run, recover a successful-submit outcome
  * from the submit-attempt history so the orchestrator doesn't redo a build that
- * already produced a workflow. Scans in reverse so a later failed submit for
- * the main path cannot mask an earlier success. Returns undefined when nothing
- * was successfully submitted yet — the caller should rethrow in that case.
+ * already produced a workflow. A later main-path submit failure is only
+ * recoverable when remediation has already determined that more code edits
+ * should stop; code-fixable validation/build failures must surface as failures.
  */
 export function resultFromPostStreamError(input: {
 	error: unknown;
 	submitAttempts: SubmitWorkflowAttempt[];
 	mainWorkflowPath: string;
 	workItemId: string;
+	runId: string;
 	taskId: string;
-}): BackgroundTaskResult | undefined {
-	let attempt: SubmitWorkflowAttempt | undefined;
-	for (let i = input.submitAttempts.length - 1; i >= 0; i--) {
-		const a = input.submitAttempts[i];
-		if (a.filePath === input.mainWorkflowPath && a.success) {
-			attempt = a;
-			break;
-		}
-	}
+}): { text: string; outcome: WorkflowBuildOutcome } | undefined {
+	const latestAttempt = latestMainSubmit(input.submitAttempts, input.mainWorkflowPath);
+	if (!latestAttempt) return undefined;
+
+	const attempt = latestAttempt.success
+		? latestAttempt
+		: shouldRecoverSavedWorkflowAfterFailedSubmit(latestAttempt)
+			? latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath)
+			: undefined;
 	if (!attempt) return undefined;
 
 	const errorText = input.error instanceof Error ? input.error.message : String(input.error);
 	const text = `Workflow ${attempt.workflowId} submitted successfully. A later step failed: ${errorText}`;
 	return {
 		text,
-		outcome: buildOutcome(input.workItemId, input.taskId, attempt, text),
+		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, attempt, text),
 	};
+}
+
+export function resultFromLaterFailedMainSubmit(input: {
+	failedAttempt: SubmitWorkflowAttempt;
+	submitAttempts: SubmitWorkflowAttempt[];
+	mainWorkflowPath: string;
+	workItemId: string;
+	runId: string;
+	taskId: string;
+}): { text: string; outcome: WorkflowBuildOutcome } | undefined {
+	if (!shouldRecoverSavedWorkflowAfterFailedSubmit(input.failedAttempt)) return undefined;
+
+	const preservedAttempt = latestSuccessfulMainSubmit(input.submitAttempts, input.mainWorkflowPath);
+	if (!preservedAttempt) return undefined;
+
+	const errorText = input.failedAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
+	const text =
+		`Workflow ${preservedAttempt.workflowId} was already submitted successfully. ` +
+		`A later submit failed: ${errorText}`;
+	return {
+		text,
+		outcome: buildOutcome(input.workItemId, input.runId, input.taskId, preservedAttempt, text),
+	};
+}
+
+function isFreshAttemptForHash(
+	attempt: SubmitWorkflowAttempt | undefined,
+	sourceHash: string,
+): attempt is SubmitWorkflowAttempt {
+	return attempt?.sourceHash === sourceHash;
+}
+
+export function attemptFromAutoResubmit(input: {
+	latestAttempt: SubmitWorkflowAttempt | undefined;
+	resubmit: SubmitWorkflowOutput;
+	filePath: string;
+	sourceHash: string;
+}): SubmitWorkflowAttempt | undefined {
+	if (isFreshAttemptForHash(input.latestAttempt, input.sourceHash)) {
+		return input.latestAttempt;
+	}
+	if (input.resubmit.success) return undefined;
+	return {
+		filePath: input.filePath,
+		sourceHash: input.sourceHash,
+		success: false,
+		errors: input.resubmit.errors,
+		remediation: input.resubmit.remediation,
+	};
+}
+
+export function shouldRecoverSavedWorkflowAfterFailedSubmit(
+	attempt: SubmitWorkflowAttempt,
+): boolean {
+	return attempt.remediation?.shouldEdit === false;
+}
+
+function formatSubmitWorkflowErrors(output: SubmitWorkflowOutput, fallback: string): string {
+	const errors = output.errors?.join(' ') ?? '';
+	return errors.length > 0 ? errors : fallback;
 }
 
 export interface StartBuildWorkflowAgentInput {
 	task: string;
 	workflowId?: string;
 	conversationContext?: string;
+	workItemId?: string;
 	taskId?: string;
 	agentId?: string;
 	plannedTaskId?: string;
@@ -303,9 +488,15 @@ export async function startBuildWorkflowAgentTask(
 		}
 	}
 
-	const subAgentId = input.agentId ?? `agent-builder-${nanoid(6)}`;
-	const taskId = input.taskId ?? `build-${nanoid(8)}`;
-	const workItemId = `wi_${nanoid(8)}`;
+	const deterministicIds = shouldUseDeterministicBuilderIds(context)
+		? createDeterministicBuilderIds(input)
+		: undefined;
+	const subAgentId = input.agentId ?? deterministicIds?.subAgentId ?? `agent-builder-${nanoid(6)}`;
+	const taskId = input.taskId ?? deterministicIds?.taskId ?? `build-${nanoid(8)}`;
+	const workItemId =
+		input.workItemId ??
+		deterministicIds?.workItemId ??
+		(input.workflowId ? `${context.runId}:default` : `wi_${nanoid(8)}`);
 
 	const { workflowId } = input;
 
@@ -410,6 +601,20 @@ export async function startBuildWorkflowAgentTask(
 							workspace,
 							credentialMap: credMap,
 							root,
+							currentRunId: context.runId,
+							getWorkflowLoopState: async () =>
+								await context.workflowTaskService?.getWorkflowLoopState(workItemId),
+							onGuardFired: (event) => {
+								context.trackTelemetry?.('Builder remediation guard fired', {
+									thread_id: context.threadId,
+									run_id: context.runId,
+									work_item_id: workItemId,
+									workflow_id: event.workflowId,
+									category: event.category,
+									attempt_count: event.attemptCount,
+									reason: event.reason,
+								});
+							},
 							onAttempt: async (attempt) => {
 								submitAttempts.set(attempt.filePath, attempt);
 								submitAttemptHistory.push(attempt);
@@ -420,6 +625,7 @@ export async function startBuildWorkflowAgentTask(
 								await context.workflowTaskService.reportBuildOutcome(
 									buildOutcome(
 										workItemId,
+										context.runId,
 										taskId,
 										attempt,
 										attempt.success
@@ -503,9 +709,17 @@ export async function startBuildWorkflowAgentTask(
 								submitAttempts: submitAttemptHistory,
 								mainWorkflowPath,
 								workItemId,
+								runId: context.runId,
 								taskId,
 							});
-							if (recovered) return recovered;
+							if (recovered) {
+								await promoteMainWorkflow(
+									domainContext,
+									context.logger,
+									recovered.outcome.workflowId,
+								);
+								return await finalizeBuildResult(context, workItemId, recovered);
+							}
 							throw error;
 						}
 
@@ -517,17 +731,34 @@ export async function startBuildWorkflowAgentTask(
 							const text = 'Error: workflow builder finished without submitting /src/workflow.ts.';
 							return {
 								text,
-								outcome: buildOutcome(workItemId, taskId, undefined, text),
+								outcome: buildOutcome(workItemId, context.runId, taskId, undefined, text),
 							};
 						}
 
 						if (!mainWorkflowAttempt.success) {
+							const recovered = resultFromLaterFailedMainSubmit({
+								failedAttempt: mainWorkflowAttempt,
+								submitAttempts: submitAttemptHistory,
+								mainWorkflowPath,
+								workItemId,
+								runId: context.runId,
+								taskId,
+							});
+							if (recovered) {
+								await promoteMainWorkflow(
+									domainContext,
+									context.logger,
+									recovered.outcome.workflowId,
+								);
+								return await finalizeBuildResult(context, workItemId, recovered);
+							}
+
 							const errorText =
 								mainWorkflowAttempt.errors?.join(' ') ?? 'Unknown submit-workflow failure.';
 							const text = `Error: workflow builder stopped after a failed submit-workflow for /src/workflow.ts. ${errorText}`;
 							return {
 								text,
-								outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, text),
+								outcome: buildOutcome(workItemId, context.runId, taskId, mainWorkflowAttempt, text),
 							};
 						}
 
@@ -538,15 +769,20 @@ export async function startBuildWorkflowAgentTask(
 							if (submitTool && 'execute' in submitTool) {
 								const resubmit = await (
 									submitTool as {
-										execute: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+										execute: (args: Record<string, unknown>) => Promise<SubmitWorkflowOutput>;
 									}
 								).execute({
 									filePath: mainWorkflowPath,
 									workflowId: mainWorkflowAttempt.workflowId,
 								});
 
-								const refreshedAttempt = submitAttempts.get(mainWorkflowPath);
-								if (refreshedAttempt?.success) {
+								const refreshedAttempt = attemptFromAutoResubmit({
+									latestAttempt: submitAttempts.get(mainWorkflowPath),
+									resubmit,
+									filePath: mainWorkflowPath,
+									sourceHash: currentMainWorkflowHash,
+								});
+								if (resubmit.success && refreshedAttempt?.success) {
 									await promoteMainWorkflow(
 										domainContext,
 										context.logger,
@@ -554,19 +790,49 @@ export async function startBuildWorkflowAgentTask(
 									);
 									return {
 										text: finalText,
-										outcome: buildOutcome(workItemId, taskId, refreshedAttempt, finalText),
+										outcome: await finalBuildOutcome(
+											context,
+											workItemId,
+											buildOutcome(workItemId, context.runId, taskId, refreshedAttempt, finalText),
+										),
 									};
 								}
 
 								const resubmitErrors =
 									refreshedAttempt?.errors?.join(' ') ??
-									(typeof resubmit?.errors === 'string'
-										? resubmit.errors
-										: 'Auto-re-submit failed.');
+									formatSubmitWorkflowErrors(resubmit, 'Auto-re-submit failed.');
+								if (
+									refreshedAttempt &&
+									!refreshedAttempt.success &&
+									shouldRecoverSavedWorkflowAfterFailedSubmit(refreshedAttempt)
+								) {
+									const recovered = resultFromLaterFailedMainSubmit({
+										failedAttempt: refreshedAttempt,
+										submitAttempts: submitAttemptHistory,
+										mainWorkflowPath,
+										workItemId,
+										runId: context.runId,
+										taskId,
+									});
+									if (recovered) {
+										await promoteMainWorkflow(
+											domainContext,
+											context.logger,
+											recovered.outcome.workflowId,
+										);
+										return await finalizeBuildResult(context, workItemId, recovered);
+									}
+								}
 								const text = `Error: auto-re-submit of edited /src/workflow.ts failed. ${resubmitErrors}`;
 								return {
 									text,
-									outcome: buildOutcome(workItemId, taskId, refreshedAttempt ?? undefined, text),
+									outcome: buildOutcome(
+										workItemId,
+										context.runId,
+										taskId,
+										refreshedAttempt ?? undefined,
+										text,
+									),
 								};
 							}
 						}
@@ -578,7 +844,11 @@ export async function startBuildWorkflowAgentTask(
 						);
 						return {
 							text: finalText,
-							outcome: buildOutcome(workItemId, taskId, mainWorkflowAttempt, finalText),
+							outcome: await finalBuildOutcome(
+								context,
+								workItemId,
+								buildOutcome(workItemId, context.runId, taskId, mainWorkflowAttempt, finalText),
+							),
 						};
 					}
 
@@ -716,6 +986,12 @@ export const buildWorkflowAgentInputSchema = z.object({
 		.optional()
 		.describe(
 			'Brief summary of the conversation so far — what was discussed, decisions made, and information gathered (e.g., which credentials are available). The builder uses this to avoid repeating information the user already knows.',
+		),
+	workItemId: z
+		.string()
+		.optional()
+		.describe(
+			'Workflow-loop work item ID. Required for repair builds so remediation budgets continue on the same work item.',
 		),
 	bypassPlan: z
 		.boolean()
