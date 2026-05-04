@@ -41,6 +41,7 @@ interface CliArgs {
 	html: boolean;
 	autoStartDaemon: boolean;
 	daemonSandboxDir?: string;
+	usePublishedDaemon: boolean;
 	bootstrapBrowser: boolean;
 	keepData: boolean;
 }
@@ -60,6 +61,7 @@ const argsSchema = z.object({
 	html: z.boolean().default(false),
 	autoStartDaemon: z.boolean().default(true),
 	daemonSandboxDir: z.string().optional(),
+	usePublishedDaemon: z.boolean().default(false),
 	bootstrapBrowser: z.boolean().default(false),
 	keepData: z.boolean().default(false),
 });
@@ -99,6 +101,9 @@ function parseArgs(argv: string[]): CliArgs {
 				break;
 			case '--daemon-sandbox-dir':
 				raw.daemonSandboxDir = next(argv, i++, arg);
+				break;
+			case '--use-published-daemon':
+				raw.usePublishedDaemon = true;
 				break;
 			case '--bootstrap-browser':
 				raw.bootstrapBrowser = true;
@@ -247,6 +252,7 @@ async function main(): Promise<void> {
 		evalOutputDir,
 		autoStart: args.autoStartDaemon,
 		daemonSandboxDir: args.daemonSandboxDir,
+		usePublishedDaemon: args.usePublishedDaemon,
 	});
 	logger.info(`Using daemon at ${daemon.directory}`);
 

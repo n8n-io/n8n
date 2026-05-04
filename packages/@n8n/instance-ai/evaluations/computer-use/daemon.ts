@@ -7,15 +7,27 @@
 // stdout/stderr piped to `.eval-output/daemon.log`. The daemon survives the
 // eval process so subsequent runs reuse the same browser session and any
 // allow-once decisions the user has accumulated.
+//
+// By default we spawn the local workspace build of `@n8n/computer-use` so the
+// daemon picks up in-progress changes to that package and its workspace
+// dependencies (`@n8n/mcp-browser` etc.). Pass `usePublishedDaemon: true` to
+// fall back to `npx --yes @n8n/computer-use` for testing the released
+// artifact end-to-end.
 // ---------------------------------------------------------------------------
 
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, open } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
 import type { N8nClient } from '../clients/n8n-client';
 import type { EvalLogger } from '../harness/logger';
+
+const LOCAL_COMPUTER_USE_CLI = resolve(
+	__dirname,
+	'../../../../../packages/@n8n/computer-use/dist/cli.js',
+);
 
 const PAIRING_POLL_INTERVAL_MS = 500;
 const PAIRING_TIMEOUT_MS = 90_000;
@@ -37,6 +49,12 @@ export interface EnsureDaemonOptions {
 	autoStart: boolean;
 	/** Override the auto-spawn `--dir`. Defaults to `<evalOutputDir>/daemon-sandbox/`. */
 	daemonSandboxDir?: string;
+	/**
+	 * When true, spawn the published `@n8n/computer-use` from npm via `npx`
+	 * instead of the local workspace build. Use this to test the released
+	 * artifact end-to-end. Defaults to false (local build).
+	 */
+	usePublishedDaemon?: boolean;
 }
 
 export async function ensureDaemon(opts: EnsureDaemonOptions): Promise<DaemonInfo> {
@@ -52,18 +70,32 @@ export async function ensureDaemon(opts: EnsureDaemonOptions): Promise<DaemonInf
 		throw new Error(noDaemonHint(opts.baseUrl));
 	}
 
+	const usePublished = opts.usePublishedDaemon ?? false;
+	if (!usePublished && !existsSync(LOCAL_COMPUTER_USE_CLI)) {
+		throw new Error(
+			`Local computer-use build not found at ${LOCAL_COMPUTER_USE_CLI}.\n` +
+				'Build it first:\n' +
+				'  pnpm --filter @n8n/computer-use --filter @n8n/mcp-browser build\n' +
+				'\n' +
+				'Or pass --use-published-daemon to spawn the released package via npx instead.',
+		);
+	}
+
 	const sandboxDir = opts.daemonSandboxDir ?? join(opts.evalOutputDir, 'daemon-sandbox');
 	await mkdir(sandboxDir, { recursive: true });
 
 	const logPath = join(opts.evalOutputDir, 'daemon.log');
 	const { token } = await client.createGatewayLink();
 
-	logger.info(`Daemon not running — auto-starting (sandbox: ${sandboxDir})`);
+	logger.info(
+		`Daemon not running — auto-starting (${usePublished ? 'published via npx' : 'local workspace build'}, sandbox: ${sandboxDir})`,
+	);
 	const pid = await spawnDaemonDetached({
 		baseUrl: opts.baseUrl,
 		token,
 		sandboxDir,
 		logPath,
+		usePublished,
 	});
 	logger.info(`Daemon spawned (pid ${pid}, log: ${logPath})`);
 	logger.info('Daemon will keep running after the eval exits — re-runs will reuse it.');
@@ -123,40 +155,41 @@ interface SpawnArgs {
 	token: string;
 	sandboxDir: string;
 	logPath: string;
+	usePublished: boolean;
 }
 
 async function spawnDaemonDetached(args: SpawnArgs): Promise<number> {
 	const logFile = await open(args.logPath, 'a');
 	try {
-		const child = spawn(
-			'npx',
-			[
-				'--yes',
-				'@n8n/computer-use',
-				args.baseUrl,
-				args.token,
-				'--dir',
-				args.sandboxDir,
-				'--auto-confirm',
-				'--allowed-origins',
-				args.baseUrl,
-				'--permission-filesystem-read',
-				'allow',
-				'--permission-filesystem-write',
-				'allow',
-				'--permission-shell',
-				'allow',
-				'--permission-computer',
-				'deny',
-				'--permission-browser',
-				'allow',
-			],
-			{
-				detached: true,
-				stdio: ['ignore', logFile.fd, logFile.fd],
-				env: { ...process.env, FORCE_COLOR: '0' },
-			},
-		);
+		const daemonArgs = [
+			args.baseUrl,
+			args.token,
+			'--dir',
+			args.sandboxDir,
+			'--auto-confirm',
+			'--allowed-origins',
+			args.baseUrl,
+			'--permission-filesystem-read',
+			'allow',
+			'--permission-filesystem-write',
+			'allow',
+			'--permission-shell',
+			'allow',
+			'--permission-computer',
+			'deny',
+			'--permission-browser',
+			'allow',
+		];
+
+		const [command, commandArgs] = args.usePublished
+			? ['npx', ['--yes', '@n8n/computer-use', ...daemonArgs]]
+			: [process.execPath, [LOCAL_COMPUTER_USE_CLI, ...daemonArgs]];
+
+		const child = spawn(command, commandArgs, {
+			detached: true,
+			stdio: ['ignore', logFile.fd, logFile.fd],
+			env: { ...process.env, FORCE_COLOR: '0' },
+		});
 		child.unref();
 		return child.pid ?? -1;
 	} finally {

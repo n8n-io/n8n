@@ -102,10 +102,25 @@ allowed, log piped to `.eval-output/daemon.log`. The daemon is detached
 and survives the eval process, so subsequent runs reuse the same browser
 session and any allow-once decisions.
 
+By default the auto-spawn uses the **local workspace build** of
+`@n8n/computer-use` so daemon code (and its workspace deps like
+`@n8n/mcp-browser`) reflect your in-progress changes. Build it once
+before running:
+
+```bash
+pnpm --filter @n8n/computer-use --filter @n8n/mcp-browser build
+```
+
+If `dist/cli.js` is missing, the eval fails fast with a build hint.
+
+Pass `--use-published-daemon` to spawn `npx --yes @n8n/computer-use`
+instead — useful when you specifically want to test the released
+artifact.
+
 To inspect or stop the spawned daemon:
 
 ```bash
-ps -ef | grep "@n8n/computer-use"
+ps -ef | grep computer-use
 kill <pid>
 ```
 
@@ -147,6 +162,7 @@ if you need them elsewhere.
 | `--html` | `false` | Also write `computer-use-eval-results.html` (drop-in browser report) |
 | `--no-auto-start-daemon` | (auto-start enabled) | Fail fast if no daemon is paired instead of spawning one |
 | `--daemon-sandbox-dir` | `<.eval-output>/daemon-sandbox/` | Override the auto-spawn daemon's `--dir` |
+| `--use-published-daemon` | `false` | Spawn `npx --yes @n8n/computer-use` instead of the local workspace build |
 | `--bootstrap-browser` | `false` | Trigger one `browser_connect` at startup so you click "Connect" once before scenarios run |
 | `--keep-data` | `false` | Skip post-run cleanup. Leaves chat threads and any workflows / credentials / data tables the agent created in n8n. Useful for inspecting an agent's session in the n8n UI. |
 | `--verbose` | `false` | Stream grader detail, pre-clean logs, n8n cleanup detail |
