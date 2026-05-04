@@ -22,12 +22,12 @@ const inputSchema = {
 		.describe('Filter by execution status(es)'),
 	startedAfter: z
 		.string()
-		.datetime()
+		.datetime({ offset: true })
 		.optional()
 		.describe('ISO 8601 timestamp — only return executions that started after this time'),
 	startedBefore: z
 		.string()
-		.datetime()
+		.datetime({ offset: true })
 		.optional()
 		.describe('ISO 8601 timestamp — only return executions that started before this time'),
 	limit: createLimitSchema(MAX_RESULTS),
