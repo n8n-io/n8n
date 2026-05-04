@@ -11,33 +11,11 @@ export interface ResolveLlmToolDeps {
 
 type LlmCredentialEntry = [credentialType: string, defaults: LlmProviderDefault];
 
-function normalizeProviderId(value: string) {
-	return value
-		.trim()
-		.toLowerCase()
-		.replace(/[\s_-]+/g, '');
-}
-
 function findProviderDefault(provider: string): LlmCredentialEntry | undefined {
-	const normalizedProvider = normalizeProviderId(provider);
-
+	const requestedProvider = provider.trim();
 	return Object.entries(LLM_PROVIDER_DEFAULTS).find(
-		([credentialType, defaults]) =>
-			normalizeProviderId(defaults.provider) === normalizedProvider ||
-			normalizeProviderId(credentialType) === normalizedProvider,
+		([, defaults]) => defaults.provider === requestedProvider,
 	);
-}
-
-function normalizeRequestedModel(provider: string, model: string | undefined) {
-	const trimmed = model?.trim();
-	if (!trimmed) return undefined;
-
-	const providerPrefix = `${provider}/`;
-	if (trimmed.toLowerCase().startsWith(providerPrefix.toLowerCase())) {
-		return trimmed.slice(providerPrefix.length);
-	}
-
-	return trimmed;
 }
 
 function toLlmResolution(
@@ -48,7 +26,7 @@ function toLlmResolution(
 	return {
 		ok: true as const,
 		provider: defaults.provider,
-		model: normalizeRequestedModel(defaults.provider, model) ?? defaults.defaultModel,
+		model: model?.trim() || defaults.defaultModel,
 		credentialId: credential.id,
 		credentialName: credential.name,
 	};

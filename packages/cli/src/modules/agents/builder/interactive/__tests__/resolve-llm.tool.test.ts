@@ -49,7 +49,7 @@ describe('resolve_llm tool', () => {
 		]);
 		const tool = buildResolveLlmTool({ credentialProvider });
 		const result = await tool.handler!(
-			{ provider: 'openrouter', model: 'openrouter/meta-llama/llama-3.1-70b-instruct' },
+			{ provider: 'openrouter', model: 'meta-llama/llama-3.1-70b-instruct' },
 			{},
 		);
 
