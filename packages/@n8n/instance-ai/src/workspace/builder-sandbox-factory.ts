@@ -24,7 +24,7 @@ import {
 	packWorkspaceSdk,
 	type WorkspaceSdkTarball,
 } from './pack-workspace-sdk';
-import { runInSandbox, writeFileViaSandbox } from './sandbox-fs';
+import { readFileViaSandbox, runInSandbox, writeFileViaSandbox } from './sandbox-fs';
 import type { SnapshotManager } from './snapshot-manager';
 import type { InstanceAiContext } from '../types';
 import { formatNodeCatalogLine, getWorkspaceRoot, setupSandboxWorkspace } from './sandbox-setup';
@@ -124,6 +124,56 @@ export class BuilderSandboxFactory {
 			version: packed.version,
 			sdkPath: packed.sdkPath,
 		});
+
+		await this.verifyLinkedSdk(workspace, root, packed);
+	}
+
+	/**
+	 * Read the installed SDK's package.json back out of the sandbox so the log
+	 * proves the tarball actually landed at the expected version. Best-effort:
+	 * a parse/read failure logs a warning but does not abort sandbox creation,
+	 * because the install above already exited 0.
+	 */
+	private async verifyLinkedSdk(
+		workspace: Workspace,
+		root: string,
+		packed: WorkspaceSdkTarball,
+	): Promise<void> {
+		const installedPkgPath = posixJoin(root, 'node_modules/@n8n/workflow-sdk/package.json');
+		const installedPkgRaw = await readFileViaSandbox(workspace, installedPkgPath);
+		if (installedPkgRaw === null) {
+			this.logger.warn('Linked SDK verification failed: package.json missing in sandbox', {
+				expectedVersion: packed.version,
+				path: installedPkgPath,
+			});
+			return;
+		}
+
+		let installedVersion: string | undefined;
+		try {
+			const parsed = JSON.parse(installedPkgRaw) as { version?: unknown };
+			if (typeof parsed.version === 'string') installedVersion = parsed.version;
+		} catch {
+			this.logger.warn('Linked SDK verification failed: could not parse package.json', {
+				expectedVersion: packed.version,
+				path: installedPkgPath,
+			});
+			return;
+		}
+
+		const match = installedVersion === packed.version;
+		this.logger.info('Verified workspace SDK in sandbox', {
+			expectedVersion: packed.version,
+			installedVersion: installedVersion ?? '(missing)',
+			match,
+			path: installedPkgPath,
+		});
+		if (!match) {
+			this.logger.warn('Linked SDK version mismatch — host SDK may not be active in sandbox', {
+				expectedVersion: packed.version,
+				installedVersion: installedVersion ?? '(missing)',
+			});
+		}
 	}
 
 	async create(builderId: string, context: InstanceAiContext): Promise<BuilderWorkspace> {
