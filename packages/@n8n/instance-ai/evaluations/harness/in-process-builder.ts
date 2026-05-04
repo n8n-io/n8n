@@ -46,6 +46,7 @@ import {
 import { getWorkspaceRoot } from '../../src/workspace/sandbox-setup';
 import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
 import { normalizeWorkflow } from './normalize-workflow';
+import { stringifyError, truncate } from './redact';
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -510,11 +511,7 @@ function createToolTraceCollector(): ToolTraceCollector {
 				if (!trace) return;
 				const start = startTimes.get(trace.toolCallId);
 				if (start !== undefined) trace.elapsedMs = Date.now() - start;
-				const errStr =
-					typeof event.payload.error === 'string'
-						? event.payload.error
-						: JSON.stringify(event.payload.error);
-				trace.error = errStr.length > TOOL_TRACE_TRUNC ? errStr.slice(0, TOOL_TRACE_TRUNC) : errStr;
+				trace.error = stringifyError(event.payload.error, TOOL_TRACE_TRUNC);
 				startTimes.delete(trace.toolCallId);
 			} else if (event.type === 'confirmation-request') {
 				const trace = byToolCallId.get(event.payload.toolCallId);
@@ -778,17 +775,6 @@ async function openChunkLog(filePath: string): Promise<ChunkLog> {
 			await new Promise<void>((resolve) => stream.end(() => resolve()));
 		},
 	};
-}
-
-function truncate(value: unknown, max: number): unknown {
-	if (value === null || value === undefined) return value;
-	try {
-		const str = typeof value === 'string' ? value : JSON.stringify(value);
-		if (str.length <= max) return value;
-		return str.substring(0, max) + '... [truncated]';
-	} catch {
-		return '<unserializable>';
-	}
 }
 
 /** Await an optional promise without letting a rejection propagate. */
