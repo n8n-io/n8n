@@ -89,11 +89,11 @@ describe('OutputParserAutofixing', () => {
 				throw new ApplicationError('Not implemented');
 			});
 
-			await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
-				new NodeOperationError(
-					thisArg.getNode(),
-					'Auto-fixing parser prompt has to contain {error} placeholder',
-				),
+			const execution = outputParser.supplyData.call(thisArg, 0);
+
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Auto-fixing parser prompt has to contain {error} placeholder',
 			);
 		});
 

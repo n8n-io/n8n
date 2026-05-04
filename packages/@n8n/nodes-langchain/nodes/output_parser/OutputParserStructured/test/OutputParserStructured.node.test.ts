@@ -834,12 +834,12 @@ describe('OutputParserStructured', () => {
 				thisArg.getNodeParameter.calledWith('autoFix', 0, false).mockReturnValueOnce(true);
 				thisArg.getNodeParameter.calledWith('prompt', 0, NAIVE_FIX_PROMPT).mockReturnValueOnce('');
 
-				await expect(outputParser.supplyData.call(thisArg, 0)).rejects.toThrow(
-					new NodeOperationError(
-						thisArg.getNode(),
-						'Auto-fixing parser prompt has to contain {error} placeholder',
-					),
+				const execution = outputParser.supplyData.call(thisArg, 0);
+
+				await expect(execution).rejects.toThrow(
+					'Auto-fixing parser prompt has to contain {error} placeholder',
 				);
+				await expect(execution).rejects.toThrow(NodeOperationError);
 			});
 		});
 
