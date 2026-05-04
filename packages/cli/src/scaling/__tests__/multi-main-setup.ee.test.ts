@@ -1,4 +1,4 @@
-import type { RedisLeaderElectionStorage } from '@/scaling/redis-leader-election-storage';
+import type { LeaderElectionClient } from '@/scaling/leader-election-client';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import { MultiMainMetadata } from '@n8n/decorators';
@@ -12,7 +12,7 @@ describe('MultiMainSetup', () => {
 	const hostId = 'main-n8n-main-0';
 
 	const logger = mockLogger();
-	const storage = mock<RedisLeaderElectionStorage>();
+	const client = mock<LeaderElectionClient>();
 	const errorReporter = mock<ErrorReporter>();
 	const metadata = new MultiMainMetadata();
 
@@ -44,24 +44,24 @@ describe('MultiMainSetup', () => {
 			globalConfig,
 			metadata,
 			errorReporter,
-			storage,
+			client,
 		);
 	});
 
 	describe('init', () => {
 		it('should become leader if setLeaderIfNotExists succeeds', async () => {
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			await multiMainSetup.init();
 
-			expect(storage.setLeaderIfNotExists).toHaveBeenCalledWith(hostId);
+			expect(client.setLeaderIfNotExists).toHaveBeenCalled();
 			expect(instanceSettings.markAsLeader).toHaveBeenCalled();
 			expect(emit).toHaveBeenCalledWith('leader-takeover');
 		});
 
 		it('should remain follower if setLeaderIfNotExists returns false', async () => {
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			await multiMainSetup.init();
@@ -71,7 +71,7 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should remain follower if setLeaderIfNotExists fails', async () => {
-			storage.setLeaderIfNotExists.mockResolvedValue(
+			client.setLeaderIfNotExists.mockResolvedValue(
 				createResultError(new Error('Command timed out')),
 			);
 			const emit = jest.spyOn(multiMainSetup, 'emit');
@@ -85,25 +85,25 @@ describe('MultiMainSetup', () => {
 
 	describe('checkLeader (leader path)', () => {
 		beforeEach(async () => {
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
 			await multiMainSetup.init();
 			jest.clearAllMocks();
 		});
 
 		it('should stay leader when TTL renewal succeeds', async () => {
-			storage.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'success' }));
+			client.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'success' }));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
 			await multiMainSetup.checkLeader();
 
-			expect(storage.tryRenewLeaderTtl).toHaveBeenCalledWith(hostId);
+			expect(client.tryRenewLeaderTtl).toHaveBeenCalled();
 			expect(instanceSettings.markAsFollower).not.toHaveBeenCalled();
 			expect(emit).not.toHaveBeenCalledWith('leader-stepdown');
 		});
 
 		it('should step down when another host is leader', async () => {
-			storage.tryRenewLeaderTtl.mockResolvedValue(
+			client.tryRenewLeaderTtl.mockResolvedValue(
 				createResultOk({ id: 'other-host-is-leader', currentLeaderId: 'main-n8n-main-1' }),
 			);
 			const emit = jest.spyOn(multiMainSetup, 'emit');
@@ -116,19 +116,19 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should try to re-acquire leader key when key is missing', async () => {
-			storage.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'key-missing' }));
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			client.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'key-missing' }));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
 
 			// @ts-expect-error - private method
 			await multiMainSetup.checkLeader();
 
-			expect(storage.setLeaderIfNotExists).toHaveBeenCalledWith(hostId);
+			expect(client.setLeaderIfNotExists).toHaveBeenCalled();
 			expect(instanceSettings.markAsFollower).not.toHaveBeenCalled();
 		});
 
 		it('should step down when key is missing and re-acquire fails', async () => {
-			storage.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'key-missing' }));
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
+			client.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'key-missing' }));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
@@ -139,8 +139,8 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should step down when key is missing and Redis command fails', async () => {
-			storage.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'key-missing' }));
-			storage.setLeaderIfNotExists.mockResolvedValue(
+			client.tryRenewLeaderTtl.mockResolvedValue(createResultOk({ id: 'key-missing' }));
+			client.setLeaderIfNotExists.mockResolvedValue(
 				createResultError(new Error('Command timed out')),
 			);
 			const emit = jest.spyOn(multiMainSetup, 'emit');
@@ -153,9 +153,7 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should stay leader when TTL renewal Redis command fails', async () => {
-			storage.tryRenewLeaderTtl.mockResolvedValue(
-				createResultError(new Error('Command timed out')),
-			);
+			client.tryRenewLeaderTtl.mockResolvedValue(createResultError(new Error('Command timed out')));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
@@ -168,13 +166,13 @@ describe('MultiMainSetup', () => {
 
 	describe('checkLeader (follower path)', () => {
 		beforeEach(async () => {
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
 			await multiMainSetup.init();
 			jest.clearAllMocks();
 		});
 
 		it('should become leader when Redis shows own hostId as leader (mismatch recovery)', async () => {
-			storage.getLeader.mockResolvedValue(createResultOk(hostId));
+			client.getLeader.mockResolvedValue(createResultOk(hostId));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
@@ -186,7 +184,7 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should stay follower when another instance is leader', async () => {
-			storage.getLeader.mockResolvedValue(createResultOk('main-n8n-main-1'));
+			client.getLeader.mockResolvedValue(createResultOk('main-n8n-main-1'));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
@@ -198,21 +196,21 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should attempt to become leader when leadership is vacant', async () => {
-			storage.getLeader.mockResolvedValue(createResultOk(null));
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
+			client.getLeader.mockResolvedValue(createResultOk(null));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
 			await multiMainSetup.checkLeader();
 
-			expect(storage.setLeaderIfNotExists).toHaveBeenCalledWith(hostId);
+			expect(client.setLeaderIfNotExists).toHaveBeenCalled();
 			expect(instanceSettings.markAsLeader).toHaveBeenCalled();
 			expect(emit).toHaveBeenCalledWith('leader-takeover');
 		});
 
 		it('should stay follower when leadership is vacant but setLeaderIfNotExists fails', async () => {
-			storage.getLeader.mockResolvedValue(createResultOk(null));
-			storage.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
+			client.getLeader.mockResolvedValue(createResultOk(null));
+			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(false));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
@@ -223,7 +221,7 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should stay follower when Redis is unreachable', async () => {
-			storage.getLeader.mockResolvedValue(createResultError(new Error('Command timed out')));
+			client.getLeader.mockResolvedValue(createResultError(new Error('Command timed out')));
 			const emit = jest.spyOn(multiMainSetup, 'emit');
 
 			// @ts-expect-error - private method
@@ -236,8 +234,8 @@ describe('MultiMainSetup', () => {
 		});
 
 		it('should stay follower when leadership is vacant and Redis command fails', async () => {
-			storage.getLeader.mockResolvedValue(createResultOk(null));
-			storage.setLeaderIfNotExists.mockResolvedValue(
+			client.getLeader.mockResolvedValue(createResultOk(null));
+			client.setLeaderIfNotExists.mockResolvedValue(
 				createResultError(new Error('Command timed out')),
 			);
 			const emit = jest.spyOn(multiMainSetup, 'emit');

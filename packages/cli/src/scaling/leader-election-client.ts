@@ -2,6 +2,7 @@ import { RedisClientService } from '@/services/redis-client.service';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
+import { InstanceSettings } from 'n8n-core';
 import { ensureError, type Result, createResultOk, createResultError } from 'n8n-workflow';
 
 const COMMAND_TIMEOUT_MS = 5_000;
@@ -48,18 +49,26 @@ export type TtlRenewalResult =
 	| TtlRenewalResultSuccess;
 
 /**
- * Redis-backed storage for leader election in multi-main setups. Uses a TTL-based key to
+ * Redis-backed client for leader election in multi-main setups. Uses a TTL-based key to
  * track which instance is the current leader.
  */
 @Service()
-export class RedisLeaderElectionStorage {
+export class LeaderElectionClient {
 	private readonly redisClient: Redis | Cluster;
 
 	private readonly leaderKey: string;
 
 	private readonly leaderKeyTtlInS: number;
 
-	constructor(globalConfig: GlobalConfig, redisClientService: RedisClientService) {
+	private get hostId() {
+		return this.instanceSettings.hostId;
+	}
+
+	constructor(
+		private readonly instanceSettings: InstanceSettings,
+		globalConfig: GlobalConfig,
+		redisClientService: RedisClientService,
+	) {
 		const prefix = redisClientService.toValidPrefix(globalConfig.redis.prefix);
 		this.leaderKey = prefix + ':main_instance_leader';
 
@@ -79,11 +88,11 @@ export class RedisLeaderElectionStorage {
 		}
 	}
 
-	async setLeaderIfNotExists(hostId: string): Promise<Result<boolean, Error>> {
+	async setLeaderIfNotExists(): Promise<Result<boolean, Error>> {
 		try {
 			const result = await this.redisClient.set(
 				this.leaderKey,
-				hostId,
+				this.hostId,
 				'EX',
 				this.leaderKeyTtlInS,
 				'NX',
@@ -94,13 +103,13 @@ export class RedisLeaderElectionStorage {
 		}
 	}
 
-	async tryRenewLeaderTtl(hostId: string): Promise<Result<TtlRenewalResult, Error>> {
+	async tryRenewLeaderTtl(): Promise<Result<TtlRenewalResult, Error>> {
 		try {
 			const result = await this.redisClient.eval(
 				INCREASE_TTL_IF_LEADER,
 				1,
 				this.leaderKey,
-				hostId,
+				this.hostId,
 				this.leaderKeyTtlInS,
 			);
 			if (result === -1) {

@@ -1,4 +1,4 @@
-import { RedisLeaderElectionStorage } from '@/scaling/redis-leader-election-storage';
+import { LeaderElectionClient } from '@/scaling/leader-election-client';
 import { TypedEmitter } from '@/typed-emitter';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -37,7 +37,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly metadata: MultiMainMetadata,
 		private readonly errorReporter: ErrorReporter,
-		private readonly storage: RedisLeaderElectionStorage,
+		private readonly client: LeaderElectionClient,
 	) {
 		super();
 		this.logger = this.logger.scoped(['scaling', 'multi-main-setup']);
@@ -48,9 +48,10 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	private leaderCheckInProgress = false;
 
 	async init() {
-		const result = await this.storage.setLeaderIfNotExists(this.hostId); // prevent initial wait
+		const result = await this.client.setLeaderIfNotExists(); // prevent initial wait
 		if (!result.ok) {
 			this.logRedisCommandFailure('Failed to set leader key in Redis during init', result.error);
+			this.instanceSettings.markAsFollower();
 		} else if (result.result) {
 			this.becomeLeader();
 		} else {
@@ -71,13 +72,13 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 		if (isLeader) {
 			// TODO: We should guard here that we only remove the key the key in Redis matches
 			// our host ID.
-			const result = await this.storage.clearLeader();
+			const result = await this.client.clearLeader();
 			if (!result.ok) {
 				this.logger.warn('Failed to clear leader key from Redis', { error: result.error });
 			}
 		}
 
-		this.storage.destroy();
+		this.client.destroy();
 	}
 
 	private async checkLeader() {
@@ -101,7 +102,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	private async checkAreWeStillLeader() {
 		assert(this.instanceSettings.isLeader);
 
-		const renewTtlResult = await this.storage.tryRenewLeaderTtl(this.hostId);
+		const renewTtlResult = await this.client.tryRenewLeaderTtl();
 		if (!renewTtlResult.ok) {
 			this.logRedisCommandFailure('Failed to renew leader TTL', renewTtlResult.error);
 			// TODO: There's a decision to be made here: Do we step down or not? Basically we
@@ -128,7 +129,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 			return;
 		}
 
-		const result = await this.storage.setLeaderIfNotExists(this.hostId);
+		const result = await this.client.setLeaderIfNotExists();
 		if (!result.ok) {
 			this.logRedisCommandFailure('Failed to set leader key in Redis', result.error);
 			this.becomeFollower();
@@ -144,7 +145,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	private async checkCanBecomeLeader() {
 		assert(!this.instanceSettings.isLeader);
 
-		const getResult = await this.storage.getLeader();
+		const getResult = await this.client.getLeader();
 		if (!getResult.ok) {
 			this.logRedisCommandFailure('Failed to get leader key from Redis', getResult.error);
 			return;
@@ -173,7 +174,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 			`[Instance ID ${this.hostId}] Leadership vacant, attempting to become leader...`,
 		);
 
-		const result = await this.storage.setLeaderIfNotExists(this.hostId);
+		const result = await this.client.setLeaderIfNotExists();
 		if (!result.ok) {
 			this.logger.warn('Failed to try leader key set in Redis', { error: result.error });
 			return;
@@ -208,7 +209,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	}
 
 	async fetchLeaderKey() {
-		return await this.storage.getLeader();
+		return await this.client.getLeader();
 	}
 
 	registerEventHandlers() {
