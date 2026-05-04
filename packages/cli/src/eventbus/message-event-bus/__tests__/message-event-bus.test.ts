@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
+import type { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -7,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { MessageEventBusLogWriter } from '../../message-event-bus-writer/message-event-bus-log-writer';
-import { MessageEventBus, type MessageEventBusInitializeOptions } from '../message-event-bus';
+import { MessageEventBus } from '../message-event-bus';
 
 jest.unmock('@/eventbus/message-event-bus/message-event-bus');
 jest.unmock('node:fs');
@@ -40,20 +41,17 @@ describe('MessageEventBus.initialize', () => {
 	let logger: ReturnType<typeof mock<Logger>>;
 	let getInstanceSpy: jest.SpyInstance;
 	const mockedWriter = mock<MessageEventBusLogWriter>();
+	const executionRepository = mock<ExecutionRepository>();
 
 	const buildBus = (globalConfig: GlobalConfig) =>
 		new MessageEventBus(
 			logger,
-			mock(),
+			executionRepository,
 			mock(),
 			mock(),
 			globalConfig,
 			mock<InstanceSettings>({ n8nFolder: tempDir }),
 		);
-
-	const initOpts = (
-		extra: Partial<MessageEventBusInitializeOptions> = {},
-	): MessageEventBusInitializeOptions => ({ skipRecoveryPass: true, ...extra });
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), 'message-event-bus-test-'));
@@ -61,6 +59,13 @@ describe('MessageEventBus.initialize', () => {
 		getInstanceSpy = jest
 			.spyOn(MessageEventBusLogWriter, 'getInstance')
 			.mockResolvedValue(mockedWriter);
+		mockedWriter.getUnsentAndUnfinishedExecutions.mockResolvedValue({
+			unsentMessages: [],
+			unfinishedExecutions: {},
+		});
+		mockedWriter.getLogFileName.mockReturnValue('mocked.log');
+		mockedWriter.isRecoveryProcessRunning.mockReturnValue(false);
+		executionRepository.find.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -93,7 +98,7 @@ describe('MessageEventBus.initialize', () => {
 		])('$name', async ({ workerId, webhookProcessorId, expectedBase }) => {
 			const bus = buildBus(buildGlobalConfig({ logFullPath: '' }));
 
-			await bus.initialize(initOpts({ workerId, webhookProcessorId }));
+			await bus.initialize({ workerId, webhookProcessorId });
 
 			expect(getInstanceSpy).toHaveBeenCalledWith({
 				resolvedPath: { logFullBasePath: expectedBase(tempDir) },
@@ -107,7 +112,7 @@ describe('MessageEventBus.initialize', () => {
 		const customLog = join(tempDir, 'custom.log');
 		const bus = buildBus(buildGlobalConfig({ logFullPath: customLog }));
 
-		await bus.initialize(initOpts({ workerId: 'host-1' }));
+		await bus.initialize({ workerId: 'host-1' });
 
 		expect(logger.warn).toHaveBeenCalledTimes(1);
 		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining(stalePath));
