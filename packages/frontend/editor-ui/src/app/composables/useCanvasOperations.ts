@@ -118,6 +118,7 @@ import { computed, nextTick, ref, type DeepReadonly } from 'vue';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
+import { ensureNodePosition, sanitizeConnections } from '@/app/utils/workflowUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -2336,7 +2337,9 @@ export function useCanvasOperations() {
 			await workflowHelpers.initState(data);
 
 		// Filter out nodes with missing type to prevent canvas rendering crashes
-		const validNodes = data.nodes.filter((node) => !!node.type);
+		const validNodes = data.nodes
+			.filter((node) => !!node.type)
+			.map((node) => ({ ...node, position: ensureNodePosition(node.position) }));
 
 		validNodes.forEach((node) => {
 			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
@@ -2350,7 +2353,7 @@ export function useCanvasOperations() {
 		});
 
 		initializedDocumentStore.setNodes(validNodes);
-		initializedDocumentStore.setConnections(data.connections);
+		initializedDocumentStore.setConnections(sanitizeConnections(data.connections));
 
 		return { workflowDocumentStore: initializedDocumentStore };
 	}
@@ -2638,6 +2641,17 @@ export function useCanvasOperations() {
 				);
 				workflowData.nodes = workflowData.nodes.filter((node) => !!node.type);
 			}
+		}
+
+		if (workflowData.nodes) {
+			workflowData.nodes = workflowData.nodes.map((node) => ({
+				...node,
+				position: ensureNodePosition(node.position),
+			}));
+		}
+
+		if (workflowData.connections) {
+			workflowData.connections = sanitizeConnections(workflowData.connections);
 		}
 
 		try {

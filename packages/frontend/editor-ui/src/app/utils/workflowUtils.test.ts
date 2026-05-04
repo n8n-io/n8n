@@ -2,9 +2,12 @@ import {
 	removeWorkflowExecutionData,
 	convertWorkflowTagsToIds,
 	sortNodesByExecutionOrder,
+	sanitizeConnections,
+	ensureNodePosition,
 } from './workflowUtils';
 import type { IWorkflowDb } from '@/Interface';
-import type { INodeIssues } from 'n8n-workflow';
+import type { IConnection, IConnections, INodeIssues } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 describe('workflowUtils', () => {
 	describe('convertWorkflowTagsToIds', () => {
@@ -575,6 +578,114 @@ describe('workflowUtils', () => {
 			);
 
 			expect(result.map((n) => n.node.name)).toEqual(['Trigger', 'A']);
+		});
+	});
+
+	describe('ensureNodePosition', () => {
+		it('should return valid position as-is', () => {
+			expect(ensureNodePosition([100, 200])).toEqual([100, 200]);
+		});
+
+		it('should return [0, 0] for undefined', () => {
+			expect(ensureNodePosition(undefined)).toEqual([0, 0]);
+		});
+
+		it('should return [0, 0] for a string', () => {
+			expect(ensureNodePosition('bad')).toEqual([0, 0]);
+		});
+
+		it('should return [0, 0] for an array with fewer than 2 elements', () => {
+			expect(ensureNodePosition([100])).toEqual([0, 0]);
+		});
+	});
+
+	describe('sanitizeConnections', () => {
+		it('should return empty object for empty connections', () => {
+			expect(sanitizeConnections({})).toEqual({});
+		});
+
+		it('should pass through valid connections unchanged', () => {
+			const connections: IConnections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			};
+			expect(sanitizeConnections(connections)).toEqual(connections);
+		});
+
+		it('should strip connection type when buckets is a string', () => {
+			const connections = {
+				Start: { main: 'not-an-array' },
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({ Start: {} });
+		});
+
+		it('should strip connection type when buckets is a number', () => {
+			const connections = {
+				Start: { main: 42 },
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({ Start: {} });
+		});
+
+		it('should skip node entry when value is not an object', () => {
+			const connections = {
+				Start: 'broken',
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({});
+		});
+
+		it('should skip node entry when value is null', () => {
+			const connections = {
+				Start: null,
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({});
+		});
+
+		it('should nullify bucket when it is an object instead of an array', () => {
+			const connections = {
+				Start: {
+					main: [{ node: 'Foo', type: 'main', index: 0 }],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({
+				Start: { main: [null] },
+			});
+		});
+
+		it('should preserve null buckets in sparse connections', () => {
+			const connections: IConnections = {
+				Start: {
+					[NodeConnectionTypes.Main]: [
+						null as unknown as IConnection[],
+						[{ node: 'End', type: NodeConnectionTypes.Main, index: 0 }],
+					],
+				},
+			};
+			expect(sanitizeConnections(connections)).toEqual(connections);
+		});
+
+		it('should keep valid types and strip malformed ones on the same node', () => {
+			const connections = {
+				Start: {
+					[NodeConnectionTypes.Main]: 'not-an-array',
+					[NodeConnectionTypes.AiAgent]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiAgent, index: 0 }],
+					],
+				},
+			} as unknown as IConnections;
+
+			expect(sanitizeConnections(connections)).toEqual({
+				Start: {
+					[NodeConnectionTypes.AiAgent]: [
+						[{ node: 'Agent', type: NodeConnectionTypes.AiAgent, index: 0 }],
+					],
+				},
+			});
 		});
 	});
 });

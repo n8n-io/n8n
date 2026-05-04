@@ -1,6 +1,6 @@
 import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
-import type { IConnections } from 'n8n-workflow';
+import type { IConnections, INodeConnections } from 'n8n-workflow';
 import { SPLIT_IN_BATCHES_NODE_TYPE } from '@/app/constants';
 
 /**
@@ -40,6 +40,43 @@ export function removeWorkflowExecutionData(
 	};
 
 	return sanitizedWorkflow;
+}
+
+/**
+ * Return a valid position tuple, defaulting to [0, 0] if missing or malformed.
+ */
+export function ensureNodePosition(position: unknown): [number, number] {
+	if (Array.isArray(position) && position.length >= 2) {
+		return [position[0], position[1]];
+	}
+	return [0, 0];
+}
+
+/**
+ * Strip out malformed connection entries that would crash the canvas.
+ * Keeps only entries where each connection type maps to an array of buckets,
+ * and each bucket is either an array or null.
+ */
+export function sanitizeConnections(connections: IConnections): IConnections {
+	const sanitized: IConnections = {};
+
+	for (const nodeName of Object.keys(connections)) {
+		const nodeConnections = connections[nodeName];
+		if (typeof nodeConnections !== 'object' || nodeConnections === null) continue;
+
+		const sanitizedNodeConnections: INodeConnections = {};
+		for (const type of Object.keys(nodeConnections)) {
+			const buckets = nodeConnections[type];
+			if (!Array.isArray(buckets)) continue;
+			sanitizedNodeConnections[type] = buckets.map((bucket) =>
+				Array.isArray(bucket) ? bucket : null,
+			);
+		}
+
+		sanitized[nodeName] = sanitizedNodeConnections;
+	}
+
+	return sanitized;
 }
 
 interface ExecutionOrderItem {
