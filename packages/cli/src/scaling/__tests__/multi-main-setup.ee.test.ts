@@ -32,10 +32,10 @@ describe('MultiMainSetup', () => {
 			get: () => isLeader,
 			configurable: true,
 		});
-		instanceSettings.markAsLeader.mockImplementation(() => {
+		instanceSettings.markAsLeader = jest.fn(() => {
 			isLeader = true;
 		});
-		instanceSettings.markAsFollower.mockImplementation(() => {
+		instanceSettings.markAsFollower = jest.fn(() => {
 			isLeader = false;
 		});
 		multiMainSetup = new MultiMainSetup(

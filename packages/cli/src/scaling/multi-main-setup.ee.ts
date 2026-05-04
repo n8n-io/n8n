@@ -106,7 +106,8 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 			this.logRedisCommandFailure('Failed to renew leader TTL', renewTtlResult.error);
 			// TODO: There's a decision to be made here: Do we step down or not? Basically we
 			// either optimize for availability or correctness. For now we assume the
-			// connection will eventually recover.
+			// connection will eventually recover, since the RedisClientService will
+			// terminate the process if the connection is down for too long
 			return;
 		}
 
@@ -145,7 +146,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		const getResult = await this.storage.getLeader();
 		if (!getResult.ok) {
-			this.logger.warn('Failed to read leader key from Redis', { error: getResult.error });
+			this.logRedisCommandFailure('Failed to get leader key from Redis', getResult.error);
 			return;
 		}
 
