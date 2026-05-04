@@ -8,7 +8,9 @@ import { createConnectedTool, extractDomain, pageIdField, withSnapshotEnvelope }
 const waitUntilField = z
 	.enum(['load', 'domcontentloaded', 'networkidle'])
 	.optional()
-	.describe('When to consider navigation done (default: "load")');
+	.describe(
+		'When to consider navigation done (default: "domcontentloaded"). Use "load" only when you need every subresource to settle.',
+	);
 
 export function createNavigationTools(connection: BrowserConnection): ToolDefinition[] {
 	return [

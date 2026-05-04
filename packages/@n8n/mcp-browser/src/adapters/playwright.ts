@@ -219,7 +219,7 @@ export class PlaywrightAdapter {
 		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
 
 		if (url) {
-			await page.goto(url, { waitUntil: 'load' });
+			await page.goto(url, { waitUntil: 'domcontentloaded' });
 			state.info.title = await page.title();
 			state.info.url = page.url();
 		}
@@ -302,7 +302,7 @@ export class PlaywrightAdapter {
 	async navigate(
 		pageId: string,
 		url: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.goto(url, { waitUntil });
@@ -315,19 +315,19 @@ export class PlaywrightAdapter {
 
 	async back(pageId: string): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
-		await page.goBack({ waitUntil: 'load' });
+		await page.goBack({ waitUntil: 'domcontentloaded' });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
 	async forward(pageId: string): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
-		await page.goForward({ waitUntil: 'load' });
+		await page.goForward({ waitUntil: 'domcontentloaded' });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
 	async reload(
 		pageId: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.reload({ waitUntil });

@@ -903,7 +903,7 @@ class ExtensionConnection {
 	async send<M extends keyof ExtensionCommands>(
 		method: M,
 		params: ExtensionCommands[M]['params'],
-		timeoutMs = 30_000,
+		timeoutMs = 10_000,
 	): Promise<unknown> {
 		if (this.ws.readyState !== WebSocket.OPEN) {
 			throw new ConnectionLostError('network_error');
@@ -970,6 +970,17 @@ class ExtensionConnection {
 				return;
 			}
 
+			// Application-level ping: receiving this JSON message in the extension's
+			// MV3 service worker resets its 30s idle-termination timer. Protocol-level
+			// ws.ping is handled by the browser without invoking any JS handler, so
+			// it doesn't keep the SW alive on its own.
+			try {
+				this.ws.send(JSON.stringify({ method: 'ping' }));
+			} catch {
+				// connection closing — next tick will stop the heartbeat
+			}
+			// Protocol-level ping kept for backward compatibility with extensions
+			// that don't yet implement the JSON ping/pong handler.
 			this.ws.ping();
 		}, HEARTBEAT_INTERVAL_MS);
 	}
@@ -987,6 +998,13 @@ class ExtensionConnection {
 			parsed = JSON.parse(String(data)) as ExtensionResponse;
 		} catch {
 			log.debug('failed to parse extension message:', String(data).slice(0, 200));
+			return;
+		}
+
+		// Application-level pong from the extension keeps the heartbeat fresh
+		// without requiring the WebSocket protocol pong path.
+		if (parsed.method === 'pong' && parsed.id === undefined) {
+			this.lastPongAt = Date.now();
 			return;
 		}
 

@@ -51,7 +51,7 @@ interface TabEntry {
 	attached: boolean;
 }
 
-const CDP_COMMAND_TIMEOUT_MS = 30_000;
+const CDP_COMMAND_TIMEOUT_MS = 10_000;
 const ATTACH_TIMEOUT_MS = 5_000;
 
 // ---------------------------------------------------------------------------
@@ -418,6 +418,15 @@ export class RelayConnection {
 			return;
 		}
 
+		// Application-level ping from the relay. Receiving (and replying to)
+		// these JSON messages resets the MV3 service worker's idle-termination
+		// timer; protocol-level ws.ping is handled by the browser without
+		// invoking any JS handler, so it doesn't keep the SW alive.
+		if (message.method === 'ping' && message.id === undefined) {
+			this.sendMessage({ method: 'pong' });
+			return;
+		}
+
 		log.debug(`← relay: id=${message.id} method=${message.method}`);
 
 		const response: ProtocolResponse = { id: message.id };
@@ -540,21 +549,40 @@ export class RelayConnection {
 			return result;
 		}
 
-		const result = await Promise.race([
-			chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
-			new Promise<never>((_resolve, reject) => {
-				setTimeout(() => {
-					reject(
-						new Error(
-							`CDP command '${method as string}' timed out after ${CDP_COMMAND_TIMEOUT_MS}ms (${id})`,
-						),
-					);
-				}, CDP_COMMAND_TIMEOUT_MS);
-			}),
-		]);
+		// Watchdog: when a CDP command hangs, the debugger session is usually
+		// wedged and every subsequent call to this tab will hang too. Force-
+		// detach in the background so the next forwardCDPCommand triggers a
+		// fresh attach via ensureAttached(). The timer MUST be cleared on
+		// success/error — otherwise it fires later and recycles a healthy
+		// session, breaking the next call.
+		let watchdog: ReturnType<typeof setTimeout> | undefined;
+		try {
+			const result = await Promise.race([
+				chrome.debugger.sendCommand(debuggee, method as string, cmdParams as object | undefined),
+				new Promise<never>((_resolve, reject) => {
+					watchdog = setTimeout(() => {
+						this.recycleDebuggerSession(id, entry).catch(() => {});
+						reject(
+							new Error(
+								`CDP command '${method as string}' timed out after ${CDP_COMMAND_TIMEOUT_MS}ms (${id})`,
+							),
+						);
+					}, CDP_COMMAND_TIMEOUT_MS);
+				}),
+			]);
 
-		log.debug(`CDP response: ${method as string} → ${id} OK`);
-		return result;
+			log.debug(`CDP response: ${method as string} → ${id} OK`);
+			return result;
+		} finally {
+			if (watchdog) clearTimeout(watchdog);
+		}
+	}
+
+	/** Force-detach a wedged debugger session so the next CDP call can re-attach fresh. */
+	private async recycleDebuggerSession(id: string, entry: TabEntry): Promise<void> {
+		log.debug(`recycleDebuggerSession: detaching ${id} (chromeTabId=${entry.chromeTabId})`);
+		entry.attached = false;
+		await chrome.debugger.detach({ tabId: entry.chromeTabId }).catch(() => {});
 	}
 
 	private async handleCreateTab(params: Record<string, unknown>): Promise<unknown> {
