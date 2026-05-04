@@ -211,6 +211,26 @@ describe('mergeVettedAndInstalled', () => {
 		expect(result.numberOfDownloads).toBe(9999);
 	});
 
+	it('should prefer browse-side packageName over installed packageName', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage({ packageName: 'n8n-nodes-browse' }),
+			makeInstalledPackage({ packageName: 'n8n-nodes-installed' }),
+			mockGetNodeType,
+		);
+
+		expect(result.packageName).toBe('n8n-nodes-browse');
+	});
+
+	it('should prefer browse-side isOfficialNode metadata', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage({ isOfficialNode: true }),
+			makeInstalledPackage(),
+			mockGetNodeType,
+		);
+
+		expect(result.isOfficialNode).toBe(true);
+	});
+
 	it('should pull install state from installed-side', () => {
 		const result = mergeVettedAndInstalled(
 			makeBrowsePackage(),
@@ -250,6 +270,20 @@ describe('mergeVettedAndInstalled', () => {
 		);
 
 		expect(result.installNodeName).toBe('InstalledNode');
+	});
+
+	it('should fall back nodeDescription through getNodeType when vetted nodes are empty', () => {
+		const result = mergeVettedAndInstalled(
+			makeBrowsePackage({ nodes: [] }),
+			makeInstalledPackage({
+				installedNodes: [
+					{ name: 'InstalledNode', type: 'n8n-nodes-test.testNode' } as PublicInstalledNode,
+				],
+			}),
+			mockGetNodeType,
+		);
+
+		expect(result.nodeDescription?.displayName).toBe('Test Node');
 	});
 
 	it('should default nodeCount and nodeDescription when both sides have no nodes', () => {
