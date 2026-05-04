@@ -865,7 +865,6 @@ export class AgentRuntime {
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
-		const hiddenToolCallIds = new Set<string>();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -978,21 +977,12 @@ export class AgentRuntime {
 						chunk.type === 'tool-input-start' &&
 						chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME
 					) {
-						hiddenToolCallIds.add(chunk.id);
-						continue;
-					}
-					if (chunk.type === 'tool-input-delta' && hiddenToolCallIds.has(chunk.id)) {
 						continue;
 					}
 					if (chunk.type === 'tool-call' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-						hiddenToolCallIds.add(chunk.toolCallId);
 						continue;
 					}
-					if (
-						chunk.type === 'tool-result' &&
-						chunk.toolCallId !== undefined &&
-						hiddenToolCallIds.has(chunk.toolCallId)
-					) {
+					if (chunk.type === 'tool-result' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
 						continue;
 					}
 					// Filter only the SDK's terminal `finish` chunk — the runtime

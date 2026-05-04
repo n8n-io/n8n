@@ -502,7 +502,7 @@ describe('AgentRuntime.stream() — working memory', () => {
 		};
 	}
 
-	it('emits working-memory-update and hides the internal tool call from stream consumers', async () => {
+	it('emits working-memory-update without statefully hiding tool input deltas', async () => {
 		const savedWorkingMemory: string[] = [];
 		const memoryContent = '# Thread memory\n- User facts: Alice likes concise answers';
 		const memory = makeMemory(savedWorkingMemory);
@@ -565,6 +565,11 @@ describe('AgentRuntime.stream() — working memory', () => {
 
 		expect(savedWorkingMemory).toEqual([memoryContent]);
 		expect(chunks).toContainEqual({ type: 'working-memory-update', content: memoryContent });
+		expect(chunks).toContainEqual({
+			type: 'tool-input-delta',
+			toolCallId: 'wm-1',
+			delta: memoryContent,
+		});
 		expect(
 			chunks.some((chunk) => 'toolName' in chunk && chunk.toolName === 'updateWorkingMemory'),
 		).toBe(false);
