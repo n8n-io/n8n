@@ -117,26 +117,25 @@ export class NotionV2 implements INodeType {
 								responseData = await notionApiRequestGetBlockChildrens.call(this, responseData);
 							}
 						} else {
-							const limit = this.getNodeParameter('limit', i);
-							qs.page_size = limit;
-							responseData = await notionApiRequest.call(
+							const limit = this.getNodeParameter('limit', i) as number;
+							qs.page_size = Math.min(limit, 100);
+							responseData = await notionApiRequestAllItems.call(
 								this,
+								'results',
 								'GET',
 								`/blocks/${blockId}/children`,
 								{},
 								qs,
 							);
-							const results = responseData.results;
+							responseData = responseData.slice(0, limit);
 
 							if (fetchNestedBlocks) {
 								responseData = await notionApiRequestGetBlockChildrens.call(
 									this,
-									results,
+									responseData,
 									[],
 									limit,
 								);
-							} else {
-								responseData = results;
 							}
 						}
 
@@ -221,9 +220,16 @@ export class NotionV2 implements INodeType {
 								body,
 							);
 						} else {
-							body.page_size = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequest.call(this, 'POST', '/search', body);
-							responseData = responseData.results;
+							const limit = this.getNodeParameter('limit', i) as number;
+							body.page_size = Math.min(limit, 100);
+							responseData = await notionApiRequestAllItems.call(
+								this,
+								'results',
+								'POST',
+								'/search',
+								body,
+							);
+							responseData = responseData.slice(0, limit);
 						}
 						if (simple) {
 							responseData = simplifyObjects(responseData, download);
@@ -484,15 +490,17 @@ export class NotionV2 implements INodeType {
 								{},
 							);
 						} else {
-							body.page_size = this.getNodeParameter('limit', i);
-							responseData = await notionApiRequest.call(
+							const limit = this.getNodeParameter('limit', i) as number;
+							body.page_size = Math.min(limit, 100);
+							responseData = await notionApiRequestAllItems.call(
 								this,
+								'results',
 								'POST',
 								`/databases/${databaseId}/query`,
 								body,
-								qs,
+								{},
 							);
-							responseData = responseData.results;
+							responseData = responseData.slice(0, limit);
 						}
 						if (download) {
 							responseData = await downloadFiles.call(this, responseData as FileRecord[], [

@@ -272,15 +272,17 @@ export class NotionV1 implements INodeType {
 							{},
 						);
 					} else {
-						qs.page_size = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(
+						const limit = this.getNodeParameter('limit', i) as number;
+						qs.page_size = Math.min(limit, 100);
+						responseData = await notionApiRequestAllItems.call(
 							this,
+							'results',
 							'GET',
 							`/blocks/${blockId}/children`,
 							{},
 							qs,
 						);
-						responseData = responseData.results;
+						responseData = responseData.slice(0, limit);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -323,9 +325,16 @@ export class NotionV1 implements INodeType {
 							body,
 						);
 					} else {
-						body.page_size = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(this, 'POST', '/search', body);
-						responseData = responseData.results;
+						const limit = this.getNodeParameter('limit', i) as number;
+						body.page_size = Math.min(limit, 100);
+						responseData = await notionApiRequestAllItems.call(
+							this,
+							'results',
+							'POST',
+							'/search',
+							body,
+						);
+						responseData = responseData.slice(0, limit);
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -426,15 +435,17 @@ export class NotionV1 implements INodeType {
 							{},
 						);
 					} else {
-						body.page_size = this.getNodeParameter('limit', i);
-						responseData = await notionApiRequest.call(
+						const limit = this.getNodeParameter('limit', i) as number;
+						body.page_size = Math.min(limit, 100);
+						responseData = await notionApiRequestAllItems.call(
 							this,
+							'results',
 							'POST',
 							`/databases/${databaseId}/query`,
 							body,
-							qs,
+							{},
 						);
-						responseData = responseData.results;
+						responseData = responseData.slice(0, limit);
 					}
 					if (simple) {
 						responseData = simplifyObjects(responseData, false, 1);
