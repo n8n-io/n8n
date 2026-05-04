@@ -80,6 +80,7 @@ export class LeaderElectionClient {
 		});
 	}
 
+	/** Return the current leader's hostId, or `null` if the key is absent. */
 	async getLeader(): Promise<Result<string | null, Error>> {
 		try {
 			return createResultOk(await this.redisClient.get(this.leaderKey));
@@ -88,6 +89,7 @@ export class LeaderElectionClient {
 		}
 	}
 
+	/** Claim leadership with a TTL. Returns `true` if the key was set (i.e. no leader yet). */
 	async setLeaderIfNotExists(): Promise<Result<boolean, Error>> {
 		try {
 			const result = await this.redisClient.set(
@@ -103,6 +105,7 @@ export class LeaderElectionClient {
 		}
 	}
 
+	/** Atomically extend the leader key TTL only if this host still holds it. */
 	async tryRenewLeaderTtl(): Promise<Result<TtlRenewalResult, Error>> {
 		try {
 			const result = await this.redisClient.eval(
@@ -129,6 +132,7 @@ export class LeaderElectionClient {
 		}
 	}
 
+	/** Delete the leader key so another instance can claim leadership. */
 	async clearLeader(): Promise<Result<void, Error>> {
 		try {
 			await this.redisClient.del(this.leaderKey);
@@ -138,6 +142,7 @@ export class LeaderElectionClient {
 		}
 	}
 
+	/** Disconnect the underlying Redis client. */
 	destroy() {
 		this.redisClient.disconnect();
 	}
