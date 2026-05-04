@@ -73,7 +73,11 @@ const nodeCountLabel = computed(() =>
 		interpolate: { count: props.row?.nodeCount ?? 0 },
 	}),
 );
-const downloadsLabel = computed(() => `${formattedDownloads.value} downloads`);
+const downloadsLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.row.downloadsLabel', {
+		interpolate: { count: formattedDownloads.value },
+	}),
+);
 const verifiedLabel = computed(() => i18n.baseText('settings.communityNodes.verified.tooltip'));
 const failedLoadingLabel = computed(() =>
 	i18n.baseText('settings.communityNodes.failedToLoad.tooltip'),

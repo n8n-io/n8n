@@ -2736,6 +2736,7 @@
 	"settings.communityNodes.row.install": "Install",
 	"settings.communityNodes.row.installing": "Installing...",
 	"settings.communityNodes.row.installed": "Installed",
+	"settings.communityNodes.row.downloadsLabel": "{count} downloads",
 	"settings.communityNodes.row.update": "Update",
 	"settings.communityNodes.row.updateAvailable": "Update available",
 	"settings.communityNodes.verified.tooltip": "Verified by n8n",

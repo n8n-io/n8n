@@ -127,7 +127,7 @@ describe('CommunityPackageRow', () => {
 		expect(getByLabelText('3 nodes')).toBeInTheDocument();
 	});
 
-	it('should render formatted downloads (k)', () => {
+	it('should render formatted downloads with translated accessibility label', () => {
 		const { getByLabelText, getByText } = renderComponent({
 			props: { row: makeRow({ numberOfDownloads: 1234 }) },
 		});
