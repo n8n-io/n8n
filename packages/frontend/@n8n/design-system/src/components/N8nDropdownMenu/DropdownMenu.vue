@@ -310,7 +310,7 @@ defineExpose({ open, close });
 				:side="placementParts.side"
 				:align="placementParts.align"
 				:side-offset="5"
-				:style="[contentContainerStyle, props.contentStyle]"
+				:style="contentContainerStyle"
 				:prioritize-position="true"
 				@keydown="handleContentKeydown"
 				@mouseleave="triggerHoverLeave"

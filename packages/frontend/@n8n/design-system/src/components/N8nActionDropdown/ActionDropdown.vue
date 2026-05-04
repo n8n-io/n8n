@@ -1,5 +1,5 @@
 <script setup lang="ts" generic="T extends string">
-import { computed, getCurrentInstance, ref, useAttrs, useCssModule, type StyleValue } from 'vue';
+import { computed, getCurrentInstance, ref, useAttrs, useCssModule } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
@@ -30,7 +30,6 @@ interface ActionDropdownProps {
 	extraPopperClass?: string;
 	maxHeight?: string | number;
 	modal?: boolean;
-	contentStyle?: StyleValue;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
@@ -123,7 +122,6 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:disabled="disabled"
 			:teleported="teleported"
 			:modal="modal"
-			:content-style="contentStyle"
 			:extra-popper-class="`${$style.shadow}${hideArrow ? ` ${$style.hideArrow}` : ''} ${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			@select="onSelect"
