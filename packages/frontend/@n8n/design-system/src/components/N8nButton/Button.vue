@@ -149,7 +149,7 @@ const handleClick = (event: MouseEvent) => {
 	--button--color--background: transparent;
 	--button--color--background-hover: var(--background--hover);
 	--button--color--background-active: var(--background--active);
-	--button--color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
+	--button--color: var(--text-color);
 	--button--shadow: 0 0 0 0 transparent;
 	--button--shadow--hover: 0 0 0 0 transparent;
 	--button--shadow--active: 0 0 0 0 transparent;
@@ -247,6 +247,16 @@ const handleClick = (event: MouseEvent) => {
 
 	&.subtle {
 		--button--color--background: var(--background--surface);
+		--button--color--background-hover: color-mix(
+			in srgb,
+			var(--button--color--background),
+			var(--background--hover)
+		);
+		--button--color--background-active: color-mix(
+			in srgb,
+			var(--button--color--background),
+			var(--background--active)
+		);
 		--button--shadow: var(--shadow--xs);
 		--button--shadow--hover: var(--shadow--xs);
 		--button--shadow--active: var(--shadow--xs);
