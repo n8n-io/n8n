@@ -17,6 +17,7 @@ export interface CommunityPackageSummary {
 }
 
 export interface CommunityPackageRowData {
+	[key: string]: unknown;
 	id: string;
 	name: string;
 	resourceType: 'communityPackage';

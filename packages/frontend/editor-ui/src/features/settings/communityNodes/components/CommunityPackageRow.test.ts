@@ -10,6 +10,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { CommunityPackageRowData } from '../communityNodes.types';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NPM_PACKAGE_DOCS_BASE_URL } from '@/app/constants';
+import type * as DesignSystem from '@n8n/design-system';
 
 const mockInstallNode = vi.fn().mockResolvedValue({ success: true });
 const mockLoading = ref(false);
@@ -31,7 +32,7 @@ vi.mock('@/app/components/NodeIcon.vue', () => ({
 }));
 
 vi.mock('@n8n/design-system', async () => {
-	const actual = await vi.importActual<typeof import('@n8n/design-system')>('@n8n/design-system');
+	const actual = await vi.importActual<typeof DesignSystem>('@n8n/design-system');
 	return {
 		...actual,
 		N8nActionToggle: {
@@ -49,6 +50,24 @@ vi.mock('@n8n/design-system', async () => {
 const renderComponent = createComponentRenderer(CommunityPackageRow);
 
 const flushPromises = async () => await new Promise(setImmediate);
+type CommunityPackageRowOverrideKey =
+	| 'packageName'
+	| 'authorName'
+	| 'description'
+	| 'isOfficialNode'
+	| 'isVerified'
+	| 'numberOfDownloads'
+	| 'nodeCount'
+	| 'nodeDescription'
+	| 'installNodeName'
+	| 'isInstalled'
+	| 'installedVersion'
+	| 'updateAvailable'
+	| 'failedLoading';
+type CommunityPackageRowOverrides = Partial<
+	Pick<CommunityPackageRowData, CommunityPackageRowOverrideKey>
+>;
+
 const createDeferred = <T>() => {
 	let resolve!: (value: T) => void;
 	const promise = new Promise<T>((resolvePromise) => {
@@ -58,8 +77,11 @@ const createDeferred = <T>() => {
 	return { promise, resolve };
 };
 
-const makeRow = (overrides: Partial<CommunityPackageRowData> = {}): CommunityPackageRowData => ({
-	packageName: 'n8n-nodes-example',
+const makeRow = (overrides: CommunityPackageRowOverrides = {}): CommunityPackageRowData => ({
+	id: overrides.packageName ?? 'n8n-nodes-example',
+	name: overrides.packageName ?? 'n8n-nodes-example',
+	resourceType: 'communityPackage',
+	packageName: overrides.packageName ?? 'n8n-nodes-example',
 	authorName: 'Test Author',
 	description: 'A test community node package',
 	isOfficialNode: false,

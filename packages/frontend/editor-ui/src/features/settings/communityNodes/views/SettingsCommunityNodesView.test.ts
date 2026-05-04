@@ -1,9 +1,11 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
+import { computed, defineComponent, onMounted, type PropType } from 'vue';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { createComponentRenderer } from '@/__tests__/render';
+import type { BaseFilters } from '@/Interface';
 import { useCommunityNodesStore } from '../communityNodes.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -11,7 +13,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import type { CommunityPackageSummary } from '../communityNodes.types';
+import type { CommunityPackageRowData, CommunityPackageSummary } from '../communityNodes.types';
 import SettingsCommunityNodesView from './SettingsCommunityNodesView.vue';
 
 vi.mock('@/app/composables/usePushConnection', () => ({
@@ -35,49 +37,60 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 }));
 
 vi.mock('@/app/components/layouts/ResourcesListLayout.vue', () => ({
-	default: {
-		props: [
-			'resources',
-			'filters',
-			'loading',
-			'additionalFiltersHandler',
-			'displayName',
-			'initialize',
-			'resourceKey',
-			'uiConfig',
-		],
-		emits: ['update:filters'],
-		mounted() {
-			void this.initialize?.();
+	default: defineComponent({
+		props: {
+			resources: {
+				type: Array as PropType<CommunityPackageRowData[]>,
+				default: () => [],
+			},
+			filters: {
+				type: Object as PropType<BaseFilters>,
+				default: () => ({ search: '', homeProject: '' }),
+			},
+			loading: Boolean,
+			additionalFiltersHandler: Function as PropType<
+				(resource: CommunityPackageRowData, filters: BaseFilters, matches: boolean) => boolean
+			>,
+			displayName: Function as PropType<(resource: CommunityPackageRowData) => string>,
+			initialize: Function as PropType<() => Promise<void>>,
+			resourceKey: String,
+			uiConfig: Object as PropType<{ sortEnabled?: boolean }>,
 		},
-		computed: {
-			hasAppliedFilters() {
-				return Object.keys(this.filters).some((key) => {
+		emits: ['update:filters'],
+		setup(props, { emit }) {
+			onMounted(() => {
+				void props.initialize?.();
+			});
+
+			const hasAppliedFilters = computed(() =>
+				Object.keys(props.filters).some((key) => {
 					if (key === 'search') return false;
 
-					const value = this.filters[key];
+					const value = props.filters[key];
 					if (typeof value === 'boolean') return value;
 					if (Array.isArray(value)) return value.length > 0;
 
 					return value !== '';
-				});
-			},
-			filteredResources() {
-				return this.resources.filter((resource) => {
+				}),
+			);
+
+			const filteredResources = computed(() =>
+				props.resources.filter((resource) => {
 					let matches = true;
-					if (this.filters.search) {
-						const displayName = this.displayName?.(resource) ?? resource.name ?? '';
-						matches = displayName.toLowerCase().includes(this.filters.search.toLowerCase());
+					if (props.filters.search) {
+						const displayName = props.displayName?.(resource) ?? resource.name ?? '';
+						matches = displayName.toLowerCase().includes(props.filters.search.toLowerCase());
 					}
 
-					return this.additionalFiltersHandler?.(resource, this.filters, matches) ?? matches;
-				});
-			},
-		},
-		methods: {
-			setKeyValue(key: string, value: unknown) {
-				this.$emit('update:filters', { ...this.filters, [key]: value });
-			},
+					return props.additionalFiltersHandler?.(resource, props.filters, matches) ?? matches;
+				}),
+			);
+
+			const setKeyValue = (key: string, value: unknown) => {
+				emit('update:filters', { ...props.filters, [key]: value });
+			};
+
+			return { filteredResources, hasAppliedFilters, setKeyValue };
 		},
 		template: `
 			<div data-test-id="resources-list-layout" :data-resource-key="resourceKey">
@@ -102,7 +115,7 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', () => ({
 				<slot name="empty" v-if="!resources.length" />
 			</div>
 		`,
-	},
+	}),
 }));
 
 vi.mock('../components/CommunityPackageRow.vue', () => ({
@@ -168,7 +181,10 @@ describe('SettingsCommunityNodesView', () => {
 		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', { get: () => [] });
 		Object.defineProperty(settingsStore, 'isCommunityNodesFeatureEnabled', { get: () => true });
 		Object.defineProperty(settingsStore, 'isUnverifiedPackagesEnabled', { get: () => false });
-		nodeTypesStore.getNodeType = vi.fn(() => null);
+		Object.defineProperty(nodeTypesStore, 'getNodeType', {
+			value: vi.fn(() => null),
+			configurable: true,
+		});
 		nodeTypesStore.fetchCommunityNodePreviews = vi.fn().mockResolvedValue(undefined);
 		communityNodesStore.fetchInstalledPackages = vi.fn().mockResolvedValue(undefined);
 		communityNodesStore.fetchAvailableCommunityPackageCount = vi.fn().mockResolvedValue(undefined);
@@ -268,7 +284,14 @@ describe('SettingsCommunityNodesView', () => {
 					packageName: 'n8n-nodes-installed',
 					installedVersion: '1.0.0',
 					updateAvailable: '1.1.0',
-					installedNodes: [{ name: 'Installed Node', latestVersion: 2 }],
+					installedNodes: [
+						{
+							name: 'Installed Node',
+							type: 'n8n-nodes-installed.installedNode',
+							latestVersion: 2,
+							package: makeInstalledPackage(),
+						},
+					],
 				}),
 			],
 		});
