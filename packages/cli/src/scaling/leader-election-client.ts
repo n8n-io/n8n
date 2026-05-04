@@ -33,7 +33,7 @@ if currentValue ~= ARGV[1] then
   return currentValue
 end
 
-return redis.call("EXPIRE", KEYS[1], tonumber(ARGV[2]), "GT")
+return redis.call("EXPIRE", KEYS[1], tonumber(ARGV[2]))
 `;
 
 export type TtlRenewalResultKeyMissing = { id: 'key-missing' };
@@ -115,7 +115,8 @@ export class LeaderElectionClient {
 				this.hostId,
 				this.leaderKeyTtlInS,
 			);
-			if (result === -1) {
+
+			if (result === -1 || result === 0) {
 				return createResultOk({ id: 'key-missing' });
 			}
 			if (result === 1) {
@@ -124,6 +125,7 @@ export class LeaderElectionClient {
 			if (typeof result === 'string') {
 				return createResultOk({ id: 'other-host-is-leader', currentLeaderId: result });
 			}
+
 			return createResultError(
 				new Error(`Unexpected result from Redis script: ${JSON.stringify(result)}`),
 			);
