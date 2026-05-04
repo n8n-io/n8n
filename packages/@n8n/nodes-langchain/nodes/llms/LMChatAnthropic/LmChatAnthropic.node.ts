@@ -1,4 +1,4 @@
-import { ChatAnthropic } from '@langchain/anthropic';
+import { ChatAnthropic, type ChatAnthropicInput } from '@langchain/anthropic';
 import type { LLMResult } from '@langchain/core/outputs';
 import {
 	getProxyAgent,
@@ -21,7 +21,7 @@ import { searchModels } from './methods/searchModels';
 
 const ANTHROPIC_MODEL_BUILDER_HINT = {
 	message:
-		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices.',
+		'Default to claude-sonnet-4-6 (latest Sonnet); use claude-opus-4-7 when the user needs the most capable model. Never use Claude Sonnet 4.5, Claude 3.x, Claude 2, or LEGACY options — those are superseded and are not valid choices. When extended thinking is needed on Opus 4.7+, set Thinking Mode to Adaptive and choose an Effort level. The legacy Manual thinking mode is rejected by Opus 4.7.',
 };
 
 const modelField: INodeProperties = {
@@ -92,8 +92,8 @@ export class LmChatAnthropic implements INodeType {
 		name: 'lmChatAnthropic',
 		icon: 'file:anthropic.svg',
 		group: ['transform'],
-		version: [1, 1.1, 1.2, 1.3, 1.4],
-		defaultVersion: 1.4,
+		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+		defaultVersion: 1.5,
 		description: 'Language Model Anthropic',
 		defaults: {
 			name: 'Anthropic Chat Model',
@@ -225,7 +225,44 @@ export class LmChatAnthropic implements INodeType {
 					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { gte: 1.4 } }],
+						'@version': [1.4],
+					},
+				},
+			},
+			{
+				displayName: 'Model',
+				name: 'model',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: 'claude-sonnet-4-6',
+					cachedResultName: 'Claude Sonnet 4.6',
+				},
+				builderHint: ANTHROPIC_MODEL_BUILDER_HINT,
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a model...',
+						typeOptions: {
+							searchListMethod: 'searchModels',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'Claude Sonnet',
+					},
+				],
+				description:
+					'The model. Choose from the list, or specify an ID. <a href="https://docs.anthropic.com/claude/docs/models-overview">Learn more</a>.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.5 } }],
 					},
 				},
 			},
@@ -255,6 +292,7 @@ export class LmChatAnthropic implements INodeType {
 						displayOptions: {
 							hide: {
 								thinking: [true],
+								thinkingMode: ['adaptive', 'manual'],
 							},
 						},
 					},
@@ -269,6 +307,7 @@ export class LmChatAnthropic implements INodeType {
 						displayOptions: {
 							hide: {
 								thinking: [true],
+								thinkingMode: ['adaptive', 'manual'],
 							},
 						},
 					},
@@ -283,6 +322,7 @@ export class LmChatAnthropic implements INodeType {
 						displayOptions: {
 							hide: {
 								thinking: [true],
+								thinkingMode: ['adaptive', 'manual'],
 							},
 						},
 					},
@@ -292,6 +332,11 @@ export class LmChatAnthropic implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to enable thinking mode for the model',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { lte: 1.4 } }],
+							},
+						},
 					},
 					{
 						displayName: 'Thinking Budget (Tokens)',
@@ -301,7 +346,91 @@ export class LmChatAnthropic implements INodeType {
 						description: 'The maximum number of tokens to use for thinking',
 						displayOptions: {
 							show: {
+								'@version': [{ _cnd: { lte: 1.4 } }],
 								thinking: [true],
+							},
+						},
+					},
+					{
+						displayName: 'Thinking Mode',
+						name: 'thinkingMode',
+						type: 'options',
+						default: 'disabled',
+						description: 'How extended thinking should be configured for the model',
+						options: [
+							{
+								name: 'Disabled',
+								value: 'disabled',
+								description: 'No extended thinking',
+							},
+							{
+								name: 'Adaptive (Recommended)',
+								value: 'adaptive',
+								description: 'Claude decides how much to think; control with Effort',
+							},
+							{
+								name: 'Manual (Deprecated)',
+								value: 'manual',
+								description: 'Legacy fixed-budget mode; rejected by Opus 4.7+',
+							},
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+							},
+						},
+					},
+					{
+						displayName: 'Effort',
+						name: 'effort',
+						type: 'options',
+						default: 'medium',
+						description: 'Effort level for adaptive thinking',
+						// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
+						options: [
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+							{ name: 'X-High', value: 'xhigh' },
+							{ name: 'Max', value: 'max' },
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+								thinkingMode: ['adaptive'],
+								'/model.value': [{ _cnd: { includes: 'opus' } }],
+							},
+						},
+					},
+					{
+						displayName: 'Effort',
+						name: 'effort',
+						type: 'options',
+						default: 'medium',
+						description: 'Effort level for adaptive thinking',
+						options: [
+							{ name: 'Low', value: 'low' },
+							{ name: 'Medium', value: 'medium' },
+							{ name: 'High', value: 'high' },
+						],
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+								thinkingMode: ['adaptive'],
+								'/model.value': [{ _cnd: { regex: '^(?!.*opus).*' } }],
+							},
+						},
+					},
+					{
+						displayName: 'Thinking Budget (Tokens)',
+						name: 'thinkingBudget',
+						type: 'number',
+						default: MIN_THINKING_BUDGET,
+						description: 'Maximum tokens used for thinking. Manual mode is rejected by Opus 4.7+.',
+						displayOptions: {
+							show: {
+								'@version': [{ _cnd: { gte: 1.5 } }],
+								thinkingMode: ['manual'],
 							},
 						},
 					},
@@ -333,30 +462,42 @@ export class LmChatAnthropic implements INodeType {
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			maxTokensToSample?: number;
-			temperature: number;
+			temperature?: number;
 			topK?: number;
 			topP?: number;
 			thinking?: boolean;
 			thinkingBudget?: number;
-		};
-		let invocationKwargs = {};
-
-		const tokensUsageParser = (result: LLMResult) => {
-			const usage = (result?.llmOutput?.usage as {
-				input_tokens: number;
-				output_tokens: number;
-			}) ?? {
-				input_tokens: 0,
-				output_tokens: 0,
-			};
-			return {
-				completionTokens: usage.output_tokens,
-				promptTokens: usage.input_tokens,
-				totalTokens: usage.input_tokens + usage.output_tokens,
-			};
+			thinkingMode?: 'disabled' | 'adaptive' | 'manual';
+			effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 		};
 
-		if (options.thinking) {
+		const isOpus47Model = modelName.startsWith('claude-opus-4-7');
+		const thinkingMode: 'disabled' | 'adaptive' | 'manual' =
+			version >= 1.5
+				? (options.thinkingMode ?? 'disabled')
+				: options.thinking
+					? 'manual'
+					: 'disabled';
+
+		if (thinkingMode === 'manual' && isOpus47Model) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Manual thinking mode is not supported on "${modelName}". Use Thinking Mode = Adaptive (with Effort) instead.`,
+				{ itemIndex },
+			);
+		}
+
+		let invocationKwargs: Record<string, unknown> = {};
+		if (thinkingMode === 'adaptive') {
+			invocationKwargs = {
+				thinking: { type: 'adaptive' },
+				output_config: { effort: options.effort ?? 'medium' },
+				max_tokens: options.maxTokensToSample ?? DEFAULT_MAX_TOKENS,
+				top_k: undefined,
+				top_p: undefined,
+				temperature: undefined,
+			};
+		} else if (thinkingMode === 'manual') {
 			invocationKwargs = {
 				thinking: {
 					type: 'enabled',
@@ -375,6 +516,21 @@ export class LmChatAnthropic implements INodeType {
 				temperature: undefined,
 			};
 		}
+
+		const tokensUsageParser = (result: LLMResult) => {
+			const usage = (result?.llmOutput?.usage as {
+				input_tokens: number;
+				output_tokens: number;
+			}) ?? {
+				input_tokens: 0,
+				output_tokens: 0,
+			};
+			return {
+				completionTokens: usage.output_tokens,
+				promptTokens: usage.input_tokens,
+				totalTokens: usage.input_tokens + usage.output_tokens,
+			};
+		};
 
 		const clientOptions: {
 			fetchOptions?: { dispatcher: ReturnType<typeof getProxyAgent> };
@@ -412,19 +568,25 @@ export class LmChatAnthropic implements INodeType {
 				}
 			: undefined;
 
-		const model = new ChatAnthropic({
+		const chatAnthropicParams: ChatAnthropicInput = {
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
 			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
-			temperature: options.temperature,
-			topK: options.topK,
-			topP: options.topP,
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, gatewayErrorHandler),
 			invocationKwargs,
 			clientOptions,
-		});
+		};
+
+		// Opus 4.7 rejects temperature/topK/topP at the SDK layer regardless of thinking mode
+		if (!isOpus47Model) {
+			chatAnthropicParams.temperature = options.temperature;
+			chatAnthropicParams.topK = options.topK;
+			chatAnthropicParams.topP = options.topP;
+		}
+
+		const model = new ChatAnthropic(chatAnthropicParams);
 
 		// Some Anthropic models do not support Langchain default of -1 for topP so we need to unset it
 		if (options.topP === undefined) {

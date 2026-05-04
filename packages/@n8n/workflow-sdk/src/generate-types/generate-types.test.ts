@@ -543,6 +543,20 @@ describe('generate-types', () => {
 			expect(result).toBe('AssignmentCollectionValue');
 		});
 
+		it('should map string type with multipleValues to an array type', () => {
+			const prop: NodeProperty = {
+				name: 'attendees',
+				displayName: 'Attendees',
+				type: 'string',
+				default: '',
+				typeOptions: {
+					multipleValues: true,
+				},
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toBe('Array<string | Expression<string> | PlaceholderValue>');
+		});
+
 		it('should map fixedCollection type to proper nested interface', () => {
 			const prop: NodeProperty = {
 				name: 'queryParameters',
@@ -565,6 +579,34 @@ describe('generate-types', () => {
 			expect(result).toContain('parameters?:');
 			expect(result).toContain('name?:');
 			expect(result).toContain('value?:');
+		});
+
+		it('should map nested string fields with multipleValues to array types', () => {
+			const prop: NodeProperty = {
+				name: 'attendeesUi',
+				displayName: 'Attendees',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Values',
+						name: 'values',
+						values: [
+							{
+								displayName: 'Attendees',
+								name: 'attendees',
+								type: 'string',
+								default: '',
+								typeOptions: {
+									multipleValues: true,
+								},
+							},
+						],
+					},
+				],
+			};
+			const result = generateTypes.mapPropertyType(prop);
+			expect(result).toContain('attendees?: Array<string | Expression<string> | PlaceholderValue>');
 		});
 
 		it('should map fixedCollection with multipleValues to array type', () => {
@@ -2353,6 +2395,172 @@ describe('generate-types', () => {
 			// genericAuthType should have displayOptions.show in JSDoc
 			expect(result).toContain('@displayOptions.show');
 			expect(result).toContain('authentication: ["genericCredentialType"]');
+		});
+	});
+
+	// =========================================================================
+	// UX-fork variant collapse
+	// =========================================================================
+
+	describe('tryMergeUxForkVariants', () => {
+		it('collapses a clean partition (BigQuery sqlQuery shape) by dropping the constraint', () => {
+			// hide: useLegacySql=[true]  ⊕  show: useLegacySql=[true]  ⇒  always visible
+			const a = { hide: { useLegacySql: [true] } };
+			const b = { show: { useLegacySql: [true] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({});
+			expect(generateTypes.tryMergeUxForkVariants(b, a)).toEqual({});
+		});
+
+		it('reduces hide values to the set difference when show is a subset', () => {
+			// hide: K=[a,b,c]  ⊕  show: K=[a]  ⇒  hide: K=[b,c]
+			const a = { hide: { mode: ['a', 'b', 'c'] } };
+			const b = { show: { mode: ['a'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				hide: { mode: ['b', 'c'] },
+			});
+		});
+
+		it('preserves shared show/hide entries while collapsing the fork key', () => {
+			const a = {
+				show: { resource: ['data'] },
+				hide: { useLegacySql: [true] },
+			};
+			const b = {
+				show: { resource: ['data'], useLegacySql: [true] },
+			};
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toEqual({
+				show: { resource: ['data'] },
+			});
+		});
+
+		it('returns null for a multi-key fork (Cortex-shape)', () => {
+			// Two keys differ — too complex to collapse safely.
+			const a = { show: { mode: ['a'], extra: ['x'] } };
+			const b = { show: { mode: ['b'], extra: ['y'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+
+		it('returns null when one side is missing displayOptions', () => {
+			expect(generateTypes.tryMergeUxForkVariants(undefined, { show: { mode: ['a'] } })).toBeNull();
+			expect(generateTypes.tryMergeUxForkVariants({ show: { mode: ['a'] } }, undefined)).toBeNull();
+		});
+
+		it('returns null when the fork key appears in both show clauses (no clean partition)', () => {
+			const a = { show: { mode: ['a'] } };
+			const b = { show: { mode: ['b'] } };
+			expect(generateTypes.tryMergeUxForkVariants(a, b)).toBeNull();
+		});
+
+		// End-to-end: the simplifier must be wired into the JSDoc emitter.
+		// BigQuery's two `sqlQuery` declarations were the canonical bug — the
+		// agent kept reading `@displayOptions.hide { useLegacySql: [true] }`
+		// in the .d.ts and concluding the field was unsettable in legacy mode,
+		// even after the runtime validator started accepting both modes.
+		it('emits a single honest predicate for BigQuery-shape sqlQuery via generateNodeTypeFile', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.googleBigQuery',
+				displayName: 'Google BigQuery',
+				description: 'Run BigQuery queries',
+				group: ['transform'],
+				version: 2.1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: { resource: ['database'], operation: ['executeQuery'] },
+							hide: { '/options.useLegacySql': [true] },
+						},
+					},
+					{
+						name: 'sqlQuery',
+						displayName: 'SQL Query',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								resource: ['database'],
+								operation: ['executeQuery'],
+								'/options.useLegacySql': [true],
+							},
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(node);
+
+			expect(result).toMatch(
+				/@displayOptions\.show \{ resource: \["database"\], operation: \["executeQuery"\] \}/,
+			);
+			expect(result).not.toMatch(/@displayOptions\.hide.*useLegacySql/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*useLegacySql/);
+		});
+
+		// End-to-end via the discriminator-split codegen path. Pushbullet's `value`
+		// declares variant A `hide: target=[default, device_iden]` and variant B
+		// `show: target=[device_iden]`. OR-semantics = target ≠ default; the JSDoc
+		// must drop `device_iden` from the hide.
+		it('emits Pushbullet-shape simplified hide via the discriminator-split path', () => {
+			const node: NodeTypeDescription = {
+				name: 'n8n-nodes-base.pushbullet',
+				displayName: 'Pushbullet',
+				description: 'Send pushes',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [
+					{
+						name: 'resource',
+						displayName: 'Resource',
+						type: 'options',
+						default: 'push',
+						options: [{ name: 'Push', value: 'push' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'operation',
+						displayName: 'Operation',
+						type: 'options',
+						default: 'create',
+						displayOptions: { show: { resource: ['push'] } },
+						options: [{ name: 'Create', value: 'create' }],
+						noDataExpression: true,
+					},
+					{
+						name: 'value',
+						displayName: 'Value',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'] },
+							hide: { target: ['default', 'device_iden'] },
+						},
+					},
+					{
+						name: 'value',
+						displayName: 'Value Name or ID',
+						type: 'string',
+						required: true,
+						default: '',
+						displayOptions: {
+							show: { resource: ['push'], operation: ['create'], target: ['device_iden'] },
+						},
+					},
+				],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(node);
+
+			expect(result).toMatch(/@displayOptions\.hide \{ target: \["default"\] \}/);
+			expect(result).not.toMatch(/@displayOptions\.hide \{[^}]*device_iden/);
+			expect(result).not.toMatch(/@displayOptions\.show \{[^}]*target.*device_iden/);
 		});
 	});
 

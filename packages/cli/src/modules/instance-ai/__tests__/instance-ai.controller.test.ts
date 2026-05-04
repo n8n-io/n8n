@@ -1076,6 +1076,32 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('gatewayDisconnectSession', () => {
+		it('should require instanceAi:gateway scope', () => {
+			expect(scopeOf('gatewayDisconnectSession')).toEqual({
+				scope: 'instanceAi:gateway',
+				globalOnly: true,
+			});
+		});
+
+		it('should tear down the session and push state change without flipping preferences', async () => {
+			const result = await controller.gatewayDisconnectSession(req);
+
+			expect(result).toEqual({ ok: true });
+			expect(instanceAiService.clearDisconnectTimer).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.disconnectGateway).toHaveBeenCalledWith(USER_ID);
+			expect(instanceAiService.clearActiveSessionKey).toHaveBeenCalledWith(USER_ID);
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				{
+					type: 'instanceAiGatewayStateChanged',
+					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+				},
+				[USER_ID],
+			);
+			expect(settingsService.updateUserPreferences).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('getGatewayKeyHeader', () => {
 		it('should extract first element from array header', () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);

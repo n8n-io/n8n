@@ -93,6 +93,7 @@ export interface FrontendSettings {
 		oauth1: string;
 		oauth2: string;
 	};
+	jwksUri: string;
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
@@ -146,6 +147,9 @@ export interface FrontendSettings {
 			loginLabel: string;
 			loginEnabled: boolean;
 		};
+	};
+	logStreaming: {
+		managedByEnv: boolean;
 	};
 	publicApi: {
 		enabled: boolean;
@@ -232,6 +236,9 @@ export interface FrontendSettings {
 	security: {
 		blockFileAccessToN8nFiles: boolean;
 	};
+	chatTrigger?: {
+		disablePublicChat: boolean;
+	};
 	easyAIWorkflowOnboarded: boolean;
 	evaluation: {
 		quota: number;
@@ -263,6 +270,8 @@ export type FrontendModuleSettings = {
 	mcp?: {
 		/** Whether MCP access is enabled in the instance. */
 		mcpAccessEnabled: boolean;
+		/** Whether MCP settings are managed via environment variables. */
+		mcpManagedByEnv: boolean;
 	};
 
 	/**

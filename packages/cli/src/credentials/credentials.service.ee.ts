@@ -107,7 +107,7 @@ export class EnterpriseCredentialsService {
 		if (credential) {
 			// Decrypt the data if we found the credential with the `credential:update`
 			// scope.
-			decryptedData = this.credentialsService.decrypt(credential);
+			decryptedData = await this.credentialsService.decrypt(credential);
 		} else {
 			// Otherwise try to find them with only the `credential:read` scope. In
 			// that case we return them without the decrypted data.
@@ -183,7 +183,7 @@ export class EnterpriseCredentialsService {
 			this.licenseState.isExternalSecretsLicensed() &&
 			this.externalSecretsConfig.externalSecretsForProjects
 		) {
-			const decryptedData = this.credentialsService.decrypt(credential, true);
+			const decryptedData = await this.credentialsService.decrypt(credential, true);
 			await validateAccessToReferencedSecretProviders(
 				destinationProject.id,
 				decryptedData,

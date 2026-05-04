@@ -42,9 +42,14 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 		return path;
 	};
 
-	const setMaxMessagesPerParse = (maxMessagesPerParse: number) => {
+	const setMaxMessagesPerParse = (
+		maxMessagesPerParse: number,
+		maxTotalMessagesPerFile: number = 500_000,
+	) => {
 		const globalConfig = mock<GlobalConfig>({
-			eventBus: { logWriter: { maxMessagesPerParse, keepLogCount: 3 } },
+			eventBus: {
+				logWriter: { maxMessagesPerParse, maxTotalMessagesPerFile, keepLogCount: 3 },
+			},
 		});
 		Container.set(GlobalConfig, globalConfig);
 	};
@@ -165,5 +170,130 @@ describe('MessageEventBusLogWriter.readLoggedMessagesFromFile', () => {
 
 		expect(results.loggedMessages).toHaveLength(0);
 		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('aggregates malformed lines into a single warn and logs no per-line errors', async () => {
+		setMaxMessagesPerParse(1000, 500_000);
+		writer = new MessageEventBusLogWriter();
+
+		const lines: string[] = [];
+		for (let i = 0; i < 1000; i++) {
+			lines.push(`malformed-${i}-not-json`);
+		}
+		const logFile = writeLogFile('malformed.log', lines);
+
+		const results = {
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		};
+
+		await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+		expect(results.loggedMessages).toHaveLength(0);
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('skipped 1000 malformed line(s)'),
+		);
+	});
+
+	it('returns valid messages and one aggregated warn on mixed valid/invalid input', async () => {
+		setMaxMessagesPerParse(1000, 500_000);
+		writer = new MessageEventBusLogWriter();
+
+		const lines: string[] = [];
+		for (let i = 0; i < 5; i++) {
+			lines.push(makeWorkflowStartedLine(`id-${i}`, `exec-${i}`));
+			lines.push(`malformed-${i}`);
+		}
+		const logFile = writeLogFile('mixed.log', lines);
+
+		const results = {
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		};
+
+		await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+		expect(results.loggedMessages).toHaveLength(5);
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('skipped 5 malformed line(s)'),
+		);
+	});
+
+	it('aborts "all"-mode parsing when the total line ceiling is exceeded', async () => {
+		setMaxMessagesPerParse(1000, 10);
+		writer = new MessageEventBusLogWriter();
+
+		const lines: string[] = [];
+		for (let i = 0; i < 50; i++) {
+			lines.push(makeWorkflowStartedLine(`id-${i}`, `exec-${i}`));
+		}
+		const logFile = writeLogFile('large-all.log', lines);
+
+		const results = {
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		};
+
+		await writer.readLoggedMessagesFromFile(results, 'all', logFile);
+
+		expect(results.loggedMessages.length).toBeLessThanOrEqual(11);
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('exceeded 10 total lines during parse'),
+		);
+	});
+
+	it('counts malformed lines toward the total-messages ceiling', async () => {
+		setMaxMessagesPerParse(1000, 20);
+		writer = new MessageEventBusLogWriter();
+
+		const lines: string[] = [];
+		for (let i = 0; i < 100; i++) {
+			lines.push(`malformed-${i}`);
+		}
+		const logFile = writeLogFile('all-malformed.log', lines);
+
+		const results = {
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		};
+
+		await writer.readLoggedMessagesFromFile(results, 'all', logFile);
+
+		expect(results.loggedMessages).toHaveLength(0);
+		expect(logger.error).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith(
+			expect.stringContaining('exceeded 20 total lines during parse'),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('skipped'));
+	});
+
+	it('truncates the aggregated warn sample to 200 characters', async () => {
+		setMaxMessagesPerParse(1000, 500_000);
+		writer = new MessageEventBusLogWriter();
+
+		const longMalformed = 'x'.repeat(500);
+		const logFile = writeLogFile('long-malformed.log', [longMalformed]);
+
+		const results = {
+			loggedMessages: [] as EventMessageTypes[],
+			sentMessages: [] as EventMessageTypes[],
+			unfinishedExecutions: {} as Record<string, EventMessageTypes[]>,
+		};
+
+		await writer.readLoggedMessagesFromFile(results, 'unsent', logFile);
+
+		expect(logger.warn).toHaveBeenCalledTimes(1);
+		const warnCall = logger.warn.mock.calls[0]?.[0];
+		const sampleMatch = warnCall?.match(/Sample \(truncated\): (.*)$/);
+		expect(sampleMatch).not.toBeNull();
+		expect(sampleMatch![1].length).toBeLessThanOrEqual(200);
 	});
 });

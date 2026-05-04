@@ -1,0 +1,59 @@
+{
+  "name": "@n8n/tournament",
+  "version": "1.0.7",
+  "description": "Output compatible rewrite of riot tmpl",
+  "main": "dist/index.js",
+  "module": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": "./*"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc -p ./tsconfig.build.json",
+    "prepack": "pnpm build",
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix",
+    "format": "biome format --write .",
+    "format:check": "biome ci ."
+  },
+  "engines": {
+    "node": ">=20.15",
+    "pnpm": ">=9.5"
+  },
+  "files": [
+    "src/",
+    "dist/",
+    "LICENSE.md",
+    "package.json",
+    "tsconfig.json"
+  ],
+  "packageManager": "pnpm@9.6.0",
+  "keywords": [],
+  "author": "",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/node": "^18.13.0",
+    "@n8n/vitest-config": "workspace:*",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:",
+    "nodemon": "^2.0.20",
+    "ts-node": "^10.9.1",
+    "tsc-alias": "^1.8.7",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "ast-types": "^0.16.1",
+    "esprima-next": "^5.8.4",
+    "recast": "^0.22.0"
+  }
+}

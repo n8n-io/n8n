@@ -65,6 +65,7 @@ export const defaultSettings: FrontendSettings = {
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
+	jwksUri: '',
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',
 	posthog: {
@@ -92,6 +93,9 @@ export const defaultSettings: FrontendSettings = {
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
+	},
+	logStreaming: {
+		managedByEnv: false,
 	},
 	telemetry: {
 		enabled: false,

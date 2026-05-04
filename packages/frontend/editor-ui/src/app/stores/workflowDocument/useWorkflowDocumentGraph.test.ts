@@ -22,7 +22,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { IConnections, INodeTypes } from 'n8n-workflow';
+import type { IConnections } from 'n8n-workflow';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -49,14 +49,6 @@ function createNodesDeps(): WorkflowDocumentNodesDeps {
 	};
 }
 
-function createMockNodeTypes(): INodeTypes {
-	return {
-		getByName: vi.fn(),
-		getByNameAndVersion: vi.fn(),
-		getKnownTypes: vi.fn().mockReturnValue({}),
-	};
-}
-
 describe('useWorkflowDocumentGraph', () => {
 	let nodes: ReturnType<typeof useWorkflowDocumentNodes>;
 	let connections: ReturnType<typeof useWorkflowDocumentConnections>;
@@ -73,7 +65,6 @@ describe('useWorkflowDocumentGraph', () => {
 		});
 		workflowObj = useWorkflowDocumentWorkflowObject({
 			workflowId: '',
-			getNodeTypes: () => createMockNodeTypes(),
 		});
 	});
 

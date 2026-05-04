@@ -155,6 +155,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
 	);
 
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
+	);
+
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
 	);
@@ -292,6 +296,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setMaxExecutionTimeout(fetchedSettings.maxExecutionTimeout);
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
+		rootStore.setJwksUri(fetchedSettings.jwksUri);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
@@ -436,5 +441,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

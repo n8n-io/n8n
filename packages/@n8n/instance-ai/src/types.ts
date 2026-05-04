@@ -12,6 +12,7 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import type { INodeTypes } from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -153,7 +154,7 @@ export interface InstanceAiWorkflowService {
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string },
+		options?: { projectId?: string; markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
 	/** Update a workflow from SDK-produced WorkflowJSON. */
 	updateFromWorkflowJSON(
@@ -163,6 +164,18 @@ export interface InstanceAiWorkflowService {
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	delete(workflowId: string): Promise<void>;
+	/**
+	 * Clear the AI-builder temporary marker on a workflow — used to promote the
+	 * main deliverable so the run-finish reap leaves it alone.
+	 */
+	clearAiTemporary(workflowId: string): Promise<void>;
+	/**
+	 * Archive the workflow only if it still carries the AI-builder temporary
+	 * marker. Check-and-archive used by the run-finish reap so a main
+	 * workflow whose marker was cleared survives even if its id is still in
+	 * the orchestrator's in-memory created-set.
+	 */
+	archiveIfAiTemporary(workflowId: string): Promise<boolean>;
 	publish(
 		workflowId: string,
 		options?: { versionId?: string; name?: string; description?: string },
@@ -326,6 +339,7 @@ export interface SearchableNodeDescription {
 	builderHint?: {
 		message?: string;
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
+		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
 }
 
@@ -358,6 +372,18 @@ export interface DataTableFilterInput {
 
 // ── Data table service ───────────────────────────────────────────────────────
 
+/**
+ * Optional disambiguator accepted by every id-based data-table service call.
+ * When the orchestrator passes a table NAME instead of a UUID, the adapter's
+ * resolver filters the name lookup to this project so collisions across
+ * projects don't require the orchestrator to guess the right UUID. When the
+ * orchestrator passes a UUID AND a mismatched `projectId`, the adapter rejects
+ * the call (the resolver never silently drops `projectId`).
+ */
+export interface DataTableIdOptions {
+	projectId?: string;
+}
+
 export interface InstanceAiDataTableService {
 	list(options?: { projectId?: string }): Promise<DataTableSummary[]>;
 	create(
@@ -365,30 +391,44 @@ export interface InstanceAiDataTableService {
 		columns: Array<{ name: string; type: 'string' | 'number' | 'boolean' | 'date' }>,
 		options?: { projectId?: string },
 	): Promise<DataTableSummary>;
-	delete(dataTableId: string): Promise<void>;
-	getSchema(dataTableId: string): Promise<DataTableColumnInfo[]>;
+	delete(dataTableId: string, options?: DataTableIdOptions): Promise<void>;
+	getSchema(dataTableId: string, options?: DataTableIdOptions): Promise<DataTableColumnInfo[]>;
 	addColumn(
 		dataTableId: string,
 		column: { name: string; type: 'string' | 'number' | 'boolean' | 'date' },
+		options?: DataTableIdOptions,
 	): Promise<DataTableColumnInfo>;
-	deleteColumn(dataTableId: string, columnId: string): Promise<void>;
-	renameColumn(dataTableId: string, columnId: string, newName: string): Promise<void>;
+	deleteColumn(dataTableId: string, columnId: string, options?: DataTableIdOptions): Promise<void>;
+	renameColumn(
+		dataTableId: string,
+		columnId: string,
+		newName: string,
+		options?: DataTableIdOptions,
+	): Promise<void>;
 	queryRows(
 		dataTableId: string,
-		options?: { filter?: DataTableFilterInput; limit?: number; offset?: number },
+		options?: {
+			filter?: DataTableFilterInput;
+			limit?: number;
+			offset?: number;
+			projectId?: string;
+		},
 	): Promise<{ count: number; data: Array<Record<string, unknown>> }>;
 	insertRows(
 		dataTableId: string,
 		rows: Array<Record<string, unknown>>,
+		options?: DataTableIdOptions,
 	): Promise<{ insertedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 	updateRows(
 		dataTableId: string,
 		filter: DataTableFilterInput,
 		data: Record<string, unknown>,
+		options?: DataTableIdOptions,
 	): Promise<{ updatedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 	deleteRows(
 		dataTableId: string,
 		filter: DataTableFilterInput,
+		options?: DataTableIdOptions,
 	): Promise<{ deletedCount: number; dataTableId: string; tableName: string; projectId: string }>;
 }
 
@@ -526,6 +566,10 @@ export interface InstanceAiContext {
 	localGatewayStatus?: LocalGatewayStatus;
 	/** Per-action HITL permission overrides. When absent, tools default to requiring approval. */
 	permissions?: InstanceAiPermissions;
+	/** When set, `runWorkflow: 'always_allow'` only short-circuits HITL approval for these workflow IDs.
+	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
+	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
+	allowedRunWorkflowIds?: ReadonlySet<string>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance.
@@ -536,12 +580,28 @@ export interface InstanceAiContext {
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
 	/**
+	 * IDs of workflows the agent created during the **currently active plan
+	 * cycle**. Populated by build-workflow and submit-workflow on every
+	 * successful create, and hydrated at run start from the persisted plan
+	 * graph when — and only when — the plan is still `active` or
+	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
+	 * the window closes as soon as the plan settles. Consumed by the delete
+	 * handler to skip the confirmation gate when the agent cleans up its own
+	 * in-flight artifacts. Lazily initialized on first create.
+	 */
+	aiCreatedWorkflowIds?: Set<string>;
+	/**
 	 * Attachments from the current user message. Runtime-only — not persisted.
 	 * Used to register `parse-file` and supply data to the parser.
 	 */
 	currentUserAttachments?: InstanceAiAttachment[];
 	/** Optional logger for diagnostics from domain tools. */
 	logger?: Logger;
+	/** Synchronous node-types provider used by host-side schema validation
+	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
+	 *  adapter; absent in pure-package contexts where no NodeTypes instance
+	 *  is reachable. */
+	nodeTypesProvider?: INodeTypes;
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -553,7 +613,12 @@ export interface TaskStorage {
 
 // ── Planned task graphs ─────────────────────────────────────────────────────
 
-export type PlannedTaskKind = 'delegate' | 'build-workflow' | 'manage-data-tables' | 'research';
+export type PlannedTaskKind =
+	| 'delegate'
+	| 'build-workflow'
+	| 'manage-data-tables'
+	| 'research'
+	| 'checkpoint';
 
 export interface PlannedTask {
 	id: string;
@@ -579,7 +644,12 @@ export interface PlannedTaskRecord extends PlannedTask {
 	finishedAt?: number;
 }
 
-export type PlannedTaskGraphStatus = 'active' | 'awaiting_replan' | 'completed' | 'cancelled';
+export type PlannedTaskGraphStatus =
+	| 'awaiting_approval'
+	| 'active'
+	| 'awaiting_replan'
+	| 'completed'
+	| 'cancelled';
 
 export interface PlannedTaskGraph {
 	planRunId: string;
@@ -591,6 +661,7 @@ export interface PlannedTaskGraph {
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
 
@@ -621,12 +692,51 @@ export interface PlannedTaskService {
 		taskId: string,
 		update?: { error?: string; finishedAt?: number },
 	): Promise<PlannedTaskGraph | null>;
+	markCheckpointSucceeded(
+		threadId: string,
+		taskId: string,
+		update: { result?: string; outcome?: Record<string, unknown>; finishedAt?: number },
+	): Promise<CheckpointSettleResult>;
+	markCheckpointFailed(
+		threadId: string,
+		taskId: string,
+		update: {
+			error?: string;
+			/** Structured verification outcome (executionId, failureNode, etc.) so
+			 *  replans have execution context, not just a flat error string. */
+			outcome?: Record<string, unknown>;
+			finishedAt?: number;
+		},
+	): Promise<CheckpointSettleResult>;
+	/** Rewind a running checkpoint back to `planned` after a scheduling race
+	 *  prevented its follow-up from starting. Non-destructive — dependents are
+	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
+	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
 		options?: { availableSlots?: number },
 	): Promise<PlannedTaskSchedulerAction>;
 	clear(threadId: string): Promise<void>;
+	/** Transition an `awaiting_approval` graph → `active` after the user
+	 *  approves the plan. No-op on any other status. */
+	approvePlan(threadId: string): Promise<PlannedTaskGraph | null>;
+	/** Revert an `awaiting_replan` or `completed` graph back to `active`. Used by
+	 *  the service when a replan or synthesize follow-up couldn't start. */
+	revertToActive(threadId: string): Promise<PlannedTaskGraph | null>;
 }
+
+/**
+ * Result of a guarded checkpoint settlement. The mutators only transition a task
+ * when its kind is `checkpoint` AND its status is `running`, so callers can read
+ * the `reason` to report a precise error back to the LLM.
+ */
+export type CheckpointSettleResult =
+	| { ok: true; graph: PlannedTaskGraph }
+	| {
+			ok: false;
+			reason: 'not-found' | 'wrong-kind' | 'wrong-status';
+			actual?: { kind?: PlannedTaskKind; status?: PlannedTaskStatus };
+	  };
 
 // ── MCP ──────────────────────────────────────────────────────────────────────
 
@@ -773,12 +883,49 @@ export interface SpawnBackgroundTaskOptions {
 	/** Unique work item ID for workflow loop tracking. When set, the service
 	 *  uses the workflow loop controller to manage verify/repair transitions. */
 	workItemId?: string;
+	/**
+	 * Identity used for single-flight dedupe. When present, a spawn with the same
+	 * `plannedTaskId` (primary) or `role + workflowId` (fallback) as a currently-running
+	 * task returns `{ status: 'duplicate', existing }` instead of starting a new task.
+	 */
+	dedupeKey?: {
+		plannedTaskId?: string;
+		workflowId?: string;
+		role: string;
+	};
+	/**
+	 * Link this background task to a running checkpoint in the planned-task
+	 * graph. Set when the orchestrator spawns a detached sub-agent (builder,
+	 * research, data-table, delegate) from inside a
+	 * `<planned-task-follow-up type="checkpoint">` turn. The post-run safety
+	 * net defers failing the checkpoint while a child with this id is still
+	 * running, and settlement re-emits the checkpoint follow-up when the last
+	 * child settles — so the orchestrator re-enters the checkpoint context
+	 * instead of a bare `<background-task-completed>` shell.
+	 */
+	parentCheckpointId?: string;
 	run: (
 		signal: AbortSignal,
 		drainCorrections: () => string[],
 		waitForCorrection: () => Promise<void>,
 	) => Promise<string | BackgroundTaskResult>;
 }
+
+/** Result of a {@link SpawnBackgroundTaskOptions} spawn. */
+export type SpawnBackgroundTaskResult =
+	| { status: 'started'; taskId: string; agentId: string }
+	| { status: 'limit-reached' }
+	| {
+			status: 'duplicate';
+			/** The live background task that matched on `dedupeKey`. */
+			existing: {
+				taskId: string;
+				agentId: string;
+				role: string;
+				plannedTaskId?: string;
+				workItemId?: string;
+			};
+	  };
 
 export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
@@ -831,7 +978,7 @@ export interface OrchestrationContext {
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
 	webhookBaseUrl?: string;
 	/** Spawn a detached background task that outlives the current orchestrator run */
-	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => void;
+	spawnBackgroundTask?: (opts: SpawnBackgroundTaskOptions) => SpawnBackgroundTaskResult;
 	/** Cancel a running background task by its ID */
 	cancelBackgroundTask?: (taskId: string) => Promise<void>;
 	/** Persist and inspect dependency-aware planned tasks for this thread. */
@@ -853,6 +1000,12 @@ export interface OrchestrationContext {
 	 *  background task. Set by the host, not by user text — the create-tasks guard
 	 *  reads this instead of substring-matching `currentUserMessage`. */
 	isReplanFollowUp?: boolean;
+	/** True when the current run was started to execute a planned-task checkpoint.
+	 *  The orchestrator should run the checkpoint's spec and call complete-checkpoint. */
+	isCheckpointFollowUp?: boolean;
+	/** When isCheckpointFollowUp is true, the task ID of the checkpoint being executed.
+	 *  Used by the post-run deadlock fallback in the service. */
+	checkpointTaskId?: string;
 	/** The domain context — gives sub-agent tools access to n8n services */
 	domainContext?: InstanceAiContext;
 	/** When true, research guidance may suggest planned research tasks and the builder gets web-search/fetch-url */
@@ -886,7 +1039,12 @@ export interface CreateInstanceAgentOptions {
 	memoryConfig: InstanceAiMemoryConfig;
 	/** Pre-built Memory instance. When provided, `memoryConfig` is ignored for memory creation. */
 	memory?: Memory;
-	/** Workspace with sandbox for code execution. When provided, the agent gets execute_command tool. */
+	/**
+	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
+	 * `mastra_workspace_*` tools on the orchestrator, which the LLM abused as a `sleep` primitive
+	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
+	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
+	 */
 	workspace?: Workspace;
 	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
 	disableDeferredTools?: boolean;

@@ -13,13 +13,15 @@ import {
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import type { AiGatewayUsageEntry } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import { useRouter } from 'vue-router';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { AI_GATEWAY_TOP_UP_MODAL_KEY } from '@/app/constants';
+import { AI_GATEWAY_TOP_UP_MODAL_KEY, VIEWS } from '@/app/constants';
 
 const i18n = useI18n();
+const router = useRouter();
 const documentTitle = useDocumentTitle();
 const telemetry = useTelemetry();
 const aiGatewayStore = useAiGatewayStore();
@@ -105,6 +107,29 @@ function formatTokens(value?: number): string {
 
 function rowId(row: AiGatewayUsageEntry, index: number): string {
 	return `${row.timestamp}-${row.model}-${row.provider}-${index}`;
+}
+
+function rowExecutionId(row: AiGatewayUsageEntry): string | undefined {
+	return row.metadata?.executionId;
+}
+
+function rowWorkflowId(row: AiGatewayUsageEntry): string | undefined {
+	return row.metadata?.workflowId;
+}
+
+function isRowClickable(row: AiGatewayUsageEntry): boolean {
+	return Boolean(rowExecutionId(row) && rowWorkflowId(row));
+}
+
+function onRowClick(row: AiGatewayUsageEntry): void {
+	const executionId = rowExecutionId(row);
+	const workflowId = rowWorkflowId(row);
+	if (executionId && workflowId) {
+		void router.push({
+			name: VIEWS.EXECUTION_PREVIEW,
+			params: { workflowId, executionId },
+		});
+	}
 }
 
 async function load(): Promise<void> {
@@ -206,9 +231,17 @@ onMounted(async () => {
 					:items-length="entries.length"
 					:loading="isLoading && isAppending"
 					:item-value="rowId"
+					:row-props="(row) => (isRowClickable(row) ? { class: $style.clickableRow } : {})"
+					@click:row="(_, { item }) => onRowClick(item)"
 				>
 					<template #[`item.timestamp`]="{ item }">
-						{{ formatDate(item.timestamp) }}
+						<N8nTooltip
+							v-if="isRowClickable(item)"
+							:content="i18n.baseText('settings.n8nConnect.usage.openExecution')"
+						>
+							<span>{{ formatDate(item.timestamp) }}</span>
+						</N8nTooltip>
+						<span v-else>{{ formatDate(item.timestamp) }}</span>
 					</template>
 					<template #[`item.provider`]="{ item }">
 						<span :class="$style.providerBadge">
@@ -299,6 +332,14 @@ onMounted(async () => {
 .gatewayUsageTable {
 	tr:last-child {
 		border-bottom: none !important;
+	}
+}
+
+.clickableRow {
+	cursor: pointer;
+
+	&:hover td {
+		background-color: var(--color--background--light-2);
 	}
 }
 

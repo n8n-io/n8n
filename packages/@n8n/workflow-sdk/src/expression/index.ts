@@ -1,6 +1,6 @@
 import { FROM_AI_AUTO_GENERATED_MARKER } from 'n8n-workflow';
 
-import type { FromAIArgumentType } from '../types/base';
+import type { FromAIArgumentType, NodeInstance } from '../types/base';
 
 /**
  * Parse n8n expression string to extract the inner expression
@@ -79,6 +79,66 @@ export function expr(expression: string): string {
 	// Strip any leading '=' to prevent double-equals patterns from LLM output
 	const normalized = expression.startsWith('=') ? expression.slice(1) : expression;
 	return '=' + normalized;
+}
+
+// =============================================================================
+// Explicit Node JSON Reference Generator
+// =============================================================================
+
+type NodeJsonReference = NodeInstance<string, string, unknown> | string;
+
+const IDENTIFIER_PATH_SEGMENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+function resolveNodeName(node: NodeJsonReference): string {
+	return typeof node === 'string' ? node : node.name;
+}
+
+function escapeNodeName(nodeName: string): string {
+	return nodeName.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function normalizePath(path: string | readonly string[]): string[] {
+	const segments = typeof path === 'string' ? path.split('.') : [...path];
+	const normalized = segments.map((segment) => segment.trim());
+
+	if (normalized.length === 0 || normalized.some((segment) => segment.length === 0)) {
+		throw new Error('nodeJson() requires a non-empty JSON path.');
+	}
+
+	return normalized;
+}
+
+function formatPathSegment(segment: string): string {
+	if (IDENTIFIER_PATH_SEGMENT.test(segment)) {
+		return `.${segment}`;
+	}
+
+	return `[${JSON.stringify(segment)}]`;
+}
+
+/**
+ * Build an expression that references JSON data from a specific node by name.
+ *
+ * Prefer this over `$json` when a value comes from an AI subnode, a fan-in
+ * branch, or any node other than the immediate main-flow predecessor.
+ *
+ * @example
+ * ```typescript
+ * nodeJson(telegramTrigger, 'message.chat.id')
+ * // "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+ *
+ * nodeJson('Set User', ['profile', 'user-id'])
+ * // "={{ $('Set User').item.json.profile[\"user-id\"] }}"
+ * ```
+ */
+export function nodeJson(node: NodeJsonReference, path: string | readonly string[]): string {
+	const nodeName = resolveNodeName(node);
+	if (!nodeName) {
+		throw new Error('nodeJson() requires a node or node name.');
+	}
+
+	const pathExpression = normalizePath(path).map(formatPathSegment).join('');
+	return `={{ $('${escapeNodeName(nodeName)}').item.json${pathExpression} }}`;
 }
 
 // =============================================================================

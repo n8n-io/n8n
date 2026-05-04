@@ -32,8 +32,18 @@ const credentialIdField = z.string().describe('Credential ID');
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
-	action: z.literal('list').describe('List credentials accessible to the current user'),
+	action: z
+		.literal('list')
+		.describe(
+			`List credentials accessible to the current user. Results are paginated (default ${DEFAULT_LIMIT}, max 200) and include \`total\` + \`hasMore\`; when looking up a user-named credential, pass \`name\` (substring) or \`type\` for targeted lookup instead of scanning the default page.`,
+		),
 	type: z.string().optional().describe('Filter by credential type (e.g. "notionApi")'),
+	name: z
+		.string()
+		.optional()
+		.describe(
+			'Filter by credential name (case-insensitive substring). Use for targeted lookup when the user named a specific credential — prefer this over paging through results.',
+		),
 	limit: z
 		.number()
 		.int()
@@ -159,14 +169,27 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		type: input.type,
 	});
 
-	const total = allCredentials.length;
+	const filtered = input.name
+		? allCredentials.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
+		: allCredentials;
+
+	const total = filtered.length;
 	const offset = input.offset ?? 0;
 	const limit = input.limit ?? DEFAULT_LIMIT;
-	const page = allCredentials.slice(offset, offset + limit);
+	const page = filtered.slice(offset, offset + limit);
+	const hasMore = offset + page.length < total;
+
+	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
 	return {
 		credentials: page.map(({ id, name, type }) => ({ id, name, type })),
 		total,
+		hasMore,
+		...(truncatedWithoutNarrowing
+			? {
+					hint: `Showing ${page.length} of ${total} credentials. Pass \`name\` (substring) or \`type\` to narrow the search before concluding a user-named credential doesn't exist, or use \`offset\` to paginate.`,
+				}
+			: {}),
 	};
 }
 

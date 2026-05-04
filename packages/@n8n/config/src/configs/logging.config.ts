@@ -41,7 +41,9 @@ export const LOG_SCOPES = [
 	'instance-version-history',
 	'instance-settings-loader',
 	'instance-registry',
+	'expression-engine',
 	'encryption-key-manager',
+	'oauth-jwe',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
