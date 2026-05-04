@@ -125,7 +125,7 @@ beforeEach(() => {
 		version: '1.0.0',
 	} as unknown as CommunityNodeType);
 
-	workflowsStore.setWorkflowId('test-workflow');
+	workflowsStore.workflowId = 'test-workflow';
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
 	workflowDocumentStore.hydrate({
 		id: 'test-workflow',
@@ -324,7 +324,11 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes(mockNodes);
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+			// In createTestingPinia, setNodes is stubbed and doesn't mutate state.
+			// Directly assign allNodes (pinia testing makes getters writable).
+			// @ts-expect-error -- pinia testing overrides getters to be writable
+			store.allNodes = mockNodes;
 
 			const { installNode } = useInstallNode();
 
@@ -577,7 +581,9 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes(mockNodes);
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+			// @ts-expect-error -- pinia testing makes getters writable
+			store.allNodes = mockNodes;
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 
@@ -629,7 +635,9 @@ describe('useInstallNode', () => {
 					parameters: {},
 				},
 			];
-			useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow')).setNodes(mockNodes);
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('test-workflow'));
+			// @ts-expect-error -- pinia testing makes getters writable
+			store.allNodes = mockNodes;
 
 			vi.mocked(removePreviewToken).mockReturnValue('test-node');
 

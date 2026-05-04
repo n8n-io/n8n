@@ -49,6 +49,7 @@ const mockDocumentStore = vi.hoisted(() => ({
 		renameNode: vi.fn(),
 	}),
 	connectionsBySourceNode: {},
+	workflowTriggerNodes: [] as INodeUi[],
 })) as unknown as ReturnType<typeof useWorkflowDocumentStore>;
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({

@@ -75,7 +75,7 @@ describe('useFocusedNodesStore', () => {
 		);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'wf-1';
+		workflowsStore.setWorkflowId('wf-1');
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
@@ -842,7 +842,7 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
 
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap).toEqual({});
@@ -855,7 +855,7 @@ describe('useFocusedNodesStore', () => {
 
 		it('should not track telemetry on workflowId change if no confirmed and oldId undefined', async () => {
 			// The initial wf-1 is set in beforeEach but no confirmed nodes
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(track).not.toHaveBeenCalled();

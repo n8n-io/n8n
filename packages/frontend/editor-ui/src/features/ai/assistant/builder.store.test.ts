@@ -175,7 +175,7 @@ describe('AI Builder store', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		credentialsStore = mockedStore(useCredentialsStore);
 
-		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.setWorkflowId('test-workflow-id');
 		workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
@@ -2298,7 +2298,7 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Change workflowId to trigger the watcher (nodes stay empty)
-				workflowsStore.workflowId = 'different-workflow-id';
+				workflowsStore.setWorkflowId('different-workflow-id');
 				await nextTick();
 
 				expect(builderStore.builderMode).toBe('build');
@@ -2331,7 +2331,7 @@ describe('AI Builder store', () => {
 				const builderStore = useBuilderStore();
 
 				// Simulate navigating to a new empty workflow
-				workflowsStore.workflowId = 'new-empty-workflow';
+				workflowsStore.setWorkflowId('new-empty-workflow');
 				const workflowDocumentStore = useWorkflowDocumentStore(
 					createWorkflowDocumentId(workflowsStore.workflowId),
 				);
@@ -3324,7 +3324,7 @@ describe('AI Builder store', () => {
 
 		it('should not show revertVersion on user message during streaming', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
 			workflowsStore.isNewWorkflow = false;
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
@@ -3345,7 +3345,7 @@ describe('AI Builder store', () => {
 
 		it('should insert a version card message after streaming when workflow was modified', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
 			workflowsStore.isNewWorkflow = false;
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
@@ -3408,7 +3408,7 @@ describe('AI Builder store', () => {
 
 		it('should not add revertVersion to user message after streaming when workflow was not modified', async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
 			workflowsStore.isNewWorkflow = false;
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowsStore.workflowId),
@@ -3654,7 +3654,7 @@ describe('AI Builder store', () => {
 
 		const triggerSuccessfulStreamingComplete = async () => {
 			const builderStore = useBuilderStore();
-			workflowsStore.workflowId = 'test-workflow-123';
+			workflowsStore.setWorkflowId('test-workflow-123');
 			const workflowDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId('test-workflow-123'),
 			);

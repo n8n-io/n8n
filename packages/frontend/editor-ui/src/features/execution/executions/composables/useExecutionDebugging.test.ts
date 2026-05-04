@@ -33,6 +33,7 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
 		allNodes: [] as INodeUi[],
+		workflowTriggerNodes: [] as INodeUi[],
 		getParentNodes: vi.fn().mockReturnValue([]),
 		pinNodeData: vi.fn(),
 		clearPinnedDataTimestamps: vi.fn(),

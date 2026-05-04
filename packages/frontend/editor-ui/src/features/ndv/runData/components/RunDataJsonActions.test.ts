@@ -61,6 +61,7 @@ async function createPiniaWithActiveNode() {
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.setWorkflowId(workflow.id);
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.addNode(node);
 	workflowDocumentStore.initPristineNodeMetadata(node.name);
 	workflowsStore.workflowExecutionData = {
 		id: '1',

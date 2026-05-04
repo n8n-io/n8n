@@ -27,7 +27,7 @@ describe('TriggerPanel.vue', () => {
 	beforeEach(async () => {
 		setActivePinia(createTestingPinia({ stubActions: false }));
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = '1';
+		workflowsStore.setWorkflowId('1');
 		const node = createTestNode({ id: '0', name: 'Webhook', type: 'n8n-nodes-base.webhook' });
 
 		workflowDocStore = useWorkflowDocumentStore(

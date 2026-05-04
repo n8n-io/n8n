@@ -1076,6 +1076,20 @@ describe('useWorkflowHelpers', () => {
 
 		beforeEach(() => {
 			nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.getAllNodeTypes = vi.fn().mockImplementation(() => ({
+				nodeTypes: {},
+				init: async () => {},
+				getByNameAndVersion: (nodeType: string, version?: number) => {
+					const nodeTypeDescription =
+						nodeTypesStore.getNodeType(nodeType, version) ??
+						nodeTypesStore.communityNodeType(nodeType)?.nodeDescription ??
+						null;
+					if (nodeTypeDescription === null) {
+						return undefined;
+					}
+					return { description: nodeTypeDescription };
+				},
+			}));
 		});
 
 		it('should return node type for core nodes', () => {

@@ -280,6 +280,7 @@ describe('AskAssistantBuild', () => {
 		updateWorkflowMock.mockResolvedValue({ success: true, newNodeIds: [] });
 
 		const pinia = createTestingPinia({
+			stubActions: false,
 			initialState: {
 				[STORES.BUILDER]: {
 					chatMessages: [],

@@ -24,6 +24,9 @@ const mockWorkflowDocumentState = reactive({
 	scopes: [] as string[],
 	sharedWithProjects: [] as ProjectSharingData[],
 	name: '',
+	workflowTriggerNodes: [] as unknown[],
+	allNodes: [] as unknown[],
+	setSharedWithProjects: vi.fn(),
 });
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: () => mockWorkflowDocumentState,

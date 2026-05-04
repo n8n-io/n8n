@@ -19,6 +19,8 @@ vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 		name: '',
 		settings: {},
 		getPinDataSnapshot: () => ({}),
+		workflowTriggerNodes: [],
+		allNodes: [],
 	}),
 }));
 
@@ -101,6 +103,8 @@ const workflowDocumentStoreMock = {
 	name: '',
 	settings: {},
 	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	workflowTriggerNodes: [],
+	allNodes: [],
 };
 
 const renderComponent = createComponentRenderer(ParameterInputList, {

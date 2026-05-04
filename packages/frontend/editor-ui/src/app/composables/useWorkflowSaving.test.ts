@@ -144,7 +144,7 @@ describe('useWorkflowSaving', () => {
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const next = vi.fn();
 			const confirm = vi.fn().mockResolvedValue(true);
@@ -574,7 +574,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			// Tags are now managed by workflowDocumentStore, not workflowState
 			const documentId = createWorkflowDocumentId(workflowId);
@@ -644,7 +644,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const uiStore = useUIStore();
 			const saveStore = useWorkflowSaveStore();
@@ -686,7 +686,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const uiStore = useUIStore();
 
@@ -720,7 +720,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
@@ -782,7 +782,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const { saveCurrentWorkflow } = useWorkflowSaving({
 				router,
@@ -835,7 +835,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
@@ -893,7 +893,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
@@ -967,7 +967,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
@@ -1027,7 +1027,7 @@ describe('useWorkflowSaving', () => {
 			workflowsStore.setWorkflowId(workflow.id);
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
-			workflowsStore.workflowId = workflow.id;
+			workflowsStore.setWorkflowId(workflow.id);
 
 			const saveStore = useWorkflowSaveStore();
 
@@ -1058,7 +1058,7 @@ describe('useWorkflowSaving', () => {
 				workflowsStore.setWorkflowId(workflow.id);
 				useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 				workflowsListStore.workflowsById = { [workflow.id]: workflow };
-				workflowsStore.workflowId = workflow.id;
+				workflowsStore.setWorkflowId(workflow.id);
 
 				const saveStore = useWorkflowSaveStore();
 				const initialRetryCount = saveStore.retryCount;

@@ -16,6 +16,8 @@ const mockGetExpressionHandler = vi.fn().mockReturnValue({});
 const mockWorkflowDocumentStore = {
 	getNodeByName: mockGetNodeByName,
 	getExpressionHandler: mockGetExpressionHandler,
+	workflowTriggerNodes: [],
+	allNodes: [],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
