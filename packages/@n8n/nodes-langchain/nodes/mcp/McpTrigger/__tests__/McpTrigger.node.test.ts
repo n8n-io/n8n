@@ -13,9 +13,13 @@ vi.mock('../McpServer', () => ({
 	MCP_LIST_TOOLS_REQUEST_MARKER: 'mcp_list_tools_request',
 }));
 
+const { validateWebhookAuthenticationMock } = vi.hoisted(() => ({
+	validateWebhookAuthenticationMock: vi.fn(),
+}));
+
 // Mock webhook utils from nodes-base
 vi.mock('n8n-nodes-base/dist/nodes/Webhook/utils', () => ({
-	validateWebhookAuthentication: vi.fn(),
+	validateWebhookAuthentication: validateWebhookAuthenticationMock,
 }));
 
 // Mock getConnectedTools from utils
@@ -318,12 +322,8 @@ describe('McpTrigger', () => {
 
 	describe('authentication', () => {
 		it('should rethrow non-authorization errors', async () => {
-			const { validateWebhookAuthentication } = vi.requireMock(
-				'n8n-nodes-base/dist/nodes/Webhook/utils',
-			);
-
 			const genericError = new Error('Something went wrong');
-			validateWebhookAuthentication.mockRejectedValue(genericError);
+			validateWebhookAuthenticationMock.mockRejectedValue(genericError);
 
 			const req = createMockRequest({ path: '/webhook' });
 			const resp = createMockResponse();
@@ -344,11 +344,7 @@ describe('McpTrigger', () => {
 			const { WebhookAuthorizationError } = await vi.importActual(
 				'n8n-nodes-base/dist/nodes/Webhook/error',
 			);
-			const { validateWebhookAuthentication } = vi.requireMock(
-				'n8n-nodes-base/dist/nodes/Webhook/utils',
-			);
-
-			validateWebhookAuthentication.mockRejectedValue(
+			validateWebhookAuthenticationMock.mockRejectedValue(
 				new WebhookAuthorizationError(401, 'Unauthorized'),
 			);
 
@@ -375,10 +371,7 @@ describe('McpTrigger', () => {
 	describe('list tools relay', () => {
 		it('should return list tools relay data when needed', async () => {
 			// Reset validateWebhookAuthentication to resolve (not reject)
-			const { validateWebhookAuthentication } = vi.requireMock(
-				'n8n-nodes-base/dist/nodes/Webhook/utils',
-			);
-			validateWebhookAuthentication.mockResolvedValue(undefined);
+			validateWebhookAuthenticationMock.mockResolvedValue(undefined);
 
 			const req = createMockRequest({ method: 'POST', query: { sessionId: 'test-session' } });
 			const resp = createMockResponse();
