@@ -432,7 +432,7 @@ export interface WorkflowContext {
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	credentials?: Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>;
 	name?: string;
 	position?: [number, number];
 	webhookId?: string;

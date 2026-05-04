@@ -1,39 +1,59 @@
+import type { InstanceRegistration } from '@n8n/api-types';
 import {
 	ClusterCheck,
-	ClusterCheckContext,
-	ClusterCheckResult,
-	IClusterCheck,
+	type ClusterCheckContext,
+	type ClusterCheckResult,
+	type IClusterCheck,
 } from '@n8n/decorators';
+
+const CHECK_CODE = 'cluster.version-mismatch';
+const AUDIT_DETECTED = 'n8n.audit.cluster.version-mismatch.detected';
+const AUDIT_RESOLVED = 'n8n.audit.cluster.version-mismatch.resolved';
+
+/**
+ * Returns the set of distinct versions running in the cluster as a
+ * deterministic fingerprint (sorted, pipe-joined). Returns an empty string
+ * when there is only a single version, indicating "no mismatch".
+ */
+function computeFingerprint(instances: Iterable<InstanceRegistration>): string {
+	const versions = [...new Set([...instances].map((i) => i.version))].sort();
+	return versions.length > 1 ? versions.join('|') : '';
+}
 
 @ClusterCheck()
 export class VersionMismatchCheck implements IClusterCheck {
-	constructor() {}
-
 	checkDescription = {
 		name: 'version-mismatch',
 		displayName: 'Version mismatch',
 	};
 
 	async run(context: ClusterCheckContext): Promise<ClusterCheckResult> {
-		const allInstanceVersions = [...context.currentState.values()].map((i) => i.version);
-		const versions = [...new Set<string>(allInstanceVersions)];
+		const currentFingerprint = computeFingerprint(context.currentState.values());
+		const previousFingerprint = computeFingerprint(context.previousState.values());
 
-		if (versions.length <= 1) {
-			// Zero instances or a single version — no mismatch.
+		if (currentFingerprint === '') {
+			if (previousFingerprint !== '') {
+				return { auditEvents: [{ eventName: AUDIT_RESOLVED, payload: {} }] };
+			}
 			return {};
 		}
 
-		return {
+		const versions = currentFingerprint.split('|');
+		const result: ClusterCheckResult = {
 			warnings: [
 				{
-					code: 'cluster.version-mismatch',
-					message: `Detected multiple N8N versions in the cluster!: ${versions.join(', ')}`,
+					code: CHECK_CODE,
+					message: `Detected multiple n8n versions in the cluster: ${versions.join(', ')}`,
 					severity: 'error',
-					context: {
-						versions,
-					},
+					context: { versions },
 				},
 			],
 		};
+
+		if (currentFingerprint !== previousFingerprint) {
+			result.auditEvents = [{ eventName: AUDIT_DETECTED, payload: { versions } }];
+		}
+
+		return result;
 	}
 }
