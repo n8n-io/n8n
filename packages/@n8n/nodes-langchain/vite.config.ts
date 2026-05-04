@@ -12,6 +12,7 @@ export default mergeConfig(
 			alias: {
 				'@utils': path.resolve(__dirname, './utils'),
 				'@nodes-testing': path.resolve(__dirname, '../../core/nodes-testing'),
+				'n8n-workflow': path.resolve(__dirname, '../../workflow/dist/cjs/index.js'),
 			},
 		},
 	}),

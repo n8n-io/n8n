@@ -1,5 +1,4 @@
 import { Memoized } from '@n8n/decorators';
-import { Container } from '@n8n/di';
 import callsites from 'callsites';
 import glob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
@@ -24,6 +23,7 @@ import path from 'node:path';
 
 import { ExecutionLifecycleHooks } from '../dist/execution-engine/execution-lifecycle-hooks';
 import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
+import { CredentialTypes } from './credential-types';
 import { CredentialsHelper } from './credentials-helper';
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
 import { NodeTypes } from './node-types';
@@ -48,6 +48,8 @@ export class NodeTestHarness {
 	private readonly packagePaths: string[];
 
 	private nodesLoadedPromise: Promise<void> | undefined;
+
+	private loadNodesAndCredentials: LoadNodesAndCredentials | undefined;
 
 	constructor({ additionalPackagePaths }: TestHarnessOptions = {}) {
 		this.testDir = path.dirname(callsites()[1].getFileName()!);
@@ -190,9 +192,8 @@ export class NodeTestHarness {
 	private async ensureNodesLoaded() {
 		if (!this.nodesLoadedPromise) {
 			this.nodesLoadedPromise = (async () => {
-				const loadNodesAndCredentials = new LoadNodesAndCredentials(this.packagePaths);
-				Container.set(LoadNodesAndCredentials, loadNodesAndCredentials);
-				await loadNodesAndCredentials.init();
+				this.loadNodesAndCredentials = new LoadNodesAndCredentials(this.packagePaths);
+				await this.loadNodesAndCredentials.init();
 			})();
 		}
 		return this.nodesLoadedPromise;
@@ -200,8 +201,9 @@ export class NodeTestHarness {
 
 	private async executeWorkflow(testData: WorkflowTestData) {
 		await this.ensureNodesLoaded();
-		const nodeTypes = Container.get(NodeTypes);
-		const credentialsHelper = Container.get(CredentialsHelper);
+		const nodeTypes = new NodeTypes(this.loadNodesAndCredentials!);
+		const credentialTypes = new CredentialTypes(this.loadNodesAndCredentials!);
+		const credentialsHelper = new CredentialsHelper(credentialTypes);
 		credentialsHelper.setCredentials(testData.credentials ?? {});
 
 		const executionMode = testData.trigger?.mode ?? 'manual';
