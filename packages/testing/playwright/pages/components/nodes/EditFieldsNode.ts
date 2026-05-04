@@ -61,7 +61,10 @@ export class EditFieldsNode extends BasePage {
 		await typeSelect.waitFor({ state: 'visible' });
 		await typeSelect.click();
 
-		const option = this.getVisiblePopper().getByTestId(`action-${type}`).filter({ visible: true });
+		const option = this.page
+			.getByTestId('assignment-type-select-dropdown')
+			.filter({ visible: true })
+			.getByTestId(`action-${type}`);
 		await option.waitFor({ state: 'visible' });
 		await option.click();
 	}

@@ -69,7 +69,12 @@ export class SettingsUsersPage extends BasePage {
 
 	async selectAccountType(email: string, type: 'Admin' | 'Member') {
 		await this.clickAccountType(email);
-		await this.getVisiblePopoverMenuItem(type).click();
+		const role = type === 'Admin' ? 'global:admin' : 'global:member';
+		await this.page
+			.getByTestId('user-role-dropdown')
+			.filter({ visible: true })
+			.getByTestId(`user-role-dropdown-item-${role}`)
+			.click();
 	}
 
 	async openActions(email: string) {

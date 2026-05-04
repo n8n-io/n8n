@@ -60,7 +60,11 @@ export class SettingsLogStreamingPage extends BasePage {
 	}
 
 	getDropdownMenuItem(index: number): Locator {
-		return this.getVisiblePopper().getByRole('menuitem').filter({ visible: true }).nth(index);
+		return this.page
+			.getByTestId('action-toggle-dropdown')
+			.filter({ visible: true })
+			.getByRole('menuitem')
+			.nth(index);
 	}
 
 	getConfirmationDialog(): Locator {
