@@ -464,18 +464,6 @@ export class ExecutionService {
 		return { results, ...executionCount };
 	}
 
-	async findMcpRangeWithCount(query: ExecutionSummaries.RangeQuery) {
-		const results = await this.executionRepository.findManyByMcpRangeQuery(query);
-
-		const { range: _, ...countQuery } = query;
-
-		const executionCount = await this.getCountForQuery(
-			async () => await this.executionRepository.fetchMcpCount({ ...countQuery, kind: 'count' }),
-		);
-
-		return { results, ...executionCount };
-	}
-
 	/**
 	 * Return:
 	 *

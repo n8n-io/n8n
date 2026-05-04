@@ -909,11 +909,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.getSummariesFromAnnotatedQuery(qb);
 	}
 
-	async findManyByMcpRangeQuery(query: ExecutionSummaries.RangeQuery): Promise<ExecutionSummary[]> {
-		const qb = this.toQueryBuilderWithAnnotations(query, () => this.toMcpQueryBuilder(query));
-		return await this.getSummariesFromAnnotatedQuery(qb);
-	}
-
 	// @tech_debt: These transformations should not be needed
 	private toSummary(execution: {
 		id: number | string;
@@ -964,10 +959,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return await this.toQueryBuilder(query).getCount();
 	}
 
-	async fetchMcpCount(query: ExecutionSummaries.CountQuery) {
-		return await this.toMcpQueryBuilder(query).getCount();
-	}
-
 	async getLiveExecutionRowsOnPostgres() {
 		const tableName = `${this.globalConfig.database.tablePrefix}execution_entity`;
 
@@ -1002,6 +993,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			vote,
 			projectId,
 			workflowVersionId,
+			isArchived,
+			workflowBooleanSettings,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -1105,14 +1098,15 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				.andWhere('sw.projectId = :projectId', { projectId });
 		}
 
-		return qb;
-	}
+		if (isArchived !== undefined) {
+			qb.andWhere('workflow.isArchived = :isArchived', { isArchived });
+		}
 
-	private toMcpQueryBuilder(query: ExecutionSummaries.Query) {
-		const qb = this.toQueryBuilder(query);
-
-		qb.andWhere('workflow.isArchived = :isArchived', { isArchived: false });
-		applyWorkflowBooleanSettingFilter(qb, this.globalConfig, 'availableInMCP', true);
+		if (workflowBooleanSettings?.length) {
+			for (const { key, value } of workflowBooleanSettings) {
+				applyWorkflowBooleanSettingFilter(qb, this.globalConfig, key, value);
+			}
+		}
 
 		return qb;
 	}

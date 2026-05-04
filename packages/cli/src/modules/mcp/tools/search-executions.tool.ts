@@ -122,9 +122,11 @@ export const createSearchExecutionsTool = (
 				...(status?.length ? { status } : {}),
 				...(startedAfter ? { startedAfter } : {}),
 				...(startedBefore ? { startedBefore } : {}),
+				isArchived: false,
+				workflowBooleanSettings: [{ key: 'availableInMCP', value: true }],
 			};
 
-			const { results, count, estimated } = await executionService.findMcpRangeWithCount(query);
+			const { results, count, estimated } = await executionService.findRangeWithCount(query);
 
 			const data = results.map((execution) => ({
 				id: execution.id,
