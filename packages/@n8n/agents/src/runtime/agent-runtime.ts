@@ -97,6 +97,48 @@ export interface AgentRuntimeConfig {
 
 const MAX_LOOP_ITERATIONS = 20;
 
+type AiSdkStreamChunk = Parameters<typeof convertChunk>[0];
+
+/**
+ * Working memory is implemented as an SDK tool so models can decide when the
+ * persisted snapshot should change. In n8n, though, that tool is internal:
+ * its input can contain the complete working-memory document, while chat UIs
+ * only need to know that memory was updated. We therefore suppress the raw
+ * SDK tool chunks and emit a sanitized `working-memory-update` chunk after
+ * the tool handler succeeds.
+ *
+ * The tiny bit of state is intentional: `tool-input-delta` chunks carry only
+ * the tool-call id, not the tool name, so we have to remember ids that started
+ * as `updateWorkingMemory` in order to keep streamed memory content out of
+ * the public stream.
+ */
+function createInternalWorkingMemoryStreamFilter(): (chunk: AiSdkStreamChunk) => boolean {
+	const hiddenToolCallIds = new Set<string>();
+
+	return (chunk: AiSdkStreamChunk): boolean => {
+		if (chunk.type === 'tool-input-start' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
+			hiddenToolCallIds.add(chunk.id);
+			return true;
+		}
+
+		if (chunk.type === 'tool-input-delta' && hiddenToolCallIds.has(chunk.id)) {
+			return true;
+		}
+
+		if (chunk.type === 'tool-call' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
+			hiddenToolCallIds.add(chunk.toolCallId);
+			return true;
+		}
+
+		if (chunk.type === 'tool-result' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
+			if (chunk.toolCallId) hiddenToolCallIds.add(chunk.toolCallId);
+			return true;
+		}
+
+		return false;
+	};
+}
+
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
 	historyIds: [],
@@ -865,6 +907,7 @@ export class AgentRuntime {
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const shouldSuppressInternalWorkingMemoryChunk = createInternalWorkingMemoryStreamFilter();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -890,25 +933,11 @@ export class AgentRuntime {
 					pendingResume,
 				});
 
-				for (const r of batch.results) {
-					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					if (r.workingMemoryContent !== undefined) {
-						await writer.write({
-							type: 'working-memory-update',
-							content: r.workingMemoryContent,
-						});
-					} else {
-						await writer.write({
-							type: 'tool-result',
-							toolCallId: r.toolCallId,
-							toolName: r.toolName,
-							output: r.modelOutput,
-						});
-					}
-					if (r.customMessage) {
-						await writer.write({ type: 'message', message: r.customMessage });
-					}
-				}
+				await this.writeSuccessfulToolResultsToStream(
+					batch.results,
+					writer,
+					collectedSubAgentUsage,
+				);
 
 				for (const e of batch.errors) {
 					if (e.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) continue;
@@ -973,18 +1002,7 @@ export class AgentRuntime {
 			// We catch that here and close the consumer stream with an error chunk.
 			try {
 				for await (const chunk of result.fullStream) {
-					if (
-						chunk.type === 'tool-input-start' &&
-						chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME
-					) {
-						continue;
-					}
-					if (chunk.type === 'tool-call' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-						continue;
-					}
-					if (chunk.type === 'tool-result' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-						continue;
-					}
+					if (shouldSuppressInternalWorkingMemoryChunk(chunk)) continue;
 					// Filter only the SDK's terminal `finish` chunk — the runtime
 					// emits its own consolidated `finish` after the loop completes.
 					// `start-step` / `finish-step` are passed through so consumers
@@ -1033,25 +1051,11 @@ export class AgentRuntime {
 
 				if (await handleAbort()) return;
 
-				for (const r of batch.results) {
-					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					if (r.workingMemoryContent !== undefined) {
-						await writer.write({
-							type: 'working-memory-update',
-							content: r.workingMemoryContent,
-						});
-					} else {
-						await writer.write({
-							type: 'tool-result',
-							toolCallId: r.toolCallId,
-							toolName: r.toolName,
-							output: r.modelOutput,
-						});
-					}
-					if (r.customMessage) {
-						await writer.write({ type: 'message', message: r.customMessage });
-					}
-				}
+				await this.writeSuccessfulToolResultsToStream(
+					batch.results,
+					writer,
+					collectedSubAgentUsage,
+				);
 
 				for (const e of batch.errors) {
 					if (e.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) continue;
@@ -1688,6 +1692,45 @@ export class AgentRuntime {
 			customMessage,
 			...(workingMemoryContent !== undefined && { workingMemoryContent }),
 		};
+	}
+
+	/**
+	 * Bridge successful tool executions into the public runtime stream.
+	 *
+	 * Regular tools emit `tool-result` so consumers can mark the visible tool
+	 * step as completed and inspect the result shape the LLM received. Working
+	 * memory is different: it is implemented as a tool for model ergonomics, but
+	 * it is not a user-facing tool. Its input/result can contain the full memory
+	 * snapshot, so stream consumers receive a dedicated `working-memory-update`
+	 * chunk instead. The CLI recorder keeps the content, while the SSE layer
+	 * forwards only a sanitized display event to the frontend.
+	 */
+	private async writeSuccessfulToolResultsToStream(
+		results: ToolCallSuccess[],
+		writer: WritableStreamDefaultWriter<StreamChunk>,
+		collectedSubAgentUsage: SubAgentUsage[],
+	): Promise<void> {
+		for (const result of results) {
+			if (result.subAgentUsage) collectedSubAgentUsage.push(...result.subAgentUsage);
+
+			if (result.workingMemoryContent !== undefined) {
+				await writer.write({
+					type: 'working-memory-update',
+					content: result.workingMemoryContent,
+				});
+			} else {
+				await writer.write({
+					type: 'tool-result',
+					toolCallId: result.toolCallId,
+					toolName: result.toolName,
+					output: result.modelOutput,
+				});
+			}
+
+			if (result.customMessage) {
+				await writer.write({ type: 'message', message: result.customMessage });
+			}
+		}
 	}
 
 	private getWorkingMemoryContentFromInput(input: JSONValue): string {
