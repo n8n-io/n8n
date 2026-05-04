@@ -36,13 +36,13 @@ export function sanitizeWebContent(content: string): string {
 /**
  * Wrap untrusted data (fetched web pages, search snippets, execution output,
  * file content) in boundary tags so the LLM treats it as data, not
- * instructions. Closing boundary tags found in the content are escaped to
- * prevent breakout into the surrounding prompt context.
+ * instructions.
  *
- * For fetched web content, callers should pass it through `sanitizeWebContent`
- * first to strip HTML comments and invisible Unicode — `wrapUntrustedData`
- * itself preserves all content bytes (those characters may be meaningful in
- * execution/file contexts).
+ * The only content rewrite this performs is escaping closing
+ * `</untrusted_data>` sequences to prevent breakout — HTML comments and
+ * invisible Unicode are preserved (they may be meaningful in execution/file
+ * contexts). For fetched web content, callers should pass the body through
+ * `sanitizeWebContent` first to strip those.
  */
 export function wrapUntrustedData(content: string, source: string, label?: string): string {
 	const safeSource = source
