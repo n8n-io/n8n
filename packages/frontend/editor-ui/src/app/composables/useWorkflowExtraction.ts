@@ -407,7 +407,7 @@ export function useWorkflowExtraction() {
 		);
 
 		for (const node of selectionChildNodes) {
-			const currentNode = workflowsStore.workflow.nodes.find((x) => x.id === node.id);
+			const currentNode = workflowDocumentStore?.value?.allNodes.find((x) => x.id === node.id);
 
 			if (isEqual(node, currentNode)) continue;
 
@@ -461,7 +461,7 @@ export function useWorkflowExtraction() {
 	) {
 		const { start, end } = selection;
 
-		const allNodeNames = workflowsStore.workflow.nodes.map((x) => x.name);
+		const allNodeNames = workflowDocumentStore?.value?.allNodes.map((x) => x.name) ?? [];
 
 		let startNodeName = 'Start';
 		const subGraphNames = subGraph.map((x) => x.name);

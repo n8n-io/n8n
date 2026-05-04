@@ -343,7 +343,6 @@ export type {
 	InstanceAiEvent,
 	InstanceAiAttachment,
 	InstanceAiSendMessageResponse,
-	InstanceAiConfirmResponse,
 	InstanceAiToolCallState,
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,

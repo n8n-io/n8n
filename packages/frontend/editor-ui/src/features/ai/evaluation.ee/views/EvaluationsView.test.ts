@@ -28,7 +28,7 @@ vi.mock('vue-router', () => {
 });
 
 const renderComponent = createComponentRenderer(EvaluationsView, {
-	props: { name: 'workflow-id' },
+	props: { workflowId: 'workflow-id' },
 });
 
 describe('EvaluationsView', () => {

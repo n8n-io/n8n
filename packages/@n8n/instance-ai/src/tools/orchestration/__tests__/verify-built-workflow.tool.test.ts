@@ -4,8 +4,341 @@ import type {
 	OrchestrationContext,
 	WorkflowTaskService,
 } from '../../../types';
+import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
+
+jest.mock('@mastra/core/tools', () => ({
+	createTool: jest.fn((config: Record<string, unknown>) => config),
+}));
+
+type Executable = {
+	execute: (input: Record<string, unknown>) => Promise<Record<string, unknown>>;
+};
+
+function createContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
+	const workflowTaskService = {
+		reportBuildOutcome: jest.fn(),
+		reportVerificationVerdict: jest.fn(),
+		getBuildOutcome: jest.fn().mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			summary: 'Built',
+		}),
+		getWorkflowLoopState: jest.fn(),
+		updateBuildOutcome: jest.fn(),
+	};
+
+	return {
+		threadId: 'thread_1',
+		runId: 'run_1',
+		userId: 'user_1',
+		orchestratorAgentId: 'agent_1',
+		modelId: 'test-model',
+		storage: {} as OrchestrationContext['storage'],
+		subAgentMaxSteps: 5,
+		eventBus: {} as OrchestrationContext['eventBus'],
+		logger: {
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		} as unknown as OrchestrationContext['logger'],
+		domainTools: {},
+		abortSignal: new AbortController().signal,
+		taskStorage: {} as OrchestrationContext['taskStorage'],
+		workflowTaskService,
+		domainContext: {
+			userId: 'user_1',
+			workflowService: {
+				getAsWorkflowJSON: jest.fn().mockResolvedValue({ nodes: [] }),
+			} as unknown as InstanceAiWorkflowService,
+			executionService: {
+				run: jest.fn().mockResolvedValue({
+					executionId: 'exec_1',
+					status: 'success',
+				}),
+			},
+			credentialService: {} as never,
+			nodeService: {} as never,
+			dataTableService: {
+				queryRows: jest.fn().mockResolvedValue({ count: 0, data: [] }),
+				deleteRows: jest.fn().mockResolvedValue({ deletedCount: 0 }),
+			} as unknown as InstanceAiDataTableService,
+		},
+		...overrides,
+	} as OrchestrationContext;
+}
+
+describe('verify-built-workflow tool — remediation guard', () => {
+	it('routes mocked-credential verification failures to setup and records terminal verdict', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			mockedCredentialTypes: ['gmailOAuth2'],
+			mockedNodeNames: ['Gmail'],
+			summary: 'Built',
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Gmail credentials are mocked',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'needs_user_input',
+			}),
+		);
+		const reported = jest.mocked(context.workflowTaskService!.reportVerificationVerdict).mock
+			.calls[0]?.[0] as { remediation?: { category?: string } };
+		expect(reported.remediation).toMatchObject({ category: 'needs_setup' });
+	});
+
+	it('does not treat mocked credentials as setup when the execution error is code-fixable', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			mockedCredentialTypes: ['slackApi'],
+			mockedNodeNames: ['Slack'],
+			summary: 'Built',
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Code node failed: Cannot read properties of undefined',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+			reason: 'runtime_failure',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('returns terminal remediation even when verdict persistence and telemetry fail', async () => {
+		const trackTelemetry = jest.fn(() => {
+			throw new Error('telemetry unavailable');
+		});
+		const context = createContext({ trackTelemetry });
+		jest
+			.mocked(context.workflowTaskService!.reportVerificationVerdict)
+			.mockRejectedValue(new Error('storage unavailable'));
+		jest.mocked(context.workflowTaskService!.getBuildOutcome).mockResolvedValue({
+			workItemId: 'wi_1',
+			taskId: 'task_1',
+			workflowId: 'wf_1',
+			submitted: true,
+			triggerType: 'manual_or_testable',
+			needsUserInput: false,
+			mockedCredentialTypes: ['gmailOAuth2'],
+			mockedNodeNames: ['Gmail'],
+			summary: 'Built',
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Gmail credentials are mocked',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalled();
+		expect(trackTelemetry).toHaveBeenCalled();
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: failed to persist terminal verdict',
+			expect.objectContaining({ error: 'storage unavailable' }),
+		);
+		expect(context.logger.warn).toHaveBeenCalledWith(
+			'verify-built-workflow: failed to emit remediation telemetry',
+			expect.objectContaining({ error: 'telemetry unavailable' }),
+		);
+	});
+
+	it('does not execute or report another verdict when the persisted guard is terminal', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+			workItemId: 'wi_1',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			workflowId: 'wf_1',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+				guidance: 'Stop editing.',
+			}),
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+		const repeatedResult = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({ reason: 'post_submit_budget_exhausted' });
+		expect(repeatedResult.success).toBe(false);
+		expect(repeatedResult.remediation).toMatchObject({
+			reason: 'post_submit_budget_exhausted',
+		});
+		expect(context.domainContext!.executionService.run).not.toHaveBeenCalled();
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('ignores terminal remediation from a previous run', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+			workItemId: 'wi_1',
+			threadId: 'thread_1',
+			runId: 'run_previous',
+			workflowId: 'wf_1',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			}),
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(true);
+		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
+	});
+
+	it('still verifies the second allowed post-submit repair before blocking further edits', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+			workItemId: 'wi_1',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			workflowId: 'wf_1',
+			phase: 'verifying',
+			status: 'active',
+			source: 'create',
+			rebuildAttempts: 2,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+			lastRemediation: createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'runtime_failure',
+				guidance: 'Verify the latest repair.',
+			}),
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(true);
+		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+
+	it('blocks a failing verification after the second post-submit repair was already submitted', async () => {
+		const context = createContext();
+		jest.mocked(context.workflowTaskService!.getWorkflowLoopState).mockResolvedValue({
+			workItemId: 'wi_1',
+			threadId: 'thread_1',
+			runId: 'run_1',
+			workflowId: 'wf_1',
+			phase: 'verifying',
+			status: 'active',
+			source: 'create',
+			rebuildAttempts: 2,
+			successfulSubmitSeen: true,
+			postSubmitRemediationSubmitsUsed: 2,
+			lastRemediation: createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'runtime_failure',
+				guidance: 'Verify the latest repair.',
+			}),
+		});
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Code node still fails',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'post_submit_budget_exhausted',
+			remainingSubmitFixes: 0,
+		});
+		expect(context.domainContext!.executionService.run).toHaveBeenCalled();
+		expect(context.workflowTaskService!.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'failed_terminal',
+				failureSignature: 'post_submit_budget_exhausted',
+			}),
+		);
+	});
+
+	it('returns editable remediation for generic runtime failures without terminal reporting', async () => {
+		const context = createContext();
+		jest.mocked(context.domainContext!.executionService.run).mockResolvedValue({
+			executionId: 'exec_1',
+			status: 'error',
+			error: 'Node parameter value is invalid',
+		});
+		const tool = createVerifyBuiltWorkflowTool(context) as unknown as Executable;
+
+		const result = await tool.execute({ workItemId: 'wi_1', workflowId: 'wf_1' });
+
+		expect(result.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+		});
+		expect(context.workflowTaskService!.reportVerificationVerdict).not.toHaveBeenCalled();
+	});
+});
 
 type ExecutionRunResult = {
 	executionId?: string | null;
@@ -141,6 +474,7 @@ function makeContext(
 				await Promise.resolve();
 				return outcome;
 			}),
+			getWorkflowLoopState: jest.fn(),
 			updateBuildOutcome,
 		} as unknown as WorkflowTaskService,
 		domainContext: {

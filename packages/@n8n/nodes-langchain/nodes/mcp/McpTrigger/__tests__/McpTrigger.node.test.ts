@@ -5,6 +5,9 @@ import { createMockLogger, createMockRequest, createMockResponse } from './helpe
 import { McpTrigger } from '../McpTrigger.node';
 import { McpServer } from '../McpServer';
 
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
+
 // Mock the McpServer
 jest.mock('../McpServer', () => ({
 	McpServer: {
@@ -78,7 +81,11 @@ describe('McpTrigger', () => {
 			const authParam = mcpTrigger.description.properties?.find((p) => p.name === 'authentication');
 			expect(authParam).toBeDefined();
 			expect(authParam?.type).toBe('options');
+			expect(authParam?.default).toBe('none');
 			expect(authParam?.options).toHaveLength(3);
+			expect(authParam?.builderHint).toEqual({
+				message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+			});
 		});
 
 		it('should define webhook endpoints', () => {
