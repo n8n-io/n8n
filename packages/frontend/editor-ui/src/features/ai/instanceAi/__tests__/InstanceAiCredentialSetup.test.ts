@@ -252,9 +252,12 @@ describe('InstanceAiCredentialSetup', () => {
 
 			// Auto-continue fires since all are selected
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'approved');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', true, undefined, {
-				type1: 'cred-123',
-				type2: 'cred-123',
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: {
+					type1: 'cred-123',
+					type2: 'cred-123',
+				},
 			});
 		});
 
@@ -275,7 +278,7 @@ describe('InstanceAiCredentialSetup', () => {
 			await userEvent.click(getByText('instanceAi.credential.deny'));
 
 			expect(resolveSpy).toHaveBeenCalledWith('req-1', 'deferred');
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', false);
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', { kind: 'approval', approved: false });
 		});
 
 		it('auto-continues when single credential is selected', async () => {
@@ -293,7 +296,10 @@ describe('InstanceAiCredentialSetup', () => {
 			// Select credential — auto-continue should fire
 			await userEvent.click(getByTestId('credential-picker'));
 
-			expect(confirmSpy).toHaveBeenCalledWith('req-1', true, undefined, { type1: 'cred-123' });
+			expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+				kind: 'credentialSelection',
+				credentials: { type1: 'cred-123' },
+			});
 			expect(getByText('instanceAi.credential.allSelected')).toBeTruthy();
 		});
 
