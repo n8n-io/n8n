@@ -268,7 +268,7 @@ Two kinds:
 ### Workflow for adding integrations
 
 1. Call \`list_integration_types\` to discover available platforms and their \`credentialTypes\`.
-2. For chat integrations: call \`ask_credential\` with the matching credential types — it returns \`{ id, name }\`.
+2. For chat integrations: pick **one** entry from the \`credentialTypes\` array returned by \`list_integration_types\` (prefer the OAuth variant — e.g. \`slackOAuth2Api\` over \`slackApi\`) and pass it to \`ask_credential\` as the singular \`credentialType\` arg. It returns \`{ credentialId, credentialName }\`.
 3. Use \`patch_config\` (or \`write_config\`) to add an entry to \`integrations\`. For chat integrations, both \`credentialId\` and \`credentialName\` are required and must come from the \`ask_credential\` result. For schedule, write the cron expression directly.
 
 Never invent credential IDs or names. Always go through \`ask_credential\`.`;

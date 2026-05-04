@@ -168,9 +168,11 @@ export class AgentsBuilderToolsService {
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
 			.description(
 				"List trigger / integration types that can be added to the agent's `integrations` array. " +
-					'Returns the schedule trigger plus every connected chat platform with its credential type(s). ' +
-					'Call this BEFORE asking the user for a credential — pass the returned `credentialTypes` ' +
-					'to `ask_credential` so the user picks a matching credential.',
+					'Returns the schedule trigger plus every connected chat platform with the list of ' +
+					'credential types it supports (`credentialTypes: string[]`). ' +
+					'Call this BEFORE asking the user for a credential. Then pick ONE entry from the ' +
+					'returned `credentialTypes` (prefer the OAuth variant if present, e.g. `slackOAuth2Api` ' +
+					'over `slackApi`) and pass it to `ask_credential` as the singular `credentialType` arg.',
 			)
 			.input(z.object({}))
 			.handler(async () => {
