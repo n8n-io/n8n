@@ -110,7 +110,7 @@ jobs:
 
             if (reviewStatus.state !== 'success') {
               throw new Error(
-                `Chromatic UI Review state is "${reviewStatus.state}". Approve in Chromatic and rerun checks.`,
+                `Chromatic UI Review state is "${reviewStatus.state}". Approve in Chromatic and rerun checks. This error is non-blocking.`,
               );
             }
 
