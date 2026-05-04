@@ -1,9 +1,7 @@
 import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
-import type { AuthenticatedRequest } from '@n8n/db';
-import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRelationRepository, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type express from 'express';
-import type { Response } from 'express';
+
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
 import { EventService } from '@/events/event.service';
@@ -11,6 +9,7 @@ import type { UserRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
@@ -23,11 +22,19 @@ type Create = AuthenticatedRequest<{}, {}, InviteUsersRequestDto>;
 type Delete = UserRequest.Delete;
 type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto, {}>;
 
-export = {
+type UsersHandlers = {
+	getUser: PublicAPIEndpoint<UserRequest.Get>;
+	getUsers: PublicAPIEndpoint<UserRequest.Get>;
+	createUser: PublicAPIEndpoint<Create>;
+	deleteUser: PublicAPIEndpoint<Delete>;
+	changeRole: PublicAPIEndpoint<ChangeRole>;
+};
+
+const usersHandlers: UsersHandlers = {
 	getUser: [
 		validLicenseWithUserQuota,
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:read' }),
-		async (req: UserRequest.Get, res: express.Response) => {
+		async (req, res) => {
 			const { includeRole = false } = req.query;
 			const { id } = req.params;
 
@@ -51,7 +58,7 @@ export = {
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:list' }),
 		validLicenseWithUserQuota,
 		validCursor,
-		async (req: UserRequest.Get, res: express.Response) => {
+		async (req, res) => {
 			const { offset = 0, limit = 100, includeRole = false, projectId } = req.query;
 
 			await Container.get(UserService).assertGetUsersAccess(req.user, projectId);
@@ -84,7 +91,7 @@ export = {
 	],
 	createUser: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:create' }),
-		async (req: Create, res: Response) => {
+		async (req, res) => {
 			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
 			if (error) {
 				return res.status(400).json(error.errors[0]);
@@ -100,7 +107,7 @@ export = {
 	],
 	deleteUser: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:delete' }),
-		async (req: Delete, res: Response) => {
+		async (req, res) => {
 			await Container.get(UsersController).deleteUser(req);
 
 			return res.status(204).send();
@@ -109,7 +116,7 @@ export = {
 	changeRole: [
 		isLicensed('feat:advancedPermissions'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'user:changeRole' }),
-		async (req: ChangeRole, res: Response) => {
+		async (req, res) => {
 			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {
 				return res.status(400).json({
@@ -128,3 +135,5 @@ export = {
 		},
 	],
 };
+
+export = usersHandlers;

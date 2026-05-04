@@ -1,12 +1,12 @@
 import { CreateVariableRequestDto, UpdateVariableRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { Response } from 'express';
 
 import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import type { VariablesRequest } from '@/requests';
 
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	isLicensed,
@@ -14,11 +14,18 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { paginateArray } from '../../shared/services/pagination.service';
 
-export = {
+type VariablesHandlers = {
+	createVariable: PublicAPIEndpoint<AuthenticatedRequest>;
+	updateVariable: PublicAPIEndpoint<AuthenticatedRequest<{ id: string }>>;
+	deleteVariable: PublicAPIEndpoint<AuthenticatedRequest<{ id: string }>>;
+	getVariables: PublicAPIEndpoint<VariablesRequest.GetAll>;
+};
+
+const variablesHandlers: VariablesHandlers = {
 	createVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:create' }),
-		async (req: AuthenticatedRequest, res: Response) => {
+		async (req, res) => {
 			const payload = CreateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
 				return res.status(400).json(payload.error.errors[0]);
@@ -31,7 +38,7 @@ export = {
 	updateVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:update' }),
-		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
+		async (req, res) => {
 			const payload = UpdateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
 				return res.status(400).json(payload.error.errors[0]);
@@ -44,7 +51,7 @@ export = {
 	deleteVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
-		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
+		async (req, res) => {
 			await Container.get(VariablesController).deleteVariable(req);
 
 			return res.status(204).send();
@@ -54,7 +61,7 @@ export = {
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
 		validCursor,
-		async (req: VariablesRequest.GetAll, res: Response) => {
+		async (req, res) => {
 			const { offset = 0, limit = 100, projectId, state } = req.query;
 
 			const variables = await Container.get(VariablesService).getAllForUser(req.user, {
@@ -66,3 +73,5 @@ export = {
 		},
 	],
 };
+
+export = variablesHandlers;

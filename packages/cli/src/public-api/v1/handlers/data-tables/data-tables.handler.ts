@@ -4,7 +4,7 @@ import {
 	UpdateDataTableDto,
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type express from 'express';
+import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -17,6 +17,7 @@ import { ProjectService } from '@/services/project.service.ee';
 
 import { getDataTableListFilter, resolveProjectIdForCreate } from './data-tables.service';
 import type { DataTableRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	publicApiScope,
 	projectScope,
@@ -24,7 +25,7 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-const handleError = (error: unknown, res: express.Response): express.Response => {
+const handleError = (error: unknown, res: Response): Response => {
 	if (error instanceof DataTableNotFoundError) {
 		return res.status(404).json({ message: error.message });
 	}
@@ -57,11 +58,19 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
-export = {
+type DataTableHandlers = {
+	listDataTables: PublicAPIEndpoint<DataTableRequest.List>;
+	createDataTable: PublicAPIEndpoint<DataTableRequest.Create>;
+	getDataTable: PublicAPIEndpoint<DataTableRequest.Get>;
+	updateDataTable: PublicAPIEndpoint<DataTableRequest.Update>;
+	deleteDataTable: PublicAPIEndpoint<DataTableRequest.Delete>;
+};
+
+const dataTableHandlers: DataTableHandlers = {
 	listDataTables: [
 		publicApiScope('dataTable:list'),
 		validCursor,
-		async (req: DataTableRequest.List, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
@@ -118,7 +127,7 @@ export = {
 
 	createDataTable: [
 		publicApiScope('dataTable:create'),
-		async (req: DataTableRequest.Create, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const payload = PublicApiCreateDataTableDto.safeParse(req.body);
 			if (!payload.success) {
 				throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
@@ -143,7 +152,7 @@ export = {
 	getDataTable: [
 		publicApiScope('dataTable:read'),
 		projectScope('dataTable:read', 'dataTable'),
-		async (req: DataTableRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
@@ -171,7 +180,7 @@ export = {
 	updateDataTable: [
 		publicApiScope('dataTable:update'),
 		projectScope('dataTable:update', 'dataTable'),
-		async (req: DataTableRequest.Update, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
@@ -208,7 +217,7 @@ export = {
 	deleteDataTable: [
 		publicApiScope('dataTable:delete'),
 		projectScope('dataTable:delete', 'dataTable'),
-		async (req: DataTableRequest.Delete, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			try {
 				const { dataTableId } = req.params;
 
@@ -224,3 +233,5 @@ export = {
 		},
 	],
 };
+
+export = dataTableHandlers;

@@ -1,28 +1,41 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type express from 'express';
+import type { Response } from 'express';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { CommunityPackagesLifecycleService } from '@/modules/community-packages/community-packages.lifecycle.service';
 
 import { mapToCommunityPackage, mapToCommunityPackageList } from './community-packages.mapper';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
-function sendResponseError(res: express.Response, error: ResponseError): express.Response {
+function sendResponseError(res: Response, error: ResponseError): Response {
 	return res.status(error.httpStatusCode).json({ message: error.message });
 }
 
-export = {
+type InstallPackageRequest = AuthenticatedRequest<
+	{},
+	{},
+	{ name: string; version?: string; verify?: boolean }
+>;
+
+type UpdatePackageRequest = AuthenticatedRequest<
+	{ name: string },
+	{},
+	{ version?: string; verify?: boolean }
+>;
+
+type CommunityPackageHandlers = {
+	installPackage: PublicAPIEndpoint<InstallPackageRequest>;
+	getInstalledPackages: PublicAPIEndpoint<AuthenticatedRequest>;
+	updatePackage: PublicAPIEndpoint<UpdatePackageRequest>;
+	uninstallPackage: PublicAPIEndpoint<AuthenticatedRequest<{ name: string }>>;
+};
+
+const communityPackageHandlers: CommunityPackageHandlers = {
 	installPackage: [
 		publicApiScope('communityPackage:install'),
-		async (
-			req: AuthenticatedRequest<
-				Record<string, never>,
-				unknown,
-				{ name: string; version?: string; verify?: boolean }
-			>,
-			res: express.Response,
-		): Promise<express.Response> => {
+		async (req, res) => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 
 			try {
@@ -43,10 +56,7 @@ export = {
 
 	getInstalledPackages: [
 		publicApiScope('communityPackage:list'),
-		async (
-			_req: AuthenticatedRequest<Record<string, never>>,
-			res: express.Response,
-		): Promise<express.Response> => {
+		async (_req, res) => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 			const packages = await lifecycle.listInstalledPackages();
 			return res.json(mapToCommunityPackageList(packages));
@@ -55,14 +65,7 @@ export = {
 
 	updatePackage: [
 		publicApiScope('communityPackage:update'),
-		async (
-			req: AuthenticatedRequest<
-				{ name: string },
-				Record<string, never>,
-				{ version?: string; verify?: boolean }
-			>,
-			res: express.Response,
-		): Promise<express.Response> => {
+		async (req, res) => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 
 			try {
@@ -87,10 +90,7 @@ export = {
 
 	uninstallPackage: [
 		publicApiScope('communityPackage:uninstall'),
-		async (
-			req: AuthenticatedRequest<{ name: string }>,
-			res: express.Response,
-		): Promise<express.Response> => {
+		async (req, res) => {
 			const lifecycle = Container.get(CommunityPackagesLifecycleService);
 
 			try {
@@ -105,3 +105,5 @@ export = {
 		},
 	],
 };
+
+export = communityPackageHandlers;

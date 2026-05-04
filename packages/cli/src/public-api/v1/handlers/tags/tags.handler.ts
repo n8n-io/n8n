@@ -3,21 +3,29 @@ import { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions } from '@n8n/typeorm';
-import type express from 'express';
 
 import { TagService } from '@/services/tag.service';
 
 import type { TagRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
 	apiKeyHasScopeWithGlobalScopeFallback,
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-export = {
+type TagHandlers = {
+	createTag: PublicAPIEndpoint<TagRequest.Create>;
+	updateTag: PublicAPIEndpoint<TagRequest.Update>;
+	deleteTag: PublicAPIEndpoint<TagRequest.Delete>;
+	getTags: PublicAPIEndpoint<TagRequest.GetAll>;
+	getTag: PublicAPIEndpoint<TagRequest.Get>;
+};
+
+const tagHandlers: TagHandlers = {
 	createTag: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:create' }),
-		async (req: TagRequest.Create, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { name } = req.body;
 
 			const newTag = Container.get(TagService).toEntity({ name: name.trim() });
@@ -32,7 +40,7 @@ export = {
 	],
 	updateTag: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:update' }),
-		async (req: TagRequest.Update, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			const { name } = req.body;
 
@@ -54,7 +62,7 @@ export = {
 	],
 	deleteTag: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:delete' }),
-		async (req: TagRequest.Delete, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 
 			let tag;
@@ -71,7 +79,7 @@ export = {
 	getTags: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:list' }),
 		validCursor,
-		async (req: TagRequest.GetAll, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { offset = 0, limit = 100 } = req.query;
 
 			const query: FindManyOptions<TagEntity> = {
@@ -93,7 +101,7 @@ export = {
 	],
 	getTag: [
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'tag:read' }),
-		async (req: TagRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 
 			try {
@@ -105,3 +113,5 @@ export = {
 		},
 	],
 };
+
+export = tagHandlers;

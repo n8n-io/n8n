@@ -1,10 +1,9 @@
+import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import type { IExecutionBase } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type express from 'express';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { QueryFailedError } from '@n8n/typeorm';
-import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { type ExecutionStatus, replaceCircularReferences } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -12,13 +11,20 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
+
+import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
+import type { ExecutionRequest } from '../../../types';
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
+import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware';
+import { encodeNextCursor } from '../../shared/services/pagination.service';
+import { getSharedWorkflowIds } from '../workflows/workflows.service';
 
 function isRedactableExecution(
 	execution: IExecutionBase,
@@ -26,16 +32,21 @@ function isRedactableExecution(
 	return 'data' in execution && 'workflowData' in execution;
 }
 
-import type { ExecutionRequest } from '../../../types';
-import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware';
-import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { getSharedWorkflowIds } from '../workflows/workflows.service';
-import { getExecutionTags, mapAnnotationTags, updateExecutionTags } from './executions.service';
+type ExecutionHandlers = {
+	deleteExecution: PublicAPIEndpoint<ExecutionRequest.Delete>;
+	getExecution: PublicAPIEndpoint<ExecutionRequest.Get>;
+	getExecutions: PublicAPIEndpoint<ExecutionRequest.GetAll>;
+	retryExecution: PublicAPIEndpoint<ExecutionRequest.Retry>;
+	getExecutionTags: PublicAPIEndpoint<ExecutionRequest.GetTags>;
+	updateExecutionTags: PublicAPIEndpoint<ExecutionRequest.UpdateTags>;
+	stopExecution: PublicAPIEndpoint<ExecutionRequest.Stop>;
+	stopManyExecutions: PublicAPIEndpoint<ExecutionRequest.StopMany>;
+};
 
-export = {
+const executionHandlers: ExecutionHandlers = {
 	deleteExecution: [
 		publicApiScope('execution:delete'),
-		async (req: ExecutionRequest.Delete, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:delete']);
 
 			// user does not have workflows hence no executions
@@ -81,7 +92,7 @@ export = {
 	],
 	getExecution: [
 		publicApiScope('execution:read'),
-		async (req: ExecutionRequest.Get, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			// user does not have workflows hence no executions
@@ -139,7 +150,7 @@ export = {
 	getExecutions: [
 		publicApiScope('execution:list'),
 		validCursor,
-		async (req: ExecutionRequest.GetAll, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const {
 				lastId = undefined,
 				limit = 100,
@@ -232,7 +243,7 @@ export = {
 	],
 	retryExecution: [
 		publicApiScope('execution:retry'),
-		async (req: ExecutionRequest.Retry, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			// user does not have workflows hence no executions
@@ -269,7 +280,7 @@ export = {
 	],
 	getExecutionTags: [
 		publicApiScope('executionTags:list'),
-		async (req: ExecutionRequest.GetTags, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
@@ -292,7 +303,7 @@ export = {
 	],
 	updateExecutionTags: [
 		publicApiScope('executionTags:update'),
-		async (req: ExecutionRequest.UpdateTags, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { id } = req.params;
 			const newTagIds = req.body.map((tag) => tag.id);
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:update']);
@@ -323,7 +334,7 @@ export = {
 	],
 	stopExecution: [
 		publicApiScope('execution:stop'),
-		async (req: ExecutionRequest.Stop, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:execute']);
 
 			// user does not have workflows hence no executions
@@ -351,7 +362,7 @@ export = {
 	],
 	stopManyExecutions: [
 		publicApiScope('execution:stop'),
-		async (req: ExecutionRequest.StopMany, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const { status: rawStatus, workflowId, startedAfter, startedBefore } = req.body;
 			const status: ExecutionStatus[] = rawStatus.map((x) => (x === 'queued' ? 'new' : x));
 			// Validate that status is provided and not empty
@@ -390,3 +401,5 @@ export = {
 		},
 	],
 };
+
+export = executionHandlers;

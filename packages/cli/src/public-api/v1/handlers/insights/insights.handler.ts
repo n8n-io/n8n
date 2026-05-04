@@ -1,6 +1,5 @@
 import { InsightsDateFilterDto } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type express from 'express';
 import { DateTime } from 'luxon';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -10,6 +9,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InsightsService } from '@/modules/insights/insights.service';
 import type { InsightsRequest } from '@/public-api/types';
 
+import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
 const dateFilterValidationSchema = z
@@ -31,10 +31,14 @@ const dateFilterValidationSchema = z
 		},
 	);
 
-export = {
+type InsightsHandlers = {
+	getInsightsSummary: PublicAPIEndpoint<InsightsRequest.GetSummary>;
+};
+
+const insightsHandlers: InsightsHandlers = {
 	getInsightsSummary: [
 		publicApiScope('insights:read'),
-		async (req: InsightsRequest.GetSummary, res: express.Response): Promise<express.Response> => {
+		async (req, res) => {
 			const query = InsightsDateFilterDto.safeParse(req.query);
 			if (!query.success) {
 				throw new BadRequestError(query.error.errors.map(({ message }) => message).join('; '));
@@ -68,3 +72,5 @@ export = {
 		},
 	],
 };
+
+export = insightsHandlers;
