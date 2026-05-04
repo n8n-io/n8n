@@ -58,6 +58,20 @@
 		},
 		{
 			"parameters": {
+				"action": "hmac",
+				"type": "SHA1",
+				"value": "test",
+				"secret": "key",
+				"encoding": "hex"
+			},
+			"id": "2f1ad1a6-6c0b-4d6e-9a8f-7d2e3c6b1a10",
+			"name": "Crypto Hmac data with SHA1",
+			"type": "n8n-nodes-base.crypto",
+			"typeVersion": 1,
+			"position": [360, 180]
+		},
+		{
+			"parameters": {
 				"action": "generate"
 			},
 			"id": "a6682d88-0842-4884-9869-220597ac3d2a",
@@ -165,6 +179,13 @@
 				}
 			}
 		],
+		"Crypto Hmac data with SHA1": [
+			{
+				"json": {
+					"data": "671f54ce0c540f78ffe1e26dcf9c2a047aea4fda"
+				}
+			}
+		],
 		"Crypto Hash Binary Data": [
 			{
 				"json": {
@@ -201,6 +222,11 @@
 					},
 					{
 						"node": "Crypto Hmac data with MD5",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Crypto Hmac data with SHA1",
 						"type": "main",
 						"index": 0
 					},
