@@ -12,11 +12,7 @@ import {
 	domainGatingResumeSchema,
 } from '../domain-access';
 import type { InstanceAiContext } from '../types';
-import {
-	sanitizeWebContent,
-	wrapInBoundaryTags,
-	wrapUntrustedData,
-} from './web-research/sanitize-web-content';
+import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -182,7 +178,7 @@ async function handleFetchUrl(
 		maxContentLength: input.maxContentLength ?? undefined,
 		authorizeUrl,
 	});
-	result.content = wrapInBoundaryTags(sanitizeWebContent(result.content), result.finalUrl);
+	result.content = wrapUntrustedData(sanitizeWebContent(result.content), result.finalUrl);
 	return result;
 }
 
