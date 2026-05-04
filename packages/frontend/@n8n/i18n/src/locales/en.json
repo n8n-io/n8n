@@ -5133,6 +5133,8 @@
 	"instanceAi.thread.new": "New chat",
 	"instanceAi.sidebar.back": "Back",
 	"instanceAi.sidebar.threads": "Threads",
+	"instanceAi.sidebar.chatHistory": "Chat history",
+	"instanceAi.sidebar.collapse": "Collapse sidebar",
 	"instanceAi.message.reasoning": "Reasoning",
 	"instanceAi.sidebar.noThreads": "No conversations yet",
 	"instanceAi.sidebar.group.thisWeek": "This week",
