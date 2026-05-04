@@ -1,0 +1,86 @@
+import type {
+	IDataObject,
+	IExecuteFunctions,
+	INodeExecutionData,
+	INodeProperties,
+} from 'n8n-workflow';
+
+import { processJsonInput, updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { gravityZoneApiRequest } from '../../transport';
+
+const properties: INodeProperties[] = [
+	{
+		displayName:
+			'Documentation: <a href="https://www.bitdefender.com/business/support/en/77209-139613-addproductkey.html" target="_blank" rel="noopener noreferrer">Add Product Key</a>',
+		name: 'addProductKeyDocsNotice',
+		type: 'notice',
+		default: '',
+	},
+	{
+		displayName: 'License Key',
+		name: 'licenseKey',
+		type: 'string',
+		required: true,
+		default: '',
+		description: 'The license key to be set. It can be an add-on or a base license.',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add option',
+		default: {},
+		options: [
+			{
+				displayName: 'MDR Contact Information (JSON)',
+				name: 'mdrContactInformationJson',
+				type: 'json',
+				default: '{}',
+				description: 'An MDR contact information object',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+			},
+			{
+				displayName: 'Replace Incompatible Keys',
+				name: 'replaceIncompatibleKeys',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether all existing base licenses or add-ons that are not compatible with the current license key will be removed and the new license will be added',
+			},
+		],
+	},
+];
+
+const displayOptions = {
+	show: { category: ['licensing'], action: ['addProductKey'] },
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
+
+export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
+	const licenseKey = this.getNodeParameter('licenseKey', i) as string;
+	const options = this.getNodeParameter('options', i, {});
+
+	const params: IDataObject = { licenseKey };
+
+	if (options.replaceIncompatibleKeys !== undefined) {
+		params.replaceIncompatibleKeys = options.replaceIncompatibleKeys;
+	}
+	if (options.mdrContactInformationJson !== undefined) {
+		const mdrContactInformation = processJsonInput(
+			options.mdrContactInformationJson,
+			'MDR Contact Information',
+		) as IDataObject;
+		if (Object.keys(mdrContactInformation).length > 0)
+			params.mdrContactInformation = mdrContactInformation;
+	}
+
+	const responseData = await gravityZoneApiRequest.call(this, 'licensing', 'addProductKey', params);
+
+	return this.helpers.constructExecutionMetaData(wrapData(responseData), {
+		itemData: { item: i },
+	});
+}
