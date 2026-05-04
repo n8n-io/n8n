@@ -5,7 +5,6 @@ import type { IRunData, NodeConnectionType, IConnectedNode } from 'n8n-workflow'
 import { jsonParse, NodeHelpers, NodeConnectionTypes } from 'n8n-workflow';
 import type { IRunDataDisplayMode, IUpdateInformation, TargetItem } from '@/Interface';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
-import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
 import NDVDraggablePanels from '../../panel/components/NDVDraggablePanels.vue';
@@ -54,7 +53,6 @@ const emit = defineEmits<{
 
 const props = withDefaults(
 	defineProps<{
-		workflowObject: WorkflowObjectAccessors;
 		readOnly?: boolean;
 		renaming?: boolean;
 		isProductionExecutionPreview?: boolean;
@@ -100,6 +98,10 @@ const isPairedItemHoveringEnabled = ref(true);
 
 const pushRef = computed(() => ndvStore.pushRef);
 
+const workflowObject = computed(() =>
+	workflowDocumentStore?.value?.getWorkflowObjectAccessorSnapshot(),
+);
+
 const activeNodeType = computed(() => {
 	if (activeNode.value) {
 		return nodeTypesStore.getNodeType(activeNode.value.type, activeNode.value.typeVersion);
@@ -132,7 +134,7 @@ const workflowRunData = computed(() => {
 
 const parentNodes = computed(() => {
 	if (activeNode.value) {
-		return props.workflowObject.getParentNodesByDepth(activeNode.value.name, 1);
+		return workflowObject.value?.getParentNodesByDepth(activeNode.value.name, 1) ?? [];
 	}
 	return [];
 });
@@ -152,8 +154,8 @@ const parentNode = computed<IConnectedNode | undefined>(() => {
 
 const inputNodeName = computed<string | undefined>(() => {
 	const nodeOutputs =
-		activeNode.value && activeNodeType.value
-			? NodeHelpers.getNodeOutputs(props.workflowObject, activeNode.value, activeNodeType.value)
+		activeNode.value && activeNodeType.value && workflowObject.value
+			? NodeHelpers.getNodeOutputs(workflowObject.value, activeNode.value, activeNodeType.value)
 			: [];
 
 	const nonMainOutputs = nodeOutputs.filter((output) => {
@@ -168,7 +170,7 @@ const inputNodeName = computed<string | undefined>(() => {
 		// For sub-nodes, we need to get their connected output node to determine the input
 		// because sub-nodes use specialized outputs (e.g. NodeConnectionTypes.AiTool)
 		// instead of the standard Main output type
-		const connectedOutputNode = props.workflowObject.getChildNodes(
+		const connectedOutputNode = workflowObject.value?.getChildNodes(
 			activeNode.value.name,
 			'ALL_NON_MAIN',
 		)?.[0];
@@ -245,14 +247,14 @@ const maxInputRun = computed(() => {
 		return 0;
 	}
 
-	const workflowNode = props.workflowObject.getNode(activeNode.value.name);
+	const workflowNode = workflowObject.value?.getNode(activeNode.value.name);
 
-	if (!workflowNode || !activeNodeType.value) {
+	if (!workflowNode || !activeNodeType.value || !workflowObject.value) {
 		return 0;
 	}
 
 	const outputs = NodeHelpers.getNodeOutputs(
-		props.workflowObject,
+		workflowObject.value,
 		workflowNode,
 		activeNodeType.value,
 	);
@@ -605,12 +607,12 @@ watch(
 
 			setTimeout(() => ndvStore.setNDVPushRef(), 0);
 
-			if (!activeNodeType.value) {
+			if (!activeNodeType.value || !workflowObject.value) {
 				return;
 			}
 
 			void externalHooks.run('dataDisplay.nodeTypeChanged', {
-				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, props.workflowObject),
+				nodeSubtitle: nodeHelpers.getNodeSubtitle(node, activeNodeType.value, workflowObject.value),
 			});
 
 			setTimeout(() => {
@@ -744,7 +746,7 @@ onBeforeUnmount(() => {
 						@activate="onWorkflowActivate"
 					/>
 					<InputPanel
-						v-else-if="!isTriggerNode"
+						v-else-if="!isTriggerNode && workflowObject"
 						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
 						:run-index="inputRun"
@@ -773,6 +775,7 @@ onBeforeUnmount(() => {
 				</template>
 				<template #output>
 					<OutputPanel
+						v-if="workflowObject"
 						data-test-id="output-panel"
 						:workflow-object="workflowObject"
 						:can-link-runs="canLinkRuns"
