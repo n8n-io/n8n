@@ -3,9 +3,10 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { useInstanceAiStore } from '../../instanceAi.store';
 import type { WorkflowSetupApplyPayload, WorkflowSetupCard } from '../workflowSetup.types';
+import type { CredentialSelectionsMap } from './useWorkflowSetupInputs';
 
-interface SelectionAccessors {
-	selections: Ref<Record<string, Record<string, string>>>;
+interface WorkflowSetupInputAccessors {
+	credentialSelections: Ref<CredentialSelectionsMap>;
 	skippedCardIds: Ref<Set<string>>;
 	isCardComplete: (card: WorkflowSetupCard) => boolean;
 	isCardSkipped: (card: WorkflowSetupCard) => boolean;
@@ -34,7 +35,7 @@ export function useWorkflowSetupActions(deps: {
 	activeCard: ComputedRef<WorkflowSetupCard | undefined>;
 	currentStepIndex: Ref<number>;
 	goToStep: (index: number) => void;
-	selections: SelectionAccessors;
+	inputs: WorkflowSetupInputAccessors;
 	applyMachine: ApplyMachine;
 	store: ReturnType<typeof useInstanceAiStore>;
 }): WorkflowSetupActions {
@@ -44,7 +45,7 @@ export function useWorkflowSetupActions(deps: {
 	const isActionPending = ref(false);
 
 	function isCardHandled(card: WorkflowSetupCard): boolean {
-		return deps.selections.isCardComplete(card) || deps.selections.isCardSkipped(card);
+		return deps.inputs.isCardComplete(card) || deps.inputs.isCardSkipped(card);
 	}
 
 	/**
@@ -77,7 +78,7 @@ export function useWorkflowSetupActions(deps: {
 		const card = deps.activeCard.value;
 		return (
 			card !== undefined &&
-			(deps.selections.isCardComplete(card) || deps.selections.isCardSkipped(card)) &&
+			(deps.inputs.isCardComplete(card) || deps.inputs.isCardSkipped(card)) &&
 			nextUnhandledIndex.value >= 0
 		);
 	});
@@ -96,18 +97,19 @@ export function useWorkflowSetupActions(deps: {
 		const explicitlySkipped: Array<{ label: string; options: string[] }> = [];
 		for (const card of deps.cards.value) {
 			const label = card.credentialType ?? card.targetNodeName;
-			if (deps.selections.isCardComplete(card)) {
+			if (deps.inputs.isCardComplete(card)) {
+				const optionChosen = card.credentialType
+					? (deps.inputs.credentialSelections.value[card.targetNodeName]?.[card.credentialType] ??
+						'')
+					: card.parameterNames.join(',');
 				provided.push({
 					label,
 					options: [],
-					option_chosen:
-						card.credentialType !== undefined
-							? (deps.selections.selections.value[card.targetNodeName]?.[card.credentialType] ?? '')
-							: card.parameterNames.join(','),
+					option_chosen: optionChosen,
 				});
 			} else {
 				skipped.push({ label, options: [] });
-				if (deps.selections.isCardSkipped(card)) {
+				if (deps.inputs.isCardSkipped(card)) {
 					explicitlySkipped.push({ label, options: [] });
 				}
 			}
@@ -126,7 +128,7 @@ export function useWorkflowSetupActions(deps: {
 
 	async function apply(): Promise<void> {
 		trackSetupInput();
-		await deps.applyMachine.apply(deps.selections.buildCompletedSetupPayload());
+		await deps.applyMachine.apply(deps.inputs.buildCompletedSetupPayload());
 	}
 
 	async function skipCurrentCard(): Promise<void> {
@@ -136,7 +138,7 @@ export function useWorkflowSetupActions(deps: {
 
 		isActionPending.value = true;
 		try {
-			deps.selections.markCardSkipped(card);
+			deps.inputs.markCardSkipped(card);
 
 			// Non-terminal: more cards still need handling — advance & wait for the user.
 			if (hasOtherUnhandledCards.value) {
@@ -147,7 +149,7 @@ export function useWorkflowSetupActions(deps: {
 
 			// Terminal: every card is now complete or skipped.
 			trackSetupInput();
-			const completedPayload = deps.selections.buildCompletedSetupPayload();
+			const completedPayload = deps.inputs.buildCompletedSetupPayload();
 			const hasAnyCompleted =
 				Object.keys(completedPayload.nodeCredentials ?? {}).length > 0 ||
 				Object.keys(completedPayload.nodeParameters ?? {}).length > 0;

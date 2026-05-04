@@ -47,6 +47,10 @@ export class InstanceAiWorkflowSetup {
 		return this.root.getByTestId('instance-ai-workflow-setup-card-skipped');
 	}
 
+	getUsedByNodesHint(): Locator {
+		return this.root.getByTestId('instance-ai-workflow-setup-card-nodes-hint');
+	}
+
 	getParameterInput(parameterName: string): Locator {
 		return this.root.getByTestId(`parameter-input-${parameterName}`).getByRole('textbox');
 	}

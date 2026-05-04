@@ -123,9 +123,9 @@ describe('useWorkflowSetupInputs', () => {
 		const h = setupHarness();
 		h.inputs.markCardSkipped(h.cardA);
 
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.cardA, 'cred-1');
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'cred-1' },
 		});
 		expect(credentialTest.testCredentialInBackground).toHaveBeenCalledWith(
@@ -138,11 +138,11 @@ describe('useWorkflowSetupInputs', () => {
 
 	it('removes a selected credential when set to null', () => {
 		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.cardA, 'cred-1');
 
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', null);
+		h.inputs.setCredential(h.cardA, null);
 
-		expect(h.inputs.selections.value).toEqual({ 'HTTP Request': {} });
+		expect(h.inputs.credentialSelections.value).toEqual({ 'HTTP Request': {} });
 		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
 	});
 
@@ -151,7 +151,7 @@ describe('useWorkflowSetupInputs', () => {
 
 		expect(h.inputs.isCardComplete(h.cardA)).toBe(false);
 
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.cardA, 'cred-1');
 		expect(h.inputs.isCardComplete(h.cardA)).toBe(true);
 
 		credentialTest.testableTypes.add('httpBasicAuth');
@@ -163,7 +163,7 @@ describe('useWorkflowSetupInputs', () => {
 
 	it('reports credential test failures only for selected testable credentials', () => {
 		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.cardA, 'cred-1');
 		credentialsStore.credentialTestResults.set('cred-1', 'error');
 
 		expect(h.inputs.isCredentialTestFailed(h.cardA)).toBe(false);
@@ -192,8 +192,8 @@ describe('useWorkflowSetupInputs', () => {
 	it('builds only completed selections into the payload', () => {
 		const h = setupHarness();
 		credentialTest.testableTypes.add('httpBasicAuth');
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
-		h.inputs.setSelection('Slack', 'slackApi', 'cred-2');
+		h.inputs.setCredential(h.cardA, 'cred-1');
+		h.inputs.setCredential(h.cardB, 'cred-2');
 
 		expect(h.inputs.allCardsComplete()).toBe(false);
 		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
@@ -224,7 +224,7 @@ describe('useWorkflowSetupInputs', () => {
 		const h = setupHarness([card]);
 		await nextTick();
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'current-cred' },
 		});
 		expect(credentialTest.testCredentialInBackground).toHaveBeenCalledWith(
@@ -236,7 +236,7 @@ describe('useWorkflowSetupInputs', () => {
 
 	it('does not overwrite an existing user selection when cards refresh', async () => {
 		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'user-cred');
+		h.inputs.setCredential(h.cardA, 'user-cred');
 
 		h.cardsRef.value = [
 			{
@@ -246,7 +246,7 @@ describe('useWorkflowSetupInputs', () => {
 		];
 		await nextTick();
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'user-cred' },
 		});
 	});
@@ -266,7 +266,7 @@ describe('useWorkflowSetupInputs', () => {
 	it('clears a skip when the skipped card later becomes complete', async () => {
 		const h = setupHarness();
 		credentialTest.testableTypes.add('httpBasicAuth');
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'cred-1');
+		h.inputs.setCredential(h.cardA, 'cred-1');
 		h.inputs.markCardSkipped(h.cardA);
 
 		credentialsStore.credentialTestResults.set('cred-1', 'success');
@@ -285,7 +285,7 @@ describe('useWorkflowSetupInputs', () => {
 			name: 'Created credential',
 		});
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': { httpBasicAuth: 'created-cred' },
 		});
 	});
@@ -299,17 +299,17 @@ describe('useWorkflowSetupInputs', () => {
 			name: 'Created credential',
 		});
 
-		expect(h.inputs.selections.value).toEqual({});
+		expect(h.inputs.credentialSelections.value).toEqual({});
 	});
 
 	it('clears selections that reference a deleted credential', () => {
 		const h = setupHarness();
-		h.inputs.setSelection('HTTP Request', 'httpBasicAuth', 'deleted-cred');
-		h.inputs.setSelection('Slack', 'slackApi', 'other-cred');
+		h.inputs.setCredential(h.cardA, 'deleted-cred');
+		h.inputs.setCredential(h.cardB, 'other-cred');
 
 		credentialListeners.current?.onCredentialDeleted?.('deleted-cred');
 
-		expect(h.inputs.selections.value).toEqual({
+		expect(h.inputs.credentialSelections.value).toEqual({
 			'HTTP Request': {},
 			Slack: { slackApi: 'other-cred' },
 		});
@@ -368,5 +368,163 @@ describe('useWorkflowSetupInputs', () => {
 				'HTTP Request': { options: { path: 'new', keep: true } },
 			},
 		});
+	});
+
+	it('mirrors a primary credential selection across grouped target nodes', () => {
+		const groupedCard = makeWorkflowSetupCard({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedCard]);
+
+		h.inputs.setCredential(groupedCard, 'cred-1');
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: { httpBasicAuth: 'cred-1' },
+			Follower: { httpBasicAuth: 'cred-1' },
+		});
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: {
+				Primary: { httpBasicAuth: 'cred-1' },
+				Follower: { httpBasicAuth: 'cred-1' },
+			},
+		});
+	});
+
+	it('clears mirrored credential selections across grouped target nodes', () => {
+		const groupedCard = makeWorkflowSetupCard({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedCard]);
+		h.inputs.setCredential(groupedCard, 'cred-1');
+
+		h.inputs.setCredential(groupedCard, null);
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: {},
+			Follower: {},
+		});
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
+	});
+
+	it('seeds current credentials across grouped target nodes', async () => {
+		addCredential({ id: 'current-cred', type: 'httpBasicAuth', name: 'Current credential' });
+		const groupedCard = makeWorkflowSetupCard({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			currentCredentialId: 'current-cred',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+
+		const h = setupHarness([groupedCard]);
+		await nextTick();
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: { httpBasicAuth: 'current-cred' },
+			Follower: { httpBasicAuth: 'current-cred' },
+		});
+	});
+
+	it('clears all mirrored slots when a selected credential is deleted', () => {
+		const groupedCard = makeWorkflowSetupCard({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedCard]);
+		h.inputs.setCredential(groupedCard, 'deleted-cred');
+
+		credentialListeners.current?.onCredentialDeleted?.('deleted-cred');
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: {},
+			Follower: {},
+		});
+	});
+
+	it('mirrors a newly created credential on the active grouped primary card', () => {
+		const groupedCard = makeWorkflowSetupCard({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedCard]);
+
+		credentialListeners.current?.onCredentialCreated?.({
+			id: 'created-cred',
+			type: 'httpBasicAuth',
+			name: 'Created credential',
+		});
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Primary: { httpBasicAuth: 'created-cred' },
+			Follower: { httpBasicAuth: 'created-cred' },
+		});
+	});
+
+	it('writes only to an independent params-bearing card target', () => {
+		const groupedCard = makeWorkflowSetupCard({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const paramsCard = makeWorkflowSetupCard({
+			id: 'Params:httpBasicAuth',
+			targetNodeName: 'Params',
+			credentialType: 'httpBasicAuth',
+			parameterNames: ['url'],
+			credentialTargetNodes: [{ id: 'params', name: 'Params', type: 'n8n-nodes-base.httpRequest' }],
+		});
+		const h = setupHarness([groupedCard, paramsCard]);
+
+		h.inputs.setCredential(paramsCard, 'cred-params');
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			Params: { httpBasicAuth: 'cred-params' },
+		});
+	});
+
+	it('excludes skipped grouped cards from completed setup payloads', () => {
+		const groupedCard = makeWorkflowSetupCard({
+			id: 'Primary:httpBasicAuth',
+			targetNodeName: 'Primary',
+			credentialType: 'httpBasicAuth',
+			credentialTargetNodes: [
+				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
+				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
+			],
+		});
+		const h = setupHarness([groupedCard]);
+		h.inputs.setCredential(groupedCard, 'cred-1');
+		h.inputs.markCardSkipped(groupedCard);
+
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({});
 	});
 });

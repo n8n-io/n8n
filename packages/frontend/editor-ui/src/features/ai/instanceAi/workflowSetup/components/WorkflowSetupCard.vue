@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { computed, provide, ref, watch } from 'vue';
-import { N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
@@ -29,8 +29,17 @@ const credentialType = computed(() => card.value.credentialType);
 
 const selectedCredentialId = computed(() =>
 	credentialType.value
-		? (ctx.selections.value[card.value.targetNodeName]?.[credentialType.value] ?? null)
+		? (ctx.credentialSelections.value[card.value.targetNodeName]?.[credentialType.value] ?? null)
 		: null,
+);
+
+const targetNodeNames = computed(() => card.value.credentialTargetNodes.map((node) => node.name));
+const targetNodeNamesTooltip = computed(() => targetNodeNames.value.join(', '));
+const usedByNodesLabel = computed(() =>
+	i18n.baseText('instanceAi.workflowSetup.usedByNodes', {
+		adjustToNumber: targetNodeNames.value.length,
+		interpolate: { count: targetNodeNames.value.length },
+	}),
 );
 
 const isComplete = computed(() => ctx.isCardComplete(card.value));
@@ -122,7 +131,7 @@ provide(ExpressionLocalResolveContextSymbol, expressionContext);
 function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
 	if (!credentialType.value) return;
 	const data = update.properties.credentials?.[credentialType.value];
-	ctx.setSelection(card.value.targetNodeName, credentialType.value, data?.id ?? null);
+	ctx.setCredential(card.value, data?.id ?? null);
 }
 
 function onParameterValueChanged(update: IUpdateInformation) {
@@ -175,7 +184,20 @@ function onParameterValueChanged(update: IUpdateInformation) {
 				standalone
 				hide-issues
 				@credential-selected="onCredentialSelected"
-			/>
+			>
+				<template v-if="card.credentialTargetNodes.length > 1" #label-postfix>
+					<N8nTooltip placement="top">
+						<template #content>{{ targetNodeNamesTooltip }}</template>
+						<N8nText
+							size="small"
+							color="text-light"
+							data-test-id="instance-ai-workflow-setup-card-nodes-hint"
+						>
+							{{ usedByNodesLabel }}
+						</N8nText>
+					</N8nTooltip>
+				</template>
+			</NodeCredentials>
 
 			<div
 				v-if="parameterDefinitions.length > 0"

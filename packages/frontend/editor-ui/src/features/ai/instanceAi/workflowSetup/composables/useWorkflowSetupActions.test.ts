@@ -23,7 +23,7 @@ interface Harness {
 	activeCard: ComputedRef<WorkflowSetupCard | undefined>;
 	completedSet: Set<string>;
 	skippedSet: Set<string>;
-	selections: Ref<Record<string, Record<string, string>>>;
+	credentialSelections: Ref<Record<string, Record<string, string>>>;
 	skippedCardIds: Ref<Set<string>>;
 	goToStep: ReturnType<typeof vi.fn>;
 	apply: ReturnType<typeof vi.fn>;
@@ -53,7 +53,7 @@ function setupHarness(): Harness {
 
 	const completedSet = new Set<string>();
 	const skippedSet = new Set<string>();
-	const selections = ref<Record<string, Record<string, string>>>({});
+	const credentialSelections = ref<Record<string, Record<string, string>>>({});
 	const skippedCardIds = ref<Set<string>>(skippedSet);
 
 	const goToStep = vi.fn((idx: number) => {
@@ -91,8 +91,8 @@ function setupHarness(): Harness {
 		activeCard,
 		currentStepIndex,
 		goToStep,
-		selections: {
-			selections,
+		inputs: {
+			credentialSelections,
 			skippedCardIds,
 			isCardComplete: (card) => completedSet.has(card.id),
 			isCardSkipped: (card) => skippedSet.has(card.id),
@@ -112,7 +112,7 @@ function setupHarness(): Harness {
 		activeCard,
 		completedSet,
 		skippedSet,
-		selections,
+		credentialSelections,
 		skippedCardIds,
 		goToStep,
 		apply,
@@ -146,7 +146,7 @@ describe('useWorkflowSetupActions', () => {
 		// card A is completed (with a real selection so telemetry can read it),
 		// card B is the active one and the only unhandled card.
 		h.completedSet.add(h.cardA.id);
-		h.selections.value = { A: { typeA: 'cred-id' } };
+		h.credentialSelections.value = { A: { typeA: 'cred-id' } };
 		h.currentStepIndex.value = 1;
 		await nextTick();
 
@@ -187,7 +187,7 @@ describe('useWorkflowSetupActions', () => {
 		// card B has a selection that hasn't completed (e.g. cred test pending).
 		h.skippedSet.add(h.cardA.id);
 		h.skippedCardIds.value = new Set(h.skippedSet);
-		h.selections.value = { B: { typeB: 'cred-id-pending' } };
+		h.credentialSelections.value = { B: { typeB: 'cred-id-pending' } };
 		h.currentStepIndex.value = 1;
 		await nextTick();
 

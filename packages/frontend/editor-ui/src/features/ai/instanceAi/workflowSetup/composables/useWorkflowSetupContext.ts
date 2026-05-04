@@ -18,9 +18,7 @@ import { useWorkflowSetupActions } from './useWorkflowSetupActions';
 import { useWorkflowSetupApply } from './useWorkflowSetupApply';
 import { useWorkflowSetupBootstrap } from './useWorkflowSetupBootstrap';
 import { useWorkflowSetupCards } from './useWorkflowSetupCards';
-import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
-
-type SelectionsMap = Record<string, Record<string, string>>;
+import { useWorkflowSetupInputs, type CredentialSelectionsMap } from './useWorkflowSetupInputs';
 
 export interface WorkflowSetupContext {
 	cards: ComputedRef<WorkflowSetupCard[]>;
@@ -28,13 +26,13 @@ export interface WorkflowSetupContext {
 	activeCard: ComputedRef<WorkflowSetupCard | undefined>;
 	hasOtherUnhandledCards: ComputedRef<boolean>;
 	canAdvanceToNextIncomplete: ComputedRef<boolean>;
-	selections: Ref<SelectionsMap>;
+	credentialSelections: Ref<CredentialSelectionsMap>;
 	terminalState: Ref<TerminalState | null>;
 	isReady: Ref<boolean>;
 	projectId: ComputedRef<string | undefined>;
 	credentialFlow: ComputedRef<InstanceAiCredentialFlow | undefined>;
 	isActionPending: Ref<boolean>;
-	setSelection: (nodeName: string, credType: string, credId: string | null) => void;
+	setCredential: (card: WorkflowSetupCard, credId: string | null) => void;
 	setParameterValue: (card: WorkflowSetupCard, parameterName: string, value: unknown) => void;
 	getDisplayNode: (card: WorkflowSetupCard) => INodeUi;
 	isCardComplete: (card: WorkflowSetupCard) => boolean;
@@ -110,8 +108,8 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		activeCard,
 		currentStepIndex,
 		goToStep,
-		selections: {
-			selections: inputsState.selections,
+		inputs: {
+			credentialSelections: inputsState.credentialSelections,
 			skippedCardIds: inputsState.skippedCardIds,
 			isCardComplete: inputsState.isCardComplete,
 			isCardSkipped: inputsState.isCardSkipped,
@@ -145,13 +143,13 @@ export function provideWorkflowSetupContext(opts: ProvideOptions): WorkflowSetup
 		activeCard,
 		hasOtherUnhandledCards: actions.hasOtherUnhandledCards,
 		canAdvanceToNextIncomplete: actions.canAdvanceToNextIncomplete,
-		selections: inputsState.selections,
+		credentialSelections: inputsState.credentialSelections,
 		terminalState: applyMachine.terminalState,
 		isReady: bootstrap.isReady,
 		projectId,
 		credentialFlow,
 		isActionPending: actions.isActionPending,
-		setSelection: inputsState.setSelection,
+		setCredential: inputsState.setCredential,
 		setParameterValue: inputsState.setParameterValue,
 		getDisplayNode: inputsState.getDisplayNode,
 		isCardComplete: inputsState.isCardComplete,

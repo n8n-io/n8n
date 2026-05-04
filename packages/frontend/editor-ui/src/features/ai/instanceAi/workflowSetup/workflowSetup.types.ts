@@ -8,6 +8,7 @@ export interface WorkflowSetupCard {
 	node: InstanceAiWorkflowSetupNode['node'];
 	currentCredentialId: string | null;
 	parameterNames: string[];
+	credentialTargetNodes: Array<{ id: string; name: string; type: string }>;
 }
 
 export interface WorkflowSetupApplyPayload {

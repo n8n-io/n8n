@@ -1,12 +1,23 @@
+import { generateKeyPairSync } from 'crypto';
+
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect, instanceAiTestConfig } from './fixtures';
 
 test.use(instanceAiTestConfig);
 
-const APPLY_WORKFLOW_NAME = 'B3 Workflow Setup Apply Credentials';
-const APPLY_BASIC_CREDENTIAL_NAME = 'B3 Apply Basic Auth';
-const APPLY_HEADER_CREDENTIAL_NAME = 'B3 Apply Header Auth';
+const { privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY } = generateKeyPairSync('rsa', {
+	modulusLength: 2048,
+	privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+	publicKeyEncoding: { type: 'spki', format: 'pem' },
+});
+
+const MIXED_GROUPING_WORKFLOW_NAME = 'B3 Workflow Setup Apply Credentials';
+const MIXED_INITIAL_HTTP_CREDENTIAL_NAME = 'B3 Mixed Initial Basic Auth';
+const MIXED_SHARED_HTTP_CREDENTIAL_NAME = 'B3 Mixed Shared Basic Auth';
+const MIXED_OTHER_HTTP_CREDENTIAL_NAME = 'B3 Mixed Other Basic Auth';
+const MIXED_INITIAL_GOOGLE_CREDENTIAL_NAME = 'B3 Mixed Initial Google Sheets';
+const MIXED_GOOGLE_CREDENTIAL_NAME = 'B3 Mixed Google Sheets';
 
 const DEFER_WORKFLOW_NAME = 'B3 Workflow Setup Defer Credentials';
 
@@ -78,6 +89,110 @@ function createParameterAndCredentialWorkflow(name: string): Partial<IWorkflowBa
 	return workflow;
 }
 
+function createMixedGroupedCredentialWorkflow(name: string): Partial<IWorkflowBase> {
+	const sharedUrl = 'https://example.com/shared-api';
+
+	return {
+		name,
+		active: false,
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'http-shared-a',
+				name: 'HTTP Request Shared A',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [220, 0],
+				parameters: {
+					method: 'GET',
+					url: sharedUrl,
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpBasicAuth',
+				},
+			},
+			{
+				id: 'google-leads',
+				name: 'Google Sheets Leads',
+				type: 'n8n-nodes-base.googleSheets',
+				typeVersion: 4.7,
+				position: [440, -120],
+				parameters: {
+					authentication: 'serviceAccount',
+					resource: 'sheet',
+					operation: 'read',
+					documentId: { __rl: true, mode: 'id', value: 'spreadsheet123' },
+					sheetName: { __rl: true, mode: 'name', value: 'Leads' },
+				},
+			},
+			{
+				id: 'http-shared-b',
+				name: 'HTTP Request Shared B',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [660, 0],
+				parameters: {
+					method: 'GET',
+					url: sharedUrl,
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpBasicAuth',
+				},
+			},
+			{
+				id: 'google-contacts',
+				name: 'Google Sheets Contacts',
+				type: 'n8n-nodes-base.googleSheets',
+				typeVersion: 4.7,
+				position: [880, -120],
+				parameters: {
+					authentication: 'serviceAccount',
+					resource: 'sheet',
+					operation: 'read',
+					documentId: { __rl: true, mode: 'id', value: 'spreadsheet456' },
+					sheetName: { __rl: true, mode: 'name', value: 'Contacts' },
+				},
+			},
+			{
+				id: 'http-other',
+				name: 'HTTP Request Other URL',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [1100, 0],
+				parameters: {
+					method: 'GET',
+					url: 'https://example.com/other-api',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpBasicAuth',
+				},
+			},
+		],
+		connections: {
+			'Manual Trigger': {
+				main: [[{ node: 'HTTP Request Shared A', type: 'main', index: 0 }]],
+			},
+			'HTTP Request Shared A': {
+				main: [[{ node: 'Google Sheets Leads', type: 'main', index: 0 }]],
+			},
+			'Google Sheets Leads': {
+				main: [[{ node: 'HTTP Request Shared B', type: 'main', index: 0 }]],
+			},
+			'HTTP Request Shared B': {
+				main: [[{ node: 'Google Sheets Contacts', type: 'main', index: 0 }]],
+			},
+			'Google Sheets Contacts': {
+				main: [[{ node: 'HTTP Request Other URL', type: 'main', index: 0 }]],
+			},
+		},
+		settings: {},
+	};
+}
+
 function createTwoCardWorkflow(name: string): Partial<IWorkflowBase> {
 	return {
 		name,
@@ -105,11 +220,24 @@ function createTwoCardWorkflow(name: string): Partial<IWorkflowBase> {
 				},
 			},
 			{
+				id: 'basic-copy',
+				name: 'HTTP Request Basic Copy',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [440, 0],
+				parameters: {
+					method: 'GET',
+					url: 'https://example.com/basic',
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpBasicAuth',
+				},
+			},
+			{
 				id: 'header',
 				name: 'HTTP Request Header',
 				type: 'n8n-nodes-base.httpRequest',
 				typeVersion: 4.2,
-				position: [440, 0],
+				position: [660, 0],
 				parameters: {
 					method: 'GET',
 					url: 'https://example.com/header',
@@ -123,6 +251,9 @@ function createTwoCardWorkflow(name: string): Partial<IWorkflowBase> {
 				main: [[{ node: 'HTTP Request Basic', type: 'main', index: 0 }]],
 			},
 			'HTTP Request Basic': {
+				main: [[{ node: 'HTTP Request Basic Copy', type: 'main', index: 0 }]],
+			},
+			'HTTP Request Basic Copy': {
 				main: [[{ node: 'HTTP Request Header', type: 'main', index: 0 }]],
 			},
 		},
@@ -264,65 +395,145 @@ test.describe(
 			});
 		});
 
-		test('should create new credentials across two setup cards and persist them on apply', async ({
-			n8n,
-		}) => {
-			const workflow = await n8n.api.workflows.createWorkflow(
-				createTwoCardWorkflow(APPLY_WORKFLOW_NAME),
-			);
+		test(
+			'should group mixed credential cards by node-specific rules and persist each group',
+			{
+				annotation: [
+					{
+						type: 'expectation-slug',
+						description:
+							'should-create-new-credentials-across-two-setup-cards-and-persist-them-on-apply',
+					},
+				],
+			},
+			async ({ n8n, n8nContainer }) => {
+				test.skip(
+					!n8nContainer,
+					'Requires proxy service to mock Google service account token exchange',
+				);
 
-			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(`Set up the workflow named "${APPLY_WORKFLOW_NAME}".`);
+				await n8nContainer.services.proxy.createExpectation({
+					httpRequest: { method: 'POST', path: '/token' },
+					httpResponse: {
+						statusCode: 200,
+						headers: { 'Content-Type': ['application/json'] },
+						body: JSON.stringify({
+							access_token: 'mock-google-access-token',
+							token_type: 'Bearer',
+							expires_in: 3600,
+						}),
+					},
+					times: { unlimited: true },
+				});
 
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
-			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+				await n8n.api.credentials.createCredential({
+					name: MIXED_INITIAL_HTTP_CREDENTIAL_NAME,
+					type: 'httpBasicAuth',
+					data: { user: 'initial-http-user', password: 'initial-http-password' },
+				});
+				await n8n.api.credentials.createCredential({
+					name: MIXED_SHARED_HTTP_CREDENTIAL_NAME,
+					type: 'httpBasicAuth',
+					data: { user: 'shared-http-user', password: 'shared-http-password' },
+				});
+				await n8n.api.credentials.createCredential({
+					name: MIXED_OTHER_HTTP_CREDENTIAL_NAME,
+					type: 'httpBasicAuth',
+					data: { user: 'other-http-user', password: 'other-http-password' },
+				});
+				await n8n.api.credentials.createCredential({
+					name: MIXED_INITIAL_GOOGLE_CREDENTIAL_NAME,
+					type: 'googleApi',
+					data: {
+						email: 'initial@project.iam.gserviceaccount.com',
+						privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+					},
+				});
+				await n8n.api.credentials.createCredential({
+					name: MIXED_GOOGLE_CREDENTIAL_NAME,
+					type: 'googleApi',
+					data: {
+						email: 'sheets@project.iam.gserviceaccount.com',
+						privateKey: GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY,
+					},
+				});
 
-			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
-			await n8n.instanceAi.credentialModal.waitForModal();
-			await expect(n8n.instanceAi.credentialModal.getFieldInput('user')).toBeVisible();
-			await expect(n8n.instanceAi.credentialModal.getFieldInput('password')).toBeVisible();
-			await n8n.instanceAi.credentialModal.addCredential(
-				{
-					user: 'apply-basic-user',
-					password: 'apply-basic-password',
-				},
-				{ name: APPLY_BASIC_CREDENTIAL_NAME },
-			);
+				const workflow = await n8n.api.workflows.createWorkflow(
+					createMixedGroupedCredentialWorkflow(MIXED_GROUPING_WORKFLOW_NAME),
+				);
 
-			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
-			await n8n.instanceAi.workflowSetup.getApplyButton().click();
-			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(
+					`Set up the workflow named "${MIXED_GROUPING_WORKFLOW_NAME}".`,
+				);
 
-			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
-			await n8n.instanceAi.credentialModal.waitForModal();
-			await expect(n8n.instanceAi.credentialModal.getFieldInput('name')).toBeVisible();
-			await expect(n8n.instanceAi.credentialModal.getFieldInput('value')).toBeVisible();
-			await n8n.instanceAi.credentialModal.addCredential(
-				{
-					name: 'x-apply-token',
-					value: 'apply-header-value',
-				},
-				{ name: APPLY_HEADER_CREDENTIAL_NAME },
-			);
+				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+				await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 3')).toBeVisible();
+				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toHaveText(
+					'Used by 2 nodes',
+				);
+				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_SHARED_HTTP_CREDENTIAL_NAME);
+				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
+					MIXED_SHARED_HTTP_CREDENTIAL_NAME,
+				);
+				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
-			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
-			await n8n.instanceAi.workflowSetup.getApplyButton().click();
-			await n8n.instanceAi.waitForResponseComplete();
+				await n8n.instanceAi.workflowSetup.getApplyButton().click();
+				await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 3')).toBeVisible();
+				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toHaveText(
+					'Used by 2 nodes',
+				);
+				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_GOOGLE_CREDENTIAL_NAME);
+				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
+					MIXED_GOOGLE_CREDENTIAL_NAME,
+				);
+				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
-			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
-			expectAssignedCredentialName(
-				persisted,
-				'HTTP Request Basic',
-				'httpBasicAuth',
-				APPLY_BASIC_CREDENTIAL_NAME,
-			);
-			expectAssignedCredentialName(
-				persisted,
-				'HTTP Request Header',
-				'httpHeaderAuth',
-				APPLY_HEADER_CREDENTIAL_NAME,
-			);
-		});
+				await n8n.instanceAi.workflowSetup.getApplyButton().click();
+				await expect(n8n.instanceAi.workflowSetup.getStepText('3 of 3')).toBeVisible();
+				await expect(n8n.instanceAi.workflowSetup.getUsedByNodesHint()).toBeHidden();
+				await n8n.instanceAi.workflowSetup.selectCredential(MIXED_OTHER_HTTP_CREDENTIAL_NAME);
+				await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
+					MIXED_OTHER_HTTP_CREDENTIAL_NAME,
+				);
+
+				await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+				await n8n.instanceAi.workflowSetup.getApplyButton().click();
+				await n8n.instanceAi.waitForResponseComplete();
+
+				const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
+				expectAssignedCredentialName(
+					persisted,
+					'HTTP Request Shared A',
+					'httpBasicAuth',
+					MIXED_SHARED_HTTP_CREDENTIAL_NAME,
+				);
+				expectAssignedCredentialName(
+					persisted,
+					'HTTP Request Shared B',
+					'httpBasicAuth',
+					MIXED_SHARED_HTTP_CREDENTIAL_NAME,
+				);
+				expectAssignedCredentialName(
+					persisted,
+					'Google Sheets Leads',
+					'googleApi',
+					MIXED_GOOGLE_CREDENTIAL_NAME,
+				);
+				expectAssignedCredentialName(
+					persisted,
+					'Google Sheets Contacts',
+					'googleApi',
+					MIXED_GOOGLE_CREDENTIAL_NAME,
+				);
+				expectAssignedCredentialName(
+					persisted,
+					'HTTP Request Other URL',
+					'httpBasicAuth',
+					MIXED_OTHER_HTTP_CREDENTIAL_NAME,
+				);
+			},
+		);
 
 		test('should defer all setup when user skips every card without persisting credentials', async ({
 			n8n,
@@ -348,6 +559,9 @@ test.describe(
 
 			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
 			expect(getNode(persisted, 'HTTP Request Basic')?.credentials?.httpBasicAuth).toBeUndefined();
+			expect(
+				getNode(persisted, 'HTTP Request Basic Copy')?.credentials?.httpBasicAuth,
+			).toBeUndefined();
 			expect(
 				getNode(persisted, 'HTTP Request Header')?.credentials?.httpHeaderAuth,
 			).toBeUndefined();
@@ -390,6 +604,12 @@ test.describe(
 			expectAssignedCredentialName(
 				persisted,
 				'HTTP Request Basic',
+				'httpBasicAuth',
+				PARTIAL_BASIC_CREDENTIAL_NAME,
+			);
+			expectAssignedCredentialName(
+				persisted,
+				'HTTP Request Basic Copy',
 				'httpBasicAuth',
 				PARTIAL_BASIC_CREDENTIAL_NAME,
 			);
