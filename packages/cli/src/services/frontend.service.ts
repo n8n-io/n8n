@@ -222,6 +222,7 @@ export class FrontendService {
 				oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 				oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 			},
+			jwksUri: `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`,
 			versionNotifications: {
 				enabled: this.globalConfig.versionNotifications.enabled,
 				endpoint: this.globalConfig.versionNotifications.endpoint,
@@ -425,6 +426,7 @@ export class FrontendService {
 			oauth1: `${instanceBaseUrl}/${restEndpoint}/oauth1-credential/callback`,
 			oauth2: `${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`,
 		};
+		this.settings.jwksUri = `${instanceBaseUrl}/${restEndpoint}/.well-known/jwks.json`;
 
 		// refresh user management status
 		Object.assign(this.settings.userManagement, {
