@@ -98,13 +98,13 @@ describe('WebhookRequestHandler', () => {
 			expect(res.header).toHaveBeenCalledWith('Access-Control-Max-Age', '300');
 		});
 
-		it('should handle wildcard origin', async () => {
-			const randomOrigin = randomString(10);
+		it('should handle wildcard origin — must return literal * not the caller origin', async () => {
+			const attackerOrigin = 'https://evil.example.com';
 			const req = mock<WebhookRequest | WebhookOptionsRequest>({
 				path: '/',
 				method: 'OPTIONS',
 				headers: {
-					origin: randomOrigin,
+					origin: attackerOrigin,
 					'access-control-request-method': 'GET',
 				},
 				params: { path: 'test' },
@@ -124,7 +124,14 @@ describe('WebhookRequestHandler', () => {
 				'Access-Control-Allow-Methods',
 				'OPTIONS, GET, PATCH',
 			);
-			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', randomOrigin);
+			// Must be '*' — never the caller's origin. Reflecting the caller's origin
+			// when allowedOrigins='*' would allow a future Access-Control-Allow-Credentials
+			// header to grant credential access to arbitrary third-party sites.
+			expect(res.header).toHaveBeenCalledWith('Access-Control-Allow-Origin', '*');
+			expect(res.header).not.toHaveBeenCalledWith(
+				'Access-Control-Allow-Origin',
+				attackerOrigin,
+			);
 		});
 
 		it('should handle custom origin', async () => {

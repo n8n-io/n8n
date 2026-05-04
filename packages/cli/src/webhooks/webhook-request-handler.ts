@@ -219,7 +219,12 @@ class WebhookRequestHandler {
 					res.header('Access-Control-Allow-Origin', defaultOrigin);
 				}
 			} else {
-				res.header('Access-Control-Allow-Origin', req.headers.origin);
+				// Use the literal wildcard '*' rather than echoing the request Origin.
+				// Reflecting the caller's origin would allow a future addition of
+				// Access-Control-Allow-Credentials: true to grant credential access to
+				// arbitrary third-party sites. Wildcard explicitly disables credential
+				// sharing per the CORS specification.
+				res.header('Access-Control-Allow-Origin', '*');
 			}
 
 			if (method === 'OPTIONS') {
