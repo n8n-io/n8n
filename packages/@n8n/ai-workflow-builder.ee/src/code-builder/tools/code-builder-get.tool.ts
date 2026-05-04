@@ -62,26 +62,34 @@ function getGeneratedNodesPaths(nodeDefinitionDirs?: string[]): string[] {
 }
 
 /**
+ * Synthetic suffixes appended to base node names when tool variants are generated at runtime.
+ * Listed most-specific-first so "slackHitlTool" strips to "slack" rather than "slackHitl".
+ *  - "HitlTool":  appended by createHitlTools() in @n8n/cli/src/tool-generation/hitl-tools.ts
+ *  - "Tool":      appended by createAiTools() in @n8n/cli/src/tool-generation/ai-tools.ts
+ */
+const TOOL_VARIANT_SUFFIXES = ['HitlTool', 'Tool'] as const;
+
+/**
  * Find the first nodes path that contains the given node directory.
  * Returns { nodesPath, nodeDir } or null if not found in any dir.
+ *
+ * For tool variants (no on-disk type files of their own), falls back to the base node's
+ * directory by stripping known synthetic suffixes.
  */
 function findNodeDir(
 	parsed: { packageName: string; nodeName: string },
 	nodesPaths: string[],
 ): { nodesPath: string; nodeDir: string } | null {
-	for (const nodesPath of nodesPaths) {
-		const nodeDir = join(nodesPath, parsed.packageName, parsed.nodeName);
-		if (existsSync(nodeDir)) {
-			return { nodesPath, nodeDir };
+	const candidateNames: string[] = [parsed.nodeName];
+	for (const suffix of TOOL_VARIANT_SUFFIXES) {
+		if (parsed.nodeName.endsWith(suffix)) {
+			candidateNames.push(parsed.nodeName.slice(0, -suffix.length));
 		}
 	}
 
-	// Tool variant fallback: e.g. "httpRequestTool" -> "httpRequest"
-	// Tool variants share type definitions with their base node
-	if (parsed.nodeName.endsWith('Tool')) {
-		const baseName = parsed.nodeName.slice(0, -4);
+	for (const candidate of candidateNames) {
 		for (const nodesPath of nodesPaths) {
-			const nodeDir = join(nodesPath, parsed.packageName, baseName);
+			const nodeDir = join(nodesPath, parsed.packageName, candidate);
 			if (existsSync(nodeDir)) {
 				return { nodesPath, nodeDir };
 			}
@@ -355,10 +363,16 @@ function resolveModePath(
 }
 
 /**
- * Try to resolve file path for a specific node ID
- * This is the core resolution logic used by getNodeFilePath
+ * Get the file path for a node ID, optionally for a specific version and discriminators.
+ * If no version specified, returns the latest version. If the node uses split structure,
+ * discriminators are required.
+ *
+ * Tool variants share their base node's type definition. The suffix-to-base mapping lives
+ * in findNodeDir, which strips known synthetic suffixes ("HitlTool", then "Tool") to reach
+ * the base directory. Error messages always reference the original nodeId, never a stripped
+ * intermediate name.
  */
-function tryGetNodeFilePath(
+function getNodeFilePath(
 	nodeId: string,
 	version: string | undefined,
 	nodeDefinitionDirs: string[] | undefined,
@@ -453,35 +467,6 @@ function tryGetNodeFilePath(
 	}
 
 	return { filePath };
-}
-
-/**
- * Get the file path for a node ID, optionally for a specific version and discriminators
- * If no version specified, returns the latest version
- * If node uses split structure, discriminators are required
- *
- * For tool variants (e.g., "googleCalendarTool"), falls back to the base node
- * (e.g., "googleCalendar") since tool variants don't have separate type files.
- */
-function getNodeFilePath(
-	nodeId: string,
-	version?: string,
-	nodeDefinitionDirs?: string[],
-	discriminators?: { resource?: string; operation?: string; mode?: string },
-): PathResolutionResult {
-	// Try exact node ID first
-	let result = tryGetNodeFilePath(nodeId, version, nodeDefinitionDirs, discriminators);
-
-	// If not found and node name ends with 'Tool', try base node as fallback
-	// (e.g., n8n-nodes-base.googleCalendarTool -> n8n-nodes-base.googleCalendar)
-	// Note: Some nodes legitimately end in Tool (agentTool, mcpClientTool) but those
-	// have their own type files, so this fallback only triggers when no file is found
-	if (result.error && nodeId.endsWith('Tool')) {
-		const baseNodeId = nodeId.slice(0, -4);
-		result = tryGetNodeFilePath(baseNodeId, version, nodeDefinitionDirs, discriminators);
-	}
-
-	return result;
 }
 
 /**
