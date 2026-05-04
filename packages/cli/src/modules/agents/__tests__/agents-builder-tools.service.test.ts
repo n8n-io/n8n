@@ -5,8 +5,13 @@ import { mock } from 'jest-mock-extended';
 
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
-import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
+import {
+	AgentsBuilderToolsService,
+	getAgentConfigHash,
+} from '../builder/agents-builder-tools.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
+import type { Agent } from '../entities/agent.entity';
+import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
 const ctx = {
@@ -32,6 +37,26 @@ function makeService() {
 	return { service, agentsService, secureRuntime };
 }
 
+const baseConfig: AgentJsonConfig = {
+	name: 'Agent One',
+	model: 'anthropic/claude-sonnet-4-5',
+	credential: 'Anthropic Key',
+	instructions: 'Help the user.',
+	tools: [],
+	skills: [],
+};
+
+function makeAgent(config: AgentJsonConfig = baseConfig): Agent {
+	return {
+		schema: config,
+		integrations: [],
+		updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+		versionId: 'v1',
+		tools: {},
+		skills: {},
+	} as unknown as Agent;
+}
+
 describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
@@ -39,6 +64,142 @@ describe('AgentsBuilderToolsService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	describe('JSON config tools', () => {
+		function getJsonTool(service: AgentsBuilderToolsService, name: string) {
+			return service
+				.getTools(agentId, projectId, credentialProvider)
+				.json.find((tool) => tool.name === name)!;
+		}
+
+		it('read_config returns the current config snapshot metadata', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.findById.mockResolvedValue(makeAgent());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.READ_CONFIG).handler!({}, ctx);
+
+			expect(result).toEqual({
+				ok: true,
+				config: { ...baseConfig, integrations: [] },
+				configHash: getAgentConfigHash({ ...baseConfig, integrations: [] }),
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				versionId: 'v1',
+			});
+		});
+
+		it('patch_config applies a patch when baseConfigHash matches', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig = { ...currentConfig, description: 'Updated description' };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: updatedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'add', path: '/description', value: 'Updated description' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, updatedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: updatedConfig,
+				configHash: getAgentConfigHash(updatedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('patch_config rejects stale baseConfigHash without updating', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: 'stale-hash',
+					operations: JSON.stringify([
+						{ op: 'add', path: '/description', value: 'Updated description' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				stage: 'stale',
+				errors: expect.arrayContaining([expect.objectContaining({ path: '(root)' })]),
+				config: currentConfig,
+				configHash: getAgentConfigHash(currentConfig),
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				versionId: 'v1',
+			});
+		});
+
+		it('write_config applies a full config when baseConfigHash matches', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: updatedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, updatedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: updatedConfig,
+				configHash: getAgentConfigHash(updatedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('write_config rejects stale baseConfigHash without updating', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: 'stale-hash',
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				stage: 'stale',
+				errors: expect.arrayContaining([expect.objectContaining({ path: '(root)' })]),
+				config: currentConfig,
+				configHash: getAgentConfigHash(currentConfig),
+				updatedAt: '2026-01-01T00:00:00.000Z',
+				versionId: 'v1',
+			});
+		});
 	});
 
 	describe('build_custom_tool tool', () => {

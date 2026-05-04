@@ -3,6 +3,7 @@
  * routing, and tests can't drift on string typos.
  */
 export const BUILDER_TOOLS = {
+	READ_CONFIG: 'read_config',
 	WRITE_CONFIG: 'write_config',
 	PATCH_CONFIG: 'patch_config',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',

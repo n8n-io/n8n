@@ -4,10 +4,12 @@ import { agentSkillSchema } from '@n8n/api-types';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Operation } from 'fast-json-patch';
+import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
+import { composeJsonConfig } from '../json-config/agent-config-composition';
 import type { AgentJsonConfig, ConfigValidationError } from '../json-config/agent-json-config';
 import {
 	AgentJsonConfigSchema,
@@ -24,6 +26,19 @@ const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
 		'Refusing to write an agent with empty instructions. Ask the user what the agent should do before calling write_config or patch_config again.',
 };
 
+const STALE_CONFIG_ERROR: ConfigValidationError = {
+	path: '(root)',
+	message:
+		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
+};
+
+export interface AgentConfigSnapshot {
+	config: AgentJsonConfig | null;
+	configHash: string | null;
+	updatedAt: string | null;
+	versionId: string | null;
+}
+
 function rejectIfEmptyInstructions(
 	config: AgentJsonConfig,
 ): { errors: ConfigValidationError[] } | null {
@@ -31,6 +46,44 @@ function rejectIfEmptyInstructions(
 		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
 	}
 	return null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function canonicalizeJson(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map((item) => canonicalizeJson(item));
+	}
+
+	if (!isRecord(value)) return value;
+
+	const sorted: Record<string, unknown> = {};
+	for (const key of Object.keys(value).sort()) {
+		sorted[key] = canonicalizeJson(value[key]);
+	}
+	return sorted;
+}
+
+export function getAgentConfigHash(config: AgentJsonConfig | null): string | null {
+	if (!config) return null;
+	return createHash('sha256')
+		.update(JSON.stringify(canonicalizeJson(config)))
+		.digest('hex');
+}
+
+function snapshotFromConfig(
+	config: AgentJsonConfig | null,
+	updatedAt: string | null,
+	versionId: string | null,
+): AgentConfigSnapshot {
+	return {
+		config,
+		configHash: getAgentConfigHash(config),
+		updatedAt,
+		versionId,
+	};
 }
 
 export interface BuilderTools {
@@ -63,33 +116,16 @@ export class AgentsBuilderToolsService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 	): BuiltTool[] {
-		const writeConfigTool = new Tool(BUILDER_TOOLS.WRITE_CONFIG)
+		const readConfigTool = new Tool(BUILDER_TOOLS.READ_CONFIG)
 			.description(
-				'Create or replace the agent configuration by writing a complete JSON string. ' +
-					'Returns { ok: true } on success or { ok: false, errors } with path, message, ' +
-					'expected, received fields on validation failure.',
+				'Read the latest persisted agent configuration and freshness metadata. ' +
+					'Returns { ok: true, config, configHash, updatedAt, versionId }. ' +
+					'Call this before every write_config or patch_config and use configHash as baseConfigHash.',
 			)
-			.input(
-				z.object({
-					json: z.string().describe('Complete agent configuration as a JSON string'),
-				}),
-			)
-			.handler(async ({ json }: { json: string }) => {
-				const parsed = tryParseConfigJson(json);
-				if (!parsed.ok) {
-					return { ok: false, errors: parsed.errors };
-				}
-				const zodResult = AgentJsonConfigSchema.safeParse(parsed.data);
-				if (!zodResult.success) {
-					return { ok: false, errors: formatZodErrors(zodResult.error) };
-				}
-				const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
-				if (emptyInstructions) {
-					return { ok: false, errors: emptyInstructions.errors };
-				}
+			.input(z.object({}))
+			.handler(async () => {
 				try {
-					await this.agentsService.updateConfig(agentId, projectId, zodResult.data);
-					return { ok: true };
+					return { ok: true, ...(await this.getConfigSnapshot(agentId, projectId)) };
 				} catch (e) {
 					return {
 						ok: false,
@@ -99,70 +135,173 @@ export class AgentsBuilderToolsService {
 			})
 			.build();
 
+		const writeConfigTool = new Tool(BUILDER_TOOLS.WRITE_CONFIG)
+			.description(
+				'Create or replace the agent configuration by writing a complete JSON string. ' +
+					'Requires baseConfigHash from the immediately preceding read_config result, or from a stale retry response. ' +
+					'Do not use a configHash copied from the prompt snapshot. ' +
+					'Returns { ok: true, config, configHash, updatedAt, versionId } on success or ' +
+					'{ ok: false, stage, errors } with path, message, expected, received fields on failure.',
+			)
+			.input(
+				z.object({
+					json: z.string().describe('Complete agent configuration as a JSON string'),
+					baseConfigHash: z
+						.string()
+						.nullable()
+						.describe(
+							'configHash from the immediately preceding read_config result; null only if no config exists',
+						),
+				}),
+			)
+			.handler(
+				async ({ json, baseConfigHash }: { json: string; baseConfigHash: string | null }) => {
+					const parsed = tryParseConfigJson(json);
+					if (!parsed.ok) {
+						return { ok: false, errors: parsed.errors };
+					}
+					let snapshot: AgentConfigSnapshot;
+					try {
+						snapshot = await this.getConfigSnapshot(agentId, projectId);
+					} catch (e) {
+						return {
+							ok: false,
+							stage: 'stale',
+							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+					if (baseConfigHash !== snapshot.configHash) {
+						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
+					}
+					const zodResult = AgentJsonConfigSchema.safeParse(parsed.data);
+					if (!zodResult.success) {
+						return { ok: false, errors: formatZodErrors(zodResult.error) };
+					}
+					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+					if (emptyInstructions) {
+						return { ok: false, errors: emptyInstructions.errors };
+					}
+					try {
+						const result = await this.agentsService.updateConfig(
+							agentId,
+							projectId,
+							zodResult.data,
+						);
+						return {
+							ok: true,
+							...snapshotFromConfig(result.config, result.updatedAt, result.versionId),
+						};
+					} catch (e) {
+						return {
+							ok: false,
+							stage: 'schema',
+							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
+			.build();
+
 		const patchConfigTool = new Tool(BUILDER_TOOLS.PATCH_CONFIG)
 			.description(
 				'Apply RFC 6902 JSON Patch operations to the current agent configuration. ' +
 					'Pass an array of patch operations as a JSON string. ' +
+					'Requires baseConfigHash from the immediately preceding read_config result, or from a stale retry response. ' +
+					'Do not use a configHash copied from the prompt snapshot. ' +
 					'Supported ops: add, remove, replace, move, copy, test. ' +
-					'Returns { ok: true, config } on success or { ok: false, stage, errors } on failure. ' +
-					'stage is "parse", "patch", or "schema".',
+					'Returns { ok: true, config, configHash, updatedAt, versionId } on success or ' +
+					'{ ok: false, stage, errors } on failure. ' +
+					'stage is "parse", "stale", "patch", or "schema".',
 			)
 			.input(
 				z.object({
 					operations: z.string().describe('RFC 6902 JSON Patch operations array as a JSON string'),
+					baseConfigHash: z
+						.string()
+						.nullable()
+						.describe(
+							'configHash from the immediately preceding read_config result; null only if no config exists',
+						),
 				}),
 			)
-			.handler(async ({ operations }: { operations: string }) => {
-				const parsedOps = tryParseConfigJson(operations);
-				if (!parsedOps.ok) {
-					return { ok: false, stage: 'parse', errors: parsedOps.errors };
-				}
+			.handler(
+				async ({
+					operations,
+					baseConfigHash,
+				}: {
+					operations: string;
+					baseConfigHash: string | null;
+				}) => {
+					const parsedOps = tryParseConfigJson(operations);
+					if (!parsedOps.ok) {
+						return { ok: false, stage: 'parse', errors: parsedOps.errors };
+					}
 
-				let existingConfig: AgentJsonConfig;
-				try {
-					existingConfig = await this.agentsService.getConfig(agentId, projectId);
-				} catch (e) {
-					return {
-						ok: false,
-						stage: 'patch',
-						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-				const jsonpatch = (await import('fast-json-patch')).default;
-				const ops = parsedOps.data as Operation[];
-				const patchError = jsonpatch.validate(ops, existingConfig);
-				if (patchError) {
-					const opPath = (patchError.operation as { path?: string } | undefined)?.path ?? '(root)';
-					return {
-						ok: false,
-						stage: 'patch',
-						errors: [{ path: opPath, message: patchError.message ?? 'Invalid patch operation' }],
-					};
-				}
+					let snapshot: AgentConfigSnapshot;
+					try {
+						snapshot = await this.getConfigSnapshot(agentId, projectId);
+					} catch (e) {
+						return {
+							ok: false,
+							stage: 'stale',
+							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+					if (baseConfigHash !== snapshot.configHash) {
+						return { ok: false, stage: 'stale', errors: [STALE_CONFIG_ERROR], ...snapshot };
+					}
+					if (!snapshot.config) {
+						return {
+							ok: false,
+							stage: 'patch',
+							errors: [{ path: '(root)', message: 'Agent has no JSON config yet.' }],
+						};
+					}
 
-				const patched = jsonpatch.applyPatch(jsonpatch.deepClone(existingConfig), ops)
-					.newDocument as unknown as AgentJsonConfig;
+					const jsonpatch = (await import('fast-json-patch')).default;
+					const ops = parsedOps.data as Operation[];
+					const patchError = jsonpatch.validate(ops, snapshot.config);
+					if (patchError) {
+						const opPath =
+							(patchError.operation as { path?: string } | undefined)?.path ?? '(root)';
+						return {
+							ok: false,
+							stage: 'patch',
+							errors: [{ path: opPath, message: patchError.message ?? 'Invalid patch operation' }],
+						};
+					}
 
-				const zodResult = AgentJsonConfigSchema.safeParse(patched);
-				if (!zodResult.success) {
-					return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
-				}
-				const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
-				if (emptyInstructions) {
-					return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
-				}
+					const patched = jsonpatch.applyPatch(jsonpatch.deepClone(snapshot.config), ops)
+						.newDocument as unknown as AgentJsonConfig;
 
-				try {
-					const result = await this.agentsService.updateConfig(agentId, projectId, zodResult.data);
-					return { ok: true, config: result.config };
-				} catch (e) {
-					return {
-						ok: false,
-						stage: 'schema',
-						errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
-					};
-				}
-			})
+					const zodResult = AgentJsonConfigSchema.safeParse(patched);
+					if (!zodResult.success) {
+						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
+					}
+					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+					if (emptyInstructions) {
+						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
+					}
+
+					try {
+						const result = await this.agentsService.updateConfig(
+							agentId,
+							projectId,
+							zodResult.data,
+						);
+						return {
+							ok: true,
+							...snapshotFromConfig(result.config, result.updatedAt, result.versionId),
+						};
+					} catch (e) {
+						return {
+							ok: false,
+							stage: 'schema',
+							errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
+						};
+					}
+				},
+			)
 			.build();
 
 		const listIntegrationTypesTool = new Tool(BUILDER_TOOLS.LIST_INTEGRATION_TYPES)
@@ -185,6 +324,7 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		return [
+			readConfigTool,
 			writeConfigTool,
 			patchConfigTool,
 			listIntegrationTypesTool,
@@ -337,5 +477,16 @@ export class AgentsBuilderToolsService {
 					'into the config.',
 			),
 		];
+	}
+
+	private async getConfigSnapshot(
+		agentId: string,
+		projectId: string,
+	): Promise<AgentConfigSnapshot> {
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new Error('Agent not found');
+
+		const config = composeJsonConfig(agent);
+		return snapshotFromConfig(config, agent.updatedAt.toISOString(), agent.versionId);
 	}
 }

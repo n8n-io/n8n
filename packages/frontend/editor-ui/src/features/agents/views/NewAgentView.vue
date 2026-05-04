@@ -181,7 +181,7 @@ function buildPromptWithSkills(suggestion: SuggestionTemplate): string {
 
 	return `${suggestion.prompt}
 
-Also create and attach these curated skills to the agent. For each skill, call create_skill with the name, description, and body, then register the returned id in the agent config skills array.
+Also create and attach these curated skills to the agent. For each skill, call create_skill with the name, description, and body.
 
 ${skills}`;
 }
