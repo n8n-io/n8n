@@ -186,7 +186,30 @@ describe('WorkflowPreview', () => {
 				executionId,
 				executionMode: '',
 				canOpenNDV: true,
+				suppressExecutionErrorToast: false,
 				projectId: 'test-project-id',
+			});
+		});
+	});
+
+	it('should pass suppressExecutionErrorToast using PostMessage when enabled', async () => {
+		const executionId = '123';
+		renderComponent({
+			pinia,
+			props: {
+				executionId,
+				mode: 'execution',
+				suppressExecutionErrorToast: true,
+			},
+		});
+
+		sendPostMessageCommand('n8nReady');
+
+		await waitFor(() => {
+			expectIframePostMessage({
+				command: 'openExecution',
+				executionId,
+				suppressExecutionErrorToast: true,
 			});
 		});
 	});
@@ -213,6 +236,7 @@ describe('WorkflowPreview', () => {
 				executionId,
 				executionMode: '',
 				canOpenNDV: true,
+				suppressExecutionErrorToast: false,
 				projectId: 'test-project-id',
 			});
 

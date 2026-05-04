@@ -23,6 +23,7 @@ const props = withDefaults(
 		hideControls?: boolean;
 		suppressNotifications?: boolean;
 		allowErrorNotifications?: boolean;
+		suppressExecutionErrorToast?: boolean;
 		canExecute?: boolean;
 	}>(),
 	{
@@ -39,6 +40,7 @@ const props = withDefaults(
 		hideControls: false,
 		suppressNotifications: false,
 		allowErrorNotifications: false,
+		suppressExecutionErrorToast: false,
 		canExecute: false,
 	},
 );
@@ -121,6 +123,7 @@ const loadExecution = () => {
 				executionMode: props.executionMode ?? '',
 				nodeId: props.nodeId,
 				canOpenNDV: props.canOpenNDV,
+				suppressExecutionErrorToast: props.suppressExecutionErrorToast,
 				projectId: projectsStore.currentProjectId,
 			}),
 			'*',

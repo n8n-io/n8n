@@ -824,5 +824,57 @@ describe('manual execution stats tracking', () => {
 
 			expect(incrementSpy).not.toHaveBeenCalled();
 		});
+
+		it('shows error toast for user-initiated executions', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			mockShowMessage.mockClear();
+
+			const execution = mock<SimplifiedExecution>({
+				id: 'exec-user-1',
+				status: 'error',
+				data: {
+					resultData: {
+						error: { message: 'boom', name: 'Error' },
+					},
+				},
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error: { message: 'boom', name: 'Error' } } }),
+			);
+
+			expect(mockShowMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+		});
+
+		it('suppresses error toast for AI-initiated executions', () => {
+			const pinia = createTestingPinia();
+			setActivePinia(pinia);
+
+			const uiStore = mockedStore(useUIStore);
+			uiStore.isExecutionAiInitiated.mockReturnValue(true);
+
+			mockShowMessage.mockClear();
+
+			const execution = mock<SimplifiedExecution>({
+				id: 'exec-ai-1',
+				status: 'error',
+				data: {
+					resultData: {
+						error: { message: 'boom', name: 'Error' },
+					},
+				},
+			});
+
+			handleExecutionFinishedWithErrorOrCanceled(
+				execution,
+				mock<IRunExecutionData>({ resultData: { error: { message: 'boom', name: 'Error' } } }),
+			);
+
+			expect(mockShowMessage).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
+			expect(uiStore.isExecutionAiInitiated).toHaveBeenCalledWith('exec-ai-1');
+		});
 	});
 });

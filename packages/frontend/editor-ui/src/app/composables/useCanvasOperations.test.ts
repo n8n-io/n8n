@@ -4180,6 +4180,36 @@ describe('useCanvasOperations', () => {
 				type: 'error',
 			});
 		});
+
+		it('should not show an error notification for failed executions when suppressed', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const { openExecution } = useCanvasOperations();
+			const toast = useToast();
+
+			const executionId = '123';
+			const executionData: IExecutionResponse = {
+				id: executionId,
+				finished: true,
+				status: 'error',
+				startedAt: new Date(),
+				createdAt: new Date(),
+				workflowData: createTestWorkflow({ id: workflowId }),
+				mode: 'manual',
+				data: {
+					resultData: {
+						error: { message: 'Crashed', node: { name: 'Step1' } },
+						lastNodeExecuted: 'Last Node',
+					},
+				} as IExecutionResponse['data'],
+			};
+
+			workflowsStore.getExecution.mockResolvedValue(executionData);
+
+			await openExecution(executionId, undefined, { suppressExecutionErrorToast: true });
+
+			expect(toast.showMessage).not.toHaveBeenCalled();
+		});
+
 		it('should set active node when nodeId is provided and node exists', async () => {
 			const workflowsStore = mockedStore(useWorkflowsStore);
 			const ndvStore = mockedStore(useNDVStore);

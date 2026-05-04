@@ -2928,7 +2928,11 @@ export function useCanvasOperations() {
 		deleteNodes(ids);
 	}
 
-	async function openExecution(executionId: string, nodeId?: string) {
+	async function openExecution(
+		executionId: string,
+		nodeId?: string,
+		options?: { suppressExecutionErrorToast?: boolean },
+	) {
 		let data: IExecutionResponse | undefined;
 		try {
 			data = await workflowsStore.getExecution(executionId);
@@ -2941,7 +2945,11 @@ export function useCanvasOperations() {
 			throw new Error(`Execution with id "${executionId}" could not be found!`);
 		}
 
-		if (data.status === 'error' && data.data?.resultData.error) {
+		if (
+			options?.suppressExecutionErrorToast !== true &&
+			data.status === 'error' &&
+			data.data?.resultData.error
+		) {
 			const { title, message } = getExecutionErrorToastConfiguration({
 				error: data.data.resultData.error,
 				lastNodeExecuted: data.data.resultData.lastNodeExecuted,

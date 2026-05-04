@@ -17,7 +17,7 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 		stubs: {
 			WorkflowPreview: {
 				template:
-					'<div data-test-id="workflow-preview" :data-can-execute="canExecute" :data-suppress-notifications="suppressNotifications" :data-allow-error-notifications="allowErrorNotifications" />',
+					'<div data-test-id="workflow-preview" :data-can-execute="canExecute" :data-suppress-notifications="suppressNotifications" :data-allow-error-notifications="allowErrorNotifications" :data-suppress-execution-error-toast="suppressExecutionErrorToast" />',
 				props: [
 					'mode',
 					'workflow',
@@ -27,6 +27,7 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 					'hideControls',
 					'suppressNotifications',
 					'allowErrorNotifications',
+					'suppressExecutionErrorToast',
 					'loaderType',
 				],
 			},
@@ -96,6 +97,7 @@ describe('InstanceAiWorkflowPreview', () => {
 			expect(preview).toHaveAttribute('data-can-execute', 'true');
 			expect(preview).toHaveAttribute('data-suppress-notifications', 'true');
 			expect(preview).toHaveAttribute('data-allow-error-notifications', 'true');
+			expect(preview).toHaveAttribute('data-suppress-execution-error-toast', 'true');
 		});
 	});
 

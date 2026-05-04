@@ -71,6 +71,13 @@ vi.mock('@/features/workflows/canvas/canvas.eventBus', () => ({
 	},
 }));
 
+const mockPushOnMessageReceivedHandlers = vi.hoisted(() => [] as Array<(event: unknown) => void>);
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: vi.fn(() => ({
+		onMessageReceivedHandlers: mockPushOnMessageReceivedHandlers,
+	})),
+}));
+
 const mockBuildExecutionResponseFromSchema = vi.hoisted(() =>
 	vi.fn().mockReturnValue({ workflowData: { id: 'w1' } } as unknown as IExecutionResponse),
 );
@@ -517,6 +524,31 @@ describe('usePostMessageHandler', () => {
 			cleanup();
 		});
 
+		it('should pass suppressExecutionErrorToast to openExecution when requested', async () => {
+			mockOpenExecution.mockResolvedValue(null);
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
+			});
+			setup();
+
+			dispatchPostMessage({
+				command: 'openExecution',
+				executionId: 'exec-1',
+				suppressExecutionErrorToast: true,
+			});
+
+			await vi.waitFor(() => {
+				expect(mockOpenExecution).toHaveBeenCalledWith('exec-1', undefined, {
+					suppressExecutionErrorToast: true,
+				});
+			});
+
+			cleanup();
+		});
+
 		it('should show an error toast when opening execution fails with error allowance enabled', async () => {
 			setActivePinia(createTestingPinia({ stubActions: false }));
 			const uiStore = useUIStore();
@@ -741,6 +773,65 @@ describe('usePostMessageHandler', () => {
 					type: 'error',
 				});
 			});
+
+			cleanup();
+		});
+	});
+
+	describe('executionEvent command', () => {
+		beforeEach(() => {
+			mockPushOnMessageReceivedHandlers.length = 0;
+		});
+
+		it('marks execution as AI-initiated when relayed with source "ai"', async () => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			const uiStore = useUIStore();
+			const handler = vi.fn();
+			mockPushOnMessageReceivedHandlers.push(handler);
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
+			});
+			setup();
+
+			dispatchPostMessage({
+				command: 'executionEvent',
+				event: { type: 'executionStarted', data: { executionId: 'exec-ai-99' } },
+				source: 'ai',
+			});
+
+			await vi.waitFor(() => {
+				expect(handler).toHaveBeenCalled();
+			});
+			expect(uiStore.isExecutionAiInitiated('exec-ai-99')).toBe(true);
+
+			cleanup();
+		});
+
+		it('does not mark execution as AI-initiated when source is missing', async () => {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			const uiStore = useUIStore();
+			const handler = vi.fn();
+			mockPushOnMessageReceivedHandlers.push(handler);
+
+			const { setup, cleanup } = usePostMessageHandler({
+				workflowState,
+				currentWorkflowDocumentStore: shallowRef(null),
+				currentNDVStore: shallowRef(null),
+			});
+			setup();
+
+			dispatchPostMessage({
+				command: 'executionEvent',
+				event: { type: 'executionStarted', data: { executionId: 'exec-user-1' } },
+			});
+
+			await vi.waitFor(() => {
+				expect(handler).toHaveBeenCalled();
+			});
+			expect(uiStore.isExecutionAiInitiated('exec-user-1')).toBe(false);
 
 			cleanup();
 		});

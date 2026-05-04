@@ -121,6 +121,7 @@ export function usePostMessageHandler({
 		executionMode?: string;
 		nodeId?: string;
 		projectId?: string;
+		suppressExecutionErrorToast?: boolean;
 	}) {
 		if (json.projectId) {
 			await projectsStore.fetchAndSetProject(json.projectId);
@@ -132,7 +133,9 @@ export function usePostMessageHandler({
 		canvasStore.startLoading();
 		resetWorkspace();
 
-		const data = await openExecution(json.executionId, json.nodeId);
+		const data = await openExecution(json.executionId, json.nodeId, {
+			suppressExecutionErrorToast: json.suppressExecutionErrorToast === true,
+		});
 		if (!data) {
 			return;
 		}
@@ -262,6 +265,10 @@ export function usePostMessageHandler({
 				// the event to all registered listeners — same pattern the store uses internally.
 				const { usePushConnectionStore } = await import('@/app/stores/pushConnection.store');
 				const pushStore = usePushConnectionStore();
+				const relayedExecutionId = json.source === 'ai' ? json.event?.data?.executionId : undefined;
+				if (typeof relayedExecutionId === 'string') {
+					uiStore.markExecutionAsAiInitiated(relayedExecutionId);
+				}
 				for (const handler of pushStore.onMessageReceivedHandlers) {
 					handler(json.event);
 				}

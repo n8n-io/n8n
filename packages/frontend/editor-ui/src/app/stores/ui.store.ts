@@ -300,6 +300,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const areNotificationsSuppressed = ref(false);
 	const allowErrorNotificationsWhenSuppressed = ref(false);
+	const aiInitiatedExecutionIds = ref<Set<string>>(new Set());
 	const processingExecutionResults = ref<boolean>(false);
 	const isBlankRedirect = ref<boolean>(false);
 
@@ -635,6 +636,18 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		allowErrorNotificationsWhenSuppressed.value = suppressed && options?.allowErrors === true;
 	};
 
+	const markExecutionAsAiInitiated = (executionId: string) => {
+		aiInitiatedExecutionIds.value.add(executionId);
+	};
+
+	const isExecutionAiInitiated = (executionId: string) => {
+		return aiInitiatedExecutionIds.value.has(executionId);
+	};
+
+	const clearAiInitiatedExecution = (executionId: string) => {
+		aiInitiatedExecutionIds.value.delete(executionId);
+	};
+
 	function resetLastInteractedWith() {
 		lastInteractedWithNodeConnection.value = undefined;
 		lastInteractedWithNodeHandle.value = null;
@@ -759,6 +772,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		pendingNotificationsForViews,
 		areNotificationsSuppressed,
 		allowErrorNotificationsWhenSuppressed,
+		aiInitiatedExecutionIds,
 		activeModals,
 		isProcessingExecutionResults,
 		setTheme,
@@ -776,6 +790,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		toggleSidebarMenuCollapse,
 		setNotificationsForView,
 		setNotificationsSuppressed,
+		markExecutionAsAiInitiated,
+		isExecutionAiInitiated,
+		clearAiInitiatedExecution,
 		resetLastInteractedWith,
 		setProcessingExecutionResults,
 		markStateDirty,

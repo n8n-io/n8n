@@ -138,6 +138,7 @@ export async function executionFinished(
 	if (!execution) {
 		options.workflowState.setActiveExecutionId(undefined);
 		uiStore.setProcessingExecutionResults(false);
+		uiStore.clearAiInitiatedExecution(data.executionId);
 		return;
 	}
 
@@ -157,6 +158,8 @@ export async function executionFinished(
 	}
 
 	setRunExecutionData(execution, runExecutionData, options.workflowState);
+
+	uiStore.clearAiInitiatedExecution(data.executionId);
 
 	continueEvaluationLoop(execution, options);
 }
@@ -367,12 +370,16 @@ export function handleExecutionFinishedWithErrorOrCanceled(
 			type: 'success',
 		});
 	} else if (execution.data?.resultData.error) {
-		const { message, title } = getExecutionErrorToastConfiguration({
-			error: execution.data.resultData.error,
-			lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
-		});
+		// AI-initiated test executions surface failures in the builder UI, so the
+		// editor-level toast is redundant and confusing for the user.
+		if (!useUIStore().isExecutionAiInitiated(execution.id)) {
+			const { message, title } = getExecutionErrorToastConfiguration({
+				error: execution.data.resultData.error,
+				lastNodeExecuted: execution.data?.resultData.lastNodeExecuted,
+			});
 
-		toast.showMessage({ title, message, type: 'error', duration: 0 });
+			toast.showMessage({ title, message, type: 'error', duration: 0 });
+		}
 
 		useBuilderStore().incrementManualExecutionStats('error');
 	}

@@ -54,7 +54,7 @@ function relayPushEvent(event: PushMessage) {
 		?.iframeRef;
 	if (!iframe?.contentWindow) return;
 	iframe.contentWindow.postMessage(
-		JSON.stringify({ command: 'executionEvent', event }),
+		JSON.stringify({ command: 'executionEvent', event, source: 'ai' }),
 		window.location.origin,
 	);
 }
@@ -194,6 +194,7 @@ defineExpose({ relayPushEvent });
 			:hide-controls="false"
 			:suppress-notifications="true"
 			:allow-error-notifications="true"
+			:suppress-execution-error-toast="true"
 			loader-type="spinner"
 		/>
 
