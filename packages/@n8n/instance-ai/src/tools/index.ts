@@ -4,7 +4,6 @@ import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
 import { createExecutionsTool } from './executions.tool';
-import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
 import { createNodesTool } from './nodes.tool';
 import { createBrowserCredentialSetupTool } from './orchestration/browser-credential-setup.tool';
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
@@ -37,7 +36,6 @@ export function createAllTools(context: InstanceAiContext) {
 		nodes: createNodesTool(context),
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
-		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 		...(context.currentUserAttachments?.some(isStructuredAttachment)
 			? { 'parse-file': createParseFileTool(context) }
 			: {}),
@@ -58,7 +56,6 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
 		research: createResearchTool(context),
 		nodes: createNodesTool(context, 'orchestrator'),
 		'ask-user': createAskUserTool(),
-		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
 	};
 }
 

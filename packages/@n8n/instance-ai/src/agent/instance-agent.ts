@@ -8,6 +8,11 @@ import { nanoid } from 'nanoid';
 
 import type { Logger } from '../logger';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
+import {
+	addSafeMcpTools,
+	createClaimedToolNames,
+	type McpToolNameValidationError,
+} from './mcp-tool-name-validation';
 import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import type { McpSchemaSanitizationError } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
@@ -15,78 +20,6 @@ import { createMemory } from '../memory/memory-config';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
 import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
-
-export class McpToolNameValidationError extends Error {
-	constructor(
-		message: string,
-		readonly toolName: string,
-		readonly source: string,
-	) {
-		super(message);
-		this.name = 'McpToolNameValidationError';
-	}
-}
-
-const MCP_TOOL_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
-
-export function normalizeMcpToolName(name: string): string {
-	return name
-		.normalize('NFKC')
-		.toLowerCase()
-		.replace(/[^a-z0-9]/g, '');
-}
-
-function validateMcpToolName(name: string, source: string): string {
-	const normalizedUnicode = name.normalize('NFKC');
-	if (!MCP_TOOL_NAME_PATTERN.test(normalizedUnicode)) {
-		throw new McpToolNameValidationError(
-			`MCP tool "${name}" from ${source} has an invalid name`,
-			name,
-			source,
-		);
-	}
-	return normalizeMcpToolName(normalizedUnicode);
-}
-
-function createClaimedToolNames(names: Iterable<string>): Map<string, string> {
-	const claimed = new Map<string, string>();
-	for (const name of names) {
-		claimed.set(normalizeMcpToolName(name), name);
-	}
-	return claimed;
-}
-
-function addSafeMcpTools(
-	target: ToolsInput,
-	sourceTools: ToolsInput,
-	options: {
-		source: string;
-		claimedToolNames: Map<string, string>;
-		warn?: (error: McpToolNameValidationError) => void;
-	},
-): void {
-	for (const [name, tool] of Object.entries(sourceTools)) {
-		try {
-			const normalizedName = validateMcpToolName(name, options.source);
-			const claimedBy = options.claimedToolNames.get(normalizedName);
-			if (claimedBy) {
-				throw new McpToolNameValidationError(
-					`MCP tool "${name}" from ${options.source} conflicts with "${claimedBy}"`,
-					name,
-					options.source,
-				);
-			}
-			options.claimedToolNames.set(normalizedName, name);
-			target[name] = tool;
-		} catch (error) {
-			if (error instanceof McpToolNameValidationError) {
-				options.warn?.(error);
-				continue;
-			}
-			throw error;
-		}
-	}
-}
 
 function buildMcpServers(
 	configs: McpServerConfig[],
@@ -141,6 +74,8 @@ function warnSkippedMcpSchema(logger: Logger | undefined, source: string) {
 			path: error.details.path,
 			depth: error.details.depth,
 			maxDepth: error.details.maxDepth,
+			limitType: error.details.limitType,
+			limit: error.details.limit,
 			reason: error.message,
 		});
 	};
@@ -255,12 +190,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		claimedToolNames: mcpContextToolNames,
 		warn: warnSkippedMcpTool,
 	});
-	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
-		orchestrationContext.mcpTools = allMcpTools;
-	}
 
 	// Build orchestration tools (plan, delegate) — orchestrator-only
-	// Must happen after mcpTools are set on orchestrationContext
 	const orchestrationTools = orchestrationContext
 		? createOrchestrationTools(orchestrationContext)
 		: {};
@@ -290,6 +221,15 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 				).filter(([name]) => !browserToolNames.has(name)),
 			)
 		: {};
+	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
+		source: 'local gateway MCP',
+		claimedToolNames: mcpContextToolNames,
+		warn: warnSkippedMcpTool,
+	});
+	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
+		orchestrationContext.mcpTools = allMcpTools;
+	}
+
 	const safeLocalMcpTools: ToolsInput = {};
 	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
 		source: 'local gateway MCP',

@@ -1,7 +1,7 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
-import { buildFilesystemResource, resolveSafePath } from './fs-utils';
+import { buildFilesystemResource, resolveReadablePath, resolveSafePath } from './fs-utils';
 import * as config from '../../config';
 
 jest.mock('node:fs/promises');
@@ -153,6 +153,24 @@ describe('resolveSafePath', () => {
 	});
 });
 
+describe('resolveReadablePath', () => {
+	beforeEach(() => {
+		jest.resetAllMocks();
+		jest.mocked(fs.lstat).mockRejectedValue(enoent());
+	});
+
+	it('throws when a symlink resolves into an excluded directory segment', async () => {
+		mockRealpath([
+			[BASE, BASE],
+			[`${BASE}/link`, `${BASE}/node_modules`],
+		]);
+
+		await expect(resolveReadablePath(BASE, 'link/pkg/index.js')).rejects.toThrow(
+			'excluded from filesystem reads',
+		);
+	});
+});
+
 describe('buildFilesystemResource — settings self-protection', () => {
 	const settingsDir = config.getSettingsDir();
 	const settingsFile = config.getSettingsFilePath();
@@ -202,6 +220,17 @@ describe('buildFilesystemResource — settings self-protection', () => {
 
 		await expect(
 			buildFilesystemResource(BASE, 'node_modules/pkg/index.js', 'filesystemRead', 'Read file'),
+		).rejects.toThrow('excluded from filesystem reads');
+	});
+
+	it('throws for filesystemRead when a symlink targets an excluded directory segment', async () => {
+		mockRealpath([
+			[BASE, BASE],
+			[`${BASE}/link`, `${BASE}/node_modules`],
+		]);
+
+		await expect(
+			buildFilesystemResource(BASE, 'link/pkg/index.js', 'filesystemRead', 'Read file'),
 		).rejects.toThrow('excluded from filesystem reads');
 	});
 

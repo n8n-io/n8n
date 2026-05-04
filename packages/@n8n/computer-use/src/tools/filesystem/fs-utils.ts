@@ -173,6 +173,12 @@ export function isLikelyBinaryContent(buffer: Buffer): boolean {
 	return controlChars / checkSlice.length > MAX_CONTROL_CHAR_RATIO;
 }
 
+interface ResolvedSafePath {
+	absolutePath: string;
+	realBasePath: string;
+	resolvedPath: string;
+}
+
 /**
  * Resolve a path safely within the base directory.
  *
@@ -192,7 +198,10 @@ export function isLikelyBinaryContent(buffer: Buffer): boolean {
  * Returns the logical absolute path (without resolving symlinks), so the
  * caller never needs to know that a symlink is involved.
  */
-export async function resolveSafePath(basePath: string, relativePath: string): Promise<string> {
+async function resolveSafePathDetails(
+	basePath: string,
+	relativePath: string,
+): Promise<ResolvedSafePath> {
 	const realBase = await fs.realpath(basePath);
 	const absolute = path.resolve(basePath, relativePath);
 
@@ -241,12 +250,21 @@ export async function resolveSafePath(basePath: string, relativePath: string): P
 		throw new Error(`Access denied: cannot access "${relativePath}"`);
 	}
 
-	return absolute;
+	return { absolutePath: absolute, realBasePath: realBase, resolvedPath: current };
+}
+
+export async function resolveSafePath(basePath: string, relativePath: string): Promise<string> {
+	const { absolutePath } = await resolveSafePathDetails(basePath, relativePath);
+	return absolutePath;
 }
 
 export async function resolveReadablePath(basePath: string, relativePath: string): Promise<string> {
-	const absolutePath = await resolveSafePath(basePath, relativePath);
+	const { absolutePath, realBasePath, resolvedPath } = await resolveSafePathDetails(
+		basePath,
+		relativePath,
+	);
 	assertNoExcludedSegments(absolutePath, basePath);
+	assertNoExcludedSegments(resolvedPath, realBasePath);
 	return absolutePath;
 }
 
@@ -261,10 +279,10 @@ export async function buildFilesystemResource(
 	toolGroup: 'filesystemRead' | 'filesystemWrite',
 	description: string,
 ): Promise<AffectedResource> {
-	const absolutePath = await resolveSafePath(dir, inputPath);
-	if (toolGroup === 'filesystemRead') {
-		assertNoExcludedSegments(absolutePath, dir);
-	}
+	const absolutePath =
+		toolGroup === 'filesystemRead'
+			? await resolveReadablePath(dir, inputPath)
+			: await resolveSafePath(dir, inputPath);
 
 	return { toolGroup, resource: absolutePath, description };
 }

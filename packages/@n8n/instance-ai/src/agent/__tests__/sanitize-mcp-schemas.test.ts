@@ -29,6 +29,14 @@ describe('sanitizeMcpToolSchemas', () => {
 		return schema;
 	}
 
+	function makeWideObject(width: number): z.ZodTypeAny {
+		const shape: z.ZodRawShape = {};
+		for (let i = 0; i < width; i++) {
+			shape[`field${i}`] = z.string();
+		}
+		return z.object(shape);
+	}
+
 	it('should return empty tools input unchanged', () => {
 		const tools = {} as ToolsInput;
 
@@ -315,6 +323,71 @@ describe('sanitizeMcpToolSchemas', () => {
 			const result = sanitizeMcpToolSchemas(tools, { maxDepth: 2 });
 
 			expect(Object.keys(result)).toEqual([]);
+		});
+
+		it('should remove a shallow MCP tool with too many object properties', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				wideTool: { input: makeWideObject(4) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxObjectProperties: 2,
+				onError,
+			});
+
+			expect(Object.keys(result)).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('wideTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('objectProperties');
+			expect(onErrorCalls[0]?.[0].details.limit).toBe(2);
+			expect(onErrorCalls[0]?.[0].details.count).toBe(4);
+		});
+
+		it('should remove a shallow MCP tool with too many union options', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				unionTool: {
+					input: z.object({
+						value: z.union([z.literal('a'), z.literal('b'), z.literal('c')]),
+					}),
+				},
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxUnionOptions: 2,
+				onError,
+			});
+
+			expect(Object.keys(result)).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('unionTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('unionOptions');
+			expect(onErrorCalls[0]?.[0].details.limit).toBe(2);
+			expect(onErrorCalls[0]?.[0].details.count).toBe(3);
+		});
+
+		it('should remove an MCP tool that exceeds the total schema node budget', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				nodeBudgetTool: {
+					input: z.object({
+						first: z.string(),
+						second: z.string(),
+					}),
+				},
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, {
+				maxNodes: 2,
+				onError,
+			});
+
+			expect(Object.keys(result)).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('nodeBudgetTool');
+			expect(onErrorCalls[0]?.[0].details.limitType).toBe('nodes');
+			expect(onErrorCalls[0]?.[0].details.limit).toBe(2);
 		});
 	});
 

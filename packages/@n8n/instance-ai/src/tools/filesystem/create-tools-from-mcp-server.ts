@@ -12,6 +12,11 @@ import { z } from 'zod';
 import { convertJsonSchemaToZod } from 'zod-from-json-schema-v3';
 import type { JSONSchema } from 'zod-from-json-schema-v3';
 
+import {
+	addSafeMcpTools,
+	createClaimedToolNames,
+	type McpToolNameValidationError,
+} from '../../agent/mcp-tool-name-validation';
 import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { McpSchemaSanitizationError } from '../../agent/sanitize-mcp-schemas';
 import type { Logger } from '../../logger';
@@ -87,6 +92,18 @@ function warnSkippedLocalMcpSchema(logger: Logger | undefined) {
 			path: error.details.path,
 			depth: error.details.depth,
 			maxDepth: error.details.maxDepth,
+			limitType: error.details.limitType,
+			limit: error.details.limit,
+			reason: error.message,
+		});
+	};
+}
+
+function warnSkippedLocalMcpTool(logger: Logger | undefined) {
+	return (error: McpToolNameValidationError) => {
+		logger?.warn('Skipped local gateway MCP tool with unsafe name', {
+			toolName: error.toolName,
+			source: error.source,
 			reason: error.message,
 		});
 	};
@@ -223,5 +240,14 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer, logger?: L
 		tools[toolName] = tool;
 	}
 
-	return sanitizeMcpToolSchemas(tools, { onError: warnSkippedLocalMcpSchema(logger) });
+	const sanitizedTools = sanitizeMcpToolSchemas(tools, {
+		onError: warnSkippedLocalMcpSchema(logger),
+	});
+	const safeTools: ToolsInput = {};
+	addSafeMcpTools(safeTools, sanitizedTools, {
+		source: 'local gateway MCP',
+		claimedToolNames: createClaimedToolNames([]),
+		warn: warnSkippedLocalMcpTool(logger),
+	});
+	return safeTools;
 }

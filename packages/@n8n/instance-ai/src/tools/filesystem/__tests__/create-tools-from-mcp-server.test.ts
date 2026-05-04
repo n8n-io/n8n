@@ -108,6 +108,46 @@ describe('createToolsFromLocalMcpServer', () => {
 			expect(() => createToolsFromLocalMcpServer(server)).not.toThrow();
 			expect(createToolsFromLocalMcpServer(server)['bad_tool']).toBeDefined();
 		});
+
+		it('skips tools with invalid names', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'bad tool' },
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools['bad tool']).toBeUndefined();
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'bad tool',
+				}),
+			);
+		});
+
+		it('skips normalized name collisions between local gateway tools', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'custom_tool' },
+				{ ...SAMPLE_TOOL, name: 'custom-tool' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools.custom_tool).toBeDefined();
+			expect(tools['custom-tool']).toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'custom-tool',
+				}),
+			);
+		});
 	});
 
 	describe('execute — first-call path', () => {

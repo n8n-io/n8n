@@ -16,6 +16,11 @@ import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
 
 export const MCP_SCHEMA_MAX_DEPTH = 32;
+export const MCP_SCHEMA_MAX_NODES = 1_000;
+export const MCP_SCHEMA_MAX_OBJECT_PROPERTIES = 250;
+export const MCP_SCHEMA_MAX_UNION_OPTIONS = 100;
+
+type McpSchemaLimitType = 'depth' | 'nodes' | 'objectProperties' | 'unionOptions';
 
 export class McpSchemaSanitizationError extends Error {
 	constructor(
@@ -25,11 +30,18 @@ export class McpSchemaSanitizationError extends Error {
 			path: string;
 			depth: number;
 			maxDepth: number;
+			limit?: number;
+			limitType?: McpSchemaLimitType;
+			count?: number;
 		},
 	) {
 		super(message);
 		this.name = 'McpSchemaSanitizationError';
 	}
+}
+
+interface SanitizeBudget {
+	nodes: number;
 }
 
 interface SanitizeContext {
@@ -38,6 +50,20 @@ interface SanitizeContext {
 	path: string;
 	depth: number;
 	maxDepth: number;
+	maxNodes: number;
+	maxObjectProperties: number;
+	maxUnionOptions: number;
+	budget: SanitizeBudget;
+}
+
+interface SanitizeZodTypeOptions {
+	maxDepth?: number;
+	maxNodes?: number;
+	maxObjectProperties?: number;
+	maxUnionOptions?: number;
+	toolName?: string;
+	path?: string;
+	budget?: SanitizeBudget;
 }
 
 /**
@@ -51,7 +77,7 @@ interface SanitizeContext {
 export function sanitizeZodType(
 	schema: z.ZodTypeAny,
 	strict = false,
-	options: { maxDepth?: number; toolName?: string; path?: string } = {},
+	options: SanitizeZodTypeOptions = {},
 ): z.ZodTypeAny {
 	return sanitizeZodTypeInner(schema, {
 		strict,
@@ -59,19 +85,49 @@ export function sanitizeZodType(
 		path: options.path ?? '$',
 		depth: 0,
 		maxDepth: options.maxDepth ?? MCP_SCHEMA_MAX_DEPTH,
+		maxNodes: options.maxNodes ?? MCP_SCHEMA_MAX_NODES,
+		maxObjectProperties: options.maxObjectProperties ?? MCP_SCHEMA_MAX_OBJECT_PROPERTIES,
+		maxUnionOptions: options.maxUnionOptions ?? MCP_SCHEMA_MAX_UNION_OPTIONS,
+		budget: options.budget ?? { nodes: 0 },
+	});
+}
+
+function createLimitError(
+	context: SanitizeContext,
+	message: string,
+	limitType: McpSchemaLimitType,
+	limit: number,
+	count?: number,
+): McpSchemaSanitizationError {
+	return new McpSchemaSanitizationError(message, {
+		toolName: context.toolName,
+		path: context.path,
+		depth: context.depth,
+		maxDepth: context.maxDepth,
+		limit,
+		limitType,
+		count,
 	});
 }
 
 function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z.ZodTypeAny {
 	if (context.depth > context.maxDepth) {
-		throw new McpSchemaSanitizationError(
+		throw createLimitError(
+			context,
 			`MCP schema exceeds maximum depth of ${context.maxDepth}`,
-			{
-				toolName: context.toolName,
-				path: context.path,
-				depth: context.depth,
-				maxDepth: context.maxDepth,
-			},
+			'depth',
+			context.maxDepth,
+			context.depth,
+		);
+	}
+	context.budget.nodes++;
+	if (context.budget.nodes > context.maxNodes) {
+		throw createLimitError(
+			context,
+			`MCP schema exceeds maximum node count of ${context.maxNodes}`,
+			'nodes',
+			context.maxNodes,
+			context.budget.nodes,
 		);
 	}
 
@@ -103,6 +159,15 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		const disc = schema as z.ZodDiscriminatedUnion<string, Array<z.ZodObject<z.ZodRawShape>>>;
 		const discriminator = disc.discriminator;
 		const variants = [...disc.options.values()] as Array<z.ZodObject<z.ZodRawShape>>;
+		if (variants.length > context.maxUnionOptions) {
+			throw createLimitError(
+				context,
+				`MCP schema discriminated union exceeds maximum option count of ${context.maxUnionOptions}`,
+				'unionOptions',
+				context.maxUnionOptions,
+				variants.length,
+			);
+		}
 
 		// Phase 1: Collect metadata from all variants
 		const actionMeta: Array<{ value: string; description?: string }> = [];
@@ -130,6 +195,16 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 					type: value,
 				});
 			}
+		}
+		const mergedPropertyCount = fieldMeta.size + (actionMeta.length > 0 ? 1 : 0);
+		if (mergedPropertyCount > context.maxObjectProperties) {
+			throw createLimitError(
+				context,
+				`MCP schema object exceeds maximum property count of ${context.maxObjectProperties}`,
+				'objectProperties',
+				context.maxObjectProperties,
+				mergedPropertyCount,
+			);
 		}
 
 		// Phase 2: Build the merged shape
@@ -225,6 +300,15 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 	if (schema instanceof z.ZodUnion) {
 		const options = (schema as z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]>)
 			.options as z.ZodTypeAny[];
+		if (options.length > context.maxUnionOptions) {
+			throw createLimitError(
+				context,
+				`MCP schema union exceeds maximum option count of ${context.maxUnionOptions}`,
+				'unionOptions',
+				context.maxUnionOptions,
+				options.length,
+			);
+		}
 		const nonNull = options.filter((o) => !(o instanceof z.ZodNull));
 		const hadNull = nonNull.length < options.length;
 		const sanitized = nonNull.map((o, index) =>
@@ -245,8 +329,18 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 	// ZodObject — recurse into shape
 	if (schema instanceof z.ZodObject) {
 		const shape = (schema as z.ZodObject<z.ZodRawShape>).shape;
+		const entries = Object.entries(shape);
+		if (entries.length > context.maxObjectProperties) {
+			throw createLimitError(
+				context,
+				`MCP schema object exceeds maximum property count of ${context.maxObjectProperties}`,
+				'objectProperties',
+				context.maxObjectProperties,
+				entries.length,
+			);
+		}
 		const newShape: z.ZodRawShape = {};
-		for (const [key, value] of Object.entries(shape)) {
+		for (const [key, value] of entries) {
 			newShape[key] = sanitizeChild(value, `${context.path}.${key}`);
 		}
 		return z.object(newShape);
@@ -337,26 +431,38 @@ export function sanitizeMcpToolSchemas(
 	tools: ToolsInput,
 	options: {
 		maxDepth?: number;
+		maxNodes?: number;
+		maxObjectProperties?: number;
+		maxUnionOptions?: number;
 		onError?: (error: McpSchemaSanitizationError) => void;
 	} = {},
 ): ToolsInput {
 	for (const [name, tool] of Object.entries(tools)) {
 		const t = tool as { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny };
+		const budget = { nodes: 0 };
 		try {
 			if (t.inputSchema) {
 				t.inputSchema = ensureTopLevelObject(
 					sanitizeZodType(t.inputSchema, false, {
 						maxDepth: options.maxDepth,
+						maxNodes: options.maxNodes,
+						maxObjectProperties: options.maxObjectProperties,
+						maxUnionOptions: options.maxUnionOptions,
 						toolName: name,
 						path: '$.inputSchema',
+						budget,
 					}),
 				);
 			}
 			if (t.outputSchema) {
 				t.outputSchema = sanitizeZodType(t.outputSchema, false, {
 					maxDepth: options.maxDepth,
+					maxNodes: options.maxNodes,
+					maxObjectProperties: options.maxObjectProperties,
+					maxUnionOptions: options.maxUnionOptions,
 					toolName: name,
 					path: '$.outputSchema',
+					budget,
 				});
 			}
 		} catch (error) {
