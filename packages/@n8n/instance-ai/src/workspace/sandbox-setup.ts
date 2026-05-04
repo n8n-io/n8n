@@ -353,9 +353,6 @@ export async function setupSandboxWorkspace(
 		// Workflow listing failed — continue without syncing
 	}
 
-	// Marker file
-	files.set('.sandbox-initialized', new Date().toISOString());
-
 	// ── Write workspace files ──────────────────────────────────────────────
 
 	await writeWorkspaceFiles(workspace, root, files);
@@ -365,6 +362,12 @@ export async function setupSandboxWorkspace(
 	if (npmResult.exitCode !== 0) {
 		throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
 	}
+
+	await writeWorkspaceFiles(
+		workspace,
+		root,
+		new Map([['.sandbox-initialized', new Date().toISOString()]]),
+	);
 
 	return true;
 }
