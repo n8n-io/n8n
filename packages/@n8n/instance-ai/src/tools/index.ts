@@ -3,6 +3,7 @@ import type { InstanceAiContext, OrchestrationContext } from '../types';
 import { createParseFileTool } from './attachments/parse-file.tool';
 import { createCredentialsTool } from './credentials.tool';
 import { createDataTablesTool } from './data-tables.tool';
+import { createEvalsTool } from './evals/evals.tool';
 import { createExecutionsTool } from './executions.tool';
 import { createToolsFromLocalMcpServer } from './filesystem/create-tools-from-mcp-server';
 import { createNodesTool } from './nodes.tool';
@@ -10,6 +11,7 @@ import { createBrowserCredentialSetupTool } from './orchestration/browser-creden
 import { createBuildWorkflowAgentTool } from './orchestration/build-workflow-agent.tool';
 import { createCompleteCheckpointTool } from './orchestration/complete-checkpoint.tool';
 import { createDelegateTool } from './orchestration/delegate.tool';
+import { createEvalSetupAgentTool } from './orchestration/eval-setup-agent.tool';
 import { createPlanWithAgentTool } from './orchestration/plan-with-agent.tool';
 import { createPlanTool } from './orchestration/plan.tool';
 import { createReportVerificationVerdictTool } from './orchestration/report-verification-verdict.tool';
@@ -29,6 +31,7 @@ import { createWorkspaceTool } from './workspace.tool';
 export function createAllTools(context: InstanceAiContext) {
 	return {
 		workflows: createWorkflowsTool(context),
+		evals: createEvalsTool(context),
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context),
@@ -51,6 +54,7 @@ export function createAllTools(context: InstanceAiContext) {
 export function createOrchestratorDomainTools(context: InstanceAiContext) {
 	return {
 		workflows: createWorkflowsTool(context, 'orchestrator'),
+		evals: createEvalsTool(context),
 		executions: createExecutionsTool(context),
 		credentials: createCredentialsTool(context),
 		'data-tables': createDataTablesTool(context, 'orchestrator'),
@@ -74,6 +78,7 @@ export function createOrchestrationTools(context: OrchestrationContext) {
 		delegate: createDelegateTool(context),
 		'build-workflow-with-agent': createBuildWorkflowAgentTool(context),
 		'complete-checkpoint': createCompleteCheckpointTool(context),
+		'eval-setup-with-agent': createEvalSetupAgentTool(context),
 		...(context.browserMcpConfig || hasGatewayBrowserTools(context)
 			? {
 					'browser-credential-setup': createBrowserCredentialSetupTool(context),

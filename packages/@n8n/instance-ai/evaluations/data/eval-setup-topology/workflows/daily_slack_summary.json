@@ -1,0 +1,396 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"triggerAtHour": 9
+						}
+					]
+				}
+			},
+			"id": "572bb0b6-1864-4df2-80c5-fc81e47963ec",
+			"name": "Daily Schedule",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.3,
+			"position": [-448, 192]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "channel1Id",
+							"value": "C036PA5D42D",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "channel2Id",
+							"value": "C04CPHD7VDW",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "channel3Id",
+							"value": "C07BV4T1P6Y",
+							"type": "string"
+						},
+						{
+							"id": "id-4",
+							"name": "summaryChannelId",
+							"value": "D034WT7G4CW",
+							"type": "string"
+						},
+						{
+							"id": "0ce64e8a-75bc-4971-9518-58c5286fc529",
+							"name": "lookBackDays",
+							"value": 1,
+							"type": "number"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"id": "96c058a9-3492-4e7e-a737-95d8e2342268",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [-224, 192]
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "channel",
+				"operation": "history",
+				"channelId": {
+					"__rl": true,
+					"value": "={{ $json.channel1Id }}",
+					"mode": "id"
+				},
+				"returnAll": true,
+				"filters": {
+					"oldest": "={{ $json.timestamp.toDateTime().minus($json.lookBackDays, 'days') }}"
+				}
+			},
+			"id": "48ed3d99-bd42-4f70-b66c-1eb3d5d3ef08",
+			"name": "Get Channel 1 Messages",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [0, 0],
+			"webhookId": "8d3510b7-a7be-4add-b761-a9aaa4b741f7",
+			"credentials": {
+				"slackOAuth2Api": {
+					"id": "260",
+					"name": "Slack Davidbot"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"select": "channel",
+				"channelId": {
+					"__rl": true,
+					"mode": "id",
+					"value": "={{ $('Workflow Configuration').first().json.summaryChannelId }}"
+				},
+				"text": "={{ $json.output }}",
+				"otherOptions": {}
+			},
+			"id": "26bf5a07-419d-4a2f-84f9-b05b0f2d26e8",
+			"name": "Post Summary to Channel",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [992, 192],
+			"webhookId": "a7050dd4-fcf5-450a-9245-2611aaeb88ba",
+			"credentials": {
+				"slackOAuth2Api": {
+					"id": "260",
+					"name": "Slack Davidbot"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "channel",
+				"operation": "history",
+				"channelId": {
+					"__rl": true,
+					"value": "={{ $json.channel2Id }}",
+					"mode": "id"
+				},
+				"returnAll": true,
+				"filters": {
+					"oldest": "={{ $json.timestamp.toDateTime().minus($json.lookBackDays, 'days') }}"
+				}
+			},
+			"id": "0626bb69-e94c-474a-b696-206048995595",
+			"name": "Get Channel 2 Messages",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [0, 192],
+			"webhookId": "8d3510b7-a7be-4add-b761-a9aaa4b741f7",
+			"credentials": {
+				"slackOAuth2Api": {
+					"id": "260",
+					"name": "Slack Davidbot"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"authentication": "oAuth2",
+				"resource": "channel",
+				"operation": "history",
+				"channelId": {
+					"__rl": true,
+					"value": "={{ $json.channel3Id }}",
+					"mode": "id"
+				},
+				"returnAll": true,
+				"filters": {
+					"oldest": "={{ $json.timestamp.toDateTime().minus($json.lookBackDays, 'days') }}"
+				}
+			},
+			"id": "316de2f2-2fd6-44f7-9b6c-cb154f97fb9b",
+			"name": "Get Channel 3 Messages",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 2.3,
+			"position": [0, 400],
+			"webhookId": "8d3510b7-a7be-4add-b761-a9aaa4b741f7",
+			"credentials": {
+				"slackOAuth2Api": {
+					"id": "260",
+					"name": "Slack Davidbot"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"numberInputs": 3
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [224, 176],
+			"id": "bb958856-0ae7-4dac-85c0-32f62bf7890f",
+			"name": "Merge"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "={{ $input.all() }}",
+				"options": {
+					"systemMessage": "Create a comprehensive daily digest summarizing the key discussions, important updates, and action items from the Slack channels. Organize the summary by topic and highlight any urgent matters or decisions made. Your output should not be longer than 500 chars, and should be formatted in Slack markdown."
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [640, 192],
+			"id": "7c495499-0ba3-4bdb-a636-3c29ba6592cc",
+			"name": "AI Agent",
+			"executeOnce": true
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-5.1",
+					"mode": "list",
+					"cachedResultName": "gpt-5.1"
+				},
+				"builtInTools": {},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [592, 400],
+			"id": "2022465e-5494-4db7-9883-b59db870a011",
+			"name": "OpenAI Chat Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "duGfpDpRGozv47Rf",
+					"name": "OpenAI (David, owned by David)"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "31ff0b1b-0940-46bb-8161-5182cabe490a",
+							"name": "text",
+							"value": "={{ $json.text }}",
+							"type": "string"
+						},
+						{
+							"id": "08c510eb-26c1-4373-b3bf-a236bb776b56",
+							"name": "team",
+							"value": "={{ $json.team }}",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [432, 192],
+			"id": "28c7eb83-f936-4abc-a127-2dd90b3713c0",
+			"name": "Filter to essential data"
+		},
+		{
+			"parameters": {
+				"content": "Every day, get the posts made in the past day on 3 different Slack channels, summarize them using AI and post the summary on a 4th Slack channel"
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-480, -64],
+			"typeVersion": 1,
+			"id": "30d1b692-1e4a-4a66-9f3f-00e9b42aa9cc",
+			"name": "Sticky Note"
+		},
+		{
+			"parameters": {
+				"content": "Use a merge node in append mode to bring all items together",
+				"height": 624,
+				"width": 416,
+				"color": 7
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-64, -64],
+			"typeVersion": 1,
+			"id": "0f54848e-46ce-4f16-876b-5886a833ed67",
+			"name": "Sticky Note1"
+		},
+		{
+			"parameters": {
+				"content": "Use 'execute once' plus $input.all() to output all the items together",
+				"height": 448,
+				"width": 352,
+				"color": 7
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [576, 112],
+			"typeVersion": 1,
+			"id": "cff7472b-8e4c-41c4-a58b-5997dd055cc8",
+			"name": "Sticky Note2"
+		}
+	],
+	"connections": {
+		"Daily Schedule": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Get Channel 1 Messages",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Channel 2 Messages",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Get Channel 3 Messages",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Channel 1 Messages": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get Channel 2 Messages": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 1
+					}
+				]
+			]
+		},
+		"Get Channel 3 Messages": {
+			"main": [
+				[
+					{
+						"node": "Merge",
+						"type": "main",
+						"index": 2
+					}
+				]
+			]
+		},
+		"Merge": {
+			"main": [
+				[
+					{
+						"node": "Filter to essential data",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [
+				[
+					{
+						"node": "Post Summary to Channel",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Filter to essential data": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

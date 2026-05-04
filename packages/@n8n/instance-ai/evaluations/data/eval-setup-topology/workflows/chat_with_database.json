@@ -1,0 +1,146 @@
+{
+	"meta": {
+		"instanceId": "408f9fb9940c3cb18ffdef0e0150fe342d6e655c3a9fac21f0f644e8bedabcd9",
+		"templateCredsSetupCompleted": true
+	},
+	"nodes": [
+		{
+			"id": "d08a2559-17fd-4bdb-a976-795c3823a88a",
+			"name": "Sticky Note",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-520, 240],
+			"parameters": {
+				"content": "## Try me out\nClick the 'chat' button at the bottom of the canvas and paste in:\n\n_Which tables are available?_"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "3019b559-6100-4ead-8e1a-a7dece2a6982",
+			"name": "Sticky Note1",
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-380, -60],
+			"parameters": {
+				"color": 7,
+				"width": 677,
+				"height": 505,
+				"content": "This workflow uses a Postgres DB, but you could swap it for a MySQL or SQLite one"
+			},
+			"typeVersion": 1
+		},
+		{
+			"id": "73786411-5383-4921-82ee-06b3b582bab7",
+			"name": "When chat message received",
+			"type": "@n8n/n8n-nodes-langchain.chatTrigger",
+			"position": [-320, 40],
+			"webhookId": "1c0d08f0-abd0-4bdc-beef-370c27aae1a0",
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.1
+		},
+		{
+			"id": "e65a1558-e0c0-4c4a-a306-90dc6dcb618a",
+			"name": "Postgres",
+			"type": "n8n-nodes-base.postgresTool",
+			"position": [140, 260],
+			"parameters": {
+				"query": "{{ $fromAI('sql_statement') }}",
+				"options": {},
+				"operation": "executeQuery"
+			},
+			"credentials": {
+				"postgres": {
+					"id": "credential-id",
+					"name": "postgres Credential"
+				}
+			},
+			"typeVersion": 2.5
+		},
+		{
+			"id": "9df537e7-3ca2-4e72-bc85-ae0d944fbdd1",
+			"name": "Simple Memory",
+			"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+			"position": [0, 260],
+			"parameters": {},
+			"typeVersion": 1.3
+		},
+		{
+			"id": "57b2b959-9f25-475f-b6bb-842139725411",
+			"name": "AI Agent",
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"position": [-100, 40],
+			"parameters": {
+				"options": {}
+			},
+			"typeVersion": 1.8
+		},
+		{
+			"id": "f21ac2dc-56ff-4ea6-a29e-168e7dfaf3fa",
+			"name": "OpenAI Chat Model",
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"position": [-160, 260],
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "gpt-4o-mini"
+				},
+				"options": {}
+			},
+			"credentials": {
+				"openAiApi": {
+					"id": "credential-id",
+					"name": "openAiApi Credential"
+				}
+			},
+			"typeVersion": 1.2
+		}
+	],
+	"pinData": {},
+	"connections": {
+		"Postgres": {
+			"ai_tool": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Simple Memory": {
+			"ai_memory": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_memory",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"When chat message received": {
+			"main": [
+				[
+					{
+						"node": "AI Agent",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

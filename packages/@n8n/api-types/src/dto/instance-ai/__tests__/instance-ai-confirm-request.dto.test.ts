@@ -66,6 +66,18 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'resourceDecision with arbitrary decision token',
 				{ kind: 'resourceDecision', resourceDecision: 'allowForSession' },
 			],
+			// EvalsProposeCard: handleSubmit / handleSkip
+			[
+				'evalsPropose approve with existing DataTable',
+				{
+					kind: 'evalsPropose',
+					approved: true,
+					datasetChoice: 'link-existing',
+					existingDataTableId: 'dt-1',
+					enabledMetricIds: ['correctness'],
+				},
+			],
+			['evalsPropose deny', { kind: 'evalsPropose', approved: false }],
 			// useSetupActions: handleApply
 			[
 				'setupWorkflowApply (full payload)',
@@ -127,6 +139,11 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('resourceDecision without decision', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'resourceDecision' });
+			expect(result.success).toBe(false);
+		});
+
+		test('evalsPropose without approved', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'evalsPropose' });
 			expect(result.success).toBe(false);
 		});
 

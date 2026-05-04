@@ -1,0 +1,8 @@
+[
+	{
+		"chatInput": "Remind me to send the invoice tomorrow at 9am",
+		"sheetUrl": "https://docs.google.com/spreadsheets/d/18C4Zr11ek_1c8rjPctx9bGgFoO57raGaCgzipv30lMQ/edit?gid=0#gid=0",
+		"telegramChatId": "8335319691",
+		"expected_output": "A concise confirmation that the invoice reminder was created for tomorrow at 9:00."
+	}
+]

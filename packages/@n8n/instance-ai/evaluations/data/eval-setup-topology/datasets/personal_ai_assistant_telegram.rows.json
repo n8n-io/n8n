@@ -1,0 +1,6 @@
+[
+	{
+		"input": "Help the user with their latest Telegram request using available tools.",
+		"expected_output": "A concise, helpful assistant response tailored to the request."
+	}
+]

@@ -73,6 +73,7 @@ export const instanceAiAgentKindSchema = z.enum([
 	'delegate',
 	'browser-setup',
 	'planner',
+	'eval-setup',
 ]);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
@@ -297,6 +298,23 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const instanceAiEvalMetricKindSchema = z.enum(['llm-judge', 'exact-match', 'contains']);
+export type InstanceAiEvalMetricKind = z.infer<typeof instanceAiEvalMetricKindSchema>;
+
+export const instanceAiEvalMetricProposalSchema = z.object({
+	id: z.string().describe('Stable slug used as key in the resume payload.'),
+	name: z.string(),
+	kind: instanceAiEvalMetricKindSchema,
+	description: z.string(),
+	prompt: z.string().optional().describe('Only set for kind="llm-judge".'),
+	cannedMetricKey: z
+		.string()
+		.optional()
+		.describe('Set when this metric reuses a canned prompt from the Evaluation node.'),
+	defaultEnabled: z.boolean(),
+});
+export type InstanceAiEvalMetricProposal = z.infer<typeof instanceAiEvalMetricProposalSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -358,6 +376,24 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	evalsPropose: z
+		.object({
+			detectedAiNodes: z.array(z.string()),
+			proposedGraphSummary: z.object({
+				evalTriggerName: z.string(),
+				setOutputsNodeName: z.string(),
+				setMetricsNodeName: z.string(),
+			}),
+			datasetOptions: z.object({
+				suggestedColumns: z.object({
+					input: z.array(z.string()),
+					output: z.array(z.string()),
+				}),
+			}),
+			suggestedMetrics: z.array(instanceAiEvalMetricProposalSchema),
+		})
+		.optional()
+		.describe('Eval-propose suspend payload — present when the `evals` tool suspends.'),
 });
 
 export const statusPayloadSchema = z.object({
@@ -627,6 +663,22 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	/** Eval-propose suspend payload — present when the `evals` tool suspends. */
+	evalsPropose?: {
+		detectedAiNodes: string[];
+		proposedGraphSummary: {
+			evalTriggerName: string;
+			setOutputsNodeName: string;
+			setMetricsNodeName: string;
+		};
+		datasetOptions: {
+			suggestedColumns: {
+				input: string[];
+				output: string[];
+			};
+		};
+		suggestedMetrics: InstanceAiEvalMetricProposal[];
+	};
 }
 
 export interface InstanceAiToolCallState {
@@ -1046,3 +1098,42 @@ export interface InstanceAiEvalSubAgentResponse {
 	stopReason?: string;
 	error?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Evals proposal schemas (suspend/resume for `evals(action="propose")`)
+// ---------------------------------------------------------------------------
+
+// NOTE: `instanceAiEvalMetricKindSchema` and `instanceAiEvalMetricProposalSchema`
+// are defined earlier in this file so they can be referenced from the
+// confirmation payload schema; re-export aliases are kept below for
+// historical call sites.
+
+export const instanceAiEvalsProposeSuspendSchema = z.object({
+	requestId: z.string(),
+	message: z.string(),
+	severity: instanceAiConfirmationSeveritySchema,
+	workflowId: z.string(),
+	projectId: z.string().optional(),
+	detectedAiNodes: z.array(z.string()),
+	proposedGraphSummary: z.object({
+		evalTriggerName: z.string(),
+		setOutputsNodeName: z.string(),
+		setMetricsNodeName: z.string(),
+	}),
+	datasetOptions: z.object({
+		suggestedColumns: z.object({
+			input: z.array(z.string()),
+			output: z.array(z.string()),
+		}),
+	}),
+	suggestedMetrics: z.array(instanceAiEvalMetricProposalSchema),
+});
+export type InstanceAiEvalsProposeSuspend = z.infer<typeof instanceAiEvalsProposeSuspendSchema>;
+
+export const instanceAiEvalsProposeResumeSchema = z.object({
+	approved: z.boolean(),
+	datasetChoice: z.enum(['link-existing', 'later']).optional(),
+	existingDataTableId: z.string().optional(),
+	enabledMetricIds: z.array(z.string()).optional(),
+});
+export type InstanceAiEvalsProposeResume = z.infer<typeof instanceAiEvalsProposeResumeSchema>;

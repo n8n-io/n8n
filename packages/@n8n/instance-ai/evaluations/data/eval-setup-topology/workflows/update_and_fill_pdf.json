@@ -1,0 +1,169 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"content": "I want to somehow import a PDF and have it filled out through an Google Sheets doc — the PDF is editable."
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [-224, -32],
+			"typeVersion": 1,
+			"id": "61f4012d-f30b-441d-836a-24723c1874e4",
+			"name": "Sticky Note"
+		},
+		{
+			"parameters": {
+				"formTitle": "Upload PDF",
+				"formFields": {
+					"values": [
+						{
+							"fieldLabel": "Document",
+							"fieldType": "file",
+							"multipleFiles": false,
+							"acceptFileTypes": ".pdf",
+							"requiredField": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.formTrigger",
+			"typeVersion": 2.3,
+			"position": [-96, 224],
+			"id": "0fe73363-b35a-48d0-bcde-f0ad014bb129",
+			"name": "On form submission",
+			"webhookId": "403c318a-9ced-4522-bec3-854f2d076811"
+		},
+		{
+			"parameters": {
+				"operation": "Fill a PDF Form",
+				"url": "={{ $json.url }}",
+				"fields": {
+					"metadataValues": [
+						{
+							"fieldName": "field1",
+							"text": "={{ $json.field1 }}"
+						},
+						{
+							"fieldName": "field2",
+							"text": "={{ $json.field2 }}"
+						}
+					]
+				},
+				"advancedOptions": {}
+			},
+			"type": "n8n-nodes-pdfco.PDFco Api",
+			"typeVersion": 1,
+			"position": [736, 224],
+			"id": "ccf3dce5-34a3-4f63-9cab-290924053cb6",
+			"name": "PDFco Api"
+		},
+		{
+			"parameters": {
+				"operation": "Upload File to PDF.co",
+				"binaryData": true,
+				"binaryPropertyName": "Document",
+				"name": "={{ $binary['Document'].fileName }}"
+			},
+			"type": "n8n-nodes-pdfco.PDFco Api",
+			"typeVersion": 1,
+			"position": [320, 224],
+			"id": "b58d3331-2f09-484b-981c-5170484e2364",
+			"name": "Upload PDF"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "e524f09b-a7df-44bb-af3e-9edcefc2b8f2",
+							"name": "sheetUrl",
+							"value": "<__PLACEHOLDER_VALUE__Google Sheets Document URL__>",
+							"type": "string"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [112, 224],
+			"id": "b27957ef-255f-4d0f-b08a-f8a6060bc6de",
+			"name": "Workflow configuration"
+		},
+		{
+			"parameters": {
+				"documentId": {
+					"__rl": true,
+					"value": "={{ $('Workflow configuration').item.json.sheetUrl }}",
+					"mode": "url"
+				},
+				"sheetName": {
+					"__rl": true,
+					"value": "={{ $('Workflow configuration').item.json.sheetUrl }}",
+					"mode": "url"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.googleSheets",
+			"typeVersion": 4.7,
+			"position": [528, 224],
+			"id": "dfd0b28a-042e-4d88-9dc0-0843b9f5af87",
+			"name": "Read form data (first row only)",
+			"executeOnce": true,
+			"credentials": {
+				"googleSheetsOAuth2Api": {
+					"id": "NTTEuotIfdsPHKqf",
+					"name": "Google Sheets EUGENE"
+				}
+			}
+		}
+	],
+	"connections": {
+		"On form submission": {
+			"main": [
+				[
+					{
+						"node": "Workflow configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Upload PDF": {
+			"main": [
+				[
+					{
+						"node": "Read form data (first row only)",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Workflow configuration": {
+			"main": [
+				[
+					{
+						"node": "Upload PDF",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Read form data (first row only)": {
+			"main": [
+				[
+					{
+						"node": "PDFco Api",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

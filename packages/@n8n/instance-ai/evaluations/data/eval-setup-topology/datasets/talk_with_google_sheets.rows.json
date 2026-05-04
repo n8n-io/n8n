@@ -1,0 +1,6 @@
+[
+	{
+		"input": "Summarize the latest spreadsheet row and answer the user politely.",
+		"expected_output": "A concise, useful answer based on the available spreadsheet data."
+	}
+]

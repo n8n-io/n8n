@@ -1,0 +1,232 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"content": "I want to scrape a website for specific data. i want to automatically go to https://www.eldorado.gg/osrs-gold/g/10-0-0 and scan for the current price of gold every few minutes, then if the price hits a certain threshold it will notify me.",
+				"height": 240
+			},
+			"type": "n8n-nodes-base.stickyNote",
+			"position": [16, -64],
+			"typeVersion": 1,
+			"id": "151cfe46-34e5-4626-baab-3b21c9e8c614",
+			"name": "Sticky Note"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "id-1",
+							"name": "targetUrl",
+							"value": "https://www.eldorado.gg/osrs-gold/g/10-0-0",
+							"type": "string"
+						},
+						{
+							"id": "id-3",
+							"name": "emailAddress",
+							"value": "<__PLACEHOLDER_VALUE__Your email address for alerts__>",
+							"type": "string"
+						},
+						{
+							"id": "id-2",
+							"name": "priceThresholdDollars",
+							"value": {},
+							"type": "number"
+						}
+					]
+				},
+				"includeOtherFields": true,
+				"options": {}
+			},
+			"id": "5d78ab9c-c7e3-490a-9fbd-77a2cd088d41",
+			"name": "Workflow Configuration",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [240, 224]
+		},
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "minutes"
+						}
+					]
+				}
+			},
+			"id": "a6d70b35-4af9-43fb-a1b3-eec32f4174c2",
+			"name": "Every 5 minutes",
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [32, 224]
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"value": "gpt-5-mini",
+					"mode": "list",
+					"cachedResultName": "gpt-5-mini"
+				},
+				"builtInTools": {},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+			"typeVersion": 1.3,
+			"position": [368, 432],
+			"id": "20c5425b-b71b-4240-afb4-76aca92c5761",
+			"name": "OpenAI Chat Model",
+			"credentials": {
+				"openAiApi": {
+					"id": "duGfpDpRGozv47Rf",
+					"name": "OpenAI (David, owned by David)"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"toolDescription": "Visits a website that shows the price of gold and returns its code. The gold price is contained somewhere within it",
+				"url": "={{ $json.targetUrl }}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.httpRequestTool",
+			"typeVersion": 4.3,
+			"position": [608, 432],
+			"id": "6b56f4d2-65f5-4522-9e32-13a703ac7e82",
+			"name": "Scrape gold price"
+		},
+		{
+			"parameters": {
+				"conditions": {
+					"options": {
+						"caseSensitive": true,
+						"leftValue": "",
+						"typeValidation": "loose",
+						"version": 2
+					},
+					"conditions": [
+						{
+							"id": "0f3d6693-bffb-4fc5-9b1c-e9679e31ab2e",
+							"leftValue": "={{ $json.output }}",
+							"rightValue": "={{ $('Workflow Configuration').item.json.priceThresholdDollars }}",
+							"operator": {
+								"type": "number",
+								"operation": "gt"
+							}
+						}
+					],
+					"combinator": "and"
+				},
+				"looseTypeValidation": true,
+				"options": {}
+			},
+			"type": "n8n-nodes-base.filter",
+			"typeVersion": 2.2,
+			"position": [800, 224],
+			"id": "fa2dc3fe-d93d-4c26-ba91-78170c648293",
+			"name": "Over threshold?"
+		},
+		{
+			"parameters": {
+				"sendTo": "={{ $('Workflow Configuration').item.json.emailAddress }}",
+				"subject": "=Gold is now at ${{ $json.output }} / M",
+				"emailType": "text",
+				"message": "=Good news! The OSRS gold price has reached your target threshold.  \n\nCurrent Price: ${{ $json.output }} per million \nYour Threshold: ${{ $('Workflow Configuration').first().json.priceThresholdDollars }} per million \n\nCheck it out here: {{ $('Workflow Configuration').first().json.targetUrl }}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [1008, 224],
+			"id": "91747c07-e477-4a13-bca9-8d6867c5894a",
+			"name": "Send a message",
+			"webhookId": "a99bdd80-5fef-4412-915b-a6faed0b0e44",
+			"credentials": {
+				"gmailOAuth2": {
+					"id": "MbYcSaXNz42agHZu",
+					"name": "gmail JP"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "Get the price of gold using your tool and return it as a number. On the page, the price is in the format:\n\n€0.1438 / M\n\nDo not output anything else, and don't include the currency sign or the '/ M'",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [448, 224],
+			"id": "84c0ac79-2a40-4197-ba77-171849a6b882",
+			"name": "Get gold price"
+		}
+	],
+	"connections": {
+		"Workflow Configuration": {
+			"main": [
+				[
+					{
+						"node": "Get gold price",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Every 5 minutes": {
+			"main": [
+				[
+					{
+						"node": "Workflow Configuration",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"OpenAI Chat Model": {
+			"ai_languageModel": [
+				[
+					{
+						"node": "Get gold price",
+						"type": "ai_languageModel",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Scrape gold price": {
+			"ai_tool": [
+				[
+					{
+						"node": "Get gold price",
+						"type": "ai_tool",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Over threshold?": {
+			"main": [
+				[
+					{
+						"node": "Send a message",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Get gold price": {
+			"main": [
+				[
+					{
+						"node": "Over threshold?",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {}
+}

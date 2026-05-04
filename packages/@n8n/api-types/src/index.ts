@@ -1,4 +1,8 @@
 export { Z, type ZodClass } from './zod-class';
+export type {
+	InstanceAiConfirmRequest,
+	InstanceAiConfirmRequestKind,
+} from './dto/instance-ai/instance-ai-confirm-request.dto';
 export type * from './datetime';
 export * from './dto';
 export type * from './push';
@@ -278,6 +282,10 @@ export {
 	confirmationRequestPayloadSchema,
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
+	instanceAiEvalMetricKindSchema,
+	instanceAiEvalMetricProposalSchema,
+	instanceAiEvalsProposeSuspendSchema,
+	instanceAiEvalsProposeResumeSchema,
 	errorPayloadSchema,
 	filesystemRequestPayloadSchema,
 	mcpToolSchema,
@@ -377,6 +385,10 @@ export type {
 	InstanceAiEvalToolCall,
 	InstanceAiEvalToolResult,
 	InstanceAiEvalSubAgentResponse,
+	InstanceAiEvalMetricKind,
+	InstanceAiEvalMetricProposal,
+	InstanceAiEvalsProposeSuspend,
+	InstanceAiEvalsProposeResume,
 } from './schemas/instance-ai.schema';
 
 export {

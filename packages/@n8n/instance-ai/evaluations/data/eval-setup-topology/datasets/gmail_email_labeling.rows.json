@@ -1,0 +1,6 @@
+[
+	{
+		"input": "Review the latest email and choose a suitable label for it.",
+		"expected_output": "A concise label decision with a short explanation."
+	}
+]
