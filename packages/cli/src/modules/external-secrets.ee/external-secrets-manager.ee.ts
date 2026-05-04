@@ -3,12 +3,19 @@ import { SettingsRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { Cipher, type IExternalSecretsManager } from 'n8n-core';
-import { jsonParse, type IDataObject, ensureError, UnexpectedError } from 'n8n-workflow';
+import {
+	jsonParse,
+	type IDataObject,
+	ensureError,
+	OperationalError,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import {
 	EXTERNAL_SECRETS_DB_KEY,
 	EXTERNAL_SECRETS_INITIAL_BACKOFF,
 	EXTERNAL_SECRETS_MAX_BACKOFF,
+	EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS,
 } from './constants';
 import { ExternalSecretsProviders } from './external-secrets-providers.ee';
 import { ExternalSecretsConfig } from './external-secrets.config';
@@ -191,6 +198,31 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		}, currentBackoff);
 	}
 
+	private async refreshProviderSecrets(provider: SecretsProvider): Promise<void> {
+		const timeoutMs = EXTERNAL_SECRETS_PROVIDER_UPDATE_TIMEOUT_MS;
+		let timeoutId: NodeJS.Timeout | undefined;
+		try {
+			await Promise.race([
+				provider.update(),
+				new Promise<never>((_, reject) => {
+					timeoutId = setTimeout(
+						() =>
+							reject(
+								new OperationalError(
+									`External secrets provider "${provider.displayName}" (${provider.name}) timed out after ${timeoutMs}ms`,
+								),
+							),
+						timeoutMs,
+					);
+				}),
+			]);
+		} finally {
+			if (timeoutId !== undefined) {
+				clearTimeout(timeoutId);
+			}
+		}
+	}
+
 	async updateSecrets() {
 		if (!this.license.isExternalSecretsEnabled()) {
 			return;
@@ -199,10 +231,12 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			Object.entries(this.providers).map(async ([k, p]) => {
 				try {
 					if (this.cachedSettings[k].connected && p.state === 'connected') {
-						await p.update();
+						await this.refreshProviderSecrets(p);
 					}
-				} catch {
-					this.logger.error(`Error updating secrets provider ${p.displayName} (${p.name}).`);
+				} catch (error) {
+					this.logger.error(`Error updating secrets provider ${p.displayName} (${p.name}).`, {
+						error: ensureError(error),
+					});
 				}
 			}),
 		);
@@ -402,7 +436,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			return false;
 		}
 		try {
-			await this.providers[provider].update();
+			await this.refreshProviderSecrets(this.providers[provider]);
 			this.broadcastReloadExternalSecretsProviders();
 			this.logger.debug(`External secrets manager updated provider ${provider}`);
 			return true;
