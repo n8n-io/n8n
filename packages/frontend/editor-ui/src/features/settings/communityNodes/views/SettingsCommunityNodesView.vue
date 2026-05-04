@@ -87,6 +87,9 @@ const unifiedPackages = computed<CommunityPackageRowData[]>(() => {
 	return rows;
 });
 
+const getSearchablePackageText = (resource: CommunityPackageRowData) =>
+	[resource.packageName, resource.authorName, resource.description].join(' ');
+
 const onFilter = (resource: Resource, applied: BaseFilters, matches: boolean): boolean => {
 	if (!isCommunityPackageRow(resource)) return false;
 
@@ -171,6 +174,7 @@ onBeforeUnmount(() => {
 		resource-key="communityNodes"
 		:resources="unifiedPackages"
 		:initialize="initialize"
+		:display-name="getSearchablePackageText"
 		:additional-filters-handler="onFilter"
 		:type-props="{ itemSize: 64 }"
 		:loading="loading"

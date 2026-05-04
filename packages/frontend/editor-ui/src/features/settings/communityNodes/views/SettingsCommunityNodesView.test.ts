@@ -1,6 +1,6 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
-import { fireEvent } from '@testing-library/vue';
+import { fireEvent, waitFor } from '@testing-library/vue';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 
 import { createComponentRenderer } from '@/__tests__/render';
@@ -8,6 +8,8 @@ import { useCommunityNodesStore } from '../communityNodes.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { CommunityPackageSummary } from '../communityNodes.types';
 import SettingsCommunityNodesView from './SettingsCommunityNodesView.vue';
 
@@ -33,12 +35,48 @@ vi.mock('@/app/composables/useDocumentTitle', () => ({
 
 vi.mock('@/app/components/layouts/ResourcesListLayout.vue', () => ({
 	default: {
-		props: ['resources', 'filters', 'loading', 'additionalFiltersHandler'],
+		props: [
+			'resources',
+			'filters',
+			'loading',
+			'additionalFiltersHandler',
+			'displayName',
+			'initialize',
+			'resourceKey',
+		],
+		emits: ['update:filters'],
+		mounted() {
+			void this.initialize?.();
+		},
+		computed: {
+			filteredResources() {
+				return this.resources.filter((resource) => {
+					let matches = true;
+					if (this.filters.search) {
+						const displayName = this.displayName?.(resource) ?? resource.name ?? '';
+						matches = displayName.toLowerCase().includes(this.filters.search.toLowerCase());
+					}
+
+					return this.additionalFiltersHandler?.(resource, this.filters, matches) ?? matches;
+				});
+			},
+		},
+		methods: {
+			setKeyValue(key: string, value: unknown) {
+				this.$emit('update:filters', { ...this.filters, [key]: value });
+			},
+		},
 		template: `
-			<div data-test-id="resources-list-layout">
+			<div data-test-id="resources-list-layout" :data-resource-key="resourceKey">
 				<slot name="header" />
-				<slot name="filters" :setKeyValue="(k, v) => null" />
-				<slot v-for="r in resources" :data="r" :key="r.id" />
+				<slot name="filters" :setKeyValue="setKeyValue" />
+				<span data-test-id="display-name-provided">{{ displayName ? 'yes' : 'no' }}</span>
+				<button data-test-id="filter-official" @click="setKeyValue('type', 'official')" />
+				<button data-test-id="filter-community" @click="setKeyValue('type', 'community')" />
+				<button data-test-id="filter-installed-only" @click="setKeyValue('installedOnly', true)" />
+				<button data-test-id="search-author" @click="setKeyValue('search', 'trusted author')" />
+				<button data-test-id="search-description" @click="setKeyValue('search', 'useful webhook tools')" />
+				<slot v-for="r in filteredResources" :data="r" :key="r.id" />
 				<slot name="empty" v-if="!resources.length" />
 			</div>
 		`,
@@ -48,7 +86,15 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', () => ({
 vi.mock('../components/CommunityPackageRow.vue', () => ({
 	default: {
 		props: ['row', 'loading'],
-		template: '<div data-test-id="community-package-row" :data-package="row?.packageName" />',
+		template: `
+			<div
+				data-test-id="community-package-row"
+				:data-package="row?.packageName"
+				:data-installed="String(row?.isInstalled)"
+				:data-version="row?.installedVersion"
+				:data-verified="String(row?.isVerified)"
+			/>
+		`,
 	},
 }));
 
@@ -68,6 +114,19 @@ const makeVettedSummary = (
 	...overrides,
 });
 
+const makeInstalledPackage = (
+	overrides: Partial<PublicInstalledPackage> = {},
+): PublicInstalledPackage =>
+	({
+		packageName: 'n8n-nodes-installed',
+		installedVersion: '1.0.0',
+		authorName: 'Installed Author',
+		installedNodes: [],
+		createdAt: new Date(0),
+		updatedAt: new Date(0),
+		...overrides,
+	}) as unknown as PublicInstalledPackage;
+
 describe('SettingsCommunityNodesView', () => {
 	let communityNodesStore: ReturnType<typeof useCommunityNodesStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
@@ -75,6 +134,7 @@ describe('SettingsCommunityNodesView', () => {
 	let uiStore: ReturnType<typeof useUIStore>;
 
 	beforeEach(() => {
+		vi.clearAllMocks();
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 		communityNodesStore = useCommunityNodesStore();
@@ -93,8 +153,12 @@ describe('SettingsCommunityNodesView', () => {
 	});
 
 	it('should render the page heading', () => {
-		const { getByText } = renderComponent();
+		const { getByTestId, getByText } = renderComponent();
 		expect(getByText('Community nodes')).toBeInTheDocument();
+		expect(getByTestId('resources-list-layout')).toHaveAttribute(
+			'data-resource-key',
+			'communityNodes',
+		);
 	});
 
 	it('should render verified-only subheader when isUnverifiedPackagesEnabled is false', () => {
@@ -151,6 +215,9 @@ describe('SettingsCommunityNodesView', () => {
 		const { findAllByTestId } = renderComponent();
 		const rows = await findAllByTestId('community-package-row');
 		expect(rows).toHaveLength(1);
+		expect(rows[0]).toHaveAttribute('data-installed', 'true');
+		expect(rows[0]).toHaveAttribute('data-version', '2.0.0');
+		expect(rows[0]).toHaveAttribute('data-verified', 'true');
 	});
 
 	it('should open install modal and emit telemetry on Install from npm click', async () => {
@@ -161,27 +228,67 @@ describe('SettingsCommunityNodesView', () => {
 		await fireEvent.click(getByText('Install from npm'));
 
 		expect(uiStore.openModal).toHaveBeenCalledWith('communityPackageInstall');
+		expect(vi.mocked(useTelemetry).mock.results.at(-1)?.value.track).toHaveBeenCalledWith(
+			'user clicked cnr install button',
+			{ is_empty_state: true },
+		);
+		expect(vi.mocked(useExternalHooks).mock.results.at(-1)?.value.run).toHaveBeenCalledWith(
+			'settingsCommunityNodesView.openInstallModal',
+			{ is_empty_state: true },
+		);
 	});
 
-	it.skip('should fire user-viewed telemetry on initialize', () => {
-		// TODO: covered by integration testing.
-		// `initialize()` is invoked by the real ResourcesListLayout in production,
-		// but our pass-through mock does not call the prop. The lifecycle hook
-		// is exercised end-to-end via Playwright instead.
+	it('should load community node data and fire user-viewed telemetry on initialize', async () => {
+		Object.defineProperty(communityNodesStore, 'getInstalledPackages', {
+			get: () => [
+				makeInstalledPackage({
+					packageName: 'n8n-nodes-installed',
+					installedVersion: '1.0.0',
+					updateAvailable: '1.1.0',
+					installedNodes: [{ name: 'Installed Node', latestVersion: 2 }],
+				}),
+			],
+		});
+
+		renderComponent();
+
+		await waitFor(() => {
+			expect(communityNodesStore.fetchInstalledPackages).toHaveBeenCalled();
+			expect(communityNodesStore.fetchAvailableCommunityPackageCount).toHaveBeenCalled();
+			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
+			expect(vi.mocked(useTelemetry).mock.results.at(-1)?.value.track).toHaveBeenCalledWith(
+				'user viewed cnr settings page',
+				{
+					num_of_packages_installed: 1,
+					installed_packages: [
+						{
+							package_name: 'n8n-nodes-installed',
+							package_version: '1.0.0',
+							package_nodes: ['Installed Node-v2'],
+							is_update_available: true,
+						},
+					],
+					packages_to_update: [
+						{
+							package_name: 'n8n-nodes-installed',
+							package_version_current: '1.0.0',
+							package_version_available: '1.1.0',
+						},
+					],
+					number_of_updates_available: 1,
+				},
+			);
+		});
 	});
 
 	it('should append installed-but-not-vetted packages as separate rows', async () => {
 		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', { get: () => [] });
 		Object.defineProperty(communityNodesStore, 'getInstalledPackages', {
 			get: () => [
-				{
+				makeInstalledPackage({
 					packageName: 'n8n-nodes-unverified',
-					installedVersion: '1.0.0',
 					authorName: 'A',
-					installedNodes: [],
-					createdAt: new Date(0),
-					updatedAt: new Date(0),
-				} as unknown as PublicInstalledPackage,
+				}),
 			],
 		});
 
@@ -189,5 +296,85 @@ describe('SettingsCommunityNodesView', () => {
 		const rows = await findAllByTestId('community-package-row');
 		expect(rows).toHaveLength(1);
 		expect(rows[0].getAttribute('data-package')).toBe('n8n-nodes-unverified');
+	});
+
+	it('should provide searchable text to ResourcesListLayout', () => {
+		const { getByTestId } = renderComponent();
+		expect(getByTestId('display-name-provided')).toHaveTextContent('yes');
+	});
+
+	it('should filter package rows by type', async () => {
+		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', {
+			get: () => [
+				makeVettedSummary({ packageName: 'n8n-nodes-official', isOfficialNode: true }),
+				makeVettedSummary({ packageName: 'n8n-nodes-community', isOfficialNode: false }),
+			],
+		});
+
+		const { findByTestId, getAllByTestId } = renderComponent();
+		await fireEvent.click(await findByTestId('filter-official'));
+
+		await waitFor(() => {
+			const rows = getAllByTestId('community-package-row');
+			expect(rows).toHaveLength(1);
+			expect(rows[0].getAttribute('data-package')).toBe('n8n-nodes-official');
+		});
+	});
+
+	it('should filter package rows to installed packages only', async () => {
+		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', {
+			get: () => [makeVettedSummary({ packageName: 'n8n-nodes-available' })],
+		});
+		Object.defineProperty(communityNodesStore, 'getInstalledPackages', {
+			get: () => [makeInstalledPackage({ packageName: 'n8n-nodes-installed' })],
+		});
+
+		const { findByTestId, getAllByTestId } = renderComponent();
+		await fireEvent.click(await findByTestId('filter-installed-only'));
+
+		await waitFor(() => {
+			const rows = getAllByTestId('community-package-row');
+			expect(rows).toHaveLength(1);
+			expect(rows[0].getAttribute('data-package')).toBe('n8n-nodes-installed');
+		});
+	});
+
+	it('should search package rows by author and description', async () => {
+		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', {
+			get: () => [
+				makeVettedSummary({
+					packageName: 'n8n-nodes-author-match',
+					authorName: 'Trusted Author',
+					description: 'Other package',
+				}),
+				makeVettedSummary({
+					packageName: 'n8n-nodes-description-match',
+					authorName: 'Another Author',
+					description: 'Useful webhook tools',
+				}),
+				makeVettedSummary({
+					packageName: 'n8n-nodes-unmatched',
+					authorName: 'Different Author',
+					description: 'No match',
+				}),
+			],
+		});
+
+		const { findByTestId, getAllByTestId } = renderComponent();
+		await fireEvent.click(await findByTestId('search-author'));
+
+		await waitFor(() => {
+			const rows = getAllByTestId('community-package-row');
+			expect(rows).toHaveLength(1);
+			expect(rows[0].getAttribute('data-package')).toBe('n8n-nodes-author-match');
+		});
+
+		await fireEvent.click(await findByTestId('search-description'));
+
+		await waitFor(() => {
+			const rows = getAllByTestId('community-package-row');
+			expect(rows).toHaveLength(1);
+			expect(rows[0].getAttribute('data-package')).toBe('n8n-nodes-description-match');
+		});
 	});
 });
