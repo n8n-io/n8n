@@ -117,7 +117,7 @@ function createTemporaryCleanupService({
 	archiveIfAiTemporary: ArchiveIfAiTemporary;
 } {
 	const service = Object.create(InstanceAiService.prototype) as unknown as TemporaryCleanupService;
-	const runningTasks = Array.from({ length: runningTaskCount }, (_value, index) => ({
+	const runningTasks: RunningTask[] = Array.from({ length: runningTaskCount }, (_value, index) => ({
 		taskId: `task-${index}`,
 	}));
 	const archiveIfAiTemporary: ArchiveIfAiTemporary = jest.fn(async (workflowId: string) =>
@@ -125,13 +125,13 @@ function createTemporaryCleanupService({
 	);
 
 	service.backgroundTasks = {
-		getRunningTasks: jest.fn(() => runningTasks),
+		getRunningTasks: jest.fn((_threadId: string) => runningTasks),
 	};
 	service.aiBuilderTemporaryWorkflowRepository = {
-		findByThread: jest.fn(async () => markedWorkflows),
+		findByThread: jest.fn(async (_threadId: string) => markedWorkflows),
 	};
 	service.adapterService = {
-		createContext: jest.fn(() => ({
+		createContext: jest.fn((_user: User, _options: { threadId: string }) => ({
 			workflowService: { archiveIfAiTemporary },
 		})),
 	};
