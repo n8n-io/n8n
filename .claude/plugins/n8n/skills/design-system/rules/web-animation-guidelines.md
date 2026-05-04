@@ -61,6 +61,7 @@ Prefer animating `transform` and `opacity`. These skip layout and paint stages, 
 .animated-element {
   will-change: transform;
 }
+```
 
 ## Practical Tips
 
