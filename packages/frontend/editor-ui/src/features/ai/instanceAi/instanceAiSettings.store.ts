@@ -45,6 +45,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const HAS_CONNECTED_STORAGE_KEY = 'instanceAi.gateway.hasConnected';
 	const isDaemonConnecting = ref(false);
 	const setupCommand = ref<string | null>(null);
+	const setupCommandExpiresAt = ref<string | null>(null);
+	const setupCommandTtlSeconds = ref<number | null>(null);
 
 	const hasEverConnectedGateway = ref(
 		typeof localStorage !== 'undefined' &&
@@ -456,6 +458,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		try {
 			const result = await createGatewayLink(rootStore.restApiContext);
 			setupCommand.value = result.command;
+			setupCommandExpiresAt.value = result.expiresAt;
+			setupCommandTtlSeconds.value = result.ttlSeconds;
 		} catch {
 			// Fallback handled in the component
 		}
@@ -512,6 +516,8 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		// Gateway / daemon
 		isDaemonConnecting,
 		setupCommand,
+		setupCommandExpiresAt,
+		setupCommandTtlSeconds,
 		hasEverConnectedGateway,
 		isGatewayConnected,
 		gatewayStatusLoaded,

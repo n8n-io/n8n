@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { N8nHeading, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -46,6 +46,27 @@ const osTabs = [
 ];
 
 const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
+const nowMs = ref(Date.now());
+
+let expiryTimer: ReturnType<typeof setInterval> | null = null;
+
+const tokenExpiresInSeconds = computed(() => {
+	if (!store.setupCommandExpiresAt) return null;
+	const expiresAtMs = Date.parse(store.setupCommandExpiresAt);
+	if (Number.isNaN(expiresAtMs)) return null;
+	return Math.max(0, Math.ceil((expiresAtMs - nowMs.value) / 1000));
+});
+
+const tokenExpiryText = computed(() => {
+	if (tokenExpiresInSeconds.value === null) return null;
+	if (tokenExpiresInSeconds.value === 0) {
+		return i18n.baseText('instanceAi.welcomeModal.gateway.tokenExpired');
+	}
+	const minutes = Math.max(1, Math.ceil(tokenExpiresInSeconds.value / 60));
+	return i18n.baseText('instanceAi.welcomeModal.gateway.tokenExpiresIn', {
+		interpolate: { minutes: String(minutes) },
+	});
+});
 
 const terminalInstructionsKey = computed(() => {
 	if (selectedOs.value === 'windows') return 'instanceAi.welcomeModal.gateway.instructions.windows';
@@ -112,6 +133,9 @@ function onCommandScroll(e: Event) {
 
 async function copyCommand() {
 	try {
+		if (tokenExpiresInSeconds.value === 0) {
+			await store.fetchSetupCommand();
+		}
 		await navigator.clipboard.writeText(displayCommand.value);
 		copied.value = true;
 		setTimeout(() => {
@@ -126,6 +150,26 @@ async function copyCommand() {
 // the local daemon is only contacted when the user clicks Connect.
 onMounted(() => {
 	void store.fetchSetupCommand();
+});
+
+watch(
+	() => store.setupCommandExpiresAt,
+	(expiresAt) => {
+		if (expiryTimer) {
+			clearInterval(expiryTimer);
+			expiryTimer = null;
+		}
+		if (!expiresAt) return;
+		nowMs.value = Date.now();
+		expiryTimer = setInterval(() => {
+			nowMs.value = Date.now();
+		}, 1000);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	if (expiryTimer) clearInterval(expiryTimer);
 });
 </script>
 
@@ -207,6 +251,14 @@ onMounted(() => {
 						data-test-id="computer-use-setup-copy-command"
 						@click="copyCommand"
 					/>
+				</div>
+				<div :class="$style.commandMeta">
+					<N8nText v-if="tokenExpiryText" size="small" color="text-light">
+						{{ tokenExpiryText }}
+					</N8nText>
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('instanceAi.welcomeModal.gateway.leadingSpaceHint') }}
+					</N8nText>
 				</div>
 				<div :class="$style.waitingRow">
 					<N8nIcon icon="spinner" color="primary" spin size="small" />
@@ -297,6 +349,14 @@ onMounted(() => {
 	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs);
+	background: var(--color--background--shade-2);
+}
+
+.commandMeta {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 	background: var(--color--background--shade-2);
 }
 
