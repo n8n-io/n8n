@@ -237,7 +237,7 @@ describe('GlobalConfig', () => {
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
 			mcpBuilderEnabled: true,
-			mcpMaxRegisteredClients: 200,
+			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
