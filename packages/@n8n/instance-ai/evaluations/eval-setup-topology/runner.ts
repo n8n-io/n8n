@@ -68,11 +68,7 @@ export function buildWorkflowCreatePayload(
 
 	return {
 		name: uniqueName('eval-setup-topology', testCase.slug),
-		nodes: workflow.nodes.map((node) => {
-			const nodeWithoutCredentials = { ...node };
-			delete nodeWithoutCredentials.credentials;
-			return nodeWithoutCredentials;
-		}),
+		nodes: workflow.nodes.map(({ credentials: _credentials, ...node }) => node),
 		connections: workflow.connections,
 		...(projectId === undefined ? {} : { projectId }),
 		...(workflow.pinData === undefined ? {} : { pinData: workflow.pinData }),
@@ -116,21 +112,11 @@ export function isEvalsProposalConfirmation(event: CapturedEvent): boolean {
 	}
 
 	const payload = event.data.payload;
-	if (isRecord(payload)) {
-		if (payload.toolName === 'evals') {
-			return true;
-		}
-
-		if (isRecord(payload.evalsPropose)) {
-			return true;
-		}
+	if (!isRecord(payload)) {
+		return false;
 	}
 
-	if (event.data.toolName === 'evals') {
-		return true;
-	}
-
-	return isRecord(event.data.evalsPropose);
+	return payload.toolName === 'evals' || isRecord(payload.evalsPropose);
 }
 
 export function isWorkflowUpdateConfirmation(event: CapturedEvent): boolean {

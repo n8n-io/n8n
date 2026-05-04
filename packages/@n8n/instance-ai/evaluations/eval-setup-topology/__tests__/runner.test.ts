@@ -54,7 +54,6 @@ function makeTestCase(): EvalSetupTopologyCase {
 			targets: [],
 			excludeTargets: [],
 			metrics: ['correctness'],
-			allowNativeTestRunnerSmoke: false,
 		},
 	};
 }

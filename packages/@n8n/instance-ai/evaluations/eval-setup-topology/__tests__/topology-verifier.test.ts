@@ -58,7 +58,6 @@ const sidecar: TopologySidecar = {
 	],
 	excludeTargets: [],
 	metrics: ['correctness'],
-	allowNativeTestRunnerSmoke: false,
 };
 
 const sidecarWithoutTargets: TopologySidecar = {
@@ -66,7 +65,6 @@ const sidecarWithoutTargets: TopologySidecar = {
 	targets: [],
 	excludeTargets: [],
 	metrics: ['correctness'],
-	allowNativeTestRunnerSmoke: false,
 };
 
 const workflowWithoutAi: WorkflowResponse = {
@@ -214,7 +212,6 @@ describe('verifyEvalSetupTopology', () => {
 				targets: [],
 				excludeTargets: [],
 				metrics: [],
-				allowNativeTestRunnerSmoke: false,
 			},
 			expectedDataTableId: 'dt-1',
 		});
@@ -252,7 +249,6 @@ describe('verifyEvalSetupTopology', () => {
 				targets: [],
 				excludeTargets: [],
 				metrics: [],
-				allowNativeTestRunnerSmoke: false,
 			},
 			expectedDataTableId: 'dt-1',
 		});

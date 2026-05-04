@@ -95,20 +95,13 @@ export function createEvalsTool(context: InstanceAiContext) {
 				(await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE));
 			proposalCache.delete(input.workflowId);
 
-			// Filter metrics by user selection.
-			const fallbackMetricIds = shape.suggestedMetrics
-				.filter((m) => m.defaultEnabled)
-				.map((m) => m.id);
+			// Filter metrics by user selection, falling back to defaults if none selected.
 			const selectedMetricIds =
 				resumeData.enabledMetricIds && resumeData.enabledMetricIds.length > 0
 					? resumeData.enabledMetricIds
-					: fallbackMetricIds.length > 0
-						? fallbackMetricIds
-						: shape.suggestedMetrics.map((m) => m.id);
+					: shape.suggestedMetrics.filter((m) => m.defaultEnabled).map((m) => m.id);
 			const enabledMetrics = shape.suggestedMetrics.filter((m) => selectedMetricIds.includes(m.id));
 
-			// This setup tool creates an empty dataset; row population is intentionally
-			// out of scope.
 			const dataTableId = resumeData.existingDataTableId;
 			const datasetChoiceForTask =
 				resumeData.datasetChoice === 'link-existing' && dataTableId
@@ -116,14 +109,6 @@ export function createEvalsTool(context: InstanceAiContext) {
 					: resumeData.datasetChoice === 'later'
 						? ('later' as const)
 						: ('create-empty' as const);
-			context.logger?.info('[evals] phase 2 dataset prep', {
-				workflowId: input.workflowId,
-				datasetChoiceForTask,
-				existingDataTableId: dataTableId,
-				projectId: input.projectId,
-				inputColumns: shape.suggestedInputColumns,
-				outputColumns: shape.suggestedOutputColumns,
-			});
 
 			// Format the task for eval-setup-agent. From the sub-agent's POV, the
 			// DataTable is an empty table it must create.

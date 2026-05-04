@@ -43,7 +43,6 @@ export const topologySidecarSchema = z.object({
 	targets: z.array(topologyTargetExpectationSchema).default([]),
 	excludeTargets: z.array(z.string()).default([]),
 	metrics: z.array(metricSchema).default(['correctness']),
-	allowNativeTestRunnerSmoke: z.boolean().default(false),
 });
 
 export type TopologyTargetExpectation = z.infer<typeof topologyTargetExpectationSchema>;

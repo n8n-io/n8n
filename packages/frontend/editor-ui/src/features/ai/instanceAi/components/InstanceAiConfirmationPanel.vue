@@ -358,6 +358,8 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:input-thread-id="chunk.item.toolCall.confirmation.inputThreadId"
 					:message="chunk.item.toolCall.confirmation.message"
+					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
+					:project-id="chunk.item.toolCall.confirmation.projectId"
 					:payload="chunk.item.toolCall.confirmation.evalsPropose!"
 				/>
 

@@ -2,6 +2,5 @@
 	"expectNoEvalNodes": true,
 	"targets": [],
 	"excludeTargets": [],
-	"metrics": [],
-	"allowNativeTestRunnerSmoke": false
+	"metrics": []
 }

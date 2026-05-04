@@ -1,4 +1,4 @@
-import { N8nClient, type DataTableCreatePayload, type WorkflowCreatePayload } from '../n8n-client';
+import { N8nClient, type DataTableCreatePayload } from '../n8n-client';
 
 const BASE_URL = 'http://localhost:5678';
 const originalFetch = global.fetch;
@@ -83,55 +83,6 @@ describe('N8nClient', () => {
 		});
 	});
 
-	it('creates a workflow from a broad create payload without changing the body', async () => {
-		const workflow: WorkflowCreatePayload = {
-			id: 'workflow-import-id',
-			name: 'Imported eval workflow',
-			description: 'Imported from topology fixture',
-			hash: 'hash-1',
-			nodes: [
-				{
-					id: 'node-1',
-					name: 'Manual Trigger',
-					type: 'n8n-nodes-base.manualTrigger',
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-				},
-			],
-			connections: {},
-			settings: null,
-			staticData: null,
-			meta: null,
-			pinData: null,
-			tags: [{ id: 'tag-1', name: 'Eval' }],
-			projectId: 'project-1',
-			parentFolderId: 'folder-1',
-			parentFolder: { id: 'folder-1', name: 'Eval fixtures' },
-			uiContext: 'eval-setup-topology',
-			aiBuilderAssisted: true,
-			expectedChecksum: 'checksum-1',
-			autosaved: false,
-		};
-		const response = {
-			id: 'workflow-1',
-			name: workflow.name,
-			active: false,
-			nodes: workflow.nodes,
-			connections: {},
-		};
-		const fetchMock = mockFetchOnce({ data: response });
-		const client = new N8nClient(BASE_URL);
-
-		await client.createWorkflow(workflow);
-
-		expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/rest/workflows`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(workflow),
-		});
-	});
-
 	it('creates a data table under the project path and unwraps the data response', async () => {
 		const payload: DataTableCreatePayload = {
 			name: 'Eval samples',
@@ -193,36 +144,20 @@ describe('N8nClient', () => {
 		);
 	});
 
-	it('starts a native test run', async () => {
-		const fetchMock = mockFetchOnce({});
+	it('returns direct thread status responses', async () => {
+		const status = { hasActiveRun: false, isSuspended: false, backgroundTasks: [] };
+		const fetchMock = mockFetchOnce(status);
 		const client = new N8nClient(BASE_URL);
 
-		await client.startNativeTestRun('workflow-1');
-
-		expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/rest/workflows/workflow-1/test-runs/new`, {
-			method: 'POST',
+		await expect(client.getThreadStatus('thread-1')).resolves.toEqual(status);
+		expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/rest/instance-ai/threads/thread-1/status`, {
+			method: 'GET',
 			headers: { 'Content-Type': 'application/json' },
 			body: undefined,
 		});
 	});
 
-	it('lists native test runs from a direct array response', async () => {
-		const testRuns = [{ id: 'run-1', status: 'completed', errorCode: null }];
-		mockFetchOnce({ data: testRuns });
-		const client = new N8nClient(BASE_URL);
-
-		await expect(client.listNativeTestRuns('workflow-1')).resolves.toEqual(testRuns);
-	});
-
-	it('lists native test runs from a paginated results response', async () => {
-		const testRuns = [{ id: 'run-2', status: 'failed', errorCode: 'EVAL_ERROR' }];
-		mockFetchOnce({ data: { results: testRuns } });
-		const client = new N8nClient(BASE_URL);
-
-		await expect(client.listNativeTestRuns('workflow-1')).resolves.toEqual(testRuns);
-	});
-
-	it('unwraps thread status responses', async () => {
+	it('unwraps REST-wrapped thread status responses', async () => {
 		const status = { hasActiveRun: false, isSuspended: false, backgroundTasks: [] };
 		const fetchMock = mockFetchOnce({ data: status });
 		const client = new N8nClient(BASE_URL);

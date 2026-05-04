@@ -77,15 +77,8 @@ async function createEmptyEvalDataTable(
 		return await context.dataTableService.create(input.name, columns, options);
 	} catch (error) {
 		if (!isNameConflictError(error)) throw error;
-		for (let attempt = 0; attempt < 3; attempt++) {
-			const suffixedName = `${input.name} (${nanoid(5)})`;
-			try {
-				return await context.dataTableService.create(suffixedName, columns, options);
-			} catch (retryError) {
-				if (!isNameConflictError(retryError)) throw retryError;
-			}
-		}
-		throw error;
+		const suffixedName = `${input.name} (${nanoid(5)})`;
+		return await context.dataTableService.create(suffixedName, columns, options);
 	}
 }
 

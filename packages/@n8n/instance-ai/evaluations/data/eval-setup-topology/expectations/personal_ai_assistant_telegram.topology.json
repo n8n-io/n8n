@@ -12,6 +12,5 @@
     }
   ],
   "excludeTargets": ["Speech to Text"],
-  "metrics": ["correctness"],
-  "allowNativeTestRunnerSmoke": false
+  "metrics": ["correctness"]
 }

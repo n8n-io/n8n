@@ -30,11 +30,6 @@ export interface WorkflowNodeResponse {
 	credentials?: Record<string, unknown>;
 }
 
-export interface WorkflowTag {
-	id: string;
-	name: string;
-}
-
 /** A workflow as returned by GET /rest/workflows/:id. */
 export interface WorkflowResponse {
 	id: string;
@@ -46,29 +41,17 @@ export interface WorkflowResponse {
 	staticData?: Record<string, unknown>;
 	meta?: Record<string, unknown>;
 	pinData?: Record<string, unknown>;
-	tags?: WorkflowTag[];
-	projectId?: string;
 }
 
 export interface WorkflowCreatePayload {
-	id?: string;
 	name: string;
-	description?: string | null;
-	hash?: string;
 	nodes: Array<WorkflowNodeResponse & Record<string, unknown>>;
 	connections: Record<string, unknown>;
 	settings?: Record<string, unknown> | null;
 	staticData?: Record<string, unknown> | null;
 	meta?: Record<string, unknown> | null;
 	pinData?: Record<string, unknown> | null;
-	tags?: string[] | WorkflowTag[];
 	projectId?: string;
-	parentFolderId?: string;
-	parentFolder?: { id: string; name: string } | null;
-	uiContext?: string;
-	aiBuilderAssisted?: boolean;
-	expectedChecksum?: string;
-	autosaved?: boolean;
 }
 
 export interface DataTableCreateColumn {
@@ -88,12 +71,6 @@ export interface DataTableResponse {
 }
 
 export type DataTableRowInput = Record<string, string | number | boolean | null>;
-
-export interface TestRunSummary {
-	id: string;
-	status: string;
-	errorCode?: string | null;
-}
 
 interface WorkflowListItem {
 	id: string;
@@ -130,6 +107,23 @@ interface ThreadStatus {
 		runId?: string;
 		messageGroupId?: string;
 	}>;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function isThreadStatus(value: unknown): value is ThreadStatus {
+	return (
+		isRecord(value) &&
+		typeof value.hasActiveRun === 'boolean' &&
+		typeof value.isSuspended === 'boolean' &&
+		Array.isArray(value.backgroundTasks)
+	);
+}
+
+function isWrappedThreadStatus(value: unknown): value is { data: ThreadStatus } {
+	return isRecord(value) && isThreadStatus(value.data);
 }
 
 // ---------------------------------------------------------------------------
@@ -217,10 +211,10 @@ export class N8nClient {
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
 	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		const result = (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as {
-			data: ThreadStatus;
-		};
-		return result.data;
+		const result = await this.fetch(`/rest/instance-ai/threads/${threadId}/status`);
+		if (isWrappedThreadStatus(result)) return result.data;
+		if (isThreadStatus(result)) return result;
+		throw new Error('Unexpected thread status response shape');
 	}
 
 	/**
@@ -485,27 +479,6 @@ export class N8nClient {
 		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}`, {
 			method: 'DELETE',
 		});
-	}
-
-	/**
-	 * Start a native test run for a workflow.
-	 * POST /rest/workflows/:workflowId/test-runs/new
-	 */
-	async startNativeTestRun(workflowId: string): Promise<void> {
-		await this.fetch(`/rest/workflows/${workflowId}/test-runs/new`, {
-			method: 'POST',
-		});
-	}
-
-	/**
-	 * List native test runs for a workflow.
-	 * GET /rest/workflows/:workflowId/test-runs
-	 */
-	async listNativeTestRuns(workflowId: string): Promise<TestRunSummary[]> {
-		const result = (await this.fetch(`/rest/workflows/${workflowId}/test-runs`)) as {
-			data: TestRunSummary[] | { results: TestRunSummary[] };
-		};
-		return Array.isArray(result.data) ? result.data : result.data.results;
 	}
 
 	// -- Eval mock execution -------------------------------------------------

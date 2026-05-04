@@ -79,7 +79,6 @@ describe('loadEvalSetupTopologyCases', () => {
 				},
 			],
 			metrics: ['helpfulness'],
-			allowNativeTestRunnerSmoke: true,
 		});
 
 		const cases = loadEvalSetupTopologyCases({ rootDir });
@@ -113,7 +112,6 @@ describe('loadEvalSetupTopologyCases', () => {
 				],
 				excludeTargets: [],
 				metrics: ['helpfulness'],
-				allowNativeTestRunnerSmoke: true,
 			},
 		});
 		expect(basename(cases[0].workflowPath)).toBe('chat_agent.json');
@@ -148,7 +146,6 @@ describe('loadEvalSetupTopologyCases', () => {
 			targets: [],
 			excludeTargets: [],
 			metrics: ['correctness'],
-			allowNativeTestRunnerSmoke: false,
 		});
 	});
 
@@ -184,7 +181,6 @@ describe('loadEvalSetupTopologyCases', () => {
 			targets: [],
 			excludeTargets: [],
 			metrics: [],
-			allowNativeTestRunnerSmoke: false,
 		});
 
 		const cases = loadEvalSetupTopologyCases({ rootDir });
