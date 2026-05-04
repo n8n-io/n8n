@@ -120,6 +120,16 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.SSO_SETTINGS } },
 			},
 			{
+				id: 'settings-encryption-keys',
+				icon: 'key-round',
+				label: i18n.baseText('settings.encryptionKeys'),
+				position: 'top',
+				available:
+					envFeatureFlagCheck.value('ENCRYPTION_KEY_ROTATION') &&
+					canUserAccessRouteByName(VIEWS.ENCRYPTION_KEYS_SETTINGS),
+				route: { to: { name: VIEWS.ENCRYPTION_KEYS_SETTINGS } },
+			},
+			{
 				id: 'settings-security',
 				icon: 'shield',
 				label: i18n.baseText('settings.security'),

@@ -123,7 +123,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// Parse TypeScript to WorkflowJSON with two-stage validation
 			let result;
 			try {
-				result = parseAndValidate(finalCode);
+				result = parseAndValidate(finalCode, {
+					nodeTypesProvider: context.nodeTypesProvider,
+				});
 			} catch (error) {
 				return {
 					success: false,
