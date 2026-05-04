@@ -640,6 +640,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				id: t.id,
 				title: t.title || NEW_CONVERSATION_TITLE,
 				createdAt: t.createdAt,
+				updatedAt: t.updatedAt,
 				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
@@ -659,6 +660,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
 		if (existingThread) {
 			existingThread.createdAt = result.thread.createdAt;
+			existingThread.updatedAt = result.thread.updatedAt;
 			existingThread.title = result.thread.title || existingThread.title;
 			return;
 		}
@@ -667,6 +669,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			id: result.thread.id,
 			title: result.thread.title || NEW_CONVERSATION_TITLE,
 			createdAt: result.thread.createdAt,
+			updatedAt: result.thread.updatedAt,
 		});
 	}
 

@@ -1,11 +1,12 @@
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { InstanceSettings } from 'n8n-core';
+import { EncryptionKeyProxy, InstanceSettings } from 'n8n-core';
 
 import { KeyManagerService } from '../key-manager.service';
 import { EncryptionBootstrapService } from '../encryption-bootstrap.service';
 
 describe('EncryptionBootstrapService', () => {
 	const keyManager = mockInstance(KeyManagerService);
+	const encryptionKeyProxy = mockInstance(EncryptionKeyProxy);
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -17,6 +18,7 @@ describe('EncryptionBootstrapService', () => {
 		new EncryptionBootstrapService(
 			keyManager,
 			mockInstance(InstanceSettings, { encryptionKey: 'test-instance-key' }),
+			encryptionKeyProxy,
 			mockLogger(),
 		);
 
@@ -30,6 +32,12 @@ describe('EncryptionBootstrapService', () => {
 		await createService().run();
 
 		expect(keyManager.bootstrapGcmKey).toHaveBeenCalled();
+	});
+
+	it('wires the key manager into the encryption key proxy', async () => {
+		await createService().run();
+
+		expect(encryptionKeyProxy.setProvider).toHaveBeenCalledWith(keyManager);
 	});
 
 	it('bootstraps CBC before GCM', async () => {
