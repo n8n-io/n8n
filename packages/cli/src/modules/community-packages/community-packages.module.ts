@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import type { EntityClass, ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -36,6 +37,10 @@ export class CommunityPackagesModule implements ModuleInterface {
 		if (Container.get(CommunityPackagesConfig).preventLoading) return [];
 
 		const dir = path.join(Container.get(InstanceSettings).nodesDownloadDir, 'node_modules');
-		return await scanDirectoryForPackages(dir);
+		const { nodes } = Container.get(GlobalConfig);
+		return await scanDirectoryForPackages(dir, {
+			excludeNodes: nodes.exclude,
+			includeNodes: nodes.include,
+		});
 	}
 }

@@ -561,14 +561,11 @@ export class LoadNodesAndCredentials {
 				}
 			}
 
-			const resolveSourcePath = (sourcePath: string) =>
-				loader instanceof DirectoryLoader ? path.resolve(loader.directory, sourcePath) : sourcePath;
-
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
 				this.known.nodes[`${packageName}.${type}`] = {
 					className,
-					sourcePath: resolveSourcePath(sourcePath),
+					sourcePath: loader.resolveSourcePath(sourcePath),
 				};
 			}
 
@@ -581,7 +578,7 @@ export class LoadNodesAndCredentials {
 				} = known.credentials[type];
 				this.known.credentials[type] = {
 					className,
-					sourcePath: resolveSourcePath(sourcePath),
+					sourcePath: loader.resolveSourcePath(sourcePath),
 					supportedNodes:
 						loader instanceof PackageDirectoryLoader
 							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)

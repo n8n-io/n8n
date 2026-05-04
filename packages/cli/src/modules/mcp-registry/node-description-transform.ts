@@ -47,6 +47,8 @@ export function serverToNodeDescription(
 	server: McpRegistryServer,
 	baseDescription: INodeTypeDescription,
 ): INodeTypeDescription | null {
+	if (server.authType !== 'oauth2') return null;
+
 	const remote = pickRemote(server);
 	if (!remote) return null;
 

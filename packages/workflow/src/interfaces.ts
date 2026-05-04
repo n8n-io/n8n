@@ -2708,9 +2708,7 @@ export interface NodeLoader {
 
 	known: KnownNodesAndCredentials;
 	types: NodeLoaderTypes;
-	nodeTypes: INodeTypeData;
 	credentialTypes: ICredentialTypeData;
-	loadedNodes: INodeTypeNameVersion[];
 
 	loadAll(): Promise<void>;
 	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType>;
@@ -2718,6 +2716,7 @@ export interface NodeLoader {
 	reset(): void;
 	releaseTypes(): void;
 	ensureTypesLoaded(): Promise<void>;
+	resolveSourcePath(sourcePath: string): string;
 }
 
 export interface IRun {

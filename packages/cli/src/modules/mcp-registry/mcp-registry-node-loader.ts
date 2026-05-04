@@ -1,6 +1,8 @@
+import type { Logger } from '@n8n/backend-common';
 import { camelCase } from 'change-case';
 import { UnrecognizedCredentialTypeError, UnrecognizedNodeTypeError } from 'n8n-core';
 import {
+	ensureError,
 	NodeHelpers,
 	type ICredentialType,
 	type ICredentialTypeData,
@@ -41,15 +43,19 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 	loadedNodes: INodeTypeNameVersion[] = [];
 
+	private typesReleased = true;
+
 	constructor(
 		private readonly registry: McpRegistryService,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly logger: Logger,
 	) {}
 
 	async loadAll(): Promise<void> {
 		this.reset();
 
 		const baseLoaded = this.resolveBaseNode();
+		this.typesReleased = false;
 		if (!baseLoaded) return;
 
 		const { type: baseNode, sourcePath } = baseLoaded;
@@ -89,21 +95,37 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		this.types = { nodes: [], credentials: [] };
 		this.nodeTypes = {};
 		this.loadedNodes = [];
+		this.typesReleased = true;
 	}
 
 	releaseTypes() {
 		this.types = { nodes: [], credentials: [] };
+		this.typesReleased = true;
 	}
 
 	async ensureTypesLoaded(): Promise<void> {
-		if (this.types.nodes.length === 0) await this.loadAll();
+		if (this.typesReleased) await this.loadAll();
+	}
+
+	resolveSourcePath(sourcePath: string) {
+		return sourcePath;
 	}
 
 	private resolveBaseNode(): LoadedClass<INodeType | IVersionedNodeType> | undefined {
 		const langchainLoader = this.loadNodesAndCredentials.loaders[LANGCHAIN_PACKAGE_NAME];
+		if (!langchainLoader) {
+			this.logger.warn(
+				`McpRegistryNodeLoader: langchain package "${LANGCHAIN_PACKAGE_NAME}" is not loaded; registry nodes will not be available.`,
+			);
+			return undefined;
+		}
 		try {
-			return langchainLoader?.getNode(MCP_REGISTRY_BASE_NODE_NAME);
-		} catch {
+			return langchainLoader.getNode(MCP_REGISTRY_BASE_NODE_NAME);
+		} catch (error) {
+			this.logger.warn(
+				`McpRegistryNodeLoader: failed to resolve base node "${MCP_REGISTRY_BASE_NODE_NAME}"`,
+				{ error: ensureError(error) },
+			);
 			return undefined;
 		}
 	}

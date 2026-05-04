@@ -132,6 +132,10 @@ export abstract class DirectoryLoader implements NodeLoader {
 		}
 	}
 
+	resolveSourcePath(sourcePath: string) {
+		return this.resolvePath(sourcePath);
+	}
+
 	protected resolvePath(file: string) {
 		return path.resolve(this.directory, file);
 	}

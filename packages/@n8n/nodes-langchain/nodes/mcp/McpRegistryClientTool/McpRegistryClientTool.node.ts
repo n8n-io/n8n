@@ -174,7 +174,7 @@ function resolveConfig(
 		endpointUrl: ctx.getNodeParameter('endpointUrl', itemIndex) as string,
 		timeout: ctx.getNodeParameter('options.timeout', itemIndex, 60000) as number,
 		toolFilter: {
-			mode: ctx.getNodeParameter('include', itemIndex, 'all') as McpToolIncludeMode,
+			mode: ctx.getNodeParameter('include', itemIndex) as McpToolIncludeMode,
 			includeTools: ctx.getNodeParameter('includeTools', itemIndex, []) as string[],
 			excludeTools: ctx.getNodeParameter('excludeTools', itemIndex, []) as string[],
 		},
