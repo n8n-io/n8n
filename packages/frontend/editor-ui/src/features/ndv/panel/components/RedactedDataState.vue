@@ -26,7 +26,7 @@ const i18n = useI18n();
 		<template v-if="isDynamicCredentials">
 			{{ i18n.baseText('ndv.redacted.dynamicCredentials.description') }}
 		</template>
-		<template v-else>
+		<template v-else-if="canReveal">
 			{{ i18n.baseText('ndv.redacted.description.sentence1') }}<br />
 			<I18nT keypath="ndv.redacted.description.sentence2" tag="span" scope="global">
 				<template #link>
@@ -35,6 +35,9 @@ const i18n = useI18n();
 					}}</N8nLink>
 				</template>
 			</I18nT>
+		</template>
+		<template v-else>
+			{{ i18n.baseText('ndv.redacted.noPermission.description') }}
 		</template>
 		<template v-if="canReveal" #actions>
 			<N8nButton
