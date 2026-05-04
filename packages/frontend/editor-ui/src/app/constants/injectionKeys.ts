@@ -9,6 +9,7 @@ import type { TelemetryContext } from '@/app/types/telemetry';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import type { useExecutionDataStore } from '@/app/stores/executionData.store';
 import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { useWorkflowExecutionSessionStore } from '@/app/stores/workflowExecutionSession.store';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
 export const WorkflowIdKey = 'workflowId' as unknown as InjectionKey<ComputedRef<string>>;
@@ -28,6 +29,9 @@ export const WorkflowDocumentStoreKey: InjectionKey<
 export const ExecutionDataStoreKey: InjectionKey<
 	ShallowRef<ReturnType<typeof useExecutionDataStore> | null>
 > = Symbol('ExecutionDataStore');
+export const WorkflowExecutionSessionStoreKey: InjectionKey<
+	ShallowRef<ReturnType<typeof useWorkflowExecutionSessionStore> | null>
+> = Symbol('WorkflowExecutionSessionStore');
 export const NDVStoreKey: InjectionKey<ShallowRef<ReturnType<typeof useNDVStore> | null>> =
 	Symbol('NDVStore');
 export const ChatHubToolContextKey: InjectionKey<boolean> = Symbol('ChatHubToolContext');
