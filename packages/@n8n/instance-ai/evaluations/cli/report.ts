@@ -300,9 +300,10 @@ function renderWorkflow(workflow: unknown): string {
 		return '<div class="no-workflow">No workflow built.</div>';
 	}
 	const json = JSON.stringify(workflow);
-	// The component takes the workflow as an attribute — escape for HTML
-	// attribute safety. JSON can contain < > & — we encode those.
-	return `<n8n-demo workflow="${escapeAttr(json)}" frame="true" clicktointeract="true" collapseformobile="true"></n8n-demo>`;
+	// Lazy mount: store the workflow on a placeholder and let the inline
+	// script inject the <n8n-demo> element when the parent <details> is
+	// expanded. Rendering all 77 demos upfront kills first-paint performance.
+	return `<div class="workflow-mount" data-workflow="${escapeAttr(json)}"></div>`;
 }
 
 function renderExample(record: ResultRecord, idPrefix: string): string {
@@ -356,10 +357,10 @@ function renderExample(record: ResultRecord, idPrefix: string): string {
       <h3>Built workflow</h3>
       ${renderWorkflow(record.workflow)}
     </section>
-    <section class="tool-calls-section">
-      <h3>Tool calls${record.toolCalls && record.toolCalls.length > 0 ? ` (${record.toolCalls.length})` : ''}</h3>
+    <details class="tool-calls-section">
+      <summary><h3>Tool calls${record.toolCalls && record.toolCalls.length > 0 ? ` (${record.toolCalls.length})` : ''}</h3></summary>
       ${renderToolCallTimeline(record.toolCalls)}
-    </section>
+    </details>
     ${renderJudgeComments(record.feedback)}
   </div>
 </details>`;
@@ -518,7 +519,7 @@ export function renderDocument(runs: Run[]): string {
   .error { margin-top: 8px; padding: 8px 12px; background: rgba(248,81,73,0.12); color: var(--fail); border-radius: 4px; font-size: 12px; white-space: pre-wrap; }
   .interactivity { margin-top: 8px; font-size: 11px; color: var(--muted); }
   .workflow-section { margin-top: 8px; }
-  n8n-demo { display: block; height: 380px; border: 1px solid var(--border); border-radius: 4px; background: #fff; color-scheme: light; }
+  n8n-demo, .workflow-mount { display: block; height: 380px; border: 1px solid var(--border); border-radius: 4px; background: #fff; color-scheme: light; }
   .no-workflow { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border); border-radius: 4px; }
   table.judges { margin-top: 12px; width: 100%; border-collapse: collapse; font-size: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
   table.judges th, table.judges td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border); }
@@ -526,6 +527,11 @@ export function renderDocument(runs: Run[]): string {
   table.judges td.judge-pass { color: var(--pass); font-weight: 600; }
   table.judges td.judge-fail { color: var(--fail); font-weight: 600; }
   .tool-calls-section { margin-top: 12px; }
+  details.tool-calls-section > summary { cursor: pointer; list-style: none; }
+  details.tool-calls-section > summary::-webkit-details-marker { display: none; }
+  details.tool-calls-section > summary h3 { display: inline; }
+  details.tool-calls-section > summary h3::before { content: '▸ '; color: var(--muted); }
+  details.tool-calls-section[open] > summary h3::before { content: '▾ '; }
   .no-tools { color: var(--muted); font-size: 12px; padding: 8px 12px; background: var(--card); border: 1px dashed var(--border); border-radius: 4px; }
   ol.tool-calls { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
   li.tool-call { background: var(--card); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; }
@@ -555,6 +561,25 @@ export function renderDocument(runs: Run[]): string {
   <nav class="runs">${runLinks}</nav>
 </header>
 <main>${body}</main>
+<script>
+  function mountWorkflows(scope) {
+    scope.querySelectorAll('.workflow-mount[data-workflow]').forEach((mount) => {
+      const json = mount.getAttribute('data-workflow');
+      const demo = document.createElement('n8n-demo');
+      demo.setAttribute('workflow', json);
+      demo.setAttribute('frame', 'true');
+      demo.setAttribute('clicktointeract', 'true');
+      demo.setAttribute('collapseformobile', 'true');
+      mount.replaceWith(demo);
+    });
+  }
+  document.querySelectorAll('details.example').forEach((el) => {
+    if (el.open) mountWorkflows(el);
+    el.addEventListener('toggle', () => {
+      if (el.open) mountWorkflows(el);
+    });
+  });
+</script>
 </body>
 </html>`;
 }
