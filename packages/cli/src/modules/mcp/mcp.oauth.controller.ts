@@ -37,10 +37,14 @@ const mcpEnabledGuard: RequestHandler = async (_req, res, next) => {
 /**
  * Pre-check guard for the unauthenticated DCR endpoint. Short-circuits with
  * a structured `server_error` response when the instance is at the
- * registered-client cap. The post-insert rollback in `enforceClientLimit`
- * throws `McpClientLimitReachedError` (a `ServerError` subclass) so the SDK
- * surfaces the same body shape on the race path. Both paths return HTTP 500
- * because the SDK's register handler hardcodes 500 for `ServerError`.
+ * registered-client cap. Returns HTTP 503 because limit exhaustion is a
+ * temporary capacity condition, not an internal failure.
+ *
+ * The post-insert rollback in `enforceClientLimit` throws
+ * `McpClientLimitReachedError` (a `ServerError` subclass) so the SDK
+ * surfaces the same body shape on the rare race path; the SDK's register
+ * handler hardcodes 500 for `ServerError`, so that path returns 500 with
+ * an identical body.
  */
 const mcpClientLimitGuard: RequestHandler = async (_req, res, next) => {
 	if (await mcpOAuthService.isClientLimitReached()) {
@@ -48,7 +52,7 @@ const mcpClientLimitGuard: RequestHandler = async (_req, res, next) => {
 		logger.warn('MCP OAuth client registration rejected: instance limit reached (pre-check)', {
 			limit,
 		});
-		res.status(500).json({
+		res.status(503).json({
 			error: 'server_error',
 			error_description: buildMcpClientLimitReachedMessage(limit),
 		});

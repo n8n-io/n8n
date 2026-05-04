@@ -263,7 +263,7 @@ describe('POST /mcp-oauth/register', () => {
 		expect(response.statusCode).toBeGreaterThanOrEqual(400);
 	});
 
-	test('should reject with descriptive server_error when instance client limit is reached (pre-check)', async () => {
+	test('should reject with 503 server_error when instance client limit is reached (pre-check)', async () => {
 		const globalConfig = Container.get(GlobalConfig);
 		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
 		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
@@ -280,7 +280,7 @@ describe('POST /mcp-oauth/register', () => {
 			expect(first.statusCode).toBe(201);
 
 			const second = await testServer.restlessAgent.post('/mcp-oauth/register').send(clientData);
-			expect(second.statusCode).toBe(500);
+			expect(second.statusCode).toBe(503);
 			expect(second.body).toMatchObject({
 				error: 'server_error',
 				error_description: expect.stringContaining('maximum of 1 registered MCP clients'),
