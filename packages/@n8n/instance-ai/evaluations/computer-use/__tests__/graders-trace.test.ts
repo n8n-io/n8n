@@ -7,6 +7,8 @@ import {
 	gradeMustNotCallMcpServer,
 	gradeMustNotCallTool,
 	gradeMustNotLoop,
+	gradeMustReachUrl,
+	gradeToolsMustNotError,
 } from '../graders/trace';
 import { computeTokenStats } from '../tokens';
 import type { ScenarioTrace } from '../types';
@@ -206,5 +208,135 @@ describe('trace.budget', () => {
 		const result = gradeBudget(t, { type: 'trace.budget', maxToolCalls: 5 });
 		expect(result.pass).toBe(false);
 		expect(result.reason).toContain('tool calls');
+	});
+});
+
+describe('trace.finalTextMatches mustNotMatch', () => {
+	it('fails when an abandonment phrase appears even though anyOf hits', () => {
+		const t = trace([]);
+		t.finalText = 'The Google Cloud Console is taking a while to load. Let me try a differe';
+		const result = gradeFinalTextMatches(t, {
+			type: 'trace.finalTextMatches',
+			anyOf: ['google.*cloud'],
+			mustNotMatch: ['taking a while', 'let me try a different'],
+		});
+		expect(result.pass).toBe(false);
+		expect(result.reason).toContain('abandoned');
+	});
+
+	it('passes when forbidden patterns are absent', () => {
+		const t = trace([]);
+		t.finalText = 'Created Google Cloud project and OAuth credentials successfully.';
+		const result = gradeFinalTextMatches(t, {
+			type: 'trace.finalTextMatches',
+			anyOf: ['google.*cloud'],
+			mustNotMatch: ['taking a while'],
+		});
+		expect(result.pass).toBe(true);
+	});
+});
+
+describe('trace.mustReachUrl', () => {
+	it('passes when browser_navigate args contain a URL matching the pattern', () => {
+		const result = gradeMustReachUrl(
+			trace([
+				{ toolName: 'browser_connect' },
+				{
+					toolName: 'browser_navigate',
+					args: { url: 'https://console.anthropic.com/settings/keys' },
+				},
+			]),
+			{ type: 'trace.mustReachUrl', pattern: 'console\\.anthropic\\.com/settings/keys' },
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('passes when the URL is on browser_tab_open instead of browser_navigate', () => {
+		const result = gradeMustReachUrl(
+			trace([
+				{
+					toolName: 'browser_tab_open',
+					args: { url: 'https://console.anthropic.com/settings/keys' },
+				},
+			]),
+			{ type: 'trace.mustReachUrl', pattern: 'console\\.anthropic\\.com/settings/keys' },
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when no browser tool reached a matching URL and lists what was visited', () => {
+		const result = gradeMustReachUrl(
+			trace([{ toolName: 'browser_navigate', args: { url: 'https://console.cloud.google.com' } }]),
+			{
+				type: 'trace.mustReachUrl',
+				pattern: 'console\\.cloud\\.google\\.com/projectcreate',
+			},
+		);
+		expect(result.pass).toBe(false);
+		expect(result.reason).toContain('console.cloud.google.com');
+	});
+
+	it('ignores URL-like args on tools outside the prefix scope', () => {
+		const result = gradeMustReachUrl(
+			trace([{ toolName: 'shell_execute', args: { url: 'https://example.com/curl' } }]),
+			{ type: 'trace.mustReachUrl', pattern: 'example\\.com' },
+		);
+		expect(result.pass).toBe(false);
+	});
+});
+
+describe('trace.toolsMustNotError', () => {
+	it('passes when no browser_* call has an error', () => {
+		const result = gradeToolsMustNotError(
+			trace([
+				{ toolName: 'browser_connect' },
+				{ toolName: 'browser_navigate', args: { url: 'https://example.com' } },
+			]),
+			{ type: 'trace.toolsMustNotError' },
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('fails when a browser_navigate call returned an error', () => {
+		const result = gradeToolsMustNotError(
+			trace([
+				{ toolName: 'browser_connect' },
+				{
+					toolName: 'browser_navigate',
+					args: { url: 'https://console.cloud.google.com' },
+					error: 'navigation timeout',
+				},
+			]),
+			{ type: 'trace.toolsMustNotError' },
+		);
+		expect(result.pass).toBe(false);
+		expect(result.reason).toContain('navigation timeout');
+		expect(result.reason).toContain('browser_navigate');
+	});
+
+	it('respects maxErrors', () => {
+		const result = gradeToolsMustNotError(
+			trace([
+				{ toolName: 'browser_navigate', error: 'timeout 1' },
+				{ toolName: 'browser_tab_open', error: 'timeout 2' },
+			]),
+			{ type: 'trace.toolsMustNotError', maxErrors: 2 },
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('ignores tools listed in ignoreTools', () => {
+		const result = gradeToolsMustNotError(
+			trace([{ toolName: 'pause-for-user', error: 'user cancelled' }]),
+			{ type: 'trace.toolsMustNotError', toolNamePrefix: '' },
+		);
+		expect(result.pass).toBe(true);
+	});
+
+	it('skips errors on tools outside the prefix scope', () => {
+		const result = gradeToolsMustNotError(trace([{ toolName: 'shell_execute', error: 'exit 1' }]), {
+			type: 'trace.toolsMustNotError',
+		});
+		expect(result.pass).toBe(true);
 	});
 });

@@ -12,6 +12,8 @@ import {
 	gradeMustNotCallMcpServer,
 	gradeMustNotCallTool,
 	gradeMustNotLoop,
+	gradeMustReachUrl,
+	gradeToolsMustNotError,
 } from './trace';
 import type { Grader, GraderResult, ScenarioTrace } from '../types';
 
@@ -36,6 +38,10 @@ export async function applyGrader(grader: Grader, ctx: GradeContext): Promise<Gr
 			return gradeBudget(ctx.trace, grader);
 		case 'trace.finalTextMatches':
 			return gradeFinalTextMatches(ctx.trace, grader);
+		case 'trace.mustReachUrl':
+			return gradeMustReachUrl(ctx.trace, grader);
+		case 'trace.toolsMustNotError':
+			return gradeToolsMustNotError(ctx.trace, grader);
 		case 'fs.fileExists':
 			return await gradeFileExists(ctx.sandboxDir, grader);
 		case 'fs.fileMatches':

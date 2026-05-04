@@ -87,6 +87,50 @@ export interface TraceFinalTextMatchesGrader {
 	anyOf: string[];
 	/** Pass only if every regex matches. Combined with anyOf when both are present. */
 	allOf?: string[];
+	/**
+	 * Fail if any of these (case-insensitive) regexes hit. Use to catch
+	 * abandonment phrases like "taking a while" / "let me try a different
+	 * approach" / "couldn't load" that pass `anyOf` keyword checks but
+	 * actually mean the agent gave up.
+	 */
+	mustNotMatch?: string[];
+}
+
+/**
+ * Pass if any browser-family tool call's URL-like args match the given
+ * regex (case-insensitive). Outcome-shaped — agnostic to which navigation
+ * tool got there (`browser_navigate`, `browser_tab_open`, etc.).
+ *
+ * Matches intent, not arrival: a navigation that ultimately timed out still
+ * passes this. Pair with `trace.toolsMustNotError` to assert the navigation
+ * actually succeeded.
+ */
+export interface TraceMustReachUrlGrader {
+	type: 'trace.mustReachUrl';
+	/** Regex pattern (applied case-insensitively) tested against URL-like args. */
+	pattern: string;
+	/**
+	 * Optional substring filter on toolName. Default 'browser' covers
+	 * browser_navigate, browser_tab_open, browser-credential-setup, etc.
+	 */
+	toolNamePrefix?: string;
+}
+
+/**
+ * Default-on for any scenario tagged `requires:browser-bootstrap`. Inspects
+ * `CapturedToolCall.error` and fails when a tool reports an error (e.g. a
+ * `browser_navigate` that timed out). Pair with `trace.mustReachUrl` for an
+ * "actually arrived" guarantee — `mustReachUrl` matches intent, this matches
+ * outcome.
+ */
+export interface TraceToolsMustNotErrorGrader {
+	type: 'trace.toolsMustNotError';
+	/** Default 0. Fail if the count of tool calls with `error` set exceeds this. */
+	maxErrors?: number;
+	/** Optional substring filter on toolName. Default 'browser' covers browser_navigate, browser_tab_open, browser-credential-setup. */
+	toolNamePrefix?: string;
+	/** Tool names exempted from the count. Defaults to ['ask-user', 'pause-for-user'] — those legitimately "interrupt" rather than fail. */
+	ignoreTools?: string[];
 }
 
 export interface FsFileExistsGrader {
@@ -126,6 +170,8 @@ export type Grader =
 	| TraceMustNotLoopGrader
 	| TraceBudgetGrader
 	| TraceFinalTextMatchesGrader
+	| TraceMustReachUrlGrader
+	| TraceToolsMustNotErrorGrader
 	| FsFileExistsGrader
 	| FsFileMatchesGrader
 	| SecurityNoSecretLeakGrader;

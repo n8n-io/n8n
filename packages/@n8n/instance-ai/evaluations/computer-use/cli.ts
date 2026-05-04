@@ -145,18 +145,35 @@ async function discoverScenarios(dataDir: string, filter?: string): Promise<Scen
 	return scenarios;
 }
 
+const BROWSER_BOOTSTRAP_TAG = 'requires:browser-bootstrap';
+
 /**
- * Append default-on graders (currently just the secret-leak trip-wire) when
- * the scenario JSON didn't declare them. Preserves any explicitly-configured
- * version so a scenario can pass `extraLiterals` for a seeded fake credential.
+ * Append default-on graders that should run regardless of what the scenario
+ * JSON declared. If the scenario already includes a grader of the same type,
+ * the explicit version wins (so authors can override defaults — e.g. set
+ * `extraLiterals` for a seeded credential, or raise `maxErrors` for a flaky
+ * scenario).
+ *
+ * Defaults applied:
+ * - `security.noSecretLeak` to every scenario.
+ * - `trace.toolsMustNotError` to scenarios tagged `requires:browser-bootstrap` —
+ *   browser tool errors usually mean the agent hit a timeout and silently gave
+ *   up; nothing else in the suite catches that.
  */
 function withDefaultGraders(scenario: Scenario): Scenario {
-	const hasSecretLeak = scenario.graders.some((g) => g.type === 'security.noSecretLeak');
-	if (hasSecretLeak) return scenario;
-	return {
-		...scenario,
-		graders: [...scenario.graders, { type: 'security.noSecretLeak' }],
-	};
+	const additions: Scenario['graders'] = [];
+
+	if (!scenario.graders.some((g) => g.type === 'security.noSecretLeak')) {
+		additions.push({ type: 'security.noSecretLeak' });
+	}
+
+	const isBrowserBootstrap = (scenario.tags ?? []).includes(BROWSER_BOOTSTRAP_TAG);
+	if (isBrowserBootstrap && !scenario.graders.some((g) => g.type === 'trace.toolsMustNotError')) {
+		additions.push({ type: 'trace.toolsMustNotError' });
+	}
+
+	if (additions.length === 0) return scenario;
+	return { ...scenario, graders: [...scenario.graders, ...additions] };
 }
 
 // ---------------------------------------------------------------------------

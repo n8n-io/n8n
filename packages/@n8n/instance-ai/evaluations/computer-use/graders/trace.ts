@@ -17,10 +17,16 @@ import type {
 	TraceMustNotCallMcpServerGrader,
 	TraceMustNotCallToolGrader,
 	TraceMustNotLoopGrader,
+	TraceMustReachUrlGrader,
+	TraceToolsMustNotErrorGrader,
 } from '../types';
 import { isComputerUseTool } from './tool-set';
 
 const DEFAULT_MAX_REPEATED_CALL = 3;
+const DEFAULT_TOOLS_MUST_NOT_ERROR_PREFIX = 'browser';
+const DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE: readonly string[] = ['ask-user', 'pause-for-user'];
+const DEFAULT_MUST_REACH_URL_PREFIX = 'browser';
+const URL_LIKE_ARG_FIELDS: readonly string[] = ['url', 'to', 'href', 'target', 'link'];
 
 export function gradeMustCallTool(
 	trace: ScenarioTrace,
@@ -34,6 +40,41 @@ export function gradeMustCallTool(
 		reason: pass
 			? `tool "${grader.name}" was called ${String(matched.length)} time(s)`
 			: `tool "${grader.name}" was never called (saw ${String(trace.toolCalls.length)} other calls)`,
+	};
+}
+
+export function gradeMustReachUrl(
+	trace: ScenarioTrace,
+	grader: TraceMustReachUrlGrader,
+): GraderResult {
+	const prefix = grader.toolNamePrefix ?? DEFAULT_MUST_REACH_URL_PREFIX;
+	const re = new RegExp(grader.pattern, 'i');
+	const visited: string[] = [];
+	let match: string | undefined;
+
+	for (const tc of trace.toolCalls) {
+		if (!tc.toolName.startsWith(prefix)) continue;
+		for (const field of URL_LIKE_ARG_FIELDS) {
+			const value = tc.args[field];
+			if (typeof value !== 'string') continue;
+			visited.push(value);
+			if (!match && re.test(value)) match = value;
+		}
+	}
+
+	if (match) {
+		return {
+			grader,
+			pass: true,
+			reason: `URL matched /${grader.pattern}/ in ${prefix}* tool args (e.g. ${match})`,
+		};
+	}
+
+	const sample = visited.slice(0, 3).join(', ') || '(none)';
+	return {
+		grader,
+		pass: false,
+		reason: `no ${prefix}* tool reached a URL matching /${grader.pattern}/; visited: ${sample}`,
 	};
 }
 
@@ -163,6 +204,41 @@ export function gradeBudget(trace: ScenarioTrace, grader: TraceBudgetGrader): Gr
 	};
 }
 
+export function gradeToolsMustNotError(
+	trace: ScenarioTrace,
+	grader: TraceToolsMustNotErrorGrader,
+): GraderResult {
+	const prefix = grader.toolNamePrefix ?? DEFAULT_TOOLS_MUST_NOT_ERROR_PREFIX;
+	const ignore = new Set(grader.ignoreTools ?? DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE);
+	const maxErrors = grader.maxErrors ?? 0;
+
+	const errored = trace.toolCalls.filter(
+		(tc) => tc.toolName.startsWith(prefix) && !ignore.has(tc.toolName) && tc.error,
+	);
+
+	const pass = errored.length <= maxErrors;
+	if (pass) {
+		return {
+			grader,
+			pass,
+			reason:
+				errored.length === 0
+					? `no ${prefix}* tool errors`
+					: `${String(errored.length)} ${prefix}* tool error(s) within limit ${String(maxErrors)}`,
+		};
+	}
+
+	const sample = errored
+		.slice(0, 3)
+		.map((tc) => `${tc.toolName}: ${tc.error ?? 'unknown'}`)
+		.join('; ');
+	return {
+		grader,
+		pass,
+		reason: `${String(errored.length)} ${prefix}* tool error(s) > limit ${String(maxErrors)} — ${sample}`,
+	};
+}
+
 export function gradeFinalTextMatches(
 	trace: ScenarioTrace,
 	grader: TraceFinalTextMatchesGrader,
@@ -170,17 +246,29 @@ export function gradeFinalTextMatches(
 	const text = trace.finalText;
 	const anyOf = grader.anyOf.map((p) => new RegExp(p, 'i'));
 	const allOf = (grader.allOf ?? []).map((p) => new RegExp(p, 'i'));
+	const mustNotMatch = (grader.mustNotMatch ?? []).map((p) => new RegExp(p, 'i'));
 
 	const anyHit = anyOf.length === 0 || anyOf.some((re) => re.test(text));
 	const allHit = allOf.every((re) => re.test(text));
-	const pass = anyHit && allHit;
+	const forbiddenHit = mustNotMatch.find((re) => re.test(text));
+	const pass = anyHit && allHit && !forbiddenHit;
 
+	if (pass) {
+		return { grader, pass, reason: 'final text satisfies all required patterns' };
+	}
+
+	const preview = text.slice(0, 120).replace(/\s+/g, ' ');
+	if (forbiddenHit) {
+		return {
+			grader,
+			pass,
+			reason: `final text contains forbidden pattern /${forbiddenHit.source}/ — agent likely abandoned the task (got: "${preview}...")`,
+		};
+	}
 	return {
 		grader,
 		pass,
-		reason: pass
-			? 'final text satisfies all required patterns'
-			: `final text does not match required patterns (got: "${text.slice(0, 120).replace(/\s+/g, ' ')}...")`,
+		reason: `final text does not match required patterns (got: "${preview}...")`,
 	};
 }
 

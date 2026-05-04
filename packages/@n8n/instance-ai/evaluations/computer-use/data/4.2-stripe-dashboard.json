@@ -5,7 +5,10 @@
 	"budgets": { "maxToolCalls": 50, "maxDurationMs": 600000 },
 	"graders": [
 		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
-		{ "type": "trace.mustCallTool", "name": "browser_navigate" },
+		{
+			"type": "trace.mustReachUrl",
+			"pattern": "dashboard\\.stripe\\.com/.*webhooks"
+		},
 		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
 		{
 			"type": "trace.budget",
@@ -15,7 +18,14 @@
 		},
 		{
 			"type": "trace.finalTextMatches",
-			"anyOf": ["stripe|webhook|dashboard\\.stripe"]
+			"anyOf": ["stripe|webhook|dashboard\\.stripe"],
+			"mustNotMatch": [
+				"taking a while",
+				"let me try (a )?different",
+				"couldn['’]t (load|connect|reach)",
+				"timed? out",
+				"unable to (load|access|reach)"
+			]
 		}
 	],
 	"tags": [
