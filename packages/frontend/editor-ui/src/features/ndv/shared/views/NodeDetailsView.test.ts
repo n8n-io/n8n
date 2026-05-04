@@ -15,14 +15,9 @@ import {
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
-import {
-	createTestWorkflow,
-	createTestWorkflowObject,
-	defaultNodeDescriptions,
-	mockNodes,
-} from '@/__tests__/mocks';
-import { computed } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { createTestWorkflow, defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
+import { computed, shallowRef } from 'vue';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('vue-router', () => {
 	return {
@@ -50,7 +45,12 @@ async function createPiniaStore(isActiveNode: boolean) {
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
 	workflowsStore.workflow = workflow;
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.setNodes(workflow.nodes);
+	workflowDocumentStore.setConnections(workflow.connections);
+	workflowDocumentStore.setSettings(workflow.settings ?? { executionOrder: 'v1' });
 	workflowDocumentStore.initPristineNodeMetadata(node.name);
+
+	const workflowDocumentStoreRef = shallowRef(workflowDocumentStore);
 
 	if (isActiveNode) {
 		ndvStore.setActiveNodeName(node.name, 'other');
@@ -62,7 +62,7 @@ async function createPiniaStore(isActiveNode: boolean) {
 	return {
 		pinia,
 		workflow,
-		workflowObject: createTestWorkflowObject(workflow),
+		workflowDocumentStoreRef,
 		nodeName: node.name,
 	};
 }
@@ -83,15 +83,13 @@ describe('NodeDetailsView', () => {
 	});
 
 	it('should render correctly', async () => {
-		const { pinia, workflow, workflowObject } = await createPiniaStore(true);
+		const { pinia, workflow, workflowDocumentStoreRef } = await createPiniaStore(true);
 
 		const renderComponent = createComponentRenderer(NodeDetailsView, {
-			props: {
-				workflowObject,
-			},
 			global: {
 				provide: {
 					[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+					[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 				},
 				mocks: {
 					$route: {
@@ -110,15 +108,13 @@ describe('NodeDetailsView', () => {
 
 	describe('keyboard listener', () => {
 		test('should register and unregister keydown listener based on modal open state', async () => {
-			const { pinia, workflow, workflowObject } = await createPiniaStore(true);
+			const { pinia, workflow, workflowDocumentStoreRef } = await createPiniaStore(true);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
-				props: {
-					workflowObject,
-				},
 				global: {
 					provide: {
 						[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 					},
 					mocks: {
 						$route: {
@@ -128,9 +124,7 @@ describe('NodeDetailsView', () => {
 				},
 			});
 
-			const { getByTestId, queryByTestId, unmount } = renderComponent({
-				pinia,
-			});
+			const { getByTestId, queryByTestId, unmount } = renderComponent({ pinia });
 
 			const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
 			const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
@@ -154,16 +148,14 @@ describe('NodeDetailsView', () => {
 		});
 
 		test('should unregister keydown listener on unmount', async () => {
-			const { pinia, workflow, workflowObject, nodeName } = await createPiniaStore(false);
+			const { pinia, workflow, workflowDocumentStoreRef, nodeName } = await createPiniaStore(false);
 			const ndvStore = useNDVStore(pinia);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
-				props: {
-					workflowObject,
-				},
 				global: {
 					provide: {
 						[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+						[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
 					},
 					mocks: {
 						$route: {
@@ -173,9 +165,7 @@ describe('NodeDetailsView', () => {
 				},
 			});
 
-			const { getByTestId, queryByTestId, unmount } = renderComponent({
-				pinia,
-			});
+			const { getByTestId, queryByTestId, unmount } = renderComponent({ pinia });
 
 			ndvStore.setActiveNodeName(nodeName, 'other');
 

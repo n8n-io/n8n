@@ -249,10 +249,6 @@ export default workflow('id', 'name')
   .add(scheduleTrigger).to(processNode);
 \`\`\`
 
-### Web App (SPA served from a webhook)
-
-When the workflow serves HTML from a webhook (dashboards, admin UIs, custom forms), call \`templates(action="best-practices", technique="web_app")\` for the full file-based HTML pattern, data-injection recipe, multi-route architecture, and a complete multi-route dashboard example. Embedding large HTML inline in Code nodes breaks at ~20KB — always use the file-based pattern from the guide.
-
 ### Google Sheets — documentId and sheetName (RLC fields)
 
 These are Resource Locator fields that require the \`__rl\` object format:
