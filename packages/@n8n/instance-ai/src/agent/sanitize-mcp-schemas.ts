@@ -15,6 +15,31 @@
 import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
 
+export const MCP_SCHEMA_MAX_DEPTH = 32;
+
+export class McpSchemaSanitizationError extends Error {
+	constructor(
+		message: string,
+		readonly details: {
+			toolName?: string;
+			path: string;
+			depth: number;
+			maxDepth: number;
+		},
+	) {
+		super(message);
+		this.name = 'McpSchemaSanitizationError';
+	}
+}
+
+interface SanitizeContext {
+	strict: boolean;
+	toolName?: string;
+	path: string;
+	depth: number;
+	maxDepth: number;
+}
+
 /**
  * Recursively walk a Zod schema tree and replace Anthropic-incompatible types.
  *
@@ -23,7 +48,40 @@ import { z } from 'zod';
  * mismatched descriptions at construction time rather than silently degrading
  * the schema the model sees.
  */
-export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodTypeAny {
+export function sanitizeZodType(
+	schema: z.ZodTypeAny,
+	strict = false,
+	options: { maxDepth?: number; toolName?: string; path?: string } = {},
+): z.ZodTypeAny {
+	return sanitizeZodTypeInner(schema, {
+		strict,
+		toolName: options.toolName,
+		path: options.path ?? '$',
+		depth: 0,
+		maxDepth: options.maxDepth ?? MCP_SCHEMA_MAX_DEPTH,
+	});
+}
+
+function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z.ZodTypeAny {
+	if (context.depth > context.maxDepth) {
+		throw new McpSchemaSanitizationError(
+			`MCP schema exceeds maximum depth of ${context.maxDepth}`,
+			{
+				toolName: context.toolName,
+				path: context.path,
+				depth: context.depth,
+				maxDepth: context.maxDepth,
+			},
+		);
+	}
+
+	const sanitizeChild = (child: z.ZodTypeAny, path: string): z.ZodTypeAny =>
+		sanitizeZodTypeInner(child, {
+			...context,
+			path,
+			depth: context.depth + 1,
+		});
+
 	// ZodNull → replace with optional undefined (shouldn't appear standalone, but handle it)
 	if (schema instanceof z.ZodNull) {
 		return z.string().optional();
@@ -31,7 +89,10 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 
 	// ZodNullable<T> → T.optional()
 	if (schema instanceof z.ZodNullable) {
-		return sanitizeZodType((schema as z.ZodNullable<z.ZodTypeAny>).unwrap(), strict).optional();
+		return sanitizeChild(
+			(schema as z.ZodNullable<z.ZodTypeAny>).unwrap(),
+			`${context.path}?`,
+		).optional();
 	}
 
 	// ZodDiscriminatedUnion — flatten to a single z.object
@@ -87,12 +148,15 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 
 		// Build each field with properly merged descriptions
 		for (const [fieldName, entries] of fieldMeta) {
-			const sanitizedField = sanitizeZodType(entries[0].type, strict).optional();
+			const sanitizedField = sanitizeChild(
+				entries[0].type,
+				`${context.path}.${fieldName}`,
+			).optional();
 
 			// Detect enum value conflicts across variants.
 			// Only the first variant's type is used (entries[0].type), so differing
 			// enum values in other variants would be silently lost.
-			if (strict && entries.length > 1) {
+			if (context.strict && entries.length > 1) {
 				const unwrapOptional = (t: z.ZodTypeAny): z.ZodTypeAny =>
 					t instanceof z.ZodOptional ? unwrapOptional(t.unwrap() as z.ZodTypeAny) : t;
 
@@ -128,7 +192,7 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 			const uniqueDescs = new Set(withDesc.map((d) => d.description));
 
 			if (uniqueDescs.size > 1) {
-				if (strict) {
+				if (context.strict) {
 					const conflictDetails = withDesc
 						.map((d) => `  Action "${d.action}": "${d.description}"`)
 						.join('\n');
@@ -163,7 +227,9 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 			.options as z.ZodTypeAny[];
 		const nonNull = options.filter((o) => !(o instanceof z.ZodNull));
 		const hadNull = nonNull.length < options.length;
-		const sanitized = nonNull.map((o) => sanitizeZodType(o, strict));
+		const sanitized = nonNull.map((o, index) =>
+			sanitizeChild(o, `${context.path}.union[${index}]`),
+		);
 
 		if (sanitized.length === 0) {
 			// All options were null — degenerate case
@@ -181,25 +247,30 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 		const shape = (schema as z.ZodObject<z.ZodRawShape>).shape;
 		const newShape: z.ZodRawShape = {};
 		for (const [key, value] of Object.entries(shape)) {
-			newShape[key] = sanitizeZodType(value, strict);
+			newShape[key] = sanitizeChild(value, `${context.path}.${key}`);
 		}
 		return z.object(newShape);
 	}
 
 	// ZodOptional — recurse into inner
 	if (schema instanceof z.ZodOptional) {
-		return sanitizeZodType((schema as z.ZodOptional<z.ZodTypeAny>).unwrap(), strict).optional();
+		return sanitizeChild(
+			(schema as z.ZodOptional<z.ZodTypeAny>).unwrap(),
+			`${context.path}?`,
+		).optional();
 	}
 
 	// ZodArray — recurse into element
 	if (schema instanceof z.ZodArray) {
-		return z.array(sanitizeZodType((schema as z.ZodArray<z.ZodTypeAny>).element, strict));
+		return z.array(
+			sanitizeChild((schema as z.ZodArray<z.ZodTypeAny>).element, `${context.path}[]`),
+		);
 	}
 
 	// ZodDefault — recurse into inner
 	if (schema instanceof z.ZodDefault) {
 		const inner = (schema as z.ZodDefault<z.ZodTypeAny>)._def.innerType;
-		return sanitizeZodType(inner, strict).default(
+		return sanitizeChild(inner, `${context.path}.default`).default(
 			(schema as z.ZodDefault<z.ZodTypeAny>)._def.defaultValue(),
 		);
 	}
@@ -207,7 +278,10 @@ export function sanitizeZodType(schema: z.ZodTypeAny, strict = false): z.ZodType
 	// ZodRecord — recurse into value type
 	if (schema instanceof z.ZodRecord) {
 		return z.record(
-			sanitizeZodType((schema as z.ZodRecord<z.ZodString, z.ZodTypeAny>).valueSchema, strict),
+			sanitizeChild(
+				(schema as z.ZodRecord<z.ZodString, z.ZodTypeAny>).valueSchema,
+				`${context.path}.*`,
+			),
 		);
 	}
 
@@ -259,14 +333,39 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * action context (e.g. 'For "create": ... For "delete": ...') rather than
  * throwing.
  */
-export function sanitizeMcpToolSchemas(tools: ToolsInput): ToolsInput {
-	for (const tool of Object.values(tools)) {
+export function sanitizeMcpToolSchemas(
+	tools: ToolsInput,
+	options: {
+		maxDepth?: number;
+		onError?: (error: McpSchemaSanitizationError) => void;
+	} = {},
+): ToolsInput {
+	for (const [name, tool] of Object.entries(tools)) {
 		const t = tool as { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny };
-		if (t.inputSchema) {
-			t.inputSchema = ensureTopLevelObject(sanitizeZodType(t.inputSchema));
-		}
-		if (t.outputSchema) {
-			t.outputSchema = sanitizeZodType(t.outputSchema);
+		try {
+			if (t.inputSchema) {
+				t.inputSchema = ensureTopLevelObject(
+					sanitizeZodType(t.inputSchema, false, {
+						maxDepth: options.maxDepth,
+						toolName: name,
+						path: '$.inputSchema',
+					}),
+				);
+			}
+			if (t.outputSchema) {
+				t.outputSchema = sanitizeZodType(t.outputSchema, false, {
+					maxDepth: options.maxDepth,
+					toolName: name,
+					path: '$.outputSchema',
+				});
+			}
+		} catch (error) {
+			if (error instanceof McpSchemaSanitizationError) {
+				delete (tools as Record<string, unknown>)[name];
+				options.onError?.(error);
+				continue;
+			}
+			throw error;
 		}
 	}
 

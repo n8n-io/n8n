@@ -1,7 +1,11 @@
 import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
 
-import { sanitizeMcpToolSchemas, sanitizeZodType } from '../sanitize-mcp-schemas';
+import {
+	McpSchemaSanitizationError,
+	sanitizeMcpToolSchemas,
+	sanitizeZodType,
+} from '../sanitize-mcp-schemas';
 
 function makeTools(
 	schemas: Record<string, { input?: z.ZodTypeAny; output?: z.ZodTypeAny }>,
@@ -17,6 +21,14 @@ function makeTools(
 }
 
 describe('sanitizeMcpToolSchemas', () => {
+	function makeDeepObject(depth: number): z.ZodTypeAny {
+		let schema: z.ZodTypeAny = z.string();
+		for (let i = 0; i < depth; i++) {
+			schema = z.object({ child: schema });
+		}
+		return schema;
+	}
+
 	it('should return empty tools input unchanged', () => {
 		const tools = {} as ToolsInput;
 
@@ -267,6 +279,42 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(resultSchema.safeParse({ data: { key: 'value' } }).success).toBe(true);
 			expect(resultSchema.safeParse({ data: { key: undefined } }).success).toBe(true);
 			expect(resultSchema.safeParse({ data: { key: null } }).success).toBe(false);
+		});
+	});
+
+	describe('depth bounding', () => {
+		it('should throw a typed error when a schema exceeds the maximum depth', () => {
+			expect(() => sanitizeZodType(makeDeepObject(4), false, { maxDepth: 2 })).toThrow(
+				McpSchemaSanitizationError,
+			);
+		});
+
+		it('should remove only the offending MCP tool when one schema is too deep', () => {
+			const onError = jest.fn();
+			const tools = makeTools({
+				validTool: { input: z.object({ name: z.string() }) },
+				deepTool: { input: makeDeepObject(4) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, { maxDepth: 2, onError });
+
+			expect(Object.keys(result)).toEqual(['validTool']);
+			expect(onError).toHaveBeenCalledWith(expect.any(McpSchemaSanitizationError));
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls[0]?.[0].details.toolName).toBe('deepTool');
+			expect(onErrorCalls[0]?.[0].details.maxDepth).toBe(2);
+		});
+
+		it('should bound arrays, records, and unions', () => {
+			const tools = makeTools({
+				arrayTool: { input: z.array(makeDeepObject(3)) },
+				recordTool: { input: z.record(makeDeepObject(3)) },
+				unionTool: { input: z.union([makeDeepObject(3), z.null()]) },
+			});
+
+			const result = sanitizeMcpToolSchemas(tools, { maxDepth: 2 });
+
+			expect(Object.keys(result)).toEqual([]);
 		});
 	});
 
