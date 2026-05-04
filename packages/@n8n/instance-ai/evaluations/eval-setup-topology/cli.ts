@@ -9,6 +9,7 @@ import { createLogger } from '../harness/logger';
 import { shouldFailProcessForCompletedRun } from './exit-policy';
 import { loadEvalSetupTopologyCases } from './fixtures';
 import { runEvalSetupTopologyCase } from './runner';
+import { formatRunSummary } from './summary';
 import type { EvalSetupTopologyRunResult } from './types';
 
 const DEFAULT_TIMEOUT_MS = 600_000;
@@ -140,6 +141,7 @@ async function main(): Promise<void> {
 
 	await writeFile(args.output, `${JSON.stringify(runResult, null, 2)}\n`, 'utf8');
 	logger.info(`Wrote results to ${args.output}`);
+	logger.info(formatRunSummary(runResult));
 
 	for (const result of results.filter((caseResult) => !caseResult.passed)) {
 		logger.warn(`Case failed: ${result.caseSlug}`);
