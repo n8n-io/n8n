@@ -6,7 +6,7 @@ const retries = 12;
 async function findChromaticReviewUrl() {
 	const { octokit } = initGithub();
 
-	const refsToCheck = [context.payload.pull_request?.head?.sha].filter(Boolean);
+	const refsToCheck = [context.sha, context.payload.pull_request?.head?.sha].filter(Boolean);
 
 	const seenRefs = new Set();
 	const uniqueRefs = refsToCheck.filter((ref) => {
