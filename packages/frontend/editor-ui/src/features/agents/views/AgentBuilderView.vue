@@ -667,11 +667,11 @@ function onOpenSkillFromList(id: string) {
 		data: {
 			projectId: projectId.value,
 			agentId: agentId.value,
-			existingSkillIds: Object.keys(agent.value?.skills ?? {}),
 			skill,
 			skillId: id,
 			onRemove: (skillId: string) => onRemoveSkill(skillId),
-			onConfirm: ({ id: skillId, skill: updatedSkill }: { id: string; skill: AgentSkill }) => {
+			onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
+				if (!skillId) return;
 				if (agent.value?.id !== agentId.value) return;
 				agent.value = {
 					...agent.value,
@@ -705,29 +705,24 @@ function onRemoveSkill(id: string) {
 }
 
 function onOpenAddSkillModal() {
-	const existingSkillIds = new Set(Object.keys(agent.value?.skills ?? {}));
-	for (const skillRef of localConfig.value?.skills ?? []) {
-		if (skillRef.id) existingSkillIds.add(skillRef.id);
-	}
-
 	uiStore.openModalWithData({
 		name: AGENT_SKILL_MODAL_KEY,
 		data: {
 			projectId: projectId.value,
 			agentId: agentId.value,
-			existingSkillIds: [...existingSkillIds],
-			onConfirm: ({ id, skill }: { id: string; skill: AgentSkill }) => {
+			onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 				void (async () => {
 					let created: AgentSkill;
 					let versionId: string | null;
+					let skillId: string;
 					try {
 						const result = await createAgentSkill(
 							rootStore.restApiContext,
 							projectId.value,
 							agentId.value,
-							id,
 							skill,
 						);
+						skillId = result.id;
 						created = result.skill;
 						versionId = result.versionId;
 					} catch (error) {
@@ -740,11 +735,11 @@ function onOpenAddSkillModal() {
 						versionId,
 						skills: {
 							...(agent.value.skills ?? {}),
-							[id]: created,
+							[skillId]: created,
 						},
 					};
 					onConfigFieldUpdate({
-						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id }],
+						skills: [...(localConfig.value?.skills ?? []), { type: 'skill', id: skillId }],
 					});
 					showMessage({
 						title: locale.baseText('agents.builder.skills.added'),

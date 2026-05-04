@@ -141,15 +141,21 @@ function getConfiguredSkills(
 function withSkillCatalog(instructions: string, skills: ConfiguredSkill[]): string {
 	if (skills.length === 0) return instructions;
 
-	const catalog = skills
-		.map(({ id, skill }) => `- ${id}: ${skill.name} - ${skill.description}`)
-		.join('\n');
+	const catalog = formatSkillCatalog(skills);
 	const baseInstructions = instructions.trimEnd();
 
-	return `${baseInstructions}${baseInstructions ? '\n\n' : ''}Available skills:
+	return `Skill loading protocol:
+Skills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.
+
+Available skills:
 ${catalog}
 
-If the user's task matches a skill description, call load_skill with the skill id and follow the returned instructions. Skill bodies are intentionally not included here; load them only when relevant.`;
+When deciding whether to load a skill:
+- Match the user's request against the skill name and description.
+- If one skill clearly matches, call load_skill once with that skill's id, then follow the returned instructions.
+- If the relevant skill was already loaded for this request, do not call load_skill again.
+- If no skill clearly matches, do not call load_skill.
+- Do not load a skill just because it is listed here.${baseInstructions ? `\n\n${baseInstructions}` : ''}`;
 }
 
 function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
@@ -157,8 +163,7 @@ function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
 
 	return new Tool('load_skill')
 		.description(
-			'Load the full instructions for an attached skill when its name or description matches the current task. ' +
-				'Use this before following the skill instructions; available skill ids are listed in the system instructions.',
+			'Load the full instructions for an attached skill. Use the skill id listed in the system instructions.',
 		)
 		.input(
 			z.object({
@@ -183,6 +188,14 @@ function createLoadSkillTool(skills: ConfiguredSkill[]): BuiltTool {
 			};
 		})
 		.build();
+}
+
+function formatSkillCatalog(skills: ConfiguredSkill[]): string {
+	return skills
+		.map(
+			({ id, skill }) => `- name: ${skill.name}\n  description: ${skill.description}\n  id: ${id}`,
+		)
+		.join('\n');
 }
 
 async function resolveToolRef(

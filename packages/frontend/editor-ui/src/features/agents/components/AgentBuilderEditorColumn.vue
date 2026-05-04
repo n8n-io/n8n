@@ -84,6 +84,7 @@ const i18n = useI18n();
 						<AgentCapabilitiesSection
 							:config="localConfig"
 							:tools="localConfig?.tools ?? []"
+							:custom-tools="agent?.tools ?? {}"
 							:skills="appliedSkills"
 							:connected-triggers="connectedTriggers"
 							:disabled="isBuildChatStreaming"

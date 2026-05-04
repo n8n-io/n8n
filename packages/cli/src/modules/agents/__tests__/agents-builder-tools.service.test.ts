@@ -29,7 +29,7 @@ function makeService() {
 		agentsToolsService,
 	);
 
-	return { service, agentsService };
+	return { service, agentsService, secureRuntime };
 }
 
 describe('AgentsBuilderToolsService', () => {
@@ -39,6 +39,53 @@ describe('AgentsBuilderToolsService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	describe('build_custom_tool tool', () => {
+		function getBuildCustomTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
+		}
+
+		it('stores a custom tool and returns the generated tool id', async () => {
+			const { service, agentsService, secureRuntime } = makeService();
+			const descriptor = {
+				name: 'seo_analyzer',
+				description: 'Analyze SEO issues',
+				systemInstruction: null,
+				inputSchema: null,
+				outputSchema: null,
+				hasSuspend: false,
+				hasResume: false,
+				hasToMessage: false,
+				requireApproval: false,
+				providerOptions: null,
+			};
+			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
+			agentsService.buildCustomTool.mockResolvedValue({
+				ok: true,
+				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				descriptor,
+			});
+
+			const result = await getBuildCustomTool(service).handler!(
+				{ code: 'export default new Tool("seo_analyzer")' },
+				ctx,
+			);
+
+			expect(agentsService.buildCustomTool).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				'export default new Tool("seo_analyzer")',
+				descriptor,
+			);
+			expect(result).toEqual({
+				ok: true,
+				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				descriptor,
+			});
+		});
 	});
 
 	describe('create_skill tool', () => {
@@ -61,6 +108,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('creates a skill and returns the generated skill id', async () => {
 			const { service, agentsService } = makeService();
 			agentsService.createSkill.mockResolvedValue({
+				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
 				skill: {
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',
@@ -78,19 +126,14 @@ describe('AgentsBuilderToolsService', () => {
 				ctx,
 			);
 
-			expect(agentsService.createSkill).toHaveBeenCalledWith(
-				agentId,
-				projectId,
-				'summarize_meetings',
-				{
-					name: 'Summarize Meetings',
-					description: 'Use when summarizing meeting notes',
-					instructions: 'Extract decisions and action items.',
-				},
-			);
+			expect(agentsService.createSkill).toHaveBeenCalledWith(agentId, projectId, {
+				name: 'Summarize Meetings',
+				description: 'Use when summarizing meeting notes',
+				instructions: 'Extract decisions and action items.',
+			});
 			expect(result).toEqual({
 				ok: true,
-				id: 'summarize_meetings',
+				id: 'skill_0Ab9ZkLm3Pq7Xy2N',
 				skill: {
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',

@@ -17,7 +17,12 @@ import {
 
 import { NodeTypes } from '@/node-types';
 
-import { EphemeralNodeExecutor, isUsableAsAgentTool } from '../ephemeral-node-executor';
+import {
+	AGENT_PROVIDER_NODE_WHITELIST,
+	EphemeralNodeExecutor,
+	isAgentProviderNode,
+	isUsableAsAgentTool,
+} from '../ephemeral-node-executor';
 
 const mockGetBase = jest.fn();
 
@@ -48,6 +53,30 @@ describe('isUsableAsAgentTool', () => {
 
 	it('ignores outputs that are not an array (e.g. expression form)', () => {
 		expect(isUsableAsAgentTool({ outputs: '={{$json.out}}' })).toBe(false);
+	});
+});
+
+describe('isAgentProviderNode', () => {
+	it('accepts whitelisted provider nodes (OpenAI, Anthropic, etc.)', () => {
+		expect(isAgentProviderNode('@n8n/n8n-nodes-langchain.openAi')).toBe(true);
+		expect(isAgentProviderNode('@n8n/n8n-nodes-langchain.anthropic')).toBe(true);
+		expect(isAgentProviderNode('@n8n/n8n-nodes-langchain.googleGemini')).toBe(true);
+	});
+
+	it('rejects non-provider langchain nodes (lm chat models, agents, summarization)', () => {
+		expect(isAgentProviderNode('@n8n/n8n-nodes-langchain.lmChatOpenAi')).toBe(false);
+		expect(isAgentProviderNode('@n8n/n8n-nodes-langchain.agent')).toBe(false);
+		expect(isAgentProviderNode('@n8n/n8n-nodes-langchain.chainSummarization')).toBe(false);
+	});
+
+	it('rejects unrelated nodes', () => {
+		expect(isAgentProviderNode('n8n-nodes-base.httpRequest')).toBe(false);
+		expect(isAgentProviderNode('')).toBe(false);
+	});
+
+	it('exposes the whitelist as a stable Set', () => {
+		expect(AGENT_PROVIDER_NODE_WHITELIST).toBeInstanceOf(Set);
+		expect(AGENT_PROVIDER_NODE_WHITELIST.has('@n8n/n8n-nodes-langchain.openAi')).toBe(true);
 	});
 });
 
@@ -122,6 +151,27 @@ describe('EphemeralNodeExecutor', () => {
 
 			expect(result.status).toBe('error');
 			expect(result.error).toContain('Trigger nodes cannot be executed standalone');
+		});
+
+		it('admits a whitelisted provider node even without `usableAsTool`', async () => {
+			const providerDescription: INodeTypeDescription = {
+				...toolDescription,
+				usableAsTool: undefined,
+				outputs: ['main'],
+			};
+			nodeTypes.getByNameAndVersion.mockReturnValue(
+				mock<INodeType>({ description: providerDescription }),
+			);
+
+			const result = await executor.executeInline({
+				nodeType: '@n8n/n8n-nodes-langchain.openAi',
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
+
+			expect(result.error).not.toMatch(/not usable as a tool/);
 		});
 
 		it('returns a structured error when the operation is on the blacklist (sendAndWait)', async () => {

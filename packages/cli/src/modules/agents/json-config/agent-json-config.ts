@@ -46,7 +46,7 @@ const AgentJsonSkillConfigSchema = z.object({
 	id: z
 		.string()
 		.min(1)
-		.regex(/^[a-z0-9_-]+$/),
+		.regex(/^[A-Za-z0-9_-]+$/),
 });
 
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
@@ -55,20 +55,22 @@ const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 		id: z
 			.string()
 			.min(1)
-			.regex(/^[a-z0-9_-]+$/),
+			.regex(/^[A-Za-z0-9_-]+$/),
 		requireApproval: z.boolean().optional(),
 	}),
-	z.object({
-		type: z.literal('workflow'),
-		workflow: z.string().min(1),
-		name: z.string().optional(),
-		description: z.string().optional(),
-		requireApproval: z.boolean().optional(),
-		allOutputs: z
-			.boolean()
-			.optional()
-			.describe('Whether to return all node outputs instead of just the last node'),
-	}),
+	z
+		.object({
+			type: z.literal('workflow'),
+			workflow: z.string().min(1),
+			name: z.string().optional(),
+			description: z.string().optional(),
+			requireApproval: z.boolean().optional(),
+			allOutputs: z
+				.boolean()
+				.optional()
+				.describe('Whether to return all node outputs instead of just the last node'),
+		})
+		.strict(),
 	z
 		.object({
 			type: z.literal('node'),

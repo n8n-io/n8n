@@ -7,15 +7,17 @@ import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8n
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 import type { AgentJsonConfig, AgentJsonToolRef } from '../types';
-import type { AgentSkill } from '../types';
+import type { AgentSkill, CustomToolEntry } from '../types';
 import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
 import { toolRefToNode } from '../composables/useAgentToolRefAdapter';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import AgentChipButton from './AgentChipButton.vue';
 
 const props = withDefaults(
 	defineProps<{
 		config: AgentJsonConfig | null;
 		tools: AgentJsonToolRef[];
+		customTools?: Record<string, CustomToolEntry>;
 		skills: Array<{ id: string; skill: AgentSkill }>;
 		connectedTriggers: string[];
 		disabled?: boolean;
@@ -74,7 +76,20 @@ const hasTools = computed(() => props.tools.length > 0);
 const hasSkills = computed(() => props.skills.length > 0);
 
 function toolLabel(tool: AgentJsonToolRef, index: number) {
-	return tool.name || `${tool.type}-${index + 1}`;
+	if (tool.type === 'custom') {
+		return formatToolNameForDisplay(
+			(tool.id ? props.customTools?.[tool.id]?.descriptor.name : undefined) ??
+				tool.name ??
+				tool.id ??
+				`${tool.type}-${index + 1}`,
+		);
+	}
+
+	if (tool.type === 'workflow') {
+		return formatToolNameForDisplay(tool.name ?? tool.workflow ?? `${tool.type}-${index + 1}`);
+	}
+
+	return formatToolNameForDisplay(tool.name ?? `${tool.type}-${index + 1}`);
 }
 
 function toolIcon(tool: AgentJsonToolRef): IconName {

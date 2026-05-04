@@ -55,7 +55,7 @@ describe('agentSectionEditor.utils', () => {
 			expect(next.config?.toolCallConcurrency).toBe(8);
 		});
 		it('replaces array elements at numeric paths', () => {
-			const next = setSlice(cfg, 'tools.0', { type: 'workflow', id: 'w1' });
+			const next = setSlice(cfg, 'tools.0', { type: 'workflow', workflow: 'w1' });
 			expect((next.tools as Array<{ type: string }>)[0].type).toBe('workflow');
 		});
 		it('returns the slice as-is for an empty path', () => {

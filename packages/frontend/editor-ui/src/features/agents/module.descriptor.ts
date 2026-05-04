@@ -68,7 +68,6 @@ export const AgentsModule: FrontendModuleDescription = {
 				data: {
 					projectId: '',
 					agentId: '',
-					existingSkillIds: [],
 					onConfirm: () => {},
 				},
 			},

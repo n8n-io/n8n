@@ -107,17 +107,28 @@ export interface NodeToolConfig {
 	credentials?: Record<string, { id: string; name: string }>;
 }
 
-export interface AgentJsonToolRef {
-	type: 'custom' | 'workflow' | 'node';
-	id?: string;
-	workflow?: string;
+interface BaseAgentJsonToolRef {
 	name?: string;
 	description?: string;
+	workflow?: string;
 	node?: NodeToolConfig;
-	inputSchema?: Record<string, unknown>;
 	requireApproval?: boolean;
 	allOutputs?: boolean;
 }
+
+export type AgentJsonToolRef =
+	| (BaseAgentJsonToolRef & {
+			type: 'custom';
+			id: string;
+	  })
+	| (BaseAgentJsonToolRef & {
+			type: 'workflow';
+			id?: never;
+	  })
+	| (BaseAgentJsonToolRef & {
+			type: 'node';
+			id?: never;
+	  });
 
 export interface AgentJsonSkillRef {
 	type: 'skill';
@@ -133,25 +144,9 @@ export interface AgentSkill {
 }
 
 export interface AgentSkillMutationResponse {
+	id: string;
 	skill: AgentSkill;
 	versionId: string | null;
-}
-
-/**
- * Normalise a skill name into a stable id used to key the agent skill map.
- * Trims, lowercases, replaces non-`[a-z0-9_-]` runs with `_`, strips leading
- * and trailing underscores, and falls back to `'skill'` for empty/symbol-only
- * names. Shared by the backend builder tool and the frontend skill modal so
- * both produce the same ids for the same input.
- */
-export function skillNameToId(name: string): string {
-	const normalized = name
-		.trim()
-		.toLowerCase()
-		.replace(/[^a-z0-9_-]+/g, '_')
-		.replace(/^_+|_+$/g, '');
-
-	return normalized || 'skill';
 }
 
 export interface AgentJsonConfig {
