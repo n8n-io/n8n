@@ -14,6 +14,7 @@ import { handlesMultipleItems } from './handles-multiple-items';
 import { hasNodes } from './has-nodes';
 import { hasStartNode } from './has-start-node';
 import { hasTrigger } from './has-trigger';
+import { inboundTriggerAuthDefaults } from './inbound-trigger-auth-defaults';
 import { memoryProperlyConnected } from './memory-properly-connected';
 import { memorySessionKeyExpression } from './memory-session-key-expression';
 import { noDisabledNodes } from './no-disabled-nodes';
@@ -48,6 +49,7 @@ export const DETERMINISTIC_CHECKS: BinaryCheck[] = [
 	noInvalidFromAi,
 	toolsHaveParameters,
 	noUnreachableNodes,
+	inboundTriggerAuthDefaults,
 	validNodeConfig,
 ];
 
