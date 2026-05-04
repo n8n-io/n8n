@@ -11,7 +11,7 @@
 // baseline.
 // ---------------------------------------------------------------------------
 
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
@@ -72,7 +72,7 @@ function parseArgs(argv: string[]): PairwiseArgs {
 	const exampleIdsFile = get('--example-ids-file');
 	let exampleIds: Set<string> | undefined;
 	if (exampleIdsFile) {
-		const content = require('node:fs').readFileSync(exampleIdsFile, 'utf8') as string;
+		const content = readFileSync(exampleIdsFile, 'utf8');
 		const ids = content
 			.split('\n')
 			.map((s) => s.trim())
@@ -82,17 +82,38 @@ function parseArgs(argv: string[]): PairwiseArgs {
 
 	return {
 		dataset: get('--dataset') ?? DEFAULTS.DATASET_NAME,
-		judges: Number(get('--judges') ?? DEFAULTS.NUM_JUDGES),
-		iterations: Number(get('--iterations') ?? DEFAULTS.REPETITIONS),
-		concurrency: Number(get('--concurrency') ?? DEFAULTS.CONCURRENCY),
-		maxExamples: get('--max-examples') ? Number(get('--max-examples')) : undefined,
+		judges: parsePositiveInt(get('--judges'), '--judges') ?? Number(DEFAULTS.NUM_JUDGES),
+		iterations:
+			parsePositiveInt(get('--iterations'), '--iterations') ?? Number(DEFAULTS.REPETITIONS),
+		concurrency:
+			parsePositiveInt(get('--concurrency'), '--concurrency') ?? Number(DEFAULTS.CONCURRENCY),
+		maxExamples: parsePositiveInt(get('--max-examples'), '--max-examples'),
 		exampleIds,
-		timeoutMs: Number(get('--timeout-ms') ?? DEFAULTS.TIMEOUT_MS),
+		timeoutMs:
+			parsePositiveNumber(get('--timeout-ms'), '--timeout-ms') ?? Number(DEFAULTS.TIMEOUT_MS),
 		outputDir: get('--output-dir') ?? defaultOutputDir,
 		judgeModel: get('--judge-model') ?? 'claude-sonnet-4-5-20250929',
 		experimentName: get('--experiment-name') ?? 'pairwise-evals-instance-ai',
 		verbose: has('--verbose'),
 	};
+}
+
+function parsePositiveInt(raw: string | undefined, name: string): number | undefined {
+	if (raw === undefined || raw === '') return undefined;
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n <= 0 || !Number.isInteger(n)) {
+		throw new Error(`${name} must be a positive integer, got "${raw}".`);
+	}
+	return n;
+}
+
+function parsePositiveNumber(raw: string | undefined, name: string): number | undefined {
+	if (raw === undefined || raw === '') return undefined;
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n <= 0) {
+		throw new Error(`${name} must be a positive number, got "${raw}".`);
+	}
+	return n;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,16 +166,22 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 	logger.info(`Fetching dataset "${args.dataset}" from LangSmith`);
 	const lsClient = new LangSmithClient();
 	const examples: DatasetExample[] = [];
+	const layoutCounts = { evals: 0, context: 0, none: 0 };
 	for await (const raw of lsClient.listExamples({ datasetName: args.dataset })) {
 		const inputs = isRecord(raw.inputs) ? raw.inputs : {};
 		// The notion-pairwise-workflows dataset stores criteria under
 		// `inputs.evals.{dos,donts}`. Older fixtures used `inputs.context.*`
 		// — read both paths so both layouts work.
-		const criteria = isRecord(inputs.evals)
-			? inputs.evals
-			: isRecord(inputs.context)
-				? inputs.context
-				: {};
+		let criteria: Record<string, unknown> = {};
+		if (isRecord(inputs.evals)) {
+			criteria = inputs.evals;
+			layoutCounts.evals++;
+		} else if (isRecord(inputs.context)) {
+			criteria = inputs.context;
+			layoutCounts.context++;
+		} else {
+			layoutCounts.none++;
+		}
 		const example: DatasetExample = {
 			id: raw.id,
 			prompt: typeof inputs.prompt === 'string' ? inputs.prompt : '',
@@ -167,6 +194,9 @@ async function loadExamples(args: PairwiseArgs, logger: EvalLogger): Promise<Dat
 		}
 		examples.push(example);
 	}
+	logger.verbose(
+		`Dataset criteria layout: evals=${layoutCounts.evals} context=${layoutCounts.context} none=${layoutCounts.none}`,
+	);
 	return examples;
 }
 
@@ -321,18 +351,19 @@ async function writeOutputs(
 	await fs.mkdir(outputDir, { recursive: true });
 	await fs.mkdir(path.join(outputDir, 'workflows'), { recursive: true });
 
-	// results.jsonl + per-workflow files
+	// results.jsonl + per-workflow files. Workflow JSON is immutable per
+	// (exampleId, iteration), so skip any file already on disk to avoid
+	// O(N²) rewrites across incremental flushes.
 	const jsonlPath = path.join(outputDir, 'results.jsonl');
 	const lines: string[] = [];
 	for (const record of records) {
 		lines.push(JSON.stringify(record));
 		if (record.workflow) {
 			const slug = safeFilename(`${record.exampleId}_${record.iteration}`);
-			await fs.writeFile(
-				path.join(outputDir, 'workflows', `${slug}.json`),
-				JSON.stringify(record.workflow, null, 2),
-				'utf8',
-			);
+			const workflowPath = path.join(outputDir, 'workflows', `${slug}.json`);
+			if (!(await fileExists(workflowPath))) {
+				await fs.writeFile(workflowPath, JSON.stringify(record.workflow, null, 2), 'utf8');
+			}
 		}
 	}
 	await fs.writeFile(jsonlPath, lines.join('\n') + '\n', 'utf8');
@@ -598,10 +629,19 @@ function safeFilename(s: string): string {
 	return s.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 120);
 }
 
+async function fileExists(filePath: string): Promise<boolean> {
+	try {
+		await fs.access(filePath);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 function csvCell(value: unknown): string {
 	if (value === null || value === undefined) return '';
 	const str = String(value);
-	if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+	if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
 		return '"' + str.replace(/"/g, '""') + '"';
 	}
 	return str;

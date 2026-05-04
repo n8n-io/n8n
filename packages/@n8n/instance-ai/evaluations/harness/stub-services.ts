@@ -378,8 +378,8 @@ function stubExecutionResult(message: string) {
 
 /**
  * Resolve the default node-catalogue path inside
- * `packages/@n8n/ai-workflow-builder.ee/evaluations/`. Two candidates are
- * checked because the export script has evolved — prefer the newer location.
+ * `packages/@n8n/ai-workflow-builder.ee/evaluations/`. Pass `--nodes-json
+ * <path>` (or `nodesJsonPath`) to point at a different file.
  */
 export function defaultNodesJsonPath(): string {
 	const siblingPackage = path.resolve(

@@ -13,6 +13,7 @@
 // `BuilderRecord` shape, joined by prompt text.
 // ---------------------------------------------------------------------------
 
+import { jsonParse } from 'n8n-workflow';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
@@ -20,14 +21,14 @@ import path from 'node:path';
 // Shared shape after normalization
 // ---------------------------------------------------------------------------
 
-interface FeedbackEntry {
+export interface FeedbackEntry {
 	metric: string;
 	score: number;
 	kind?: string;
 	comment?: string;
 }
 
-interface BuilderRecord {
+export interface BuilderRecord {
 	prompt: string;
 	/** Stable id for the example. For IA, the LangSmith dataset example id;
 	 * for EE, the example directory name (e.g. `example-000-ab12cd`). */
@@ -110,11 +111,17 @@ async function loadInstanceAiRun(dir: string): Promise<BuilderRun> {
 		fs.readFile(summaryPath, 'utf8'),
 		fs.readFile(resultsPath, 'utf8'),
 	]);
-	const summary = JSON.parse(summaryRaw) as IASummary;
+	const summary = jsonParse<IASummary>(summaryRaw, {
+		errorMessage: `Failed to parse ${summaryPath}`,
+	});
 	const records = resultsRaw
 		.split('\n')
 		.filter((line) => line.trim().length > 0)
-		.map((line) => JSON.parse(line) as IAResultRecord)
+		.map((line) =>
+			jsonParse<IAResultRecord>(line, {
+				errorMessage: `Failed to parse a line in ${resultsPath}`,
+			}),
+		)
 		// Use only iteration 1 for a fair 1:1 comparison.
 		.filter((r) => r.iteration === 1);
 
@@ -228,7 +235,9 @@ interface EESummaryJson {
 async function loadEERun(dir: string): Promise<BuilderRun> {
 	const summaryPath = path.join(dir, 'summary.json');
 	const summaryRaw = await readOptional(summaryPath);
-	const summary = summaryRaw ? (JSON.parse(summaryRaw) as EESummaryJson) : null;
+	const summary = summaryRaw
+		? jsonParse<EESummaryJson>(summaryRaw, { errorMessage: `Failed to parse ${summaryPath}` })
+		: null;
 
 	const entries = await fs.readdir(dir, { withFileTypes: true });
 	const exampleDirs = entries
@@ -251,8 +260,14 @@ async function loadEERun(dir: string): Promise<BuilderRun> {
 			readOptional(errorPath),
 		]);
 
-		const workflow = workflowRaw ? (JSON.parse(workflowRaw) as unknown) : null;
-		const feedbackJson = feedbackRaw ? (JSON.parse(feedbackRaw) as EEFeedbackJson) : null;
+		const workflow = workflowRaw
+			? jsonParse<unknown>(workflowRaw, { errorMessage: `Failed to parse ${workflowPath}` })
+			: null;
+		const feedbackJson = feedbackRaw
+			? jsonParse<EEFeedbackJson>(feedbackRaw, {
+					errorMessage: `Failed to parse ${feedbackPath}`,
+				})
+			: null;
 		const exampleId = path.basename(exampleDir);
 
 		const feedback: FeedbackEntry[] = [];
@@ -389,7 +404,7 @@ function pct(n: number): string {
 // Pairing
 // ---------------------------------------------------------------------------
 
-interface ComparisonRow {
+export interface ComparisonRow {
 	prompt: string;
 	dos?: string;
 	donts?: string;
@@ -398,13 +413,24 @@ interface ComparisonRow {
 	verdict: 'both-pass' | 'both-fail' | 'ee-only' | 'ia-only' | 'neither';
 }
 
-function pairRecords(ee: BuilderRecord[], ia: BuilderRecord[]): ComparisonRow[] {
-	const byPrompt = new Map<string, ComparisonRow>();
+/**
+ * Normalize prompt text used as the join key. EE and IA generate dirs/IDs
+ * via different schemes, so we have to match by prompt. Trim + collapse
+ * whitespace so trivial drift (CRLF, trailing space, indented blocks)
+ * doesn't silently un-pair otherwise-identical examples.
+ */
+export function promptJoinKey(prompt: string): string {
+	return prompt.replace(/\s+/g, ' ').trim();
+}
+
+export function pairRecords(ee: BuilderRecord[], ia: BuilderRecord[]): ComparisonRow[] {
+	const byKey = new Map<string, ComparisonRow>();
 	const ensure = (prompt: string): ComparisonRow => {
-		const existing = byPrompt.get(prompt);
+		const key = promptJoinKey(prompt);
+		const existing = byKey.get(key);
 		if (existing) return existing;
 		const created: ComparisonRow = { prompt, verdict: 'neither' };
-		byPrompt.set(prompt, created);
+		byKey.set(key, created);
 		return created;
 	};
 
@@ -421,7 +447,7 @@ function pairRecords(ee: BuilderRecord[], ia: BuilderRecord[]): ComparisonRow[] 
 	}
 
 	// Compute verdict for each row.
-	for (const row of byPrompt.values()) {
+	for (const row of byKey.values()) {
 		const eePass = row.ee && row.ee.success && findScore(row.ee.feedback, 'pairwise_primary') === 1;
 		const iaPass = row.ia && row.ia.success && findScore(row.ia.feedback, 'pairwise_primary') === 1;
 		row.verdict =
@@ -435,7 +461,7 @@ function pairRecords(ee: BuilderRecord[], ia: BuilderRecord[]): ComparisonRow[] 
 		'both-pass': 3,
 		neither: 4,
 	};
-	return [...byPrompt.values()].sort((a, b) => {
+	return [...byKey.values()].sort((a, b) => {
 		const ord = order[a.verdict] - order[b.verdict];
 		if (ord !== 0) return ord;
 		return a.prompt.localeCompare(b.prompt);
