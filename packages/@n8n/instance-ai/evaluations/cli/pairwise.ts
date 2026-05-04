@@ -33,6 +33,7 @@ import {
 } from '../harness/in-process-builder';
 import { createLogger, type EvalLogger } from '../harness/logger';
 import { resolveSandboxConfig } from '../harness/sandbox-config';
+import { loadRuns, renderDocument } from './report';
 import type { Logger } from '../../src/logger';
 import { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
 import type { SandboxConfig } from '../../src/workspace/create-workspace';
@@ -348,6 +349,7 @@ async function writeOutputs(
 	finishedAt: Date,
 	logger: EvalLogger,
 	sandboxProvider: string,
+	silent = false,
 ): Promise<Summary> {
 	await fs.mkdir(outputDir, { recursive: true });
 	await fs.mkdir(path.join(outputDir, 'workflows'), { recursive: true });
@@ -467,8 +469,33 @@ async function writeOutputs(
 		JSON.stringify(summary, null, 2),
 		'utf8',
 	);
-	logger.success(`Wrote ${records.length} results to ${outputDir}`);
+	if (!silent) {
+		logger.success(`Wrote ${records.length} results to ${outputDir}`);
+	}
 	return summary;
+}
+
+/**
+ * Regenerate the cross-run HTML report from `<reportRoot>/*` so the page
+ * stays current as examples complete. Best-effort: a render failure is
+ * logged but does not abort the run.
+ */
+async function regenerateReport(
+	reportRoot: string,
+	reportFile: string,
+	logger: EvalLogger,
+): Promise<void> {
+	try {
+		const runs = await loadRuns(reportRoot);
+		if (runs.length === 0) return;
+		const html = renderDocument(runs);
+		await fs.writeFile(reportFile, html, 'utf8');
+		logger.verbose(`Regenerated report (${runs.length} run(s)) at ${reportFile}`);
+	} catch (error) {
+		logger.warn(
+			`Report regeneration failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -526,6 +553,33 @@ async function main(): Promise<void> {
 	const limit = pLimit(args.concurrency);
 	const records: ExampleRecord[] = [];
 	const startedAt = new Date();
+	const reportRoot = path.dirname(args.outputDir);
+	const reportFile = path.join(reportRoot, 'report.html');
+
+	// Serialize incremental writes so concurrent example completions don't
+	// race on the same output files.
+	let writeQueue: Promise<unknown> = Promise.resolve();
+	const flushIncremental = (): Promise<unknown> => {
+		writeQueue = writeQueue.then(async () => {
+			const snapshot = [...records].sort((a, b) =>
+				a.exampleId === b.exampleId
+					? a.iteration - b.iteration
+					: a.exampleId.localeCompare(b.exampleId),
+			);
+			await writeOutputs(
+				args.outputDir,
+				snapshot,
+				args,
+				startedAt,
+				new Date(),
+				logger,
+				sandboxConfig.provider,
+				true,
+			);
+			await regenerateReport(reportRoot, reportFile, logger);
+		});
+		return writeQueue;
+	};
 
 	const work: Array<Promise<void>> = [];
 	for (const example of selected) {
@@ -534,11 +588,13 @@ async function main(): Promise<void> {
 				limit(async () => {
 					const record = await runExample(example, i, judgeLlm, args, logger, sandboxFactory);
 					records.push(record);
+					await flushIncremental();
 				}),
 			);
 		}
 	}
 	await Promise.all(work);
+	await writeQueue;
 
 	const finishedAt = new Date();
 	records.sort((a, b) =>
@@ -555,6 +611,8 @@ async function main(): Promise<void> {
 		logger,
 		sandboxConfig.provider,
 	);
+	await regenerateReport(reportRoot, reportFile, logger);
+	logger.info(`Report: ${reportFile}`);
 
 	if (args.backend === 'langsmith') {
 		logger.info(

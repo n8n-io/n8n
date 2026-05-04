@@ -104,7 +104,7 @@ interface Run {
 // Discovery
 // ---------------------------------------------------------------------------
 
-async function loadRuns(rootDir: string): Promise<Run[]> {
+export async function loadRuns(rootDir: string): Promise<Run[]> {
 	const entries = await fs.readdir(rootDir, { withFileTypes: true });
 	const runs: Run[] = [];
 	for (const entry of entries) {
@@ -422,7 +422,7 @@ function renderRun(run: Run, index: number): string {
 </section>`;
 }
 
-function renderDocument(runs: Run[]): string {
+export function renderDocument(runs: Run[]): string {
 	const runLinks = runs
 		.map((run, i) => {
 			const s = run.summary;
