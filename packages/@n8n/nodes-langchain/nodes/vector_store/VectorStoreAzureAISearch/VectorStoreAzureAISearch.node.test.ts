@@ -145,12 +145,11 @@ describe('VectorStoreAzureAISearch', () => {
 			vi.clearAllMocks();
 
 			// Setup mock for SearchIndexClient
-			MockedSearchIndexClient.mockImplementation(
-				() =>
-					({
-						deleteIndex: mockDeleteIndex,
-					}) as unknown as SearchIndexClient,
-			);
+			MockedSearchIndexClient.mockImplementation(function () {
+				return {
+					deleteIndex: mockDeleteIndex,
+				} as unknown as SearchIndexClient;
+			});
 
 			// Setup common mocks for context
 			mockContext.getCredentials.mockResolvedValue({
