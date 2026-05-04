@@ -33,7 +33,7 @@ const workflowNodeStructureSchema = z
 		name: z.string().min(1),
 		type: z.string().min(1),
 		position: z.tuple([z.number(), z.number()]),
-		parameters: z.record(z.string(), z.unknown()),
+		parameters: z.record(z.string(), z.unknown()).optional(),
 		id: z.string().optional(),
 		typeVersion: z.number().optional(),
 		disabled: z.boolean().optional(),
