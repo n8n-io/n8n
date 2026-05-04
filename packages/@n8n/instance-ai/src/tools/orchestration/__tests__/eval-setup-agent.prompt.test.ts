@@ -50,6 +50,28 @@ describe('EVAL_SETUP_AGENT_PROMPT', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT).not.toContain('EvaluationTrigger → `Evaluation(setInputs)`');
 	});
 
+	it('instructs eval runs to enter the target AI node directly', () => {
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('[EvaluationTrigger] ──→ [Set: reshape');
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('──→ [AI Agent]');
+		expect(EVAL_SETUP_AGENT_PROMPT).not.toContain('first processing node');
+	});
+
+	it('forbids shape bridge assignments from reading original workflow nodes', () => {
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('Shape bridge assignment values');
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('$json.<dataset_column>');
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain("Never use $('Some Node').item.json");
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('$node[');
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('$input.item');
+	});
+
+	it('forbids rewriting production AI agent prompts or parameters', () => {
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('Do not modify existing production node parameters');
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain('do not rewrite the AI Agent prompt');
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain(
+			'cannot be made standalone with topology-only eval setup',
+		);
+	});
+
 	it('includes validation instructions after patching', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('re-read');
 		expect(EVAL_SETUP_AGENT_PROMPT.toLowerCase()).toContain('validate');

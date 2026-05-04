@@ -228,7 +228,10 @@ export class N8nClient {
 	 * GET /rest/instance-ai/threads/:threadId/status
 	 */
 	async getThreadStatus(threadId: string): Promise<ThreadStatus> {
-		return (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as ThreadStatus;
+		const result = (await this.fetch(`/rest/instance-ai/threads/${threadId}/status`)) as {
+			data: ThreadStatus;
+		};
+		return result.data;
 	}
 
 	/**
@@ -431,13 +434,13 @@ export class N8nClient {
 
 	/**
 	 * Get the personal project ID for the authenticated user.
-	 * GET /rest/me  → user.personalProjectId (or similar)
+	 * GET /rest/projects/personal -> project.id
 	 */
 	async getPersonalProjectId(): Promise<string> {
-		const result = (await this.fetch('/rest/me')) as {
-			data: { personalProjectId?: string; defaultPersonalProjectId?: string };
+		const result = (await this.fetch('/rest/projects/personal')) as {
+			data: { id?: string };
 		};
-		const projectId = result.data.personalProjectId ?? result.data.defaultPersonalProjectId ?? '';
+		const projectId = result.data.id ?? '';
 		if (!projectId) {
 			throw new Error('Could not determine personal project ID');
 		}

@@ -44,6 +44,7 @@ const originalWorkflow: WorkflowResponse = {
 };
 
 const sidecar: TopologySidecar = {
+	expectNoEvalNodes: false,
 	targets: [
 		{
 			nodeName: 'AI Agent',
@@ -61,10 +62,34 @@ const sidecar: TopologySidecar = {
 };
 
 const sidecarWithoutTargets: TopologySidecar = {
+	expectNoEvalNodes: false,
 	targets: [],
 	excludeTargets: [],
 	metrics: ['correctness'],
 	allowNativeTestRunnerSmoke: false,
+};
+
+const workflowWithoutAi: WorkflowResponse = {
+	id: 'workflow-no-ai',
+	name: 'No AI workflow',
+	active: false,
+	nodes: [
+		{
+			name: 'Manual Trigger',
+			type: 'n8n-nodes-base.manualTrigger',
+			parameters: {},
+		},
+		{
+			name: 'Format Output',
+			type: 'n8n-nodes-base.set',
+			parameters: {},
+		},
+	],
+	connections: {
+		'Manual Trigger': {
+			main: [[{ node: 'Format Output', type: 'main', index: 0 }]],
+		},
+	},
 };
 
 function makeUpdatedWorkflow(): WorkflowResponse {
@@ -177,6 +202,100 @@ describe('verifyEvalSetupTopology', () => {
 		expect(result.passed).toBe(true);
 		expect(result.findings).toEqual([]);
 		expect(result.targetNodeNames).toEqual(['AI Agent']);
+	});
+
+	it('passes a no-AI workflow when the sidecar expects no eval nodes', () => {
+		const result = verifyEvalSetupTopology({
+			originalWorkflow: workflowWithoutAi,
+			updatedWorkflow: workflowWithoutAi,
+			datasetColumns: ['input', 'expected_output'],
+			sidecar: {
+				expectNoEvalNodes: true,
+				targets: [],
+				excludeTargets: [],
+				metrics: [],
+				allowNativeTestRunnerSmoke: false,
+			},
+			expectedDataTableId: 'dt-1',
+		});
+
+		expect(result.passed).toBe(true);
+		expect(result.findings).toEqual([]);
+		expect(result.targetNodeNames).toEqual([]);
+		expect(result.targetResults).toEqual([]);
+	});
+
+	it('fails a no-AI workflow when eval nodes are added despite the no-eval expectation', () => {
+		const updatedWorkflow: WorkflowResponse = {
+			...workflowWithoutAi,
+			nodes: [
+				...workflowWithoutAi.nodes,
+				{
+					name: 'Eval Trigger',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					parameters: {},
+				},
+				{
+					name: 'Set Metrics',
+					type: 'n8n-nodes-base.evaluation',
+					parameters: { operation: 'setMetrics' },
+				},
+			],
+		};
+
+		const result = verifyEvalSetupTopology({
+			originalWorkflow: workflowWithoutAi,
+			updatedWorkflow,
+			datasetColumns: ['input', 'expected_output'],
+			sidecar: {
+				expectNoEvalNodes: true,
+				targets: [],
+				excludeTargets: [],
+				metrics: [],
+				allowNativeTestRunnerSmoke: false,
+			},
+			expectedDataTableId: 'dt-1',
+		});
+
+		expect(result.passed).toBe(false);
+		expect(result.findings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'unexpected_eval_node' }),
+				expect.objectContaining({ code: 'unexpected_evaluation_node' }),
+			]),
+		);
+	});
+
+	it('passes with an empty normal slot when the original target had no main downstream nodes', () => {
+		const originalWithoutDownstream: WorkflowResponse = {
+			...originalWorkflow,
+			connections: {
+				'Chat Trigger': {
+					main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+				},
+				'OpenAI Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+		};
+		const updatedWorkflow = makeUpdatedWorkflow();
+		updatedWorkflow.connections['Check If Evaluating - AI Agent'] = {
+			main: [[{ node: 'Set Outputs - AI Agent', type: 'main', index: 0 }], []],
+		};
+
+		const result = verifyEvalSetupTopology({
+			originalWorkflow: originalWithoutDownstream,
+			updatedWorkflow,
+			datasetColumns: ['input', 'expected_output'],
+			sidecar: {
+				...sidecar,
+				targets: [{ ...sidecar.targets[0], sideEffectNodes: [] }],
+			},
+			expectedDataTableId: 'dt-1',
+		});
+
+		expect(result.passed).toBe(true);
+		expect(result.findings).toEqual([]);
 	});
 
 	it('detects no-sidecar targets from the original workflow when the updated target is missing', () => {
@@ -428,6 +547,89 @@ describe('verifyEvalSetupTopology', () => {
 		expect(result.passed).toBe(false);
 		expect(result.findings).toEqual(
 			expect.arrayContaining([expect.objectContaining({ code: 'shape_bridge_uses_node_json' })]),
+		);
+	});
+
+	it('fails when the target AI agent prompt reads another node item JSON', () => {
+		const originalWithExternalPrompt: WorkflowResponse = {
+			...originalWorkflow,
+			nodes: [
+				...originalWorkflow.nodes.map((node) =>
+					node.name === 'AI Agent'
+						? {
+								...node,
+								parameters: {
+									text: "={{ $('Voice or Text').item.json.text }}",
+								},
+							}
+						: node,
+				),
+				{
+					name: 'Voice or Text',
+					type: 'n8n-nodes-base.set',
+					parameters: {},
+				},
+			],
+		};
+		const updatedWorkflow = makeUpdatedWorkflow();
+		updatedWorkflow.nodes = updatedWorkflow.nodes.map((node) =>
+			node.name === 'AI Agent'
+				? {
+						...node,
+						parameters: {
+							text: "={{ $('Voice or Text').item.json.text }}",
+						},
+					}
+				: node,
+		);
+		updatedWorkflow.nodes.push({
+			name: 'Voice or Text',
+			type: 'n8n-nodes-base.set',
+			parameters: {},
+		});
+
+		const result = verifyEvalSetupTopology({
+			originalWorkflow: originalWithExternalPrompt,
+			updatedWorkflow,
+			datasetColumns: ['input', 'expected_output'],
+			sidecar,
+			expectedDataTableId: 'dt-1',
+		});
+
+		expect(result.passed).toBe(false);
+		expect(result.findings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'agent_prompt_uses_external_node_reference',
+					nodeName: 'AI Agent',
+				}),
+			]),
+		);
+	});
+
+	it('fails when eval setup rewrites target AI agent parameters', () => {
+		const updatedWorkflow = makeUpdatedWorkflow();
+		updatedWorkflow.nodes = updatedWorkflow.nodes.map((node) =>
+			node.name === 'AI Agent'
+				? {
+						...node,
+						parameters: {
+							text: '={{ $json.input }}',
+						},
+					}
+				: node,
+		);
+
+		const result = verify(updatedWorkflow);
+
+		expect(result.passed).toBe(false);
+		expect(result.findings).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					code: 'target_parameters_modified',
+					nodeName: 'AI Agent',
+				}),
+			]),
 		);
 	});
 

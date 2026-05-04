@@ -57,6 +57,19 @@ function threadMessagesWithToolCalls(toolNames: string[]): InstanceAiRichMessage
 }
 
 describe('extractToolSelection', () => {
+	it('allows no eval tool calls when the case expects no eval nodes', () => {
+		const result = extractToolSelection({
+			events: [],
+			expectNoEvalNodes: true,
+		});
+
+		expect(result).toEqual({
+			evalsToolCalled: false,
+			evalSetupAgentCalled: false,
+			findings: [],
+		});
+	});
+
 	it('does not treat arbitrary name and args in a non-tool event as a tool call', () => {
 		const result = extractToolSelection({
 			events: [capturedEvent({ payload: { name: 'evals', args: {} } }, 'test-event')],

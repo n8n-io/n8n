@@ -100,6 +100,7 @@ describe('loadEvalSetupTopologyCases', () => {
 			],
 			datasetColumns: ['question', 'expected_answer'],
 			sidecar: {
+				expectNoEvalNodes: false,
 				targets: [
 					{
 						nodeName: 'AI Agent',
@@ -143,10 +144,55 @@ describe('loadEvalSetupTopologyCases', () => {
 
 		expect(cases[0].sidecarPath).toBeUndefined();
 		expect(cases[0].sidecar).toEqual({
+			expectNoEvalNodes: false,
 			targets: [],
 			excludeTargets: [],
 			metrics: ['correctness'],
 			allowNativeTestRunnerSmoke: false,
+		});
+	});
+
+	it('loads a no-eval sidecar for workflows without AI nodes', () => {
+		const rootDir = makeFixtureRoot();
+		writeWorkflowFile(rootDir, 'no_ai_workflow', {
+			id: 'workflow-1',
+			name: 'No AI workflow',
+			active: true,
+			nodes: [
+				{
+					name: 'Manual Trigger',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					parameters: {},
+				},
+				{
+					name: 'Format Output',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					parameters: {},
+				},
+			],
+			connections: {
+				'Manual Trigger': {
+					main: [[{ node: 'Format Output', type: 'main', index: 0 }]],
+				},
+			},
+		});
+		writeRows(rootDir, 'no_ai_workflow', [{ input: 'hello', expected_output: 'hello' }]);
+		writeJson(join(rootDir, 'expectations', 'no_ai_workflow.topology.json'), {
+			expectNoEvalNodes: true,
+			targets: [],
+			excludeTargets: [],
+			metrics: [],
+			allowNativeTestRunnerSmoke: false,
+		});
+
+		const cases = loadEvalSetupTopologyCases({ rootDir });
+
+		expect(cases[0].sidecar).toMatchObject({
+			expectNoEvalNodes: true,
+			targets: [],
+			metrics: [],
 		});
 	});
 

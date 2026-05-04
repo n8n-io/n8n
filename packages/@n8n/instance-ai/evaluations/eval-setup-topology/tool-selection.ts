@@ -38,6 +38,7 @@ const EVAL_SETUP_MISSING_FINDING = {
 export function extractToolSelection(input: {
 	events: CapturedEvent[];
 	threadMessages?: InstanceAiRichMessagesResponse;
+	expectNoEvalNodes?: boolean;
 }): ToolSelectionResult {
 	const evalsToolCalled =
 		input.events.some((event) => eventContainsToolCall(event, EVALS_TOOL_NAME)) ||
@@ -48,6 +49,14 @@ export function extractToolSelection(input: {
 				eventContainsToolCall(event, EVAL_SETUP_TOOL_NAME) || eventContainsEvalSetupAgent(event),
 		) || richMessagesContainEvalSetupAgent(input.threadMessages);
 	const findings: ToolSelectionResult['findings'] = [];
+
+	if (input.expectNoEvalNodes) {
+		return {
+			evalsToolCalled,
+			evalSetupAgentCalled,
+			findings,
+		};
+	}
 
 	if (!evalsToolCalled) {
 		findings.push(EVALS_MISSING_FINDING);

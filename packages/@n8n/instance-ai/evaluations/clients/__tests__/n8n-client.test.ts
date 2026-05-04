@@ -162,6 +162,18 @@ describe('N8nClient', () => {
 		});
 	});
 
+	it('gets the personal project id from the project endpoint', async () => {
+		const fetchMock = mockFetchOnce({ data: { id: 'project-1', type: 'personal' } });
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.getPersonalProjectId()).resolves.toBe('project-1');
+		expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/rest/projects/personal`, {
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json' },
+			body: undefined,
+		});
+	});
+
 	it('inserts data table rows with count return type', async () => {
 		const rows = [
 			{ question: 'What is n8n?', expected: 'Automation', score: 1, active: true },
@@ -209,5 +221,18 @@ describe('N8nClient', () => {
 		const client = new N8nClient(BASE_URL);
 
 		await expect(client.listNativeTestRuns('workflow-1')).resolves.toEqual(testRuns);
+	});
+
+	it('unwraps thread status responses', async () => {
+		const status = { hasActiveRun: false, isSuspended: false, backgroundTasks: [] };
+		const fetchMock = mockFetchOnce({ data: status });
+		const client = new N8nClient(BASE_URL);
+
+		await expect(client.getThreadStatus('thread-1')).resolves.toEqual(status);
+		expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/rest/instance-ai/threads/thread-1/status`, {
+			method: 'GET',
+			headers: { 'Content-Type': 'application/json' },
+			body: undefined,
+		});
 	});
 });

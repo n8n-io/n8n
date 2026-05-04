@@ -6,6 +6,7 @@ import pLimit from 'p-limit';
 
 import { N8nClient } from '../clients/n8n-client';
 import { createLogger } from '../harness/logger';
+import { shouldFailProcessForCompletedRun } from './exit-policy';
 import { loadEvalSetupTopologyCases } from './fixtures';
 import { runEvalSetupTopologyCase } from './runner';
 import type { EvalSetupTopologyRunResult } from './types';
@@ -124,7 +125,7 @@ async function main(): Promise<void> {
 				if (result.passed) {
 					logger.success(`PASS ${testCase.slug}`);
 				} else {
-					logger.error(`FAIL ${testCase.slug}`);
+					logger.warn(`FAIL ${testCase.slug}`);
 				}
 
 				return result;
@@ -141,13 +142,13 @@ async function main(): Promise<void> {
 	logger.info(`Wrote results to ${args.output}`);
 
 	for (const result of results.filter((caseResult) => !caseResult.passed)) {
-		logger.error(`Case failed: ${result.caseSlug}`);
+		logger.warn(`Case failed: ${result.caseSlug}`);
 		for (const finding of [...result.toolSelection.findings, ...result.topology.findings]) {
-			logger.error(`  ${finding.code}: ${finding.message}`);
+			logger.warn(`  ${finding.code}: ${finding.message}`);
 		}
 	}
 
-	if (!runResult.passed) {
+	if (shouldFailProcessForCompletedRun(runResult)) {
 		process.exitCode = 1;
 	}
 }

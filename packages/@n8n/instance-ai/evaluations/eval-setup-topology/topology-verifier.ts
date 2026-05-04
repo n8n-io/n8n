@@ -283,7 +283,7 @@ function referencesEvalTriggerJsonColumn(value: string, columnName: string): boo
 }
 
 function referencesNodeItemJson(value: unknown): boolean {
-	return typeof value === 'string' && /\$\((?:"[^"]+"|'[^']+')\)\.item\.json\b/.test(value);
+	return getNodeItemJsonReferences(value).length > 0;
 }
 
 interface NodeItemJsonReference {
@@ -296,14 +296,25 @@ function getNodeItemJsonReferences(value: unknown): NodeItemJsonReference[] {
 		return [];
 	}
 
-	return [
+	const itemJsonReferences = [
 		...value.matchAll(
-			/\$\((?:"([^"]+)"|'([^']+)')\)\.item\.json\b(?:\.([A-Za-z_$][\w$]*)|\[["']([^"']+)["']\])?/g,
+			/\$\((?:"([^"]+)"|'([^']+)')\)\.(?:item|first\(\)|last\(\))\.json\b(?:\.([A-Za-z_$][\w$]*)|\[["']([^"']+)["']\])?/g,
 		),
 	].map((match) => ({
 		nodeName: match[1] ?? match[2],
 		columnName: match[3] ?? match[4],
 	}));
+
+	const nodeJsonReferences = [
+		...value.matchAll(
+			/\$node\[(?:"([^"]+)"|'([^']+)')\]\.json\b(?:\.([A-Za-z_$][\w$]*)|\[["']([^"']+)["']\])?/g,
+		),
+	].map((match) => ({
+		nodeName: match[1] ?? match[2],
+		columnName: match[3] ?? match[4],
+	}));
+
+	return [...itemJsonReferences, ...nodeJsonReferences];
 }
 
 function getNodeItemJsonReferenceNames(value: unknown): string[] {
@@ -312,6 +323,30 @@ function getNodeItemJsonReferenceNames(value: unknown): string[] {
 
 function referencesCurrentJson(value: unknown): boolean {
 	return typeof value === 'string' && /(?:^|[^\w$])\$json(?![A-Za-z0-9_])/.test(value);
+}
+
+function collectStringValues(value: unknown): string[] {
+	if (typeof value === 'string') {
+		return [value];
+	}
+
+	if (Array.isArray(value)) {
+		return value.flatMap(collectStringValues);
+	}
+
+	if (isRecord(value)) {
+		return Object.values(value).flatMap(collectStringValues);
+	}
+
+	return [];
+}
+
+function getNodeJsonReferencesInParameters(node: WorkflowNodeResponse): NodeItemJsonReference[] {
+	return collectStringValues(node.parameters).flatMap(getNodeItemJsonReferences);
+}
+
+function parametersEqual(left: unknown, right: unknown): boolean {
+	return JSON.stringify(left ?? {}) === JSON.stringify(right ?? {});
 }
 
 function getOutputNames(node: WorkflowNodeResponse): string[] {
@@ -397,6 +432,56 @@ function verifyGlobalTopology(
 	}
 
 	return findings;
+}
+
+function verifyNoEvalNodesTopology(
+	input: TopologyVerifierInput,
+	targetNodeNames: string[],
+): TopologyVerifierResult {
+	const findings: TopologyFinding[] = [];
+	const updatedNodeNames = new Set(input.updatedWorkflow.nodes.map((node) => node.name));
+
+	for (const originalNode of input.originalWorkflow.nodes) {
+		if (!updatedNodeNames.has(originalNode.name)) {
+			findings.push(
+				finding(
+					'original_node_removed',
+					`Original node "${originalNode.name}" is missing.`,
+					originalNode.name,
+				),
+			);
+		}
+	}
+
+	if (targetNodeNames.length > 0) {
+		findings.push(
+			finding(
+				'unexpected_eval_target',
+				`Expected no eval targets, found ${targetNodeNames.length}.`,
+			),
+		);
+	}
+
+	for (const node of input.updatedWorkflow.nodes) {
+		if (node.type === EVAL_TRIGGER_NODE_TYPE) {
+			findings.push(
+				finding('unexpected_eval_node', 'No Eval Trigger node should be added.', node.name),
+			);
+		}
+
+		if (node.type === EVALUATION_NODE_TYPE) {
+			findings.push(
+				finding('unexpected_evaluation_node', 'No Evaluation node should be added.', node.name),
+			);
+		}
+	}
+
+	return {
+		passed: findings.length === 0,
+		findings,
+		targetResults: [],
+		targetNodeNames,
+	};
 }
 
 function verifyShapeBridge(
@@ -771,6 +856,47 @@ function verifySetMetrics(
 	return findings;
 }
 
+function verifyTargetNodeInputsRemainIsolated(
+	originalTargetNode: WorkflowNodeResponse | undefined,
+	updatedTargetNode: WorkflowNodeResponse,
+): TopologyFinding[] {
+	const findings: TopologyFinding[] = [];
+
+	if (!originalTargetNode) {
+		return findings;
+	}
+
+	if (!parametersEqual(originalTargetNode.parameters, updatedTargetNode.parameters)) {
+		findings.push(
+			finding(
+				'target_parameters_modified',
+				'Eval setup should not modify existing target AI agent parameters.',
+				updatedTargetNode.name,
+			),
+		);
+	}
+
+	const nodeJsonReferences = getNodeJsonReferencesInParameters(originalTargetNode);
+
+	if (nodeJsonReferences.length > 0) {
+		const referencedNodeNames = [
+			...new Set(nodeJsonReferences.map((reference) => reference.nodeName)),
+		]
+			.sort()
+			.join(', ');
+
+		findings.push(
+			finding(
+				'agent_prompt_uses_external_node_reference',
+				`Target "${updatedTargetNode.name}" reads node JSON from ${referencedNodeNames}; topology-only eval setup cannot override this without modifying production node parameters or mocking those nodes.`,
+				updatedTargetNode.name,
+			),
+		);
+	}
+
+	return findings;
+}
+
 function verifyTargetTopology(
 	input: TopologyVerifierInput,
 	targetNodeName: string,
@@ -778,9 +904,11 @@ function verifyTargetTopology(
 ): TopologyTargetResult {
 	const findings: TopologyFinding[] = [];
 	const targetNode = getNodeByName(input.updatedWorkflow, targetNodeName);
+	const originalTargetNode = getNodeByName(input.originalWorkflow, targetNodeName);
 	const target = resolveEffectiveTargetExpectation(input, targetNodeName);
 	const connections = toWorkflowConnections(input.updatedWorkflow.connections);
 	const originalConnections = toWorkflowConnections(input.originalWorkflow.connections);
+	const originalDownstreamNodeNames = getMainTargets(originalConnections, targetNodeName);
 
 	if (!targetNode) {
 		findings.push(
@@ -788,6 +916,8 @@ function verifyTargetTopology(
 		);
 		return { nodeName: targetNodeName, passed: false, findings };
 	}
+
+	findings.push(...verifyTargetNodeInputsRemainIsolated(originalTargetNode, targetNode));
 
 	findings.push(
 		...verifyShapeBridge(input, target, targetNodeName, evalTrigger, connections).findings,
@@ -835,7 +965,7 @@ function verifyTargetTopology(
 		);
 	}
 
-	if (normalSlotTargets.length === 0) {
+	if (normalSlotTargets.length === 0 && originalDownstreamNodeNames.length > 0) {
 		findings.push(
 			finding(
 				'normal_slot_empty',
@@ -870,7 +1000,6 @@ function verifyTargetTopology(
 		);
 	}
 
-	const originalDownstreamNodeNames = getMainTargets(originalConnections, targetNodeName);
 	const originalDownstreamReachableNodeNames = reachableFrom(
 		input.originalWorkflow,
 		originalDownstreamNodeNames,
@@ -913,6 +1042,11 @@ function verifyTargetTopology(
 
 export function verifyEvalSetupTopology(input: TopologyVerifierInput): TopologyVerifierResult {
 	const targetNodeNames = detectTargets(input);
+
+	if (input.sidecar.expectNoEvalNodes) {
+		return verifyNoEvalNodesTopology(input, targetNodeNames);
+	}
+
 	const globalFindings = verifyGlobalTopology(input, targetNodeNames);
 	const evalTrigger = input.updatedWorkflow.nodes.find(
 		(node) => node.type === EVAL_TRIGGER_NODE_TYPE,

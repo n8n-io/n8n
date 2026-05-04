@@ -112,6 +112,38 @@ describe('formatEvalSetupTask', () => {
 		expect(task).toMatch(/Normal/);
 	});
 
+	it('instructs the shape bridge to enter the target AI node directly', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			datasetChoice: 'create-empty',
+		});
+
+		expect(task).toContain('SHAPE BRIDGE) → target AI agent node');
+		expect(task).not.toContain('first processing node');
+	});
+
+	it('instructs shape bridge assignments to read only the current eval row', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			datasetChoice: 'create-empty',
+		});
+
+		expect(task).toContain('current EvaluationTrigger row');
+		expect(task).toContain('$json.<input_column>');
+		expect(task).toContain('Never reference original workflow nodes');
+		expect(task).toContain("$('Some Node').item.json");
+	});
+
+	it('instructs eval setup not to rewrite existing AI agent parameters', () => {
+		const task = formatEvalSetupTask({
+			...BASE,
+			datasetChoice: 'create-empty',
+		});
+
+		expect(task).toContain('Do not modify existing production node parameters');
+		expect(task).toContain('do not rewrite the AI Agent prompt');
+	});
+
 	it('lists the suggested output columns as bullet items', () => {
 		const task = formatEvalSetupTask({
 			...BASE,

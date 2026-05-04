@@ -68,7 +68,11 @@ export function buildWorkflowCreatePayload(
 
 	return {
 		name: uniqueName('eval-setup-topology', testCase.slug),
-		nodes: workflow.nodes.map((node) => ({ ...node })),
+		nodes: workflow.nodes.map((node) => {
+			const nodeWithoutCredentials = { ...node };
+			delete nodeWithoutCredentials.credentials;
+			return nodeWithoutCredentials;
+		}),
 		connections: workflow.connections,
 		...(projectId === undefined ? {} : { projectId }),
 		...(workflow.pinData === undefined ? {} : { pinData: workflow.pinData }),
@@ -142,6 +146,28 @@ export function isEvalDataConfirmation(event: CapturedEvent): boolean {
 	return event.data.toolName === 'eval-data';
 }
 
+export function isWorkflowUpdateConfirmation(event: CapturedEvent): boolean {
+	if (event.type !== 'confirmation-request') {
+		return false;
+	}
+
+	const payload = event.data.payload;
+	if (isRecord(payload)) {
+		if (payload.toolName !== 'workflows') {
+			return false;
+		}
+
+		const args = payload.args;
+		if (isRecord(args) && args.action === 'update') {
+			return true;
+		}
+
+		return typeof payload.message === 'string' && payload.message.startsWith('Update workflow ');
+	}
+
+	return event.data.toolName === 'workflows';
+}
+
 export async function startSseConnection(
 	client: SseClient,
 	threadId: string,
@@ -180,7 +206,11 @@ export async function approveEvalConfirmations(input: {
 	retryCounts?: Map<string, number>;
 }): Promise<void> {
 	for (const event of input.events) {
-		if (!isEvalsProposalConfirmation(event) && !isEvalDataConfirmation(event)) {
+		if (
+			!isEvalsProposalConfirmation(event) &&
+			!isEvalDataConfirmation(event) &&
+			!isWorkflowUpdateConfirmation(event)
+		) {
 			continue;
 		}
 
@@ -199,6 +229,9 @@ export async function approveEvalConfirmations(input: {
 			if (isEvalDataConfirmation(event)) {
 				input.logger.verbose(`[auto-approve] Declining eval-data confirmation: ${requestId}`);
 				await input.client.confirmAction(requestId, false);
+			} else if (isWorkflowUpdateConfirmation(event)) {
+				input.logger.verbose(`[auto-approve] Approving workflow update confirmation: ${requestId}`);
+				await input.client.confirmAction(requestId, true);
 			} else {
 				input.logger.verbose(`[auto-approve] Approving confirmation: ${requestId}`);
 				await input.client.confirmAction(requestId, true, {
@@ -353,7 +386,11 @@ export async function runEvalSetupTopologyCase(
 
 		const threadMessages = await client.getThreadMessages(threadId).catch(() => undefined);
 		const updatedWorkflow = await client.getWorkflow(importedWorkflow.id);
-		const toolSelection = extractToolSelection({ events, threadMessages });
+		const toolSelection = extractToolSelection({
+			events,
+			threadMessages,
+			expectNoEvalNodes: testCase.sidecar.expectNoEvalNodes,
+		});
 		const topology = verifyEvalSetupTopology({
 			originalWorkflow: importedWorkflow,
 			updatedWorkflow,

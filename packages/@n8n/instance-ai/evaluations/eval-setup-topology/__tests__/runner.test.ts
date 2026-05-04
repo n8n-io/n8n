@@ -50,6 +50,7 @@ function makeTestCase(): EvalSetupTopologyCase {
 		datasetRows: [{ input: 'hello', score: 1 }],
 		datasetColumns: ['input', 'score'],
 		sidecar: {
+			expectNoEvalNodes: false,
 			targets: [],
 			excludeTargets: [],
 			metrics: ['correctness'],
@@ -111,6 +112,18 @@ describe('eval setup topology runner helpers', () => {
 		expect(payload).not.toHaveProperty('id');
 		expect(payload).not.toHaveProperty('hash');
 		expect(payload).not.toHaveProperty('active');
+	});
+
+	it('strips credential references from imported workflow nodes', () => {
+		const testCase = makeTestCase();
+		testCase.workflow.nodes[0].credentials = {
+			openAiApi: { id: 'credential-1', name: 'Production OpenAI' },
+		};
+
+		const payload = buildWorkflowCreatePayload(testCase, 'project-1');
+
+		expect(payload.nodes[0]).not.toHaveProperty('credentials');
+		expect(testCase.workflow.nodes[0]).toHaveProperty('credentials');
 	});
 
 	it('builds prompt with topology and existing data table requirements', () => {
@@ -304,6 +317,39 @@ describe('eval setup topology runner helpers', () => {
 		expect(client.confirmAction).toHaveBeenCalledTimes(1);
 		expect(client.confirmAction).toHaveBeenCalledWith('eval-data-request', false);
 		expect(approvedRequestIds.has('eval-data-request')).toBe(true);
+	});
+
+	it('approves workflow update confirmations from eval setup', async () => {
+		const client = {
+			confirmAction: jest.fn().mockResolvedValue(undefined),
+		};
+		const approvedRequestIds = new Set<string>();
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1,
+				type: 'confirmation-request',
+				data: {
+					payload: {
+						requestId: 'workflow-update-request',
+						toolName: 'workflows',
+						args: { action: 'update', workflowId: 'workflow-1' },
+						message: 'Update workflow "Imported" (ID: workflow-1)?',
+					},
+				},
+			},
+		];
+
+		await approveEvalConfirmations({
+			client,
+			events,
+			approvedRequestIds,
+			dataTableId: 'dt-1',
+			logger: logger(),
+		});
+
+		expect(client.confirmAction).toHaveBeenCalledTimes(1);
+		expect(client.confirmAction).toHaveBeenCalledWith('workflow-update-request', true);
+		expect(approvedRequestIds.has('workflow-update-request')).toBe(true);
 	});
 
 	it('fails promptly when the SSE stream records an error during settle', async () => {

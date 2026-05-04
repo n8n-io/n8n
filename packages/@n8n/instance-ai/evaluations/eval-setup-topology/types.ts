@@ -39,6 +39,7 @@ export const topologyTargetExpectationSchema = z.object({
 });
 
 export const topologySidecarSchema = z.object({
+	expectNoEvalNodes: z.boolean().default(false),
 	targets: z.array(topologyTargetExpectationSchema).default([]),
 	excludeTargets: z.array(z.string()).default([]),
 	metrics: z.array(metricSchema).default(['correctness']),
