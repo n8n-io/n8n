@@ -180,6 +180,28 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.event?.type).toBe('error');
 	});
 
+	it('does not let prior root text hide a malformed confirmation payload', () => {
+		const decision = guard().evaluateWaiting(
+			[runStart(), rootText()],
+			confirmation({ inputType: 'plan-review', message: 'message-only plan' }),
+		);
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('confirmation-invalid');
+		expect(decision.event?.type).toBe('error');
+	});
+
+	it('does not let prior root errors hide a malformed confirmation payload', () => {
+		const decision = guard().evaluateWaiting(
+			[runStart(), rootError()],
+			confirmation({ inputType: 'plan-review', message: 'message-only plan' }),
+		);
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('confirmation-invalid');
+		expect(decision.event?.type).toBe('error');
+	});
+
 	it('does not emit fallback when prior root text precedes a valid confirmation', () => {
 		const decision = guard().evaluateWaiting([runStart(), rootText()], confirmation());
 

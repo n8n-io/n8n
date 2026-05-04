@@ -151,6 +151,18 @@ export class InstanceAiTerminalResponseGuard {
 				reason: 'already-emitted',
 			};
 		}
+
+		const hasDisplayableConfirmation =
+			confirmationEvent !== undefined &&
+			isDisplayableConfirmationRequest(confirmationEvent.payload);
+		if (!hasDisplayableConfirmation) {
+			return this.emitError(
+				'waiting',
+				'confirmation-invalid',
+				'I need your input to continue, but I could not display the prompt. Please try again.',
+			);
+		}
+
 		if (visibility.hasRootText || visibility.hasRootError) {
 			return {
 				status: 'waiting',
@@ -159,20 +171,13 @@ export class InstanceAiTerminalResponseGuard {
 				reason: 'already-visible',
 			};
 		}
-		if (confirmationEvent && isDisplayableConfirmationRequest(confirmationEvent.payload)) {
-			return {
-				status: 'waiting',
-				visibilitySource: 'confirmation-ui',
-				action: 'none',
-				reason: 'confirmation-visible',
-			};
-		}
 
-		return this.emitError(
-			'waiting',
-			'confirmation-invalid',
-			'I need your input to continue, but I could not display the prompt. Please try again.',
-		);
+		return {
+			status: 'waiting',
+			visibilitySource: 'confirmation-ui',
+			action: 'none',
+			reason: 'confirmation-visible',
+		};
 	}
 
 	private getVisibility(events: InstanceAiEvent[]): {
