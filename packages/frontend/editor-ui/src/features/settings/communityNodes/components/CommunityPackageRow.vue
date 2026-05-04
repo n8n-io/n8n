@@ -67,6 +67,17 @@ const formattedDownloads = computed(() => {
 	if (count >= 1_000) return `${(count / 1_000).toFixed(1)}k`;
 	return count.toString();
 });
+const nodeCountLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.packageNodes.label', {
+		adjustToNumber: props.row?.nodeCount ?? 0,
+		interpolate: { count: props.row?.nodeCount ?? 0 },
+	}),
+);
+const downloadsLabel = computed(() => `${formattedDownloads.value} downloads`);
+const verifiedLabel = computed(() => i18n.baseText('settings.communityNodes.verified.tooltip'));
+const failedLoadingLabel = computed(() =>
+	i18n.baseText('settings.communityNodes.failedToLoad.tooltip'),
+);
 const bylinePrefix = computed(() =>
 	props.row?.authorName
 		? i18n.baseText('settings.communityNodes.byline', {
@@ -112,14 +123,30 @@ const hasUpdate = computed(() => {
 	return false;
 });
 
+function getNodeTypeNameForUpdate(row: CommunityPackageRowData) {
+	if (row.nodeDescription?.name) return row.nodeDescription.name;
+	if (row.installNodeName) return row.installNodeName;
+
+	return (
+		nodeTypesStore.visibleNodeTypes.find(
+			(node) => node.name === row.packageName || node.name.startsWith(`${row.packageName}.`),
+		)?.name ?? ''
+	);
+}
+
 watch(
 	() => props.row?.packageName,
 	async (name) => {
-		if (!name || !props.row?.isInstalled) return;
+		installedLocally.value = false;
+		latestVerifiedVersion.value = undefined;
+
+		const row = props.row;
+		if (!name || !row?.isInstalled) return;
 		try {
 			await nodeTypesStore.loadNodeTypesIfNotLoaded();
-			const nodeType = nodeTypesStore.visibleNodeTypes.find((node) => node.name.includes(name));
-			const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeType?.name ?? '');
+			const nodeTypeName = getNodeTypeNameForUpdate(row);
+			const attributes = await nodeTypesStore.getCommunityNodeAttributes(nodeTypeName);
+			if (props.row?.packageName !== name) return;
 			if (attributes?.npmVersion) {
 				latestVerifiedVersion.value = attributes.npmVersion;
 			}
@@ -154,22 +181,23 @@ function onUpdateClick() {
 				</N8nExternalLink>
 				<N8nTooltip v-if="row?.isVerified" placement="top" :show-after="500">
 					<template #content>
-						{{ i18n.baseText('settings.communityNodes.verified.tooltip') }}
+						{{ verifiedLabel }}
 					</template>
 					<N8nIcon
 						data-test-id="community-package-row__verified"
 						icon="badge-check"
 						size="small"
+						:aria-label="verifiedLabel"
 						:class="$style.verifiedIcon"
 					/>
 				</N8nTooltip>
 			</div>
 			<div v-if="!loading" :class="$style.stats">
-				<span v-if="row?.nodeCount" :class="$style.stat">
+				<span v-if="row?.nodeCount" :class="$style.stat" :aria-label="nodeCountLabel">
 					<N8nIcon icon="box" size="xsmall" />
 					<N8nText size="xsmall" color="text-light" :bold="true">{{ row.nodeCount }}</N8nText>
 				</span>
-				<span v-if="row?.numberOfDownloads" :class="$style.stat">
+				<span v-if="row?.numberOfDownloads" :class="$style.stat" :aria-label="downloadsLabel">
 					<N8nIcon icon="hard-drive-download" size="xsmall" />
 					<N8nText size="xsmall" color="text-light" :bold="true">{{ formattedDownloads }}</N8nText>
 				</span>
@@ -186,9 +214,14 @@ function onUpdateClick() {
 			<div v-if="!loading" :class="$style.actions">
 				<N8nTooltip v-if="isInstalled && row?.failedLoading" placement="top">
 					<template #content>
-						{{ i18n.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+						{{ failedLoadingLabel }}
 					</template>
-					<N8nIcon icon="triangle-alert" color="danger" size="large" />
+					<N8nIcon
+						icon="triangle-alert"
+						color="danger"
+						size="large"
+						:aria-label="failedLoadingLabel"
+					/>
 				</N8nTooltip>
 
 				<template v-else-if="isInstalled && hasUpdate">

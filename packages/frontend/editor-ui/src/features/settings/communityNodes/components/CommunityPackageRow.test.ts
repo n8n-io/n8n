@@ -49,6 +49,14 @@ vi.mock('@n8n/design-system', async () => {
 const renderComponent = createComponentRenderer(CommunityPackageRow);
 
 const flushPromises = async () => await new Promise(setImmediate);
+const createDeferred = <T>() => {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((resolvePromise) => {
+		resolve = resolvePromise;
+	});
+
+	return { promise, resolve };
+};
 
 const makeRow = (overrides: Partial<CommunityPackageRowData> = {}): CommunityPackageRowData => ({
 	packageName: 'n8n-nodes-example',
@@ -112,15 +120,19 @@ describe('CommunityPackageRow', () => {
 	});
 
 	it('should render node count', () => {
-		const { getByText } = renderComponent({
+		const { getByLabelText, getByText } = renderComponent({
 			props: { row: makeRow({ nodeCount: 3, numberOfDownloads: 0 }) },
 		});
 		expect(getByText('3')).toBeInTheDocument();
+		expect(getByLabelText('3 nodes')).toBeInTheDocument();
 	});
 
 	it('should render formatted downloads (k)', () => {
-		const { getByText } = renderComponent({ props: { row: makeRow({ numberOfDownloads: 1234 }) } });
+		const { getByLabelText, getByText } = renderComponent({
+			props: { row: makeRow({ numberOfDownloads: 1234 }) },
+		});
 		expect(getByText(/1\.2k/)).toBeInTheDocument();
+		expect(getByLabelText('1.2k downloads')).toBeInTheDocument();
 	});
 
 	it('should render formatted downloads (M)', () => {
@@ -138,10 +150,13 @@ describe('CommunityPackageRow', () => {
 	});
 
 	it('should render verified icon when isVerified is true', () => {
-		const { container } = renderComponent({ props: { row: makeRow({ isVerified: true }) } });
+		const { container, getByLabelText } = renderComponent({
+			props: { row: makeRow({ isVerified: true }) },
+		});
 		expect(
 			container.querySelector('[data-test-id="community-package-row__verified"]'),
 		).toBeInTheDocument();
+		expect(getByLabelText('Verified by n8n')).toBeInTheDocument();
 	});
 
 	it('should not render verified icon when isVerified is false', () => {
@@ -213,16 +228,128 @@ describe('CommunityPackageRow', () => {
 			get: () => true,
 		});
 		Object.defineProperty(nodeTypesStore, 'visibleNodeTypes', {
-			get: () => [{ name: 'n8n-nodes-example' }],
+			get: () => [
+				{ name: 'n8n-nodes-example-overlap.wrongNode' },
+				{ name: 'n8n-nodes-example.visibleNode' },
+			],
 		});
 		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
 		nodeTypesStore.getCommunityNodeAttributes = vi.fn().mockResolvedValue({ npmVersion: '2.0.0' });
 
 		const { findByText } = renderComponent({
-			props: { row: makeRow({ isInstalled: true, installedVersion: '1.0.0' }) },
+			props: {
+				row: makeRow({
+					isInstalled: true,
+					installedVersion: '1.0.0',
+					nodeDescription: {
+						displayName: 'Example Node',
+						name: 'n8n-nodes-example.exactNode',
+						icon: 'file:example.svg',
+					} as unknown as INodeTypeDescription,
+				}),
+			},
 		});
 
 		expect(await findByText(/Update available/i)).toBeInTheDocument();
+		expect(nodeTypesStore.getCommunityNodeAttributes).toHaveBeenCalledWith(
+			'n8n-nodes-example.exactNode',
+		);
+	});
+
+	it('should reset local installed state when row package changes', async () => {
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
+			props: { row: makeRow() },
+		});
+
+		await fireEvent.click(getByTestId('community-package-row__install'));
+		await flushPromises();
+
+		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
+
+		await rerender({
+			row: makeRow({
+				packageName: 'n8n-nodes-other',
+				installNodeName: 'n8n-nodes-other.otherNode',
+				nodeDescription: {
+					displayName: 'Other Node',
+					name: 'n8n-nodes-other.otherNode',
+					icon: 'file:other.svg',
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		expect(getByTestId('community-package-row__install')).toBeInTheDocument();
+	});
+
+	it('should clear latest verified version when row package changes', async () => {
+		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => false });
+		Object.defineProperty(useSettingsStore(), 'isCommunityNodesFeatureEnabled', {
+			get: () => true,
+		});
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		nodeTypesStore.getCommunityNodeAttributes = vi
+			.fn()
+			.mockResolvedValueOnce({ npmVersion: '2.0.0' })
+			.mockResolvedValueOnce(null);
+
+		const { findByTestId, queryByTestId, rerender } = renderComponent({
+			props: { row: makeRow({ isInstalled: true, installedVersion: '1.0.0' }) },
+		});
+
+		expect(await findByTestId('community-package-row__update')).toBeInTheDocument();
+
+		await rerender({
+			row: makeRow({
+				packageName: 'n8n-nodes-other',
+				isInstalled: true,
+				installedVersion: '1.0.0',
+				installNodeName: 'n8n-nodes-other.otherNode',
+				nodeDescription: {
+					displayName: 'Other Node',
+					name: 'n8n-nodes-other.otherNode',
+					icon: 'file:other.svg',
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		expect(queryByTestId('community-package-row__update')).not.toBeInTheDocument();
+	});
+
+	it('should ignore stale verified version responses after row package changes', async () => {
+		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => false });
+		Object.defineProperty(useSettingsStore(), 'isCommunityNodesFeatureEnabled', {
+			get: () => true,
+		});
+		const firstAttributes = createDeferred<{ npmVersion: string }>();
+		nodeTypesStore.loadNodeTypesIfNotLoaded = vi.fn().mockResolvedValue(undefined);
+		nodeTypesStore.getCommunityNodeAttributes = vi
+			.fn()
+			.mockReturnValueOnce(firstAttributes.promise)
+			.mockResolvedValueOnce(null);
+
+		const { queryByTestId, rerender } = renderComponent({
+			props: { row: makeRow({ isInstalled: true, installedVersion: '1.0.0' }) },
+		});
+		await flushPromises();
+
+		await rerender({
+			row: makeRow({
+				packageName: 'n8n-nodes-other',
+				isInstalled: true,
+				installedVersion: '1.0.0',
+				installNodeName: 'n8n-nodes-other.otherNode',
+				nodeDescription: {
+					displayName: 'Other Node',
+					name: 'n8n-nodes-other.otherNode',
+					icon: 'file:other.svg',
+				} as unknown as INodeTypeDescription,
+			}),
+		});
+
+		firstAttributes.resolve({ npmVersion: '2.0.0' });
+		await flushPromises();
+
+		expect(queryByTestId('community-package-row__update')).not.toBeInTheDocument();
 	});
 
 	it('should call openCommunityPackageUpdateConfirmModal on Update click', async () => {
@@ -320,22 +447,20 @@ describe('CommunityPackageRow', () => {
 		expect(getByTestId('community-package-row__install')).toBeInTheDocument();
 	});
 
-	it('should show triangle-alert icon when failedLoading', () => {
-		const { container } = renderComponent({
+	it('should show failed-loading alert when failedLoading', () => {
+		const { getByLabelText } = renderComponent({
 			props: {
 				row: makeRow({ isInstalled: true, installedVersion: '1.0.0', failedLoading: true }),
 			},
 		});
 
-		expect(
-			container.querySelector('svg[data-icon="triangle-alert"], [class*="triangle-alert"]'),
-		).not.toBeNull();
+		expect(getByLabelText(/problem with this package/i)).toBeInTheDocument();
 	});
 
 	it('should render failed-loading state instead of install/update buttons', () => {
 		Object.defineProperty(useSettingsStore(), 'isUnverifiedPackagesEnabled', { get: () => true });
 
-		const { container, queryByTestId } = renderComponent({
+		const { getByLabelText, queryByTestId } = renderComponent({
 			props: {
 				row: makeRow({
 					isInstalled: true,
@@ -348,9 +473,7 @@ describe('CommunityPackageRow', () => {
 
 		expect(queryByTestId('community-package-row__install')).not.toBeInTheDocument();
 		expect(queryByTestId('community-package-row__update')).not.toBeInTheDocument();
-		expect(
-			container.querySelector('svg[data-icon="triangle-alert"], [class*="triangle-alert"]'),
-		).not.toBeNull();
+		expect(getByLabelText(/problem with this package/i)).toBeInTheDocument();
 	});
 
 	it('should render skeleton when loading is true', () => {
