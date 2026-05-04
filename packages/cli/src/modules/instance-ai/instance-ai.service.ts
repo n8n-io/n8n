@@ -3403,6 +3403,7 @@ export class InstanceAiService {
 					...(archivedWorkflowIds.length > 0 ? { archivedWorkflowIds } : {}),
 				},
 			});
+			await this.saveAgentTreeSnapshot(opts.threadId, opts.runId, opts.snapshotStorage);
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
 			this.threadPushRef.delete(opts.threadId);

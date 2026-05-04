@@ -124,7 +124,7 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(second.reason).toBe('already-emitted');
 	});
 
-	it('does not emit duplicate fallback for a prior retry in the same message group', () => {
+	it('does not let a prior retry fallback hide the current silent run', () => {
 		const decision = guard().evaluateTerminal(
 			[
 				runStart(),
@@ -139,8 +139,8 @@ describe('InstanceAiTerminalResponseGuard', () => {
 			'errored',
 		);
 
-		expect(decision.action).toBe('none');
-		expect(decision.reason).toBe('already-emitted');
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('errored-silent');
 	});
 
 	it('does not let a prior retry fallback hide a malformed confirmation payload', () => {

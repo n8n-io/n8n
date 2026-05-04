@@ -70,7 +70,7 @@ export class InstanceAiTerminalResponseGuard {
 		options: { workSummary?: WorkSummary; errorMessage?: string } = {},
 	): TerminalResponseDecision {
 		const visibility = this.getVisibility(events);
-		if (visibility.hasFallback) {
+		if (visibility.hasCurrentRunFallback) {
 			return {
 				status,
 				visibilitySource: 'fallback',
@@ -178,7 +178,6 @@ export class InstanceAiTerminalResponseGuard {
 	private getVisibility(events: InstanceAiEvent[]): {
 		hasRootText: boolean;
 		hasRootError: boolean;
-		hasFallback: boolean;
 		hasCurrentRunFallback: boolean;
 	} {
 		const currentRunEvents = events.filter((event) => event.runId === this.options.runId);
@@ -188,9 +187,6 @@ export class InstanceAiTerminalResponseGuard {
 			),
 			hasRootError: currentRunEvents.some(
 				(event) => event.agentId === this.options.rootAgentId && event.type === 'error',
-			),
-			hasFallback: events.some((event) =>
-				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:`),
 			),
 			hasCurrentRunFallback: currentRunEvents.some((event) =>
 				event.responseId?.startsWith(`${FALLBACK_RESPONSE_PREFIX}:${this.options.runId}:`),

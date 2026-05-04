@@ -90,6 +90,7 @@ jest.mock('@n8n/instance-ai', () => {
 				};
 			}
 		},
+		resumeAgentRun: jest.fn(),
 		TerminalOutcomeStorage: class {
 			constructor(_memory: unknown) {}
 		},
@@ -108,7 +109,7 @@ jest.mock('@mastra/core/workflows', () => ({}));
 
 import type { User } from '@n8n/db';
 import type { InstanceAiAgentNode, InstanceAiEvent } from '@n8n/api-types';
-import type { TerminalOutcome } from '@n8n/instance-ai';
+import { resumeAgentRun, type TerminalOutcome } from '@n8n/instance-ai';
 
 import { InstanceAiService } from '../instance-ai.service';
 
@@ -215,7 +216,7 @@ type TerminalGuardOrderServiceInternals = {
 		runId: string,
 		status: 'completed' | 'cancelled' | 'errored',
 		options?: { messageGroupId?: string; errorMessage?: string },
-	) => void;
+	) => { action: string; reason: string } | undefined;
 	evaluateWaitingResponse: (
 		threadId: string,
 		runId: string,
@@ -236,6 +237,8 @@ type TerminalGuardOrderServiceInternals = {
 	runState: {
 		getRunIdsForMessageGroup: jest.Mock;
 		cancelThread: jest.Mock;
+		clearActiveRun: jest.Mock;
+		hasSuspendedRun: jest.Mock;
 	};
 	eventBus: {
 		events: InstanceAiEvent[];
@@ -244,9 +247,29 @@ type TerminalGuardOrderServiceInternals = {
 		publish: jest.Mock;
 	};
 	telemetry: { track: jest.Mock };
-	logger: { warn: jest.Mock };
+	logger: { warn: jest.Mock; error: jest.Mock };
+	traceContextsByRunId: Map<string, { threadId: string; messageGroupId?: string }>;
+	threadPushRef: Map<string, string>;
 	finalizeRunTracing: jest.Mock;
 	saveAgentTreeSnapshot: jest.Mock;
+	reapAiTemporaryFromRun: jest.Mock;
+	maybeFinalizeRunTraceRoot: jest.Mock;
+	schedulePlannedTasks: jest.Mock;
+	drainPendingCheckpointReentries: jest.Mock;
+	processResumedStream: (
+		agent: unknown,
+		resumeData: unknown,
+		opts: {
+			runId: string;
+			mastraRunId: string;
+			threadId: string;
+			user: User;
+			toolCallId: string;
+			signal: AbortSignal;
+			abortController: AbortController;
+			snapshotStorage: unknown;
+		},
+	) => Promise<void>;
 };
 
 function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
@@ -257,6 +280,8 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.runState = {
 		getRunIdsForMessageGroup: jest.fn(() => ['run-1']),
 		cancelThread: jest.fn(),
+		clearActiveRun: jest.fn(),
+		hasSuspendedRun: jest.fn(() => true),
 	};
 	service.eventBus = {
 		events,
@@ -267,9 +292,17 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		}),
 	};
 	service.telemetry = { track: jest.fn() };
-	service.logger = { warn: jest.fn() };
+	service.logger = { warn: jest.fn(), error: jest.fn() };
+	service.traceContextsByRunId = new Map([
+		['run-1', { threadId: 'thread-a', messageGroupId: 'group-1' }],
+	]);
+	service.threadPushRef = new Map();
 	service.finalizeRunTracing = jest.fn(async () => {});
 	service.saveAgentTreeSnapshot = jest.fn(async () => {});
+	service.reapAiTemporaryFromRun = jest.fn(async () => []);
+	service.maybeFinalizeRunTraceRoot = jest.fn(async () => {});
+	service.schedulePlannedTasks = jest.fn(async () => {});
+	service.drainPendingCheckpointReentries = jest.fn(async () => {});
 	return service;
 }
 
@@ -578,5 +611,29 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			type: 'run-finish',
 			payload: { status: 'error' },
 		});
+	});
+
+	it('persists the resumed-run fallback error before cleanup', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		jest.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('provider failed'));
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				mastraRunId: 'mastra-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		expect(service.eventBus.events.map((event) => event.type)).toEqual(['error', 'run-finish']);
+		expect(service.saveAgentTreeSnapshot).toHaveBeenCalledWith('thread-a', 'run-1', {});
 	});
 });
