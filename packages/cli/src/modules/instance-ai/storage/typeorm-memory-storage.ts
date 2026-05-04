@@ -38,7 +38,11 @@ import { InstanceAiResourceRepository } from '../repositories/instance-ai-resour
 import { InstanceAiThreadRepository } from '../repositories/instance-ai-thread.repository';
 
 /** Metadata keys that must only be mutated via patchThread (atomic read-modify-write). */
-const PATCH_ONLY_METADATA_KEYS = ['instanceAiPlannedTasks', 'instanceAiTasks'] as const;
+const PATCH_ONLY_METADATA_KEYS = [
+	'instanceAiPlannedTasks',
+	'instanceAiTasks',
+	'instanceAiWorkflowLoop',
+] as const;
 
 function countLines(value: string): number {
 	return value === '' ? 0 : value.split(/\r?\n/u).length;
@@ -503,6 +507,17 @@ export class TypeORMMemoryStorage extends MemoryStorage {
 			return entity;
 		});
 		const saved = await this.messageRepo.save(entities);
+
+		// Bump updatedAt on each parent thread so the chat list orders by last
+		// activity. Without this, an existing thread that receives a new message
+		// keeps its original updatedAt and stays buried in the "Older" group.
+		const threadIds = [
+			...new Set(messages.map((m) => m.threadId).filter((id): id is string => !!id)),
+		];
+		if (threadIds.length > 0) {
+			await this.threadRepo.update(threadIds, { updatedAt: new Date() });
+		}
+
 		return { messages: saved.map((e) => this.entityToMessage(e)) };
 	}
 

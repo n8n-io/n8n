@@ -1,5 +1,6 @@
 import type {
 	ApiKey,
+	InstanceMcpClientStatsResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
 } from '@n8n/api-types';
@@ -63,6 +64,12 @@ export async function fetchOAuthClients(
 	context: IRestApiContext,
 ): Promise<ListOAuthClientsResponseDto> {
 	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients');
+}
+
+export async function fetchInstanceMcpClientStats(
+	context: IRestApiContext,
+): Promise<InstanceMcpClientStatsResponseDto> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients/instance-stats');
 }
 
 export async function deleteOAuthClient(
