@@ -1274,6 +1274,16 @@ export class AgentsService {
 		return result;
 	}
 
+	async createAndAttachSkill(
+		agentId: string,
+		projectId: string,
+		skill: AgentSkill,
+	): Promise<AgentSkillMutationResponse> {
+		const result = await this.agentSkillsService.createAndAttachSkill(agentId, projectId, skill);
+		this.clearRuntimes(agentId);
+		return result;
+	}
+
 	async updateSkill(
 		agentId: string,
 		projectId: string,

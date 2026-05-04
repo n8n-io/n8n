@@ -378,7 +378,8 @@ export class AgentsBuilderToolsService {
 			.description(
 				'Create and store an agent skill. Pass the skill name, a short description, and the full skill body. ' +
 					'The description should help the runtime decide when to load it. ' +
-					'The body is stored as the skill instructions and the skill is attached to the agent config. ' +
+					'The body is stored as the skill instructions, but this does NOT attach the skill to the agent config. ' +
+					'Follow up with read_config and patch_config (or write_config) to add a `{ type: "skill", id }` entry to `skills`. ' +
 					'Returns { ok: true, id, skill } or { ok: false, errors }.',
 			)
 			.input(

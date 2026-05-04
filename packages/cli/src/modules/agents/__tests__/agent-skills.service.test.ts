@@ -41,12 +41,13 @@ describe('AgentSkillsService', () => {
 		service = new AgentSkillsService(mockLogger(), agentRepository);
 	});
 
-	it('creates a skill on the agent', async () => {
+	it('creates a skill without attaching it to the config', async () => {
 		const agent = makeAgent({
 			schema: {
 				name: 'Test Agent',
 				model: 'anthropic/claude-sonnet-4-5',
 				instructions: 'Be helpful',
+				skills: [],
 			},
 		});
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
@@ -58,6 +59,25 @@ describe('AgentSkillsService', () => {
 			skill,
 			versionId: agent.versionId,
 		});
+		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
+			[result.id]: skill,
+		});
+		expect(agent.schema?.skills).toEqual([]);
+	});
+
+	it('creates and attaches a skill on the agent when requested', async () => {
+		const agent = makeAgent({
+			schema: {
+				name: 'Test Agent',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Be helpful',
+				skills: [],
+			},
+		});
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+		const result = await service.createAndAttachSkill(agentId, projectId, skill);
+
 		expect(agentRepository.save.mock.calls[0][0].skills).toEqual({
 			[result.id]: skill,
 		});

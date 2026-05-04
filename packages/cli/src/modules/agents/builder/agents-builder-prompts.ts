@@ -133,9 +133,10 @@ Use skills for reusable instructions, playbooks, style guides, policies, or
 domain knowledge the agent should follow. Call create_skill with the skill
 \`name\`, \`description\`, and \`body\`; the tool returns the generated skill
 \`id\`. Skill descriptions should describe the task/situation that should
-trigger loading the skill. create_skill stores the skill body and attaches
-\`{ "type": "skill", "id": "<returned id>" }\` to the agent config in one
-operation, so do not add a second skill ref afterwards.`;
+trigger loading the skill. create_skill stores the skill body only; it does not
+attach the skill to the agent config. After create_skill, call read_config and
+use patch_config (or write_config) to add
+\`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.`;
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools (user-facing)
@@ -346,6 +347,8 @@ Path syntax: \`/field\` for top-level fields, \`/nested/field\` for nested, \`/a
 
 For array item edits/removals, include a preceding \`test\` op for an identifying
 field such as \`/tools/1/name\` or \`/skills/0/id\` before replacing/removing.
+When attaching a skill, append to \`/skills/-\` if \`skills\` exists; otherwise
+add \`/skills\` with an array containing the skill ref.
 
 If patch_config returns \`stage: "stale"\`, use the returned \`config\` and
 \`configHash\` to retry once. Do not retry from memory.
@@ -368,8 +371,9 @@ If a write_config or patch_config call returns \`stage: "stale"\`, retry once
 from the returned \`config\` and \`configHash\`. For any later independent config
 change, call \`read_config\` again.
 
-\`create_skill\` does not require a follow-up read_config because it attaches the
-skill reference itself and does not need a separate skills patch.`;
+\`create_skill\` stores a skill body but does not attach it. To make the agent
+use the skill, call \`read_config\` after create_skill and then attach the
+returned id through \`patch_config\` or \`write_config\`.`;
 
 export const WORKFLOW_SECTION = `\
 ## Workflow
@@ -383,7 +387,8 @@ export const WORKFLOW_SECTION = `\
 3. Before adding any node tool that needs credentials, call ask_credential for
    each slot.
 4. PREFER attaching existing workflows or nodes as tools over custom tools.
-5. Use create_skill for reusable instruction bundles; it attaches the returned skill id to \`skills\`.
+5. Use create_skill for reusable instruction bundles, then read_config and
+   patch_config to add the returned skill id to \`skills\`.
 6. Before every write_config or patch_config, call read_config in the same turn
    and use the returned configHash as baseConfigHash.
 7. Use patch_config for targeted changes; write_config to replace the full config.`;
@@ -431,7 +436,9 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ### Adding a skill to an existing agent
 1. create_skill({ name: "Summarize Meetings", description: "Use when summarizing meeting notes or transcripts", body: "Extract decisions, risks, and action items." })
    → { id: "skill_0Ab9ZkLm3Pq7Xy2N", ... }
-2. Reply: "Done. I added the skill."
+2. read_config() → { configHash: "hash1", config: { ... } }
+3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"add\\", \\"path\\": \\"/skills/-\\", \\"value\\": { \\"type\\": \\"skill\\", \\"id\\": \\"skill_0Ab9ZkLm3Pq7Xy2N\\" } }]" }\`
+4. Reply: "Done. I added the skill."
 
 ### Ambiguous request: "Make it post somewhere"
 1. ask_question({ question: "Where should the agent post?",
@@ -453,7 +460,7 @@ export const IMPORTANT_SECTION = `\
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
 - \`build_custom_tool\` generates an opaque custom tool id, then compiles and stores the tool code. Register the returned id in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
-- \`create_skill\` creates the skill and attaches a \`{ type: "skill", id }\` entry to \`skills\` in one operation. Do not add a second skill ref via patch_config.`;
+- \`create_skill\` stores the skill body only. It is not active until you add a \`{ type: "skill", id }\` entry to \`skills\` via read_config and patch_config/write_config.`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style

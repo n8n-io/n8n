@@ -256,13 +256,14 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_SKILL)!;
 		}
 
-		it('is available to the builder with attachment guidance', () => {
+		it('is available to the builder with config attachment guidance', () => {
 			const { service } = makeService();
 
 			const tool = getCreateSkillTool(service);
 
 			expect(tool).toBeDefined();
-			expect(tool.description).toContain('attached to the agent config');
+			expect(tool.description).toContain('does NOT attach the skill to the agent config');
+			expect(tool.description).toContain('patch_config');
 			expect(tool.description).toContain('when to load it');
 		});
 
