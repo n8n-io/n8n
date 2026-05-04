@@ -6,6 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -402,6 +403,28 @@ export class ChatIntegrationService {
 				}
 			}
 		}
+	}
+
+	/**
+	 * On leader takeover, activate all chat integrations on this instance.
+	 * Fires only in multi-main mode when this instance becomes the leader
+	 * after startup (e.g. failover). Initial-startup activation happens in
+	 * `AgentsModule.init()`, which is gated by `InstanceSettings.isLeader`.
+	 */
+	@OnLeaderTakeover()
+	async onLeaderTakeover(): Promise<void> {
+		this.logger.info('[ChatIntegrationService] Leader takeover — reconnecting integrations');
+		await this.reconnectAll();
+	}
+
+	/**
+	 * On leader stepdown, tear down every active integration so the new leader
+	 * can claim them without races (Telegram setWebhook, polling, etc.).
+	 */
+	@OnLeaderStepdown()
+	async onLeaderStepdown(): Promise<void> {
+		this.logger.info('[ChatIntegrationService] Leader stepdown — disconnecting integrations');
+		await this.disconnectAll();
 	}
 
 	// ---------------------------------------------------------------------------
