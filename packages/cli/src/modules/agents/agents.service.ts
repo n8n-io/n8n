@@ -86,9 +86,10 @@ interface InjectRuntimeDependenciesParams {
 	integrationType?: string;
 }
 
-/** Derive a stable thread ID for the test-chat of a given agent. */
-export function chatThreadId(agentId: string): string {
-	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
+/** Derive a stable thread ID for the legacy test-chat of a given agent and user. */
+export function chatThreadId(agentId: string, userId?: string): string {
+	const baseThreadId = `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
+	return userId ? `${baseThreadId}:${userId}` : baseThreadId;
 }
 
 @Service()
@@ -739,25 +740,26 @@ export class AgentsService {
 
 	/**
 	 * Return persisted test-chat messages for an agent scoped to the current
-	 * user. The test-chat thread is shared across users (keyed on agentId) but
-	 * each message is tagged with the originating user's id as resourceId, so
-	 * we filter here to give every user their own private conversation view.
+	 * user. Legacy test-chat fallback threads are keyed by agent and user so
+	 * thread-scoped working memory stays isolated.
 	 */
 	async getTestChatMessages(agentId: string, userId: string) {
-		return await this.n8nMemory.getMessages(chatThreadId(agentId), { resourceId: userId });
+		return await this.n8nMemory.getMessages(chatThreadId(agentId, userId), {
+			resourceId: userId,
+		});
 	}
 
 	/**
-	 * Clear the current user's test-chat messages for an agent. The thread row
-	 * stays so other users' histories on the same thread are preserved.
+	 * Clear the current user's legacy test-chat messages for an agent.
 	 */
 	async clearTestChatMessages(agentId: string, userId: string) {
-		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId), userId);
+		await this.n8nMemory.deleteMessagesByThread(chatThreadId(agentId, userId), userId);
 	}
 
 	/** Delete all test-chat messages + the thread row — used when the agent itself is deleted. */
 	async clearAllTestChatMessages(agentId: string) {
 		const threadId = chatThreadId(agentId);
+		await this.n8nMemory.deleteThreadsByPrefix(threadId);
 		await this.n8nMemory.deleteMessagesByThread(threadId);
 		await this.n8nMemory.deleteThread(threadId);
 	}

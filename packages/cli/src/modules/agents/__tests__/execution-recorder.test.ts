@@ -91,6 +91,7 @@ describe('ExecutionRecorder', () => {
 			const record = recorder.getMessageRecord();
 
 			expect(record.workingMemory).toBe('# Name: Alice');
+			expect(record.toolCalls).toEqual([]);
 			expect(record.timeline.some((e) => e.type === 'working-memory')).toBe(true);
 		});
 

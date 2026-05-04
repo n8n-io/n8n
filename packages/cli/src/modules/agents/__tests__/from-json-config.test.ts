@@ -42,6 +42,21 @@ describe('buildFromJson()', () => {
 		...overrides,
 	});
 
+	const getMemoryConfig = (agent: unknown) =>
+		(
+			agent as {
+				memoryConfig?: {
+					lastMessages: number;
+					workingMemory?: {
+						template: string;
+						structured: boolean;
+						scope: 'resource' | 'thread';
+						instruction?: string;
+					};
+				};
+			}
+		).memoryConfig;
+
 	const makeMockMemoryFactory = () => jest.fn();
 
 	it('sets name, model, and instructions', async () => {
@@ -447,6 +462,20 @@ describe('buildFromJson()', () => {
 
 		expect(memoryFactory).toHaveBeenCalledWith(config.memory);
 		expect(agent.snapshot.hasMemory).toBe(true);
+		expect(getMemoryConfig(agent)?.lastMessages).toBe(15);
+		expect(getMemoryConfig(agent)?.workingMemory).toMatchObject({
+			structured: false,
+			scope: 'thread',
+		});
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Thread memory');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Current goal/task');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Key active items');
+		expect(getMemoryConfig(agent)?.workingMemory?.template).toContain('Resolved or superseded');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('thread-scoped');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain('current-state snapshot');
+		expect(getMemoryConfig(agent)?.workingMemory?.instruction).toContain(
+			'primary, secondary, active, resolved, and superseded',
+		);
 	});
 
 	it('skips memory when memory.enabled is false', async () => {
@@ -466,6 +495,7 @@ describe('buildFromJson()', () => {
 
 		expect(memoryFactory).not.toHaveBeenCalled();
 		expect(agent.snapshot.hasMemory).toBe(false);
+		expect(getMemoryConfig(agent)).toBeUndefined();
 	});
 });
 

@@ -53,7 +53,7 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
-import { buildWorkingMemoryTool } from './working-memory';
+import { buildWorkingMemoryTool, UPDATE_WORKING_MEMORY_TOOL_NAME } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
 import type {
@@ -127,6 +127,7 @@ type ToolCallOutcome =
 			modelOutput: unknown;
 			subAgentUsage?: SubAgentUsage[];
 			customMessage?: AgentMessage;
+			workingMemoryContent?: string;
 	  }
 	| {
 			outcome: 'suspended';
@@ -145,6 +146,7 @@ interface ToolCallSuccess {
 	modelOutput: unknown;
 	subAgentUsage?: SubAgentUsage[];
 	customMessage?: AgentMessage;
+	workingMemoryContent?: string;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -648,7 +650,9 @@ export class AgentRuntime {
 			const batch = await this.iteratePendingToolCallsConcurrent({ ...toolCtx, pendingResume });
 
 			for (const r of batch.results) {
-				toolCallSummary.push(r.toolEntry);
+				if (r.workingMemoryContent === undefined) {
+					toolCallSummary.push(r.toolEntry);
+				}
 				if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 			}
 
@@ -721,7 +725,9 @@ export class AgentRuntime {
 			});
 
 			for (const r of batch.results) {
-				toolCallSummary.push(r.toolEntry);
+				if (r.workingMemoryContent === undefined) {
+					toolCallSummary.push(r.toolEntry);
+				}
 				if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 			}
 
@@ -802,6 +808,7 @@ export class AgentRuntime {
 		// so the fire-and-forget is safe.
 		const onToolExecutionStart = (data: AgentEventData): void => {
 			if (data.type !== AgentEvent.ToolExecutionStart) return;
+			if (data.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) return;
 			// Swallow rejections: if the writer is already closed/errored (e.g.
 			// an abort raced ahead of the subscription cleanup) there is nothing
 			// useful to do with the chunk.
@@ -858,6 +865,7 @@ export class AgentRuntime {
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
+		const hiddenToolCallIds = new Set<string>();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -885,18 +893,26 @@ export class AgentRuntime {
 
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					await writer.write({
-						type: 'tool-result',
-						toolCallId: r.toolCallId,
-						toolName: r.toolName,
-						output: r.modelOutput,
-					});
+					if (r.workingMemoryContent !== undefined) {
+						await writer.write({
+							type: 'working-memory-update',
+							content: r.workingMemoryContent,
+						});
+					} else {
+						await writer.write({
+							type: 'tool-result',
+							toolCallId: r.toolCallId,
+							toolName: r.toolName,
+							output: r.modelOutput,
+						});
+					}
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
 					}
 				}
 
 				for (const e of batch.errors) {
+					if (e.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) continue;
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: e.toolCallId,
@@ -958,6 +974,27 @@ export class AgentRuntime {
 			// We catch that here and close the consumer stream with an error chunk.
 			try {
 				for await (const chunk of result.fullStream) {
+					if (
+						chunk.type === 'tool-input-start' &&
+						chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME
+					) {
+						hiddenToolCallIds.add(chunk.id);
+						continue;
+					}
+					if (chunk.type === 'tool-input-delta' && hiddenToolCallIds.has(chunk.id)) {
+						continue;
+					}
+					if (chunk.type === 'tool-call' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
+						hiddenToolCallIds.add(chunk.toolCallId);
+						continue;
+					}
+					if (
+						chunk.type === 'tool-result' &&
+						chunk.toolCallId !== undefined &&
+						hiddenToolCallIds.has(chunk.toolCallId)
+					) {
+						continue;
+					}
 					// Filter only the SDK's terminal `finish` chunk — the runtime
 					// emits its own consolidated `finish` after the loop completes.
 					// `start-step` / `finish-step` are passed through so consumers
@@ -1008,18 +1045,26 @@ export class AgentRuntime {
 
 				for (const r of batch.results) {
 					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
-					await writer.write({
-						type: 'tool-result',
-						toolCallId: r.toolCallId,
-						toolName: r.toolName,
-						output: r.modelOutput,
-					});
+					if (r.workingMemoryContent !== undefined) {
+						await writer.write({
+							type: 'working-memory-update',
+							content: r.workingMemoryContent,
+						});
+					} else {
+						await writer.write({
+							type: 'tool-result',
+							toolCallId: r.toolCallId,
+							toolName: r.toolName,
+							output: r.modelOutput,
+						});
+					}
 					if (r.customMessage) {
 						await writer.write({ type: 'message', message: r.customMessage });
 					}
 				}
 
 				for (const e of batch.errors) {
+					if (e.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) continue;
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: e.toolCallId,
@@ -1341,6 +1386,9 @@ export class AgentRuntime {
 						modelOutput: result.value.modelOutput,
 						subAgentUsage: result.value.subAgentUsage,
 						customMessage: result.value.customMessage,
+						...(result.value.workingMemoryContent !== undefined && {
+							workingMemoryContent: result.value.workingMemoryContent,
+						}),
 					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
@@ -1432,6 +1480,9 @@ export class AgentRuntime {
 				modelOutput: processResult.modelOutput,
 				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
+				...(processResult.workingMemoryContent !== undefined && {
+					workingMemoryContent: processResult.workingMemoryContent,
+				}),
 			});
 		} else if (processResult.outcome === 'error') {
 			errors.push({
@@ -1629,6 +1680,10 @@ export class AgentRuntime {
 		if (customMessage) {
 			list.addResponse([customMessage]);
 		}
+		const workingMemoryContent =
+			toolName === UPDATE_WORKING_MEMORY_TOOL_NAME
+				? this.getWorkingMemoryContentFromInput(toolInput)
+				: undefined;
 
 		return {
 			outcome: 'success',
@@ -1641,7 +1696,16 @@ export class AgentRuntime {
 			modelOutput: modelResult,
 			subAgentUsage: extractedSubAgentUsage,
 			customMessage,
+			...(workingMemoryContent !== undefined && { workingMemoryContent }),
 		};
+	}
+
+	private getWorkingMemoryContentFromInput(input: JSONValue): string {
+		if (input && typeof input === 'object' && !Array.isArray(input)) {
+			const maybeMemory = input.memory;
+			if (typeof maybeMemory === 'string') return maybeMemory;
+		}
+		return JSON.stringify(input, null, 2);
 	}
 
 	/** Build common LLM call dependencies shared by both the generate and stream loops. */

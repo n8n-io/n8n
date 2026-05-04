@@ -6,6 +6,7 @@ import { isLlmMessage } from '../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
 import type { StreamChunk } from '../types/sdk/agent';
+import type { BuiltMemory } from '../types/sdk/memory';
 import type { ContentToolCall, Message } from '../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext } from '../types/sdk/tool';
 import type { BuiltTelemetry } from '../types/telemetry';
@@ -463,6 +464,110 @@ describe('AgentRuntime.stream() — graceful error contract', () => {
 		const { stream: readableStream } = await runtime.stream('hello');
 
 		await expect(collectChunks(readableStream)).resolves.toBeDefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// stream() — working memory
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime.stream() — working memory', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
+	function makeMemory(savedWorkingMemory: string[]): BuiltMemory {
+		return {
+			getThread: jest.fn().mockResolvedValue(null),
+			saveThread: jest.fn(async (thread) => {
+				await Promise.resolve();
+				return {
+					...thread,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				};
+			}),
+			deleteThread: jest.fn(),
+			getMessages: jest.fn().mockResolvedValue([]),
+			saveMessages: jest.fn(),
+			deleteMessages: jest.fn(),
+			getWorkingMemory: jest.fn().mockResolvedValue(null),
+			saveWorkingMemory: jest.fn(async (_params, content: string) => {
+				await Promise.resolve();
+				savedWorkingMemory.push(content);
+			}),
+			describe: jest
+				.fn()
+				.mockReturnValue({ name: 'test', constructorName: 'TestMemory', connectionParams: {} }),
+		};
+	}
+
+	it('emits working-memory-update and hides the internal tool call from stream consumers', async () => {
+		const savedWorkingMemory: string[] = [];
+		const memoryContent = '# Thread memory\n- User facts: Alice likes concise answers';
+		const memory = makeMemory(savedWorkingMemory);
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			lastMessages: 5,
+			workingMemory: {
+				template: '# Thread memory\n- User facts:',
+				structured: false,
+				scope: 'thread',
+			},
+		});
+
+		streamText
+			.mockReturnValueOnce({
+				fullStream: makeChunkStream([
+					{ type: 'tool-input-start', id: 'wm-1', toolName: 'updateWorkingMemory' },
+					{ type: 'tool-input-delta', id: 'wm-1', delta: memoryContent },
+					{
+						type: 'tool-call',
+						toolCallId: 'wm-1',
+						toolName: 'updateWorkingMemory',
+						input: { memory: memoryContent },
+					},
+				]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'wm-1',
+									toolName: 'updateWorkingMemory',
+									args: { memory: memoryContent },
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{
+						toolCallId: 'wm-1',
+						toolName: 'updateWorkingMemory',
+						input: { memory: memoryContent },
+					},
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess('Done'));
+
+		const { stream } = await runtime.stream('remember this', {
+			persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+		});
+		const chunks = await collectChunks(stream);
+
+		expect(savedWorkingMemory).toEqual([memoryContent]);
+		expect(chunks).toContainEqual({ type: 'working-memory-update', content: memoryContent });
+		expect(
+			chunks.some((chunk) => 'toolName' in chunk && chunk.toolName === 'updateWorkingMemory'),
+		).toBe(false);
 	});
 });
 
