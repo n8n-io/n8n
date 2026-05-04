@@ -276,6 +276,7 @@ defineExpose({ iframeRef, reloadExecution: loadExecution });
 				[$style.show]: showPreview,
 			}"
 			:src="iframeSrc"
+			:data-ndv-open="nodeViewDetailsOpened || undefined"
 			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
