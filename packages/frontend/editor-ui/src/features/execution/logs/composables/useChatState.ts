@@ -24,7 +24,6 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { MessageComponentKey } from '@n8n/chat/constants/messageComponents';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
-import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	createWorkflowExecutionSessionId,
 	useWorkflowExecutionSessionStore,
@@ -212,18 +211,7 @@ export function useChatState(
 			}
 
 			// Clear any existing execution to allow fresh webhook registration
-			const executionIds = new Set(
-				[
-					workflowExecutionSession.value.activeExecutionId,
-					workflowExecutionSession.value.displayedExecutionId,
-				].filter((executionId): executionId is string => !!executionId),
-			);
-			executionIds.forEach((executionId) => {
-				useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
-			});
-			workflowExecutionSession.value.setPendingExecution(null);
-			workflowExecutionSession.value.setActiveExecutionId(undefined);
-			workflowExecutionSession.value.clearDisplayedExecution();
+			workflowExecutionSession.value.clearAllExecutions();
 
 			// Use the useRunWorkflow composable to properly register the webhook
 			// Only include destinationNode if set for partial execution support
@@ -354,18 +342,7 @@ export function useChatState(
 	);
 
 	function refreshSession() {
-		const executionIds = new Set(
-			[
-				workflowExecutionSession.value.activeExecutionId,
-				workflowExecutionSession.value.displayedExecutionId,
-			].filter((executionId): executionId is string => !!executionId),
-		);
-		executionIds.forEach((executionId) => {
-			useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
-		});
-		workflowExecutionSession.value.setPendingExecution(null);
-		workflowExecutionSession.value.setActiveExecutionId(undefined);
-		workflowExecutionSession.value.clearDisplayedExecution();
+		workflowExecutionSession.value.clearAllExecutions();
 		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();

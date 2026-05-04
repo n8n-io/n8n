@@ -182,8 +182,11 @@ export function useExecutionDataStore(executionId: ExecutionDataId) {
 			executionStartedData.value = undefined;
 		}
 
-		function setExecution(newExecution: IExecutionResponse | null) {
-			if (newExecution?.data?.waitTill) {
+		function setExecution(
+			newExecution: IExecutionResponse | null,
+			{ stripWaitingTaskData = true }: { stripWaitingTaskData?: boolean } = {},
+		) {
+			if (stripWaitingTaskData && newExecution?.data?.waitTill) {
 				const lastNodeExecuted = newExecution.data.resultData.lastNodeExecuted;
 				if (lastNodeExecuted) {
 					delete newExecution.data.resultData.runData[lastNodeExecuted];

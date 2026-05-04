@@ -22,7 +22,6 @@ import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
 import { useThrottleFn } from '@vueuse/core';
 import { useThrottleWithReactiveDelay } from '@n8n/composables/useThrottleWithReactiveDelay';
 import { useWorkflowId } from '@/app/composables/useWorkflowId';
-import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	createWorkflowExecutionSessionId,
 	useWorkflowExecutionSessionStore,
@@ -121,18 +120,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	function resetExecutionData() {
 		state.value = undefined;
-		const executionIds = new Set(
-			[
-				workflowExecutionSession.value.activeExecutionId,
-				workflowExecutionSession.value.displayedExecutionId,
-			].filter((executionId): executionId is string => !!executionId),
-		);
-		executionIds.forEach((executionId) => {
-			useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
-		});
-		workflowExecutionSession.value.setPendingExecution(null);
-		workflowExecutionSession.value.setActiveExecutionId(undefined);
-		workflowExecutionSession.value.clearDisplayedExecution();
+		workflowExecutionSession.value.clearAllExecutions();
 		nodeHelpers.updateNodesExecutionIssues();
 		// Clear partial execution destination to allow full workflow execution
 		workflowExecutionSession.value.setChatPartialExecutionDestinationNode(null);

@@ -111,7 +111,13 @@ export function useWorkflowState() {
 			createWorkflowExecutionSessionId(ws.workflowId),
 		);
 		const activeExecutionId = workflowExecutionSession.activeExecutionId;
-		const execution = workflowExecutionSession.activeExecution;
+		const activeExecutionDataStore = activeExecutionId
+			? useExecutionDataStore(createExecutionDataId(activeExecutionId))
+			: null;
+		const execution =
+			activeExecutionId === null
+				? workflowExecutionSession.activeExecution
+				: (activeExecutionDataStore?.execution ?? null);
 
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
@@ -119,9 +125,7 @@ export function useWorkflowState() {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
-		if (activeExecutionId) {
-			useExecutionDataStore(createExecutionDataId(activeExecutionId)).clearExecutionStartedData();
-		}
+		activeExecutionDataStore?.clearExecutionStartedData();
 
 		clearPopupWindowState();
 
@@ -141,9 +145,9 @@ export function useWorkflowState() {
 			execution.stoppedAt = stopData.stoppedAt;
 		}
 
-		if (activeExecutionId) {
-			useExecutionDataStore(createExecutionDataId(activeExecutionId)).setExecution(execution);
-		} else {
+		if (activeExecutionDataStore) {
+			activeExecutionDataStore.setExecution(execution, { stripWaitingTaskData: false });
+		} else if (activeExecutionId === null) {
 			workflowExecutionSession.setPendingExecution(execution);
 		}
 	}

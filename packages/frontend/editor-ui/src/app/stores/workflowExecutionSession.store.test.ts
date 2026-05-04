@@ -381,6 +381,31 @@ describe('workflowExecutionSession.store', () => {
 		expect(store.lastSuccessfulExecution).toEqual(lastSuccessfulExecution);
 	});
 
+	it('clears active, displayed, and pending execution state', () => {
+		const store = useWorkflowExecutionSessionStore('workflow-1');
+		const activeExecutionDataStore = useExecutionDataStore(
+			createExecutionDataId('active-execution'),
+		);
+		const displayedExecutionDataStore = useExecutionDataStore(
+			createExecutionDataId('displayed-execution'),
+		);
+
+		activeExecutionDataStore.setExecution(createExecution('active-execution'));
+		displayedExecutionDataStore.setExecution(createExecution('displayed-execution'));
+		store.setActiveExecutionId('active-execution');
+		store.setDisplayedExecutionId('displayed-execution');
+		store.setPendingExecution(createExecution('pending-execution'));
+
+		store.clearAllExecutions();
+
+		expect(store.activeExecutionId).toBeUndefined();
+		expect(store.displayedExecutionId).toBeUndefined();
+		expect(store.pendingExecution).toBeNull();
+		expect(activeExecutionDataStore.execution).toBeNull();
+		expect(displayedExecutionDataStore.execution).toBeNull();
+		expect(store.activeExecution).toBeNull();
+	});
+
 	it('resets and disposes only the targeted workflow session store', () => {
 		const firstStore = useWorkflowExecutionSessionStore('workflow-1');
 		const secondStore = useWorkflowExecutionSessionStore('workflow-2');

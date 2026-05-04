@@ -244,6 +244,20 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 			setDisplayedExecutionId(undefined);
 		}
 
+		function clearAllExecutions() {
+			const executionIds = new Set(
+				[activeExecutionId.value, displayedExecutionId.value].filter(
+					(executionId): executionId is string => !!executionId,
+				),
+			);
+			executionIds.forEach((executionId) => {
+				useExecutionDataStore(createExecutionDataId(executionId)).resetExecutionData();
+			});
+			setPendingExecution(null);
+			setActiveExecutionId(undefined);
+			clearDisplayedExecution();
+		}
+
 		function filterCurrentWorkflowExecutions(executions: ExecutionSummary[]) {
 			const executionIds = new Set<string>();
 
@@ -381,6 +395,7 @@ export function useWorkflowExecutionSessionStore(workflowId: WorkflowExecutionSe
 			setLastSuccessfulExecution,
 			setLastSuccessfulExecutionId,
 			clearDisplayedExecution,
+			clearAllExecutions,
 			setCurrentWorkflowExecutions,
 			clearCurrentWorkflowExecutions,
 			deleteExecution,
