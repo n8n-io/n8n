@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
@@ -12,15 +12,6 @@ vi.mock('@/app/stores/workflowsList.store', () => ({
 	})),
 }));
 
-const mockFetchExecutionDataById = vi.fn();
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		fetchExecutionDataById: mockFetchExecutionDataById,
-	})),
-}));
-
-const reloadExecutionMock = vi.fn();
-
 const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 	global: {
 		stubs: {
@@ -30,7 +21,6 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 				props: [
 					'mode',
 					'workflow',
-					'executionId',
 					'canOpenNdv',
 					'canExecute',
 					'hideControls',
@@ -38,9 +28,6 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 					'allowErrorNotifications',
 					'loaderType',
 				],
-				setup(_props: unknown, { expose }: { expose: (refs: object) => void }) {
-					expose({ reloadExecution: reloadExecutionMock });
-				},
 			},
 		},
 	},
@@ -66,7 +53,7 @@ describe('InstanceAiWorkflowPreview', () => {
 	it('should render without throwing', () => {
 		expect(() =>
 			renderComponent({
-				props: { workflowId: null, executionId: null },
+				props: { workflowId: null },
 			}),
 		).not.toThrow();
 	});
@@ -75,7 +62,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		mockFetchWorkflow.mockRejectedValue(new Error('Not found'));
 
 		const { getByText } = renderComponent({
-			props: { workflowId: 'wf-deleted', executionId: null },
+			props: { workflowId: 'wf-deleted' },
 		});
 
 		await waitFor(() => {
@@ -83,11 +70,11 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
-	it('should render WorkflowPreview in workflow mode by default', async () => {
+	it('should render WorkflowPreview', async () => {
 		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
 
 		const { getByTestId } = renderComponent({
-			props: { workflowId: 'wf-123', executionId: null },
+			props: { workflowId: 'wf-123' },
 		});
 
 		await waitFor(() => {
@@ -100,7 +87,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
 
 		const { getByTestId } = renderComponent({
-			props: { workflowId: 'wf-123', executionId: null },
+			props: { workflowId: 'wf-123' },
 		});
 
 		await waitFor(() => {
@@ -113,7 +100,7 @@ describe('InstanceAiWorkflowPreview', () => {
 
 	it('should emit iframe-ready on n8nReady postMessage', async () => {
 		const { emitted } = renderComponent({
-			props: { workflowId: null, executionId: null },
+			props: { workflowId: null },
 		});
 
 		window.dispatchEvent(
@@ -132,7 +119,7 @@ describe('InstanceAiWorkflowPreview', () => {
 
 	it('should emit iframe-ready even when n8nReady has no pushRef', async () => {
 		const { emitted } = renderComponent({
-			props: { workflowId: null, executionId: null },
+			props: { workflowId: null },
 		});
 
 		window.dispatchEvent(
@@ -143,54 +130,6 @@ describe('InstanceAiWorkflowPreview', () => {
 
 		await waitFor(() => {
 			expect(emitted('iframe-ready')).toBeTruthy();
-		});
-	});
-
-	describe('execution polling', () => {
-		const POLL_INTERVAL_MS = 1_500;
-
-		beforeEach(() => {
-			vi.useFakeTimers();
-			mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
-			reloadExecutionMock.mockClear();
-			mockFetchExecutionDataById.mockReset();
-		});
-
-		afterEach(() => {
-			vi.useRealTimers();
-		});
-
-		it('should not call reloadExecution when the first poll already sees the execution finished', async () => {
-			mockFetchExecutionDataById.mockResolvedValue({ finished: true });
-
-			const { rerender } = renderComponent({
-				props: { workflowId: 'wf-123', executionId: null },
-			});
-			await rerender({ workflowId: 'wf-123', executionId: 'exec-1' });
-
-			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
-
-			expect(mockFetchExecutionDataById).toHaveBeenCalledWith('exec-1');
-			expect(reloadExecutionMock).not.toHaveBeenCalled();
-		});
-
-		it('should call reloadExecution once when execution transitions from running to finished', async () => {
-			mockFetchExecutionDataById
-				.mockResolvedValueOnce({ finished: false })
-				.mockResolvedValueOnce({ finished: true });
-
-			const { rerender } = renderComponent({
-				props: { workflowId: 'wf-123', executionId: null },
-			});
-			await rerender({ workflowId: 'wf-123', executionId: 'exec-1' });
-
-			// First poll: still running — no reload yet
-			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
-			expect(reloadExecutionMock).not.toHaveBeenCalled();
-
-			// Second poll: now finished — reload fires once
-			await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
-			expect(reloadExecutionMock).toHaveBeenCalledTimes(1);
 		});
 	});
 });

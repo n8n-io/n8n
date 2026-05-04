@@ -111,7 +111,6 @@ const currentThreadTitle = computed<string | undefined>(() => {
 const preview = useCanvasPreview({
 	store,
 	route,
-	workflowExecutions: executionTracking.workflowExecutions,
 });
 
 provide('openWorkflowPreview', preview.openWorkflowPreview);
@@ -664,7 +663,6 @@ function handleStop() {
 							{ [$style.previewSlotHidden]: !!preview.activeDataTableId.value },
 						]"
 						:workflow-id="preview.activeWorkflowId.value"
-						:execution-id="preview.activeExecutionId.value"
 						:refresh-key="preview.workflowRefreshKey.value"
 						@iframe-ready="eventRelay.handleIframeReady"
 					/>
