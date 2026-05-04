@@ -290,6 +290,18 @@ export class ApiHelpers {
 		return (plain as { data: ClusterInfoResponse }).data;
 	}
 
+	async getInstanceAiToolTraceEvents(slug: string): Promise<unknown[]> {
+		const response = await this.request.get(`/rest/instance-ai/test/tool-trace/${slug}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/test/tool-trace/${slug} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: { events?: unknown[] } };
+		return body.data?.events ?? [];
+	}
+
 	/**
 	 * Check if n8n is healthy
 	 * @returns True if n8n is healthy, false otherwise

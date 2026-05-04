@@ -37,19 +37,13 @@ import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
+import { createTemplatesTool } from '../templates.tool';
 
 /** Number of recent thread messages to include as planner context. */
 const MESSAGE_HISTORY_COUNT = 5;
 
 /** Read-only discovery tools the planner gets from domainTools. */
-const PLANNER_DOMAIN_TOOL_NAMES = [
-	'nodes',
-	'templates',
-	'credentials',
-	'data-tables',
-	'workflows',
-	'ask-user',
-];
+const PLANNER_DOMAIN_TOOL_NAMES = ['nodes', 'credentials', 'data-tables', 'workflows', 'ask-user'];
 
 /** Research tools added when available. */
 const PLANNER_RESEARCH_TOOL_NAMES = ['research'];
@@ -262,6 +256,9 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					plannerTools[name] = context.domainTools[name];
 				}
 			}
+
+			// Best-practices guidance — planner-exclusive
+			plannerTools.templates = createTemplatesTool();
 
 			// Incremental plan accumulation + approval tools
 			const accumulator = new BlueprintAccumulator();

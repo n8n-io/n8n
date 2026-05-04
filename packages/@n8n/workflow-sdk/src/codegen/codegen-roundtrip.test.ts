@@ -37,6 +37,8 @@ interface TestWorkflow {
 	expectedErrors?: ExpectedError[];
 	/** Warnings expected from validateWorkflow when run with a nodeTypesProvider. */
 	expectedValidationWarnings?: ExpectedWarning[];
+	/** Errors expected from WorkflowBuilder.validate() (plugin validator pipeline). */
+	expectedBuilderErrors?: ExpectedError[];
 }
 
 function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
@@ -56,6 +58,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 			expectedWarnings?: ExpectedWarning[];
 			expectedErrors?: ExpectedError[];
 			expectedValidationWarnings?: ExpectedWarning[];
+			expectedBuilderErrors?: ExpectedError[];
 		}>;
 	};
 
@@ -74,6 +77,7 @@ function loadWorkflowsFromDir(dir: string, workflows: TestWorkflow[]): void {
 				expectedWarnings: entry.expectedWarnings,
 				expectedErrors: entry.expectedErrors,
 				expectedValidationWarnings: entry.expectedValidationWarnings,
+				expectedBuilderErrors: entry.expectedBuilderErrors,
 			});
 		}
 	}
@@ -2629,6 +2633,39 @@ describe('Codegen Roundtrip with Real Workflows', () => {
 						expect(filteredParsed[nodeName]).toEqual(filteredOriginal[nodeName]);
 					}
 				});
+			});
+		});
+	}
+});
+
+describe('Committed workflows — builder validator errors', () => {
+	const normalizeError = (e: ExpectedError): string => `${e.code}:${e.nodeName ?? ''}`;
+
+	const workflowsWithExpectedBuilderErrors = workflows.filter(
+		(w) => w.expectedBuilderErrors && w.expectedBuilderErrors.length > 0,
+	);
+
+	if (workflowsWithExpectedBuilderErrors.length === 0) {
+		it('has at least one fixture with expectedBuilderErrors declared', () => {
+			expect(workflowsWithExpectedBuilderErrors.length).toBeGreaterThan(0);
+		});
+	} else {
+		workflowsWithExpectedBuilderErrors.forEach(({ id, name, json, expectedBuilderErrors }) => {
+			it(`emits expected builder validation errors for workflow ${id}: "${name}"`, () => {
+				const code = generateWorkflowCode(json);
+				const builder = parseWorkflowCodeToBuilder(code);
+				const result = builder.validate({ allowDisconnectedNodes: true });
+
+				const actualErrors: ExpectedError[] = result.errors
+					.map((e) => ({ code: e.code, nodeName: e.nodeName }))
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				const expected = (expectedBuilderErrors ?? [])
+					.slice()
+					.sort((a, b) => normalizeError(a).localeCompare(normalizeError(b)));
+
+				expect(actualErrors).toEqual(expected);
+				expect(result.valid).toBe(false);
 			});
 		});
 	}

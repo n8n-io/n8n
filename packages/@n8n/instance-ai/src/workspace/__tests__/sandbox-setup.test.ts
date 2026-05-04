@@ -1,7 +1,62 @@
+import type { Workspace } from '@mastra/core/workspace';
 import { jsonParse } from 'n8n-workflow';
 
-import type { SearchableNodeDescription } from '../../types';
+import type { InstanceAiContext, SearchableNodeDescription } from '../../types';
+import type { setupSandboxWorkspace as setupSandboxWorkspaceFunction } from '../sandbox-setup';
 import { formatNodeCatalogLine } from '../sandbox-setup';
+
+type SetupSandboxWorkspace = typeof setupSandboxWorkspaceFunction;
+type RunInSandboxMock = jest.Mock<
+	Promise<{ exitCode: number; stdout: string; stderr: string }>,
+	[Workspace, string, string?]
+>;
+type ReadFileViaSandboxMock = jest.Mock<Promise<string | null>, [Workspace, string]>;
+
+function createSetupContext(): InstanceAiContext {
+	return {
+		nodeService: {
+			listSearchable: jest.fn().mockResolvedValue([]),
+		},
+		workflowService: {
+			list: jest.fn().mockResolvedValue([]),
+		},
+	} as unknown as InstanceAiContext;
+}
+
+function createLocalWorkspace(
+	writeFile: jest.Mock<Promise<void>, [string, string, { recursive: true }]>,
+): Workspace {
+	return {
+		filesystem: {
+			provider: 'local',
+			basePath: '/sandbox',
+			writeFile,
+		},
+	} as unknown as Workspace;
+}
+
+function loadSetupSandboxWorkspaceWithFsMocks(
+	runInSandbox: RunInSandboxMock,
+	readFileViaSandbox: ReadFileViaSandboxMock,
+): SetupSandboxWorkspace {
+	jest.resetModules();
+	jest.doMock('../sandbox-fs', () => ({
+		runInSandbox,
+		readFileViaSandbox,
+		escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
+	}));
+
+	let sandboxSetup: { setupSandboxWorkspace: SetupSandboxWorkspace } | undefined;
+	jest.isolateModules(() => {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
+		sandboxSetup = require('../sandbox-setup') as {
+			setupSandboxWorkspace: SetupSandboxWorkspace;
+		};
+	});
+
+	if (!sandboxSetup) throw new Error('Failed to load sandbox setup module');
+	return sandboxSetup.setupSandboxWorkspace;
+}
 
 function loadSandboxPackageJson(linkSdk: boolean): {
 	dependencies: Record<string, string>;
@@ -50,6 +105,69 @@ describe('PACKAGE_JSON', () => {
 
 		expect(packageJson.dependencies).not.toHaveProperty('@n8n/workflow-sdk');
 		expect(packageJson.dependencies.tsx).toBeDefined();
+	});
+});
+
+describe('setupSandboxWorkspace', () => {
+	afterEach(() => {
+		jest.dontMock('../sandbox-fs');
+		jest.resetModules();
+	});
+
+	it('writes the initialized marker only after workspace files and npm install succeed', async () => {
+		const runInSandbox: RunInSandboxMock = jest.fn<
+			Promise<{ exitCode: number; stdout: string; stderr: string }>,
+			[Workspace, string, string?]
+		>();
+		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
+			Promise<string | null>,
+			[Workspace, string]
+		>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = jest.fn<Promise<void>, [string, string, { recursive: true }]>(async () => {});
+
+		await setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext());
+
+		const markerCallIndex = writeFile.mock.calls.findIndex(
+			([path]) => path === '/sandbox/.sandbox-initialized',
+		);
+		expect(markerCallIndex).toBeGreaterThan(-1);
+		expect(writeFile.mock.invocationCallOrder[markerCallIndex]).toBeGreaterThan(
+			runInSandbox.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('does not write the initialized marker when npm install fails', async () => {
+		const runInSandbox: RunInSandboxMock = jest.fn<
+			Promise<{ exitCode: number; stdout: string; stderr: string }>,
+			[Workspace, string, string?]
+		>();
+		runInSandbox.mockResolvedValue({ exitCode: 1, stdout: '', stderr: 'install failed' });
+		const readFileViaSandbox: ReadFileViaSandboxMock = jest.fn<
+			Promise<string | null>,
+			[Workspace, string]
+		>();
+		readFileViaSandbox.mockResolvedValue(null);
+		const setupSandboxWorkspace = loadSetupSandboxWorkspaceWithFsMocks(
+			runInSandbox,
+			readFileViaSandbox,
+		);
+		const writeFile = jest.fn<Promise<void>, [string, string, { recursive: true }]>(async () => {});
+
+		await expect(
+			setupSandboxWorkspace(createLocalWorkspace(writeFile), createSetupContext()),
+		).rejects.toThrow('Sandbox npm install failed');
+
+		expect(writeFile.mock.calls).not.toContainEqual([
+			'/sandbox/.sandbox-initialized',
+			expect.any(String),
+			{ recursive: true },
+		]);
 	});
 });
 
