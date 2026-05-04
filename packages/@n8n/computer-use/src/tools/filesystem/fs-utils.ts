@@ -131,6 +131,15 @@ function isAllowedDotFile(name: string): boolean {
 	return allowed.has(name);
 }
 
+export function assertNoExcludedSegments(absolutePath: string, basePath: string): void {
+	const relativePath = path.relative(path.resolve(basePath), path.resolve(absolutePath));
+	const segments = relativePath.split(path.sep).filter(Boolean);
+	const excludedSegment = segments.find((segment) => EXCLUDED_DIRS.has(segment));
+	if (excludedSegment) {
+		throw new Error(`Access denied: "${excludedSegment}" is excluded from filesystem reads`);
+	}
+}
+
 /**
  * Resolve a path safely within the base directory.
  *
@@ -202,6 +211,12 @@ export async function resolveSafePath(basePath: string, relativePath: string): P
 	return absolute;
 }
 
+export async function resolveReadablePath(basePath: string, relativePath: string): Promise<string> {
+	const absolutePath = await resolveSafePath(basePath, relativePath);
+	assertNoExcludedSegments(absolutePath, basePath);
+	return absolutePath;
+}
+
 /**
  * Resolve a path safely within the base directory and return an AffectedResource.
  * Throws if the path escapes the base directory — propagates as a tool failure
@@ -214,6 +229,9 @@ export async function buildFilesystemResource(
 	description: string,
 ): Promise<AffectedResource> {
 	const absolutePath = await resolveSafePath(dir, inputPath);
+	if (toolGroup === 'filesystemRead') {
+		assertNoExcludedSegments(absolutePath, dir);
+	}
 
 	return { toolGroup, resource: absolutePath, description };
 }

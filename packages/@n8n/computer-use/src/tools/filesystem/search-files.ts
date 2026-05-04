@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { ToolDefinition } from '../types';
 import { formatCallToolResult } from '../utils';
 import { MAX_FILE_SIZE } from './constants';
-import { EXCLUDED_DIRS, buildFilesystemResource, resolveSafePath } from './fs-utils';
+import { EXCLUDED_DIRS, buildFilesystemResource, resolveReadablePath } from './fs-utils';
 
 const inputSchema = z.object({
 	dirPath: z.string().describe('Directory to search in'),
@@ -26,7 +26,7 @@ export const searchFilesTool: ToolDefinition<typeof inputSchema> = {
 		];
 	},
 	async execute({ dirPath, query, filePattern, ignoreCase, maxResults }, { dir }) {
-		const resolvedDir = await resolveSafePath(dir, dirPath);
+		const resolvedDir = await resolveReadablePath(dir, dirPath);
 		const limit = maxResults ?? 50;
 		const flags = ignoreCase ? 'gi' : 'g';
 		const regex = new RegExp(escapeRegex(query), flags);

@@ -153,6 +153,15 @@ describe('readFileTool', () => {
 			).rejects.toThrow('escapes');
 		});
 
+		it.each(['node_modules/foo/.env', '.git/config', 'dist/bundle.js'])(
+			'rejects direct reads under excluded directory %s',
+			async (filePath) => {
+				await expect(readFileTool.execute({ filePath }, CONTEXT)).rejects.toThrow(
+					'excluded from filesystem reads',
+				);
+			},
+		);
+
 		it.each([
 			{ startLine: undefined, maxLines: undefined },
 			{ startLine: 1, maxLines: 5 },

@@ -196,4 +196,25 @@ describe('buildFilesystemResource — settings self-protection', () => {
 		);
 		expect(result.resource).toBe('/base/src/index.ts');
 	});
+
+	it('throws for filesystemRead targeting an excluded directory segment', async () => {
+		mockRealpath([[BASE, BASE]]);
+
+		await expect(
+			buildFilesystemResource(BASE, 'node_modules/pkg/index.js', 'filesystemRead', 'Read file'),
+		).rejects.toThrow('excluded from filesystem reads');
+	});
+
+	it('does not apply excluded segment policy to filesystemWrite resources', async () => {
+		mockRealpath([[BASE, BASE]]);
+
+		const result = await buildFilesystemResource(
+			BASE,
+			'dist/generated.js',
+			'filesystemWrite',
+			'Write generated file',
+		);
+
+		expect(result.resource).toBe('/base/dist/generated.js');
+	});
 });

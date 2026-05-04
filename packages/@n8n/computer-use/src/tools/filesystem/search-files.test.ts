@@ -212,6 +212,15 @@ describe('searchFilesTool', () => {
 			).rejects.toThrow('escapes');
 		});
 
+		it.each(['node_modules', '.git', 'dist'])(
+			'rejects direct search roots under excluded directory %s',
+			async (dirPath) => {
+				await expect(searchFilesTool.execute({ dirPath, query: 'foo' }, CONTEXT)).rejects.toThrow(
+					'excluded from filesystem reads',
+				);
+			},
+		);
+
 		it.each([
 			{ query: 'foo', ignoreCase: undefined, label: 'case-sensitive' },
 			{ query: 'foo', ignoreCase: true, label: 'case-insensitive' },
