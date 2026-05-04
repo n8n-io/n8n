@@ -65,28 +65,17 @@ export function verifyWebhook(this: IWebhookFunctions): boolean {
 	const req = this.getRequestObject();
 	const webhookData = this.getWorkflowStaticData('node');
 	const expectedSecret = webhookData.webhookSecret;
-	const hasSecret = typeof expectedSecret === 'string' && expectedSecret.length > 0;
-
-	// Skip verification when no secret is stored to maintain backward compatibility
-	// with subscriptions created before signing was supported.
-	if (!hasSecret) return true;
 
 	const body = req.body as { value?: Array<{ clientState?: unknown }> } | undefined;
-	const notifications = body?.value;
+	const firstNotification = body?.value?.[0];
+	const actualClientState = firstNotification?.clientState;
 
-	if (!Array.isArray(notifications) || notifications.length === 0) {
-		return false;
-	}
-
-	for (const notification of notifications) {
-		const actualClientState = notification?.clientState;
-		const verified = verifySignatureGeneric({
-			getExpectedSignature: () => expectedSecret as string,
-			getActualSignature: () => (typeof actualClientState === 'string' ? actualClientState : null),
-		});
-		if (!verified) return false;
-	}
-	return true;
+	return verifySignatureGeneric({
+		getExpectedSignature: () =>
+			typeof expectedSecret === 'string' && expectedSecret.length > 0 ? expectedSecret : null,
+		skipIfNoExpectedSignature: true,
+		getActualSignature: () => (typeof actualClientState === 'string' ? actualClientState : null),
+	});
 }
 
 export async function getResourcePath(
