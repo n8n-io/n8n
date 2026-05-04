@@ -15,6 +15,11 @@ import type {
 	InstanceAiWorkflowService,
 	OrchestrationContext,
 } from '../../types';
+import { createRemediation, terminalRemediationFromState } from '../../workflow-loop/remediation';
+import type {
+	RemediationMetadata,
+	WorkflowBuildOutcome,
+} from '../../workflow-loop/workflow-loop-state';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -382,6 +387,92 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		.describe('Max characters per node preview in the compact response (default 600).'),
 });
 
+const remediationOutputSchema = z
+	.object({
+		category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
+		shouldEdit: z.boolean(),
+		guidance: z.string(),
+		reason: z.string().optional(),
+		remainingSubmitFixes: z.number().int().min(0).optional(),
+		attemptCount: z.number().int().min(0).optional(),
+	})
+	.optional();
+
+function classifyVerificationFailure(
+	error: string | undefined,
+	status: string | undefined,
+	buildOutcome: WorkflowBuildOutcome,
+): RemediationMetadata {
+	if (buildOutcome.hasUnresolvedPlaceholders) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'mocked_credentials_or_placeholders',
+			guidance:
+				'Workflow submitted successfully, but verification is blocked by unresolved setup values. Stop code edits and route to workflows(action="setup").',
+		});
+	}
+
+	if (status === 'waiting') {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'execution_waiting',
+			guidance:
+				'Workflow verification is waiting for user action or setup. Stop code edits and ask the user to complete setup.',
+		});
+	}
+
+	const normalized = (error ?? '').toLowerCase();
+	const mockedCredentialTypeCount = buildOutcome.mockedCredentialTypes?.length ?? 0;
+	const mockedNodeCount = buildOutcome.mockedNodeNames?.length ?? 0;
+	const hasMockedCredentialContext = Boolean(mockedCredentialTypeCount > 0 || mockedNodeCount > 0);
+	if (
+		normalized.includes('credential') ||
+		normalized.includes('unauthorized') ||
+		normalized.includes('forbidden') ||
+		normalized.includes('401') ||
+		normalized.includes('403') ||
+		normalized.includes('free tier') ||
+		normalized.includes('quota')
+	) {
+		return createRemediation({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: hasMockedCredentialContext
+				? 'mocked_credentials_or_placeholders'
+				: 'credential_or_setup_failure',
+			guidance: hasMockedCredentialContext
+				? 'Workflow submitted successfully, but verification is blocked by mocked credentials. Stop code edits and route to workflows(action="setup").'
+				: 'Workflow submitted successfully, but verification requires credential or account setup. Stop code edits and route to workflows(action="setup").',
+		});
+	}
+
+	if (
+		normalized.includes('429') ||
+		normalized.includes('rate limit') ||
+		normalized.includes('502') ||
+		normalized.includes('bad gateway') ||
+		normalized.includes('timed out')
+	) {
+		return createRemediation({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'external_service_or_timeout',
+			guidance:
+				'Workflow submitted successfully, but verification is blocked by an external service or timeout. Stop code edits and explain the blocker to the user.',
+		});
+	}
+
+	return createRemediation({
+		category: 'code_fixable',
+		shouldEdit: true,
+		reason: 'runtime_failure',
+		guidance:
+			'Verification found a workflow runtime failure. Diagnose it and apply one batched workflow-code repair if the guard allows it.',
+	});
+}
+
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return createTool({
 		id: 'verify-built-workflow',
@@ -410,17 +501,48 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				.optional(),
 			data: z.record(z.unknown()).optional(),
 			error: z.string().optional(),
+			remediation: remediationOutputSchema,
+			guidance: z.string().optional(),
 		}),
 		execute: async (input: z.infer<typeof verifyBuiltWorkflowInputSchema>) => {
 			if (!context.workflowTaskService || !context.domainContext) {
-				return { success: false, error: 'Verification support not available.' };
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'verification_support_unavailable',
+					guidance:
+						'Verification support is not available. Stop code edits and explain the blocker.',
+				});
+				return { success: false, error: 'Verification support not available.', remediation };
+			}
+
+			const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
+			const terminalRemediation =
+				stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
+					? terminalRemediationFromState(stateBefore, context.runId)
+					: undefined;
+			if (terminalRemediation) {
+				return {
+					success: false,
+					error: terminalRemediation.guidance,
+					remediation: terminalRemediation,
+					guidance: terminalRemediation.guidance,
+				};
 			}
 
 			const buildOutcome = await context.workflowTaskService.getBuildOutcome(input.workItemId);
 			if (!buildOutcome) {
+				const remediation = createRemediation({
+					category: 'blocked',
+					shouldEdit: false,
+					reason: 'missing_build_outcome',
+					guidance: `No build outcome found for work item ${input.workItemId}. Stop code edits and explain the blocker.`,
+				});
 				return {
 					success: false,
 					error: `No build outcome found for work item ${input.workItemId}.`,
+					remediation,
+					guidance: remediation.guidance,
 				};
 			}
 
@@ -475,6 +597,15 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 			const success =
 				result.status === 'success' || (result.status === 'waiting' && !result.error && hasOutput);
 
+			const failureRemediation = success
+				? undefined
+				: classifyVerificationFailure(result.error, result.status, buildOutcome);
+			const budgetRemediation =
+				failureRemediation?.shouldEdit === true
+					? terminalRemediationFromState(stateBefore, context.runId)
+					: undefined;
+			const remediation = budgetRemediation ?? failureRemediation;
+
 			// Post-verify cleanup: delete only rows this run's own dataTable insert
 			// nodes emitted as output, and only those whose IDs were not present in
 			// the pre-verify snapshot (protects upsert-updated rows from deletion).
@@ -518,9 +649,49 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				});
 			}
 
+			if (remediation && !remediation.shouldEdit) {
+				try {
+					await context.workflowTaskService.reportVerificationVerdict({
+						workItemId: input.workItemId,
+						runId: context.runId,
+						workflowId,
+						executionId: result.executionId || undefined,
+						verdict:
+							remediation.category === 'needs_setup' ? 'needs_user_input' : 'failed_terminal',
+						failureSignature: remediation.reason,
+						diagnosis: remediation.guidance,
+						remediation,
+						summary: remediation.guidance,
+					});
+				} catch (error) {
+					context.logger.warn('verify-built-workflow: failed to persist terminal verdict', {
+						workItemId: input.workItemId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+				try {
+					context.trackTelemetry?.('Builder remediation guard fired', {
+						thread_id: context.threadId,
+						run_id: context.runId,
+						work_item_id: input.workItemId,
+						workflow_id: workflowId,
+						category: remediation.category,
+						attempt_count: remediation.attemptCount,
+						reason: remediation.reason,
+					});
+				} catch (error) {
+					context.logger.warn('verify-built-workflow: failed to emit remediation telemetry', {
+						workItemId: input.workItemId,
+						workflowId,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				}
+			}
+
 			const maxDataChars = input.maxDataChars ?? DEFAULT_NODE_PREVIEW_CHARS;
 			const nodesExecuted = result.data ? Object.keys(result.data) : undefined;
-			const response = {
+			return {
 				executionId: result.executionId || undefined,
 				success,
 				status: result.status,
@@ -528,9 +699,9 @@ export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 				nodePreviews: buildNodePreviews(result.data, maxDataChars),
 				...(input.includeData ? { data: result.data } : {}),
 				error: result.error,
+				remediation,
+				guidance: remediation?.guidance,
 			};
-
-			return response;
 		},
 	});
 }

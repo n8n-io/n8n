@@ -4,12 +4,11 @@
  * Handles first-time initialization of the sandbox workspace for the workflow
  * builder agent. Lazy and idempotent — checks for marker file before running.
  *
- * File I/O uses sandbox command execution (works for both Daytona and Local).
- * All files are bundled and sent in a single base64-encoded shell script to
- * minimize round-trips to the sandbox API.
+ * File I/O uses the workspace filesystem when available, with a sandbox command
+ * fallback for providers that do not expose one.
  *
- * Workspace layout (relative to $HOME):
- *   ~/workspace/
+ * Workspace layout:
+ *   <workspace-root>/
  *     package.json                    # @n8n/workflow-sdk dependency
  *     tsconfig.json                   # strict, noEmit, skipLibCheck
  *     node_modules/@n8n/workflow-sdk/ # full SDK with .d.ts types
@@ -210,7 +209,7 @@ export function formatNodeCatalogLine(node: SearchableNodeDescription): string {
 /**
  * Build a shell script that writes all files at once.
  * Each file is base64-encoded and decoded in-place.
- * This sends everything in a single executeCommand call.
+ * This fallback is only used when the workspace has no filesystem adapter.
  */
 function buildBatchWriteScript(root: string, files: Map<string, string>): string {
 	const lines: string[] = ['#!/bin/bash', 'set -e'];
@@ -245,15 +244,54 @@ function buildBatchWriteScript(root: string, files: Map<string, string>): string
 	return lines.join('\n');
 }
 
+async function writeWorkspaceFiles(
+	workspace: Workspace,
+	root: string,
+	files: Map<string, string>,
+): Promise<void> {
+	const filesystem = workspace.filesystem;
+	if (filesystem) {
+		await Promise.all(
+			[...files].map(async ([path, content]) => {
+				await filesystem.writeFile(`${root}/${path}`, content, { recursive: true });
+			}),
+		);
+		return;
+	}
+
+	const script = buildBatchWriteScript(root, files);
+	const scriptB64 = Buffer.from(script, 'utf-8').toString('base64');
+
+	const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`);
+	if (result.exitCode !== 0) {
+		throw new Error(`Sandbox setup failed: ${result.stderr}`);
+	}
+}
+
 /**
  * Resolve the absolute workspace root by querying $HOME from the sandbox.
  * Caches per workspace instance (WeakMap) so parallel sandboxes don't collide.
  */
 const workspaceRootCache = new WeakMap<Workspace, string>();
 
+function getLocalFilesystemRoot(workspace: Workspace): string | null {
+	const filesystem = workspace.filesystem;
+	if (!filesystem || filesystem.provider !== 'local') return null;
+
+	const basePath = Reflect.get(filesystem, 'basePath');
+	return typeof basePath === 'string' && basePath.length > 0 ? basePath : null;
+}
+
 export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
 	const cached = workspaceRootCache.get(workspace);
 	if (cached) return cached;
+
+	const localRoot = getLocalFilesystemRoot(workspace);
+	if (localRoot) {
+		workspaceRootCache.set(workspace, localRoot);
+		return localRoot;
+	}
+
 	const result = await runInSandbox(workspace, 'echo $HOME');
 	const home = result.stdout.trim() || '/home/daytona';
 	const root = `${home}/${WORKSPACE_DIR}`;
@@ -265,8 +303,7 @@ export async function getWorkspaceRoot(workspace: Workspace): Promise<string> {
  * Initialize the sandbox workspace for the workflow builder agent.
  * Idempotent — skips if already initialized (checks marker file).
  *
- * Bundles all config files, workflow JSONs, and the node catalog into a single
- * shell script that runs in one sandbox command to minimize API round-trips.
+ * Writes config files, workflow JSONs, and the node catalog into the workspace.
  *
  * @returns true if initialization ran, false if already initialized
  */
@@ -316,24 +353,21 @@ export async function setupSandboxWorkspace(
 		// Workflow listing failed — continue without syncing
 	}
 
-	// Marker file
-	files.set('.sandbox-initialized', new Date().toISOString());
+	// ── Write workspace files ──────────────────────────────────────────────
 
-	// ── Send everything in one command ─────────────────────────────────────
-
-	const script = buildBatchWriteScript(root, files);
-	const scriptB64 = Buffer.from(script, 'utf-8').toString('base64');
-
-	const result = await runInSandbox(workspace, `echo '${scriptB64}' | base64 -d | bash`);
-	if (result.exitCode !== 0) {
-		throw new Error(`Sandbox setup failed: ${result.stderr}`);
-	}
+	await writeWorkspaceFiles(workspace, root, files);
 
 	// npm install (must run after package.json is in place)
 	const npmResult = await runInSandbox(workspace, 'npm install --ignore-scripts', root);
 	if (npmResult.exitCode !== 0) {
 		throw new Error(`Sandbox npm install failed: ${npmResult.stderr}`);
 	}
+
+	await writeWorkspaceFiles(
+		workspace,
+		root,
+		new Map([['.sandbox-initialized', new Date().toISOString()]]),
+	);
 
 	return true;
 }
