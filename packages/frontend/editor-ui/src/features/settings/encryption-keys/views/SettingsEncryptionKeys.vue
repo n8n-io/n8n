@@ -1,19 +1,22 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, shallowRef, watch } from 'vue';
+import { parseDate } from '@internationalized/date';
 import { useI18n } from '@n8n/i18n';
 import {
 	N8nAlertDialog,
 	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
+	N8nDateRangePicker,
 	N8nHeading,
 	N8nIcon,
 	N8nIconButton,
 	N8nLink,
 	N8nOption,
-	N8nPopover,
 	N8nSelect,
 	N8nText,
+	type DateRange,
+	type DateValue,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 
@@ -101,6 +104,52 @@ const sortByModel = computed<EncryptionKeySortField>({
 
 const isFilterOpen = ref(false);
 
+const stringToDateValue = (value: string | null): DateValue | undefined => {
+	if (!value) return undefined;
+	try {
+		return parseDate(value);
+	} catch {
+		return undefined;
+	}
+};
+
+const dateValueToString = (value: DateValue | undefined): string | null =>
+	value ? value.toString() : null;
+
+const draftRange = shallowRef<DateRange>({
+	start: stringToDateValue(store.filters.activatedFrom),
+	end: stringToDateValue(store.filters.activatedTo),
+});
+
+const seedDraftFromStore = () => {
+	draftRange.value = {
+		start: stringToDateValue(store.filters.activatedFrom),
+		end: stringToDateValue(store.filters.activatedTo),
+	};
+};
+
+watch(isFilterOpen, (open) => {
+	if (open) seedDraftFromStore();
+});
+
+const hasActiveFilter = computed(
+	() => store.filters.activatedFrom !== null || store.filters.activatedTo !== null,
+);
+
+const onApplyFilter = () => {
+	store.setFilters({
+		activatedFrom: dateValueToString(draftRange.value.start),
+		activatedTo: dateValueToString(draftRange.value.end),
+	});
+	isFilterOpen.value = false;
+};
+
+const onClearFilter = () => {
+	store.resetFilters();
+	seedDraftFromStore();
+	isFilterOpen.value = false;
+};
+
 const openRotateConfirm = () => {
 	isConfirmRotateOpen.value = true;
 };
@@ -176,7 +225,7 @@ onMounted(async () => {
 				</N8nSelect>
 			</div>
 
-			<N8nPopover v-model:open="isFilterOpen" side="bottom" align="end">
+			<N8nDateRangePicker v-model="draftRange" v-model:open="isFilterOpen">
 				<template #trigger>
 					<N8nIconButton
 						icon="funnel"
@@ -186,44 +235,26 @@ onMounted(async () => {
 						:title="i18n.baseText('settings.encryptionKeys.filter.title')"
 					/>
 				</template>
-				<template #content>
-					<div :class="$style.filterPanel">
-						<N8nText bold>
-							{{ i18n.baseText('settings.encryptionKeys.filter.dateRange') }}
-						</N8nText>
-						<div :class="$style.filterDateRange">
-							<input
-								type="date"
-								:value="store.filters.activatedFrom ?? ''"
-								:class="$style.dateInput"
-								@change="
-									store.setFilters({
-										activatedFrom: ($event.target as HTMLInputElement).value || null,
-									})
-								"
-							/>
-							<input
-								type="date"
-								:value="store.filters.activatedTo ?? ''"
-								:class="$style.dateInput"
-								@change="
-									store.setFilters({
-										activatedTo: ($event.target as HTMLInputElement).value || null,
-									})
-								"
-							/>
-						</div>
-						<div :class="$style.filterActions">
-							<N8nButton
-								type="tertiary"
-								size="small"
-								:label="i18n.baseText('settings.encryptionKeys.filter.clear')"
-								@click="store.resetFilters()"
-							/>
-						</div>
+				<template #footer>
+					<div :class="$style.filterFooter">
+						<N8nButton
+							v-if="hasActiveFilter"
+							variant="ghost"
+							size="small"
+							:label="i18n.baseText('settings.encryptionKeys.filter.clear')"
+							data-testid="encryption-keys-filter-clear"
+							@click="onClearFilter"
+						/>
+						<N8nButton
+							variant="solid"
+							size="small"
+							:label="i18n.baseText('settings.encryptionKeys.filter.apply')"
+							data-testid="encryption-keys-filter-apply"
+							@click="onApplyFilter"
+						/>
 					</div>
 				</template>
-			</N8nPopover>
+			</N8nDateRangePicker>
 
 			<N8nButton
 				type="primary"
@@ -383,32 +414,12 @@ onMounted(async () => {
 	}
 }
 
-.filterPanel {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-	min-width: 260px;
-}
-
-.filterDateRange {
-	display: flex;
-	gap: var(--spacing--2xs);
-}
-
-.dateInput {
-	flex: 1;
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-}
-
-.filterActions {
+.filterFooter {
 	display: flex;
 	justify-content: flex-end;
-	border-top: var(--border);
-	padding-top: var(--spacing--2xs);
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--2xs);
 }
 
 .emptyState {

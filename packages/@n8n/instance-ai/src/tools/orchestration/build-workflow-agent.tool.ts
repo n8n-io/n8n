@@ -269,7 +269,6 @@ export async function startBuildWorkflowAgentTask(
 			'credentials',
 			'executions',
 			'data-tables',
-			'templates',
 			'ask-user',
 		];
 
@@ -290,7 +289,6 @@ export async function startBuildWorkflowAgentTask(
 			'nodes',
 			'workflows',
 			'data-tables',
-			'templates',
 			'ask-user',
 			...(context.researchMode ? ['research'] : []),
 		];
