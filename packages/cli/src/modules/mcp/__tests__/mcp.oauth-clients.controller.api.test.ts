@@ -1,4 +1,5 @@
 import { testDb } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -62,6 +63,54 @@ describe('GET /rest/mcp/oauth-clients', () => {
 		});
 		expect(response.body.data.data).toHaveLength(1);
 		expect(response.body.data.data[0].id).toBe(ownerClient.id);
+	});
+});
+
+describe('GET /rest/mcp/oauth-clients/instance-stats', () => {
+	test('should return instance-wide stats for an owner', async () => {
+		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients/instance-stats');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toMatchObject({
+			count: expect.any(Number),
+			limit: expect.any(Number),
+			atCapacity: expect.any(Boolean),
+		});
+	});
+
+	test('should report atCapacity=true when the instance limit is reached', async () => {
+		const globalConfig = Container.get(GlobalConfig);
+		const originalLimit = globalConfig.endpoints.mcpMaxRegisteredClients;
+		globalConfig.endpoints.mcpMaxRegisteredClients = 1;
+
+		try {
+			await oauthClientRepository.save({
+				id: 'capacity-client',
+				name: 'Capacity Client',
+				redirectUris: ['https://example.com/callback'],
+				grantTypes: ['authorization_code'],
+				tokenEndpointAuthMethod: 'none',
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get('/mcp/oauth-clients/instance-stats');
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data).toMatchObject({
+				count: 1,
+				limit: 1,
+				atCapacity: true,
+			});
+		} finally {
+			globalConfig.endpoints.mcpMaxRegisteredClients = originalLimit;
+		}
+	});
+
+	test('should return 403 when a non-admin member calls the endpoint', async () => {
+		const response = await testServer.authAgentFor(member).get('/mcp/oauth-clients/instance-stats');
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 

@@ -98,6 +98,16 @@ export class McpOAuthService implements OAuthServerProvider {
 		return clientCount >= this.globalConfig.endpoints.mcpMaxRegisteredClients;
 	}
 
+	async getInstanceClientStats(): Promise<{
+		count: number;
+		limit: number;
+		atCapacity: boolean;
+	}> {
+		const count = await this.oauthClientRepository.count();
+		const limit = this.globalConfig.endpoints.mcpMaxRegisteredClients;
+		return { count, limit, atCapacity: count >= limit };
+	}
+
 	/**
 	 * Check count after insert to avoid race condition between count() and insert().
 	 * If over limit, rolls back by deleting the just-inserted client.
