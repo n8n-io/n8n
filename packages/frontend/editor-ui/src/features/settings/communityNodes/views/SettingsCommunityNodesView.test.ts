@@ -10,6 +10,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
 import type { CommunityPackageSummary } from '../communityNodes.types';
 import SettingsCommunityNodesView from './SettingsCommunityNodesView.vue';
 
@@ -43,12 +44,24 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', () => ({
 			'displayName',
 			'initialize',
 			'resourceKey',
+			'uiConfig',
 		],
 		emits: ['update:filters'],
 		mounted() {
 			void this.initialize?.();
 		},
 		computed: {
+			hasAppliedFilters() {
+				return Object.keys(this.filters).some((key) => {
+					if (key === 'search') return false;
+
+					const value = this.filters[key];
+					if (typeof value === 'boolean') return value;
+					if (Array.isArray(value)) return value.length > 0;
+
+					return value !== '';
+				});
+			},
 			filteredResources() {
 				return this.resources.filter((resource) => {
 					let matches = true;
@@ -71,9 +84,18 @@ vi.mock('@/app/components/layouts/ResourcesListLayout.vue', () => ({
 				<slot name="header" />
 				<slot name="filters" :setKeyValue="setKeyValue" />
 				<span data-test-id="display-name-provided">{{ displayName ? 'yes' : 'no' }}</span>
+				<span data-test-id="sort-enabled">{{ String(uiConfig?.sortEnabled) }}</span>
+				<span
+					data-test-id="active-filters"
+					:data-active="String(hasAppliedFilters)"
+					:data-type="filters.type"
+					:data-installed-only="String(filters.installedOnly)"
+				/>
 				<button data-test-id="filter-official" @click="setKeyValue('type', 'official')" />
 				<button data-test-id="filter-community" @click="setKeyValue('type', 'community')" />
+				<button data-test-id="filter-all" @click="setKeyValue('type', 'all')" />
 				<button data-test-id="filter-installed-only" @click="setKeyValue('installedOnly', true)" />
+				<button data-test-id="reset-like-filters" @click="$emit('update:filters', { ...filters, type: '', installedOnly: '' })" />
 				<button data-test-id="search-author" @click="setKeyValue('search', 'trusted author')" />
 				<button data-test-id="search-description" @click="setKeyValue('search', 'useful webhook tools')" />
 				<slot v-for="r in filteredResources" :data="r" :key="r.id" />
@@ -159,6 +181,7 @@ describe('SettingsCommunityNodesView', () => {
 			'data-resource-key',
 			'communityNodes',
 		);
+		expect(getByTestId('sort-enabled')).toHaveTextContent('false');
 	});
 
 	it('should render verified-only subheader when isUnverifiedPackagesEnabled is false', () => {
@@ -173,10 +196,10 @@ describe('SettingsCommunityNodesView', () => {
 		expect(getByText(/install an unverified package by npm name/i)).toBeInTheDocument();
 	});
 
-	it('should render Install from npm button when isUnverifiedPackagesEnabled is true', () => {
+	it('should render Install from npm button when isUnverifiedPackagesEnabled is true', async () => {
 		Object.defineProperty(settingsStore, 'isUnverifiedPackagesEnabled', { get: () => true });
-		const { getByText } = renderComponent();
-		expect(getByText('Install from npm')).toBeInTheDocument();
+		const { findByText } = renderComponent();
+		expect(await findByText('Install from npm')).toBeInTheDocument();
 	});
 
 	it('should not render Install from npm button when isUnverifiedPackagesEnabled is false', () => {
@@ -224,8 +247,8 @@ describe('SettingsCommunityNodesView', () => {
 		Object.defineProperty(settingsStore, 'isUnverifiedPackagesEnabled', { get: () => true });
 		uiStore.openModal = vi.fn();
 
-		const { getByText } = renderComponent();
-		await fireEvent.click(getByText('Install from npm'));
+		const { findByText } = renderComponent();
+		await fireEvent.click(await findByText('Install from npm'));
 
 		expect(uiStore.openModal).toHaveBeenCalledWith('communityPackageInstall');
 		expect(vi.mocked(useTelemetry).mock.results.at(-1)?.value.track).toHaveBeenCalledWith(
@@ -281,6 +304,34 @@ describe('SettingsCommunityNodesView', () => {
 		});
 	});
 
+	it('should fire user-viewed telemetry when community package previews fail', async () => {
+		Object.defineProperty(communityNodesStore, 'getInstalledPackages', {
+			get: () => [
+				makeInstalledPackage({
+					packageName: 'n8n-nodes-installed',
+					installedVersion: '1.0.0',
+				}),
+			],
+		});
+		nodeTypesStore.fetchCommunityNodePreviews = vi
+			.fn()
+			.mockRejectedValue(new Error('Preview failed'));
+
+		renderComponent();
+
+		await waitFor(() => {
+			expect(communityNodesStore.fetchInstalledPackages).toHaveBeenCalled();
+			expect(nodeTypesStore.fetchCommunityNodePreviews).toHaveBeenCalled();
+			expect(vi.mocked(useTelemetry).mock.results.at(-1)?.value.track).toHaveBeenCalledWith(
+				'user viewed cnr settings page',
+				expect.objectContaining({
+					num_of_packages_installed: 1,
+				}),
+			);
+		});
+		expect(vi.mocked(useToast).mock.results.at(-1)?.value.showError).not.toHaveBeenCalled();
+	});
+
 	it('should append installed-but-not-vetted packages as separate rows', async () => {
 		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', { get: () => [] });
 		Object.defineProperty(communityNodesStore, 'getInstalledPackages', {
@@ -321,6 +372,31 @@ describe('SettingsCommunityNodesView', () => {
 		});
 	});
 
+	it('should treat the all type filter as no active type filter', async () => {
+		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', {
+			get: () => [
+				makeVettedSummary({ packageName: 'n8n-nodes-official', isOfficialNode: true }),
+				makeVettedSummary({ packageName: 'n8n-nodes-community', isOfficialNode: false }),
+			],
+		});
+
+		const { findByTestId, getAllByTestId, getByTestId } = renderComponent();
+		await fireEvent.click(await findByTestId('filter-official'));
+
+		await waitFor(() => {
+			expect(getAllByTestId('community-package-row')).toHaveLength(1);
+			expect(getByTestId('active-filters')).toHaveAttribute('data-active', 'true');
+		});
+
+		await fireEvent.click(await findByTestId('filter-all'));
+
+		await waitFor(() => {
+			expect(getAllByTestId('community-package-row')).toHaveLength(2);
+			expect(getByTestId('active-filters')).toHaveAttribute('data-active', 'false');
+			expect(getByTestId('active-filters')).toHaveAttribute('data-type', '');
+		});
+	});
+
 	it('should filter package rows to installed packages only', async () => {
 		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', {
 			get: () => [makeVettedSummary({ packageName: 'n8n-nodes-available' })],
@@ -336,6 +412,31 @@ describe('SettingsCommunityNodesView', () => {
 			const rows = getAllByTestId('community-package-row');
 			expect(rows).toHaveLength(1);
 			expect(rows[0].getAttribute('data-package')).toBe('n8n-nodes-installed');
+		});
+	});
+
+	it('should treat reset-like filter values as inactive', async () => {
+		Object.defineProperty(nodeTypesStore, 'vettedCommunityPackages', {
+			get: () => [makeVettedSummary({ packageName: 'n8n-nodes-available' })],
+		});
+		Object.defineProperty(communityNodesStore, 'getInstalledPackages', {
+			get: () => [makeInstalledPackage({ packageName: 'n8n-nodes-installed' })],
+		});
+
+		const { findByTestId, getAllByTestId, getByTestId } = renderComponent();
+		await fireEvent.click(await findByTestId('filter-installed-only'));
+
+		await waitFor(() => {
+			expect(getAllByTestId('community-package-row')).toHaveLength(1);
+			expect(getByTestId('active-filters')).toHaveAttribute('data-active', 'true');
+		});
+
+		await fireEvent.click(await findByTestId('reset-like-filters'));
+
+		await waitFor(() => {
+			expect(getAllByTestId('community-package-row')).toHaveLength(2);
+			expect(getByTestId('active-filters')).toHaveAttribute('data-active', 'false');
+			expect(getByTestId('active-filters')).toHaveAttribute('data-installed-only', 'false');
 		});
 	});
 

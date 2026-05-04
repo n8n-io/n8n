@@ -35,7 +35,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 
 type Filters = BaseFilters & {
-	type?: 'all' | 'official' | 'community';
+	type?: '' | 'official' | 'community';
 	installedOnly?: boolean;
 };
 
@@ -55,9 +55,22 @@ const nodeTypesStore = useNodeTypesStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 
-const loading = ref(false);
+const loading = ref(true);
 
 const filters = ref<Filters>({ search: '', homeProject: '' });
+
+const normalizeFilters = (value: BaseFilters): Filters => ({
+	...value,
+	type: value.type === 'official' || value.type === 'community' ? value.type : '',
+	installedOnly: value.installedOnly === true,
+});
+
+const layoutFilters = computed({
+	get: () => filters.value,
+	set: (value: BaseFilters) => {
+		filters.value = normalizeFilters(value);
+	},
+});
 
 const subheaderText = computed(() =>
 	settingsStore.isUnverifiedPackagesEnabled
@@ -70,6 +83,7 @@ const unifiedPackages = computed<CommunityPackageRowData[]>(() => {
 		communityNodesStore.getInstalledPackages.map((p) => [p.packageName, p]),
 	);
 	const vetted = nodeTypesStore.vettedCommunityPackages;
+	const vettedPackageNames = new Set(vetted.map((pkg) => pkg.packageName));
 
 	const rows: CommunityPackageRowData[] = vetted.map((pkg) => {
 		const installed = installedByName.get(pkg.packageName);
@@ -79,7 +93,7 @@ const unifiedPackages = computed<CommunityPackageRowData[]>(() => {
 	});
 
 	for (const installed of communityNodesStore.getInstalledPackages) {
-		if (!vetted.some((v) => v.packageName === installed.packageName)) {
+		if (!vettedPackageNames.has(installed.packageName)) {
 			rows.push(fromInstalledPackage(installed, nodeTypesStore.getNodeType));
 		}
 	}
@@ -89,6 +103,26 @@ const unifiedPackages = computed<CommunityPackageRowData[]>(() => {
 
 const getSearchablePackageText = (resource: CommunityPackageRowData) =>
 	[resource.packageName, resource.authorName, resource.description].join(' ');
+
+const trackSettingsPageView = () => {
+	const installedPackages = communityNodesStore.getInstalledPackages;
+	const packagesToUpdate = installedPackages.filter((p) => p.updateAvailable);
+	telemetry.track('user viewed cnr settings page', {
+		num_of_packages_installed: installedPackages.length,
+		installed_packages: installedPackages.map((p) => ({
+			package_name: p.packageName,
+			package_version: p.installedVersion,
+			package_nodes: p.installedNodes.map((n) => `${n.name}-v${n.latestVersion}`),
+			is_update_available: p.updateAvailable !== undefined,
+		})),
+		packages_to_update: packagesToUpdate.map((p) => ({
+			package_name: p.packageName,
+			package_version_current: p.installedVersion,
+			package_version_available: p.updateAvailable,
+		})),
+		number_of_updates_available: packagesToUpdate.length,
+	});
+};
 
 const onFilter = (resource: Resource, applied: BaseFilters, matches: boolean): boolean => {
 	if (!isCommunityPackageRow(resource)) return false;
@@ -121,33 +155,21 @@ const openInstallModal = () => {
 const initialize = async () => {
 	loading.value = true;
 	try {
-		await Promise.all([
-			communityNodesStore.fetchInstalledPackages(),
-			communityNodesStore.fetchAvailableCommunityPackageCount(),
-			nodeTypesStore.fetchCommunityNodePreviews(),
-		]);
-
-		const installedPackages = communityNodesStore.getInstalledPackages;
-		const packagesToUpdate = installedPackages.filter((p) => p.updateAvailable);
-		telemetry.track('user viewed cnr settings page', {
-			num_of_packages_installed: installedPackages.length,
-			installed_packages: installedPackages.map((p) => ({
-				package_name: p.packageName,
-				package_version: p.installedVersion,
-				package_nodes: p.installedNodes.map((n) => `${n.name}-v${n.latestVersion}`),
-				is_update_available: p.updateAvailable !== undefined,
-			})),
-			packages_to_update: packagesToUpdate.map((p) => ({
-				package_name: p.packageName,
-				package_version_current: p.installedVersion,
-				package_version_available: p.updateAvailable,
-			})),
-			number_of_updates_available: packagesToUpdate.length,
-		});
+		await communityNodesStore.fetchInstalledPackages();
+		trackSettingsPageView();
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.communityNodes.fetchError.title'), {
 			message: i18n.baseText('settings.communityNodes.fetchError.message'),
 		});
+	}
+
+	try {
+		await Promise.all([
+			communityNodesStore.fetchAvailableCommunityPackageCount(),
+			nodeTypesStore.fetchCommunityNodePreviews(),
+		]);
+	} catch {
+		// Catalog previews are additive; installed package state and telemetry should still load.
 	} finally {
 		loading.value = false;
 	}
@@ -170,7 +192,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<ResourcesListLayout
-		v-model:filters="filters"
+		v-model:filters="layoutFilters"
 		resource-key="communityNodes"
 		:resources="unifiedPackages"
 		:initialize="initialize"
@@ -179,6 +201,7 @@ onBeforeUnmount(() => {
 		:type-props="{ itemSize: 64 }"
 		:loading="loading"
 		:disabled="false"
+		:ui-config="{ searchEnabled: true, showFiltersDropdown: true, sortEnabled: false }"
 	>
 		<template #header>
 			<div :class="$style.headingRow">
@@ -186,7 +209,7 @@ onBeforeUnmount(() => {
 					{{ i18n.baseText('settings.communityNodes') }}
 				</N8nHeading>
 				<N8nButton
-					v-if="settingsStore.isUnverifiedPackagesEnabled"
+					v-if="settingsStore.isUnverifiedPackagesEnabled && !loading"
 					:label="i18n.baseText('settings.communityNodes.installFromNpm')"
 					size="large"
 					@click="openInstallModal"
@@ -209,9 +232,9 @@ onBeforeUnmount(() => {
 					class="mb-3xs"
 				/>
 				<N8nSelect
-					:model-value="filters.type ?? 'all'"
+					:model-value="filters.type || 'all'"
 					size="medium"
-					@update:model-value="setKeyValue('type', $event)"
+					@update:model-value="setKeyValue('type', $event === 'all' ? '' : $event)"
 				>
 					<N8nOption
 						value="all"
@@ -230,7 +253,7 @@ onBeforeUnmount(() => {
 			<div class="mb-s">
 				<N8nCheckbox
 					:label="i18n.baseText('settings.communityNodes.filters.installedOnly')"
-					:model-value="filters.installedOnly ?? false"
+					:model-value="Boolean(filters.installedOnly)"
 					@update:model-value="setKeyValue('installedOnly', $event)"
 				/>
 			</div>
