@@ -55,6 +55,7 @@ import type {
 } from '../../src/types';
 import { asResumable } from '../../src/utils/stream-helpers';
 import type { BuilderSandboxFactory } from '../../src/workspace/builder-sandbox-factory';
+import { answerAskUser, type AskUserQuestion } from './mock-user';
 import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
 import { normalizeWorkflow } from './normalize-workflow';
 
@@ -187,10 +188,25 @@ export async function buildInProcess(
 	const abortController = new AbortController();
 	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
 
+	// Track ask-user suspensions so `waitForConfirmation` can route them to the
+	// mock-user LLM. Other suspension types (plan-review, credential-setup,
+	// domain-access) stay on the auto-approve path.
+	const askUserSuspensions = new Map<
+		string,
+		{ questions: AskUserQuestion[]; introMessage?: string }
+	>();
+
 	const eventBus = wrapEventBusWithObserver(createInMemoryEventBus(), (event) => {
 		observeEvent(event, interactivity);
 		traceCollector.observe(event);
 		chunkLog?.writeEvent(event);
+		if (event.type === 'confirmation-request' && event.payload.inputType === 'questions') {
+			const questions = event.payload.questions ?? [];
+			askUserSuspensions.set(event.payload.requestId, {
+				questions: questions as AskUserQuestion[],
+				introMessage: event.payload.introMessage,
+			});
+		}
 	});
 	const logger = silentLogger();
 
@@ -275,6 +291,27 @@ export async function buildInProcess(
 		waitForConfirmation: async (requestId) => {
 			interactivity.autoApprovedSuspensions++;
 			traceCollector.markAutoApproved(requestId);
+			// `executeResumableStream` calls waitForConfirmation BEFORE publishing
+			// the corresponding `confirmation-request` event in the same chunk
+			// iteration. Yield once so the publish (and our observer) runs first
+			// and `askUserSuspensions` is populated by the time we look it up.
+			await Promise.resolve();
+			const suspension = askUserSuspensions.get(requestId);
+			if (suspension) {
+				askUserSuspensions.delete(requestId);
+				const answers = await answerAskUser({
+					evalPrompt: options.prompt,
+					questions: suspension.questions,
+					introMessage: suspension.introMessage,
+				});
+				chunkLog?.write({
+					kind: 'mock-user-answer',
+					requestId,
+					answerCount: answers.length,
+					answers,
+				});
+				return { approved: true, answers };
+			}
 			chunkLog?.write({ kind: 'auto-approve', requestId });
 			return { approved: true };
 		},
@@ -404,6 +441,24 @@ export async function buildInProcess(
 					waitForConfirmation: async (requestId): Promise<Record<string, unknown>> => {
 						interactivity.autoApprovedSuspensions++;
 						traceCollector.markAutoApproved(requestId);
+						// See note in OrchestrationContext.waitForConfirmation above.
+						await Promise.resolve();
+						const suspension = askUserSuspensions.get(requestId);
+						if (suspension) {
+							askUserSuspensions.delete(requestId);
+							const answers = await answerAskUser({
+								evalPrompt: options.prompt,
+								questions: suspension.questions,
+								introMessage: suspension.introMessage,
+							});
+							chunkLog?.write({
+								kind: 'mock-user-answer',
+								requestId,
+								answerCount: answers.length,
+								answers,
+							});
+							return { approved: true, answers };
+						}
 						chunkLog?.write({ kind: 'auto-approve', requestId });
 						return { approved: true };
 					},
@@ -470,6 +525,29 @@ export async function buildInProcess(
 			if (!next) break;
 			currentInput = next;
 		}
+	} catch (error) {
+		// Transient API errors (ECONNRESET, 503, etc.) propagate from
+		// `executeResumableStream` through the chunk consumer. Catch them so
+		// one flaky example doesn't take down the whole pairwise.
+		clearTimeout(timeoutHandle);
+		chunkLog?.write({
+			kind: 'error',
+			stage: 'orchestrator-loop',
+			turn,
+			message: error instanceof Error ? error.message : String(error),
+		});
+		await chunkLog?.close();
+		const errorClass: BuildErrorClass = abortController.signal.aborted
+			? 'build_timeout'
+			: 'agent_error';
+		return failResult(
+			started,
+			errorClass,
+			error,
+			interactivity,
+			finalText,
+			traceCollector.snapshot(),
+		);
 	} finally {
 		clearTimeout(timeoutHandle);
 	}
@@ -552,37 +630,48 @@ function spawnBackgroundTaskAdapter(
 			});
 		},
 		onCompleted: async (task) => {
-			eventBus.publish(opts.threadId, {
-				type: 'agent-completed',
-				runId,
-				agentId: opts.agentId,
-				payload: { role: opts.role, result: task.result ?? '' },
-			});
-			if (task.plannedTaskId) {
-				await plannedTaskService.markSucceeded(opts.threadId, task.plannedTaskId, {
-					result: task.result,
-					outcome: task.outcome,
+			try {
+				eventBus.publish(opts.threadId, {
+					type: 'agent-completed',
+					runId,
+					agentId: opts.agentId,
+					payload: { role: opts.role, result: task.result ?? '' },
 				});
-				await runPlannedTaskScheduler();
-				return;
+				if (task.plannedTaskId) {
+					await plannedTaskService.markSucceeded(opts.threadId, task.plannedTaskId, {
+						result: task.result,
+						outcome: task.outcome,
+					});
+					await runPlannedTaskScheduler();
+					return;
+				}
+				queueFollowUpForTask(task, 'completed');
+			} catch {
+				// Settlement-side errors (e.g. transient API failures while
+				// dispatching a dependent planned task) must NEVER throw out of
+				// BackgroundTaskManager — they'd surface as unhandled rejections
+				// and crash the whole pairwise.
 			}
-			queueFollowUpForTask(task, 'completed');
 		},
 		onFailed: async (task) => {
-			eventBus.publish(opts.threadId, {
-				type: 'agent-completed',
-				runId,
-				agentId: opts.agentId,
-				payload: { role: opts.role, result: '', error: task.error ?? 'Unknown error' },
-			});
-			if (task.plannedTaskId) {
-				await plannedTaskService.markFailed(opts.threadId, task.plannedTaskId, {
-					error: task.error,
+			try {
+				eventBus.publish(opts.threadId, {
+					type: 'agent-completed',
+					runId,
+					agentId: opts.agentId,
+					payload: { role: opts.role, result: '', error: task.error ?? 'Unknown error' },
 				});
-				await runPlannedTaskScheduler();
-				return;
+				if (task.plannedTaskId) {
+					await plannedTaskService.markFailed(opts.threadId, task.plannedTaskId, {
+						error: task.error,
+					});
+					await runPlannedTaskScheduler();
+					return;
+				}
+				queueFollowUpForTask(task, 'failed');
+			} catch {
+				// See note in onCompleted.
 			}
-			queueFollowUpForTask(task, 'failed');
 		},
 		onSettled: async () => {
 			settlementResolvers.delete(opts.taskId);
