@@ -1642,7 +1642,7 @@
 	"menuActions.duplicate": "Duplicate",
 	"menuActions.download": "Download",
 	"menuActions.push": "Push to git",
-	"menuActions.editDescription": "Edit description",
+	"menuActions.editDescription": "Description",
 	"menuActions.importFromUrl": "Import from URL...",
 	"menuActions.importFromFile": "Import from file...",
 	"menuActions.delete": "Delete",
