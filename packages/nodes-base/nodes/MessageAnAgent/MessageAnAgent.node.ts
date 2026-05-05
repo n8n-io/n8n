@@ -13,7 +13,7 @@ export class MessageAnAgent implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Message an Agent',
 		name: 'messageAnAgent',
-		icon: 'fa:robot',
+		icon: 'node:ai-agent',
 		group: ['transform'],
 		version: 1,
 		hidden: true,
