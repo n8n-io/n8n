@@ -89,9 +89,13 @@ export interface TraceFinalTextMatchesGrader {
 	allOf?: string[];
 	/**
 	 * Fail if any of these (case-insensitive) regexes hit. Use to catch
-	 * abandonment phrases like "taking a while" / "let me try a different
-	 * approach" / "couldn't load" that pass `anyOf` keyword checks but
-	 * actually mean the agent gave up.
+	 * abandonment phrases like "taking a while" / "couldn't load" / "unable
+	 * to reach" that pass `anyOf` keyword checks but actually mean the agent
+	 * gave up. Scanned against only the trailing slice of `finalText` (last
+	 * ~1500 chars), so legitimate mid-flight pivot phrases like "let me try
+	 * a different approach" don't false-positive — the agent often says that
+	 * en route to success, and `finalText` is the concatenation of every
+	 * text-delta event in the run, not just the closing message.
 	 */
 	mustNotMatch?: string[];
 }

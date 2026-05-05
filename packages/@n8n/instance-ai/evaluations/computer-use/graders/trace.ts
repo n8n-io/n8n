@@ -27,6 +27,12 @@ const DEFAULT_TOOLS_MUST_NOT_ERROR_PREFIX = 'browser';
 const DEFAULT_TOOLS_MUST_NOT_ERROR_IGNORE: readonly string[] = ['ask-user', 'pause-for-user'];
 const DEFAULT_MUST_REACH_URL_PREFIX = 'browser';
 const URL_LIKE_ARG_FIELDS: readonly string[] = ['url', 'to', 'href', 'target', 'link'];
+// `finalText` is the concatenation of every text-delta event in the run, so
+// mid-flight phrases like "let me try a different approach" sit alongside the
+// closing summary. Giveup signals only matter at the tail — limit the
+// `mustNotMatch` scan to the last N chars so legitimate mid-flight pivots
+// don't read as abandonment.
+const GIVEUP_TAIL_CHARS = 1500;
 
 export function gradeMustCallTool(
 	trace: ScenarioTrace,
@@ -244,13 +250,14 @@ export function gradeFinalTextMatches(
 	grader: TraceFinalTextMatchesGrader,
 ): GraderResult {
 	const text = trace.finalText;
+	const tail = text.slice(-GIVEUP_TAIL_CHARS);
 	const anyOf = grader.anyOf.map((p) => new RegExp(p, 'i'));
 	const allOf = (grader.allOf ?? []).map((p) => new RegExp(p, 'i'));
 	const mustNotMatch = (grader.mustNotMatch ?? []).map((p) => new RegExp(p, 'i'));
 
 	const anyHit = anyOf.length === 0 || anyOf.some((re) => re.test(text));
 	const allHit = allOf.every((re) => re.test(text));
-	const forbiddenHit = mustNotMatch.find((re) => re.test(text));
+	const forbiddenHit = mustNotMatch.find((re) => re.test(tail));
 	const pass = anyHit && allHit && !forbiddenHit;
 
 	if (pass) {

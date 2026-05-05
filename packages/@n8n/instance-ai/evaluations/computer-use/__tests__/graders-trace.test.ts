@@ -234,6 +234,40 @@ describe('trace.finalTextMatches mustNotMatch', () => {
 		});
 		expect(result.pass).toBe(true);
 	});
+
+	it('ignores forbidden phrases that appear mid-stream when the closing summary is clean', () => {
+		// `finalText` is the concatenation of every text-delta event, so mid-flight
+		// pivot phrases live in the same blob as the closing message. They should
+		// not be read as abandonment when the agent went on to deliver a real summary
+		// long enough to push the pivot phrase out of the trailing slice.
+		const t = trace([]);
+		const midStream = 'Let me try a different approach - using JavaScript instead. ';
+		const closingSummary =
+			'I extracted the scenario blueprint from the network response. The Make.com scenario has two modules: a Webhooks trigger and an HTTP GET request. Would you like me to recreate this in n8n? '.repeat(
+				20,
+			);
+		t.finalText = midStream + closingSummary;
+		const result = gradeFinalTextMatches(t, {
+			type: 'trace.finalTextMatches',
+			anyOf: ['make\\.com|scenario|module'],
+			mustNotMatch: ['let me try (a )?different', 'unable to (load|access|reach)'],
+		});
+		expect(result.pass).toBe(true);
+	});
+
+	it('still catches forbidden phrases that appear at the tail of the text', () => {
+		const t = trace([]);
+		t.finalText =
+			'I tried navigating to the page and inspecting the DOM. ' +
+			'Sorry, I was unable to load the scenario.';
+		const result = gradeFinalTextMatches(t, {
+			type: 'trace.finalTextMatches',
+			anyOf: ['scenario'],
+			mustNotMatch: ['unable to (load|access|reach)'],
+		});
+		expect(result.pass).toBe(false);
+		expect(result.reason).toContain('abandoned');
+	});
 });
 
 describe('trace.mustReachUrl', () => {
