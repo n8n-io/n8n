@@ -5822,7 +5822,6 @@
 	"agents.builder.advanced.approval.hint": "Pause before running tool calls until a human approves.",
 	"agents.builder.memory.title": "Memory",
 	"agents.builder.memory.recentMessages.label": "Recent messages in context",
-	"agents.builder.memory.semanticRecall.label": "Semantic recall",
 	"agents.builder.memory.semanticRecall.topK": "Top K",
 	"agents.builder.memory.semanticRecall.rangeBefore": "Range before",
 	"agents.builder.memory.semanticRecall.rangeAfter": "Range after",

@@ -53,7 +53,7 @@ import {
 	toAiSdkProviderTools,
 	toAiSdkTools,
 } from './tool-adapter';
-import { buildWorkingMemoryTool, UPDATE_WORKING_MEMORY_TOOL_NAME } from './working-memory';
+import { buildWorkingMemoryTool } from './working-memory';
 import { AgentEvent } from '../types/runtime/event';
 import type { AgentEventData } from '../types/runtime/event';
 import type {
@@ -97,48 +97,6 @@ export interface AgentRuntimeConfig {
 
 const MAX_LOOP_ITERATIONS = 20;
 
-type AiSdkStreamChunk = Parameters<typeof convertChunk>[0];
-
-/**
- * Working memory is implemented as an SDK tool so models can decide when the
- * persisted snapshot should change. In n8n, though, that tool is internal:
- * its input can contain the complete working-memory document, while chat UIs
- * only need to know that memory was updated. We therefore suppress the raw
- * SDK tool chunks and emit a sanitized `working-memory-update` chunk after
- * the tool handler succeeds.
- *
- * The tiny bit of state is intentional: `tool-input-delta` chunks carry only
- * the tool-call id, not the tool name, so we have to remember ids that started
- * as `updateWorkingMemory` in order to keep streamed memory content out of
- * the public stream.
- */
-function createInternalWorkingMemoryStreamFilter(): (chunk: AiSdkStreamChunk) => boolean {
-	const hiddenToolCallIds = new Set<string>();
-
-	return (chunk: AiSdkStreamChunk): boolean => {
-		if (chunk.type === 'tool-input-start' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-			hiddenToolCallIds.add(chunk.id);
-			return true;
-		}
-
-		if (chunk.type === 'tool-input-delta' && hiddenToolCallIds.has(chunk.id)) {
-			return true;
-		}
-
-		if (chunk.type === 'tool-call' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-			hiddenToolCallIds.add(chunk.toolCallId);
-			return true;
-		}
-
-		if (chunk.type === 'tool-result' && chunk.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) {
-			if (chunk.toolCallId) hiddenToolCallIds.add(chunk.toolCallId);
-			return true;
-		}
-
-		return false;
-	};
-}
-
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
 	historyIds: [],
@@ -169,7 +127,6 @@ type ToolCallOutcome =
 			modelOutput: unknown;
 			subAgentUsage?: SubAgentUsage[];
 			customMessage?: AgentMessage;
-			workingMemoryContent?: string;
 	  }
 	| {
 			outcome: 'suspended';
@@ -188,7 +145,6 @@ interface ToolCallSuccess {
 	modelOutput: unknown;
 	subAgentUsage?: SubAgentUsage[];
 	customMessage?: AgentMessage;
-	workingMemoryContent?: string;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */
@@ -692,9 +648,7 @@ export class AgentRuntime {
 			const batch = await this.iteratePendingToolCallsConcurrent({ ...toolCtx, pendingResume });
 
 			for (const r of batch.results) {
-				if (r.workingMemoryContent === undefined) {
-					toolCallSummary.push(r.toolEntry);
-				}
+				toolCallSummary.push(r.toolEntry);
 				if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 			}
 
@@ -767,9 +721,7 @@ export class AgentRuntime {
 			});
 
 			for (const r of batch.results) {
-				if (r.workingMemoryContent === undefined) {
-					toolCallSummary.push(r.toolEntry);
-				}
+				toolCallSummary.push(r.toolEntry);
 				if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
 			}
 
@@ -850,7 +802,6 @@ export class AgentRuntime {
 		// so the fire-and-forget is safe.
 		const onToolExecutionStart = (data: AgentEventData): void => {
 			if (data.type !== AgentEvent.ToolExecutionStart) return;
-			if (data.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) return;
 			// Swallow rejections: if the writer is already closed/errored (e.g.
 			// an abort raced ahead of the subscription cleanup) there is nothing
 			// useful to do with the chunk.
@@ -907,7 +858,6 @@ export class AgentRuntime {
 		let structuredOutput: unknown;
 		const collectedSubAgentUsage: SubAgentUsage[] = [];
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
-		const shouldSuppressInternalWorkingMemoryChunk = createInternalWorkingMemoryStreamFilter();
 
 		const closeStreamWithError = async (error: unknown, status: AgentRunState): Promise<void> => {
 			await this.cleanupRun(runId);
@@ -933,14 +883,20 @@ export class AgentRuntime {
 					pendingResume,
 				});
 
-				await this.writeSuccessfulToolResultsToStream(
-					batch.results,
-					writer,
-					collectedSubAgentUsage,
-				);
+				for (const r of batch.results) {
+					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
+					await writer.write({
+						type: 'tool-result',
+						toolCallId: r.toolCallId,
+						toolName: r.toolName,
+						output: r.modelOutput,
+					});
+					if (r.customMessage) {
+						await writer.write({ type: 'message', message: r.customMessage });
+					}
+				}
 
 				for (const e of batch.errors) {
-					if (e.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) continue;
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: e.toolCallId,
@@ -1002,7 +958,6 @@ export class AgentRuntime {
 			// We catch that here and close the consumer stream with an error chunk.
 			try {
 				for await (const chunk of result.fullStream) {
-					if (shouldSuppressInternalWorkingMemoryChunk(chunk)) continue;
 					// Filter only the SDK's terminal `finish` chunk — the runtime
 					// emits its own consolidated `finish` after the loop completes.
 					// `start-step` / `finish-step` are passed through so consumers
@@ -1051,14 +1006,20 @@ export class AgentRuntime {
 
 				if (await handleAbort()) return;
 
-				await this.writeSuccessfulToolResultsToStream(
-					batch.results,
-					writer,
-					collectedSubAgentUsage,
-				);
+				for (const r of batch.results) {
+					if (r.subAgentUsage) collectedSubAgentUsage.push(...r.subAgentUsage);
+					await writer.write({
+						type: 'tool-result',
+						toolCallId: r.toolCallId,
+						toolName: r.toolName,
+						output: r.modelOutput,
+					});
+					if (r.customMessage) {
+						await writer.write({ type: 'message', message: r.customMessage });
+					}
+				}
 
 				for (const e of batch.errors) {
-					if (e.toolName === UPDATE_WORKING_MEMORY_TOOL_NAME) continue;
 					await writer.write({
 						type: 'tool-result',
 						toolCallId: e.toolCallId,
@@ -1380,9 +1341,6 @@ export class AgentRuntime {
 						modelOutput: result.value.modelOutput,
 						subAgentUsage: result.value.subAgentUsage,
 						customMessage: result.value.customMessage,
-						...(result.value.workingMemoryContent !== undefined && {
-							workingMemoryContent: result.value.workingMemoryContent,
-						}),
 					});
 				} else if (result.value.outcome === 'error') {
 					errors.push({
@@ -1474,9 +1432,6 @@ export class AgentRuntime {
 				modelOutput: processResult.modelOutput,
 				subAgentUsage: processResult.subAgentUsage,
 				customMessage: processResult.customMessage,
-				...(processResult.workingMemoryContent !== undefined && {
-					workingMemoryContent: processResult.workingMemoryContent,
-				}),
 			});
 		} else if (processResult.outcome === 'error') {
 			errors.push({
@@ -1674,10 +1629,6 @@ export class AgentRuntime {
 		if (customMessage) {
 			list.addResponse([customMessage]);
 		}
-		const workingMemoryContent =
-			toolName === UPDATE_WORKING_MEMORY_TOOL_NAME
-				? this.getWorkingMemoryContentFromInput(toolInput)
-				: undefined;
 
 		return {
 			outcome: 'success',
@@ -1690,55 +1641,7 @@ export class AgentRuntime {
 			modelOutput: modelResult,
 			subAgentUsage: extractedSubAgentUsage,
 			customMessage,
-			...(workingMemoryContent !== undefined && { workingMemoryContent }),
 		};
-	}
-
-	/**
-	 * Bridge successful tool executions into the public runtime stream.
-	 *
-	 * Regular tools emit `tool-result` so consumers can mark the visible tool
-	 * step as completed and inspect the result shape the LLM received. Working
-	 * memory is different: it is implemented as a tool for model ergonomics, but
-	 * it is not a user-facing tool. Its input/result can contain the full memory
-	 * snapshot, so stream consumers receive a dedicated `working-memory-update`
-	 * chunk instead. The CLI recorder keeps the content, while the SSE layer
-	 * forwards only a sanitized display event to the frontend.
-	 */
-	private async writeSuccessfulToolResultsToStream(
-		results: ToolCallSuccess[],
-		writer: WritableStreamDefaultWriter<StreamChunk>,
-		collectedSubAgentUsage: SubAgentUsage[],
-	): Promise<void> {
-		for (const result of results) {
-			if (result.subAgentUsage) collectedSubAgentUsage.push(...result.subAgentUsage);
-
-			if (result.workingMemoryContent !== undefined) {
-				await writer.write({
-					type: 'working-memory-update',
-					content: result.workingMemoryContent,
-				});
-			} else {
-				await writer.write({
-					type: 'tool-result',
-					toolCallId: result.toolCallId,
-					toolName: result.toolName,
-					output: result.modelOutput,
-				});
-			}
-
-			if (result.customMessage) {
-				await writer.write({ type: 'message', message: result.customMessage });
-			}
-		}
-	}
-
-	private getWorkingMemoryContentFromInput(input: JSONValue): string {
-		if (input && typeof input === 'object' && !Array.isArray(input)) {
-			const maybeMemory = input.memory;
-			if (typeof maybeMemory === 'string') return maybeMemory;
-		}
-		return JSON.stringify(input, null, 2);
 	}
 
 	/** Build common LLM call dependencies shared by both the generate and stream loops. */
@@ -1786,7 +1689,7 @@ export class AgentRuntime {
 	}
 
 	/**
-	 * Build the updateWorkingMemory BuiltTool for the current run.
+	 * Build the update_working_memory BuiltTool for the current run.
 	 * Returns undefined when working memory is not configured or persistence is unavailable.
 	 */
 	private buildWorkingMemoryToolForRun(persistence: AgentPersistenceOptions | undefined) {

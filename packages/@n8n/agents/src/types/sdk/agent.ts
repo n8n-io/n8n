@@ -103,7 +103,6 @@ export type StreamChunk = ContentMetadata &
 		  }
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
-		| { type: 'working-memory-update'; content: string }
 		| {
 				type: 'finish';
 				finishReason: FinishReason;

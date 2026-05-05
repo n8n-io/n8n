@@ -289,7 +289,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 
 	it('renders working-memory-update as a completed memory tool step', async () => {
 		const events: AgentSseEvent[] = [
-			{ type: 'working-memory-update', toolName: 'update_memory' },
+			{ type: 'working-memory-update', toolName: 'update_working_memory' },
 			{ type: 'done' },
 		];
 		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
@@ -301,7 +301,7 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		const assistant = hook.messages.value[1];
 		expect(assistant.toolCalls).toEqual([
 			expect.objectContaining({
-				tool: 'update_memory',
+				tool: 'update_working_memory',
 				state: 'done',
 			}),
 		]);

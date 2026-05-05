@@ -502,7 +502,7 @@ describe('AgentRuntime.stream() — working memory', () => {
 		};
 	}
 
-	it('emits working-memory-update and hides the internal working-memory tool chunks', async () => {
+	it('persists working memory and streams the tool chunks unfiltered', async () => {
 		const savedWorkingMemory: string[] = [];
 		const memoryContent = '# Thread memory\n- User facts: Alice likes concise answers';
 		const memory = makeMemory(savedWorkingMemory);
@@ -522,12 +522,12 @@ describe('AgentRuntime.stream() — working memory', () => {
 		streamText
 			.mockReturnValueOnce({
 				fullStream: makeChunkStream([
-					{ type: 'tool-input-start', id: 'wm-1', toolName: 'updateWorkingMemory' },
+					{ type: 'tool-input-start', id: 'wm-1', toolName: 'update_working_memory' },
 					{ type: 'tool-input-delta', id: 'wm-1', delta: memoryContent },
 					{
 						type: 'tool-call',
 						toolCallId: 'wm-1',
-						toolName: 'updateWorkingMemory',
+						toolName: 'update_working_memory',
 						input: { memory: memoryContent },
 					},
 				]),
@@ -541,7 +541,7 @@ describe('AgentRuntime.stream() — working memory', () => {
 								{
 									type: 'tool-call',
 									toolCallId: 'wm-1',
-									toolName: 'updateWorkingMemory',
+									toolName: 'update_working_memory',
 									args: { memory: memoryContent },
 								},
 							],
@@ -551,7 +551,7 @@ describe('AgentRuntime.stream() — working memory', () => {
 				toolCalls: Promise.resolve([
 					{
 						toolCallId: 'wm-1',
-						toolName: 'updateWorkingMemory',
+						toolName: 'update_working_memory',
 						input: { memory: memoryContent },
 					},
 				]),
@@ -564,15 +564,20 @@ describe('AgentRuntime.stream() — working memory', () => {
 		const chunks = await collectChunks(stream);
 
 		expect(savedWorkingMemory).toEqual([memoryContent]);
-		expect(chunks).toContainEqual({ type: 'working-memory-update', content: memoryContent });
-		expect(chunks).not.toContainEqual({
-			type: 'tool-input-delta',
-			toolCallId: 'wm-1',
-			delta: memoryContent,
-		});
-		expect(
-			chunks.some((chunk) => 'toolName' in chunk && chunk.toolName === 'updateWorkingMemory'),
-		).toBe(false);
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				type: 'tool-call',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+			}),
+		);
+		expect(chunks).toContainEqual(
+			expect.objectContaining({
+				type: 'tool-result',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+			}),
+		);
 	});
 });
 
