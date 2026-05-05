@@ -27,6 +27,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+const agentStreamChunkTypes = new Set<string>([
+	'finish',
+	'text-delta',
+	'reasoning-delta',
+	'tool-call-delta',
+	'error',
+	'message',
+	'tool-call-suspended',
+]);
+
+function isAgentStreamChunk(value: unknown): value is StreamChunk {
+	return isRecord(value) && typeof value.type === 'string' && agentStreamChunkTypes.has(value.type);
+}
+
 interface ErrorInfo {
 	content: string;
 	statusCode?: number;
@@ -342,9 +356,11 @@ export function mapMastraChunkToEvent(
 export function mapAgentChunkToEvent(
 	runId: string,
 	agentId: string,
-	chunk: StreamChunk,
+	chunk: unknown,
 	responseId?: string,
 ): InstanceAiEvent | null {
+	if (!isAgentStreamChunk(chunk)) return null;
+
 	if (chunk.type === 'text-delta') {
 		return mapMastraChunkToEvent(
 			runId,

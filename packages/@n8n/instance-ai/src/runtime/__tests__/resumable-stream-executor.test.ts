@@ -301,6 +301,74 @@ describe('executeResumableStream', () => {
 		expect(result.confirmationEvent?.payload.requestId).toBe('request-1');
 	});
 
+	it('maps native agent stream chunks when stream source is native', async () => {
+		const eventBus = createEventBus();
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				streamFormat: 'agent',
+				fullStream: fromChunks([
+					{ type: 'text-delta', delta: 'Working...' },
+					{
+						type: 'tool-call-suspended',
+						toolCallId: 'tool-call-1',
+						toolName: 'ask-user',
+						input: { prompt: 'Confirm?' },
+						suspendPayload: {
+							requestId: 'request-1',
+							message: 'Need approval',
+						},
+					},
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },
+			},
+			control: { mode: 'manual' },
+		});
+
+		expect(result).toEqual(
+			expect.objectContaining({
+				status: 'suspended',
+				agentRunId: 'agent-run-1',
+				suspension: {
+					toolCallId: 'tool-call-1',
+					requestId: 'request-1',
+					toolName: 'ask-user',
+				},
+			}),
+		);
+		expect(eventBus.publish).toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { text: 'Working...' },
+			}),
+		);
+		expect(eventBus.publish).not.toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({ type: 'confirmation-request' }),
+		);
+		expect(result.confirmationEvent?.type).toBe('confirmation-request');
+		expect(result.confirmationEvent?.payload).toEqual(
+			expect.objectContaining({
+				requestId: 'request-1',
+				toolCallId: 'tool-call-1',
+				toolName: 'ask-user',
+				args: { prompt: 'Confirm?' },
+			}),
+		);
+	});
+
 	it('returns errored status when stream contains an error chunk', async () => {
 		const eventBus = createEventBus();
 

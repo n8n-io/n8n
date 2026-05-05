@@ -3,16 +3,18 @@ import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
-import { mapMastraChunkToEvent } from '../stream/map-chunk';
+import { mapAgentChunkToEvent, mapMastraChunkToEvent } from '../stream/map-chunk';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
 import { asResumable, parseSuspension } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
+export type ResumableStreamFormat = 'mastra' | 'agent';
 
 export interface ResumableStreamSource {
 	runId?: string;
+	streamFormat?: ResumableStreamFormat;
 	fullStream: AsyncIterable<unknown>;
 	text?: Promise<string>;
 	steps?: Promise<unknown[]>;
@@ -1917,12 +1919,20 @@ export async function executeResumableStream(
 				hasError = true;
 			}
 
-			const event = mapMastraChunkToEvent(
-				options.context.runId,
-				options.context.agentId,
-				chunk,
-				currentResponseId,
-			);
+			const event =
+				activeSource.streamFormat === 'agent'
+					? mapAgentChunkToEvent(
+							options.context.runId,
+							options.context.agentId,
+							chunk,
+							currentResponseId,
+						)
+					: mapMastraChunkToEvent(
+							options.context.runId,
+							options.context.agentId,
+							chunk,
+							currentResponseId,
+						);
 			if (event) {
 				workSummaryAccumulator.observe(event);
 				let shouldPublishEvent = true;
@@ -2020,7 +2030,7 @@ export async function executeResumableStream(
 		});
 
 		activeAgentRunId = (typeof resumed.runId === 'string' ? resumed.runId : '') || activeAgentRunId;
-		activeSource = resumed;
+		activeSource = { ...resumed, streamFormat: activeSource.streamFormat };
 		activeStream = resumed.fullStream;
 		text = resumed.text;
 	}
