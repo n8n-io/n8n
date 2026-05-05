@@ -429,7 +429,9 @@ export abstract class DirectoryLoader {
 
 		// Always use a relative path in the icon URL to avoid encoding absolute
 		// filesystem paths (which causes malformed URLs with double slashes).
-		const relativeIconPath = path.relative(this.directory, absoluteIconPath);
+		const relativeIconPath = path
+			.relative(this.directory, absoluteIconPath)
+			.replace(/\\/g, '/');
 		return `icons/${this.packageName}/${relativeIconPath}`;
 	}
 
@@ -447,7 +449,9 @@ export abstract class DirectoryLoader {
 
 		if (hasExpression) {
 			const absoluteDirPath = path.resolve(this.directory, path.dirname(filePath));
-			const relativeDirPath = path.relative(this.directory, absoluteDirPath);
+			const relativeDirPath = path
+				.relative(this.directory, absoluteDirPath)
+				.replace(/\\/g, '/');
 			obj.iconBasePath = `icons/${this.packageName}/${relativeDirPath}`;
 			return;
 		}

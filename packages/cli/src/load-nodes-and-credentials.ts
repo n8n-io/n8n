@@ -237,12 +237,10 @@ export class LoadNodesAndCredentials {
 		// keep the legacy absolute-path fallback for backward compatibility.
 		let filePath: string;
 		if (isCustom) {
-			const relativePath = resolvePath(urlFilePath);
-			if (isContainedWithin(loader.directory, relativePath)) {
-				filePath = relativePath;
-			} else {
-				filePath = resolvePathCustomLegacy(urlFilePath);
-			}
+			const isLegacyAbsolute = isWindowsFilePath(urlFilePath) || urlFilePath.startsWith('/');
+			filePath = isLegacyAbsolute
+				? resolvePathCustomLegacy(urlFilePath)
+				: resolvePath(urlFilePath);
 		} else {
 			filePath = resolvePath(urlFilePath);
 		}
