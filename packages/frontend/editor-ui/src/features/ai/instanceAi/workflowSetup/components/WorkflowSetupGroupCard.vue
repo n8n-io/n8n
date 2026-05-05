@@ -67,8 +67,11 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 				:class="$style.section"
 				data-test-id="instance-ai-workflow-setup-section"
 			>
-				<div
+				<button
+					type="button"
 					:class="$style.sectionHeader"
+					:aria-expanded="!!expandedSections[section.id]"
+					:aria-controls="`workflow-setup-section-body-${section.id}`"
 					data-test-id="instance-ai-workflow-setup-section-header"
 					@click="toggleSection(section.id)"
 				>
@@ -88,9 +91,10 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 						size="large"
 						color="text-light"
 					/>
-				</div>
+				</button>
 				<div
 					v-if="expandedSections[section.id]"
+					:id="`workflow-setup-section-body-${section.id}`"
 					:class="$style.sectionContent"
 					data-test-id="instance-ai-workflow-setup-section-body"
 				>
@@ -156,6 +160,13 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: 0;
+	border: none;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-align: left;
 	cursor: pointer;
 	user-select: none;
 
@@ -163,7 +174,8 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 		display: none;
 	}
 
-	&:hover .sectionChevron {
+	&:hover .sectionChevron,
+	&:focus-visible .sectionChevron {
 		display: block;
 	}
 }
