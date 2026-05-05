@@ -1,11 +1,24 @@
-import type { MastraDBMessage } from '@mastra/core/agent';
-import type { MastraCompositeStore } from '@mastra/core/storage';
-import type { Workspace } from '@mastra/core/workspace';
-
 import { BuilderSandboxSessionRegistry } from '../../../runtime/builder-sandbox-session-registry';
 import { compactBuilderMemoryThread } from '../builder-memory-compaction';
 
-function makeMessage(id: string, text: string): MastraDBMessage {
+type CompactionInput = Parameters<typeof compactBuilderMemoryThread>[0];
+
+interface TestBuilderMemoryMessage {
+	id: string;
+	role: string;
+	threadId: string;
+	resourceId: string;
+	createdAt: Date;
+	type?: string;
+	content: {
+		format: number;
+		parts: Array<{ type: string; text: string }>;
+		content: string;
+		metadata?: Record<string, unknown>;
+	};
+}
+
+function makeMessage(id: string, text: string): TestBuilderMemoryMessage {
 	return {
 		id,
 		role: 'assistant',
@@ -20,19 +33,17 @@ function makeMessage(id: string, text: string): MastraDBMessage {
 	};
 }
 
-function makeStorage(memoryStore: unknown): MastraCompositeStore {
+function makeStorage(memoryStore: unknown): CompactionInput['context']['storage'] {
 	return {
 		getStore: jest.fn(async (storeName: string) => {
 			await Promise.resolve();
 			return storeName === 'memory' ? memoryStore : undefined;
 		}),
-	} as unknown as MastraCompositeStore;
+	};
 }
 
-type CompactionInput = Parameters<typeof compactBuilderMemoryThread>[0];
-
 function makeCompactionInput(
-	storage: MastraCompositeStore,
+	storage: CompactionInput['context']['storage'],
 	overrides: Partial<CompactionInput> = {},
 ): CompactionInput {
 	return {
@@ -85,10 +96,12 @@ describe('compactBuilderMemoryThread', () => {
 			deleteMessages: jest.fn(async () => {
 				await Promise.resolve();
 			}),
-			saveMessages: jest.fn(async ({ messages: saved }: { messages: MastraDBMessage[] }) => {
-				await Promise.resolve();
-				return { messages: saved };
-			}),
+			saveMessages: jest.fn(
+				async ({ messages: saved }: { messages: TestBuilderMemoryMessage[] }) => {
+					await Promise.resolve();
+					return { messages: saved };
+				},
+			),
 		};
 
 		const result = await compactBuilderMemoryThread(makeCompactionInput(makeStorage(memoryStore)));
@@ -123,7 +136,7 @@ describe('compactBuilderMemoryThread', () => {
 			builderThreadId: 'builder-thread-1',
 			builderResourceId: 'user-1:workflow-builder',
 			builderWorkspace: {
-				workspace: {} as Workspace,
+				workspace: {} as never,
 				cleanup,
 			},
 			root: '/home/daytona/workspace',
@@ -143,7 +156,7 @@ describe('compactBuilderMemoryThread', () => {
 			deleteMessages: jest.fn(async () => {
 				await Promise.resolve();
 			}),
-			saveMessages: jest.fn(async ({ messages }: { messages: MastraDBMessage[] }) => {
+			saveMessages: jest.fn(async ({ messages }: { messages: TestBuilderMemoryMessage[] }) => {
 				await Promise.resolve();
 				return { messages };
 			}),
@@ -178,7 +191,7 @@ describe('compactBuilderMemoryThread', () => {
 				await Promise.resolve();
 				storedMessages = storedMessages.filter((message) => !messageIds.includes(message.id));
 			}),
-			saveMessages: jest.fn(async ({ messages }: { messages: MastraDBMessage[] }) => {
+			saveMessages: jest.fn(async ({ messages }: { messages: TestBuilderMemoryMessage[] }) => {
 				await Promise.resolve();
 				storedMessages.push(...messages);
 				return { messages };
