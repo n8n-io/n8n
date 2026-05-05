@@ -6,6 +6,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
+import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -195,6 +196,19 @@ export class ChatIntegrationService {
 	}
 
 	/**
+	 * Disconnect every active integration. Called on `leader-stepdown` so a
+	 * demoted main releases all chat sessions (Telegram setWebhook, polling, etc.)
+	 * before another main takes over.
+	 */
+	@OnLeaderStepdown()
+	async disconnectAll(): Promise<void> {
+		const keys = [...this.connections.keys()];
+		for (const key of keys) {
+			await this.disconnectOne(key);
+		}
+	}
+
+	/**
 	 * Diff the previous and next chat integrations of an agent and reconcile
 	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
 	 * after the builder writes a new integrations array, and by
@@ -334,9 +348,11 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Reconnect all agents that have integrations configured.
-	 * Called on startup to restore connections.
+	 * Reconnect all agents that have integrations configured. Called on startup
+	 * (gated by `InstanceSettings.isLeader` in `AgentsModule.init()`) and on
+	 * `leader-takeover` in multi-main mode.
 	 */
+	@OnLeaderTakeover()
 	async reconnectAll(): Promise<void> {
 		// Only reconnect integrations for published agents — an unpublished agent must not
 		// receive events, so we don't even load it.
