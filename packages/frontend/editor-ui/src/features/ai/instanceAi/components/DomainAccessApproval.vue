@@ -80,7 +80,9 @@ function onDropdownSelect(action: string) {
 					i18n.baseText('instanceAi.domainAccess.prompt', { interpolate: { domain: props.host } })
 				}}
 			</N8nText>
-			<ConfirmationPreview>{{ props.url }}</ConfirmationPreview>
+			<ConfirmationPreview :tool="i18n.baseText('instanceAi.tools.research.fetch-url')">{{
+				props.url
+			}}</ConfirmationPreview>
 		</div>
 
 		<ConfirmationFooter>

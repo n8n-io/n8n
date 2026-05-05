@@ -328,10 +328,10 @@ function logPlanRequestChanges(feedback: string) {
 			<div :class="$style.sectionHeader">
 				<N8nHeading size="large" bold>Generic approval</N8nHeading>
 				<N8nText color="text-light" tag="p">
-					Used when a sub-agent wants to call a tool that mutates state. The bold header is the
-					tool's "-ing" label; the monospace box shows the headline of the backend message and any
-					trailing commentary appears below. Non-destructive actions get an "Always allow" option;
-					destructive ones don't.
+					Used when a sub-agent wants to call a tool that mutates state. The bold heading is the
+					tool's "-ing" label; the monospace preview repeats it as a prefix and adds the headline of
+					the backend message, with any trailing commentary shown below. Non-destructive actions get
+					an "Always allow" option; destructive ones don't.
 				</N8nText>
 			</div>
 
@@ -344,9 +344,9 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>Submitting workflow</N8nText>
-							<ConfirmationPreview
-								>Update workflow "Lead enrichment" (ID: gfQpXk3yL2)</ConfirmationPreview
-							>
+							<ConfirmationPreview tool="Submitting workflow">
+								Update workflow "Lead enrichment" (ID: gfQpXk3yL2)
+							</ConfirmationPreview>
 							<N8nText :class="$style.commentary" size="small">
 								Adds a Set node before the HTTP Request to coerce email to lower case.
 							</N8nText>
@@ -377,9 +377,9 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>Archiving workflow</N8nText>
-							<ConfirmationPreview
-								>Archive workflow "Old onboarding flow" (ID: 4hT8vM2kJ1)</ConfirmationPreview
-							>
+							<ConfirmationPreview tool="Archiving workflow">
+								Archive workflow "Old onboarding flow" (ID: 4hT8vM2kJ1)
+							</ConfirmationPreview>
 							<N8nText :class="$style.commentary" size="small">
 								This will deactivate it if needed and can be undone later.
 							</N8nText>
@@ -410,10 +410,9 @@ function logPlanRequestChanges(feedback: string) {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>Tagging workflow</N8nText>
-									<ConfirmationPreview
-										>Tag workflow "Lead enrichment" (ID: gfQpXk3yL2) with [production,
-										customer-data]</ConfirmationPreview
-									>
+									<ConfirmationPreview tool="Tagging workflow">
+										Tag workflow "Lead enrichment" (ID: gfQpXk3yL2) with [production, customer-data]
+									</ConfirmationPreview>
 								</div>
 								<ConfirmationFooter layout="row-between">
 									<N8nButton variant="outline" size="medium">{{
@@ -437,9 +436,9 @@ function logPlanRequestChanges(feedback: string) {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>Moving workflow to folder</N8nText>
-									<ConfirmationPreview
-										>Move workflow "Lead enrichment" to folder "Marketing"</ConfirmationPreview
-									>
+									<ConfirmationPreview tool="Moving workflow to folder">
+										Move workflow "Lead enrichment" to folder "Marketing"
+									</ConfirmationPreview>
 								</div>
 							</div>
 						</div>
@@ -450,9 +449,9 @@ function logPlanRequestChanges(feedback: string) {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>Publishing workflow</N8nText>
-									<ConfirmationPreview
-										>Publish workflow "Lead enrichment" (ID: gfQpXk3yL2)</ConfirmationPreview
-									>
+									<ConfirmationPreview tool="Publishing workflow">
+										Publish workflow "Lead enrichment" (ID: gfQpXk3yL2)
+									</ConfirmationPreview>
 								</div>
 							</div>
 						</div>
@@ -493,9 +492,9 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>{{ example.toolLabel }}</N8nText>
-							<ConfirmationPreview>{{
-								splitMessage(example.message).headline
-							}}</ConfirmationPreview>
+							<ConfirmationPreview :tool="example.toolLabel">
+								{{ splitMessage(example.message).headline }}
+							</ConfirmationPreview>
 							<N8nText
 								v-if="splitMessage(example.message).commentary"
 								:class="$style.commentary"

@@ -174,7 +174,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					provided_inputs: [
 						{
 							label: 'Run this workflow?',
-							options: ['approve', 'deny'],
+							options: ['approve', 'deny', 'approve_always'],
 							option_chosen: 'approve',
 						},
 					],
@@ -201,7 +201,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					provided_inputs: [
 						{
 							label: 'Delete this file?',
-							options: ['approve', 'deny'],
+							options: ['approve', 'deny', 'approve_always'],
 							option_chosen: 'deny',
 						},
 					],

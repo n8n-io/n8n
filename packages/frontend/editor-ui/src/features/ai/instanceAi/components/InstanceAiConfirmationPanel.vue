@@ -466,9 +466,11 @@ function handlePlanRequestChanges(
 									<N8nText size="large" bold>
 										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
 									</N8nText>
-									<ConfirmationPreview>{{
-										splitConfirmationMessage(item.toolCall.confirmation!.message).headline
-									}}</ConfirmationPreview>
+									<ConfirmationPreview
+										:tool="getToolLabel(item.toolCall.toolName, item.toolCall.args)"
+									>
+										{{ splitConfirmationMessage(item.toolCall.confirmation!.message).headline }}
+									</ConfirmationPreview>
 									<N8nText
 										v-if="splitConfirmationMessage(item.toolCall.confirmation!.message).commentary"
 										:class="$style.commentary"
