@@ -62,6 +62,7 @@ import type { INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
 import { WAIT_NODE_TYPE } from '@/app/constants';
+import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
 vi.mock('@/app/composables/useMessage', () => ({
@@ -74,6 +75,20 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: vi.fn(() => ({
+		isEnabled: { value: false },
+		isCredentialTypeSupported: vi.fn(() => false),
+		isActionSupported: vi.fn(() => true),
+		balance: { value: undefined },
+		budget: { value: undefined },
+		fetchError: { value: null },
+		fetchConfig: vi.fn(),
+		fetchWallet: vi.fn(),
+		saveAfterToggle: vi.fn(),
+	})),
 }));
 
 vi.mock('vue-router', async () => {
@@ -1657,6 +1672,236 @@ describe('ParameterInputList', () => {
 	 * Tests behavior across different node types.
 	 * Ensures component works correctly with Form, Form Trigger, Wait, and undefined types.
 	 */
+	describe('AI Gateway model hiding', () => {
+		const modelParameter: INodeProperties = {
+			displayName: 'Model',
+			name: 'modelId',
+			type: 'resourceLocator',
+			default: '',
+		};
+
+		const resourceParameter: INodeProperties = {
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			default: 'text',
+			options: [
+				{ name: 'Text', value: 'text' },
+				{ name: 'Audio', value: 'audio' },
+			],
+		};
+
+		const operationParameter: INodeProperties = {
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			default: 'message',
+			options: [
+				{ name: 'Message', value: 'message' },
+				{ name: 'Transcribe', value: 'transcribe' },
+			],
+		};
+
+		it('should hide model parameter when AI Gateway credential is active and action is unsupported', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe', modelId: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(2);
+		});
+
+		it('should show model parameter when AI Gateway credential is active and action is supported', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message', modelId: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(3);
+		});
+
+		it('should show model parameter when no AI Gateway credential is active', async () => {
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe', modelId: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(3);
+		});
+	});
+
+	describe('AI Gateway unsupported action notice', () => {
+		const resourceParameter: INodeProperties = {
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			default: 'text',
+			options: [
+				{ name: 'Text', value: 'text' },
+				{ name: 'Audio', value: 'audio' },
+			],
+		};
+
+		const operationParameter: INodeProperties = {
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			default: 'message',
+			options: [
+				{ name: 'Message', value: 'message' },
+				{ name: 'Transcribe', value: 'transcribe' },
+			],
+		};
+
+		it('should show unsupported action notice when action is not supported via gateway', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { findByTestId } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(await findByTestId('ai-gateway-unsupported-action-notice')).toBeInTheDocument();
+		});
+
+		it('should not show unsupported action notice when action is supported via gateway', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(
+				container.querySelector('[data-test-id="ai-gateway-unsupported-action-notice"]'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should not show unsupported action notice when credential is not gateway-managed', async () => {
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(
+				container.querySelector('[data-test-id="ai-gateway-unsupported-action-notice"]'),
+			).not.toBeInTheDocument();
+		});
+	});
+
 	describe('Node Type Variations', () => {
 		it('should handle nodes without type', async () => {
 			ndvStore.activeNode = {

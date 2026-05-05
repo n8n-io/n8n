@@ -1,26 +1,28 @@
-import type { INodeType, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
+import type { INodeType, IWebhookFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
-import { MicrosoftAgent365Trigger } from './MicrosoftAgent365Trigger.node';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import {
 	createMicrosoftAgentApplication,
 	configureAdapterProcessCallback,
 	type MicrosoftAgent365Credentials,
 	type ActivityCapture,
 } from './microsoft-utils';
+import { MicrosoftAgent365Trigger } from './MicrosoftAgent365Trigger.node';
 
 // Mock the dependencies
-jest.mock('./microsoft-utils', () => ({
-	createMicrosoftAgentApplication: jest.fn(),
-	configureAdapterProcessCallback: jest.fn(),
+vi.mock('./microsoft-utils', () => ({
+	createMicrosoftAgentApplication: vi.fn(),
+	configureAdapterProcessCallback: vi.fn(),
 	microsoftMcpServers: [
 		{ name: 'Calendar', value: 'mcp_CalendarTools' },
 		{ name: 'Mail', value: 'mcp_MailTools' },
 	],
 }));
 
-jest.mock('../../agents/Agent/V2/utils', () => ({
-	getInputs: jest.fn(),
+vi.mock('../../agents/Agent/V2/utils', () => ({
+	getInputs: vi.fn(),
 }));
 
 describe('MicrosoftAgent365Trigger', () => {
@@ -42,28 +44,28 @@ describe('MicrosoftAgent365Trigger', () => {
 
 		// Create mock response
 		mockResponse = {
-			end: jest.fn(),
-			status: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
+			end: vi.fn(),
+			status: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
 		};
 
 		// Create mock adapter
 		mockAdapter = {
-			process: jest.fn().mockResolvedValue(undefined),
+			process: vi.fn().mockResolvedValue(undefined),
 		};
 
-		// Create mock webhook functions using jest-mock-extended
+		// Create mock webhook functions using vitest-mock-extended
 		mockWebhookFunctions = mock<IWebhookFunctions>();
-		mockWebhookFunctions.getRequestObject = jest.fn().mockReturnValue(mockRequest);
-		mockWebhookFunctions.getResponseObject = jest.fn().mockReturnValue(mockResponse);
-		mockWebhookFunctions.getCredentials = jest.fn() as any;
-		mockWebhookFunctions.getNode = jest.fn().mockReturnValue({
+		mockWebhookFunctions.getRequestObject = vi.fn().mockReturnValue(mockRequest);
+		mockWebhookFunctions.getResponseObject = vi.fn().mockReturnValue(mockResponse);
+		mockWebhookFunctions.getCredentials = vi.fn() as any;
+		mockWebhookFunctions.getNode = vi.fn().mockReturnValue({
 			name: 'Microsoft Agent 365',
 			type: 'microsoftAgent365Trigger',
 			typeVersion: 1,
 		});
 		mockWebhookFunctions.helpers = {
-			returnJsonArray: jest.fn((data) => {
+			returnJsonArray: vi.fn((data) => {
 				if (Array.isArray(data)) {
 					return data.map((item) => ({ json: item }));
 				}
@@ -72,7 +74,7 @@ describe('MicrosoftAgent365Trigger', () => {
 		} as any;
 
 		// Reset mocks
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Node Description', () => {
@@ -147,13 +149,13 @@ describe('MicrosoftAgent365Trigger', () => {
 					adapter: mockAdapter,
 				};
 
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as jest.Mock).mockReturnValue(mockAgent);
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
 			});
 
 			test('should process POST request successfully', async () => {
-				const mockCallback = jest.fn();
-				(configureAdapterProcessCallback as jest.Mock).mockReturnValue(mockCallback);
+				const mockCallback = vi.fn();
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
 				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
@@ -193,19 +195,17 @@ describe('MicrosoftAgent365Trigger', () => {
 			});
 
 			test('should capture activity data in workflowData', async () => {
-				const mockCallback = jest.fn();
-				(configureAdapterProcessCallback as jest.Mock).mockReturnValue(mockCallback);
+				const mockCallback = vi.fn();
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
-				const result = (await microsoftAgent365Trigger.webhook!.call(
-					mockWebhookFunctions,
-				)) as IWebhookResponseData;
+				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
 				expect(result.workflowData).toBeDefined();
 				expect(Array.isArray(result.workflowData)).toBe(true);
 				expect(result.workflowData).toHaveLength(1);
 
 				// Verify returnJsonArray was called with activity capture
-				expect(mockWebhookFunctions.helpers!.returnJsonArray).toHaveBeenCalledWith(
+				expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith(
 					expect.objectContaining({
 						input: '',
 						output: [],
@@ -216,14 +216,14 @@ describe('MicrosoftAgent365Trigger', () => {
 
 			test('should transform activity data into flat structure for v1.1 output', async () => {
 				// Override getNode to simulate v1.1
-				mockWebhookFunctions.getNode = jest.fn().mockReturnValue({
+				mockWebhookFunctions.getNode = vi.fn().mockReturnValue({
 					name: 'Microsoft Agent 365',
 					type: 'microsoftAgent365Trigger',
 					typeVersion: 1.1,
 				});
 
 				// Populate activityCapture when configureAdapterProcessCallback is called
-				(configureAdapterProcessCallback as jest.Mock).mockImplementation(
+				(configureAdapterProcessCallback as Mock).mockImplementation(
 					(_nodeCtx, _agent, _creds, activityCapture) => {
 						activityCapture.input = 'Hello agent';
 						activityCapture.output = ['Hi there!'];
@@ -232,18 +232,16 @@ describe('MicrosoftAgent365Trigger', () => {
 							type: 'message',
 							channelId: 'msteams',
 						};
-						return jest.fn();
+						return vi.fn();
 					},
 				);
 
-				const result = (await microsoftAgent365Trigger.webhook!.call(
-					mockWebhookFunctions,
-				)) as IWebhookResponseData;
+				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
 				expect(result.workflowData).toHaveLength(1);
 
 				// conversationId is lifted into conversation.id; other activity fields are spread
-				expect(mockWebhookFunctions.helpers!.returnJsonArray).toHaveBeenCalledWith(
+				expect(mockWebhookFunctions.helpers.returnJsonArray).toHaveBeenCalledWith(
 					expect.objectContaining({
 						input: 'Hello agent',
 						output: ['Hi there!'],
@@ -254,15 +252,14 @@ describe('MicrosoftAgent365Trigger', () => {
 				);
 
 				// conversationId must NOT appear at the top level
-				const calledWith = (mockWebhookFunctions.helpers!.returnJsonArray as jest.Mock).mock
-					.calls[0][0];
+				const calledWith = (mockWebhookFunctions.helpers.returnJsonArray as Mock).mock.calls[0][0];
 				expect(calledWith).not.toHaveProperty('conversationId');
 				expect(calledWith).not.toHaveProperty('activity');
 			});
 
 			test('should set request user properties correctly', async () => {
-				const mockCallback = jest.fn();
-				(configureAdapterProcessCallback as jest.Mock).mockReturnValue(mockCallback);
+				const mockCallback = vi.fn();
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
 				await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
@@ -276,7 +273,7 @@ describe('MicrosoftAgent365Trigger', () => {
 		describe('Error handling', () => {
 			test('should throw NodeOperationError when credentials retrieval fails', async () => {
 				const error = new Error('Credentials not found');
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockRejectedValue(error);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(error);
 
 				await expect(microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions)).rejects.toThrow(
 					NodeOperationError,
@@ -293,7 +290,7 @@ describe('MicrosoftAgent365Trigger', () => {
 					},
 				};
 
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockRejectedValue(errorResponse);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(errorResponse);
 
 				await expect(microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions)).rejects.toThrow(
 					'Error: invalid_client',
@@ -311,7 +308,7 @@ describe('MicrosoftAgent365Trigger', () => {
 					message: 'Authentication failed',
 				};
 
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockRejectedValue(errorResponse);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(errorResponse);
 
 				try {
 					await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
@@ -326,7 +323,7 @@ describe('MicrosoftAgent365Trigger', () => {
 
 			test('should throw NodeOperationError with message when no error object in response', async () => {
 				const error = new Error('Network error');
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockRejectedValue(error);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(error);
 
 				try {
 					await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
@@ -344,8 +341,8 @@ describe('MicrosoftAgent365Trigger', () => {
 					clientSecret: 'test-client-secret',
 				};
 
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as jest.Mock).mockImplementation(() => {
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockImplementation(() => {
 					throw new Error('Failed to create agent application');
 				});
 
@@ -363,12 +360,12 @@ describe('MicrosoftAgent365Trigger', () => {
 
 				const mockAgent = {
 					adapter: {
-						process: jest.fn().mockRejectedValue(new Error('Adapter processing failed')),
+						process: vi.fn().mockRejectedValue(new Error('Adapter processing failed')),
 					},
 				};
 
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as jest.Mock).mockReturnValue(mockAgent);
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
 
 				await expect(microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions)).rejects.toThrow(
 					NodeOperationError,
@@ -389,11 +386,11 @@ describe('MicrosoftAgent365Trigger', () => {
 				};
 
 				let capturedActivityCapture: ActivityCapture | undefined;
-				const mockCallback = jest.fn();
+				const mockCallback = vi.fn();
 
-				(mockWebhookFunctions.getCredentials as jest.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as jest.Mock).mockReturnValue(mockAgent);
-				(configureAdapterProcessCallback as jest.Mock).mockImplementation(
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
+				(configureAdapterProcessCallback as Mock).mockImplementation(
 					(_ctx, _agent, _creds, activityCapture) => {
 						capturedActivityCapture = activityCapture;
 						return mockCallback;

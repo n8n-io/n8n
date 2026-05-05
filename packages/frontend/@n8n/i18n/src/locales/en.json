@@ -2005,6 +2005,7 @@
 	"aiGateway.credentialMode.n8nConnect.subtitle": "No API key required",
 	"aiGateway.credentialMode.own.title": "My own credential",
 	"aiGateway.credentialMode.own.subtitle": "Use your own API key",
+	"aiGateway.unsupportedAction.notice": "{actionName} is currently not supported via n8n Connect. Switch to using your own credential to use it.",
 	"nodeCredentials.oauth.accountConnectionFailed": "Account connection failed",
 	"nodeErrorView.cause": "Cause",
 	"nodeErrorView.copyToClipboard": "Copy to Clipboard",
