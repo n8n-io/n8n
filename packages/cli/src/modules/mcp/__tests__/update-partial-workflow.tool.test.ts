@@ -19,11 +19,15 @@ jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	stripNullCredentialStubs: jest.fn(),
 }));
 
+const mockValidateJSON = jest.fn().mockReturnValue([]);
 jest.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_UPDATE_PARTIAL_WORKFLOW_TOOL: {
 		toolName: 'update_partial_workflow',
 		displayTitle: 'Updating workflow',
 	},
+	ParseValidateHandler: jest.fn().mockImplementation(() => ({
+		validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
+	})),
 }));
 
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
@@ -98,6 +102,7 @@ describe('update-partial-workflow MCP tool', () => {
 			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
 		});
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
+		mockValidateJSON.mockReturnValue([]);
 	});
 
 	const createTool = () =>
@@ -377,6 +382,75 @@ describe('update-partial-workflow MCP tool', () => {
 					results: expect.objectContaining({ success: false }),
 				}),
 			);
+		});
+
+		describe('validation', () => {
+			test('passes the post-apply workflow JSON to validateJSON', async () => {
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
+				});
+
+				expect(mockValidateJSON).toHaveBeenCalledTimes(1);
+				const json = mockValidateJSON.mock.calls[0][0] as {
+					name: string;
+					nodes: INode[];
+					connections: IConnections;
+				};
+				expect(json.name).toBe('Renamed');
+				expect(json.nodes.map((n) => n.name)).toEqual(['A', 'B']);
+				expect(json.connections).toEqual({
+					A: { main: [[{ node: 'B', type: 'main', index: 0 }]] },
+				});
+			});
+
+			test('surfaces validation warnings in the response', async () => {
+				mockValidateJSON.mockReturnValue([
+					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+					{ code: 'JSON_WARN', message: 'parameter missing' },
+				]);
+
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(result.isError).toBeUndefined();
+				expect(response.validationWarnings).toEqual([
+					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+					{ code: 'JSON_WARN', message: 'parameter missing' },
+				]);
+			});
+
+			test('does not block save when validation produces warnings', async () => {
+				mockValidateJSON.mockReturnValue([
+					{ code: 'GRAPH_ERR', message: 'unwired node', nodeName: 'B' },
+				]);
+
+				await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				expect(workflowService.update).toHaveBeenCalled();
+			});
+
+			test('returns an empty validationWarnings array when there are no issues', async () => {
+				const result = await callHandler({
+					workflowId: 'wf-1',
+					operations: [
+						{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
+					],
+				});
+
+				const response = parseResult(result);
+				expect(response.validationWarnings).toEqual([]);
+			});
 		});
 	});
 });

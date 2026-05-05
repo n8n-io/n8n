@@ -1,4 +1,5 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
+import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -48,6 +49,17 @@ const outputSchema = {
 			}),
 		)
 		.describe('Credentials auto-assigned to nodes that were added in this update.'),
+	validationWarnings: z
+		.array(
+			z.object({
+				code: z.string(),
+				message: z.string(),
+				nodeName: z.string().optional(),
+			}),
+		)
+		.describe(
+			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
+		),
 	note: z.string().optional(),
 } satisfies z.ZodRawShape;
 
@@ -158,6 +170,14 @@ export const createUpdatePartialWorkflowTool = (
 				skippedHttpNodes = autoAssign.skippedHttpNodes;
 			}
 
+			const { ParseValidateHandler } = await import('@n8n/ai-workflow-builder');
+			const validator = new ParseValidateHandler({ generatePinData: false });
+			const validationWarnings = validator.validateJSON({
+				name: workflowUpdateData.name,
+				nodes: workflowUpdateData.nodes,
+				connections: workflowUpdateData.connections,
+			} as unknown as WorkflowJSON);
+
 			const updatedWorkflow = await workflowService.update(user, workflowUpdateData, workflowId, {
 				aiBuilderAssisted: true,
 				source: 'n8n-mcp',
@@ -184,6 +204,7 @@ export const createUpdatePartialWorkflowTool = (
 				url: workflowUrl,
 				appliedOperations: operations.length,
 				autoAssignedCredentials: credentialAssignments,
+				validationWarnings,
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
