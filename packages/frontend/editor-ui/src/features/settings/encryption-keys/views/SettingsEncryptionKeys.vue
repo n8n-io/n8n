@@ -37,6 +37,11 @@ const DOCS_URL = 'https://docs.n8n.io/hosting/configuration/encryption-keys/';
 
 const SORT_FIELDS: readonly EncryptionKeySortField[] = ['createdAt', 'updatedAt', 'status'];
 
+// Drives the date-input segment order in the picker (e.g. dd/mm/yyyy vs mm/dd/yyyy).
+// Falls back to a sensible default if the browser does not expose a language.
+const browserLocale =
+	typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'en-GB';
+
 const isConfirmRotateOpen = ref(false);
 
 const sortOptions = computed<Array<{ value: EncryptionKeySortField; label: string }>>(() => [
@@ -289,7 +294,7 @@ onMounted(async () => {
 				</N8nSelect>
 			</div>
 
-			<N8nDateRangePicker v-model="draftRange" v-model:open="isFilterOpen">
+			<N8nDateRangePicker v-model="draftRange" v-model:open="isFilterOpen" :locale="browserLocale">
 				<template #trigger>
 					<N8nIconButton
 						icon="funnel"
