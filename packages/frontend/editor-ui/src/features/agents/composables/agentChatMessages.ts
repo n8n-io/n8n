@@ -294,6 +294,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					state = TOOL_CALL_STATE.RUNNING;
 					output = undefined;
 				}
+
 				toolCalls.push({
 					tool: part.toolName,
 					toolCallId: part.toolCallId ?? '',
