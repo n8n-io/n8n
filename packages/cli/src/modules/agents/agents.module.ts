@@ -71,9 +71,7 @@ export class AgentsModule implements ModuleInterface {
 				});
 			});
 		} else {
-			logger.debug(
-				'[Agents] Skipping integration and schedule reconnect on startup — not leader',
-			);
+			logger.debug('[Agents] Skipping integration and schedule reconnect on startup — not leader');
 		}
 	}
 
