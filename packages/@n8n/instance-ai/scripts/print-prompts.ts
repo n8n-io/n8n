@@ -3,9 +3,10 @@
 // Print Prompts CLI
 //
 // Renders the final system prompt for the main Instance Agent and every
-// orchestration sub-agent, then writes one markdown file per agent into
-// `.output/prompts/` (gitignored). Useful for auditing, diffing across
-// branches, or sharing the full prompt outside the codebase.
+// orchestration sub-agent, then writes one markdown file per agent variant
+// into `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
+// auditing the full prompt verbatim, diffing prompts across branches, or
+// sharing them outside the codebase.
 // ---------------------------------------------------------------------------
 
 import { mkdirSync, writeFileSync } from 'fs';
@@ -22,12 +23,20 @@ import { DATA_TABLE_AGENT_PROMPT } from '../src/tools/orchestration/data-table-a
 import { PLANNER_AGENT_PROMPT } from '../src/tools/orchestration/plan-agent-prompt';
 import { RESEARCH_AGENT_PROMPT } from '../src/tools/orchestration/research-agent-prompt';
 
-interface PromptEntry {
+interface Variant {
+	/** File name (without extension) inside the agent's folder. */
 	file: string;
+	/** Short human-readable label for the variant header (omit when only one variant). */
+	label?: string;
+	body: string;
+}
+
+interface AgentEntry {
+	/** Folder name under `.output/prompts/`. */
+	folder: string;
 	displayName: string;
 	source: string;
-	variant?: string;
-	body: string;
+	variants: Variant[];
 }
 
 function parseArgs(argv: string[]): { outDir: string } {
@@ -51,118 +60,135 @@ function parseArgs(argv: string[]): { outDir: string } {
 	return { outDir };
 }
 
-function collectPrompts(): PromptEntry[] {
-	const mainAgentPrompt = getSystemPrompt({
-		researchMode: true,
-		webhookBaseUrl: 'https://your-instance.example.com',
-		filesystemAccess: true,
-		localGateway: { status: 'connected' },
-		toolSearchEnabled: true,
-		licenseHints: ['<sample license hint — replace with real hint at runtime>'],
-		timeZone: 'UTC',
-		browserAvailable: true,
-		branchReadOnly: false,
-	});
-
-	const delegateTemplate = buildSubAgentPrompt(
-		'<example-role>',
-		'<example task instructions — orchestrator fills this in per delegation>',
-		'UTC',
-	);
-
+function collectAgents(): AgentEntry[] {
 	return [
 		{
-			file: 'main-agent.md',
+			folder: 'main-agent',
 			displayName: 'Main Instance Agent',
 			source: 'src/agent/system-prompt.ts → getSystemPrompt',
-			variant: 'all features enabled (research, filesystem, gateway, tool-search, browser)',
-			body: mainAgentPrompt,
+			variants: [
+				{
+					file: 'prompt',
+					label: 'all features enabled (research, filesystem, gateway, tool-search, browser)',
+					body: getSystemPrompt({
+						researchMode: true,
+						webhookBaseUrl: 'https://your-instance.example.com',
+						filesystemAccess: true,
+						localGateway: { status: 'connected' },
+						toolSearchEnabled: true,
+						licenseHints: ['<sample license hint — replace with real hint at runtime>'],
+						timeZone: 'UTC',
+						browserAvailable: true,
+						branchReadOnly: false,
+					}),
+				},
+			],
 		},
 		{
-			file: 'subagent-planner.md',
+			folder: 'planner',
 			displayName: 'Sub-Agent — Workflow Planner',
 			source: 'src/tools/orchestration/plan-agent-prompt.ts → PLANNER_AGENT_PROMPT',
-			body: PLANNER_AGENT_PROMPT,
+			variants: [{ file: 'prompt', body: PLANNER_AGENT_PROMPT }],
 		},
 		{
-			file: 'subagent-builder-tool.md',
-			displayName: 'Sub-Agent — Workflow Builder (tool mode)',
-			source: 'src/tools/orchestration/build-workflow-agent.prompt.ts → BUILDER_AGENT_PROMPT',
-			variant: 'tool mode (no sandbox)',
-			body: BUILDER_AGENT_PROMPT,
+			folder: 'builder',
+			displayName: 'Sub-Agent — Workflow Builder',
+			source: 'src/tools/orchestration/build-workflow-agent.prompt.ts',
+			variants: [
+				{
+					file: 'tool',
+					label: 'tool mode (no sandbox) → BUILDER_AGENT_PROMPT',
+					body: BUILDER_AGENT_PROMPT,
+				},
+				{
+					file: 'sandbox',
+					label: 'sandbox mode → createSandboxBuilderAgentPrompt(workspaceRoot: /workspace)',
+					body: createSandboxBuilderAgentPrompt('/workspace'),
+				},
+			],
 		},
 		{
-			file: 'subagent-builder-sandbox.md',
-			displayName: 'Sub-Agent — Workflow Builder (sandbox mode)',
-			source:
-				'src/tools/orchestration/build-workflow-agent.prompt.ts → createSandboxBuilderAgentPrompt',
-			variant: 'sandbox mode — workspaceRoot: /workspace',
-			body: createSandboxBuilderAgentPrompt('/workspace'),
-		},
-		{
-			file: 'subagent-researcher.md',
+			folder: 'researcher',
 			displayName: 'Sub-Agent — Web Researcher',
 			source: 'src/tools/orchestration/research-agent-prompt.ts → RESEARCH_AGENT_PROMPT',
-			body: RESEARCH_AGENT_PROMPT,
+			variants: [{ file: 'prompt', body: RESEARCH_AGENT_PROMPT }],
 		},
 		{
-			file: 'subagent-data-table.md',
+			folder: 'data-table',
 			displayName: 'Sub-Agent — Data Table Manager',
 			source: 'src/tools/orchestration/data-table-agent.prompt.ts → DATA_TABLE_AGENT_PROMPT',
-			body: DATA_TABLE_AGENT_PROMPT,
+			variants: [{ file: 'prompt', body: DATA_TABLE_AGENT_PROMPT }],
 		},
 		{
-			file: 'subagent-browser-gateway.md',
-			displayName: 'Sub-Agent — Browser Credential Setup (gateway)',
+			folder: 'browser-credential-setup',
+			displayName: 'Sub-Agent — Browser Credential Setup',
 			source:
 				'src/tools/orchestration/browser-credential-setup.prompt.ts → buildBrowserAgentPrompt',
-			variant: "source: 'gateway'",
-			body: buildBrowserAgentPrompt('gateway'),
+			variants: [
+				{
+					file: 'gateway',
+					label: "source: 'gateway' (local gateway browser tools)",
+					body: buildBrowserAgentPrompt('gateway'),
+				},
+				{
+					file: 'chrome-mcp',
+					label: "source: 'chrome-devtools-mcp' (Chrome DevTools MCP server)",
+					body: buildBrowserAgentPrompt('chrome-devtools-mcp'),
+				},
+			],
 		},
 		{
-			file: 'subagent-browser-chrome-mcp.md',
-			displayName: 'Sub-Agent — Browser Credential Setup (Chrome DevTools MCP)',
-			source:
-				'src/tools/orchestration/browser-credential-setup.prompt.ts → buildBrowserAgentPrompt',
-			variant: "source: 'chrome-devtools-mcp'",
-			body: buildBrowserAgentPrompt('chrome-devtools-mcp'),
-		},
-		{
-			file: 'subagent-delegate-template.md',
+			folder: 'delegate',
 			displayName: 'Sub-Agent — Generic Delegate (template)',
 			source: 'src/agent/sub-agent-factory.ts → buildSubAgentPrompt',
-			variant: 'placeholder role/instructions — orchestrator fills these per delegation at runtime',
-			body: delegateTemplate,
+			variants: [
+				{
+					file: 'template',
+					label:
+						'placeholder role/instructions — orchestrator fills these per delegation at runtime',
+					body: buildSubAgentPrompt(
+						'<example-role>',
+						'<example task instructions — orchestrator fills this in per delegation>',
+						'UTC',
+					),
+				},
+			],
 		},
 	];
 }
 
-function renderFile(entry: PromptEntry): string {
-	const header: string[] = [`# ${entry.displayName}`, '', `> Source: \`${entry.source}\``];
-	if (entry.variant) {
-		header.push(`> Variant: ${entry.variant}`);
+function renderFile(agent: AgentEntry, variant: Variant): string {
+	const header: string[] = [`# ${agent.displayName}`, '', `> Source: \`${agent.source}\``];
+	if (variant.label) {
+		header.push(`> Variant: ${variant.label}`);
 	}
 	header.push('', '---', '');
-	return header.join('\n') + entry.body;
+	return header.join('\n') + variant.body;
 }
 
 function main(): void {
 	const { outDir } = parseArgs(process.argv);
-	mkdirSync(outDir, { recursive: true });
+	const agents = collectAgents();
 
-	const entries = collectPrompts();
-
-	for (const entry of entries) {
-		const target = join(outDir, entry.file);
-		writeFileSync(target, renderFile(entry), 'utf8');
+	const written: Array<{ relPath: string; chars: number }> = [];
+	for (const agent of agents) {
+		const agentDir = join(outDir, agent.folder);
+		mkdirSync(agentDir, { recursive: true });
+		for (const variant of agent.variants) {
+			const target = join(agentDir, `${variant.file}.md`);
+			writeFileSync(target, renderFile(agent, variant), 'utf8');
+			written.push({
+				relPath: `${agent.folder}/${variant.file}.md`,
+				chars: variant.body.length,
+			});
+		}
 	}
 
-	const longestName = Math.max(...entries.map((e) => e.file.length));
-	console.log(`Wrote ${entries.length} prompts to ${outDir}`);
-	for (const entry of entries) {
-		const padded = entry.file.padEnd(longestName);
-		const chars = entry.body.length.toLocaleString();
-		console.log(`  ${padded}  ${chars.padStart(7)} chars`);
+	const longestName = Math.max(...written.map((w) => w.relPath.length));
+	console.log(`Wrote ${written.length} prompts to ${outDir}`);
+	for (const { relPath, chars } of written) {
+		const padded = relPath.padEnd(longestName);
+		console.log(`  ${padded}  ${chars.toLocaleString().padStart(7)} chars`);
 	}
 }
 
