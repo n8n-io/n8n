@@ -68,8 +68,9 @@ function collectAgents(): AgentEntry[] {
 			source: 'src/agent/system-prompt.ts → getSystemPrompt',
 			variants: [
 				{
-					file: 'prompt',
-					label: 'all features enabled (research, filesystem, gateway, tool-search, browser)',
+					file: 'all-features',
+					label:
+						'all features enabled (research, filesystem, gateway connected, tool-search, browser, sample license hint)',
 					body: getSystemPrompt({
 						researchMode: true,
 						webhookBaseUrl: 'https://your-instance.example.com',
@@ -80,6 +81,42 @@ function collectAgents(): AgentEntry[] {
 						timeZone: 'UTC',
 						browserAvailable: true,
 						branchReadOnly: false,
+					}),
+				},
+				{
+					file: 'default',
+					label:
+						'no options set — what a fresh OSS install sees (no webhook URL, no filesystem, no gateway, no browser, no tool search)',
+					body: getSystemPrompt({}),
+				},
+				{
+					file: 'read-only',
+					label:
+						'branchReadOnly: true — instance protected by source control settings; otherwise default',
+					body: getSystemPrompt({ branchReadOnly: true }),
+				},
+				{
+					file: 'computer-use-prompting',
+					label:
+						"localGateway disconnected with filesystem + browser capabilities — renders the 'install Computer Use' pitch and 'Browser Automation (Unavailable)' note",
+					body: getSystemPrompt({
+						webhookBaseUrl: 'https://your-instance.example.com',
+						localGateway: {
+							status: 'disconnected',
+							capabilities: ['filesystem', 'browser'],
+						},
+						browserAvailable: false,
+					}),
+				},
+				{
+					file: 'gateway-no-browser',
+					label:
+						"localGateway connected, filesystemAccess: true, browserAvailable: false — renders 'Project Filesystem Access' and 'Browser Automation (Disabled in Computer Use)'",
+					body: getSystemPrompt({
+						webhookBaseUrl: 'https://your-instance.example.com',
+						filesystemAccess: true,
+						localGateway: { status: 'connected' },
+						browserAvailable: false,
 					}),
 				},
 			],
