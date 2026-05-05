@@ -11,7 +11,8 @@ function toBase64(content: string): string {
 }
 
 /**
- * Mirrors the conditional from createAllTools:
+ * Mirrors the conditional shared by createAllTools and
+ * createOrchestratorDomainTools:
  *   context.currentUserAttachments?.some(isParseableAttachment)
  */
 function wouldRegisterParseTool(attachments?: InstanceAiAttachment[]): boolean {

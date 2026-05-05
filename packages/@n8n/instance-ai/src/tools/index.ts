@@ -22,6 +22,10 @@ import { createBuildWorkflowTool } from './workflows/build-workflow.tool';
 import { createWorkflowsTool } from './workflows.tool';
 import { createWorkspaceTool } from './workspace.tool';
 
+function hasParseableAttachment(context: InstanceAiContext): boolean {
+	return context.currentUserAttachments?.some(isParseableAttachment) ?? false;
+}
+
 /**
  * Creates all native n8n domain tools with the full action surface.
  * Used for delegate/builder tool resolution — sub-agents get unrestricted access.
@@ -38,9 +42,7 @@ export function createAllTools(context: InstanceAiContext) {
 		'ask-user': createAskUserTool(),
 		'build-workflow': createBuildWorkflowTool(context),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
-		...(context.currentUserAttachments?.some(isParseableAttachment)
-			? { 'parse-file': createParseFileTool(context) }
-			: {}),
+		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
 	};
 }
 
@@ -59,6 +61,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext) {
 		nodes: createNodesTool(context, 'orchestrator'),
 		'ask-user': createAskUserTool(),
 		...(context.localMcpServer ? createToolsFromLocalMcpServer(context.localMcpServer) : {}),
+		...(hasParseableAttachment(context) ? { 'parse-file': createParseFileTool(context) } : {}),
 	};
 }
 
