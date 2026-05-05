@@ -161,6 +161,7 @@ describe('WorkflowProductionChecklist', () => {
 			createWorkflowDocumentId(mockWorkflow.id),
 		);
 		workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
+		workflowDocumentStore.setSettings(mockWorkflow.settings ?? { executionOrder: 'v1' });
 		workflowDocumentStoreRef.value = workflowDocumentStore;
 
 		router = {
@@ -203,16 +204,7 @@ describe('WorkflowProductionChecklist', () => {
 				activeVersion: null,
 			});
 
-			const { container } = renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						active: false,
-						activeVersionId: null,
-					},
-				},
-				pinia: createTestingPinia(),
-			});
+			const { container } = renderComponent({ pinia: createTestingPinia() });
 
 			expect(
 				container.querySelector('[data-test-id="n8n-suggested-actions-stub"]'),
@@ -222,12 +214,7 @@ describe('WorkflowProductionChecklist', () => {
 		it('should not render when cache is loading', () => {
 			workflowsCache.isCacheLoading.value = true;
 
-			const { container } = renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia: createTestingPinia(),
-			});
+			const { container } = renderComponent({ pinia: createTestingPinia() });
 
 			expect(
 				container.querySelector('[data-test-id="n8n-suggested-actions-stub"]'),
@@ -244,15 +231,11 @@ describe('WorkflowProductionChecklist', () => {
 			// @ts-expect-error - mocking readonly property
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockAINodeType as INodeTypeDescription);
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
-					},
-				},
-				pinia,
-			});
+			workflowDocumentStoreRef.value?.setNodes([
+				createTestNode({ type: 'ai-node', typeVersion: 1 }),
+			]);
+
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -292,15 +275,11 @@ describe('WorkflowProductionChecklist', () => {
 				.fn()
 				.mockReturnValue(mockNonAINodeType as INodeTypeDescription);
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						nodes: [createTestNode({ type: 'regular-node', typeVersion: 1 })],
-					},
-				},
-				pinia,
-			});
+			workflowDocumentStoreRef.value?.setNodes([
+				createTestNode({ type: 'regular-node', typeVersion: 1 }),
+			]);
+
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -323,12 +302,7 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should show error workflow action and time saved when not ignored', async () => {
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia: createTestingPinia(),
-			});
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -359,12 +333,7 @@ describe('WorkflowProductionChecklist', () => {
 				},
 			});
 
-			const { container } = renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia: createTestingPinia(),
-			});
+			const { container } = renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(
@@ -374,15 +343,11 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should not show error workflow action when workflow contains an enabled Error Trigger node', async () => {
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						nodes: [createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1 })],
-					},
-				},
-				pinia: createTestingPinia(),
-			});
+			workflowDocumentStoreRef.value?.setNodes([
+				createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1 }),
+			]);
+
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -398,17 +363,11 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should show error workflow action when workflow contains a disabled Error Trigger node', async () => {
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						nodes: [
-							createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1, disabled: true }),
-						],
-					},
-				},
-				pinia: createTestingPinia(),
-			});
+			workflowDocumentStoreRef.value?.setNodes([
+				createTestNode({ type: ERROR_TRIGGER_NODE_TYPE, typeVersion: 1, disabled: true }),
+			]);
+
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -441,15 +400,11 @@ describe('WorkflowProductionChecklist', () => {
 			// @ts-expect-error - mocking readonly property
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockAINodeType as INodeTypeDescription);
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
-					},
-				},
-				pinia,
-			});
+			workflowDocumentStoreRef.value?.setNodes([
+				createTestNode({ type: 'ai-node', typeVersion: 1 }),
+			]);
+
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -460,7 +415,7 @@ describe('WorkflowProductionChecklist', () => {
 			await vi.waitFor(() => {
 				expect(router.push).toHaveBeenCalledWith({
 					name: VIEWS.EVALUATION_EDIT,
-					params: { name: mockWorkflow.id },
+					params: { workflowId: mockWorkflow.id },
 				});
 			});
 		});
@@ -470,12 +425,7 @@ describe('WorkflowProductionChecklist', () => {
 			uiStore = useUIStore(pinia);
 			const openModalSpy = vi.spyOn(uiStore, 'openModal');
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -493,12 +443,7 @@ describe('WorkflowProductionChecklist', () => {
 			uiStore = useUIStore(pinia);
 			const openModalSpy = vi.spyOn(uiStore, 'openModal');
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -512,12 +457,7 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should ignore specific action when ignore is clicked', async () => {
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia: createTestingPinia(),
-			});
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -537,12 +477,7 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should ignore all actions after confirmation', async () => {
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia: createTestingPinia(),
-			});
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -568,12 +503,7 @@ describe('WorkflowProductionChecklist', () => {
 		it('should not ignore all actions if confirmation is cancelled', async () => {
 			message.confirm = vi.fn().mockResolvedValue('cancel');
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia: createTestingPinia(),
-			});
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -593,12 +523,7 @@ describe('WorkflowProductionChecklist', () => {
 
 	describe('Popover behavior', () => {
 		it('should track when popover is opened via update:open event', async () => {
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia: createTestingPinia(),
-			});
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -622,16 +547,7 @@ describe('WorkflowProductionChecklist', () => {
 				activeVersion: null,
 			});
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						active: false,
-						activeVersionId: null,
-					},
-				},
-				pinia: createTestingPinia(),
-			});
+			renderComponent({ pinia: createTestingPinia() });
 
 			workflowDocumentStoreRef.value?.setActiveState({
 				activeVersionId: 'v1',
@@ -658,16 +574,7 @@ describe('WorkflowProductionChecklist', () => {
 				activeVersion: null,
 			});
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						active: false,
-						activeVersionId: null,
-					},
-				},
-				pinia: createTestingPinia(),
-			});
+			renderComponent({ pinia: createTestingPinia() });
 
 			await flushPromises();
 
@@ -703,16 +610,7 @@ describe('WorkflowProductionChecklist', () => {
 				activeVersion: null,
 			});
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						active: false,
-						activeVersionId: null,
-					},
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await flushPromises();
 
@@ -740,12 +638,7 @@ describe('WorkflowProductionChecklist', () => {
 				writable: true,
 			});
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -768,15 +661,11 @@ describe('WorkflowProductionChecklist', () => {
 			// @ts-expect-error - mocking readonly property
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockAINodeType as INodeTypeDescription);
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						nodes: [createTestNode({ type: 'ai-node', typeVersion: 1 })],
-					},
-				},
-				pinia,
-			});
+			workflowDocumentStoreRef.value?.setNodes([
+				createTestNode({ type: 'ai-node', typeVersion: 1 }),
+			]);
+
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -806,18 +695,12 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should mark error workflow as completed when error workflow is set', async () => {
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						settings: {
-							executionOrder: 'v1',
-							errorWorkflow: 'error-workflow-id',
-						},
-					},
-				},
-				pinia: createTestingPinia(),
+			workflowDocumentStoreRef.value?.setSettings({
+				executionOrder: 'v1',
+				errorWorkflow: 'error-workflow-id',
 			});
+
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -840,18 +723,46 @@ describe('WorkflowProductionChecklist', () => {
 		});
 
 		it('should mark time saved as completed when time saved is set', async () => {
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						settings: {
-							executionOrder: 'v1',
-							timeSavedPerExecution: 10,
-						},
-					},
-				},
-				pinia: createTestingPinia(),
+			workflowDocumentStoreRef.value?.setSettings({
+				executionOrder: 'v1',
+				timeSavedPerExecution: 10,
 			});
+
+			renderComponent({ pinia: createTestingPinia() });
+
+			await vi.waitFor(() => {
+				expect(mockN8nSuggestedActionsProps.actions).toEqual([
+					{
+						id: 'errorWorkflow',
+						title: 'workflowProductionChecklist.errorWorkflow.title',
+						description: 'workflowProductionChecklist.errorWorkflow.description',
+						moreInfoLink: ERROR_WORKFLOW_DOCS_URL,
+						completed: false,
+					},
+					{
+						id: 'timeSaved',
+						title: 'workflowProductionChecklist.timeSaved.title',
+						description: 'workflowProductionChecklist.timeSaved.description',
+						moreInfoLink: TIME_SAVED_DOCS_URL,
+						completed: true,
+					},
+				]);
+			});
+		});
+
+		it('should mark time saved as completed when timeSavedPerExecution is in workflowDocumentStore but not in props.workflow.settings', async () => {
+			// workflowDocumentStore is updated, but props.workflow is a stale snapshot
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(mockWorkflow.id),
+			);
+			workflowDocumentStore.setSettings({
+				executionOrder: 'v1',
+				timeSavedPerExecution: 5,
+				timeSavedMode: 'fixed',
+			});
+			workflowDocumentStoreRef.value = workflowDocumentStore;
+
+			renderComponent({ pinia: createTestingPinia() });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -880,12 +791,7 @@ describe('WorkflowProductionChecklist', () => {
 			settingsStore = useSettingsStore(pinia);
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toEqual([
@@ -914,16 +820,11 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false },
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toContainEqual({
@@ -943,17 +844,12 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false },
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(false);
 			vi.spyOn(usersStore, 'isInstanceOwner', 'get').mockReturnValue(false);
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				const actions = mockN8nSuggestedActionsProps.actions;
@@ -969,7 +865,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false },
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
@@ -979,12 +875,7 @@ describe('WorkflowProductionChecklist', () => {
 				},
 			});
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				const actions = mockN8nSuggestedActionsProps.actions;
@@ -999,15 +890,10 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true },
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
 			});
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toContainEqual({
@@ -1026,21 +912,15 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true },
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
 			});
 
-			renderComponent({
-				props: {
-					workflow: {
-						...mockWorkflow,
-						settings: {
-							executionOrder: 'v1',
-							availableInMCP: true,
-						},
-					},
-				},
-				pinia,
+			workflowDocumentStoreRef.value?.setSettings({
+				executionOrder: 'v1',
+				availableInMCP: true,
 			});
+
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toContainEqual({
@@ -1059,7 +939,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true },
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
 			});
 
 			workflowsCache.getMergedWorkflowSettings = vi.fn().mockResolvedValue({
@@ -1068,12 +948,7 @@ describe('WorkflowProductionChecklist', () => {
 				},
 			});
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				const actions = mockN8nSuggestedActionsProps.actions;
@@ -1089,16 +964,11 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: false },
+				mcp: { mcpAccessEnabled: false, mcpManagedByEnv: false },
 			});
 			vi.spyOn(usersStore, 'isAdmin', 'get').mockReturnValue(true);
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -1119,15 +989,10 @@ describe('WorkflowProductionChecklist', () => {
 
 			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
 			vi.spyOn(settingsStore, 'moduleSettings', 'get').mockReturnValue({
-				mcp: { mcpAccessEnabled: true },
+				mcp: { mcpAccessEnabled: true, mcpManagedByEnv: false },
 			});
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -1150,12 +1015,7 @@ describe('WorkflowProductionChecklist', () => {
 				branchReadOnly: true,
 			} as SourceControlPreferences;
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -1173,12 +1033,7 @@ describe('WorkflowProductionChecklist', () => {
 				branchReadOnly: false,
 			} as SourceControlPreferences;
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();
@@ -1192,12 +1047,7 @@ describe('WorkflowProductionChecklist', () => {
 
 			sourceControlStore.preferences = {} as SourceControlPreferences;
 
-			renderComponent({
-				props: {
-					workflow: mockWorkflow,
-				},
-				pinia,
-			});
+			renderComponent({ pinia });
 
 			await vi.waitFor(() => {
 				expect(mockN8nSuggestedActionsProps.actions).toBeDefined();

@@ -87,6 +87,8 @@ export class ErrorReporter {
 						stack = `\n${e.stack}\n`;
 					}
 					meta = e.extra;
+				} else if (e.stack) {
+					stack = `\n${e.stack}\n`;
 				}
 				const msg = [e.message + context, stack].join('');
 				// Default to logging the error if option is not specified

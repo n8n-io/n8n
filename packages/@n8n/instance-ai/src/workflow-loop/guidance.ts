@@ -9,6 +9,10 @@ export function formatWorkflowLoopGuidance(
 	options: WorkflowLoopGuidanceOptions = {},
 ): string {
 	switch (action.type) {
+		case 'ignored':
+			return `STALE REPORT IGNORED: ${action.reason}`;
+		case 'continue_building':
+			return `SUBMIT FAILED: ${action.reason}. Fix the workflow code and call \`submit-workflow\` again.`;
 		case 'done': {
 			if (action.mockedCredentialTypes?.length || action.hasUnresolvedPlaceholders) {
 				return (
@@ -32,17 +36,23 @@ export function formatWorkflowLoopGuidance(
 			return `BUILD BLOCKED: ${action.reason}. Explain this to the user and ask how to proceed.`;
 		case 'rebuild':
 			return (
-				`REBUILD NEEDED: The workflow at ${action.workflowId} needs structural repair. ` +
-				'Submit a new `plan` with one `build-workflow` task. ' +
-				`In the task spec, explain that workflow "${action.workflowId}" needs structural repair and include these details: ${action.failureDetails}`
+				`REBUILD NEEDED: Workflow "${action.workflowId}" needs structural repair. ` +
+				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
+				'(no plan — this is a single-task rebuild; `workflowId` and `workItemId` are required ' +
+				'so the builder updates the existing workflow instead of creating a duplicate). ' +
+				`In the \`task\` parameter, describe the structural repair and include these details: ${action.failureDetails}`
 			);
 		case 'patch':
 			return (
 				`PATCH NEEDED: Node "${action.failedNodeName}" in workflow ${action.workflowId} needs a targeted fix. ` +
 				`Diagnosis: ${action.diagnosis}. ` +
 				(action.patch ? `Suggested fix: ${JSON.stringify(action.patch)}. ` : '') +
-				'Submit a new `plan` with one `build-workflow` task. ' +
-				`In the task spec, set mode "patch", include workflowId "${action.workflowId}", and describe the targeted fix.`
+				`Call \`build-workflow-with-agent\` directly with \`workflowId: "${action.workflowId}"\` ` +
+				`and \`workItemId: "${options.workItemId ?? 'unknown'}"\` ` +
+				'(no plan — this is a single-task patch; `workflowId` and `workItemId` are required ' +
+				'so the builder updates the existing workflow instead of creating a duplicate). ' +
+				'In the `task` parameter, describe the targeted fix to apply.'
 			);
 	}
 }

@@ -6,7 +6,13 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type {
+	InstanceAiConfirmRequest,
+	InstanceAiRichMessagesResponse,
+	InstanceAiEvalExecutionResult,
+	InstanceAiEvalSubAgentRequest,
+	InstanceAiEvalSubAgentResponse,
+} from '@n8n/api-types';
 
 // ---------------------------------------------------------------------------
 // Response shapes from the n8n REST API (wrapped in { data: ... })
@@ -16,6 +22,7 @@ import type { InstanceAiRichMessagesResponse, InstanceAiEvalExecutionResult } fr
 export interface WorkflowNodeResponse {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	disabled?: boolean;
 	credentials?: Record<string, unknown>;
@@ -75,14 +82,9 @@ interface ThreadStatus {
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(readonly baseUrl: string) {}
+	constructor(private readonly baseUrl: string) {}
 
 	// -- Auth ----------------------------------------------------------------
-
-	/** Set the session cookie directly (for sharing across workers). */
-	setSessionCookie(cookie: string): void {
-		this.sessionCookie = cookie;
-	}
 
 	/**
 	 * Authenticate with the n8n instance via POST /rest/login.
@@ -120,16 +122,12 @@ export class N8nClient {
 	/**
 	 * Confirm or reject an action requested by the agent.
 	 * POST /rest/instance-ai/confirm/:requestId
-	 * body: { approved, mockCredentials?, credentialId?, ... }
+	 * body: kind-tagged `InstanceAiConfirmRequest` discriminated union.
 	 */
-	async confirmAction(
-		requestId: string,
-		approved: boolean,
-		options?: { mockCredentials?: boolean },
-	): Promise<void> {
+	async confirmAction(requestId: string, payload: InstanceAiConfirmRequest): Promise<void> {
 		await this.fetch(`/rest/instance-ai/confirm/${requestId}`, {
 			method: 'POST',
-			body: { approved, ...options },
+			body: payload,
 		});
 	}
 
@@ -141,6 +139,20 @@ export class N8nClient {
 		await this.fetch(`/rest/instance-ai/chat/${threadId}/cancel`, {
 			method: 'POST',
 		});
+	}
+
+	/**
+	 * Run an isolated sub-agent on the instance and return its result.
+	 * POST /rest/instance-ai/eval/run-sub-agent
+	 */
+	async runSubAgentEval(
+		request: InstanceAiEvalSubAgentRequest,
+	): Promise<InstanceAiEvalSubAgentResponse> {
+		const result = (await this.fetch('/rest/instance-ai/eval/run-sub-agent', {
+			method: 'POST',
+			body: request,
+		})) as { data: InstanceAiEvalSubAgentResponse };
+		return result.data;
 	}
 
 	/**

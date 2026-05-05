@@ -39,7 +39,7 @@
 		"ts-morph": ">=20.0.0"
 	},
 	"devDependencies": {
-		"@types/node": "^20.0.0",
+		"@types/node": "catalog:",
 		"@vitest/coverage-v8": "catalog:",
 		"ts-morph": "catalog:",
 		"tsx": "catalog:",

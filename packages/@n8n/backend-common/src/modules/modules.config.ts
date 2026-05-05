@@ -27,6 +27,7 @@ export const MODULE_NAMES = [
 	'token-exchange',
 	'instance-version-history',
 	'encryption-key-manager',
+	'oauth-jwe',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
