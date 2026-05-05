@@ -11,7 +11,6 @@ import { validateExecutionUpdatePayload } from './validation';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
-import { RoleService } from '@/services/role.service';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
@@ -22,7 +21,6 @@ export class ExecutionsController {
 		private readonly enterpriseExecutionService: EnterpriseExecutionsService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly license: License,
-		private readonly roleService: RoleService,
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
@@ -40,19 +38,8 @@ export class ExecutionsController {
 	async getMany(req: ExecutionRequest.GetMany) {
 		const { rangeQuery: query } = req;
 
-		// Build sharing options for the subquery instead of fetching IDs upfront
-		const scope: Scope = 'workflow:read';
 		query.user = req.user;
-		if (this.license.isSharingEnabled()) {
-			const projectRoles = await this.roleService.rolesWithScope('project', [scope]);
-			const workflowRoles = await this.roleService.rolesWithScope('workflow', [scope]);
-			query.sharingOptions = { scopes: [scope], projectRoles, workflowRoles };
-		} else {
-			query.sharingOptions = {
-				workflowRoles: ['workflow:owner'],
-				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
-			};
-		}
+		query.sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;

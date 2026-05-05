@@ -107,7 +107,7 @@ jobs:
 
   build-daytona-snapshot:
     name: Build Daytona snapshot
-    needs: [determine-version-info]
+    needs: [determine-version-info, publish-to-npm]
     if: github.event.pull_request.merged == true
     uses: ./.github/workflows/release-build-daytona-snapshot.yml
     with:
