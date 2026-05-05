@@ -3,7 +3,7 @@ import { benchConfig } from '../../../../playwright-projects';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
 
-test.use({ capability: benchConfig('burst-drain-capacity', { kafka: true, workers: 3 }) });
+test.use({ capability: benchConfig('burst-drain-capacity', { kafka: true, workers: 1 }) });
 
 test.describe(
 	'How fast can we drain a backlog?',
@@ -14,7 +14,7 @@ test.describe(
 		],
 	},
 	() => {
-		test('Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 3 workers)', async ({
+		test('Kafka trigger + 1 noop, 1KB payload, drain 100k preloaded backlog (1 main + 1 worker)', async ({
 			api,
 			services,
 		}, testInfo) => {

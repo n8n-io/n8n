@@ -4,36 +4,48 @@ Question-driven performance specs for n8n. Each spec answers ONE scaling questio
 
 ## Specs
 
-Each spec self-declares its container topology via `test.use({ capability })` and runs in the single `benchmarking:infrastructure` Playwright project.
+Each spec self-declares its container topology via `test.use({ capability: benchConfig(...) })` and runs in the single `benchmarking:infrastructure` Playwright project.
 
-### Kafka triggers (`kafka/`)
+The suite is organised in three tiers — each tier asks a different *kind* of question:
 
-| Spec | Question |
-|------|----------|
-| `single-instance-ceiling.spec.ts` | How much can we process on a single instance? |
-| `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 250 msg/s steady? |
-| `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
-| `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
-| `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
-| `burst-drain-capacity.spec.ts` | How fast can we drain a backlog? |
+### Peak — `1m direct, no workers`
 
-### Webhook triggers (`webhook/`)
+The architectural ceiling. No queue tax, no worker dispatch. What's the absolute max?
 
-| Spec | Question |
-|------|----------|
-| `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
-| `webhook-main-scaling.spec.ts` | Does webhook ingestion scale linearly with main count? |
+| Trigger | Spec | Question |
+|---------|------|----------|
+| kafka | `single-instance-ceiling.spec.ts` | How much can we process on a single instance? |
+| webhook | `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
+
+### Actual — `1m + 1w queue mode`
+
+The real-world minimum HA topology. What does a basic production setup actually deliver?
+
+| Trigger | Spec | Question |
+|---------|------|----------|
+| kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 250 msg/s steady? |
+| kafka | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
+| kafka | `burst-drain-capacity.spec.ts` | How fast can we drain a backlog? |
+| kafka | `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
+| kafka | `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
+
+### Scaling — `2m + 2w queue mode`
+
+HA distribution check. Does doubling capacity ~double the actual baseline?
+
+| Trigger | Spec | Question |
+|---------|------|----------|
+| webhook | `webhook-main-scaling.spec.ts` | Does webhook ingestion scale linearly with main count? |
 
 ## Standard topology
 
-Specs default to one of two shapes (both defined in `playwright-projects.ts`):
+| Tier | Mains | Workers | Per-pod resources |
+|------|-------|---------|-------------------|
+| **Peak** | 1 | 0 | 4GB / 2 vCPU |
+| **Actual** | 1 | 1 | main 4GB/2 vCPU, worker 2GB/1 vCPU |
+| **Scaling** | 2 | 2 | main 4GB/2 vCPU, worker 2GB/1 vCPU |
 
-| Shape | Mains | Workers | Per-pod resources | Used by |
-|-------|-------|---------|-------------------|---------|
-| **Direct** | 1 | 0 | 4GB / 2 vCPU | `single-instance-ceiling`, `webhook-single-instance` |
-| **Queue** | 1 | 3 | main 4GB/2 vCPU, worker 2GB/1 vCPU | All other specs |
-
-Aligned with internal n8n production defaults: `STANDARD_QUEUE_ENV` mirrors connection-pool, lock-duration, and Bull/Redis tuning from real deployments.
+All specs share a single env profile aligned with internal n8n production defaults — connection-pool, lock-duration, and Bull/Redis tuning from real deployments. See `BENCHMARK_CONFIG` in `playwright-projects.ts`.
 
 ## Running
 
@@ -104,7 +116,7 @@ Shared building blocks                            ← workflow-builder, throughp
 
 | Concern | Location |
 |---------|----------|
-| Topology / env | `playwright-projects.ts` (`BENCHMARK_BASE_CONFIG`, `STANDARD_QUEUE_ENV`, `STANDARD_DIRECT_ENV`) |
+| Topology / env | `playwright-projects.ts` (`BENCHMARK_CONFIG`, `benchConfig()`) |
 | Workflow shape | `utils/benchmark/workflow-builder.ts` |
 | Load patterns | `utils/benchmark/load-executors.ts` (preloaded, steady, staged) |
 | Throughput math | `utils/benchmark/throughput-measure.ts` |
@@ -115,7 +127,12 @@ Adding a new trigger type requires one driver + one or more spec files. The harn
 ## Adding a spec
 
 1. Pick a question that isn't already answered by an existing spec.
-2. Create `kafka/<question>.spec.ts` or `webhook/<question>.spec.ts`.
-3. Use `test.use({ capability: ... })` to declare the topology — start from `BENCHMARK_BASE_CONFIG` and layer on `workers`, `mains`, or env overrides.
-4. Wire the trigger driver (`kafkaDriver` or `setupWebhook`) and a harness (`runLoadTest`, `runThroughputTest`, `runWebhookThroughputTest`).
-5. Annotate with `{ type: 'question', description: '<slug>' }` so the question is searchable in test metadata.
+2. Decide which tier it belongs to: **Peak** (no workers), **Actual** (1m+1w), or **Scaling** (2m+2w).
+3. Create `kafka/<question>.spec.ts` or `webhook/<question>.spec.ts`.
+4. Use `test.use({ capability: benchConfig('<slug>', { ... }) })` with the topology for that tier:
+   - Peak kafka: `benchConfig('<slug>', { kafka: true })`
+   - Actual kafka: `benchConfig('<slug>', { kafka: true, workers: 1 })`
+   - Actual webhook: `benchConfig('<slug>', { workers: 1 })`
+   - Scaling: `benchConfig('<slug>', { mains: 2, workers: 2 })` (kafka adds `kafka: true`)
+5. Wire the trigger driver (`kafkaDriver` or `setupWebhook`) and a harness (`runLoadTest` or `runWebhookThroughputTest`).
+6. Annotate with `{ type: 'question', description: '<slug>' }` so the question is searchable in test metadata.

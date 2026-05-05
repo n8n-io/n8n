@@ -11,7 +11,7 @@ const SHAPES: ReadonlyArray<{ outputSize: NodeOutputSize }> = [
 ] as const;
 const MESSAGE_COUNT = 5_000;
 
-test.use({ capability: benchConfig('output-size-impact', { kafka: true, workers: 3 }) });
+test.use({ capability: benchConfig('output-size-impact', { kafka: true, workers: 1 }) });
 
 test.describe(
 	'What is the impact of node output size on throughput?',
@@ -22,7 +22,7 @@ test.describe(
 		],
 	},
 	() => {
-		test(`Kafka trigger + 10 nodes, 1KB payload, ramp output size ${SHAPES.map((s) => s.outputSize).join('→')} (1 main + 3 workers)`, async ({
+		test(`Kafka trigger + 10 nodes, 1KB payload, ramp output size ${SHAPES.map((s) => s.outputSize).join('→')} (1 main + 1 worker)`, async ({
 			api,
 			services,
 		}, testInfo) => {

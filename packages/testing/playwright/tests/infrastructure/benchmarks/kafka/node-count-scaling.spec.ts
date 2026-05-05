@@ -6,7 +6,7 @@ import { runLoadTest } from '../harness/load-harness';
 const SHAPES = [{ nodeCount: 10 }, { nodeCount: 30 }, { nodeCount: 60 }] as const;
 const MESSAGE_COUNT = 5_000;
 
-test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 3 }) });
+test.use({ capability: benchConfig('node-count-scaling', { kafka: true, workers: 1 }) });
 
 test.describe(
 	'How does throughput scale with workflow complexity?',
@@ -17,7 +17,7 @@ test.describe(
 		],
 	},
 	() => {
-		test(`Kafka trigger + noop, 1KB payload, ramp node count ${SHAPES.map((s) => s.nodeCount).join('→')} (1 main + 3 workers)`, async ({
+		test(`Kafka trigger + noop, 1KB payload, ramp node count ${SHAPES.map((s) => s.nodeCount).join('→')} (1 main + 1 worker)`, async ({
 			api,
 			services,
 		}, testInfo) => {
