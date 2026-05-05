@@ -289,3 +289,67 @@ describe('AgentMessageList — setToolCallError', () => {
 		expect((block as unknown as { output?: unknown }).output).toBeUndefined();
 	});
 });
+
+describe('AgentMessageList — observational memory slot', () => {
+	it('starts undefined', () => {
+		const list = new AgentMessageList();
+		expect(list.observationalMemory).toBeUndefined();
+	});
+
+	it('round-trips a rendered section', () => {
+		const list = new AgentMessageList();
+		list.observationalMemory = { renderedSection: '## Observations\n- gap: 2h' };
+		expect(list.observationalMemory.renderedSection).toBe('## Observations\n- gap: 2h');
+	});
+
+	it('accepts null renderedSection (means no section to inject)', () => {
+		const list = new AgentMessageList();
+		list.observationalMemory = { renderedSection: null };
+		expect(list.observationalMemory.renderedSection).toBeNull();
+	});
+});
+
+describe('AgentMessageList.forLlm — observational section', () => {
+	function systemPromptOf(list: AgentMessageList, base = 'base'): string {
+		const [system] = list.forLlm(base);
+		return typeof system.content === 'string' ? system.content : '';
+	}
+
+	it('appends the rendered section after the base instructions', () => {
+		const list = new AgentMessageList();
+		list.observationalMemory = { renderedSection: '## Observations\n- one' };
+		const prompt = systemPromptOf(list);
+		expect(prompt).toBe('base\n\n## Observations\n- one');
+	});
+
+	it('does not append anything when renderedSection is null', () => {
+		const list = new AgentMessageList();
+		list.observationalMemory = { renderedSection: null };
+		expect(systemPromptOf(list)).toBe('base');
+	});
+
+	it('does not append anything when renderedSection is empty', () => {
+		const list = new AgentMessageList();
+		list.observationalMemory = { renderedSection: '' };
+		expect(systemPromptOf(list)).toBe('base');
+	});
+
+	it('does not append anything when observationalMemory is unset', () => {
+		const list = new AgentMessageList();
+		expect(systemPromptOf(list)).toBe('base');
+	});
+
+	it('renders observational section after the working-memory section', () => {
+		const list = new AgentMessageList();
+		list.workingMemory = {
+			template: '# WM\n- foo:',
+			structured: false,
+			state: '# WM\n- foo: bar',
+		};
+		list.observationalMemory = { renderedSection: '## Observations\n- gap: 2h' };
+		const prompt = systemPromptOf(list);
+		expect(prompt.indexOf('# WM\n- foo: bar')).toBeLessThan(
+			prompt.indexOf('## Observations\n- gap: 2h'),
+		);
+	});
+});

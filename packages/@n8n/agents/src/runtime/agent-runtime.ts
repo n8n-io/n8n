@@ -9,6 +9,7 @@ import type {
 	AgentRunState,
 	AnthropicThinkingConfig,
 	BuiltMemory,
+	BuiltObservationStore,
 	BuiltProviderTool,
 	BuiltTelemetry,
 	BuiltTool,
@@ -35,6 +36,7 @@ import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
+import { loadObservationalMemoryContext } from './observational-memory';
 import { generateRunId, RunStateManager } from './run-state';
 import {
 	accumulateUsage,
@@ -432,6 +434,9 @@ export class AgentRuntime {
 
 		// Attach working memory to the list — forLlm() appends it to the system prompt.
 		await this.setListWorkingMemoryConfig(list, options?.persistence);
+
+		// Attach observational memory section (rolling summary + uncompacted tail).
+		await this.setListObservationalMemoryConfig(list, options?.persistence);
 
 		list.addInput(input);
 		return list;
@@ -1803,6 +1808,23 @@ export class AgentRuntime {
 			state: wmState,
 			...(wmParams.instruction !== undefined && { instruction: wmParams.instruction }),
 		};
+	}
+
+	private async setListObservationalMemoryConfig(
+		list: AgentMessageList,
+		options: AgentPersistenceOptions | undefined,
+	) {
+		if (!this.config.observationalMemory || !options?.threadId || !this.config.memory) return;
+		// Memory builder validation guarantees the backend implements
+		// BuiltObservationStore when observationalMemory is configured.
+		const store = this.config.memory as BuiltMemory & BuiltObservationStore;
+		const ctx = await loadObservationalMemoryContext(
+			store,
+			this.config.observationalMemory,
+			'thread',
+			options.threadId,
+		);
+		if (ctx) list.observationalMemory = ctx;
 	}
 
 	private resolveWorkingMemoryParams(options: AgentPersistenceOptions | undefined) {

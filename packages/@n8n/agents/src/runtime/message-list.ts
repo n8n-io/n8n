@@ -24,6 +24,16 @@ export interface WorkingMemoryContext {
 }
 
 /**
+ * Pre-rendered observational memory section for this run. The string is
+ * already formatted by `loadObservationalMemoryContext` (consumer formatter
+ * or SDK default); `forLlm` only concatenates it after the working-memory
+ * section. `null` or empty string means "do not append a section".
+ */
+export interface ObservationalMemoryContext {
+	renderedSection: string | null;
+}
+
+/**
  * Message container with Set-based source tracking.
  *
  * Three named sources:
@@ -111,6 +121,9 @@ export class AgentMessageList {
 
 	/** Working memory context for this run. Set by buildMessageList / resume. */
 	workingMemory: WorkingMemoryContext | undefined;
+
+	/** Pre-rendered observational memory section. Set by buildMessageList. */
+	observationalMemory: ObservationalMemoryContext | undefined;
 
 	addHistory(messages: AgentMessage[] | AgentDbMessage[]): void {
 		for (const m of messages) {
@@ -223,6 +236,13 @@ export class AgentMessageList {
 			const wmState = this.workingMemory.state ?? this.workingMemory.template;
 			systemPrompt +=
 				wmInstruction + '\n\nCurrent working memory state:\n```\n' + wmState + '\n```\n';
+		}
+
+		// The rendered string is produced by `loadObservationalMemoryContext`
+		// — either the consumer's `formatContext` or the SDK's default formatter.
+		// `forLlm` is a pure concatenator and does not impose section labels.
+		if (this.observationalMemory?.renderedSection) {
+			systemPrompt += '\n\n' + this.observationalMemory.renderedSection;
 		}
 
 		const systemMessage: ModelMessage = instructionProviderOptions

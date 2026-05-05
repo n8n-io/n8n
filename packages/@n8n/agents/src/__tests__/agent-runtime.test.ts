@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
+import { InMemoryMemory } from '../runtime/memory-store';
 import { isLlmMessage } from '../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../sdk/tool';
 import { AgentEvent } from '../types/runtime/event';
@@ -2518,5 +2519,113 @@ describe('AgentRuntime — telemetry propagation', () => {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		expect(callArgs.experimental_telemetry).toBeUndefined();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observational memory — read-side wiring into buildMessageList
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — observational memory read path', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		generateText.mockResolvedValue(makeGenerateSuccess());
+	});
+
+	function getSystemMessageText(): string {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		const systemMsg = messages[0];
+		return String(systemMsg.content);
+	}
+
+	it('injects pre-seeded summary + recent rows into the system prompt', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 't-obs', resourceId: 'u-1' });
+		await store.appendObservations([
+			{
+				scopeKind: 'thread',
+				scopeId: 't-obs',
+				kind: 'summary',
+				payload: 'rolling state',
+				durationMs: null,
+				schemaVersion: 1,
+				createdAt: new Date(),
+				compactedAt: null,
+			},
+			{
+				scopeKind: 'thread',
+				scopeId: 't-obs',
+				kind: 'observation',
+				payload: 'user returned after a 6h gap',
+				durationMs: null,
+				schemaVersion: 1,
+				createdAt: new Date(),
+				compactedAt: null,
+			},
+		]);
+
+		const runtime = new AgentRuntime({
+			name: 'obs-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: store,
+			lastMessages: 10,
+			observationalMemory: { observe: jest.fn() },
+		});
+
+		await runtime.generate('hi', { persistence: { threadId: 't-obs', resourceId: 'u-1' } });
+
+		const prompt = getSystemMessageText();
+		expect(prompt).toContain('rolling state');
+		expect(prompt).toContain('user returned after a 6h gap');
+	});
+
+	it('injects nothing when the thread has no observations', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 't-empty', resourceId: 'u-1' });
+
+		const runtime = new AgentRuntime({
+			name: 'obs-empty',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: store,
+			observationalMemory: { observe: jest.fn() },
+		});
+
+		await runtime.generate('hi', { persistence: { threadId: 't-empty', resourceId: 'u-1' } });
+
+		const prompt = getSystemMessageText();
+		expect(prompt).toBe('base instructions');
+	});
+
+	it('does not call the helper when observationalMemory is not configured', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 't-none', resourceId: 'u-1' });
+		await store.appendObservations([
+			{
+				scopeKind: 'thread',
+				scopeId: 't-none',
+				kind: 'summary',
+				payload: 'should not appear',
+				durationMs: null,
+				schemaVersion: 1,
+				createdAt: new Date(),
+				compactedAt: null,
+			},
+		]);
+
+		const runtime = new AgentRuntime({
+			name: 'obs-disabled',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: store,
+		});
+
+		await runtime.generate('hi', { persistence: { threadId: 't-none', resourceId: 'u-1' } });
+
+		const prompt = getSystemMessageText();
+		expect(prompt).not.toContain('should not appear');
 	});
 });
