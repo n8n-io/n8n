@@ -297,6 +297,15 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const confirmationInputTypeSchema = z.enum([
+	'approval',
+	'text',
+	'questions',
+	'plan-review',
+	'resource-decision',
+]);
+export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
+
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
 	inputThreadId: z
@@ -315,8 +324,7 @@ export const confirmationRequestPayloadSchema = z.object({
 		.describe(
 			'Target project ID — used to scope actions (e.g. credential creation) to the correct project',
 		),
-	inputType: z
-		.enum(['approval', 'text', 'questions', 'plan-review', 'resource-decision'])
+	inputType: confirmationInputTypeSchema
 		.optional()
 		.describe(
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
@@ -359,6 +367,53 @@ export const confirmationRequestPayloadSchema = z.object({
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
 });
+export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
+
+function isNonEmptyString(value: unknown): value is string {
+	return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasItems<T>(items: T[] | undefined): items is [T, ...T[]] {
+	return Array.isArray(items) && items.length > 0;
+}
+
+function argsContainPlannedTasks(args: Record<string, unknown>): boolean {
+	const tasks = args.tasks;
+	if (!Array.isArray(tasks)) return false;
+
+	return tasks.some((task) => plannedTaskArgSchema.safeParse(task).success);
+}
+
+function assertNever(value: never): never {
+	throw new Error(`Unhandled confirmation input type: ${String(value)}`);
+}
+
+/**
+ * True when the current frontend has enough typed confirmation payload to show
+ * a meaningful waiting-for-user UI. Correlation metadata alone must not count.
+ */
+export function isDisplayableConfirmationRequest(
+	payload: InstanceAiConfirmationRequestPayload,
+): boolean {
+	if (hasItems(payload.setupRequests)) return true;
+	if (hasItems(payload.credentialRequests)) return true;
+	if (payload.domainAccess) return true;
+
+	const inputType = payload.inputType ?? 'approval';
+	switch (inputType) {
+		case 'approval':
+		case 'text':
+			return isNonEmptyString(payload.message);
+		case 'questions':
+			return hasItems(payload.questions);
+		case 'plan-review':
+			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
+		case 'resource-decision':
+			return payload.resourceDecision !== undefined;
+		default:
+			return assertNever(inputType);
+	}
+}
 
 export const statusPayloadSchema = z.object({
 	message: z.string().describe('Transient status message. Empty string clears the indicator.'),
