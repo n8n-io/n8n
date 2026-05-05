@@ -1975,6 +1975,10 @@ export class InstanceAiService {
 			createInertAbortSignal(),
 			this.runState.getThreadResearchMode(threadId),
 			action.graph.messageGroupId,
+			// Route planned-task workflow runs (build agent, checkpoint verifications)
+			// to the user's iframe session so live execution push events reach the
+			// frontend, matching the orchestrator main-run path.
+			this.threadPushRef.get(threadId),
 		);
 		environment.orchestrationContext.tracing = this.getTraceContext(action.graph.planRunId);
 
@@ -2468,7 +2472,11 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(threadId);
-			this.threadPushRef.delete(threadId);
+			// Note: don't delete threadPushRef here. Planned tasks (build agent,
+			// checkpoint verifications) dispatch later in this same finally and
+			// later still in the post-run scheduler — they need the pushRef to
+			// route execution events to the user's iframe session. The next
+			// startRun overwrites it; thread-cleanup deletes it on dispose.
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(runId, messageTraceFinalization);
@@ -2957,7 +2965,8 @@ export class InstanceAiService {
 			});
 		} finally {
 			this.runState.clearActiveRun(opts.threadId);
-			this.threadPushRef.delete(opts.threadId);
+			// See note in executeRun's finally — keep threadPushRef alive for
+			// post-run planned-task dispatch.
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(opts.runId, messageTraceFinalization);
 			}
