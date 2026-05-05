@@ -125,12 +125,12 @@ export class Publisher {
 		return result === 'OK';
 	}
 
-	async setExpiration(key: string, ttl: number) {
-		await this.client.expire(key, ttl);
-	}
-
 	async set(key: string, value: string, ttl: number) {
 		await this.client.set(key, value, 'EX', ttl);
+	}
+
+	async setExpiration(key: string, ttl: number) {
+		await this.client.expire(key, ttl);
 	}
 
 	async get(key: string) {
