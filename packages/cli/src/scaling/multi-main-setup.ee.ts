@@ -6,6 +6,7 @@ import { MultiMainMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
+import type * as LeaderElectionClientModule from '@/scaling/leader-election-client';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { RedisClientService } from '@/services/redis-client.service';
 
@@ -52,7 +53,7 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 		if (this.globalConfig.multiMainSetup.newLeaderElection) {
 			const { LeaderElectionClient } =
-				require('@/scaling/leader-election-client') as typeof import('@/scaling/leader-election-client');
+				require('@/scaling/leader-election-client') as typeof LeaderElectionClientModule;
 			const client = Container.get(LeaderElectionClient);
 			this.strategy = new MultiMainSetupV2(
 				this.logger,

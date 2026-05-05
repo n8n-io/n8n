@@ -172,7 +172,7 @@ describe('MultiMainSetup', () => {
 				LeaderElectionClient: jest.fn(),
 			}));
 
-			const { Container } = jest.requireActual('@n8n/di') as typeof import('@n8n/di');
+			const { Container } = jest.requireActual('@n8n/di');
 			Container.set(
 				jest.requireMock('@/scaling/leader-election-client').LeaderElectionClient,
 				client,
