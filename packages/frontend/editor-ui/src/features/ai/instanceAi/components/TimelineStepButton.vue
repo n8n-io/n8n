@@ -32,6 +32,8 @@ defineSlots<{
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .block {
 	max-width: 90%;
 	justify-content: flex-start;
@@ -55,27 +57,17 @@ defineSlots<{
 	line-height: normal;
 }
 
-// Shimmer animation for active section headers
 .shimmer {
+	--animation--shimmer--duration: 1.5s;
+	--animation--shimmer--background: var(--color--text--tint-1);
+	--animation--shimmer--foreground: var(--color--text--tint-2);
+
 	background: linear-gradient(
 		90deg,
 		var(--color--text--tint-1) 25%,
 		var(--color--text--tint-2) 50%,
 		var(--color--text--tint-1) 75%
 	);
-	background-size: 200% 100%;
-	-webkit-background-clip: text;
-	background-clip: text;
-	-webkit-text-fill-color: transparent;
-	animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-	0% {
-		background-position: 200% 0;
-	}
-	100% {
-		background-position: -200% 0;
-	}
+	@include motion.shimmer;
 }
 </style>

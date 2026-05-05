@@ -32,6 +32,8 @@ const {
 	finalizeBuildResult,
 	shouldRecoverSavedWorkflowAfterFailedSubmit,
 	createBuildWorkflowAgentTool,
+	buildWarmBuilderFollowUp,
+	mergeLatestVerificationIntoOutcome,
 } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../build-workflow-agent.tool') as typeof import('../build-workflow-agent.tool');
@@ -101,6 +103,77 @@ function createSpawnableContext(
 }
 
 const MAIN_PATH = '/home/daytona/workspace/src/workflow.ts';
+
+describe('buildWarmBuilderFollowUp', () => {
+	it('keeps the detached builder verification contract in warm follow-ups', () => {
+		const briefing = buildWarmBuilderFollowUp({
+			task: 'Change the Gmail recipient',
+			workflowId: 'workflow-1',
+			workItemId: 'work-item-1',
+		});
+
+		expect(briefing).toContain('<builder-follow-up type="fix">');
+		expect(briefing).toContain('Workflow ID: workflow-1');
+		expect(briefing).toContain('Do NOT stop after a successful submit without verifying');
+		expect(briefing).toContain('verify-built-workflow');
+		expect(briefing).toContain('nodes(action="explore-resources")');
+		expect(briefing).toContain('<requested-change>');
+		expect(briefing).toContain('Change the Gmail recipient');
+	});
+});
+
+describe('mergeLatestVerificationIntoOutcome', () => {
+	const baseOutcome: WorkflowBuildOutcome = {
+		workItemId: 'work-item-1',
+		taskId: 'task-1',
+		workflowId: 'workflow-1',
+		submitted: true,
+		triggerType: 'manual_or_testable',
+		needsUserInput: false,
+		summary: 'Submitted',
+	};
+
+	it('copies matching structured verification evidence into the returned outcome', () => {
+		const result = mergeLatestVerificationIntoOutcome(baseOutcome, {
+			...baseOutcome,
+			verification: {
+				attempted: true,
+				success: true,
+				executionId: 'exec-1',
+				status: 'success',
+				evidence: {
+					nodesExecuted: ['Form Trigger', 'Send Email'],
+					producedOutputRows: 2,
+				},
+				verifiedAt: '2026-04-30T12:00:00.000Z',
+			},
+		});
+
+		expect(result.verification).toMatchObject({
+			attempted: true,
+			success: true,
+			executionId: 'exec-1',
+			evidence: {
+				nodesExecuted: ['Form Trigger', 'Send Email'],
+			},
+		});
+	});
+
+	it('does not copy stale verification evidence from a different builder task', () => {
+		const result = mergeLatestVerificationIntoOutcome(baseOutcome, {
+			...baseOutcome,
+			taskId: 'previous-task',
+			verification: {
+				attempted: true,
+				success: true,
+				executionId: 'exec-old',
+				status: 'success',
+			},
+		});
+
+		expect(result.verification).toBeUndefined();
+	});
+});
 
 describe('resultFromPostStreamError', () => {
 	it('preserves the submitted workflow when the stream errors after a successful submit', () => {
