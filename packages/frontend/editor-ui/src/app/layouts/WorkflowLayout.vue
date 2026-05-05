@@ -95,7 +95,7 @@ onBeforeUnmount(() => {
 		<LoadingView v-if="isLoading" />
 		<RouterView v-else />
 		<template v-if="layoutProps.logs" #footer>
-			<LogsPanel />
+			<LogsPanel v-if="!isLoading" />
 		</template>
 		<template v-if="!isCanvasOnly" #overlays>
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />

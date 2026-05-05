@@ -23,11 +23,13 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	}),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: () => ({
-		pushRef: 'mockNdvPushRef',
-	}),
-}));
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const mockStore = { pushRef: 'mockNdvPushRef' };
+	return {
+		useNDVStore: () => mockStore,
+		injectNDVStore: () => mockStore,
+	};
+});
 
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),

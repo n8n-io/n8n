@@ -34,6 +34,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 
 vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	useNDVStore: vi.fn(),
+	injectNDVStore: vi.fn(),
 }));
 
 vi.mock('@/features/collaboration/projects/projects.store', () => ({

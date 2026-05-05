@@ -7,6 +7,9 @@ interface WorkflowNodeIssue {
 	value: string | string[];
 }
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { computed } from 'vue';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { N8nIcon } from '@n8n/design-system';
 
@@ -26,10 +29,15 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+const ndvStore = computed(() =>
+	workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null,
+);
 
 function handleEditClick() {
-	ndvStore.setActiveNodeName(props.issue.node, 'other');
+	ndvStore.value?.setActiveNodeName(props.issue.node, 'other');
 
 	emit('click');
 }

@@ -16,8 +16,10 @@ import type {
 	NodeOperationError,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { computed } from 'vue';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	executionDataToJson,
@@ -41,7 +43,12 @@ const WORKFLOW_LIST_VIEWS = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
 const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
 
 export const useAIAssistantHelpers = () => {
-	const ndvStore = useNDVStore();
+	const workflowsStore = useWorkflowsStore();
+	const ndvStore = computed(() =>
+		workflowsStore.workflowId
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null,
+	);
 	const nodeTypesStore = useNodeTypesStore();
 
 	const workflowHelpers = useWorkflowHelpers();
@@ -250,10 +257,10 @@ export const useAIAssistantHelpers = () => {
 		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = {};
 		// Only include input data if the node references it and we are allowed to send it
 		if (!options?.excludeParameterValues) {
-			const ndvInput = ndvStore.ndvInputData;
+			const ndvInput = ndvStore.value?.ndvInputData;
 			if (isNodeReferencingInputData(node) && ndvInput?.length) {
-				const inputData = ndvStore.ndvInputData[0].json;
-				const inputNodeName = ndvStore.input.nodeName;
+				const inputData = ndvInput[0].json;
+				const inputNodeName = ndvStore.value?.input.nodeName;
 				nodeInputData = {
 					inputNodeName,
 					inputData,

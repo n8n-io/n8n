@@ -178,7 +178,11 @@ export function useCanvasOperations() {
 	const credentialsStore = useCredentialsStore();
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() =>
+		workflowsStore.workflowId
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null,
+	);
 	const nodeTypesStore = useNodeTypesStore();
 	const canvasStore = useCanvasStore();
 	const settingsStore = useSettingsStore();
@@ -383,9 +387,9 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.setNodes(Object.values(workflow.nodes));
 		workflowDocumentStore.value.setConnections(workflow.connectionsBySourceNode);
 
-		const isRenamingActiveNode = ndvStore.activeNodeName === currentName;
+		const isRenamingActiveNode = ndvStore.value?.activeNodeName === currentName;
 		if (isRenamingActiveNode) {
-			ndvStore.setActiveNodeName(newName, 'other');
+			ndvStore.value?.setActiveNodeName(newName, 'other');
 		}
 
 		if (trackHistory && trackBulk) {
@@ -630,11 +634,11 @@ export function useCanvasOperations() {
 	}
 
 	function setNodeActiveByName(name: string, source: TelemetryNdvSource) {
-		ndvStore.setActiveNodeName(name, source);
+		ndvStore.value?.setActiveNodeName(name, source);
 	}
 
 	function clearNodeActive() {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value?.unsetActiveNodeName();
 	}
 
 	function setNodeParameters(id: string, parameters: Record<string, unknown>) {
@@ -923,7 +927,7 @@ export function useCanvasOperations() {
 				} else if (nextView === 'zoomed_view') {
 					experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
 				} else if (nextView === 'ndv') {
-					ndvStore.setActiveNodeName(nodeData.name, 'added_new_node');
+					ndvStore.value?.setActiveNodeName(nodeData.name, 'added_new_node');
 				}
 			}
 		});
@@ -2960,7 +2964,7 @@ export function useCanvasOperations() {
 		if (nodeId) {
 			const node = workflowDocumentStore.value.getNodeById(nodeId);
 			if (node) {
-				ndvStore.setActiveNodeName(node.name, 'other');
+				ndvStore.value?.setActiveNodeName(node.name, 'other');
 			} else {
 				toast.showError(
 					new Error(`Node with id "${nodeId}" could not be found!`),

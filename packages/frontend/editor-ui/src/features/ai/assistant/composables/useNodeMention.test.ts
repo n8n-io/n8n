@@ -17,9 +17,13 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: () => ({ activeNode: null }),
-}));
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const mockStore = { activeNode: null };
+	return {
+		useNDVStore: () => mockStore,
+		injectNDVStore: () => mockStore,
+	};
+});
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {

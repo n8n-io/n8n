@@ -24,10 +24,21 @@ import type { IPersonalizationLatestVersion } from '@n8n/rest-api-client/api/use
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { ComponentPublicInstance } from 'vue';
 import type { useWebhooksStore } from '@/app/stores/webhooks.store';
+import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
+
+// NDV-only keys are optional because NDV state is not present off-workflow.
+// We narrow to NDV-only keys (excluding webhook keys) to avoid Pinia internals
+// (`$state`, `$id`, etc.) colliding as required intersections.
+type WebhooksHookStore = ReturnType<typeof useWebhooksStore>;
+type NDVHookStore = ReturnType<typeof useNDVStore>;
+type NDVOnlyKeys = Exclude<keyof NDVHookStore, keyof WebhooksHookStore>;
+export type ExternalHookStore = WebhooksHookStore & {
+	[K in NDVOnlyKeys]?: NDVHookStore[K];
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export interface ExternalHooksMethod<T = any, R = void> {
-	(store: ReturnType<typeof useWebhooksStore>, metadata: T): R | Promise<R>;
+	(store: ExternalHookStore, metadata: T): R | Promise<R>;
 }
 
 export interface ExternalHooksGenericContext {

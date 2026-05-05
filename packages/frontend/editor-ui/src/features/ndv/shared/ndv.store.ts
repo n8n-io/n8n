@@ -28,6 +28,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { computed, ref } from 'vue';
 import type { TelemetryNdvSource } from '@/app/types/telemetry';
+import { NDVStoreKey } from '@/app/constants/injectionKeys';
+import { injectStrict } from '@/app/utils/injectStrict';
 
 export type NDVStoreId = WorkflowDocumentId;
 
@@ -487,4 +489,12 @@ export function disposeNDVStore(store: NDVStore) {
 	if (pinia) {
 		delete pinia.state.value[store.$id];
 	}
+}
+
+export function injectNDVStore(): NDVStore {
+	const storeRef = injectStrict(NDVStoreKey);
+	if (!storeRef.value) {
+		throw new Error('NDV store is not initialized for the current workflow');
+	}
+	return storeRef.value;
 }

@@ -38,9 +38,13 @@ const inputs = ref<{
 }>();
 const i18n = useI18n();
 const telemetry = useTelemetry();
-const ndvStore = useNDVStore();
 const modalBus = createEventBus();
 const workflowsStore = useWorkflowsStore();
+const ndvStore = computed(() =>
+	workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null,
+);
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
@@ -102,7 +106,7 @@ const onExecute = async () => {
 		node_type: node.value.type,
 		workflow_id: workflowsStore.workflowId,
 		source: 'from-ai-parameters-modal',
-		push_ref: ndvStore.pushRef,
+		push_ref: ndvStore.value?.pushRef,
 	};
 
 	telemetry.track('User clicked execute node button in modal', telemetryPayload);

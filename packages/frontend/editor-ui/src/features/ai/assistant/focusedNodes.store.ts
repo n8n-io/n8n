@@ -30,7 +30,11 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
 	const chatPanelStateStore = useChatPanelStateStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() =>
+		workflowsStore.workflowId
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null,
+	);
 
 	const isFeatureEnabled = computed(() => {
 		return posthogStore.isVariantEnabled(
@@ -322,7 +326,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	watch(
-		() => ndvStore.activeNode,
+		() => ndvStore.value?.activeNode,
 		(node) => {
 			if (!isFeatureEnabled.value || !chatPanelStateStore.isOpen) return;
 			if (node && !focusedNodesMap.value[node.id]) {

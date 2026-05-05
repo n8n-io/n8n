@@ -122,6 +122,32 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 
 export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;
 
+/**
+ * Build the `global.provide` object needed to render a component that calls
+ * `injectNDVStore()` (or `injectWorkflowDocumentStore()`). Pass the workflow id
+ * the test's pinia is set up around so the injected stores are workflow-scoped.
+ */
+export async function provideStoresForNDVRender(workflowId: string) {
+	const { shallowRef, computed } = await import('vue');
+	const { WorkflowDocumentStoreKey, WorkflowIdKey, NDVStoreKey } = await import(
+		'@/app/constants/injectionKeys'
+	);
+	const { useWorkflowDocumentStore, createWorkflowDocumentId } = await import(
+		'@/app/stores/workflowDocument.store'
+	);
+	const { useNDVStore } = await import('@/features/ndv/shared/ndv.store');
+
+	const documentId = createWorkflowDocumentId(workflowId);
+	const workflowDocumentStoreRef = shallowRef(useWorkflowDocumentStore(documentId));
+	const ndvStoreRef = shallowRef(useNDVStore(documentId));
+
+	return {
+		[WorkflowIdKey as unknown as string]: computed(() => workflowId),
+		[WorkflowDocumentStoreKey as symbol]: workflowDocumentStoreRef,
+		[NDVStoreKey as symbol]: ndvStoreRef,
+	};
+}
+
 export type Emitter = (event: string, ...args: unknown[]) => void;
 export type Emitters<T extends string> = Record<
 	T,

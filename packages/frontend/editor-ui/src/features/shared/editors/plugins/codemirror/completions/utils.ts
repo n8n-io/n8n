@@ -194,9 +194,10 @@ export async function hasNoParams(toResolve: string, contextNodeName?: string) {
 }
 
 export async function resolveAutocompleteExpression(expression: string, contextNodeName?: string) {
-	const ndvStore = useNDVStore();
+	const workflowId = useWorkflowsStore().workflowId;
+	const ndvStore = workflowId ? useNDVStore(createWorkflowDocumentId(workflowId)) : null;
 	const inputData =
-		contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
+		contextNodeName === undefined && ndvStore?.isInputParentOfActiveNode
 			? {
 					targetItem: ndvStore.expressionTargetItem ?? undefined,
 					inputNodeName: ndvStore.ndvInputNodeName,
@@ -223,16 +224,21 @@ export const isInHttpNodePagination = (targetNodeParameterContext?: TargetNodePa
 		nodeType = targetNodeParameterContext.nodeName;
 		path = targetNodeParameterContext.parameterPath;
 	} else {
-		const ndvStore = useNDVStore();
-		nodeType = ndvStore.activeNode?.type;
-		path = ndvStore.focusedInputPath;
+		const workflowId = useWorkflowsStore().workflowId;
+		const ndvStore = workflowId ? useNDVStore(createWorkflowDocumentId(workflowId)) : null;
+		nodeType = ndvStore?.activeNode?.type;
+		path = ndvStore?.focusedInputPath ?? '';
 	}
 
 	return nodeType === HTTP_REQUEST_NODE_TYPE && path.startsWith('parameters.options.pagination');
 };
 
 export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterContext) => {
-	if (useNDVStore().activeNode?.name !== undefined) {
+	const workflowsStore = useWorkflowsStore();
+	const ndvStore = workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null;
+	if (ndvStore?.activeNode?.name !== undefined) {
 		return true;
 	}
 
@@ -240,7 +246,6 @@ export const hasActiveNode = (targetNodeParameterContext?: TargetNodeParameterCo
 		return false;
 	}
 
-	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
@@ -262,9 +267,12 @@ export function autocompletableNodeNames(targetNodeParameterContext?: TargetNode
 	const workflowDocumentStore = useWorkflowDocumentStore(
 		createWorkflowDocumentId(workflowsStore.workflowId),
 	);
+	const ndvStore = workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null;
 	const activeNode =
 		targetNodeParameterContext === undefined
-			? useNDVStore().activeNode
+			? (ndvStore?.activeNode ?? null)
 			: workflowDocumentStore.getNodeByName(targetNodeParameterContext.nodeName);
 
 	if (!activeNode) return [];

@@ -28,7 +28,7 @@ import {
 import type { DataPinningDiscoveryEvent } from '@/app/event-bus';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '../ndv.eventBus';
-import { useNDVStore } from '../ndv.store';
+import { injectNDVStore } from '../ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -64,7 +64,7 @@ const props = withDefaults(
 	},
 );
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const externalHooks = useExternalHooks();
 const nodeHelpers = useNodeHelpers();
 const { activeNode } = storeToRefs(ndvStore);

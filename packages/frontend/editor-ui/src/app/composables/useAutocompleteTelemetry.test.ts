@@ -14,12 +14,16 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: trackSpy })),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const mockStore = {
 		activeNode: { type: 'n8n-nodes-base.test' },
 		setAutocompleteOnboarded: setAutocompleteOnboardedSpy,
-	})),
-}));
+	};
+	return {
+		useNDVStore: vi.fn(() => mockStore),
+		injectNDVStore: vi.fn(() => mockStore),
+	};
+});
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn(() => ({

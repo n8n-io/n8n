@@ -1,4 +1,6 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { unwrapExpression } from '@/app/utils/expressions';
 import { syntaxTree } from '@codemirror/language';
 import { EditorSelection, StateEffect, StateField, type Extension } from '@codemirror/state';
@@ -37,11 +39,12 @@ const drawDropCursor = ViewPlugin.fromClass(
 
 		measureReq: MeasureRequest<{ left: number; top: number; height: number } | null>;
 
-		ndvStore: ReturnType<typeof useNDVStore>;
+		ndvStore: ReturnType<typeof useNDVStore> | null;
 
 		constructor(readonly view: EditorView) {
 			this.measureReq = { read: this.readPos.bind(this), write: this.drawCursor.bind(this) };
-			this.ndvStore = useNDVStore();
+			const workflowId = useWorkflowsStore().workflowId;
+			this.ndvStore = workflowId ? useNDVStore(createWorkflowDocumentId(workflowId)) : null;
 		}
 
 		update(update: ViewUpdate) {
@@ -103,7 +106,8 @@ const drawDropCursor = ViewPlugin.fromClass(
 	{
 		eventObservers: {
 			mousemove(event) {
-				if (!this.ndvStore.isDraggableDragging || this.ndvStore.draggableType !== 'mapping') return;
+				if (!this.ndvStore?.isDraggableDragging || this.ndvStore.draggableType !== 'mapping')
+					return;
 				const pos = this.view.posAtCoords(eventToCoord(event), false);
 				this.setDropPos(pos);
 			},

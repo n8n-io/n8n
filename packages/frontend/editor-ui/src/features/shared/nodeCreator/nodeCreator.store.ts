@@ -51,7 +51,11 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() =>
+		workflowsStore.workflowId
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null,
+	);
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const telemetry = useTelemetry();
@@ -105,12 +109,12 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		creatorView?: NodeFilterType;
 		connectionIndex?: number;
 	}) {
-		const nodeName = node ?? ndvStore.activeNodeName;
+		const nodeName = node ?? ndvStore.value?.activeNodeName;
 		const nodeData = nodeName
 			? (workflowDocumentStore.value.getNodeByName(nodeName) ?? null)
 			: null;
 
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value?.unsetActiveNodeName();
 
 		setTimeout(() => {
 			if (creatorView) {
@@ -229,7 +233,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 		if (!nodeData) {
 			return;
 		}
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value?.unsetActiveNodeName();
 		const nodeType =
 			nodeTypesStore.getNodeType(nodeData?.type) ??
 			nodeTypesStore.communityNodeType(nodeData?.type)?.nodeDescription;
@@ -257,7 +261,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function openNodeCreatorForTriggerNodes(source: NodeCreatorOpenSource) {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value?.unsetActiveNodeName();
 		setSelectedView(TRIGGER_NODE_CREATOR_VIEW);
 		setNodeCreatorState({
 			source,
@@ -267,7 +271,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 	}
 
 	function openNodeCreatorForRegularNodes(source: NodeCreatorOpenSource) {
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value?.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
 		setNodeCreatorState({
 			source,
@@ -289,7 +293,7 @@ export const useNodeCreatorStore = defineStore(STORES.NODE_CREATOR, () => {
 			transformNodeType(a, actionNode.properties.displayName, 'action'),
 		);
 
-		ndvStore.unsetActiveNodeName();
+		ndvStore.value?.unsetActiveNodeName();
 		setSelectedView(REGULAR_NODE_CREATOR_VIEW);
 		setNodeCreatorState({
 			source: eventSource,

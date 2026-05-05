@@ -219,9 +219,13 @@ export async function initializeAuthenticatedFeatures(
 
 	// Initialize run data worker and load node types
 	if (window.localStorage.getItem(LOCAL_STORAGE_DATA_WORKER) === 'true') {
-		const coordinator = await import('@/app/workers');
-		await coordinator.initialize({ version: settingsStore.settings.versionCli });
-		await coordinator.loadNodeTypes(rootStore.baseUrl);
+		try {
+			const coordinator = await import('@/app/workers');
+			await coordinator.initialize({ version: settingsStore.settings.versionCli });
+			await coordinator.loadNodeTypes(rootStore.baseUrl);
+		} catch (error) {
+			console.error('Failed to initialize data worker', error);
+		}
 	}
 
 	authenticatedFeaturesInitialized = true;

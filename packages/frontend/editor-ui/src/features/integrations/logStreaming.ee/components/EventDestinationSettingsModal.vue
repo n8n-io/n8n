@@ -87,8 +87,12 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
 const workflowsStore = useWorkflowsStore();
+const ndvStore = computed(() =>
+	workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null,
+);
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
@@ -229,7 +233,7 @@ function onLabelChange(value: string) {
 
 function setupNode(options: MessageEventBusDestinationOptions) {
 	workflowDocumentStore.value.removeNode(node.value);
-	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
+	ndvStore.value?.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
 	workflowDocumentStore.value.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
@@ -340,7 +344,7 @@ function onModalClose() {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.unsetActiveNodeName();
+	ndvStore.value?.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.markStateClean();
 }

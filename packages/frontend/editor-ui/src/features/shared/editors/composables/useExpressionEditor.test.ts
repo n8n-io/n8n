@@ -17,11 +17,13 @@ vi.mock('@/app/composables/useAutocompleteTelemetry', () => ({
 	useAutocompleteTelemetry: vi.fn(),
 }));
 
-vi.mock('@/features/ndv/shared/ndv.store', () => ({
-	useNDVStore: vi.fn(() => ({
-		activeNode: { type: 'n8n-nodes-base.test' },
-	})),
-}));
+vi.mock('@/features/ndv/shared/ndv.store', () => {
+	const mockStore = { activeNode: { type: 'n8n-nodes-base.test' } };
+	return {
+		useNDVStore: vi.fn(() => mockStore),
+		injectNDVStore: vi.fn(() => mockStore),
+	};
+});
 
 vi.mock(import('../plugins/codemirror/completions/utils'), async (importOriginal) => {
 	const actual = await importOriginal();

@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useFreeAiCredits } from '@/app/composables/useFreeAiCredits';
 import { computed, ref } from 'vue';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
@@ -24,7 +26,12 @@ const NODES_WITH_OPEN_AI_API_CREDENTIAL = [
 
 const showSuccessCallout = ref(false);
 
-const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+const ndvStore = computed(() =>
+	workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null,
+);
 const i18n = useI18n();
 
 const { aiCreditsQuota, userCanClaimOpenAiCredits, claimingCredits, claimCredits } =
@@ -36,8 +43,8 @@ const isEditingOpenAiCredential = computed(
 
 const activeNodeHasOpenAiApiCredential = computed(
 	() =>
-		ndvStore.activeNode?.type &&
-		NODES_WITH_OPEN_AI_API_CREDENTIAL.includes(ndvStore.activeNode.type),
+		ndvStore.value?.activeNode?.type &&
+		NODES_WITH_OPEN_AI_API_CREDENTIAL.includes(ndvStore.value.activeNode.type),
 );
 
 const showCallout = computed(() => {

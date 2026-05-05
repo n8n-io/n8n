@@ -1,5 +1,7 @@
 import { ref, computed } from 'vue';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { Router } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
@@ -10,7 +12,12 @@ import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 
 export function useWorkflowResourcesLocator(router: Router) {
 	const workflowsListStore = useWorkflowsListStore();
-	const ndvStore = useNDVStore();
+	const workflowsStore = useWorkflowsStore();
+	const ndvStore = computed(() =>
+		workflowsStore.workflowId
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null,
+	);
 	const { renameNode } = useCanvasOperations();
 
 	const workflowsResources = ref<
@@ -103,7 +110,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 	function applyDefaultExecuteWorkflowNodeName(workflowId: NodeParameterValue) {
 		if (typeof workflowId !== 'string') return;
 
-		const nodeName = ndvStore.activeNodeName;
+		const nodeName = ndvStore.value?.activeNodeName;
 		if (
 			nodeName &&
 			(/^Execute Workflow\d*$/.test(nodeName) ||

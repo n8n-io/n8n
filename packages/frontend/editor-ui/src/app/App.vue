@@ -16,6 +16,8 @@ import { INSTANCE_AI_OPTIN_MODAL_KEY } from '@/app/constants/modals';
 import { canManageInstanceAi } from '@/features/ai/instanceAi/instanceAiPermissions';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
 import { locale } from '@n8n/design-system';
@@ -35,7 +37,12 @@ import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.sto
 const route = useRoute();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const ndvStore = useNDVStore();
+const workflowsStore = useWorkflowsStore();
+const ndvStore = computed(() =>
+	workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null,
+);
 const uiStore = useUIStore();
 const { setAppZIndexes } = useStyles();
 const { toastBottomOffset, toastRightOffset, askAiFloatingButtonBottomOffset } =
@@ -64,7 +71,7 @@ const currentWorkflowDocumentStore = shallowRef<ReturnType<typeof useWorkflowDoc
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
 
-useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSource) });
+useTelemetryContext({ ndv_source: computed(() => ndvStore.value?.lastSetActiveNodeSource) });
 
 onMounted(async () => {
 	setAppZIndexes();

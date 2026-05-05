@@ -762,7 +762,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function activeNode(): INodeUi | null {
 		// kept here for FE hooks
-		const ndvStore = useNDVStore();
+		if (!workflowId.value) return null;
+		const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId.value));
 		return ndvStore.activeNode;
 	}
 

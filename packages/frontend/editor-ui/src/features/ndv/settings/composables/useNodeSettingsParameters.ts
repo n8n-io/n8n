@@ -62,6 +62,11 @@ export function useNodeSettingsParameters() {
 	const workflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 	);
+	const ndvStore = computed(() =>
+		workflowsStore.workflowId
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null,
+	);
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
@@ -175,7 +180,6 @@ export function useNodeSettingsParameters() {
 	function handleFocus(node: INodeUi | undefined, path: string, parameter: INodeProperties) {
 		if (!node) return;
 
-		const ndvStore = useNDVStore();
 		const focusPanelStore = useFocusPanelStore();
 
 		focusPanelStore.openWithFocusedNodeParameter({
@@ -184,9 +188,9 @@ export function useNodeSettingsParameters() {
 			parameter,
 		});
 
-		if (ndvStore.activeNode) {
-			ndvStore.unsetActiveNodeName();
-			ndvStore.resetNDVPushRef();
+		if (ndvStore.value?.activeNode) {
+			ndvStore.value.unsetActiveNodeName();
+			ndvStore.value.resetNDVPushRef();
 		}
 	}
 

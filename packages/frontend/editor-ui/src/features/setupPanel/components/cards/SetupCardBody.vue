@@ -59,7 +59,11 @@ const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
 );
-const ndvStore = useNDVStore();
+const ndvStore = computed(() =>
+	workflowsStore.workflowId
+		? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+		: null,
+);
 
 const nodeType = computed(() =>
 	nodeTypesStore.getNodeType(props.state.node.type, props.state.node.typeVersion),
@@ -121,7 +125,7 @@ const nodeNames = computed(() => (props.state.allNodesUsingCredential ?? []).map
 const nodeNamesTooltip = computed(() => nodeNames.value.join(', '));
 
 const openNdv = () => {
-	ndvStore.setActiveNodeName(props.state.node.name, 'other');
+	ndvStore.value?.setActiveNodeName(props.state.node.name, 'other');
 };
 
 // Hide parameter issues until the user interacts with a parameter.

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import type { INodeUi, IRunDataDisplayMode, ITableData } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { getMappedExpression } from '@/app/utils/mappingUtils';
@@ -76,7 +76,7 @@ const columnLimitExceeded = ref(false);
 const draggableRef = ref<DraggableRef>();
 const fixedColumnWidths = ref<number[] | undefined>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 

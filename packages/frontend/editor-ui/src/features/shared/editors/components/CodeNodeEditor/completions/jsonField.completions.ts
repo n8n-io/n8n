@@ -5,12 +5,20 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import {
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { computed } from 'vue';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
-	const ndvStore = useNDVStore();
 	const workflowsStore = useWorkflowsStore();
+	const ndvStore = computed(() =>
+		workflowsStore.workflowId
+			? useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId))
+			: null,
+	);
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	/**
@@ -174,7 +182,7 @@ function useJsonFieldCompletions() {
 
 	const getInputNodeName = (): string | null => {
 		try {
-			const activeNode = ndvStore.activeNode;
+			const activeNode = ndvStore.value?.activeNode;
 			if (activeNode) {
 				const input = (workflowDocumentStore?.value?.connectionsByDestinationNode ?? {})[
 					activeNode.name

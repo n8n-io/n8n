@@ -28,4 +28,24 @@ describe('ndv.store', () => {
 		expect(recreatedNDVStore).not.toBe(ndvStore);
 		expect(recreatedNDVStore.activeNodeName).toBeNull();
 	});
+
+	it('keeps state isolated between stores keyed by different workflow ids', () => {
+		const storeA = useNDVStore(createWorkflowDocumentId('workflow-a'));
+		const storeB = useNDVStore(createWorkflowDocumentId('workflow-b'));
+
+		storeA.setActiveNodeName('Node from A', 'other');
+		storeA.draggableStartDragging('mapping', 'value-from-a');
+
+		expect(storeA.activeNodeName).toBe('Node from A');
+		expect(storeA.draggable.isDragging).toBe(true);
+		expect(storeA.draggable.data).toBe('value-from-a');
+
+		expect(storeB.activeNodeName).toBeNull();
+		expect(storeB.draggable.isDragging).toBe(false);
+		expect(storeB.draggable.data).toBe('');
+
+		storeB.setActiveNodeName('Node from B', 'other');
+		expect(storeA.activeNodeName).toBe('Node from A');
+		expect(storeB.activeNodeName).toBe('Node from B');
+	});
 });

@@ -22,8 +22,10 @@ export type TextareaRowData = {
 };
 
 export function getParentNodes() {
-	const activeNode = useNDVStore().activeNode;
 	const { workflowId } = useWorkflowsStore();
+	if (!workflowId) return [];
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
+	const activeNode = ndvStore.activeNode;
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
 	if (!activeNode) return [];
@@ -188,12 +190,14 @@ export function reducePayloadSizeOrThrow(
 export async function generateCodeForAiTransform(prompt: string, path: string, retries = 1) {
 	const schemas = getSchemas();
 
+	const { workflowId } = useWorkflowsStore();
+	const ndvStore = workflowId ? useNDVStore(createWorkflowDocumentId(workflowId)) : null;
 	const payload: AskAiRequest.RequestPayload = {
 		question: prompt,
 		context: {
 			schema: schemas.parentNodesSchemas,
 			inputSchema: schemas.inputSchema!,
-			ndvPushRef: useNDVStore().pushRef,
+			ndvPushRef: ndvStore?.pushRef ?? '',
 			pushRef: useRootStore().pushRef,
 		},
 		forNode: 'transform',

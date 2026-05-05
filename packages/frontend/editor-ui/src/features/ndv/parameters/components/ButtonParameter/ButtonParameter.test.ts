@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createTestingPinia } from '@pinia/testing';
 import ButtonParameter, { type Props } from './ButtonParameter.vue';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -61,11 +61,13 @@ describe('ButtonParameter', () => {
 	};
 
 	beforeEach(() => {
-		vi.mocked(useNDVStore).mockReturnValue({
+		const ndvMock = {
 			ndvInputData: [{}],
 			activeNode: { name: 'TestNode', parameters: {} },
 			isDraggableDragging: false,
-		} as any);
+		} as any;
+		vi.mocked(useNDVStore).mockReturnValue(ndvMock);
+		vi.mocked(injectNDVStore).mockReturnValue(ndvMock);
 
 		vi.mocked(useWorkflowsStore).mockReturnValue({
 			workflowId: 'test-workflow-id',
@@ -114,9 +116,9 @@ describe('ButtonParameter', () => {
 	});
 
 	it('disables submit button when there is no execution data', async () => {
-		vi.mocked(useNDVStore).mockReturnValue({
-			ndvInputData: [],
-		} as any);
+		const ndvMock = { ndvInputData: [] } as any;
+		vi.mocked(useNDVStore).mockReturnValue(ndvMock);
+		vi.mocked(injectNDVStore).mockReturnValue(ndvMock);
 		const wrapper = mountComponent();
 		expect(wrapper.find('button').attributes('disabled')).toBeDefined();
 	});
