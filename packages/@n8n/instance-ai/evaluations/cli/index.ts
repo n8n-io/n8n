@@ -25,6 +25,7 @@ import { expandWithIterations, partitionRoundRobin } from './lanes';
 import { N8nClient } from '../clients/n8n-client';
 import {
 	compareBuckets,
+	type ComparisonOutcome,
 	type ComparisonResult,
 	type ExperimentBucket,
 	type ScenarioCounts,
@@ -51,6 +52,7 @@ import type {
 	MultiRunEvaluation,
 	ScenarioResult,
 	TestScenario,
+	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
 
@@ -169,14 +171,16 @@ async function main(): Promise<void> {
 
 		let evaluation: MultiRunEvaluation;
 		let experimentName: string | undefined;
-		let comparison: ComparisonResult | undefined;
+		let outcome: ComparisonOutcome | undefined;
+		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
 			const langsmithRun = await runWithLangSmith({ args, lanes, logger });
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
-			comparison = langsmithRun.comparison;
+			outcome = langsmithRun.outcome;
+			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
 			logger.info('No LANGSMITH_API_KEY, running direct loop (results in eval-results.json only)');
 			evaluation = await runDirectLoop({ args, lanes, logger });
@@ -189,14 +193,17 @@ async function main(): Promise<void> {
 			totalDuration,
 			args.outputDir,
 			experimentName,
-			comparison,
+			outcome,
 			commitSha,
+			slugByTestCase,
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
 		const htmlPath = writeWorkflowReport(flattenRunsForReport(evaluation));
 		console.log(`Report:     ${htmlPath}`);
-		console.log('\n' + formatComparisonTerminal(evaluation, comparison, { commitSha }));
+		console.log(
+			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase }),
+		);
 	} finally {
 		await Promise.all(
 			lanes.map(async (lane) => {
@@ -213,7 +220,8 @@ async function main(): Promise<void> {
 async function runWithLangSmith(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	experimentName: string;
-	comparison?: ComparisonResult;
+	outcome: ComparisonOutcome;
+	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
 	const { args, lanes, logger } = config;
 
@@ -492,7 +500,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			logger,
 		});
 
-		const comparison = await tryRunComparison({
+		const outcome = await tryRunComparison({
 			lsClient,
 			prExperimentName: experimentResults.experimentName,
 			evaluation,
@@ -500,10 +508,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			logger,
 		});
 
+		const slugByTestCase = new Map<WorkflowTestCase, string>(
+			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
+		);
+
 		return {
 			evaluation,
 			experimentName: experimentResults.experimentName,
-			comparison,
+			outcome,
+			slugByTestCase,
 		};
 	} finally {
 		if (!args.keepWorkflows) {
@@ -866,11 +879,14 @@ function writeEvalResults(
 	duration: number,
 	outputDir: string | undefined,
 	experimentName: string | undefined,
-	comparison: ComparisonResult | undefined,
+	outcome: ComparisonOutcome | undefined,
 	commitSha: string | undefined,
+	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
+
+	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const report = {
 		timestamp: new Date().toISOString(),
@@ -887,13 +903,17 @@ function writeEvalResults(
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
-		// they want without re-running the eval.
-		comparison: comparison
+		// they want without re-running the eval. `comparisonStatus` records why
+		// the comparison was skipped when applicable, so JSON consumers can
+		// distinguish "no baseline yet" from "regression detection broke".
+		comparison: result
 			? {
-					baseline: comparison.baseline.experimentName,
-					result: serializeComparison(comparison),
+					baseline: result.baseline.experimentName,
+					result: serializeComparison(result),
 				}
 			: undefined,
+		comparisonStatus: outcome?.kind ?? 'not_attempted',
+		comparisonError: outcome?.kind === 'fetch_failed' ? outcome.error : undefined,
 		testCases: testCases.map((tc) => ({
 			name: tc.testCase.prompt.slice(0, 70),
 			buildSuccessCount: tc.buildSuccessCount,
@@ -926,7 +946,10 @@ function writeEvalResults(
 	// both with-comparison and no-baseline cases. CI consumes this file
 	// directly; local users get a copy-pasteable artifact.
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
-	writeFileSync(prCommentPath, formatComparisonMarkdown(evaluation, comparison, { commitSha }));
+	writeFileSync(
+		prCommentPath,
+		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase }),
+	);
 
 	return { jsonPath, prCommentPath };
 }
@@ -960,12 +983,10 @@ function serializeComparison(result: ComparisonResult): {
 // ---------------------------------------------------------------------------
 
 /**
- * Best-effort comparison. Logs and returns undefined on any failure so the
- * eval run never fails because of an advisory comparison.
- *
- * Skipped silently when no baseline experiment exists yet, or when the
- * latest baseline IS the current run (we just refreshed it; nothing to
- * compare to).
+ * Best-effort comparison. Returns a tagged outcome so the PR comment can
+ * distinguish "no baseline yet" / "this run IS the baseline" from a real
+ * regression-detection outage (LangSmith down, fetch failure). Never throws
+ * — the eval run is not gated on the comparison.
  */
 async function tryRunComparison(config: {
 	lsClient: Client;
@@ -973,7 +994,7 @@ async function tryRunComparison(config: {
 	evaluation: MultiRunEvaluation;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
 	logger: EvalLogger;
-}): Promise<ComparisonResult | undefined> {
+}): Promise<ComparisonOutcome> {
 	const { lsClient, prExperimentName, evaluation, testCasesWithFiles, logger } = config;
 
 	try {
@@ -983,21 +1004,21 @@ async function tryRunComparison(config: {
 				'No baseline experiment found — skipping comparison. ' +
 					'Run with --experiment-name instance-ai-baseline to create one.',
 			);
-			return undefined;
+			return { kind: 'no_baseline' };
 		}
 		if (baselineName === prExperimentName) {
 			logger.verbose('Current run is the baseline — skipping comparison.');
-			return undefined;
+			return { kind: 'self_baseline', experimentName: baselineName };
 		}
 
 		logger.info(`Comparing against baseline: ${baselineName}`);
 		const baseline = await fetchBaselineBucket(lsClient, baselineName);
 		const pr = bucketFromEvaluation(evaluation, testCasesWithFiles, prExperimentName);
-		return compareBuckets(pr, baseline);
+		return { kind: 'ok', result: compareBuckets(pr, baseline) };
 	} catch (error: unknown) {
 		const msg = error instanceof Error ? error.message : String(error);
 		logger.warn(`Comparison vs baseline failed: ${msg}`);
-		return undefined;
+		return { kind: 'fetch_failed', error: msg };
 	}
 }
 

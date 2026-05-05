@@ -3,7 +3,11 @@
 // (aligned plain text). Both formats are driven by:
 //
 //   - MultiRunEvaluation — pass rates, build counts, per-trial reasoning
-//   - ComparisonResult (optional) — verdicts vs the LangSmith baseline
+//   - ComparisonOutcome (optional) — tagged result of the baseline
+//     comparison: `ok` (ran, has scenarios), `no_baseline` (skipped), or
+//     `fetch_failed` / `self_baseline` (skipped for cause). Each kind
+//     drives a distinct top-of-comment alert so a LangSmith outage doesn't
+//     get dressed up as "no baseline configured".
 //
 // When no comparison is available (no baseline yet, LangSmith offline)
 // the renderers still produce a useful per-test-case summary. When a
@@ -17,15 +21,22 @@ import {
 	improvements,
 	softRegressions,
 	watchList,
+	type ComparisonOutcome,
 	type ComparisonResult,
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
-import type { MultiRunEvaluation, WorkflowTestCaseResult } from '../types';
+import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
 
 interface FormatOptions {
 	/** Optional commit SHA to include in the heading. Truncated to 8 chars. */
 	commitSha?: string;
+	/** Maps each test-case reference to its file slug. When provided, the
+	 *  per-scenario failure breakdown looks up failed runs by
+	 *  `${fileSlug}/${scenarioName}` — deterministic across collisions like
+	 *  multiple `happy-path` scenarios. When omitted, the breakdown is
+	 *  skipped (no name-only fallback — that lookup was wrong on real data). */
+	slugByTestCase?: Map<WorkflowTestCase, string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,14 +45,15 @@ interface FormatOptions {
 
 export function formatComparisonMarkdown(
 	evaluation: MultiRunEvaluation,
-	comparison?: ComparisonResult,
+	outcome?: ComparisonOutcome,
 	options: FormatOptions = {},
 ): string {
 	const lines: string[] = [];
+	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	lines.push(formatHeading(options.commitSha));
 	lines.push('');
-	lines.push(formatTopAlert(evaluation, comparison));
+	lines.push(formatTopAlert(outcome));
 	lines.push('');
 	lines.push(formatAggregateBlock(evaluation, comparison));
 	lines.push('');
@@ -56,8 +68,11 @@ export function formatComparisonMarkdown(
 
 		// Built once and reused across the regression-tier sections so each
 		// scenario row can carry a collapsible breakdown of its failed PR runs.
-		// Improvements skip the breakdown — they passed.
-		const failedIndex = buildFailedRunsIndex(evaluation);
+		// Improvements skip the breakdown — they passed. Skipped entirely when
+		// the caller didn't pass a slug map (lookup would be ambiguous).
+		const failedIndex = options.slugByTestCase
+			? buildFailedRunsIndex(evaluation, options.slugByTestCase)
+			: undefined;
 
 		if (hard.length > 0) {
 			lines.push(
@@ -111,7 +126,7 @@ export function formatComparisonMarkdown(
 		if (otherFindings.length > 0) lines.push(...otherFindings);
 	}
 
-	const failureDetails = renderFailureDetails(evaluation, comparison);
+	const failureDetails = renderFailureDetails(evaluation, options.slugByTestCase);
 	if (failureDetails.length > 0) lines.push(...failureDetails);
 
 	return lines.join('\n');
@@ -122,14 +137,33 @@ function formatHeading(commitSha?: string): string {
 	return `### Instance AI Workflow Eval${sha}`;
 }
 
-function formatTopAlert(_evaluation: MultiRunEvaluation, comparison?: ComparisonResult): string {
-	if (!comparison) {
+function formatTopAlert(outcome?: ComparisonOutcome): string {
+	if (!outcome) {
+		return ['> [!NOTE]', '> No baseline comparison ran (LangSmith disabled for this run).'].join(
+			'\n',
+		);
+	}
+
+	if (outcome.kind === 'no_baseline') {
 		return [
 			'> [!NOTE]',
 			'> No baseline configured — comparison skipped. Run the eval with `--experiment-name instance-ai-baseline` on master to create one.',
 		].join('\n');
 	}
+	if (outcome.kind === 'self_baseline') {
+		return [
+			'> [!NOTE]',
+			`> This run is the baseline (\`${outcome.experimentName}\`) — nothing to compare against.`,
+		].join('\n');
+	}
+	if (outcome.kind === 'fetch_failed') {
+		return [
+			'> [!WARNING]',
+			`> Regression detection did not run — baseline fetch failed: ${outcome.error}`,
+		].join('\n');
+	}
 
+	const comparison = outcome.result;
 	const hard = hardRegressions(comparison).length;
 	const soft = softRegressions(comparison).length;
 	const watch = watchList(comparison).length;
@@ -217,7 +251,7 @@ function renderScenarioSection(
 	subtitle: string,
 	scenarios: ScenarioComparison[],
 	withPValue: boolean,
-	failedIndex?: FailedScenarioEntry[],
+	failedIndex?: FailedRunsBySlug,
 ): string[] {
 	const lines: string[] = [];
 	const headingLine = subtitle
@@ -252,7 +286,7 @@ function renderScenarioSection(
 	// hunting through a separate "Failure details" section.
 	if (failedIndex) {
 		for (const s of scenarios) {
-			const failedRuns = findFailedRunsForScenario(failedIndex, s.testCaseFile, s.scenarioName);
+			const failedRuns = failedIndex.get(`${s.testCaseFile}/${s.scenarioName}`) ?? [];
 			if (failedRuns.length === 0) continue;
 			lines.push(...renderScenarioFailureBreakdown(s, failedRuns));
 		}
@@ -414,35 +448,31 @@ function renderOtherFindings(comparison: ComparisonResult): string[] {
 
 function renderFailureDetails(
 	evaluation: MultiRunEvaluation,
-	comparison?: ComparisonResult,
+	slugByTestCase?: Map<WorkflowTestCase, string>,
 ): string[] {
 	const failed: Array<{
 		tc: WorkflowTestCaseResult;
+		fileSlug: string | undefined;
 		scenarioName: string;
 		failedRuns: Array<{ category?: string; reasoning: string }>;
 	}> = [];
 	for (const tc of evaluation.testCases) {
+		const fileSlug = slugByTestCase?.get(tc.testCase);
 		for (const sa of tc.scenarios) {
 			const failedRuns = sa.runs
 				.filter((r) => !r.success)
 				.map((r) => ({ category: r.failureCategory, reasoning: r.reasoning }));
 			if (failedRuns.length > 0) {
-				failed.push({ tc: tc.runs[0], scenarioName: sa.scenario.name, failedRuns });
+				failed.push({ tc: tc.runs[0], fileSlug, scenarioName: sa.scenario.name, failedRuns });
 			}
 		}
 	}
 	if (failed.length === 0) return [];
 
-	// Build a scenarioName -> testCaseFile lookup so each block can be headed
-	// with the same `file/scenario` slug used in the regression tables. Lets
-	// readers ctrl-F from a flagged row straight to its details.
-	const scenarioToFile = buildScenarioToFileMap(comparison);
-
 	const lines: string[] = [];
 	lines.push('<details><summary>Failure details</summary>');
 	lines.push('');
-	for (const { tc, scenarioName, failedRuns } of failed) {
-		const fileSlug = scenarioToFile.get(scenarioName);
+	for (const { tc, fileSlug, scenarioName, failedRuns } of failed) {
 		const slug = fileSlug
 			? `${fileSlug}/${scenarioName}`
 			: `${tc.testCase.prompt.slice(0, 50).trim()} / ${scenarioName}`;
@@ -463,12 +493,12 @@ function renderFailureDetails(
 // ---------------------------------------------------------------------------
 //
 // The comparison carries per-scenario counts (passed / total) but not the
-// underlying reasoning text. The MultiRunEvaluation has the reasoning, but
-// keys testCases by reference identity rather than the `testCaseFile` slug
-// used in the comparison. We bridge the two here without modifying types or
-// the CLI: index failed runs by scenarioName, then disambiguate against the
-// testCaseFile slug when the same scenarioName appears under multiple files
-// (e.g. several test cases each defining a `happy-path`).
+// underlying reasoning text. The evaluation has the reasoning, but keys
+// testCases by reference identity — not by the `testCaseFile` slug used in
+// the comparison. The slug map (built in cli/index.ts where the file slugs
+// are first known) bridges the two so the lookup is deterministic. Without
+// it we'd have to disambiguate by scenarioName alone, which collides on
+// reused names (`happy-path` shows up across most workflows).
 
 interface FailedRunDetail {
 	category?: string;
@@ -476,15 +506,16 @@ interface FailedRunDetail {
 	runIndex: number; // 1-based for display
 }
 
-interface FailedScenarioEntry {
-	scenarioName: string;
-	testCasePrompt: string;
-	failedRuns: FailedRunDetail[];
-}
+type FailedRunsBySlug = Map<string, FailedRunDetail[]>;
 
-function buildFailedRunsIndex(evaluation: MultiRunEvaluation): FailedScenarioEntry[] {
-	const entries: FailedScenarioEntry[] = [];
+function buildFailedRunsIndex(
+	evaluation: MultiRunEvaluation,
+	slugByTestCase: Map<WorkflowTestCase, string>,
+): FailedRunsBySlug {
+	const map: FailedRunsBySlug = new Map();
 	for (const tc of evaluation.testCases) {
+		const fileSlug = slugByTestCase.get(tc.testCase);
+		if (!fileSlug) continue; // testCase not in the slug map — skip rather than misattribute
 		for (const sa of tc.scenarios) {
 			const failedRuns: FailedRunDetail[] = [];
 			sa.runs.forEach((r, i) => {
@@ -497,40 +528,11 @@ function buildFailedRunsIndex(evaluation: MultiRunEvaluation): FailedScenarioEnt
 				}
 			});
 			if (failedRuns.length > 0) {
-				entries.push({
-					scenarioName: sa.scenario.name,
-					testCasePrompt: tc.testCase.prompt,
-					failedRuns,
-				});
+				map.set(`${fileSlug}/${sa.scenario.name}`, failedRuns);
 			}
 		}
 	}
-	return entries;
-}
-
-function findFailedRunsForScenario(
-	index: FailedScenarioEntry[],
-	testCaseFile: string,
-	scenarioName: string,
-): FailedRunDetail[] {
-	const candidates = index.filter((e) => e.scenarioName === scenarioName);
-	if (candidates.length === 0) return [];
-	if (candidates.length === 1) return candidates[0].failedRuns;
-	// Multiple test cases share this scenario name. Score each candidate by
-	// how many slug words appear in its prompt; pick the top scorer. Falls
-	// back to the first candidate if no slug words match anything.
-	const slugWords = testCaseFile.split(/[-_]/).filter((w) => w.length > 2);
-	let best = candidates[0];
-	let bestScore = -1;
-	for (const c of candidates) {
-		const lower = c.testCasePrompt.toLowerCase();
-		const score = slugWords.reduce((acc, w) => acc + (lower.includes(w) ? 1 : 0), 0);
-		if (score > bestScore) {
-			best = c;
-			bestScore = score;
-		}
-	}
-	return best.failedRuns;
+	return map;
 }
 
 function summarizeCategories(failedRuns: FailedRunDetail[]): string | undefined {
@@ -543,16 +545,6 @@ function summarizeCategories(failedRuns: FailedRunDetail[]): string | undefined 
 		.sort((a, b) => b[1] - a[1])
 		.map(([cat, n]) => `${n}× ${cat}`)
 		.join(', ');
-}
-
-function buildScenarioToFileMap(comparison?: ComparisonResult): Map<string, string> {
-	const map = new Map<string, string>();
-	if (!comparison) return map;
-	for (const s of comparison.scenarios) map.set(s.scenarioName, s.testCaseFile);
-	for (const s of comparison.prOnly) {
-		if (!map.has(s.scenarioName)) map.set(s.scenarioName, s.testCaseFile);
-	}
-	return map;
 }
 
 // ---------------------------------------------------------------------------
@@ -612,17 +604,18 @@ const TERMINAL_TABLE_INDENT = '    ';
 
 export function formatComparisonTerminal(
 	evaluation: MultiRunEvaluation,
-	comparison?: ComparisonResult,
+	outcome?: ComparisonOutcome,
 	options: FormatOptions = {},
 ): string {
 	const lines: string[] = [];
+	const comparison = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const titleSuffix = options.commitSha ? ` — ${options.commitSha.slice(0, 8)}` : '';
 	const title = `Instance AI Workflow Eval${titleSuffix}`;
 	lines.push(title);
 	lines.push('═'.repeat(title.length));
 
-	lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(comparison));
+	lines.push(TERMINAL_INDENT + formatTerminalVerdictLine(outcome));
 	lines.push('');
 
 	lines.push(...formatTerminalAggregate(evaluation, comparison));
@@ -690,9 +683,19 @@ export function formatComparisonTerminal(
 	return lines.join('\n');
 }
 
-function formatTerminalVerdictLine(comparison?: ComparisonResult): string {
-	if (!comparison) return '▶ No baseline configured — comparison skipped.';
+function formatTerminalVerdictLine(outcome?: ComparisonOutcome): string {
+	if (!outcome) return '▶ No baseline comparison ran (LangSmith disabled).';
+	if (outcome.kind === 'no_baseline') {
+		return '▶ No baseline configured — comparison skipped.';
+	}
+	if (outcome.kind === 'self_baseline') {
+		return `▶ This run is the baseline (${outcome.experimentName}) — nothing to compare.`;
+	}
+	if (outcome.kind === 'fetch_failed') {
+		return `▶ Regression detection did not run — baseline fetch failed: ${outcome.error}`;
+	}
 
+	const comparison = outcome.result;
 	const hard = hardRegressions(comparison).length;
 	const soft = softRegressions(comparison).length;
 	const watch = watchList(comparison).length;

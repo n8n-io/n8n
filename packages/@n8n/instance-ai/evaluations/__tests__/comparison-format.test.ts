@@ -1,6 +1,20 @@
-import { compareBuckets, type ExperimentBucket, type ScenarioCounts } from '../comparison/compare';
+import {
+	compareBuckets,
+	type ComparisonOutcome,
+	type ComparisonResult,
+	type ExperimentBucket,
+	type ScenarioCounts,
+} from '../comparison/compare';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
 import type { MultiRunEvaluation, WorkflowTestCase, ScenarioResult } from '../types';
+
+function ok(result: ComparisonResult): ComparisonOutcome {
+	return { kind: 'ok', result };
+}
+
+function slugMap(evaluation: MultiRunEvaluation, slugs: string[]): Map<WorkflowTestCase, string> {
+	return new Map(evaluation.testCases.map((tc, i) => [tc.testCase, slugs[i] ?? 'unknown']));
+}
 
 function bucket(name: string, scenarios: ScenarioCounts[]): ExperimentBucket {
 	return {
@@ -92,7 +106,7 @@ describe('formatComparisonMarkdown', () => {
 	it('renders heading, alert, aggregate, and a regression table', () => {
 		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
 		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
 
 		expect(md).toMatch(/### Instance AI Workflow Eval/);
 		expect(md).toMatch(/> \[!CAUTION\]/);
@@ -107,7 +121,7 @@ describe('formatComparisonMarkdown', () => {
 	it('uses TIP alert when there are only improvements', () => {
 		const pr = bucket('pr', [s('a', 'happy', 3, 3)]);
 		const base = bucket('master', [s('a', 'happy', 0, 10)]);
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
 
 		expect(md).toMatch(/> \[!TIP\]/);
 		expect(md).toMatch(/1 improvement/);
@@ -118,7 +132,7 @@ describe('formatComparisonMarkdown', () => {
 	it('uses TIP alert with "0 regressions" when everything is stable', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10)]);
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
 
 		expect(md).toMatch(/> \[!TIP\]/);
 		expect(md).toMatch(/0 regressions/);
@@ -126,17 +140,40 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).not.toMatch(/#### Regressions/);
 	});
 
-	it('renders no-baseline NOTE when comparison is undefined', () => {
+	it('renders LangSmith-disabled NOTE when outcome is undefined', () => {
 		const md = formatComparisonMarkdown(evalFixture);
 		expect(md).toMatch(/> \[!NOTE\]/);
-		expect(md).toMatch(/No baseline configured/);
+		expect(md).toMatch(/LangSmith disabled/);
 		expect(md).not.toMatch(/#### Regressions/);
+	});
+
+	it('renders distinct alerts per skip reason', () => {
+		const noBase = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
+		expect(noBase).toMatch(/> \[!NOTE\]/);
+		expect(noBase).toMatch(/No baseline configured/);
+
+		const selfBase = formatComparisonMarkdown(evalFixture, {
+			kind: 'self_baseline',
+			experimentName: 'instance-ai-baseline-abc',
+		});
+		expect(selfBase).toMatch(/> \[!NOTE\]/);
+		expect(selfBase).toMatch(/This run is the baseline/);
+		expect(selfBase).toMatch(/instance-ai-baseline-abc/);
+
+		const fetchFail = formatComparisonMarkdown(evalFixture, {
+			kind: 'fetch_failed',
+			error: 'LangSmith 503',
+		});
+		// fetch_failed is a real outage, not a benign skip — must be a WARNING.
+		expect(fetchFail).toMatch(/> \[!WARNING\]/);
+		expect(fetchFail).toMatch(/Regression detection did not run/);
+		expect(fetchFail).toMatch(/LangSmith 503/);
 	});
 
 	it('shows mixed-case alert when both regressions and improvements exist', () => {
 		const pr = bucket('pr', [s('a', 'happy', 0, 3), s('b', 'happy', 3, 3)]);
 		const base = bucket('master', [s('a', 'happy', 10, 10), s('b', 'happy', 0, 10)]);
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
 		expect(md).toMatch(/> \[!CAUTION\]/);
 		expect(md).toMatch(/1 regression/);
 		expect(md).toMatch(/1 improvement/);
@@ -147,7 +184,7 @@ describe('formatComparisonMarkdown', () => {
 	it('embeds commit SHA in heading when provided', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10)]);
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base), {
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)), {
 			commitSha: 'abc1234567890def',
 		});
 		expect(md).toMatch(/### Instance AI Workflow Eval — `abc12345`/);
@@ -166,7 +203,7 @@ describe('formatComparisonMarkdown', () => {
 			failureCategoryTotals: { framework_issue: 0 },
 			trialTotal: 290,
 		};
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
 		expect(md).toMatch(/#### Failure breakdown/);
 		expect(md).toMatch(/`framework_issue` 🆕/);
 		expect(md).toMatch(/\*\*notable\*\*/);
@@ -175,7 +212,7 @@ describe('formatComparisonMarkdown', () => {
 	it('always includes all five tier counts in the alert line', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10)]);
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
 		expect(md).toMatch(/0 regressions, 0 soft, 0 notable, 0 improvements, 1 stable/);
 	});
 
@@ -199,7 +236,9 @@ describe('formatComparisonMarkdown', () => {
 		});
 		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
 		const base = bucket('master', [s('a', 'happy', 10, 10)]);
-		const md = formatComparisonMarkdown(evalWithFailures, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalWithFailures, ok(compareBuckets(pr, base)), {
+			slugByTestCase: slugMap(evalWithFailures, ['a']),
+		});
 
 		expect(md).toMatch(/#### Regressions \(1\)/);
 		// The regression row's collapsible should appear inside the Regressions
@@ -233,10 +272,105 @@ describe('formatComparisonMarkdown', () => {
 		});
 		const pr = bucket('pr', [s('cross-team-linear-report', 'no-cross-team-issues', 0, 3)]);
 		const base = bucket('master', [s('cross-team-linear-report', 'no-cross-team-issues', 10, 10)]);
-		const md = formatComparisonMarkdown(evalWithFailures, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalWithFailures, ok(compareBuckets(pr, base)), {
+			slugByTestCase: slugMap(evalWithFailures, ['cross-team-linear-report']),
+		});
 
 		expect(md).toMatch(/<summary>Failure details<\/summary>/);
 		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — 3 failed/);
+	});
+
+	it('attaches per-scenario failures to the right file slug when names collide', () => {
+		// Two test cases each defining `happy-path`. Without the slug map,
+		// the renderer would conflate them — Albert's review flagged this
+		// exact bug. With the map, each row's collapsible carries only that
+		// row's failures.
+		const evalWithFailures = evaluation({
+			totalRuns: 3,
+			testCases: [
+				{
+					prompt: 'cross-team prompt',
+					scenarios: [
+						{
+							name: 'happy-path',
+							passCount: 0,
+							passes: [false, false, false],
+							reasoning: 'Linear node misconfigured',
+							failureCategory: 'builder_issue',
+						},
+					],
+				},
+				{
+					prompt: 'weather prompt',
+					scenarios: [
+						{
+							name: 'happy-path',
+							passCount: 0,
+							passes: [false, false, false],
+							reasoning: 'Weather mock returned empty',
+							failureCategory: 'mock_issue',
+						},
+					],
+				},
+			],
+		});
+		const pr = bucket('pr', [
+			s('cross-team-linear-report', 'happy-path', 0, 3),
+			s('weather-monitoring', 'happy-path', 0, 3),
+		]);
+		const base = bucket('master', [
+			s('cross-team-linear-report', 'happy-path', 10, 10),
+			s('weather-monitoring', 'happy-path', 10, 10),
+		]);
+		const md = formatComparisonMarkdown(evalWithFailures, ok(compareBuckets(pr, base)), {
+			slugByTestCase: slugMap(evalWithFailures, ['cross-team-linear-report', 'weather-monitoring']),
+		});
+
+		// Each per-scenario collapsible (under the regression table) must show
+		// ONLY its own failures. Slice each block at its closing </details>.
+		function collapsibleFor(slug: string): string {
+			const open = md.indexOf(`<code>${slug}</code>`);
+			expect(open).toBeGreaterThan(-1);
+			const close = md.indexOf('</details>', open);
+			return md.slice(open, close);
+		}
+		const crossTeamBlock = collapsibleFor('cross-team-linear-report/happy-path');
+		const weatherBlock = collapsibleFor('weather-monitoring/happy-path');
+		expect(crossTeamBlock).toMatch(/Linear node misconfigured/);
+		expect(crossTeamBlock).not.toMatch(/Weather mock returned empty/);
+		expect(weatherBlock).toMatch(/Weather mock returned empty/);
+		expect(weatherBlock).not.toMatch(/Linear node misconfigured/);
+	});
+
+	it('skips per-scenario breakdown when slugByTestCase is omitted', () => {
+		// Without the slug map, the renderer can't disambiguate. We'd rather
+		// drop the breakdown than show a wrong one.
+		const evalWithFailures = evaluation({
+			totalRuns: 3,
+			testCases: [
+				{
+					prompt: 'a',
+					scenarios: [
+						{
+							name: 'happy',
+							passCount: 0,
+							passes: [false, false, false],
+							reasoning: 'Some failure',
+							failureCategory: 'builder_issue',
+						},
+					],
+				},
+			],
+		});
+		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
+		const base = bucket('master', [s('a', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalWithFailures, ok(compareBuckets(pr, base)));
+
+		// Regression table still rendered.
+		expect(md).toMatch(/#### Regressions \(1\)/);
+		// But no per-scenario collapsible (which would have used <code>a/happy</code>
+		// with the breakdown summary text).
+		expect(md).not.toMatch(/3 of 3 failed · 3× builder_issue/);
 	});
 
 	it('renders the failure breakdown for non-notable categories with non-zero counts', () => {
@@ -254,7 +388,7 @@ describe('formatComparisonMarkdown', () => {
 			failureCategoryTotals: { builder_issue: 22 },
 			trialTotal: 100,
 		};
-		const md = formatComparisonMarkdown(evalFixture, compareBuckets(pr, base));
+		const md = formatComparisonMarkdown(evalFixture, ok(compareBuckets(pr, base)));
 		expect(md).toMatch(/#### Failure breakdown/);
 		expect(md).toMatch(/`builder_issue`/);
 		// builder_issue isn't notable here, so no "notable" marker.
@@ -276,7 +410,7 @@ describe('formatComparisonTerminal', () => {
 	it('renders title, verdict, aggregate, and regression table without markdown syntax', () => {
 		const pr = bucket('pr', [s('a', 'happy', 0, 3)]);
 		const base = bucket('master-abc', [s('a', 'happy', 10, 10)]);
-		const out = formatComparisonTerminal(evalFixture, compareBuckets(pr, base));
+		const out = formatComparisonTerminal(evalFixture, ok(compareBuckets(pr, base)));
 		expect(out).toMatch(/^Instance AI Workflow Eval/);
 		expect(out).toMatch(/▶ 1 regression/);
 		expect(out).toMatch(/PR\s{8}0\.0%/);
@@ -287,16 +421,16 @@ describe('formatComparisonTerminal', () => {
 		expect(out).not.toMatch(/\| /);
 	});
 
-	it('renders no-baseline message when comparison is undefined', () => {
+	it('renders LangSmith-disabled message when outcome is undefined', () => {
 		const out = formatComparisonTerminal(evalFixture);
-		expect(out).toMatch(/No baseline configured/);
+		expect(out).toMatch(/LangSmith disabled/);
 		expect(out).not.toMatch(/REGRESSIONS/);
 	});
 
 	it('shows partial banner when scenarios differ on each side', () => {
 		const pr = bucket('pr', [s('a', 'happy', 8, 10)]);
 		const base = bucket('master', [s('a', 'happy', 8, 10), s('b', 'happy', 5, 10)]);
-		const out = formatComparisonTerminal(evalFixture, compareBuckets(pr, base));
+		const out = formatComparisonTerminal(evalFixture, ok(compareBuckets(pr, base)));
 		expect(out).toMatch(/partial: 1 baseline scenarios not run by PR/);
 	});
 });

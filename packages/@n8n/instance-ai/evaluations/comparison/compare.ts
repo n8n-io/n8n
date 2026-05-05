@@ -76,6 +76,19 @@ export interface ComparisonResult {
 	failureCategories: FailureCategoryComparison[];
 }
 
+/**
+ * Result of a comparison attempt. The `kind` field distinguishes between
+ * "ran successfully", "skipped intentionally" (no baseline yet, current run
+ * IS the baseline), and "failed unexpectedly" (LangSmith API error, fetch
+ * timeout, etc.). The PR comment renders a different alert per kind so
+ * readers can tell a missing baseline from a regression-detection outage.
+ */
+export type ComparisonOutcome =
+	| { kind: 'ok'; result: ComparisonResult }
+	| { kind: 'no_baseline' }
+	| { kind: 'self_baseline'; experimentName: string }
+	| { kind: 'fetch_failed'; error: string };
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
