@@ -245,8 +245,14 @@ the scenario continues — no manual interaction needed, even when
 `browser_disconnect` resets the session between scenarios (e.g. at the
 end of a credential-setup orchestration).
 
-The flag is gated by `N8N_EVAL_AUTO_BROWSER_CONNECT=1` and only set by
-the eval daemon spawn — real users still get the manual Connect button.
+**Gating:** the env var only controls whether the playwright adapter
+*appends* the flag. The extension itself only honors `?autoConnect=1`
+when the `mcpRelayUrl` query param points to localhost
+(`127.0.0.1`/`localhost`/`[::1]`). The eval relay always binds to
+`127.0.0.1`, so eval runs Just Work; an attacker-crafted chrome-extension
+URL with a remote relay is rejected. Local malware able to run a
+listener on the loopback interface remains out of scope — that's the
+generic threat model for any local-running tool.
 
 ## Adding a scenario
 
