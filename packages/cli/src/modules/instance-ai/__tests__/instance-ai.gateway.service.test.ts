@@ -185,6 +185,36 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			expect(registry.getUserIdForApiKey(rotatedSessionKey!)).toBe('user-a');
 		});
 
+		it('disconnects existing gateway listeners when a session key rotates', async () => {
+			jest.useFakeTimers();
+			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			registry.initGateway('user-a', CAPABILITIES);
+			const gateway = registry.getGateway('user-a');
+			const disconnectEvents: unknown[] = [];
+			gateway.onDisconnect((event) => disconnectEvents.push(event));
+			const staleRequestListener = jest.fn();
+			gateway.onRequest(staleRequestListener);
+
+			jest.setSystemTime(new Date('2026-01-01T01:00:00.000Z'));
+			const rotatedSessionKey = registry.rotateSessionKeyIfNeeded('user-a', sessionKey);
+
+			expect(rotatedSessionKey).toMatch(/^sess_/);
+			expect(rotatedSessionKey).not.toBe(sessionKey);
+			expect(disconnectEvents).toEqual([{ type: 'gateway-disconnect' }]);
+			expect(registry.getGatewayStatus('user-a').connected).toBe(false);
+
+			registry.initGateway('user-a', CAPABILITIES);
+			gateway.onRequest((event) => {
+				gateway.resolveRequest(event.payload.requestId, { content: [] });
+			});
+			await expect(gateway.callTool({ name: 'read_file', arguments: {} })).resolves.toEqual({
+				content: [],
+			});
+			expect(staleRequestListener).not.toHaveBeenCalled();
+		});
+
 		it('keeps a session key before the rotation window', () => {
 			jest.useFakeTimers();
 			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));

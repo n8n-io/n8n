@@ -46,6 +46,7 @@ const osTabs = [
 ];
 
 const displayCommand = computed(() => store.setupCommand ?? 'npx @n8n/computer-use');
+const canCopyCommand = computed(() => store.setupCommand !== null);
 const nowMs = ref(Date.now());
 
 let expiryTimer: ReturnType<typeof setInterval> | null = null;
@@ -137,7 +138,8 @@ async function copyCommand() {
 		if (tokenExpiresInSeconds.value === 0) {
 			await store.fetchSetupCommand();
 		}
-		await navigator.clipboard.writeText(displayCommand.value);
+		if (!store.setupCommand) return;
+		await navigator.clipboard.writeText(store.setupCommand);
 		copied.value = true;
 		setTimeout(() => {
 			copied.value = false;
@@ -251,6 +253,7 @@ onBeforeUnmount(() => {
 						:class="$style.copyButton"
 						:aria-label="copyCommandAriaLabel"
 						data-test-id="computer-use-setup-copy-command"
+						:disabled="!canCopyCommand"
 						@click="copyCommand"
 					/>
 				</div>

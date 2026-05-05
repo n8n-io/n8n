@@ -222,7 +222,7 @@ export class LocalGatewayRegistry {
 		this.expireActiveSessionIfNeeded(state);
 		if (!state.activeSession || Date.now() < state.activeSession.rotateAfter) return null;
 
-		this.clearActiveSession(state);
+		this.disconnectExistingGatewayForSessionReplacement(userId, state);
 		return this.createSession(userId, state);
 	}
 
