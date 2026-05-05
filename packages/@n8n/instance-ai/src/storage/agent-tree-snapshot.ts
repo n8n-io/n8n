@@ -7,4 +7,6 @@ export interface AgentTreeSnapshot {
 	runIds?: string[];
 	langsmithRunId?: string;
 	langsmithTraceId?: string;
+	createdAt?: Date;
+	updatedAt?: Date;
 }
