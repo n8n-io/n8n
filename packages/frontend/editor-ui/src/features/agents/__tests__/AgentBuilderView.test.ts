@@ -83,7 +83,6 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 		recordConfigEdit: vi.fn(),
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
-		trackPublished: vi.fn(),
 	}),
 }));
 

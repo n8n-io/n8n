@@ -12,4 +12,14 @@ describe('NewAgentView', () => {
 			'After creating the skills, call read_config and patch_config to append the returned skill refs to the config skills array.',
 		);
 	});
+
+	it('tracks the description-prompt build as a build-mode submission', () => {
+		// Without this event, the most interesting prompt of an agent's life
+		// (the one that creates and configures it) goes unmeasured. The build
+		// chat path already fires `User submitted message to agent`; this check
+		// guards against the NewAgentView shortcut silently bypassing it.
+		expect(source).toContain('agentTelemetry.trackSubmittedMessage');
+		expect(source).toContain("mode: 'build'");
+		expect(source).toContain("status: 'draft'");
+	});
 });

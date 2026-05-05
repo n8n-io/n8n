@@ -106,8 +106,6 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	// this set; `flushConfigEdits` drains it after a successful save and emits
 	// one `User edited agent config` event per part. Edits that never persist
 	// (save error, agent deletion, etc.) are dropped via `discardConfigEdits`.
-	// Triggers/name/description use their own endpoints and fire telemetry
-	// immediately from the corresponding track* methods instead of via this set.
 	const pendingEditedConfigParts = new Set<AgentConfigPart>();
 
 	// Baseline used to detect real trigger changes. The integrations panel emits
@@ -236,28 +234,6 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		});
 	}
 
-	function trackNameEdited() {
-		emitEditedEvents(['name'], snapshot());
-	}
-
-	function trackDescriptionEdited() {
-		emitEditedEvents(['description'], snapshot());
-	}
-
-	/**
-	 * Emit `User published agent` using the server's published schema as the
-	 * fingerprint source. Used by the route-leave publish path, which calls
-	 * `publishAgent` directly instead of going through `useAgentPublish`.
-	 */
-	function trackPublished(publishedSchema: AgentJsonConfig | null | undefined) {
-		withFingerprint(publishedSchema ?? null, [], (configVersion) => {
-			agentTelemetry.trackPublishedAgent({
-				agentId: deps.agentId.value,
-				configVersion,
-			});
-		});
-	}
-
 	/**
 	 * Eagerly derive connected trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
@@ -295,9 +271,6 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		trackTriggerListChanged,
 		trackTriggerAdded,
 		trackToolsAdded,
-		trackNameEdited,
-		trackDescriptionEdited,
-		trackPublished,
 		captureToolsBaseline,
 		fetchInitialTriggersBaseline,
 		resetForAgentSwitch,

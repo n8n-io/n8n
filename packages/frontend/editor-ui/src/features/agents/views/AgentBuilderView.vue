@@ -359,6 +359,10 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	onSaved: () => {
 		telemetry.track('User saved agent settings', { agent_id: agentId.value });
 		builderTelemetry.flushConfigEdits();
+		// Diff the saved tool list against the last baseline. No-op when nothing
+		// new landed, so calling on every save also handles the build-chat path
+		// (which has already advanced the baseline via `onConfigUpdated`).
+		builderTelemetry.trackToolsAdded();
 	},
 	onError: (error: unknown) => {
 		// Intentionally keep pending parts: `localConfig` still holds the
