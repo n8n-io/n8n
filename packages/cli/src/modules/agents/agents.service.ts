@@ -126,6 +126,13 @@ export interface ResumeForChatConfig {
 	runId: string;
 	toolCallId: string;
 	resumeData: unknown;
+	/**
+	 * Required when the suspended turn invoked a platform-injected tool
+	 * (e.g. `rich_interaction`). Without it, `getRuntime` rebuilds the agent
+	 * with only its configured tools, and `runtime.resume` throws because the
+	 * persisted tool call references a tool the rebuilt runtime doesn't know.
+	 */
+	integrationType?: string;
 }
 
 export interface ExecuteForSchedulePublishedConfig {
@@ -684,7 +691,7 @@ export class AgentsService {
 	 * a human-in-the-loop action (button click, modal submission).
 	 */
 	async *resumeForChat(config: ResumeForChatConfig): AsyncGenerator<StreamChunk> {
-		const { agentId, projectId, runId, toolCallId, resumeData } = config;
+		const { agentId, projectId, runId, toolCallId, resumeData, integrationType } = config;
 
 		const checkpointStatus = await this.n8nCheckpointStorage.getStatus(runId);
 		if (checkpointStatus.status === 'expired') {
@@ -706,6 +713,7 @@ export class AgentsService {
 			agentId,
 			projectId,
 			usePublishedVersion: true,
+			integrationType,
 		});
 
 		const { agent: agentInstance, toolRegistry } = runtime;
