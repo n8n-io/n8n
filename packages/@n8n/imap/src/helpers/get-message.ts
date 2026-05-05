@@ -35,7 +35,7 @@ export async function getMessage(
 					body: /^HEADER/g.test(info.which) ? parseHeader(body) : body,
 				});
 			});
-			stream.once('error', reject);
+			stream.on('error', reject);
 		};
 
 		const messageOnAttributes = (attrs: ImapMessageAttributes) => {
