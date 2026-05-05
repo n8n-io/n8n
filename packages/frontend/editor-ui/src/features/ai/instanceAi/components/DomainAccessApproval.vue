@@ -23,31 +23,18 @@ const resolved = ref(false);
 
 const isDestructive = computed(() => props.severity === 'destructive');
 
-const primaryAction = computed<DomainAction>(() =>
-	isDestructive.value ? 'allow_once' : 'allow_domain',
-);
+const primaryAction: DomainAction = 'allow_once';
 
-const primaryLabel = computed(() =>
-	isDestructive.value
-		? i18n.baseText('instanceAi.domainAccess.allowOnce')
-		: i18n.baseText('instanceAi.domainAccess.allowDomain'),
-);
+const primaryLabel = computed(() => i18n.baseText('instanceAi.domainAccess.allowOnce'));
 
-const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() =>
-	isDestructive.value
-		? [
-				{
-					id: 'allow_domain' as const,
-					label: i18n.baseText('instanceAi.domainAccess.allowDomain'),
-				},
-			]
-		: [
-				{
-					id: 'allow_once' as const,
-					label: i18n.baseText('instanceAi.domainAccess.allowOnce'),
-				},
-			],
-);
+const dropdownItems = computed<Array<ActionDropdownItem<DomainAction>>>(() => [
+	{
+		id: 'allow_domain' as const,
+		label: i18n.baseText('instanceAi.domainAccess.allowDomain', {
+			interpolate: { domain: props.host },
+		}),
+	},
+]);
 
 function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 	resolved.value = true;
@@ -61,7 +48,7 @@ function handleAction(approved: boolean, domainAccessAction?: DomainAction) {
 }
 
 function onPrimaryClick() {
-	handleAction(true, primaryAction.value);
+	handleAction(true, primaryAction);
 }
 
 const DOMAIN_ACTIONS: readonly DomainAction[] = [
