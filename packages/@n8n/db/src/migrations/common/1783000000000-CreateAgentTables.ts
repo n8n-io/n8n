@@ -49,14 +49,14 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 		await createTable('agents')
 			.withColumns(
 				column('id').varchar(36).primary.notNull,
-				column('name').varchar(255).notNull,
-				column('description').varchar(255),
+				column('name').varchar(128).notNull,
+				column('description').varchar(512),
 				column('projectId').varchar(255).notNull,
 				column('credentialId').varchar(255),
 				column('provider').varchar(128),
 				column('model').varchar(128),
-				column('integrations').text.notNull.default("'[]'"),
-				column('schema').text,
+				column('integrations').json.notNull.default("'[]'"),
+				column('schema').json,
 				column('tools').json.notNull.default("'{}'"),
 				column('skills').json.notNull.default("'{}'"),
 				column('versionId').varchar(36),
@@ -124,7 +124,7 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 				column('resourceId').varchar(255).notNull,
 				column('role').varchar(36).notNull,
 				column('type').varchar(36),
-				column('content').text.notNull,
+				column('content').json.notNull,
 			)
 			.withIndexOn(['threadId', 'createdAt'])
 			.withForeignKey('threadId', {
@@ -145,7 +145,7 @@ export class CreateAgentTables1783000000000 implements ReversibleMigration {
 		await createTable('agent_published_version')
 			.withColumns(
 				column('agentId').varchar(36).primary.notNull,
-				column('schema').text,
+				column('schema').json,
 				column('publishedFromVersionId').varchar(36).notNull,
 				column('model').varchar(128),
 				column('provider').varchar(128),
