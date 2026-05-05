@@ -4,7 +4,7 @@ Shared skills, commands, and agents for n8n development. All items are
 namespaced under `n8n:` to avoid collisions with personal or third-party
 plugins.
 
-## Usage
+## Usage in Claude Code
 
 Skills, commands, and agents are auto-discovered by Claude Code from this
 plugin directory. Everything gets the `n8n:` namespace prefix automatically.
@@ -14,6 +14,34 @@ plugin directory. Everything gets the `n8n:` namespace prefix automatically.
 | Skill | `skills/create-pr/SKILL.md` | `n8n:create-pr` |
 | Command | `commands/plan.md` | `/n8n:plan PAY-XXX` |
 | Agent | `agents/developer.md` | `n8n:developer` |
+
+## Usage in Cursor
+
+Cursor does **not** auto-discover plugins from `.claude/plugins/`. You need
+to register the plugin once by adding an `"n8n@n8n"` entry to
+`~/.claude/plugins/installed_plugins.json` (create the file if it doesn't
+exist):
+
+```jsonc
+{
+  "plugins": {
+    "n8n@n8n": [
+      {
+        "scope": "project",
+        "installPath": "/absolute/path/to/your/n8n/.claude/plugins/n8n",
+        "projectPath": "/absolute/path/to/your/n8n",
+        "version": "1.0.0",
+        "installedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+Replace both paths with wherever you have the repo cloned, then restart
+Cursor. Skills will appear without the `n8n:` namespace prefix. Since the
+path points to the repo, new skills are picked up automatically after
+`git pull`.
 
 ## Plugin Structure
 
