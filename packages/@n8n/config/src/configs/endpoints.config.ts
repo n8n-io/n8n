@@ -157,3 +157,51 @@ export class EndpointsConfig {
 	)
 	health: string = '/healthz';
 }
+
+/**
+ * Validates that no webhook-style endpoint is a path-segment prefix of another.
+ *
+ * The form/webhook/mcp/waiting routes are registered with greedy `*path` (or
+ * multi-segment) Express patterns, and Express dispatches in registration
+ * order. If one endpoint value equals or path-segment-prefixes another, the
+ * earlier-registered route silently swallows the later one's traffic.
+ *
+ * For example, `prefix` shadows `prefix/test`.
+ */
+export function validateEndpointPaths(endpoints: EndpointsConfig): void {
+	const routes = [
+		{ envVar: 'N8N_ENDPOINT_FORM', value: endpoints.form },
+		{ envVar: 'N8N_ENDPOINT_WEBHOOK', value: endpoints.webhook },
+		{ envVar: 'N8N_ENDPOINT_FORM_WAIT', value: endpoints.formWaiting },
+		{ envVar: 'N8N_ENDPOINT_WEBHOOK_WAIT', value: endpoints.webhookWaiting },
+		{ envVar: 'N8N_ENDPOINT_MCP', value: endpoints.mcp },
+		{ envVar: 'N8N_ENDPOINT_FORM_TEST', value: endpoints.formTest },
+		{ envVar: 'N8N_ENDPOINT_WEBHOOK_TEST', value: endpoints.webhookTest },
+		{ envVar: 'N8N_ENDPOINT_MCP_TEST', value: endpoints.mcpTest },
+	];
+
+	const isSegmentPrefixOrEqual = (a: string, b: string): boolean =>
+		a === b || b.startsWith(`${a}/`);
+
+	const conflicts: string[] = [];
+	for (let i = 0; i < routes.length; i++) {
+		for (let j = i + 1; j < routes.length; j++) {
+			const a = routes[i];
+			const b = routes[j];
+			if (isSegmentPrefixOrEqual(a.value, b.value)) {
+				conflicts.push(`${a.envVar}="${a.value}" shadows ${b.envVar}="${b.value}"`);
+			} else if (isSegmentPrefixOrEqual(b.value, a.value)) {
+				conflicts.push(`${b.envVar}="${b.value}" shadows ${a.envVar}="${a.value}"`);
+			}
+		}
+	}
+
+	if (conflicts.length > 0) {
+		throw new Error(
+			'Conflicting webhook endpoint configuration: one or more endpoint env vars share a leading path segment with another, ' +
+				"which causes the earlier-registered route to swallow the other's traffic.\n" +
+				conflicts.map((c) => `  - ${c}`).join('\n') +
+				"\nSet values that don't share a leading path segment.",
+		);
+	}
+}
