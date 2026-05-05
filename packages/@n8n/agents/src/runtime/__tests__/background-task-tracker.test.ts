@@ -1,4 +1,4 @@
-import { BackgroundTaskTracker } from '../runtime/background-task-tracker';
+import { BackgroundTaskTracker } from '../background-task-tracker';
 
 describe('BackgroundTaskTracker', () => {
 	it('flushes a single in-flight promise', async () => {

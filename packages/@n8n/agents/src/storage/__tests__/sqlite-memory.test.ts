@@ -2,9 +2,9 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { SqliteMemory } from '../storage/sqlite-memory';
-import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
-import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '../types/sdk/observation';
+import type { AgentDbMessage, AgentMessage, Message } from '../../types/sdk/message';
+import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '../../types/sdk/observation';
+import { SqliteMemory } from '../sqlite-memory';
 
 // ---------------------------------------------------------------------------
 // Helpers

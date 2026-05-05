@@ -1,12 +1,12 @@
-import { InMemoryMemory } from '../runtime/memory-store';
-import { Agent } from '../sdk/agent';
-import { Memory } from '../sdk/memory';
-import type { AgentDbMessage } from '../types/sdk/message';
+import { InMemoryMemory } from '../../runtime/memory-store';
+import type { AgentDbMessage } from '../../types/sdk/message';
 import {
 	OBSERVATION_SCHEMA_VERSION,
 	type NewObservation,
 	type ObserveFn,
-} from '../types/sdk/observation';
+} from '../../types/sdk/observation';
+import { Agent } from '../agent';
+import { Memory } from '../memory';
 
 function makeMsg(role: 'user' | 'assistant', text: string): AgentDbMessage {
 	return {

@@ -1,6 +1,6 @@
-import { InMemoryMemory } from '../runtime/memory-store';
-import { advanceCursor, getDeltaSinceCursor } from '../runtime/observation-cursor';
-import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
+import type { AgentDbMessage, AgentMessage, Message } from '../../types/sdk/message';
+import { InMemoryMemory } from '../memory-store';
+import { advanceCursor, getDeltaSinceCursor } from '../observation-cursor';
 
 function makeMsg(role: 'user' | 'assistant', text: string): AgentDbMessage {
 	return {

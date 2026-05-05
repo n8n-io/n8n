@@ -1,5 +1,5 @@
-import { InMemoryMemory } from '../runtime/memory-store';
-import { withObservationLock } from '../runtime/observation-lock';
+import { InMemoryMemory } from '../memory-store';
+import { withObservationLock } from '../observation-lock';
 
 describe('withObservationLock', () => {
 	it('runs fn and returns its value when the lock is free', async () => {

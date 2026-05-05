@@ -1,10 +1,10 @@
-import { InMemoryMemory } from '../runtime/memory-store';
-import { loadObservationalMemoryContext } from '../runtime/observational-memory';
 import {
 	OBSERVATION_SCHEMA_VERSION,
 	type FormatContextFn,
 	type NewObservation,
-} from '../types/sdk/observation';
+} from '../../types/sdk/observation';
+import { InMemoryMemory } from '../memory-store';
+import { loadObservationalMemoryContext } from '../observational-memory';
 
 function obs(overrides: Partial<NewObservation> = {}): NewObservation {
 	return {

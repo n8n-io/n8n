@@ -1,14 +1,14 @@
-import { AgentEventBus } from '../runtime/event-bus';
-import { InMemoryMemory } from '../runtime/memory-store';
-import { runObservationalCycle } from '../runtime/observational-cycle';
-import { AgentEvent, type AgentEventData } from '../types/runtime/event';
-import type { AgentDbMessage } from '../types/sdk/message';
+import { AgentEvent, type AgentEventData } from '../../types/runtime/event';
+import type { AgentDbMessage } from '../../types/sdk/message';
 import {
 	OBSERVATION_SCHEMA_VERSION,
 	type CompactFn,
 	type NewObservation,
 	type ObserveFn,
-} from '../types/sdk/observation';
+} from '../../types/sdk/observation';
+import { AgentEventBus } from '../event-bus';
+import { InMemoryMemory } from '../memory-store';
+import { runObservationalCycle } from '../observational-cycle';
 
 function makeMsg(role: 'user' | 'assistant', text: string): AgentDbMessage {
 	return {

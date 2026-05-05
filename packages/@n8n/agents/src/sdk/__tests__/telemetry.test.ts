@@ -1,6 +1,6 @@
 import type { TelemetryIntegration } from 'ai';
 
-import { Telemetry } from '../sdk/telemetry';
+import { Telemetry } from '../telemetry';
 
 describe('Telemetry builder', () => {
 	it('builds with defaults', async () => {

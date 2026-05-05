@@ -1,7 +1,7 @@
-import { Agent } from '../sdk/agent';
-import { Memory } from '../sdk/memory';
-import type { BuiltMemory } from '../types';
-import { OBSERVATION_SCHEMA_VERSION, type ObserveFn } from '../types/sdk/observation';
+import type { BuiltMemory } from '../../types';
+import { OBSERVATION_SCHEMA_VERSION, type ObserveFn } from '../../types/sdk/observation';
+import { Agent } from '../agent';
+import { Memory } from '../memory';
 
 describe('Memory builder — observational memory', () => {
 	const observe = jest.fn().mockResolvedValue([]) as unknown as ObserveFn;

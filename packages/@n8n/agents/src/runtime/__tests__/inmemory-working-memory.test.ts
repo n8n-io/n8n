@@ -1,5 +1,5 @@
-import { InMemoryMemory } from '../runtime/memory-store';
-import type { AgentDbMessage, Message } from '../types/sdk/message';
+import type { AgentDbMessage, Message } from '../../types/sdk/message';
+import { InMemoryMemory } from '../memory-store';
 
 describe('InMemoryMemory working memory', () => {
 	it('returns null for unknown key', async () => {

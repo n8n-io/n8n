@@ -1,16 +1,16 @@
 import { z } from 'zod';
 
-import { AgentRuntime } from '../runtime/agent-runtime';
-import { AgentEventBus } from '../runtime/event-bus';
-import { InMemoryMemory } from '../runtime/memory-store';
-import { isLlmMessage } from '../sdk/message';
-import { Tool, Tool as ToolBuilder } from '../sdk/tool';
-import { AgentEvent } from '../types/runtime/event';
-import type { StreamChunk } from '../types/sdk/agent';
-import type { BuiltMemory } from '../types/sdk/memory';
-import type { ContentToolCall, Message } from '../types/sdk/message';
-import type { BuiltTool, InterruptibleToolContext } from '../types/sdk/tool';
-import type { BuiltTelemetry } from '../types/telemetry';
+import { isLlmMessage } from '../../sdk/message';
+import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import { AgentEvent } from '../../types/runtime/event';
+import type { StreamChunk } from '../../types/sdk/agent';
+import type { BuiltMemory } from '../../types/sdk/memory';
+import type { ContentToolCall, Message } from '../../types/sdk/message';
+import type { BuiltTool, InterruptibleToolContext } from '../../types/sdk/tool';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import { AgentRuntime } from '../agent-runtime';
+import { AgentEventBus } from '../event-bus';
+import { InMemoryMemory } from '../memory-store';
 
 // ---------------------------------------------------------------------------
 // Module mocks
@@ -1520,7 +1520,7 @@ describe('providerOptions — tool adapter', () => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const ai = require('ai') as { tool: jest.Mock };
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../runtime/tool-adapter') as {
+		const adapter = require('../tool-adapter') as {
 			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
 		};
 
@@ -1548,7 +1548,7 @@ describe('providerOptions — tool adapter', () => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const ai = require('ai') as { tool: jest.Mock };
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../runtime/tool-adapter') as {
+		const adapter = require('../tool-adapter') as {
 			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
 		};
 
@@ -1573,7 +1573,7 @@ describe('providerOptions — tool adapter', () => {
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
 		const ai = require('ai') as { tool: jest.Mock };
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const adapter = require('../runtime/tool-adapter') as {
+		const adapter = require('../tool-adapter') as {
 			toAiSdkTools: (tools: BuiltTool[]) => Record<string, unknown>;
 		};
 

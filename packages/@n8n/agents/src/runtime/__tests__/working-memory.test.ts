@@ -6,7 +6,7 @@ import {
 	templateFromSchema,
 	UPDATE_WORKING_MEMORY_TOOL_NAME,
 	WORKING_MEMORY_DEFAULT_INSTRUCTION,
-} from '../runtime/working-memory';
+} from '../working-memory';
 
 describe('buildWorkingMemoryInstruction', () => {
 	it('mentions the updateWorkingMemory tool name', () => {
