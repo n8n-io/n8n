@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue';
 import {
 	isLlmProviderModel,
 	enrichMimeTypesWithExtensions,
+	isFileAcceptedByAccept,
 } from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import type { MessagingState } from '@/features/ai/chatHub/chat.types';
@@ -109,23 +110,6 @@ function onAttach() {
 	activePromptRef.value?.fileInputRef?.click();
 }
 
-function isMimeTypeAllowed(mimeType: string, allowed: string): boolean {
-	if (!allowed || allowed === '*/*') return true;
-	const patterns = allowed
-		.split(',')
-		.map((p) => p.trim())
-		.filter(Boolean);
-	for (const pattern of patterns) {
-		if (pattern === mimeType) return true;
-		if (pattern.endsWith('/*')) {
-			const prefix = pattern.slice(0, pattern.indexOf('/'));
-			if (mimeType.startsWith(`${prefix}/`)) return true;
-		}
-		// Match extension-based entries (".pdf", ".docx") against the file extension elsewhere.
-	}
-	return false;
-}
-
 function handleFileSelect(e: Event) {
 	const target = e.target as HTMLInputElement;
 	const files = target.files;
@@ -134,12 +118,12 @@ function handleFileSelect(e: Event) {
 		return;
 	}
 
-	const allowed = props.selectedModel?.metadata.allowedFilesMimeTypes ?? '';
+	const allowed = acceptedMimeTypes.value;
 	const accepted: File[] = [];
 	const rejected: File[] = [];
 
 	for (const file of Array.from(files)) {
-		if (isMimeTypeAllowed(file.type, allowed)) {
+		if (isFileAcceptedByAccept(file.name, file.type, allowed)) {
 			accepted.push(file);
 		} else {
 			rejected.push(file);

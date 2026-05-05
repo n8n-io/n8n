@@ -30,7 +30,7 @@
     },
     "./parsers": {
       "require": "./dist/parsers/index.js",
-      "import": "./src/parsers/index.ts",
+      "import": "./dist/parsers/index.js",
       "types": "./dist/parsers/index.d.ts"
     },
     "./evaluations": "./evaluations/index.ts"

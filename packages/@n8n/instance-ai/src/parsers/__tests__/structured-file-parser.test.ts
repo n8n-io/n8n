@@ -53,6 +53,7 @@ describe('detectFormat', () => {
 
 	it('detects format from MIME type when extension is unknown', () => {
 		expect(detectFormat('file.dat', 'text/csv')).toBe('csv');
+		expect(detectFormat('file.dat', 'application/csv')).toBe('csv');
 		expect(detectFormat('file.dat', 'text/tab-separated-values')).toBe('tsv');
 		expect(detectFormat('file.dat', 'application/json')).toBe('json');
 	});

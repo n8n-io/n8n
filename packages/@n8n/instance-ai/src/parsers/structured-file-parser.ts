@@ -120,6 +120,7 @@ const EXTENSION_TO_FORMAT: Record<string, SupportedFormat> = {
 
 const MIME_TO_FORMAT: Record<string, SupportedFormat> = {
 	'text/csv': 'csv',
+	'application/csv': 'csv',
 	'text/tab-separated-values': 'tsv',
 	'application/json': 'json',
 	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
