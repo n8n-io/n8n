@@ -61,6 +61,15 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 		await entityManager.delete(InstanceAiPendingConfirmation, { requestId });
 	}
 
+	/** Atomic claim: deletes the row and returns true if this caller owned the
+	 *  delete (concurrent confirmations / cancellations / TTL sweeper see false).
+	 *  Used by the restart-resume path to serialize concurrent confirms across
+	 *  instances — the row IS the lock token. */
+	async claim(requestId: string, entityManager: EntityManager = this.manager): Promise<boolean> {
+		const result = await entityManager.delete(InstanceAiPendingConfirmation, { requestId });
+		return (result.affected ?? 0) > 0;
+	}
+
 	async deleteByThread(
 		threadId: string,
 		entityManager: EntityManager = this.manager,

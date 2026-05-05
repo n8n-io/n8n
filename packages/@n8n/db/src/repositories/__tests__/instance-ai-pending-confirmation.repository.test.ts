@@ -84,6 +84,35 @@ describe('InstanceAiPendingConfirmationRepository', () => {
 		});
 	});
 
+	describe('claim', () => {
+		it('returns true when the row was deleted (this caller wins)', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 1, raw: {} });
+
+			const won = await repository.claim('req-1');
+
+			expect(won).toBe(true);
+			expect(entityManager.delete).toHaveBeenCalledWith(InstanceAiPendingConfirmation, {
+				requestId: 'req-1',
+			});
+		});
+
+		it('returns false when no row was deleted (concurrent claim or already gone)', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 0, raw: {} });
+
+			const won = await repository.claim('req-1');
+
+			expect(won).toBe(false);
+		});
+
+		it('returns false when affected is undefined', async () => {
+			entityManager.delete.mockResolvedValueOnce({ raw: {} });
+
+			const won = await repository.claim('req-1');
+
+			expect(won).toBe(false);
+		});
+	});
+
 	describe('deleteByThread', () => {
 		it('deletes all rows for the given threadId', async () => {
 			await repository.deleteByThread('thread-1');

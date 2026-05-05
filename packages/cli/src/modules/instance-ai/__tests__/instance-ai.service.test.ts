@@ -308,6 +308,11 @@ type PersistedConfirmation = {
 	threadId: string;
 	userId: string;
 	kind: 'suspended' | 'inline';
+	mastraRunId?: string | null;
+	toolCallId?: string | null;
+	runId?: string;
+	messageGroupId?: string | null;
+	checkpointTaskId?: string | null;
 };
 
 type ResolveConfirmationServiceInternals = {
@@ -316,10 +321,9 @@ type ResolveConfirmationServiceInternals = {
 		requestId: string,
 		request: { kind: 'approval'; approved: boolean },
 	) => Promise<'resolved' | 'not-found' | 'interrupted'>;
-	resumeSuspendedRun: jest.Mock;
+	restoreSuspendedRunFromDb: jest.Mock;
 	runState: {
 		resolvePendingConfirmation: jest.Mock;
-		findSuspendedByRequestId: jest.Mock;
 	};
 	pendingConfirmationRepository: {
 		findByRequestId: jest.MockedFunction<
@@ -338,12 +342,11 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 
 	service.runState = {
 		resolvePendingConfirmation: jest.fn(() => false),
-		findSuspendedByRequestId: jest.fn(() => undefined),
 	};
-	service.resumeSuspendedRun = jest.fn(async () => false);
+	service.restoreSuspendedRunFromDb = jest.fn(async () => 'resolved' as const);
 	service.pendingConfirmationRepository = {
-		findByRequestId: jest.fn(async () => null),
-		deleteByRequestId: jest.fn(async () => undefined),
+		findByRequestId: jest.fn(async (_requestId: string) => null),
+		deleteByRequestId: jest.fn(async (_requestId: string) => undefined),
 	};
 	service.deletePersistedConfirmation = jest.fn(async () => undefined);
 	service.logger = {
@@ -366,38 +369,47 @@ describe('InstanceAiService — resolveConfirmation outcomes', () => {
 
 		expect(outcome).toBe('resolved');
 		expect(service.deletePersistedConfirmation).toHaveBeenCalledWith('req-1');
-		expect(service.resumeSuspendedRun).not.toHaveBeenCalled();
+		expect(service.restoreSuspendedRunFromDb).not.toHaveBeenCalled();
 		expect(service.pendingConfirmationRepository.findByRequestId).not.toHaveBeenCalled();
 	});
 
-	it("returns 'resolved' on local suspended-run hit", async () => {
+	it("dispatches to restoreSuspendedRunFromDb when the DB has a kind='suspended' row", async () => {
 		const service = createResolveConfirmationService();
-		service.resumeSuspendedRun.mockResolvedValueOnce(true);
+		const row: PersistedConfirmation = {
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+			mastraRunId: 'mastra-1',
+			toolCallId: 'tool-1',
+			runId: 'run-1',
+		};
+		service.pendingConfirmationRepository.findByRequestId.mockResolvedValueOnce(row);
+		service.restoreSuspendedRunFromDb.mockResolvedValueOnce('resolved');
 
 		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
 
 		expect(outcome).toBe('resolved');
-		expect(service.resumeSuspendedRun).toHaveBeenCalledWith(
-			'user-1',
-			'req-1',
+		expect(service.restoreSuspendedRunFromDb).toHaveBeenCalledWith(
+			row,
 			expect.objectContaining({ approved: true }),
 		);
-		expect(service.pendingConfirmationRepository.findByRequestId).not.toHaveBeenCalled();
+		expect(service.deletePersistedConfirmation).not.toHaveBeenCalled();
 	});
 
-	it("returns 'interrupted' when the DB has the row but no local state can drive it", async () => {
+	it("returns 'interrupted' when the DB has a kind='inline' row (parent run is dead)", async () => {
 		const service = createResolveConfirmationService();
 		service.pendingConfirmationRepository.findByRequestId.mockResolvedValueOnce({
 			requestId: 'req-1',
 			threadId: 'thread-1',
 			userId: 'user-1',
-			kind: 'suspended',
+			kind: 'inline',
 		});
 
 		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
 
 		expect(outcome).toBe('interrupted');
-		expect(service.deletePersistedConfirmation).not.toHaveBeenCalled();
+		expect(service.restoreSuspendedRunFromDb).not.toHaveBeenCalled();
 	});
 
 	it("returns 'not-found' when neither local maps nor the DB have the request", async () => {
@@ -434,6 +446,219 @@ describe('InstanceAiService — resolveConfirmation outcomes', () => {
 		expect(service.logger.warn).toHaveBeenCalledWith(
 			'Failed to look up persisted confirmation',
 			expect.objectContaining({ requestId: 'req-1' }),
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Suspended-run reconstruction from DB (Phase 2)
+// ---------------------------------------------------------------------------
+
+type RestoreServiceInternals = {
+	restoreSuspendedRunFromDb: (
+		row: PersistedConfirmation,
+		data: { approved: boolean },
+	) => Promise<'resolved' | 'not-found'>;
+	buildResumeData: (data: { approved: boolean }) => Record<string, unknown>;
+	createMemoryConfig: jest.Mock;
+	createExecutionEnvironment: jest.Mock;
+	parseMcpServers: jest.Mock;
+	processResumedStream: jest.Mock;
+	deletePersistedConfirmation: jest.Mock;
+	pendingConfirmationRepository: {
+		claim: jest.MockedFunction<(requestId: string) => Promise<boolean>>;
+	};
+	userRepository: {
+		findOne: jest.MockedFunction<(opts: unknown) => Promise<User | null>>;
+	};
+	runState: {
+		startRun: jest.Mock;
+		clearActiveRun: jest.Mock;
+		clearSuspendedRun: jest.Mock;
+	};
+	instanceAiConfig: { mcpServers: string };
+	dbSnapshotStorage: object;
+	defaultTimeZone: string;
+	logger: { debug: jest.Mock; warn: jest.Mock; info: jest.Mock; error: jest.Mock };
+};
+
+function buildRow(overrides: Partial<PersistedConfirmation> = {}): PersistedConfirmation {
+	return {
+		requestId: 'req-1',
+		threadId: 'thread-1',
+		userId: 'user-1',
+		kind: 'suspended',
+		mastraRunId: 'mastra-1',
+		toolCallId: 'tool-1',
+		runId: 'run-original',
+		messageGroupId: 'mg-1',
+		checkpointTaskId: null,
+		...overrides,
+	};
+}
+
+function createRestoreService(): RestoreServiceInternals {
+	const service = Object.create(InstanceAiService.prototype) as unknown as RestoreServiceInternals;
+
+	service.pendingConfirmationRepository = {
+		claim: jest.fn(async (_requestId: string) => true),
+	};
+	service.userRepository = {
+		findOne: jest.fn(async (_opts: unknown) => ({ id: 'user-1', disabled: false }) as User),
+	};
+	service.runState = {
+		// Mirror real behavior: startRun returns whatever runId was passed in
+		// (so callers reusing the original runId from the DB row get it back).
+		startRun: jest.fn((options: { runId?: string; messageGroupId?: string }) => ({
+			runId: options.runId ?? 'run-new',
+			abortController: new AbortController(),
+			messageGroupId: options.messageGroupId ?? 'mg-1',
+		})),
+		clearActiveRun: jest.fn(),
+		clearSuspendedRun: jest.fn(),
+	};
+	service.createExecutionEnvironment = jest.fn(async () => ({
+		modelId: { type: 'anthropic', model: 'claude' },
+		context: {},
+		orchestrationContext: {},
+		memory: {},
+	}));
+	service.parseMcpServers = jest.fn(() => []);
+	service.createMemoryConfig = jest.fn(() => ({}));
+	service.processResumedStream = jest.fn(async () => undefined);
+	service.deletePersistedConfirmation = jest.fn(async () => undefined);
+	service.instanceAiConfig = { mcpServers: '' };
+	service.dbSnapshotStorage = {};
+	service.defaultTimeZone = 'UTC';
+	service.logger = {
+		debug: jest.fn(),
+		warn: jest.fn(),
+		info: jest.fn(),
+		error: jest.fn(),
+	};
+	return service;
+}
+
+describe('InstanceAiService — restoreSuspendedRunFromDb', () => {
+	const data = { approved: true };
+
+	it("returns 'resolved' on the happy path: claim wins, agent rebuilt, processResumedStream fires", async () => {
+		const service = createRestoreService();
+		const row = buildRow();
+
+		const outcome = await service.restoreSuspendedRunFromDb(row, data);
+
+		expect(outcome).toBe('resolved');
+		expect(service.pendingConfirmationRepository.claim).toHaveBeenCalledWith('req-1');
+		expect(service.userRepository.findOne).toHaveBeenCalledWith({
+			where: { id: 'user-1' },
+			relations: ['role'],
+		});
+		expect(service.runState.startRun).toHaveBeenCalledWith(
+			expect.objectContaining({
+				threadId: 'thread-1',
+				runId: 'run-original',
+				messageGroupId: 'mg-1',
+			}),
+		);
+		expect(service.createExecutionEnvironment).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			'thread-1',
+			'run-original',
+			expect.any(AbortSignal),
+			undefined,
+			'mg-1',
+		);
+		const [, resumeData, opts] = service.processResumedStream.mock.calls[0];
+		expect(resumeData).toEqual(expect.objectContaining({ approved: true }));
+		expect(opts).toEqual(
+			expect.objectContaining({
+				mastraRunId: 'mastra-1',
+				toolCallId: 'tool-1',
+				threadId: 'thread-1',
+				// Reused from row.runId — events fire under this key so the
+				// frontend's `groupIdByRunId` correlation works.
+				runId: 'run-original',
+			}),
+		);
+		expect(service.runState.clearSuspendedRun).toHaveBeenCalledWith('thread-1');
+	});
+
+	it("returns 'not-found' when claim loses the race (concurrent confirm or sweeper won)", async () => {
+		const service = createRestoreService();
+		service.pendingConfirmationRepository.claim.mockResolvedValueOnce(false);
+
+		const outcome = await service.restoreSuspendedRunFromDb(buildRow(), data);
+
+		expect(outcome).toBe('not-found');
+		expect(service.userRepository.findOne).not.toHaveBeenCalled();
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+	});
+
+	it("returns 'not-found' and logs when the row is missing mastraRunId", async () => {
+		const service = createRestoreService();
+		const row = buildRow({ mastraRunId: null });
+
+		const outcome = await service.restoreSuspendedRunFromDb(row, data);
+
+		expect(outcome).toBe('not-found');
+		expect(service.deletePersistedConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.pendingConfirmationRepository.claim).not.toHaveBeenCalled();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Suspended confirmation row missing mastraRunId or toolCallId',
+			expect.objectContaining({ requestId: 'req-1' }),
+		);
+	});
+
+	it("returns 'not-found' when the user no longer exists", async () => {
+		const service = createRestoreService();
+		service.userRepository.findOne.mockResolvedValueOnce(null);
+
+		const outcome = await service.restoreSuspendedRunFromDb(buildRow(), data);
+
+		expect(outcome).toBe('not-found');
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+	});
+
+	it("returns 'not-found' when the user is disabled", async () => {
+		const service = createRestoreService();
+		service.userRepository.findOne.mockResolvedValueOnce({
+			id: 'user-1',
+			disabled: true,
+		} as User);
+
+		const outcome = await service.restoreSuspendedRunFromDb(buildRow(), data);
+
+		expect(outcome).toBe('not-found');
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+	});
+
+	it('clears the active-run registration when reconstruction throws', async () => {
+		const service = createRestoreService();
+		service.createExecutionEnvironment.mockRejectedValueOnce(new Error('sandbox boom'));
+
+		const outcome = await service.restoreSuspendedRunFromDb(buildRow(), data);
+
+		expect(outcome).toBe('not-found');
+		expect(service.runState.clearActiveRun).toHaveBeenCalledWith('thread-1');
+		expect(service.processResumedStream).not.toHaveBeenCalled();
+		expect(service.logger.error).toHaveBeenCalledWith(
+			'Failed to restore suspended run from DB',
+			expect.objectContaining({ requestId: 'req-1' }),
+		);
+	});
+
+	it('passes checkpoint metadata through when the row is a planned-task follow-up', async () => {
+		const service = createRestoreService();
+		const row = buildRow({ checkpointTaskId: 'cp-task-1' });
+
+		await service.restoreSuspendedRunFromDb(row, data);
+
+		const [, , opts] = service.processResumedStream.mock.calls[0];
+		expect(opts).toEqual(
+			expect.objectContaining({
+				checkpoint: { isCheckpointFollowUp: true, checkpointTaskId: 'cp-task-1' },
+			}),
 		);
 	});
 });

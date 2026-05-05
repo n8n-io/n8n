@@ -72,6 +72,10 @@ export interface StartRunOptions<TUser> {
 	user: TUser;
 	researchMode?: boolean;
 	messageGroupId?: string;
+	/** When restoring a run from the durable side index, pass the original runId
+	 *  so events fire under the same correlation key the frontend already knows
+	 *  (the reducer's `groupIdByRunId` map was populated at run-start time). */
+	runId?: string;
 }
 
 export interface StartedRunState extends ActiveRunState {
@@ -97,7 +101,7 @@ export class RunStateRegistry<TUser = unknown> {
 	private readonly threadTimeZones = new Map<string, string>();
 
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
-		const runId = `run_${nanoid()}`;
+		const runId = options.runId ?? `run_${nanoid()}`;
 		const abortController = new AbortController();
 		const messageGroupId = options.messageGroupId ?? `mg_${nanoid()}`;
 
@@ -211,6 +215,13 @@ export class RunStateRegistry<TUser = unknown> {
 	suspendRun(threadId: string, state: SuspendedRunState<TUser>): void {
 		this.activeRuns.delete(threadId);
 		this.suspendedRuns.set(threadId, state);
+	}
+
+	/** Drop a stale suspended-run entry without promoting it to active. Used when
+	 *  a confirmation resumed the run via the durable side index — the in-memory
+	 *  state for this thread on this instance is no longer authoritative. */
+	clearSuspendedRun(threadId: string): void {
+		this.suspendedRuns.delete(threadId);
 	}
 
 	findSuspendedByRequestId(requestId: string): SuspendedRunState<TUser> | undefined {

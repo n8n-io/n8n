@@ -20,6 +20,7 @@ import {
 	AiBuilderTemporaryWorkflowRepository,
 	InstanceAiPendingConfirmationRepository,
 	UserRepository,
+	type InstanceAiPendingConfirmation,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -2803,6 +2804,147 @@ export class InstanceAiService {
 		await this.schedulePlannedTasks(user, threadId);
 	}
 
+	/** Translate a `ConfirmationData` (the controller-side parsed body) into the
+	 *  flat resume payload that Mastra's tool resume schemas consume. Shared by
+	 *  the in-memory and DB-backed resume paths so they stay in lockstep.
+	 *
+	 *  setup-workflow uses nodeCredentials (per-node); other tools use the flat
+	 *  credentials map. Prefer nodeCredentials when present. */
+	private buildResumeData(data: ConfirmationData): Record<string, unknown> {
+		const credentialsPayload = data.nodeCredentials ?? data.credentials;
+		return {
+			approved: data.approved,
+			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
+			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
+			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
+			...(data.action ? { action: data.action } : {}),
+			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
+			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
+			...(data.answers ? { answers: data.answers } : {}),
+			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
+		};
+	}
+
+	/** Resume a suspended run for which we hold no in-memory state — the run was
+	 *  suspended by a previous process or another main instance. Reconstructs
+	 *  the run environment from the durable side index + Mastra checkpoint
+	 *  store, then resumes the workflow on this instance.
+	 *
+	 *  Concurrency: the DB row IS the lock token. `claim()` returns true for the
+	 *  one caller whose DELETE took effect; everyone else returns 'not-found'.
+	 *  Idempotent against TTL sweeper, cancellations, and parallel confirms. */
+	private async restoreSuspendedRunFromDb(
+		row: InstanceAiPendingConfirmation,
+		data: ConfirmationData,
+	): Promise<ResolveConfirmationOutcome> {
+		if (!row.mastraRunId || !row.toolCallId) {
+			this.logger.warn('Suspended confirmation row missing mastraRunId or toolCallId', {
+				requestId: row.requestId,
+				threadId: row.threadId,
+			});
+			void this.deletePersistedConfirmation(row.requestId);
+			return 'not-found';
+		}
+
+		const won = await this.pendingConfirmationRepository.claim(row.requestId).catch((error) => {
+			this.logger.warn('Failed to claim persisted confirmation row', {
+				requestId: row.requestId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return false;
+		});
+		if (!won) return 'not-found';
+
+		// Drop any stale local suspended-run entry for this thread on this
+		// instance. The original suspension may have been on this process — its
+		// in-memory state is no longer authoritative now that we own the resume.
+		this.runState.clearSuspendedRun(row.threadId);
+
+		const user = await this.userRepository
+			.findOne({ where: { id: row.userId }, relations: ['role'] })
+			.catch(() => null);
+		if (!user || user.disabled) {
+			this.logger.info('Skipping restored resume: user missing or disabled', {
+				requestId: row.requestId,
+				userId: row.userId,
+			});
+			return 'not-found';
+		}
+
+		const messageGroupId = row.messageGroupId ?? undefined;
+		// Reuse the original runId from the DB row so resumed events fire under
+		// the same correlation key the frontend already knows. The reducer's
+		// `groupIdByRunId` was populated at the original run-start; minting a
+		// fresh runId here would orphan events into a synthetic message and
+		// strand callers like `useSetupActions.waitForToolResult`, which polls
+		// `findToolCallByRequestId` on the original message.
+		const { runId, abortController } = this.runState.startRun({
+			threadId: row.threadId,
+			user,
+			messageGroupId,
+			runId: row.runId,
+		});
+
+		try {
+			const env = await this.createExecutionEnvironment(
+				user,
+				row.threadId,
+				runId,
+				abortController.signal,
+				undefined,
+				messageGroupId,
+			);
+			const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+			const agent = await createInstanceAgent({
+				modelId: env.modelId,
+				context: env.context,
+				orchestrationContext: env.orchestrationContext,
+				mcpServers,
+				memoryConfig: this.createMemoryConfig(),
+				memory: env.memory,
+				disableDeferredTools: true,
+				timeZone: this.defaultTimeZone,
+			});
+
+			const checkpoint = row.checkpointTaskId
+				? { isCheckpointFollowUp: true as const, checkpointTaskId: row.checkpointTaskId }
+				: undefined;
+
+			void this.processResumedStream(agent, this.buildResumeData(data), {
+				runId,
+				mastraRunId: row.mastraRunId,
+				threadId: row.threadId,
+				user,
+				toolCallId: row.toolCallId,
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: this.dbSnapshotStorage,
+				// Tracing intentionally dropped: the original run's trace context is
+				// process-local, and confirmation-resumed-from-DB is a fresh trace.
+				checkpoint,
+			});
+
+			this.logger.info('Resumed suspended run from durable side index', {
+				requestId: row.requestId,
+				threadId: row.threadId,
+				originalRunId: row.runId,
+				newRunId: runId,
+			});
+			return 'resolved';
+		} catch (error) {
+			// Reconstruction failed before processResumedStream took ownership of
+			// the active run. Roll the in-memory active-run registration back so
+			// the thread isn't stuck and the SSE stream can be cleanly retried.
+			this.runState.clearActiveRun(row.threadId);
+			this.logger.error('Failed to restore suspended run from DB', {
+				requestId: row.requestId,
+				threadId: row.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return 'not-found';
+		}
+	}
+
 	async resolveConfirmation(
 		requestingUserId: string,
 		requestId: string,
@@ -2810,6 +2952,9 @@ export class InstanceAiService {
 	): Promise<ResolveConfirmationOutcome> {
 		const data = toConfirmationData(request);
 
+		// Sub-agent inline confirmations remain in-memory only — the parent
+		// orchestrator is awaiting a Promise in-process. This is the one place
+		// we still serve resumes from local state. (Phase 3 unifies this path.)
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
@@ -2819,13 +2964,11 @@ export class InstanceAiService {
 			return 'resolved';
 		}
 
-		const localResume = await this.resumeSuspendedRun(requestingUserId, requestId, data);
-		if (localResume) return 'resolved';
-
-		// Local maps were empty. Consult the durable side index — a row here means the
-		// confirmation was registered (possibly on a previous process or another main
-		// instance) but no live in-memory state exists to drive it forward in this
-		// process.
+		// Suspended-run resolution always goes through the durable side index.
+		// Even when the run was suspended on this very instance, we route through
+		// `claim` so a concurrent confirm POST (e.g. a double-click, or a
+		// retry that landed on another main) cannot double-resume the same
+		// Mastra checkpoint — the row IS the lock token.
 		const row = await this.pendingConfirmationRepository
 			.findByRequestId(requestId)
 			.catch((error) => {
@@ -2839,66 +2982,18 @@ export class InstanceAiService {
 		if (!row) return 'not-found';
 		if (row.userId !== requestingUserId) return 'not-found';
 
-		this.logger.debug('Confirmation arrived for an unrecoverable run', {
+		if (row.kind === 'suspended') {
+			return await this.restoreSuspendedRunFromDb(row, data);
+		}
+
+		// kind === 'inline': the parent orchestrator was awaiting an in-process
+		// Promise that died with the previous process. Cannot be reconstructed
+		// without refactoring sub-agent control flow through Mastra suspend/resume.
+		this.logger.debug('Confirmation arrived for an unrecoverable inline run', {
 			requestId,
 			threadId: row.threadId,
-			kind: row.kind,
 		});
 		return 'interrupted';
-	}
-
-	private async resumeSuspendedRun(
-		requestingUserId: string,
-		requestId: string,
-		data: ConfirmationData,
-	): Promise<boolean> {
-		const suspended = this.runState.findSuspendedByRequestId(requestId);
-		if (!suspended) return false;
-
-		const {
-			agent,
-			runId,
-			mastraRunId,
-			threadId,
-			user,
-			toolCallId,
-			abortController,
-			tracing,
-			checkpoint,
-		} = suspended;
-		if (user.id !== requestingUserId) return false;
-
-		this.runState.activateSuspendedRun(threadId);
-		void this.deletePersistedConfirmation(requestId);
-
-		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
-		// other tools use the flat credentials map. Prefer nodeCredentials when present.
-		const credentialsPayload = data.nodeCredentials ?? data.credentials;
-		const resumeData = {
-			approved: data.approved,
-			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
-			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
-			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
-			...(data.action ? { action: data.action } : {}),
-			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
-			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
-			...(data.answers ? { answers: data.answers } : {}),
-			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-		};
-
-		void this.processResumedStream(agent, resumeData, {
-			runId,
-			mastraRunId,
-			threadId,
-			user,
-			toolCallId,
-			signal: abortController.signal,
-			abortController,
-			snapshotStorage: this.dbSnapshotStorage,
-			tracing,
-			checkpoint,
-		});
-		return true;
 	}
 
 	private async processResumedStream(
