@@ -239,7 +239,7 @@ sequenceDiagram
 
 | Step | Method | Path | Auth | Body |
 |------|--------|------|------|------|
-| Connect | `GET` | `/instance-ai/gateway/events?apiKey=<token>` | API key query param | — (SSE stream) |
+| Connect | `GET` | `/instance-ai/gateway/events` | `X-Gateway-Key` header | — (SSE stream) |
 | Init | `POST` | `/instance-ai/gateway/init` | `X-Gateway-Key` header | `{ rootPath, tree: [{path, type, sizeBytes}], treeText }` |
 | Respond | `POST` | `/instance-ai/gateway/response/:requestId` | `X-Gateway-Key` header | `{ data }` or `{ error }` |
 | Create link | `POST` | `/instance-ai/gateway/create-link` | Session auth (cookie) | — |

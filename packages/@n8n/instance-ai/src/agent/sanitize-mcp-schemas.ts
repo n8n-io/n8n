@@ -137,19 +137,13 @@ function isSupportedLeafSchema(schema: z.ZodTypeAny): boolean {
 	return (
 		schema instanceof z.ZodString ||
 		schema instanceof z.ZodNumber ||
-		schema instanceof z.ZodNaN ||
-		schema instanceof z.ZodBigInt ||
 		schema instanceof z.ZodBoolean ||
 		schema instanceof z.ZodDate ||
-		schema instanceof z.ZodUndefined ||
 		schema instanceof z.ZodAny ||
 		schema instanceof z.ZodUnknown ||
-		schema instanceof z.ZodNever ||
-		schema instanceof z.ZodVoid ||
 		schema instanceof z.ZodLiteral ||
 		schema instanceof z.ZodEnum ||
-		schema instanceof z.ZodNativeEnum ||
-		schema instanceof z.ZodSymbol
+		schema instanceof z.ZodNativeEnum
 	);
 }
 
@@ -394,27 +388,6 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		return sanitizeChild((schema as z.ZodLazy<z.ZodTypeAny>).schema, `${context.path}.lazy`);
 	}
 
-	// ZodIntersection - recurse into both sides
-	if (schema instanceof z.ZodIntersection) {
-		const intersection = schema as z.ZodIntersection<z.ZodTypeAny, z.ZodTypeAny>;
-		return z.intersection(
-			sanitizeChild(intersection._def.left, `${context.path}.left`),
-			sanitizeChild(intersection._def.right, `${context.path}.right`),
-		);
-	}
-
-	// ZodTuple - recurse into fixed and rest items
-	if (schema instanceof z.ZodTuple) {
-		const tuple = schema as z.AnyZodTuple;
-		const sanitizedItems = tuple.items.map((item, index) =>
-			sanitizeChild(item, `${context.path}.tuple[${index}]`),
-		);
-		const sanitizedTuple = z.tuple(sanitizedItems as [] | [z.ZodTypeAny, ...z.ZodTypeAny[]]);
-		return tuple._def.rest
-			? sanitizedTuple.rest(sanitizeChild(tuple._def.rest, `${context.path}.rest`))
-			: sanitizedTuple;
-	}
-
 	// ZodOptional — recurse into inner
 	if (schema instanceof z.ZodOptional) {
 		return sanitizeChild(
@@ -492,7 +465,15 @@ function sanitizeZodTypeInner(schema: z.ZodTypeAny, context: SanitizeContext): z
 		schema instanceof z.ZodMap ||
 		schema instanceof z.ZodSet ||
 		schema instanceof z.ZodPromise ||
-		schema instanceof z.ZodFunction
+		schema instanceof z.ZodFunction ||
+		schema instanceof z.ZodIntersection ||
+		schema instanceof z.ZodTuple ||
+		schema instanceof z.ZodNaN ||
+		schema instanceof z.ZodBigInt ||
+		schema instanceof z.ZodUndefined ||
+		schema instanceof z.ZodNever ||
+		schema instanceof z.ZodVoid ||
+		schema instanceof z.ZodSymbol
 	) {
 		throw createUnsupportedTypeError(context, schema);
 	}

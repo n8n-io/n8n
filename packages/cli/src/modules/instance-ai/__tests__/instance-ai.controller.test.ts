@@ -1041,7 +1041,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should reject with ForbiddenError when the gateway has not been initialized', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			instanceAiService.getLocalGateway.mockReturnValue(mock<LocalGateway>({ isConnected: false }));
 
 			await expect(
@@ -1052,7 +1052,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should reject reconnects when the session key is due for rotation', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			instanceAiService.isGatewaySessionRotationDue.mockReturnValue(true);
 
 			await expect(
@@ -1063,8 +1063,24 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.clearDisconnectTimer).not.toHaveBeenCalled();
 		});
 
-		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
+		it('should reject pairing tokens for the event stream', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(undefined);
+			const gateway = mock<LocalGateway>({ isConnected: true });
+			gateway.onRequest.mockReturnValue(() => {});
+			gateway.onDisconnect.mockReturnValue(() => {});
+			instanceAiService.getLocalGateway.mockReturnValue(gateway);
+
+			await expect(
+				controller.gatewayEvents(makeGatewayReq('pairing-token'), makeFlushableRes()),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.getUserIdForApiKey).not.toHaveBeenCalled();
+			expect(instanceAiService.getLocalGateway).not.toHaveBeenCalled();
+		});
+
+		it('should clear a pending disconnect timer when SSE reconnects while still connected', async () => {
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			const gateway = mock<LocalGateway>({ isConnected: true });
 			gateway.onRequest.mockReturnValue(() => {});
 			instanceAiService.getLocalGateway.mockReturnValue(gateway);
@@ -1077,7 +1093,7 @@ describe('InstanceAiController', () => {
 		it('should close SSE at session rotation and send a disconnected push if reconnect grace expires', async () => {
 			jest.useFakeTimers();
 			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			instanceAiService.getGatewaySessionRotateAfter.mockReturnValue(
 				new Date('2026-01-01T00:00:01.000Z'),
 			);
@@ -1121,9 +1137,8 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should not start a disconnect timer when a stale session SSE closes', async () => {
-			instanceAiService.getUserIdForApiKey
-				.mockReturnValueOnce(USER_ID)
-				.mockReturnValueOnce(undefined);
+			instanceAiService.getUserIdForSessionKey.mockReturnValueOnce(USER_ID);
+			instanceAiService.getUserIdForApiKey.mockReturnValueOnce(undefined);
 			const gateway = mock<LocalGateway>({ isConnected: true });
 			gateway.onRequest.mockReturnValue(() => {});
 			gateway.onDisconnect.mockReturnValue(() => {});
@@ -1152,7 +1167,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should resolve gateway request', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
@@ -1170,7 +1185,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw NotFoundError when request not found', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			instanceAiService.resolveGatewayRequest.mockReturnValue(false);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
@@ -1180,7 +1195,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should reject responses when the gateway is disabled', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
 			const gatewayReq = makeGatewayReq('session-key', { result: { content: [] } });
 
@@ -1188,6 +1203,20 @@ describe('InstanceAiController', () => {
 				controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } }),
 			).rejects.toThrow(ForbiddenError);
 
+			expect(instanceAiService.resolveGatewayRequest).not.toHaveBeenCalled();
+		});
+
+		it('should reject pairing tokens for gateway responses', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(undefined);
+			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
+			const gatewayReq = makeGatewayReq('pairing-token', { result: { content: [] } });
+
+			await expect(
+				controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.getUserIdForApiKey).not.toHaveBeenCalled();
 			expect(instanceAiService.resolveGatewayRequest).not.toHaveBeenCalled();
 		});
 	});
@@ -1198,7 +1227,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should disconnect gateway and send push notification', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': 'session-key' },
 			} as unknown as Request;
@@ -1219,7 +1248,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should reject disconnect when the gateway is disabled', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(true);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': 'session-key' },
@@ -1227,6 +1256,20 @@ describe('InstanceAiController', () => {
 
 			await expect(controller.gatewayDisconnect(gatewayReq)).rejects.toThrow(ForbiddenError);
 
+			expect(instanceAiService.disconnectGateway).not.toHaveBeenCalled();
+			expect(instanceAiService.clearActiveSessionKey).not.toHaveBeenCalled();
+		});
+
+		it('should reject pairing tokens for gateway disconnect', async () => {
+			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(undefined);
+			const gatewayReq = {
+				headers: { 'x-gateway-key': 'pairing-token' },
+			} as unknown as Request;
+
+			await expect(controller.gatewayDisconnect(gatewayReq)).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.getUserIdForApiKey).not.toHaveBeenCalled();
 			expect(instanceAiService.disconnectGateway).not.toHaveBeenCalled();
 			expect(instanceAiService.clearActiveSessionKey).not.toHaveBeenCalled();
 		});
@@ -1269,7 +1312,7 @@ describe('InstanceAiController', () => {
 
 	describe('getGatewayKeyHeader', () => {
 		it('should extract first element from array header', async () => {
-			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
+			instanceAiService.getUserIdForSessionKey.mockReturnValue(USER_ID);
 			instanceAiService.resolveGatewayRequest.mockReturnValue(true);
 			const gatewayReq = {
 				headers: { 'x-gateway-key': ['key1', 'key2'] },
@@ -1278,8 +1321,8 @@ describe('InstanceAiController', () => {
 
 			await controller.gatewayResponse(gatewayReq, res, 'req-1', { result: { content: [] } });
 
-			// validateGatewayApiKey receives 'key1' (the first element)
-			expect(instanceAiService.getUserIdForApiKey).toHaveBeenCalledWith('key1');
+			// validateGatewaySessionKey receives 'key1' (the first element)
+			expect(instanceAiService.getUserIdForSessionKey).toHaveBeenCalledWith('key1');
 		});
 	});
 });

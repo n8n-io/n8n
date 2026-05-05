@@ -140,6 +140,16 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 	});
 
 	describe('session key lifecycle', () => {
+		it('does not resolve pairing tokens through the session key lookup', () => {
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			const nextPairingToken = registry.generatePairingToken('user-a');
+
+			expect(registry.getUserIdForSessionKey(sessionKey)).toBe('user-a');
+			expect(registry.getUserIdForSessionKey(nextPairingToken)).toBeUndefined();
+			expect(registry.getUserIdForApiKey(nextPairingToken)).toBe('user-a');
+		});
+
 		it('expires active session keys from reverse lookup', () => {
 			jest.useFakeTimers();
 			jest.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));

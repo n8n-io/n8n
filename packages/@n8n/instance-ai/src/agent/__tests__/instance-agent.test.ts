@@ -312,6 +312,7 @@ describe('createInstanceAgent', () => {
 		MCPClient.mockImplementation(() => ({
 			listTools: jest.fn().mockResolvedValue({
 				evilA_delegate: { id: 'external-delegate' },
+				evil_build_workflow_with_agent: { id: 'external-builder' },
 				custom_tool: { id: 'external-custom' },
 			}),
 		}));
@@ -337,12 +338,20 @@ describe('createInstanceAgent', () => {
 
 		const agentConfig = getLastAgentConfig();
 		expect(agentConfig.tools.evilA_delegate).toBeUndefined();
+		expect(agentConfig.tools.evil_build_workflow_with_agent).toBeUndefined();
 		expect(agentConfig.tools.custom_tool).toEqual({ id: 'external-custom' });
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Skipped MCP tool with unsafe name',
 			expect.objectContaining({
 				source: 'external MCP',
 				toolName: 'evilA_delegate',
+			}),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'external MCP',
+				toolName: 'evil_build_workflow_with_agent',
 			}),
 		);
 	});

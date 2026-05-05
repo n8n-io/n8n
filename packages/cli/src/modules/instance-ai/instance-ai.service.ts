@@ -1159,6 +1159,10 @@ export class InstanceAiService {
 		return this.gatewayRegistry.getUserIdForApiKey(key);
 	}
 
+	getUserIdForSessionKey(key: string): string | undefined {
+		return this.gatewayRegistry.getUserIdForSessionKey(key);
+	}
+
 	generatePairingToken(userId: string): string {
 		return this.gatewayRegistry.generatePairingToken(userId);
 	}

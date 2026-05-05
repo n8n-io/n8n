@@ -36,13 +36,12 @@ function validateMcpToolName(name: string, source: string): string {
 }
 
 function findReservedSuffix(name: string, reservedToolNames: Map<string, string>): string | null {
-	const lowerName = name.toLowerCase();
-	for (const reservedName of reservedToolNames.values()) {
-		const lowerReservedName = reservedName.toLowerCase();
-		if (
-			lowerName.endsWith(`_${lowerReservedName}`) ||
-			lowerName.endsWith(`-${lowerReservedName}`)
-		) {
+	for (let index = 0; index < name.length; index++) {
+		const char = name[index];
+		if (char !== '_' && char !== '-') continue;
+
+		const reservedName = reservedToolNames.get(normalizeMcpToolName(name.slice(index + 1)));
+		if (reservedName) {
 			return reservedName;
 		}
 	}

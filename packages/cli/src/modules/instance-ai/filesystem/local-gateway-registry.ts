@@ -127,6 +127,28 @@ export class LocalGatewayRegistry {
 		return undefined;
 	}
 
+	/** Resolve only active session keys back to the owning userId. */
+	getUserIdForSessionKey(key: string): string | undefined {
+		const userId = this.apiKeyToUserId.get(key);
+		if (!userId) return undefined;
+
+		const state = this.userGateways.get(userId);
+		if (!state) {
+			this.apiKeyToUserId.delete(key);
+			return undefined;
+		}
+
+		if (state.activeSession?.key !== key) {
+			if (state.pairingToken?.token !== key) {
+				this.apiKeyToUserId.delete(key);
+			}
+			return undefined;
+		}
+
+		this.expireActiveSessionIfNeeded(state);
+		return state.activeSession?.key === key ? userId : undefined;
+	}
+
 	/** Generate a one-time pairing token for UI-initiated connections. */
 	generatePairingToken(userId: string): string {
 		const state = this.getOrCreate(userId);

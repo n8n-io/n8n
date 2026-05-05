@@ -650,7 +650,7 @@ export class InstanceAiController {
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request, res: FlushableResponse) {
 		const key = this.getGatewayKeyHeader(req);
-		const userId = this.validateGatewayApiKey(key);
+		const userId = this.validateGatewaySessionKey(key);
 		await this.assertGatewayEnabled(userId);
 
 		if (
@@ -776,7 +776,7 @@ export class InstanceAiController {
 
 	@Post('/gateway/disconnect', { skipAuth: true })
 	async gatewayDisconnect(req: Request) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		const userId = this.validateGatewaySessionKey(this.getGatewayKeyHeader(req));
 		await this.assertGatewayEnabled(userId);
 
 		this.instanceAiService.clearDisconnectTimer(userId);
@@ -799,7 +799,7 @@ export class InstanceAiController {
 		@Param('requestId') requestId: string,
 		@Body payload: InstanceAiFilesystemResponseDto,
 	) {
-		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		const userId = this.validateGatewaySessionKey(this.getGatewayKeyHeader(req));
 		await this.assertGatewayEnabled(userId);
 
 		const resolved = this.instanceAiService.resolveGatewayRequest(
@@ -883,11 +883,27 @@ export class InstanceAiController {
 	}
 
 	/**
-	 * Validate the gateway API key from query param or header.
-	 * Accepts: static env var key, one-time pairing token (init only), or active session key.
+	 * Validate the gateway init key from header.
+	 * Accepts: static env var key, one-time pairing token, or active session key.
 	 * Returns the userId associated with the key.
 	 */
 	private validateGatewayApiKey(key: string | undefined): string {
+		return this.validateGatewayKey(key, { allowPairingToken: true });
+	}
+
+	/**
+	 * Validate the gateway session key from header.
+	 * Accepts: static env var key or active session key.
+	 * Returns the userId associated with the key.
+	 */
+	private validateGatewaySessionKey(key: string | undefined): string {
+		return this.validateGatewayKey(key, { allowPairingToken: false });
+	}
+
+	private validateGatewayKey(
+		key: string | undefined,
+		options: { allowPairingToken: boolean },
+	): string {
 		if (!key) {
 			throw new ForbiddenError('Missing API key');
 		}
@@ -901,8 +917,9 @@ export class InstanceAiController {
 			}
 		}
 
-		// Check per-user pairing token or session key via reverse lookup
-		const userId = this.instanceAiService.getUserIdForApiKey(key);
+		const userId = options.allowPairingToken
+			? this.instanceAiService.getUserIdForApiKey(key)
+			: this.instanceAiService.getUserIdForSessionKey(key);
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');

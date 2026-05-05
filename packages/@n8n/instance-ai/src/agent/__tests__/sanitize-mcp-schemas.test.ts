@@ -342,17 +342,35 @@ describe('sanitizeMcpToolSchemas', () => {
 			expect(onErrorCalls[0]?.[0].details.limitType).toBe('objectProperties');
 		});
 
-		it('should sanitize tuple items', () => {
+		it('should remove tools containing unsupported tuple or intersection schemas', () => {
+			const onError = jest.fn();
 			const tools = makeTools({
 				tupleTool: { input: z.object({ pair: z.tuple([z.string(), z.null()]) }) },
+				intersectionTool: {
+					input: z.object({
+						payload: z.intersection(z.object({ name: z.string() }), z.object({ id: z.string() })),
+					}),
+				},
 			});
 
-			const result = sanitizeMcpToolSchemas(tools);
-			const resultSchema = (result as Record<string, { inputSchema: z.ZodObject<z.ZodRawShape> }>)
-				.tupleTool.inputSchema;
+			const result = sanitizeMcpToolSchemas(tools, { onError });
 
-			expect(resultSchema.safeParse({ pair: ['ok', undefined] }).success).toBe(true);
-			expect(resultSchema.safeParse({ pair: ['ok', null] }).success).toBe(false);
+			expect(Object.keys(result)).toEqual([]);
+			const onErrorCalls = onError.mock.calls as Array<[McpSchemaSanitizationError]>;
+			expect(onErrorCalls.map(([error]) => error.details)).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						toolName: 'tupleTool',
+						limitType: 'unsupportedType',
+						zodType: 'ZodTuple',
+					}),
+					expect.objectContaining({
+						toolName: 'intersectionTool',
+						limitType: 'unsupportedType',
+						zodType: 'ZodIntersection',
+					}),
+				]),
+			);
 		});
 
 		it('should remove tools containing unsupported wrapper types', () => {
