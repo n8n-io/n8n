@@ -1,37 +1,38 @@
-import { MCPClient } from '@mastra/mcp';
+import {
+	McpClient,
+	type BuiltTool,
+	type McpServerConfig as NativeMcpServerConfig,
+} from '@n8n/agents';
 
 import type { McpServerConfig } from '../types';
 
 export class McpClientManager {
-	private mcpClient: MCPClient | undefined;
+	private mcpClient: McpClient | undefined;
 
-	async connect(servers: McpServerConfig[]): Promise<Record<string, unknown>> {
-		if (servers.length === 0) return {};
+	async connect(servers: McpServerConfig[]): Promise<BuiltTool[]> {
+		if (servers.length === 0) return [];
 
-		const serverMap: Record<
-			string,
-			{ url: URL } | { command: string; args?: string[]; env?: Record<string, string> }
-		> = {};
+		const configs: NativeMcpServerConfig[] = [];
 
 		for (const server of servers) {
+			const config: NativeMcpServerConfig = { name: server.name };
 			if (server.url) {
-				serverMap[server.name] = { url: new URL(server.url) };
+				config.url = server.url;
 			} else if (server.command) {
-				serverMap[server.name] = {
-					command: server.command,
-					args: server.args,
-					env: server.env,
-				};
+				config.command = server.command;
+				if (server.args !== undefined) config.args = server.args;
+				if (server.env !== undefined) config.env = server.env;
 			}
+			configs.push(config);
 		}
 
-		this.mcpClient = new MCPClient({ servers: serverMap });
+		this.mcpClient = new McpClient(configs);
 		return await this.mcpClient.listTools();
 	}
 
 	async disconnect(): Promise<void> {
 		if (this.mcpClient) {
-			await this.mcpClient.disconnect();
+			await this.mcpClient.close();
 			this.mcpClient = undefined;
 		}
 	}
