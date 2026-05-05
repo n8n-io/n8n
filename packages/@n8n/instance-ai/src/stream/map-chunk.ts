@@ -13,6 +13,7 @@ import type {
 	TaskList,
 	GatewayConfirmationRequiredPayload,
 } from '@n8n/api-types';
+import type { StreamChunk } from '@n8n/agents';
 import { z } from 'zod';
 
 const questionItemSchema = z.object({
@@ -335,5 +336,94 @@ export function mapMastraChunkToEvent(
 	}
 
 	// Other Mastra chunk types (step-finish, finish, etc.) are ignored
+	return null;
+}
+
+export function mapAgentChunkToEvent(
+	runId: string,
+	agentId: string,
+	chunk: StreamChunk,
+	responseId?: string,
+): InstanceAiEvent | null {
+	if (chunk.type === 'text-delta') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{ type: 'text-delta', payload: { text: chunk.delta } },
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'reasoning-delta') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{ type: 'reasoning-delta', payload: { text: chunk.delta } },
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'tool-call-suspended') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: chunk.toolCallId,
+					toolName: chunk.toolName,
+					args: isRecord(chunk.input) ? chunk.input : {},
+					suspendPayload: isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {},
+				},
+			},
+			responseId,
+		);
+	}
+
+	if (chunk.type === 'message' && 'role' in chunk.message && chunk.message.role === 'tool') {
+		const toolCall = chunk.message.content.find((part) => part.type === 'tool-call');
+		if (toolCall?.type === 'tool-call') {
+			return mapMastraChunkToEvent(
+				runId,
+				agentId,
+				{
+					type: 'tool-call',
+					payload: {
+						toolCallId: toolCall.toolCallId,
+						toolName: toolCall.toolName,
+						args: isRecord(toolCall.input) ? toolCall.input : {},
+					},
+				},
+				responseId,
+			);
+		}
+
+		const toolResult = chunk.message.content.find((part) => part.type === 'tool-result');
+		if (toolResult?.type === 'tool-result') {
+			return mapMastraChunkToEvent(
+				runId,
+				agentId,
+				{
+					type: 'tool-result',
+					payload: {
+						toolCallId: toolResult.toolCallId,
+						result: toolResult.result,
+						isError: toolResult.isError,
+					},
+				},
+				responseId,
+			);
+		}
+	}
+
+	if (chunk.type === 'error') {
+		return mapMastraChunkToEvent(
+			runId,
+			agentId,
+			{ type: 'error', payload: { error: chunk.error } },
+			responseId,
+		);
+	}
+
 	return null;
 }
