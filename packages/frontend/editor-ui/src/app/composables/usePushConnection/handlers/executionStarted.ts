@@ -53,11 +53,6 @@ export async function executionStarted(
 			createWorkflowDocumentId(workflowsStore.workflowId),
 		);
 
-		const executionData = createRunExecutionData();
-		if (data.flattedRunData) {
-			executionData.resultData.runData = parse(data.flattedRunData);
-		}
-
 		executionDataStore.setExecution({
 			id: data.executionId,
 			finished: false,
@@ -66,9 +61,11 @@ export async function executionStarted(
 			createdAt: new Date(),
 			startedAt: new Date(),
 			workflowData: workflowDocumentStore.getSnapshot(),
-			data: executionData,
+			data: createRunExecutionData(),
 		});
-	} else if (data.flattedRunData) {
+	}
+
+	if (executionDataStore.execution?.data && data.flattedRunData) {
 		executionDataStore.setExecutionRunData({
 			...executionDataStore.execution.data,
 			resultData: {
