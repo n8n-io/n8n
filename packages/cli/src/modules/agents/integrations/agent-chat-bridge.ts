@@ -605,7 +605,7 @@ export class AgentChatBridge {
 	 */
 	private async handleDisplayOnly(
 		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
-		thread: ChatThread,
+		thread: Thread,
 	): Promise<void> {
 		const { toolCallId } = chunk;
 		const input = this.richInteractionInputs.get(toolCallId);

@@ -94,14 +94,6 @@ export function chatThreadId(agentId: string): string {
 	return `${AGENT_THREAD_PREFIX.TEST}${agentId}`;
 }
 
-export interface ExecuteAgentData {
-	response: string;
-	structuredOutput: unknown;
-	usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null;
-	toolCalls: Array<{ toolName: string; input: unknown; result: unknown }>;
-	finishReason: string;
-}
-
 /** Scopes the agent's memory to a specific conversation context. */
 export interface AgentMemoryScope {
 	threadId: string;
