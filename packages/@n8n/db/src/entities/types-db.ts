@@ -208,6 +208,8 @@ export namespace ExecutionSummaries {
 		vote: AnnotationVote;
 		projectId: string;
 		workflowVersionId: string;
+		isArchived: boolean;
+		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
 	}>;
 
 	export type StopExecutionFilterQuery = { workflowId: string } & Pick<

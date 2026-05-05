@@ -1,0 +1,14 @@
+{
+	"prompt": "I want you to build a workflow that will read n8n workflow databases and extract certain information and then populate that information in a data table called 'workflows'.\n\nThe schema of the data table should be as follows:\n- instanceId\n- workflowId\n- workflowName\n- tags\n\nIf the workflow is run multiple times it should update the current rows rather than creating dupes.\n\nThe instance with the workflows is https://wonderman.users.n8n.cloud/. Configure all nodes as completely as possible and don't ask me for credentials, I'll set them up later.",
+	"complexity": "complex",
+	"tags": ["build", "schedule", "data-table", "n8n-api"],
+	"triggerType": "schedule",
+	"scenarios": [
+		{
+			"name": "happy-path",
+			"description": "Data table is populated",
+			"dataSetup": "Workflow data:\n- instanceId: 123, workflowId: abc, workflowName: 'Bob workflow', tags: bob, lovely\n- instanceId: 123, workflowId: def, workflowName: 'Raving workflow', tags: dance, boogie\n- instanceId: 456, workflowId: xyz, workflowName: 'Sir Bob', tags: knight, bob\n- instanceId: 789, workflowId: pqr, workflowName: 'Algebra', tags: maths, blackboard\n",
+			"successCriteria": "The workflow executes without errors. A data table called 'workflows' is created and contains the specified data. The workflow contains a mechanism to avoid inserting duplicate workflows (e.g. by using upsert rather than insert)."
+		}
+	]
+}

@@ -10,7 +10,7 @@ import {
 	isSafeObjectKey,
 	UNLIMITED_CREDITS,
 	type InstanceAiConfirmation,
-	type InstanceAiConfirmResponse,
+	type InstanceAiConfirmRequest,
 } from '@n8n/api-types';
 import {
 	ensureThread,
@@ -640,6 +640,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				id: t.id,
 				title: t.title || NEW_CONVERSATION_TITLE,
 				createdAt: t.createdAt,
+				updatedAt: t.updatedAt,
 				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
@@ -659,6 +660,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
 		if (existingThread) {
 			existingThread.createdAt = result.thread.createdAt;
+			existingThread.updatedAt = result.thread.updatedAt;
 			existingThread.title = result.thread.title || existingThread.title;
 			return;
 		}
@@ -667,6 +669,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			id: result.thread.id,
 			title: result.thread.title || NEW_CONVERSATION_TITLE,
 			createdAt: result.thread.createdAt,
+			updatedAt: result.thread.updatedAt,
 		});
 	}
 
@@ -868,35 +871,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	async function confirmAction(
 		requestId: string,
-		approved: boolean,
-		credentialId?: string,
-		credentials?: Record<string, string>,
-		autoSetup?: { credentialType: string },
-		userInput?: string,
-		domainAccessAction?: string,
-		setupWorkflowData?: {
-			action?: 'apply' | 'test-trigger';
-			nodeCredentials?: Record<string, Record<string, string>>;
-			nodeParameters?: Record<string, Record<string, unknown>>;
-			testTriggerNode?: string;
-		},
-		answers?: InstanceAiConfirmResponse['answers'],
-		resourceDecision?: string,
+		payload: InstanceAiConfirmRequest,
 	): Promise<boolean> {
 		try {
-			await postConfirmation(
-				rootStore.restApiContext,
-				requestId,
-				approved,
-				credentialId,
-				credentials,
-				autoSetup,
-				userInput,
-				domainAccessAction,
-				setupWorkflowData,
-				answers,
-				resourceDecision,
-			);
+			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
@@ -906,18 +884,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	async function confirmResourceDecision(requestId: string, decision: string): Promise<void> {
 		resolveConfirmation(requestId, 'approved');
-		await confirmAction(
-			requestId,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			decision,
-		);
+		await confirmAction(requestId, { kind: 'resourceDecision', resourceDecision: decision });
 	}
 
 	function toggleResearchMode(): void {

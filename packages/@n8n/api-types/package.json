@@ -36,6 +36,6 @@
     "@n8n/permissions": "workspace:*"
   },
   "peerDependencies": {
-    "zod": "catalog:"
+    "zod": ">=3.25.0 <4"
   }
 }

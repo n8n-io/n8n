@@ -15,6 +15,7 @@ export { filterNodeValidator } from './filter-node-validator';
 export { fromAiValidator } from './from-ai-validator';
 export { httpRequestValidator } from './http-request-validator';
 export { maxNodesValidator } from './max-nodes-validator';
+export { memorySessionKeyValidator } from './memory-session-key-validator';
 export { mergeNodeValidator } from './merge-node-validator';
 export { missingTriggerValidator } from './missing-trigger-validator';
 export { noNodesValidator } from './no-nodes-validator';

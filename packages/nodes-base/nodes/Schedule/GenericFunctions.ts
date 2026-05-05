@@ -126,7 +126,9 @@ export const toCronExpression = (interval: ScheduleInterval, nodeKey: string): C
 		return `${second} ${minute} ${hour} * * ${daysOfWeek}` as CronExpression;
 	}
 
-	const dayOfMonth = interval.triggerAtDayOfMonth ?? stableInt(nodeKey, 'dayOfMonth', 1, 31);
+	// Cap at 29 (exclusive) so jitter yields 1-28: any higher day would silently
+	// skip months that don't contain it (e.g. day 30 skips February every year).
+	const dayOfMonth = interval.triggerAtDayOfMonth ?? stableInt(nodeKey, 'dayOfMonth', 1, 29);
 	return `${second} ${minute} ${hour} ${dayOfMonth} */${interval.monthsInterval} *`;
 };
 
