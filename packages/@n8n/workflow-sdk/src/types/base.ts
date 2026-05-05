@@ -341,6 +341,20 @@ export interface WorkflowJSON {
 	};
 }
 
+/**
+ * Node JSON accepted by layout helpers before positions are fully assigned.
+ */
+export type LayoutableNodeJSON = Omit<NodeJSON, 'position'> & {
+	position?: [number, number];
+};
+
+/**
+ * Workflow JSON accepted by layout helpers before positions are fully assigned.
+ */
+export type LayoutableWorkflowJSON = Omit<WorkflowJSON, 'nodes'> & {
+	nodes: LayoutableNodeJSON[];
+};
+
 // =============================================================================
 // Internal: Graph representation
 // =============================================================================

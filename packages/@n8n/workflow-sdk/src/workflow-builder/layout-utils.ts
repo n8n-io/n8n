@@ -27,7 +27,12 @@ import {
 	DEFAULT_Y,
 	START_X,
 } from './constants';
-import type { GraphNode, WorkflowJSON, ConnectionTarget } from '../types/base';
+import type {
+	GraphNode,
+	WorkflowJSON,
+	ConnectionTarget,
+	LayoutableWorkflowJSON,
+} from '../types/base';
 
 // ===========================================================================
 // BFS Layout (default)
@@ -465,7 +470,12 @@ export function calculateNodePositionsDagre(
 
 	for (const name of nonStickyNames) {
 		const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
-		parentGraph.setNode(name, { width, height });
+		const position = nodes.get(name)?.instance.config?.position;
+		parentGraph.setNode(name, {
+			width,
+			height,
+			...(position ? { x: position[0], y: position[1] } : {}),
+		});
 	}
 
 	// Add edges from connections
@@ -637,8 +647,23 @@ export function calculateNodePositionsDagre(
 		}
 
 		const positionsAfter = new Map<string, BoundingBox>();
-		for (const [name, box] of Object.entries(boundingBoxByNodeId)) {
-			positionsAfter.set(name, box);
+		for (const [name, graphNode] of nodes) {
+			const explicitPosition = graphNode.instance.config?.position;
+			const { width, height } = getNodeDimensions(name, aiParentNames, aiConfigNames, nodes);
+			if (explicitPosition) {
+				positionsAfter.set(name, {
+					x: explicitPosition[0],
+					y: explicitPosition[1],
+					width,
+					height,
+				});
+				continue;
+			}
+
+			const box = boundingBoxByNodeId[name];
+			if (box) {
+				positionsAfter.set(name, box);
+			}
 		}
 
 		repositionStickyNotes(stickyNames, nonStickyNames, positionsBefore, positionsAfter, positions);
@@ -664,11 +689,16 @@ export function calculateNodePositionsDagre(
  * @param options.preservePositions - Skip layout for nodes that already have positions.
  */
 export function layoutWorkflowJSON(
-	json: WorkflowJSON,
+	json: LayoutableWorkflowJSON,
 	options?: { preservePositions?: boolean },
 ): WorkflowJSON {
 	const jsonNodes = json.nodes;
-	if (!jsonNodes || jsonNodes.length === 0) return json;
+	if (!jsonNodes || jsonNodes.length === 0) {
+		return {
+			...json,
+			nodes: [],
+		};
+	}
 
 	const preservePositions = options?.preservePositions ?? false;
 	const connections = json.connections ?? {};
@@ -724,7 +754,10 @@ export function layoutWorkflowJSON(
 		...json,
 		nodes: jsonNodes.map((node) => {
 			const pos = node.name ? positions.get(node.name) : undefined;
-			return pos ? { ...node, position: pos } : node;
+			return {
+				...node,
+				position: pos ?? node.position ?? [0, 0],
+			};
 		}),
 	};
 }

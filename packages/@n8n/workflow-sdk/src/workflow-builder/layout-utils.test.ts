@@ -8,7 +8,12 @@ import {
 	calculateNodePositionsDagre,
 	layoutWorkflowJSON,
 } from './layout-utils';
-import type { GraphNode, ConnectionTarget, WorkflowJSON } from '../types/base';
+import type {
+	GraphNode,
+	ConnectionTarget,
+	WorkflowJSON,
+	LayoutableWorkflowJSON,
+} from '../types/base';
 
 // Helper to create connection targets
 function makeTarget(node: string, type: string = 'main', index: number = 0): ConnectionTarget {
@@ -387,6 +392,24 @@ describe('calculateNodePositionsDagre', () => {
 			const positions2 = calculateNodePositionsDagre(nodes2);
 			expect(positions2.has('remote-note')).toBe(false);
 		});
+
+		it('repositions sticky notes using preserved positions for explicitly positioned nodes', () => {
+			const nodes = new Map<string, GraphNode>();
+			const triggerConns = makeMainConns([[0, [makeTarget('set')]]]);
+
+			nodes.set(
+				'trigger',
+				createGraphNode('trigger', 'n8n-nodes-base.manualTrigger', triggerConns, [500, 600]),
+			);
+			nodes.set('set', createGraphNode('set', 'n8n-nodes-base.set'));
+			nodes.set('note', createGraphNode('note', STICKY_NODE_TYPE, undefined, [500, 600]));
+
+			const positions = calculateNodePositionsDagre(nodes);
+
+			expect(positions.has('trigger')).toBe(false);
+			expect(positions.has('set')).toBe(true);
+			expect(positions.get('note')).toEqual([496, 672]);
+		});
 	});
 });
 
@@ -472,7 +495,7 @@ describe('layoutWorkflowJSON', () => {
 	});
 
 	it('applies dagre layout when nodes have no positions', () => {
-		const json = {
+		const json: LayoutableWorkflowJSON = {
 			name: 'Test',
 			nodes: [
 				{
@@ -493,7 +516,7 @@ describe('layoutWorkflowJSON', () => {
 			connections: {
 				Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 			},
-		} as unknown as WorkflowJSON;
+		};
 
 		const result = layoutWorkflowJSON(json);
 
@@ -502,5 +525,47 @@ describe('layoutWorkflowJSON', () => {
 		expect(startPos).toBeDefined();
 		expect(setPos).toBeDefined();
 		expect(setPos[0]).toBeGreaterThan(startPos[0]);
+	});
+
+	it('preserves positioned nodes while reanchoring sticky notes around them during updates', () => {
+		const json: LayoutableWorkflowJSON = {
+			name: 'Test',
+			nodes: [
+				{
+					id: '1',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [500, 600],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Set',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					parameters: {},
+				},
+				{
+					id: '3',
+					name: 'Sticky Note',
+					type: STICKY_NODE_TYPE,
+					typeVersion: 1,
+					position: [500, 600],
+					parameters: { content: 'hello' },
+				},
+			],
+			connections: {
+				Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+			},
+		};
+
+		const result = layoutWorkflowJSON(json, {
+			preservePositions: true,
+		});
+
+		expect(result.nodes.find((n) => n.name === 'Start')?.position).toEqual([500, 600]);
+		expect(result.nodes.find((n) => n.name === 'Set')?.position).toBeDefined();
+		expect(result.nodes.find((n) => n.name === 'Sticky Note')?.position).toEqual([496, 672]);
 	});
 });

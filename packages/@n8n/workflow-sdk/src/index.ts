@@ -8,6 +8,8 @@ export type {
 	WorkflowSettings,
 	WorkflowJSON,
 	NodeJSON,
+	LayoutableWorkflowJSON,
+	LayoutableNodeJSON,
 	NodeInstance,
 	TriggerInstance,
 	NodeChain,
