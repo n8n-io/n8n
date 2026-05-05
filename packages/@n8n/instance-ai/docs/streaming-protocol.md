@@ -482,9 +482,9 @@ replaying all SSE events.
 
 ### How It Works
 
-1. **Mastra V2 messages** — Mastra persists tool invocations, reasoning, and
-   text in its V2 message format. The backend parses these into rich
-   `InstanceAiMessage[]` objects with tool calls and flat agent trees.
+1. **Native agent messages** — native memory persists tool invocations,
+   reasoning, and text as `AgentDbMessage` records. The backend parses these
+   into rich `InstanceAiMessage[]` objects with tool calls and flat agent trees.
 
 2. **Agent tree snapshots** — after each `run-finish`, the backend replays
    events through `buildAgentTreeFromEvents()` and stores the resulting tree

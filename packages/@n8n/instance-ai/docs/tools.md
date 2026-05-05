@@ -707,11 +707,11 @@ everything; sub-agents receive only what they need.
 
 1. Create a file in `src/tools/<domain>/` following the naming convention `<verb>-<noun>.tool.ts`
 2. Define input/output schemas with Zod (`.describe()` on fields — these are the LLM's parameter docs)
-3. Export a factory function that takes the service context and returns a Mastra tool
+3. Export a factory function that takes the service context and returns a native `Tool`
 4. Register the tool in `src/tools/index.ts` (in `createAllTools` or `createOrchestrationTools`)
 5. If the tool requires a new service method, add it to the interface in `src/types.ts`
    and implement it in the backend adapter
 6. New native domain tools are automatically available for delegation — the
    orchestrator can include them in sub-agent tool subsets via `delegate`
-7. For HITL tools, define `suspendSchema` and `resumeSchema` — Mastra handles
-   the suspension/resume lifecycle automatically
+7. For HITL tools, define native suspend/resume schemas so the agent runtime
+   handles the suspension/resume lifecycle automatically

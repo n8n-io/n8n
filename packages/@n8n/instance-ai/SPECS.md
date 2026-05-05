@@ -468,13 +468,15 @@ pnpm typecheck
 - [x] Rewrite workspace providers against native agents workspace interfaces.
 - [x] Replace Mastra MCP usage with native MCP or native dynamic tools.
 - [ ] Update LangSmith tracing to native telemetry/events where possible.
-- [ ] Update docs that mention Mastra runtime behavior.
+- [x] Update docs that mention Mastra runtime behavior.
 - [x] Add tests for the native runtime path.
 - [x] Verify no `@mastra/*` imports remain.
 
-Current remaining cleanup:
+Current remaining implementation gaps:
 
-- Update architecture/tooling docs that still describe the old Mastra runtime.
+- Add the destructive/fresh native persistence migration.
+- Decide whether LangSmith should move further onto native telemetry/events or
+  keep the current product-level spans.
 
 ## Acceptance Criteria
 

@@ -114,12 +114,13 @@ of a fixed taxonomy (Builder, Debugger, Evaluator), the orchestrator specifies:
 Sub-agents are stateless (ADR-011), get clean context windows, and publish events
 directly to the event bus (ADR-014). They cannot spawn their own sub-agents.
 
-### 3. Observational Memory
+### 3. Long-Context Compaction
 
-Mastra's observational memory compresses old messages into dense observations via
-background Observer and Reflector agents. Tool-heavy workloads (workflow
-definitions, execution results) get 5–40x compression. This prevents context
-degradation over 50+ step autonomous loops (see ADR-016).
+Instance AI uses operational compaction to summarize long builder and
+orchestrator threads. Tool-heavy workloads (workflow definitions, execution
+results) are reduced into compact summaries that keep the current task,
+verification state, and unresolved setup details available without preserving
+the full raw transcript.
 
 ### 4. Structured System Prompt
 
@@ -193,12 +194,12 @@ The agent package — framework-agnostic business logic.
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
-- **Memory** (`memory/`) — title generation, memory configuration
+- **Memory** (`memory/`) — title generation and native thread/message helpers
 - **Compaction** (`compaction/`) — LLM-based message history summarization for long conversations
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
-- **Stream mapping** (`stream/`) — Mastra chunk → canonical event translation, HITL consumption
+- **Stream mapping** (`stream/`) — native agent `StreamChunk` → canonical event translation, HITL consumption
 - **Event bus interface** (`event-bus/`) — publishing agent events to the thread channel
 - **Tracing** (`tracing/`) — LangSmith integration for step-level observability
 - **System prompt** (`agent/`) — dynamic context-aware prompt based on instance configuration
@@ -293,21 +294,21 @@ Instance AI uses n8n's module system (`@BackendModule`). This means:
 
 ## Runtime & Streaming
 
-The agent runtime is built on Mastra's streaming primitives with added
+The agent runtime is built on native `@n8n/agents` streaming primitives with
 resumability, HITL suspension, and background task management.
 
 ### Stream Execution
 
 ```
 streamAgentRun() → agent.stream() → executeResumableStream()
-  ├─ for each chunk: mapMastraChunkToEvent() → eventBus.publish()
-  ├─ on suspension: wait for confirmation → agent.resumeStream() → loop
-  └─ return StreamRunResult {status, mastraRunId, text}
+  ├─ for each chunk: mapAgentChunkToEvent() → eventBus.publish()
+  ├─ on suspension: wait for confirmation → agent.resume('stream', ...) → loop
+  └─ return StreamRunResult {status, agentRunId, text}
 ```
 
-The `executeResumableStream()` loop consumes Mastra chunks, translates them to
-canonical `InstanceAiEvent` schema, publishes to the event bus, and handles HITL
-suspension/resume cycles. Two control modes:
+The `executeResumableStream()` loop consumes native agent chunks, translates
+them to the canonical `InstanceAiEvent` schema, publishes to the event bus, and
+handles HITL suspension/resume cycles. Two control modes:
 
 - **Manual** — returns suspension to caller (used by the orchestrator's main run)
 - **Auto** — waits for confirmation and resumes automatically (used by background sub-agents)
