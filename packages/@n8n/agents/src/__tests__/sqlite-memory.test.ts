@@ -4,6 +4,7 @@ import * as path from 'path';
 
 import { SqliteMemory } from '../storage/sqlite-memory';
 import type { AgentDbMessage, AgentMessage, Message } from '../types/sdk/message';
+import { OBSERVATION_SCHEMA_VERSION, type NewObservation } from '../types/sdk/observation';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -354,6 +355,387 @@ describe('SqliteMemory — working memory', () => {
 			'resource data',
 		);
 		expect(await mem.getWorkingMemory({ threadId: sharedKey })).toBe('thread data');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observational memory schema
+// ---------------------------------------------------------------------------
+
+describe('SqliteMemory — observation schema', () => {
+	let dbPath: string;
+
+	beforeEach(() => {
+		dbPath = makeTempDb();
+	});
+
+	afterEach(() => {
+		try {
+			fs.unlinkSync(dbPath);
+		} catch {
+			/* ignore */
+		}
+	});
+
+	it('creates the three observation tables and their indexes on first use', async () => {
+		const mem = makeMemory(dbPath);
+		await mem.saveThread({ id: 't-init', resourceId: 'u-init' });
+
+		const { createClient } = await import('@libsql/client');
+		const db = createClient({ url: `file:${dbPath}` });
+
+		const tables = await db.execute(
+			"SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
+		);
+		const tableNames = tables.rows.map((r) => r.name as string);
+		expect(tableNames).toEqual(
+			expect.arrayContaining(['observations', 'observation_cursors', 'observation_locks']),
+		);
+
+		const indexes = await db.execute(
+			"SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'observations'",
+		);
+		const indexNames = indexes.rows.map((r) => r.name as string);
+		expect(indexNames).toEqual(
+			expect.arrayContaining([
+				expect.stringMatching(/observations_scope_seq/),
+				expect.stringMatching(/observations_scope_kind_created/),
+			]),
+		);
+	});
+
+	it('namespaces observation tables and indexes', async () => {
+		const mem = makeMemory(dbPath, 'tenant_a');
+		await mem.saveThread({ id: 't-init', resourceId: 'u-init' });
+
+		const { createClient } = await import('@libsql/client');
+		const db = createClient({ url: `file:${dbPath}` });
+
+		const tables = await db.execute(
+			"SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'tenant_a_%'",
+		);
+		const tableNames = tables.rows.map((r) => r.name as string).sort();
+		expect(tableNames).toEqual(
+			expect.arrayContaining([
+				'tenant_a_observation_cursors',
+				'tenant_a_observation_locks',
+				'tenant_a_observations',
+			]),
+		);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observational memory data methods
+// ---------------------------------------------------------------------------
+
+function makeObs(overrides: Partial<NewObservation> = {}): NewObservation {
+	return {
+		scopeKind: 'thread',
+		scopeId: 't-1',
+		kind: 'observation',
+		payload: { text: 'hello' },
+		durationMs: null,
+		schemaVersion: OBSERVATION_SCHEMA_VERSION,
+		createdAt: new Date(),
+		compactedAt: null,
+		...overrides,
+	};
+}
+
+describe('SqliteMemory — observations', () => {
+	let dbPath: string;
+
+	beforeEach(() => {
+		dbPath = makeTempDb();
+	});
+
+	afterEach(() => {
+		try {
+			fs.unlinkSync(dbPath);
+		} catch {
+			/* ignore */
+		}
+	});
+
+	it('appends rows with assigned id and per-scope monotonic seq', async () => {
+		const mem = makeMemory(dbPath);
+		const persisted = await mem.appendObservations([makeObs(), makeObs(), makeObs()]);
+
+		expect(persisted).toHaveLength(3);
+		expect(persisted.map((r) => r.seq)).toEqual([1, 2, 3]);
+		expect(new Set(persisted.map((r) => r.id)).size).toBe(3);
+	});
+
+	it('seq is per-scope, not global', async () => {
+		const mem = makeMemory(dbPath);
+		const a = await mem.appendObservations([makeObs({ scopeId: 'A' })]);
+		const b = await mem.appendObservations([makeObs({ scopeId: 'B' })]);
+		expect(a[0].seq).toBe(1);
+		expect(b[0].seq).toBe(1);
+	});
+
+	it('getObservations returns rows in seq ascending', async () => {
+		const mem = makeMemory(dbPath);
+		await mem.appendObservations([
+			makeObs({ payload: 'first' }),
+			makeObs({ payload: 'second' }),
+			makeObs({ payload: 'third' }),
+		]);
+		const rows = await mem.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+		expect(rows.map((r) => r.payload)).toEqual(['first', 'second', 'third']);
+	});
+
+	it('filters by sinceSeq, kindIs, onlyUncompacted, schemaVersionAtMost, limit', async () => {
+		const mem = makeMemory(dbPath);
+		const [r1, r2, r3, r4] = await mem.appendObservations([
+			makeObs({ kind: 'observation', payload: 'one' }),
+			makeObs({ kind: 'summary', payload: 'mid' }),
+			makeObs({ kind: 'observation', payload: 'two', schemaVersion: 99 }),
+			makeObs({ kind: 'observation', payload: 'three' }),
+		]);
+
+		expect(
+			(
+				await mem.getObservations({
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					sinceSeq: r1.seq,
+				})
+			).map((r) => r.payload),
+		).toEqual(['mid', 'two', 'three']);
+
+		expect(
+			(await mem.getObservations({ scopeKind: 'thread', scopeId: 't-1', kindIs: 'summary' })).map(
+				(r) => r.payload,
+			),
+		).toEqual(['mid']);
+
+		expect(
+			(
+				await mem.getObservations({
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					schemaVersionAtMost: OBSERVATION_SCHEMA_VERSION,
+				})
+			).map((r) => r.payload),
+		).toEqual(['one', 'mid', 'three']);
+
+		expect(
+			(await mem.getObservations({ scopeKind: 'thread', scopeId: 't-1', limit: 2 })).map(
+				(r) => r.payload,
+			),
+		).toEqual(['one', 'mid']);
+
+		await mem.markObservationsCompacted([r1.id, r2.id], new Date());
+		expect(
+			(
+				await mem.getObservations({
+					scopeKind: 'thread',
+					scopeId: 't-1',
+					onlyUncompacted: true,
+				})
+			).map((r) => r.payload),
+		).toEqual(['two', 'three']);
+
+		expect(r3.id).toBeDefined();
+		expect(r4.id).toBeDefined();
+	});
+
+	it('markObservationsCompacted is idempotent and ignores unknown ids', async () => {
+		const mem = makeMemory(dbPath);
+		const [r1] = await mem.appendObservations([makeObs()]);
+
+		const at = new Date();
+		await mem.markObservationsCompacted([r1.id, 'unknown-id'], at);
+		await mem.markObservationsCompacted([r1.id], at);
+
+		const [reread] = await mem.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+		expect(reread.compactedAt?.getTime()).toBe(at.getTime());
+	});
+
+	it('persists observations across new SqliteMemory instance on same file', async () => {
+		const first = makeMemory(dbPath);
+		await first.appendObservations([makeObs({ payload: 'survive' })]);
+
+		const second = makeMemory(dbPath);
+		const rows = await second.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+		expect(rows.map((r) => r.payload)).toEqual(['survive']);
+	});
+
+	it('isolates observations between namespaces', async () => {
+		const a = makeMemory(dbPath, 'tenant_a');
+		const b = makeMemory(dbPath, 'tenant_b');
+
+		await a.appendObservations([makeObs({ payload: 'a-only' })]);
+		await b.appendObservations([makeObs({ payload: 'b-only' })]);
+
+		const aRows = await a.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+		const bRows = await b.getObservations({ scopeKind: 'thread', scopeId: 't-1' });
+		expect(aRows.map((r) => r.payload)).toEqual(['a-only']);
+		expect(bRows.map((r) => r.payload)).toEqual(['b-only']);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observation cursors
+// ---------------------------------------------------------------------------
+
+describe('SqliteMemory — observation cursors', () => {
+	let dbPath: string;
+
+	beforeEach(() => {
+		dbPath = makeTempDb();
+	});
+
+	afterEach(() => {
+		try {
+			fs.unlinkSync(dbPath);
+		} catch {
+			/* ignore */
+		}
+	});
+
+	it('returns null when no cursor has been written', async () => {
+		const mem = makeMemory(dbPath);
+		expect(await mem.getCursor('thread', 't-1')).toBeNull();
+	});
+
+	it('round-trips and overwrites on re-set', async () => {
+		const mem = makeMemory(dbPath);
+		await mem.setCursor({
+			scopeKind: 'thread',
+			scopeId: 't-1',
+			lastObservedMessageId: 'm-1',
+			lastObservedSeq: 5,
+			updatedAt: new Date('2026-05-01T12:00:00Z'),
+		});
+		const first = await mem.getCursor('thread', 't-1');
+		expect(first?.lastObservedSeq).toBe(5);
+		expect(first?.lastObservedMessageId).toBe('m-1');
+
+		await mem.setCursor({
+			scopeKind: 'thread',
+			scopeId: 't-1',
+			lastObservedMessageId: 'm-9',
+			lastObservedSeq: 9,
+			updatedAt: new Date(),
+		});
+		const second = await mem.getCursor('thread', 't-1');
+		expect(second?.lastObservedSeq).toBe(9);
+		expect(second?.lastObservedMessageId).toBe('m-9');
+	});
+
+	it('isolates cursors by scope', async () => {
+		const mem = makeMemory(dbPath);
+		await mem.setCursor({
+			scopeKind: 'thread',
+			scopeId: 'A',
+			lastObservedMessageId: 'm',
+			lastObservedSeq: 1,
+			updatedAt: new Date(),
+		});
+		expect(await mem.getCursor('thread', 'B')).toBeNull();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Observation locks
+// ---------------------------------------------------------------------------
+
+describe('SqliteMemory — observation locks', () => {
+	let dbPath: string;
+
+	beforeEach(() => {
+		dbPath = makeTempDb();
+	});
+
+	afterEach(() => {
+		try {
+			fs.unlinkSync(dbPath);
+		} catch {
+			/* ignore */
+		}
+	});
+
+	it('grants the lock when free and refuses a different holder while held', async () => {
+		const mem = makeMemory(dbPath);
+		const a = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'A',
+		});
+		expect(a).not.toBeNull();
+
+		const b = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'B',
+		});
+		expect(b).toBeNull();
+	});
+
+	it('reclaims an expired lock for a new holder', async () => {
+		const mem = makeMemory(dbPath);
+		const a = await mem.acquireObservationLock('thread', 't-1', { ttlMs: 1, holderId: 'A' });
+		expect(a).not.toBeNull();
+
+		await new Promise((resolve) => setTimeout(resolve, 25));
+
+		const b = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'B',
+		});
+		expect(b).not.toBeNull();
+		expect(b?.holderId).toBe('B');
+	});
+
+	it('lets the same holder re-acquire (refresh) an active lock', async () => {
+		const mem = makeMemory(dbPath);
+		const first = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'A',
+		});
+		const second = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'A',
+		});
+		expect(first).not.toBeNull();
+		expect(second).not.toBeNull();
+		expect(second?.heldUntil.getTime()).toBeGreaterThanOrEqual(first!.heldUntil.getTime());
+	});
+
+	it('release frees the lock and tolerates double-release', async () => {
+		const mem = makeMemory(dbPath);
+		const a = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'A',
+		});
+		await mem.releaseObservationLock(a!);
+		await mem.releaseObservationLock(a!);
+
+		const b = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'B',
+		});
+		expect(b).not.toBeNull();
+	});
+
+	it('release by stale handle does not displace a fresh holder', async () => {
+		const mem = makeMemory(dbPath);
+		const stale = await mem.acquireObservationLock('thread', 't-1', { ttlMs: 1, holderId: 'A' });
+		await new Promise((resolve) => setTimeout(resolve, 25));
+		const fresh = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'B',
+		});
+		expect(fresh).not.toBeNull();
+
+		await mem.releaseObservationLock(stale!);
+
+		const cClaim = await mem.acquireObservationLock('thread', 't-1', {
+			ttlMs: 60_000,
+			holderId: 'C',
+		});
+		expect(cClaim).toBeNull();
 	});
 });
 

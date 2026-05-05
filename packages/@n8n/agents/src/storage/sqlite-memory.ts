@@ -4,6 +4,14 @@ import { z } from 'zod';
 import { BaseMemory } from './base-memory';
 import type { Thread } from '../types/sdk/memory';
 import type { AgentDbMessage } from '../types/sdk/message';
+import type {
+	BuiltObservationStore,
+	NewObservation,
+	Observation,
+	ObservationCursor,
+	ObservationLockHandle,
+	ScopeKind,
+} from '../types/sdk/observation';
 
 /** Safe JSON.parse wrapper — returns undefined on failure. */
 function parseJsonSafe(text: string): unknown {
@@ -32,7 +40,7 @@ export const SqliteMemoryConfigSchema = z.object({
 
 export type SqliteMemoryConfig = z.infer<typeof SqliteMemoryConfigSchema>;
 
-export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> {
+export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> implements BuiltObservationStore {
 	private initPromise: Promise<Client> | null = null;
 
 	private embeddingsInitPromise: Promise<void> | null = null;
@@ -61,6 +69,8 @@ export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> {
 		const { createClient } = await import('@libsql/client');
 		const client = createClient({ url: this.config.url });
 
+		// Schema additions only via new tables; column changes require migration
+		// tooling not yet implemented in this package.
 		await client.batch(
 			[
 				`CREATE TABLE IF NOT EXISTS ${this.ns}threads (
@@ -86,6 +96,38 @@ export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> {
 			updatedAt TEXT NOT NULL,
 			PRIMARY KEY (key, scope)
 		)`,
+				`CREATE TABLE IF NOT EXISTS ${this.ns}observations (
+				id TEXT PRIMARY KEY,
+				scopeKind TEXT NOT NULL CHECK(scopeKind IN ('thread','resource','agent')),
+				scopeId TEXT NOT NULL,
+				seq INTEGER NOT NULL,
+				kind TEXT NOT NULL,
+				payload TEXT NOT NULL,
+				durationMs INTEGER,
+				schemaVersion INTEGER NOT NULL,
+				createdAt TEXT NOT NULL,
+				compactedAt TEXT,
+				UNIQUE(scopeKind, scopeId, seq)
+			)`,
+				`CREATE INDEX IF NOT EXISTS ${this.ns}observations_scope_seq
+				ON ${this.ns}observations (scopeKind, scopeId, seq)`,
+				`CREATE INDEX IF NOT EXISTS ${this.ns}observations_scope_kind_created
+				ON ${this.ns}observations (scopeKind, scopeId, kind, createdAt DESC)`,
+				`CREATE TABLE IF NOT EXISTS ${this.ns}observation_cursors (
+				scopeKind TEXT NOT NULL CHECK(scopeKind IN ('thread','resource','agent')),
+				scopeId TEXT NOT NULL,
+				lastObservedMessageId TEXT NOT NULL,
+				lastObservedSeq INTEGER NOT NULL,
+				updatedAt TEXT NOT NULL,
+				PRIMARY KEY (scopeKind, scopeId)
+			)`,
+				`CREATE TABLE IF NOT EXISTS ${this.ns}observation_locks (
+				scopeKind TEXT NOT NULL CHECK(scopeKind IN ('thread','resource','agent')),
+				scopeId TEXT NOT NULL,
+				holderId TEXT NOT NULL,
+				heldUntil TEXT NOT NULL,
+				PRIMARY KEY (scopeKind, scopeId)
+			)`,
 			],
 			'write',
 		);
@@ -429,5 +471,203 @@ export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> {
 			id: r.id as string,
 			score: 1 - (r.distance as number),
 		}));
+	}
+
+	// ── Observational memory: data ───────────────────────────────────────
+
+	async appendObservations(rows: NewObservation[]): Promise<Observation[]> {
+		if (rows.length === 0) return [];
+		const db = await this.ensureInitialized();
+
+		// Allocate seq values per scope. Single-leader deployment assumed: the
+		// SELECT MAX + INSERT batch happens without external concurrent writers.
+		// (Within a process libsql serializes write transactions, which protects
+		// against same-process concurrency.)
+		const nextSeqByScope = new Map<string, number>();
+		for (const row of rows) {
+			const key = `${row.scopeKind}:${row.scopeId}`;
+			if (!nextSeqByScope.has(key)) {
+				const r = await db.execute({
+					sql: `SELECT COALESCE(MAX(seq), 0) AS m FROM ${this.ns}observations
+						WHERE scopeKind = ? AND scopeId = ?`,
+					args: [row.scopeKind, row.scopeId],
+				});
+				nextSeqByScope.set(key, Number(r.rows[0].m as number) + 1);
+			}
+		}
+
+		const persisted: Observation[] = [];
+		const statements: Array<{ sql: string; args: InArgs }> = [];
+		for (const row of rows) {
+			const key = `${row.scopeKind}:${row.scopeId}`;
+			const seq = nextSeqByScope.get(key)!;
+			nextSeqByScope.set(key, seq + 1);
+			const id = crypto.randomUUID();
+			statements.push({
+				sql: `INSERT INTO ${this.ns}observations
+					(id, scopeKind, scopeId, seq, kind, payload, durationMs, schemaVersion, createdAt, compactedAt)
+					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				args: [
+					id,
+					row.scopeKind,
+					row.scopeId,
+					seq,
+					row.kind,
+					JSON.stringify(row.payload ?? null),
+					row.durationMs,
+					row.schemaVersion,
+					row.createdAt.toISOString(),
+					row.compactedAt ? row.compactedAt.toISOString() : null,
+				],
+			});
+			persisted.push({ ...row, id, seq });
+		}
+
+		await db.batch(statements, 'write');
+		return persisted;
+	}
+
+	async getObservations(opts: {
+		scopeKind: ScopeKind;
+		scopeId: string;
+		sinceSeq?: number;
+		kindIs?: string;
+		limit?: number;
+		schemaVersionAtMost?: number;
+		onlyUncompacted?: boolean;
+	}): Promise<Observation[]> {
+		const db = await this.ensureInitialized();
+
+		const where: string[] = ['scopeKind = ?', 'scopeId = ?'];
+		const args: Array<string | number> = [opts.scopeKind, opts.scopeId];
+		if (opts.sinceSeq !== undefined) {
+			where.push('seq > ?');
+			args.push(opts.sinceSeq);
+		}
+		if (opts.kindIs !== undefined) {
+			where.push('kind = ?');
+			args.push(opts.kindIs);
+		}
+		if (opts.onlyUncompacted) {
+			where.push('compactedAt IS NULL');
+		}
+		if (opts.schemaVersionAtMost !== undefined) {
+			where.push('schemaVersion <= ?');
+			args.push(opts.schemaVersionAtMost);
+		}
+
+		let sql = `SELECT id, scopeKind, scopeId, seq, kind, payload, durationMs, schemaVersion, createdAt, compactedAt
+			FROM ${this.ns}observations
+			WHERE ${where.join(' AND ')}
+			ORDER BY seq ASC`;
+		if (opts.limit !== undefined) {
+			sql += ' LIMIT ?';
+			args.push(opts.limit);
+		}
+
+		const result = await db.execute({ sql, args });
+		return result.rows.map((row) => ({
+			id: row.id as string,
+			scopeKind: row.scopeKind as ScopeKind,
+			scopeId: row.scopeId as string,
+			seq: Number(row.seq),
+			kind: row.kind as string,
+			payload: parseJsonSafe(row.payload as string) as Observation['payload'],
+			durationMs: row.durationMs === null ? null : Number(row.durationMs),
+			schemaVersion: Number(row.schemaVersion),
+			createdAt: new Date(row.createdAt as string),
+			compactedAt: row.compactedAt === null ? null : new Date(row.compactedAt as string),
+		}));
+	}
+
+	async markObservationsCompacted(ids: string[], compactedAt: Date): Promise<void> {
+		if (ids.length === 0) return;
+		const db = await this.ensureInitialized();
+		const placeholders = ids.map(() => '?').join(',');
+		await db.execute({
+			sql: `UPDATE ${this.ns}observations
+				SET compactedAt = ?
+				WHERE id IN (${placeholders}) AND compactedAt IS NULL`,
+			args: [compactedAt.toISOString(), ...ids],
+		});
+	}
+
+	// ── Observational memory: cursors ────────────────────────────────────
+
+	async getCursor(scopeKind: ScopeKind, scopeId: string): Promise<ObservationCursor | null> {
+		const db = await this.ensureInitialized();
+		const result = await db.execute({
+			sql: `SELECT scopeKind, scopeId, lastObservedMessageId, lastObservedSeq, updatedAt
+				FROM ${this.ns}observation_cursors
+				WHERE scopeKind = ? AND scopeId = ?`,
+			args: [scopeKind, scopeId],
+		});
+		if (result.rows.length === 0) return null;
+		const row = result.rows[0];
+		return {
+			scopeKind: row.scopeKind as ScopeKind,
+			scopeId: row.scopeId as string,
+			lastObservedMessageId: row.lastObservedMessageId as string,
+			lastObservedSeq: Number(row.lastObservedSeq),
+			updatedAt: new Date(row.updatedAt as string),
+		};
+	}
+
+	async setCursor(cursor: ObservationCursor): Promise<void> {
+		const db = await this.ensureInitialized();
+		await db.execute({
+			sql: `INSERT INTO ${this.ns}observation_cursors
+				(scopeKind, scopeId, lastObservedMessageId, lastObservedSeq, updatedAt)
+				VALUES (?, ?, ?, ?, ?)
+				ON CONFLICT(scopeKind, scopeId) DO UPDATE SET
+					lastObservedMessageId = excluded.lastObservedMessageId,
+					lastObservedSeq = excluded.lastObservedSeq,
+					updatedAt = excluded.updatedAt`,
+			args: [
+				cursor.scopeKind,
+				cursor.scopeId,
+				cursor.lastObservedMessageId,
+				cursor.lastObservedSeq,
+				cursor.updatedAt.toISOString(),
+			],
+		});
+	}
+
+	// ── Observational memory: locks ──────────────────────────────────────
+
+	async acquireObservationLock(
+		scopeKind: ScopeKind,
+		scopeId: string,
+		opts: { ttlMs: number; holderId: string },
+	): Promise<ObservationLockHandle | null> {
+		const db = await this.ensureInitialized();
+		const now = new Date();
+		const heldUntil = new Date(now.getTime() + opts.ttlMs);
+
+		// Conditional upsert: insert when free, refresh when held by same
+		// holder, displace when prior lock has expired. UPDATE WHERE clause
+		// makes the upsert a no-op when held by another live holder.
+		const result = await db.execute({
+			sql: `INSERT INTO ${this.ns}observation_locks
+				(scopeKind, scopeId, holderId, heldUntil)
+				VALUES (?, ?, ?, ?)
+				ON CONFLICT(scopeKind, scopeId) DO UPDATE SET
+					holderId = excluded.holderId,
+					heldUntil = excluded.heldUntil
+				WHERE ${this.ns}observation_locks.heldUntil < ?
+					OR ${this.ns}observation_locks.holderId = excluded.holderId`,
+			args: [scopeKind, scopeId, opts.holderId, heldUntil.toISOString(), now.toISOString()],
+		});
+		if (result.rowsAffected === 0) return null;
+		return { scopeKind, scopeId, holderId: opts.holderId, heldUntil };
+	}
+
+	async releaseObservationLock(handle: ObservationLockHandle): Promise<void> {
+		const db = await this.ensureInitialized();
+		await db.execute({
+			sql: `DELETE FROM ${this.ns}observation_locks
+				WHERE scopeKind = ? AND scopeId = ? AND holderId = ?`,
+			args: [handle.scopeKind, handle.scopeId, handle.holderId],
+		});
 	}
 }
