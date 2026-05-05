@@ -86,6 +86,16 @@ After writing any workflow with IF, Switch, or Filter nodes, verify:
 
 ### AI Agent with Subnodes — use factory functions in subnodes config
 \`\`\`javascript
+const chatTrigger = trigger({
+  type: '@n8n/n8n-nodes-langchain.chatTrigger',
+  version: 1.3,
+  config: {
+    name: 'Chat Trigger',
+    parameters: { public: false },
+    output: [{ sessionId: 'chat-session-id', chatInput: 'Hello' }]
+  }
+});
+
 const model = languageModel({
   type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
   version: 1.3,
@@ -108,6 +118,19 @@ const parser = outputParser({
   }
 });
 
+const memoryNode = memory({
+  type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+  version: 1.3,
+  config: {
+    name: 'Conversation Memory',
+    parameters: {
+      sessionIdType: 'customKey',
+      sessionKey: nodeJson(chatTrigger, 'sessionId'),
+      contextWindowLength: 10
+    }
+  }
+});
+
 const agent = node({
   type: '@n8n/n8n-nodes-langchain.agent',
   version: 3.1,
@@ -119,11 +142,12 @@ const agent = node({
       hasOutputParser: true,
       options: { systemMessage: 'You are an expert...' }
     },
-    subnodes: { model: model, outputParser: parser }
+    subnodes: { model: model, memory: memoryNode, outputParser: parser }
   }
 });
 \`\`\`
 WRONG: \`.to(agent, { connectionType: 'ai_languageModel' })\` — subnodes MUST be in the config object.
+For values inside AI subnodes, use explicit references such as \`nodeJson(triggerNode, 'sessionId')\` instead of \`$json.sessionId\`. For Chat Trigger memory specifically, \`sessionIdType: 'fromInput'\` is also valid.
 
 ### Code Node
 \`\`\`javascript
@@ -224,10 +248,6 @@ export default workflow('id', 'name')
   .add(webhookTrigger).to(processNode).to(storeNode)
   .add(scheduleTrigger).to(processNode);
 \`\`\`
-
-### Web App (SPA served from a webhook)
-
-When the workflow serves HTML from a webhook (dashboards, admin UIs, custom forms), call \`templates(action="best-practices", technique="web_app")\` for the full file-based HTML pattern, data-injection recipe, multi-route architecture, and a complete multi-route dashboard example. Embedding large HTML inline in Code nodes breaks at ~20KB — always use the file-based pattern from the guide.
 
 ### Google Sheets — documentId and sheetName (RLC fields)
 
@@ -568,6 +588,8 @@ credentials: {
 The key (\`openWeatherMapApi\`) is the credential **type** from the node type definition. The \`id\` and \`name\` come from \`credentials(action="list")\`.
 
 If the required credential type is not in \`credentials(action="list")\` results, call \`credentials(action="search-types")\` with the service name (e.g. "linear", "notion") to discover available dedicated credential types. Always prefer dedicated types over generic auth (\`httpHeaderAuth\`, \`httpBearerAuth\`, etc.). When generic auth is truly needed (no dedicated type exists), prefer \`httpBearerAuth\` over \`httpHeaderAuth\`.
+
+The credential-selection guidance above applies to outbound service calls. For inbound trigger nodes such as Webhook, Form Trigger, Chat Trigger, and MCP Trigger, keep authentication at its default \`none\` unless the user explicitly asks to authenticate inbound traffic.
 
 ## Data Tables
 

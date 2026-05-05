@@ -35,7 +35,7 @@ export function useBuilderExecution(isReady: ComputedRef<boolean>) {
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const triggerNodes = computed(() =>
-		workflowsStore.workflow.nodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
+		workflowDocumentStore.value.allNodes.filter((node) => nodeTypesStore.isTriggerNode(node.type)),
 	);
 
 	// Empty until ready — prevents trigger selection in the execute button while setup is pending

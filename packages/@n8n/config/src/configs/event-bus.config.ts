@@ -17,6 +17,19 @@ class LogWriterConfig {
 	logBaseName: string = 'n8nEventLog';
 
 	/**
+	 * Absolute path to the primary event log file (must end in `.log`). When set,
+	 * used verbatim with no process-type suffix; the operator owns per-pod
+	 * uniqueness (e.g. via Kubernetes Downward API or per-pod PVC). Parent
+	 * directory is auto-created. Rotation siblings (e.g. `myEventLog-1.log`,
+	 * `myEventLog-2.log`, …, derived from the configured `logFullPath`) and the
+	 * `.recoveryInProgress` marker colocate with this path. Empty (default)
+	 * preserves the legacy `${N8N_USER_FOLDER}/n8nEventLog[-worker|-webhook-processor]`
+	 * behavior.
+	 */
+	@Env('N8N_EVENTBUS_LOGWRITER_LOGFULLPATH')
+	logFullPath: string = '';
+
+	/**
 	 * Safety tripwire: per-file cap on concurrently unconfirmed messages held in memory
 	 * during startup log parsing. Aborts the file if exceeded, to prevent OOM on legacy
 	 * logs with many orphaned messages. Tune up if healthy workloads hit false positives.

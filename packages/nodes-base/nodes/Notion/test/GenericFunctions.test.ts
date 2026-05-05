@@ -105,6 +105,22 @@ describe('Test Notion', () => {
 				expect(result).toBe(testId);
 			}
 		});
+
+		test('should extract page ID from new app.notion.com/p/ URL format', () => {
+			for (const testId of testIds) {
+				const page = `https://app.notion.com/p/Handbook-${testId}?source=copy_link`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
+		});
+
+		test('should extract page ID from new app.notion.com/p/ URL without query string', () => {
+			for (const testId of testIds) {
+				const page = `https://app.notion.com/p/My-Page-Title-${testId}`;
+				const result = extractPageId(extractIdFromUrl(page));
+				expect(result).toBe(testId);
+			}
+		});
 	});
 });
 
@@ -149,6 +165,18 @@ describe('Test Notion, getPageId', () => {
 		const page = {
 			mode: 'url',
 			value: `https://www.notion.so/page-name-${id}`,
+		} as INodeParameterResourceLocator;
+
+		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);
+
+		const result = getPageId.call(mockExecuteFunctions, 0);
+		expect(result).toBe(id);
+	});
+
+	it('should extract page ID from new app.notion.com/p/ URL', () => {
+		const page = {
+			mode: 'url',
+			value: `https://app.notion.com/p/Handbook-${id}?source=copy_link`,
 		} as INodeParameterResourceLocator;
 
 		mockExecuteFunctions.getNodeParameter.mockReturnValue(page);

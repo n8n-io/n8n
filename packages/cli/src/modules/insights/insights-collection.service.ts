@@ -55,6 +55,17 @@ const MIN_RUNTIME = 0;
 // PostgreSQL INTEGER max (signed 32-bit)
 const MAX_RUNTIME = 2 ** 31 - 1;
 
+/**
+ * `insights_raw.value` is stored as BIGINT in PostgreSQL. Non-integer JavaScript
+ * numbers are serialized with a fractional part and rejected by the driver
+ */
+function integerValueForInsightsRaw(value: number): number {
+	if (!Number.isFinite(value)) {
+		return 0;
+	}
+	return Math.round(value);
+}
+
 type BufferedInsight = Pick<InsightsRaw, 'type' | 'value' | 'timestamp'> & {
 	workflowId: string;
 	workflowName: string;
@@ -256,7 +267,7 @@ export class InsightsCollectionService {
 			}
 			insight.metaId = metadata.metaId;
 			insight.type = event.type;
-			insight.value = event.value;
+			insight.value = integerValueForInsightsRaw(event.value);
 			insight.timestamp = event.timestamp;
 
 			events.push(insight);
