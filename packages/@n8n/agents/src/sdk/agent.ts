@@ -57,6 +57,8 @@ export interface AgentSnapshot {
 	tools: ReadonlyArray<{ name: string; description: string | undefined }>;
 	/** True when `.memory()` has been configured. */
 	hasMemory: boolean;
+	/** True when observational memory has been configured on the memory builder. */
+	hasObservationalMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
@@ -491,6 +493,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			instructions: this.instructionsText ?? null,
 			tools: this.tools.map((t) => ({ name: t.name, description: t.description })),
 			hasMemory: this.memoryConfig !== undefined,
+			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 			requireToolApproval: this.requireToolApprovalValue,
@@ -702,6 +705,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			eventBus: this.eventBus,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: this.memoryConfig?.titleGeneration,
+			observationalMemory: this.memoryConfig?.observationalMemory,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 		});
 

@@ -4,10 +4,19 @@ import { InMemoryMemory } from '../runtime/memory-store';
 import { templateFromSchema } from '../runtime/working-memory';
 import type {
 	BuiltMemory,
+	BuiltObservationStore,
 	MemoryConfig,
+	ObservationalMemoryConfig,
 	SemanticRecallConfig,
 	TitleGenerationConfig,
 } from '../types';
+
+const DEFAULT_OBSERVATION_SUMMARY_KIND = 'summary';
+const DEFAULT_OBSERVATION_LOCK_TTL_MS = 30_000;
+
+function hasObservationStore(memory: BuiltMemory): memory is BuiltMemory & BuiltObservationStore {
+	return typeof (memory as Partial<BuiltObservationStore>).appendObservations === 'function';
+}
 
 type ZodObjectSchema = z.ZodObject<z.ZodRawShape>;
 
@@ -42,6 +51,8 @@ export class Memory {
 	private memoryBackend?: BuiltMemory;
 
 	private titleGenerationConfig?: TitleGenerationConfig;
+
+	private observationalMemoryConfig?: ObservationalMemoryConfig;
 
 	/** The configured number of recent messages to include. */
 	get lastMessageCount(): number {
@@ -145,6 +156,25 @@ export class Memory {
 	}
 
 	/**
+	 * Enable observational memory: a second writer that records ambient
+	 * context (patterns, transitions, gaps) into a sibling table and feeds
+	 * a rolling summary into the main agent's system prompt.
+	 *
+	 * The SDK provides the orchestrator and storage seam; consumers supply
+	 * their own `observe` and (optionally) `compact` functions. When called
+	 * without `observe`, the configuration is still active for read-side
+	 * injection but `agent.reflect()` requires an observer at call time.
+	 *
+	 * The configured storage backend must implement
+	 * {@link BuiltObservationStore} (e.g. SqliteMemory or n8n's N8nMemory);
+	 * `.build()` throws otherwise.
+	 */
+	observationalMemory(config: ObservationalMemoryConfig): this {
+		this.observationalMemoryConfig = config;
+		return this;
+	}
+
+	/**
 	 * Validate configuration and produce a `MemoryConfig`.
 	 *
 	 * @throws if both `.structured()` and `.freeform()` are used
@@ -182,6 +212,12 @@ export class Memory {
 			}
 		}
 
+		if (this.observationalMemoryConfig && !hasObservationStore(memory)) {
+			throw new Error(
+				"Observational memory requires a storage backend that implements BuiltObservationStore (e.g. SqliteMemory or n8n's N8nMemory).",
+			);
+		}
+
 		let workingMemory: MemoryConfig['workingMemory'];
 		if (this.workingMemorySchema) {
 			workingMemory = {
@@ -204,12 +240,23 @@ export class Memory {
 			};
 		}
 
+		const observationalMemory: ObservationalMemoryConfig | undefined = this
+			.observationalMemoryConfig
+			? {
+					...this.observationalMemoryConfig,
+					summaryKind:
+						this.observationalMemoryConfig.summaryKind ?? DEFAULT_OBSERVATION_SUMMARY_KIND,
+					lockTtlMs: this.observationalMemoryConfig.lockTtlMs ?? DEFAULT_OBSERVATION_LOCK_TTL_MS,
+				}
+			: undefined;
+
 		return {
 			memory,
 			lastMessages: this.lastMessagesValue,
 			workingMemory,
 			semanticRecall: this.semanticRecallConfig,
 			titleGeneration: this.titleGenerationConfig,
+			observationalMemory,
 		};
 	}
 }
