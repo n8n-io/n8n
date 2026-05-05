@@ -12,6 +12,21 @@ export interface AgentTimeoutOptions {
 	connectTimeout?: number;
 }
 
+/**
+ * TLS/mTLS client certificate options for mutual TLS authentication.
+ * These are passed as `connect` options to undici's Agent/ProxyAgent.
+ */
+export interface TlsOptions {
+	/** Certificate Authority certificate in PEM format */
+	ca?: string;
+	/** Client certificate in PEM format (for mTLS) */
+	cert?: string;
+	/** Client private key in PEM format (for mTLS) */
+	key?: string;
+	/** Passphrase for the private key, if encrypted */
+	passphrase?: string;
+}
+
 // Default timeout for AI operations (1 hour)
 // Aligned with EXECUTIONS_TIMEOUT_MAX to ensure AI requests don't exceed workflow execution limits
 // Configurable via N8N_AI_TIMEOUT_MAX environment variable to support custom timeout requirements
@@ -39,15 +54,21 @@ function getProxyUrlFromEnv(targetUrl?: string): string {
  * @param targetUrl - The target URL to check proxy configuration for (optional)
  * @param timeoutOptions - Optional timeout configuration to override defaults. When provided,
  *                         always returns an Agent/ProxyAgent (even without proxy) to ensure timeouts are applied.
- * @returns An Agent (no proxy with timeout options) or ProxyAgent (with proxy) configured with timeouts,
- *          or undefined if no proxy is configured and no timeout options are provided (backward compatible behavior).
+ * @param tlsOptions - Optional TLS/mTLS client certificate options. When provided,
+ *                     always returns an Agent/ProxyAgent to ensure TLS is applied.
+ * @returns An Agent (no proxy with timeout/tls options) or ProxyAgent (with proxy) configured with timeouts and TLS,
+ *          or undefined if no proxy is configured and no timeout/tls options are provided (backward compatible behavior).
  *
  * @remarks
- * When timeoutOptions are provided, this function always returns an agent to ensure timeouts are properly configured.
+ * When timeoutOptions or tlsOptions are provided, this function always returns an agent.
  * The default undici timeouts (5 minutes) are too short for many AI operations.
- * When timeoutOptions are NOT provided, returns undefined if no proxy is configured (backward compatible).
+ * When neither timeoutOptions nor tlsOptions are provided, returns undefined if no proxy is configured (backward compatible).
  */
-export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutOptions) {
+export function getProxyAgent(
+	targetUrl?: string,
+	timeoutOptions?: AgentTimeoutOptions,
+	tlsOptions?: TlsOptions,
+) {
 	const proxyUrl = getProxyUrlFromEnv(targetUrl);
 
 	const agentOptions = {
@@ -58,14 +79,27 @@ export function getProxyAgent(targetUrl?: string, timeoutOptions?: AgentTimeoutO
 		}),
 	};
 
+	const connectOptions = tlsOptions
+		? {
+				ca: tlsOptions.ca || undefined,
+				cert: tlsOptions.cert || undefined,
+				key: tlsOptions.key || undefined,
+				passphrase: tlsOptions.passphrase || undefined,
+			}
+		: undefined;
+
 	if (!proxyUrl) {
-		if (timeoutOptions) {
-			return new Agent(agentOptions);
+		if (timeoutOptions || tlsOptions) {
+			return new Agent({ ...agentOptions, ...(connectOptions && { connect: connectOptions }) });
 		}
 		return undefined;
 	}
 
-	return new ProxyAgent({ uri: proxyUrl, ...agentOptions });
+	return new ProxyAgent({
+		uri: proxyUrl,
+		...agentOptions,
+		...(connectOptions && { connect: connectOptions }),
+	});
 }
 
 /**

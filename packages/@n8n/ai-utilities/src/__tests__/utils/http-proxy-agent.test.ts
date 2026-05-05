@@ -1,6 +1,7 @@
 import { Agent, ProxyAgent } from 'undici';
 
 import { getProxyAgent, proxyFetch } from 'src/utils/http-proxy-agent';
+import type { TlsOptions } from 'src/utils/http-proxy-agent';
 
 // Mock the dependencies
 jest.mock('undici', () => ({
@@ -238,6 +239,98 @@ describe('getProxyAgent', () => {
 
 			// Since we can't easily re-import, we verify the mock was called with defaults
 			expect(Agent).toHaveBeenCalled();
+		});
+	});
+
+	describe('TLS options', () => {
+		const tlsOptions: TlsOptions = {
+			ca: '-----BEGIN CERTIFICATE-----\nCA_CERT\n-----END CERTIFICATE-----',
+			cert: '-----BEGIN CERTIFICATE-----\nCLIENT_CERT\n-----END CERTIFICATE-----',
+			key: '-----BEGIN PRIVATE KEY-----\nPRIVATE_KEY\n-----END PRIVATE KEY-----',
+			passphrase: 'secret',
+		};
+
+		it('should create Agent with connect options when TLS options are provided (no proxy)', () => {
+			getProxyAgent('https://api.openai.com/v1', {}, tlsOptions);
+
+			expect(Agent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					connect: {
+						ca: tlsOptions.ca,
+						cert: tlsOptions.cert,
+						key: tlsOptions.key,
+						passphrase: tlsOptions.passphrase,
+					},
+				}),
+			);
+		});
+
+		it('should create ProxyAgent with connect options when TLS options and proxy are configured', () => {
+			const proxyUrl = 'https://proxy.example.com:8080';
+			process.env.HTTPS_PROXY = proxyUrl;
+
+			getProxyAgent('https://api.openai.com/v1', {}, tlsOptions);
+
+			expect(ProxyAgent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					uri: proxyUrl,
+					connect: {
+						ca: tlsOptions.ca,
+						cert: tlsOptions.cert,
+						key: tlsOptions.key,
+						passphrase: tlsOptions.passphrase,
+					},
+				}),
+			);
+		});
+
+		it('should omit undefined TLS fields from connect options', () => {
+			const partialTls: TlsOptions = { cert: 'CLIENT_CERT', key: 'PRIVATE_KEY' };
+
+			getProxyAgent('https://api.openai.com/v1', {}, partialTls);
+
+			expect(Agent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					connect: {
+						ca: undefined,
+						cert: 'CLIENT_CERT',
+						key: 'PRIVATE_KEY',
+						passphrase: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should omit connect options entirely when no TLS option is provided', () => {
+			getProxyAgent('https://api.openai.com/v1', {});
+
+			const callArgs = (Agent as jest.MockedClass<typeof Agent>).mock.calls[0]?.[0];
+			expect(callArgs).not.toHaveProperty('connect');
+		});
+
+		it('should treat empty string TLS fields as absent (falsy)', () => {
+			const emptyTls: TlsOptions = { ca: '', cert: '', key: '', passphrase: '' };
+
+			getProxyAgent('https://api.openai.com/v1', {}, emptyTls);
+
+			// Empty TLS options — connect object has all undefined values
+			expect(Agent).toHaveBeenCalledWith(
+				expect.objectContaining({
+					connect: {
+						ca: undefined,
+						cert: undefined,
+						key: undefined,
+						passphrase: undefined,
+					},
+				}),
+			);
+		});
+
+		it('should return Agent when only TLS options are provided (no timeout options, no proxy)', () => {
+			const agent = getProxyAgent('https://api.openai.com/v1', undefined, tlsOptions);
+
+			expect(Agent).toHaveBeenCalled();
+			expect(agent).toEqual(expect.objectContaining({ type: 'Agent' }));
 		});
 	});
 });

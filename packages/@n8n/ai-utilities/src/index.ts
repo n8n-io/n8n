@@ -25,6 +25,7 @@ export {
 	getNodeProxyAgent,
 	proxyFetch,
 	type AgentTimeoutOptions,
+	type TlsOptions,
 } from './utils/http-proxy-agent';
 export {
 	getConnectionHintNoticeField,
