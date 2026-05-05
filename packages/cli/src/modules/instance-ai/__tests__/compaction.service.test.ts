@@ -39,12 +39,9 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
-jest.mock('@mastra/core/agent', () => ({}));
-jest.mock('@mastra/core/storage', () => ({
-	MemoryStorage: class MemoryStorage {},
-	MastraCompositeStore: class MastraCompositeStore {},
+jest.mock('../storage/typeorm-memory-storage', () => ({
+	TypeORMMemoryStorage: class TypeORMMemoryStorage {},
 }));
-jest.mock('@mastra/memory', () => ({}));
 
 import { InstanceAiCompactionService } from '../compaction.service';
 
