@@ -1,7 +1,7 @@
 import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { Mocked } from 'vitest';
+import type { Mocked, MockedFunction } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -18,13 +18,13 @@ vi.mock('@utils/helpers');
 vi.mock('../../../../helpers/polling');
 vi.mock('../../../../helpers/utils');
 
-const mockFormatToOpenAIResponsesTool = formatToOpenAIResponsesTool as vi.MockedFunction<
+const mockFormatToOpenAIResponsesTool = formatToOpenAIResponsesTool as MockedFunction<
 	typeof formatToOpenAIResponsesTool
 >;
-const mockApiRequest = transport.apiRequest as vi.MockedFunction<typeof transport.apiRequest>;
-const mockCreateRequest = helpers.createRequest as vi.MockedFunction<typeof helpers.createRequest>;
-const mockGetConnectedTools = getConnectedTools as vi.MockedFunction<typeof getConnectedTools>;
-const mockPollUntilAvailable = pollUntilAvailable as vi.MockedFunction<typeof pollUntilAvailable>;
+const mockApiRequest = transport.apiRequest as MockedFunction<typeof transport.apiRequest>;
+const mockCreateRequest = helpers.createRequest as MockedFunction<typeof helpers.createRequest>;
+const mockGetConnectedTools = getConnectedTools as MockedFunction<typeof getConnectedTools>;
+const mockPollUntilAvailable = pollUntilAvailable as MockedFunction<typeof pollUntilAvailable>;
 
 describe('OpenAI Response Operation', () => {
 	let mockExecuteFunctions: Mocked<IExecuteFunctions>;

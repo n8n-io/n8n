@@ -259,7 +259,7 @@ describe('memoryManagement', () => {
 		beforeEach(() => {
 			// Mock Date.now() to return consistent values for synthetic IDs
 			vi.spyOn(Date, 'now').mockReturnValue(1234567890);
-			vi.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
@@ -319,7 +319,7 @@ describe('memoryManagement', () => {
 
 	describe('buildMessagesFromSteps', () => {
 		beforeEach(() => {
-			vi.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 		});
 
 		afterEach(() => {
@@ -444,7 +444,7 @@ describe('memoryManagement', () => {
 		let mockChatHistory: any;
 
 		beforeEach(() => {
-			vi.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 			mockChatHistory = {
 				addMessages: vi.fn().mockResolvedValue(undefined),
 			};

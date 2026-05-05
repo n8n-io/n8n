@@ -40,6 +40,7 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			region: 'us-central1',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(mockNode);
+		//@ts-expect-error - Mocking
 		mockContext.getNodeParameter = vi.fn();
 
 		mockedMakeN8nLlmFailedAttemptHandler.mockReturnValue(vi.fn());

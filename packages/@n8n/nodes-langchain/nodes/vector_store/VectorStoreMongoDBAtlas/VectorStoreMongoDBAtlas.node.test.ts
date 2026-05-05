@@ -15,6 +15,7 @@ import {
 	MONGODB_COLLECTION_NAME,
 	VECTOR_INDEX_NAME,
 } from './VectorStoreMongoDBAtlas.node';
+import { MockedClass } from 'vitest';
 
 vi.mock('mongodb', () => ({
 	MongoClient: vi.fn(),
@@ -38,7 +39,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 			connect: vi.fn().mockResolvedValue(undefined),
 			close: vi.fn().mockResolvedValue(undefined),
 		};
-		const MockMongoClient = MongoClient as vi.MockedClass<typeof MongoClient>;
+		const MockMongoClient = MongoClient as MockedClass<typeof MongoClient>;
 
 		it('should create a fresh client on every call', async () => {
 			const mockClient2 = {
@@ -146,7 +147,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 	});
 
 	describe('.getCollections', () => {
-		const MockMongoClient = MongoClient as vi.MockedClass<typeof MongoClient>;
+		const MockMongoClient = MongoClient as MockedClass<typeof MongoClient>;
 
 		it('should create and close its own client', async () => {
 			const mockCollections = [{ name: 'Col1' }, { name: 'Col2' }];

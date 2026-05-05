@@ -52,9 +52,10 @@ import { QdrantVectorStore } from '@langchain/qdrant';
 
 import { createQdrantClient } from './Qdrant.utils';
 import * as QdrantNode from './VectorStoreQdrant.node';
+import { MockedClass, MockedFunction } from 'vitest';
 
-const MockCreateQdrantClient = createQdrantClient as vi.MockedFunction<typeof createQdrantClient>;
-const MockQdrantVectorStore = QdrantVectorStore as vi.MockedClass<typeof QdrantVectorStore>;
+const MockCreateQdrantClient = createQdrantClient as MockedFunction<typeof createQdrantClient>;
+const MockQdrantVectorStore = QdrantVectorStore as MockedClass<typeof QdrantVectorStore>;
 
 describe('VectorStoreQdrant.node', () => {
 	const helpers = mock<ISupplyDataFunctions['helpers']>();

@@ -47,6 +47,7 @@ describe('LmChatOpenAi', () => {
 			apiKey: 'test-api-key',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(node);
+		//@ts-expect-error - Mocking
 		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
@@ -541,8 +542,10 @@ describe('LmChatOpenAi', () => {
 				return undefined;
 			});
 
+			//@ts-expect-error - Mocking
 			mockedCommon.prepareAdditionalResponsesParams = vi.fn().mockReturnValue(mockResponsesParams);
 
+			//@ts-expect-error - Mocking
 			mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue([]);
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);
@@ -580,6 +583,7 @@ describe('LmChatOpenAi', () => {
 				return undefined;
 			});
 
+			//@ts-expect-error - Mocking
 			mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue(mockTools);
 
 			await lmChatOpenAi.supplyData.call(mockContext, 0);

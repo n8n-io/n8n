@@ -59,6 +59,7 @@ describe('ToolExecutor Node', async () => {
 		// This must come after clearAllMocks to take effect
 		mockProcessHitlResponses.mockReturnValue({
 			hasApprovedHitlTools: false,
+			// @ts-expect-error - Mocking
 			pendingGatedToolRequest: null,
 		});
 	});
@@ -212,6 +213,7 @@ describe('ToolExecutor Node', async () => {
 
 			mockProcessHitlResponses.mockReturnValue({
 				hasApprovedHitlTools: true,
+				// @ts-expect-error - Mocking
 				pendingGatedToolRequest: mockPendingRequest,
 			});
 
@@ -228,6 +230,7 @@ describe('ToolExecutor Node', async () => {
 		it('should continue execution when no approved HITL tools', async () => {
 			mockProcessHitlResponses.mockReturnValue({
 				hasApprovedHitlTools: false,
+				// @ts-expect-error - Mocking
 				pendingGatedToolRequest: null,
 			});
 
@@ -255,6 +258,7 @@ describe('ToolExecutor Node', async () => {
 		});
 
 		it('should continue execution when processHitlResponses returns undefined pendingGatedToolRequest', async () => {
+			// @ts-expect-error - Mocking
 			mockProcessHitlResponses.mockReturnValue({
 				hasApprovedHitlTools: true,
 				pendingGatedToolRequest: undefined,
@@ -288,6 +292,7 @@ describe('ToolExecutor Node', async () => {
 
 			mockProcessHitlResponses.mockReturnValue({
 				hasApprovedHitlTools: false,
+				// @ts-expect-error - Mocking
 				pendingGatedToolRequest: null,
 			});
 		});
@@ -299,7 +304,9 @@ describe('ToolExecutor Node', async () => {
 			};
 
 			mockHasGatedToolNodeName.mockReturnValue(true);
+			// @ts-expect-error - Mocking
 			mockExtractHitlMetadata.mockReturnValue(mockHitlMetadata);
+			// @ts-expect-error - Mocking
 			mockBuildResponseMetadata.mockReturnValue({ test: 'metadata' });
 
 			const mockTool = new DynamicTool({
@@ -420,6 +427,7 @@ describe('ToolExecutor Node', async () => {
 			mockProcessHitlResponses.mockReset();
 			mockProcessHitlResponses.mockReturnValue({
 				hasApprovedHitlTools: false,
+				// @ts-expect-error - Mocking
 				pendingGatedToolRequest: null,
 			});
 		});

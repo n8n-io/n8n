@@ -492,13 +492,11 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as jest.Mock).mockResolvedValue(
-				mockBinaryData,
-			);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 

@@ -87,15 +87,15 @@ describe('modelSearch', () => {
 });
 
 describe('imageModelSearch', () => {
-	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
+	let mockContext: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
-		mockContext = {} as unknown as jest.Mocked<ILoadOptionsFunctions>;
-		jest.clearAllMocks();
+		mockContext = {} as unknown as Mocked<ILoadOptionsFunctions>;
+		vi.clearAllMocks();
 	});
 
 	it('should return models that support image analysis', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValue({
+		(transport.apiRequest as Mock).mockResolvedValue({
 			data: [
 				{ id: 'gpt-5' },
 				{ id: 'gpt-4o' },
@@ -128,7 +128,7 @@ describe('imageModelSearch', () => {
 	});
 
 	it('should exclude irrelevant model variants', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValue({
+		(transport.apiRequest as Mock).mockResolvedValue({
 			data: [
 				{ id: 'gpt-4o' },
 				{ id: 'gpt-4o-transcribe' },
@@ -146,15 +146,15 @@ describe('imageModelSearch', () => {
 });
 
 describe('imageGenerateModelSearch', () => {
-	let mockContext: jest.Mocked<ILoadOptionsFunctions>;
+	let mockContext: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
-		mockContext = {} as unknown as jest.Mocked<ILoadOptionsFunctions>;
-		jest.clearAllMocks();
+		mockContext = {} as unknown as Mocked<ILoadOptionsFunctions>;
+		vi.clearAllMocks();
 	});
 
 	it('should return only image generation models (dall-e and gpt-image)', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValue({
+		(transport.apiRequest as Mock).mockResolvedValue({
 			data: [
 				{ id: 'dall-e-2' },
 				{ id: 'dall-e-3' },
@@ -177,7 +177,7 @@ describe('imageGenerateModelSearch', () => {
 	});
 
 	it('should filter results by search term', async () => {
-		(transport.apiRequest as jest.Mock).mockResolvedValue({
+		(transport.apiRequest as Mock).mockResolvedValue({
 			data: [{ id: 'dall-e-2' }, { id: 'dall-e-3' }, { id: 'gpt-image-1' }],
 		});
 

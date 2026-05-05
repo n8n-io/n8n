@@ -273,7 +273,7 @@ describe('LmChatAlibabaCloud', () => {
 
 		it('should use gateway URL when provided via credentials', async () => {
 			const ctx = setupMockContext();
-			ctx.getCredentials = jest.fn().mockResolvedValue({
+			ctx.getCredentials = vi.fn().mockResolvedValue({
 				apiKey: 'gateway-jwt-token',
 				url: 'https://gateway.example.com/v1/gateway/alibaba',
 			});

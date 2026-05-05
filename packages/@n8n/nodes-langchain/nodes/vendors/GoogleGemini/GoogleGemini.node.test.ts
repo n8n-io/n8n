@@ -1854,7 +1854,7 @@ describe('GoogleGemini Node', () => {
 
 	describe('Video -> Generate', () => {
 		beforeEach(() => {
-			vi.useFakeTimers({ advanceTimers: true });
+			vi.useFakeTimers({ shouldAdvanceTime: true });
 		});
 
 		afterEach(() => {
@@ -2026,7 +2026,7 @@ describe('GoogleGemini Node', () => {
 			});
 
 			const promise = video.generate.execute.call(executeFunctionsMock, 0);
-			await jest.advanceTimersByTimeAsync(5000);
+			await vi.advanceTimersByTimeAsync(5000);
 			const result = await promise;
 
 			expect(result[0]?.binary?.data?.fileName).toBe('video.webm');

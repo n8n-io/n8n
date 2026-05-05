@@ -14,12 +14,13 @@ import {
 	clearAzureSearchIndex,
 	transformDocumentsForAzure,
 } from './VectorStoreAzureAISearch.node';
+import type { MockedClass } from 'vitest';
 
 vi.mock('@langchain/community/vectorstores/azure_aisearch');
 vi.mock('@azure/identity');
 vi.mock('@azure/search-documents');
 
-const MockedSearchIndexClient = SearchIndexClient as vi.MockedClass<typeof SearchIndexClient>;
+const MockedSearchIndexClient = SearchIndexClient as MockedClass<typeof SearchIndexClient>;
 
 describe('VectorStoreAzureAISearch', () => {
 	const vectorStore = new VectorStoreAzureAISearch();

@@ -1,6 +1,6 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
-import type { Mock } from 'vitest';
+import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { processItem } from '../processItem';

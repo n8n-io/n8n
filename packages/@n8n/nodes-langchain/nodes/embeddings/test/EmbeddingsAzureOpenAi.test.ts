@@ -45,6 +45,7 @@ describe('AzureOpenAIEmbeddings', () => {
 			apiKey: 'test-api-key',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(node);
+		// @ts-expect-error - Mocking
 		mockContext.getNodeParameter = vi.fn();
 		mockContext.logger = {
 			debug: vi.fn(),

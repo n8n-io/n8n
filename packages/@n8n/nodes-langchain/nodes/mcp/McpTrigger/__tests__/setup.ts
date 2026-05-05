@@ -1,5 +1,5 @@
 /**
- * Jest setup file for mcp/core tests
+ * Vitest setup file for mcp/core tests
  * Cleans up mocks between tests to ensure test isolation
  */
 

@@ -4,6 +4,7 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as ChromaNode from './VectorStoreChromaDB.node';
+import { MockedClass } from 'vitest';
 
 // Mock external modules
 vi.mock('chromadb', () => {
@@ -54,11 +55,11 @@ vi.mock('@n8n/ai-utilities', () => ({
 		},
 	metadataFilterField: {},
 }));
-vi.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }), { virtual: true });
+vi.mock('../shared/descriptions', () => ({ chromaCollectionRLC: {} }));
 
-const MockChromaClient = ChromaClient as vi.MockedClass<typeof ChromaClient>;
-const MockCloudClient = CloudClient as vi.MockedClass<typeof CloudClient>;
-const MockChroma = Chroma as vi.MockedClass<typeof Chroma>;
+const MockChromaClient = ChromaClient as MockedClass<typeof ChromaClient>;
+const MockCloudClient = CloudClient as MockedClass<typeof CloudClient>;
+const MockChroma = Chroma as MockedClass<typeof Chroma>;
 
 describe('VectorStoreChromaDB.node', () => {
 	const helpers = mock<ISupplyDataFunctions['helpers']>();

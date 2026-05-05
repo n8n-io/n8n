@@ -6,6 +6,7 @@ import * as create from '../../v2/actions/conversation/create.operation';
 import * as getOperation from '../../v2/actions/conversation/get.operation';
 import * as remove from '../../v2/actions/conversation/remove.operation';
 import * as update from '../../v2/actions/conversation/update.operation';
+import { MockedFunction } from 'vitest';
 
 vi.mock('../../transport', () => ({
 	apiRequest: vi.fn(),
@@ -59,7 +60,7 @@ const createExecuteFunctionsMock = (parameters: IDataObject): IExecuteFunctions 
 };
 
 describe('OpenAI Conversation Operations', () => {
-	const mockApiRequest = transport.apiRequest as vi.MockedFunction<typeof transport.apiRequest>;
+	const mockApiRequest = transport.apiRequest as MockedFunction<typeof transport.apiRequest>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();

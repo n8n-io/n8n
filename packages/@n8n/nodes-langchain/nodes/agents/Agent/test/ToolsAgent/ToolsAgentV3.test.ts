@@ -11,6 +11,7 @@ import type { RequestResponseMetadata } from '@utils/agent-execution';
 
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V3/execute';
 import * as helpers from '../../agents/ToolsAgent/V3/helpers';
+import { MockedFunction } from 'vitest';
 
 // Mock the helper modules
 vi.mock('../../agents/ToolsAgent/V3/helpers', () => ({
@@ -287,7 +288,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 	});
 
 	it('should apply delay between batches when configured', async () => {
-		const sleepMock = sleep as vi.MockedFunction<typeof sleep>;
+		const sleepMock = sleep as MockedFunction<typeof sleep>;
 		sleepMock.mockResolvedValue(undefined);
 
 		const mockExecutionContext = {
@@ -315,7 +316,7 @@ describe('toolsAgentExecute V3 - Execute Function Logic', () => {
 	});
 
 	it('should not apply delay after last batch', async () => {
-		const sleepMock = sleep as vi.MockedFunction<typeof sleep>;
+		const sleepMock = sleep as MockedFunction<typeof sleep>;
 		sleepMock.mockResolvedValue(undefined);
 
 		const mockExecutionContext = {

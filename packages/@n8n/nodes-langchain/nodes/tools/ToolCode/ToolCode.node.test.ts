@@ -116,6 +116,7 @@ describe('ToolCode', () => {
 							return;
 					}
 				}),
+				// @ts-expect-error - Mocking
 				getMode: vi.fn(() => 'manual'),
 			});
 
@@ -123,6 +124,7 @@ describe('ToolCode', () => {
 			const mockResult = 'test result';
 			DynamicTool.prototype.invoke = vi.fn().mockResolvedValue(mockResult);
 
+			// @ts-expect-error - Mocking
 			const result = await node.execute.call(mockExecute);
 
 			expect(result).toEqual([
@@ -170,6 +172,7 @@ describe('ToolCode', () => {
 							return;
 					}
 				}),
+				// @ts-expect-error - Mocking
 				getMode: vi.fn(() => 'manual'),
 			});
 
@@ -179,6 +182,7 @@ describe('ToolCode', () => {
 				.mockResolvedValueOnce('result for first query')
 				.mockResolvedValueOnce('result for second query');
 
+			// @ts-expect-error - Mocking
 			const result = await node.execute.call(mockExecute);
 
 			expect(result).toEqual([

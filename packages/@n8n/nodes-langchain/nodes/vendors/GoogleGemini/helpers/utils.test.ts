@@ -25,7 +25,7 @@ describe('GoogleGemini -> utils', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.useFakeTimers({ advanceTimers: true });
+		vi.useFakeTimers({ shouldAdvanceTime: true });
 	});
 
 	describe('getFilenameFromMimeType', () => {

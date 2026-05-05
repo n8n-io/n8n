@@ -17,6 +17,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
 import { buildMcpToolName } from '../utils';
+import { MockedFunction } from 'vitest';
 
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@modelcontextprotocol/sdk/client/index.js');
@@ -25,7 +26,7 @@ vi.mock('@n8n/ai-utilities', async () => ({
 	proxyFetch: vi.fn(),
 }));
 
-const mockedProxyFetch = proxyFetch as vi.MockedFunction<typeof proxyFetch>;
+const mockedProxyFetch = proxyFetch as MockedFunction<typeof proxyFetch>;
 
 describe('McpClientTool', () => {
 	beforeEach(() => {
@@ -368,12 +369,12 @@ describe('McpClientTool', () => {
 		});
 
 		it('should prioritize structuredContent over content for tool execution', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'Success' }],
 				structuredContent: { id: '123', status: 'active' },
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'Status Tool',
@@ -385,9 +386,9 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
 				}),
 				0,
 			);
@@ -398,13 +399,13 @@ describe('McpClientTool', () => {
 		});
 
 		it('should fall back to content when structuredContent is null', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'result from tool' }],
 				toolResult: undefined,
 				structuredContent: null,
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'Status Tool',
@@ -416,9 +417,9 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
 				}),
 				0,
 			);
@@ -429,13 +430,13 @@ describe('McpClientTool', () => {
 		});
 
 		it('should return empty object directly when structuredContent is an empty object', async () => {
-			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({
 				content: [{ type: 'text', text: 'result from tool' }],
 				toolResult: undefined,
 				structuredContent: {},
 			});
-			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{
 						name: 'Status Tool',
@@ -447,9 +448,9 @@ describe('McpClientTool', () => {
 
 			const supplyDataResult = await new McpClientTool().supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
-					logger: { debug: jest.fn(), error: jest.fn() },
-					addInputData: jest.fn(() => ({ index: 0 })),
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'MCP Client' })),
+					logger: { debug: vi.fn(), error: vi.fn() },
+					addInputData: vi.fn(() => ({ index: 0 })),
 				}),
 				0,
 			);

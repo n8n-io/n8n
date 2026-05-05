@@ -349,9 +349,8 @@ describe('McpTrigger', () => {
 		});
 
 		it('should return 401 for authentication errors', async () => {
-			const { WebhookAuthorizationError } = await vi.importActual(
-				'n8n-nodes-base/dist/nodes/Webhook/error',
-			);
+			const { WebhookAuthorizationError }: { WebhookAuthorizationError: any } =
+				await vi.importActual('n8n-nodes-base/dist/nodes/Webhook/error');
 			validateWebhookAuthenticationMock.mockRejectedValue(
 				new WebhookAuthorizationError(401, 'Unauthorized'),
 			);

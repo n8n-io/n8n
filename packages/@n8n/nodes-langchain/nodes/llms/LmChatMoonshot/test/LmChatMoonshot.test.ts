@@ -133,7 +133,7 @@ describe('LmChatMoonshot', () => {
 
 		it('should set response_format in modelKwargs when responseFormat is provided', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'kimi-k2.6';
 				if (paramName === 'options') return { responseFormat: 'json_object' };
 				return undefined;
@@ -176,7 +176,7 @@ describe('LmChatMoonshot', () => {
 
 		it('should configure proxy agent with custom timeout', async () => {
 			const ctx = setupMockContext();
-			ctx.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			ctx.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model') return 'kimi-k2.6';
 				if (paramName === 'options') return { timeout: 120000 };
 				return undefined;

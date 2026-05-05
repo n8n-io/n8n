@@ -5,6 +5,7 @@ import { proxyFetch } from '@n8n/ai-utilities';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import type { Mock, MockedClass, MockedFunction } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
+import { expect } from 'vitest';
 
 import type { McpAuthenticationOption } from '../types';
 import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../utils';
@@ -289,6 +290,7 @@ describe('utils', () => {
 
 				const [, callOpts] = mockedProxyFetch.mock.calls[0];
 
+				// @ts-expect-error - Mocking
 				expect(callOpts.headers).toEqual(
 					expect.objectContaining({
 						accept: expect.any(String),

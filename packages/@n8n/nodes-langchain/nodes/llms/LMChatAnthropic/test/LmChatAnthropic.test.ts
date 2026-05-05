@@ -52,6 +52,7 @@ describe('LmChatAnthropic', () => {
 			apiKey: 'test-api-key',
 		});
 		mockContext.getNode = vi.fn().mockReturnValue(node);
+		//@ts-expect-error - Mocking
 		mockContext.getNodeParameter = vi.fn();
 
 		// Mock the constructors/functions properly
@@ -595,7 +596,7 @@ describe('LmChatAnthropic', () => {
 		it('should not set thinking-related invocationKwargs when thinkingMode is disabled', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.5 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-6';
 				if (paramName === 'options')
 					return { thinkingMode: 'disabled', temperature: 0.5, topK: 10, topP: 0.8 };
@@ -618,7 +619,7 @@ describe('LmChatAnthropic', () => {
 		it('should configure adaptive thinking with default effort (medium)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.5 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-6';
 				if (paramName === 'options') return { thinkingMode: 'adaptive' };
 				return undefined;
@@ -646,7 +647,7 @@ describe('LmChatAnthropic', () => {
 			async (effort) => {
 				const mockContext = setupMockContext({ typeVersion: 1.5 });
 
-				mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
 					if (paramName === 'options') return { thinkingMode: 'adaptive', effort };
 					return undefined;
@@ -668,7 +669,7 @@ describe('LmChatAnthropic', () => {
 		it('should keep legacy enabled+budget payload for manual thinkingMode on Sonnet 4.6', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.5 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-6';
 				if (paramName === 'options')
 					return { thinkingMode: 'manual', thinkingBudget: 2048, maxTokensToSample: 4096 };
@@ -694,7 +695,7 @@ describe('LmChatAnthropic', () => {
 		it('should strip temperature/topK/topP from constructor when model is Opus 4.7 (disabled mode)', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.5 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
 				if (paramName === 'options')
 					return { thinkingMode: 'disabled', temperature: 0.5, topK: 40, topP: 0.9 };
@@ -713,7 +714,7 @@ describe('LmChatAnthropic', () => {
 		it('should throw NodeOperationError when manual mode is selected on Opus 4.7', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.5 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-opus-4-7-20251101';
 				if (paramName === 'options') return { thinkingMode: 'manual', thinkingBudget: 2048 };
 				return undefined;
@@ -728,7 +729,7 @@ describe('LmChatAnthropic', () => {
 		it('should still emit legacy thinking payload when thinking=true on v1.4', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.4 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-6';
 				if (paramName === 'options')
 					return { thinking: true, thinkingBudget: 1500, maxTokensToSample: 4096 };
@@ -753,7 +754,7 @@ describe('LmChatAnthropic', () => {
 		it('should emit empty invocationKwargs when thinking=false on v1.4', async () => {
 			const mockContext = setupMockContext({ typeVersion: 1.4 });
 
-			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
 				if (paramName === 'model.value') return 'claude-sonnet-4-6';
 				if (paramName === 'options') return { thinking: false };
 				return undefined;

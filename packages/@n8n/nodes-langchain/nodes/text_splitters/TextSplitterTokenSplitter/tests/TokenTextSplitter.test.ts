@@ -14,7 +14,9 @@ describe('TokenTextSplitter', () => {
 
 	beforeEach(() => {
 		mockTokenizer = {
+			// @ts-expect-error - Mocking
 			encode: vi.fn(),
+			// @ts-expect-error - Mocking
 			decode: vi.fn(),
 		};
 		(aiUtilities.getEncoding as Mock).mockReturnValue(mockTokenizer);

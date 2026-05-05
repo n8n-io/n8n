@@ -36,8 +36,9 @@ vi.mock('redis', () => ({ createClient: vi.fn() }));
 import { createClient } from 'redis';
 
 import * as RedisNode from './VectorStoreRedis.node';
+import type { MockedFunction } from 'vitest';
 
-const MockCreateClient = createClient as vi.MockedFunction<typeof createClient>;
+const MockCreateClient = createClient as MockedFunction<typeof createClient>;
 
 describe('VectorStoreRedis.node', () => {
 	const helpers = mock<ILoadOptionsFunctions['helpers']>();

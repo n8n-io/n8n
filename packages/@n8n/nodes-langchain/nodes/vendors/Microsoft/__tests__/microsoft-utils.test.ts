@@ -717,7 +717,7 @@ describe('microsoft-utils', () => {
 
 			(getAllTools as Mock).mockResolvedValue([]);
 
-			const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 			try {
 				await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
@@ -1746,12 +1746,12 @@ describe('microsoft-utils', () => {
 	describe('disposeActivityResources', () => {
 		let mockInvokeAgentScope: { dispose: Mock };
 		let mockMcpClient: { close: Mock };
-		let consoleErrorSpy: vi.SpyInstance;
+		let consoleErrorSpy: Mock;
 
 		beforeEach(() => {
 			mockInvokeAgentScope = { dispose: vi.fn() };
 			mockMcpClient = { close: vi.fn().mockResolvedValue(undefined) };
-			consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
+			consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		});
 
 		afterEach(() => {

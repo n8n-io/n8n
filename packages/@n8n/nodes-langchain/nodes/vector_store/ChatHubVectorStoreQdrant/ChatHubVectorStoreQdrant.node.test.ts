@@ -13,6 +13,7 @@ vi.mock('@langchain/qdrant', () => {
 
 vi.mock('@n8n/ai-utilities', () => ({
 	createVectorStoreNode: (config: any) => {
+		// @ts-expect-error - Mocking
 		globalThis.capturedDeleteDocuments = config.methods?.actionHandler?.deleteDocuments;
 		return class BaseNode {
 			async getVectorStoreClient(...args: unknown[]) {
@@ -34,9 +35,10 @@ import { QdrantVectorStore } from '@langchain/qdrant';
 
 import { ChatHubVectorStoreQdrant } from './ChatHubVectorStoreQdrant.node';
 import { createQdrantClient } from '../VectorStoreQdrant/Qdrant.utils';
+import type { MockedClass, MockedFunction } from 'vitest';
 
-const MockQdrantVectorStore = QdrantVectorStore as vi.MockedClass<typeof QdrantVectorStore>;
-const MockCreateQdrantClient = createQdrantClient as vi.MockedFunction<typeof createQdrantClient>;
+const MockQdrantVectorStore = QdrantVectorStore as MockedClass<typeof QdrantVectorStore>;
+const MockCreateQdrantClient = createQdrantClient as MockedFunction<typeof createQdrantClient>;
 
 describe('ChatHubVectorStoreQdrant', () => {
 	const mockClient = {
@@ -296,6 +298,7 @@ describe('ChatHubVectorStoreQdrant', () => {
 		it('should always prepend userId to the delete filter', async () => {
 			mockClient.delete.mockResolvedValue(undefined);
 
+			// @ts-expect-error - Mocking
 			await globalThis.capturedDeleteDocuments.call(makeContext('user-789'), {
 				filter: { agentId: 'agent-1' },
 			});
@@ -313,6 +316,7 @@ describe('ChatHubVectorStoreQdrant', () => {
 		it('should delete all user documents when filter is empty', async () => {
 			mockClient.delete.mockResolvedValue(undefined);
 
+			// @ts-expect-error - Mocking
 			await globalThis.capturedDeleteDocuments.call(makeContext('user-789'), { filter: {} });
 
 			expect(mockClient.delete).toHaveBeenCalledWith('chat_hub', {

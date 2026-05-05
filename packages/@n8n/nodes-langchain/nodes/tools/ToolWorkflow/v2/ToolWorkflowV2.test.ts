@@ -9,6 +9,7 @@ import type {
 } from 'n8n-workflow';
 
 import { WorkflowToolService } from './utils/WorkflowToolService';
+import { MockedFunction } from 'vitest';
 
 // Mock the sleep functions
 vi.mock('n8n-workflow', async () => ({
@@ -21,7 +22,7 @@ const sleepWithAbortMock = vi.mocked(sleepWithAbort);
 
 function createMockClonedContext(
 	baseContext: ISupplyDataFunctions,
-	executeWorkflowMock?: vi.MockedFunction<any>,
+	executeWorkflowMock?: MockedFunction<any>,
 ): ISupplyDataFunctions {
 	return {
 		...baseContext,
@@ -790,7 +791,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		const createAbortSignalContext = (
-			executeWorkflowMock: vi.MockedFunction<any>,
+			executeWorkflowMock: MockedFunction<any>,
 			abortSignal?: AbortSignal,
 		) => {
 			const contextWithRetryNode = createMockContext({
