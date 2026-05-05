@@ -545,9 +545,13 @@ export interface InstanceAiWorkspaceService {
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
-	| { status: 'connected' }
-	| { status: 'disconnected'; capabilities: string[] }
-	| { status: 'disabled' };
+	| {
+			status: 'connected';
+			capabilities: string[];
+	  }
+	| {
+			status: 'disabledGlobally' | 'disconnected' | 'disabled';
+	  };
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
