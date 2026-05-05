@@ -3240,6 +3240,15 @@ export class InstanceAiService {
 		user: User,
 		createdWorkflowIds: Set<string> | undefined,
 	): Promise<string[]> {
+		const runningTaskCount = this.backgroundTasks.getRunningTasks(threadId).length;
+		if (runningTaskCount > 0) {
+			this.logger.debug('Deferring AI-builder temporary workflow cleanup until tasks settle', {
+				threadId,
+				runningTaskCount,
+			});
+			return [];
+		}
+
 		let markedWorkflows: Array<{ workflowId: string }> = [];
 		try {
 			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
