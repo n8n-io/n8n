@@ -13,6 +13,7 @@ import type {
 	BuiltProviderTool,
 	BuiltTelemetry,
 	BuiltTool,
+	ObserveFn,
 	CheckpointStore,
 	FinishReason,
 	GenerateResult,
@@ -31,11 +32,13 @@ import type {
 	TokenUsage,
 	XaiThinkingConfig,
 } from '../types';
+import { BackgroundTaskTracker } from './background-task-tracker';
 import { AgentEventBus } from './event-bus';
 import { saveMessagesToThread } from './memory-store';
 import { AgentMessageList, type SerializedMessageList } from './message-list';
 import { fromAiFinishReason, fromAiMessages } from './messages';
 import { createEmbeddingModel, createModel } from './model-factory';
+import { runObservationalCycle } from './observational-cycle';
 import { loadObservationalMemoryContext } from './observational-memory';
 import { generateRunId, RunStateManager } from './run-state';
 import {
@@ -218,6 +221,8 @@ export class AgentRuntime {
 
 	private modelCost: ModelCost | undefined;
 
+	private backgroundTasks = new BackgroundTaskTracker();
+
 	/** Resolved telemetry for the current run (own config or inherited from parent). */
 
 	constructor(config: AgentRuntimeConfig) {
@@ -230,6 +235,14 @@ export class AgentRuntime {
 			messageList: EMPTY_MESSAGE_LIST,
 			pendingToolCalls: {},
 		};
+	}
+
+	/**
+	 * Wait for in-flight background tasks (title generation, future
+	 * observer cycles) to settle. Safe to call multiple times.
+	 */
+	async dispose(): Promise<void> {
+		await this.backgroundTasks.flush();
 	}
 
 	/** Return the latest state snapshot. */
@@ -692,6 +705,7 @@ export class AgentRuntime {
 			}
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
+			this.maybeDispatchObservationalCatchup(options);
 
 			const result = await generateText({
 				model,
@@ -778,6 +792,7 @@ export class AgentRuntime {
 				agentModel: this.config.model,
 				turnDelta: list.turnDelta(),
 			});
+			this.backgroundTasks.track(titlePromise);
 			if (this.config.titleGeneration.sync) {
 				await titlePromise;
 			}
@@ -947,6 +962,7 @@ export class AgentRuntime {
 			if (await handleAbort()) return;
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
+			this.maybeDispatchObservationalCatchup(options);
 			const messages = list.forLlm(effectiveInstructions, this.config.instructionProviderOptions);
 			const result = streamText({
 				model,
@@ -1096,6 +1112,7 @@ export class AgentRuntime {
 					agentModel: this.config.model,
 					turnDelta: list.turnDelta(),
 				});
+				this.backgroundTasks.track(titlePromise);
 				if (this.config.titleGeneration.sync) {
 					await titlePromise;
 				}
@@ -1825,6 +1842,70 @@ export class AgentRuntime {
 			options.threadId,
 		);
 		if (ctx) list.observationalMemory = ctx;
+	}
+
+	/**
+	 * Lazy fallback at TurnStart: if the cursor is behind the latest
+	 * persisted message, dispatch a catch-up cycle so observations from
+	 * any prior run that didn't observe (restart, no trigger configured)
+	 * eventually land. The cycle runs via the background-task tracker;
+	 * its result lands one turn later — the *current* turn's prompt was
+	 * already assembled by buildMessageList. Repeated dispatches across
+	 * turns within the same run are safe: the per-scope lock skips
+	 * duplicates, and a no-delta cycle returns early.
+	 */
+	private maybeDispatchObservationalCatchup(options: RunOptions | undefined): void {
+		const obsConfig = this.config.observationalMemory;
+		const observe = obsConfig?.observe;
+		const memory = this.config.memory;
+		const threadId = options?.persistence?.threadId;
+		if (!obsConfig || !observe || !memory || !threadId) return;
+		if (typeof (memory as Partial<BuiltObservationStore>).appendObservations !== 'function') {
+			return;
+		}
+		const store = memory as BuiltMemory & BuiltObservationStore;
+		this.backgroundTasks.track(this.runCatchupIfBehind(store, obsConfig, observe, threadId));
+	}
+
+	private async runCatchupIfBehind(
+		store: BuiltMemory & BuiltObservationStore,
+		obsConfig: ObservationalMemoryConfig,
+		observe: ObserveFn,
+		threadId: string,
+	): Promise<void> {
+		const [cursor, latest] = await Promise.all([
+			store.getCursor('thread', threadId),
+			store.getMessages(threadId, { limit: 1 }),
+		]);
+		if (latest.length === 0) return;
+		const latestSeq = latest[0].seq;
+		if (latestSeq === undefined) return;
+		if (cursor && cursor.lastObservedSeq >= latestSeq) return;
+
+		await runObservationalCycle({
+			memory: store,
+			scopeKind: 'thread',
+			scopeId: threadId,
+			observe,
+			...(obsConfig.compact !== undefined && { compact: obsConfig.compact }),
+			...(obsConfig.compactionRowThreshold !== undefined && {
+				compactionRowThreshold: obsConfig.compactionRowThreshold,
+			}),
+			...(obsConfig.summaryKind !== undefined && { summaryKind: obsConfig.summaryKind }),
+			...(obsConfig.lockTtlMs !== undefined && { lockTtlMs: obsConfig.lockTtlMs }),
+			...(this.config.telemetry !== undefined && { telemetry: this.config.telemetry }),
+			eventBus: this.eventBus,
+		});
+	}
+
+	/**
+	 * Configured telemetry handle (build-time). Run-time inheritance via
+	 * `ExecutionOptions.parentTelemetry` only applies inside an active
+	 * agentic loop; out-of-band callers like `agent.reflect()` see the
+	 * builder-time value.
+	 */
+	getConfiguredTelemetry(): BuiltTelemetry | undefined {
+		return this.config.telemetry;
 	}
 
 	private resolveWorkingMemoryParams(options: AgentPersistenceOptions | undefined) {

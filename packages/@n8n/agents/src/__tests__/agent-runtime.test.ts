@@ -2629,3 +2629,109 @@ describe('AgentRuntime — observational memory read path', () => {
 		expect(prompt).not.toContain('should not appear');
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Observational memory — lazy fallback at TurnStart
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — observational lazy fallback at TurnStart', () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		generateText.mockResolvedValue(makeGenerateSuccess());
+	});
+
+	it('runs the observer in the background when the cursor is behind the latest message', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 't-fb', resourceId: 'u-1' });
+		// Pre-existing messages from a prior run that were never observed.
+		await store.saveMessages({
+			threadId: 't-fb',
+			resourceId: 'u-1',
+			messages: [
+				{
+					id: 'm-prior-1',
+					createdAt: new Date('2026-05-04T00:00:00Z'),
+					role: 'user',
+					content: [{ type: 'text', text: 'prior 1' }],
+				},
+				{
+					id: 'm-prior-2',
+					createdAt: new Date('2026-05-04T00:01:00Z'),
+					role: 'assistant',
+					content: [{ type: 'text', text: 'prior 2' }],
+				},
+			],
+		});
+
+		const observe = jest.fn().mockResolvedValue([
+			{
+				scopeKind: 'thread',
+				scopeId: 't-fb',
+				kind: 'observation',
+				payload: 'caught up',
+				durationMs: null,
+				schemaVersion: 1,
+				createdAt: new Date(),
+				compactedAt: null,
+			},
+		]);
+
+		const runtime = new AgentRuntime({
+			name: 'obs-fallback',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: store,
+			observationalMemory: { observe },
+		});
+
+		await runtime.generate('hi', { persistence: { threadId: 't-fb', resourceId: 'u-1' } });
+		await runtime.dispose();
+
+		expect(observe).toHaveBeenCalledTimes(1);
+		const written = await store.getObservations({ scopeKind: 'thread', scopeId: 't-fb' });
+		expect(written.map((r) => r.payload)).toContain('caught up');
+		// Cursor advanced past the prior messages (and the new turn's persisted messages).
+		const cursor = await store.getCursor('thread', 't-fb');
+		expect(cursor).not.toBeNull();
+	});
+
+	it('skips when cursor is already at the latest message', async () => {
+		const store = new InMemoryMemory();
+		await store.saveThread({ id: 't-caught', resourceId: 'u-1' });
+		await store.saveMessages({
+			threadId: 't-caught',
+			resourceId: 'u-1',
+			messages: [
+				{
+					id: 'm-1',
+					createdAt: new Date('2026-05-04T00:00:00Z'),
+					role: 'user',
+					content: [{ type: 'text', text: 'one' }],
+				},
+			],
+		});
+		const [only] = await store.getMessages('t-caught');
+		await store.setCursor({
+			scopeKind: 'thread',
+			scopeId: 't-caught',
+			lastObservedMessageId: only.id,
+			lastObservedSeq: only.seq!,
+			updatedAt: new Date(),
+		});
+
+		const observe = jest.fn().mockResolvedValue([]);
+		const runtime = new AgentRuntime({
+			name: 'obs-caught-up',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'base instructions',
+			memory: store,
+			observationalMemory: { observe },
+		});
+
+		await runtime.generate('hi', { persistence: { threadId: 't-caught', resourceId: 'u-1' } });
+		await runtime.dispose();
+
+		// No new persisted messages on the prior turn → cursor was at-latest at TurnStart.
+		expect(observe).not.toHaveBeenCalled();
+	});
+});

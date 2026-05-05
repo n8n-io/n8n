@@ -8,6 +8,10 @@ import { Telemetry } from './telemetry';
 import { Tool, wrapToolForApproval } from './tool';
 import { AgentRuntime } from '../runtime/agent-runtime';
 import { AgentEventBus } from '../runtime/event-bus';
+import {
+	runObservationalCycle,
+	type RunObservationalCycleResult,
+} from '../runtime/observational-cycle';
 import { createAgentToolResult } from '../runtime/tool-adapter';
 import type {
 	AgentEvent,
@@ -17,9 +21,12 @@ import type {
 	BuiltEval,
 	BuiltGuardrail,
 	BuiltMemory,
+	BuiltObservationStore,
 	BuiltProviderTool,
 	BuiltTool,
 	BuiltTelemetry,
+	CompactFn,
+	ObserveFn,
 	CheckpointStore,
 	ExecutionOptions,
 	GenerateResult,
@@ -519,6 +526,60 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	abort(): void {
 		this.eventBus.abort();
+	}
+
+	/**
+	 * Wait for any in-flight background tasks (title generation, future
+	 * observer cycles) to settle. Call before letting the agent go out of
+	 * scope to ensure deferred writes land. Safe to call multiple times.
+	 */
+	async close(): Promise<void> {
+		if (this.runtime) await this.runtime.dispose();
+	}
+
+	/**
+	 * Run one observational cycle for `threadId` synchronously: read the
+	 * delta since the cursor, invoke the observer, write its rows, advance
+	 * the cursor, and trigger the compactor when the threshold is crossed.
+	 *
+	 * Picks `observe` and `compact` from the call arguments first, then
+	 * falls back to the values supplied to
+	 * `Memory.observationalMemory(...)`. Returns `{ status: 'no-config' }`
+	 * when neither the builder nor the call provides an observer, or when
+	 * the configured backend does not implement BuiltObservationStore.
+	 */
+	async reflect(opts: {
+		threadId: string;
+		observe?: ObserveFn;
+		compact?: CompactFn;
+	}): Promise<{ status: 'no-config' } | RunObservationalCycleResult> {
+		const obsConfig = this.memoryConfig?.observationalMemory;
+		const memory = this.memoryConfig?.memory;
+		const observe = opts.observe ?? obsConfig?.observe;
+		if (
+			!obsConfig ||
+			!memory ||
+			typeof (memory as Partial<BuiltObservationStore>).appendObservations !== 'function' ||
+			!observe
+		) {
+			return { status: 'no-config' };
+		}
+		const runtime = await this.ensureBuilt();
+		const telemetry = runtime.getConfiguredTelemetry();
+		return await runObservationalCycle({
+			memory: memory as BuiltMemory & BuiltObservationStore,
+			scopeKind: 'thread',
+			scopeId: opts.threadId,
+			observe,
+			compact: opts.compact ?? obsConfig.compact,
+			...(obsConfig.compactionRowThreshold !== undefined && {
+				compactionRowThreshold: obsConfig.compactionRowThreshold,
+			}),
+			...(obsConfig.summaryKind !== undefined && { summaryKind: obsConfig.summaryKind }),
+			...(obsConfig.lockTtlMs !== undefined && { lockTtlMs: obsConfig.lockTtlMs }),
+			...(telemetry !== undefined && { telemetry }),
+			eventBus: this.eventBus,
+		});
 	}
 
 	/** Generate a response (non-streaming). Lazy-builds on first call. */
