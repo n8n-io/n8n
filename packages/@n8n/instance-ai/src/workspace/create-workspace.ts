@@ -116,8 +116,8 @@ export function createWorkspace(
 
 	if (sandbox instanceof N8nSandboxServiceSandbox) {
 		return new Workspace({
-			sandbox,
-			filesystem: new N8nSandboxFilesystem(sandbox),
+			sandbox: sandbox as never,
+			filesystem: new N8nSandboxFilesystem(sandbox) as unknown as LocalFilesystem,
 		});
 	}
 

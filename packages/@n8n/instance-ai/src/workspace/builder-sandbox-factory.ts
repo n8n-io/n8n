@@ -312,8 +312,8 @@ export class BuilderSandboxFactory {
 
 		try {
 			const workspace = new Workspace({
-				sandbox,
-				filesystem: new N8nSandboxFilesystem(sandbox),
+				sandbox: sandbox as never,
+				filesystem: new N8nSandboxFilesystem(sandbox) as unknown as LocalFilesystem,
 			});
 
 			await workspace.init();
