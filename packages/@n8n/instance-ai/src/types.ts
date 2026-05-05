@@ -20,6 +20,7 @@ import type { GenericValue, INodeTypes } from 'n8n-workflow';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
+import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
@@ -992,6 +993,8 @@ export interface OrchestrationContext {
 	workspace?: Workspace;
 	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
 	builderSandboxFactory?: BuilderSandboxFactory;
+	/** Process-local registry for retaining recently finished builder sandboxes. */
+	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Mastra memory instance — used to retrieve thread message history for sub-agents */

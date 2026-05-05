@@ -11,6 +11,7 @@ import {
 	type StickyNoteConfig,
 	type PlaceholderValue,
 	type NewCredentialValue,
+	type CredentialReference,
 	type DeclaredConnection,
 	type NodeChain,
 	type InputTarget,
@@ -99,6 +100,35 @@ function generateNodeName(type: string): string {
 }
 
 /**
+ * Collapse `placeholder('hint')` markers inside a credentials map into
+ * `newCredential('hint')`. The two have identical intent in this slot —
+ * "a credential is required, no real one is bound yet" — so we normalize at
+ * config ingest. Downstream code (resolveCredentials, hasNewCredential, the
+ * `__newCredential` toJSON path) only ever sees `__newCredential` markers in
+ * credential slots, never `__placeholder` ones.
+ *
+ * Returns a new config object when any normalization happens; otherwise a
+ * shallow copy (matching the previous `{ ...config }` semantics).
+ */
+export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
+	const creds = config?.credentials;
+	if (!creds) return { ...config };
+
+	let normalizedCreds:
+		| Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>
+		| undefined;
+	for (const [key, value] of Object.entries(creds)) {
+		if (value && typeof value === 'object' && '__placeholder' in value) {
+			normalizedCreds ??= { ...creds };
+			normalizedCreds[key] = new NewCredentialImpl(value.hint);
+		}
+	}
+
+	if (!normalizedCreds) return { ...config };
+	return { ...config, credentials: normalizedCreds };
+}
+
+/**
  * Internal node instance implementation
  */
 class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
@@ -122,7 +152,7 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	) {
 		this.type = type;
 		this.version = version;
-		this.config = { ...config };
+		this.config = normalizeNodeConfig(config);
 		this.id = id ?? uuid();
 		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
@@ -1145,6 +1175,11 @@ class PlaceholderImpl implements PlaceholderValue {
  *
  * Placeholders are used to mark values that need to be filled in
  * when a workflow template is instantiated.
+ *
+ * Inside a node's `credentials` slot, `placeholder(hint)` is normalized to
+ * `newCredential(hint)` at config ingest — the two have identical intent
+ * there ("a credential is required, no real one bound yet"). Outside the
+ * credentials slot the original placeholder semantics are unchanged.
  *
  * @param hint - Description shown to users (e.g., 'Enter Channel')
  * @returns A placeholder value that serializes to the placeholder format

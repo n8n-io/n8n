@@ -237,7 +237,7 @@ describe('GlobalConfig', () => {
 			formWaiting: 'form-waiting',
 			mcp: 'mcp',
 			mcpBuilderEnabled: true,
-			mcpMaxRegisteredClients: 200,
+			mcpMaxRegisteredClients: 5000,
 			mcpTest: 'mcp-test',
 			payloadSizeMax: 16,
 			formDataFileSizeMax: 200,
@@ -286,6 +286,7 @@ describe('GlobalConfig', () => {
 			n8nSandboxServiceUrl: '',
 			n8nSandboxServiceApiKey: '',
 			sandboxTimeout: 300000,
+			builderSandboxTtlMs: 600_000,
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
@@ -371,6 +372,9 @@ describe('GlobalConfig', () => {
 			ttl: 10,
 			interval: 3,
 			newLeaderElection: false,
+		},
+		evaluation: {
+			parallelExecutionEnabled: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
