@@ -307,6 +307,27 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		return [column, order.toUpperCase() as 'ASC' | 'DESC'];
 	}
 
+	private async countInsightsByWorkflowGroups(
+		groupedQuery: SelectQueryBuilder<InsightsByPeriod>,
+	): Promise<number> {
+		const groupsSubQuery = groupedQuery
+			.clone()
+			.select('metadata.workflowId', 'workflowId')
+			.addSelect('metadata.workflowName', 'workflowName')
+			.addSelect('metadata.projectId', 'projectId')
+			.addSelect('metadata.projectName', 'projectName');
+		groupsSubQuery.orderBy();
+
+		const row = await this.manager
+			.createQueryBuilder()
+			.select('COUNT(*)', 'count')
+			.from(`(${groupsSubQuery.getQuery()})`, 'workflow_groups')
+			.setParameters(groupsSubQuery.getParameters())
+			.getRawOne<{ count: string | number | undefined }>();
+
+		return row?.count !== undefined ? Number(row.count) : 0;
+	}
+
 	async getInsightsByWorkflow({
 		startDate,
 		endDate,
@@ -348,6 +369,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 								ELSE 1.0 * SUM(CASE WHEN insights.type = ${TypeToNumber.runtime_ms.toString()} THEN value ELSE 0 END) / ${sumOfExecutions}
 							END AS "averageRunTime"`,
 			])
+			.addSelect('COUNT(*) OVER()', 'totalCount')
 			.innerJoin('insights.metadata', 'metadata')
 			// Use a cross join with the CTE
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
@@ -363,8 +385,11 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			rawRowsQuery.andWhere('metadata.projectId = :projectId', { projectId });
 		}
 
-		const count = (await rawRowsQuery.getRawMany()).length;
-		const rawRows = await rawRowsQuery.offset(skip).limit(take).getRawMany();
+		const rawRows = await rawRowsQuery.clone().offset(skip).limit(take).getRawMany();
+		const count =
+			rawRows.length > 0
+				? Number(rawRows[0].totalCount as string | number)
+				: await this.countInsightsByWorkflowGroups(rawRowsQuery);
 
 		return { count, rows: aggregatedInsightsByWorkflowParser.parse(rawRows) };
 	}
