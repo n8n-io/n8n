@@ -60,9 +60,9 @@ export async function nodeExecuteAfter(
 		},
 	};
 
-	const aid = stateStore.activeExecutionId;
-	if (typeof aid === 'string') {
-		useExecutionDataStore(createExecutionDataId(aid)).updateNodeExecutionStatus(
+	const activeExecutionId = stateStore.activeExecutionId;
+	if (typeof activeExecutionId === 'string') {
+		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionStatus(
 			pushDataWithPlaceholderOutputData,
 		);
 	}

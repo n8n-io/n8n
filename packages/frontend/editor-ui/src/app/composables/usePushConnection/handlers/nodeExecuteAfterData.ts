@@ -17,9 +17,11 @@ export async function nodeExecuteAfterData({ data: pushData }: NodeExecuteAfterD
 	);
 	const schemaPreviewStore = useSchemaPreviewStore();
 
-	const aid = stateStore.activeExecutionId;
-	if (typeof aid === 'string') {
-		useExecutionDataStore(createExecutionDataId(aid)).updateNodeExecutionRunData(pushData);
+	const activeExecutionId = stateStore.activeExecutionId;
+	if (typeof activeExecutionId === 'string') {
+		useExecutionDataStore(createExecutionDataId(activeExecutionId)).updateNodeExecutionRunData(
+			pushData,
+		);
 	}
 
 	void schemaPreviewStore.trackSchemaPreviewExecution(pushData);
