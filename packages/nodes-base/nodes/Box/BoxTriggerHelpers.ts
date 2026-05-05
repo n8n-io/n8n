@@ -13,20 +13,15 @@ function computeSignature(signingKey: string, rawBody: Buffer | string, timestam
 	return hmac.digest('base64');
 }
 
-function isNonEmptyString(value: unknown): value is string {
-	return typeof value === 'string' && value.length > 0;
-}
-
 export async function verifySignature(this: IWebhookFunctions): Promise<boolean> {
 	try {
 		const credential = await this.getCredentials('boxOAuth2Api');
 		const primaryKey = credential.signingKeyPrimary;
 		const secondaryKey = credential.signingKeySecondary;
 
-		const primaryConfigured = isNonEmptyString(primaryKey);
-		const secondaryConfigured = isNonEmptyString(secondaryKey);
+		const primaryConfigured = !!primaryKey && typeof primaryKey === 'string';
+		const secondaryConfigured = !!secondaryKey && typeof secondaryKey === 'string';
 
-		// Backward compatibility: if no signing keys are configured, skip verification
 		if (!primaryConfigured && !secondaryConfigured) {
 			return true;
 		}
