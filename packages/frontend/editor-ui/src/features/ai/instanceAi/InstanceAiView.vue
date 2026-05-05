@@ -587,12 +587,12 @@ function handleStop() {
 						<!-- Floating input (with confirmation panel pinned above it) -->
 						<div ref="inputContainer" :class="$style.inputContainer">
 							<div :class="$style.inputConstraint">
+								<InstanceAiStatusBar />
 								<InstanceAiConfirmationPanel
 									v-if="hasFloatingConfirmation"
 									:class="$style.floatingConfirmation"
 									kind="floating"
 								/>
-								<InstanceAiStatusBar />
 								<CreditWarningBanner
 									v-if="showCreditBanner"
 									:credits-remaining="store.creditsRemaining"

@@ -46,6 +46,8 @@ vi.mock('../toolLabels', () => ({
 		const action = typeof args?.action === 'string' ? args.action : undefined;
 		return action ? `${name}.${action}` : name;
 	},
+	getToolActionPhrase: () => undefined,
+	stripActionPrefix: (headline: string) => headline,
 }));
 
 // Stub heavy child components

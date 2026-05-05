@@ -15,7 +15,7 @@ import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
-import { getToolId, useToolLabel } from '../toolLabels';
+import { getToolActionPhrase, getToolId, stripActionPrefix, useToolLabel } from '../toolLabels';
 
 type ApprovalAction = 'allow_once' | 'always_allow';
 
@@ -464,12 +464,25 @@ function handlePlanRequestChanges(
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>
-										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
+										{{
+											i18n.baseText('instanceAi.confirmation.allowPrompt', {
+												interpolate: {
+													action:
+														getToolActionPhrase(item.toolCall.toolName, item.toolCall.args) ??
+														getToolLabel(item.toolCall.toolName, item.toolCall.args),
+												},
+											})
+										}}
 									</N8nText>
 									<ConfirmationPreview
 										:tool="getToolId(item.toolCall.toolName, item.toolCall.args)"
 									>
-										{{ splitConfirmationMessage(item.toolCall.confirmation!.message).headline }}
+										{{
+											stripActionPrefix(
+												splitConfirmationMessage(item.toolCall.confirmation!.message).headline,
+												getToolActionPhrase(item.toolCall.toolName, item.toolCall.args),
+											)
+										}}
 									</ConfirmationPreview>
 									<N8nText
 										v-if="splitConfirmationMessage(item.toolCall.confirmation!.message).commentary"
@@ -524,8 +537,7 @@ function handlePlanRequestChanges(
 
 <style lang="scss" module>
 .confirmation {
-	max-width: 90%;
-	width: 90%;
+	width: 100%;
 }
 
 .root {

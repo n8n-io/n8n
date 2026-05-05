@@ -46,6 +46,57 @@ export function getToolId(toolName: string, args?: Record<string, unknown>): str
 }
 
 /**
+ * Imperative action phrase per tool ID, injected into the unified approval
+ * prompt template ("Allow AI Assistant to {action}?") and also stripped
+ * from the head of the backend confirmation message so the preview body
+ * doesn't repeat the verb. Phrases are kept short and align with the
+ * leading verb-noun of the backend message (see
+ * `packages/@n8n/instance-ai/src/tools/*.tool.ts`).
+ */
+const ACTION_PHRASES: Record<string, string> = {
+	'workflows.delete': 'archive workflow',
+	'workflows.publish': 'publish workflow',
+	'workflows.unpublish': 'unpublish workflow',
+	'workflows.restore-version': 'restore workflow',
+	'executions.run': 'execute workflow',
+	'credentials.delete': 'delete credential',
+	'data-tables.create': 'create data table',
+	'data-tables.delete': 'delete data table',
+	'data-tables.add-column': 'add column',
+	'data-tables.delete-column': 'delete column',
+	'data-tables.rename-column': 'rename column',
+	'data-tables.insert-rows': 'insert rows',
+	'data-tables.update-rows': 'update rows',
+	'data-tables.delete-rows': 'delete rows',
+	'workspace.tag-workflow': 'tag workflow',
+	'workspace.cleanup-test-executions': 'delete test executions',
+	'workspace.create-folder': 'create folder',
+	'workspace.delete-folder': 'delete folder',
+	'workspace.move-workflow-to-folder': 'move workflow',
+	'submit-workflow': 'submit workflow',
+	'research.fetch-url': 'fetch URL',
+	'filesystem.read': 'read file',
+};
+
+export function getToolActionPhrase(
+	toolName: string,
+	args?: Record<string, unknown>,
+): string | undefined {
+	return ACTION_PHRASES[getToolId(toolName, args)];
+}
+
+/**
+ * Strips a leading action phrase (case-insensitive) from a confirmation
+ * headline so it can be rendered alongside the heading without verbal
+ * duplication. No-op if the headline doesn't start with the phrase.
+ */
+export function stripActionPrefix(headline: string, phrase: string | undefined): string {
+	if (!phrase) return headline;
+	const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return headline.replace(new RegExp(`^${escaped}\\s*`, 'i'), '');
+}
+
+/**
  * Returns a human-readable display label for an instance AI tool name.
  * Falls back to the raw tool name if no mapping exists in i18n.
  */
