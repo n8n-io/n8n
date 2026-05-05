@@ -57,7 +57,7 @@ describe('AgentJsonConfigSchema — skill refs', () => {
 	it('rejects a skill ref with an invalid id', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
-			skills: [{ type: 'skill', id: 'SummarizeNotes' }],
+			skills: [{ type: 'skill', id: 'summarize notes' }],
 		});
 
 		expect(parsed.success).toBe(false);

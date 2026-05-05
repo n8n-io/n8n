@@ -8,6 +8,7 @@ export const BUILDER_TOOLS = {
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILL: 'create_skill',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
+	RESOLVE_LLM: 'resolve_llm',
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];
