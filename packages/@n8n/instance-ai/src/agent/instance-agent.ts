@@ -3,43 +3,13 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { ToolSearchProcessor, type ToolSearchProcessorOptions } from '@mastra/core/processors';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import { MCPClient } from '@mastra/mcp';
-import { nanoid } from 'nanoid';
 
 import { createMemory } from '../memory/memory-config';
 import { createAllTools, createOrchestratorDomainTools, createOrchestrationTools } from '../tools';
-import { sanitizeMcpToolSchemas } from './sanitize-mcp-schemas';
 import { getSystemPrompt } from './system-prompt';
 import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { CreateInstanceAgentOptions, McpServerConfig } from '../types';
-function buildMcpServers(
-	configs: McpServerConfig[],
-): Record<
-	string,
-	{ url: URL } | { command: string; args?: string[]; env?: Record<string, string> }
-> {
-	const servers: Record<
-		string,
-		{ url: URL } | { command: string; args?: string[]; env?: Record<string, string> }
-	> = {};
-	for (const server of configs) {
-		if (server.url) {
-			servers[server.name] = { url: new URL(server.url) };
-		} else if (server.command) {
-			servers[server.name] = { command: server.command, args: server.args, env: server.env };
-		}
-	}
-	return servers;
-}
-
-// ── Cached MCP tools (expensive to initialize — spawn processes, connect, list) ──
-
-let cachedMcpTools: ToolsInput | null = null;
-let cachedMcpServersKey = '';
-
-let cachedBrowserMcpTools: ToolsInput | null = null;
-let cachedBrowserMcpKey = '';
+import type { CreateInstanceAgentOptions } from '../types';
 
 let cachedMastra: Mastra | null = null;
 let cachedMastraStorageKey = '';
@@ -56,40 +26,6 @@ function getOrCreateToolSearchProcessor(tools: ToolsInput): ToolSearchProcessor 
 		tools: tools as ToolSearchProcessorOptions['tools'],
 		search: { topK: 5 },
 	});
-}
-
-async function getMcpTools(mcpServers: McpServerConfig[]): Promise<ToolsInput> {
-	const key = JSON.stringify(mcpServers);
-	if (cachedMcpTools && cachedMcpServersKey === key) return cachedMcpTools;
-
-	if (mcpServers.length === 0) {
-		cachedMcpTools = {};
-		cachedMcpServersKey = key;
-		return cachedMcpTools;
-	}
-
-	const mcpClient = new MCPClient({
-		id: `mcp-${nanoid(6)}`,
-		servers: buildMcpServers(mcpServers),
-	});
-	cachedMcpTools = sanitizeMcpToolSchemas(await mcpClient.listTools());
-	cachedMcpServersKey = key;
-	return cachedMcpTools;
-}
-
-async function getBrowserMcpTools(config: McpServerConfig | undefined): Promise<ToolsInput> {
-	if (!config) return {};
-
-	const key = JSON.stringify(config);
-	if (cachedBrowserMcpTools && cachedBrowserMcpKey === key) return cachedBrowserMcpTools;
-
-	const browserClient = new MCPClient({
-		id: `browser-mcp-${nanoid(6)}`,
-		servers: buildMcpServers([config]),
-	});
-	cachedBrowserMcpTools = sanitizeMcpToolSchemas(await browserClient.listTools());
-	cachedBrowserMcpKey = key;
-	return cachedBrowserMcpTools;
 }
 
 function ensureMastraRegistered(agent: Agent, storage: MastraCompositeStore): void {
@@ -112,6 +48,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		context,
 		orchestrationContext,
 		mcpServers = [],
+		mcpManager,
 		memoryConfig,
 		disableDeferredTools = false,
 	} = options;
@@ -121,9 +58,10 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	const orchestratorDomainTools = createOrchestratorDomainTools(context);
 
-	// Load MCP tools (cached — only spawns processes on first call or config change)
-	const mcpTools = await getMcpTools(mcpServers);
-	const browserMcpTools = await getBrowserMcpTools(orchestrationContext?.browserMcpConfig);
+	// Load MCP tools (cached by config-hash inside the manager — only spawns
+	// processes / opens connections on first call or config change).
+	const mcpTools = await mcpManager.getRegularTools(mcpServers);
+	const browserMcpTools = await mcpManager.getBrowserTools(orchestrationContext?.browserMcpConfig);
 
 	// Browser tool names — used to exclude them from the orchestrator's direct toolset.
 	// Browser tools are only accessible via browser-credential-setup (sub-agent) to prevent
