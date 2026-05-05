@@ -1173,16 +1173,9 @@ class WorkflowBuilderImpl implements WorkflowBuilder {
 	}
 }
 
-/**
- * Throw a descriptive error if a value is an OutputSelector (the result of `node.output(n)`).
- *
- * `node.output(n)` is only meaningful when chained with `.to(target)` to produce a NodeChain.
- * Passing a bare OutputSelector to `.add()` or `.to()` is almost always a mistake from chaining
- * the wrong way: `.add(node.output(n)).to(target)` instead of `.add(node.output(n).to(target))`.
- */
 function assertNotOutputSelector(value: unknown, method: 'add' | 'to'): void {
 	if (!isOutputSelector(value)) return;
-	const sourceName = value.node?.name ?? 'sourceNode';
+	const sourceName = value.node.name;
 	throw new TypeError(
 		`Cannot pass an OutputSelector to .${method}(). ` +
 			`${sourceName}.output(${value.outputIndex}) by itself does not connect anything; ` +

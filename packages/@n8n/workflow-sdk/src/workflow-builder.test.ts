@@ -311,9 +311,6 @@ describe('Workflow Builder', () => {
 			});
 
 			const wf = workflow('test-id', 'Test Workflow').add(t);
-			// Cast through unknown — intentionally bypassing types to simulate runtime misuse
-			// (the chained `.to(target)` form `.add(source.output(0)).to(target)` is what the LLM
-			// gets wrong; TS would catch it at compile time but the runtime guard still matters).
 			const misuse = source.output(0) as unknown as NodeInstance<string, string, unknown>;
 			expect(() => wf.add(misuse).to(target)).toThrow(TypeError);
 			expect(() => wf.add(misuse).to(target)).toThrow(/Cannot pass an OutputSelector to \.add\(\)/);
