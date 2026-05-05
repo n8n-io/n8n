@@ -143,6 +143,11 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// The orchestrator intentionally does not receive a workspace. Sandbox access
 	// is scoped to the workflow-builder subagent via `builderSandboxFactory`.
+	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
+		agentRole: 'orchestrator',
+		functionId: 'instance-ai.orchestrator',
+		executionMode: 'foreground',
+	});
 	const agent = new Agent('n8n-instance-agent')
 		.model(modelId)
 		.instructions(systemPrompt, {
@@ -152,6 +157,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		})
 		.tool(Object.values(tracedOrchestratorTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (telemetry) {
+		agent.telemetry(telemetry);
+	}
 
 	if (options.memory) {
 		agent.memory({

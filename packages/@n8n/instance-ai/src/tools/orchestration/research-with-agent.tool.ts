@@ -104,6 +104,15 @@ export async function startResearchAgentTask(
 					})
 					.tool(Object.values(tracedResearchTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
+				const telemetry = traceContext?.getTelemetry?.({
+					agentRole: 'web-researcher',
+					functionId: 'instance-ai.subagent.web-researcher',
+					executionMode: 'detached_subagent',
+					metadata: { agent_id: subAgentId, task_id: taskId },
+				});
+				if (telemetry) {
+					subAgent.telemetry(telemetry);
+				}
 				mergeTraceRunInputs(
 					traceContext?.actorRun,
 					buildAgentTraceInputs({

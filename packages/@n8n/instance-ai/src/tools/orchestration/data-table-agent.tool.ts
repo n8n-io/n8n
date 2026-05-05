@@ -103,6 +103,15 @@ export async function startDataTableAgentTask(
 					})
 					.tool(Object.values(tracedDataTableTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
+				const telemetry = traceContext?.getTelemetry?.({
+					agentRole: 'data-table-manager',
+					functionId: 'instance-ai.subagent.data-table-manager',
+					executionMode: 'detached_subagent',
+					metadata: { agent_id: subAgentId, task_id: taskId },
+				});
+				if (telemetry) {
+					subAgent.telemetry(telemetry);
+				}
 				mergeTraceRunInputs(
 					traceContext?.actorRun,
 					buildAgentTraceInputs({

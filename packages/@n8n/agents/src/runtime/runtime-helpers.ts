@@ -3,6 +3,7 @@
  * These are extracted here to keep agent-runtime.ts focused on orchestration logic.
  */
 import type { GenerateResult, StreamChunk, TokenUsage } from '../types';
+import { toJsonValue } from './json-value';
 import { toTokenUsage } from './stream';
 import type { AgentMessage, ContentToolResult } from '../types/sdk/message';
 import type { JSONValue } from '../types/utils/json';
@@ -31,7 +32,7 @@ export function makeToolResultMessage(
 				type: 'tool-result',
 				toolCallId,
 				toolName,
-				result: result as JSONValue,
+				result: toJsonValue(result),
 			},
 		],
 	};

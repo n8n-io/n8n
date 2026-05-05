@@ -1,5 +1,12 @@
 import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
-import type { BuiltMemory, BuiltTool, CheckpointStore, Workspace } from '@n8n/agents';
+import type {
+	AttributeValue,
+	BuiltMemory,
+	BuiltTool,
+	CheckpointStore,
+	Telemetry,
+	Workspace,
+} from '@n8n/agents';
 import type {
 	TaskList,
 	InstanceAiAttachment,
@@ -829,6 +836,13 @@ export interface InstanceAiToolTraceOptions {
 
 export type TraceReplayMode = 'record' | 'replay' | 'off';
 
+export interface InstanceAiTelemetryOptions {
+	agentRole: string;
+	functionId?: string;
+	executionMode?: 'foreground' | 'background' | 'detached_subagent' | 'resume';
+	metadata?: Record<string, AttributeValue | undefined>;
+}
+
 export interface InstanceAiTraceContext {
 	projectName: string;
 	traceKind: 'message_turn' | 'detached_subagent';
@@ -854,6 +868,7 @@ export interface InstanceAiTraceContext {
 		tools: InstanceAiToolRegistry,
 		options?: InstanceAiToolTraceOptions,
 	) => InstanceAiToolRegistry;
+	getTelemetry?: (options: InstanceAiTelemetryOptions) => Telemetry;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */

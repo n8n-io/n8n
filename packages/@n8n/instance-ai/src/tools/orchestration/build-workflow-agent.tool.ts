@@ -861,6 +861,15 @@ export async function startBuildWorkflowAgentTask(
 								.tool(Object.values(tracedBuilderTools))
 								.workspace(workspace)
 								.checkpoint(context.checkpointStore ?? 'memory');
+							const telemetry = traceContext?.getTelemetry?.({
+								agentRole: 'workflow-builder',
+								functionId: 'instance-ai.subagent.workflow-builder',
+								executionMode: 'detached_subagent',
+								metadata: { agent_id: subAgentId, task_id: taskId },
+							});
+							if (telemetry) {
+								subAgent.telemetry(telemetry);
+							}
 							mergeTraceRunInputs(
 								traceContext?.actorRun,
 								buildAgentTraceInputs({
@@ -1115,6 +1124,15 @@ export async function startBuildWorkflowAgentTask(
 							})
 							.tool(Object.values(tracedBuilderTools))
 							.checkpoint(context.checkpointStore ?? 'memory');
+						const telemetry = traceContext?.getTelemetry?.({
+							agentRole: 'workflow-builder',
+							functionId: 'instance-ai.subagent.workflow-builder',
+							executionMode: 'detached_subagent',
+							metadata: { agent_id: subAgentId, task_id: taskId },
+						});
+						if (telemetry) {
+							subAgent.telemetry(telemetry);
+						}
 						mergeTraceRunInputs(
 							traceContext?.actorRun,
 							buildAgentTraceInputs({

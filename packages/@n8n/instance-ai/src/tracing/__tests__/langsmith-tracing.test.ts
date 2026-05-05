@@ -1,3 +1,5 @@
+import { jsonParse } from 'n8n-workflow';
+
 import { executeTool } from '../../__tests__/tool-test-utils';
 jest.mock('langsmith', () => {
 	let runCounter = 0;
@@ -260,6 +262,7 @@ const {
 	createInstanceAiTraceContext,
 	continueInstanceAiTraceContext,
 	mergeTraceRunInputs,
+	redactLangSmithTelemetrySpan,
 	submitLangsmithUserFeedback,
 	withCurrentTraceSpan,
 } =
@@ -309,6 +312,149 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing).toBeDefined();
 		expect(tracing?.orchestratorRun.parentRunId).toBe(tracing?.messageRun.id);
+	});
+
+	it('creates native telemetry with thread and run metadata', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			conversationId: 'conversation-1',
+			messageId: 'message-1',
+			messageGroupId: 'group-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+		});
+
+		expect(tracing?.getTelemetry).toBeDefined();
+
+		const telemetry = await tracing!.getTelemetry!({
+			agentRole: 'orchestrator',
+			functionId: 'instance-ai.orchestrator',
+			executionMode: 'foreground',
+			metadata: { custom_flag: true },
+		}).build();
+
+		expect(telemetry.functionId).toBe('instance-ai.orchestrator');
+		expect(telemetry.recordInputs).toBe(true);
+		expect(telemetry.recordOutputs).toBe(true);
+		expect(telemetry.metadata).toEqual(
+			expect.objectContaining({
+				thread_id: 'thread-1',
+				conversation_id: 'conversation-1',
+				message_group_id: 'group-1',
+				message_id: 'message-1',
+				run_id: 'run-1',
+				user_id: 'user-1',
+				agent_role: 'orchestrator',
+				execution_mode: 'foreground',
+				trace_kind: 'message_turn',
+				langsmith_trace_id: tracing?.rootRun.traceId,
+				langsmith_root_run_id: tracing?.rootRun.id,
+				langsmith_actor_run_id: tracing?.actorRun.id,
+				custom_flag: true,
+			}),
+		);
+
+		await telemetry.provider?.shutdown();
+	});
+
+	it('redacts secret-bearing native telemetry span attributes', () => {
+		const span = {
+			attributes: {
+				'ai.prompt.messages': JSON.stringify([
+					{
+						role: 'user',
+						content: [{ type: 'text', text: 'use token=secret-token' }],
+						credentials: { apiKey: 'secret-key', id: 'cred-1' },
+					},
+				]),
+				'ai.response.text': 'Authorization: Bearer abc.def.ghi',
+				'ai.telemetry.metadata.thread_id': 'thread-1',
+				'ai.usage.inputTokens': 123,
+				'ai.usage.outputTokens': 45,
+				'ai.usage.cachedInputTokens': 67,
+				'ai.usage.inputTokenDetails.cacheReadTokens': 67,
+				'gen_ai.usage.input_tokens': 123,
+				'gen_ai.usage.input_token_details': JSON.stringify({ cache_read: 67 }),
+				'headers.authorization': 'Bearer secret',
+				'metadata.access_token': 'secret-token',
+				'langsmith.span.parent_id': 'parent-run-1',
+				'langsmith.is_root': true,
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span);
+
+		expect(redacted).toEqual({
+			attributes: {
+				'ai.prompt.messages': JSON.stringify([
+					{
+						role: 'user',
+						content: [{ type: 'text', text: 'use token=[redacted]' }],
+						credentials: '[redacted]',
+					},
+				]),
+				'ai.response.text': 'Authorization: Bearer [redacted]',
+				'ai.telemetry.metadata.thread_id': 'thread-1',
+				'ai.usage.inputTokens': 123,
+				'ai.usage.outputTokens': 45,
+				'ai.usage.cachedInputTokens': 67,
+				'ai.usage.inputTokenDetails.cacheReadTokens': 67,
+				'gen_ai.usage.input_tokens': 123,
+				'gen_ai.usage.input_token_details': JSON.stringify({ cache_read: 67 }),
+				'headers.authorization': '[redacted]',
+				'metadata.access_token': '[redacted]',
+				'langsmith.span.parent_id': 'parent-run-1',
+				'langsmith.is_root': true,
+			},
+		});
+	});
+
+	it('adds LangSmith prompt input with tool specs for native AI SDK spans', () => {
+		const span = {
+			attributes: {
+				'ai.prompt.messages': JSON.stringify([{ role: 'user', content: 'hello' }]),
+				'ai.prompt.tools': [
+					JSON.stringify({
+						type: 'function',
+						name: 'lookup',
+						description: 'Lookup records',
+						input_schema: {
+							type: 'object',
+							properties: {
+								query: { type: 'string' },
+							},
+						},
+					}),
+				],
+				'ai.prompt.toolChoice': JSON.stringify({ type: 'auto' }),
+			},
+		};
+
+		const redacted = redactLangSmithTelemetrySpan(span) as {
+			attributes: Record<string, unknown>;
+		};
+		const prompt = jsonParse<Record<string, unknown>>(
+			redacted.attributes['gen_ai.prompt'] as string,
+		);
+
+		expect(prompt).toEqual({
+			input: [{ role: 'user', content: 'hello' }],
+			tools: [
+				{
+					type: 'function',
+					name: 'lookup',
+					description: 'Lookup records',
+					input_schema: {
+						type: 'object',
+						properties: {
+							query: { type: 'string' },
+						},
+					},
+				},
+			],
+			tool_choice: { type: 'auto' },
+		});
 	});
 
 	it('rehydrates child runs with their parent linkage before patching', async () => {
@@ -583,6 +729,37 @@ describe('createInstanceAiTraceContext', () => {
 		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
 		expect(createdRunNames).toContain('tool:ask-user');
 		expect(createdRunNames).toContain('hitl:suspend');
+	});
+
+	it('does not wrap ordinary local tools for product-level LangSmith spans', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-1',
+			messageId: 'message-1',
+			runId: 'run-1',
+			userId: 'user-1',
+			input: { message: 'Find a template' },
+		});
+
+		expect(tracing).toBeDefined();
+
+		const regularTool = {
+			name: 'templates',
+			description: 'Search templates',
+			handler: jest.fn(),
+		};
+		const workspaceTool = {
+			name: 'workspace_execute_command',
+			description: 'Run a workspace command',
+			handler: jest.fn(),
+		};
+
+		const wrappedTools = tracing!.wrapTools({
+			templates: regularTool as never,
+			workspace_execute_command: workspaceTool as never,
+		});
+
+		expect(wrappedTools.templates).toBe(regularTool);
+		expect(wrappedTools.workspace_execute_command).not.toBe(workspaceTool);
 	});
 
 	it('keeps ad-hoc child spans rooted under the active sub-agent run', async () => {

@@ -206,6 +206,15 @@ export function createBrowserCredentialSetupTool(context: OrchestrationContext) 
 						})
 						.tool(Object.values(tracedBrowserTools))
 						.checkpoint(context.checkpointStore ?? 'memory');
+					const telemetry = context.tracing?.getTelemetry?.({
+						agentRole: 'credential-setup-browser-agent',
+						functionId: 'instance-ai.subagent.credential-setup-browser-agent',
+						executionMode: 'background',
+						metadata: { agent_id: subAgentId },
+					});
+					if (telemetry) {
+						subAgent.telemetry(telemetry);
+					}
 					mergeTraceRunInputs(
 						traceRun,
 						buildAgentTraceInputs({

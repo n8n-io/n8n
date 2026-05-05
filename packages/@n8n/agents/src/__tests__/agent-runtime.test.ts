@@ -2028,6 +2028,111 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(expTelemetry.recordOutputs).toBe(false);
 	});
 
+	it('wraps generate calls in a telemetry root span when the tracer supports active spans', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const span = {
+			end: jest.fn(),
+			recordException: jest.fn(),
+			setStatus: jest.fn(),
+		};
+		const tracer = {
+			startActiveSpan: jest.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				if (typeof fn !== 'function') {
+					throw new Error('Expected span callback');
+				}
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
+			}),
+		};
+		const telemetry: BuiltTelemetry = { ...baseTelemetry, tracer };
+
+		const runtime = new AgentRuntime({
+			name: 'telemetry-root-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			telemetry,
+		});
+
+		await runtime.generate('hello');
+
+		expect(tracer.startActiveSpan).toHaveBeenCalledWith(
+			'test-agent.generate',
+			{
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				attributes: expect.objectContaining<Record<string, string>>({
+					'langsmith.traceable': 'true',
+					'langsmith.trace.name': 'test-agent.generate',
+					'langsmith.span.kind': 'chain',
+					'langsmith.metadata.agent_name': 'telemetry-root-test',
+					'langsmith.metadata.env': 'test',
+				}),
+			},
+			expect.any(Function),
+		);
+		expect(span.end).toHaveBeenCalledTimes(1);
+	});
+
+	it('adds a LangSmith tool catalog to telemetry root spans', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const span = {
+			end: jest.fn(),
+			recordException: jest.fn(),
+			setStatus: jest.fn(),
+		};
+		const tracer = {
+			startActiveSpan: jest.fn(async (_name: string, _options: unknown, fn: unknown) => {
+				if (typeof fn !== 'function') {
+					throw new Error('Expected span callback');
+				}
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
+			}),
+		};
+		const telemetry: BuiltTelemetry = {
+			...baseTelemetry,
+			metadata: {
+				...baseTelemetry.metadata,
+				langsmith_trace_id: 'trace-1',
+				langsmith_actor_run_id: 'actor-run-1',
+			},
+			tracer,
+		};
+		const tool = new ToolBuilder('lookup')
+			.description('Lookup records')
+			.input(z.object({ query: z.string() }))
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+
+		const runtime = new AgentRuntime({
+			name: 'telemetry-root-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			tools: [tool],
+			telemetry,
+		});
+
+		await runtime.generate('hello');
+
+		const rootSpanOptions = tracer.startActiveSpan.mock.calls[0][1] as {
+			attributes: Record<string, unknown>;
+		};
+		const { attributes } = rootSpanOptions;
+		expect(attributes).toEqual(
+			expect.objectContaining({
+				'langsmith.metadata.available_tools': ['lookup'],
+			}),
+		);
+		expect(attributes).not.toHaveProperty('langsmith.trace.id');
+		expect(attributes).not.toHaveProperty('langsmith.span.parent_id');
+		expect(attributes['gen_ai.prompt']).toEqual(expect.stringContaining('"name":"lookup"'));
+		expect(attributes['gen_ai.prompt']).toEqual(
+			expect.stringContaining('"description":"Lookup records"'),
+		);
+		expect(attributes['gen_ai.prompt']).toEqual(expect.stringContaining('"input_schema"'));
+	});
+
 	it('passes telemetry config into streamText as experimental_telemetry', async () => {
 		streamText.mockReturnValue(makeStreamSuccess());
 
@@ -2106,6 +2211,81 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('test');
 
 		expect(capturedTelemetry).toBe(baseTelemetry);
+	});
+
+	it('emits AI SDK-compatible telemetry spans for local tool execution', async () => {
+		const spans: Array<{
+			name: string;
+			span: {
+				end: jest.Mock;
+				recordException: jest.Mock;
+				setAttributes: jest.Mock;
+				setStatus: jest.Mock;
+			};
+		}> = [];
+		const tracer = {
+			startActiveSpan: jest.fn(async (name: string, _options: unknown, fn: unknown) => {
+				if (typeof fn !== 'function') {
+					throw new Error('Expected span callback');
+				}
+				const span = {
+					end: jest.fn(),
+					recordException: jest.fn(),
+					setAttributes: jest.fn(),
+					setStatus: jest.fn(),
+				};
+				spans.push({ name, span });
+				const spanFn = fn as (spanValue: typeof span) => Promise<unknown>;
+				return await spanFn(span);
+			}),
+		};
+		const telemetry: BuiltTelemetry = {
+			...baseTelemetry,
+			recordOutputs: true,
+			tracer,
+		};
+		const spyTool: BuiltTool = new ToolBuilder('spy')
+			.description('captures telemetry from context')
+			.input(z.object({ x: z.string() }))
+			.output(z.object({ ok: z.boolean() }))
+			.handler(async () => await Promise.resolve({ ok: true }))
+			.build();
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc1', 'spy', { x: 'test' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'tool-telemetry-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			tools: [spyTool],
+			telemetry,
+		});
+
+		await runtime.generate('test');
+
+		const toolCallSpan = tracer.startActiveSpan.mock.calls.find(([name]) => name === 'ai.toolCall');
+		expect(toolCallSpan).toBeDefined();
+		expect(toolCallSpan?.[1]).toEqual({
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			attributes: expect.objectContaining<Record<string, string>>({
+				'operation.name': 'ai.toolCall test-agent',
+				'resource.name': 'test-agent',
+				'ai.operationId': 'ai.toolCall',
+				'ai.telemetry.functionId': 'test-agent',
+				'ai.telemetry.metadata.env': 'test',
+				'ai.toolCall.name': 'spy',
+				'ai.toolCall.id': 'tc1',
+				'ai.toolCall.args': '{"x":"test"}',
+			}),
+		});
+		const toolSpan = spans.find((span) => span.name === 'ai.toolCall')?.span;
+		expect(toolSpan?.setAttributes).toHaveBeenCalledWith({
+			'ai.toolCall.result': '{"ok":true}',
+		});
+		expect(toolSpan?.end).toHaveBeenCalledTimes(1);
 	});
 
 	it('passes inherited telemetry to tool handlers for sub-agent scenarios', async () => {

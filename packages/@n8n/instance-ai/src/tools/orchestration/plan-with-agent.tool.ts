@@ -314,6 +314,15 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 					})
 					.tool(Object.values(tracedPlannerTools))
 					.checkpoint(context.checkpointStore ?? 'memory');
+				const telemetry = context.tracing?.getTelemetry?.({
+					agentRole: 'planner',
+					functionId: 'instance-ai.subagent.planner',
+					executionMode: 'background',
+					metadata: { agent_id: subAgentId },
+				});
+				if (telemetry) {
+					subAgent.telemetry(telemetry);
+				}
 
 				const resultText = await withTraceRun(context, traceRun, async () => {
 					const traceParent = getTraceParentRun();

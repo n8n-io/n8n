@@ -4,6 +4,7 @@ const mockAgentInstances: Array<{
 	tool: jest.Mock;
 	checkpoint: jest.Mock;
 	memory: jest.Mock;
+	telemetry: jest.Mock;
 }> = [];
 
 jest.mock('@n8n/agents', () => ({
@@ -13,6 +14,7 @@ jest.mock('@n8n/agents', () => ({
 		this.tool = jest.fn().mockReturnThis();
 		this.checkpoint = jest.fn().mockReturnThis();
 		this.memory = jest.fn().mockReturnThis();
+		this.telemetry = jest.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 }));
@@ -131,5 +133,30 @@ describe('createInstanceAgent', () => {
 				mockAgentInstances[0]?.checkpoint.mock.calls,
 			]),
 		).not.toContain('should-be-ignored');
+	});
+
+	it('attaches native telemetry from the trace context when present', async () => {
+		const telemetry = { provider: 'langsmith' };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'trace-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'trace-test',
+				browserMcpConfig: undefined,
+				tracing: {
+					getTelemetry: jest.fn().mockReturnValue(telemetry),
+					wrapTools: jest.fn((tools: unknown) => tools),
+				},
+			},
+			memoryConfig: { lastMessages: 20 },
+		} as never);
+
+		expect(mockAgentInstances[0]?.telemetry).toHaveBeenCalledWith(telemetry);
 	});
 });

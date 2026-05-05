@@ -169,6 +169,7 @@ export async function startDetachedDelegateTask(
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,
+					tracing: traceContext,
 					timeZone: context.timeZone,
 					checkpointStore: context.checkpointStore,
 				});
@@ -310,6 +311,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 					tools: tracedTools,
 					modelId: context.modelId,
 					traceRun,
+					tracing: context.tracing,
 					timeZone: context.timeZone,
 					checkpointStore: context.checkpointStore,
 				});

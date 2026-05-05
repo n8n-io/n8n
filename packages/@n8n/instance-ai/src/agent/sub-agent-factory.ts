@@ -4,7 +4,12 @@ import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { InstanceAiToolRegistry, InstanceAiTraceRun, ModelConfig } from '../types';
+import type {
+	InstanceAiToolRegistry,
+	InstanceAiTraceContext,
+	InstanceAiTraceRun,
+	ModelConfig,
+} from '../types';
 
 export interface SubAgentOptions {
 	/** Unique ID for this sub-agent instance (e.g., "agent-V1StGX") */
@@ -21,6 +26,8 @@ export interface SubAgentOptions {
 	checkpointStore?: CheckpointStore;
 	/** Optional trace run to annotate with the sub-agent's static config */
 	traceRun?: InstanceAiTraceRun;
+	/** Optional trace context used to attach native AI SDK telemetry. */
+	tracing?: InstanceAiTraceContext;
 	/** IANA time zone for the current user — used to render the datetime section so
 	 *  the sub-agent resolves "now" consistently with the orchestrator. */
 	timeZone?: string;
@@ -73,6 +80,16 @@ export function createSubAgent(options: SubAgentOptions): Agent {
 		})
 		.tool(Object.values(tools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	const telemetry = options.tracing?.getTelemetry?.({
+		agentRole: role,
+		functionId: `instance-ai.subagent.${role.replace(/[^a-zA-Z0-9._-]+/g, '-')}`,
+		executionMode:
+			options.tracing.traceKind === 'detached_subagent' ? 'detached_subagent' : 'background',
+		metadata: { agent_id: options.agentId },
+	});
+	if (telemetry) {
+		agent.telemetry(telemetry);
+	}
 
 	mergeTraceRunInputs(
 		traceRun,

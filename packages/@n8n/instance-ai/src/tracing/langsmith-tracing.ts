@@ -1,10 +1,18 @@
-import type { BuiltTool, InterruptibleToolContext, ToolContext } from '@n8n/agents';
+import {
+	LangSmithTelemetry,
+	type AttributeValue,
+	type BuiltTool,
+	type InterruptibleToolContext,
+	type Telemetry,
+	type ToolContext,
+} from '@n8n/agents';
 import { Client, RunTree } from 'langsmith';
 import { getCurrentRunTree, withRunTree as withLangSmithRunTree } from 'langsmith/traceable';
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 import type {
 	InstanceAiToolTraceOptions,
+	InstanceAiTelemetryOptions,
 	InstanceAiTraceContext,
 	InstanceAiTraceRun,
 	InstanceAiTraceRunFinishOptions,
@@ -19,9 +27,25 @@ import { isRecord } from '../utils/stream-helpers';
 const DEFAULT_PROJECT_NAME = 'instance-ai';
 const DEFAULT_TAGS = ['instance-ai'];
 const MAX_TRACE_DEPTH = 4;
+const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
 const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TRACE_ARRAY_ITEMS = 20;
 const MAX_TRACE_OBJECT_KEYS = 30;
+const SENSITIVE_TELEMETRY_KEY_PATTERN =
+	/(api[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
+const LOCAL_TOOL_TRACE_NAMES = new Set([
+	'ask-user',
+	'pause-for-user',
+	'workspace',
+	'write-file',
+	'build-workflow',
+	'submit-workflow',
+	'apply-workflow-credentials',
+	'verify-built-workflow',
+	'report-verification-verdict',
+	'task-control',
+	'complete-checkpoint',
+]);
 const traceParentOverrideStorage = new AsyncLocalStorage<{ current: RunTree | null }>();
 
 // Per-request proxy auth headers, isolated via AsyncLocalStorage.
@@ -202,7 +226,213 @@ function truncateString(value: string): string {
 		return value;
 	}
 
-	return `${value.slice(0, MAX_TRACE_STRING_LENGTH)}…`;
+	return `${value.slice(0, MAX_TRACE_STRING_LENGTH)}...`;
+}
+
+function toTelemetryAttributeValue(value: unknown): AttributeValue | undefined {
+	if (value === undefined || value === null) {
+		return undefined;
+	}
+
+	if (typeof value === 'string') {
+		return truncateString(value);
+	}
+
+	if (typeof value === 'number' || typeof value === 'boolean') {
+		return value;
+	}
+
+	if (Array.isArray(value)) {
+		if (value.every((entry): entry is string => typeof entry === 'string')) {
+			return value.map((entry) => truncateString(entry));
+		}
+		if (value.every((entry): entry is number => typeof entry === 'number')) {
+			return value;
+		}
+		if (value.every((entry): entry is boolean => typeof entry === 'boolean')) {
+			return value;
+		}
+		return value.map((entry) => truncateString(String(sanitizeTraceValue(entry))));
+	}
+
+	const sanitized = sanitizeTraceValue(value);
+	if (typeof sanitized === 'string') {
+		return sanitized;
+	}
+	if (typeof sanitized === 'number' || typeof sanitized === 'boolean') {
+		return sanitized;
+	}
+	return truncateString(JSON.stringify(sanitized));
+}
+
+function toTelemetryMetadata(
+	...records: Array<Record<string, unknown> | undefined>
+): Record<string, AttributeValue> {
+	const metadata: Record<string, AttributeValue> = {};
+
+	for (const record of records) {
+		if (!record) continue;
+
+		for (const [key, value] of Object.entries(record)) {
+			if (key.startsWith('langsmith.metadata.')) {
+				continue;
+			}
+			const attributeValue = toTelemetryAttributeValue(value);
+			if (attributeValue !== undefined) {
+				metadata[key] = attributeValue;
+			}
+		}
+	}
+
+	return metadata;
+}
+
+function formatTelemetryFunctionId(agentRole: string): string {
+	if (agentRole.startsWith('instance-ai.')) {
+		return agentRole;
+	}
+
+	return `instance-ai.${agentRole.replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '')}`;
+}
+
+function redactSecretString(value: string): string {
+	return value
+		.replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/g, 'Bearer [redacted]')
+		.replace(/(api[_-]?key|authorization|password|secret|token)=([^&\s]+)/gi, '$1=[redacted]');
+}
+
+function redactTelemetryJsonValue(
+	value: unknown,
+	keyHint?: string,
+	depth = 0,
+	maxDepth = MAX_TRACE_DEPTH,
+): unknown {
+	if (depth > maxDepth) {
+		return '[redacted-depth-limit]';
+	}
+
+	if (keyHint && SENSITIVE_TELEMETRY_KEY_PATTERN.test(keyHint)) {
+		return '[redacted]';
+	}
+
+	if (typeof value === 'string') {
+		return redactSecretString(value);
+	}
+
+	if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+		return value;
+	}
+
+	if (Array.isArray(value)) {
+		return value.map((entry) => redactTelemetryJsonValue(entry, keyHint, depth + 1, maxDepth));
+	}
+
+	if (isRecord(value)) {
+		const redacted: Record<string, unknown> = {};
+		for (const [key, entryValue] of Object.entries(value)) {
+			redacted[key] = redactTelemetryJsonValue(entryValue, key, depth + 1, maxDepth);
+		}
+		return redacted;
+	}
+
+	return sanitizeTraceValue(value);
+}
+
+function redactTelemetryAttribute(key: string, value: unknown): unknown {
+	if (SENSITIVE_TELEMETRY_KEY_PATTERN.test(key)) {
+		return '[redacted]';
+	}
+
+	if (typeof value !== 'string') {
+		return redactTelemetryJsonValue(value, key);
+	}
+
+	const trimmed = value.trim();
+	if (
+		(trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+		(trimmed.startsWith('[') && trimmed.endsWith(']'))
+	) {
+		try {
+			const parsed: unknown = JSON.parse(trimmed);
+			return JSON.stringify(redactTelemetryJsonValue(parsed, key));
+		} catch {
+			return redactSecretString(value);
+		}
+	}
+
+	return redactSecretString(value);
+}
+
+function parseTelemetryJson(value: unknown): unknown {
+	if (typeof value !== 'string') {
+		return undefined;
+	}
+
+	try {
+		const parsed: unknown = JSON.parse(value);
+		return parsed;
+	} catch {
+		return undefined;
+	}
+}
+
+function parseTelemetryTools(value: unknown): unknown[] | undefined {
+	if (!Array.isArray(value)) {
+		const parsed = parseTelemetryJson(value);
+		return Array.isArray(parsed) ? parseTelemetryTools(parsed) : undefined;
+	}
+
+	const entries: readonly unknown[] = value;
+	const tools: unknown[] = [];
+	for (const entry of entries) {
+		tools.push(typeof entry === 'string' ? (parseTelemetryJson(entry) ?? entry) : entry);
+	}
+
+	return tools.length > 0 ? tools : undefined;
+}
+
+function enrichLangSmithPromptAttribute(attributes: Record<string, unknown>): void {
+	if (attributes['gen_ai.prompt'] !== undefined) {
+		return;
+	}
+
+	const messages = parseTelemetryJson(attributes['ai.prompt.messages']);
+	if (!Array.isArray(messages)) {
+		return;
+	}
+
+	const tools = parseTelemetryTools(attributes['ai.prompt.tools']);
+	const toolChoice = parseTelemetryJson(attributes['ai.prompt.toolChoice']);
+	if (!tools && toolChoice === undefined) {
+		return;
+	}
+
+	const prompt: Record<string, unknown> = { input: messages };
+	if (tools) {
+		prompt.tools = tools;
+	}
+
+	if (toolChoice !== undefined) {
+		prompt.tool_choice = toolChoice;
+	}
+
+	attributes['gen_ai.prompt'] = JSON.stringify(
+		redactTelemetryJsonValue(prompt, undefined, 0, MAX_PROMPT_SCHEMA_TRACE_DEPTH),
+	);
+}
+
+export function redactLangSmithTelemetrySpan(span: unknown): unknown {
+	if (!isRecord(span) || !isRecord(span.attributes)) {
+		return span;
+	}
+
+	const attributes: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(span.attributes)) {
+		attributes[key] = redactTelemetryAttribute(key, value);
+	}
+	enrichLangSmithPromptAttribute(attributes);
+	span.attributes = attributes;
+	return span;
 }
 
 function splitTraceText(value: string): string[] {
@@ -790,6 +1020,7 @@ function createTraceContext(
 	rootRun: InstanceAiTraceRun,
 	actorRun: InstanceAiTraceRun,
 	getProxyHeaders?: () => Promise<Record<string, string>>,
+	telemetryFactory?: (options: InstanceAiTelemetryOptions) => Telemetry,
 ): InstanceAiTraceContext {
 	const withProxy = async <T>(fn: () => Promise<T>): Promise<T> => {
 		if (!getProxyHeaders) return await fn();
@@ -846,6 +1077,7 @@ function createTraceContext(
 		finishRun,
 		failRun,
 		toHeaders: (run) => hydrateRunTree(run).toHeaders(),
+		...(telemetryFactory ? { getTelemetry: telemetryFactory } : {}),
 		wrapTools: (tools, traceOptions) => {
 			if (ctx.replayMode === 'replay' && ctx.traceIndex && ctx.idRemapper) {
 				return replayWrapTools(tools, ctx.traceIndex, ctx.idRemapper, traceOptions);
@@ -939,6 +1171,15 @@ function wrapToolHandler(
 	};
 }
 
+function shouldTraceLocalToolExecution(tool: TraceableNativeTool): boolean {
+	return (
+		tool.suspendSchema !== undefined ||
+		tool.resumeSchema !== undefined ||
+		LOCAL_TOOL_TRACE_NAMES.has(tool.name) ||
+		tool.name.startsWith('workspace_')
+	);
+}
+
 function wrapTools(
 	tools: InstanceAiToolRegistry,
 	options?: InstanceAiToolTraceOptions,
@@ -948,7 +1189,10 @@ function wrapTools(
 
 	for (const [name, tool] of entries) {
 		const originalTool = tools[name];
-		wrapped[name] = isTraceableNativeTool(tool) ? wrapToolHandler(tool, options) : originalTool;
+		wrapped[name] =
+			isTraceableNativeTool(tool) && shouldTraceLocalToolExecution(tool)
+				? wrapToolHandler(tool, options)
+				: originalTool;
 	}
 
 	return wrapped;
@@ -1034,25 +1278,21 @@ function replayWrapTools(
 // ── Recording wrappers ──────────────────────────────────────────────────────
 
 /**
- * Wraps a tool to record its I/O to a TraceWriter while also applying
- * the normal LangSmith tracing wrapper.
+ * Wraps a tool to record its I/O to a TraceWriter. Replay records stable
+ * Instance AI events and intentionally does not depend on LangSmith run shape.
  */
 function recordWrapTool(
 	tool: TraceableNativeTool,
 	traceWriter: TraceWriter,
 	agentRole: string,
-	traceOptions: InstanceAiToolTraceOptions | undefined,
 ): TraceableNativeTool {
-	// First apply LangSmith tracing (preserves existing tracing behavior)
-	const traced = wrapToolHandler(tool, traceOptions);
-
 	return {
-		...traced,
+		...tool,
 		handler: async (input, context) => {
 			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
 
-			const result = await traced.handler(input, context);
+			const result = await tool.handler(input, context);
 			const outputRecord = (result ?? {}) as Record<string, unknown>;
 
 			if (resumeData !== undefined && resumeData !== null) {
@@ -1095,7 +1335,7 @@ function recordWrapTools(
 			wrapped[name] = tools[name];
 			continue;
 		}
-		wrapped[name] = recordWrapTool(tool, traceWriter, agentRole, options);
+		wrapped[name] = recordWrapTool(tool, traceWriter, agentRole);
 	}
 
 	return wrapped;
@@ -1223,6 +1463,7 @@ async function withSerializedRunTree<T>(
 function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record<string, unknown> {
 	return {
 		thread_id: options.threadId,
+		'langsmith.metadata.thread_id': options.threadId,
 		conversation_id: options.conversationId ?? options.threadId,
 		message_group_id: options.messageGroupId,
 		message_id: options.messageId,
@@ -1232,6 +1473,47 @@ function buildBaseMetadata(options: CreateInstanceAiTraceContextOptions): Record
 			? { model_id: serializeModelIdForTrace(options.modelId) }
 			: {}),
 		...options.metadata,
+	};
+}
+
+function createTelemetryFactory(options: {
+	projectName: string;
+	traceKind: InstanceAiTraceContext['traceKind'];
+	rootRun: InstanceAiTraceRun;
+	actorRun: InstanceAiTraceRun;
+	baseMetadata: Record<string, unknown>;
+	proxyConfig?: ServiceProxyConfig;
+}): (telemetryOptions: InstanceAiTelemetryOptions) => Telemetry {
+	return (telemetryOptions) => {
+		const agentRole = telemetryOptions.agentRole;
+		const executionMode =
+			telemetryOptions.executionMode ??
+			(options.traceKind === 'detached_subagent' ? 'detached_subagent' : 'foreground');
+		const metadata = toTelemetryMetadata(options.baseMetadata, telemetryOptions.metadata, {
+			agent_role: agentRole,
+			execution_mode: executionMode,
+			trace_kind: options.traceKind,
+			langsmith_trace_id: options.rootRun.traceId,
+			langsmith_root_run_id: options.rootRun.id,
+			langsmith_actor_run_id: options.actorRun.id,
+		});
+		const functionId = telemetryOptions.functionId ?? formatTelemetryFunctionId(agentRole);
+
+		return new LangSmithTelemetry({
+			project: options.projectName,
+			transformExportedSpan: redactLangSmithTelemetrySpan,
+			...(options.proxyConfig
+				? {
+						apiKey: '-',
+						endpoint: options.proxyConfig.apiUrl,
+						headers: options.proxyConfig.getAuthHeaders,
+					}
+				: {}),
+		})
+			.functionId(functionId)
+			.metadata(metadata)
+			.recordInputs(true)
+			.recordOutputs(true);
 	};
 }
 
@@ -1270,6 +1552,14 @@ export async function createInstanceAiTraceContext(
 			messageRun,
 			orchestratorRun,
 			options.proxyConfig?.getAuthHeaders,
+			createTelemetryFactory({
+				projectName,
+				traceKind: 'message_turn',
+				rootRun: messageRun,
+				actorRun: orchestratorRun,
+				baseMetadata,
+				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+			}),
 		);
 	};
 
@@ -1300,6 +1590,14 @@ export async function continueInstanceAiTraceContext(
 			existingContext.rootRun,
 			orchestratorRun,
 			options.proxyConfig?.getAuthHeaders,
+			createTelemetryFactory({
+				projectName: existingContext.projectName,
+				traceKind: 'message_turn',
+				rootRun: existingContext.rootRun,
+				actorRun: orchestratorRun,
+				baseMetadata,
+				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+			}),
 		);
 	};
 
@@ -1352,6 +1650,25 @@ export async function createDetachedSubAgentTraceContext(
 			rootRun,
 			rootRun,
 			options.proxyConfig?.getAuthHeaders,
+			createTelemetryFactory({
+				projectName,
+				traceKind: 'detached_subagent',
+				rootRun,
+				actorRun: rootRun,
+				baseMetadata:
+					mergeMetadata(baseMetadata, {
+						agent_role: options.role,
+						agent_id: options.agentId,
+						task_kind: options.kind,
+						...(options.taskId ? { task_id: options.taskId } : {}),
+						...(options.plannedTaskId ? { planned_task_id: options.plannedTaskId } : {}),
+						...(options.workItemId ? { work_item_id: options.workItemId } : {}),
+						...(options.spawnedByTraceId ? { spawned_by_trace_id: options.spawnedByTraceId } : {}),
+						...(options.spawnedByRunId ? { spawned_by_run_id: options.spawnedByRunId } : {}),
+						...(options.spawnedByAgentId ? { spawned_by_agent_id: options.spawnedByAgentId } : {}),
+					}) ?? baseMetadata,
+				...(options.proxyConfig ? { proxyConfig: options.proxyConfig } : {}),
+			}),
 		);
 	};
 

@@ -11,6 +11,7 @@ import type {
 } from 'ai';
 
 import type { FinishReason } from '../types';
+import { toJsonValue } from './json-value';
 import type {
 	AgentMessage,
 	ContentFile,
@@ -107,7 +108,7 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 					type: 'tool-result',
 					toolCallId: block.toolCallId,
 					toolName: block.toolName,
-					output: { type: 'error-json', value: block.result },
+					output: { type: 'error-json', value: toJsonValue(block.result) },
 				};
 			}
 		} else {
@@ -115,7 +116,7 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 				type: 'tool-result',
 				toolCallId: block.toolCallId,
 				toolName: block.toolName,
-				output: { type: 'json', value: block.result },
+				output: { type: 'json', value: toJsonValue(block.result) },
 			};
 		}
 	} else if (isReasoning(block)) {

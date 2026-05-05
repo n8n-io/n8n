@@ -1799,8 +1799,6 @@ export function createLlmStepTraceHooks(
 			experimental_prepareStep: prepareStep,
 			experimental_onStepStart: onStepStart,
 			onStepFinish,
-			// Disable Vercel AI SDK's built-in LangSmith tracing — we manage traces ourselves
-			experimental_telemetry: { isEnabled: false },
 		},
 		onStreamChunk: (chunk) => {
 			updateStepRecordFromChunk(chunk, records);
