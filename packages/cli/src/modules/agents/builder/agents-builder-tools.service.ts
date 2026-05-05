@@ -15,7 +15,12 @@ import {
 	tryParseConfigJson,
 } from '../json-config/agent-json-config';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { buildAskCredentialTool, buildAskLlmTool, buildAskQuestionTool } from './interactive';
+import {
+	buildAskCredentialTool,
+	buildAskLlmTool,
+	buildAskQuestionTool,
+	buildResolveLlmTool,
+} from './interactive';
 import { BUILDER_TOOLS } from './builder-tool-names';
 
 const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
@@ -188,8 +193,9 @@ export class AgentsBuilderToolsService {
 			writeConfigTool,
 			patchConfigTool,
 			listIntegrationTypesTool,
+			buildResolveLlmTool({ credentialProvider }),
 			buildAskCredentialTool({ credentialProvider }),
-			buildAskLlmTool({ credentialProvider }),
+			buildAskLlmTool(),
 			buildAskQuestionTool(),
 		];
 	}
