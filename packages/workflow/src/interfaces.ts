@@ -2539,6 +2539,19 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	 * permissions and are never revealable.
 	 */
 	sensitiveOutputFields?: string[];
+	/**
+	 * Optional dot-notation path on `INode.parameters` that, when present and
+	 * truthy on a node instance, opts that instance out of
+	 * `sensitiveOutputFields` redaction. Allows a node author to expose an
+	 * explicit per-node toggle for users who need raw values downstream
+	 * (e.g. JWT/HMAC signature verification on a Webhook auth header).
+	 *
+	 * The opt-out is opt-in by node author and opt-in by node instance:
+	 * the field is left unset on every existing node, and instances default
+	 * to redacting. Only when the author declares this path AND the user
+	 * sets the parameter to `true` does the strategy skip redaction.
+	 */
+	sensitiveOutputFieldsOptOutPath?: string;
 }
 
 export type TriggerPanelDefinition = {

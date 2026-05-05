@@ -290,6 +290,14 @@ export const optionsProperty: INodeProperties = {
 				'The name of the output field to put any binary file data in. Only relevant if binary data is received.',
 		},
 		{
+			displayName: 'Expose Authentication Headers',
+			name: 'exposeAuthHeaders',
+			type: 'boolean',
+			default: false,
+			description:
+				"Whether to keep the Authorization and Cookie request headers in this node's output instead of redacting them. Enable only when downstream nodes need the raw values (e.g. JWT signature or HMAC verification). Anyone with execution-read access on the workflow will be able to see these headers in execution data.",
+		},
+		{
 			displayName: 'Ignore Bots',
 			name: 'ignoreBots',
 			type: 'boolean',
