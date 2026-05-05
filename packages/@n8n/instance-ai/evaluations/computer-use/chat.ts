@@ -16,6 +16,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { N8nClient } from '../clients/n8n-client';
 import { consumeSseStream } from '../clients/sse-client';
 import type { EvalLogger } from '../harness/logger';
+import { buildAutoApprovePayload } from '../harness/runner';
 import { extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent } from '../types';
 import { computeTokenStats } from './tokens';
@@ -230,7 +231,7 @@ async function processConfirmationRequests(config: WaitConfig): Promise<void> {
 		if (!requestId || config.approvedRequests.has(requestId)) continue;
 
 		try {
-			await config.client.confirmAction(requestId, true);
+			await config.client.confirmAction(requestId, buildAutoApprovePayload(event));
 			config.approvedRequests.add(requestId);
 		} catch (error) {
 			config.logger.verbose(
