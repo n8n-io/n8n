@@ -258,7 +258,7 @@ export class BuilderSandboxFactory {
 
 			const workspace = new Workspace({
 				sandbox: daytonaSandbox,
-				filesystem: new DaytonaFilesystem(daytonaSandbox),
+				filesystem: new DaytonaFilesystem(daytonaSandbox) as unknown as LocalFilesystem,
 			});
 
 			await workspace.init();

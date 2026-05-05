@@ -123,6 +123,6 @@ export function createWorkspace(
 
 	return new Workspace({
 		sandbox,
-		filesystem: new DaytonaFilesystem(sandbox),
+		filesystem: new DaytonaFilesystem(sandbox) as unknown as LocalFilesystem,
 	});
 }
