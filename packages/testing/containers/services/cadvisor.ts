@@ -1,8 +1,24 @@
+import { realpathSync } from 'node:fs';
 import { GenericContainer, Wait } from 'testcontainers';
 import type { StartedNetwork } from 'testcontainers';
 
 import { TEST_CONTAINER_IMAGES } from '../test-containers';
 import type { Service, ServiceResult } from './types';
+
+/**
+ * Resolves the host's Docker socket path. On Docker Desktop, `/var/run/docker.sock`
+ * is a symlink (typically to `~/.docker/run/docker.sock`); bind-mounting the
+ * symlink path directly preserves the symlink but the target doesn't exist
+ * inside the container, so cAdvisor can't reach the daemon. Resolving to the
+ * real path makes the bind mount work in both environments.
+ */
+function resolveDockerSocket(): string {
+	try {
+		return realpathSync('/var/run/docker.sock');
+	} catch {
+		return '/var/run/docker.sock';
+	}
+}
 
 const HOSTNAME = 'cadvisor';
 export const CADVISOR_PORT = 8080;
@@ -40,17 +56,31 @@ export const cadvisor: Service<CadvisorResult> = {
 			})
 			.withBindMounts([
 				{ source: '/', target: '/rootfs', mode: 'ro' },
-				{ source: '/var/run', target: '/var/run', mode: 'ro' },
+				// Bind the resolved socket file (not the parent dir). Docker Desktop's
+				// /var/run/docker.sock is a symlink to ~/.docker/run/docker.sock;
+				// mounting the parent dir preserves the symlink but the target path
+				// doesn't exist inside the container, so the docker factory fails to
+				// register. Mounting the resolved path works in both Linux CI and
+				// Docker Desktop.
+				{ source: resolveDockerSocket(), target: '/var/run/docker.sock', mode: 'rw' },
 				{ source: '/sys', target: '/sys', mode: 'ro' },
 				{ source: '/var/lib/docker/', target: '/var/lib/docker', mode: 'ro' },
 			])
 			.withPrivilegedMode()
 			.withExposedPorts(CADVISOR_PORT)
 			.withCommand([
-				// Disable internal storage to keep memory low — VictoriaMetrics holds the time series.
-				'--store_container_labels=false',
-				'--docker_only=true',
+				// IMPORTANT: do NOT set --store_container_labels=false. That flag
+				// drops the `container_label_*` series, which is what we match on
+				// in PromQL (`container_label_com_docker_compose_service`).
+				// Whitelist limits label cardinality without killing the labels we
+				// actually query.
+				'--whitelisted_container_labels=com.docker.compose.project,com.docker.compose.service',
+				// Drop --docker_only=true: when the daemon connection fails (Docker
+				// Desktop), this would suppress every container — leaving only the
+				// host cgroup. Without the flag, cAdvisor falls back to systemd /
+				// raw factories and still emits cgroup-derived metrics.
 				'--housekeeping_interval=2s',
+				'--allow_dynamic_housekeeping=true',
 			])
 			.withWaitStrategy(
 				Wait.forHttp('/metrics', CADVISOR_PORT).forStatusCode(200).withStartupTimeout(60000),

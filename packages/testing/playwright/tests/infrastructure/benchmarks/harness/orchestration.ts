@@ -9,6 +9,7 @@ import type { TestInfo } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 import type { IWorkflowBase } from 'n8n-workflow';
 
+import { DockerStatsSampler } from './docker-stats-fallback';
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
 	attachDiagnostics,
@@ -63,6 +64,13 @@ export interface SetupResult {
 	activationStart: number;
 	/** Cumulative `pg_stat_wal` counters captured post-warm-up. Diffed at end-of-run. */
 	walBaseline?: { walRecords: number; walBytes: number; walFpi: number } | null;
+	/**
+	 * Background sampler that polls `docker stats` every few seconds during
+	 * the run so per-container CPU/mem/IO can be reconstructed even when
+	 * cAdvisor isn't reporting (Docker Desktop). `reportContainerStats`
+	 * stops it and consumes its aggregates.
+	 */
+	dockerStatsSampler: DockerStatsSampler;
 }
 
 /**
@@ -119,6 +127,12 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 		/* non-fatal */
 	}
 
+	// Start sampling docker stats post-warm-up so the reporter can show real
+	// per-container CPU/mem during the measurement window when cAdvisor is
+	// unavailable (notably on Docker Desktop). Cheap to run; ~3s cadence.
+	const dockerStatsSampler = new DockerStatsSampler();
+	dockerStatsSampler.start();
+
 	return {
 		workflowId,
 		versionId: createdWorkflow.versionId!,
@@ -127,6 +141,7 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 		metricQuery,
 		activationStart,
 		walBaseline,
+		dockerStatsSampler,
 	};
 }
 
@@ -320,21 +335,44 @@ export async function reportPgSaturation(ctx: {
 }
 
 /**
- * Logs per-container CPU/memory/IO from cAdvisor. Without this block, hitting
- * the OS-level PG CPU ceiling (e.g. 350% locally) is invisible to the harness
- * and the per-query reporter happily reports low avg-ms numbers because PG
- * spends much of its CPU on planning, autovacuum, and lock manager work that
- * never appears in pg_stat_statements.
+ * Logs per-container CPU/memory/IO. Primary source is cAdvisor (time-series
+ * via VictoriaMetrics); fallback is `docker stats` end-of-run snapshot for
+ * environments where cAdvisor can't reach the Docker daemon (notably Docker
+ * Desktop on macOS, where cAdvisor only reports the host-level cgroup).
+ *
+ * Without this block, hitting the OS-level PG CPU ceiling (e.g. 350% locally)
+ * is invisible to the harness — the per-query reporter happily reports low
+ * avg-ms numbers because PG spends much of its CPU on planning, autovacuum,
+ * and lock manager work that never appears in pg_stat_statements.
  */
-export function reportContainerStats(diagnostics: DiagnosticsResult): void {
-	const { containerStats } = diagnostics;
+export async function reportContainerStats(
+	diagnostics: DiagnosticsResult,
+	sampler?: DockerStatsSampler,
+): Promise<void> {
+	let { containerStats } = diagnostics;
+	let source = 'cAdvisor (time-series)';
+
 	if (!containerStats || containerStats.length === 0) {
-		// Silent skip is misleading — explicitly note the gap so a missing block
-		// doesn't get mistaken for "containers were idle." Most likely cause is
-		// cAdvisor not enabled in the bench profile or VictoriaMetrics not yet
-		// scraping its `/metrics` endpoint.
+		// cAdvisor returned nothing — drain the periodic docker-stats sampler.
+		// Per-second rates here are computed from delta of first vs last sample
+		// during the measurement window, so they reflect actual run activity
+		// (not post-run idle state).
+		if (sampler) {
+			const sampled = await sampler.stop();
+			if (sampled.length > 0) {
+				containerStats = sampled;
+				source = `docker stats sampler (${sampler.sampleCount()} samples)`;
+			}
+		}
+	} else if (sampler) {
+		// cAdvisor data won — still stop the sampler so it doesn't keep ticking.
+		await sampler.stop();
+	}
+
+	if (!containerStats || containerStats.length === 0) {
 		console.log(
-			'[CONTAINERS] No data — verify cAdvisor is in the bench profile and `container_label_com_docker_compose_service` is queryable in VictoriaMetrics.',
+			'[CONTAINERS] No data — cAdvisor reported nothing AND `docker stats` sampler captured no samples. ' +
+				'On Docker Desktop, cAdvisor often cannot reach the daemon socket; CI runs on Linux where it works.',
 		);
 		return;
 	}
@@ -345,7 +383,7 @@ export function reportContainerStats(diagnostics: DiagnosticsResult): void {
 		bytes !== undefined ? `${(bytes / 1024 / 1024).toFixed(2)} MB/s` : 'N/A';
 	const fmtPct = (pct?: number) => (pct !== undefined ? `${pct.toFixed(0)}%` : 'N/A');
 
-	const lines = ['[CONTAINERS]'];
+	const lines = [`[CONTAINERS] source: ${source}`];
 	for (const c of containerStats) {
 		const cpu = `CPU avg ${fmtPct(c.cpuPct).padStart(5)} peak ${fmtPct(c.cpuPctPeak).padStart(5)}`;
 		const mem = `Mem avg ${fmtMb(c.memBytes).padStart(7)} peak ${fmtMb(c.memBytesPeak).padStart(7)}`;

@@ -149,7 +149,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		durationMs: throughputResult.durationMs,
 		dimensions,
 	});
-	reportContainerStats(diagnostics);
+	await reportContainerStats(diagnostics, setup.dockerStatsSampler);
 	await reportPgQueryBreakdown({ services, durationMs: throughputResult.durationMs });
 	await reportPgSaturation({
 		services,

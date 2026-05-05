@@ -135,7 +135,7 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		durationMs: totalDurationMs,
 		dimensions: diagnosticsDimensions,
 	});
-	reportContainerStats(diagnostics);
+	await reportContainerStats(diagnostics, setup.dockerStatsSampler);
 	await reportPgQueryBreakdown({ services, durationMs: totalDurationMs });
 	await reportPgSaturation({
 		services,
