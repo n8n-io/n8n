@@ -114,12 +114,7 @@ export function coerceArrayTypeFields(fields: IDataObject, columnsParam: unknown
 		const value = fields[schemaField.id];
 		if (typeof value !== 'string') continue;
 		try {
-			let parsed: unknown;
-			try {
-				parsed = JSON.parse(value);
-			} catch {
-				parsed = JSON.parse(value.replace(/'/g, '"'));
-			}
+			const parsed: unknown = JSON.parse(value);
 			if (isIDataObjectArray(parsed)) {
 				fields[schemaField.id] = parsed;
 			}
