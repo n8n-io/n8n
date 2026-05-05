@@ -168,6 +168,7 @@ import { AddTracingContextToExecution1777045000000 } from '../common/17770450000
 import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
+import { CreateInstanceAiCheckpointTable1778050000000 } from '../common/1778050000000-CreateInstanceAiCheckpointTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -338,6 +339,7 @@ export const postgresMigrations: Migration[] = [
 	AddJweKeyIndexesToDeploymentKey1777023444000,
 	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
 	AddExecutionDeduplicationKey1778000000000,
+	CreateInstanceAiCheckpointTable1778050000000,
 	AddTracingContextToExecution1777045000000,
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	ExpandVariablesValueColumnToText1777420800000,

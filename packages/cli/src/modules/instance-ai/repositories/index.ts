@@ -5,3 +5,4 @@ export { InstanceAiObservationalMemoryRepository } from './instance-ai-observati
 export { InstanceAiWorkflowSnapshotRepository } from './instance-ai-workflow-snapshot.repository';
 export { InstanceAiRunSnapshotRepository } from './instance-ai-run-snapshot.repository';
 export { InstanceAiIterationLogRepository } from './instance-ai-iteration-log.repository';
+export { InstanceAiCheckpointRepository } from './instance-ai-checkpoint.repository';
