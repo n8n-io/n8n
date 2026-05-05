@@ -381,7 +381,7 @@ function argsContainPlannedTasks(args: Record<string, unknown>): boolean {
 	const tasks = args.tasks;
 	if (!Array.isArray(tasks)) return false;
 
-	return tasks.length > 0;
+	return tasks.some((task) => plannedTaskArgSchema.safeParse(task).success);
 }
 
 function assertNever(value: never): never {
@@ -408,11 +408,7 @@ export function isDisplayableConfirmationRequest(
 		case 'questions':
 			return hasItems(payload.questions);
 		case 'plan-review':
-			return (
-				hasItems(payload.planItems) ||
-				(payload.tasks?.tasks.length ?? 0) > 0 ||
-				argsContainPlannedTasks(payload.args)
-			);
+			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
 		default:

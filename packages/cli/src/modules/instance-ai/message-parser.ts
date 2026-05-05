@@ -182,6 +182,26 @@ function buildFlatAgentTree(
 	};
 }
 
+function snapshotTimestamp(snapshot: AgentTreeSnapshot): string {
+	return (snapshot.updatedAt ?? snapshot.createdAt ?? new Date(0)).toISOString();
+}
+
+function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
+	const groupId = snapshot.messageGroupId ?? snapshot.runId;
+	return {
+		id: groupId,
+		runId: snapshot.runId,
+		messageGroupId: snapshot.messageGroupId,
+		runIds: snapshot.runIds,
+		role: 'assistant',
+		createdAt: snapshotTimestamp(snapshot),
+		content: snapshot.tree.textContent,
+		reasoning: snapshot.tree.reasoning,
+		isStreaming: false,
+		agentTree: snapshot.tree,
+	};
+}
+
 // ---------------------------------------------------------------------------
 // Main parser
 // ---------------------------------------------------------------------------
@@ -196,12 +216,15 @@ export function parseStoredMessages(
 ): InstanceAiMessage[] {
 	const messages: InstanceAiMessage[] = [];
 
-	// Snapshots are stored as a chronological array — the Nth snapshot
-	// corresponds to the Nth assistant message. We align from the END
-	// so old messages (before snapshots existed) get flat trees.
+	// Snapshots are stored chronologically. When every snapshot can attach to
+	// an assistant row, align from the end so old pre-snapshot messages get flat
+	// trees. Extra snapshots are treated as orphan terminal output and surfaced
+	// as standalone assistant messages below.
 	const assistantCount = mastraMessages.filter((m) => m.role === 'assistant').length;
-	const snapshotOffset = assistantCount - (snapshots?.length ?? 0);
+	const snapshotCount = snapshots?.length ?? 0;
+	const snapshotOffset = snapshotCount <= assistantCount ? assistantCount - snapshotCount : 0;
 	let assistantIdx = 0;
+	const consumedSnapshots = new Set<AgentTreeSnapshot>();
 
 	let lastUserMessageId: string | undefined;
 
@@ -238,6 +261,7 @@ export function parseStoredMessages(
 				snapshots && snapshotIdx >= 0 && snapshotIdx < snapshots.length
 					? snapshots[snapshotIdx]
 					: undefined;
+			if (snapshot) consumedSnapshots.add(snapshot);
 			assistantIdx++;
 
 			// Use the native runId from the snapshot (matches SSE events),
@@ -266,6 +290,11 @@ export function parseStoredMessages(
 
 		// Skip tool/system messages — they are represented via tool invocations
 		// in the assistant message's content
+	}
+
+	for (const snapshot of snapshots ?? []) {
+		if (consumedSnapshots.has(snapshot)) continue;
+		messages.push(buildSnapshotMessage(snapshot));
 	}
 
 	// Deduplicate assistant messages by messageGroupId.
