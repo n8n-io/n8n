@@ -12,7 +12,11 @@ const STAGES: PublishStage[] = [
 	{ ratePerSecond: 700, durationSeconds: 60 },
 ];
 
-test.use({ capability: benchConfig('steady-rate-breaking-point', { kafka: true, workers: 1 }) });
+// Direct mode — no workers — so the breaking point measures a single-instance
+// ingestion + execution ceiling, not a worker-drain ceiling. Adding a worker
+// conflates "main fell behind" with "Bull dispatch / worker drain fell behind"
+// and the measured rate becomes ambiguous.
+test.use({ capability: benchConfig('steady-rate-breaking-point', { kafka: true }) });
 
 test.describe(
 	'At what input rate does the system fall behind?',
@@ -27,7 +31,7 @@ test.describe(
 		const minRate = Math.min(...STAGES.map((s) => s.ratePerSecond));
 		const maxRate = Math.max(...STAGES.map((s) => s.ratePerSecond));
 
-		test(`Kafka trigger + 30 noop, 10KB payload, ramp ${minRate}→${maxRate} msg/s × ${totalDuration}s (1 main + 1 worker)`, async ({
+		test(`Kafka trigger + 30 noop, 10KB payload, ramp ${minRate}→${maxRate} msg/s × ${totalDuration}s (1 main, no workers)`, async ({
 			api,
 			services,
 		}, testInfo) => {

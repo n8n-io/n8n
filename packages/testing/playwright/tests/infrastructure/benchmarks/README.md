@@ -15,6 +15,7 @@ The architectural ceiling. No queue tax, no worker dispatch. What's the absolute
 | Trigger | Spec | Question |
 |---------|------|----------|
 | kafka | `single-instance-ceiling.spec.ts` | How much can we process on a single instance? |
+| kafka | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
 | webhook | `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
 
 ### Actual — `1m + 1w queue mode`
@@ -24,7 +25,6 @@ The real-world minimum HA topology. What does a basic production setup actually 
 | Trigger | Spec | Question |
 |---------|------|----------|
 | kafka | `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 250 msg/s steady? |
-| kafka | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
 | kafka | `burst-drain-capacity.spec.ts` | How fast can we drain a backlog? |
 | kafka | `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
 | kafka | `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
