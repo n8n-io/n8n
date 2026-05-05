@@ -79,11 +79,12 @@ vi.mock('../composables/useAgentBuilderTelemetry', () => ({
 	useAgentBuilderTelemetry: () => ({
 		resetForAgentSwitch: vi.fn(),
 		captureToolsBaseline: vi.fn(),
+		captureSkillsBaseline: vi.fn(),
 		fetchInitialTriggersBaseline: vi.fn().mockResolvedValue(null),
 		recordConfigEdit: vi.fn(),
 		flushConfigEdits: vi.fn(),
 		trackToolsAdded: vi.fn(),
-		trackPublished: vi.fn(),
+		trackSkillsAdded: vi.fn(),
 	}),
 }));
 

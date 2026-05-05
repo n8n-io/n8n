@@ -8,6 +8,7 @@ import {
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
+	skillIdentifiersFromConfig,
 	toolIdentifiersFromConfig,
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
@@ -106,8 +107,6 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	// this set; `flushConfigEdits` drains it after a successful save and emits
 	// one `User edited agent config` event per part. Edits that never persist
 	// (save error, agent deletion, etc.) are dropped via `discardConfigEdits`.
-	// Triggers/name/description use their own endpoints and fire telemetry
-	// immediately from the corresponding track* methods instead of via this set.
 	const pendingEditedConfigParts = new Set<AgentConfigPart>();
 
 	// Baseline used to detect real trigger changes. The integrations panel emits
@@ -119,6 +118,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	// Snapshot of tool identifiers at last observed config state. Used by
 	// `trackToolsAdded` to compute the diff against the new config.
 	let previousTools: string[] = [];
+
+	// Same idea, parallel for skills.
+	let previousSkills: string[] = [];
 
 	function snapshot(): EditSnapshot {
 		return {
@@ -236,25 +238,26 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		});
 	}
 
-	function trackNameEdited() {
-		emitEditedEvents(['name'], snapshot());
+	function captureSkillsBaseline() {
+		previousSkills = skillIdentifiersFromConfig(deps.savedConfig.value);
 	}
 
-	function trackDescriptionEdited() {
-		emitEditedEvents(['description'], snapshot());
-	}
-
-	/**
-	 * Emit `User published agent` using the server's published schema as the
-	 * fingerprint source. Used by the route-leave publish path, which calls
-	 * `publishAgent` directly instead of going through `useAgentPublish`.
-	 */
-	function trackPublished(publishedSchema: AgentJsonConfig | null | undefined) {
-		withFingerprint(publishedSchema ?? null, [], (configVersion) => {
-			agentTelemetry.trackPublishedAgent({
-				agentId: deps.agentId.value,
-				configVersion,
-			});
+	function trackSkillsAdded() {
+		const current = skillIdentifiersFromConfig(deps.savedConfig.value);
+		const added = current.filter((s) => !previousSkills.includes(s));
+		previousSkills = current;
+		if (added.length === 0) return;
+		const s = snapshot();
+		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
+			for (const skillAdded of added) {
+				agentTelemetry.trackAddedSkills({
+					agentId: s.agentId,
+					skillAdded,
+					skills: current,
+					configVersion,
+					status: s.status,
+				});
+			}
 		});
 	}
 
@@ -287,6 +290,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		pendingEditedConfigParts.clear();
 		triggersBaseline.value = [];
 		previousTools = [];
+		previousSkills = [];
 	}
 
 	return {
@@ -295,10 +299,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		trackTriggerListChanged,
 		trackTriggerAdded,
 		trackToolsAdded,
-		trackNameEdited,
-		trackDescriptionEdited,
-		trackPublished,
+		trackSkillsAdded,
 		captureToolsBaseline,
+		captureSkillsBaseline,
 		fetchInitialTriggersBaseline,
 		resetForAgentSwitch,
 	};
