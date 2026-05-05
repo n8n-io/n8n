@@ -14,7 +14,7 @@ import { z } from 'zod';
  *   - Frontend: open path warns but still renders; import path blocks
  *
  * Validates:
- *   - Required node fields (name, type, position, parameters)
+ *   - Required node fields (name, type, position)
  *   - Position is a 2-number tuple
  *   - Connection entries have valid node/type/index
  *   - No duplicate node names

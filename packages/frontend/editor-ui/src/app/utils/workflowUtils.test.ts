@@ -597,6 +597,14 @@ describe('workflowUtils', () => {
 		it('should return [0, 0] for an array with fewer than 2 elements', () => {
 			expect(ensureNodePosition([100])).toEqual([0, 0]);
 		});
+
+		it('should return [0, 0] for an array with non-numeric strings', () => {
+			expect(ensureNodePosition(['a', 'b'])).toEqual([0, 0]);
+		});
+
+		it('should coerce numeric strings to numbers', () => {
+			expect(ensureNodePosition(['100', '200'])).toEqual([100, 200]);
+		});
 	});
 
 	describe('sanitizeConnections', () => {

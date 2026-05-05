@@ -47,7 +47,11 @@ export function removeWorkflowExecutionData(
  */
 export function ensureNodePosition(position: unknown): [number, number] {
 	if (Array.isArray(position) && position.length >= 2) {
-		return [position[0], position[1]];
+		const x = Number(position[0]);
+		const y = Number(position[1]);
+		if (!Number.isNaN(x) && !Number.isNaN(y)) {
+			return [x, y];
+		}
 	}
 	return [0, 0];
 }
