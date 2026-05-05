@@ -113,17 +113,30 @@ export class AgentBrowserAdapter implements Adapter {
 	}
 
 	private async switchToTab(pageId: string): Promise<void> {
-		let idx = this.tabCache.findIndex((t) => t.tabId === pageId);
-		if (idx === -1) {
+		let tab = this.tabCache.find((t) => t.tabId === pageId);
+		if (!tab) {
 			await this.refreshTabs();
-			idx = this.tabCache.findIndex((t) => t.tabId === pageId);
-			if (idx === -1) throw new PageNotFoundError(pageId);
+			tab = this.tabCache.find((t) => t.tabId === pageId);
+			if (!tab) throw new PageNotFoundError(pageId);
 		}
-		await this.run(['tab', String(idx + 1)]);
+		if (tab.active) return;
+		await this.run(['tab', tab.tabId]);
+		for (const t of this.tabCache) t.active = t.tabId === pageId;
 	}
 
 	private resolveTarget(target: ElementTarget): string {
-		return 'ref' in target ? target.ref : target.selector;
+		if ('ref' in target) {
+			const { ref } = target;
+			return ref.startsWith('@') ? ref : `@${ref}`;
+		}
+		return target.selector;
+	}
+
+	private async runAction(args: string[]): Promise<void> {
+		const resp = await this.run(args);
+		if (!resp.success) {
+			throw new Error(resp.error ?? 'agent-browser action failed');
+		}
 	}
 
 	private async navResult(pageId: string): Promise<NavigateResult> {
@@ -214,45 +227,16 @@ export class AgentBrowserAdapter implements Adapter {
 	// Tabs
 	// =========================================================================
 
-	/*
 	async listTabs(): Promise<PageInfo[]> {
 		return (await this.refreshTabs()).map((t) => ({ id: t.tabId, title: t.title, url: t.url }));
 	}
 
+	async listTabSessionIds(): Promise<string[]> {
+		return await Promise.resolve(this.tabCache.map((t) => t.tabId));
+	}
+
 	async listTabIds(): Promise<string[]> {
-		return (await this.refreshTabs()).map((t) => t.tabId);
-	}
-
-	listTabSessionIds(): string[] {
-		return this.tabCache.map((t) => t.tabId);
-	}
-		*/
-
-	/**
-	 * Two-tier model: listTabs() returns metadata from the relay cache (no debugger
-	 * attachment). Falls back to listPages() when no relay is available.
-	 */
-	async listTabs(): Promise<PageInfo[]> {
-		if (this.relay) {
-			const tabs = (await this.relay.listTabs()).map((t) => ({
-				id: t.id,
-				title: t.title,
-				url: t.url,
-			}));
-			log.debug('listTabs: relay returned', tabs.length, 'tabs');
-			return tabs;
-		}
-		return [];
-	}
-
-	/** Return the session IDs of all currently tracked pages. */
-	async listTabSessionIds() {
-		return (await this.listTabs()).map(({ id }) => id);
-	}
-
-	/** Return IDs of all known tabs (relay cache + local pages). */
-	async listTabIds(): Promise<string[]> {
-		return await this.listTabSessionIds();
+		return (await this.listTabs()).map((t) => t.id);
 	}
 
 	async newPage(url?: string): Promise<PageInfo> {
@@ -319,7 +303,10 @@ export class AgentBrowserAdapter implements Adapter {
 
 	async click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void> {
 		await this.switchToTab(pageId);
-		await this.run([options?.clickCount === 2 ? 'dblclick' : 'click', this.resolveTarget(target)]);
+		await this.runAction([
+			options?.clickCount === 2 ? 'dblclick' : 'click',
+			this.resolveTarget(target),
+		]);
 	}
 
 	async type(
@@ -329,33 +316,36 @@ export class AgentBrowserAdapter implements Adapter {
 		options?: TypeOptions,
 	): Promise<void> {
 		await this.switchToTab(pageId);
-		await this.run([options?.clear ? 'fill' : 'type', this.resolveTarget(target), text]);
-		if (options?.submit) await this.run(['press', 'Enter']);
+		await this.runAction([options?.clear ? 'fill' : 'type', this.resolveTarget(target), text]);
+		if (options?.submit) await this.runAction(['press', 'Enter']);
 	}
 
 	async select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]> {
 		await this.switchToTab(pageId);
-		const ref = this.resolveTarget(target);
+		// Click to focus the <select> element (agent-browser does not inject aria-ref attributes)
+		await this.runAction(['click', this.resolveTarget(target)]);
+		// Set the value on document.activeElement, which is the <select> after click
 		const script =
 			'(function(){' +
-			`const el=document.querySelector('[aria-ref="${ref}"]');` +
-			'if(!el)return[];' +
+			'const el=document.activeElement;' +
+			'if(!el||el.tagName!=="SELECT")return[];' +
 			`const v=${JSON.stringify(values)};` +
-			'Array.from(el.options).forEach(o=>o.selected=v.includes(o.value));' +
+			'Array.from(el.options).forEach(o=>o.selected=v.includes(o.value)||v.includes(o.text.trim()));' +
 			"el.dispatchEvent(new Event('change',{bubbles:true}));" +
 			'return Array.from(el.selectedOptions).map(o=>o.value);})()';
 		const resp = await this.run(['eval', script]);
+		if (!resp.success) throw new Error(resp.error ?? 'select failed');
 		return Array.isArray(resp.data) ? (resp.data as string[]) : values;
 	}
 
 	async hover(pageId: string, target: ElementTarget): Promise<void> {
 		await this.switchToTab(pageId);
-		await this.run(['hover', this.resolveTarget(target)]);
+		await this.runAction(['hover', this.resolveTarget(target)]);
 	}
 
 	async press(pageId: string, keys: string): Promise<void> {
 		await this.switchToTab(pageId);
-		await this.run(['press', keys]);
+		await this.runAction(['press', keys]);
 	}
 
 	async drag(_pageId: string, _from: ElementTarget, _to: ElementTarget): Promise<void> {
@@ -366,9 +356,13 @@ export class AgentBrowserAdapter implements Adapter {
 	async scroll(pageId: string, target?: ElementTarget, options?: ScrollOptions): Promise<void> {
 		await this.switchToTab(pageId);
 		if (target) {
-			await this.run(['scrollintoview', this.resolveTarget(target)]);
+			await this.runAction(['scrollintoview', this.resolveTarget(target)]);
 		} else {
-			await this.run(['scroll', options?.direction ?? 'down', String(options?.amount ?? 300)]);
+			await this.runAction([
+				'scroll',
+				options?.direction ?? 'down',
+				String(options?.amount ?? 300),
+			]);
 		}
 	}
 

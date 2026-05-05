@@ -375,11 +375,28 @@ export class CDPRelayServer {
 			case 'Target.disposeBrowserContext':
 				return {};
 
+			case 'Target.getTargets': {
+				const tabs = await this.listTabs();
+				return {
+					targetInfos: tabs.map((entry) => ({
+						targetId: entry.id,
+						type: 'page',
+						title: entry.title,
+						url: entry.url,
+						attached: false,
+						browserContextId: this.browserContextId,
+					})),
+				};
+			}
+
 			case 'Target.setDiscoverTargets':
 				return {};
 
-			case 'Target.attachToTarget':
-				return await this.extensionConn?.send('attachTab', { id: (params as { id: string })?.id });
+			case 'Target.attachToTarget': {
+				const targetId = (params as { targetId: string })?.targetId;
+				await this.extensionConn?.send('attachTab', { id: targetId });
+				return { sessionId: targetId };
+			}
 			case 'Target.setAutoAttach': {
 				// Child session auto-attach: forward to extension so Chrome attaches to iframes
 				if (sessionId) {
