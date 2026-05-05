@@ -54,7 +54,12 @@ type Input = z.infer<typeof inputSchema>;
 
 export function createEvalsTool(context: InstanceAiContext) {
 	// Cache the proposal from phase 1 so phase 2 uses the same metric IDs
-	// the user selected in the card.
+	// the user selected in the card. Lifetime is the closure of this factory,
+	// which `createInstanceAgent` invokes per run — so the map is per-run
+	// scoped. Cleanup happens in phase 2's try/finally regardless of the
+	// resume outcome; entries from runs where phase 2 never fires (e.g. user
+	// abandons the panel) are released when the run ends and the closure is
+	// discarded.
 	const proposalCache: Map<string, EvalShape> = new Map();
 
 	return createTool({
@@ -105,73 +110,86 @@ export function createEvalsTool(context: InstanceAiContext) {
 				return { success: false };
 			}
 
-			// Phase 2: resume — user responded
-			if (!resumeData.approved) {
+			// Phase 2: resume — user responded.
+			// Wrap the body in try/finally so the cache entry is released even
+			// when phase-2 work throws partway through (e.g. workflow refetch
+			// fails). Without this, an abandoned entry leaks for the rest of
+			// the run.
+			try {
+				if (!resumeData.approved) {
+					return { success: true, deferred: true, reason: 'User skipped eval setup.' };
+				}
+
+				// Re-fetch workflow + re-detect AI nodes (pure, deterministic).
+				const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
+				const detection = detectAiNodes(wf);
+
+				// Reuse cached shape so metric IDs match the user's selection.
+				const cachedShape =
+					proposalCache.get(input.workflowId) ??
+					(await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE));
+
+				// When linking an existing DataTable, the table's actual columns are
+				// authoritative — the LLM-inferred shape is only a guess. Override the
+				// suggested input/output columns with the real schema so the eval-setup
+				// agent's shape bridge references columns that actually exist.
+				const shape: EvalShape =
+					resumeData.datasetChoice === 'link-existing' && resumeData.existingDataTableId
+						? await deriveShapeFromDataTable(
+								context,
+								resumeData.existingDataTableId,
+								input.projectId,
+								cachedShape,
+							)
+						: cachedShape;
+
+				// Filter metrics by user selection, falling back to defaults if none selected.
+				const selectedMetricIds =
+					resumeData.enabledMetricIds && resumeData.enabledMetricIds.length > 0
+						? resumeData.enabledMetricIds
+						: shape.suggestedMetrics.filter((m) => m.defaultEnabled).map((m) => m.id);
+				const enabledMetrics = shape.suggestedMetrics.filter((m) =>
+					selectedMetricIds.includes(m.id),
+				);
+
+				const dataTableId = resumeData.existingDataTableId;
+				const datasetChoiceForTask =
+					resumeData.datasetChoice === 'link-existing' && dataTableId
+						? ('link-existing' as const)
+						: resumeData.datasetChoice === 'later'
+							? ('later' as const)
+							: ('create-empty' as const);
+
+				// Format the task for eval-setup-agent. From the sub-agent's POV, the
+				// DataTable is an empty table it must create.
+				const task = formatEvalSetupTask({
+					workflowId: input.workflowId,
+					workflowName: wf.name ?? 'Workflow',
+					detectedAiNodes: detection.aiNodeNames,
+					datasetChoice: datasetChoiceForTask,
+					existingDataTableId: dataTableId,
+					projectId: input.projectId,
+					suggestedInputColumns: shape.suggestedInputColumns,
+					suggestedOutputColumns: shape.suggestedOutputColumns,
+					enabledMetrics,
+				});
+
+				// Record the user's consent so the eval-setup sub-agent's
+				// `workflows(action="update")` call doesn't trigger a second
+				// approval card — the eval propose card was the consent gate.
+				(context.consentedEditWorkflowIds ??= new Set<string>()).add(input.workflowId);
+
+				return {
+					success: true,
+					shouldDelegateToEvalSetupAgent: true,
+					task,
+					workflowId: input.workflowId,
+					...(input.projectId ? { projectId: input.projectId } : {}),
+					...(dataTableId ? { dataTableId } : {}),
+				};
+			} finally {
 				proposalCache.delete(input.workflowId);
-				return { success: true, deferred: true, reason: 'User skipped eval setup.' };
 			}
-
-			// Re-fetch workflow + re-detect AI nodes (pure, deterministic).
-			const wf = await context.workflowService.getAsWorkflowJSON(input.workflowId);
-			const detection = detectAiNodes(wf);
-
-			// Reuse cached shape so metric IDs match the user's selection.
-			const cachedShape =
-				proposalCache.get(input.workflowId) ??
-				(await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE));
-			proposalCache.delete(input.workflowId);
-
-			// When linking an existing DataTable, the table's actual columns are
-			// authoritative — the LLM-inferred shape is only a guess. Override the
-			// suggested input/output columns with the real schema so the eval-setup
-			// agent's shape bridge references columns that actually exist.
-			const shape: EvalShape =
-				resumeData.datasetChoice === 'link-existing' && resumeData.existingDataTableId
-					? await deriveShapeFromDataTable(
-							context,
-							resumeData.existingDataTableId,
-							input.projectId,
-							cachedShape,
-						)
-					: cachedShape;
-
-			// Filter metrics by user selection, falling back to defaults if none selected.
-			const selectedMetricIds =
-				resumeData.enabledMetricIds && resumeData.enabledMetricIds.length > 0
-					? resumeData.enabledMetricIds
-					: shape.suggestedMetrics.filter((m) => m.defaultEnabled).map((m) => m.id);
-			const enabledMetrics = shape.suggestedMetrics.filter((m) => selectedMetricIds.includes(m.id));
-
-			const dataTableId = resumeData.existingDataTableId;
-			const datasetChoiceForTask =
-				resumeData.datasetChoice === 'link-existing' && dataTableId
-					? ('link-existing' as const)
-					: resumeData.datasetChoice === 'later'
-						? ('later' as const)
-						: ('create-empty' as const);
-
-			// Format the task for eval-setup-agent. From the sub-agent's POV, the
-			// DataTable is an empty table it must create.
-			const task = formatEvalSetupTask({
-				workflowId: input.workflowId,
-				workflowName: wf.name ?? 'Workflow',
-				detectedAiNodes: detection.aiNodeNames,
-				datasetChoice: datasetChoiceForTask,
-				existingDataTableId: dataTableId,
-				projectId: input.projectId,
-				suggestedInputColumns: shape.suggestedInputColumns,
-				suggestedOutputColumns: shape.suggestedOutputColumns,
-				enabledMetrics,
-			});
-
-			return {
-				success: true,
-				shouldDelegateToEvalSetupAgent: true,
-				task,
-				workflowId: input.workflowId,
-				...(input.projectId ? { projectId: input.projectId } : {}),
-				...(dataTableId ? { dataTableId } : {}),
-			};
 		},
 	});
 }

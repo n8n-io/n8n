@@ -222,6 +222,41 @@ describe('verifyEvalSetupTopology', () => {
 		expect(result.targetResults).toEqual([]);
 	});
 
+	it('passes when the workflow already has eval nodes and none are added', () => {
+		const workflowWithExistingEvalNodes: WorkflowResponse = {
+			...workflowWithoutAi,
+			nodes: [
+				...workflowWithoutAi.nodes,
+				{
+					name: 'Eval Trigger',
+					type: 'n8n-nodes-base.evaluationTrigger',
+					parameters: {},
+				},
+				{
+					name: 'Set Metrics',
+					type: 'n8n-nodes-base.evaluation',
+					parameters: { operation: 'setMetrics' },
+				},
+			],
+		};
+
+		const result = verifyEvalSetupTopology({
+			originalWorkflow: workflowWithExistingEvalNodes,
+			updatedWorkflow: workflowWithExistingEvalNodes,
+			datasetColumns: ['input', 'expected_output'],
+			sidecar: {
+				expectNoEvalNodes: true,
+				targets: [],
+				excludeTargets: [],
+				metrics: [],
+			},
+			expectedDataTableId: 'dt-1',
+		});
+
+		expect(result.passed).toBe(true);
+		expect(result.findings).toEqual([]);
+	});
+
 	it('fails a no-AI workflow when eval nodes are added despite the no-eval expectation', () => {
 		const updatedWorkflow: WorkflowResponse = {
 			...workflowWithoutAi,

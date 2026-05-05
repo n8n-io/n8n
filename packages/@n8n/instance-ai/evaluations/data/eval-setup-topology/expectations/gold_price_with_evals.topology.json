@@ -1,0 +1,6 @@
+{
+	"expectNoEvalNodes": true,
+	"excludeTargets": ["Get gold price"],
+	"targets": [],
+	"metrics": []
+}

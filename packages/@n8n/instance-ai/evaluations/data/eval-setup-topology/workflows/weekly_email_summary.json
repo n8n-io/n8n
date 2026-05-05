@@ -1,0 +1,213 @@
+{
+	"name": "Weekly email summary",
+	"nodes": [
+		{
+			"parameters": {
+				"rule": {
+					"interval": [
+						{
+							"field": "weeks",
+							"triggerAtDay": [1],
+							"triggerAtHour": 8,
+							"triggerAtMinute": 7
+						}
+					]
+				}
+			},
+			"type": "n8n-nodes-base.scheduleTrigger",
+			"typeVersion": 1.2,
+			"position": [432, -48],
+			"id": "6b02269d-e777-4422-9e75-dcf522c10451",
+			"name": "Schedule Trigger"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"returnAll": true,
+				"simple": false,
+				"filters": {
+					"labelIds": ["INBOX"],
+					"receivedAfter": "={{ $now.minus(2, 'days') }}"
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [880, -48],
+			"id": "c89061c3-4bca-42ca-897c-f43fb3c92f17",
+			"name": "Get many messages",
+			"webhookId": "baacbe6e-2681-4580-9419-f5d7bb5e8a15"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "=<subject>{{ $json.subject }}</subject>\n<email-body>\n{{ $json.html }}\n</email-body>",
+				"hasOutputParser": true,
+				"options": {
+					"systemMessage": "You are a helpful assistant, that extracts action items and priorities from emails.\nOnly put action items in there that are assigned to me.\nDon't put calendar invites in the action items or priorities -- they are added to my calendar automatically and will review them separately"
+				}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [1104, 80],
+			"id": "d86d05ba-82a4-42a8-b61b-993289016f52",
+			"name": "AI Agent"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-4-5-20250929",
+					"cachedResultName": "Claude Sonnet 4.5"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"typeVersion": 1.3,
+			"position": [1120, 304],
+			"id": "baeaccca-42c1-433b-a83a-8cb06bc6dee3",
+			"name": "Anthropic Chat Model"
+		},
+		{
+			"parameters": {
+				"jsonSchemaExample": "{\n\t\"actionItems\": [\"action item 1\", \"action item 2\"],\n\t\"priorities\": [\"priority 1\", \"priority 2\"]\n}"
+			},
+			"type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+			"typeVersion": 1.3,
+			"position": [1248, 304],
+			"id": "2cb9cb25-9cbb-4422-a2bb-d471373d4da6",
+			"name": "Structured Output Parser"
+		},
+		{
+			"parameters": {
+				"mode": "combine",
+				"combineBy": "combineByPosition",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.merge",
+			"typeVersion": 3.2,
+			"position": [1456, -48],
+			"id": "3fa29406-d87b-41a7-98dc-0db0174a6c10",
+			"name": "Merge"
+		},
+		{
+			"parameters": {
+				"fieldsToAggregate": {
+					"fieldToAggregate": [
+						{ "fieldToAggregate": "from" },
+						{ "fieldToAggregate": "subject" },
+						{ "fieldToAggregate": "output.actionItems" },
+						{ "fieldToAggregate": "output.priorities" }
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.aggregate",
+			"typeVersion": 1,
+			"position": [1680, -48],
+			"id": "c5a0c1c3-5497-4c42-a984-c6997cdcb03a",
+			"name": "Aggregate"
+		},
+		{
+			"parameters": {
+				"promptType": "define",
+				"text": "=Convert the following in to a nicely organised email that lists the action items and/or priorities that I have, with the sender and subject. Make sure to output HTML (and only the HTML, **DO NOT include markdown preamble or code-backtics**)\nOnly include emails that have an action item or a priority for me to look at.\n\n{{ $json.toJsonString() }}",
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.agent",
+			"typeVersion": 3,
+			"position": [1904, -48],
+			"id": "5622f181-5b9d-4c00-87ef-a98d69ee67f9",
+			"name": "AI Agent1"
+		},
+		{
+			"parameters": {
+				"model": {
+					"__rl": true,
+					"mode": "list",
+					"value": "claude-sonnet-4-5-20250929",
+					"cachedResultName": "Claude Sonnet 4.5"
+				},
+				"options": {}
+			},
+			"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+			"typeVersion": 1.3,
+			"position": [1984, 176],
+			"id": "0c76f432-fe47-46f2-8054-8923d0fb439d",
+			"name": "Anthropic Chat Model1"
+		},
+		{
+			"parameters": {
+				"sendTo": "={{ $('Workflow configuration').first().json.email_address }}",
+				"subject": "Weekend summary",
+				"message": "={{ $json.output }}",
+				"options": {}
+			},
+			"type": "n8n-nodes-base.gmail",
+			"typeVersion": 2.1,
+			"position": [2256, -48],
+			"id": "64a38a18-64dc-442e-9400-12ac72ea05b6",
+			"name": "Send a message",
+			"webhookId": "cb36602b-0eb2-4018-91b6-a6dbc61e2940"
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "660773c6-134d-44f7-b284-8e82f984b50e",
+							"name": "email_address",
+							"value": "jp@n8n.io",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [656, -48],
+			"id": "515b566d-3aec-477d-b89c-43bde4cd9c9c",
+			"name": "Workflow configuration"
+		}
+	],
+	"connections": {
+		"Schedule Trigger": {
+			"main": [[{ "node": "Workflow configuration", "type": "main", "index": 0 }]]
+		},
+		"Get many messages": {
+			"main": [
+				[
+					{ "node": "AI Agent", "type": "main", "index": 0 },
+					{ "node": "Merge", "type": "main", "index": 0 }
+				]
+			]
+		},
+		"AI Agent": {
+			"main": [[{ "node": "Merge", "type": "main", "index": 1 }]]
+		},
+		"Anthropic Chat Model": {
+			"ai_languageModel": [[{ "node": "AI Agent", "type": "ai_languageModel", "index": 0 }]]
+		},
+		"Structured Output Parser": {
+			"ai_outputParser": [[{ "node": "AI Agent", "type": "ai_outputParser", "index": 0 }]]
+		},
+		"Merge": {
+			"main": [[{ "node": "Aggregate", "type": "main", "index": 0 }]]
+		},
+		"Aggregate": {
+			"main": [[{ "node": "AI Agent1", "type": "main", "index": 0 }]]
+		},
+		"AI Agent1": {
+			"main": [[{ "node": "Send a message", "type": "main", "index": 0 }]]
+		},
+		"Anthropic Chat Model1": {
+			"ai_languageModel": [[{ "node": "AI Agent1", "type": "ai_languageModel", "index": 0 }]]
+		},
+		"Workflow configuration": {
+			"main": [[{ "node": "Get many messages", "type": "main", "index": 0 }]]
+		}
+	},
+	"pinData": {}
+}

@@ -56,6 +56,11 @@ function makeCtx(wf: WorkflowJSON): InstanceAiContext {
 	ctx.workflowService.getAsWorkflowJSON = jest.fn().mockResolvedValue(wf);
 	ctx.dataTableService.create = jest.fn();
 	ctx.dataTableService.insertRows = jest.fn();
+	// `jest-mock-extended` proxies every property, including optional Sets,
+	// which makes `(ctx.consentedEditWorkflowIds ??= new Set())` short-circuit
+	// onto the proxy instead of installing a real Set. Reset to `undefined`
+	// so the lazy-init in the tool can take effect.
+	ctx.consentedEditWorkflowIds = undefined;
 	// `jest-mock-extended` auto-stubs every property proxy-style, but the
 	// Mastra logger is used via optional chaining (`ctx.logger?.info(...)`)
 	// which short-circuits on `undefined` yet throws on "logger exists but
@@ -242,6 +247,61 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 		expect(task).toContain('Do not insert rows');
 		expect(task).toContain('- input');
 		expect(task).toContain('- expected_output');
+	});
+
+	it('approved: records the workflow as consented so the eval-setup sub-agent skips re-confirmation', async () => {
+		const ctx = makeCtx(aiWf());
+		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: true } },
+		} as never);
+
+		expect(ctx.consentedEditWorkflowIds?.has('w1')).toBe(true);
+	});
+
+	it('declined: does not record consent', async () => {
+		const ctx = makeCtx(aiWf());
+		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
+		const tool = createEvalsTool(ctx);
+
+		await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: { resumeData: { approved: false } },
+		} as never);
+
+		expect(ctx.consentedEditWorkflowIds?.has('w1') ?? false).toBe(false);
+	});
+
+	it('approved: still releases the proposalCache entry when downstream work throws', async () => {
+		const ctx = makeCtx(aiWf());
+		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
+		const tool = createEvalsTool(ctx);
+
+		// Phase 1 — populate the cache via a real suspend.
+		const suspend = jest.fn().mockResolvedValue(undefined);
+		await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: { suspend },
+		} as never);
+		expect(suspend).toHaveBeenCalledTimes(1);
+
+		// Phase 2 — make refetch throw so the try-block bails partway through.
+		(ctx.workflowService.getAsWorkflowJSON as jest.Mock).mockRejectedValueOnce(
+			new Error('refetch failed'),
+		);
+		await expect(
+			tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+				agent: { resumeData: { approved: true } },
+			} as never),
+		).rejects.toThrow('refetch failed');
+
+		// Re-entering phase 1 must NOT find a stale cache entry — it should
+		// re-infer from scratch.
+		mockInfer.mockClear();
+		await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: { suspend: jest.fn().mockResolvedValue(undefined) },
+		} as never);
+		expect(mockInfer).toHaveBeenCalledTimes(1);
 	});
 
 	it('approved + link-existing: task references provided DataTable id', async () => {

@@ -440,6 +440,7 @@ function verifyNoEvalNodesTopology(
 ): TopologyVerifierResult {
 	const findings: TopologyFinding[] = [];
 	const updatedNodeNames = new Set(input.updatedWorkflow.nodes.map((node) => node.name));
+	const originalNodeNames = new Set(input.originalWorkflow.nodes.map((node) => node.name));
 
 	for (const originalNode of input.originalWorkflow.nodes) {
 		if (!updatedNodeNames.has(originalNode.name)) {
@@ -463,6 +464,10 @@ function verifyNoEvalNodesTopology(
 	}
 
 	for (const node of input.updatedWorkflow.nodes) {
+		if (originalNodeNames.has(node.name)) {
+			continue;
+		}
+
 		if (node.type === EVAL_TRIGGER_NODE_TYPE) {
 			findings.push(
 				finding('unexpected_eval_node', 'No Eval Trigger node should be added.', node.name),

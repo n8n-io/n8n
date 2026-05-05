@@ -137,4 +137,73 @@ describe('workflows(action="update")', () => {
 		expect(ctx.workflowService.updateFromWorkflowJSON).toHaveBeenCalled();
 		expect(result).toMatchObject({ success: true });
 	});
+
+	it('skips suspend and saves when the workflow is in consentedEditWorkflowIds', async () => {
+		const ctx = mock<InstanceAiContext>();
+		ctx.permissions = { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'];
+		ctx.consentedEditWorkflowIds = new Set(['w1']);
+		ctx.workflowService.updateFromWorkflowJSON = jest.fn().mockResolvedValue(undefined);
+		const suspend = jest.fn();
+		const tool = createWorkflowsTool(ctx);
+
+		const result = await tool.execute!(
+			{
+				action: 'update',
+				workflowId: 'w1',
+				workflow: { name: 'Test', nodes: [], connections: {} },
+			},
+			{ agent: { suspend } } as never,
+		);
+
+		expect(suspend).not.toHaveBeenCalled();
+		expect(ctx.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith('w1', {
+			name: 'Test',
+			nodes: [],
+			connections: {},
+		});
+		expect(result).toMatchObject({ success: true, workflowId: 'w1' });
+	});
+
+	it('still blocks when permission is "blocked" even if workflow is consented', async () => {
+		const ctx = mock<InstanceAiContext>();
+		ctx.permissions = { updateWorkflow: 'blocked' } as InstanceAiContext['permissions'];
+		ctx.consentedEditWorkflowIds = new Set(['w1']);
+		ctx.workflowService.updateFromWorkflowJSON = jest.fn().mockResolvedValue(undefined);
+		const tool = createWorkflowsTool(ctx);
+
+		const result = await tool.execute!(
+			{
+				action: 'update',
+				workflowId: 'w1',
+				workflow: { name: 'Test', nodes: [], connections: {} },
+			},
+			{ agent: {} } as never,
+		);
+
+		expect(ctx.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+		expect(result).toMatchObject({ success: false, denied: true });
+	});
+
+	it('does not bypass for unrelated workflows in consentedEditWorkflowIds', async () => {
+		const ctx = mock<InstanceAiContext>();
+		ctx.permissions = { updateWorkflow: 'require_approval' } as InstanceAiContext['permissions'];
+		ctx.consentedEditWorkflowIds = new Set(['other-workflow']);
+		ctx.workflowService.get = jest.fn().mockResolvedValue({ id: 'w1', name: 'Test Workflow' });
+		ctx.workflowService.updateFromWorkflowJSON = jest.fn().mockResolvedValue(undefined);
+		const suspend = jest.fn().mockImplementation(async () => await new Promise(() => {}));
+		const tool = createWorkflowsTool(ctx);
+
+		void tool.execute!(
+			{
+				action: 'update',
+				workflowId: 'w1',
+				workflow: { name: 'Test', nodes: [], connections: {} },
+			},
+			{ agent: { suspend } } as never,
+		);
+
+		await new Promise(process.nextTick);
+		expect(suspend).toHaveBeenCalledTimes(1);
+		expect(ctx.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
+	});
 });
