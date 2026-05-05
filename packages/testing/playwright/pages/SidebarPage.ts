@@ -55,6 +55,7 @@ export class SidebarPage {
 
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
+		await expect(this.visibleNavigationMenu).toBeVisible();
 		// "New workflow" only has a submenu when team projects exist; otherwise it's
 		// a direct route to the personal project.
 		const submenu = this.getVisibleNavigationSubmenu('New workflow');
@@ -68,6 +69,7 @@ export class SidebarPage {
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
+		await expect(this.visibleNavigationMenu).toBeVisible();
 		// "New credential" only has a submenu when team projects exist; otherwise it's
 		// a direct route to create the credential in the personal project.
 		const submenu = this.getVisibleNavigationSubmenu('New credential');
