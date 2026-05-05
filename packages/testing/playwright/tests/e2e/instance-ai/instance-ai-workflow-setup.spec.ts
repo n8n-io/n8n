@@ -1,5 +1,4 @@
 import { generateKeyPairSync } from 'crypto';
-
 import type { IWorkflowBase } from 'n8n-workflow';
 
 import { test, expect, instanceAiTestConfig } from './fixtures';
