@@ -4,7 +4,7 @@
 // Rather than wire up the full orchestrator (which requires a
 // BackgroundTaskManager, workflowTaskService, trace context, etc.), we
 // invoke the same builder sub-agent that the orchestrator would delegate
-// to — a Mastra Agent given the sandbox builder prompt plus
+// to — a native n8n Agent given the sandbox builder prompt plus
 // `submit-workflow` and a few supporting domain tools. For single-workflow
 // prompts in the pairwise dataset the orchestrator's only job is to route
 // here, so skipping it loses nothing material.
@@ -28,9 +28,7 @@
 // resumable-stream control contract even though the auto-approve path has
 // nothing to await.
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { InMemoryStore } from '@mastra/core/storage';
+import { Agent, type BuiltTool } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { createWriteStream, type WriteStream } from 'node:fs';
@@ -41,7 +39,6 @@ import { normalizeWorkflow } from './normalize-workflow';
 import { stringifyError, truncate } from './redact';
 import { createStubServices, defaultNodesJsonPath, type StubServiceHandle } from './stub-services';
 import type { SimpleWorkflow } from '../../../ai-workflow-builder.ee/evaluations/evaluators/pairwise';
-import { registerWithMastra } from '../../src/agent/register-with-mastra';
 import type { InstanceAiEventBus, StoredEvent } from '../../src/event-bus';
 import type { Logger } from '../../src/logger';
 import { executeResumableStream } from '../../src/runtime/resumable-stream-executor';
@@ -174,7 +171,7 @@ export async function buildInProcess(
 	}
 
 	const allTools = createAllTools(services.context);
-	const builderTools: ToolsInput = {};
+	const builderTools: Record<string, BuiltTool> = {};
 
 	let builderWs: BuilderWorkspace;
 	try {
@@ -234,30 +231,21 @@ export async function buildInProcess(
 	] as const;
 	for (const name of sandboxToolNames) {
 		const tool = (allTools as Record<string, unknown>)[name];
-		if (tool) builderTools[name] = tool;
+		if (tool) builderTools[name] = tool as BuiltTool;
 	}
 	builderTools['submit-workflow'] = createSubmitWorkflowTool(services.context, builderWs.workspace);
 
 	const agentId = 'eval-builder-' + nanoid(6);
-	const agent = new Agent({
-		id: agentId,
-		name: 'Eval Workflow Builder',
-		instructions: {
-			role: 'system' as const,
-			content: prompt,
+	const agent = new Agent(agentId)
+		.model(modelId)
+		.instructions(prompt, {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
 			},
-		},
-		model: modelId,
-		tools: builderTools,
-		workspace: builderWs.workspace,
-	});
-
-	// Register with Mastra so HITL-suspending tools can persist a snapshot
-	// and `resumeStream` can pick it back up on auto-approve.
-	const mastraStorage = new InMemoryStore({ id: 'eval-' + nanoid(6) });
-	registerWithMastra(agentId, agent, mastraStorage);
+		})
+		.tool(Object.values(builderTools))
+		.workspace(builderWs.workspace)
+		.checkpoint('memory');
 
 	const abortController = new AbortController();
 	const timeoutHandle = setTimeout(() => abortController.abort(), timeoutMs);
@@ -273,7 +261,7 @@ export async function buildInProcess(
 	let finalText: string | undefined;
 	try {
 		const streamSource = await agent.stream(options.prompt, {
-			maxSteps,
+			maxIterations: maxSteps,
 			abortSignal: abortController.signal,
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' as const } },
@@ -311,16 +299,9 @@ export async function buildInProcess(
 		if (result.text) {
 			finalText = await result.text;
 		}
-		// Pull stream-level totals when the underlying Mastra source exposes
-		// them. `finishReason === 'length'` / 'tool-calls' pinpoints
-		// maxSteps exhaustion, and `totalUsage` is our only cost signal.
-		const usage = await safeSettle(streamSource.totalUsage ?? streamSource.usage);
-		const finishReason = await safeSettle(streamSource.finishReason);
 		chunkLog?.write({
 			kind: 'stream-finish',
 			status: result.status,
-			finishReason,
-			usage,
 		});
 		if (finalText) chunkLog?.write({ kind: 'final-text', text: finalText });
 
@@ -783,14 +764,4 @@ async function openChunkLog(filePath: string): Promise<ChunkLog> {
 			await new Promise<void>((resolve) => stream.end(() => resolve()));
 		},
 	};
-}
-
-/** Await an optional promise without letting a rejection propagate. */
-async function safeSettle<T>(value: Promise<T> | undefined): Promise<T | undefined> {
-	if (!value) return undefined;
-	try {
-		return await value;
-	} catch {
-		return undefined;
-	}
 }

@@ -1,6 +1,4 @@
 import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
-import type { MastraCompositeStore } from '@mastra/core/storage';
-import type { Memory } from '@mastra/memory';
 import type { BuiltMemory, BuiltTool, CheckpointStore, Workspace } from '@n8n/agents';
 import type {
 	TaskList,
@@ -754,7 +752,6 @@ export interface McpServerConfig {
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	storage: MastraCompositeStore;
 	embedderModel?: string;
 	lastMessages?: number;
 	semanticRecallTopK?: number;
@@ -767,11 +764,10 @@ export interface InstanceAiMemoryConfig {
 /** Model identifier: plain string for built-in providers, object for OpenAI-compatible endpoints,
  *  or a pre-built LanguageModelV2 instance (e.g. from @ai-sdk/anthropic with a custom baseURL).
  *
- *  The LanguageModelV2 variant exists because Mastra's model router forces all object configs
- *  with a `url` field through `createOpenAICompatible`, which calls `/chat/completions`.
- *  When routing through a proxy that forwards to Vertex AI (which only supports the native
- *  Anthropic Messages API at `/v1/messages`), we must use `@ai-sdk/anthropic` directly to
- *  produce a model instance that speaks the correct protocol. */
+ *  The LanguageModelV2 variant exists for proxy routes that need a provider-native transport.
+ *  For example, Vertex AI Anthropic routes use the native Messages API at `/v1/messages`, so
+ *  we must use `@ai-sdk/anthropic` directly instead of routing through an OpenAI-compatible
+ *  `/chat/completions` adapter. */
 export type ModelConfig =
 	| string
 	| { id: `${string}/${string}`; url: string; apiKey?: string; headers?: Record<string, string> }
@@ -950,7 +946,6 @@ export interface OrchestrationContext {
 	userId: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
-	storage: MastraCompositeStore;
 	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
@@ -1002,9 +997,9 @@ export interface OrchestrationContext {
 	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
-	/** Mastra memory instance — used to retrieve thread message history for sub-agents */
-	memory?: Memory;
-	/** The current user message being processed — needed because memory.recall() only
+	/** Native memory store — used to retrieve thread message history for sub-agents. */
+	memory?: BuiltMemory;
+	/** The current user message being processed — needed because memory history only
 	 *  returns previously-saved messages, so the in-flight message isn't available yet. */
 	currentUserMessage?: string;
 	/** True when the current run was started by the replan pipeline after a failed
@@ -1054,13 +1049,11 @@ export interface CreateInstanceAgentOptions {
 	checkpointStore?: CheckpointStore;
 	/**
 	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
-	 * `mastra_workspace_*` tools on the orchestrator, which the LLM abused as a `sleep` primitive
+	 * workspace tools on the orchestrator, which the LLM abused as a `sleep` primitive
 	 * and mis-routed for build-task polling. Sandbox access is now scoped to the workflow-builder
 	 * subagent via `builderSandboxFactory`; `orchestrationContext.workspace` still flows to it.
 	 */
 	workspace?: Workspace;
-	/** When true, all tools are loaded eagerly (no ToolSearchProcessor). Workaround for Mastra bug where toModelOutput is not called for deferred tools. */
-	disableDeferredTools?: boolean;
 	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
 	timeZone?: string;
 }

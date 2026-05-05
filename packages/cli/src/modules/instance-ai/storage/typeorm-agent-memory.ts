@@ -78,6 +78,35 @@ export class TypeORMAgentMemory implements BuiltMemory {
 		return thread ? toThread(thread) : null;
 	}
 
+	async getThreadById({ threadId }: { threadId: string }): Promise<Thread | null> {
+		return await this.getThread(threadId);
+	}
+
+	async listThreads(args: {
+		filter?: { resourceId?: string };
+		perPage?: number;
+		page?: number;
+		orderBy?: { field: 'createdAt' | 'updatedAt'; direction: 'ASC' | 'DESC' };
+	}): Promise<{ threads: Thread[]; total: number; page: number; hasMore: boolean }> {
+		const perPage = args.perPage ?? 100;
+		const page = args.page ?? 0;
+		const field = args.orderBy?.field ?? 'updatedAt';
+		const direction = args.orderBy?.direction ?? 'DESC';
+		const [threads, total] = await this.threadRepo.findAndCount({
+			where: args.filter?.resourceId ? { resourceId: args.filter.resourceId } : {},
+			order: { [field]: direction, id: direction },
+			take: perPage,
+			skip: page * perPage,
+		});
+
+		return {
+			threads: threads.map(toThread),
+			total,
+			page,
+			hasMore: (page + 1) * perPage < total,
+		};
+	}
+
 	async saveThread(thread: Omit<Thread, 'createdAt' | 'updatedAt'>): Promise<Thread> {
 		const existing = await this.threadRepo.findOneBy({ id: thread.id });
 		if (existing) {
@@ -119,6 +148,28 @@ export class TypeORMAgentMemory implements BuiltMemory {
 			const message = toAgentMessage(entity);
 			return message ? [message] : [];
 		});
+	}
+
+	async listMessages(args: {
+		threadId: string;
+		limit?: number;
+		page?: number;
+	}): Promise<{ messages: AgentDbMessage[] }> {
+		const limit = args.limit ?? 50;
+		const page = args.page ?? 0;
+		const entities = await this.messageRepo.find({
+			where: { threadId: args.threadId },
+			order: { createdAt: 'DESC', id: 'DESC' },
+			take: limit,
+			skip: page * limit,
+		});
+
+		return {
+			messages: entities.reverse().flatMap((entity) => {
+				const message = toAgentMessage(entity);
+				return message ? [message] : [];
+			}),
+		};
 	}
 
 	async saveMessages(args: {

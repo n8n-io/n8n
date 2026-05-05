@@ -8,7 +8,7 @@ const METADATA_KEY = 'instanceAiIterationLog';
 
 const logRecordSchema = z.record(z.string(), z.array(iterationEntrySchema));
 
-export class MastraIterationLogStorage implements IterationLog {
+export class ThreadIterationLogStorage implements IterationLog {
 	constructor(private readonly memory: PatchableThreadMemory) {}
 
 	async append(threadId: string, taskKey: string, entry: IterationEntry): Promise<void> {

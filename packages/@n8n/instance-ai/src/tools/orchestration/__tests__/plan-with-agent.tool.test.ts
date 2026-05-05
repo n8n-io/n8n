@@ -1,14 +1,3 @@
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({
-	Agent: jest.fn(),
-}));
-jest.mock('@mastra/core/mastra', () => ({
-	Mastra: jest.fn(),
-}));
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-
 import type { OrchestrationContext, PlannedTaskGraph, PlannedTaskService } from '../../../types';
 
 const { __testClearPlannedTaskGraph, __testFormatMessagesForBriefing } =

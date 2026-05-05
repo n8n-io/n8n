@@ -5,11 +5,6 @@ import type {
 	PlannedTaskService,
 } from '../../../types';
 
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-
 const { createCompleteCheckpointTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../complete-checkpoint.tool') as typeof import('../complete-checkpoint.tool');
@@ -33,7 +28,6 @@ function makeContext(service: PlannedTaskService): OrchestrationContext {
 		userId: 'user-1',
 		orchestratorAgentId: 'orc',
 		modelId: 'model' as OrchestrationContext['modelId'],
-		storage: {} as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),

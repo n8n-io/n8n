@@ -1,14 +1,3 @@
-// Mock heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({
-	Agent: jest.fn(),
-}));
-jest.mock('@mastra/core/mastra', () => ({
-	Mastra: jest.fn(),
-}));
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-
 import type { BuiltTool } from '@n8n/agents';
 import {
 	applyBranchReadOnlyOverrides,
@@ -58,7 +47,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model' as OrchestrationContext['modelId'],
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: jest.fn(),

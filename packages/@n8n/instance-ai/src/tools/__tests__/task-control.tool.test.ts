@@ -11,7 +11,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		userId: 'user-1',
 		orchestratorAgentId: 'orchestrator-1',
 		modelId: 'test-model',
-		storage: {} as never,
 		subAgentMaxSteps: 10,
 		eventBus: {
 			publish: jest.fn(),

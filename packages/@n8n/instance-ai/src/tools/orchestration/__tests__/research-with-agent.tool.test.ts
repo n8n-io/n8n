@@ -2,17 +2,6 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiEventBus } from '../../../event-bus/event-bus.interface';
 import type { InstanceAiToolRegistry, OrchestrationContext, TaskStorage } from '../../../types';
 
-// Mock all heavy Mastra dependencies to avoid ESM issues in Jest
-jest.mock('@mastra/core/agent', () => ({
-	Agent: jest.fn(),
-}));
-jest.mock('@mastra/core/mastra', () => ({
-	Mastra: jest.fn(),
-}));
-jest.mock('../../../stream/map-chunk', () => ({
-	mapMastraChunkToEvent: jest.fn(),
-}));
-
 const { createResearchWithAgentTool, researchWithAgentInputSchema } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../research-with-agent.tool') as typeof import('../research-with-agent.tool');
@@ -48,7 +37,6 @@ function createMockContext(overrides?: Partial<OrchestrationContext>): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'agent-001',
 		modelId: 'anthropic/claude-sonnet-4-5',
-		storage: { id: 'test-storage' } as OrchestrationContext['storage'],
 		subAgentMaxSteps: 10,
 		eventBus: createMockEventBus(),
 		logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() },

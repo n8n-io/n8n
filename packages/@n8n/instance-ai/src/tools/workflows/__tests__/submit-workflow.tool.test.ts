@@ -11,19 +11,11 @@ import {
 	type SubmitWorkflowAttempt,
 } from '../submit-workflow.tool';
 
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-
 jest.mock('@n8n/workflow-sdk', () => ({
 	validateWorkflow: jest.fn(() => ({ errors: [], warnings: [] })),
 	layoutWorkflowJSON: jest.fn((wf: unknown) => wf),
 }));
 
-// `require` (rather than `import`) is needed because `submit-workflow.tool`
-// transitively pulls in @mastra/core (ESM-only); the require call here runs
-// AFTER the `jest.mock('@mastra/core/tools', …)` above, so the mock is in
-// place before the module is evaluated.
 const { createSubmitWorkflowTool } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../submit-workflow.tool') as typeof import('../submit-workflow.tool');

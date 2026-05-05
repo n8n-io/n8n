@@ -3,21 +3,19 @@ const mockGenerateCompactionSummary = jest.fn();
 jest.mock('@n8n/instance-ai', () => ({
 	generateCompactionSummary: (...args: unknown[]) => mockGenerateCompactionSummary(...args),
 	getThread: async (
-		memory: { getThreadById: (args: { threadId: string }) => Promise<unknown> },
+		memory: { getThread: (threadId: string) => Promise<unknown> },
 		threadId: string,
-	) => await memory.getThreadById({ threadId }),
-	// Inline the patchThread fallback path (getThreadById → update → updateThread)
+	) => await memory.getThread(threadId),
+	// Inline the patchThread fallback path (getThread → update → saveThread)
 	patchThread: async (
 		memory: {
-			getThreadById: (args: { threadId: string }) => Promise<{
+			getThread: (threadId: string) => Promise<{
+				id: string;
+				resourceId: string;
 				title?: string;
 				metadata?: Record<string, unknown>;
 			} | null>;
-			updateThread: (args: {
-				id: string;
-				title: string;
-				metadata: Record<string, unknown>;
-			}) => Promise<unknown>;
+			saveThread: (thread: Record<string, unknown>) => Promise<unknown>;
 		},
 		args: {
 			threadId: string;
@@ -27,20 +25,17 @@ jest.mock('@n8n/instance-ai', () => ({
 			}) => { title?: string; metadata?: Record<string, unknown> } | null | undefined;
 		},
 	) => {
-		const thread = await memory.getThreadById({ threadId: args.threadId });
+		const thread = await memory.getThread(args.threadId);
 		if (!thread) return null;
 		const patch = args.update({ ...thread, metadata: { ...(thread.metadata ?? {}) } });
 		if (!patch) return thread;
-		return await memory.updateThread({
+		return await memory.saveThread({
 			id: args.threadId,
+			resourceId: thread.resourceId,
 			title: patch.title ?? thread.title ?? args.threadId,
 			metadata: patch.metadata ?? thread.metadata ?? {},
 		});
 	},
-}));
-
-jest.mock('../storage/typeorm-memory-storage', () => ({
-	TypeORMMemoryStorage: class TypeORMMemoryStorage {},
 }));
 
 import { InstanceAiCompactionService } from '../compaction.service';
@@ -48,9 +43,9 @@ import { InstanceAiCompactionService } from '../compaction.service';
 interface MockMessage {
 	id: string;
 	role: string;
+	type: 'llm';
 	content: unknown;
 	createdAt: Date;
-	threadId: string;
 }
 
 /**
@@ -68,9 +63,9 @@ function createMessage(
 	return {
 		id,
 		role,
-		content: { content: [{ type: 'text', text: content }] },
+		type: 'llm',
+		content: [{ type: 'text', text: content }],
 		createdAt: new Date(),
-		threadId: 'thread-1',
 	};
 }
 
@@ -78,50 +73,36 @@ function createToolMessage(id: string): MockMessage {
 	return {
 		id,
 		role: 'tool',
-		content: { content: [{ type: 'tool-result', toolCallId: 'tc-1', result: '{}' }] },
+		type: 'llm',
+		content: [{ type: 'tool-result', toolCallId: 'tc-1', result: '{}' }],
 		createdAt: new Date(),
-		threadId: 'thread-1',
 	};
 }
 
-function createMockMemory(metadata?: Record<string, unknown>) {
+function createMockMemory(messages: MockMessage[], metadata?: Record<string, unknown>) {
 	return {
-		getThreadById: jest.fn().mockResolvedValue({
+		getMessages: jest.fn().mockResolvedValue(messages),
+		getThread: jest.fn().mockResolvedValue({
 			id: 'thread-1',
+			resourceId: 'user-1',
 			title: 'Test Thread',
 			metadata: metadata ?? {},
 		}),
-		updateThread: jest.fn().mockResolvedValue({}),
+		saveThread: jest.fn().mockResolvedValue({}),
 	};
 }
 
-function createService(
-	messages: MockMessage[],
-	maxContextWindowTokens = 0,
-): InstanceAiCompactionService {
+function createService(maxContextWindowTokens = 0): InstanceAiCompactionService {
 	const mockLogger = {
 		info: jest.fn(),
 		warn: jest.fn(),
 		error: jest.fn(),
 		debug: jest.fn(),
 	};
-	const mockStorage = {
-		listMessages: jest.fn().mockResolvedValue({
-			messages,
-			total: messages.length,
-			page: 0,
-			perPage: false,
-			hasMore: false,
-		}),
-	};
 	const mockGlobalConfig = {
 		instanceAi: { maxContextWindowTokens },
 	};
-	return new InstanceAiCompactionService(
-		mockLogger as never,
-		mockStorage as never,
-		mockGlobalConfig as never,
-	);
+	return new InstanceAiCompactionService(mockLogger as never, mockGlobalConfig as never);
 }
 
 // Claude context window = 200k tokens. At 80% threshold = 160k tokens trigger.
@@ -139,8 +120,8 @@ describe('InstanceAiCompactionService', () => {
 			const messages = Array.from({ length: 30 }, (_, i) =>
 				createMessage(`msg-${i}`, i % 2 === 0 ? 'user' : 'assistant', `Short msg ${i}`),
 			);
-			const service = createService(messages);
-			const memory = createMockMemory();
+			const service = createService();
+			const memory = createMockMemory(messages);
 
 			const result = await service.prepareCompactedContext(
 				'thread-1',
@@ -162,8 +143,8 @@ describe('InstanceAiCompactionService', () => {
 			const messages = Array.from({ length: 40 }, (_, i) =>
 				createMessage(`msg-${i}`, i % 2 === 0 ? 'user' : 'assistant', `Message ${i}`, 5000),
 			);
-			const service = createService(messages);
-			const memory = createMockMemory();
+			const service = createService();
+			const memory = createMockMemory(messages);
 
 			mockGenerateCompactionSummary.mockResolvedValue('### Goal\nTest goal');
 
@@ -179,7 +160,7 @@ describe('InstanceAiCompactionService', () => {
 			expect(mockGenerateCompactionSummary).toHaveBeenCalledTimes(1);
 
 			// Should persist with upToMessageId at the end of the prefix
-			const updateCall = memory.updateThread.mock.calls[0][0];
+			const updateCall = memory.saveThread.mock.calls[0][0];
 			const savedMetadata = updateCall.metadata.instanceAiConversationSummary;
 			expect(savedMetadata.version).toBe(1);
 			expect(savedMetadata.upToMessageId).toBe('msg-19'); // 40 - 20 = index 19
@@ -191,8 +172,8 @@ describe('InstanceAiCompactionService', () => {
 			const messages = Array.from({ length: 50 }, (_, i) =>
 				createMessage(`msg-${i}`, i % 2 === 0 ? 'user' : 'assistant', `Message ${i}`, 4000),
 			);
-			const service = createService(messages);
-			const memory = createMockMemory({
+			const service = createService();
+			const memory = createMockMemory(messages, {
 				instanceAiConversationSummary: {
 					version: 1,
 					upToMessageId: 'msg-14',
@@ -216,7 +197,7 @@ describe('InstanceAiCompactionService', () => {
 			expect(input.previousSummary).toBe('Previous summary content');
 
 			// Should advance upToMessageId
-			const updateCall = memory.updateThread.mock.calls[0][0];
+			const updateCall = memory.saveThread.mock.calls[0][0];
 			const savedMetadata = updateCall.metadata.instanceAiConversationSummary;
 			expect(savedMetadata.version).toBe(2);
 			expect(savedMetadata.upToMessageId).toBe('msg-29');
@@ -235,8 +216,8 @@ describe('InstanceAiCompactionService', () => {
 					messages.push(createMessage(`msg-${i}`, 'assistant', `Assistant answer ${i}`, 5000));
 				}
 			}
-			const service = createService(messages);
-			const memory = createMockMemory();
+			const service = createService();
+			const memory = createMockMemory(messages);
 
 			mockGenerateCompactionSummary.mockResolvedValue('### Goal\nGoal with tools');
 
@@ -261,8 +242,8 @@ describe('InstanceAiCompactionService', () => {
 			const messages = Array.from({ length: 25 }, (_, i) =>
 				createMessage(`msg-${i}`, i % 2 === 0 ? 'user' : 'assistant', `Short ${i}`),
 			);
-			const service = createService(messages);
-			const memory = createMockMemory({
+			const service = createService();
+			const memory = createMockMemory(messages, {
 				instanceAiConversationSummary: {
 					version: 1,
 					upToMessageId: 'msg-3',
@@ -289,8 +270,8 @@ describe('InstanceAiCompactionService', () => {
 			const messages = Array.from({ length: 40 }, (_, i) =>
 				createMessage(`msg-${i}`, i % 2 === 0 ? 'user' : 'assistant', `Msg ${i}`, 5000),
 			);
-			const service = createService(messages);
-			const memory = createMockMemory();
+			const service = createService();
+			const memory = createMockMemory(messages);
 
 			mockGenerateCompactionSummary.mockRejectedValue(new Error('LLM timeout'));
 
@@ -313,8 +294,8 @@ describe('InstanceAiCompactionService', () => {
 			const messages = Array.from({ length: 40 }, (_, i) =>
 				createMessage(`msg-${i}`, i % 2 === 0 ? 'user' : 'assistant', `Msg ${i}`, 500),
 			);
-			const service = createService(messages);
-			const memory = createMockMemory();
+			const service = createService();
+			const memory = createMockMemory(messages);
 
 			mockGenerateCompactionSummary.mockResolvedValue('### Goal\nCompacted');
 

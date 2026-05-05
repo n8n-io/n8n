@@ -54,11 +54,11 @@ interface FormattedMessage {
 	content: string;
 }
 
-/** Extract plain text from Mastra memory content (string, array of parts, or {format, parts}). */
+/** Extract plain text from persisted memory content (string, array of parts, or {format, parts}). */
 function extractTextFromMemoryContent(content: unknown): string {
 	if (typeof content === 'string') return content;
 
-	// Mastra format-2 structured content: { format: 2, parts: [{ type: 'text', text: '...' }] }
+	// Legacy structured content: { format: 2, parts: [{ type: 'text', text: '...' }] }
 	if (isStructuredContent(content)) {
 		return extractTextParts(content.parts);
 	}
@@ -96,16 +96,16 @@ async function getRecentMessages(
 ): Promise<FormattedMessage[]> {
 	const messages: FormattedMessage[] = [];
 
-	// Retrieve previously-saved messages from memory
+	// Retrieve previously-saved messages from memory.
 	if (context.memory) {
 		try {
-			const result = await context.memory.recall({
-				threadId: context.threadId,
-				perPage: count,
+			const history = await context.memory.getMessages(context.threadId, {
+				limit: count,
 			});
 
-			for (const m of result.messages) {
-				const role = m.role as string;
+			for (const m of history) {
+				if (!('role' in m)) continue;
+				const role = m.role;
 				const content = extractTextFromMemoryContent(m.content);
 				if ((role === 'user' || role === 'assistant') && content.length > 0) {
 					messages.push({ role, content });

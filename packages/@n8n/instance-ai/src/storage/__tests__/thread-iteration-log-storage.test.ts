@@ -1,5 +1,5 @@
 import type { IterationEntry } from '../iteration-log';
-import { MastraIterationLogStorage } from '../mastra-iteration-log-storage';
+import { ThreadIterationLogStorage } from '../thread-iteration-log-storage';
 import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 import type * as ThreadPatch from '../thread-patch';
 
@@ -32,14 +32,14 @@ function makeEntry(overrides: Partial<IterationEntry> = {}): IterationEntry {
 	};
 }
 
-describe('MastraIterationLogStorage', () => {
+describe('ThreadIterationLogStorage', () => {
 	let memory: TestMemory;
-	let storage: MastraIterationLogStorage;
+	let storage: ThreadIterationLogStorage;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		memory = makeMemory();
-		storage = new MastraIterationLogStorage(memory);
+		storage = new ThreadIterationLogStorage(memory);
 	});
 
 	describe('append', () => {

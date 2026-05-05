@@ -45,12 +45,11 @@ export { BUILDER_AGENT_PROMPT } from './tools/orchestration/build-workflow-agent
 export { startDataTableAgentTask } from './tools/orchestration/data-table-agent.tool';
 export { startDetachedDelegateTask } from './tools/orchestration/delegate.tool';
 export { startResearchAgentTask } from './tools/orchestration/research-with-agent.tool';
-export { createMemory } from './memory/memory-config';
 export {
 	iterationEntrySchema,
 	formatPreviousAttempts,
-	MastraIterationLogStorage,
-	MastraTaskStorage,
+	ThreadIterationLogStorage,
+	ThreadTaskStorage,
 	PlannedTaskStorage,
 	getThread,
 	patchThread,
@@ -71,7 +70,6 @@ export { isRecord, parseSuspension, asResumable } from './utils/stream-helpers';
 export { createEvalAgent, extractText, Tool, SONNET_MODEL, HAIKU_MODEL } from './utils/eval-agents';
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
 export { buildAgentTreeFromEvents, findAgentNodeInTree } from './utils/agent-tree';
-export { registerWithMastra } from './agent/register-with-mastra';
 export { createSandbox, createWorkspace } from './workspace/create-workspace';
 export type { SandboxConfig } from './workspace/create-workspace';
 export { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';

@@ -23,7 +23,6 @@ import {
 	MAX_STEPS,
 	createInstanceAgent,
 	createAllTools,
-	createMemory,
 	createSandbox,
 	createWorkspace,
 	createInstanceAiTraceContext,
@@ -37,7 +36,6 @@ import {
 	buildAttachmentManifest,
 	isStructuredAttachment,
 	enrichMessageWithBackgroundTasks,
-	MastraTaskStorage,
 	PlannedTaskCoordinator,
 	PlannedTaskStorage,
 	applyPlannedTaskPermissions,
@@ -56,6 +54,7 @@ import {
 	generateTitleForRun,
 	patchThread,
 	type ConfirmationData,
+	type BuiltMemory,
 	type DomainAccessTracker,
 	type ManagedBackgroundTask,
 	type McpServerConfig,
@@ -72,6 +71,7 @@ import {
 	type SuspendedRunState,
 	WorkflowTaskCoordinator,
 	WorkflowLoopStorage,
+	ThreadTaskStorage,
 } from '@n8n/instance-ai';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
@@ -89,10 +89,10 @@ import { LocalGatewayRegistry } from './filesystem';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiAdapterService } from './instance-ai.adapter.service';
 import { AUTO_FOLLOW_UP_MESSAGE } from './internal-messages';
-import { TypeORMCompositeStore } from './storage/typeorm-composite-store';
-import type { TypeORMWorkflowsStorage } from './storage/typeorm-workflows-storage';
 import { DbSnapshotStorage } from './storage/db-snapshot-storage';
 import { DbIterationLogStorage } from './storage/db-iteration-log-storage';
+import { TypeORMAgentCheckpointStore } from './storage/typeorm-agent-checkpoint-store';
+import { TypeORMAgentMemory } from './storage/typeorm-agent-memory';
 import { InstanceAiCompactionService } from './compaction.service';
 import { ProxyTokenManager } from './proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
@@ -323,7 +323,8 @@ export class InstanceAiService {
 		private readonly adapterService: InstanceAiAdapterService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly settingsService: InstanceAiSettingsService,
-		private readonly compositeStore: TypeORMCompositeStore,
+		private readonly agentMemory: TypeORMAgentMemory,
+		private readonly checkpointStore: TypeORMAgentCheckpointStore,
 		private readonly compactionService: InstanceAiCompactionService,
 		private readonly aiService: AiService,
 		private readonly push: Push,
@@ -564,8 +565,7 @@ export class InstanceAiService {
 	 * Anthropic LanguageModelV2 instance pointing at the proxy.
 	 *
 	 * We use `@ai-sdk/anthropic` directly instead of returning a `{ url }` config
-	 * object because Mastra's model router forces all configs with a `url` through
-	 * `createOpenAICompatible`, which sends requests to `/chat/completions`.
+	 * object because this proxy route needs the native Anthropic transport.
 	 * The proxy may forward to Vertex AI, which only supports the native Anthropic
 	 * Messages API (`/v1/messages`), not the OpenAI-compatible endpoint.
 	 *
@@ -602,8 +602,7 @@ export class InstanceAiService {
 
 	/**
 	 * When HTTP_PROXY is set (e.g. e2e tests with MockServer), build the model
-	 * with a proxy-aware fetch so the AI SDK routes through the proxy. Mastra's
-	 * ModelRouter doesn't pass `fetch` to providers, so we must do it here.
+	 * with a proxy-aware fetch so the AI SDK routes through the proxy.
 	 * Returns undefined if no HTTP_PROXY is set or the model isn't anthropic.
 	 */
 	private async resolveHttpProxyModel(user: User): Promise<ModelConfig | undefined> {
@@ -1333,9 +1332,8 @@ export class InstanceAiService {
 		this.logger.debug('Instance AI service shut down');
 	}
 
-	private createMemoryConfig() {
+	private createAgentMemoryOptions() {
 		return {
-			storage: this.compositeStore,
 			embedderModel: this.instanceAiConfig.embedderModel || undefined,
 			lastMessages: this.instanceAiConfig.lastMessages,
 			semanticRecallTopK: this.instanceAiConfig.semanticRecallTopK,
@@ -1343,22 +1341,17 @@ export class InstanceAiService {
 	}
 
 	private async ensureThreadExists(
-		memory: ReturnType<typeof createMemory>,
+		memory: BuiltMemory,
 		threadId: string,
 		resourceId: string,
 	): Promise<void> {
-		const existingThread = await memory.getThreadById({ threadId });
+		const existingThread = await memory.getThread(threadId);
 		if (existingThread) return;
 
-		const now = new Date();
 		await memory.saveThread({
-			thread: {
-				id: threadId,
-				resourceId,
-				title: '',
-				createdAt: now,
-				updatedAt: now,
-			},
+			id: threadId,
+			resourceId,
+			title: '',
 		});
 	}
 
@@ -1429,8 +1422,8 @@ export class InstanceAiService {
 	}
 
 	private async createPlannedTaskState() {
-		const memory = createMemory(this.createMemoryConfig());
-		const taskStorage = new MastraTaskStorage(memory);
+		const memory = this.agentMemory;
+		const taskStorage = new ThreadTaskStorage(memory);
 		const plannedTaskStorage = new PlannedTaskStorage(memory);
 		const plannedTaskService = new PlannedTaskCoordinator(plannedTaskStorage);
 		return { memory, taskStorage, plannedTaskService };
@@ -1561,10 +1554,10 @@ export class InstanceAiService {
 			proxyBaseUrl && tokenManager
 				? await this.resolveProxyModel(user, proxyBaseUrl, tokenManager)
 				: await this.resolveAgentModelConfig(user);
-		const memory = createMemory(this.createMemoryConfig());
+		const memory = this.agentMemory;
 		await this.ensureThreadExists(memory, threadId, user.id);
 
-		const taskStorage = new MastraTaskStorage(memory);
+		const taskStorage = new ThreadTaskStorage(memory);
 		const iterationLog = this.dbIterationLogStorage;
 		const snapshotStorage = this.dbSnapshotStorage;
 		const workflowLoopStorage = new WorkflowLoopStorage(memory);
@@ -1587,7 +1580,7 @@ export class InstanceAiService {
 			userId: user.id,
 			orchestratorAgentId: ORCHESTRATOR_AGENT_ID,
 			modelId,
-			storage: this.compositeStore,
+			checkpointStore: this.checkpointStore,
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
 			logger: this.logger,
@@ -1999,7 +1992,6 @@ export class InstanceAiService {
 		checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string },
 	): Promise<void> {
 		const signal = abortController.signal;
-		let agentRunId = '';
 		let tracing: InstanceAiTraceContext | undefined;
 		let messageTraceFinalization: MessageTraceFinalization | undefined;
 		let aiCreatedWorkflowIds: Set<string> | undefined;
@@ -2042,7 +2034,7 @@ export class InstanceAiService {
 				);
 			aiCreatedWorkflowIds = context.aiCreatedWorkflowIds ??= new Set<string>();
 			// Make the current user message available to sub-agents (e.g. planner)
-			// since memory.recall() only returns previously-saved messages.
+			// since memory history only returns previously-saved messages.
 			orchestrationContext.currentUserMessage = message;
 			orchestrationContext.isReplanFollowUp = isReplanFollowUp;
 			orchestrationContext.timeZone = timeZone ?? this.defaultTimeZone;
@@ -2069,7 +2061,7 @@ export class InstanceAiService {
 			if (attachments && attachments.length > 0) {
 				context.currentUserAttachments = attachments;
 			}
-			const memoryConfig = this.createMemoryConfig();
+			const memoryConfig = this.createAgentMemoryOptions();
 			const traceInput = {
 				message,
 				...(attachments?.length
@@ -2109,7 +2101,7 @@ export class InstanceAiService {
 			}
 
 			// Set heuristic title before agent starts — thread always has a title
-			const thread = await memory.getThreadById({ threadId });
+			const thread = await memory.getThread(threadId);
 			if (thread && !thread.title) {
 				await patchThread(memory, {
 					threadId,
@@ -2134,7 +2126,7 @@ export class InstanceAiService {
 				mcpServers,
 				memoryConfig,
 				memory,
-				disableDeferredTools: true,
+				checkpointStore: this.checkpointStore,
 				timeZone: timeZone ?? this.defaultTimeZone,
 			});
 
@@ -2294,11 +2286,11 @@ export class InstanceAiService {
 							agent as StreamableAgent,
 							streamInput,
 							{
-								maxSteps: MAX_STEPS.ORCHESTRATOR,
+								maxIterations: MAX_STEPS.ORCHESTRATOR,
 								abortSignal: signal,
-								memory: {
-									resource: user.id,
-									thread: threadId,
+								persistence: {
+									resourceId: user.id,
+									threadId,
 								},
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -2318,11 +2310,11 @@ export class InstanceAiService {
 						agent as StreamableAgent,
 						streamInput,
 						{
-							maxSteps: MAX_STEPS.ORCHESTRATOR,
+							maxIterations: MAX_STEPS.ORCHESTRATOR,
 							abortSignal: signal,
-							memory: {
-								resource: user.id,
-								thread: threadId,
+							persistence: {
+								resourceId: user.id,
+								threadId,
 							},
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -2337,8 +2329,6 @@ export class InstanceAiService {
 							logger: this.logger,
 						},
 					);
-			agentRunId = result.agentRunId;
-
 			if (result.status === 'suspended') {
 				if (result.suspension) {
 					this.runState.suspendRun(threadId, {
@@ -2472,11 +2462,6 @@ export class InstanceAiService {
 			this.domainAccessTrackersByThread.get(threadId)?.clearRun(runId);
 			if (messageTraceFinalization) {
 				await this.maybeFinalizeRunTraceRoot(runId, messageTraceFinalization);
-			}
-			// Clean up Mastra workflow snapshots unless the run is suspended (needed for resume).
-			// Mastra only persists snapshots on suspension and never deletes them on completion.
-			if (!this.runState.hasSuspendedRun(threadId) && agentRunId) {
-				void this.cleanupMastraSnapshots(agentRunId);
 			}
 			// Post-run planned-task wiring (only when the run is actually ending,
 			// not when it merely suspended for HITL):
@@ -2796,7 +2781,7 @@ export class InstanceAiService {
 							{
 								runId: opts.agentRunId,
 								toolCallId: opts.toolCallId,
-								memory: { resource: opts.user.id, thread: opts.threadId },
+								persistence: { resourceId: opts.user.id, threadId: opts.threadId },
 							},
 							{
 								threadId: opts.threadId,
@@ -2815,7 +2800,7 @@ export class InstanceAiService {
 						{
 							runId: opts.agentRunId,
 							toolCallId: opts.toolCallId,
-							memory: { resource: opts.user.id, thread: opts.threadId },
+							persistence: { resourceId: opts.user.id, threadId: opts.threadId },
 						},
 						{
 							threadId: opts.threadId,
@@ -3316,9 +3301,6 @@ export class InstanceAiService {
 			this.dbSnapshotStorage,
 			true,
 		);
-		if (suspended.agentRunId) {
-			void this.cleanupMastraSnapshots(suspended.agentRunId);
-		}
 		await this.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason: 'user_cancelled',
@@ -3430,23 +3412,25 @@ export class InstanceAiService {
 	 */
 	private async refineTitleIfNeeded(
 		threadId: string,
-		userId: string,
+		_userId: string,
 		modelId: ModelConfig,
 	): Promise<void> {
 		try {
-			const memory = createMemory(this.createMemoryConfig());
-			const thread = await memory.getThreadById({ threadId });
+			const memory = this.agentMemory;
+			const thread = await memory.getThread(threadId);
 			if (!thread?.title) return;
 
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Concat all recalled user messages so retries after a trivial first message
+			// Concat recent user messages so retries after a trivial first message
 			// (e.g. "hey") have enough signal to produce a good title.
-			const result = await memory.recall({ threadId, resourceId: userId, perPage: 5 });
-			const userTexts = result.messages
-				.filter((m) => m.role === 'user')
-				.map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)));
+			const history = await memory.getMessages(threadId, { limit: 5 });
+			const userTexts = history.flatMap((m) => {
+				if (!('role' in m) || m.role !== 'user') return [];
+				const text = this.extractStoredMessageText(m.content);
+				return text.length > 0 ? [text] : [];
+			});
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 
@@ -3477,24 +3461,23 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Remove Mastra workflow snapshots left behind after a run completes.
-	 *
-	 * Mastra's `executionWorkflow` and `agentic-loop` workflows only persist
-	 * snapshots on suspension (`shouldPersistSnapshot` returns true only for
-	 * status "suspended") and never clean them up on completion. This leaves
-	 * orphaned "suspended" rows that accumulate over time.
-	 */
-	private async cleanupMastraSnapshots(agentRunId: string): Promise<void> {
-		try {
-			const workflowsStorage = this.compositeStore.stores.workflows as TypeORMWorkflowsStorage;
-			await workflowsStorage.deleteAllByRunId(agentRunId);
-		} catch (error) {
-			this.logger.warn('Failed to clean up Mastra workflow snapshots', {
-				agentRunId,
-				error: getErrorMessage(error),
-			});
+	private extractStoredMessageText(content: unknown): string {
+		if (typeof content === 'string') return content;
+		if (Array.isArray(content)) {
+			return content
+				.flatMap((part) =>
+					typeof part === 'object' &&
+					part !== null &&
+					'type' in part &&
+					part.type === 'text' &&
+					'text' in part &&
+					typeof part.text === 'string'
+						? [part.text]
+						: [],
+				)
+				.join('\n');
 		}
+		return JSON.stringify(content);
 	}
 
 	/**

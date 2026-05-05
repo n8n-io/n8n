@@ -9,10 +9,6 @@ import { createRemediation } from '../../../workflow-loop/remediation';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { createVerifyBuiltWorkflowTool } from '../verify-built-workflow.tool';
 
-jest.mock('@mastra/core/tools', () => ({
-	createTool: jest.fn((config: Record<string, unknown>) => config),
-}));
-
 type Executable = {
 	execute: (input: Record<string, unknown>) => Promise<Record<string, unknown>>;
 };
@@ -56,7 +52,6 @@ function createContext(overrides: Partial<OrchestrationContext> = {}): Orchestra
 		userId: 'user_1',
 		orchestratorAgentId: 'agent_1',
 		modelId: 'test-model',
-		storage: {} as OrchestrationContext['storage'],
 		subAgentMaxSteps: 5,
 		eventBus: {} as OrchestrationContext['eventBus'],
 		logger: {

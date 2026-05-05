@@ -448,29 +448,37 @@ pnpm typecheck
 
 ## Implementation TODO
 
-- [ ] Replace Mastra types in `packages/@n8n/instance-ai/src/types.ts`.
-- [ ] Remove Mastra dependencies from `packages/@n8n/instance-ai/package.json`.
-- [ ] Rewrite orchestrator factory with native `Agent`.
-- [ ] Rewrite sub-agent factory with native `Agent`.
-- [ ] Delete Mastra registration logic.
-- [ ] Rewrite all tools to native `Tool`.
-- [ ] Rewrite orchestration tools for native streaming and resume.
+- [x] Replace Mastra types in `packages/@n8n/instance-ai/src/types.ts`.
+- [x] Remove Mastra dependencies from `packages/@n8n/instance-ai/package.json`.
+- [x] Rewrite orchestrator factory with native `Agent`.
+- [x] Rewrite sub-agent factory with native `Agent`.
+- [x] Delete Mastra registration logic.
+- [x] Rewrite all tools to native `Tool`.
+- [x] Rewrite orchestration tools for native streaming and resume.
 - [ ] Rewrite stream runner and stream executor for native `StreamChunk`.
 - [x] Rename internal `mastraRunId` to `agentRunId`.
 - [x] Implement native chunk to Instance AI event mapper.
 - [x] Implement TypeORM `BuiltMemory`.
 - [x] Implement TypeORM `CheckpointStore`.
 - [ ] Add fresh DB migration for native Instance AI persistence.
-- [ ] Remove `TypeORMCompositeStore` from the active runtime path.
-- [ ] Remove `TypeORMWorkflowsStorage` from the active runtime path.
-- [ ] Remove observational memory runtime usage.
-- [ ] Keep or replace compaction as the operational long-context mechanism.
+- [x] Remove `TypeORMCompositeStore` from the active runtime path.
+- [x] Remove `TypeORMWorkflowsStorage` from the active runtime path.
+- [x] Remove observational memory runtime usage.
+- [x] Keep or replace compaction as the operational long-context mechanism.
 - [x] Rewrite workspace providers against native agents workspace interfaces.
-- [ ] Replace Mastra MCP usage with native MCP or native dynamic tools.
+- [x] Replace Mastra MCP usage with native MCP or native dynamic tools.
 - [ ] Update LangSmith tracing to native telemetry/events where possible.
 - [ ] Update docs that mention Mastra runtime behavior.
-- [ ] Add tests for the native runtime path.
-- [ ] Verify no `@mastra/*` imports remain.
+- [x] Add tests for the native runtime path.
+- [x] Verify no `@mastra/*` imports remain.
+
+Current remaining cleanup:
+
+- Remove the Mastra-shaped stream fallback (`mapMastraChunkToEvent`,
+  `ResumableStreamFormat = 'mastra' | 'agent'`) now that runtime execution is
+  native-only.
+- Rename stale Mastra-only test fixture IDs/tool names and comments.
+- Update architecture/tooling docs that still describe the old Mastra runtime.
 
 ## Acceptance Criteria
 

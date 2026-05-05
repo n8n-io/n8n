@@ -68,7 +68,7 @@ describe('createInstanceAgent', () => {
 
 	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
 		const memoryConfig = {
-			storage: { id: 'memory-store' },
+			lastMessages: 20,
 		} as never;
 
 		const createOptions = (runId: string) =>
@@ -100,7 +100,7 @@ describe('createInstanceAgent', () => {
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
-		const memoryConfig = { storage: { id: 'memory-store' } } as never;
+		const memoryConfig = { lastMessages: 20 } as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
 		await createInstanceAgent({
