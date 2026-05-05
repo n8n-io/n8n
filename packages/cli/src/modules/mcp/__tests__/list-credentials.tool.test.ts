@@ -26,12 +26,19 @@ const buildCredential = (overrides: EnrichedCredential = {}): EnrichedCredential
 describe('list-credentials MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
+	const createMocks = (credentials: EnrichedCredential[] | Error = []) => {
+		const getMany =
+			credentials instanceof Error
+				? jest.fn().mockRejectedValue(credentials)
+				: jest.fn().mockResolvedValue(credentials);
+		const credentialsService = mockInstance(CredentialsService, { getMany });
+		const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		return { credentialsService, telemetry };
+	};
+
 	describe('smoke tests', () => {
 		test('creates the tool correctly', () => {
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue([]),
-			});
-			const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+			const { credentialsService, telemetry } = createMocks();
 
 			const tool = createListCredentialsTool(user, credentialsService, telemetry);
 
@@ -51,7 +58,7 @@ describe('list-credentials MCP tool', () => {
 
 	describe('handler', () => {
 		test('formats credentials and never includes data', async () => {
-			const credentials = [
+			const { credentialsService } = createMocks([
 				buildCredential({
 					id: 'a',
 					name: 'Slack',
@@ -66,10 +73,7 @@ describe('list-credentials MCP tool', () => {
 					homeProject: null,
 					scopes: [],
 				}),
-			];
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue(credentials),
-			});
+			]);
 
 			const result = await listCredentials(user, credentialsService, {});
 
@@ -107,9 +111,7 @@ describe('list-credentials MCP tool', () => {
 		});
 
 		test('passes filters to credentialsService.getMany and clamps limit', async () => {
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue([]),
-			});
+			const { credentialsService } = createMocks();
 
 			await listCredentials(user, credentialsService, {
 				limit: 9999,
@@ -131,7 +133,7 @@ describe('list-credentials MCP tool', () => {
 		});
 
 		test('strips extra fields (e.g. icon) from homeProject so output matches the schema', async () => {
-			const credentials = [
+			const { credentialsService } = createMocks([
 				buildCredential({
 					id: 'a',
 					homeProject: {
@@ -141,10 +143,7 @@ describe('list-credentials MCP tool', () => {
 						icon: { type: 'icon', value: 'bug' },
 					},
 				}),
-			];
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue(credentials),
-			});
+			]);
 
 			const result = await listCredentials(user, credentialsService, {});
 
@@ -156,9 +155,7 @@ describe('list-credentials MCP tool', () => {
 		});
 
 		test('disables includeGlobal when onlySharedWithMe is true so globals do not leak through', async () => {
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue([]),
-			});
+			const { credentialsService } = createMocks();
 
 			await listCredentials(user, credentialsService, { onlySharedWithMe: true });
 
@@ -170,9 +167,7 @@ describe('list-credentials MCP tool', () => {
 		});
 
 		test('clamps non-positive limit up to 1', async () => {
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue([]),
-			});
+			const { credentialsService } = createMocks();
 
 			await listCredentials(user, credentialsService, { limit: 0 });
 
@@ -181,9 +176,7 @@ describe('list-credentials MCP tool', () => {
 		});
 
 		test('omits filter when no filter args provided', async () => {
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue([]),
-			});
+			const { credentialsService } = createMocks();
 
 			await listCredentials(user, credentialsService, {});
 
@@ -192,10 +185,7 @@ describe('list-credentials MCP tool', () => {
 		});
 
 		test('tracks telemetry on success', async () => {
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockResolvedValue([buildCredential()]),
-			});
-			const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+			const { credentialsService, telemetry } = createMocks([buildCredential()]);
 
 			const tool = createListCredentialsTool(user, credentialsService, telemetry);
 			await tool.handler(
@@ -220,10 +210,7 @@ describe('list-credentials MCP tool', () => {
 		});
 
 		test('returns isError and tracks failure when service throws', async () => {
-			const credentialsService = mockInstance(CredentialsService, {
-				getMany: jest.fn().mockRejectedValue(new Error('DB exploded')),
-			});
-			const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+			const { credentialsService, telemetry } = createMocks(new Error('DB exploded'));
 
 			const tool = createListCredentialsTool(user, credentialsService, telemetry);
 			const result = await tool.handler(
