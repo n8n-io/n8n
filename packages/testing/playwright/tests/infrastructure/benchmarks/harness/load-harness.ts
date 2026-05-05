@@ -3,9 +3,11 @@ import type { TestInfo } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import {
+	reportContainerStats,
 	reportDiagnostics,
 	reportJaegerTraces,
 	reportPgQueryBreakdown,
+	reportPgSaturation,
 	setupBenchmarkRun,
 } from './orchestration';
 import type { ApiHelpers } from '../../../../services/api-helper';
@@ -111,19 +113,36 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 	} else {
 		await attachLoadTestResults(testInfo, dimensions, metrics);
 		await attachPhaseMetrics(testInfo, dimensions, exec.throughputResult);
+		// Tail rate (last 60s) — closest to the architectural ceiling. Reporter
+		// surfaces this as the `tail/s` column. Skipped for staged runs where the
+		// per-stage rates already convey the same information.
+		await attachMetric(
+			testInfo,
+			'tail-exec-per-sec',
+			exec.throughputResult.tailExecPerSec,
+			'exec/s',
+			dimensions,
+		);
 	}
 	// Diagnostics are whole-run aggregates; tag with variant `whole run` for staged
 	// tests so they don't render as an unlabeled row alongside per-stage rows.
 	const diagnosticsDimensions: BenchmarkDimensions = stagedLoad
 		? { ...dimensions, variant: 'whole run' }
 		: dimensions;
-	await reportDiagnostics({
+	const diagnostics = await reportDiagnostics({
 		testInfo,
 		services,
 		durationMs: totalDurationMs,
 		dimensions: diagnosticsDimensions,
 	});
+	reportContainerStats(diagnostics);
 	await reportPgQueryBreakdown({ services, durationMs: totalDurationMs });
+	await reportPgSaturation({
+		services,
+		durationMs: totalDurationMs,
+		diagnostics,
+		walBaseline: setup.walBaseline,
+	});
 	await reportJaegerTraces({ testInfo, services, since: setup.activationStart });
 
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);

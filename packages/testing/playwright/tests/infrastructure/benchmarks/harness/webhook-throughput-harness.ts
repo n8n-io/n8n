@@ -4,9 +4,11 @@ import autocannon from 'autocannon';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
 import {
+	reportContainerStats,
 	reportDiagnostics,
 	reportJaegerTraces,
 	reportPgQueryBreakdown,
+	reportPgSaturation,
 	setupBenchmarkRun,
 } from './orchestration';
 import type { ApiHelpers } from '../../../../services/api-helper';
@@ -147,7 +149,14 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		durationMs: throughputResult.durationMs,
 		dimensions,
 	});
+	reportContainerStats(diagnostics);
 	await reportPgQueryBreakdown({ services, durationMs: throughputResult.durationMs });
+	await reportPgSaturation({
+		services,
+		durationMs: throughputResult.durationMs,
+		diagnostics,
+		walBaseline: setup.walBaseline,
+	});
 	await reportJaegerTraces({ testInfo, services, since: setup.activationStart });
 
 	const verdict =

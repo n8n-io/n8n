@@ -23,6 +23,7 @@ export const SERVICE_NAMES = [
 	'localstack',
 	'kent',
 	'postgresExporter',
+	'cadvisor',
 ] as const;
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];

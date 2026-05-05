@@ -52,6 +52,10 @@ export const postgresExporter: Service<PostgresExporterResult> = {
 				DATA_SOURCE_NAME: dsn,
 			})
 			.withExposedPorts(EXPORTER_PORT)
+			// stat_bgwriter is OFF by default in v0.17.x — enable it so checkpoints,
+			// buffers_backend, and buffers_alloc become queryable. Useful for spotting
+			// WAL/checkpoint pressure under write-heavy benchmark loads.
+			.withCommand(['--collector.stat_bgwriter'])
 			.withWaitStrategy(
 				Wait.forHttp('/metrics', EXPORTER_PORT).forStatusCode(200).withStartupTimeout(30000),
 			)

@@ -60,8 +60,10 @@ export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vecto
  * are inert in direct mode, so a single env profile works for both.
  */
 const BENCHMARK_CONFIG: N8NConfig = {
-	// Postgres exporter scrapes DB internals into VictoriaMetrics — only meaningful for benchmarks.
-	services: [...OBSERVABILITY_SERVICES, 'postgresExporter'],
+	// Postgres exporter scrapes DB internals into VictoriaMetrics; cAdvisor exposes per-container
+	// CPU/memory/IO so benchmarks can detect when PG/n8n hit OS-level limits the per-query
+	// reporter alone would miss. Only meaningful for benchmarks.
+	services: [...OBSERVABILITY_SERVICES, 'postgresExporter', 'cadvisor'],
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,

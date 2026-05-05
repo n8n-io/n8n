@@ -106,7 +106,11 @@ Every run prints a per-test `[DIAG]` block and emits a Benchmark Summary table a
 | `pg tx/s` | Postgres `xact_commit` rate from postgres-exporter |
 | `queue` | Bull jobs waiting (queue specs only) |
 
-For deeper PG analysis, every spec also logs a top-N `pg_stat_statements` breakdown — useful for attributing TPS to specific queries (n8n vs autovacuum vs ORM overhead like `SET search_path`).
+For deeper PG analysis, every spec also logs a top-N `pg_stat_statements` breakdown ranked by total ms/s of work (calls/s × avg ms), plus a `[PG SATURATION]` block (total query CPU including the long tail, buffer hit ratio, bgwriter / WAL pressure, `pg_stat_io` per-backend-type IO) and a `[CONTAINERS]` block (per-container CPU/memory/IO from cAdvisor).
+
+### Deep diagnostics (`BENCH_DEEP_DIAGNOSTICS=true`)
+
+Off by default. When set, postgres starts with `pg_stat_statements.track_planning=on` and `track_io_timing=on`, which makes plan time and per-query I/O timing visible — but adds noticeable PG overhead (~50% throughput drop observed on a webhook benchmark). Use only when investigating bottlenecks; **never publish sizing numbers from a deep-diagnostics run** — they understate the system's real ceiling.
 
 ## CI
 

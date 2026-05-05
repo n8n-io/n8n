@@ -1,3 +1,4 @@
+import { cadvisor } from './cadvisor';
 import { cloudflared } from './cloudflared';
 import { gitea, createGiteaHelper } from './gitea';
 import { kafka, createKafkaHelper } from './kafka';
@@ -41,6 +42,7 @@ export const services: Record<ServiceName, Service<ServiceResult>> = {
 	localstack,
 	kent,
 	postgresExporter,
+	cadvisor,
 };
 
 export const helperFactories: Partial<HelperFactories> = {
