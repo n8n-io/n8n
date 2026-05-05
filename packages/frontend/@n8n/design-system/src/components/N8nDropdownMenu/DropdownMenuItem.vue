@@ -329,7 +329,7 @@ watch(
 	border-radius: var(--radius--2xs);
 	display: flex;
 	align-items: center;
-	height: var(--spacing--xl);
+	min-height: var(--spacing--xl);
 	padding: var(--spacing--2xs);
 	position: relative;
 	user-select: none;
