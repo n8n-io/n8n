@@ -96,6 +96,7 @@ export interface ViewStack {
 	itemsMapper?: (item: INodeCreateElement) => INodeCreateElement;
 	actionsFilter?: (items: ActionTypeDescription[]) => ActionTypeDescription[];
 	panelClass?: string;
+	connectionType?: NodeConnectionType;
 	sections?: string[] | NodeViewItemSection[];
 	communityNodeDetails?: CommunityNodeDetails;
 }
@@ -448,6 +449,7 @@ export const useViewStacks = defineStore('nodeCreatorViewStacks', () => {
 						}
 					: undefined,
 				panelClass: relatedAIView?.properties.panelClass,
+				connectionType,
 				baseFilter: (i: INodeCreateElement) => {
 					// AI Code node could have any connection type so we don't want to display it
 					// in the compatible connection view as it would be displayed in all of them

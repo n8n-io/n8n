@@ -20,6 +20,8 @@ export const PLANNED_TASK_PERMISSION_OVERRIDES: Partial<
 		mutateDataTableRows: 'always_allow',
 	},
 	'build-workflow': {
+		createWorkflow: 'always_allow',
+		updateWorkflow: 'always_allow',
 		runWorkflow: 'always_allow',
 		publishWorkflow: 'always_allow',
 	},
