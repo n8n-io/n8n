@@ -1,8 +1,8 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import { FakeListChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'jest-mock-extended';
 import get from 'lodash/get';
 import type { IDataObject, IExecuteFunctions, INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { makeZodSchemaFromAttributes } from '../helpers';
 import { InformationExtractor } from '../InformationExtractor.node';
