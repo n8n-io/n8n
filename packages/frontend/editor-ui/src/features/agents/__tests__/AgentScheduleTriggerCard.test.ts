@@ -278,4 +278,35 @@ describe('AgentScheduleTriggerCard', () => {
 		expect(wrapper.emitted('status-change')?.at(-1)).toEqual([false]);
 		expect(wrapper.emitted('saved')).toBeTruthy();
 	});
+
+	it('does not persist unsaved wake-up prompt edits when disconnecting', async () => {
+		getScheduleIntegrationMock.mockResolvedValueOnce({
+			active: true,
+			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Original prompt',
+		});
+		updateScheduleIntegrationMock.mockImplementationOnce(
+			async (_ctx, _projectId, _agentId, data) => ({
+				active: false,
+				cronExpression: data.cronExpression,
+				wakeUpPrompt: data.wakeUpPrompt,
+			}),
+		);
+		const wrapper = await renderComponent();
+
+		await wrapper
+			.find('[data-testid="schedule-wake-up-prompt-input"]')
+			.setValue('Dirty unsaved edit');
+		await wrapper.find('[data-testid="schedule-disconnect-button"]').trigger('click');
+		await flushPromises();
+
+		expect(updateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
+			cronExpression: '',
+			wakeUpPrompt: 'Original prompt',
+		});
+		expect(
+			(wrapper.find('[data-testid="schedule-wake-up-prompt-input"]').element as HTMLTextAreaElement)
+				.value,
+		).toBe('Original prompt');
+	});
 });
