@@ -54,8 +54,10 @@ function buildMcpServers(configs: McpServerConfig[]): Record<string, McpServerEn
  */
 export class McpClientManager {
 	private regularToolsByKey = new Map<string, ToolsInput>();
-
 	private browserToolsByKey = new Map<string, ToolsInput>();
+
+	private inFlightRegularByKey = new Map<string, Promise<ToolsInput>>();
+	private inFlightBrowserByKey = new Map<string, Promise<ToolsInput>>();
 
 	private clientsByKey = new Map<string, MCPClient>();
 
@@ -65,26 +67,30 @@ export class McpClientManager {
 		if (configs.length === 0) return {};
 
 		const key = JSON.stringify(configs);
-		const cached = this.regularToolsByKey.get(key);
-		if (cached) return cached;
-
-		await this.validateConfigs(configs);
-		const tools = await this.connectAndListTools(`mcp-${nanoid(6)}`, configs, key);
-		this.regularToolsByKey.set(key, tools);
-		return tools;
+		return await this.getOrLoad(
+			this.regularToolsByKey,
+			this.inFlightRegularByKey,
+			key,
+			async () => {
+				await this.validateConfigs(configs);
+				return await this.connectAndListTools(`mcp-${nanoid(6)}`, configs, key);
+			},
+		);
 	}
 
 	async getBrowserTools(config: McpServerConfig | undefined): Promise<ToolsInput> {
 		if (!config) return {};
 
 		const key = JSON.stringify(config);
-		const cached = this.browserToolsByKey.get(key);
-		if (cached) return cached;
-
-		await this.validateConfigs([config]);
-		const tools = await this.connectAndListTools(`browser-mcp-${nanoid(6)}`, [config], key);
-		this.browserToolsByKey.set(key, tools);
-		return tools;
+		return await this.getOrLoad(
+			this.browserToolsByKey,
+			this.inFlightBrowserByKey,
+			key,
+			async () => {
+				await this.validateConfigs([config]);
+				return await this.connectAndListTools(`browser-mcp-${nanoid(6)}`, [config], key);
+			},
+		);
 	}
 
 	async disconnect(): Promise<void> {
@@ -92,7 +98,41 @@ export class McpClientManager {
 		this.clientsByKey.clear();
 		this.regularToolsByKey.clear();
 		this.browserToolsByKey.clear();
+		this.inFlightRegularByKey.clear();
+		this.inFlightBrowserByKey.clear();
 		await Promise.all(clients.map(async (c) => await c.disconnect()));
+	}
+
+	/**
+	 * Returns a cached value if present, otherwise dedupes concurrent producers
+	 * by sharing a single in-flight promise per key. Successful results are
+	 * committed to the cache; failures clear the in-flight entry so the next
+	 * call retries from scratch.
+	 */
+	private async getOrLoad<T>(
+		cache: Map<string, T>,
+		inFlight: Map<string, Promise<T>>,
+		key: string,
+		produce: () => Promise<T>,
+	): Promise<T> {
+		const cached = cache.get(key);
+		if (cached) return cached;
+
+		const pending = inFlight.get(key);
+		if (pending) return await pending;
+
+		const promise = (async () => {
+			const value = await produce();
+			cache.set(key, value);
+			return value;
+		})();
+
+		inFlight.set(key, promise);
+		try {
+			return await promise;
+		} finally {
+			inFlight.delete(key);
+		}
 	}
 
 	private async validateConfigs(configs: McpServerConfig[]): Promise<void> {

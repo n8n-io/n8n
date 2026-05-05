@@ -174,4 +174,79 @@ describe('McpClientManager', () => {
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 	});
+
+	describe('concurrent dedup', () => {
+		it('coalesces concurrent regular-tool calls with the same config into one client', async () => {
+			const manager = new McpClientManager();
+			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+			const [tools1, tools2] = await Promise.all([
+				manager.getRegularTools(configs),
+				manager.getRegularTools(configs),
+			]);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
+			expect(tools1).toBe(tools2);
+		});
+
+		it('coalesces concurrent browser-tool calls with the same config into one client', async () => {
+			const manager = new McpClientManager();
+			const config = { name: 'browser', url: 'https://browser.example.com/' };
+
+			await Promise.all([manager.getBrowserTools(config), manager.getBrowserTools(config)]);
+
+			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
+		});
+
+		it('lets the next call retry after an in-flight failure', async () => {
+			const manager = new McpClientManager();
+			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+			mockedMcpClient.mockImplementationOnce(() => ({
+				listTools: jest.fn().mockRejectedValue(new Error('boom')),
+				disconnect: jest.fn().mockResolvedValue(undefined),
+			}));
+
+			await expect(manager.getRegularTools(configs)).rejects.toThrow('boom');
+			// In-flight entry must be cleared so a retry actually re-attempts.
+			await expect(manager.getRegularTools(configs)).resolves.toBeDefined();
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe('disconnect interaction with in-flight work', () => {
+		// Returns a deferred listTools promise we can resolve later, simulating a
+		// long-running tool listing that's still pending when disconnect() runs.
+		function deferListTools() {
+			let resolve: (value: Record<string, unknown>) => void = () => {};
+			const promise = new Promise<Record<string, unknown>>((r) => {
+				resolve = r;
+			});
+			return { promise, resolve };
+		}
+
+		it('does not coalesce new calls with in-flight work that disconnect severed', async () => {
+			const manager = new McpClientManager();
+			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+			const deferred = deferListTools();
+			mockedMcpClient.mockImplementationOnce(() => ({
+				listTools: jest.fn().mockReturnValue(deferred.promise),
+				disconnect: jest.fn().mockResolvedValue(undefined),
+			}));
+
+			const stranded = manager.getRegularTools(configs);
+			// Yield so connectAndListTools registers the client before we tear down.
+			await Promise.resolve();
+			await manager.disconnect();
+
+			// New call must start a fresh client, not join the stranded promise.
+			await manager.getRegularTools(configs);
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
+
+			// Cleanup: let the stranded promise settle so the test doesn't hang.
+			deferred.resolve({});
+			await stranded.catch(() => {});
+		});
+	});
 });
