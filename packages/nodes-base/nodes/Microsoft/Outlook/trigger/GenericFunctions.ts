@@ -65,8 +65,16 @@ export async function getPollResponse(
 			responseData = results.flat();
 		} else {
 			qs.$top = 1;
-			const endpoint = folderIds.length > 0 ? `/mailFolders/${folderIds[0]}/messages` : '/messages';
-			responseData = (await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs)).value;
+			const endpoints =
+				folderIds.length > 0 ? folderIds.map((id) => `/mailFolders/${id}/messages`) : ['/messages'];
+
+			const results = await Promise.all(
+				endpoints.map(
+					async (endpoint) =>
+						await microsoftApiRequest.call(this, 'GET', endpoint, undefined, { ...qs }),
+				),
+			);
+			responseData = results.flatMap((result) => (result.value as IDataObject[]) ?? []).slice(0, 1);
 		}
 
 		if (output === 'simple') {

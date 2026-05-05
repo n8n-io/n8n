@@ -100,7 +100,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 							'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
 						$top: 1,
 					});
-					expect(simplifyOutputMessages).toHaveBeenCalledWith(mockMessages);
+					expect(simplifyOutputMessages).toHaveBeenCalledWith([mockMessages[0]]);
 					expect(result).toHaveLength(2);
 					expect(result[0].json).toEqual(mockMessages[0]);
 				});
@@ -126,7 +126,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						$top: 1,
 					});
 					expect(simplifyOutputMessages).not.toHaveBeenCalled();
-					expect(result).toHaveLength(2);
+					expect(result).toHaveLength(1);
 				});
 
 				it('should handle downloadAttachments option in manual mode', async () => {
@@ -155,7 +155,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						$select: 'id,subject,from,hasAttachments',
 						$top: 1,
 					});
-					expect(downloadAttachments).toHaveBeenCalledWith(mockMessages, 'attachment_');
+					expect(downloadAttachments).toHaveBeenCalledWith([mockMessages[0]], 'attachment_');
 					expect(result).toEqual(mockExecutionData);
 				});
 			});
@@ -413,7 +413,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						(microsoftApiRequest as jest.Mock).mockResolvedValue({ value: mockMessages });
 					});
 
-					it('should use first folder endpoint with $top=1 in manual mode', async () => {
+					it('should query all folder endpoints with $top=1 in manual mode', async () => {
 						mockPollFunctions.getNodeParameter.mockImplementation(
 							(paramName: string, defaultValue?: any) => {
 								const params: Record<string, any> = {
@@ -427,6 +427,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 
 						await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
 
+						expect(microsoftApiRequest).toHaveBeenCalledTimes(2);
 						expect(microsoftApiRequest).toHaveBeenCalledWith(
 							'GET',
 							`/mailFolders/${folderId1}/messages`,
@@ -437,7 +438,43 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 								$top: 1,
 							},
 						);
+						expect(microsoftApiRequest).toHaveBeenCalledWith(
+							'GET',
+							`/mailFolders/${folderId2}/messages`,
+							undefined,
+							{
+								$select:
+									'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments',
+								$top: 1,
+							},
+						);
 						expect(microsoftApiRequestAllItems).not.toHaveBeenCalled();
+					});
+
+					it('should return email from second folder when first folder is empty in manual mode', async () => {
+						mockPollFunctions.getNodeParameter.mockImplementation(
+							(paramName: string, defaultValue?: any) => {
+								const params: Record<string, any> = {
+									filters: { foldersToInclude: [folderId1, folderId2] },
+									options: {},
+									output: 'raw',
+								};
+								return params[paramName] ?? defaultValue;
+							},
+						);
+						(microsoftApiRequest as jest.Mock)
+							.mockResolvedValueOnce({ value: [] }) // folder A: no emails
+							.mockResolvedValueOnce({ value: [mockMessages[1]] }); // folder B: 1 email
+
+						const result = await getPollResponse.call(
+							mockPollFunctions,
+							pollStartDate,
+							pollEndDate,
+						);
+
+						expect(microsoftApiRequest).toHaveBeenCalledTimes(2);
+						expect(result).toHaveLength(1);
+						expect(result[0].json).toEqual(mockMessages[1]);
 					});
 				});
 			});
@@ -466,7 +503,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 						$top: 1,
 					});
 					expect(simplifyOutputMessages).not.toHaveBeenCalled();
-					expect(result).toHaveLength(2);
+					expect(result).toHaveLength(1);
 				});
 			});
 
@@ -685,7 +722,7 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 					$select: '',
 					$top: 1,
 				});
-				expect(result).toHaveLength(2);
+				expect(result).toHaveLength(1);
 			});
 		});
 
