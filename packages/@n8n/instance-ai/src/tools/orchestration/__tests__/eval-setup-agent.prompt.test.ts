@@ -66,7 +66,7 @@ describe('EVAL_SETUP_AGENT_PROMPT', () => {
 
 	it('forbids rewriting production AI agent prompts or parameters', () => {
 		expect(EVAL_SETUP_AGENT_PROMPT).toContain('Do not modify existing production node parameters');
-		expect(EVAL_SETUP_AGENT_PROMPT).toContain('do not rewrite the AI Agent prompt');
+		expect(EVAL_SETUP_AGENT_PROMPT).toContain("never rewrite the agent's prompt");
 		expect(EVAL_SETUP_AGENT_PROMPT).toContain(
 			'cannot be made standalone with topology-only eval setup',
 		);

@@ -106,19 +106,6 @@ export function extractConfirmationRequestId(event: CapturedEvent): string | und
 	return undefined;
 }
 
-export function isEvalsProposalConfirmation(event: CapturedEvent): boolean {
-	if (event.type !== 'confirmation-request') {
-		return false;
-	}
-
-	const payload = event.data.payload;
-	if (!isRecord(payload)) {
-		return false;
-	}
-
-	return payload.toolName === 'evals' || isRecord(payload.evalsPropose);
-}
-
 export function isWorkflowUpdateConfirmation(event: CapturedEvent): boolean {
 	if (event.type !== 'confirmation-request') {
 		return false;
@@ -174,12 +161,11 @@ export async function approveEvalConfirmations(input: {
 	client: ConfirmationClient;
 	events: CapturedEvent[];
 	approvedRequestIds: Set<string>;
-	dataTableId: string;
 	logger: EvalLogger;
 	retryCounts?: Map<string, number>;
 }): Promise<void> {
 	for (const event of input.events) {
-		if (!isEvalsProposalConfirmation(event) && !isWorkflowUpdateConfirmation(event)) {
+		if (!isWorkflowUpdateConfirmation(event)) {
 			continue;
 		}
 
@@ -195,18 +181,8 @@ export async function approveEvalConfirmations(input: {
 		}
 
 		try {
-			if (isWorkflowUpdateConfirmation(event)) {
-				input.logger.verbose(`[auto-approve] Approving workflow update confirmation: ${requestId}`);
-				await input.client.confirmAction(requestId, { kind: 'approval', approved: true });
-			} else {
-				input.logger.verbose(`[auto-approve] Approving confirmation: ${requestId}`);
-				await input.client.confirmAction(requestId, {
-					kind: 'evalsPropose',
-					approved: true,
-					datasetChoice: 'link-existing',
-					existingDataTableId: input.dataTableId,
-				});
-			}
+			input.logger.verbose(`[auto-approve] Approving workflow update confirmation: ${requestId}`);
+			await input.client.confirmAction(requestId, { kind: 'approval', approved: true });
 			input.approvedRequestIds.add(requestId);
 			retryCounts.delete(requestId);
 		} catch (error) {
@@ -226,7 +202,6 @@ export async function waitForThreadToSettle(input: {
 	threadId: string;
 	events: CapturedEvent[];
 	approvedRequestIds: Set<string>;
-	dataTableId: string;
 	logger: EvalLogger;
 	timeoutMs: number;
 	getStreamError?: () => unknown;
@@ -240,7 +215,6 @@ export async function waitForThreadToSettle(input: {
 			client: input.client,
 			events: input.events,
 			approvedRequestIds: input.approvedRequestIds,
-			dataTableId: input.dataTableId,
 			logger: input.logger,
 			retryCounts,
 		});
@@ -257,7 +231,6 @@ export async function waitForThreadToSettle(input: {
 				client: input.client,
 				events: input.events,
 				approvedRequestIds: input.approvedRequestIds,
-				dataTableId: input.dataTableId,
 				logger: input.logger,
 				retryCounts,
 			});
@@ -340,7 +313,6 @@ export async function runEvalSetupTopologyCase(
 			threadId,
 			events,
 			approvedRequestIds,
-			dataTableId: dataTable.id,
 			logger,
 			timeoutMs,
 			getStreamError: () => streamError,

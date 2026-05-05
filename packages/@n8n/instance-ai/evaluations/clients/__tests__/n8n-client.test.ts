@@ -30,27 +30,21 @@ describe('N8nClient', () => {
 		global.fetch = originalFetch;
 	});
 
-	it('sends eval approval fields in the confirmation body', async () => {
+	it('serializes the confirmation body and posts it to the confirm endpoint', async () => {
 		const fetchMock = mockFetchOnce({});
 		const client = new N8nClient(BASE_URL);
 
 		await client.confirmAction('request-1', {
-			kind: 'evalsPropose',
+			kind: 'approval',
 			approved: true,
-			datasetChoice: 'link-existing',
-			existingDataTableId: 'dt-1',
-			enabledMetricIds: ['correctness'],
 		});
 
 		expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/rest/instance-ai/confirm/request-1`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({
-				kind: 'evalsPropose',
+				kind: 'approval',
 				approved: true,
-				datasetChoice: 'link-existing',
-				existingDataTableId: 'dt-1',
-				enabledMetricIds: ['correctness'],
 			}),
 		});
 	});

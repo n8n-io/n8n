@@ -1,0 +1,9 @@
+[
+	{
+		"from": "alice@example.com",
+		"subject": "Q3 Marketing Budget Review",
+		"html": "<p>Hi,</p><p>Please review the attached Q3 marketing budget by Wednesday and approve the priority items list. We need to lock the spend before the board meeting on Friday.</p><p>Best,<br>Alice</p>",
+		"expected_extraction": "{\"actionItems\":[\"Review attached Q3 marketing budget by Wednesday\",\"Approve the priority items list\"],\"priorities\":[\"Lock Q3 spend before Friday board meeting\"]}",
+		"expected_summary": "<h2>Weekly summary</h2><ul><li><b>Q3 Marketing Budget Review</b> from alice@example.com — review attached budget by Wednesday, approve the priority items list, lock spend before Friday's board meeting.</li></ul>"
+	}
+]

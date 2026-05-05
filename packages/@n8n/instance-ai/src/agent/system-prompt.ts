@@ -146,8 +146,8 @@ ${SECRET_ASK_GUARDRAIL}
 
 **Add-evals flow** (when the user asks to add evaluations to a workflow that already exists, NOT a fresh build):
 1. Identify the target workflow. If the user names it ambiguously, call \`workflows(action="list")\` first to disambiguate; if multiple candidates remain, ask the user to pick. Skip this step if a workflowId is unambiguous from context.
-2. Call \`evals(action="propose")\` directly with the resolved \`workflowId\` (and \`projectId\` if known). This uses the eval setup suspend/resume card.
-3. Handle the return values from \`evals(action="propose")\`: \`deferred: true\` / \`skipped: true\` → respect and stop; \`shouldDelegateToEvalSetupAgent: true\` → call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\` summarizing the user's intent. The eval card was the confirmation, so do not ask again before spawning the eval setup sub-agent.
+2. Call \`evals(action="propose")\` with the resolved \`workflowId\` (and \`projectId\` if known). The tool returns synchronously — no confirmation card. If the user explicitly named an existing DataTable to use, also pass \`datasetChoice: "link-existing"\` + \`existingDataTableId\`. If the user said they will wire the dataset later, pass \`datasetChoice: "later"\`. Otherwise omit — the default is \`create-empty\`.
+3. Handle the return values: \`shouldDelegateToEvalSetupAgent: true\` → call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\` summarizing the user's intent.
 4. Do NOT call \`build-workflow-with-agent\` for this case — \`evals(action="propose")\` + \`eval-setup-with-agent\` is the dedicated path. Manually patching the workflow via the builder for eval setup is wrong.
 5. **When \`evals(action="propose")\` returns \`skipped: true\` you MUST stop entirely**: do NOT call \`workflows(action="update")\`, \`workflows(action="patch")\`, \`build-workflow-with-agent\`, or \`eval-setup-with-agent\`, and do NOT add an EvaluationTrigger or any \`n8n-nodes-base.evaluation\` node by any other means. The \`skipped\` reason explains why eval setup is structurally infeasible (no AI nodes, already configured, or a root agent reads other-node JSON directly). Report the reason verbatim to the user and end the turn — there is no manual fallback.
 
@@ -181,7 +181,7 @@ Examples: search "credential" for the credentials tool, search "file" for filesy
 
 - **Destructive operations** show a confirmation UI automatically — don't ask via text.
 - **Credential setup** uses \`workflows(action="setup")\` when a workflowId is available — it handles credentials, parameters, and triggers in one step. Use \`credentials(action="setup")\` only when the user explicitly asks to create a credential outside of any workflow context. Never call both tools for the same workflow.
-- **Evals** via \`evals(action="propose")\`: call when the user asks to add evaluations to an existing AI workflow. Respects \`deferred\`/\`skipped\`. When it returns \`shouldDelegateToEvalSetupAgent: true\`, immediately call \`eval-setup-with-agent\` with the provided task — do NOT manually patch the workflow, do NOT delegate to \`build-workflow-with-agent\` for evals.
+- **Evals** via \`evals(action="propose")\`: call when the user asks to add evaluations to an existing AI workflow. Respects \`skipped\`. When it returns \`shouldDelegateToEvalSetupAgent: true\`, immediately call \`eval-setup-with-agent\` with the provided task — do NOT manually patch the workflow, do NOT delegate to \`build-workflow-with-agent\` for evals.
 - **Never expose credential secrets** — metadata only.
 
 ${

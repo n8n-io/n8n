@@ -9,7 +9,6 @@ import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { useToolLabel } from '../toolLabels';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
-import EvalsProposeCard from './EvalsProposeCard.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
@@ -28,7 +27,6 @@ function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
-	if (conf.evalsPropose) return 'evals-propose';
 	return 'approval';
 }
 
@@ -363,19 +361,6 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 								((chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ?? []).length,
 							)
 					"
-				/>
-
-				<!-- Evals-propose -->
-				<EvalsProposeCard
-					v-else-if="chunk.item.toolCall.confirmation.evalsPropose"
-					:key="'evals-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
-					:request-id="chunk.item.toolCall.confirmation.requestId"
-					:input-thread-id="chunk.item.toolCall.confirmation.inputThreadId"
-					:message="chunk.item.toolCall.confirmation.message"
-					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
-					:payload="chunk.item.toolCall.confirmation.evalsPropose!"
 				/>
 
 				<!-- Text input (ask-user) -->

@@ -175,124 +175,6 @@ describe('eval setup topology runner helpers', () => {
 		]);
 	});
 
-	it('approves confirmation requests with existing data table selection once', async () => {
-		const client = {
-			confirmAction: jest.fn().mockResolvedValue(undefined),
-		};
-		const approvedRequestIds = new Set<string>();
-		const events: CapturedEvent[] = [
-			{
-				timestamp: 1,
-				type: 'confirmation-request',
-				data: { payload: { requestId: 'request-1', toolName: 'evals' } },
-			},
-			{
-				timestamp: 2,
-				type: 'confirmation-request',
-				data: { requestId: 'request-1', payload: { toolName: 'evals' } },
-			},
-		];
-
-		await approveEvalConfirmations({
-			client,
-			events,
-			approvedRequestIds,
-			dataTableId: 'dt-1',
-			logger: logger(),
-		});
-
-		expect(client.confirmAction).toHaveBeenCalledTimes(1);
-		expect(client.confirmAction).toHaveBeenCalledWith('request-1', {
-			kind: 'evalsPropose',
-			approved: true,
-			datasetChoice: 'link-existing',
-			existingDataTableId: 'dt-1',
-		});
-		expect(approvedRequestIds.has('request-1')).toBe(true);
-	});
-
-	it('does not approve unrelated confirmation requests', async () => {
-		const client = {
-			confirmAction: jest.fn().mockResolvedValue(undefined),
-		};
-		const approvedRequestIds = new Set<string>();
-		const events: CapturedEvent[] = [
-			{
-				timestamp: 1,
-				type: 'confirmation-request',
-				data: { payload: { requestId: 'unrelated-request' } },
-			},
-			{
-				timestamp: 2,
-				type: 'confirmation-request',
-				data: { requestId: 'malformed-request', payload: null },
-			},
-			{
-				timestamp: 3,
-				type: 'confirmation-request',
-				data: { payload: { requestId: 'evals-request', toolName: 'evals' } },
-			},
-		];
-
-		await approveEvalConfirmations({
-			client,
-			events,
-			approvedRequestIds,
-			dataTableId: 'dt-1',
-			logger: logger(),
-		});
-
-		expect(client.confirmAction).toHaveBeenCalledTimes(1);
-		expect(client.confirmAction).toHaveBeenCalledWith('evals-request', {
-			kind: 'evalsPropose',
-			approved: true,
-			datasetChoice: 'link-existing',
-			existingDataTableId: 'dt-1',
-		});
-		expect(approvedRequestIds.has('unrelated-request')).toBe(false);
-		expect(approvedRequestIds.has('malformed-request')).toBe(false);
-		expect(approvedRequestIds.has('evals-request')).toBe(true);
-	});
-
-	it('approves eval confirmations identified by evalsPropose without toolName', async () => {
-		const client = {
-			confirmAction: jest.fn().mockResolvedValue(undefined),
-		};
-		const approvedRequestIds = new Set<string>();
-		const events: CapturedEvent[] = [
-			{
-				timestamp: 1,
-				type: 'confirmation-request',
-				data: {
-					payload: {
-						requestId: 'request-1',
-						evalsPropose: {
-							detectedAiNodes: ['AI Agent'],
-							suggestedMetrics: [],
-						},
-					},
-				},
-			},
-		];
-
-		await approveEvalConfirmations({
-			client,
-			events,
-			approvedRequestIds,
-			dataTableId: 'dt-1',
-			logger: logger(),
-		});
-
-		expect(client.confirmAction).toHaveBeenCalledTimes(1);
-		expect(client.confirmAction).toHaveBeenCalledWith('request-1', {
-			kind: 'evalsPropose',
-			approved: true,
-			datasetChoice: 'link-existing',
-			existingDataTableId: 'dt-1',
-		});
-		expect(approvedRequestIds.has('request-1')).toBe(true);
-	});
-
 	it('approves workflow update confirmations from eval setup', async () => {
 		const client = {
 			confirmAction: jest.fn().mockResolvedValue(undefined),
@@ -317,7 +199,6 @@ describe('eval setup topology runner helpers', () => {
 			client,
 			events,
 			approvedRequestIds,
-			dataTableId: 'dt-1',
 			logger: logger(),
 		});
 
@@ -326,6 +207,53 @@ describe('eval setup topology runner helpers', () => {
 			kind: 'approval',
 			approved: true,
 		});
+		expect(approvedRequestIds.has('workflow-update-request')).toBe(true);
+	});
+
+	it('does not approve unrelated confirmation requests', async () => {
+		const client = {
+			confirmAction: jest.fn().mockResolvedValue(undefined),
+		};
+		const approvedRequestIds = new Set<string>();
+		const events: CapturedEvent[] = [
+			{
+				timestamp: 1,
+				type: 'confirmation-request',
+				data: { payload: { requestId: 'unrelated-request' } },
+			},
+			{
+				timestamp: 2,
+				type: 'confirmation-request',
+				data: { requestId: 'malformed-request', payload: null },
+			},
+			{
+				timestamp: 3,
+				type: 'confirmation-request',
+				data: {
+					payload: {
+						requestId: 'workflow-update-request',
+						toolName: 'workflows',
+						args: { action: 'update', workflowId: 'workflow-1' },
+						message: 'Update workflow "Imported" (ID: workflow-1)?',
+					},
+				},
+			},
+		];
+
+		await approveEvalConfirmations({
+			client,
+			events,
+			approvedRequestIds,
+			logger: logger(),
+		});
+
+		expect(client.confirmAction).toHaveBeenCalledTimes(1);
+		expect(client.confirmAction).toHaveBeenCalledWith('workflow-update-request', {
+			kind: 'approval',
+			approved: true,
+		});
+		expect(approvedRequestIds.has('unrelated-request')).toBe(false);
+		expect(approvedRequestIds.has('malformed-request')).toBe(false);
 		expect(approvedRequestIds.has('workflow-update-request')).toBe(true);
 	});
 
@@ -342,7 +270,6 @@ describe('eval setup topology runner helpers', () => {
 				threadId: 'thread-1',
 				events: [],
 				approvedRequestIds: new Set<string>(),
-				dataTableId: 'dt-1',
 				logger: logger(),
 				timeoutMs: 600_000,
 				getStreamError: () => streamError,

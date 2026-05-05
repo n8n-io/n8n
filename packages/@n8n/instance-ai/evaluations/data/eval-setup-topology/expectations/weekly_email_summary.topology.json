@@ -1,0 +1,24 @@
+{
+	"targets": [
+		{
+			"nodeName": "AI Agent",
+			"inputColumns": ["subject", "html"],
+			"expectedShape": {
+				"subject": "subject",
+				"html": "html"
+			},
+			"expectedOutputColumns": ["expected_extraction"],
+			"actualOutputColumns": ["actual_extraction"],
+			"sideEffectNodes": ["Send a message"]
+		},
+		{
+			"nodeName": "AI Agent1",
+			"inputColumns": ["from", "subject", "html"],
+			"expectedOutputColumns": ["expected_summary"],
+			"actualOutputColumns": ["actual_summary"],
+			"sideEffectNodes": ["Send a message"]
+		}
+	],
+	"excludeTargets": [],
+	"metrics": ["correctness"]
+}

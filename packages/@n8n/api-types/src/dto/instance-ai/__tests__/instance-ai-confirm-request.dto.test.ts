@@ -66,18 +66,6 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'resourceDecision with allowed decision token',
 				{ kind: 'resourceDecision', resourceDecision: 'allowForSession' },
 			],
-			// EvalsProposeCard: handleSubmit / handleSkip
-			[
-				'evalsPropose approve with existing DataTable',
-				{
-					kind: 'evalsPropose',
-					approved: true,
-					datasetChoice: 'link-existing',
-					existingDataTableId: 'dt-1',
-					enabledMetricIds: ['correctness'],
-				},
-			],
-			['evalsPropose deny', { kind: 'evalsPropose', approved: false }],
 			// useSetupActions: handleApply
 			[
 				'setupWorkflowApply (full payload)',

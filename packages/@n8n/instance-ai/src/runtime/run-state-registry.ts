@@ -54,11 +54,6 @@ export interface ConfirmationData {
 	}>;
 	/** User's resource-access decision (e.g. 'allowForSession'). */
 	resourceDecision?: string;
-	/** Eval-propose dataset choice — forwarded to the `evals` tool. */
-	datasetChoice?: 'link-existing' | 'later';
-	existingDataTableId?: string;
-	/** Eval-propose metric selections — forwarded to the `evals` tool. */
-	enabledMetricIds?: string[];
 }
 
 export interface PendingConfirmation {
