@@ -166,6 +166,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 			currentNDVStore.value = useNDVStore(workflowDocumentId);
+			documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value.name, 'IDLE');
 		}
 
 		return true;
@@ -277,6 +278,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			parentFolderId,
 		);
 		currentWorkflowDocumentStore.value.setName(workflowData.name);
+		documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
 		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
 		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 

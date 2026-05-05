@@ -1732,8 +1732,6 @@ onBeforeRouteLeave(async (to, from, next) => {
  */
 
 onMounted(async () => {
-	documentTitle.reset();
-
 	// Register callback for collaboration store to refresh canvas when workflow updates arrive
 	collaborationStore.setRefreshCanvasCallback(async (workflow) => {
 		await initializeWorkspace(workflow);
