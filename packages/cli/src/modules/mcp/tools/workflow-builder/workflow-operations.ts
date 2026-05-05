@@ -10,15 +10,16 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-const positionSchema = z
-	.array(z.number())
-	.length(2)
-	.transform((v): [number, number] => [v[0], v[1]])
-	.describe('Canvas position as [x, y]');
+const positionSchema = () =>
+	z
+		.array(z.number())
+		.length(2)
+		.transform((v): [number, number] => [v[0], v[1]])
+		.describe('Canvas position as [x, y]');
 
 const credentialsSchema = z.record(
 	z.string(),
-	z.object({ id: z.string().nullable(), name: z.string() }),
+	z.object({ id: z.string().optional(), name: z.string() }),
 );
 
 export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
@@ -43,7 +44,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 				type: z.string().describe('Fully qualified node type, e.g. "n8n-nodes-base.set".'),
 				typeVersion: z.number(),
 				parameters: z.record(z.string(), z.unknown()).optional(),
-				position: positionSchema.optional(),
+				position: positionSchema().optional(),
 				credentials: credentialsSchema.optional(),
 				disabled: z.boolean().optional(),
 				notes: z.string().optional(),
@@ -103,7 +104,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('setNodePosition'),
 		nodeName: z.string(),
-		position: positionSchema,
+		position: positionSchema(),
 	}),
 	z.object({
 		type: z.literal('setNodeDisabled'),
@@ -291,7 +292,14 @@ export function applyOperations(
 					position: op.node.position ?? [0, 0],
 					parameters: (op.node.parameters ?? {}) as INodeParameters,
 				};
-				if (op.node.credentials) node.credentials = op.node.credentials;
+				if (op.node.credentials) {
+					node.credentials = Object.fromEntries(
+						Object.entries(op.node.credentials).map(([key, cred]) => [
+							key,
+							{ id: cred.id ?? null, name: cred.name },
+						]),
+					);
+				}
 				if (op.node.disabled !== undefined) node.disabled = op.node.disabled;
 				if (op.node.notes !== undefined) node.notes = op.node.notes;
 				workflow.nodes.push(node);
