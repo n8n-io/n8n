@@ -8,9 +8,12 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import { NodeHttpHandler } from '@smithy/node-http-handler';
+import type { AwsAssumeRoleCredentialsType } from 'n8n-nodes-base/dist/credentials/common/aws/types';
+import { assumeRole } from 'n8n-nodes-base/dist/credentials/common/aws/utils';
 
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -24,7 +27,7 @@ export class LmChatAwsBedrock implements INodeType {
 		name: 'lmChatAwsBedrock',
 		icon: 'file:bedrock.svg',
 		group: ['transform'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Language Model AWS Bedrock',
 		defaults: {
 			name: 'AWS Bedrock Chat Model',
@@ -49,9 +52,25 @@ export class LmChatAwsBedrock implements INodeType {
 		outputs: [NodeConnectionTypes.AiLanguageModel],
 		outputNames: ['Model'],
 		credentials: [
+			// Shown when accessKeys mode selected (also default for v1/v1.1 backward compat)
 			{
 				name: 'aws',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['accessKeys'],
+					},
+				},
+			},
+			// Shown when assumeRole mode selected (v1.2+)
+			{
+				name: 'awsAssumeRole',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['assumeRole'],
+					},
+				},
 			},
 		],
 		requestDefaults: {
@@ -60,6 +79,30 @@ export class LmChatAwsBedrock implements INodeType {
 		},
 		properties: [
 			getConnectionHintNoticeField([NodeConnectionTypes.AiChain, NodeConnectionTypes.AiChain]),
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Access Keys',
+						value: 'accessKeys',
+						description: 'Use explicit AWS access key ID and secret',
+					},
+					{
+						name: 'Assume Role (STS)',
+						value: 'assumeRole',
+						description:
+							'Assume an IAM role via STS — for cross-account access or temporary credentials',
+					},
+				],
+				default: 'accessKeys',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
+			},
 			{
 				displayName: 'Model Source',
 				name: 'modelSource',
@@ -234,21 +277,59 @@ export class LmChatAwsBedrock implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{
-			region: string;
-			secretAccessKey: string;
-			accessKeyId: string;
-			sessionToken: string;
-		}>('aws');
+		// Default to 'accessKeys' for v1/v1.1 backward compatibility (no authentication param)
+		const authentication = this.getNodeParameter('authentication', itemIndex, 'accessKeys') as
+			| 'accessKeys'
+			| 'assumeRole';
+
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			temperature: number;
 			maxTokensToSample: number;
 		};
 
+		let region: string;
+		let resolvedCredentials: {
+			accessKeyId: string;
+			secretAccessKey: string;
+			sessionToken?: string;
+		};
+
+		if (authentication === 'assumeRole') {
+			const credentials =
+				await this.getCredentials<AwsAssumeRoleCredentialsType>('awsAssumeRole');
+			region = credentials.region;
+
+			try {
+				resolvedCredentials = await assumeRole(credentials, credentials.region);
+			} catch (error) {
+				const rawMsg = error instanceof Error ? error.message : String(error);
+				// Strip the AWS XML error body (may contain caller ARNs and account IDs) — keep only
+				// the HTTP status line which is sufficient for the user to understand what went wrong.
+				const safeMsg = rawMsg.replace(/\s*-\s*<[\s\S]*$/, '').trim();
+				throw new NodeOperationError(this.getNode(), `Failed to assume role: ${safeMsg}`, {
+					description:
+						'Check your Role ARN, External ID, and STS credentials in the AWS (Assume Role) credential.',
+				});
+			}
+		} else {
+			// accessKeys — existing behavior (also covers v1/v1.1 with default fallback)
+			const credentials = await this.getCredentials<{
+				region: string;
+				accessKeyId: string;
+				secretAccessKey: string;
+				sessionToken?: string;
+			}>('aws');
+			region = credentials.region;
+			resolvedCredentials = {
+				accessKeyId: credentials.accessKeyId,
+				secretAccessKey: credentials.secretAccessKey,
+				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
+			};
+		}
+
 		// If the model is specified as a full ARN, extract the region from it
 		// ARN format: arn:aws:bedrock:<region>:<account-id>:inference-profile/<profile-id>
-		let region = credentials.region;
 		const arnMatch = modelName.match(/^arn:aws:bedrock:([a-z0-9-]+):/);
 		if (arnMatch) {
 			region = arnMatch[1];
@@ -258,11 +339,7 @@ export class LmChatAwsBedrock implements INodeType {
 		const proxyAgent = getNodeProxyAgent();
 		const clientConfig: BedrockRuntimeClientConfig = {
 			region,
-			credentials: {
-				secretAccessKey: credentials.secretAccessKey,
-				accessKeyId: credentials.accessKeyId,
-				...(credentials.sessionToken && { sessionToken: credentials.sessionToken }),
-			},
+			credentials: resolvedCredentials,
 		};
 
 		if (proxyAgent) {
