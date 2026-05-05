@@ -44,7 +44,7 @@ Form base URL: ${formBaseUrl}
 Some trigger nodes expose HTTP endpoints. Always share the full production URL with the user after building a workflow that uses one of these triggers. Each type has a distinct URL pattern:
 
 - **Webhook Trigger**: ${webhookBaseUrl}/{path} (where {path} is the node's webhook path parameter).
-- **Form Trigger**: ${formBaseUrl}/{path} (or ${formBaseUrl}/{formId} if no custom path is set). The Form Trigger lives under /form/, NOT /webhook/ — they are separate URL prefixes. Do NOT use the Webhook base URL for Form Triggers.
+- **Form Trigger**: ${formBaseUrl}/{path} (or ${formBaseUrl}/{webhookId} if no custom path is set). The Form Trigger lives under /form/, NOT /webhook/ — they are separate URL prefixes. Do NOT use the Webhook base URL for Form Triggers.
 - **Chat Trigger**: ${webhookBaseUrl}/{webhookId}/chat (where {webhookId} is the node's unique webhook ID, visible in the workflow JSON). The /chat suffix is unique to Chat Trigger — do NOT append it to Form Trigger or Webhook URLs. The public chat UI is only accessible to end users when the node's "public" parameter is true and the workflow has been published. (This applies only to end-user HTTP access — your own testing via \`executions(action="run")\` and \`verify-built-workflow\` works regardless of publish state.) Do NOT guess the webhookId — read the workflow to find it.
 
 **These URLs are for sharing with the user only.** Do NOT include them in \`build-workflow-with-agent\` task descriptions — the builder cannot reach the n8n instance via HTTP and will fail if it tries to curl/fetch these URLs.`;
