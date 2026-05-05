@@ -26,7 +26,12 @@ import {
 	type FailureCategoryComparison,
 	type ScenarioComparison,
 } from './compare';
-import type { MultiRunEvaluation, WorkflowTestCase, WorkflowTestCaseResult } from '../types';
+import type {
+	MultiRunEvaluation,
+	TestCaseAggregation,
+	WorkflowTestCase,
+	WorkflowTestCaseResult,
+} from '../types';
 
 interface FormatOptions {
 	/** Optional commit SHA to include in the heading. Truncated to 8 chars. */
@@ -119,7 +124,7 @@ export function formatComparisonMarkdown(
 		lines.push(...renderFailureCategorySection(comparison.failureCategories));
 	}
 
-	lines.push(...renderPerTestCaseDetails(evaluation));
+	lines.push(...renderPerTestCaseDetails(evaluation, options.slugByTestCase));
 
 	if (comparison) {
 		const otherFindings = renderOtherFindings(comparison);
@@ -347,12 +352,19 @@ function renderFailureCategorySection(categories: FailureCategoryComparison[]): 
 	return lines;
 }
 
-function renderPerTestCaseDetails(evaluation: MultiRunEvaluation): string[] {
+function renderPerTestCaseDetails(
+	evaluation: MultiRunEvaluation,
+	slugByTestCase?: Map<WorkflowTestCase, string>,
+): string[] {
 	const { totalRuns, testCases } = evaluation;
 	if (testCases.length === 0) return [];
 	const lines: string[] = [];
 	lines.push(`<details><summary>Per-test-case results (${testCases.length})</summary>`);
 	lines.push('');
+	const renderName = (tc: TestCaseAggregation): string => {
+		const slug = slugByTestCase?.get(tc.testCase);
+		return slug ? `\`${slug}\`` : `\`${tc.testCase.prompt.slice(0, 70)}\``;
+	};
 	if (totalRuns > 1) {
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
@@ -371,9 +383,8 @@ function renderPerTestCaseDetails(evaluation: MultiRunEvaluation): string[] {
 							100,
 					)
 				: 0;
-			const name = `\`${tc.testCase.prompt.slice(0, 70)}\``;
 			lines.push(
-				`| ${name} | ${tc.buildSuccessCount}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
+				`| ${renderName(tc)} | ${tc.buildSuccessCount}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
 			);
 		}
 	} else {
@@ -383,8 +394,7 @@ function renderPerTestCaseDetails(evaluation: MultiRunEvaluation): string[] {
 			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
 			const passed = tc.scenarios.filter((sa) => sa.runs[0]?.success).length;
 			const total = tc.scenarios.length;
-			const name = `\`${tc.testCase.prompt.slice(0, 70)}\``;
-			lines.push(`| ${name} | ${built} | ${passed}/${total} |`);
+			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
 		}
 	}
 	lines.push('');
@@ -621,7 +631,7 @@ export function formatComparisonTerminal(
 	lines.push(...formatTerminalAggregate(evaluation, comparison));
 	lines.push('');
 
-	lines.push(...formatTerminalPerTestCase(evaluation));
+	lines.push(...formatTerminalPerTestCase(evaluation, options.slugByTestCase));
 
 	if (comparison) {
 		const hard = hardRegressions(comparison);
@@ -765,12 +775,20 @@ function formatTerminalAggregate(
 	return lines;
 }
 
-function formatTerminalPerTestCase(evaluation: MultiRunEvaluation): string[] {
+function formatTerminalPerTestCase(
+	evaluation: MultiRunEvaluation,
+	slugByTestCase?: Map<WorkflowTestCase, string>,
+): string[] {
 	const { totalRuns, testCases } = evaluation;
 	if (testCases.length === 0) return [];
 	const lines: string[] = [];
 	const heading = `Per-test-case results (${testCases.length})`;
 	lines.push(TERMINAL_INDENT + heading);
+
+	const nameOf = (tc: TestCaseAggregation, max: number): string => {
+		const slug = slugByTestCase?.get(tc.testCase);
+		return slug ?? tc.testCase.prompt.slice(0, max);
+	};
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
@@ -791,7 +809,7 @@ function formatTerminalPerTestCase(evaluation: MultiRunEvaluation): string[] {
 						)
 					: 0;
 			return {
-				name: tc.testCase.prompt.slice(0, 60),
+				name: nameOf(tc, 60),
 				builds: `${tc.buildSuccessCount}/${totalRuns}`,
 				passAtK: `${meanPassAtK}%`,
 				passHatK: `${meanPassHatK}%`,
@@ -834,7 +852,7 @@ function formatTerminalPerTestCase(evaluation: MultiRunEvaluation): string[] {
 			const r = tc.runs[0];
 			const buildStatus = r.workflowBuildSuccess ? 'BUILT' : 'BUILD FAILED';
 			lines.push('');
-			lines.push(TERMINAL_INDENT + `${tc.testCase.prompt.slice(0, 70)}…`);
+			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
 			if (r.buildError) lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
 			for (const sa of tc.scenarios) {

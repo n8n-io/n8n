@@ -342,6 +342,28 @@ describe('formatComparisonMarkdown', () => {
 		expect(weatherBlock).not.toMatch(/Linear node misconfigured/);
 	});
 
+	it('uses the slug instead of the prompt in the per-test-case table', () => {
+		const evalFx = evaluation({
+			totalRuns: 3,
+			testCases: [
+				{
+					prompt: 'Build a cross-team Linear report digest from open issues',
+					scenarios: [{ name: 'happy', passCount: 0, passes: [false, false, false] }],
+				},
+			],
+		});
+		const pr = bucket('pr', [s('cross-team-linear-report', 'happy', 0, 3)]);
+		const base = bucket('master', [s('cross-team-linear-report', 'happy', 10, 10)]);
+		const md = formatComparisonMarkdown(evalFx, ok(compareBuckets(pr, base)), {
+			slugByTestCase: slugMap(evalFx, ['cross-team-linear-report']),
+		});
+
+		// Per-test-case table cell should be the slug, not the prompt.
+		const perTcSection = md.slice(md.indexOf('Per-test-case results'));
+		expect(perTcSection).toMatch(/`cross-team-linear-report`/);
+		expect(perTcSection).not.toMatch(/Build a cross-team Linear report digest/);
+	});
+
 	it('skips per-scenario breakdown when slugByTestCase is omitted', () => {
 		// Without the slug map, the renderer can't disambiguate. We'd rather
 		// drop the breakdown than show a wrong one.
