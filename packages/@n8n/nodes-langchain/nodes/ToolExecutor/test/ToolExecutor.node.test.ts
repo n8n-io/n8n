@@ -18,19 +18,21 @@ import { z } from 'zod';
 
 import { ToolExecutor } from '../ToolExecutor.node';
 
-const { processHitlResponses, buildResponseMetadata } = vi.requireMock('@utils/agent-execution');
-const { hasGatedToolNodeName, extractHitlMetadata } = vi.requireMock(
-	'@utils/agent-execution/createEngineRequests',
-);
-
-const mockProcessHitlResponses = vi.mocked(processHitlResponses);
-const mockBuildResponseMetadata = vi.mocked(buildResponseMetadata);
-const mockHasGatedToolNodeName = vi.mocked(hasGatedToolNodeName);
-const mockExtractHitlMetadata = vi.mocked(extractHitlMetadata);
-
-describe('ToolExecutor Node', () => {
+describe('ToolExecutor Node', async () => {
 	let node: ToolExecutor;
 	let mockExecuteFunction: vi.Mocked<IExecuteFunctions>;
+
+	const { processHitlResponses, buildResponseMetadata } = vi.mocked(
+		await import('@utils/agent-execution'),
+	);
+	const { hasGatedToolNodeName, extractHitlMetadata } = vi.mocked(
+		await import('@utils/agent-execution/createEngineRequests'),
+	);
+
+	const mockProcessHitlResponses = vi.mocked(processHitlResponses);
+	const mockBuildResponseMetadata = vi.mocked(buildResponseMetadata);
+	const mockHasGatedToolNodeName = vi.mocked(hasGatedToolNodeName);
+	const mockExtractHitlMetadata = vi.mocked(extractHitlMetadata);
 
 	beforeEach(() => {
 		node = new ToolExecutor();
@@ -78,9 +80,9 @@ describe('ToolExecutor Node', () => {
 		it('should throw error if no tool inputs found', async () => {
 			mockExecuteFunction.getInputConnectionData.mockResolvedValue(null);
 
-			await expect(node.execute.call(mockExecuteFunction)).rejects.toThrow(
-				new NodeOperationError(mockExecuteFunction.getNode(), 'No tool inputs found'),
-			);
+			const execution = node.execute.call(mockExecuteFunction);
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('No tool inputs found');
 		});
 
 		it('executes a basic tool with string input', async () => {

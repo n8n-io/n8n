@@ -4,14 +4,23 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { DocumentDefaultDataLoader } from '../DocumentDefaultDataLoader.node';
 
+const mockRecursiveCharacterTextSplitterConstructor = vi.hoisted(() => vi.fn());
+
 vi.mock('@langchain/textsplitters', () => ({
-	RecursiveCharacterTextSplitter: vi.fn().mockImplementation(() => ({
-		splitDocuments: vi.fn(
+	RecursiveCharacterTextSplitter: class {
+		constructor(...args: unknown[]) {
+			mockRecursiveCharacterTextSplitterConstructor(...args);
+		}
+
+		splitDocuments = vi.fn(
 			async (docs: Array<Record<string, unknown>>): Promise<Array<Record<string, unknown>>> =>
 				docs.map((doc) => ({ ...doc, split: true })),
-		),
-	})),
+		);
+	},
 }));
+
+// Not used in the test but importing inside tests breaks tests, therefore we mock it
+vi.mock('pdf-parse', () => ({}));
 
 describe('DocumentDefaultDataLoader', () => {
 	let loader: DocumentDefaultDataLoader;
@@ -39,7 +48,7 @@ describe('DocumentDefaultDataLoader', () => {
 		} as unknown as ISupplyDataFunctions;
 
 		await loader.supplyData.call(context, 0);
-		expect(RecursiveCharacterTextSplitter).toHaveBeenCalledWith({
+		expect(mockRecursiveCharacterTextSplitterConstructor).toHaveBeenCalledWith({
 			chunkSize: 1000,
 			chunkOverlap: 200,
 		});

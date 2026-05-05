@@ -1749,14 +1749,11 @@ describe('GoogleGemini Node', () => {
 				name: 'Google Gemini',
 			} as INode);
 
-			await expect(image.generate.execute.call(executeFunctionsMock, 0)).rejects.toThrow(
-				new NodeOperationError(
-					executeFunctionsMock.getNode(),
-					'Model models/unsupported-model is not supported for image generation',
-					{
-						description: 'Please check the model ID and try again.',
-					},
-				),
+			const execution = image.generate.execute.call(executeFunctionsMock, 0);
+
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow(
+				'Model models/unsupported-model is not supported for image generation',
 			);
 		});
 	});

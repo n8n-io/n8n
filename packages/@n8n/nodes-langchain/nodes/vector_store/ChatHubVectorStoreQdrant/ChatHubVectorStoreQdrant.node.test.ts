@@ -1,7 +1,5 @@
 // Capture the deleteDocuments action handler from createVectorStoreNode config
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let capturedDeleteDocuments!: (this: any, payload: any) => Promise<unknown>;
-
 vi.mock('@langchain/qdrant', () => {
 	class QdrantVectorStore {
 		static fromDocuments = vi.fn();
@@ -15,7 +13,7 @@ vi.mock('@langchain/qdrant', () => {
 
 vi.mock('@n8n/ai-utilities', () => ({
 	createVectorStoreNode: (config: any) => {
-		capturedDeleteDocuments = config.methods?.actionHandler?.deleteDocuments;
+		globalThis.capturedDeleteDocuments = config.methods?.actionHandler?.deleteDocuments;
 		return class BaseNode {
 			async getVectorStoreClient(...args: unknown[]) {
 				return await config.getVectorStoreClient(...args);
@@ -25,6 +23,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 			}
 		};
 	},
+	metadataFilterField: {},
 }));
 
 vi.mock('../VectorStoreQdrant/Qdrant.utils', () => ({
@@ -296,7 +295,7 @@ describe('ChatHubVectorStoreQdrant', () => {
 		it('should always prepend userId to the delete filter', async () => {
 			mockClient.delete.mockResolvedValue(undefined);
 
-			await capturedDeleteDocuments.call(makeContext('user-789'), {
+			await globalThis.capturedDeleteDocuments.call(makeContext('user-789'), {
 				filter: { agentId: 'agent-1' },
 			});
 
@@ -313,7 +312,7 @@ describe('ChatHubVectorStoreQdrant', () => {
 		it('should delete all user documents when filter is empty', async () => {
 			mockClient.delete.mockResolvedValue(undefined);
 
-			await capturedDeleteDocuments.call(makeContext('user-789'), { filter: {} });
+			await globalThis.capturedDeleteDocuments.call(makeContext('user-789'), { filter: {} });
 
 			expect(mockClient.delete).toHaveBeenCalledWith('chat_hub', {
 				filter: {

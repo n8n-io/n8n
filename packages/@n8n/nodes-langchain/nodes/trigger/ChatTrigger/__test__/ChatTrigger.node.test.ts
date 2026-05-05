@@ -1,4 +1,3 @@
-import { vi } from '@vi/globals';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 import type { IWebhookFunctions } from 'n8n-workflow';

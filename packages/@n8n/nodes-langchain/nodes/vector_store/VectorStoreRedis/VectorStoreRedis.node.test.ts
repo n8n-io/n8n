@@ -415,12 +415,11 @@ describe('VectorStoreRedis.node', () => {
 			};
 
 			const node = new RedisNode.VectorStoreRedis();
-			await expect((node as any).getVectorStoreClient(context, undefined, {}, 0)).rejects.toEqual(
-				new NodeOperationError(context.getNode(), 'Index idx not found', {
-					itemIndex: 0,
-					description: 'Please check that the index exists in your Redis instance',
-				}),
-			);
+
+			const execution = (node as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Index idx not found');
 		});
 	});
 

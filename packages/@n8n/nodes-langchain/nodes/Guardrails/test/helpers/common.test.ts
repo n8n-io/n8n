@@ -1,5 +1,3 @@
-import { describe, it, expect } from '@vi/globals';
-
 import { splitByComma, parseRegex } from '../../helpers/common';
 
 describe('common helper', () => {
