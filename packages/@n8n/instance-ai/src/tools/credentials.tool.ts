@@ -1,7 +1,7 @@
 /**
  * Consolidated credentials tool — list, get, delete, search-types, setup, test.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -162,6 +162,11 @@ const resumeSchema = z.object({
 	autoSetup: z.object({ credentialType: z.string() }).optional(),
 });
 
+interface CredentialToolContext {
+	resumeData: z.infer<typeof resumeSchema> | undefined;
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
+}
+
 // ── Handlers ───────────────────────────────────────────────────────────────
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
@@ -200,10 +205,9 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 async function handleDelete(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'delete' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: CredentialToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.deleteCredential === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -213,13 +217,11 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete credential "${input.credentialName ?? input.credentialId}"? This cannot be undone.`,
 			severity: 'destructive' as const,
 		});
-		// suspend() never resolves — this line is unreachable but satisfies the type checker
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -251,10 +253,9 @@ async function handleSearchTypes(
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: CredentialToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof resumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 	const isFinalize = input.credentialFlow?.stage === 'finalize';
 
 	// State 1: First call — look up existing credentials per type and suspend
@@ -276,7 +277,7 @@ async function handleSetup(
 		const typeNames = input.credentials
 			.map((c: { credentialType: string }) => c.credentialType)
 			.join(', ');
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: isFinalize
 				? `Your workflow is verified. Add credentials to make it production-ready: ${typeNames}`
@@ -288,8 +289,6 @@ async function handleSetup(
 			...(input.projectId ? { projectId: input.projectId } : {}),
 			...(input.credentialFlow ? { credentialFlow: input.credentialFlow } : {}),
 		});
-		// suspend() never resolves
-		return { success: false };
 	}
 
 	// State 2: Not approved — user clicked "Later" / skipped.
@@ -339,14 +338,14 @@ async function handleTest(context: InstanceAiContext, input: Extract<Input, { ac
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 export function createCredentialsTool(context: InstanceAiContext) {
-	return createTool({
-		id: 'credentials',
-		description:
+	return new Tool('credentials')
+		.description(
 			'Manage credentials — list, get, delete, search available types, set up new credentials, and test connections.',
-		inputSchema,
-		suspendSchema,
-		resumeSchema,
-		execute: async (input: Input, ctx) => {
+		)
+		.input(inputSchema)
+		.suspend(suspendSchema)
+		.resume(resumeSchema)
+		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
@@ -361,6 +360,6 @@ export function createCredentialsTool(context: InstanceAiContext) {
 				case 'test':
 					return await handleTest(context, input);
 			}
-		},
-	});
+		})
+		.build();
 }

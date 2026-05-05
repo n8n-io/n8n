@@ -2,7 +2,7 @@
  * Consolidated data-tables tool — list, schema, query, create, delete,
  * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -49,6 +49,11 @@ const confirmationResumeSchema = z.object({
 });
 
 type ResumeData = z.infer<typeof confirmationResumeSchema>;
+
+interface ConfirmationToolContext {
+	resumeData: ResumeData | undefined;
+	suspend: (payload: z.infer<typeof confirmationSuspendSchema>) => Promise<never>;
+}
 
 /**
  * Check if an error (or its cause chain) is a DataTableNameConflictError.
@@ -271,10 +276,9 @@ async function handleQuery(
 async function handleCreate(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'create' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.createDataTable === 'blocked') {
 		return { denied: true, reason: 'Action blocked by admin' };
@@ -290,12 +294,11 @@ async function handleCreate(
 			const projectLabel = project?.name ?? input.projectId;
 			message = `Create data table "${input.name}" in project "${projectLabel}"?`;
 		}
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message,
 			severity: 'info' as const,
 		});
-		return {};
 	}
 
 	// State 2: Denied
@@ -325,10 +328,9 @@ async function handleCreate(
 async function handleDelete(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'delete' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.deleteDataTable === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -338,12 +340,11 @@ async function handleDelete(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete data table "${input.dataTableId}"? This will permanently remove the table and all its data.`,
 			severity: 'destructive' as const,
 		});
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -359,10 +360,9 @@ async function handleDelete(
 async function handleAddColumn(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'add-column' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.mutateDataTableSchema === 'blocked') {
 		return { denied: true, reason: 'Action blocked by admin' };
@@ -372,12 +372,11 @@ async function handleAddColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Add column "${input.columnName}" (${input.type}) to data table "${input.dataTableId}"?`,
 			severity: 'warning' as const,
 		});
-		return {};
 	}
 
 	// State 2: Denied
@@ -397,10 +396,9 @@ async function handleAddColumn(
 async function handleDeleteColumn(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'delete-column' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.mutateDataTableSchema === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -410,12 +408,11 @@ async function handleDeleteColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete column "${input.columnId}" from data table "${input.dataTableId}"? All data in this column will be permanently lost.`,
 			severity: 'destructive' as const,
 		});
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -433,10 +430,9 @@ async function handleDeleteColumn(
 async function handleRenameColumn(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'rename-column' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.mutateDataTableSchema === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -446,12 +442,11 @@ async function handleRenameColumn(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Rename column "${input.columnId}" to "${input.newName}" in data table "${input.dataTableId}"?`,
 			severity: 'warning' as const,
 		});
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -469,10 +464,9 @@ async function handleRenameColumn(
 async function handleInsertRows(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'insert-rows' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.mutateDataTableRows === 'blocked') {
 		return { denied: true, reason: 'Action blocked by admin' };
@@ -482,12 +476,11 @@ async function handleInsertRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Insert ${input.rows.length} row(s) into data table "${input.dataTableId}"?`,
 			severity: 'warning' as const,
 		});
-		return {};
 	}
 
 	// State 2: Denied
@@ -504,10 +497,9 @@ async function handleInsertRows(
 async function handleUpdateRows(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'update-rows' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.mutateDataTableRows === 'blocked') {
 		return { denied: true, reason: 'Action blocked by admin' };
@@ -517,12 +509,11 @@ async function handleUpdateRows(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Update rows in data table "${input.dataTableId}"?`,
 			severity: 'warning' as const,
 		});
-		return {};
 	}
 
 	// State 2: Denied
@@ -539,10 +530,9 @@ async function handleUpdateRows(
 async function handleDeleteRows(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'delete-rows' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: ConfirmationToolContext,
 ) {
-	const resumeData = ctx?.agent?.resumeData as ResumeData | undefined;
-	const suspend = ctx?.agent?.suspend as ((payload: unknown) => Promise<void>) | undefined;
+	const resumeData = ctx.resumeData;
 
 	if (context.permissions?.mutateDataTableRows === 'blocked') {
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
@@ -561,12 +551,11 @@ async function handleDeleteRows(
 				}) => `${f.columnName} ${f.condition} ${String(f.value)}`,
 			)
 			.join(` ${input.filter.type} `);
-		await suspend?.({
+		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete rows where ${filterDesc}? This cannot be undone.`,
 			severity: 'destructive' as const,
 		});
-		return { success: false };
 	}
 
 	// State 2: Denied
@@ -596,11 +585,10 @@ export function createDataTablesTool(
 	if (surface === 'orchestrator') {
 		const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...readOnlyActions]));
 
-		return createTool({
-			id: 'data-tables',
-			description: 'Manage data tables — list, get schema, and query rows.',
-			inputSchema,
-			execute: async (input: ReadOnlyInput) => {
+		return new Tool('data-tables')
+			.description('Manage data tables — list, get schema, and query rows.')
+			.input(inputSchema)
+			.handler(async (input: ReadOnlyInput) => {
 				switch (input.action) {
 					case 'list':
 						return await handleList(context, input);
@@ -609,19 +597,18 @@ export function createDataTablesTool(
 					case 'query':
 						return await handleQuery(context, input);
 				}
-			},
-		});
+			})
+			.build();
 	}
 
 	const inputSchema = sanitizeInputSchema(z.discriminatedUnion('action', [...allActions]));
 
-	return createTool({
-		id: 'data-tables',
-		description: 'Manage data tables — list, query, create, modify columns, and manage rows.',
-		inputSchema,
-		suspendSchema: confirmationSuspendSchema,
-		resumeSchema: confirmationResumeSchema,
-		execute: async (input: FullInput, ctx) => {
+	return new Tool('data-tables')
+		.description('Manage data tables — list, query, create, modify columns, and manage rows.')
+		.input(inputSchema)
+		.suspend(confirmationSuspendSchema)
+		.resume(confirmationResumeSchema)
+		.handler(async (input: FullInput, ctx) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
@@ -646,6 +633,6 @@ export function createDataTablesTool(
 				case 'delete-rows':
 					return await handleDeleteRows(context, input, ctx);
 			}
-		},
-	});
+		})
+		.build();
 }

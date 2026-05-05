@@ -1,8 +1,7 @@
 import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
-import type { ToolsInput } from '@mastra/core/agent';
 import type { MastraCompositeStore } from '@mastra/core/storage';
 import type { Memory } from '@mastra/memory';
-import type { Workspace } from '@n8n/agents';
+import type { BuiltMemory, BuiltTool, CheckpointStore, Workspace } from '@n8n/agents';
 import type {
 	TaskList,
 	InstanceAiAttachment,
@@ -32,6 +31,8 @@ import type {
 import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
+
+export type InstanceAiToolRegistry = Record<string, BuiltTool>;
 
 export interface WorkflowSummary {
 	id: string;
@@ -853,7 +854,10 @@ export interface InstanceAiTraceContext {
 		metadata?: Record<string, unknown>,
 	) => Promise<void>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
-	wrapTools: (tools: ToolsInput, options?: InstanceAiToolTraceOptions) => ToolsInput;
+	wrapTools: (
+		tools: InstanceAiToolRegistry,
+		options?: InstanceAiToolTraceOptions,
+	) => InstanceAiToolRegistry;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */
@@ -947,11 +951,12 @@ export interface OrchestrationContext {
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	storage: MastraCompositeStore;
+	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
-	domainTools: ToolsInput;
+	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
 	tracing?: InstanceAiTraceContext;
@@ -976,7 +981,7 @@ export interface OrchestrationContext {
 	 *  browser-credential-setup prefers these over chrome-devtools-mcp. */
 	localMcpServer?: LocalMcpServer;
 	/** MCP tools loaded from external servers — available for delegation to sub-agents */
-	mcpTools?: ToolsInput;
+	mcpTools?: InstanceAiToolRegistry;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Webhook base URL for the n8n instance (e.g. http://localhost:5678/webhook) — used to construct webhook URLs for created workflows */
@@ -1043,8 +1048,10 @@ export interface CreateInstanceAgentOptions {
 	orchestrationContext?: OrchestrationContext;
 	mcpServers?: McpServerConfig[];
 	memoryConfig: InstanceAiMemoryConfig;
-	/** Pre-built Memory instance. When provided, `memoryConfig` is ignored for memory creation. */
-	memory?: Memory;
+	/** Pre-built native Memory instance. When provided, `memoryConfig` controls options only. */
+	memory?: BuiltMemory;
+	/** Native checkpoint store for HITL/suspend state. */
+	checkpointStore?: CheckpointStore;
 	/**
 	 * @deprecated Ignored by the orchestrator. Passing a workspace here used to auto-register
 	 * `mastra_workspace_*` tools on the orchestrator, which the LLM abused as a `sleep` primitive

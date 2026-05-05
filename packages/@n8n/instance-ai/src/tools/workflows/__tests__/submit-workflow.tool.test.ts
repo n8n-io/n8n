@@ -2,6 +2,7 @@ import { validateWorkflow } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 import type { INodeTypes } from 'n8n-workflow';
 
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../../types';
 import type { SandboxWorkspace } from '../../../workspace/sandbox-fs';
 import {
@@ -122,7 +123,7 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 			new Map(),
 		) as unknown as Executable;
 
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider,
@@ -137,7 +138,7 @@ describe('createSubmitWorkflowTool — schema validation wiring', () => {
 			new Map(),
 		) as unknown as Executable;
 
-		await tool.execute({ filePath: 'src/workflow.ts', name: 'Test' });
+		await executeTool(tool, { filePath: 'src/workflow.ts', name: 'Test' });
 
 		expect(mockedValidateWorkflow).toHaveBeenCalledWith(expect.any(Object), {
 			nodeTypesProvider: undefined,
@@ -185,7 +186,7 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 			},
 		) as unknown as Executable;
 
-		const out = await tool.execute({ filePath: 'src/workflow.ts', name: 'New workflow' });
+		const out = await executeTool(tool, { filePath: 'src/workflow.ts', name: 'New workflow' });
 
 		expect(out.success).toBe(false);
 		expect(out.errors).toEqual(['Action blocked by admin']);
@@ -206,7 +207,7 @@ describe('createSubmitWorkflowTool — permission enforcement', () => {
 			},
 		) as unknown as Executable;
 
-		const out = await tool.execute({ filePath: 'src/workflow.ts', workflowId: 'abc123' });
+		const out = await executeTool(tool, { filePath: 'src/workflow.ts', workflowId: 'abc123' });
 
 		expect(out.success).toBe(false);
 		expect(out.errors).toEqual(['Action blocked by admin']);

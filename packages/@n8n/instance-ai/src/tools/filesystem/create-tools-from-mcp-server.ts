@@ -1,5 +1,4 @@
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Tool, type BuiltTool } from '@n8n/agents';
 import {
 	GATEWAY_CONFIRMATION_REQUIRED_PREFIX,
 	gatewayConfirmationRequiredPayloadSchema,
@@ -78,7 +77,7 @@ function tryParseGatewayConfirmationRequired(
 // ---------------------------------------------------------------------------
 
 /**
- * Build Mastra tools dynamically from the MCP tools advertised by a connected
+ * Build native tools dynamically from the MCP tools advertised by a connected
  * local MCP server (e.g. the computer-use daemon).
  *
  * Each tool's input schema is converted from the daemon's JSON Schema definition
@@ -86,7 +85,7 @@ function tryParseGatewayConfirmationRequired(
  * to `z.record(z.unknown())` if conversion fails for a particular tool.
  *
  * When the daemon responds with `GATEWAY_CONFIRMATION_REQUIRED`, the tool
- * suspends the agent via Mastra's native `suspend()` mechanism. This persists
+ * suspends the agent via the native `suspend()` mechanism. This persists
  * the confirmation request to the database, so it survives page reloads and
  * server restarts. On resume, the tool re-calls the daemon with the selected
  * decision token.
@@ -94,8 +93,8 @@ function tryParseGatewayConfirmationRequired(
  * The `toModelOutput` callback converts MCP content blocks (text and image)
  * into the AI SDK's multimodal format so the LLM receives images.
  */
-export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInput {
-	const tools: ToolsInput = {};
+export function createToolsFromLocalMcpServer(server: LocalMcpServer): Record<string, BuiltTool> {
+	const tools: Record<string, BuiltTool> = {};
 
 	for (const mcpTool of server.getAvailableTools()) {
 		const toolName = mcpTool.name;
@@ -113,17 +112,13 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 			inputSchema = z.record(z.unknown());
 		}
 
-		const tool = createTool({
-			id: toolName,
-			description,
-			inputSchema,
-			suspendSchema: gatewayConfirmationSuspendSchema,
-			resumeSchema: gatewayConfirmationResumeSchema,
-			execute: async (args: Record<string, unknown>, ctx) => {
-				const resumeData = ctx?.agent?.resumeData as
-					| z.infer<typeof gatewayConfirmationResumeSchema>
-					| undefined;
-				const suspend = ctx?.agent?.suspend;
+		const tool = new Tool(toolName)
+			.description(description)
+			.input(inputSchema)
+			.suspend(gatewayConfirmationSuspendSchema)
+			.resume(gatewayConfirmationResumeSchema)
+			.handler(async (args: Record<string, unknown>, ctx) => {
+				const resumeData = ctx.resumeData;
 
 				// Resume path: user has made a resource-access decision
 				if (resumeData !== undefined && resumeData !== null) {
@@ -147,26 +142,22 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 				const result = await server.callTool({ name: toolName, arguments: safeArgs });
 
 				// If the daemon requires a resource-access confirmation, suspend the agent
-				if (result.isError && suspend) {
+				if (result.isError) {
 					const payload = tryParseGatewayConfirmationRequired(result);
-					if (payload) {
-						await suspend({
+					if (payload && typeof ctx.suspend === 'function') {
+						return await ctx.suspend({
 							requestId: nanoid(),
 							message: `${toolName}: ${payload.description}`,
 							severity: 'warning',
 							inputType: 'resource-decision',
 							resourceDecision: payload,
 						});
-						// suspend() never resolves — this line is unreachable but satisfies the type checker
-						return result;
 					}
 				}
 
 				return result;
-			},
-			toModelOutput: (result: unknown) => {
-				// Mastra passes { toolCallId, input, output } — unwrap to get the actual MCP result.
-				// Handle both shapes for forward-compatibility.
+			})
+			.toModelOutput((result: unknown) => {
 				const raw = (
 					result !== null && typeof result === 'object' && 'output' in result
 						? (result as { output: unknown }).output
@@ -202,8 +193,8 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): ToolsInpu
 					return { type: 'text' as const, text: item.text ?? '' };
 				});
 				return { type: 'content', value };
-			},
-		});
+			})
+			.build();
 
 		tools[toolName] = tool;
 	}

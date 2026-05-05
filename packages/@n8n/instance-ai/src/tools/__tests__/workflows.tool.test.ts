@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { analyzeWorkflow, applyNodeChanges } from '../workflows/setup-workflow.service';
 import { createWorkflowsTool } from '../workflows.tool';
@@ -88,7 +89,8 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 			const tool = createWorkflowsTool(context, 'full');
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'get-as-code', workflowId: 'w1' } as never,
 				{} as never,
 			);
@@ -110,7 +112,8 @@ describe('workflows tool', () => {
 			context.workflowService.restoreVersion = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'list-versions', workflowId: 'w1' } as never,
 				{} as never,
 			);
@@ -126,7 +129,8 @@ describe('workflows tool', () => {
 			context.workflowService.updateVersion = jest.fn().mockResolvedValue({ success: true });
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{
 					action: 'update-version',
 					workflowId: 'w1',
@@ -156,7 +160,11 @@ describe('workflows tool', () => {
 			(context.workflowService.list as jest.Mock).mockResolvedValue(workflows);
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'list', query: 'test', limit: 10 }, {} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'list', query: 'test', limit: 10 },
+				{} as never,
+			);
 
 			expect(context.workflowService.list).toHaveBeenCalledWith({ limit: 10, query: 'test' });
 			expect(result).toEqual({ workflows });
@@ -179,7 +187,7 @@ describe('workflows tool', () => {
 			(context.workflowService.get as jest.Mock).mockResolvedValue(detail);
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'get', workflowId: 'wf1' }, {} as never);
+			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(result).toEqual(detail);
@@ -193,7 +201,7 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {} as never);
+			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
 				success: false,
@@ -211,7 +219,7 @@ describe('workflows tool', () => {
 			const suspend = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
+			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 
@@ -229,7 +237,7 @@ describe('workflows tool', () => {
 			const suspend = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
+			await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 
@@ -243,7 +251,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
+			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: true } },
 			} as never);
 
@@ -255,7 +263,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'delete', workflowId: 'wf1' }, {
+			const result = await executeTool(tool, { action: 'delete', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: false } },
 			} as never);
 
@@ -274,7 +282,7 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {} as never);
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);
 
 			expect(result).toEqual({
 				success: false,
@@ -290,7 +298,7 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: true } },
 			} as never);
 
@@ -309,7 +317,7 @@ describe('workflows tool', () => {
 			const suspend = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await tool.execute!({ action: 'publish', workflowId: 'wf1' }, {
+			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 
@@ -337,7 +345,7 @@ describe('workflows tool', () => {
 			const suspend = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 
@@ -357,7 +365,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				agent: { resumeData: undefined },
 			} as never);
 
@@ -389,7 +397,7 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			await tool.execute!({ action: 'setup', workflowId: 'wf1' }, {
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
 				agent: {
 					resumeData: {
 						approved: true,
@@ -410,7 +418,7 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await tool.execute!({ action: 'unpublish', workflowId: 'wf1' }, {
+			const result = await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
 				agent: { resumeData: { approved: true } },
 			} as never);
 
@@ -427,7 +435,7 @@ describe('workflows tool', () => {
 			const suspend = jest.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await tool.execute!({ action: 'unpublish', workflowId: 'wf1' }, {
+			await executeTool(tool, { action: 'unpublish', workflowId: 'wf1' }, {
 				agent: { suspend, resumeData: undefined },
 			} as never);
 

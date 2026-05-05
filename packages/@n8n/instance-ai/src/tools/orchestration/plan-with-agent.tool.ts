@@ -12,9 +12,7 @@
  * It can also ask the user questions directly via the ask-user tool.
  */
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Agent, Tool } from '@n8n/agents';
 import { DateTime } from 'luxon';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -31,12 +29,11 @@ import {
 	traceSubAgentTools,
 	withTraceRun,
 } from './tracing-utils';
-import { registerWithMastra } from '../../agent/register-with-mastra';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
-import type { OrchestrationContext } from '../../types';
+import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 import { createTemplatesTool } from '../templates.tool';
 
 /** Number of recent thread messages to include as planner context. */
@@ -219,31 +216,35 @@ async function clearPlannedTaskGraph(context: OrchestrationContext): Promise<voi
 // ---------------------------------------------------------------------------
 
 export function createPlanWithAgentTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'plan',
-		description:
+	return new Tool('plan')
+		.description(
 			'Design and execute a multi-step plan. Spawns a planner agent that reads ' +
-			'the conversation history, discovers available credentials, data tables, ' +
-			'and best practices, designs the architecture, and shows it to the user ' +
-			'for approval. Use when the request requires 2 or more tasks with ' +
-			'dependencies. When this tool returns, the plan is already approved ' +
-			'and tasks are dispatched — just acknowledge briefly and end your turn.',
-		inputSchema: z.object({
-			guidance: z
-				.string()
-				.optional()
-				.describe(
-					'Optional steering note for the planner — use ONLY when the conversation ' +
-						'history alone is ambiguous about what to build. The planner reads the ' +
-						'last 5 messages directly, so do NOT rewrite the user request here.',
-				),
-		}),
-		outputSchema: z.object({
-			result: z.string(),
-		}),
-		execute: async (input: { guidance?: string }) => {
+				'the conversation history, discovers available credentials, data tables, ' +
+				'and best practices, designs the architecture, and shows it to the user ' +
+				'for approval. Use when the request requires 2 or more tasks with ' +
+				'dependencies. When this tool returns, the plan is already approved ' +
+				'and tasks are dispatched — just acknowledge briefly and end your turn.',
+		)
+		.input(
+			z.object({
+				guidance: z
+					.string()
+					.optional()
+					.describe(
+						'Optional steering note for the planner — use ONLY when the conversation ' +
+							'history alone is ambiguous about what to build. The planner reads the ' +
+							'last 5 messages directly, so do NOT rewrite the user request here.',
+					),
+			}),
+		)
+		.output(
+			z.object({
+				result: z.string(),
+			}),
+		)
+		.handler(async (input: { guidance?: string }) => {
 			// ── Collect planner tools ──────────────────────────────────────
-			const plannerTools: ToolsInput = {};
+			const plannerTools: InstanceAiToolRegistry = {};
 
 			for (const name of PLANNER_DOMAIN_TOOL_NAMES) {
 				if (name in context.domainTools) {
@@ -304,28 +305,22 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 			try {
 				// ── Create & stream sub-agent (inline, blocking) ──────────
-				const subAgent = new Agent({
-					id: subAgentId,
-					name: 'Workflow Planner Agent',
-					instructions: {
-						role: 'system' as const,
-						content: PLANNER_AGENT_PROMPT,
+				const subAgent = new Agent('Workflow Planner Agent')
+					.model(context.modelId)
+					.instructions(PLANNER_AGENT_PROMPT, {
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
 						},
-					},
-					model: context.modelId,
-					tools: tracedPlannerTools,
-				});
-
-				registerWithMastra(subAgentId, subAgent, context.storage);
+					})
+					.tool(Object.values(tracedPlannerTools))
+					.checkpoint(context.checkpointStore ?? 'memory');
 
 				const resultText = await withTraceRun(context, traceRun, async () => {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 						const stream = await subAgent.stream(briefing, {
-							maxSteps: MAX_STEPS.PLANNER,
+							maxIterations: MAX_STEPS.PLANNER,
 							abortSignal: context.abortSignal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -335,11 +330,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 						const result = await consumeStreamWithHitl({
 							agent: subAgent,
-							stream: stream as {
-								runId?: string;
-								fullStream: AsyncIterable<unknown>;
-								text: Promise<string>;
-							},
+							stream,
 							runId: context.runId,
 							agentId: subAgentId,
 							eventBus: context.eventBus,
@@ -348,7 +339,7 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
-							maxSteps: MAX_STEPS.PLANNER,
+							maxIterations: MAX_STEPS.PLANNER,
 						});
 
 						return await result.text;
@@ -441,6 +432,6 @@ export function createPlanWithAgentTool(context: OrchestrationContext) {
 
 				return { result: `Planner error: ${errorMessage}` };
 			}
-		},
-	});
+		})
+		.build();
 }

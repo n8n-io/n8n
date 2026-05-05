@@ -1,3 +1,4 @@
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type {
 	CheckpointSettleResult,
 	OrchestrationContext,
@@ -59,7 +60,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
 
-		const res = await tool.execute({
+		const res = await executeTool(tool, {
 			taskId: 'verify-1',
 			status: 'succeeded',
 			result: 'Verified',
@@ -82,7 +83,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
 
-		const res = await tool.execute({
+		const res = await executeTool(tool, {
 			taskId: 'verify-1',
 			status: 'failed',
 			error: 'Workflow errored',
@@ -103,7 +104,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
 
-		await tool.execute({
+		await executeTool(tool, {
 			taskId: 'verify-1',
 			status: 'failed',
 			error: 'Node crashed',
@@ -131,7 +132,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
 
-		const res = await tool.execute({ taskId: 'missing', status: 'succeeded' });
+		const res = await executeTool(tool, { taskId: 'missing', status: 'succeeded' });
 
 		expect(res.ok).toBe(false);
 		expect(res.result).toContain('no task with id');
@@ -148,7 +149,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
 
-		const res = await tool.execute({ taskId: 'wf-1', status: 'succeeded' });
+		const res = await executeTool(tool, { taskId: 'wf-1', status: 'succeeded' });
 
 		expect(res.ok).toBe(false);
 		expect(res.result).toContain('not a checkpoint');
@@ -166,7 +167,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
 
-		const res = await tool.execute({ taskId: 'verify-1', status: 'succeeded' });
+		const res = await executeTool(tool, { taskId: 'verify-1', status: 'succeeded' });
 
 		expect(res.ok).toBe(false);
 		expect(res.result).toContain('not in running state');
@@ -179,7 +180,7 @@ describe('createCompleteCheckpointTool', () => {
 			plannedTaskService: undefined,
 		} as OrchestrationContext) as unknown as Executable;
 
-		const res = await tool.execute({ taskId: 'verify-1', status: 'succeeded' });
+		const res = await executeTool(tool, { taskId: 'verify-1', status: 'succeeded' });
 
 		expect(res.ok).toBe(false);
 		expect(res.result).toContain('not available');
@@ -193,7 +194,7 @@ describe('createCompleteCheckpointTool', () => {
 		});
 		const tool = createCompleteCheckpointTool(makeContext(service)) as unknown as Executable;
 
-		await tool.execute({
+		await executeTool(tool, {
 			taskId: 'verify-1',
 			status: 'failed',
 			result: 'Workflow hit 429 during verify',

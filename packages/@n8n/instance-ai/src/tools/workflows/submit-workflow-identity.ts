@@ -14,7 +14,7 @@
  * cross-module coordinator, eviction hook, or TTL sweep is required.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 
 import type { CredentialMap } from './resolve-credentials';
 import {
@@ -27,7 +27,6 @@ import {
 	type SubmitWorkflowOutput,
 } from './submit-workflow.tool';
 import type { InstanceAiContext } from '../../types';
-import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 import {
 	MAX_PRE_SAVE_SUBMIT_FAILURES,
 	createRemediation,
@@ -37,6 +36,7 @@ import type {
 	RemediationMetadata,
 	WorkflowLoopState,
 } from '../../workflow-loop/workflow-loop-state';
+import type { SandboxWorkspace } from '../../workspace/sandbox-fs';
 
 export type SubmitExecute = (input: SubmitWorkflowInput) => Promise<SubmitWorkflowOutput>;
 
@@ -116,7 +116,7 @@ export function createPreSaveBudgetTracker(): SubmitBudgetTracker {
  * - On dispatch failure, the map entry is cleared and waiters see a failure result.
  *
  * Exposed separately from the tool factory so it can be unit-tested without
- * constructing a Mastra tool or a sandbox workspace.
+ * constructing a tool or a sandbox workspace.
  */
 export function wrapSubmitExecuteWithIdentity(
 	underlying: SubmitExecute,
@@ -208,7 +208,7 @@ export function wrapSubmitExecuteWithIdentity(
 }
 
 /**
- * Build a submit-workflow Mastra tool wired with identity enforcement.
+ * Build a submit-workflow tool wired with identity enforcement.
  * Convenience factory used at the builder-agent callsite.
  */
 export function createIdentityEnforcedSubmitWorkflowTool(args: {
@@ -231,9 +231,9 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		},
 	);
 
-	const underlyingExecute = underlying.execute as SubmitExecute | undefined;
+	const underlyingExecute = underlying.handler as SubmitExecute | undefined;
 	if (!underlyingExecute) {
-		throw new Error('createSubmitWorkflowTool returned a tool without an execute handler');
+		throw new Error('createSubmitWorkflowTool returned a tool without a handler');
 	}
 
 	const wrappedExecute = wrapSubmitExecuteWithIdentity(
@@ -247,11 +247,10 @@ export function createIdentityEnforcedSubmitWorkflowTool(args: {
 		},
 	);
 
-	return createTool({
-		id: 'submit-workflow',
-		description: underlying.description ?? '',
-		inputSchema: submitWorkflowInputSchema,
-		outputSchema: submitWorkflowOutputSchema,
-		execute: wrappedExecute,
-	});
+	return new Tool('submit-workflow')
+		.description(underlying.description)
+		.input(submitWorkflowInputSchema)
+		.output(submitWorkflowOutputSchema)
+		.handler(wrappedExecute)
+		.build();
 }

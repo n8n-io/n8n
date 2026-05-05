@@ -1,5 +1,5 @@
-import type { InstanceAiEvent } from '@n8n/api-types';
 import type { StreamResult } from '@n8n/agents';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';

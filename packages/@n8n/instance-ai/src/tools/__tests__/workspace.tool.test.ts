@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createWorkspaceTool } from '../workspace.tool';
 
@@ -72,7 +73,7 @@ describe('workspace tool', () => {
 			const context = createMockContext({ workspaceService: undefined });
 			const tool = createWorkspaceTool(context);
 
-			const result = await tool.execute!({ action: 'list-projects' }, {} as never);
+			const result = await executeTool(tool, { action: 'list-projects' }, {} as never);
 
 			expect(result).toEqual({ error: 'Workspace service is not available in this environment.' });
 		});
@@ -85,7 +86,7 @@ describe('workspace tool', () => {
 			(context.workspaceService!.listProjects as jest.Mock).mockResolvedValue(projects);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!({ action: 'list-projects' }, {} as never);
+			const result = await executeTool(tool, { action: 'list-projects' }, {} as never);
 
 			expect(context.workspaceService!.listProjects).toHaveBeenCalled();
 			expect(result).toEqual({ projects });
@@ -99,7 +100,7 @@ describe('workspace tool', () => {
 			(context.workspaceService!.listTags as jest.Mock).mockResolvedValue(tags);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!({ action: 'list-tags' }, {} as never);
+			const result = await executeTool(tool, { action: 'list-tags' }, {} as never);
 
 			expect(context.workspaceService!.listTags).toHaveBeenCalled();
 			expect(result).toEqual({ tags });
@@ -113,7 +114,8 @@ describe('workspace tool', () => {
 			});
 			const tool = createWorkspaceTool(context);
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
 				{} as never,
 			);
@@ -130,7 +132,8 @@ describe('workspace tool', () => {
 			const suspend = jest.fn();
 
 			const tool = createWorkspaceTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', workflowName: 'My WF', tags: ['prod'] },
 				{ agent: { suspend, resumeData: undefined } } as never,
 			);
@@ -147,7 +150,8 @@ describe('workspace tool', () => {
 			(context.workspaceService!.tagWorkflow as jest.Mock).mockResolvedValue(['prod']);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
 				{ agent: { resumeData: { approved: true } } } as never,
 			);
@@ -160,7 +164,8 @@ describe('workspace tool', () => {
 			const context = createMockContext();
 			const tool = createWorkspaceTool(context);
 
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
 				{ agent: { resumeData: { approved: false } } } as never,
 			);
@@ -179,7 +184,8 @@ describe('workspace tool', () => {
 			(context.workspaceService!.tagWorkflow as jest.Mock).mockResolvedValue(['prod']);
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] },
 				{ agent: { resumeData: undefined } } as never,
 			);
@@ -199,7 +205,8 @@ describe('workspace tool', () => {
 			context.workspaceService!.moveWorkflowToFolder = jest.fn();
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'list-folders', projectId: 'p1' } as never,
 				{} as never,
 			);
@@ -219,7 +226,8 @@ describe('workspace tool', () => {
 			const suspend = jest.fn();
 			const tool = createWorkspaceTool(context);
 
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'delete-folder',
 					folderId: 'f1',
@@ -245,7 +253,8 @@ describe('workspace tool', () => {
 			context.workspaceService!.moveWorkflowToFolder = jest.fn();
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'delete-folder', folderId: 'f1', projectId: 'p1' },
 				{ agent: { resumeData: { approved: true } } } as never,
 			);
@@ -265,9 +274,13 @@ describe('workspace tool', () => {
 			});
 
 			const tool = createWorkspaceTool(context);
-			const result = await tool.execute!({ action: 'cleanup-test-executions', workflowId: 'wf1' }, {
-				agent: { resumeData: undefined },
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'cleanup-test-executions', workflowId: 'wf1' },
+				{
+					agent: { resumeData: undefined },
+				} as never,
+			);
 
 			expect(context.workspaceService!.cleanupTestExecutions).toHaveBeenCalledWith('wf1', {
 				olderThanHours: undefined,

@@ -1,3 +1,4 @@
+import { executeTool } from '../../__tests__/tool-test-utils';
 jest.mock('langsmith', () => {
 	let runCounter = 0;
 	const createdRunTrees: Array<{
@@ -242,16 +243,14 @@ type LangSmithMockModule = {
 	};
 };
 
-interface ExecutableTool {
-	execute: (input: unknown, context: unknown) => Promise<unknown>;
-}
-
-function isExecutableTool(value: unknown): value is ExecutableTool {
+function isExecutableTool(
+	value: unknown,
+): value is { handler: (input: unknown, context: unknown) => Promise<unknown> } {
 	return (
 		typeof value === 'object' &&
 		value !== null &&
-		'execute' in value &&
-		typeof value.execute === 'function'
+		'handler' in value &&
+		typeof value.handler === 'function'
 	);
 }
 
@@ -565,7 +564,8 @@ describe('createInstanceAiTraceContext', () => {
 		}
 
 		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
-			await wrappedAskUser.execute(
+			await executeTool(
+				wrappedAskUser,
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
 				},
@@ -644,7 +644,8 @@ describe('createInstanceAiTraceContext', () => {
 		}
 
 		const result = await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
-			return await wrappedAskUser.execute(
+			return await executeTool(
+				wrappedAskUser,
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
 				},

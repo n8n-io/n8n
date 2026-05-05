@@ -1,46 +1,38 @@
-jest.mock('@mastra/core/agent', () => ({
-	Agent: jest.fn().mockImplementation(function Agent(
-		this: { __registerMastra?: jest.Mock } & Record<string, unknown>,
-		config: Record<string, unknown>,
-	) {
-		Object.assign(this, config);
-		this.__registerMastra = jest.fn();
+const mockAgentInstances: Array<{
+	model: jest.Mock;
+	instructions: jest.Mock;
+	tool: jest.Mock;
+	checkpoint: jest.Mock;
+	memory: jest.Mock;
+}> = [];
+
+jest.mock('@n8n/agents', () => ({
+	Agent: jest.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
+		this.model = jest.fn().mockReturnThis();
+		this.instructions = jest.fn().mockReturnThis();
+		this.tool = jest.fn().mockReturnThis();
+		this.checkpoint = jest.fn().mockReturnThis();
+		this.memory = jest.fn().mockReturnThis();
+		mockAgentInstances.push(this);
 	}),
 }));
 
-jest.mock('@mastra/core/mastra', () => ({
-	Mastra: jest.fn().mockImplementation(function Mastra() {}),
-}));
-
-jest.mock('@mastra/core/processors', () => ({
-	ToolSearchProcessor: jest.fn().mockImplementation(function ToolSearchProcessor(
-		this: Record<string, unknown>,
-		config: Record<string, unknown>,
-	) {
-		Object.assign(this, config);
-	}),
-}));
-
-jest.mock('@mastra/mcp', () => ({
-	MCPClient: jest.fn().mockImplementation(() => ({
-		listTools: jest.fn().mockResolvedValue({}),
-	})),
-}));
-
-jest.mock('../../memory/memory-config', () => ({
-	createMemory: jest.fn().mockReturnValue({}),
-}));
+const mockBuiltTool = (name: string) => ({
+	name,
+	description: name,
+	handler: jest.fn(),
+});
 
 jest.mock('../../tools', () => ({
 	createAllTools: jest.fn((context: { runLabel?: string }) => ({
-		workflows: { id: `workflows-${context.runLabel ?? 'unknown'}` },
+		workflows: mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`),
 	})),
 	createOrchestratorDomainTools: jest.fn((context: { runLabel?: string }) => ({
-		workflows: { id: `workflows-${context.runLabel ?? 'unknown'}` },
+		workflows: mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`),
 	})),
 	createOrchestrationTools: jest.fn((context: { runId: string }) => ({
-		plan: { id: `plan-${context.runId}` },
-		'build-workflow-with-agent': { id: `build-${context.runId}` },
+		plan: mockBuiltTool(`plan-${context.runId}`),
+		'build-workflow-with-agent': mockBuiltTool(`build-${context.runId}`),
 	})),
 }));
 
@@ -64,17 +56,17 @@ jest.mock('../system-prompt', () => ({
 const { createInstanceAgent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports
 	require('../instance-agent') as typeof import('../instance-agent');
-const { ToolSearchProcessor } =
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@mastra/core/processors') as {
-		ToolSearchProcessor: jest.Mock;
-	};
 const { Agent } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
-	require('@mastra/core/agent') as { Agent: jest.Mock };
+	require('@n8n/agents') as { Agent: jest.Mock };
 
 describe('createInstanceAgent', () => {
-	it('creates a fresh deferred tool processor for each run-scoped toolset', async () => {
+	beforeEach(() => {
+		Agent.mockClear();
+		mockAgentInstances.length = 0;
+	});
+
+	it('attaches a fresh native toolset for each run-scoped orchestrator agent', async () => {
 		const memoryConfig = {
 			storage: { id: 'memory-store' },
 		} as never;
@@ -98,20 +90,16 @@ describe('createInstanceAgent', () => {
 		await createInstanceAgent(createOptions('run-1'));
 		await createInstanceAgent(createOptions('run-2'));
 
-		expect(ToolSearchProcessor).toHaveBeenCalledTimes(2);
-		const toolSearchCalls = ToolSearchProcessor.mock.calls as Array<
-			[{ tools: Record<string, { id: string }> }]
-		>;
-		expect(toolSearchCalls[0]?.[0]?.tools).toMatchObject({
-			'build-workflow-with-agent': { id: 'build-run-1' },
-		});
-		expect(toolSearchCalls[1]?.[0]?.tools).toMatchObject({
-			'build-workflow-with-agent': { id: 'build-run-2' },
-		});
+		expect(Agent).toHaveBeenCalledTimes(2);
+		expect(mockAgentInstances[0]?.tool).toHaveBeenCalledWith(
+			expect.arrayContaining([expect.objectContaining({ name: 'build-run-1' })]),
+		);
+		expect(mockAgentInstances[1]?.tool).toHaveBeenCalledWith(
+			expect.arrayContaining([expect.objectContaining({ name: 'build-run-2' })]),
+		);
 	});
 
 	it('does not attach a workspace to the orchestrator Agent', async () => {
-		Agent.mockClear();
 		const memoryConfig = { storage: { id: 'memory-store' } } as never;
 		const fakeWorkspace = { id: 'should-be-ignored' } as never;
 
@@ -133,10 +121,15 @@ describe('createInstanceAgent', () => {
 			workspace: fakeWorkspace,
 		} as never);
 
-		expect(Agent).toHaveBeenCalledTimes(1);
-		const calls = Agent.mock.calls as Array<[Record<string, unknown>]>;
-		const firstCall = calls[0];
-		expect(firstCall).toBeDefined();
-		expect(firstCall[0]).not.toHaveProperty('workspace');
+		expect(Agent).toHaveBeenCalledWith('n8n-instance-agent');
+		expect(mockAgentInstances[0]?.tool).toHaveBeenCalledTimes(1);
+		expect(
+			JSON.stringify([
+				mockAgentInstances[0]?.model.mock.calls,
+				mockAgentInstances[0]?.instructions.mock.calls,
+				mockAgentInstances[0]?.tool.mock.calls,
+				mockAgentInstances[0]?.checkpoint.mock.calls,
+			]),
+		).not.toContain('should-be-ignored');
 	});
 });

@@ -1,17 +1,18 @@
+import type { PlannedTaskGraph } from '../../types';
+import { PlannedTaskStorage } from '../planned-task-storage';
+import { patchThread, type PatchableThreadMemory } from '../thread-patch';
+import type * as ThreadPatch from '../thread-patch';
+
 jest.mock('../thread-patch', () => {
 	const actual =
 		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		jest.requireActual<typeof import('../thread-patch')>('../thread-patch');
+		jest.requireActual<typeof ThreadPatch>('../thread-patch');
 
 	return {
 		...actual,
 		patchThread: jest.fn(),
 	};
 });
-
-import type { PlannedTaskGraph } from '../../types';
-import { PlannedTaskStorage } from '../planned-task-storage';
-import { patchThread, type PatchableThreadMemory } from '../thread-patch';
 
 const mockedPatchThread = jest.mocked(patchThread);
 type TestMemory = PatchableThreadMemory & { getThreadById: jest.Mock };
@@ -61,7 +62,7 @@ describe('PlannedTaskStorage', () => {
 	describe('get() kind parsing', () => {
 		it('round-trips a graph containing a checkpoint task', async () => {
 			const graph = makeGraph();
-			(memory.getThreadById as jest.Mock).mockResolvedValue({
+			memory.getThreadById.mockResolvedValue({
 				metadata: { instanceAiPlannedTasks: graph },
 			});
 
@@ -75,7 +76,7 @@ describe('PlannedTaskStorage', () => {
 		});
 
 		it('returns null when the stored graph has an unknown kind', async () => {
-			(memory.getThreadById as jest.Mock).mockResolvedValue({
+			memory.getThreadById.mockResolvedValue({
 				metadata: {
 					instanceAiPlannedTasks: {
 						...makeGraph(),

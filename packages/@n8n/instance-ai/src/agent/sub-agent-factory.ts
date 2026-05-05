@@ -1,11 +1,10 @@
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
+import { Agent, type CheckpointStore } from '@n8n/agents';
 
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
-import type { InstanceAiTraceRun, ModelConfig } from '../types';
+import type { InstanceAiToolRegistry, InstanceAiTraceRun, ModelConfig } from '../types';
 
 export interface SubAgentOptions {
 	/** Unique ID for this sub-agent instance (e.g., "agent-V1StGX") */
@@ -15,9 +14,11 @@ export interface SubAgentOptions {
 	/** Task-specific system prompt written by the orchestrator */
 	instructions: string;
 	/** Validated subset of domain tools */
-	tools: ToolsInput;
+	tools: InstanceAiToolRegistry;
 	/** Model config (same as orchestrator) */
 	modelId: ModelConfig;
+	/** Native checkpoint store for HITL/suspend state. */
+	checkpointStore?: CheckpointStore;
 	/** Optional trace run to annotate with the sub-agent's static config */
 	traceRun?: InstanceAiTraceRun;
 	/** IANA time zone for the current user — used to render the datetime section so
@@ -59,23 +60,19 @@ ${instructions}`;
 }
 
 export function createSubAgent(options: SubAgentOptions): Agent {
-	const { agentId, role, instructions, tools, modelId, traceRun, timeZone } = options;
+	const { role, instructions, tools, modelId, traceRun, timeZone } = options;
 
 	const systemPrompt = buildSubAgentPrompt(role, instructions, timeZone);
 
-	const agent = new Agent({
-		id: agentId,
-		name: `Sub-Agent: ${role}`,
-		instructions: {
-			role: 'system' as const,
-			content: systemPrompt,
+	const agent = new Agent(`Sub-Agent: ${role}`)
+		.model(modelId)
+		.instructions(systemPrompt, {
 			providerOptions: {
 				anthropic: { cacheControl: { type: 'ephemeral' } },
 			},
-		},
-		model: modelId,
-		tools,
-	});
+		})
+		.tool(Object.values(tools))
+		.checkpoint(options.checkpointStore ?? 'memory');
 
 	mergeTraceRunInputs(
 		traceRun,

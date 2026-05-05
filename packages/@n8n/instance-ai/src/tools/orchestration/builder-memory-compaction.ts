@@ -10,7 +10,7 @@ interface BuilderMemoryBinding {
 }
 
 interface BuilderMemoryStorageProvider {
-	getStore(storeName: string): Promise<unknown> | unknown;
+	getStore(storeName: string): unknown;
 }
 
 interface BuilderMemoryCompactionContext {

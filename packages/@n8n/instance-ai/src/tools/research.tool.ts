@@ -1,7 +1,7 @@
 /**
  * Consolidated research tool — web-search + fetch-url.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -81,7 +81,10 @@ async function handleWebSearch(
 async function handleFetchUrl(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'fetch-url' }>,
-	ctx: { agent?: { resumeData?: unknown; suspend?: unknown } },
+	ctx: {
+		resumeData: z.infer<typeof domainGatingResumeSchema> | undefined;
+		suspend: (payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<never>;
+	},
 ) {
 	if (!context.webResearchService) {
 		return {
@@ -94,10 +97,7 @@ async function handleFetchUrl(
 		};
 	}
 
-	const resumeData = ctx?.agent?.resumeData as z.infer<typeof domainGatingResumeSchema> | undefined;
-	const suspend = ctx?.agent?.suspend as
-		| ((payload: z.infer<typeof domainGatingSuspendSchema>) => Promise<void>)
-		| undefined;
+	const resumeData = ctx.resumeData;
 
 	// ── Resume path: apply user's domain decision ──────────────────
 	if (resumeData !== undefined && resumeData !== null) {
@@ -144,15 +144,7 @@ async function handleFetchUrl(
 					contentLength: 0,
 				};
 			}
-			await suspend?.(check.suspendPayload!);
-			return {
-				url: input.url,
-				finalUrl: input.url,
-				title: '',
-				content: '',
-				truncated: false,
-				contentLength: 0,
-			};
+			return await ctx.suspend(check.suspendPayload!);
 		}
 	}
 
@@ -185,19 +177,18 @@ async function handleFetchUrl(
 // ── Tool factory ────────────────────────────────────────────────────────────
 
 export function createResearchTool(context: InstanceAiContext) {
-	return createTool({
-		id: 'research',
-		description: 'Search the web or fetch page content.',
-		inputSchema,
-		suspendSchema: domainGatingSuspendSchema,
-		resumeSchema: domainGatingResumeSchema,
-		execute: async (input: Input, ctx) => {
+	return new Tool('research')
+		.description('Search the web or fetch page content.')
+		.input(inputSchema)
+		.suspend(domainGatingSuspendSchema)
+		.resume(domainGatingResumeSchema)
+		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'web-search':
 					return await handleWebSearch(context, input);
 				case 'fetch-url':
 					return await handleFetchUrl(context, input, ctx);
 			}
-		},
-	});
+		})
+		.build();
 }

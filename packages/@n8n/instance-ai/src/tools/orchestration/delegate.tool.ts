@@ -1,5 +1,4 @@
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 
 import { delegateInputSchema, delegateOutputSchema, type DelegateInput } from './delegate.schemas';
@@ -13,7 +12,6 @@ import {
 	withTraceContextActor,
 	withTraceRun,
 } from './tracing-utils';
-import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
@@ -21,7 +19,7 @@ import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import { getTraceParentRun, withTraceParentContext } from '../../tracing/langsmith-tracing';
-import type { OrchestrationContext } from '../../types';
+import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
 const FORBIDDEN_TOOL_NAMES = new Set(['plan', 'create-tasks', 'delegate']);
 
@@ -39,9 +37,9 @@ function buildRoleKey(role: string): string {
 function resolveDelegateTools(
 	context: OrchestrationContext,
 	toolNames: string[],
-): { validTools: ToolsInput; errors: string[] } {
+): { validTools: InstanceAiToolRegistry; errors: string[] } {
 	const errors: string[] = [];
-	const validTools: ToolsInput = {};
+	const validTools: InstanceAiToolRegistry = {};
 	const availableMcpTools = context.mcpTools ?? {};
 
 	for (const name of toolNames) {
@@ -172,15 +170,15 @@ export async function startDetachedDelegateTask(
 					modelId: context.modelId,
 					traceRun: traceContext?.actorRun,
 					timeZone: context.timeZone,
+					checkpointStore: context.checkpointStore,
 				});
-
-				registerWithMastra(subAgentId, subAgent, context.storage);
 
 				const traceParent = getTraceParentRun();
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
+					const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
 					const stream = await subAgent.stream(briefingMessage, {
-						maxSteps: context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK,
+						maxIterations,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -190,11 +188,7 @@ export async function startDetachedDelegateTask(
 
 					const result = await consumeStreamWithHitl({
 						agent: subAgent,
-						stream: stream as {
-							runId?: string;
-							fullStream: AsyncIterable<unknown>;
-							text: Promise<string>;
-						},
+						stream,
 						runId: context.runId,
 						agentId: subAgentId,
 						eventBus: context.eventBus,
@@ -205,6 +199,7 @@ export async function startDetachedDelegateTask(
 						drainCorrections,
 						waitForCorrection,
 						llmStepTraceHooks,
+						maxIterations,
 					});
 
 					return await result.text;
@@ -255,17 +250,17 @@ export async function startDetachedDelegateTask(
 }
 
 export function createDelegateTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'delegate',
-		description:
+	return new Tool('delegate')
+		.description(
 			'Spawn a focused sub-agent to handle a specific subtask. Specify the ' +
-			'role, a task-specific system prompt, the tool subset needed, and a ' +
-			'detailed briefing. The sub-agent executes independently and returns ' +
-			'a synthesized result. Use for complex multi-step operations that ' +
-			'benefit from a clean context window.',
-		inputSchema: delegateInputSchema,
-		outputSchema: delegateOutputSchema,
-		execute: async (input: DelegateInput) => {
+				'role, a task-specific system prompt, the tool subset needed, and a ' +
+				'detailed briefing. The sub-agent executes independently and returns ' +
+				'a synthesized result. Use for complex multi-step operations that ' +
+				'benefit from a clean context window.',
+		)
+		.input(delegateInputSchema)
+		.output(delegateOutputSchema)
+		.handler(async (input: DelegateInput) => {
 			if (input.tools.length === 0) {
 				return { result: 'Delegation failed: "tools" must contain at least one tool name' };
 			}
@@ -316,9 +311,8 @@ export function createDelegateTool(context: OrchestrationContext) {
 					modelId: context.modelId,
 					traceRun,
 					timeZone: context.timeZone,
+					checkpointStore: context.checkpointStore,
 				});
-
-				registerWithMastra(subAgentId, subAgent, context.storage);
 
 				const briefingMessage = await buildDelegateBriefing(
 					context,
@@ -333,8 +327,9 @@ export function createDelegateTool(context: OrchestrationContext) {
 					const traceParent = getTraceParentRun();
 					return await withTraceParentContext(traceParent, async () => {
 						const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
+						const maxIterations = context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK;
 						const stream = await subAgent.stream(briefingMessage, {
-							maxSteps: context.subAgentMaxSteps ?? MAX_STEPS.DELEGATE_FALLBACK,
+							maxIterations,
 							abortSignal: context.abortSignal,
 							providerOptions: {
 								anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -344,11 +339,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 						return await consumeStreamWithHitl({
 							agent: subAgent,
-							stream: stream as {
-								runId?: string;
-								fullStream: AsyncIterable<unknown>;
-								text: Promise<string>;
-							},
+							stream,
 							runId: context.runId,
 							agentId: subAgentId,
 							eventBus: context.eventBus,
@@ -357,6 +348,7 @@ export function createDelegateTool(context: OrchestrationContext) {
 							abortSignal: context.abortSignal,
 							waitForConfirmation: context.waitForConfirmation,
 							llmStepTraceHooks,
+							maxIterations,
 						});
 					});
 				});
@@ -420,6 +412,6 @@ export function createDelegateTool(context: OrchestrationContext) {
 
 				return { result: `Sub-agent error: ${errorMessage}` };
 			}
-		},
-	});
+		})
+		.build();
 }

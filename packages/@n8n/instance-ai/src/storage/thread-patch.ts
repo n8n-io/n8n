@@ -48,7 +48,7 @@ function isPatchableThreadStore(store: unknown): store is PatchableThreadStore &
 
 function hasNativeThreadMethods(memory: PatchableThreadMemory): memory is {
 	getThread: (threadId: string) => Promise<ThreadRecord | null>;
-	saveThread: (thread: ThreadRecord) => Promise<ThreadRecord | void>;
+	saveThread: (thread: ThreadRecord) => Promise<ThreadRecord | undefined>;
 } {
 	return typeof memory.getThread === 'function' && typeof memory.saveThread === 'function';
 }

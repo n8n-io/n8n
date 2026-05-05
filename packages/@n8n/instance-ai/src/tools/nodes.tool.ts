@@ -1,7 +1,7 @@
 /**
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -355,31 +355,31 @@ export function createNodesTool(
 
 		type OrchestratorInput = z.infer<typeof orchestratorInputSchema>;
 
-		return createTool({
-			id: 'nodes',
-			description:
+		return new Tool('nodes')
+			.description(
 				"Read node type definitions or query real resources for a node's RLC parameters " +
-				'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
-				'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
-				'`explore-resources` with the real method name and a credential.',
-			inputSchema: orchestratorInputSchema,
-			execute: async (input: OrchestratorInput) => {
+					'(e.g. list Google Sheets, OpenAI models, Slack channels). Use `type-definition` ' +
+					'first to read `@searchListMethod` / `@loadOptionsMethod` annotations, then ' +
+					'`explore-resources` with the real method name and a credential.',
+			)
+			.input(orchestratorInputSchema)
+			.handler(async (input: OrchestratorInput) => {
 				switch (input.action) {
 					case 'type-definition':
 						return await handleTypeDefinition(context, input);
 					case 'explore-resources':
 						return await handleExploreResources(context, input);
 				}
-			},
-		});
+			})
+			.build();
 	}
 
-	return createTool({
-		id: 'nodes',
-		description:
+	return new Tool('nodes')
+		.description(
 			'Work with n8n node types — discover, search, describe, get type definitions, and explore real resources.',
-		inputSchema: fullInputSchema,
-		execute: async (input: FullInput) => {
+		)
+		.input(fullInputSchema)
+		.handler(async (input: FullInput) => {
 			switch (input.action) {
 				case 'list':
 					return await handleList(context, input);
@@ -394,6 +394,6 @@ export function createNodesTool(
 				case 'explore-resources':
 					return await handleExploreResources(context, input);
 			}
-		},
-	});
+		})
+		.build();
 }

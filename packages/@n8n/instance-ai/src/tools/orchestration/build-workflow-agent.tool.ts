@@ -7,9 +7,7 @@
  * - Tool mode (fallback): agent uses build-workflow tool with string-based code
  */
 
-import { Agent } from '@mastra/core/agent';
-import type { ToolsInput } from '@mastra/core/agent';
-import { createTool } from '@mastra/core/tools';
+import { Agent, Tool } from '@n8n/agents';
 import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { createHash, randomUUID } from 'node:crypto';
@@ -27,10 +25,8 @@ import {
 	withTraceContextActor,
 } from './tracing-utils';
 import { createVerifyBuiltWorkflowTool } from './verify-built-workflow.tool';
-import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { TEMPERATURE } from '../../constants/model-settings';
 import type { Logger } from '../../logger';
 import type { BuilderSandboxSession } from '../../runtime/builder-sandbox-session-registry';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
@@ -41,7 +37,12 @@ import {
 	mergeTraceRunInputs,
 	withTraceParentContext,
 } from '../../tracing/langsmith-tracing';
-import type { BackgroundTaskResult, InstanceAiContext, OrchestrationContext } from '../../types';
+import type {
+	BackgroundTaskResult,
+	InstanceAiContext,
+	InstanceAiToolRegistry,
+	OrchestrationContext,
+} from '../../types';
 import { SDK_IMPORT_STATEMENT } from '../../workflow-builder/extract-code';
 import {
 	createRemediation,
@@ -89,32 +90,6 @@ export function buildWarmBuilderFollowUp(input: {
 
 	parts.push('', '<requested-change>', input.task, '</requested-change>', '</builder-follow-up>');
 	return parts.join('\n');
-}
-
-async function ensureBuilderMemoryThread(
-	context: OrchestrationContext,
-	binding: BuilderMemoryBinding,
-): Promise<boolean> {
-	if (!context.memory) return false;
-
-	try {
-		const existingThread = await context.memory.getThreadById({ threadId: binding.thread });
-		if (existingThread) return true;
-
-		const now = new Date();
-		await context.memory.saveThread({
-			thread: {
-				id: binding.thread,
-				resourceId: binding.resource,
-				title: 'Workflow Builder',
-				createdAt: now,
-				updatedAt: now,
-			},
-		});
-		return true;
-	} catch {
-		return false;
-	}
 }
 
 /**
@@ -609,7 +584,7 @@ export async function startBuildWorkflowAgentTask(
 	const domainContext = context.domainContext;
 	const useSandbox = !!factory && !!domainContext;
 
-	let builderTools: ToolsInput;
+	let builderTools: InstanceAiToolRegistry;
 	let prompt = BUILDER_AGENT_PROMPT;
 	let credMap: CredentialMap | undefined;
 
@@ -874,25 +849,18 @@ export async function startBuildWorkflowAgentTask(
 								builderTools,
 								'workflow-builder',
 							);
-							const shouldUseBuilderMemory = activeBuilderSession
-								? await ensureBuilderMemoryThread(context, builderMemoryBinding)
-								: false;
+							const shouldUseBuilderMemory = false;
 
-							const subAgent = new Agent({
-								id: subAgentId,
-								name: 'Workflow Builder Agent',
-								instructions: {
-									role: 'system' as const,
-									content: prompt,
+							const subAgent = new Agent('Workflow Builder Agent')
+								.model(context.modelId)
+								.instructions(prompt, {
 									providerOptions: {
 										anthropic: { cacheControl: { type: 'ephemeral' } },
 									},
-								},
-								model: context.modelId,
-								tools: tracedBuilderTools,
-								workspace: workspace as never,
-								memory: shouldUseBuilderMemory ? context.memory : undefined,
-							});
+								})
+								.tool(Object.values(tracedBuilderTools))
+								.workspace(workspace)
+								.checkpoint(context.checkpointStore ?? 'memory');
 							mergeTraceRunInputs(
 								traceContext?.actorRun,
 								buildAgentTraceInputs({
@@ -902,42 +870,28 @@ export async function startBuildWorkflowAgentTask(
 								}),
 							);
 
-							registerWithMastra(subAgentId, subAgent, context.storage);
-
 							const traceParent = getTraceParentRun();
 							let finalText: string;
 							try {
 								const hitlResult = await withTraceParentContext(traceParent, async () => {
 									const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 									const resumeOptions: Record<string, unknown> = {
-										modelSettings: { temperature: TEMPERATURE.BUILDER },
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
 										},
-										...(shouldUseBuilderMemory
-											? { memory: builderMemoryBinding, savePerStep: true }
-											: {}),
 									};
 									const stream = await subAgent.stream(briefing, {
-										maxSteps: MAX_STEPS.BUILDER,
+										maxIterations: MAX_STEPS.BUILDER,
 										abortSignal: signal,
-										modelSettings: { temperature: TEMPERATURE.BUILDER },
 										providerOptions: {
 											anthropic: { cacheControl: { type: 'ephemeral' } },
 										},
-										...(shouldUseBuilderMemory
-											? { memory: builderMemoryBinding, savePerStep: true }
-											: {}),
 										...(llmStepTraceHooks?.executionOptions ?? {}),
 									});
 
 									return await consumeStreamWithHitl({
 										agent: subAgent,
-										stream: stream as {
-											runId?: string;
-											fullStream: AsyncIterable<unknown>;
-											text: Promise<string>;
-										},
+										stream,
 										runId: context.runId,
 										agentId: subAgentId,
 										eventBus: context.eventBus,
@@ -948,7 +902,7 @@ export async function startBuildWorkflowAgentTask(
 										drainCorrections,
 										waitForCorrection,
 										llmStepTraceHooks,
-										maxSteps: MAX_STEPS.BUILDER,
+										maxIterations: MAX_STEPS.BUILDER,
 										resumeOptions,
 									});
 								});
@@ -1024,15 +978,14 @@ export async function startBuildWorkflowAgentTask(
 								// Builder edited the file after its last submit — auto-re-submit
 								// instead of discarding the agent's work.
 								const submitTool = tracedBuilderTools['submit-workflow'];
-								if (submitTool && 'execute' in submitTool) {
-									const resubmit = await (
-										submitTool as {
-											execute: (args: Record<string, unknown>) => Promise<SubmitWorkflowOutput>;
-										}
-									).execute({
-										filePath: mainWorkflowPath,
-										workflowId: mainWorkflowAttempt.workflowId,
-									});
+								if (submitTool?.handler) {
+									const resubmit = (await submitTool.handler(
+										{
+											filePath: mainWorkflowPath,
+											workflowId: mainWorkflowAttempt.workflowId,
+										},
+										{},
+									)) as SubmitWorkflowOutput;
 
 									const refreshedAttempt = attemptFromAutoResubmit({
 										latestAttempt: submitAttempts.get(mainWorkflowPath),
@@ -1153,19 +1106,15 @@ export async function startBuildWorkflowAgentTask(
 							'workflow-builder',
 						);
 
-						const subAgent = new Agent({
-							id: subAgentId,
-							name: 'Workflow Builder Agent',
-							instructions: {
-								role: 'system' as const,
-								content: prompt,
+						const subAgent = new Agent('Workflow Builder Agent')
+							.model(context.modelId)
+							.instructions(prompt, {
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
-							},
-							model: context.modelId,
-							tools: tracedBuilderTools,
-						});
+							})
+							.tool(Object.values(tracedBuilderTools))
+							.checkpoint(context.checkpointStore ?? 'memory');
 						mergeTraceRunInputs(
 							traceContext?.actorRun,
 							buildAgentTraceInputs({
@@ -1175,21 +1124,17 @@ export async function startBuildWorkflowAgentTask(
 							}),
 						);
 
-						registerWithMastra(subAgentId, subAgent, context.storage);
-
 						const traceParent = getTraceParentRun();
 						const hitlResult = await withTraceParentContext(traceParent, async () => {
 							const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 							const resumeOptions: Record<string, unknown> = {
-								modelSettings: { temperature: TEMPERATURE.BUILDER },
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
 							};
 							const stream = await subAgent.stream(briefing, {
-								maxSteps: MAX_STEPS.BUILDER,
+								maxIterations: MAX_STEPS.BUILDER,
 								abortSignal: signal,
-								modelSettings: { temperature: TEMPERATURE.BUILDER },
 								providerOptions: {
 									anthropic: { cacheControl: { type: 'ephemeral' } },
 								},
@@ -1198,11 +1143,7 @@ export async function startBuildWorkflowAgentTask(
 
 							return await consumeStreamWithHitl({
 								agent: subAgent,
-								stream: stream as {
-									runId?: string;
-									fullStream: AsyncIterable<unknown>;
-									text: Promise<string>;
-								},
+								stream,
 								runId: context.runId,
 								agentId: subAgentId,
 								eventBus: context.eventBus,
@@ -1213,7 +1154,7 @@ export async function startBuildWorkflowAgentTask(
 								drainCorrections,
 								waitForCorrection,
 								llmStepTraceHooks,
-								maxSteps: MAX_STEPS.BUILDER,
+								maxIterations: MAX_STEPS.BUILDER,
 								resumeOptions,
 							});
 						});
@@ -1377,25 +1318,24 @@ async function resolveWorkflowNameForEditConfirmation(
 }
 
 export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'build-workflow-with-agent',
-		description:
+	return new Tool('build-workflow-with-agent')
+		.description(
 			'Build or modify an n8n workflow using a specialized builder agent. ' +
-			'The agent handles node discovery, schema lookups, code generation, and validation internally. ' +
-			'For edits to an existing workflow, call directly with `bypassPlan: true`, the existing `workflowId`, and a one-sentence `reason` — the orchestrator runs a lightweight verify afterwards. ' +
-			'For new workflows, multi-workflow builds, or data-table schema changes, go through `plan` — ' +
-			'a runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups, because those paths need the orchestrator-run checkpoint for end-to-end verification.',
-		inputSchema: buildWorkflowAgentInputSchema,
-		outputSchema: z.object({
-			result: z.string(),
-			taskId: z.string(),
-		}),
-		suspendSchema: buildWorkflowAgentSuspendSchema,
-		resumeSchema: buildWorkflowAgentResumeSchema,
-		execute: async (
-			input: z.infer<typeof buildWorkflowAgentInputSchema>,
-			ctx?: { agent?: { resumeData?: unknown; suspend?: unknown } },
-		) => {
+				'The agent handles node discovery, schema lookups, code generation, and validation internally. ' +
+				'For edits to an existing workflow, call directly with `bypassPlan: true`, the existing `workflowId`, and a one-sentence `reason` — the orchestrator runs a lightweight verify afterwards. ' +
+				'For new workflows, multi-workflow builds, or data-table schema changes, go through `plan` — ' +
+				'a runtime guard rejects direct calls without `bypassPlan: true` outside replan/checkpoint follow-ups, because those paths need the orchestrator-run checkpoint for end-to-end verification.',
+		)
+		.input(buildWorkflowAgentInputSchema)
+		.output(
+			z.object({
+				result: z.string(),
+				taskId: z.string(),
+			}),
+		)
+		.suspend(buildWorkflowAgentSuspendSchema)
+		.resume(buildWorkflowAgentResumeSchema)
+		.handler(async (input, ctx) => {
 			const isPostPlanFollowUpRun = isPostPlanFollowUp(context);
 			if (isBuildViaPlanGuardEnabled() && !isPostPlanFollowUpRun) {
 				if (!input.bypassPlan) {
@@ -1453,12 +1393,7 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 					context.domainContext.aiCreatedWorkflowIds?.has(input.workflowId) ?? false;
 
 				if (!isOwnInFlightWorkflow) {
-					const resumeData = ctx?.agent?.resumeData as
-						| z.infer<typeof buildWorkflowAgentResumeSchema>
-						| undefined;
-					const suspend = ctx?.agent?.suspend as
-						| ((payload: z.infer<typeof buildWorkflowAgentSuspendSchema>) => Promise<void>)
-						| undefined;
+					const resumeData = ctx.resumeData;
 					const needsApproval = updateWorkflowPermission !== 'always_allow';
 
 					if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -1467,12 +1402,11 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 							input.workflowId,
 						);
 						const reason = input.reason?.trim();
-						await suspend?.({
+						return await ctx.suspend({
 							requestId: nanoid(),
 							message: `Edit existing workflow "${workflowName}" (ID: ${input.workflowId})?${reason ? ` Reason: ${reason}` : ''}`,
 							severity: 'warning',
 						});
-						return { result: '', taskId: '' };
 					}
 
 					if (resumeData !== undefined && resumeData !== null && !resumeData.approved) {
@@ -1483,6 +1417,6 @@ export function createBuildWorkflowAgentTool(context: OrchestrationContext) {
 
 			const result = await startBuildWorkflowAgentTask(context, input);
 			return { result: result.result, taskId: result.taskId };
-		},
-	});
+		})
+		.build();
 }

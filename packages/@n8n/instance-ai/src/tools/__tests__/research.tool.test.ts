@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 
+import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import { createResearchTool } from '../research.tool';
 
@@ -54,7 +55,8 @@ describe('research tool', () => {
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'n8n docs' },
 				{} as never,
 			);
@@ -72,7 +74,8 @@ describe('research tool', () => {
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'web-search' as const,
 					query: 'stripe api',
@@ -103,7 +106,8 @@ describe('research tool', () => {
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test' },
 				{} as never,
 			);
@@ -134,7 +138,8 @@ describe('research tool', () => {
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test' },
 				{} as never,
 			);
@@ -165,7 +170,8 @@ describe('research tool', () => {
 			context.webResearchService!.search = jest.fn().mockResolvedValue(searchResponse);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test' },
 				{} as never,
 			);
@@ -182,7 +188,8 @@ describe('research tool', () => {
 			const context = createMockContext({ webResearchService: undefined });
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'test query' },
 				{} as never,
 			);
@@ -196,7 +203,8 @@ describe('research tool', () => {
 			});
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'web-search' as const, query: 'no search' },
 				{} as never,
 			);
@@ -223,7 +231,8 @@ describe('research tool', () => {
 			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -255,7 +264,8 @@ describe('research tool', () => {
 			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -273,7 +283,8 @@ describe('research tool', () => {
 			const context = createMockContext({ webResearchService: undefined });
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -302,7 +313,8 @@ describe('research tool', () => {
 			});
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://unknown-site.com/page' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -327,7 +339,8 @@ describe('research tool', () => {
 			});
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -354,7 +367,8 @@ describe('research tool', () => {
 			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx() as never,
 			);
@@ -384,7 +398,8 @@ describe('research tool', () => {
 			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_once' },
@@ -408,7 +423,8 @@ describe('research tool', () => {
 			});
 
 			const tool = createResearchTool(context);
-			const result = await tool.execute!(
+			const result = await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: false },
@@ -443,7 +459,8 @@ describe('research tool', () => {
 			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_domain' },
@@ -474,7 +491,8 @@ describe('research tool', () => {
 			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://example.com' },
 				createAgentCtx({
 					resumeData: { approved: true, domainAccessAction: 'allow_all' },
@@ -506,7 +524,8 @@ describe('research tool', () => {
 
 			const suspendFn = jest.fn();
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{ action: 'fetch-url' as const, url: 'https://trusted.com' },
 				createAgentCtx({ suspend: suspendFn }) as never,
 			);
@@ -530,7 +549,8 @@ describe('research tool', () => {
 			context.webResearchService!.fetchUrl = jest.fn().mockResolvedValue(fetchedPage);
 
 			const tool = createResearchTool(context);
-			await tool.execute!(
+			await executeTool(
+				tool,
 				{
 					action: 'fetch-url' as const,
 					url: 'https://example.com',

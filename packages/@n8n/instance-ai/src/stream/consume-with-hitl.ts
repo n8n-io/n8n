@@ -3,13 +3,13 @@ import type { Logger } from '../logger';
 import {
 	type LlmStepTraceHooks,
 	executeResumableStream,
-	type ResumableStreamSource,
+	normalizeStreamSource,
 } from '../runtime/resumable-stream-executor';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 
 export interface ConsumeWithHitlOptions {
 	agent: unknown;
-	stream: ResumableStreamSource & { text: Promise<string> };
+	stream: unknown;
 	runId: string;
 	agentId: string;
 	eventBus: InstanceAiEventBus;
@@ -23,8 +23,8 @@ export interface ConsumeWithHitlOptions {
 	 *  Used to unblock HITL suspensions when a correction arrives mid-confirmation. */
 	waitForCorrection?: () => Promise<void>;
 	llmStepTraceHooks?: LlmStepTraceHooks;
-	/** Max steps for the agent — passed to resumeStream so resumed streams keep the same limit. */
-	maxSteps?: number;
+	/** Max iterations for the agent — passed to resumeStream so resumed streams keep the same limit. */
+	maxIterations?: number;
 	/** Additional options to preserve when resuming a suspended stream. */
 	resumeOptions?: Record<string, unknown>;
 }
@@ -51,9 +51,10 @@ export async function consumeStreamWithHitl(
 		throw new Error('Sub-agent tool requires confirmation but no HITL handler is available');
 	}
 
+	const stream = normalizeStreamSource(options.stream);
 	const result = await executeResumableStream({
 		agent: options.agent,
-		stream: options.stream,
+		stream,
 		context: {
 			threadId: options.threadId,
 			runId: options.runId,
@@ -67,12 +68,12 @@ export async function consumeStreamWithHitl(
 			waitForConfirmation: options.waitForConfirmation,
 			drainCorrections: options.drainCorrections,
 			waitForCorrection: options.waitForCorrection,
-			...(options.maxSteps
+			...(options.maxIterations
 				? {
 						buildResumeOptions: ({ agentRunId, suspension }) => ({
 							runId: agentRunId,
 							toolCallId: suspension.toolCallId,
-							maxSteps: options.maxSteps,
+							maxIterations: options.maxIterations,
 							...(options.resumeOptions ?? {}),
 						}),
 					}
@@ -81,5 +82,8 @@ export async function consumeStreamWithHitl(
 		llmStepTraceHooks: options.llmStepTraceHooks,
 	});
 
-	return { text: result.text ?? options.stream.text, workSummary: result.workSummary };
+	return {
+		text: result.text ?? stream.text ?? Promise.resolve(''),
+		workSummary: result.workSummary,
+	};
 }

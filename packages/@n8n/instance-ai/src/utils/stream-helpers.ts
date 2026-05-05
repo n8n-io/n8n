@@ -59,12 +59,14 @@ export async function resumeStream(
 		throw new Error('Agent does not support stream resume');
 	}
 
-	if (typeof agent.resumeStream === 'function') {
-		return await agent.resumeStream(data, options);
+	const resumable = asResumable(agent);
+
+	if (typeof resumable.resumeStream === 'function') {
+		return await resumable.resumeStream(data, options);
 	}
 
-	if (typeof agent.resume === 'function') {
-		return await agent.resume('stream', data, options);
+	if (typeof resumable.resume === 'function') {
+		return await resumable.resume('stream', data, options);
 	}
 
 	throw new Error('Agent does not support stream resume');
