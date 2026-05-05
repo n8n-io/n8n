@@ -1,9 +1,11 @@
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import axios from 'axios';
 import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
+import { createResultError, createResultOk } from 'n8n-workflow';
 
 import { WorkflowsController } from '../workflows.controller';
 
@@ -11,6 +13,8 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { ProjectService } from '@/services/project.service.ee';
+import { SsrfBlockedIpError } from '@/services/ssrf/ssrf-blocked-ip.error';
+import type { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 
 jest.mock('axios');
 
@@ -21,10 +25,15 @@ describe('WorkflowsController', () => {
 	const res = mock<Response>();
 	const projectService = mock<ProjectService>();
 	const logger = mock<Logger>();
+	const ssrfConfig = { enabled: false } as SsrfProtectionConfig;
+	const ssrfProtectionService = mock<SsrfProtectionService>();
 
 	beforeEach(() => {
 		controller.projectService = projectService;
 		controller.logger = logger;
+		controller.ssrfConfig = ssrfConfig;
+		controller.ssrfProtectionService = ssrfProtectionService;
+		ssrfConfig.enabled = false;
 		jest.clearAllMocks();
 	});
 
@@ -121,6 +130,85 @@ describe('WorkflowsController', () => {
 
 				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
 				expect(axiosMock).toHaveBeenCalledWith(query.url);
+			});
+		});
+
+		describe('when URL protection is enabled', () => {
+			const mockLookup = jest.fn();
+
+			beforeEach(() => {
+				ssrfConfig.enabled = true;
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
+				ssrfProtectionService.validateUrl.mockResolvedValue(createResultOk(undefined));
+				ssrfProtectionService.createSecureLookup.mockReturnValue(mockLookup);
+			});
+
+			it('should validate URL before fetching', async () => {
+				const mockWorkflowData = { nodes: [], connections: {} };
+				axiosMock.mockResolvedValue({ data: mockWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+				await controller.getFromUrl(req, res, query);
+
+				expect(ssrfProtectionService.validateUrl).toHaveBeenCalledWith(query.url);
+				expect(ssrfProtectionService.createSecureLookup).toHaveBeenCalled();
+				expect(axiosMock).toHaveBeenCalledWith(
+					query.url,
+					expect.objectContaining({
+						lookup: mockLookup,
+						beforeRedirect: expect.any(Function),
+					}),
+				);
+			});
+
+			it('should reject requests to restricted addresses', async () => {
+				ssrfProtectionService.validateUrl.mockResolvedValue(
+					createResultError(new SsrfBlockedIpError('127.0.0.1')),
+				);
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'http://127.0.0.1/workflow.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(SsrfBlockedIpError);
+				expect(axiosMock).not.toHaveBeenCalled();
+			});
+
+			it('should propagate blocked errors from redirects', async () => {
+				const ssrfError = new SsrfBlockedIpError('10.0.0.1');
+				const axiosError = new Error('Request failed', {
+					cause: new Error('Redirected request failed', { cause: ssrfError }),
+				});
+				axiosMock.mockRejectedValue(axiosError);
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(SsrfBlockedIpError);
+			});
+		});
+
+		describe('when URL protection is disabled', () => {
+			it('should not validate URL', async () => {
+				ssrfConfig.enabled = false;
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
+				const mockWorkflowData = { nodes: [], connections: {} };
+				axiosMock.mockResolvedValue({ data: mockWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+				await controller.getFromUrl(req, res, query);
+
+				expect(ssrfProtectionService.validateUrl).not.toHaveBeenCalled();
+				expect(ssrfProtectionService.createSecureLookup).not.toHaveBeenCalled();
 			});
 		});
 	});

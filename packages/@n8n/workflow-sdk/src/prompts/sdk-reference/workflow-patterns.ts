@@ -35,7 +35,18 @@ const fetchData = node({
 const processData = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Data', parameters: {} }
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'processed-title', name: 'processedTitle', value: expr('{{ $json.title }}'), type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 // 2. Compose workflow
@@ -255,7 +266,18 @@ const fetchRecords = node({
 const finalizeResults = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Finalize', parameters: {} }
+  config: {
+    name: 'Finalize',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'processed-at', name: 'processedAt', value: expr('{{ $now.toISO() }}'), type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 const processRecord = node({
@@ -288,7 +310,18 @@ const webhookTrigger = trigger({
 const processWebhook = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Webhook', parameters: {} }
+  config: {
+    name: 'Process Webhook',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'source', name: 'source', value: 'webhook', type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 const scheduleTrigger = trigger({
@@ -300,7 +333,18 @@ const scheduleTrigger = trigger({
 const processSchedule = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Schedule', parameters: {} }
+  config: {
+    name: 'Process Schedule',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'source', name: 'source', value: 'schedule', type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 export default workflow('id', 'name')
@@ -333,7 +377,18 @@ const scheduleTrigger = trigger({
 const processData = node({
   type: 'n8n-nodes-base.set',
   version: 3.4,
-  config: { name: 'Process Data', parameters: {} }
+  config: {
+    name: 'Process Data',
+    parameters: {
+      mode: 'manual',
+      includeOtherFields: true,
+      assignments: {
+        assignments: [
+          { id: 'received-at', name: 'receivedAt', value: expr('{{ $now.toISO() }}'), type: 'string' }
+        ]
+      }
+    }
+  }
 });
 
 const sendNotification = node({

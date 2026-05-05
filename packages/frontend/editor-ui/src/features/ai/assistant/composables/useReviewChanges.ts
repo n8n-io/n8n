@@ -351,12 +351,12 @@ export function useReviewChanges() {
 		}
 
 		const sourceWorkflow = {
-			...workflowsStore.workflow,
+			...workflowDocumentStore.value.getSnapshot(),
 			nodes: sourceNodes,
 			connections: sourceConnections,
 		};
 		const targetWorkflow = {
-			...workflowsStore.workflow,
+			...workflowDocumentStore.value.getSnapshot(),
 			nodes: targetCached.nodes,
 			connections: targetCached.connections,
 		};
