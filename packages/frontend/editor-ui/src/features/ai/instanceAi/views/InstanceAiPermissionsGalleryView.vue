@@ -135,7 +135,7 @@ const multiStepQuestions: QuestionItem[] = [
 interface ActionExample {
 	key: string;
 	caption: string; // section caption — short noun phrase
-	toolLabel: string; // monospace prefix (matches getToolLabel output)
+	toolId: string; // raw backend tool identifier, used as monospace preview prefix
 	actionPhrase: string; // imperative phrase used in the bold heading prompt
 	message: string; // backend confirmation message (split at "?")
 	severity?: 'destructive';
@@ -154,7 +154,7 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'createWorkflow',
 		caption: 'Create workflow',
-		toolLabel: 'Submitting workflow',
+		toolId: 'submit-workflow',
 		actionPhrase: 'create workflow',
 		message:
 			'Create workflow "GitHub issue notifier"? Builds a workflow that listens for new issues in a GitHub repo and posts a summary to a Slack channel.',
@@ -162,7 +162,7 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'updateWorkflow',
 		caption: 'Update workflow',
-		toolLabel: 'Submitting workflow',
+		toolId: 'submit-workflow',
 		actionPhrase: 'update workflow',
 		message:
 			'Update workflow "Lead enrichment" (ID: gfQpXk3yL2)? Adds a Set node before the HTTP Request to coerce email to lower case.',
@@ -170,21 +170,21 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'runWorkflow',
 		caption: 'Run workflow',
-		toolLabel: 'Running workflow',
+		toolId: 'executions.run',
 		actionPhrase: 'run workflow',
 		message: 'Execute workflow "Lead enrichment" (ID: gfQpXk3yL2)?',
 	},
 	{
 		key: 'publishWorkflow',
 		caption: 'Publish workflow',
-		toolLabel: 'Publishing workflow',
+		toolId: 'workflows.publish',
 		actionPhrase: 'publish workflow',
 		message: 'Publish workflow "Daily digest" (ID: 7nB2sR4pQ8)?',
 	},
 	{
 		key: 'deleteWorkflow',
 		caption: 'Archive workflow',
-		toolLabel: 'Archiving workflow',
+		toolId: 'workflows.delete',
 		actionPhrase: 'archive workflow',
 		message:
 			'Archive workflow "Old onboarding flow" (ID: 4hT8vM2kJ1)? This will deactivate it if needed and can be undone later.',
@@ -193,7 +193,7 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'deleteCredential',
 		caption: 'Delete credential',
-		toolLabel: 'Deleting credential',
+		toolId: 'credentials.delete',
 		actionPhrase: 'delete credential',
 		message: 'Delete credential "Stale Slack token"? This cannot be undone.',
 		severity: 'destructive',
@@ -201,14 +201,14 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'createFolder',
 		caption: 'Create folder',
-		toolLabel: 'Creating folder',
+		toolId: 'workspace.create-folder',
 		actionPhrase: 'create folder',
 		message: 'Create folder "Marketing" in project "personal-tuukka"?',
 	},
 	{
 		key: 'deleteFolder',
 		caption: 'Delete folder',
-		toolLabel: 'Deleting folder',
+		toolId: 'workspace.delete-folder',
 		actionPhrase: 'delete folder',
 		message: 'Delete folder "Archived"? Its 4 workflows will be moved to the project root.',
 		severity: 'destructive',
@@ -216,21 +216,21 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'moveWorkflowToFolder',
 		caption: 'Move workflow to folder',
-		toolLabel: 'Moving workflow to folder',
+		toolId: 'workspace.move-workflow-to-folder',
 		actionPhrase: 'move workflow to folder',
 		message: 'Move workflow "Lead enrichment" to folder "Marketing"?',
 	},
 	{
 		key: 'tagWorkflow',
 		caption: 'Tag workflow',
-		toolLabel: 'Tagging workflow',
+		toolId: 'workspace.tag-workflow',
 		actionPhrase: 'tag workflow',
 		message: 'Tag workflow "Lead enrichment" (ID: gfQpXk3yL2) with [production, customer-data]?',
 	},
 	{
 		key: 'createDataTable',
 		caption: 'Create data table',
-		toolLabel: 'Creating data table',
+		toolId: 'data-tables.create',
 		actionPhrase: 'create data table',
 		message:
 			'Create data table "leads"? Columns: email (string), source (string), score (number), created_at (datetime).',
@@ -238,14 +238,14 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'mutateDataTableSchema',
 		caption: 'Modify data table schema',
-		toolLabel: 'Adding table column',
+		toolId: 'data-tables.add-column',
 		actionPhrase: 'add a table column',
 		message: 'Add column "enriched_at" (datetime) to data table "leads"?',
 	},
 	{
 		key: 'mutateDataTableRows',
 		caption: 'Modify data table rows',
-		toolLabel: 'Updating rows',
+		toolId: 'data-tables.update-rows',
 		actionPhrase: 'update table rows',
 		message:
 			'Update rows in data table "leads"? Set status = "archived" where created_at < 2025-01-01.',
@@ -253,7 +253,7 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'cleanupTestExecutions',
 		caption: 'Clean up test executions',
-		toolLabel: 'Cleaning up test executions',
+		toolId: 'workspace.cleanup-test-executions',
 		actionPhrase: 'clean up test executions',
 		message: 'Delete test executions for workflow "Lead enrichment" older than 168 hour(s)?',
 		severity: 'destructive',
@@ -261,7 +261,7 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'readFilesystem',
 		caption: 'Read filesystem',
-		toolLabel: 'Reading file',
+		toolId: 'filesystem.read',
 		actionPhrase: 'read a file',
 		message:
 			'Read file "/Users/tuukka/Documents/leads.csv"? Opens the file to extract a contact list for the workflow.',
@@ -270,7 +270,7 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'fetchUrl',
 		caption: 'Fetch URL',
-		toolLabel: 'Fetching page',
+		toolId: 'research.fetch-url',
 		actionPhrase: 'fetch a URL',
 		// Real fetchUrl flows actually surface as DomainAccessApproval (see
 		// the section below). The generic-approval shape shown here is for
@@ -283,7 +283,7 @@ const actionExamples: ActionExample[] = [
 	{
 		key: 'restoreWorkflowVersion',
 		caption: 'Restore workflow version',
-		toolLabel: 'Restoring workflow version',
+		toolId: 'workflows.restore-version',
 		actionPhrase: 'restore a workflow version',
 		message: 'Restore workflow to version 2026-04-15? This will overwrite the current draft.',
 		severity: 'destructive',
@@ -355,10 +355,10 @@ function logPlanRequestChanges(feedback: string) {
 				<N8nHeading size="large" bold>Generic approval</N8nHeading>
 				<N8nText color="text-light" tag="p">
 					Used when a sub-agent wants to call a tool that mutates state. The bold heading is a
-					unified "Allow AI Assistant to {action}?" prompt; the monospace preview leads with the
-					tool's "-ing" label and adds the headline of the backend message, with any trailing
-					commentary shown below. Non-destructive actions get an "Always allow" option; destructive
-					ones don't.
+					unified "Allow AI Assistant to {action}?" prompt; the monospace preview leads with the raw
+					tool identifier (e.g. <code>workflows.delete</code>) and adds the headline of the backend
+					message, with any trailing commentary shown below. Non-destructive actions get an "Always
+					allow" option; destructive ones don't.
 				</N8nText>
 			</div>
 
@@ -371,7 +371,7 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>{{ allowPrompt('update a workflow') }}</N8nText>
-							<ConfirmationPreview tool="Submitting workflow">
+							<ConfirmationPreview tool="submit-workflow">
 								Update workflow "Lead enrichment" (ID: gfQpXk3yL2)
 							</ConfirmationPreview>
 							<N8nText :class="$style.commentary" size="small">
@@ -404,7 +404,7 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>{{ allowPrompt('archive a workflow') }}</N8nText>
-							<ConfirmationPreview tool="Archiving workflow">
+							<ConfirmationPreview tool="workflows.delete">
 								Archive workflow "Old onboarding flow" (ID: 4hT8vM2kJ1)
 							</ConfirmationPreview>
 							<N8nText :class="$style.commentary" size="small">
@@ -437,7 +437,7 @@ function logPlanRequestChanges(feedback: string) {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>{{ allowPrompt('tag a workflow') }}</N8nText>
-									<ConfirmationPreview tool="Tagging workflow">
+									<ConfirmationPreview tool="workspace.tag-workflow">
 										Tag workflow "Lead enrichment" (ID: gfQpXk3yL2) with [production, customer-data]
 									</ConfirmationPreview>
 								</div>
@@ -465,7 +465,7 @@ function logPlanRequestChanges(feedback: string) {
 									<N8nText size="large" bold>{{
 										allowPrompt('move a workflow to a folder')
 									}}</N8nText>
-									<ConfirmationPreview tool="Moving workflow to folder">
+									<ConfirmationPreview tool="workspace.move-workflow-to-folder">
 										Move workflow "Lead enrichment" to folder "Marketing"
 									</ConfirmationPreview>
 								</div>
@@ -478,7 +478,7 @@ function logPlanRequestChanges(feedback: string) {
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>{{ allowPrompt('publish a workflow') }}</N8nText>
-									<ConfirmationPreview tool="Publishing workflow">
+									<ConfirmationPreview tool="workflows.publish">
 										Publish workflow "Lead enrichment" (ID: gfQpXk3yL2)
 									</ConfirmationPreview>
 								</div>
@@ -521,7 +521,7 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>{{ allowPrompt(example.actionPhrase) }}</N8nText>
-							<ConfirmationPreview :tool="example.toolLabel">
+							<ConfirmationPreview :tool="example.toolId">
 								{{ splitMessage(example.message).headline }}
 							</ConfirmationPreview>
 							<N8nText

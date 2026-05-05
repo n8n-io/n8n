@@ -15,7 +15,7 @@ import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
-import { useToolLabel } from '../toolLabels';
+import { getToolId, useToolLabel } from '../toolLabels';
 
 type ApprovalAction = 'allow_once' | 'always_allow';
 
@@ -467,7 +467,7 @@ function handlePlanRequestChanges(
 										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
 									</N8nText>
 									<ConfirmationPreview
-										:tool="getToolLabel(item.toolCall.toolName, item.toolCall.args)"
+										:tool="getToolId(item.toolCall.toolName, item.toolCall.args)"
 									>
 										{{ splitConfirmationMessage(item.toolCall.confirmation!.message).headline }}
 									</ConfirmationPreview>

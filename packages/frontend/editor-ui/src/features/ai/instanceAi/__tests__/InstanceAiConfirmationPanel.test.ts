@@ -42,6 +42,10 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('../toolLabels', () => ({
 	useToolLabel: () => ({ getToolLabel: (name: string) => name }),
+	getToolId: (name: string, args?: Record<string, unknown>) => {
+		const action = typeof args?.action === 'string' ? args.action : undefined;
+		return action ? `${name}.${action}` : name;
+	},
 }));
 
 // Stub heavy child components

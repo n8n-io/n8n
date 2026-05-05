@@ -35,6 +35,17 @@ export function getToolIcon(toolName: string): IconName {
 }
 
 /**
+ * Returns the raw tool identifier as backend code sees it — the tool name
+ * joined with its action when present, e.g. `workflows.delete`,
+ * `data-tables.add-column`. Used as the technical prefix in approval cards
+ * so the user can see exactly which tool is about to run.
+ */
+export function getToolId(toolName: string, args?: Record<string, unknown>): string {
+	const action = typeof args?.action === 'string' ? args.action : undefined;
+	return action ? `${toolName}.${action}` : toolName;
+}
+
+/**
  * Returns a human-readable display label for an instance AI tool name.
  * Falls back to the raw tool name if no mapping exists in i18n.
  */
