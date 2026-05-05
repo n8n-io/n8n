@@ -58,6 +58,14 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.CUSTOM_ROLES);
 	}
 
+	isDynamicCredentialsLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
+	}
+
+	isPersonalSpacePolicyLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}
@@ -98,6 +106,10 @@ export class LicenseState {
 		return this.isLicensed('feat:aiCredits');
 	}
 
+	isAiGatewayLicensed() {
+		return this.isLicensed('feat:aiGateway');
+	}
+
 	isAdvancedExecutionFiltersLicensed() {
 		return this.isLicensed('feat:advancedExecutionFilters');
 	}
@@ -128,10 +140,6 @@ export class LicenseState {
 
 	isExternalSecretsLicensed() {
 		return this.isLicensed('feat:externalSecrets');
-	}
-
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed('feat:workflowHistory');
 	}
 
 	isAPIDisabled() {
@@ -178,8 +186,12 @@ export class LicenseState {
 		return this.isLicensed('feat:workflowDiffs');
 	}
 
+	isDataRedactionLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DATA_REDACTION);
+	}
+
 	isProvisioningLicensed() {
-		return this.isLicensed(['feat:saml', 'feat:oidc', 'feat:ldap']);
+		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
 	// --------------------

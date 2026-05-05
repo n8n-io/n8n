@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useCredentialsStore } from '../credentials.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { useI18n } from '@n8n/i18n';
 
 import { N8nButton, N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
@@ -37,6 +37,11 @@ onMounted(async () => {
 		}
 	}, 0);
 });
+
+// Exclude purpose built credentials for ChatHub
+const selectableCredentialTypes = computed(() =>
+	credentialsStore.allCredentialTypes.filter((c) => !c.name.startsWith('chatHub')),
+);
 
 function onSelect(type: string) {
 	selected.value = type;
@@ -92,7 +97,7 @@ function openCredentialType() {
 						<N8nIcon icon="search" />
 					</template>
 					<N8nOption
-						v-for="credential in credentialsStore.allCredentialTypes"
+						v-for="credential in selectableCredentialTypes"
 						:key="credential.name"
 						:value="credential.name"
 						:label="credential.displayName"

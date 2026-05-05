@@ -4,8 +4,10 @@ import type { DataTableColumn } from '../data-table-column.entity';
 import {
 	addColumnQuery,
 	deleteColumnQuery,
+	isValidColumnName,
 	normalizeRows,
 	normalizeValueForDatabase,
+	quoteIdentifier,
 	toSqliteGlobFromPercent,
 } from '../utils/sql-utils';
 
@@ -217,24 +219,6 @@ describe('sql-utils', () => {
 
 			expect(query).toBe('ALTER TABLE "data_table_user_abc" ADD "email" DOUBLE PRECISION');
 		});
-
-		it('should generate a valid SQL query for adding columns to a table, mysql', () => {
-			const tableName = 'data_table_user_abc';
-			const column = { name: 'email', type: 'number' as const };
-
-			const query = addColumnQuery(tableName, column, 'mysql');
-
-			expect(query).toBe('ALTER TABLE `data_table_user_abc` ADD `email` DOUBLE');
-		});
-
-		it('should generate a valid SQL query for adding columns to a table, mariadb', () => {
-			const tableName = 'data_table_user_abc';
-			const column = { name: 'email', type: 'number' as const };
-
-			const query = addColumnQuery(tableName, column, 'mariadb');
-
-			expect(query).toBe('ALTER TABLE `data_table_user_abc` ADD `email` DOUBLE');
-		});
 	});
 
 	describe('deleteColumnQuery', () => {
@@ -266,8 +250,6 @@ describe('sql-utils', () => {
 			it.each([
 				['sqlite', '2024-01-15 10:30:00.123'],
 				['sqlite-pooled', '2024-01-15 10:30:00.123'],
-				['mysql', '2024-01-15 10:30:00.123'],
-				['mariadb', '2024-01-15 10:30:00.123'],
 				['postgres', '2024-01-15T10:30:00.123Z'],
 			] as const)('should format Date object for %s', (dbType, expected) => {
 				const result = normalizeValueForDatabase(
@@ -282,8 +264,6 @@ describe('sql-utils', () => {
 			it.each([
 				['sqlite', '2024-01-15 10:30:00.123'],
 				['sqlite-pooled', '2024-01-15 10:30:00.123'],
-				['mysql', '2024-01-15 10:30:00.123'],
-				['mariadb', '2024-01-15 10:30:00.123'],
 				['postgres', '2024-01-15T10:30:00.123Z'],
 			] as const)('should format ISO date string for %s', (dbType, expected) => {
 				const result = normalizeValueForDatabase('2024-01-15T10:30:00.123Z', 'date', dbType);
@@ -351,6 +331,52 @@ describe('sql-utils', () => {
 		it('should keep regular characters unchanged', () => {
 			expect(toSqliteGlobFromPercent('abc123')).toBe('abc123');
 			expect(toSqliteGlobFromPercent('test_value')).toBe('test_value');
+		});
+	});
+
+	describe('quoteIdentifier', () => {
+		it('should wrap name in double quotes for postgres', () => {
+			expect(quoteIdentifier('column', 'postgres')).toBe('"column"');
+		});
+
+		it('should wrap name in double quotes for sqlite', () => {
+			expect(quoteIdentifier('column', 'sqlite')).toBe('"column"');
+		});
+
+		it('should escape embedded double quotes by doubling them', () => {
+			expect(quoteIdentifier('col"umn', 'postgres')).toBe('"col""umn"');
+			expect(quoteIdentifier('col"umn', 'sqlite')).toBe('"col""umn"');
+		});
+
+		it('should escape multiple embedded double quotes', () => {
+			expect(quoteIdentifier('a"b"c', 'postgres')).toBe('"a""b""c"');
+		});
+
+		it('should handle a name that is only a double quote', () => {
+			expect(quoteIdentifier('"', 'postgres')).toBe('""""');
+		});
+	});
+
+	describe('isValidColumnName', () => {
+		it('should accept valid column names', () => {
+			expect(isValidColumnName('name')).toBe(true);
+			expect(isValidColumnName('column1')).toBe(true);
+			expect(isValidColumnName('my_column')).toBe(true);
+		});
+
+		it('should reject names starting with a number', () => {
+			expect(isValidColumnName('1column')).toBe(false);
+		});
+
+		it('should reject names with special characters', () => {
+			expect(isValidColumnName('col"umn')).toBe(false);
+			expect(isValidColumnName('col;umn')).toBe(false);
+			expect(isValidColumnName('col umn')).toBe(false);
+			expect(isValidColumnName("col'umn")).toBe(false);
+		});
+
+		it('should reject empty string', () => {
+			expect(isValidColumnName('')).toBe(false);
 		});
 	});
 });

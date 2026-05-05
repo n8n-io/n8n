@@ -15,7 +15,7 @@ export class OpenAi extends VersionedNodeType {
 			name: 'openAi',
 			icon: { light: 'file:openAi.svg', dark: 'file:openAi.dark.svg' },
 			group: ['transform'],
-			defaultVersion: 2,
+			defaultVersion: 2.3,
 			subtitle: `={{(${prettifyOperation})($parameter.resource, $parameter.operation)}}`,
 			description: 'Message an assistant or GPT, analyze images, generate audio, etc.',
 			codex: {
@@ -42,6 +42,20 @@ export class OpenAi extends VersionedNodeType {
 					],
 				},
 			},
+			builderHint: {
+				message:
+					'For text generation, reasoning and tools, use AI Agent with OpenAI Chat Model. This OpenAI node is for specialized operations: image generation (DALL-E), audio (Whisper, TTS), and video generation (Sora).',
+				relatedNodes: [
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.agent',
+						relationHint: 'Prefer for most LLM tasks',
+					},
+					{
+						nodeType: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+						relationHint: 'Prefer for most LLM tasks',
+					},
+				],
+			},
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
@@ -55,6 +69,9 @@ export class OpenAi extends VersionedNodeType {
 			1.7: new OpenAiV1(baseDescription),
 			1.8: new OpenAiV1(baseDescription),
 			2: new OpenAiV2(baseDescription),
+			2.1: new OpenAiV2(baseDescription),
+			2.2: new OpenAiV2(baseDescription),
+			2.3: new OpenAiV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

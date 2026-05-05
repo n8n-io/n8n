@@ -69,6 +69,7 @@ describe('evaluateAgentPrompt', () => {
 		expect(result.violations).toHaveLength(1);
 		expect(result.violations[0]).toEqual({
 			type: 'major',
+			name: expect.any(String),
 			description:
 				'Agent node "AI Agent" has no expression in its prompt field. This likely means it failed to use chatInput or dynamic context',
 			pointsDeducted: 20,
@@ -162,6 +163,51 @@ describe('evaluateAgentPrompt', () => {
 					position: [0, 0],
 					parameters: {
 						promptType: 'auto',
+						text: 'This would normally trigger a violation',
+					},
+				},
+			],
+			connections: {},
+		});
+
+		const result = evaluateAgentPrompt(workflow);
+
+		expect(result.violations).toHaveLength(0);
+	});
+	it('should not check agent nodes with promptType set to guardrails', () => {
+		const workflow = mock<SimpleWorkflow>({
+			nodes: [
+				{
+					id: '1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {
+						promptType: 'guardrails',
+						text: 'This would normally trigger a violation',
+					},
+				},
+			],
+			connections: {},
+		});
+
+		const result = evaluateAgentPrompt(workflow);
+
+		expect(result.violations).toHaveLength(0);
+	});
+
+	it('should not check agent nodes with promptType set to guardrails', () => {
+		const workflow = mock<SimpleWorkflow>({
+			nodes: [
+				{
+					id: '1',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {
+						promptType: 'guardrails',
 						text: 'This would normally trigger a violation',
 					},
 				},

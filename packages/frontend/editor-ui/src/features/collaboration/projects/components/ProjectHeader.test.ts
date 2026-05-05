@@ -8,12 +8,15 @@ import ProjectHeader from './ProjectHeader.vue';
 import { useProjectsStore } from '../projects.store';
 import type { Project } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { mock } from 'vitest-mock-extended';
+import type { IUser } from '@n8n/rest-api-client';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -76,6 +79,7 @@ let projectsStore: ReturnType<typeof mockedStore<typeof useProjectsStore>>;
 let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 let projectPages: ReturnType<typeof useProjectPages>;
+let usersStore: ReturnType<typeof mockedStore<typeof useUsersStore>>;
 
 describe('ProjectHeader', () => {
 	beforeEach(() => {
@@ -83,6 +87,7 @@ describe('ProjectHeader', () => {
 		route = router.useRoute();
 		projectsStore = mockedStore(useProjectsStore);
 		settingsStore = mockedStore(useSettingsStore);
+		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		projectPages = useProjectPages();
 
@@ -163,6 +168,22 @@ describe('ProjectHeader', () => {
 		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
 	});
 
+	it('Personal: should render the correct title when currentProject is null but personalProject exists', async () => {
+		settingsStore.isDataTableFeatureEnabled = false;
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+		const { getByTestId, rerender } = renderComponent();
+		const personalSubtitle = 'Workflows and credentials owned by you';
+
+		projectsStore.currentProject = null;
+		projectsStore.personalProject = { type: ProjectTypes.Personal } as Project;
+
+		await rerender({});
+
+		expect(getByTestId('project-name')).toHaveTextContent('Personal');
+		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
+	});
+
 	it('Team project: should render the correct title and no subtitle if there is no description', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
@@ -212,7 +233,7 @@ describe('ProjectHeader', () => {
 		);
 	});
 
-	it('should render ProjectTabs without Settings if no project update permission', () => {
+	it('should render ProjectTabs without Settings if no project update or externalSecretsProvider:read permission', () => {
 		route.params.projectId = '123';
 		projectsStore.currentProject = createTestProject({
 			scopes: ['project:read'],
@@ -222,6 +243,21 @@ describe('ProjectHeader', () => {
 		expect(projectTabsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
 				'show-settings': false,
+			}),
+			null,
+		);
+	});
+
+	it('should render ProjectTabs Settings if project editor has externalSecretsProvider:read scope', () => {
+		route.params.projectId = '123';
+		projectsStore.currentProject = createTestProject({
+			scopes: ['project:read', 'externalSecretsProvider:read', 'externalSecretsProvider:list'],
+		});
+		renderComponent();
+
+		expect(projectTabsSpy).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'show-settings': true,
 			}),
 			null,
 		);
@@ -526,6 +562,40 @@ describe('ProjectHeader', () => {
 					},
 				}),
 			);
+		});
+
+		it('should enable variable create button if project scope allows it', () => {
+			const project = createTestProject({
+				scopes: ['projectVariable:create'],
+			});
+			projectsStore.currentProject = project;
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(getByTestId('add-resource-variable')).toBeInTheDocument();
+			expect(getByTestId('add-resource-variable')).toBeEnabled();
+		});
+
+		it('should enable create variable button if global scope allows it', () => {
+			usersStore.currentUser = mock<IUser>({
+				globalScopes: ['variable:create'],
+			});
+
+			const { getByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(getByTestId('add-resource-variable')).toBeInTheDocument();
+			expect(getByTestId('add-resource-variable')).toBeEnabled();
+		});
+
+		it('should not enable variable create button if no scope allows it', () => {
+			const project = createTestProject({
+				scopes: [],
+			});
+			projectsStore.currentProject = project;
+
+			const { queryByTestId } = renderComponent({ props: { mainButton: 'variable' } });
+
+			expect(queryByTestId('add-resource-variable')).toBeDisabled();
 		});
 	});
 });

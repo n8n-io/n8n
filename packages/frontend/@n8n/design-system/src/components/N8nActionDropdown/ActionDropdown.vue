@@ -8,12 +8,15 @@
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref, useCssModule, useAttrs, computed } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
 import { type IconName } from '../N8nIcon/icons';
 import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
+
+const { t } = useI18n();
 
 const TRIGGER = ['click', 'hover'] as const;
 
@@ -104,12 +107,12 @@ defineExpose({ open, close });
 		>
 			<slot v-if="$slots.activator" name="activator" />
 			<N8nIconButton
+				variant="ghost"
 				v-else
-				type="tertiary"
-				text
 				:class="$style.activator"
 				:size="activatorSize"
 				:icon="activatorIcon"
+				:aria-label="t('actionDropdown.activator')"
 				@blur="onButtonBlur"
 			/>
 

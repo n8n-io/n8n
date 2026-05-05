@@ -81,10 +81,10 @@ const scrollRight = () => scroll(50);
 		]"
 	>
 		<div v-if="scrollPosition > 0" :class="$style.back" @click="scrollLeft">
-			<N8nIcon icon="chevron-left" size="small" />
+			<N8nIcon :class="$style.positionIcon" icon="chevron-left" size="small" />
 		</div>
 		<div v-if="canScrollRight" :class="$style.next" @click="scrollRight">
-			<N8nIcon icon="chevron-right" size="small" />
+			<N8nIcon :class="$style.positionIcon" icon="chevron-right" size="small" />
 		</div>
 		<div ref="tabs" :class="$style.tabs">
 			<div
@@ -279,7 +279,7 @@ const scrollRight = () => scroll(50);
 
 .button {
 	position: absolute;
-	background-color: var(--tabs--arrow-buttons--color, var(--color--background));
+	background-color: var(--tabs--arrow-buttons--color, var(--color--foreground--tint-2));
 	z-index: 1;
 	height: 24px;
 	width: 10px;
@@ -320,5 +320,9 @@ const scrollRight = () => scroll(50);
 	composes: tab;
 	composes: button;
 	right: 0;
+}
+
+.positionIcon {
+	flex-shrink: 0;
 }
 </style>

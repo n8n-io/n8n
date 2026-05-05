@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
+import type { TagEntity, ICredentialsDb } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
@@ -7,9 +7,11 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
+	WorkflowHistory,
+	WorkflowPublishHistory,
 } from '@n8n/db';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
 import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -21,6 +23,10 @@ import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 
 @Service()
 export class ImportService {
@@ -40,8 +46,8 @@ export class ImportService {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = DEFAULT;',
-			postgresql: 'SET session_replication_role = DEFAULT;',
+			postgres: 'SET session_replication_role = ORIGIN;',
+			postgresql: 'SET session_replication_role = ORIGIN;',
 		},
 	};
 
@@ -52,6 +58,8 @@ export class ImportService {
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
 		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly workflowIndexService: WorkflowIndexService,
+		private readonly dataTableDDLService: DataTableDDLService,
 	) {}
 
 	async initRecords() {
@@ -59,8 +67,29 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
+	async importWorkflows(workflows: IWorkflowWithVersionMetadata[], projectId: string) {
 		await this.initRecords();
+
+		const { manager: dbManager } = this.credentialsRepository;
+
+		// Check existence and active status of all workflows
+		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
+		const existingWorkflowIds = new Set<string>();
+		const activeVersionIdByWorkflow = new Map<string, string>();
+
+		if (workflowIds.length > 0) {
+			const existingWorkflows = await dbManager.find(WorkflowEntity, {
+				where: { id: In(workflowIds) },
+				select: ['id', 'activeVersionId'],
+			});
+
+			for (const { id, activeVersionId } of existingWorkflows) {
+				existingWorkflowIds.add(id);
+				if (activeVersionId !== null) {
+					activeVersionIdByWorkflow.set(id, activeVersionId);
+				}
+			}
+		}
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -71,32 +100,46 @@ export class ImportService {
 
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
-			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
+			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-			if (workflow.id) {
+			// Only remove if the workflow already exists in the database and is active
+			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
 				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
 
-		const { manager: dbManager } = this.credentialsRepository;
+		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
 		await dbManager.transaction(async (tx) => {
-			for (const workflow of workflows) {
-				if (workflow.active) {
-					workflow.active = false;
+			const workflowsNeedingPublishHistory: Array<{ workflowId: string; versionId: string }> = [];
 
+			// Upsert all workflows
+			for (const workflow of workflows) {
+				// Always generate a new versionId on import to ensure proper history ordering
+				workflow.versionId = uuid();
+
+				// Always deactivate workflows on import - they need to be manually activated later
+				// Store the old activeVersionId to record the deactivation of the old version
+				const oldActiveVersionId = workflow.id ? activeVersionIdByWorkflow.get(workflow.id) : null;
+				if (oldActiveVersionId || workflow.activeVersionId || workflow.active) {
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}
-
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
+				workflow.active = false;
+				workflow.activeVersionId = null;
 
 				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
+				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
+
+				// Only add publish history if workflow was previously active
+				if (oldActiveVersionId) {
+					workflowsNeedingPublishHistory.push({ workflowId, versionId: oldActiveVersionId });
+				}
 
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
+				if (!existingWorkflowIds.has(workflow.id)) {
 					await tx.upsert(
 						SharedWorkflow,
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
@@ -115,12 +158,43 @@ export class ImportService {
 					]);
 				}
 			}
+
+			// Always create workflow history for the current version
+			// This is needed to be able to activate the workflow later
+			for (const workflow of insertedWorkflows) {
+				const versionMetadata = workflow.versionMetadata;
+				await tx.insert(WorkflowHistory, {
+					versionId: workflow.versionId,
+					workflowId: workflow.id,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					authors: 'import',
+					name: versionMetadata?.name ?? null,
+					description: versionMetadata?.description ?? null,
+				});
+			}
+
+			// Add publish history records for workflows that were deactivated
+			for (const { workflowId, versionId } of workflowsNeedingPublishHistory) {
+				await tx.insert(WorkflowPublishHistory, {
+					workflowId,
+					versionId,
+					event: 'deactivated',
+					userId: null,
+				});
+			}
 		});
+
+		// Directly update the index for the important workflows, since they don't generate
+		// workflow-update events during import.
+		for (const workflow of insertedWorkflows) {
+			await this.workflowIndexService.updateIndexForDraft(workflow);
+		}
 	}
 
-	async replaceInvalidCreds(workflow: IWorkflowBase) {
+	async replaceInvalidCreds(workflow: IWorkflowBase, projectId: string) {
 		try {
-			await replaceInvalidCredentials(workflow);
+			await replaceInvalidCredentials(workflow, projectId);
 		} catch (e) {
 			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
@@ -247,15 +321,19 @@ export class ImportService {
 	/**
 	 * Read and parse JSONL file content
 	 * @param filePath - Path to the JSONL file
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Array of parsed entity objects
 	 */
-	async readEntityFile(filePath: string): Promise<Array<Record<string, unknown>>> {
+	async readEntityFile(
+		filePath: string,
+		customEncryptionKey?: string,
+	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
 		const entities: Record<string, unknown>[] = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {
-			const lines = this.cipher.decrypt(block).split(/\r?\n/);
+			const lines = (await this.cipher.decryptV2(block, customEncryptionKey)).split(/\r?\n/);
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -292,14 +370,40 @@ export class ImportService {
 		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
-	async importEntities(inputDir: string, truncateTables: boolean) {
+	async importEntities(
+		inputDir: string,
+		truncateTables: boolean,
+		keyFilePath?: string,
+		skipMigrationChecks = false,
+		skipTogglingForeignKeyConstraints = false,
+	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
+		// Read custom encryption key from file if provided
+		let customEncryptionKey: string | undefined;
+		if (keyFilePath) {
+			try {
+				const keyFileContent = await readFile(keyFilePath, 'utf8');
+				customEncryptionKey = keyFileContent.trim();
+				this.logger.info(`🔑 Using custom encryption key from: ${keyFilePath}`);
+			} catch (error) {
+				throw new Error(
+					`Failed to read encryption key file at ${keyFilePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				);
+			}
+		}
+
 		await this.decompressEntitiesZip(inputDir);
-		await this.validateMigrations(inputDir);
+		if (!skipMigrationChecks) {
+			await this.validateMigrations(inputDir, customEncryptionKey);
+		} else {
+			this.logger.info('⏭️  Skipping migration validation checks');
+		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			await this.disableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.disableForeignKeyConstraints(transactionManager);
+			}
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
@@ -308,6 +412,10 @@ export class ImportService {
 
 			if (truncateTables) {
 				this.logger.info('\n🗑️  Truncating tables before import...');
+
+				// Drop dynamic data-table user tables first; once the registry is
+				// truncated we have no way to enumerate them.
+				await this.dropExistingDataTableUserTables(transactionManager);
 
 				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
 
@@ -328,9 +436,21 @@ export class ImportService {
 			}
 
 			// Import entities from the specified directory
-			await this.importEntitiesFromFiles(inputDir, transactionManager, entityNames, entityFiles);
+			await this.importEntitiesFromFiles(
+				inputDir,
+				transactionManager,
+				entityNames,
+				entityFiles,
+				customEncryptionKey,
+			);
 
-			await this.enableForeignKeyConstraints(transactionManager);
+			// After the data_table / data_table_column registry rows are imported,
+			// recreate the dynamic backing tables (empty) so the imported tables work.
+			await this.recreateDataTableUserTablesFromRegistry(transactionManager);
+
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.enableForeignKeyConstraints(transactionManager);
+			}
 		});
 
 		// Cleanup decompressed files after import
@@ -351,6 +471,7 @@ export class ImportService {
 	 * @param transactionManager - TypeORM transaction manager
 	 * @param entityNames - Array of entity names to import
 	 * @param entityFiles - Record of entity names to their file paths
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves when all entities are imported
 	 */
 	async importEntitiesFromFiles(
@@ -358,6 +479,7 @@ export class ImportService {
 		transactionManager: EntityManager,
 		entityNames: string[],
 		entityFiles: Record<string, string[]>,
+		customEncryptionKey?: string,
 	): Promise<void> {
 		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
 
@@ -393,18 +515,22 @@ export class ImportService {
 					files.map(async (filePath) => {
 						this.logger.info(`   📁 Reading file: ${filePath}`);
 
-						const entities: Array<Record<string, unknown>> = await this.readEntityFile(filePath);
+						const entities: Array<Record<string, unknown>> = await this.readEntityFile(
+							filePath,
+							customEncryptionKey,
+						);
 						this.logger.info(`      Found ${entities.length} entities`);
 
 						await Promise.all(
 							entities.map(async (entity) => {
-								const columns = Object.keys(entity);
+								const normalizedEntity = this.normalizeEntityJsonColumns(entity, entityMetadata);
+								const columns = Object.keys(normalizedEntity);
 								const columnNames = columns.map(this.dataSource.driver.escape).join(', ');
 								const columnValues = columns.map((key) => `:${key}`).join(', ');
 
 								const [query, parameters] = this.dataSource.driver.escapeQueryWithParameters(
 									`INSERT INTO ${tableName} (${columnNames}) VALUES (${columnValues})`,
-									entity,
+									normalizedEntity,
 									{},
 								);
 
@@ -447,6 +573,145 @@ export class ImportService {
 		}
 	}
 
+	/**
+	 * Normalise JSON column values to JSON strings before a raw INSERT.
+	 *
+	 * The export uses raw SQL (SELECT … FROM table) which bypasses TypeORM column
+	 * transformers entirely. As a result, json/simple-json column values differ by
+	 * source database:
+	 *   - SQLite  → stored as TEXT, so SELECT returns a plain string
+	 *   - Postgres → stored natively, so SELECT returns a parsed JS object/array
+	 *
+	 * Passing a raw string to a Postgres `json` column or a raw object to SQLite's
+	 * TEXT-backed column via a parameterised INSERT produces incorrect data. This
+	 * method normalises both cases to a JSON string, which both database drivers
+	 * accept correctly for json/simple-json columns.
+	 */
+	private normalizeEntityJsonColumns(
+		entity: Record<string, unknown>,
+		metadata: EntityMetadata,
+	): Record<string, unknown> {
+		const result = { ...entity };
+
+		for (const column of metadata.columns) {
+			const { databaseName, type } = column;
+			if (type !== 'json' && type !== 'simple-json') continue;
+
+			const value = result[databaseName];
+			if (value === null || value === undefined) continue;
+
+			if (typeof value === 'string') {
+				// SQLite exports json columns as serialised text — parse then re-serialise
+				// to canonical JSON so both SQLite and Postgres targets receive a valid string.
+				try {
+					result[databaseName] = JSON.stringify(JSON.parse(value));
+				} catch {
+					// Not a valid JSON string; leave as-is and let the DB validate on insert.
+				}
+			} else if (typeof value === 'object') {
+				// Postgres exports json columns as parsed objects — serialise for raw INSERT.
+				result[databaseName] = JSON.stringify(value);
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Drop every dynamic data-table user backing table referenced in the destination's
+	 * `data_table` registry. Called before truncating registry rows so that backing
+	 * tables don't end up orphaned.
+	 */
+	async dropExistingDataTableUserTables(transactionManager: EntityManager): Promise<void> {
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const dataTableTableName = `${tablePrefix}data_table`;
+
+		let existing: Array<{ id: string }>;
+		try {
+			existing = await transactionManager.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(dataTableTableName)}`,
+			);
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  ${dataTableTableName} registry not found, skipping dynamic-table cleanup...`,
+				{ error },
+			);
+			return;
+		}
+
+		if (existing.length === 0) return;
+
+		this.logger.info(`🗑️  Dropping ${existing.length} existing data-table backing table(s)...`);
+		for (const { id } of existing) {
+			await this.dataTableDDLService.dropTable(id, transactionManager);
+		}
+	}
+
+	/**
+	 * Recreate dynamic data-table backing tables for every entry in the imported
+	 * `data_table` registry. The export bug (ADO-5143) means archives produced
+	 * before this fix only contain registry rows; without recreating the backing
+	 * tables the imported data tables would reference tables that don't exist on
+	 * the destination.
+	 *
+	 * Tables are dropped before recreation so the operation is idempotent and
+	 * handles stale tables left over from a partially-failed prior import.
+	 */
+	async recreateDataTableUserTablesFromRegistry(transactionManager: EntityManager): Promise<void> {
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const dataTableTableName = `${tablePrefix}data_table`;
+		const dataTableColumnTableName = `${tablePrefix}data_table_column`;
+
+		let dataTables: Array<{ id: string }>;
+		try {
+			dataTables = await transactionManager.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(dataTableTableName)}`,
+			);
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  ${dataTableTableName} registry not present; skipping data-table backing-table recreation.`,
+				{ error },
+			);
+			return;
+		}
+
+		if (dataTables.length === 0) return;
+
+		const escapedColumnTable = this.dataSource.driver.escape(dataTableColumnTableName);
+		const escapedDataTableId = this.dataSource.driver.escape('dataTableId');
+		const escapedIndex = this.dataSource.driver.escape('index');
+
+		const columnRows: Array<{
+			id: string;
+			dataTableId: string;
+			name: string;
+			type: 'string' | 'number' | 'boolean' | 'date';
+			index: number;
+		}> = await transactionManager.query(
+			`SELECT id, ${escapedDataTableId}, name, type, ${escapedIndex} FROM ${escapedColumnTable}`,
+		);
+
+		const columnsByDataTableId = new Map<string, DataTableColumn[]>();
+		for (const row of columnRows) {
+			const list = columnsByDataTableId.get(row.dataTableId) ?? [];
+			list.push(transactionManager.create(DataTableColumn, row));
+			columnsByDataTableId.set(row.dataTableId, list);
+		}
+
+		this.logger.info(`\n📚 Recreating ${dataTables.length} data-table backing table(s)...`);
+
+		for (const { id: dataTableId } of dataTables) {
+			const cols = (columnsByDataTableId.get(dataTableId) ?? [])
+				.slice()
+				.sort((a, b) => a.index - b.index);
+
+			await this.dataTableDDLService.dropTable(dataTableId, transactionManager);
+			await this.dataTableDDLService.createTableWithColumns(dataTableId, cols, transactionManager);
+		}
+
+		this.logger.info(`✅ Recreated ${dataTables.length} data-table backing table(s)`);
+	}
+
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {
 		const disableCommand = this.foreignKeyCommands.disable[this.dataSource.options.type];
 
@@ -478,9 +743,10 @@ export class ImportService {
 	/**
 	 * Validates that the migrations in the import data match the target database
 	 * @param inputDir - Directory containing exported entity files
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves if migrations match, throws error if they don't
 	 */
-	async validateMigrations(inputDir: string): Promise<void> {
+	async validateMigrations(inputDir: string, customEncryptionKey?: string): Promise<void> {
 		const migrationsFilePath = safeJoinPath(inputDir, 'migrations.jsonl');
 
 		try {
@@ -494,8 +760,9 @@ export class ImportService {
 
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
-		const importMigrations = this.cipher
-			.decrypt(migrationsFileContent)
+		const importMigrations = (
+			await this.cipher.decryptV2(migrationsFileContent, customEncryptionKey)
+		)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())
@@ -551,8 +818,6 @@ export class ImportService {
 		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
 		const importName = latestImportMigration.name;
 		const dbName = latestDbMigration.name;
-		const importId = latestImportMigration.id;
-		const dbId = latestDbMigration.id;
 
 		// Check timestamp match
 		if (importTimestamp !== dbTimestamp) {
@@ -565,13 +830,6 @@ export class ImportService {
 		if (importName !== dbName) {
 			throw new Error(
 				`Migration name mismatch. Import data: ${String(importName)} does not match target database ${String(dbName)}. Cannot import data from different migration states.`,
-			);
-		}
-
-		// Check ID match (if both have IDs)
-		if (importId && dbId && importId !== dbId) {
-			throw new Error(
-				`Migration ID mismatch. Import data: ${String(importName)} (id: ${String(importId)}) does not match target database ${String(dbName)} (id: ${String(dbId)}). Cannot import data from different migration states.`,
 			);
 		}
 

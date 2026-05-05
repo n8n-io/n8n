@@ -1,0 +1,357 @@
+<script setup lang="ts">
+import type { IUpdateInformation } from '@/Interface';
+import InputTriple from '../InputTriple/InputTriple.vue';
+import ParameterInputFull from '../ParameterInputFull.vue';
+import ParameterIssues from '../ParameterIssues.vue';
+import { useI18n } from '@n8n/i18n';
+import { DateTime } from 'luxon';
+import type {
+	FilterConditionValue,
+	FilterOptionsValue,
+	INodeProperties,
+	NodeParameterValue,
+} from 'n8n-workflow';
+import { computed, nextTick, ref, watch } from 'vue';
+import { computedAsync, until } from '@vueuse/core';
+import OperatorSelect from './OperatorSelect.vue';
+import { type FilterOperatorId, DEFAULT_OPERATOR_BY_TYPE } from './constants';
+import {
+	getFilterOperator,
+	handleOperatorChange,
+	inferOperatorType,
+	isEmptyInput,
+	operatorTypeToNodeProperty,
+	resolveCondition,
+} from './utils';
+import type { ConditionResult } from './types';
+import { useDebounce } from '@/app/composables/useDebounce';
+
+import { N8nIcon, N8nIconButton, N8nTooltip } from '@n8n/design-system';
+interface Props {
+	path: string;
+	condition: FilterConditionValue;
+	options: FilterOptionsValue;
+	issues?: string[];
+	fixedLeftValue?: boolean;
+	canRemove?: boolean;
+	readOnly?: boolean;
+	index?: number;
+	canDrag?: boolean;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	issues: () => [],
+	canRemove: true,
+	fixedLeftValue: false,
+	readOnly: false,
+	index: 0,
+	canDrag: true,
+});
+
+const emit = defineEmits<{
+	update: [value: FilterConditionValue];
+	remove: [];
+}>();
+
+const i18n = useI18n();
+const { debounce } = useDebounce();
+
+const condition = ref<FilterConditionValue>(props.condition);
+
+const operatorId = computed<FilterOperatorId>(() => {
+	const { type, operation } = condition.value.operator;
+	return `${type}:${operation}` as FilterOperatorId;
+});
+const operator = computed(() => getFilterOperator(operatorId.value));
+
+const isEmpty = computed(() => {
+	if (operator.value.singleValue) {
+		return isEmptyInput(condition.value.leftValue);
+	}
+
+	return isEmptyInput(condition.value.leftValue) && isEmptyInput(condition.value.rightValue);
+});
+
+const isEvaluatingCondition = ref(false);
+const conditionResult = computedAsync<ConditionResult>(
+	async () => {
+		// Access nested properties to ensure deep change tracking
+		const currentCondition = condition.value;
+		void currentCondition.leftValue;
+		void currentCondition.rightValue;
+		void currentCondition.operator;
+		const currentOptions = props.options;
+
+		return await resolveCondition({
+			condition: currentCondition,
+			options: currentOptions,
+		});
+	},
+	{ status: 'resolve_error' },
+	{ evaluating: isEvaluatingCondition },
+);
+
+const suggestedType = computed(() => {
+	if (conditionResult.value.status !== 'resolve_error') {
+		let inferenceValue = conditionResult.value.resolved.leftValue;
+		if (inferenceValue === '') {
+			inferenceValue = conditionResult.value.resolved.rightValue;
+		}
+
+		return inferOperatorType(inferenceValue);
+	}
+
+	return 'any';
+});
+
+const allIssues = computed(() => {
+	if (conditionResult.value.status === 'validation_error' && !isEmpty.value) {
+		return [conditionResult.value.error];
+	}
+
+	return props.issues;
+});
+
+const now = computed(() => DateTime.now().toISO());
+
+const leftParameter = computed<INodeProperties>(() => ({
+	name: 'left',
+	displayName: 'Left',
+	default: '',
+	placeholder:
+		operator.value.type === 'dateTime'
+			? now.value
+			: i18n.baseText('filter.condition.placeholderLeft'),
+	...operatorTypeToNodeProperty(operator.value.type),
+}));
+
+const rightParameter = computed<INodeProperties>(() => {
+	const type = operator.value.rightType ?? operator.value.type;
+	return {
+		name: 'right',
+		displayName: 'Right',
+		default: '',
+		placeholder:
+			type === 'dateTime' ? now.value : i18n.baseText('filter.condition.placeholderRight'),
+		...operatorTypeToNodeProperty(type),
+	};
+});
+
+const debouncedEmitUpdate = debounce(() => emit('update', condition.value), { debounceTime: 500 });
+
+const onLeftValueChange = (update: IUpdateInformation): void => {
+	condition.value.leftValue = update.value as NodeParameterValue;
+	debouncedEmitUpdate();
+};
+
+const onRightValueChange = (update: IUpdateInformation): void => {
+	condition.value.rightValue = update.value as NodeParameterValue;
+	debouncedEmitUpdate();
+};
+
+const onOperatorChange = (value: string): void => {
+	const newOperator = getFilterOperator(value);
+
+	condition.value = handleOperatorChange({
+		condition: condition.value,
+		newOperator,
+	});
+
+	debouncedEmitUpdate();
+};
+
+const onRemove = (): void => {
+	emit('remove');
+};
+
+const onBlur = (): void => {
+	debouncedEmitUpdate();
+};
+
+const setSuggestedType = (): void => {
+	const type = suggestedType.value;
+
+	const newOperatorId = DEFAULT_OPERATOR_BY_TYPE[type];
+
+	if (newOperatorId) {
+		onOperatorChange(newOperatorId);
+	}
+};
+
+const onLeftValueDrop = async (droppedExpression: string): Promise<void> => {
+	condition.value.leftValue = droppedExpression;
+	// Wait for the condition result computation to complete before inferring the type
+	await nextTick();
+	await until(isEvaluatingCondition).toBe(false);
+	setSuggestedType();
+};
+
+const onRightValueDrop = async (droppedExpression: string): Promise<void> => {
+	condition.value.rightValue = droppedExpression;
+
+	// Wait for the condition result computation to complete before inferring the type
+	await nextTick();
+	await until(isEvaluatingCondition).toBe(false);
+
+	// Only auto-switch operator if the default operator for the dropped type
+	// is compatible with the right side (not single-value and right type matches)
+	const inferredType = suggestedType.value;
+	const defaultOperatorId = DEFAULT_OPERATOR_BY_TYPE[inferredType];
+
+	if (defaultOperatorId) {
+		const defaultOperator = getFilterOperator(defaultOperatorId);
+		const expectedRightType = defaultOperator.rightType ?? defaultOperator.type;
+
+		// Only switch if operator accepts a right value AND the right type matches exactly
+		if (!defaultOperator.singleValue && expectedRightType === inferredType) {
+			setSuggestedType();
+		}
+	}
+};
+
+watch(
+	() => props.condition,
+	() => {
+		condition.value = props.condition;
+	},
+);
+</script>
+
+<template>
+	<div
+		:class="{
+			[$style.wrapper]: true,
+			[$style.hasIssues]: allIssues.length > 0,
+		}"
+		data-test-id="filter-condition"
+	>
+		<N8nIconButton
+			variant="ghost"
+			v-if="canDrag && !readOnly"
+			size="small"
+			icon="grip-vertical"
+			:title="i18n.baseText('filter.dragCondition')"
+			:class="[$style.iconButton, $style.defaultTopPadding, 'drag-handle']"
+		/>
+		<N8nIconButton
+			variant="ghost"
+			v-if="canRemove && !readOnly"
+			size="small"
+			icon="trash-2"
+			data-test-id="filter-remove-condition"
+			:title="i18n.baseText('filter.removeCondition')"
+			:class="[$style.iconButton, $style.extraTopPadding]"
+			@click="onRemove"
+		/>
+		<InputTriple>
+			<template #left>
+				<ParameterInputFull
+					v-if="!fixedLeftValue"
+					display-options
+					hide-label
+					hide-hint
+					hide-issues
+					options-position="top-absolute"
+					:is-read-only="readOnly"
+					:parameter="leftParameter"
+					:value="condition.leftValue"
+					:path="`${path}.leftValue`"
+					:class="[$style.input, $style.inputLeft]"
+					data-test-id="filter-condition-left"
+					@update="onLeftValueChange"
+					@blur="onBlur"
+					@drop="onLeftValueDrop"
+				/>
+			</template>
+			<template #middle>
+				<OperatorSelect
+					:selected="`${operator.type}:${operator.operation}`"
+					:suggested-type="suggestedType"
+					:read-only="readOnly"
+					@operator-change="onOperatorChange"
+				></OperatorSelect>
+			</template>
+			<template v-if="!operator.singleValue" #right="{ isStacked }">
+				<ParameterInputFull
+					display-options
+					hide-label
+					hide-hint
+					hide-issues
+					:options-position="isStacked ? 'bottom' : 'top-absolute'"
+					:is-read-only="readOnly"
+					:parameter="rightParameter"
+					:value="condition.rightValue"
+					:path="`${path}.rightValue`"
+					:class="[$style.input, $style.inputRight]"
+					data-test-id="filter-condition-right"
+					@update="onRightValueChange"
+					@blur="onBlur"
+					@drop="onRightValueDrop"
+				/>
+			</template>
+		</InputTriple>
+
+		<div :class="$style.status">
+			<ParameterIssues v-if="allIssues.length > 0" :issues="allIssues" />
+
+			<N8nTooltip
+				v-else-if="conditionResult.status === 'success' && conditionResult.result === true"
+				:show-after="500"
+			>
+				<template #content>
+					{{ i18n.baseText('filter.condition.resolvedTrue') }}
+				</template>
+				<N8nIcon icon="circle-check" size="medium" color="text-light" />
+			</N8nTooltip>
+
+			<N8nTooltip
+				v-else-if="conditionResult.status === 'success' && conditionResult.result === false"
+				:show-after="500"
+			>
+				<template #content>
+					{{ i18n.baseText('filter.condition.resolvedFalse') }}
+				</template>
+				<N8nIcon icon="circle-x" size="medium" color="text-light" />
+			</N8nTooltip>
+		</div>
+	</div>
+</template>
+
+<style lang="scss" module>
+.wrapper {
+	position: relative;
+	display: flex;
+	align-items: flex-end;
+	gap: var(--spacing--4xs);
+
+	&.hasIssues {
+		--input--border-color: var(--color--danger);
+	}
+
+	&:hover {
+		.iconButton {
+			opacity: 1;
+		}
+	}
+}
+
+.status {
+	align-self: flex-start;
+	padding-top: var(--spacing--2xs);
+}
+
+.iconButton {
+	position: absolute;
+	left: 0;
+	opacity: 0;
+	transition: opacity 100ms ease-in;
+	color: var(--icon--color);
+}
+
+.defaultTopPadding {
+	top: 0;
+}
+.extraTopPadding {
+	top: var(--spacing--sm);
+}
+</style>

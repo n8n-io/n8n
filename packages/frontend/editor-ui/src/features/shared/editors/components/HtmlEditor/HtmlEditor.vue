@@ -24,7 +24,7 @@ import cssParser from 'prettier/plugins/postcss';
 import { computed, onBeforeUnmount, onMounted, ref, toRaw, toValue } from 'vue';
 
 import { useExpressionEditor } from '../../composables/useExpressionEditor';
-import { htmlEditorEventBus } from '@/event-bus';
+import { htmlEditorEventBus } from '@/app/event-bus';
 import { n8nCompletionSources } from '../../plugins/codemirror/completions/addCompletions';
 import { dropInExpressionEditor, mappingDropCursor } from '../../plugins/codemirror/dragAndDrop';
 import {
@@ -33,12 +33,12 @@ import {
 } from '../../plugins/codemirror/expressionCloseBrackets';
 import { editorKeymap } from '../../plugins/codemirror/keymap';
 import { n8nAutocompletion } from '../../plugins/codemirror/n8nLang';
-import { autoCloseTags, htmlLanguage } from 'codemirror-lang-html-n8n';
+import { autoCloseTags, htmlLanguage } from '@n8n/codemirror-lang-html';
 import { codeEditorTheme } from '../CodeNodeEditor/theme';
 import type { Range, Section } from './types';
 import { nonTakenRanges, pasteHandler } from './utils';
 import type { TargetNodeParameterContext } from '@/Interface';
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 
 type Props = {
 	modelValue: string;
@@ -292,9 +292,9 @@ defineExpose({
 
 .droppable {
 	:global(.cm-editor) {
-		border-color: var(--ndv--droppable-parameter--color);
-		border-style: dashed;
-		border-width: 1.5px;
+		border-color: transparent;
+		outline: 1.5px dashed var(--ndv--droppable-parameter--color);
+		outline-offset: -1.5px;
 	}
 }
 
@@ -304,6 +304,7 @@ defineExpose({
 		border-style: solid;
 		cursor: grabbing;
 		border-width: 1px;
+		outline: none;
 	}
 }
 </style>

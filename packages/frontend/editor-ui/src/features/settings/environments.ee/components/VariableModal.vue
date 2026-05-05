@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { VARIABLE_MODAL_KEY } from '../environments.constants';
-import { computed, reactive, ref } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { computed, reactive, ref, onMounted, nextTick } from 'vue';
+import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import {
 	N8nFormInput,
 	N8nInputLabel,
@@ -40,7 +40,7 @@ const projectsStore = useProjectsStore();
 
 const modalBus = createEventBus();
 const loading = ref(false);
-const validateOnBlur = ref(false);
+const keyInputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
 const keyValidationRules: Array<Rule | RuleGroup> = [
 	{ name: 'REQUIRED' },
@@ -180,8 +180,6 @@ function closeModal() {
 }
 
 async function handleSubmit() {
-	validateOnBlur.value = true;
-
 	if (!isValid.value) {
 		return;
 	}
@@ -216,6 +214,28 @@ async function handleSubmit() {
 		loading.value = false;
 	}
 }
+
+onMounted(async () => {
+	await nextTick();
+	const input = keyInputRef.value?.inputRef;
+	if (input) {
+		requestAnimationFrame(() => {
+			input.focus();
+		});
+	}
+	if (props.mode === 'new') {
+		// This validation rule is not added for "edit" mode
+		// since we added this rule a while after variables were released
+		// and we want to add the "don't start with number" validation in a backwards-compatible manner.
+		keyValidationRules.push({
+			name: 'MATCH_REGEX',
+			config: {
+				regex: /^[A-Za-z_]/,
+				message: i18n.baseText('variables.editing.key.error.regex-no-start-with-number'),
+			},
+		});
+	}
+});
 </script>
 
 <template>
@@ -232,6 +252,7 @@ async function handleSubmit() {
 		<template #content>
 			<div :class="$style.form" @keyup.enter="handleSubmit">
 				<N8nFormInput
+					ref="keyInputRef"
 					v-model="form.key"
 					:label="i18n.baseText('variables.modal.key.label')"
 					name="key"
@@ -239,7 +260,7 @@ async function handleSubmit() {
 					data-test-id="variable-modal-key-input"
 					:placeholder="i18n.baseText('variables.editing.key.placeholder')"
 					required
-					:validate-on-blur="validateOnBlur"
+					:validate-on-blur="true"
 					:validation-rules="keyValidationRules"
 					@validate="(value: boolean) => (formValidation.key = value)"
 				/>
@@ -269,7 +290,7 @@ async function handleSubmit() {
 					type="textarea"
 					:autosize="{ minRows: 3, maxRows: 6 }"
 					:maxlength="VALUE_MAX_LENGTH"
-					:validate-on-blur="validateOnBlur"
+					:validate-on-blur="true"
 					:validation-rules="valueValidationRules"
 					@validate="(value: boolean) => (formValidation.value = value)"
 				/>
@@ -313,7 +334,7 @@ async function handleSubmit() {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton
-					type="tertiary"
+					variant="subtle"
 					:label="i18n.baseText('variables.modal.button.cancel')"
 					data-test-id="variable-modal-cancel-button"
 					@click="closeModal"

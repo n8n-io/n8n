@@ -1,0 +1,48 @@
+/**
+ * Legacy Button Override Classes
+ *
+ * These global classes can be applied via the `class` attribute to override
+ * V2 button styling with legacy color schemes.
+ *
+ * @deprecated Do not use these classes in new code. They exist only for
+ * backwards compatibility during migration from V1 to V2 Button API.
+ * These will be removed in a future major version.
+ *
+ * Usage:
+ *   <N8nButton variant="solid" class="n8n-button--success">Save</N8nButton>
+ *   <N8nButton variant="ghost" class="n8n-button--highlight">Info</N8nButton>
+ */
+
+/** @deprecated Use a semantic variant instead of success color */
+:global(.n8n-button--success) {
+	--button--color--background: var(--color--success);
+	--button--color--background-hover: var(--color--success--shade-1);
+	--button--color--background-active: var(--color--success--shade-1);
+	--button--color: var(--color--neutral-white);
+	--button--shadow: 0 0 0 1px var(--color--success);
+	--button--shadow--hover: 0 0 0 1px var(--color--success--shade-1);
+	--button--shadow--active: 0 0 0 1px var(--color--success--shade-1);
+
+	&:disabled,
+	&[aria-disabled='true'] {
+		--button--color--background: var(--color--success--tint-3);
+		--button--shadow: 0 0 0 1px var(--color--success--tint-3);
+	}
+}
+
+/** @deprecated Use a semantic variant instead of warning color */
+:global(.n8n-button--warning) {
+	--button--color--background: var(--color--warning);
+	--button--color--background-hover: var(--color--warning--shade-1);
+	--button--color--background-active: var(--color--warning--shade-1);
+	--button--color: var(--color--neutral-white);
+	--button--shadow: 0 0 0 1px var(--color--warning);
+	--button--shadow--hover: 0 0 0 1px var(--color--warning--shade-1);
+	--button--shadow--active: 0 0 0 1px var(--color--warning--shade-1);
+
+	&:disabled,
+	&[aria-disabled='true'] {
+		--button--color--background: var(--color--warning--tint-1);
+		--button--shadow: 0 0 0 1px var(--color--warning--tint-1);
+	}
+}

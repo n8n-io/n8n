@@ -1,37 +1,24 @@
 <script setup lang="ts">
-import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/constants';
-import { nodeViewEventBus } from '@/event-bus';
+import { NODE_CREATOR_OPEN_SOURCES, VIEWS } from '@/app/constants';
+import { nodeViewEventBus } from '@/app/event-bus';
 import {
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
 	trackTemplatesClick,
-} from '@/utils/experiments';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
-import { useSettingsStore } from '@/stores/settings.store';
+} from '@/experiments/utils';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-
+import { useRouter } from 'vue-router';
 import { N8nIcon, N8nLink, N8nTooltip } from '@n8n/design-system';
 const nodeCreatorStore = useNodeCreatorStore();
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const templatesStore = useTemplatesStore();
-
+const router = useRouter();
 const isTooltipVisible = ref(false);
-
-const templateRepository = computed(() => {
-	if (templatesStore.hasCustomTemplatesHost) {
-		return {
-			to: { name: VIEWS.TEMPLATES },
-		};
-	}
-
-	return {
-		to: templatesStore.websiteTemplateRepositoryURL,
-		target: '_blank',
-	};
-});
 
 const templatesLinkEnabled = computed(() => {
 	return isExtraTemplateLinksExperimentEnabled() && settingsStore.isTemplatesEnabled;
@@ -60,16 +47,20 @@ function onClick() {
 		NODE_CREATOR_OPEN_SOURCES.TRIGGER_PLACEHOLDER_BUTTON,
 	);
 }
+
+async function onClickTemplatesLink() {
+	trackTemplatesClick(TemplateClickSource.emptyWorkflowLink);
+	if (templatesStore.hasCustomTemplatesHost) {
+		await router.push({ name: VIEWS.TEMPLATES });
+		return;
+	}
+
+	window.open(templatesStore.websiteTemplateRepositoryURL, '_blank');
+}
 </script>
 <template>
 	<div ref="container" :class="$style.addNodes" data-test-id="canvas-add-button">
-		<N8nTooltip
-			placement="top"
-			:visible="isTooltipVisible"
-			:disabled="nodeCreatorStore.showScrim"
-			:popper-class="$style.tooltip"
-			:show-after="700"
-		>
+		<N8nTooltip placement="top" :visible="isTooltipVisible" :show-after="700">
 			<button :class="$style.button" data-test-id="canvas-plus-button" @click.stop="onClick">
 				<N8nIcon icon="plus" color="foreground-xdark" :size="40" />
 			</button>
@@ -81,12 +72,10 @@ function onClick() {
 			{{ i18n.baseText('nodeView.canvasAddButton.addFirstStep') }}
 			<N8nLink
 				v-if="templatesLinkEnabled"
-				:to="templateRepository.to"
-				:target="templateRepository.target"
 				:underline="true"
 				size="small"
 				data-test-id="canvas-template-link"
-				@click="trackTemplatesClick(TemplateClickSource.emptyWorkflowLink)"
+				@click="onClickTemplatesLink"
 			>
 				{{ i18n.baseText('nodeView.templateLink') }}
 			</N8nLink>

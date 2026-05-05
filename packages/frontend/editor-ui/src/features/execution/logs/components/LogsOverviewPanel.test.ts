@@ -3,7 +3,7 @@ import LogsOverviewPanel from './LogsOverviewPanel.vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createRouter, createWebHistory } from 'vue-router';
 import { h } from 'vue';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
@@ -13,9 +13,60 @@ import {
 	aiManualExecutionResponse,
 	aiManualWorkflow,
 } from '../__test__/data';
-import { usePushConnectionStore } from '@/stores/pushConnection.store';
+import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { createLogTree, flattenLogEntries } from '../logs.utils';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+const { mockDocumentStore } = vi.hoisted(() => ({
+	mockDocumentStore: {
+		workflowId: 'test-workflow-id',
+		name: 'Test Workflow',
+		allNodes: [],
+		getNodeByName: vi.fn(),
+		getParentNodes: vi.fn().mockReturnValue([]),
+		getChildNodes: vi.fn().mockReturnValue([]),
+		getStartNode: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn().mockReturnValue(false),
+		checkIfToolNodeHasChatParent: vi.fn().mockReturnValue(false),
+		getExpressionHandler: vi.fn().mockReturnValue(null),
+		getWorkflowObjectAccessorSnapshot: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			connectionsBySourceNode: {},
+			pinData: {},
+			expression: null,
+			getNode: vi.fn(),
+			getParentNodes: vi.fn().mockReturnValue([]),
+			getNodeConnectionIndexes: vi.fn(),
+			getParentMainInputNode: vi.fn(),
+			getChildNodes: vi.fn().mockReturnValue([]),
+			getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		}),
+		connectionsBySourceNode: {},
+		pinData: {},
+		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		settings: {},
+		getPinDataSnapshot: vi.fn().mockReturnValue({}),
+		serialize: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+			pinData: {},
+			active: false,
+			settings: {},
+			tags: [],
+			versionId: '',
+			meta: {},
+		}),
+	} satisfies Partial<ReturnType<typeof useWorkflowDocumentStore>>,
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal<{}>()),
+	useWorkflowDocumentStore: () => mockDocumentStore,
+}));
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -56,6 +107,7 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.workflowId = 'test-workflow-id';
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;
@@ -124,7 +176,9 @@ describe('LogsOverviewPanel', () => {
 
 		await fireEvent.click(within(aiAgentRow).getAllByLabelText('Execute step')[0]);
 		await waitFor(() =>
-			expect(spyRun).toHaveBeenCalledWith(expect.objectContaining({ destinationNode: 'AI Agent' })),
+			expect(spyRun).toHaveBeenCalledWith(
+				expect.objectContaining({ destinationNode: { nodeName: 'AI Agent', mode: 'inclusive' } }),
+			),
 		);
 	});
 });

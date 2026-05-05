@@ -1,18 +1,20 @@
 <script setup lang="ts">
 import { useInstallNode } from '@/features/settings/communityNodes/composables/useInstallNode';
-import { useNodeCreatorStore } from '@/stores/nodeCreator.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { getNodeIconSource } from '@/utils/nodeIcon';
+import { getNodeIconSource } from '@/app/utils/nodeIcon';
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { i18n } from '@n8n/i18n';
 import OfficialIcon from 'virtual:icons/mdi/verified';
 import { computed } from 'vue';
-import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import {
 	prepareCommunityNodeDetailsViewStack,
 	removePreviewToken,
-} from '@/components/Node/NodeCreator/utils';
-import NodeIcon from '@/components/NodeIcon.vue';
+} from '@/features/shared/nodeCreator/nodeCreator.utils';
+import NodeIcon from '@/app/components/NodeIcon.vue';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const {
 	activeViewStack,
@@ -23,11 +25,18 @@ const {
 } = useViewStacks();
 
 const { communityNodeDetails } = activeViewStack;
+const packageName = computed(() => activeViewStack.communityNodeDetails?.packageName);
+const { getQuickConnectOptionByPackageName } = useQuickConnect();
+const quickConnect = computed(() => {
+	const pkg = packageName.value;
+	return pkg ? getQuickConnectOptionByPackageName(pkg) : undefined;
+});
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const nodeCreatorStore = useNodeCreatorStore();
 const { installNode, loading } = useInstallNode();
 
-const isOwner = computed(() => useUsersStore().isInstanceOwner);
+const isAdminOrOwner = computed(() => useUsersStore().isAdminOrOwner);
 
 const updateViewStack = (key: string) => {
 	const installedNodeKey = removePreviewToken(key);
@@ -42,7 +51,11 @@ const updateViewStack = (key: string) => {
 
 		const viewStack = prepareCommunityNodeDetailsViewStack(
 			installedNode,
-			getNodeIconSource(installedNode.properties),
+			getNodeIconSource(
+				installedNode.properties,
+				null,
+				workflowDocumentStore?.value?.getExpressionHandler() ?? null,
+			),
 			activeViewStack.rootView,
 			nodeActions,
 		);
@@ -64,9 +77,21 @@ const updateStoresAndViewStack = (key: string) => {
 };
 
 const onInstall = async () => {
-	if (isOwner.value && activeViewStack.communityNodeDetails && !communityNodeDetails?.installed) {
+	if (
+		isAdminOrOwner.value &&
+		activeViewStack.communityNodeDetails &&
+		!communityNodeDetails?.installed
+	) {
 		const { key, packageName } = activeViewStack.communityNodeDetails;
-		const result = await installNode({ type: 'verified', packageName, nodeType: key });
+		const result = await installNode({
+			type: 'verified',
+			packageName,
+			nodeType: key,
+			telemetry: {
+				source: 'cnr package detail page',
+				hasQuickConnect: quickConnect.value !== undefined,
+			},
+		});
 		if (result.success) {
 			updateStoresAndViewStack(key);
 		}
@@ -108,7 +133,7 @@ const onInstall = async () => {
 				</div>
 
 				<N8nButton
-					v-if="isOwner && !communityNodeDetails.installed"
+					v-if="isAdminOrOwner && !communityNodeDetails.installed"
 					:loading="loading"
 					:disabled="loading"
 					:label="i18n.baseText('communityNodeDetails.install')"
@@ -138,7 +163,7 @@ const onInstall = async () => {
 .title {
 	display: flex;
 	align-items: center;
-	color: var(--color-text);
+	color: var(--color--text);
 	font-size: var(--font-size--xl);
 	font-weight: var(--font-weight--bold);
 }

@@ -1,22 +1,35 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type {
 	AddColumnResponse,
 	DataTable,
 	DataTableColumnCreatePayload,
 } from '@/features/core/dataTable/dataTable.types';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import { DATA_TABLE_VIEW, MIN_LOADING_TIME } from '@/features/core/dataTable/constants';
+import { DATA_TABLE_VIEW } from '@/features/core/dataTable/constants';
+import { LOADING_ANIMATION_MIN_DURATION } from '@/app/constants/durations';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
-import { useDebounce } from '@/composables/useDebounce';
+import { useDebounce } from '@/app/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
+import {
+	N8nButton,
+	N8nInput,
+	N8nLoading,
+	N8nSpinner,
+	N8nText,
+	N8nIcon,
+	N8nTooltip,
+} from '@n8n/design-system';
+import DependencyPill from '@/app/components/DependencyPill.vue';
+import { useDependencies } from '@/app/composables/useDependencies';
 
-import { N8nButton, N8nLoading, N8nSpinner, N8nText } from '@n8n/design-system';
 type Props = {
 	id: string;
 	projectId: string;
@@ -30,11 +43,18 @@ const router = useRouter();
 const documentTitle = useDocumentTitle();
 
 const dataTableStore = useDataTableStore();
+const sourceControlStore = useSourceControlStore();
+const { fetchDependencyCounts, hasDependencies } = useDependencies();
+
+const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+const dataTableHasDependents = computed(() => hasDependencies(props.id));
 
 const loading = ref(false);
 const saving = ref(false);
 const dataTable = ref<DataTable | null>(null);
 const dataTableTableRef = ref<InstanceType<typeof DataTableTable>>();
+const searchQuery = ref('');
 
 const { debounce } = useDebounce();
 
@@ -60,6 +80,7 @@ const initialize = async () => {
 		await showErrorAndGoBackToList(error);
 	} finally {
 		loading.value = false;
+		void fetchDependencyCounts([props.id], 'dataTable');
 	}
 };
 
@@ -76,7 +97,7 @@ const debouncedHideSaving = debounce(
 	() => {
 		saving.value = false;
 	},
-	{ debounceTime: MIN_LOADING_TIME, trailing: true },
+	{ debounceTime: LOADING_ANIMATION_MIN_DURATION, trailing: true },
 );
 
 const onToggleSave = (value: boolean) => {
@@ -97,9 +118,44 @@ const onAddColumn = async (column: DataTableColumnCreatePayload): Promise<AddCol
 	return await dataTableTableRef.value.addColumn(column);
 };
 
+const onCsvImported = async () => {
+	await dataTableTableRef.value?.fetchDataTableRows();
+};
+
+const handleSourceControlPull = async () => {
+	// Bypass cache and fetch fresh data from API after pull
+	loading.value = true;
+	try {
+		const response = await dataTableStore.fetchDataTableDetails(props.id, props.projectId);
+		if (response) {
+			dataTable.value = response;
+			documentTitle.set(`${i18n.baseText('dataTable.dataTables')} > ${response.name}`);
+		} else {
+			await showErrorAndGoBackToList(new Error(i18n.baseText('dataTable.notFound')));
+		}
+	} catch (error) {
+		toast.showError(error, i18n.baseText('dataTable.getDetails.error'));
+	} finally {
+		loading.value = false;
+	}
+};
+
+watch(
+	() => props.id,
+	async () => {
+		await initialize();
+	},
+);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
 	await initialize();
+
+	sourceControlEventBus.on('pull', handleSourceControlPull);
+});
+
+onBeforeUnmount(() => {
+	sourceControlEventBus.off('pull', handleSourceControlPull);
 });
 </script>
 
@@ -117,14 +173,47 @@ onMounted(async () => {
 		</div>
 		<div v-else-if="dataTable">
 			<div :class="$style.header">
-				<DataTableBreadcrumbs :data-table="dataTable" />
+				<DataTableBreadcrumbs
+					:data-table="dataTable"
+					:read-only="readOnlyEnv"
+					@imported="onCsvImported"
+				/>
 				<div v-if="saving" :class="$style.saving">
 					<N8nSpinner />
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<DependencyPill
+						v-if="dataTableHasDependents"
+						resource-type="dataTable"
+						:resource-id="id"
+						source="data_table_card"
+						data-test-id="data-table-details-dependents"
+					/>
+					<N8nInput
+						v-model="searchQuery"
+						data-test-id="data-table-search-input"
+						size="small"
+						:class="$style.search"
+						:placeholder="i18n.baseText('generic.search')"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+						<template #suffix>
+							<N8nTooltip placement="bottom">
+								<template #content>
+									{{ i18n.baseText('dataTable.search.dateSearchInfo') }}
+								</template>
+								<span :class="$style.infoIcon">
+									<N8nIcon icon="info" size="small" />
+								</span>
+							</N8nTooltip>
+						</template>
+					</N8nInput>
 					<N8nButton
 						data-test-id="data-table-header-add-row-button"
+						:disabled="readOnlyEnv"
 						@click="dataTableTableRef?.addRow"
 						>{{ i18n.baseText('dataTable.addRow.label') }}</N8nButton
 					>
@@ -132,6 +221,7 @@ onMounted(async () => {
 						:use-text-trigger="true"
 						:popover-id="'ds-details-add-column-popover'"
 						:params="{ onAddColumn }"
+						:disabled="readOnlyEnv"
 					/>
 				</div>
 			</div>
@@ -139,6 +229,8 @@ onMounted(async () => {
 				<DataTableTable
 					ref="dataTableTableRef"
 					:data-table="dataTable"
+					:search="searchQuery"
+					:read-only="readOnlyEnv"
 					@toggle-save="onToggleSave"
 				/>
 			</div>
@@ -182,7 +274,23 @@ onMounted(async () => {
 
 .actions {
 	display: flex;
+	align-items: center;
 	gap: var(--spacing--3xs);
 	margin-left: auto;
+}
+
+.search {
+	max-width: 196px;
+}
+
+.infoIcon {
+	display: inline-flex;
+	align-items: center;
+	color: var(--color--text--tint-2);
+	cursor: help;
+
+	&:hover {
+		color: var(--color--primary);
+	}
 }
 </style>

@@ -1,20 +1,22 @@
 <script lang="ts" setup>
-import GoBackButton from '@/components/GoBackButton.vue';
+import GoBackButton from '@/app/components/GoBackButton.vue';
 
 interface Props {
 	goBackEnabled?: boolean;
+	fullWidth?: boolean;
 }
 
 withDefaults(defineProps<Props>(), {
 	goBackEnabled: false,
+	fullWidth: false,
 });
 </script>
 
 <template>
-	<div :class="$style.template">
+	<div :class="[$style.template, { [$style.fullWidth]: fullWidth }]">
 		<div :class="$style.container">
-			<div :class="$style.header">
-				<div v-if="goBackEnabled" :class="$style.goBack">
+			<div :class="$style.header" v-if="goBackEnabled">
+				<div :class="$style.goBack">
 					<GoBackButton />
 				</div>
 				<slot name="header"></slot>
@@ -30,11 +32,16 @@ withDefaults(defineProps<Props>(), {
 .template {
 	display: flex;
 	width: 100%;
-	max-width: var(--content-container-width);
+	max-width: var(--content-container--width);
 	padding: var(--spacing--lg) var(--spacing--lg) 0;
 	justify-content: center;
 	@media (min-width: 1200px) {
 		padding: var(--spacing--2xl) var(--spacing--2xl) 0;
+	}
+
+	&.fullWidth {
+		max-width: none;
+		padding: 0;
 	}
 }
 

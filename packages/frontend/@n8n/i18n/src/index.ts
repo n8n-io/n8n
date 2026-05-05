@@ -366,6 +366,17 @@ export class I18nClass {
 				});
 			},
 
+			/**
+			 * Text for a button to add optional fields inside a `fixedCollection`
+			 * param having `hideOptionalFields: true`.
+			 */
+			addOptionalFieldButtonText({ name: parameterName, typeOptions }: INodeProperties) {
+				return context.dynamicRender({
+					key: `${initialKey}.${parameterName}.addOptionalFieldButtonText`,
+					fallback: typeOptions?.addOptionalFieldButtonText,
+				});
+			},
+
 			eventTriggerDescription(nodeType: string, eventTriggerDescription: string) {
 				return context.dynamicRender({
 					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,

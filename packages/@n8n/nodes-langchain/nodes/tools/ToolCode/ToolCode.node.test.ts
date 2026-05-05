@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import { DynamicTool } from 'langchain/tools';
+import { DynamicTool } from '@langchain/classic/tools';
 import {
 	type IExecuteFunctions,
 	type INode,

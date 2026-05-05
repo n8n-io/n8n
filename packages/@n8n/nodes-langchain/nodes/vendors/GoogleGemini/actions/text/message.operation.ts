@@ -3,9 +3,11 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	accumulateTokenUsage,
+	jsonParse,
+	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { getConnectedTools } from '@utils/helpers';
@@ -16,12 +18,20 @@ import type {
 	Content,
 	Tool,
 	GenerateContentGenerationConfig,
+	BuiltInTools,
+	FunctionCallPart,
+	TextPart,
 } from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
 const properties: INodeProperties[] = [
-	modelRLC('modelSearch'),
+	{ ...modelRLC('modelSearch'), displayOptions: { show: { '@version': [{ _cnd: { lt: 1.2 } }] } } },
+	{
+		...modelRLC('modelSearch'),
+		default: { mode: 'list', value: 'models/gemini-3-flash-preview' },
+		displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+	},
 	{
 		displayName: 'Messages',
 		name: 'messages',
@@ -87,12 +97,116 @@ const properties: INodeProperties[] = [
 		default: false,
 	},
 	{
+		displayName: 'Built-in Tools',
+		name: 'builtInTools',
+		placeholder: 'Add Built-in Tool',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		options: [
+			{
+				displayName: 'Google Search',
+				name: 'googleSearch',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to search the web using Google Search to get real-time information',
+			},
+			{
+				displayName: 'Google Maps',
+				name: 'googleMaps',
+				type: 'collection',
+				default: { latitude: '', longitude: '' },
+				options: [
+					{
+						displayName: 'Latitude',
+						name: 'latitude',
+						type: 'number',
+						default: '',
+						description: 'The latitude coordinate for location-based queries',
+						typeOptions: {
+							numberPrecision: 6,
+						},
+					},
+					{
+						displayName: 'Longitude',
+						name: 'longitude',
+						type: 'number',
+						default: '',
+						description: 'The longitude coordinate for location-based queries',
+						typeOptions: {
+							numberPrecision: 6,
+						},
+					},
+				],
+			},
+			{
+				displayName: 'URL Context',
+				name: 'urlContext',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to allow the model to read and analyze content from specific URLs',
+			},
+			{
+				displayName: 'File Search',
+				name: 'fileSearch',
+				type: 'collection',
+				default: { fileSearchStoreNames: '[]' },
+				options: [
+					{
+						displayName: 'File Search Store Names',
+						name: 'fileSearchStoreNames',
+						description:
+							'The file search store names to use for the file search. File search stores are managed via Google AI Studio.',
+						type: 'json',
+						default: '[]',
+						required: true,
+					},
+					{
+						displayName: 'Metadata Filter',
+						name: 'metadataFilter',
+						type: 'string',
+						default: '',
+						description:
+							'Use metadata filter to search within a subset of documents. Example: author="Robert Graves".',
+						placeholder: 'e.g. author="John Doe"',
+					},
+				],
+			},
+			{
+				displayName: 'Code Execution',
+				name: 'codeExecution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
 		type: 'collection',
 		default: {},
 		options: [
+			{
+				displayName: 'Include Merged Response',
+				name: 'includeMergedResponse',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to include a single output string merging all text parts of the response',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.1 } }],
+					},
+				},
+			},
 			{
 				displayName: 'System Message',
 				name: 'systemMessage',
@@ -107,6 +221,11 @@ const properties: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { eq: 1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Frequency Penalty',
@@ -197,9 +316,9 @@ const properties: INodeProperties[] = [
 				displayName: 'Thinking Budget',
 				name: 'thinkingBudget',
 				type: 'number',
-				default: undefined,
+				default: -1,
 				description:
-					'Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking. Leave empty for auto mode.',
+					'Controls reasoning tokens for thinking models. Set to 0 to disable automatic thinking. Set to -1 for dynamic thinking (default).',
 				typeOptions: {
 					minValue: -1,
 					numberPrecision: 0,
@@ -230,8 +349,16 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+function isFunctionCallPart(part: unknown): part is FunctionCallPart {
+	return !!part && typeof part === 'object' && 'functionCall' in part;
+}
+
+function isTextPart(part: unknown): part is TextPart {
+	return !!part && typeof part === 'object' && 'text' in part;
+}
+
 function getToolCalls(response: GenerateContentResponse) {
-	return response.candidates.flatMap((c) => c.content.parts).filter((p) => 'functionCall' in p);
+	return response.candidates.flatMap((c) => c?.content?.parts ?? []).filter(isFunctionCallPart);
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
@@ -243,9 +370,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
+	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as BuiltInTools;
 	validateNodeParameters(
 		options,
 		{
+			includeMergedResponse: { type: 'boolean', required: false },
 			systemMessage: { type: 'string', required: false },
 			codeExecution: { type: 'boolean', required: false },
 			frequencyPenalty: { type: 'number', required: false },
@@ -300,10 +429,84 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools.pop();
 	}
 
-	if (options.codeExecution) {
-		tools.push({
-			codeExecution: {},
-		});
+	if (this.getNode().typeVersion === 1) {
+		if (options.codeExecution) {
+			tools.push({
+				codeExecution: {},
+			});
+		}
+	}
+
+	// Add built-in tools and build toolConfig
+	let toolConfig: GenerateContentRequest['toolConfig'];
+	if (this.getNode().typeVersion >= 1.1) {
+		if (builtInTools) {
+			if (builtInTools.googleSearch) {
+				tools.push({
+					googleSearch: {},
+				});
+			}
+
+			const googleMapsOptions = builtInTools.googleMaps;
+			if (googleMapsOptions) {
+				tools.push({
+					googleMaps: {},
+				});
+
+				// Build toolConfig with retrievalConfig if latitude/longitude are provided
+				const latitude = googleMapsOptions.latitude;
+				const longitude = googleMapsOptions.longitude;
+				if (
+					latitude !== undefined &&
+					latitude !== '' &&
+					longitude !== undefined &&
+					longitude !== ''
+				) {
+					toolConfig = {
+						retrievalConfig: {
+							latLng: {
+								latitude: Number(latitude),
+								longitude: Number(longitude),
+							},
+						},
+					};
+				}
+			}
+
+			if (builtInTools.urlContext) {
+				tools.push({
+					urlContext: {},
+				});
+			}
+
+			const fileSearchOptions = builtInTools.fileSearch;
+			if (fileSearchOptions) {
+				const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames;
+				const metadataFilter = fileSearchOptions.metadataFilter;
+				let fileSearchStoreNames: string[] | undefined;
+				if (fileSearchStoreNamesRaw) {
+					const parsed = jsonParse(fileSearchStoreNamesRaw, {
+						errorMessage: 'Failed to parse file search store names',
+					});
+					if (Array.isArray(parsed)) {
+						fileSearchStoreNames = parsed;
+					}
+				}
+
+				tools.push({
+					fileSearch: {
+						...(fileSearchStoreNames && { fileSearchStoreNames }),
+						...(metadataFilter && { metadataFilter }),
+					},
+				});
+			}
+
+			if (builtInTools.codeExecution) {
+				tools.push({
+					codeExecution: {},
+				});
+			}
+		}
 	}
 
 	const contents: Content[] = messages.map((m) => ({
@@ -317,11 +520,27 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		systemInstruction: options.systemMessage
 			? { parts: [{ text: options.systemMessage }] }
 			: undefined,
+		...(toolConfig && { toolConfig }),
 	};
 
 	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
 		body,
 	})) as GenerateContentResponse;
+
+	const captureUsage = () => {
+		const usageMetadata = (response as unknown as Record<string, unknown>).usageMetadata as
+			| { promptTokenCount: number; candidatesTokenCount: number }
+			| undefined;
+		if (usageMetadata) {
+			accumulateTokenUsage(
+				this,
+				usageMetadata.promptTokenCount,
+				usageMetadata.candidatesTokenCount,
+			);
+		}
+	};
+
+	captureUsage();
 
 	const maxToolsIterations = this.getNodeParameter('options.maxToolsIterations', i, 15) as number;
 	const abortSignal = this.getExecutionCancelSignal();
@@ -335,7 +554,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			break;
 		}
 
-		contents.push(...response.candidates.map((c) => c.content));
+		contents.push.apply(
+			contents,
+			response.candidates.map((c) => c.content),
+		);
 
 		for (const { functionCall } of toolCalls) {
 			let toolResponse;
@@ -364,12 +586,23 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
 			body,
 		})) as GenerateContentResponse;
+		captureUsage();
 		toolCalls = getToolCalls(response);
 		currentIteration++;
 	}
 
+	const candidates = options.includeMergedResponse
+		? response.candidates.map((candidate) => ({
+				...candidate,
+				mergedResponse: (candidate?.content?.parts ?? [])
+					.filter(isTextPart)
+					.map((part) => part.text)
+					.join(''),
+			}))
+		: response.candidates;
+
 	if (simplify) {
-		return response.candidates.map((candidate) => ({
+		return candidates.map((candidate) => ({
 			json: candidate,
 			pairedItem: { item: i },
 		}));
@@ -377,7 +610,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	return [
 		{
-			json: { ...response },
+			json: {
+				...response,
+				candidates,
+			},
 			pairedItem: { item: i },
 		},
 	];

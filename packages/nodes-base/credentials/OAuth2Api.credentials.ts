@@ -11,9 +11,20 @@ export class OAuth2Api implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName: 'Use Dynamic Client Registration',
+			name: 'useDynamicClientRegistration',
+			type: 'hidden',
+			default: false,
+		},
+		{
 			displayName: 'Grant Type',
 			name: 'grantType',
 			type: 'options',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			options: [
 				{
 					name: 'Authorization Code',
@@ -31,12 +42,25 @@ export class OAuth2Api implements ICredentialType {
 			default: 'authorizationCode',
 		},
 		{
+			displayName: 'Server URL',
+			name: 'serverUrl',
+			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [true],
+				},
+			},
+			default: '',
+			required: true,
+		},
+		{
 			displayName: 'Authorization URL',
 			name: 'authUrl',
 			type: 'string',
 			displayOptions: {
 				show: {
 					grantType: ['authorizationCode', 'pkce'],
+					useDynamicClientRegistration: [false],
 				},
 			},
 			default: '',
@@ -46,6 +70,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Access Token URL',
 			name: 'accessTokenUrl',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			default: '',
 			required: true,
 		},
@@ -53,6 +82,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Client ID',
 			name: 'clientId',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			default: '',
 			required: true,
 		},
@@ -60,6 +94,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			typeOptions: {
 				password: true,
 			},
@@ -73,6 +112,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'string',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			default: '',
 		},
 		{
@@ -82,6 +126,7 @@ export class OAuth2Api implements ICredentialType {
 			displayOptions: {
 				show: {
 					grantType: ['authorizationCode', 'pkce'],
+					useDynamicClientRegistration: [false],
 				},
 			},
 			default: '',
@@ -93,6 +138,11 @@ export class OAuth2Api implements ICredentialType {
 			displayName: 'Authentication',
 			name: 'authentication',
 			type: 'options',
+			displayOptions: {
+				show: {
+					useDynamicClientRegistration: [false],
+				},
+			},
 			options: [
 				{
 					name: 'Body',
@@ -116,6 +166,7 @@ export class OAuth2Api implements ICredentialType {
 				show: {
 					grantType: ['clientCredentials'],
 					authentication: ['body'],
+					useDynamicClientRegistration: [false],
 				},
 			},
 		},
@@ -131,6 +182,7 @@ export class OAuth2Api implements ICredentialType {
 					grantType: ['clientCredentials'],
 					authentication: ['body'],
 					sendAdditionalBodyProperties: [true],
+					useDynamicClientRegistration: [false],
 				},
 			},
 			default: '',
@@ -140,6 +192,39 @@ export class OAuth2Api implements ICredentialType {
 			name: 'ignoreSSLIssues',
 			type: 'boolean',
 			default: false,
+			doNotInherit: true,
+		},
+		{
+			displayName: 'Token Expired Status Code',
+			name: 'tokenExpiredStatusCode',
+			type: 'number',
+			default: 401,
+			description:
+				'HTTP status code that indicates the token has expired. Some APIs return 403 instead of 401.',
+			doNotInherit: true,
+		},
+		{
+			displayName: 'Encrypted Tokens (JWE)',
+			name: 'jweEnabled',
+			type: 'boolean',
+			default: false,
+			description:
+				'Whether the IdP returns tokens encrypted as JWE to the public key at this instance’s JWKS endpoint. The response must contain at least one JWE-encrypted token (access or ID token); fully plaintext responses are rejected. The field is hidden by the server unless the OAuth2 JWE feature is enabled.',
+			doNotInherit: true,
+		},
+		{
+			// `displayName` is filled in at runtime by FrontendService with the
+			// instance JWKS URI. Server-side gating drops both this notice and
+			// the toggle above when the OAuth2 JWE feature flag is off.
+			displayName: '',
+			name: 'jwksUriNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					jweEnabled: [true],
+				},
+			},
 			doNotInherit: true,
 		},
 	];

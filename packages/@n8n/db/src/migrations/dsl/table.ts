@@ -1,9 +1,29 @@
-import type { TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
-import { Table, TableColumn, TableForeignKey, TableUnique } from '@n8n/typeorm';
+import type { Driver, TableForeignKeyOptions, TableIndexOptions, QueryRunner } from '@n8n/typeorm';
+import { Table, TableCheck, TableColumn, TableForeignKey, TableUnique } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 import LazyPromise from 'p-lazy';
 
 import { Column } from './column';
+
+function buildEnumChecks(
+	columns: Column[],
+	prefix: string,
+	tableName: string,
+	driver: Driver,
+): TableCheck[] {
+	const checks: TableCheck[] = [];
+	for (const column of columns) {
+		const enumCheck = column.getEnumCheck();
+		if (enumCheck) {
+			const checkName = `CHK_${prefix}${tableName}_${enumCheck.columnName}`;
+			const escapedColumnName = driver.escape(enumCheck.columnName);
+			const escapedValues = enumCheck.values.map((v) => `'${v.replace(/'/g, "''")}'`).join(', ');
+			const expression = `${escapedColumnName} IN (${escapedValues})`;
+			checks.push(new TableCheck({ name: checkName, expression }));
+		}
+	}
+	return checks;
+}
 
 abstract class TableOperation<R = void> extends LazyPromise<R> {
 	abstract execute(queryRunner: QueryRunner): Promise<R>;
@@ -27,6 +47,8 @@ export class CreateTable extends TableOperation {
 	private uniqueConstraints = new Set<TableUnique>();
 
 	private foreignKeys = new Set<TableForeignKeyOptions>();
+
+	private checks = new Set<TableCheck>();
 
 	withColumns(...columns: Column[]) {
 		this.columns.push(...columns);
@@ -58,6 +80,11 @@ export class CreateTable extends TableOperation {
 		return this;
 	}
 
+	withCheck(name: string, expression: string) {
+		this.checks.add(new TableCheck({ name, expression }));
+		return this;
+	}
+
 	withForeignKey(
 		columnName: string,
 		ref: {
@@ -82,7 +109,20 @@ export class CreateTable extends TableOperation {
 
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
-		const { columns, tableName: name, prefix, indices, uniqueConstraints, foreignKeys } = this;
+		const {
+			columns,
+			tableName: name,
+			prefix,
+			indices,
+			uniqueConstraints,
+			foreignKeys,
+			checks,
+		} = this;
+
+		for (const check of buildEnumChecks(columns, prefix, name, driver)) {
+			checks.add(check);
+		}
+
 		return await queryRunner.createTable(
 			new Table({
 				name: `${prefix}${name}`,
@@ -90,7 +130,7 @@ export class CreateTable extends TableOperation {
 				...(indices.size ? { indices: [...indices] } : {}),
 				...(uniqueConstraints.size ? { uniques: [...uniqueConstraints] } : {}),
 				...(foreignKeys.size ? { foreignKeys: [...foreignKeys] } : {}),
-				...('mysql' in driver ? { engine: 'InnoDB' } : {}),
+				...(checks.size ? { checks: [...checks] } : {}),
 			}),
 			true,
 		);
@@ -117,10 +157,17 @@ export class AddColumns extends TableOperation {
 	async execute(queryRunner: QueryRunner) {
 		const { driver } = queryRunner.connection;
 		const { tableName, prefix, columns } = this;
-		return await queryRunner.addColumns(
-			`${prefix}${tableName}`,
+		const fullTableName = `${prefix}${tableName}`;
+
+		await queryRunner.addColumns(
+			fullTableName,
 			columns.map((c) => new TableColumn(c.toOptions(driver))),
 		);
+
+		const enumChecks = buildEnumChecks(columns, prefix, tableName, driver);
+		if (enumChecks.length > 0) {
+			await queryRunner.createCheckConstraints(fullTableName, enumChecks);
+		}
 	}
 }
 

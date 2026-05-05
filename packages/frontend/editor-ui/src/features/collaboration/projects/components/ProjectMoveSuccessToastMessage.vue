@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { ResourceType, getTruncatedProjectName } from '../projects.utils';
-import type { ProjectListItem } from '../projects.types';
+import type { ProjectSharingData } from '../projects.types';
 import { ProjectTypes } from '../projects.types';
 import { useI18n } from '@n8n/i18n';
 
@@ -9,7 +9,7 @@ import { N8nText } from '@n8n/design-system';
 const props = defineProps<{
 	routeName: string;
 	resourceType: ResourceType;
-	targetProject: ProjectListItem;
+	targetProject: ProjectSharingData;
 	isShareCredentialsChecked: boolean;
 	areAllUsedCredentialsShareable: boolean;
 }>();
@@ -34,18 +34,14 @@ const targetProjectName = computed(() => {
 			<span v-else>{{ i18n.baseText('projects.move.resource.success.message.workflow') }}</span>
 		</N8nText>
 		<p v-if="isTargetProjectTeam" class="pt-s">
-			<RouterLink
-				:to="{
-					name: props.routeName,
-					params: { projectId: props.targetProject.id },
-				}"
-			>
+			<!-- The navigation should be handled by the component showing the toast  -->
+			<a href="#">
 				{{
 					i18n.baseText('projects.move.resource.success.link', {
 						interpolate: { targetProjectName },
 					})
 				}}
-			</RouterLink>
+			</a>
 		</p>
 	</div>
 </template>

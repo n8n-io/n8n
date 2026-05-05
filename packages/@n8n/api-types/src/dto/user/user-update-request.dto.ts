@@ -1,6 +1,7 @@
 import xss from 'xss';
 import { z } from 'zod';
-import { Z } from 'zod-class';
+
+import { Z } from '../../zod-class';
 
 const xssCheck = (value: string) =>
 	value ===

@@ -13,9 +13,9 @@ import {
 	mockedStore,
 	type MockedStore,
 } from '@/__tests__/utils';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { MOVE_FOLDER_MODAL_KEY } from '../folders.constants';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { FrontendSettings } from '@n8n/api-types';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import type {
@@ -23,12 +23,15 @@ import type {
 	IUsedCredential,
 } from '@/features/credentials/credentials.types';
 import type { ChangeLocationSearchResult } from '../folders.types';
+import { getTruncatedProjectName } from '@/features/collaboration/projects/projects.utils';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useFoldersStore } from '../folders.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import MoveToFolderModal from './MoveToFolderModal.vue';
 import type { EventBus } from '@n8n/utils/event-bus';
+import type { WorkflowListEventMap } from '../folders.types';
 
 vi.mock('vue-router', () => {
 	const push = vi.fn();
@@ -71,6 +74,7 @@ const TEST_WORKFLOW_RESOURCE = {
 let uiStore: MockedStore<typeof useUIStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
 let credentialsStore: MockedStore<typeof useCredentialsStore>;
+let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
 let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 let foldersStore: MockedStore<typeof useFoldersStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -84,6 +88,7 @@ const homeProject = createProjectSharingData();
 const enableSharing = {
 	enterprise: {
 		sharing: true,
+		projects: { team: { limit: -1 } },
 	},
 } as FrontendSettings;
 
@@ -138,7 +143,7 @@ const folder: ChangeLocationSearchResult = {
 
 const mockEventBus = {
 	emit: vi.fn(),
-} as unknown as EventBus;
+} as unknown as EventBus<WorkflowListEventMap>;
 
 describe('MoveToFolderModal', () => {
 	beforeEach(() => {
@@ -152,14 +157,16 @@ describe('MoveToFolderModal', () => {
 
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.settings = {
-			enterprise: {},
+			enterprise: {
+				projects: { team: { limit: -1 } },
+			},
 		} as FrontendSettings;
 
 		credentialsStore = mockedStore(useCredentialsStore);
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
 
-		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.fetchWorkflow = vi.fn().mockResolvedValue({
+		workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.fetchWorkflow = vi.fn().mockResolvedValue({
 			id: TEST_WORKFLOW_RESOURCE.id,
 			name: TEST_WORKFLOW_RESOURCE.name,
 			parentFolderId: TEST_WORKFLOW_RESOURCE.parentFolderId,
@@ -173,8 +180,16 @@ describe('MoveToFolderModal', () => {
 			totalWorkflows: 0,
 			totalSubFolders: 0,
 		});
+		foldersStore.moveFolder = vi.fn().mockResolvedValue(undefined);
+		foldersStore.moveFolderToProject = vi.fn().mockResolvedValue(undefined);
+
+		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.updateWorkflow = vi.fn().mockResolvedValue({});
 
 		projectsStore = mockedStore(useProjectsStore);
+		projectsStore.moveResourceToProject = vi.fn().mockResolvedValue(undefined);
+		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+		projectsStore.globalProjectPermissions = { list: true };
 
 		projectsStore.currentProject = personalProject as unknown as Project;
 		projectsStore.currentProjectId = personalProject.id;
@@ -376,7 +391,10 @@ describe('MoveToFolderModal', () => {
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		expect(folderSelect).toBeVisible();
-		expect(within(folderSelect).getByRole('combobox')).toHaveValue('');
+		// Project root is auto-selected by the dropdown after loading
+		await waitFor(() =>
+			expect(within(folderSelect).getByRole('combobox')).toHaveValue('No folder (project root)'),
+		);
 
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
 		expect(folderSelectDropdownItems).toHaveLength(2); // root, test
@@ -385,7 +403,7 @@ describe('MoveToFolderModal', () => {
 		expect(within(folderSelect).getByRole('combobox')).toHaveValue('test');
 	});
 
-	it('should clear selected folder when switching projects', async () => {
+	it('should reset to project root when switching projects', async () => {
 		settingsStore.settings = enableSharing;
 		foldersStore.fetchFoldersAvailableForMove = vi.fn().mockResolvedValue([folder]);
 
@@ -414,7 +432,8 @@ describe('MoveToFolderModal', () => {
 		);
 		await userEvent.click(teamProject as Element);
 
-		expect(within(folderSelect).getByRole('combobox')).toHaveValue('');
+		// After switching projects, the project root should be selected
+		expect(within(folderSelect).getByRole('combobox')).toHaveValue('No folder (project root)');
 	});
 
 	it('should move selected folder on submit', async () => {
@@ -433,7 +452,8 @@ describe('MoveToFolderModal', () => {
 		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
 
 		const submitButton = getByTestId('confirm-move-folder-button');
-		expect(submitButton).toBeDisabled();
+		// Wait for dropdown to load and auto-select project root
+		await waitFor(() => expect(submitButton).toBeEnabled());
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
@@ -442,6 +462,11 @@ describe('MoveToFolderModal', () => {
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
 
+		expect(foldersStore.moveFolder).toHaveBeenCalledWith(
+			personalProject.id,
+			TEST_FOLDER_RESOURCE.id,
+			folder.id,
+		);
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-moved', {
 			newParent: {
 				id: folder.id,
@@ -449,6 +474,7 @@ describe('MoveToFolderModal', () => {
 				type: folder.resource,
 			},
 			folder: { id: TEST_FOLDER_RESOURCE.id, name: TEST_FOLDER_RESOURCE.name },
+			options: { skipApiCall: true },
 		});
 	});
 
@@ -477,7 +503,7 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(teamProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
-		expect(submitButton).toBeDisabled();
+		await waitFor(() => expect(submitButton).toBeEnabled());
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
@@ -486,6 +512,15 @@ describe('MoveToFolderModal', () => {
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
 
+		await waitFor(() => {
+			expect(foldersStore.moveFolderToProject).toHaveBeenCalledWith(
+				personalProject.id,
+				TEST_FOLDER_RESOURCE.id,
+				teamProjects[0].id,
+				folder.id,
+				undefined,
+			);
+		});
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
 			source: {
 				projectId: personalProject.id,
@@ -502,7 +537,6 @@ describe('MoveToFolderModal', () => {
 				},
 				canAccess: true,
 			},
-			shareCredentials: undefined,
 		});
 	});
 
@@ -542,6 +576,15 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(getByTestId('move-modal-share-credentials-checkbox'));
 		await userEvent.click(submitButton);
 
+		await waitFor(() => {
+			expect(foldersStore.moveFolderToProject).toHaveBeenCalledWith(
+				personalProject.id,
+				TEST_FOLDER_RESOURCE.id,
+				teamProjects[0].id,
+				folder.id,
+				[shareableUsedCredential.id],
+			);
+		});
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
 			source: {
 				projectId: personalProject.id,
@@ -558,7 +601,6 @@ describe('MoveToFolderModal', () => {
 				},
 				canAccess: true,
 			},
-			shareCredentials: [shareableUsedCredential.id],
 		});
 	});
 
@@ -597,6 +639,15 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(folderSelectDropdownItems[1]);
 		await userEvent.click(submitButton);
 
+		await waitFor(() => {
+			expect(foldersStore.moveFolderToProject).toHaveBeenCalledWith(
+				personalProject.id,
+				TEST_FOLDER_RESOURCE.id,
+				teamProjects[0].id,
+				folder.id,
+				undefined,
+			);
+		});
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
 			source: {
 				projectId: personalProject.id,
@@ -613,7 +664,6 @@ describe('MoveToFolderModal', () => {
 				},
 				canAccess: true,
 			},
-			shareCredentials: undefined,
 		});
 	});
 
@@ -643,11 +693,19 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(anotherUserPersonalProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
-		expect(submitButton).toBeEnabled();
+		await waitFor(() => expect(submitButton).toBeEnabled());
 
-		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
 
+		await waitFor(() => {
+			expect(foldersStore.moveFolderToProject).toHaveBeenCalledWith(
+				personalProject.id,
+				TEST_FOLDER_RESOURCE.id,
+				anotherUser.id,
+				undefined,
+				undefined,
+			);
+		});
 		expect(mockEventBus.emit).toHaveBeenCalledWith('folder-transferred', {
 			source: {
 				projectId: personalProject.id,
@@ -660,11 +718,10 @@ describe('MoveToFolderModal', () => {
 				projectId: anotherUser.id,
 				parentFolder: {
 					id: undefined,
-					name: anotherUser.name,
+					name: `${anotherUser.name} (Personal space)`,
 				},
 				canAccess: false,
 			},
-			shareCredentials: undefined,
 		});
 	});
 
@@ -680,7 +737,7 @@ describe('MoveToFolderModal', () => {
 		});
 		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
 		expect(screen.getByText(`Move workflow ${TEST_WORKFLOW_RESOURCE.name}`)).toBeInTheDocument();
-		expect(workflowsStore.fetchWorkflow).toHaveBeenCalledWith(TEST_WORKFLOW_RESOURCE.id);
+		expect(workflowsListStore.fetchWorkflow).toHaveBeenCalledWith(TEST_WORKFLOW_RESOURCE.id);
 	});
 
 	it('should move selected workflow on submit', async () => {
@@ -699,7 +756,8 @@ describe('MoveToFolderModal', () => {
 		await waitFor(() => expect(getByTestId('moveFolder-modal')).toBeInTheDocument());
 
 		const submitButton = getByTestId('confirm-move-folder-button');
-		expect(submitButton).toBeDisabled();
+		// Wait for dropdown to load and auto-select project root
+		await waitFor(() => expect(submitButton).toBeEnabled());
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
@@ -708,6 +766,11 @@ describe('MoveToFolderModal', () => {
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
 
+		await waitFor(() => {
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(TEST_WORKFLOW_RESOURCE.id, {
+				parentFolderId: folder.id,
+			});
+		});
 		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-moved', {
 			newParent: {
 				id: folder.id,
@@ -719,6 +782,7 @@ describe('MoveToFolderModal', () => {
 				name: TEST_WORKFLOW_RESOURCE.name,
 				oldParentId: TEST_WORKFLOW_RESOURCE.parentFolderId,
 			},
+			options: { skipApiCall: true },
 		});
 	});
 
@@ -749,7 +813,7 @@ describe('MoveToFolderModal', () => {
 		await userEvent.click(teamProject as Element);
 
 		const submitButton = getByTestId('confirm-move-folder-button');
-		expect(submitButton).toBeDisabled();
+		await waitFor(() => expect(submitButton).toBeEnabled());
 
 		const folderSelect = getByTestId('move-to-folder-dropdown');
 		const folderSelectDropdownItems = await getDropdownItems(folderSelect);
@@ -758,6 +822,15 @@ describe('MoveToFolderModal', () => {
 		expect(submitButton).toBeEnabled();
 		await userEvent.click(submitButton);
 
+		await waitFor(() => {
+			expect(projectsStore.moveResourceToProject).toHaveBeenCalledWith(
+				'workflow',
+				TEST_WORKFLOW_RESOURCE.id,
+				teamProjects[0].id,
+				folder.id,
+				undefined,
+			);
+		});
 		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
 			source: {
 				projectId: personalProject.id,
@@ -774,7 +847,12 @@ describe('MoveToFolderModal', () => {
 				},
 				canAccess: true,
 			},
-			shareCredentials: undefined,
+			toast: {
+				targetProject: teamProjects[0],
+				targetProjectName: getTruncatedProjectName(teamProjects[0].name),
+				shareUsedCredentials: false,
+				areAllUsedCredentialsShareable: true,
+			},
 		});
 	});
 
@@ -807,6 +885,15 @@ describe('MoveToFolderModal', () => {
 		await waitFor(() => expect(submitButton).toBeEnabled());
 		await userEvent.click(submitButton);
 
+		await waitFor(() => {
+			expect(projectsStore.moveResourceToProject).toHaveBeenCalledWith(
+				'workflow',
+				TEST_WORKFLOW_RESOURCE.id,
+				anotherUser.id,
+				undefined,
+				undefined,
+			);
+		});
 		expect(mockEventBus.emit).toHaveBeenCalledWith('workflow-transferred', {
 			source: {
 				projectId: personalProject.id,
@@ -819,11 +906,16 @@ describe('MoveToFolderModal', () => {
 				projectId: anotherUser.id,
 				parentFolder: {
 					id: undefined,
-					name: anotherUser.name,
+					name: `${anotherUser.name} (Personal space)`,
 				},
 				canAccess: false,
 			},
-			shareCredentials: undefined,
+			toast: {
+				targetProject: anotherUser,
+				targetProjectName: `${anotherUser.name} (Personal space)`,
+				shareUsedCredentials: false,
+				areAllUsedCredentialsShareable: true,
+			},
 		});
 	});
 });

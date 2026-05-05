@@ -1,11 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 import { useRecentResources } from './useRecentResources';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 const recentWorkflowsRef = ref<Array<{ id: string; openedAt: number }>>([]);
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
@@ -28,16 +33,16 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 
 const mockSetNodeActive = vi.fn();
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: () => ({
 		setNodeActive: mockSetNodeActive,
 	}),
 }));
 
-const mockRouterResolve = vi.fn((route) => ({ fullPath: `/workflow/${route.params.name}` }));
+const mockRouterResolve = vi.fn((route) => ({ fullPath: `/workflow/${route.params.workflowId}` }));
 const mockCurrentRoute = ref({
 	name: VIEWS.WORKFLOW,
-	params: { name: 'workflow-1' },
+	params: { workflowId: 'workflow-1' },
 });
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -59,6 +64,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 
 describe('useRecentResources', () => {
 	let mockWorkflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let mockWorkflowsListStore: ReturnType<typeof useWorkflowsListStore>;
 	let mockNodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 
 	beforeEach(() => {
@@ -69,9 +75,12 @@ describe('useRecentResources', () => {
 		recentNodesRef.value = {};
 
 		mockWorkflowsStore = useWorkflowsStore();
+		mockWorkflowsStore.workflow.id = 'workflow-1';
+		mockWorkflowsListStore = useWorkflowsListStore();
 		mockNodeTypesStore = useNodeTypesStore();
 
-		Object.defineProperty(mockWorkflowsStore, 'findNodeByPartialId', {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
+		Object.defineProperty(workflowDocumentStore, 'findNodeByPartialId', {
 			value: vi.fn((nodeId: string) => {
 				if (nodeId === 'node-1') {
 					return { id: 'node-1', name: 'Test Node 1', type: 'n8n-nodes-base.httpRequest' };
@@ -83,7 +92,7 @@ describe('useRecentResources', () => {
 			}),
 		});
 
-		Object.defineProperty(mockWorkflowsStore, 'getWorkflowById', {
+		Object.defineProperty(mockWorkflowsListStore, 'getWorkflowById', {
 			value: vi.fn((workflowId: string) => {
 				if (workflowId === 'workflow-1') {
 					return { id: 'workflow-1', name: 'Workflow 1' };
@@ -98,7 +107,7 @@ describe('useRecentResources', () => {
 			}),
 		});
 
-		Object.defineProperty(mockWorkflowsStore, 'fetchWorkflow', {
+		Object.defineProperty(mockWorkflowsListStore, 'fetchWorkflow', {
 			value: vi.fn(),
 		});
 
@@ -122,7 +131,8 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -137,12 +147,14 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-2' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -160,7 +172,8 @@ describe('useRecentResources', () => {
 			for (let i = 1; i <= 7; i++) {
 				const route = {
 					name: VIEWS.WORKFLOW,
-					params: { name: 'workflow-1', nodeId: `node-${i}` },
+					params: { workflowId: 'workflow-1', nodeId: `node-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 				trackResourceOpened(route);
@@ -176,12 +189,14 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2', nodeId: 'node-2' },
+				params: { workflowId: 'workflow-2', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -200,7 +215,8 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -214,7 +230,8 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -225,12 +242,13 @@ describe('useRecentResources', () => {
 			expect(recentNodesRef.value['workflow-1'][0].nodeId).toBe('node-1');
 		});
 
-		it('should not register workflow when id is "new"', () => {
+		it('should not register workflow when query.new is "true"', () => {
 			const { trackResourceOpened } = useRecentResources();
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'new' },
+				params: { workflowId: 'workflow-1' },
+				query: { new: 'true' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -238,25 +256,13 @@ describe('useRecentResources', () => {
 			expect(recentWorkflowsRef.value).toHaveLength(0);
 		});
 
-		it('should not register workflow when id is PLACEHOLDER_EMPTY_WORKFLOW_ID', () => {
+		it('should not register workflow when creating new workflow', () => {
 			const { trackResourceOpened } = useRecentResources();
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: PLACEHOLDER_EMPTY_WORKFLOW_ID },
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsRef.value).toHaveLength(0);
-		});
-
-		it('should not register workflow when id is NEW_WORKFLOW_ID', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { name: NEW_WORKFLOW_ID },
+				params: { workflowId: 'new' },
+				query: { new: 'true' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -269,7 +275,8 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: 'OTHER_VIEW',
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -282,7 +289,7 @@ describe('useRecentResources', () => {
 		beforeEach(() => {
 			mockCurrentRoute.value = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 			};
 		});
 
@@ -291,12 +298,14 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-2' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -308,7 +317,7 @@ describe('useRecentResources', () => {
 			expect(nodeItems).toHaveLength(2);
 			// node-2 is most recent since it was tracked last
 			expect(nodeItems[0].id).toBe('recent-node-workflow-1-node-2');
-			expect(nodeItems[0].title).toBe('Test Node 2');
+			expect(nodeItems[0].title).toBe('generic.openResource');
 			expect(nodeItems[1].id).toBe('recent-node-workflow-1-node-1');
 			expect(nodeItems[0].section).toBe('commandBar.sections.recent');
 		});
@@ -318,12 +327,14 @@ describe('useRecentResources', () => {
 
 			const route1 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			const route2 = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'nonexistent-node' },
+				params: { workflowId: 'workflow-1', nodeId: 'nonexistent-node' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route1);
@@ -341,7 +352,8 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
@@ -361,12 +373,14 @@ describe('useRecentResources', () => {
 			// Track workflows by navigating to them
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -374,9 +388,9 @@ describe('useRecentResources', () => {
 
 			expect(workflowItems).toHaveLength(2);
 			expect(workflowItems[0].id).toBe('recent-workflow-workflow-2');
-			expect(workflowItems[0].title).toBe('Workflow 2');
+			expect(workflowItems[0].title).toBe('generic.openResource');
 			expect(workflowItems[1].id).toBe('recent-workflow-workflow-1');
-			expect(workflowItems[1].title).toBe('Workflow 1');
+			expect(workflowItems[1].title).toBe('generic.openResource');
 		});
 
 		it('should limit workflow items to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3)', () => {
@@ -386,7 +400,8 @@ describe('useRecentResources', () => {
 			for (let i = 1; i <= 5; i++) {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
-					params: { name: `workflow-${i}` },
+					params: { workflowId: `workflow-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
 
@@ -402,12 +417,14 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'nonexistent-workflow' },
+				params: { workflowId: 'nonexistent-workflow' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -418,26 +435,27 @@ describe('useRecentResources', () => {
 		});
 
 		it('should use unnamed workflow text when workflow has no name', () => {
-			mockWorkflowsStore.getWorkflowById = vi.fn((workflowId: string) => {
+			mockWorkflowsListStore.getWorkflowById = vi.fn((workflowId: string) => {
 				if (workflowId === 'workflow-unnamed') {
 					return { id: 'workflow-unnamed', name: '' } as unknown as ReturnType<
-						typeof mockWorkflowsStore.getWorkflowById
+						typeof mockWorkflowsListStore.getWorkflowById
 					>;
 				}
-				return null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>;
-			}) as typeof mockWorkflowsStore.getWorkflowById;
+				return null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
+			}) as typeof mockWorkflowsListStore.getWorkflowById;
 
 			const { trackResourceOpened, commands } = useRecentResources();
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-unnamed' },
+				params: { workflowId: 'workflow-unnamed' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
 			const workflowItem = items.find((item) => item.id === 'recent-workflow-workflow-unnamed');
 
-			expect(workflowItem?.title).toBe('commandBar.workflows.unnamed');
+			expect(workflowItem?.title).toBe('generic.openResource');
 		});
 
 		it('should navigate using window.location.href when workflow item handler is executed', () => {
@@ -445,7 +463,8 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			const items = commands.value;
@@ -456,7 +475,7 @@ describe('useRecentResources', () => {
 
 			expect(mockRouterResolve).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
 			});
 			expect(window.location.href).toBe('/workflow/workflow-1');
 		});
@@ -466,14 +485,15 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
 
 			mockCurrentRoute.value = {
 				name: 'OTHER_VIEW' as unknown as VIEWS,
-				params: { name: '' },
+				params: { workflowId: '' },
 			};
 
 			const items = commands.value;
@@ -487,14 +507,15 @@ describe('useRecentResources', () => {
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1', nodeId: 'node-1' },
+				params: { workflowId: 'workflow-1', nodeId: 'node-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);
 
 			mockCurrentRoute.value = {
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
 			};
 
 			const items = commands.value;
@@ -509,74 +530,79 @@ describe('useRecentResources', () => {
 			const { trackResourceOpened, initialize } = useRecentResources();
 
 			// Mock getWorkflowById to return null for workflow-4
-			mockWorkflowsStore.getWorkflowById = vi.fn((workflowId: string) => {
+			mockWorkflowsListStore.getWorkflowById = vi.fn((workflowId: string) => {
 				if (workflowId === 'workflow-1' || workflowId === 'workflow-2') {
 					return {
 						id: workflowId,
 						name: `Workflow ${workflowId.split('-')[1]}`,
-					} as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>;
+					} as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
 				}
-				return null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>;
-			}) as typeof mockWorkflowsStore.getWorkflowById;
+				return null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>;
+			}) as typeof mockWorkflowsListStore.getWorkflowById;
 
 			// Track workflows via trackResourceOpened
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-4' },
+				params: { workflowId: 'workflow-4' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			await initialize();
 
 			// Should only fetch workflow-4 since workflow-1 and workflow-2 are in store
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledTimes(1);
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledTimes(1);
 		});
 
 		it('should only fetch up to MAX_RECENT_WORKFLOWS_TO_DISPLAY (3) workflows', async () => {
 			const { trackResourceOpened, initialize } = useRecentResources();
 
-			mockWorkflowsStore.getWorkflowById = vi.fn(
-				() => null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>,
-			) as typeof mockWorkflowsStore.getWorkflowById;
+			mockWorkflowsListStore.getWorkflowById = vi.fn(
+				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
+			) as typeof mockWorkflowsListStore.getWorkflowById;
 
 			// Track 5 workflows
 			for (let i = 1; i <= 5; i++) {
 				trackResourceOpened({
 					name: VIEWS.WORKFLOW,
-					params: { name: `workflow-${i}` },
+					params: { workflowId: `workflow-${i}` },
+					query: {},
 				} as unknown as Parameters<typeof trackResourceOpened>[0]);
 			}
 
 			await initialize();
 
 			// Should only try to fetch the first 3
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledTimes(3);
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-5');
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
-			expect(mockWorkflowsStore.fetchWorkflow).toHaveBeenCalledWith('workflow-3');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledTimes(3);
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-5');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-4');
+			expect(mockWorkflowsListStore.fetchWorkflow).toHaveBeenCalledWith('workflow-3');
 		});
 
 		it('should handle fetch errors gracefully', async () => {
 			const { trackResourceOpened, initialize } = useRecentResources();
 
-			mockWorkflowsStore.getWorkflowById = vi.fn(
-				() => null as unknown as ReturnType<typeof mockWorkflowsStore.getWorkflowById>,
-			) as typeof mockWorkflowsStore.getWorkflowById;
-			mockWorkflowsStore.fetchWorkflow = vi.fn().mockRejectedValue(new Error('Fetch failed'));
+			mockWorkflowsListStore.getWorkflowById = vi.fn(
+				() => null as unknown as ReturnType<typeof mockWorkflowsListStore.getWorkflowById>,
+			) as typeof mockWorkflowsListStore.getWorkflowById;
+			mockWorkflowsListStore.fetchWorkflow = vi.fn().mockRejectedValue(new Error('Fetch failed'));
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			// Should not throw
@@ -588,17 +614,19 @@ describe('useRecentResources', () => {
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-1' },
+				params: { workflowId: 'workflow-1' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			trackResourceOpened({
 				name: VIEWS.WORKFLOW,
-				params: { name: 'workflow-2' },
+				params: { workflowId: 'workflow-2' },
+				query: {},
 			} as unknown as Parameters<typeof trackResourceOpened>[0]);
 
 			await initialize();
 
-			expect(mockWorkflowsStore.fetchWorkflow).not.toHaveBeenCalled();
+			expect(mockWorkflowsListStore.fetchWorkflow).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { VIEWS } from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import { useI18n } from '@n8n/i18n';
 
@@ -12,6 +13,7 @@ const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
 
+const workflowId = useInjectWorkflowId();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 
@@ -19,18 +21,15 @@ const executionCount = computed(() => workflowsStore.currentWorkflowExecutions.l
 const containsTrigger = computed(() => workflowsStore.workflowTriggerNodes.length > 0);
 
 function onSetupFirstStep(): void {
-	uiStore.addFirstStepOnLoad = true;
-	const workflowRoute = getWorkflowRoute();
-	void router.push(workflowRoute);
-}
+	const resolvedWorkflowId = workflowId.value || route.params.workflowId;
 
-function getWorkflowRoute(): { name: string; params: {} } {
-	const workflowId = workflowsStore.workflowId || route.params.name;
-	if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		return { name: VIEWS.NEW_WORKFLOW, params: {} };
-	} else {
-		return { name: VIEWS.WORKFLOW, params: { name: workflowId } };
-	}
+	uiStore.addFirstStepOnLoad = true;
+
+	void router.push({
+		name: VIEWS.WORKFLOW,
+		params: { workflowId: resolvedWorkflowId },
+		query: { ...route.query },
+	});
 }
 </script>
 
@@ -44,7 +43,7 @@ function getWorkflowRoute(): { name: string; params: {} } {
 				<N8nText size="medium">
 					{{ locale.baseText('executionsLandingPage.emptyState.message') }}
 				</N8nText>
-				<N8nButton class="mt-l" type="tertiary" size="large" @click="onSetupFirstStep">
+				<N8nButton variant="subtle" class="mt-l" size="large" @click="onSetupFirstStep">
 					{{ locale.baseText('executionsLandingPage.emptyState.noTrigger.buttonText') }}
 				</N8nButton>
 			</div>

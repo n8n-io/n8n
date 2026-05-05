@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import { abbreviateNumber } from '@/utils/typesUtils';
-import NodeList from '@/components/NodeList.vue';
-import TimeAgo from '@/components/TimeAgo.vue';
+import { abbreviateNumber } from '@/app/utils/typesUtils';
+import NodeList from '@/app/components/NodeList.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 import type { ITemplatesWorkflow } from '@n8n/rest-api-client/api/templates';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
@@ -88,8 +88,8 @@ function onCardClick(e: MouseEvent) {
 		</div>
 		<div v-if="useWorkflowButton" :class="$style.buttonContainer">
 			<N8nButton
+				variant="outline"
 				v-if="useWorkflowButton"
-				outline
 				label="Use workflow"
 				data-test-id="use-workflow-button"
 				@click.stop="onUseWorkflowClick"

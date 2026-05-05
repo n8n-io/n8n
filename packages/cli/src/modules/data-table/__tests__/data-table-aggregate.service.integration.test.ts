@@ -7,6 +7,8 @@ import {
 	type Project,
 	type User,
 	PROJECT_ADMIN_ROLE,
+	GLOBAL_ADMIN_ROLE,
+	PROJECT_CHAT_USER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
@@ -135,6 +137,29 @@ describe('dataTableAggregate', () => {
 			expect(result.count).toBe(0);
 		});
 
+		it('should list all tables for owners and admins', async () => {
+			// ARRANGE
+			const currentUser = await createUser({ role: GLOBAL_ADMIN_ROLE });
+
+			const dt1 = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable1',
+				columns: [],
+			});
+			projectRelationRepository.find.mockResolvedValueOnce([]);
+
+			// ACT
+			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
+				skip: 0,
+				take: 10,
+			});
+
+			// ASSERT
+			expect(result.data).toEqual(
+				expect.arrayContaining([expect.objectContaining({ id: dt1.id, name: dt1.name })]),
+			);
+			expect(result.count).toBe(1);
+		});
+
 		it('should return only the data table matching the given data table id filter', async () => {
 			// ARRANGE
 			await dataTableService.createDataTable(project1.id, {
@@ -218,6 +243,36 @@ describe('dataTableAggregate', () => {
 			expect(result.data.length).toBe(1);
 			expect([ds1.id, ds2.id, ds3.id]).toContain(result.data[0].id);
 			expect(result.count).toBe(3);
+		});
+		it('should not return data tables for project chat users', async () => {
+			const currentUser = await createUser({ role: GLOBAL_MEMBER_ROLE });
+
+			await dataTableService.createDataTable(project1.id, {
+				name: 'secret-table',
+				columns: [],
+			});
+
+			projectRelationRepository.find.mockResolvedValueOnce([
+				{
+					userId: currentUser.id,
+					projectId: project1.id,
+					role: PROJECT_CHAT_USER_ROLE,
+					user: currentUser,
+					project: project1,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					setUpdateDate: jest.fn(),
+				},
+			]);
+
+			const result = await dataTableAggregateService.getManyAndCount(currentUser, {
+				filter: { projectId: project1.id },
+				skip: 0,
+				take: 10,
+			});
+
+			expect(result.data).toEqual([]);
+			expect(result.count).toBe(0);
 		});
 	});
 });

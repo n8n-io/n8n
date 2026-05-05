@@ -1,22 +1,40 @@
-# We want to include the THIRD_PARTY_LICENSES.md file in the Docker image,
-# but not other .md files
-**/*.md
-!**/THIRD_PARTY_LICENSES.md
-**/.env
-.cache
-assets
-node_modules
-packages/node-dev
-packages/**/node_modules
-packages/**/dist
-packages/**/.turbo
-packages/**/*.test.*
-.git
-.github
-!.github/scripts
-*.tsbuildinfo
-docker/compose
-docker/**/Dockerfile
-.vscode
-packages/testing
-cypress
+# Whitelist approach: ignore everything, then allow only what Docker builds need
+# This reduces build context from ~900MB to just what's required
+
+# Ignore everything first
+*
+
+# === n8n main image (docker/images/n8n/Dockerfile) ===
+!compiled
+!compiled/**
+!THIRD_PARTY_LICENSES.md
+
+# === runners image (docker/images/runners/Dockerfile + Dockerfile.distroless) ===
+!dist
+!dist/task-runner-javascript
+!dist/task-runner-javascript/**
+!packages
+!packages/@n8n
+!packages/@n8n/task-runner-python
+!packages/@n8n/task-runner-python/**
+
+# === Docker build files (entrypoints, configs) ===
+!docker
+!docker/images
+!docker/images/n8n
+!docker/images/n8n/docker-entrypoint.sh
+!docker/images/runners
+!docker/images/runners/n8n-task-runners.json
+
+# === benchmark image (packages/@n8n/benchmark/Dockerfile) ===
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!patches
+!patches/**
+!scripts
+!scripts/**
+!packages/@n8n/benchmark
+!packages/@n8n/benchmark/**
+!packages/@n8n/typescript-config
+!packages/@n8n/typescript-config/**

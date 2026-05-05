@@ -3,7 +3,7 @@ import { renderComponent } from '@/__tests__/render';
 import LogDetailsPanel from './LogDetailsPanel.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { createTestingPinia, type TestingPinia } from '@pinia/testing';
-import { h } from 'vue';
+import { computed, h } from 'vue';
 import {
 	createMockNodeTypes,
 	createTestNode,
@@ -16,8 +16,9 @@ import {
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';
 import type { LogEntry } from '../logs.types';
 import { createTestLogEntry } from '../__test__/mocks';
-import { NodeConnectionTypes } from 'n8n-workflow';
-import { HTML_NODE_TYPE } from '@/constants';
+import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
+import { HTML_NODE_TYPE } from '@/app/constants';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 describe('LogDetailsPanel', () => {
 	let pinia: TestingPinia;
@@ -42,14 +43,14 @@ describe('LogDetailsPanel', () => {
 	function createLogEntry(data: Partial<LogEntry> = {}) {
 		return createTestLogEntry({
 			workflow: createTestWorkflowObject(workflowData),
-			execution: {
+			execution: createRunExecutionData({
 				resultData: {
 					runData: {
 						'Chat Trigger': [chatNodeRunData],
 						'AI Agent': [aiNodeRunData],
 					},
 				},
-			},
+			}),
 			...data,
 		});
 	}
@@ -58,6 +59,9 @@ describe('LogDetailsPanel', () => {
 		const rendered = renderComponent(LogDetailsPanel, {
 			props,
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => 'test-workflow-id'),
+				},
 				plugins: [
 					createRouter({
 						history: createWebHistory(),
@@ -177,7 +181,9 @@ describe('LogDetailsPanel', () => {
 				runIndex: 0,
 				runData: runDataB,
 				workflow,
-				execution: { resultData: { runData: { A: [runDataA], B: [runDataB] } } },
+				execution: createRunExecutionData({
+					resultData: { runData: { A: [runDataA], B: [runDataB] } },
+				}),
 			}),
 			panels: LOG_DETAILS_PANEL_STATE.BOTH,
 			collapsingInputTableColumnName: null,
@@ -210,7 +216,9 @@ describe('LogDetailsPanel', () => {
 				[HTML_NODE_TYPE]: mockLoadedNodeType(HTML_NODE_TYPE),
 			}),
 		});
-		const execution = { resultData: { runData: { A: [runDataA], B: [runDataB] } } };
+		const execution = createRunExecutionData({
+			resultData: { runData: { A: [runDataA], B: [runDataB] } },
+		});
 		const logA = createLogEntry({ node: nodeA, runData: runDataA, workflow, execution });
 		const logB = createLogEntry({ node: nodeB, runData: runDataB, workflow, execution });
 

@@ -1,6 +1,6 @@
 import { AUTOCOMPLETABLE_BUILT_IN_MODULES_JS } from '../constants';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export function useRequireCompletions() {
 	const settingsStore = useSettingsStore();

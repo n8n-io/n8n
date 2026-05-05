@@ -12,7 +12,7 @@ import {
 } from './utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
-import { escapeMappingString } from '@/utils/mappingUtils';
+import { escapeMappingString } from '@/app/utils/mappingUtils';
 import {
 	METADATA_SECTION,
 	PREVIOUS_NODES_SECTION,
@@ -25,14 +25,16 @@ import { createInfoBoxRenderer } from './infoBoxRenderer';
 /**
  * Completions offered at the dollar position: `$|`
  */
-export function dollarCompletions(context: CompletionContext): CompletionResult | null {
+export async function dollarCompletions(
+	context: CompletionContext,
+): Promise<CompletionResult | null> {
 	const word = context.matchBefore(/\$[^$]*/);
 
 	if (!word) return null;
 
 	if (word.from === word.to && !context.explicit) return null;
 
-	let options = dollarOptions(context).map(stripExcessParens(context));
+	let options = (await dollarOptions(context)).map(stripExcessParens(context));
 
 	const userInput = word.text;
 
@@ -54,7 +56,7 @@ export function dollarCompletions(context: CompletionContext): CompletionResult 
 	};
 }
 
-export function dollarOptions(context: CompletionContext): Completion[] {
+export async function dollarOptions(context: CompletionContext): Promise<Completion[]> {
 	const SKIP = new Set();
 	let recommendedCompletions: Completion[] = [];
 
@@ -124,7 +126,7 @@ export function dollarOptions(context: CompletionContext): Completion[] {
 		return [];
 	}
 
-	if (receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
+	if (await receivesNoBinaryData(targetNodeParameterContext?.nodeName)) SKIP.add('$binary');
 
 	const previousNodesCompletions = autocompletableNodeNames(targetNodeParameterContext).map(
 		(nodeName) => {

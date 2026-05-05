@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import NodeExecuteButton from '@/components/NodeExecuteButton.vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { type INodeUi } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { type INodeProperties } from 'n8n-workflow';
 import { computed } from 'vue';
@@ -49,21 +49,13 @@ const nodeType = computed(() => nodeTypesStore.getNodeType(node.type, node.typeV
 			/>
 		</div>
 		<N8nIconButton
+			variant="ghost"
 			v-if="parameter"
 			icon="x"
 			size="small"
-			type="tertiary"
-			text
 			@click="emit('clearParameter')"
 		/>
-		<N8nIconButton
-			v-else
-			icon="expand"
-			size="small"
-			type="tertiary"
-			text
-			@click="emit('openNdv')"
-		/>
+		<N8nIconButton variant="ghost" v-else icon="expand" size="small" @click="emit('openNdv')" />
 		<NodeExecuteButton
 			v-if="isExecutable"
 			data-test-id="node-execute-button"

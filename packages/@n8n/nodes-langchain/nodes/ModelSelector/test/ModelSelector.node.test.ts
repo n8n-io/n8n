@@ -6,7 +6,7 @@ import { NodeOperationError, NodeConnectionTypes } from 'n8n-workflow';
 import { ModelSelector } from '../ModelSelector.node';
 
 // Mock the N8nLlmTracing module completely to avoid module resolution issues
-jest.mock('../../llms/N8nLlmTracing', () => ({
+jest.mock('@n8n/ai-utilities', () => ({
 	N8nLlmTracing: jest.fn().mockImplementation(() => ({
 		handleLLMStart: jest.fn(),
 		handleLLMEnd: jest.fn(),

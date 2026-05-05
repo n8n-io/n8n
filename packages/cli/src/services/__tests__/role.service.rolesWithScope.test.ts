@@ -5,18 +5,21 @@ import { mock } from 'jest-mock-extended';
 
 import { RoleCacheService } from '@/services/role-cache.service';
 import { RoleService } from '@/services/role.service';
+import { Logger } from '@n8n/backend-common';
 
 describe('RoleService.rolesWithScope', () => {
 	const licenseState = mock<LicenseState>();
 	const roleRepository = mockInstance(RoleRepository);
 	const scopeRepository = mockInstance(ScopeRepository);
 	const roleCacheService = mockInstance(RoleCacheService);
+	const logger = mockInstance(Logger);
 
 	const roleService = new RoleService(
 		licenseState,
 		roleRepository,
 		scopeRepository,
 		roleCacheService,
+		logger,
 	);
 
 	beforeEach(() => {
@@ -30,9 +33,11 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', 'project:read');
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', [
-				'project:read',
-			]);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
+				'project',
+				['project:read'],
+				undefined,
+			);
 			expect(result).toEqual(mockRoles);
 		});
 
@@ -43,7 +48,11 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', inputScopes);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', inputScopes);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
+				'project',
+				inputScopes,
+				undefined,
+			);
 			expect(result).toEqual(mockRoles);
 		});
 
@@ -53,7 +62,7 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', []);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', []);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', [], undefined);
 			expect(result).toEqual([]);
 		});
 	});
@@ -95,10 +104,11 @@ describe('RoleService.rolesWithScope', () => {
 				'project:update',
 			]);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', [
-				'project:read',
-				'project:update',
-			]);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
+				'project',
+				['project:read', 'project:update'],
+				undefined,
+			);
 			expect(result).toEqual(mockRoles);
 		});
 	});
@@ -114,15 +124,24 @@ describe('RoleService.rolesWithScope', () => {
 			await roleService.rolesWithScope('project', 'project:delete');
 
 			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledTimes(3);
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(1, 'credential', [
-				'credential:read',
-			]);
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(2, 'workflow', [
-				'workflow:execute',
-			]);
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(3, 'project', [
-				'project:delete',
-			]);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
+				1,
+				'credential',
+				['credential:read'],
+				undefined,
+			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
+				2,
+				'workflow',
+				['workflow:execute'],
+				undefined,
+			);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenNthCalledWith(
+				3,
+				'project',
+				['project:delete'],
+				undefined,
+			);
 		});
 
 		it('should handle mixed scope arrays', async () => {
@@ -136,7 +155,11 @@ describe('RoleService.rolesWithScope', () => {
 
 			const result = await roleService.rolesWithScope('project', mixedScopes);
 
-			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith('project', mixedScopes);
+			expect(roleCacheService.getRolesWithAllScopes).toHaveBeenCalledWith(
+				'project',
+				mixedScopes,
+				undefined,
+			);
 			expect(result).toEqual(mockRoles);
 		});
 	});

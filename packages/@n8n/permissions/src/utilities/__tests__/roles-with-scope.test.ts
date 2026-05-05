@@ -6,6 +6,7 @@ describe('rolesWithScope', () => {
 		test.each([
 			['workflow:create', ['global:owner', 'global:admin']],
 			['user:list', ['global:owner', 'global:admin', 'global:member']],
+			['chatHub:message', ['global:owner', 'global:admin', 'global:member', 'global:chatUser']],
 			['invalid:scope', []],
 		] as Array<[Scope, GlobalRole[]]>)('%s -> %s', (scope, expected) => {
 			expect(staticRolesWithScope('global', scope)).toEqual(expected);

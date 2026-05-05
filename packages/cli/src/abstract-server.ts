@@ -5,7 +5,6 @@ import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import compression from 'compression';
 import express from 'express';
-import { engine as expressHandlebars } from 'express-handlebars';
 import { readFile } from 'fs/promises';
 import type { Server } from 'http';
 import isbot from 'isbot';
@@ -16,6 +15,8 @@ import { ServiceUnavailableError } from '@/errors/response-errors/service-unavai
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
 import { send, sendErrorResponse } from '@/response-helper';
+import { createHandlebarsEngine } from '@/utils/handlebars.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
@@ -58,17 +59,19 @@ export abstract class AbstractServer {
 
 	protected endpointMcpTest: string;
 
+	protected endpointHealth: string;
+
 	protected webhooksEnabled = true;
 
 	protected testWebhooksEnabled = false;
 
-	readonly uniqueInstanceId: string;
+	private fullyReady = false;
 
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
 		this.app.set('query parser', 'extended');
-		this.app.engine('handlebars', expressHandlebars({ defaultLayout: false }));
+		this.app.engine('handlebars', createHandlebarsEngine());
 		this.app.set('view engine', 'handlebars');
 		this.app.set('views', TEMPLATES_DIR);
 
@@ -91,6 +94,8 @@ export abstract class AbstractServer {
 
 		this.endpointMcp = endpoints.mcp;
 		this.endpointMcpTest = endpoints.mcpTest;
+
+		this.endpointHealth = resolveBackendHealthEndpointPath(this.globalConfig);
 
 		this.logger = Container.get(Logger);
 	}
@@ -121,17 +126,27 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
-	private async setupHealthCheck() {
+	/** Call once after all initialization is complete. Unblocks the /healthz/readiness endpoint. */
+	markAsReady() {
+		this.fullyReady = true;
+	}
+
+	private setupHealthCheck() {
+		const healthPath = this.endpointHealth;
+		const readinessPath = `${healthPath}/readiness`;
+
+		const healthMiddlewares = inDevelopment ? [corsMiddleware] : [];
+
 		// main health check should not care about DB connections
-		this.app.get('/healthz', (_req, res) => {
+		this.app.get(healthPath, ...healthMiddlewares, (_req, res) => {
 			res.send({ status: 'ok' });
 		});
 
 		const { connectionState } = this.dbConnection;
 
-		this.app.get('/healthz/readiness', (_req, res) => {
+		this.app.get(readinessPath, ...healthMiddlewares, (_req, res) => {
 			const { connected, migrated } = connectionState;
-			if (connected && migrated) {
+			if (connected && migrated && this.fullyReady) {
 				res.status(200).send({ status: 'ok' });
 			} else {
 				res.status(503).send({ status: 'error' });
@@ -200,7 +215,7 @@ export abstract class AbstractServer {
 
 		this.externalHooks = Container.get(ExternalHooks);
 
-		await this.setupHealthCheck();
+		this.setupHealthCheck();
 
 		this.logger.info(`n8n ready on ${address}, port ${port}`);
 	}
@@ -215,12 +230,16 @@ export abstract class AbstractServer {
 
 		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
 		if (this.webhooksEnabled) {
-			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
+			const liveWebhooks = Container.get(LiveWebhooks);
+
 			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`/${this.endpointForm}/*path`, createWebhookHandlerFor(liveWebhooks, 'form'));
 
 			// Register a handler for live webhooks
-			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointWebhook}/*path`,
+				createWebhookHandlerFor(liveWebhooks, 'webhook'),
+			);
 
 			// Register a handler for waiting forms
 			this.app.all(
@@ -235,18 +254,23 @@ export abstract class AbstractServer {
 			);
 
 			// Register a handler for live MCP servers
-			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
+			this.app.all(`/${this.endpointMcp}/*path`, createWebhookHandlerFor(liveWebhooks, 'mcp'));
 		}
 
 		if (this.testWebhooksEnabled) {
-			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
+			const testWebhooks = Container.get(TestWebhooks);
 
-			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
-			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(
+				`/${this.endpointFormTest}/*path`,
+				createWebhookHandlerFor(testWebhooks, 'form'),
+			);
+			this.app.all(
+				`/${this.endpointWebhookTest}/*path`,
+				createWebhookHandlerFor(testWebhooks, 'webhook'),
+			);
 
 			// Register a handler for test MCP servers
-			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
+			this.app.all(`/${this.endpointMcpTest}/*path`, createWebhookHandlerFor(testWebhooks, 'mcp'));
 		}
 
 		// Block bots from scanning the application
@@ -296,7 +320,7 @@ export abstract class AbstractServer {
 	 * then closes them forcefully.
 	 */
 	@OnShutdown()
-	async onShutdown(): Promise<void> {
+	onShutdown(): void {
 		if (!this.server) {
 			return;
 		}

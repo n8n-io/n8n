@@ -43,7 +43,7 @@ $color-danger-light-1: var(--color--danger);
 $color-danger-light: var(--color--danger--tint-3);
 $color-danger-lighter: var(--color--danger--tint-4);
 
-$color-info-light-1: var(-color-info);
+$color-info-light-1: var(--color--info);
 $color-info-lighter: var(--color--info--tint-2);
 
 // Background
@@ -81,7 +81,6 @@ $fill-base: $color-white;
 
 /* Typography
 -------------------------- */
-$font-path: '../../assets/fonts' !default;
 $font-display: 'auto';
 /// fontSize|1|Font Size|0
 $font-size-extra-large: var(--font-size--xl);
@@ -415,7 +414,7 @@ $input-height: 40px;
 $input-border-radius: var(--input--radius, var(--radius));
 $input-border-top-left-radius: var(--input--radius--top-left, var(--input--radius, var(--radius)));
 $input-border-top-right-radius: var(
-	--input-border-top-right-radius,
+	--input-triple--radius--top-right,
 	var(--input--radius, var(--radius)),
 );
 $input-border-bottom-left-radius: var(
@@ -423,7 +422,7 @@ $input-border-bottom-left-radius: var(
 	var(--input--radius, var(--radius)),
 );
 $input-border-bottom-right-radius: var(
-	--input-border-bottom-right-radius,
+	--input-triple--radius--bottom-right,
 	var(--input--radius, var(--radius)),
 );
 $input-border-radius: var(--input--radius, var(--radius));
@@ -443,7 +442,7 @@ $input-clear-hover-color: var(--color--text);
 $input-disabled-fill: $disabled-fill-base;
 $input-disabled-border: $disabled-border-base;
 $input-disabled-color: $disabled-color-base;
-$input-disabled-placeholder-color: var(--color--text--tint-2);
+$input-disabled-placeholder-color: var(--color--text--tint-1);
 
 /// fontSize||Font|1
 $input-medium-font-size: var(--input--font-size, 14px);
@@ -612,9 +611,9 @@ $button-default-background-color: $color-white; // ! Actually used by checkbox
 /// color||Color|0
 // $button-disabled-font-color: var(--button-disabled-color, var(--color--text--shade-1));
 /// color||Color|0
-// $button-disabled-background-color: var(--button--color--background--disabled, var(--color--gray--light));
+// $button-disabled-background-color: var(--button--color--background--disabled, var(--color--neutral--light));
 /// color||Color|0
-// $button-disabled-border-color: var(--button--border-color--disabled, var(--color--gray--light));
+// $button-disabled-border-color: var(--button--border-color--disabled, var(--color--neutral--light));
 
 /// color||Color|0
 $button-primary-border-color: $button-border-color; // var(--color--primary);

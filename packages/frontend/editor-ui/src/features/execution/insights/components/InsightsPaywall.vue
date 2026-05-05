@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -20,7 +20,7 @@ const goToUpgrade = async () => {
 		<N8nText>
 			{{ i18n.baseText('insights.dashboard.paywall.description') }}
 		</N8nText>
-		<N8nButton type="primary" native-type="button" size="large" @click="goToUpgrade">
+		<N8nButton variant="solid" native-type="button" size="large" @click="goToUpgrade">
 			{{ i18n.baseText('generic.upgrade') }}
 		</N8nButton>
 	</div>

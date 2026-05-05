@@ -5,12 +5,12 @@ import type { ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
 import {
 	EMBEDDING_NAME,
 	getCollectionName,
+	getCollections,
 	getEmbeddingFieldName,
 	getFilterValue,
 	getMetadataFieldName,
-	getMongoClient,
+	createMongoClient,
 	getVectorIndexName,
-	mongoConfig,
 	METADATA_FIELD_NAME,
 	MONGODB_COLLECTION_NAME,
 	VECTOR_INDEX_NAME,
@@ -30,34 +30,47 @@ describe('VectorStoreMongoDBAtlas', () => {
 		jest.resetAllMocks();
 	});
 
-	describe('.getMongoClient', () => {
+	describe('.createMongoClient', () => {
 		const mockContext = mock<ISupplyDataFunctions>({
 			getCredentials: jest.fn(),
 		});
-		const mockClient1 = {
-			connect: jest.fn().mockResolvedValue(undefined),
-			close: jest.fn().mockResolvedValue(undefined),
-		};
-		const mockClient2 = {
+		const mockClient = {
 			connect: jest.fn().mockResolvedValue(undefined),
 			close: jest.fn().mockResolvedValue(undefined),
 		};
 		const MockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
 
-		beforeEach(() => {
-			mongoConfig.client = null;
-			mongoConfig.connectionString = '';
-		});
-
-		it('should reuse the same client when connection string is unchanged', async () => {
-			MockMongoClient.mockImplementation(() => mockClient1 as unknown as MongoClient);
+		it('should create a fresh client on every call', async () => {
+			const mockClient2 = {
+				connect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+			};
+			MockMongoClient.mockImplementationOnce(
+				() => mockClient as unknown as MongoClient,
+			).mockImplementationOnce(() => mockClient2 as unknown as MongoClient);
 			mockContext.getCredentials.mockResolvedValue({
 				configurationType: 'connectionString',
 				connectionString: 'mongodb://localhost:27017',
 			});
 
-			const client1 = await getMongoClient(mockContext, 1.1);
-			const client2 = await getMongoClient(mockContext, 1.1);
+			const client1 = await createMongoClient(mockContext, 1.1);
+			const client2 = await createMongoClient(mockContext, 1.1);
+
+			expect(MockMongoClient).toHaveBeenCalledTimes(2);
+			expect(mockClient.connect).toHaveBeenCalledTimes(1);
+			expect(mockClient2.connect).toHaveBeenCalledTimes(1);
+			expect(client1).toBe(mockClient);
+			expect(client2).toBe(mockClient2);
+		});
+
+		it('should create client with connectionString config', async () => {
+			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
+			mockContext.getCredentials.mockResolvedValue({
+				configurationType: 'connectionString',
+				connectionString: 'mongodb://localhost:27017',
+			});
+
+			const client = await createMongoClient(mockContext, 1.1);
 
 			expect(MockMongoClient).toHaveBeenCalledTimes(1);
 			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://localhost:27017', {
@@ -67,55 +80,12 @@ describe('VectorStoreMongoDBAtlas', () => {
 					version: '1.1',
 				},
 			});
-			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
-			expect(mockClient1.close).not.toHaveBeenCalled();
-			expect(mockClient2.connect).not.toHaveBeenCalled();
-			expect(client1).toBe(mockClient1);
-			expect(client2).toBe(mockClient1);
-		});
-
-		it('should create new client when connection string changes', async () => {
-			MockMongoClient.mockImplementationOnce(
-				() => mockClient1 as unknown as MongoClient,
-			).mockImplementationOnce(() => mockClient2 as unknown as MongoClient);
-			mockContext.getCredentials
-				.mockResolvedValueOnce({
-					configurationType: 'connectionString',
-					connectionString: 'mongodb://localhost:27017',
-				})
-				.mockResolvedValueOnce({
-					configurationType: 'connectionString',
-					connectionString: 'mongodb://different-host:27017',
-				});
-
-			const client1 = await getMongoClient(mockContext, 1.1);
-			const client2 = await getMongoClient(mockContext, 1.1);
-
-			expect(MockMongoClient).toHaveBeenCalledTimes(2);
-			expect(MockMongoClient).toHaveBeenNthCalledWith(1, 'mongodb://localhost:27017', {
-				appName: 'devrel.integration.n8n_vector_integ',
-				driverInfo: {
-					name: 'n8n_vector',
-					version: '1.1',
-				},
-			});
-			expect(MockMongoClient).toHaveBeenNthCalledWith(2, 'mongodb://different-host:27017', {
-				appName: 'devrel.integration.n8n_vector_integ',
-				driverInfo: {
-					name: 'n8n_vector',
-					version: '1.1',
-				},
-			});
-			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
-			expect(mockClient1.close).toHaveBeenCalledTimes(1);
-			expect(mockClient2.connect).toHaveBeenCalledTimes(1);
-			expect(mockClient2.close).not.toHaveBeenCalled();
-			expect(client1).toBe(mockClient1);
-			expect(client2).toBe(mockClient2);
+			expect(mockClient.connect).toHaveBeenCalledTimes(1);
+			expect(client).toBe(mockClient);
 		});
 
 		it('should create client with values configuration and port specified', async () => {
-			MockMongoClient.mockImplementation(() => mockClient1 as unknown as MongoClient);
+			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
 			mockContext.getCredentials.mockResolvedValue({
 				configurationType: 'values',
 				host: 'localhost',
@@ -125,7 +95,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 				database: 'testdb',
 			});
 
-			const client = await getMongoClient(mockContext, 1.1);
+			const client = await createMongoClient(mockContext, 1.1);
 
 			expect(MockMongoClient).toHaveBeenCalledTimes(1);
 			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://testuser:testpass@localhost:27017', {
@@ -135,12 +105,12 @@ describe('VectorStoreMongoDBAtlas', () => {
 					version: '1.1',
 				},
 			});
-			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
-			expect(client).toBe(mockClient1);
+			expect(mockClient.connect).toHaveBeenCalledTimes(1);
+			expect(client).toBe(mockClient);
 		});
 
 		it('should create client with values configuration without port (Atlas format)', async () => {
-			MockMongoClient.mockImplementation(() => mockClient1 as unknown as MongoClient);
+			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
 			mockContext.getCredentials.mockResolvedValue({
 				configurationType: 'values',
 				host: 'cluster0.mongodb.net',
@@ -149,7 +119,7 @@ describe('VectorStoreMongoDBAtlas', () => {
 				database: 'atlasdb',
 			});
 
-			const client = await getMongoClient(mockContext, 1.1);
+			const client = await createMongoClient(mockContext, 1.1);
 
 			expect(MockMongoClient).toHaveBeenCalledTimes(1);
 			expect(MockMongoClient).toHaveBeenCalledWith(
@@ -162,92 +132,71 @@ describe('VectorStoreMongoDBAtlas', () => {
 					},
 				},
 			);
-			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
-			expect(client).toBe(mockClient1);
+			expect(mockClient.connect).toHaveBeenCalledTimes(1);
+			expect(client).toBe(mockClient);
 		});
+	});
 
-		it('should reuse the same client when values configuration is unchanged', async () => {
-			MockMongoClient.mockImplementation(() => mockClient1 as unknown as MongoClient);
-			mockContext.getCredentials.mockResolvedValue({
-				configurationType: 'values',
-				host: 'localhost',
-				user: 'testuser',
-				password: 'testpass',
-				port: 27017,
-				database: 'testdb',
+	describe('.getCollections', () => {
+		const MockMongoClient = MongoClient as jest.MockedClass<typeof MongoClient>;
+
+		it('should create and close its own client', async () => {
+			const mockCollections = [{ name: 'Col1' }, { name: 'Col2' }];
+			const mockClient = {
+				connect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+				db: jest.fn().mockReturnValue({
+					listCollections: jest.fn().mockReturnValue({
+						toArray: jest.fn().mockResolvedValue(mockCollections),
+					}),
+				}),
+			};
+			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
+
+			const context = mock<ILoadOptionsFunctions>({
+				getCredentials: jest.fn().mockResolvedValue({
+					configurationType: 'connectionString',
+					connectionString: 'mongodb://localhost:27017',
+					database: 'testdb',
+				}),
+				getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
 			});
 
-			const client1 = await getMongoClient(mockContext, 1.1);
-			const client2 = await getMongoClient(mockContext, 1.1);
+			const result = await getCollections.call(context);
 
-			expect(MockMongoClient).toHaveBeenCalledTimes(1);
-			expect(MockMongoClient).toHaveBeenCalledWith('mongodb://testuser:testpass@localhost:27017', {
-				appName: 'devrel.integration.n8n_vector_integ',
-				driverInfo: {
-					name: 'n8n_vector',
-					version: '1.1',
-				},
+			expect(result).toEqual({
+				results: [
+					{ name: 'Col1', value: 'Col1' },
+					{ name: 'Col2', value: 'Col2' },
+				],
 			});
-			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
-			expect(mockClient1.close).not.toHaveBeenCalled();
-			expect(client1).toBe(mockClient1);
-			expect(client2).toBe(mockClient1);
+			expect(mockClient.connect).toHaveBeenCalledTimes(1);
+			expect(mockClient.close).toHaveBeenCalledTimes(1);
 		});
 
-		it('should create new client when values configuration changes', async () => {
-			MockMongoClient.mockImplementationOnce(
-				() => mockClient1 as unknown as MongoClient,
-			).mockImplementationOnce(() => mockClient2 as unknown as MongoClient);
-			mockContext.getCredentials
-				.mockResolvedValueOnce({
-					configurationType: 'values',
-					host: 'localhost',
-					user: 'testuser',
-					password: 'testpass',
-					port: 27017,
-					database: 'testdb',
-				})
-				.mockResolvedValueOnce({
-					configurationType: 'values',
-					host: 'different-host',
-					user: 'testuser',
-					password: 'testpass',
-					port: 27017,
-					database: 'testdb',
-				});
+		it('should close client even when an error occurs', async () => {
+			const mockClient = {
+				connect: jest.fn().mockResolvedValue(undefined),
+				close: jest.fn().mockResolvedValue(undefined),
+				db: jest.fn().mockReturnValue({
+					listCollections: jest.fn().mockReturnValue({
+						toArray: jest.fn().mockRejectedValue(new Error('db error')),
+					}),
+				}),
+			};
+			MockMongoClient.mockImplementation(() => mockClient as unknown as MongoClient);
 
-			const client1 = await getMongoClient(mockContext, 1.1);
-			const client2 = await getMongoClient(mockContext, 1.1);
+			const context = mock<ILoadOptionsFunctions>({
+				getCredentials: jest.fn().mockResolvedValue({
+					configurationType: 'connectionString',
+					connectionString: 'mongodb://localhost:27017',
+					database: 'testdb',
+				}),
+				getNode: jest.fn().mockReturnValue({ typeVersion: 1.1 }),
+			});
 
-			expect(MockMongoClient).toHaveBeenCalledTimes(2);
-			expect(MockMongoClient).toHaveBeenNthCalledWith(
-				1,
-				'mongodb://testuser:testpass@localhost:27017',
-				{
-					appName: 'devrel.integration.n8n_vector_integ',
-					driverInfo: {
-						name: 'n8n_vector',
-						version: '1.1',
-					},
-				},
-			);
-			expect(MockMongoClient).toHaveBeenNthCalledWith(
-				2,
-				'mongodb://testuser:testpass@different-host:27017',
-				{
-					appName: 'devrel.integration.n8n_vector_integ',
-					driverInfo: {
-						name: 'n8n_vector',
-						version: '1.1',
-					},
-				},
-			);
-			expect(mockClient1.connect).toHaveBeenCalledTimes(1);
-			expect(mockClient1.close).toHaveBeenCalledTimes(1);
-			expect(mockClient2.connect).toHaveBeenCalledTimes(1);
-			expect(mockClient2.close).not.toHaveBeenCalled();
-			expect(client1).toBe(mockClient1);
-			expect(client2).toBe(mockClient2);
+			await expect(getCollections.call(context)).rejects.toThrow('Error: db error');
+			expect(mockClient.close).toHaveBeenCalledTimes(1);
 		});
 	});
 

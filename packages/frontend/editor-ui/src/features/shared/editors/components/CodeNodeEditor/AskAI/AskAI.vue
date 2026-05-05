@@ -9,22 +9,26 @@ import type { CodeExecutionMode, INodeExecutionData } from 'n8n-workflow';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { INodeUi, Schema } from '@/Interface';
-import { generateCodeForPrompt } from '@/api/ai';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useDataSchema } from '@/composables/useDataSchema';
+import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useI18n } from '@n8n/i18n';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useNDVStore } from '@/features/ndv/ndv.store';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	ASK_AI_MAX_PROMPT_LENGTH,
 	ASK_AI_MIN_PROMPT_LENGTH,
 	ASK_AI_LOADING_DURATION_MS,
-} from '@/constants';
+} from '@/app/constants';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];
@@ -90,16 +94,18 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 
 function getParentNodes() {
 	const activeNode = useNDVStore().activeNode;
-	const { workflowObject, getNodeByName } = useWorkflowsStore();
+	const { workflowId } = useWorkflowsStore();
 
-	if (!activeNode || !workflowObject) return [];
+	if (!activeNode || !workflowId) return [];
 
-	return workflowObject
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+
+	return workflowDocumentStore
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 

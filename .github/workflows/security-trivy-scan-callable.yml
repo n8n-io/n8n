@@ -22,30 +22,40 @@ permissions:
 
 env:
   QBOT_SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
-  SLACK_CHANNEL_ID: C042WDXPTEZ #mission-security
+  SLACK_CHANNEL_ID: C0AHNJU9XFA #updates-security
 
 jobs:
   security_scan:
     name: Security - Scan Docker Image With Trivy
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout for VEX file
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: |
+            security/vex.openvex.json
+            security/trivy.yaml
+            security/trivy-ignore-policy.rego
+            .github/scripts/retry.mjs
+          sparse-checkout-cone-mode: false
+
       - name: Pull Docker image with retry
-        run: |
-          for i in {1..4}; do
-            docker pull "${{ inputs.image_ref }}" && break
-            [ "$i" -lt 4 ] && echo "Retry $i failed, waiting..." && sleep 15
-          done
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
+        run: node .github/scripts/retry.mjs --attempts 4 --delay 15 -- docker pull "$IMAGE_REF"
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.32.0
+        uses: aquasecurity/trivy-action@e368e328979b113139d6f9068e03accaed98a518 # v0.34.1
         id: trivy_scan
         with:
           image-ref: ${{ inputs.image_ref }}
+          version: 'v0.69.2'
           format: 'json'
           output: 'trivy-results.json'
           severity: 'CRITICAL,HIGH,MEDIUM,LOW'
           ignore-unfixed: false
           exit-code: '0'
+          trivy-config: 'security/trivy.yaml'
 
       - name: Calculate vulnerability counts
         id: process_results
@@ -82,16 +92,22 @@ jobs:
 
       - name: Generate GitHub Job Summary
         if: always()
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
         run: |
           {
             echo "# 🛡️ Trivy Security Scan Results"
             echo ""
-            echo "**Image:** \`${{ inputs.image_ref }}\`"
+            echo "**Image:** \`$IMAGE_REF\`"
             echo "**Scan Date:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ "${{ steps.process_results.outputs.vulnerabilities_found }}" == "false" ]; then
+          if [ ! -s trivy-results.json ]; then
+            {
+              echo "⚠️ **Scan did not produce results.** Check the 'Run Trivy vulnerability scanner' step for errors."
+            } >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.process_results.outputs.vulnerabilities_found }}" == "false" ]; then
             {
               echo "✅ **No vulnerabilities found!**"
             } >> "$GITHUB_STEP_SUMMARY"
@@ -113,7 +129,7 @@ jobs:
 
             {
               # Generate detailed vulnerability table
-              jq -r --arg image_ref "${{ inputs.image_ref }}" '
+              jq -r --arg image_ref "$IMAGE_REF" '
                 # Collect all vulnerabilities
                 [.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[]] |
                 # Group by CVE ID to avoid duplicates
@@ -153,8 +169,10 @@ jobs:
       - name: Generate Slack Blocks JSON
         if: steps.process_results.outputs.vulnerabilities_found == 'true'
         id: generate_blocks
+        env:
+          IMAGE_REF: ${{ inputs.image_ref }}
         run: |
-          BLOCKS_JSON=$(jq -c --arg image_ref "${{ inputs.image_ref }}" \
+          BLOCKS_JSON=$(jq -c --arg image_ref "$IMAGE_REF" \
           --arg repo_url "${{ github.server_url }}/${{ github.repository }}" \
           --arg repo_name "${{ github.repository }}" \
           --arg run_url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
@@ -242,3 +260,4 @@ jobs:
             channel: ${{ env.SLACK_CHANNEL_ID }}
             text: "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in ${{ inputs.image_ref }}"
             blocks: ${{ steps.generate_blocks.outputs.slack_blocks }}
+

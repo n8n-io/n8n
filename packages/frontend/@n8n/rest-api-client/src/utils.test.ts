@@ -54,7 +54,7 @@ describe('streamRequest', () => {
 		expect(onErrorMock).not.toHaveBeenCalled();
 	});
 
-	it('should stream error response from the API endpoint', async () => {
+	it('should stream error response with error data from the API endpoint', async () => {
 		const testError = { code: 500, message: 'Error happened' };
 		const encoder = new TextEncoder();
 		const mockResponse = new ReadableStream({
@@ -66,6 +66,8 @@ describe('streamRequest', () => {
 
 		const mockFetch = vi.fn().mockResolvedValue({
 			ok: false,
+			status: 500,
+			statusText: 'Internal Server Error',
 			body: mockResponse,
 		});
 
@@ -98,8 +100,51 @@ describe('streamRequest', () => {
 		});
 
 		expect(onChunkMock).not.toHaveBeenCalled();
+		expect(onDoneMock).not.toHaveBeenCalled();
+		expect(onErrorMock).toHaveBeenCalledExactlyOnceWith(
+			new ResponseError(testError.message, { httpStatusCode: 500 }),
+		);
+	});
+
+	it('should call onError when stream ends immediately with non-ok status and no chunks', async () => {
+		const mockResponse = new ReadableStream({
+			start(controller) {
+				// Empty stream that just closes without sending any chunks
+				controller.close();
+			},
+		});
+
+		const mockFetch = vi.fn().mockResolvedValue({
+			ok: false,
+			status: 403,
+			statusText: 'Forbidden',
+			body: mockResponse,
+		});
+
+		global.fetch = mockFetch;
+
+		const onChunkMock = vi.fn();
+		const onDoneMock = vi.fn();
+		const onErrorMock = vi.fn();
+
+		await streamRequest(
+			{
+				baseUrl: 'https://api.example.com',
+				pushRef: '',
+			},
+			'/data',
+			{ key: 'value' },
+			onChunkMock,
+			onDoneMock,
+			onErrorMock,
+		);
+
+		expect(onChunkMock).not.toHaveBeenCalled();
+		expect(onDoneMock).not.toHaveBeenCalled();
 		expect(onErrorMock).toHaveBeenCalledTimes(1);
-		expect(onErrorMock).toHaveBeenCalledWith(new ResponseError(testError.message));
+		expect(onErrorMock).toHaveBeenCalledExactlyOnceWith(
+			new ResponseError('Forbidden', { httpStatusCode: 403 }),
+		);
 	});
 
 	it('should handle broken stream data', async () => {

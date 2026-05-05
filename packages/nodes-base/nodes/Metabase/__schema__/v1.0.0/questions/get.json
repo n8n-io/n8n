@@ -28,8 +28,17 @@
         "collection": {
             "type": "object",
             "properties": {
+                "archive_operation_id": {
+                    "type": "null"
+                },
                 "archived": {
                     "type": "boolean"
+                },
+                "archived_directly": {
+                    "type": "null"
+                },
+                "authority_level": {
+                    "type": "null"
                 },
                 "created_at": {
                     "type": "string"
@@ -83,6 +92,9 @@
                 },
                 "is_superuser": {
                     "type": "boolean"
+                },
+                "tenant_id": {
+                    "type": "null"
                 }
             }
         },
@@ -129,6 +141,9 @@
         "initially_published_at": {
             "type": "null"
         },
+        "last_used_at": {
+            "type": "string"
+        },
         "last-edit-info": {
             "type": "object",
             "properties": {
@@ -167,16 +182,10 @@
                         "type": "boolean"
                     },
                     "status": {
-                        "type": [
-                            "null",
-                            "string"
-                        ]
+                        "type": "string"
                     },
                     "text": {
-                        "type": [
-                            "null",
-                            "string"
-                        ]
+                        "type": "null"
                     },
                     "updated_at": {
                         "type": "string"
@@ -246,5 +255,5 @@
             }
         }
     },
-    "version": 2
+    "version": 4
 }

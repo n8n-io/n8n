@@ -51,10 +51,11 @@ export function validateAgentPrompt(workflow: SimpleWorkflow): ProgrammaticViola
 
 			// Only check when promptType is 'define' or undefined (default)
 			// 'auto' mode means it uses text from previous node
-			if (promptType !== 'auto') {
+			if (promptType !== 'auto' && promptType !== 'guardrails') {
 				// Check 1: Text parameter should contain expressions for dynamic context
 				if (!textParam || !containsExpression(textParam)) {
 					violations.push({
+						name: 'agent-static-prompt',
 						type: 'major',
 						description: `Agent node "${node.name}" has no expression in its prompt field. This likely means it failed to use chatInput or dynamic context`,
 						pointsDeducted: 20,
@@ -65,6 +66,7 @@ export function validateAgentPrompt(workflow: SimpleWorkflow): ProgrammaticViola
 				// If systemMessage is missing, it likely means all instructions are in the text field
 				if (!systemMessage || systemMessage.trim().length === 0) {
 					violations.push({
+						name: 'agent-no-system-prompt',
 						type: 'major',
 						description: `Agent node "${node.name}" has no system message. System-level instructions (role, tasks, behavior) should be in the system message field, not the text field`,
 						pointsDeducted: 25,

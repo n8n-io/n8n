@@ -13,13 +13,11 @@ services:
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_USER_FOLDER=/n8n
       - DB_SQLITE_POOL_SIZE=3
-      - DB_SQLITE_ENABLE_WAL=true
       # Task Runner config
-      - N8N_RUNNERS_ENABLED=true
       - N8N_RUNNERS_MODE=external
       - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
       - N8N_RUNNERS_AUTH_TOKEN=test
-      - N8N_NATIVE_PYTHON_RUNNER=true
+      - N8N_METRICS=true
     ports:
       - 5678:5678
     volumes:
@@ -38,6 +36,7 @@ services:
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
       - N8N_RUNNERS_AUTH_TOKEN=test
+      - NO_COLOR=1
     depends_on:
       n8n:
         condition: service_healthy

@@ -2,6 +2,7 @@ import type { INodeParameters } from 'n8n-workflow';
 import type { ZodIssue } from 'zod';
 
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
+import type { SimpleWorkflow } from './workflow';
 
 /**
  * Types of progress updates
@@ -47,6 +48,7 @@ export interface ProgressReporter {
 	progress: (message: string, data?: Record<string, unknown>) => void;
 	complete: <T>(output: T) => void;
 	error: (error: ToolError) => void;
+	setCustomTitle: (title: string) => void;
 	createBatchReporter: (scope: string) => BatchReporter;
 }
 
@@ -142,5 +144,89 @@ export interface RemoveConnectionOutput {
 	connectionType: string;
 	sourceOutputIndex: number;
 	targetInputIndex: number;
+	message: string;
+}
+
+/**
+ * Output type for rename node tool
+ */
+export interface RenameNodeOutput {
+	nodeId: string;
+	oldName: string;
+	newName: string;
+	message: string;
+}
+
+/**
+ * Description of a workflow example we have found
+ */
+export interface WorkflowMetadata {
+	templateId: number;
+	name: string;
+	description?: string;
+	workflow: SimpleWorkflow;
+}
+
+/**
+ * A node configuration entry with version information
+ */
+export interface NodeConfigurationEntry {
+	version: number;
+	parameters: INodeParameters;
+}
+
+/**
+ * Map of node type to array of parameter configurations with version info
+ * Key: node type (e.g., 'n8n-nodes-base.telegram')
+ * Value: array of configuration entries with version and parameters
+ */
+export type NodeConfigurationsMap = Record<string, NodeConfigurationEntry[]>;
+
+/**
+ * Output type for get workflow examples tool
+ */
+export interface GetWorkflowExamplesOutput {
+	examples: Array<{
+		name: string;
+		description?: string;
+		workflow: string;
+	}>;
+	totalResults: number;
+}
+
+/**
+ * Output type for get node configuration examples tool
+ */
+export interface GetNodeConfigurationExamplesOutput {
+	nodeType: string;
+	totalFound: number;
+	message: string;
+}
+
+/**
+ * Output type for get execution schema tool
+ */
+export interface GetExecutionSchemaOutput {
+	found: boolean;
+	count: number;
+	message: string;
+}
+
+/**
+ * Output type for get execution logs tool
+ */
+export interface GetExecutionLogsOutput {
+	hasError: boolean;
+	lastNodeExecuted?: string;
+	nodesWithData: number;
+	message: string;
+}
+
+/**
+ * Output type for get expression data mapping tool
+ */
+export interface GetExpressionDataMappingOutput {
+	found: boolean;
+	nodesWithExpressions: number;
 	message: string;
 }

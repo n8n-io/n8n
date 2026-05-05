@@ -1,13 +1,15 @@
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { readdir, readFile } from 'fs/promises';
+import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import { ImportService } from '../import.service';
-import type { CredentialsRepository, TagRepository } from '@n8n/db';
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+
+import { ImportService } from '../import.service';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -23,6 +25,9 @@ jest.mock('@n8n/db', () => ({
 	CredentialsRepository: mock<CredentialsRepository>(),
 	TagRepository: mock<TagRepository>(),
 	DataSource: mock<DataSource>(),
+	// `DataTableColumn` (transitively imported by import.service) extends
+	// `WithTimestampsAndStringId`; provide a no-op so the class evaluates.
+	WithTimestampsAndStringId: class {},
 }));
 
 jest.mock('@/active-workflow-manager', () => ({
@@ -38,6 +43,8 @@ describe('ImportService', () => {
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
 	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockWorkflowIndexService: WorkflowIndexService;
+	let mockDataTableDDLService: DataTableDDLService;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -49,9 +56,13 @@ describe('ImportService', () => {
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
 		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+		mockWorkflowIndexService = mock<WorkflowIndexService>();
+		mockDataTableDDLService = mock<DataTableDDLService>();
 
 		// Set up cipher mock
-		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
+		mockCipher.decryptV2 = jest.fn(async (data: string) =>
+			data.replace('encrypted:', ''),
+		) as Cipher['decryptV2'];
 
 		// Set up dataSource mocks
 		// @ts-expect-error Accessing private property for testing
@@ -81,6 +92,9 @@ describe('ImportService', () => {
 		});
 		mockEntityManager.query = jest.fn().mockResolvedValue(undefined);
 		mockEntityManager.insert = jest.fn().mockResolvedValue(undefined);
+		mockEntityManager.upsert = jest.fn().mockResolvedValue(undefined);
+		// Passthrough so tests can read column fields off the result.
+		mockEntityManager.create = jest.fn().mockImplementation((_entity, data) => data);
 
 		// Mock transaction method
 		mockDataSource.transaction = jest.fn().mockImplementation(async (callback) => {
@@ -94,6 +108,8 @@ describe('ImportService', () => {
 			mockDataSource,
 			mockCipher,
 			mockActiveWorkflowManager,
+			mockWorkflowIndexService,
+			mockDataTableDDLService,
 		);
 	});
 
@@ -343,8 +359,8 @@ describe('ImportService', () => {
 				{ id: 1, name: 'Test' },
 				{ id: 2, name: 'Test2' },
 			]);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}');
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}');
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('{"id":1,"name":"Test"}', undefined);
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith('{"id":2,"name":"Test2"}', undefined);
 		});
 
 		it('should handle empty lines in JSONL file', async () => {
@@ -481,6 +497,38 @@ describe('ImportService', () => {
 			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
 		});
+
+		it('should import entities with a custom encryption key', async () => {
+			const importMetadata = {
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+				tableNames: ['user'],
+			};
+
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockReturnValue(['INSERT COMMAND', { data: 'data' }]);
+
+			const mockEntities = [{ id: 1, name: 'Test User' }];
+			const mockContent = JSON.stringify(mockEntities[0]);
+			jest.mocked(readFile).mockResolvedValue(mockContent);
+
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				Object.keys(importMetadata.entityFiles),
+				importMetadata.entityFiles,
+				'custom-encryption-key',
+			);
+
+			expect(mockCipher.decryptV2).toHaveBeenCalledWith(
+				'{"id":1,"name":"Test User"}',
+				'custom-encryption-key',
+			);
+			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
+		});
 	});
 
 	describe('disableForeignKeyConstraints', () => {
@@ -522,7 +570,7 @@ describe('ImportService', () => {
 			await importService.enableForeignKeyConstraints(mockEntityManager);
 
 			expect(mockEntityManager.query).toHaveBeenCalledWith(
-				'SET session_replication_role = DEFAULT;',
+				'SET session_replication_role = ORIGIN;',
 			);
 		});
 	});
@@ -673,18 +721,6 @@ describe('ImportService', () => {
 			);
 		});
 
-		it('should throw error when migration IDs do not match', async () => {
-			const migrationsContent = '{"id":"001","timestamp":"1000","name":"TestMigration"}';
-			const dbMigrations = [{ id: '002', timestamp: '1000', name: 'TestMigration' }];
-
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 002). Cannot import data from different migration states.',
-			);
-		});
-
 		it('should pass validation when migrations match exactly', async () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"TestMigration"}';
 			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'TestMigration' }];
@@ -693,18 +729,6 @@ describe('ImportService', () => {
 			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
-		});
-
-		it('should throw error when migration IDs have different formats', async () => {
-			const migrationsContent = '{"id":"001","timestamp":"1000","name":"TestMigration"}';
-			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'TestMigration' }];
-
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 1). Cannot import data from different migration states.',
-			);
 		});
 
 		it('should handle multiple migrations and find the latest one', async () => {
@@ -759,6 +783,175 @@ describe('ImportService', () => {
 		});
 	});
 
+	describe('normalizeEntityJsonColumns', () => {
+		const metadata = {
+			columns: [
+				{ databaseName: 'id', type: 'varchar' },
+				{ databaseName: 'nodes', type: 'simple-json' },
+				{ databaseName: 'meta', type: 'json' },
+				{ databaseName: 'name', type: 'text' },
+			],
+		} as any;
+
+		it('should parse and re-serialise a SQLite string JSON array value', () => {
+			const entity = { id: '1', nodes: '[{"id":"abc"}]', name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+		});
+
+		it('should parse and re-serialise a SQLite string JSON object value', () => {
+			const entity = { id: '1', meta: '{"key":"value"}', name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.meta).toBe(JSON.stringify({ key: 'value' }));
+		});
+
+		it('should serialise a Postgres parsed object value to a JSON string', () => {
+			const entity = { id: '1', nodes: [{ id: 'abc' }], name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+		});
+
+		it('should serialise a Postgres parsed array value to a JSON string', () => {
+			const entity = { id: '1', meta: [1, 2, 3], name: 'test' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.meta).toBe(JSON.stringify([1, 2, 3]));
+		});
+
+		it('should leave null json column values unchanged', () => {
+			const entity = { id: '1', nodes: null, meta: null };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBeNull();
+			expect(result.meta).toBeNull();
+		});
+
+		it('should not modify non-json columns', () => {
+			const entity = { id: '1', name: 'should-not-change', nodes: '[]' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.id).toBe('1');
+			expect(result.name).toBe('should-not-change');
+		});
+
+		it('should leave an invalid JSON string unchanged', () => {
+			const entity = { id: '1', nodes: 'not-valid-json' };
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.nodes).toBe('not-valid-json');
+		});
+
+		it('should only normalise json columns in a mixed entity', () => {
+			const entity = {
+				id: '1',
+				name: 'workflow',
+				nodes: '[{"id":"abc"}]',
+				meta: { key: 'value' },
+			};
+
+			// @ts-expect-error accessing private method for testing
+			const result = importService.normalizeEntityJsonColumns(entity, metadata);
+
+			expect(result.id).toBe('1');
+			expect(result.name).toBe('workflow');
+			expect(result.nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+			expect(result.meta).toBe(JSON.stringify({ key: 'value' }));
+		});
+	});
+
+	describe('importEntitiesFromFiles — JSON column normalisation', () => {
+		it('should normalise SQLite string json column values before inserting into Postgres', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'WorkflowEntity',
+					tableName: 'workflow_entity',
+					columns: [
+						{ databaseName: 'id', type: 'varchar' },
+						{ databaseName: 'nodes', type: 'simple-json' },
+					],
+				},
+			] as any;
+
+			// SQLite-origin: nodes is a serialised string, not an object
+			const sqliteEntity = { id: '1', nodes: '[{"id":"abc"}]' };
+			jest.mocked(readFile).mockResolvedValue(JSON.stringify(sqliteEntity));
+
+			const capturedParams: Array<Record<string, unknown>> = [];
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockImplementation((_query, params) => {
+					capturedParams.push(params as Record<string, unknown>);
+					return ['INSERT COMMAND', params];
+				});
+
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				['workflowentity'],
+				{ workflowentity: ['/test/input/workflowentity.jsonl'] },
+			);
+
+			expect(capturedParams).toHaveLength(1);
+			// nodes must be a serialised JSON string, not the raw SQLite text
+			expect(capturedParams[0].nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+		});
+
+		it('should normalise Postgres object json column values before inserting into SQLite', async () => {
+			// @ts-expect-error Accessing private property for testing
+			mockDataSource.entityMetadatas = [
+				{
+					name: 'WorkflowEntity',
+					tableName: 'workflow_entity',
+					columns: [
+						{ databaseName: 'id', type: 'varchar' },
+						{ databaseName: 'nodes', type: 'json' },
+					],
+				},
+			] as any;
+
+			// Postgres-origin: nodes is a parsed object in the JSONL
+			const postgresEntity = { id: '1', nodes: [{ id: 'abc' }] };
+			jest.mocked(readFile).mockResolvedValue(JSON.stringify(postgresEntity));
+
+			const capturedParams: Array<Record<string, unknown>> = [];
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockImplementation((_query, params) => {
+					capturedParams.push(params as Record<string, unknown>);
+					return ['INSERT COMMAND', params];
+				});
+
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				['workflowentity'],
+				{ workflowentity: ['/test/input/workflowentity.jsonl'] },
+			);
+
+			expect(capturedParams).toHaveLength(1);
+			// nodes must be a JSON string, not the raw JS object
+			expect(capturedParams[0].nodes).toBe(JSON.stringify([{ id: 'abc' }]));
+		});
+	});
+
 	describe('decompressEntitiesZip', () => {
 		it('should decompress entities.zip successfully when file exists', async () => {
 			const inputDir = '/test/input';
@@ -785,6 +978,121 @@ describe('ImportService', () => {
 				`\n🗜️  Found entities.zip file, decompressing to ${inputDir}...`,
 			);
 			expect(mockLogger.info).toHaveBeenCalledWith('✅ Successfully decompressed entities.zip');
+		});
+	});
+
+	describe('dropExistingDataTableUserTables', () => {
+		it('should drop dynamic tables for every entry in the destination registry', async () => {
+			mockEntityManager.query = jest.fn().mockResolvedValue([{ id: 'abc' }, { id: 'xyz' }]);
+
+			await importService.dropExistingDataTableUserTables(mockEntityManager);
+
+			expect(mockEntityManager.query).toHaveBeenCalledWith(
+				expect.stringContaining('SELECT id FROM "data_table"'),
+			);
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledTimes(2);
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledWith('abc', mockEntityManager);
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledWith('xyz', mockEntityManager);
+		});
+
+		it('should silently skip when the registry is missing on the destination', async () => {
+			mockEntityManager.query = jest.fn().mockRejectedValue(new Error('table not found'));
+
+			await expect(
+				importService.dropExistingDataTableUserTables(mockEntityManager),
+			).resolves.not.toThrow();
+
+			expect(mockDataTableDDLService.dropTable).not.toHaveBeenCalled();
+		});
+
+		it('should respect the table prefix when querying the registry', async () => {
+			// @ts-expect-error overriding for the test
+			mockDataSource.options = { type: 'sqlite', entityPrefix: 'n8n_' };
+			mockEntityManager.query = jest.fn().mockResolvedValue([]);
+
+			await importService.dropExistingDataTableUserTables(mockEntityManager);
+
+			expect(mockEntityManager.query).toHaveBeenCalledWith(
+				expect.stringContaining('"n8n_data_table"'),
+			);
+		});
+	});
+
+	describe('recreateDataTableUserTablesFromRegistry', () => {
+		it('should recreate every backing table referenced in the imported registry', async () => {
+			mockEntityManager.query = jest
+				.fn()
+				.mockResolvedValueOnce([{ id: 'abc' }, { id: 'xyz' }]) // SELECT id FROM data_table
+				.mockResolvedValueOnce([
+					{ id: 'col-1', dataTableId: 'abc', name: 'foo', type: 'string', index: 0 },
+					{ id: 'col-2', dataTableId: 'xyz', name: 'bar', type: 'number', index: 0 },
+				]); // SELECT cols
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			expect(mockDataTableDDLService.dropTable).toHaveBeenCalledTimes(2);
+			expect(mockDataTableDDLService.createTableWithColumns).toHaveBeenCalledWith(
+				'abc',
+				expect.arrayContaining([expect.objectContaining({ name: 'foo', type: 'string' })]),
+				mockEntityManager,
+			);
+			expect(mockDataTableDDLService.createTableWithColumns).toHaveBeenCalledWith(
+				'xyz',
+				expect.arrayContaining([expect.objectContaining({ name: 'bar', type: 'number' })]),
+				mockEntityManager,
+			);
+		});
+
+		it('should sort columns by index before recreating the backing table', async () => {
+			mockEntityManager.query = jest
+				.fn()
+				.mockResolvedValueOnce([{ id: 'abc' }])
+				.mockResolvedValueOnce([
+					{ id: 'col-2', dataTableId: 'abc', name: 'b', type: 'string', index: 1 },
+					{ id: 'col-1', dataTableId: 'abc', name: 'a', type: 'string', index: 0 },
+				]);
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			const call = (mockDataTableDDLService.createTableWithColumns as jest.Mock).mock.calls[0];
+			const [, sortedColumns] = call;
+			expect((sortedColumns as Array<{ name: string }>).map((c) => c.name)).toEqual(['a', 'b']);
+		});
+
+		it('should drop existing tables before recreating to make the operation idempotent', async () => {
+			mockEntityManager.query = jest
+				.fn()
+				.mockResolvedValueOnce([{ id: 'abc' }])
+				.mockResolvedValueOnce([
+					{ id: 'col-1', dataTableId: 'abc', name: 'foo', type: 'string', index: 0 },
+				]);
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			const dropCallOrder = (mockDataTableDDLService.dropTable as jest.Mock).mock
+				.invocationCallOrder[0];
+			const createCallOrder = (mockDataTableDDLService.createTableWithColumns as jest.Mock).mock
+				.invocationCallOrder[0];
+			expect(dropCallOrder).toBeLessThan(createCallOrder);
+		});
+
+		it('should skip silently when the registry is missing', async () => {
+			mockEntityManager.query = jest.fn().mockRejectedValue(new Error('relation does not exist'));
+
+			await expect(
+				importService.recreateDataTableUserTablesFromRegistry(mockEntityManager),
+			).resolves.not.toThrow();
+
+			expect(mockDataTableDDLService.createTableWithColumns).not.toHaveBeenCalled();
+		});
+
+		it('should no-op when the registry is empty', async () => {
+			mockEntityManager.query = jest.fn().mockResolvedValueOnce([]);
+
+			await importService.recreateDataTableUserTablesFromRegistry(mockEntityManager);
+
+			expect(mockDataTableDDLService.createTableWithColumns).not.toHaveBeenCalled();
+			expect(mockDataTableDDLService.dropTable).not.toHaveBeenCalled();
 		});
 	});
 });

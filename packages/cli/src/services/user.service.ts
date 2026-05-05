@@ -1,35 +1,58 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { PublicUser } from '@n8n/db';
-import { User, UserRepository } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import type { AuthIdentity, PublicUser } from '@n8n/db';
+import {
+	ProjectRelation,
+	User,
+	UserRepository,
+	ProjectRepository,
+	Not,
+	In,
+	GLOBAL_OWNER_ROLE,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
+import {
+	getGlobalScopes,
+	PROJECT_ADMIN_ROLE_SLUG,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+	type AssignableGlobalRole,
+} from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
-import type { PostHogClient } from '@/posthog';
+import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { UserManagementMailer } from '@/user-management/email';
 
+import { JwtService } from './jwt.service';
+import { OwnershipService } from './ownership.service';
+import { ProjectService } from './project.service.ee';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class UserService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly ownershipService: OwnershipService,
 		private readonly publicApiKeyService: PublicApiKeyService,
 		private readonly roleService: RoleService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly jwtService: JwtService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -46,6 +69,18 @@ export class UserService {
 		return this.userRepository.manager;
 	}
 
+	async assertGetUsersAccess(user: User, projectId?: string): Promise<void> {
+		if (projectId) {
+			const project = await this.projectService.getProjectWithScope(user, projectId, [
+				'project:list',
+			]);
+			if (!project) {
+				throw new NotFoundError('Project not found');
+			}
+			return;
+		}
+	}
+
 	async updateSettings(userId: string, newSettings: Partial<IUserSettings>) {
 		const user = await this.userRepository.findOneOrFail({ where: { id: userId } });
 
@@ -58,11 +93,31 @@ export class UserService {
 		await this.userRepository.save(user);
 	}
 
+	async findUserWithAuthIdentities(userId: string): Promise<User> {
+		return await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role', 'authIdentities'],
+		});
+	}
+
+	/**
+	 * Check if a user is authenticated via LDAP or OIDC.
+	 * These users should not be able to change their profile information.
+	 */
+	async findSsoIdentity(userId: string): Promise<AuthIdentity | undefined> {
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['authIdentities'],
+		});
+
+		const ssoIdentity = user?.authIdentities?.find((identity) => identity.providerType !== 'email');
+
+		return ssoIdentity;
+	}
+
 	async toPublic(
 		user: User,
 		options?: {
-			withInviteUrl?: boolean;
-			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
 			mfaAuthenticated?: boolean;
@@ -80,21 +135,6 @@ export class UserService {
 			isOwner: user.role.slug === 'global:owner',
 		};
 
-		if (options?.withInviteUrl && !options?.inviterId) {
-			throw new UnexpectedError('Inviter ID is required to generate invite URL');
-		}
-
-		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
-
-		if (
-			!inviteLinksEmailOnly &&
-			options?.withInviteUrl &&
-			options?.inviterId &&
-			publicUser.isPending
-		) {
-			publicUser = this.addInviteUrl(options.inviterId, publicUser);
-		}
-
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
@@ -106,18 +146,16 @@ export class UserService {
 
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
+		const { instanceSettingsLoader } = this.globalConfig;
+		if (
+			instanceSettingsLoader.ownerManagedByEnv &&
+			!!user.email &&
+			user.email.toLowerCase() === instanceSettingsLoader.ownerEmail.toLowerCase()
+		) {
+			publicUser.isManagedByEnv = true;
+		}
+
 		return publicUser;
-	}
-
-	private addInviteUrl(inviterId: string, invitee: PublicUser) {
-		const url = new URL(this.urlService.getInstanceBaseUrl());
-		url.pathname = '/signup';
-		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', invitee.id);
-
-		invitee.inviteAcceptUrl = url.toString();
-
-		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -148,7 +186,17 @@ export class UserService {
 
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
+				// Always use JWT-based tamper-proof invite links
+				const token = this.jwtService.sign(
+					{
+						inviterId: owner.id,
+						inviteeId: id,
+					},
+					{
+						expiresIn: '90d',
+					},
+				);
+				const inviteAcceptUrl = `${domain}/signup?token=${token}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -195,9 +243,9 @@ export class UserService {
 							messageType: 'New user invite',
 							publicApi: false,
 						});
+						// Do not log inviteAcceptUrl: it contains a live JWT that must not appear in logs
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
-							inviteAcceptUrl,
 							email,
 						});
 						invitedUser.error = e.message;
@@ -269,21 +317,141 @@ export class UserService {
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 
-	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+	async changeUserRole(user: User, newRole: RoleChangeRequestDto) {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
-		return await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
+		await this.userRepository.manager.transaction(async (trx) => {
+			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
-			const adminDowngradedToMember =
-				user.role.slug === 'global:owner' &&
-				targetUser.role.slug === 'global:admin' &&
-				newRole.newRoleName === 'global:member';
+			const isAdminRole = (roleName: string) => {
+				return roleName === 'global:admin' || roleName === 'global:owner';
+			};
 
-			if (adminDowngradedToMember) {
-				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
+			const isDowngradedToChatUser =
+				user.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
+			const isUpgradedChatUser =
+				user.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
+			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
+
+			if (isDowngradedToChatUser) {
+				// Revoke user's project roles in any shared projects they have access to.
+				const projectRelations = await trx.find(ProjectRelation, {
+					where: { userId: user.id, role: { slug: Not(PROJECT_OWNER_ROLE_SLUG) } },
+					relations: ['role'],
+				});
+				for (const relation of projectRelations) {
+					if (relation.role.slug === PROJECT_ADMIN_ROLE_SLUG) {
+						// Ensure there is at least one other admin in the project
+						const adminCount = await trx.count(ProjectRelation, {
+							where: {
+								projectId: relation.projectId,
+								role: { slug: In([PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG]) },
+								userId: Not(user.id),
+							},
+						});
+						if (adminCount === 0) {
+							throw new UserError(
+								`Cannot downgrade user as they are the only project admin in project "${relation.projectId}".`,
+							);
+						}
+					}
+
+					await trx.delete(ProjectRelation, {
+						userId: user.id,
+						projectId: relation.projectId,
+					});
+				}
+
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					trx,
+				);
+
+				// Revoke 'project:personalOwner' role on their personal project
+				// and grant 'project:viewer' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: user.id,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+						projectId: personalProject.id,
+					},
+					{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+				);
+
+				// Revoke all API keys from chat users
+				await this.publicApiKeyService.deleteAllApiKeysForUser(user, trx);
+			} else if (isDowngradedAdmin) {
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
+			} else if (isUpgradedChatUser) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					trx,
+				);
+
+				// Revoke previous 'project:viewer' role on their personal project
+				// and grant 'project:personalOwner' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: user.id,
+						role: { slug: PROJECT_VIEWER_ROLE_SLUG },
+						projectId: personalProject.id,
+					},
+					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+				);
 			}
 		});
+
+		// Invalidate ownership cache for the user to ensure their new permissions are reflected in subsequent requests
+		await this.ownershipService.invalidateProjectOwnerCacheByUserId(user.id);
+	}
+
+	/**
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
+	 * @returns Object with inviterId and inviteeId
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
+	 */
+	private async processTokenBasedInvite(
+		token: string,
+	): Promise<{ inviterId: string; inviteeId: string }> {
+		try {
+			const decoded = this.jwtService.verify<{ inviterId: string; inviteeId: string }>(token);
+			if (!decoded.inviterId || !decoded.inviteeId) {
+				this.logger.debug('Invalid JWT token payload - missing inviterId or inviteeId');
+				throw new BadRequestError('Invalid invite URL');
+			}
+
+			return { inviterId: decoded.inviterId, inviteeId: decoded.inviteeId };
+		} catch (error) {
+			if (error instanceof BadRequestError) {
+				throw error;
+			}
+			this.logger.debug('Failed to verify JWT token', { error });
+			throw new BadRequestError('Invalid invite URL');
+		}
+	}
+
+	/**
+	 * Extract inviterId and inviteeId from JWT token
+	 * @param token - JWT token containing inviterId and inviteeId
+	 * @returns Object with inviterId and inviteeId
+	 * @throws BadRequestError if JWT is invalid or required parameters are missing
+	 */
+	async getInvitationIdsFromPayload(
+		token: string,
+	): Promise<{ inviterId: string; inviteeId: string }> {
+		const instanceOwner = await this.userRepository.findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+		});
+
+		if (!instanceOwner) {
+			throw new BadRequestError('Instance owner not found');
+		}
+
+		// Only support token-based invites (tamper-proof)
+		return await this.processTokenBasedInvite(token);
 	}
 }

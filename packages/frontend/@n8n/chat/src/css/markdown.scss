@@ -6,12 +6,12 @@
 	@include meta.load-css('highlight.js/styles/github-dark-dimmed.css');
 }
 
-body {
-	&[data-theme='dark'] {
-		@include hljs-dark-theme;
-	}
+body[data-theme='dark'] {
+	@include hljs-dark-theme;
+}
 
-	@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: dark) {
+	body:not([data-theme]) {
 		@include hljs-dark-theme;
 	}
 }
@@ -168,6 +168,11 @@ body {
 	svg,
 	video {
 		vertical-align: middle;
+	}
+
+	img {
+		max-width: 100%;
+		height: auto;
 	}
 
 	/*

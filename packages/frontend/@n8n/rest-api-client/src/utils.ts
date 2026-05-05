@@ -36,21 +36,35 @@ export class ResponseError extends ApplicationError {
 	// The stack trace of the server
 	serverStackTrace?: string;
 
+	// Additional metadata from the server (e.g., EULA URL)
+	meta?: Record<string, unknown>;
+
+	// Additional hint from the server
+	hint?: string;
+
 	/**
 	 * Creates an instance of ResponseError.
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
 	 * @param {string} [stack] The stack trace
+	 * @param {Record<string, unknown>} [meta] Additional metadata from the server
+	 * @param {string} [hint] Additional hint from the server
 	 */
 	constructor(
 		message: string,
-		options: { errorCode?: number; httpStatusCode?: number; stack?: string } = {},
+		options: {
+			errorCode?: number;
+			httpStatusCode?: number;
+			stack?: string;
+			meta?: Record<string, unknown>;
+			hint?: ResponseError['hint'];
+		} = {},
 	) {
 		super(message);
 		this.name = 'ResponseError';
 
-		const { errorCode, httpStatusCode, stack } = options;
+		const { errorCode, httpStatusCode, stack, meta, hint } = options;
 		if (errorCode) {
 			this.errorCode = errorCode;
 		}
@@ -59,6 +73,12 @@ export class ResponseError extends ApplicationError {
 		}
 		if (stack) {
 			this.serverStackTrace = stack;
+		}
+		if (meta) {
+			this.meta = meta;
+		}
+		if (hint) {
+			this.hint = hint;
 		}
 	}
 }
@@ -134,6 +154,8 @@ export async function request(config: {
 				errorCode: errorResponseData.code,
 				httpStatusCode: error.response.status,
 				stack: errorResponseData.stack,
+				meta: errorResponseData.meta,
+				hint: errorResponseData.hint,
 			});
 		}
 
@@ -221,6 +243,10 @@ export async function streamRequest<T extends object>(
 	separator = STREAM_SEPARATOR,
 	abortSignal?: AbortSignal,
 ): Promise<void> {
+	let onErrorOnce: ((e: Error) => void) | undefined = (e: Error) => {
+		onErrorOnce = undefined;
+		onError?.(e);
+	};
 	const headers: Record<string, string> = {
 		'browser-id': getBrowserId(),
 		'Content-Type': 'application/json',
@@ -245,7 +271,15 @@ export async function streamRequest<T extends object>(
 			async function readStream() {
 				const { done, value } = await reader.read();
 				if (done) {
-					onDone?.();
+					if (response.ok) {
+						onDone?.();
+					} else {
+						onErrorOnce?.(
+							new ResponseError(response.statusText, {
+								httpStatusCode: response.status,
+							}),
+						);
+					}
 					return;
 				}
 				const chunk = decoder.decode(value);
@@ -273,7 +307,7 @@ export async function streamRequest<T extends object>(
 							} else {
 								// Otherwise, call error callback
 								const message = 'message' in data ? data.message : response.statusText;
-								onError?.(
+								onErrorOnce?.(
 									new ResponseError(String(message), {
 										httpStatusCode: response.status,
 									}),
@@ -281,7 +315,7 @@ export async function streamRequest<T extends object>(
 							}
 						} catch (e: unknown) {
 							if (e instanceof Error) {
-								onError?.(e);
+								onErrorOnce?.(e);
 							}
 						}
 					}
@@ -291,11 +325,11 @@ export async function streamRequest<T extends object>(
 
 			// Start reading the stream
 			await readStream();
-		} else if (onError) {
-			onError(new Error(response.statusText));
+		} else if (onErrorOnce) {
+			onErrorOnce(new Error(response.statusText));
 		}
 	} catch (e: unknown) {
 		assert(e instanceof Error);
-		onError?.(e);
+		onErrorOnce?.(e);
 	}
 }

@@ -2,17 +2,19 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, type BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
-import type { AgentAction, AgentFinish } from 'langchain/agents';
-import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
-import type { BaseChatMemory } from 'langchain/memory';
-import { DynamicStructuredTool, type Tool } from 'langchain/tools';
+import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
+import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { BaseChatMemory } from '@langchain/classic/memory';
+import { DynamicStructuredTool, type Tool } from '@langchain/classic/tools';
 import { BINARY_ENCODING, jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import type { IExecuteFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, ISupplyDataFunctions, IWebhookFunctions } from 'n8n-workflow';
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { isChatInstance, getConnectedTools } from '@utils/helpers';
+import { isChatInstance } from '@n8n/ai-utilities';
+import { getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+
 /* -----------------------------------------------------------
    Output Parser Helper
 ----------------------------------------------------------- */
@@ -33,13 +35,31 @@ export function getOutputParserSchema(
 /* -----------------------------------------------------------
    Binary Data Helpers
 ----------------------------------------------------------- */
+function isTextFile(mimeType: string): boolean {
+	return (
+		mimeType.startsWith('text/') ||
+		mimeType === 'application/json' ||
+		mimeType === 'application/xml' ||
+		mimeType === 'application/csv' ||
+		mimeType === 'application/x-yaml' ||
+		mimeType === 'application/yaml'
+	);
+}
+
+function isImageFile(mimeType: string): boolean {
+	return mimeType.startsWith('image/');
+}
+
 /**
- * Extracts binary image messages from the input data.
+ * Extracts binary messages (images and text files) from the input data.
  * When operating in filesystem mode, the binary stream is first converted to a buffer.
+ *
+ * Images are converted to base64 data URLs.
+ * Text files are read as UTF-8 text and included in the message content.
  *
  * @param ctx - The execution context
  * @param itemIndex - The current item index
- * @returns A HumanMessage containing the binary image messages.
+ * @returns A HumanMessage containing the binary messages (images and text files).
  */
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
@@ -48,30 +68,58 @@ export async function extractBinaryMessages(
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
-			.filter((data) => data.mimeType.startsWith('image/'))
+			// select only the files we can process
+			.filter((data) => isImageFile(data.mimeType) || isTextFile(data.mimeType))
 			.map(async (data) => {
-				let binaryUrlString: string;
+				// Handle images
+				if (isImageFile(data.mimeType)) {
+					let binaryUrlString: string;
 
-				// In filesystem mode we need to get binary stream by id before converting it to buffer
-				if (data.id) {
-					const binaryBuffer = await ctx.helpers.binaryToBuffer(
-						await ctx.helpers.getBinaryStream(data.id),
-					);
-					binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
-						BINARY_ENCODING,
-					)}`;
-				} else {
-					binaryUrlString = data.data.includes('base64')
-						? data.data
-						: `data:${data.mimeType};base64,${data.data}`;
+					// In filesystem mode we need to get binary stream by id before converting it to buffer
+					if (data.id) {
+						const binaryBuffer = await ctx.helpers.binaryToBuffer(
+							await ctx.helpers.getBinaryStream(data.id),
+						);
+						binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
+							BINARY_ENCODING,
+						)}`;
+					} else {
+						binaryUrlString = data.data.includes('base64')
+							? data.data
+							: `data:${data.mimeType};base64,${data.data}`;
+					}
+
+					return {
+						type: 'image_url',
+						image_url: {
+							url: binaryUrlString,
+						},
+					};
 				}
+				// Handle text files
+				else {
+					let textContent: string;
+					if (data.id) {
+						const binaryBuffer = await ctx.helpers.binaryToBuffer(
+							await ctx.helpers.getBinaryStream(data.id),
+						);
+						textContent = binaryBuffer.toString('utf-8');
+					} else {
+						// Data might be base64 encoded with or without data URL prefix
+						if (data.data.includes('base64,')) {
+							const base64Data = data.data.split('base64,')[1];
+							textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+						} else {
+							// Default: binary data is base64-encoded without prefix
+							textContent = Buffer.from(data.data, 'base64').toString('utf-8');
+						}
+					}
 
-				return {
-					type: 'image_url',
-					image_url: {
-						url: binaryUrlString,
-					},
-				};
+					return {
+						type: 'text',
+						text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
+					};
+				}
 			}),
 	);
 	return new HumanMessage({
@@ -159,18 +207,35 @@ export function handleAgentFinishOutput(
 	if (agentFinishSteps.returnValues) {
 		const isMultiOutput = Array.isArray(agentFinishSteps.returnValues?.output);
 		if (isMultiOutput) {
-			// If all items in the multi-output array are of type 'text', merge them into a single string
 			const multiOutputSteps = agentFinishSteps.returnValues.output as Array<{
 				index: number;
 				type: string;
-				text: string;
+				text?: string;
+				thinking?: string;
 			}>;
-			const isTextOnly = multiOutputSteps.every((output) => 'text' in output);
-			if (isTextOnly) {
-				agentFinishSteps.returnValues.output = multiOutputSteps
-					.map((output) => output.text)
+
+			// Filter out thinking blocks and join text blocks
+			const textOutputs = multiOutputSteps
+				.filter((output) => output.type === 'text' && output.text)
+				.map((output) => output.text)
+				.join('\n')
+				.trim();
+
+			if (textOutputs) {
+				agentFinishSteps.returnValues.output = textOutputs;
+			} else {
+				const thinkingOutputs = multiOutputSteps
+					.filter((output) => output.type === 'thinking' && output.thinking)
+					.map((output) => output.thinking)
 					.join('\n')
 					.trim();
+
+				if (thinkingOutputs) {
+					agentFinishSteps.returnValues.output = thinkingOutputs;
+				} else {
+					// no output was found
+					agentFinishSteps.returnValues.output = '';
+				}
 			}
 			return agentFinishSteps;
 		}
@@ -275,7 +340,7 @@ export const getAgentStepsParser =
  * @returns The validated chat model
  */
 export async function getChatModel(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 	index: number = 0,
 ): Promise<BaseChatModel | undefined> {
 	const connectedModels = await ctx.getInputConnectionData(NodeConnectionTypes.AiLanguageModel, 0);
@@ -309,7 +374,7 @@ export async function getChatModel(
  * @returns The connected memory (if any)
  */
 export async function getOptionalMemory(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 ): Promise<BaseChatMemory | undefined> {
 	return (await ctx.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
 		| BaseChatMemory
@@ -325,7 +390,7 @@ export async function getOptionalMemory(
  * @returns The array of connected tools
  */
 export async function getTools(
-	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 	outputParser?: N8nOutputParser,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
 	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;

@@ -4,6 +4,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import * as audio from './audio';
 import * as document from './document';
 import * as file from './file';
+import * as fileSearch from './fileSearch';
 import * as image from './image';
 import { router } from './router';
 import * as text from './text';
@@ -14,6 +15,10 @@ describe('Google Gemini router', () => {
 	const mockAudio = jest.spyOn(audio.analyze, 'execute');
 	const mockDocument = jest.spyOn(document.analyze, 'execute');
 	const mockFile = jest.spyOn(file.upload, 'execute');
+	const mockFileSearchCreateStore = jest.spyOn(fileSearch.createStore, 'execute');
+	const mockFileSearchDeleteStore = jest.spyOn(fileSearch.deleteStore, 'execute');
+	const mockFileSearchListStores = jest.spyOn(fileSearch.listStores, 'execute');
+	const mockFileSearchUploadToStore = jest.spyOn(fileSearch.uploadToStore, 'execute');
 	const mockImage = jest.spyOn(image.analyze, 'execute');
 	const mockText = jest.spyOn(text.message, 'execute');
 	const mockVideo = jest.spyOn(video.analyze, 'execute');
@@ -21,6 +26,10 @@ describe('Google Gemini router', () => {
 		[mockAudio, 'audio', 'analyze'],
 		[mockDocument, 'document', 'analyze'],
 		[mockFile, 'file', 'upload'],
+		[mockFileSearchCreateStore, 'fileSearch', 'createStore'],
+		[mockFileSearchDeleteStore, 'fileSearch', 'deleteStore'],
+		[mockFileSearchListStores, 'fileSearch', 'listStores'],
+		[mockFileSearchUploadToStore, 'fileSearch', 'uploadToStore'],
 		[mockImage, 'image', 'analyze'],
 		[mockText, 'text', 'message'],
 		[mockVideo, 'video', 'analyze'],

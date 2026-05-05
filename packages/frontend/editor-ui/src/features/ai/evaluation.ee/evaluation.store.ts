@@ -4,10 +4,14 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as evaluationsApi from './evaluation.api';
 import type { TestCaseExecutionRecord, TestRunRecord } from './evaluation.api';
 import { STORES } from '@n8n/stores';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 export const useEvaluationStore = defineStore(
 	STORES.EVALUATION,
@@ -21,6 +25,9 @@ export const useEvaluationStore = defineStore(
 		// Store instances
 		const rootStore = useRootStore();
 		const workflowsStore = useWorkflowsStore();
+		const workflowDocumentStore = computed(() =>
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+		);
 		const nodeTypesStore = useNodeTypesStore();
 		const settingsStore = useSettingsStore();
 
@@ -44,13 +51,13 @@ export const useEvaluationStore = defineStore(
 		});
 
 		const evaluationTriggerExists = computed(() => {
-			return workflowsStore.workflow.nodes.some(
+			return workflowDocumentStore.value.allNodes.some(
 				(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 			);
 		});
 
 		function evaluationNodeExist(operation: string) {
-			return workflowsStore.workflow.nodes.some((node) => {
+			return workflowDocumentStore.value.allNodes.some((node) => {
 				if (node.type !== EVALUATION_NODE_TYPE) {
 					return false;
 				}
@@ -118,8 +125,15 @@ export const useEvaluationStore = defineStore(
 			return run;
 		};
 
-		const startTestRun = async (workflowId: string) => {
-			const result = await evaluationsApi.startTestRun(rootStore.restApiContext, workflowId);
+		const startTestRun = async (
+			workflowId: string,
+			options?: evaluationsApi.StartTestRunOptions,
+		) => {
+			const result = await evaluationsApi.startTestRun(
+				rootStore.restApiContext,
+				workflowId,
+				options,
+			);
 			return result;
 		};
 

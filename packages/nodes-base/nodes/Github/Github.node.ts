@@ -2373,6 +2373,9 @@ export class Github implements INodeType {
 				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 
+			// Add signed resumeUrl to metadata for frontend to use in waiting tooltip
+			this.setMetadata({ resumeUrl });
+
 			await this.putExecutionToWait(WAIT_INDEFINITELY);
 			return [this.getInputData()];
 		}
@@ -2447,9 +2450,9 @@ export class Github implements INodeType {
 							// Currently internally n8n uses base64 and also Github expects it base64 encoded.
 							// If that ever changes the data has to get converted here.
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
-							const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
-							// TODO: Does this work with filesystem mode
-							body.content = binaryData.data;
+
+							const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							body.content = buffer.toString('base64');
 						} else {
 							const fileContent = this.getNodeParameter('fileContent', i) as string;
 							if (isBase64(fileContent)) {

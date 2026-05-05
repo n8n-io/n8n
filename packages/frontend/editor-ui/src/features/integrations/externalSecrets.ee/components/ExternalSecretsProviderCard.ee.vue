@@ -3,14 +3,14 @@ import type { ExternalSecretsProvider } from '../externalSecrets.types';
 import ExternalSecretsProviderImage from './ExternalSecretsProviderImage.ee.vue';
 import ExternalSecretsProviderConnectionSwitch from './ExternalSecretsProviderConnectionSwitch.ee.vue';
 import { useExternalSecretsStore } from '../externalSecrets.ee.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { useExternalSecretsProvider } from '@/features/integrations/externalSecrets.ee/composables/useExternalSecretsProvider';
-import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/constants';
+import { EXTERNAL_SECRETS_PROVIDER_MODAL_KEY } from '@/app/constants';
 import { DateTime } from 'luxon';
 import { computed, nextTick, onMounted, toRef } from 'vue';
-import { isDateObject } from '@/utils/typeGuards';
+import { isDateObject } from '@/app/utils/typeGuards';
 
 import {
 	N8nActionToggle,
@@ -124,8 +124,9 @@ async function onActionDropdownClick(id: string) {
 						{{
 							i18n.baseText('settings.externalSecrets.card.secretsCount', {
 								interpolate: {
-									count: `${externalSecretsStore.secrets[provider.name]?.length}`,
+									count: externalSecretsStore.secrets[provider.name]?.length ?? 0,
 								},
+								adjustToNumber: externalSecretsStore.secrets[provider.name]?.length ?? 0,
 							})
 						}}
 					</span>
@@ -160,7 +161,7 @@ async function onActionDropdownClick(id: string) {
 					@action="onActionDropdownClick"
 				/>
 			</div>
-			<N8nButton v-else type="tertiary" @click="openExternalSecretProvider()">
+			<N8nButton variant="subtle" v-else @click="openExternalSecretProvider()">
 				{{ i18n.baseText('settings.externalSecrets.card.setUp') }}
 			</N8nButton>
 		</div>

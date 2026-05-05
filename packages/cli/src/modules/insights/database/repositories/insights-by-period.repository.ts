@@ -89,8 +89,6 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 		let periodStartExpr = `date('now', '-${maxAgeInDays} days')`;
 		if (dbType === 'postgresdb') {
 			periodStartExpr = `CURRENT_DATE - INTERVAL '${maxAgeInDays} day'`;
-		} else if (dbType === 'mysqldb' || dbType === 'mariadb') {
-			periodStartExpr = `DATE_SUB(CURRENT_DATE, INTERVAL ${maxAgeInDays} DAY)`;
 		}
 
 		return periodStartExpr;
@@ -103,12 +101,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			periodUnitToCompactInto === 'week'
 				? "strftime('%Y-%m-%d 00:00:00.000', date(periodStart, '-6 days', 'weekday 1'))"
 				: `strftime('%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00.000', periodStart)`;
-		if (dbType === 'mysqldb' || dbType === 'mariadb') {
-			periodStartExpr =
-				periodUnitToCompactInto === 'week'
-					? "DATE_FORMAT(DATE_SUB(periodStart, INTERVAL WEEKDAY(periodStart) DAY), '%Y-%m-%d 00:00:00')"
-					: `DATE_FORMAT(periodStart, '%Y-%m-%d ${periodUnitToCompactInto === 'hour' ? '%H' : '00'}:00:00')`;
-		} else if (dbType === 'postgresdb') {
+		if (dbType === 'postgresdb') {
 			periodStartExpr = `DATE_TRUNC('${periodUnitToCompactInto}', ${this.escapeField('periodStart')})`;
 		}
 
@@ -223,16 +216,10 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			`;
 
 			// Database-specific duplicate key logic
-			let deduplicateQuery: string;
-			if (dbType === 'mysqldb' || dbType === 'mariadb') {
-				deduplicateQuery = sql`
-				ON DUPLICATE KEY UPDATE value = value + VALUES(value)`;
-			} else {
-				deduplicateQuery = sql`
+			const deduplicateQuery = sql`
 				ON CONFLICT(${targetColumnNamesStr})
 				DO UPDATE SET value = ${this.metadata.tableName}.value + excluded.value
 				RETURNING *`;
-			}
 
 			const upsertEvents = sql`
 				${insertQueryBase}
@@ -406,7 +393,7 @@ export class InsightsByPeriodRepository extends Repository<InsightsByPeriod> {
 			.select([`${this.getPeriodStartExpr(periodUnit)} as "periodStart"`, ...typesAggregation])
 			.innerJoin('date_ranges', 'date_ranges', '1=1')
 			.where(`${this.escapeField('periodStart')} >= date_ranges.start_date`)
-			.andWhere(`${this.escapeField('periodStart')} <= date_ranges.end_date`)
+			.andWhere(`${this.escapeField('periodStart')} < date_ranges.end_date`)
 			.groupBy(this.getPeriodStartExpr(periodUnit))
 			.orderBy(this.getPeriodStartExpr(periodUnit), 'ASC');
 

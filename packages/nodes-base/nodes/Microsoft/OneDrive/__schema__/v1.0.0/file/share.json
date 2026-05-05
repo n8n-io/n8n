@@ -22,6 +22,9 @@
                 "type": {
                     "type": "string"
                 },
+                "webHtml": {
+                    "type": "string"
+                },
                 "webUrl": {
                     "type": "string"
                 }
@@ -37,5 +40,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

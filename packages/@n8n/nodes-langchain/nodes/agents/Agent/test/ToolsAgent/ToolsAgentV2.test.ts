@@ -1,11 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
-import { AgentExecutor } from 'langchain/agents';
-import type { Tool } from 'langchain/tools';
+import { AgentExecutor } from '@langchain/classic/agents';
+import type { Tool } from '@langchain/classic/tools';
 import type { ISupplyDataFunctions, IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as helpers from '../../../../../utils/helpers';
 import * as outputParserModule from '../../../../../utils/output_parsers/N8nOutputParser';
+import * as tracing from '../../../../../utils/tracing';
 import * as commonModule from '../../agents/ToolsAgent/common';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V2/execute';
 
@@ -21,6 +22,10 @@ jest.mock('../../agents/ToolsAgent/common', () => ({
 
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
+const ensureWithConfig = <T extends object>(executor: T) => {
+	(executor as { withConfig: jest.Mock }).withConfig = jest.fn().mockReturnValue(executor);
+	return executor;
+};
 
 beforeEach(() => {
 	jest.clearAllMocks();
@@ -36,6 +41,9 @@ describe('toolsAgentExecute', () => {
 			warn: jest.fn(),
 			error: jest.fn(),
 		};
+		mockContext.getWorkflow.mockReturnValue({ name: 'Test Workflow' } as any);
+		mockContext.getExecutionId.mockReturnValue('exec-123');
+		mockContext.getExecuteData.mockReturnValue({} as any);
 	});
 
 	it('should process items sequentially when batchSize is not set', async () => {
@@ -78,7 +86,9 @@ describe('toolsAgentExecute', () => {
 				.mockResolvedValueOnce({ output: { text: 'success 2' } }),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -86,6 +96,59 @@ describe('toolsAgentExecute', () => {
 		expect(result[0]).toHaveLength(2);
 		expect(result[0][0].json).toEqual({ output: { text: 'success 1' } });
 		expect(result[0][1].json).toEqual({ output: { text: 'success 2' } });
+	});
+
+	it('should pass tracing metadata to tracing config', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input 1' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = jest.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		jest.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options.batching.batchSize') return defaultValue;
+			if (param === 'options.batching.delayBetweenBatches') return defaultValue;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+					tracingMetadata: {
+						values: [{ key: 'team', value: 'ai' }],
+					},
+				};
+			return defaultValue;
+		});
+
+		const mockTracingConfig = {
+			runName: '[Test Workflow] Test Node',
+			metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
+		};
+		const tracingSpy = jest.spyOn(tracing, 'getTracingConfig').mockReturnValue(mockTracingConfig);
+
+		const mockExecutor = {
+			invoke: jest.fn().mockResolvedValueOnce({ output: { text: 'success' } }),
+		};
+
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
+
+		await toolsAgentExecute.call(mockContext);
+
+		expect(tracingSpy).toHaveBeenCalledWith(mockContext, {
+			additionalMetadata: { team: 'ai' },
+		});
 	});
 
 	it('should process items in parallel within batches when batchSize > 1', async () => {
@@ -131,7 +194,9 @@ describe('toolsAgentExecute', () => {
 				.mockResolvedValueOnce({ output: { text: 'success 4' } }),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -185,7 +250,9 @@ describe('toolsAgentExecute', () => {
 				.mockRejectedValueOnce(new Error('Test error')),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		const result = await toolsAgentExecute.call(mockContext);
 
@@ -235,7 +302,9 @@ describe('toolsAgentExecute', () => {
 				.mockRejectedValueOnce(new Error('Test error')),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Test error');
 	});
@@ -291,7 +360,9 @@ describe('toolsAgentExecute', () => {
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 3' }) }),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -347,7 +418,9 @@ describe('toolsAgentExecute', () => {
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 2' }) }),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -409,7 +482,9 @@ describe('toolsAgentExecute', () => {
 				.mockResolvedValueOnce({ output: JSON.stringify({ text: 'success 4' }) }),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		await toolsAgentExecute.call(mockContext);
 
@@ -489,7 +564,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -523,23 +600,40 @@ describe('toolsAgentExecute', () => {
 				return defaultValue;
 			});
 
+			// Simulate an AIMessage class instance (has toJSON and direct properties)
+			const fakeAIMessage = {
+				content: 'I need to call a tool',
+				tool_calls: [
+					{
+						id: 'call_123',
+						name: 'TestTool',
+						args: { input: 'test data' },
+						type: 'function',
+					},
+				],
+				additional_kwargs: {},
+				response_metadata: {},
+				id: 'msg_abc',
+				toJSON() {
+					return {
+						lc: 1,
+						type: 'constructor',
+						id: ['langchain_core', 'messages', 'AIMessage'],
+						kwargs: {
+							content: this.content,
+							tool_calls: this.tool_calls,
+						},
+					};
+				},
+			};
+
 			// Mock async generator for streamEvents with tool calls
 			const mockStreamEvents = async function* () {
-				// LLM response with tool call
+				// LLM response with tool call (using the fake AIMessage instance)
 				yield {
 					event: 'on_chat_model_end',
 					data: {
-						output: {
-							content: 'I need to call a tool',
-							tool_calls: [
-								{
-									id: 'call_123',
-									name: 'TestTool',
-									args: { input: 'test data' },
-									type: 'function',
-								},
-							],
-						},
+						output: fakeAIMessage,
 					},
 				};
 				// Tool execution result
@@ -565,7 +659,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -584,6 +680,12 @@ describe('toolsAgentExecute', () => {
 			expect(step.action.type).toBe('function');
 			expect(step.action.messageLog).toBeDefined();
 			expect(step.observation).toBe('Tool execution result');
+
+			const messageLogEntry = step.action.messageLog[0];
+			expect(messageLogEntry.content).toBe('I need to call a tool');
+			expect(messageLogEntry.tool_calls).toEqual([
+				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'function' },
+			]);
 		});
 
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {
@@ -595,7 +697,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn(),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -616,7 +720,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn(),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -665,7 +771,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			await toolsAgentExecute.call(mockContext);
 
@@ -712,7 +820,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -744,7 +854,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -780,7 +892,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -818,7 +932,9 @@ describe('toolsAgentExecute', () => {
 				streamEvents: jest.fn().mockReturnValue(mockStreamEvents()),
 			};
 
-			jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+			jest
+				.spyOn(AgentExecutor, 'fromAgentAndTools')
+				.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 			const result = await toolsAgentExecute.call(mockContext);
 
@@ -876,7 +992,9 @@ describe('toolsAgentExecute', () => {
 			invoke: jest.fn().mockResolvedValueOnce({ output: { text: 'success 1' } }),
 		};
 
-		jest.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(mockExecutor as any);
+		jest
+			.spyOn(AgentExecutor, 'fromAgentAndTools')
+			.mockReturnValue(ensureWithConfig(mockExecutor) as any);
 
 		const result = await toolsAgentExecute.call(mockSupplyDataContext);
 
