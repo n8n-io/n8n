@@ -15,6 +15,9 @@ test.describe(
 				'Build a simple workflow with a manual trigger and a set node called "artifact display test"',
 			);
 
+			// New builds route through the planner and pause for user approval.
+			await n8n.instanceAi.approveBuildPlan();
+
 			// Wait for build to complete (no confirmation for simple builds)
 			await n8n.instanceAi.waitForAssistantResponse(120_000);
 
@@ -28,6 +31,8 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "artifact click test"',
 			);
+
+			await n8n.instanceAi.approveBuildPlan();
 
 			await n8n.instanceAi.waitForAssistantResponse(120_000);
 

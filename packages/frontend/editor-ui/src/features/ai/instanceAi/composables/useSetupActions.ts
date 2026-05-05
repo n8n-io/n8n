@@ -1,5 +1,5 @@
 import type { ComputedRef, Ref } from 'vue';
-import { ref, watch, onUnmounted } from 'vue';
+import { ref, watch, onUnmounted, computed } from 'vue';
 import type { InstanceAiToolCallState, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -8,6 +8,10 @@ import type { INodeUi } from '@/Interface';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { useInstanceAiStore } from '../instanceAi.store';
 import type { DisplayCard, SetupCard } from '../instanceAiWorkflowSetup.utils';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
 
 export function useSetupActions(deps: {
 	requestId: Ref<string>;
@@ -31,6 +35,9 @@ export function useSetupActions(deps: {
 }) {
 	const telemetry = useTelemetry();
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const nodeHelpers = useNodeHelpers();
 
 	const isSubmitted = ref(false);
@@ -141,7 +148,7 @@ export function useSetupActions(deps: {
 		if (!updatedNodes) return;
 
 		for (const serverNode of updatedNodes) {
-			const canvasNode = workflowsStore.getNodeByName(serverNode.name ?? '');
+			const canvasNode = workflowDocumentStore.value.getNodeByName(serverNode.name ?? '');
 			if (!canvasNode) continue;
 
 			if (serverNode.credentials) {
@@ -167,20 +174,11 @@ export function useSetupActions(deps: {
 		isApplying.value = true;
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(
-			deps.requestId.value,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				action: 'apply',
-				nodeCredentials,
-				nodeParameters,
-			},
-		);
+		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'setupWorkflowApply',
+			nodeCredentials,
+			nodeParameters,
+		});
 
 		if (!postSuccess) {
 			isApplying.value = false;
@@ -214,21 +212,12 @@ export function useSetupActions(deps: {
 
 		applyError.value = null;
 
-		const postSuccess = await deps.store.confirmAction(
-			deps.requestId.value,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			{
-				action: 'test-trigger',
-				testTriggerNode: nodeName,
-				nodeCredentials,
-				nodeParameters,
-			},
-		);
+		const postSuccess = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'setupWorkflowTestTrigger',
+			testTriggerNode: nodeName,
+			nodeCredentials,
+			nodeParameters,
+		});
 
 		if (!postSuccess) {
 			applyError.value = 'Failed to send trigger test request. Try again.';
@@ -307,7 +296,10 @@ export function useSetupActions(deps: {
 		isSubmitted.value = true;
 		isDeferred.value = true;
 
-		const success = await deps.store.confirmAction(deps.requestId.value, false);
+		const success = await deps.store.confirmAction(deps.requestId.value, {
+			kind: 'approval',
+			approved: false,
+		});
 		if (success) {
 			deps.store.resolveConfirmation(deps.requestId.value, 'deferred');
 		} else {

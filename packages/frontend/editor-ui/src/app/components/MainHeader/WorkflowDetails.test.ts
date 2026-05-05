@@ -35,7 +35,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 	...(await importOriginal<typeof import('vue-router')>()),
 	useRoute: vi.fn().mockReturnValue({
-		params: { name: 'test' },
+		params: { workflowId: 'test' },
 		query: { parentFolderId: '1' },
 		meta: {
 			nodeView: true,
@@ -47,7 +47,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 		currentRoute: {
 			value: {
 				params: {
-					name: 'test',
+					workflowId: 'test',
 				},
 				query: { parentFolderId: '1' },
 			},
@@ -64,10 +64,12 @@ vi.mock('@/app/stores/pushConnection.store', () => ({
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
 	const showMessage = vi.fn();
+	const showToast = vi.fn();
 	return {
 		useToast: () => ({
 			showError,
 			showMessage,
+			showToast,
 		}),
 	};
 });
@@ -256,7 +258,7 @@ describe('WorkflowDetails', () => {
 					nodeView: true,
 				},
 				query: { parentFolderId: '1' },
-				params: { name: 'test' },
+				params: { workflowId: 'test' },
 			} as unknown as ReturnType<typeof useRoute>);
 		});
 
@@ -324,7 +326,7 @@ describe('WorkflowDetails', () => {
 						nodeView: true,
 					},
 					query: { parentFolderId: '1', new: 'true' },
-					params: { name: 'test' },
+					params: { workflowId: 'test' },
 				} as unknown as ReturnType<typeof useRoute>);
 
 			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
@@ -505,7 +507,7 @@ describe('WorkflowDetails', () => {
 
 			expect(message.confirm).toHaveBeenCalledTimes(0);
 			expect(toast.showError).toHaveBeenCalledTimes(0);
-			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(toast.showToast).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
@@ -599,7 +601,7 @@ describe('WorkflowDetails', () => {
 
 			expect(message.confirm).toHaveBeenCalledTimes(1);
 			expect(toast.showError).toHaveBeenCalledTimes(0);
-			expect(toast.showMessage).toHaveBeenCalledTimes(1);
+			expect(toast.showToast).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(workflow.id, 'test-checksum');
 			expect(router.push).toHaveBeenCalledTimes(1);
@@ -607,6 +609,31 @@ describe('WorkflowDetails', () => {
 				name: VIEWS.WORKFLOWS,
 			});
 			expect(workflowDocumentStoreRef.value?.active).toBe(false);
+		});
+
+		it('should show a "Delete permanently" link in the archive toast that deletes the archived workflow', async () => {
+			workflowDocumentStoreRef.value?.setScopes(['workflow:delete']);
+			const { getByTestId } = renderComponent({
+				props: { ...defaultProps, isArchived: false },
+			});
+
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+
+			expect(toast.showToast).toHaveBeenCalledTimes(1);
+			const toastConfig = vi.mocked(toast.showToast).mock.calls[0][0];
+			expect(toastConfig.message).toContain('archive-toast-delete-permanently-link');
+			expect(toastConfig.onClick).toBeDefined();
+
+			const anchor = document.createElement('a');
+			toastConfig.onClick?.({ target: anchor, preventDefault: vi.fn() } as unknown as MouseEvent);
+
+			await vi.waitFor(() => {
+				expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledTimes(1);
+			});
+			expect(workflowsListStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 		});
 
 		it("should call onWorkflowMenuSelect on 'Unarchive' option click", async () => {

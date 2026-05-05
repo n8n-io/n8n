@@ -58,6 +58,20 @@ describe('Cipher', () => {
 		});
 	});
 
+	describe('encryptDEKWithInstanceKey / decryptDEKWithInstanceKey', () => {
+		it('should roundtrip a 32-byte hex key using GCM', () => {
+			const plaintextDEK = '11'.repeat(32);
+			const encrypted = cipher.encryptDEKWithInstanceKey(plaintextDEK);
+			expect(cipher.decryptDEKWithInstanceKey(encrypted)).toEqual(plaintextDEK);
+		});
+
+		it('should produce ciphertext not interoperable with decryptWithInstanceKey (CBC)', () => {
+			const plaintextDEK = '11'.repeat(32);
+			const encrypted = cipher.encryptDEKWithInstanceKey(plaintextDEK);
+			expect(() => cipher.decryptWithInstanceKey(encrypted)).toThrow();
+		});
+	});
+
 	describe('encryptWithKey', () => {
 		it('should roundtrip with decryptWithKey using the same key', () => {
 			const encrypted = cipher.encryptWithKey('random-string', 'explicit-key', 'aes-256-cbc');
@@ -183,7 +197,7 @@ describe('Cipher', () => {
 
 		it('should use active key and embed keyId prefix when proxy is registered and feature flag is on', async () => {
 			const keyId = 'test-uuid-1234';
-			const encryptedDataKey = cipher.encryptWithInstanceKey(plaintextDataKey);
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
 
 			withProvider({
 				getActiveKey: async () => ({
@@ -215,7 +229,7 @@ describe('Cipher', () => {
 
 		it('should decrypt using keyId from prefix when proxy is registered', async () => {
 			const keyId = 'test-uuid-5678';
-			const encryptedDataKey = cipher.encryptWithInstanceKey(plaintextDataKey);
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
 			const ciphertext = cipher.encryptWithKey('world', plaintextDataKey, 'aes-256-gcm');
 			const prefixed = `${keyId}:${ciphertext}`;
 
@@ -245,7 +259,7 @@ describe('Cipher', () => {
 		});
 
 		it('should use legacy CBC key for unprefixed data when proxy is registered', async () => {
-			const encryptedDataKey = cipher.encryptWithInstanceKey(instanceKeyForProxy);
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(instanceKeyForProxy);
 			const legacyCiphertext = cipher.encryptWithKey(
 				'legacy-data',
 				instanceKeyForProxy,
@@ -266,12 +280,18 @@ describe('Cipher', () => {
 				}),
 			});
 
-			const decrypted = await cipher.decryptV2(legacyCiphertext);
-			expect(decrypted).toEqual('legacy-data');
+			const originalFlag = process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION;
+			process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = 'true';
+			try {
+				const decrypted = await cipher.decryptV2(legacyCiphertext);
+				expect(decrypted).toEqual('legacy-data');
+			} finally {
+				process.env.N8N_ENV_FEAT_ENCRYPTION_KEY_ROTATION = originalFlag;
+			}
 		});
 
 		it('should bypass proxy when customEncryptionKey is provided', async () => {
-			const encryptedDataKey = cipher.encryptWithInstanceKey(plaintextDataKey);
+			const encryptedDataKey = cipher.encryptDEKWithInstanceKey(plaintextDataKey);
 			withProvider({
 				getActiveKey: async () => ({
 					id: 'should-not-be-called',

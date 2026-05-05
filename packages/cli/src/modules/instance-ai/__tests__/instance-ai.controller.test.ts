@@ -29,7 +29,7 @@ import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiSendMessageRequest,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiConfirmRequestDto,
+	InstanceAiConfirmRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiUserPreferencesUpdateRequest,
@@ -497,39 +497,34 @@ describe('InstanceAiController', () => {
 
 		it('should resolve confirmation', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(true);
-			const body = mock<InstanceAiConfirmRequestDto>({ approved: true });
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			const result = await controller.confirm(req, res, 'req-1', body);
+			const result = await controller.confirm(reqWithBody, res, 'req-1');
 
 			expect(result).toEqual({ ok: true });
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
-				USER_ID,
-				'req-1',
-				expect.objectContaining({ approved: true }),
-			);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
 		});
 
 		it('should pass resourceDecision through to resolveConfirmation', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(true);
-			const body = mock<InstanceAiConfirmRequestDto>({
-				approved: true,
+			const body: InstanceAiConfirmRequest = {
+				kind: 'resourceDecision',
 				resourceDecision: 'allowOnce',
-			});
+			};
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			await controller.confirm(req, res, 'req-1', body);
+			await controller.confirm(reqWithBody, res, 'req-1');
 
-			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(
-				USER_ID,
-				'req-1',
-				expect.objectContaining({ resourceDecision: 'allowOnce' }),
-			);
+			expect(instanceAiService.resolveConfirmation).toHaveBeenCalledWith(USER_ID, 'req-1', body);
 		});
 
 		it('should throw NotFoundError when confirmation not found', async () => {
 			instanceAiService.resolveConfirmation.mockResolvedValue(false);
-			const body = mock<InstanceAiConfirmRequestDto>({ approved: false });
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: false };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
-			await expect(controller.confirm(req, res, 'req-1', body)).rejects.toThrow(NotFoundError);
+			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
 		});
 	});
 

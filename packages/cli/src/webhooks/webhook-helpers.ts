@@ -16,6 +16,7 @@ import type {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteData,
+	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
 	IPinData,
@@ -754,7 +755,7 @@ export async function executeWebhook(
 			true,
 			!didSendResponse && !shouldDeferOnReceivedResponse,
 			executionId,
-			responsePromise,
+			responsePromise as IDeferredPromise<IExecuteResponsePromiseData> | undefined,
 		);
 
 		/**

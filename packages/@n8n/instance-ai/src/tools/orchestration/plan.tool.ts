@@ -8,7 +8,7 @@ import type { OrchestrationContext, PlannedTask } from '../../types';
 const plannedTaskSchema = z.object({
 	id: z.string().describe('Stable task identifier used by dependency edges'),
 	title: z.string().describe('Short user-facing task title'),
-	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research']),
+	kind: z.enum(['delegate', 'build-workflow', 'manage-data-tables', 'research', 'checkpoint']),
 	spec: z.string().describe('Detailed executor briefing for this task'),
 	deps: z
 		.array(z.string())
@@ -54,12 +54,21 @@ function isReplanContext(context: OrchestrationContext): boolean {
  * `cancelled`) must not bypass the guard — a fresh user request on a long-
  * lived thread needs to go through `plan` for discovery, same as any first
  * request.
+ *
+ * `awaiting_approval` is treated as "existing" only within the run that
+ * created it. The rejection path leaves the graph in `awaiting_approval` so a
+ * same-turn revision can call `create-tasks` again, but an orphaned
+ * `awaiting_approval` graph from a previous turn (the LLM never revised after
+ * a rejection) must not bypass planner discovery for a fresh user request.
  */
 async function threadHasExistingPlan(context: OrchestrationContext): Promise<boolean> {
 	if (!context.plannedTaskService) return false;
 	try {
 		const graph = await context.plannedTaskService.getGraph(context.threadId);
 		if (!graph) return false;
+		if (graph.status === 'awaiting_approval') {
+			return graph.planRunId === context.runId;
+		}
 		return graph.status === 'active' || graph.status === 'awaiting_replan';
 	} catch {
 		return false;
@@ -189,8 +198,10 @@ export function createPlanTool(context: OrchestrationContext) {
 				return { result: 'Awaiting approval', taskCount: input.tasks.length };
 			}
 
-			// User approved — start execution
+			// User approved — flip graph status from awaiting_approval → active,
+			// then start execution.
 			if (resumeData.approved) {
+				await context.plannedTaskService.approvePlan(context.threadId);
 				await context.schedulePlannedTasks();
 				return {
 					result: `Plan approved. Started ${input.tasks.length} task${input.tasks.length === 1 ? '' : 's'}.`,
@@ -198,7 +209,26 @@ export function createPlanTool(context: OrchestrationContext) {
 				};
 			}
 
-			// User rejected or requested changes — return feedback to LLM
+			// User rejected or requested changes. Reset the UI checklist so the
+			// rejected plan's "todo" items don't linger on screen, but keep the
+			// persisted graph in `awaiting_approval` so the LLM's next
+			// `create-tasks` revision passes the replan guard via
+			// `threadHasExistingPlan` (scoped to the current runId). The
+			// scheduler ignores `awaiting_approval` graphs, so leaving the graph
+			// in place can't dispatch the rejected plan; the next createPlan
+			// call overwrites it with the revised tasks.
+			// Best-effort: a storage failure here must not abort the revision flow.
+			try {
+				await context.taskStorage.save(context.threadId, { tasks: [] });
+			} catch (error) {
+				context.logger.warn('Failed to clear rejected plan checklist', { error });
+			}
+			context.eventBus.publish(context.threadId, {
+				type: 'tasks-update',
+				runId: context.runId,
+				agentId: context.orchestratorAgentId,
+				payload: { tasks: { tasks: [] }, planItems: [] },
+			});
 			return {
 				result: `User requested changes: ${resumeData.userInput ?? 'No feedback provided'}. Revise the tasks and call create-tasks again.`,
 				taskCount: 0,

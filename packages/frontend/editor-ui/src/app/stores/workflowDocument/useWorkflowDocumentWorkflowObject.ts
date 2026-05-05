@@ -1,15 +1,16 @@
 import type { INodeUi } from '@/Interface';
-import type { IConnections, INodeTypes, IPinData, IWorkflowSettings } from 'n8n-workflow';
+import type { IConnections, IPinData, IWorkflowSettings } from 'n8n-workflow';
 import { Workflow, deepCopy } from 'n8n-workflow';
 import { ref, type Ref } from 'vue';
 import { DEFAULT_SETTINGS } from './useWorkflowDocumentSettings';
+import { useWorkflowsStore } from '../workflows.store';
 
 export interface WorkflowDocumentWorkflowObjectDeps {
 	workflowId: string;
-	getNodeTypes: () => INodeTypes;
 }
 
 export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflowObjectDeps) {
+	const workflowsStore = useWorkflowsStore();
 	const workflowObject = ref<Workflow>(
 		new Workflow({
 			id: deps.workflowId,
@@ -17,7 +18,7 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 			nodes: [],
 			connections: {},
 			active: false,
-			nodeTypes: deps.getNodeTypes(),
+			nodeTypes: workflowsStore.getNodeTypes(),
 			settings: { ...DEFAULT_SETTINGS },
 		}),
 	);
@@ -36,7 +37,7 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 			nodes: deepCopy(opts.nodes),
 			connections: deepCopy(opts.connections),
 			active: false,
-			nodeTypes: deps.getNodeTypes(),
+			nodeTypes: workflowsStore.getNodeTypes(),
 			settings: opts.settings,
 			pinData: opts.pinData,
 		});
@@ -58,17 +59,48 @@ export function useWorkflowDocumentWorkflowObject(deps: WorkflowDocumentWorkflow
 		workflowObject.value.setSettings(settings);
 	}
 
-	function syncWorkflowObjectId(id: string) {
-		workflowObject.value.id = id;
+	function createWorkflowObject(
+		nodes: INodeUi[],
+		connections: IConnections,
+		copyData?: boolean,
+	): Workflow {
+		const nodeTypes = workflowsStore.getNodeTypes();
+
+		return new Workflow({
+			id: deps.workflowId,
+			name: workflowObject.value.name,
+			nodes: copyData ? deepCopy(nodes) : nodes,
+			connections: copyData ? deepCopy(connections) : connections,
+			active: false,
+			nodeTypes,
+			settings: workflowObject.value.settings,
+			pinData: workflowObject.value.pinData,
+		});
+	}
+
+	function cloneWorkflowObject(): Workflow {
+		return createWorkflowObject(
+			// Returns a shallow copy of the nodes which means that all the data on the lower
+			// levels still only gets referenced but the top level object is a different one.
+			// This has the advantage that it is very fast and does not cause problems with vuex
+			// when the workflow replaces the node-parameters.
+			Object.values(workflowObject.value.nodes).map((node) => ({ ...node })),
+			workflowObject.value.connectionsBySourceNode,
+		);
 	}
 
 	return {
-		workflowObject: workflowObject as Ref<Workflow>,
 		initWorkflowObject,
+		createWorkflowObject,
+		cloneWorkflowObject,
+
+		/**
+		 * fields and methods below are meant to be private in workflow document store
+		 */
+		workflowObject: workflowObject as Ref<Workflow>,
 		syncWorkflowObjectNodes,
 		syncWorkflowObjectConnections,
 		syncWorkflowObjectName,
 		syncWorkflowObjectSettings,
-		syncWorkflowObjectId,
 	};
 }

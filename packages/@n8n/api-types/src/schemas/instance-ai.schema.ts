@@ -112,6 +112,13 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/**
+	 * Workflow IDs the run-finish reap soft-deleted — intermediate
+	 * stepping-stones the agent created but never promoted to the main
+	 * deliverable. Surfaced to the UI so the artifacts panel can dim these
+	 * entries and label them as archived.
+	 */
+	archivedWorkflowIds: z.array(z.string()).optional(),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
@@ -594,28 +601,6 @@ export interface InstanceAiSendMessageResponse {
 	runId: string;
 }
 
-export interface InstanceAiConfirmResponse {
-	approved: boolean;
-	credentialId?: string;
-	credentials?: Record<string, string>;
-	/** Per-node credential assignments: `{ nodeName: { credType: credId } }`.
-	 *  Preferred over `credentials` when present — enables card-scoped selection. */
-	nodeCredentials?: Record<string, Record<string, string>>;
-	autoSetup?: { credentialType: string };
-	userInput?: string;
-	domainAccessAction?: DomainAccessAction;
-	resourceDecision?: string;
-	action?: 'apply' | 'test-trigger';
-	nodeParameters?: Record<string, Record<string, unknown>>;
-	testTriggerNode?: string;
-	answers?: Array<{
-		questionId: string;
-		selectedOptions: string[];
-		customText?: string;
-		skipped?: boolean;
-	}>;
-}
-
 // ---------------------------------------------------------------------------
 // Frontend store types (shared so both sides agree on structure)
 // ---------------------------------------------------------------------------
@@ -728,6 +713,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	updatedAt: string;
 	metadata?: Record<string, unknown>;
 }
 
