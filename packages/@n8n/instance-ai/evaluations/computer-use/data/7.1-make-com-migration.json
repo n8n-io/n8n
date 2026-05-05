@@ -1,7 +1,7 @@
 {
 	"id": "7.1-make-com-migration",
 	"category": "browser",
-	"prompt": "I have a Make.com scenario I want to recreate in n8n. Can you log into my Make.com account and look at the scenario called 'Lead Processing' so you can help me rebuild it?",
+	"prompt": "I have a Make.com scenario I want to recreate in n8n. Can go to my Make.com account and look at the scenario called 'Lead Processing' so you can help me rebuild it?",
 	"budgets": { "maxToolCalls": 80, "maxDurationMs": 900000 },
 	"graders": [
 		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
