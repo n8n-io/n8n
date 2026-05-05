@@ -6,6 +6,7 @@ import type {
 	IWorkflowBase,
 	NodeConnectionType,
 } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -142,9 +143,6 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	connections: structuredClone(workflow.connections),
 });
 
-const findNode = (nodes: INode[], name: string): INode | undefined =>
-	nodes.find((n) => n.name === name);
-
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 	typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -260,14 +258,15 @@ export function applyOperations(
 	operations: PartialUpdateOperation[],
 ): ApplyOperationsResult {
 	const workflow = cloneWorkflow(input);
-	const addedNodeNames: string[] = [];
+	const nodeByName = new Map(workflow.nodes.map((n) => [n.name, n]));
+	const addedNodeNames = new Set<string>();
 
 	for (let i = 0; i < operations.length; i++) {
 		const op = operations[i];
 
 		switch (op.type) {
 			case 'updateNodeParameters': {
-				const node = findNode(workflow.nodes, op.nodeName);
+				const node = nodeByName.get(op.nodeName);
 				if (!node) return fail(i, `node '${op.nodeName}' not found`);
 				const merged = op.replace
 					? op.parameters
@@ -277,7 +276,7 @@ export function applyOperations(
 			}
 
 			case 'addNode': {
-				if (findNode(workflow.nodes, op.node.name)) {
+				if (nodeByName.has(op.node.name)) {
 					return fail(i, `a node named '${op.node.name}' already exists`);
 				}
 				const node: INode = {
@@ -292,62 +291,60 @@ export function applyOperations(
 				if (op.node.disabled !== undefined) node.disabled = op.node.disabled;
 				if (op.node.notes !== undefined) node.notes = op.node.notes;
 				workflow.nodes.push(node);
-				addedNodeNames.push(node.name);
+				nodeByName.set(node.name, node);
+				addedNodeNames.add(node.name);
 				break;
 			}
 
 			case 'removeNode': {
-				const idx = workflow.nodes.findIndex((n) => n.name === op.nodeName);
-				if (idx === -1) return fail(i, `node '${op.nodeName}' not found`);
-				workflow.nodes.splice(idx, 1);
+				const node = nodeByName.get(op.nodeName);
+				if (!node) return fail(i, `node '${op.nodeName}' not found`);
+				workflow.nodes.splice(workflow.nodes.indexOf(node), 1);
+				nodeByName.delete(op.nodeName);
 				removeConnectionsFor(workflow.connections, op.nodeName);
-				const addedIdx = addedNodeNames.indexOf(op.nodeName);
-				if (addedIdx !== -1) addedNodeNames.splice(addedIdx, 1);
+				addedNodeNames.delete(op.nodeName);
 				break;
 			}
 
 			case 'renameNode': {
 				if (op.oldName === op.newName) break;
-				const node = findNode(workflow.nodes, op.oldName);
+				const node = nodeByName.get(op.oldName);
 				if (!node) return fail(i, `node '${op.oldName}' not found`);
-				if (findNode(workflow.nodes, op.newName)) {
+				if (nodeByName.has(op.newName)) {
 					return fail(i, `a node named '${op.newName}' already exists`);
 				}
 				node.name = op.newName;
+				nodeByName.delete(op.oldName);
+				nodeByName.set(op.newName, node);
 				renameInConnections(workflow.connections, op.oldName, op.newName);
-				const addedIdx = addedNodeNames.indexOf(op.oldName);
-				if (addedIdx !== -1) addedNodeNames[addedIdx] = op.newName;
+				if (addedNodeNames.delete(op.oldName)) addedNodeNames.add(op.newName);
 				break;
 			}
 
 			case 'addConnection': {
-				if (!findNode(workflow.nodes, op.source)) {
+				if (!nodeByName.has(op.source)) {
 					return fail(i, `source node '${op.source}' not found`);
 				}
-				if (!findNode(workflow.nodes, op.target)) {
+				if (!nodeByName.has(op.target)) {
 					return fail(i, `target node '${op.target}' not found`);
 				}
-				const connectionType = op.connectionType ?? 'main';
+				const connectionType = (op.connectionType ??
+					NodeConnectionTypes.Main) as NodeConnectionType;
 				const sourceIndex = op.sourceIndex ?? 0;
 				const targetIndex = op.targetIndex ?? 0;
-				const typedConnection = connectionType as NodeConnectionType;
-				const slot = ensureOutputSlot(
-					workflow.connections,
-					op.source,
-					typedConnection,
-					sourceIndex,
-				);
+				const slot = ensureOutputSlot(workflow.connections, op.source, connectionType, sourceIndex);
 				const exists = slot.some(
-					(c) => c.node === op.target && c.type === typedConnection && c.index === targetIndex,
+					(c) => c.node === op.target && c.type === connectionType && c.index === targetIndex,
 				);
 				if (!exists) {
-					slot.push({ node: op.target, type: typedConnection, index: targetIndex });
+					slot.push({ node: op.target, type: connectionType, index: targetIndex });
 				}
 				break;
 			}
 
 			case 'removeConnection': {
-				const connectionType = op.connectionType ?? 'main';
+				const connectionType = (op.connectionType ??
+					NodeConnectionTypes.Main) as NodeConnectionType;
 				const sourceIndex = op.sourceIndex ?? 0;
 				const targetIndex = op.targetIndex ?? 0;
 				const byType = workflow.connections[op.source];
@@ -356,11 +353,10 @@ export function applyOperations(
 				if (!slot) {
 					return fail(i, `no '${connectionType}' connection from '${op.source}'`);
 				}
-				const before = slot.length;
 				const filtered = slot.filter(
 					(c) => !(c.node === op.target && c.type === connectionType && c.index === targetIndex),
 				);
-				if (filtered.length === before) {
+				if (filtered.length === slot.length) {
 					return fail(
 						i,
 						`connection from '${op.source}'[${sourceIndex}] to '${op.target}'[${targetIndex}] does not exist`,
@@ -372,7 +368,7 @@ export function applyOperations(
 			}
 
 			case 'setNodeCredential': {
-				const node = findNode(workflow.nodes, op.nodeName);
+				const node = nodeByName.get(op.nodeName);
 				if (!node) return fail(i, `node '${op.nodeName}' not found`);
 				node.credentials = {
 					...(node.credentials ?? {}),
@@ -382,14 +378,14 @@ export function applyOperations(
 			}
 
 			case 'setNodePosition': {
-				const node = findNode(workflow.nodes, op.nodeName);
+				const node = nodeByName.get(op.nodeName);
 				if (!node) return fail(i, `node '${op.nodeName}' not found`);
 				node.position = op.position;
 				break;
 			}
 
 			case 'setNodeDisabled': {
-				const node = findNode(workflow.nodes, op.nodeName);
+				const node = nodeByName.get(op.nodeName);
 				if (!node) return fail(i, `node '${op.nodeName}' not found`);
 				node.disabled = op.disabled;
 				break;
@@ -400,10 +396,15 @@ export function applyOperations(
 				if (op.description !== undefined) workflow.description = op.description;
 				break;
 			}
+
+			default: {
+				op satisfies never;
+				return fail(i, 'unknown operation type');
+			}
 		}
 	}
 
-	return { success: true, workflow, addedNodeNames };
+	return { success: true, workflow, addedNodeNames: [...addedNodeNames] };
 }
 
 /**

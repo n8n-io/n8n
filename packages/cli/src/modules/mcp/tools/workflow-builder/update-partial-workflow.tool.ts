@@ -1,5 +1,4 @@
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
-import type { IWorkflowBase } from 'n8n-workflow';
 import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
@@ -141,20 +140,15 @@ export const createUpdatePartialWorkflowTool = (
 			let skippedHttpNodes: string[] = [];
 
 			if (result.addedNodeNames.length > 0) {
-				const addedNodes = workflowUpdateData.nodes.filter((n) =>
-					result.addedNodeNames.includes(n.name),
-				);
+				const addedNodeSet = new Set(result.addedNodeNames);
+				const addedNodes = workflowUpdateData.nodes.filter((n) => addedNodeSet.has(n.name));
 				const sharedWorkflow = await sharedWorkflowRepository.findOneOrFail({
 					where: { workflowId, role: 'workflow:owner' },
 					select: ['projectId'],
 				});
 
-				const slimWorkflow: IWorkflowBase = {
-					...workflowUpdateData,
-					nodes: addedNodes,
-				};
 				const autoAssign = await autoPopulateNodeCredentials(
-					slimWorkflow,
+					{ ...workflowUpdateData, nodes: addedNodes },
 					user,
 					nodeTypes,
 					credentialsService,
