@@ -166,13 +166,27 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		activeExecutionId.value = null;
 	}
 
-	function openWorkflowPreview(workflowId: string) {
+	/**
+	 * Open or switch the preview to a workflow.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openWorkflowPreview(workflowId: string): boolean {
+		if (activeTabId.value === workflowId) return false;
 		activeTabId.value = workflowId;
+		return true;
 	}
 
-	function openDataTablePreview(dataTableId: string, _projectId: string) {
+	/**
+	 * Open or switch the preview to a data table.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openDataTablePreview(dataTableId: string, _projectId: string): boolean {
+		if (activeTabId.value === dataTableId) return false;
 		activeExecutionId.value = null;
 		activeTabId.value = dataTableId;
+		return true;
 	}
 
 	function markUserSentMessage() {

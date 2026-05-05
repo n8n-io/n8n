@@ -7,8 +7,15 @@ function createWorkflowTaskService(reportVerificationVerdict = jest.fn()) {
 		reportBuildOutcome: jest.fn(),
 		reportVerificationVerdict,
 		getBuildOutcome: jest.fn(),
+		getWorkflowLoopState: jest.fn(),
 		updateBuildOutcome: jest.fn(),
 	};
+}
+
+function createReportVerificationVerdictMock(action: WorkflowLoopAction) {
+	const reportVerificationVerdict = jest.fn<Promise<WorkflowLoopAction>, [unknown]>();
+	reportVerificationVerdict.mockResolvedValue(action);
+	return reportVerificationVerdict;
 }
 
 function createMockContext(overrides: Partial<OrchestrationContext> = {}): OrchestrationContext {
@@ -103,7 +110,7 @@ describe('report-verification-verdict tool', () => {
 			diagnosis: 'Invalid URL',
 			patch: { url: 'https://example.com' },
 		};
-		const reportVerificationVerdict = jest.fn().mockResolvedValue(patchAction);
+		const reportVerificationVerdict = createReportVerificationVerdictMock(patchAction);
 		const context = createMockContext({
 			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
 		});
@@ -119,9 +126,168 @@ describe('report-verification-verdict tool', () => {
 			{} as never,
 		)) as Record<string, unknown>;
 
+		const reported = reportVerificationVerdict.mock.calls[0]?.[0] as {
+			remediation?: { category?: string; shouldEdit?: boolean };
+		};
+		expect(reported.remediation).toMatchObject({
+			category: 'code_fixable',
+			shouldEdit: true,
+		});
 		expect((result as { guidance: string }).guidance).toContain('PATCH NEEDED');
-		expect((result as { guidance: string }).guidance).toContain('mode');
+		expect((result as { guidance: string }).guidance).toContain('workItemId');
 		expect((result as { guidance: string }).guidance).toContain('patch');
+	});
+
+	it('preserves specific failure signatures for code-fixable remediation', async () => {
+		const reportVerificationVerdict = createReportVerificationVerdictMock({
+			type: 'patch',
+			workflowId: 'wf-123',
+			failedNodeName: 'HTTP Request',
+			diagnosis: 'Invalid URL',
+		});
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
+		const tool = createReportVerificationVerdictTool(context);
+
+		await tool.execute!(
+			{
+				...baseInput,
+				verdict: 'needs_patch',
+				failureSignature: 'http-request:invalid-url',
+				failedNodeName: 'HTTP Request',
+				remediation: {
+					category: 'code_fixable',
+					shouldEdit: true,
+					reason: 'runtime_failure',
+					guidance: 'Fix code.',
+				},
+			},
+			{} as never,
+		);
+
+		const reported = reportVerificationVerdict.mock.calls[0]?.[0] as {
+			verdict?: string;
+			failureSignature?: string;
+			remediation?: { reason?: string };
+		};
+		expect(reported).toMatchObject({
+			verdict: 'needs_patch',
+			failureSignature: 'http-request:invalid-url',
+		});
+		expect(reported.remediation).toMatchObject({ reason: 'runtime_failure' });
+	});
+
+	it('refuses repair verdict when persisted remediation is terminal', async () => {
+		const reportVerificationVerdict = jest.fn();
+		const workflowTaskService = createWorkflowTaskService(reportVerificationVerdict);
+		workflowTaskService.getWorkflowLoopState.mockResolvedValue({
+			workItemId: 'wi_test1234',
+			threadId: 'test-thread',
+			runId: 'test-run',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: {
+				category: 'blocked',
+				shouldEdit: false,
+				reason: 'post_submit_budget_exhausted',
+				guidance: 'Stop editing.',
+			},
+		});
+		const context = createMockContext({ workflowTaskService });
+		const tool = createReportVerificationVerdictTool(context);
+
+		const result = (await tool.execute!(
+			{
+				...baseInput,
+				verdict: 'needs_patch',
+				failedNodeName: 'HTTP Request',
+			},
+			{} as never,
+		)) as { guidance: string };
+
+		expect(reportVerificationVerdict).not.toHaveBeenCalled();
+		expect(result.guidance).toContain('Stop editing');
+	});
+
+	it('ignores terminal remediation from a previous run', async () => {
+		const reportVerificationVerdict = createReportVerificationVerdictMock({
+			type: 'patch',
+			workflowId: 'wf-123',
+			failedNodeName: 'HTTP Request',
+			diagnosis: 'Fix URL',
+		});
+		const workflowTaskService = createWorkflowTaskService(reportVerificationVerdict);
+		workflowTaskService.getWorkflowLoopState.mockResolvedValue({
+			workItemId: 'wi_test1234',
+			threadId: 'test-thread',
+			runId: 'previous-run',
+			phase: 'blocked',
+			status: 'blocked',
+			source: 'create',
+			rebuildAttempts: 0,
+			lastRemediation: {
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: 'mocked_credentials_or_placeholders',
+				guidance: 'Route to setup.',
+			},
+		});
+		const context = createMockContext({ workflowTaskService });
+		const tool = createReportVerificationVerdictTool(context);
+
+		await tool.execute!(
+			{
+				...baseInput,
+				verdict: 'needs_patch',
+				failedNodeName: 'HTTP Request',
+				diagnosis: 'Fix URL',
+			},
+			{} as never,
+		);
+
+		expect(reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'needs_patch',
+				failedNodeName: 'HTTP Request',
+			}),
+		);
+	});
+
+	it('converts non-editable remediation into a terminal verdict', async () => {
+		const reportVerificationVerdict = jest.fn().mockResolvedValue({
+			type: 'blocked',
+			reason: 'Route to setup.',
+		} satisfies WorkflowLoopAction);
+		const context = createMockContext({
+			workflowTaskService: createWorkflowTaskService(reportVerificationVerdict),
+		});
+		const tool = createReportVerificationVerdictTool(context);
+
+		await tool.execute!(
+			{
+				...baseInput,
+				verdict: 'needs_patch',
+				failedNodeName: 'HTTP Request',
+				remediation: {
+					category: 'needs_setup',
+					shouldEdit: false,
+					reason: 'mocked_credentials_or_placeholders',
+					guidance: 'Route to setup.',
+				},
+			},
+			{} as never,
+		);
+
+		expect(reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'needs_user_input',
+				failedNodeName: undefined,
+				patch: undefined,
+			}),
+		);
 	});
 
 	it('returns rebuild guidance when action is rebuild', async () => {
@@ -190,16 +356,19 @@ describe('report-verification-verdict tool', () => {
 			{} as never,
 		)) as Record<string, unknown>;
 
-		expect(reportVerificationVerdict).toHaveBeenCalledWith({
-			workItemId: 'wi_test1234',
-			workflowId: 'wf-123',
-			executionId: 'exec-456',
-			verdict: 'verified',
-			failureSignature: 'TypeError:null',
-			failedNodeName: 'Code',
-			diagnosis: 'Null reference',
-			patch: { code: 'fixed' },
-			summary: 'Workflow ran successfully',
-		});
+		expect(reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				workItemId: 'wi_test1234',
+				runId: 'test-run',
+				workflowId: 'wf-123',
+				executionId: 'exec-456',
+				verdict: 'verified',
+				failureSignature: 'TypeError:null',
+				failedNodeName: 'Code',
+				diagnosis: 'Null reference',
+				patch: { code: 'fixed' },
+				summary: 'Workflow ran successfully',
+			}),
+		);
 	});
 });
