@@ -25,7 +25,11 @@ export type {
 	AiGatewayUsageResponse,
 } from './ai/ai-gateway-usage-response.dto';
 
-export { InstanceAiConfirmRequestDto } from './instance-ai/instance-ai-confirm-request.dto';
+export {
+	InstanceAiConfirmRequestDto,
+	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmRequestKind,
+} from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';
 
@@ -198,6 +202,7 @@ export {
 	OAuthClientResponseDto,
 	ListOAuthClientsResponseDto,
 	DeleteOAuthClientResponseDto,
+	InstanceMcpClientStatsResponseDto,
 } from './oauth/oauth-client.dto';
 export {
 	ProvisioningConfigDto,

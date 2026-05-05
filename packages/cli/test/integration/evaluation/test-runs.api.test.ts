@@ -282,6 +282,8 @@ describe('POST /workflows/:workflowId/test-runs/new', () => {
 		expect(testRunner.runTest).toHaveBeenCalledWith(
 			expect.objectContaining({ id: ownerShell.id }),
 			workflowUnderTest.id,
+			1,
+			false,
 		);
 	});
 
