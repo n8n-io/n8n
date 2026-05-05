@@ -929,3 +929,242 @@ describe('GET /api/v1/executions — Execution Redaction', () => {
 		});
 	});
 });
+
+// ---------------------------------------------------------------------------
+// GHC-8161: Webhook node sensitiveOutputFields regression
+// ---------------------------------------------------------------------------
+
+describe('GHC-8161 — Webhook node sensitiveOutputFields should respect workflow redaction policy', () => {
+	/**
+	 * Helper to build execution data with Webhook node outputs containing headers.
+	 * This simulates a real webhook execution that received an Authorization header.
+	 */
+	function buildWebhookRunExecutionData(opts: {
+		policy?: 'none' | 'non-manual' | 'all' | 'manual-only';
+		mode?: WorkflowExecuteMode;
+		authorizationHeader?: string;
+		cookieHeader?: string;
+	}): IRunExecutionData {
+		return createRunExecutionData({
+			resultData: {
+				runData: {
+					Webhook: [
+						{
+							startTime: 0,
+							executionIndex: 0,
+							executionTime: 0,
+							executionStatus: 'success',
+							source: [],
+							data: {
+								main: [
+									[
+										{
+											json: {
+												headers: {
+													authorization: opts.authorizationHeader ?? 'Bearer eyJhbGc...',
+													cookie: opts.cookieHeader ?? 'session=abc123',
+													'content-type': 'application/json',
+												},
+												body: { message: 'test' },
+											},
+										},
+									],
+								],
+							},
+						},
+					],
+				},
+			},
+			executionData: opts.policy
+				? {
+						runtimeData: {
+							version: 1 as const,
+							establishedAt: Date.now(),
+							source: opts.mode ?? 'webhook',
+							redaction: { version: 1 as const, policy: opts.policy },
+						},
+					}
+				: undefined,
+		});
+	}
+
+	async function createWebhookExecutionWithRedaction(opts: {
+		workflow: IWorkflowBase;
+		mode?: WorkflowExecuteMode;
+		policy?: 'none' | 'non-manual' | 'all' | 'manual-only';
+		authorizationHeader?: string;
+		cookieHeader?: string;
+	}) {
+		const runData = buildWebhookRunExecutionData(opts);
+		return await createExecution({ data: stringify(runData), mode: opts.mode ?? 'webhook' }, opts.workflow);
+	}
+
+	function assertAuthHeadersNotRedacted(
+		data: IRunExecutionData,
+		expectedAuthHeader = 'Bearer eyJhbGc...',
+		expectedCookieHeader = 'session=abc123',
+	) {
+		const items = data.resultData.runData.Webhook[0].data!.main[0]!;
+		expect(items.length).toBeGreaterThan(0);
+		for (const item of items) {
+			expect(item.json.headers).toHaveProperty('authorization', expectedAuthHeader);
+			expect(item.json.headers).toHaveProperty('cookie', expectedCookieHeader);
+			expect(item.json.headers).toHaveProperty('content-type', 'application/json');
+		}
+	}
+
+	function assertAuthHeadersRedacted(data: IRunExecutionData) {
+		const items = data.resultData.runData.Webhook[0].data!.main[0]!;
+		expect(items.length).toBeGreaterThan(0);
+		for (const item of items) {
+			// headers.authorization and headers.cookie should be replaced with redacted markers
+			expect(item.json.headers).toHaveProperty('authorization');
+			expect(item.json.headers).toHaveProperty('cookie');
+			const authValue = (item.json.headers as Record<string, unknown>).authorization;
+			const cookieValue = (item.json.headers as Record<string, unknown>).cookie;
+
+			// Check that they are redacted markers, not strings
+			expect(authValue).toMatchObject({
+				__redacted: true,
+				reason: 'node_defined_field',
+				canReveal: false,
+			});
+			expect(cookieValue).toMatchObject({
+				__redacted: true,
+				reason: 'node_defined_field',
+				canReveal: false,
+			});
+
+			// Other headers should remain unredacted
+			expect(item.json.headers).toHaveProperty('content-type', 'application/json');
+		}
+	}
+
+	describe('Bug reproduction: sensitiveOutputFields applied unconditionally', () => {
+		test('REGRESSION: policy "none" should NOT redact headers.authorization, but currently does', async () => {
+			// GHC-8161: This test reproduces the bug where headers.authorization
+			// is redacted even when the workflow has policy='none'.
+			// Expected: headers.authorization should be a string
+			// Actual: it's replaced with a redacted marker object
+
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createWebhookExecutionWithRedaction({
+				workflow,
+				mode: 'webhook',
+				policy: 'none',
+				authorizationHeader: 'Bearer jwt-token-for-verification',
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parseResponseData(response.body);
+
+			// This assertion should PASS (headers should NOT be redacted when policy='none')
+			// But it FAILS because NodeDefinedFieldRedactionStrategy always runs
+			assertAuthHeadersNotRedacted(data, 'Bearer jwt-token-for-verification', 'session=abc123');
+		});
+
+		test('REGRESSION: policy "non-manual" with manual mode should NOT redact headers.authorization, but currently does', async () => {
+			// GHC-8161: Testing a workflow that receives webhook data in manual mode
+			// for local development/debugging. Headers should not be redacted.
+
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createWebhookExecutionWithRedaction({
+				workflow,
+				mode: 'manual',
+				policy: 'non-manual',
+				authorizationHeader: 'Bearer test-token',
+				cookieHeader: 'session=dev-session',
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parseResponseData(response.body);
+
+			// Manual executions with policy='non-manual' should not be redacted
+			assertAuthHeadersNotRedacted(data, 'Bearer test-token', 'session=dev-session');
+		});
+	});
+
+	describe('Expected behavior: sensitiveOutputFields should redact when policy requires it', () => {
+		test('policy "all" SHOULD redact headers.authorization (correct behavior)', async () => {
+			// This is the EXPECTED behavior: when policy='all', auth headers should be redacted
+
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createWebhookExecutionWithRedaction({
+				workflow,
+				mode: 'webhook',
+				policy: 'all',
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parseResponseData(response.body);
+
+			// This should pass: headers.authorization and headers.cookie are redacted
+			assertAuthHeadersRedacted(data);
+		});
+
+		test('policy "non-manual" with webhook mode SHOULD redact headers.authorization (correct behavior)', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createWebhookExecutionWithRedaction({
+				workflow,
+				mode: 'webhook',
+				policy: 'non-manual',
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parseResponseData(response.body);
+
+			// This should pass: non-manual executions in webhook mode should be redacted
+			assertAuthHeadersRedacted(data);
+		});
+	});
+
+	describe('Use case: JWT/HMAC verification workflows', () => {
+		test('should allow reading Authorization header for signature verification when policy="none"', async () => {
+			// GHC-8161: Real-world use case - Microsoft Bot Framework JWT verification
+			// The workflow needs to read the Authorization header to verify the JWT signature
+
+			const jwtToken =
+				'Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IjEifQ.eyJpc3MiOiJodHRwczovL2FwaS5ib3RmcmFtZXdvcmsuY29tIiwic3ViIjoiYm90LWlkIiwiYXVkIjoiYXBwLWlkIn0.signature';
+
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createWebhookExecutionWithRedaction({
+				workflow,
+				mode: 'webhook',
+				policy: 'none',
+				authorizationHeader: jwtToken,
+			});
+
+			const response = await testServer
+				.authAgentFor(owner)
+				.get(`/executions/${execution.id}`)
+				.expect(200);
+
+			const data = parseResponseData(response.body);
+
+			// The Code node downstream needs to access the JWT as a string, not a redacted object
+			assertAuthHeadersNotRedacted(data, jwtToken, 'session=abc123');
+
+			// Verify it's actually a string that can be used by downstream nodes
+			const authHeader = data.resultData.runData.Webhook[0].data!.main[0]![0].json
+				.headers as Record<string, unknown>;
+			expect(typeof authHeader.authorization).toBe('string');
+			expect((authHeader.authorization as string).startsWith('Bearer ')).toBe(true);
+		});
+	});
+});
