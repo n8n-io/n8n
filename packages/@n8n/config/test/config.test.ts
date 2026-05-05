@@ -370,6 +370,7 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+			newLeaderElection: false,
 		},
 		generic: {
 			timezone: 'America/New_York',
