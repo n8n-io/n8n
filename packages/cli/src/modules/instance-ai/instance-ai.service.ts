@@ -18,6 +18,7 @@ import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
 import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { hasGlobalScope } from '@n8n/permissions';
 import { UrlService } from '@/services/url.service';
 import {
 	MAX_STEPS,
@@ -1058,6 +1059,31 @@ export class InstanceAiService {
 		}
 	}
 
+	/**
+	 * Re-fetch the user from DB and verify they're still authorized to use
+	 * AI Assistant. Used at async-boundary entry points (planned-task scheduling,
+	 * suspended-run resume) where the spawn-time user snapshot may have gone
+	 * stale. Returns null if the user no longer exists, has been disabled, or
+	 * lost the `instanceAi:message` global scope.
+	 */
+	private async revalidateActiveUser(userId: string): Promise<User | null> {
+		try {
+			const user = await this.userRepository.findOne({
+				where: { id: userId },
+				relations: ['role'],
+			});
+			if (!user || user.disabled) return null;
+			if (!hasGlobalScope(user, 'instanceAi:message')) return null;
+			return user;
+		} catch (error) {
+			this.logger.warn('Failed to revalidate user', {
+				userId,
+				error: getErrorMessage(error),
+			});
+			return null;
+		}
+	}
+
 	/** Cancel all background tasks across all threads. Test-only. */
 	cancelAllBackgroundTasks(): number {
 		const cancelled = this.backgroundTasks.cancelAll();
@@ -1784,6 +1810,16 @@ export class InstanceAiService {
 	}
 
 	private async doSchedulePlannedTasks(user: User, threadId: string): Promise<void> {
+		const revalidated = await this.revalidateActiveUser(user.id);
+		if (!revalidated) {
+			this.logger.warn('Cancelling run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+			});
+			this.cancelRun(threadId);
+			return;
+		}
+
 		const { plannedTaskService } = await this.createPlannedTaskState();
 		const graph = await plannedTaskService.getGraph(threadId);
 		if (!graph) return;
@@ -2651,6 +2687,17 @@ export class InstanceAiService {
 			checkpoint,
 		} = suspended;
 		if (user.id !== requestingUserId) return false;
+
+		const revalidated = await this.revalidateActiveUser(user.id);
+		if (!revalidated) {
+			this.logger.warn('Cancelling suspended run: user no longer authorized for AI Assistant', {
+				userId: user.id,
+				threadId,
+				requestId,
+			});
+			this.cancelRun(threadId);
+			return false;
+		}
 
 		this.runState.activateSuspendedRun(threadId);
 

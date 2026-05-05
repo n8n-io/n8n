@@ -183,3 +183,89 @@ describe('InstanceAiService — pending checkpoint re-entry', () => {
 		});
 	});
 });
+
+// ---------------------------------------------------------------------------
+// User revalidation — async-boundary defense for long-running tasks
+// ---------------------------------------------------------------------------
+
+type RevalidationServiceInternals = {
+	revalidateActiveUser: (userId: string) => Promise<User | null>;
+	userRepository: { findOne: jest.Mock };
+	logger: { debug: jest.Mock; warn: jest.Mock; error: jest.Mock };
+};
+
+function createRevalidationService(): RevalidationServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as RevalidationServiceInternals;
+	service.userRepository = { findOne: jest.fn() };
+	service.logger = { debug: jest.fn(), warn: jest.fn(), error: jest.fn() };
+	return service;
+}
+
+function userWithScopes(scopes: string[], overrides: Partial<User> = {}): User {
+	return {
+		id: 'user-1',
+		disabled: false,
+		role: { scopes: scopes.map((slug) => ({ slug })) },
+		...overrides,
+	} as unknown as User;
+}
+
+describe('InstanceAiService — revalidateActiveUser', () => {
+	it('returns the user when active and scoped for AI Assistant', async () => {
+		const service = createRevalidationService();
+		const fresh = userWithScopes(['instanceAi:message']);
+		service.userRepository.findOne.mockResolvedValue(fresh);
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBe(fresh);
+		expect(service.userRepository.findOne).toHaveBeenCalledWith({
+			where: { id: 'user-1' },
+			relations: ['role'],
+		});
+	});
+
+	it('returns null when the user no longer exists', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(null);
+
+		const result = await service.revalidateActiveUser('user-gone');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null when the user has been disabled', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(
+			userWithScopes(['instanceAi:message'], { disabled: true }),
+		);
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null when the user lost the instanceAi:message scope', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockResolvedValue(userWithScopes(['workflow:read']));
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null and logs when the lookup throws', async () => {
+		const service = createRevalidationService();
+		service.userRepository.findOne.mockRejectedValue(new Error('db down'));
+
+		const result = await service.revalidateActiveUser('user-1');
+
+		expect(result).toBeNull();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to revalidate user',
+			expect.objectContaining({ userId: 'user-1' }),
+		);
+	});
+});
