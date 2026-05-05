@@ -1626,6 +1626,17 @@ export class InstanceAiAdapterService {
 			return nodes.find((n) => n.name === nodeType);
 		};
 
+		const normalizeNodeVersion = (version?: string): number | undefined => {
+			if (!version) return undefined;
+			const normalized = version.replace(/^v/i, '');
+			if (!/^\d+$/.test(normalized)) return Number(normalized);
+			// Supports v3 and compact decimals like v34 -> 3.4; assumes minor version < 10.
+			if (normalized.length === 2) {
+				return Number(`${normalized[0]}.${normalized[1]}`);
+			}
+			return Number(normalized);
+		};
+
 		return {
 			async listAvailable(options) {
 				const nodes = await getNodes();
@@ -1780,7 +1791,19 @@ export class InstanceAiAdapterService {
 					return { content: '', error: result.error };
 				}
 
-				return { content: result.content, version: result.version };
+				const nodes = await getNodes();
+				const nodeDesc = findNodeByVersion(
+					nodes,
+					nodeType,
+					normalizeNodeVersion(result.version ?? options?.version),
+				);
+				const builderHint = nodeDesc?.builderHint?.message;
+
+				return {
+					content: result.content,
+					version: result.version,
+					...(builderHint ? { builderHint } : {}),
+				};
 			},
 
 			listDiscriminators: async (nodeType) => {
