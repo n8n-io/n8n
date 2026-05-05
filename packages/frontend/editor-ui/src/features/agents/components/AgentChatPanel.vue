@@ -121,12 +121,8 @@ async function onSubmit() {
 			props.agentConfig,
 			props.connectedTriggers,
 		);
-		// Raw `message` is sent intentionally — matches the text-to-workflow
-		// builder's `User submitted builder message` event, which also sends the
-		// raw prompt. Revisit if the product-wide privacy posture tightens.
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
-			message: text,
 			mode: props.endpoint === 'build' ? 'build' : 'test',
 			status: props.agentStatus,
 			agentConfig: fingerprint,

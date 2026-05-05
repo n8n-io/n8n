@@ -233,7 +233,6 @@ async function submitDescription() {
 			const fingerprint = await buildAgentConfigFingerprint(null, []);
 			agentTelemetry.trackSubmittedMessage({
 				agentId: agent.id,
-				message,
 				mode: 'build',
 				status: 'draft',
 				agentConfig: fingerprint,

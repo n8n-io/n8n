@@ -37,14 +37,12 @@ export function useAgentTelemetry() {
 
 	function trackSubmittedMessage(params: {
 		agentId: string;
-		message: string;
 		mode: AgentChatMode;
 		status: AgentTelemetryStatus;
 		agentConfig: AgentConfigFingerprint;
 	}) {
 		safeTrack('User submitted message to agent', {
 			agent_id: params.agentId,
-			message: params.message,
 			mode: params.mode,
 			status: params.status,
 			agent_config: params.agentConfig,
