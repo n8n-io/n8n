@@ -304,7 +304,7 @@ external state needs to be in place for that scenario to run meaningfully.
 | 2.2 CSV sample data | — | `filesystem-read` |
 | 3.1 Workflow docs | — | `filesystem-write` |
 | 3.2 Handover document | — | `filesystem-write` |
-| 4.1 Authenticated API docs | browser extension | `requires:browser-bootstrap` |
+| 4.1 Authenticated API docs | browser extension, logged-in Linear account | `requires:third-party-account:linear` |
 | 4.2 Stripe dashboard | browser extension, real Stripe account | `requires:third-party-account:stripe` |
 | 5.1 Form trigger fill | browser extension | `requires:browser-bootstrap` |
 | 6.1 curl connectivity | network access | `shell` |
@@ -335,9 +335,10 @@ pnpm --filter @n8n/instance-ai eval:computer-use --filter "1."
   binary, so this uses a markdown fixture. Tests the same
   "agent reads a local file as context" signal.
 - **4.1**: the original prompt's URL was `internal.example.com` (fake).
-  Swapped to `https://docs.n8n.io/api/` so it works against a real public
-  page. Edit the prompt in `data/4.1-authenticated-api-docs.json` to
-  point at your real internal docs if you want to test the auth flow.
+  Swapped to Linear's API settings page (`linear.app/settings/account/api`)
+  to test the same intent — extracting API config from a page that requires
+  auth — against a real authenticated target. Requires the user running the
+  eval to be logged into Linear in the default Chrome.
 - **M.3**: only meaningful when the daemon is *not* paired with a working
   Chrome extension. Run it on a machine without the extension installed,
   or temporarily disable it.

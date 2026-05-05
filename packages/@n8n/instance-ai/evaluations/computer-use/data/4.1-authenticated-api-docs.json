@@ -1,10 +1,11 @@
 {
 	"id": "4.1-authenticated-api-docs",
 	"category": "browser",
-	"prompt": "I need to set up an HTTP Request node to call our internal API. The docs are at https://docs.n8n.io/api/ and I want to know what endpoints are available. Can you check?",
+	"prompt": "I want to set up an n8n HTTP Request node to query Linear's API. Open Linear's API settings page in my browser (https://linear.app/settings/account/api) — I'm already logged in there — and tell me: what API endpoint URL Linear uses for its GraphQL API, what auth header n8n's HTTP Request node will need, and roughly how many personal API keys are currently shown on the page. Don't copy or echo any actual key value back to me; just describe what the page shows.",
 	"budgets": { "maxToolCalls": 40, "maxDurationMs": 600000 },
 	"graders": [
 		{ "type": "trace.mustCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.mustCallTool", "name": "browser_navigate" },
 		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 4 },
 		{
 			"type": "trace.budget",
@@ -14,7 +15,7 @@
 		},
 		{
 			"type": "trace.finalTextMatches",
-			"anyOf": ["endpoint|api|workflow|execution"],
+			"anyOf": ["api key|graphql|authorization|endpoint"],
 			"mustNotMatch": [
 				"taking a while",
 				"let me try (a )?different",
@@ -24,5 +25,10 @@
 			]
 		}
 	],
-	"tags": ["browser", "research", "requires:browser-bootstrap"]
+	"tags": [
+		"browser",
+		"research",
+		"requires:browser-bootstrap",
+		"requires:third-party-account:linear"
+	]
 }
