@@ -264,6 +264,8 @@ describe('NodeCredentials', () => {
 			false,
 			undefined,
 			undefined,
+			undefined,
+			{ hideAskAssistant: false },
 		);
 	});
 
@@ -689,6 +691,8 @@ describe('NodeCredentials', () => {
 				true,
 				undefined,
 				undefined,
+				undefined,
+				{ hideAskAssistant: false },
 			);
 		});
 
