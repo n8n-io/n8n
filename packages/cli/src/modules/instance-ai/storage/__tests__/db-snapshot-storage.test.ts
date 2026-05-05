@@ -11,6 +11,8 @@ function makeRow(overrides: Partial<InstanceAiRunSnapshot> = {}): InstanceAiRunS
 		messageGroupId: null,
 		runIds: null,
 		tree: JSON.stringify({ agentId: 'agent-root' }),
+		traceId: null,
+		spanId: null,
 		langsmithRunId: null,
 		langsmithTraceId: null,
 		createdAt: new Date(),
@@ -81,10 +83,12 @@ describe('DbSnapshotStorage', () => {
 	});
 
 	describe('save', () => {
-		it('persists langsmith IDs via upsert', async () => {
+		it('persists trace IDs via upsert', async () => {
 			await storage.save('thread-1', { agentId: 'agent-root' } as never, 'run-1', {
 				messageGroupId: 'mg-1',
 				runIds: ['run-1'],
+				traceId: '0123456789abcdef0123456789abcdef',
+				spanId: '0123456789abcdef',
 				langsmithRunId: 'ls-run-1',
 				langsmithTraceId: 'ls-trace-1',
 			});
@@ -95,6 +99,8 @@ describe('DbSnapshotStorage', () => {
 					runId: 'run-1',
 					messageGroupId: 'mg-1',
 					runIds: ['run-1'],
+					traceId: '0123456789abcdef0123456789abcdef',
+					spanId: '0123456789abcdef',
 					langsmithRunId: 'ls-run-1',
 					langsmithTraceId: 'ls-trace-1',
 				}),
@@ -102,20 +108,27 @@ describe('DbSnapshotStorage', () => {
 			);
 		});
 
-		it('writes nulls when langsmith IDs are absent', async () => {
+		it('writes nulls when trace IDs are absent', async () => {
 			await storage.save('thread-1', { agentId: 'agent-root' } as never, 'run-1');
 
 			expect(repo.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({ langsmithRunId: null, langsmithTraceId: null }),
+				expect.objectContaining({
+					traceId: null,
+					spanId: null,
+					langsmithRunId: null,
+					langsmithTraceId: null,
+				}),
 				expect.anything(),
 			);
 		});
 	});
 
 	describe('updateLast', () => {
-		it('preserves existing langsmith IDs when the caller does not supply new ones', async () => {
+		it('preserves existing trace IDs when the caller does not supply new ones', async () => {
 			const existing = makeRow({
 				messageGroupId: 'mg-1',
+				traceId: 'existing-trace',
+				spanId: 'existing-span',
 				langsmithRunId: 'ls-run-existing',
 				langsmithTraceId: 'ls-trace-existing',
 			});
@@ -128,6 +141,8 @@ describe('DbSnapshotStorage', () => {
 			expect(repo.update).toHaveBeenCalledWith(
 				{ threadId: 'thread-1', runId: 'run-1' },
 				expect.objectContaining({
+					traceId: 'existing-trace',
+					spanId: 'existing-span',
 					langsmithRunId: 'ls-run-existing',
 					langsmithTraceId: 'ls-trace-existing',
 				}),

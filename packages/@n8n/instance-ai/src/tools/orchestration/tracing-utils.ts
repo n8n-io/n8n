@@ -1,5 +1,7 @@
 import {
 	createDetachedSubAgentTraceContext,
+	getCurrentOtelSpanContext,
+	getCurrentTraceToolCallId,
 	mergeCurrentTraceMetadata,
 } from '../../tracing/langsmith-tracing';
 import type {
@@ -29,7 +31,7 @@ export async function startSubAgentTrace(
 	if (!context.tracing) return undefined;
 
 	return await context.tracing.startChildRun(context.tracing.actorRun, {
-		name: `subagent:${options.role}`,
+		name: `instance-ai.subagent.${options.role}.stream`,
 		tags: ['sub-agent'],
 		metadata: {
 			agent_role: options.role,
@@ -62,6 +64,11 @@ export async function createDetachedSubAgentTracing(
 		typeof context.tracing.actorRun.metadata?.agent_id === 'string'
 			? context.tracing.actorRun.metadata.agent_id
 			: context.orchestratorAgentId;
+	const spawnedByAgentRole =
+		typeof context.tracing.actorRun.metadata?.agent_role === 'string'
+			? context.tracing.actorRun.metadata.agent_role
+			: undefined;
+	const activeSpanContext = getCurrentOtelSpanContext();
 	const tracing = await createDetachedSubAgentTraceContext({
 		projectName: context.tracing.projectName,
 		threadId: context.threadId,
@@ -79,9 +86,15 @@ export async function createDetachedSubAgentTracing(
 		taskId: options.taskId,
 		plannedTaskId: options.plannedTaskId,
 		workItemId: options.workItemId,
-		spawnedByTraceId: context.tracing.rootRun.traceId,
+		spawnedByTraceId:
+			activeSpanContext?.traceId ??
+			context.tracing.rootRun.otelTraceId ??
+			context.tracing.rootRun.traceId,
+		spawnedBySpanId: activeSpanContext?.spanId ?? context.tracing.actorRun.otelSpanId,
 		spawnedByRunId: context.tracing.actorRun.id,
 		spawnedByAgentId,
+		spawnedByAgentRole,
+		spawnedByToolCallId: getCurrentTraceToolCallId(),
 		proxyConfig: context.tracingProxyConfig,
 	});
 

@@ -170,6 +170,7 @@ import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/17
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateInstanceAiCheckpointTable1778050000000 } from '../common/1778050000000-CreateInstanceAiCheckpointTable';
 import { ResetInstanceAiNativePersistence1778060000000 } from '../common/1778060000000-ResetInstanceAiNativePersistence';
+import { AddOtelIdsToInstanceAiRunSnapshots1778065000000 } from '../common/1778065000000-AddOtelIdsToInstanceAiRunSnapshots';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -345,4 +346,5 @@ export const postgresMigrations: Migration[] = [
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 	ExpandVariablesValueColumnToText1777420800000,
 	ResetInstanceAiNativePersistence1778060000000,
+	AddOtelIdsToInstanceAiRunSnapshots1778065000000,
 ];

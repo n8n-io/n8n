@@ -2184,6 +2184,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 
 	it('passes resolved telemetry to tool handlers via parentTelemetry', async () => {
 		let capturedTelemetry: BuiltTelemetry | undefined;
+		let capturedToolCallId: string | undefined;
 
 		const spyTool: BuiltTool = new ToolBuilder('spy')
 			.description('captures telemetry from context')
@@ -2191,6 +2192,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 			.output(z.object({ ok: z.boolean() }))
 			.handler(async (_input, ctx) => {
 				capturedTelemetry = ctx.parentTelemetry;
+				capturedToolCallId = ctx.toolCallId;
 				return await Promise.resolve({ ok: true });
 			})
 			.build();
@@ -2211,6 +2213,7 @@ describe('AgentRuntime — telemetry propagation', () => {
 		await runtime.generate('test');
 
 		expect(capturedTelemetry).toBe(baseTelemetry);
+		expect(capturedToolCallId).toBe('tc1');
 	});
 
 	it('emits AI SDK-compatible telemetry spans for local tool execution', async () => {

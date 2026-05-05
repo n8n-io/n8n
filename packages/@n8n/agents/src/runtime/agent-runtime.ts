@@ -1717,7 +1717,8 @@ export class AgentRuntime {
 				toolName,
 				toolInput,
 				resolvedTelemetry,
-				async () => await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry),
+				async () =>
+					await executeTool(toolInput, builtTool, resumeData, resolvedTelemetry, toolCallId),
 			);
 		} catch (error) {
 			return makeToolError(error as Error);

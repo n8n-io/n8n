@@ -1,6 +1,156 @@
+import type { Context } from '@opentelemetry/api';
 import { jsonParse } from 'n8n-workflow';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
+
+jest.mock('@n8n/agents', () => {
+	const actual = jest.requireActual<Record<string, unknown>>('@n8n/agents');
+	const { context, trace } = jest.requireActual<{
+		context: {
+			active(): Context;
+			with<T>(ctx: Context, fn: () => T): T;
+		};
+		trace: {
+			getSpan(ctx: Context): unknown;
+			setSpan(ctx: Context, span: unknown): Context;
+		};
+	}>('@opentelemetry/api');
+
+	let spanCounter = 0;
+	const spans: Array<{
+		id: string;
+		traceId: string;
+		parentSpanId?: string;
+		name: string;
+		attributes: Record<string, unknown>;
+		status?: { code: number; message?: string };
+		ended: boolean;
+	}> = [];
+
+	function nextHex(length: number): string {
+		spanCounter += 1;
+		return spanCounter.toString(16).padStart(length, '0').slice(-length);
+	}
+
+	class MockSpan {
+		private readonly traceId: string;
+		private readonly spanId: string;
+		private readonly record: (typeof spans)[number];
+
+		constructor(name: string, attributes: Record<string, unknown>, parentSpan?: MockSpan) {
+			this.traceId = parentSpan?.spanContext().traceId ?? nextHex(32);
+			this.spanId = nextHex(16);
+			this.record = {
+				id: this.spanId,
+				traceId: this.traceId,
+				...(parentSpan ? { parentSpanId: parentSpan.spanContext().spanId } : {}),
+				name,
+				attributes: { ...attributes },
+				ended: false,
+			};
+			spans.push(this.record);
+		}
+
+		spanContext(): { traceId: string; spanId: string } {
+			return { traceId: this.traceId, spanId: this.spanId };
+		}
+
+		setAttributes(attributes: Record<string, unknown>): void {
+			Object.assign(this.record.attributes, attributes);
+		}
+
+		recordException(): void {}
+
+		setStatus(status: { code: number; message?: string }): void {
+			this.record.status = status;
+		}
+
+		end(): void {
+			this.record.ended = true;
+		}
+	}
+
+	const tracer = {
+		startSpan: (
+			name: string,
+			options?: { attributes?: Record<string, unknown> },
+			parentContext?: Context,
+		) => {
+			const parentSpan = trace.getSpan(parentContext ?? context.active()) as MockSpan | undefined;
+			return new MockSpan(name, options?.attributes ?? {}, parentSpan);
+		},
+		startActiveSpan: async <T>(
+			name: string,
+			options: { attributes?: Record<string, unknown> },
+			fn: (span: MockSpan) => Promise<T>,
+		): Promise<T> => {
+			const span = tracer.startSpan(name, options);
+			const spanContext = trace.setSpan(context.active(), span as never);
+			return await context.with(spanContext, async () => await fn(span));
+		},
+	};
+
+	const provider = {
+		forceFlush: jest.fn(async () => await Promise.resolve()),
+		shutdown: jest.fn(async () => await Promise.resolve()),
+	};
+
+	class MockLangSmithTelemetry {
+		private functionIdValue?: string;
+		private metadataValue?: Record<string, unknown>;
+		private recordInputsValue = true;
+		private recordOutputsValue = true;
+
+		functionId(value: string): this {
+			this.functionIdValue = value;
+			return this;
+		}
+
+		metadata(value: Record<string, unknown>): this {
+			this.metadataValue = value;
+			return this;
+		}
+
+		recordInputs(value: boolean): this {
+			this.recordInputsValue = value;
+			return this;
+		}
+
+		recordOutputs(value: boolean): this {
+			this.recordOutputsValue = value;
+			return this;
+		}
+
+		async build(): Promise<Record<string, unknown>> {
+			return await Promise.resolve({
+				enabled: true,
+				functionId: this.functionIdValue,
+				metadata: this.metadataValue,
+				recordInputs: this.recordInputsValue,
+				recordOutputs: this.recordOutputsValue,
+				integrations: [],
+				tracer,
+				provider,
+			});
+		}
+	}
+
+	return {
+		...actual,
+		LangSmithTelemetry: MockLangSmithTelemetry,
+		__mock: {
+			reset: () => {
+				spanCounter = 0;
+				spans.length = 0;
+				provider.forceFlush.mockClear();
+				provider.shutdown.mockClear();
+			},
+			getSpans: () => spans,
+			getProvider: () => provider,
+		},
+	};
+});
+
 jest.mock('langsmith', () => {
 	let runCounter = 0;
 	const createdRunTrees: Array<{
@@ -245,6 +395,25 @@ type LangSmithMockModule = {
 	};
 };
 
+type AgentsMockModule = {
+	__mock: {
+		reset: () => void;
+		getSpans: () => Array<{
+			id: string;
+			traceId: string;
+			parentSpanId?: string;
+			name: string;
+			attributes: Record<string, unknown>;
+			status?: { code: number; message?: string };
+			ended: boolean;
+		}>;
+		getProvider: () => {
+			forceFlush: jest.Mock<Promise<void>, []>;
+			shutdown: jest.Mock<Promise<void>, []>;
+		};
+	};
+};
+
 function isExecutableTool(
 	value: unknown,
 ): value is { handler: (input: unknown, context: unknown) => Promise<unknown> } {
@@ -274,6 +443,9 @@ const { createAskUserTool } =
 const { __mock: langsmithMock } =
 	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	require('langsmith') as LangSmithMockModule;
+const { __mock: agentsMock } =
+	// eslint-disable-next-line @typescript-eslint/no-require-imports
+	require('@n8n/agents') as AgentsMockModule;
 
 describe('createInstanceAiTraceContext', () => {
 	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
@@ -282,6 +454,7 @@ describe('createInstanceAiTraceContext', () => {
 
 	beforeEach(() => {
 		langsmithMock.reset();
+		agentsMock.reset();
 		process.env.LANGSMITH_API_KEY = 'test-key';
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;
@@ -459,7 +632,7 @@ describe('createInstanceAiTraceContext', () => {
 		});
 	});
 
-	it('rehydrates child runs with their parent linkage before patching', async () => {
+	it('finishes OTel child spans with their parent linkage', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-1',
 			messageId: 'message-1',
@@ -475,9 +648,14 @@ describe('createInstanceAiTraceContext', () => {
 			}),
 		).resolves.toBeUndefined();
 
-		const patchTarget = langsmithMock.getCreatedRunTrees().at(-1);
-		expect(patchTarget?.id).toBe(tracing?.orchestratorRun.id);
-		expect(patchTarget?.parent_run_id).toBe(tracing?.messageRun.id);
+		const spans = agentsMock.getSpans();
+		const orchestratorSpan = spans.find((span) => span.id === tracing?.orchestratorRun.otelSpanId);
+		expect(orchestratorSpan?.parentSpanId).toBe(tracing?.messageRun.otelSpanId);
+		expect(orchestratorSpan?.ended).toBe(true);
+		expect(orchestratorSpan?.attributes.gen_ai_completion).toBeUndefined();
+		expect(orchestratorSpan?.attributes['gen_ai.completion']).toBe(
+			JSON.stringify({ result: 'done' }),
+		);
 	});
 
 	it('reuses the same message root when continuing a trace for the same message group', async () => {
@@ -520,8 +698,11 @@ describe('createInstanceAiTraceContext', () => {
 			kind: 'builder',
 			taskId: 'build-1',
 			spawnedByTraceId: 'trace-parent-1',
+			spawnedBySpanId: 'span-parent-1',
 			spawnedByRunId: 'run-parent-1',
 			spawnedByAgentId: 'agent-001',
+			spawnedByAgentRole: 'orchestrator',
+			spawnedByToolCallId: 'toolu-1',
 			input: { task: 'Build a workflow' },
 		});
 
@@ -529,7 +710,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing?.traceKind).toBe('detached_subagent');
 		expect(tracing?.rootRun.id).toBe(tracing?.actorRun.id);
 		expect(tracing?.rootRun.parentRunId).toBeUndefined();
-		expect(tracing?.rootRun.name).toBe('subagent:workflow-builder');
+		expect(tracing?.rootRun.name).toBe('instance-ai.subagent.workflow-builder');
 		expect(tracing?.rootRun.metadata).toEqual(
 			expect.objectContaining({
 				thread_id: 'thread-1',
@@ -538,8 +719,11 @@ describe('createInstanceAiTraceContext', () => {
 				task_kind: 'builder',
 				agent_id: 'agent-builder-1',
 				spawned_by_trace_id: 'trace-parent-1',
+				spawned_by_span_id: 'span-parent-1',
 				spawned_by_run_id: 'run-parent-1',
 				spawned_by_agent_id: 'agent-001',
+				spawned_by_agent_role: 'orchestrator',
+				spawned_by_tool_call_id: 'toolu-1',
 			}),
 		);
 	});
@@ -712,25 +896,28 @@ describe('createInstanceAiTraceContext', () => {
 		}
 
 		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
-			await executeTool(
-				wrappedAskUser,
+			await wrappedAskUser.handler(
 				{
 					questions: [{ id: 'q1', question: 'What do you want?', type: 'text' }],
 				},
 				{
-					agent: {
-						suspend: async () => {
-							await Promise.resolve();
-							return undefined;
-						},
+					toolCallId: 'toolu-ask',
+					resumeData: undefined,
+					suspend: async () => {
+						await Promise.resolve();
+						return undefined as never;
 					},
 				},
 			);
 		});
 
-		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
-		expect(createdRunNames).toContain('tool:ask-user');
-		expect(createdRunNames).toContain('hitl:suspend');
+		const spans = agentsMock.getSpans();
+		const spanNames = spans.map((span) => span.name);
+		expect(spanNames).toContain('instance-ai.tool.ask-user');
+		expect(spanNames).toContain('instance-ai.hitl.suspend');
+		expect(
+			spans.find((span) => span.name === 'instance-ai.tool.ask-user')?.attributes.tool_call_id,
+		).toBe('toolu-ask');
 	});
 
 	it('does not wrap ordinary local tools for product-level LangSmith spans', async () => {
@@ -776,7 +963,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing).toBeDefined();
 
 		const subAgentRun = await tracing!.startChildRun(tracing!.orchestratorRun, {
-			name: 'subagent:workflow-builder',
+			name: 'instance-ai.subagent.workflow-builder.stream',
 			tags: ['sub-agent'],
 			metadata: { agent_role: 'workflow-builder' },
 			inputs: { task: 'Build a workflow' },
@@ -795,10 +982,10 @@ describe('createInstanceAiTraceContext', () => {
 			);
 		});
 
-		const llmRun = langsmithMock
-			.getCreatedRunTrees()
-			.find((run) => run.name === 'llm:anthropic/claude-sonnet-4-6');
-		expect(llmRun?.parent_run_id).toBe(subAgentRun.id);
+		const llmSpan = agentsMock
+			.getSpans()
+			.find((span) => span.name === 'llm:anthropic/claude-sonnet-4-6');
+		expect(llmSpan?.parentSpanId).toBe(subAgentRun.otelSpanId);
 	});
 
 	it('traces resumed suspendable tools without extra HITL child span spam', async () => {
@@ -861,10 +1048,10 @@ describe('createInstanceAiTraceContext', () => {
 			],
 		});
 
-		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
-		expect(createdRunNames).toContain('tool:ask-user:resume');
-		expect(createdRunNames).not.toContain('hitl:resume');
-		expect(createdRunNames).not.toContain('hitl:approval');
+		const spanNames = agentsMock.getSpans().map((span) => span.name);
+		expect(spanNames).toContain('instance-ai.tool.ask-user');
+		expect(spanNames).toContain('instance-ai.hitl.resume');
+		expect(spanNames).not.toContain('instance-ai.hitl.suspend');
 	});
 
 	it('creates ad-hoc child spans under the current run tree', async () => {
@@ -890,8 +1077,8 @@ describe('createInstanceAiTraceContext', () => {
 			expect(result).toBe(42);
 		});
 
-		const createdRunNames = langsmithMock.getCreatedRunTrees().map((run) => run.name);
-		expect(createdRunNames).toContain('prepare_context');
+		const spanNames = agentsMock.getSpans().map((span) => span.name);
+		expect(spanNames).toContain('prepare_context');
 	});
 
 	it('creates trace context when proxyConfig is provided even without env vars', async () => {
@@ -920,7 +1107,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(tracing?.orchestratorRun).toBeDefined();
 	});
 
-	it('passes client to RunTree when proxyConfig is provided', async () => {
+	it('creates OTel product spans when proxyConfig is provided', async () => {
 		const tracing = await createInstanceAiTraceContext({
 			threadId: 'thread-client',
 			messageId: 'message-client',
@@ -936,14 +1123,15 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing).toBeDefined();
 
-		const rootRunTree = langsmithMock
-			.getCreatedRunTrees()
-			.find((run) => run.name === 'message_turn' && run.client);
-		expect(rootRunTree).toBeDefined();
-		expect(rootRunTree?.client).toBeDefined();
+		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'instance-ai.message_turn');
+		expect(rootSpan).toBeDefined();
+		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
 	});
 
-	it('does not pass client to RunTree without proxyConfig', async () => {
+	it('does not create RunTree spans without proxyConfig', async () => {
+		// Regression: normal tracing must not mix RunTree product spans with OTel
+		// native spans, because LangSmith treats those ingestion paths as separate
+		// trace hierarchies.
 		await createInstanceAiTraceContext({
 			threadId: 'thread-no-proxy',
 			messageId: 'message-no-proxy',
@@ -952,12 +1140,9 @@ describe('createInstanceAiTraceContext', () => {
 			input: { message: 'no proxy test' },
 		});
 
-		const rootRunTree = langsmithMock
-			.getCreatedRunTrees()
-			.find((run) => run.name === 'message_turn');
-		expect(rootRunTree).toBeDefined();
-		// Without proxyConfig, the direct client is used (never undefined)
-		expect(rootRunTree?.client).toBeDefined();
+		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'instance-ai.message_turn');
+		expect(rootSpan).toBeDefined();
+		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
 	});
 
 	it('returns undefined when tracing is explicitly disabled even with proxy', async () => {
@@ -987,6 +1172,7 @@ describe('submitLangsmithUserFeedback', () => {
 
 	beforeEach(() => {
 		langsmithMock.reset();
+		agentsMock.reset();
 		process.env.LANGSMITH_API_KEY = 'test-key';
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;

@@ -6,6 +6,8 @@ import type { BuiltTelemetry } from '../telemetry';
 import type { JSONObject } from '../utils/json';
 
 export interface ToolContext {
+	/** AI SDK tool call ID for the current local tool execution. */
+	toolCallId?: string;
 	/** Telemetry config from the parent agent, for sub-agent propagation. */
 	parentTelemetry?: BuiltTelemetry;
 }
@@ -19,6 +21,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	suspend: (payload: S) => Promise<never>;
 	/** Data from the consumer after resume. Undefined on first invocation. */
 	resumeData: R | undefined;
+	/** AI SDK tool call ID for the current local tool execution. */
+	toolCallId?: string;
 	/** Telemetry config from the parent agent, for sub-agent propagation. */
 	parentTelemetry?: BuiltTelemetry;
 }

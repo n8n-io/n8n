@@ -2162,8 +2162,8 @@ export class InstanceAiService {
 				payload: { message: 'Recalling conversation...' },
 			});
 			const contextCompactionRun = tracing
-				? await tracing.startChildRun(tracing.actorRun, {
-						name: 'context_compaction',
+				? await tracing.startChildRun(tracing.messageRun, {
+						name: 'instance-ai.context_compaction',
 						tags: ['context'],
 						metadata: { agent_role: 'context_compaction' },
 						inputs: {
@@ -2212,8 +2212,8 @@ export class InstanceAiService {
 			});
 
 			const promptBuildRun = tracing
-				? await tracing.startChildRun(tracing.actorRun, {
-						name: 'prompt_build',
+				? await tracing.startChildRun(tracing.messageRun, {
+						name: 'instance-ai.prompt_build',
 						tags: ['prompt'],
 						metadata: { agent_role: 'prompt_build' },
 						inputs: {
@@ -3508,6 +3508,8 @@ export class InstanceAiService {
 			const saveOptions = {
 				messageGroupId,
 				runIds: groupRunIds,
+				traceId: tracing?.rootRun.otelTraceId,
+				spanId: tracing?.rootRun.otelSpanId,
 				langsmithRunId: tracing?.rootRun.id,
 				langsmithTraceId: tracing?.rootRun.traceId,
 			};

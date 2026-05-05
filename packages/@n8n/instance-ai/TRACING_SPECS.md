@@ -77,17 +77,35 @@ Implemented so far:
 - The LangSmith OTel processor filters noisy AI SDK wrapper spans so provider
   request spans such as `ai.streamText.doStream` can appear directly under the
   agent root.
+- Instance AI product roots and child spans now use the same OTel
+  tracer/provider as native agent telemetry in normal execution.
+- Normal foreground and detached trace creation no longer creates RunTree spans.
+- Agent tree snapshots persist OTel trace/span IDs alongside derived LangSmith
+  IDs for feedback anchoring.
 
 Still wrong:
 
-- `langsmith-tracing.ts` still creates RunTree product spans for live execution.
-- Product message turns and native LLM spans are split across separate
-  LangSmith traces.
-- Token usage lives on native OTel spans but does not roll up to RunTree
-  product roots.
-- Feedback anchoring still assumes persisted RunTree IDs.
-- Some product spans exist twice: once as RunTree spans and once as native
-  tool/agent OTel spans.
+- Live LangSmith validation has proved feedback against an OTel-only product
+  root; full provider-span validation with a real model turn is still pending.
+- Some fallback RunTree compatibility code remains for legacy/replay-only
+  paths and should be deleted after rollout validation.
+- Detached sub-agent linking captures spawning trace/span metadata and model
+  tool-call IDs when a detached task is spawned from a local tool handler.
+
+## Hybrid Reference Notes
+
+The last working hybrid traces showed RunTree product nodes such as
+`message_turn`, `orchestrator`, `context_compaction`, `prompt_build`, and
+`subagent:planner` beside native OTel nodes such as `ai.streamText.doStream`.
+This proved product semantics and native AI SDK telemetry could both be
+exported, but LangSmith displayed them as split turn/root groups and did not
+roll token usage up to the product roots.
+
+The failure mode to avoid is forcing native OTel spans under RunTree IDs. In
+that shape, LangSmith can lose or separate provider spans, and the trace no
+longer shows the complete system/user/tool/provider turn under a single OTel
+context. Regression coverage now asserts normal Instance AI trace creation does
+not create RunTree spans.
 
 ## Target Architecture
 
@@ -471,72 +489,72 @@ must not require LangSmith to be available.
 
 1. Document and freeze the current hybrid behavior
 
-   - [ ] Keep examples of a working hybrid trace with native LLM spans.
-   - [ ] Keep examples of the failure mode when OTel spans are forced under
+   - [x] Keep examples of a working hybrid trace with native LLM spans.
+   - [x] Keep examples of the failure mode when OTel spans are forced under
      RunTree parent IDs.
-   - [ ] Add a short note in tests or fixtures explaining why RunTree/OTel
+   - [x] Add a short note in tests or fixtures explaining why RunTree/OTel
      parent mixing is forbidden.
 
 2. Add an OTel product tracing adapter
 
-   - [ ] Create an Instance AI adapter that starts active OTel spans using the
+   - [x] Create an Instance AI adapter that starts active OTel spans using the
      same tracer/provider as native agent telemetry.
-   - [ ] Support `withSpan`, `startSpan`, `finishSpan`, `failSpan`, and
+   - [x] Support `withSpan`, `startSpan`, `finishSpan`, `failSpan`, and
      metadata merging.
-   - [ ] Ensure active context propagates into `@n8n/agents` runtime calls.
-   - [ ] Ensure spans flush before response close, suspension persistence, and
+   - [x] Ensure active context propagates into `@n8n/agents` runtime calls.
+   - [x] Ensure spans flush before response close, suspension persistence, and
      detached task completion.
 
 3. Replace RunTree message turn roots
 
-   - [ ] Create `instance-ai.message_turn` as an OTel root span.
-   - [ ] Persist OTel trace/span IDs in the agent tree snapshot.
-   - [ ] Add metadata required by LangSmith thread view.
-   - [ ] Remove RunTree creation from the normal foreground path.
+   - [x] Create `instance-ai.message_turn` as an OTel root span.
+   - [x] Persist OTel trace/span IDs in the agent tree snapshot.
+   - [x] Add metadata required by LangSmith thread view.
+   - [x] Remove RunTree creation from the normal foreground path.
 
 4. Replace RunTree product child spans
 
-   - [ ] Convert `orchestrator`, `context_compaction`, and `prompt_build` to
+   - [x] Convert `orchestrator`, `context_compaction`, and `prompt_build` to
      OTel spans.
-   - [ ] Convert inline `subagent:*` spans to OTel spans under active context.
-   - [ ] Convert HITL suspend/resume spans to OTel spans.
-   - [ ] Convert selected side-effect-heavy tools to OTel product spans.
+   - [x] Convert inline `subagent:*` spans to OTel spans under active context.
+   - [x] Convert HITL suspend/resume spans to OTel spans.
+   - [x] Convert selected side-effect-heavy tools to OTel product spans.
 
 5. Preserve detached/background sub-agent linking
 
-   - [ ] Create detached sub-agent roots as separate OTel traces when they run
+   - [x] Create detached sub-agent roots as separate OTel traces when they run
      outside the foreground context.
-   - [ ] Add spawning metadata: trace ID, span ID, tool call ID, task ID, and
+   - [x] Add spawning metadata: trace ID, span ID, tool call ID, task ID, and
      agent role.
    - [ ] Confirm thread queries show detached roots alongside foreground turns.
 
 6. Rework feedback anchoring
 
-   - [ ] Choose explicit LangSmith IDs, derived OTel IDs, or metadata lookup.
-   - [ ] Prove `Client.createFeedback` works against an OTel-only product root.
-   - [ ] Persist the chosen IDs in the snapshot.
-   - [ ] Remove RunTree as a feedback dependency.
+   - [x] Choose explicit LangSmith IDs, derived OTel IDs, or metadata lookup.
+   - [x] Prove `Client.createFeedback` works against an OTel-only product root.
+   - [x] Persist the chosen IDs in the snapshot.
+   - [x] Remove RunTree as a feedback dependency.
 
 7. Remove RunTree live tracing
 
-   - [ ] Remove normal-path `RunTree` root creation.
-   - [ ] Remove normal-path manual RunTree tool wrappers.
+   - [x] Remove normal-path `RunTree` root creation.
+   - [x] Remove normal-path manual RunTree tool wrappers.
    - [ ] Keep only temporary compatibility code behind an explicit flag, if
      needed for rollout.
    - [ ] Delete compatibility code after validation.
 
 8. Decouple replay from tracing
 
-   - [ ] Ensure replay records stable Instance AI events, not span IDs.
-   - [ ] Ensure replay tests pass with LangSmith disabled.
+   - [x] Ensure replay records stable Instance AI events, not span IDs.
+   - [x] Ensure replay tests pass with LangSmith disabled.
    - [ ] Optionally emit replay-tagged OTel spans for debugging only.
 
 9. Add regression coverage
 
-   - [ ] Unit test metadata construction.
-   - [ ] Unit test OTel product span parentage.
-   - [ ] Unit test feedback ID persistence.
-   - [ ] Unit test redaction preserving token usage.
+   - [x] Unit test metadata construction.
+   - [x] Unit test OTel product span parentage.
+   - [x] Unit test feedback ID persistence.
+   - [x] Unit test redaction preserving token usage.
    - [ ] Local exporter test proving one foreground message turn contains
      product spans, native provider spans, and local tool spans.
    - [ ] Live LangSmith validation behind explicit credentials.
