@@ -41,6 +41,21 @@ ruleTester.run('n8n-object-validation', N8nObjectValidationRule, {
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"] }, "contributors": [{ "name": "Jane" }, { "name": "John" }] }',
 		},
+		{
+			name: 'strict is true',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"], "strict": true } }',
+		},
+		{
+			name: 'strict is false',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"], "strict": false } }',
+		},
+		{
+			name: 'strict is omitted (optional field)',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"] } }',
+		},
 	],
 	invalid: [
 		{
@@ -164,6 +179,24 @@ ruleTester.run('n8n-object-validation', N8nObjectValidationRule, {
 			filename: 'package.json',
 			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"], "credentials": [true] } }',
 			errors: [{ messageId: 'credentialPathNotString' }],
+		},
+		{
+			name: 'strict is a string',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"], "strict": "true" } }',
+			errors: [{ messageId: 'invalidStrict', data: { value: 'true' } }],
+		},
+		{
+			name: 'strict is a number',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"], "strict": 1 } }',
+			errors: [{ messageId: 'invalidStrict', data: { value: '1' } }],
+		},
+		{
+			name: 'strict is null',
+			filename: 'package.json',
+			code: '{ "name": "n8n-nodes-example", "n8n": { "n8nNodesApiVersion": 1, "nodes": ["dist/x.js"], "strict": null } }',
+			errors: [{ messageId: 'invalidStrict', data: { value: 'null' } }],
 		},
 	],
 });

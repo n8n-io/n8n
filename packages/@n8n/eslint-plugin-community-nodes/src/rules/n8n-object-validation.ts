@@ -15,7 +15,8 @@ type MessageIds =
 	| 'nodePathNotString'
 	| 'nodePathNotInDist'
 	| 'credentialPathNotString'
-	| 'credentialPathNotInDist';
+	| 'credentialPathNotInDist'
+	| 'invalidStrict';
 
 type Context = TSESLint.RuleContext<MessageIds, []>;
 
@@ -47,6 +48,7 @@ export const N8nObjectValidationRule = createRule<[], MessageIds>({
 				'Each entry in "n8n.credentials" must be a string starting with "dist/".',
 			credentialPathNotInDist:
 				'Path "{{ path }}" in "n8n.credentials" must start with "dist/" (compiled output).',
+			invalidStrict: '"n8n.strict" must be a boolean, got {{ value }}.',
 		},
 		schema: [],
 	},
@@ -92,6 +94,7 @@ export const N8nObjectValidationRule = createRule<[], MessageIds>({
 				validateApiVersion(context, n8nObject);
 				validateNodes(context, n8nObject);
 				validateCredentials(context, n8nObject);
+				validateStrict(context, n8nObject);
 			},
 		};
 	},
@@ -109,6 +112,22 @@ function validateApiVersion(context: Context, n8nObject: TSESTree.ObjectExpressi
 		context.report({
 			node: apiVersionProp,
 			messageId: 'invalidNodesApiVersion',
+			data: {
+				value: String(valueNode.type === AST_NODE_TYPES.Literal ? valueNode.value : 'non-literal'),
+			},
+		});
+	}
+}
+
+function validateStrict(context: Context, n8nObject: TSESTree.ObjectExpression): void {
+	const strictProp = findJsonProperty(n8nObject, 'strict');
+	if (!strictProp) return; // optional
+
+	const valueNode = strictProp.value;
+	if (valueNode.type !== AST_NODE_TYPES.Literal || typeof valueNode.value !== 'boolean') {
+		context.report({
+			node: strictProp,
+			messageId: 'invalidStrict',
 			data: {
 				value: String(valueNode.type === AST_NODE_TYPES.Literal ? valueNode.value : 'non-literal'),
 			},
