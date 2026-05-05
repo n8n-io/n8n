@@ -20,6 +20,7 @@ import {
 } from '../evaluation.utils';
 import MetricSummaryStrip from '../components/RunDetail/MetricSummaryStrip.vue';
 import AiSummarySection from '../components/RunDetail/AiSummarySection.vue';
+import RunStatusPill from '../components/RunDetail/RunStatusPill.vue';
 import TestCaseCard from '../components/RunDetail/TestCaseCard.vue';
 
 const router = useRouter();
@@ -98,6 +99,16 @@ const caseValuesByKey = computed<Record<string, Array<number | boolean | undefin
 	return result;
 });
 
+const rerunRun = async () => {
+	if (!workflowId.value) return;
+	try {
+		await evaluationStore.startTestRun(workflowId.value);
+		await evaluationStore.fetchTestRuns(workflowId.value);
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.listRuns.error.cantStartTestRun'));
+	}
+};
+
 const cancelPendingCase = async (testCase: TestCaseExecutionRecord) => {
 	if (!workflowId.value) return;
 	try {
@@ -174,15 +185,18 @@ onMounted(async () => {
 				<N8nIcon icon="arrow-left" size="small" />
 				<N8nText size="medium">{{ locale.baseText('evaluation.runDetail.backToRuns') }}</N8nText>
 			</button>
-			<h1 :class="$style.runHeading">
-				{{
-					locale.baseText('evaluation.listRuns.testCasesListHeader', {
-						interpolate: {
-							index: testRunIndex + 1,
-						},
-					})
-				}}
-			</h1>
+			<div :class="$style.headingRow">
+				<h1 :class="$style.runHeading">
+					{{
+						locale.baseText('evaluation.listRuns.testCasesListHeader', {
+							interpolate: {
+								index: testRunIndex + 1,
+							},
+						})
+					}}
+				</h1>
+				<RunStatusPill v-if="run" :status="run.status" />
+			</div>
 		</div>
 
 		<N8nCallout v-if="run?.status === 'error'" theme="danger" icon="triangle-alert" class="mb-s">
@@ -231,6 +245,7 @@ onMounted(async () => {
 				:metric-sources="metricSources"
 				@view="openRelatedExecution"
 				@cancel="cancelPendingCase"
+				@rerun="rerunRun"
 			/>
 		</div>
 	</div>
@@ -255,6 +270,13 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: var(--spacing--2xs);
 	margin-bottom: var(--spacing--lg);
+}
+
+.headingRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--md);
 }
 
 .backButton {
