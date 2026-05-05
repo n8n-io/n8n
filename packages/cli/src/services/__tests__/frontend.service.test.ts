@@ -596,6 +596,76 @@ describe('FrontendService', () => {
 
 			expect(credential.__skipManagedCreation).toBeUndefined();
 		});
+
+		describe('JWKS URI injection', () => {
+			const expectedJwksUri = 'http://localhost:5678/rest/.well-known/jwks.json';
+
+			const makeJwksUriProperty = () => ({
+				displayName: 'JWKS URI',
+				name: 'jwksUri',
+				type: 'string' as const,
+				default: '',
+			});
+
+			it('should inject the instance JWKS URI on oAuth2Api', () => {
+				const credential = {
+					name: 'oAuth2Api',
+					displayName: 'OAuth2 API',
+					properties: [makeJwksUriProperty()],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue([]);
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
+				expect(jwksProperty?.default).toBe(expectedJwksUri);
+			});
+
+			it('should inject the instance JWKS URI on credentials extending oAuth2Api', () => {
+				const credential = {
+					name: 'slackOAuth2Api',
+					displayName: 'Slack OAuth2 API',
+					properties: [makeJwksUriProperty()],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue(['oAuth2Api']);
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				const jwksProperty = credential.properties?.find((p) => p.name === 'jwksUri');
+				expect(jwksProperty?.default).toBe(expectedJwksUri);
+			});
+
+			it('should leave non-OAuth2 credentials untouched', () => {
+				const credential = {
+					name: 'httpBasicAuth',
+					displayName: 'Basic Auth',
+					properties: [
+						{
+							displayName: 'User',
+							name: 'user',
+							type: 'string' as const,
+							default: '',
+						},
+					],
+				} as unknown as ICredentialType;
+
+				loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+				(credentialTypes.getParentTypes as jest.Mock).mockReturnValue([]);
+
+				const { service } = createMockService();
+				(service as any).overwriteCredentialsProperties();
+
+				expect(credential.properties).toEqual([
+					{ displayName: 'User', name: 'user', type: 'string', default: '' },
+				]);
+			});
+		});
 	});
 
 	describe('generateTypes', () => {
