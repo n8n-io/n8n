@@ -458,8 +458,8 @@ pnpm typecheck
 - [ ] Rewrite stream runner and stream executor for native `StreamChunk`.
 - [ ] Rename internal `mastraRunId` to `agentRunId`.
 - [ ] Implement native chunk to Instance AI event mapper.
-- [ ] Implement TypeORM `BuiltMemory`.
-- [ ] Implement TypeORM `CheckpointStore`.
+- [x] Implement TypeORM `BuiltMemory`.
+- [x] Implement TypeORM `CheckpointStore`.
 - [ ] Add fresh DB migration for native Instance AI persistence.
 - [ ] Remove `TypeORMCompositeStore` from the active runtime path.
 - [ ] Remove `TypeORMWorkflowsStorage` from the active runtime path.
