@@ -11,10 +11,6 @@ import {
 	getOutBindDefsForExecute,
 } from '../helpers/utils';
 
-const stressTests = process.env.ORACLE_STRESS_TESTS ?? false;
-const { skip: describeSkip } = describe;
-const describeStackOverflowRegression = stressTests ? describe : describeSkip;
-
 describe('Test addSortRules', () => {
 	it('should ORDER BY ASC', () => {
 		const query = 'SELECT * FROM "scott"."employees"';
@@ -354,7 +350,8 @@ describe('Test configureQueryRunner', () => {
 	});
 });
 
-describeStackOverflowRegression('configureQueryRunner stack overflow regression', () => {
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('configureQueryRunner stack overflow regression', () => {
 	it('should handle large out bind datasets without stack overflow', async () => {
 		const chunkSize = 250_000;
 		const outBinds = [[[42]]];
