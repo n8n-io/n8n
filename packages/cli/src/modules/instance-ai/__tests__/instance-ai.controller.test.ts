@@ -586,6 +586,21 @@ describe('InstanceAiController', () => {
 			);
 		});
 
+		it('should not push gateway state changes to the static env gateway sentinel', async () => {
+			settingsService.updateAdminSettings.mockResolvedValue({} as never);
+			instanceAiService.disconnectAllGateways.mockReturnValue(['user-a', 'env-gateway']);
+			const payload = { localGatewayDisabled: true } as InstanceAiAdminSettingsUpdateRequest;
+
+			await controller.updateAdminSettings(req, res, payload);
+
+			expect(push.sendToUsers).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'instanceAiGatewayStateChanged',
+				}),
+				['user-a'],
+			);
+		});
+
 		it('should not disconnect gateways when enabling features', async () => {
 			settingsService.updateAdminSettings.mockResolvedValue({} as never);
 			const payload = {
@@ -992,6 +1007,7 @@ describe('InstanceAiController', () => {
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
 			expect(settingsService.isLocalGatewayDisabled).toHaveBeenCalled();
 			expect(settingsService.isLocalGatewayDisabledForUser).not.toHaveBeenCalledWith('env-gateway');
+			expect(push.sendToUsers).not.toHaveBeenCalled();
 		});
 
 		it('should reject static env var key when gateway is globally disabled', async () => {

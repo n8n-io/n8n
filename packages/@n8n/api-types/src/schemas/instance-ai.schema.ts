@@ -290,13 +290,22 @@ export const instanceGatewayResourceDecisionSchema = z.enum([
 ]);
 export type InstanceGatewayResourceDecision = z.infer<typeof instanceGatewayResourceDecisionSchema>;
 
-export const gatewayConfirmationRequiredPayloadSchema = z.object({
+export const gatewayConfirmationRequiredWirePayloadSchema = z.object({
 	toolGroup: z.string(),
 	resource: z.string(),
 	description: z.string(),
 	/** Available decision options. */
-	options: z.array(instanceGatewayResourceDecisionSchema),
+	options: z.array(z.string()),
 });
+
+export type GatewayConfirmationRequiredWirePayload = z.infer<
+	typeof gatewayConfirmationRequiredWirePayloadSchema
+>;
+
+export const gatewayConfirmationRequiredPayloadSchema =
+	gatewayConfirmationRequiredWirePayloadSchema.extend({
+		options: z.array(instanceGatewayResourceDecisionSchema),
+	});
 
 export type GatewayConfirmationRequiredPayload = z.infer<
 	typeof gatewayConfirmationRequiredPayloadSchema

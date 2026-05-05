@@ -117,12 +117,12 @@ function createGatewayStatusService(): GatewayStatusServiceInternals {
 }
 
 describe('InstanceAiService — gateway status', () => {
-	it('falls back to the static env gateway when the user has no active gateway', () => {
+	it('does not fall back to the static env gateway when the user has no active gateway', () => {
 		const service = createGatewayStatusService();
 
-		expect(service.getGatewayStatus('user-1')).toBe(ENV_CONNECTED_STATUS);
+		expect(service.getGatewayStatus('user-1')).toBe(DISCONNECTED_STATUS);
 		expect(service.gatewayRegistry.getGatewayStatus).toHaveBeenCalledWith('user-1');
-		expect(service.gatewayRegistry.getGatewayStatus).toHaveBeenCalledWith(ENV_GATEWAY_USER_ID);
+		expect(service.gatewayRegistry.getGatewayStatus).not.toHaveBeenCalledWith(ENV_GATEWAY_USER_ID);
 	});
 
 	it('prefers the user gateway when it is connected', () => {

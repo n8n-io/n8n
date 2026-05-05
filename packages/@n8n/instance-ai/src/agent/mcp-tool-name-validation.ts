@@ -1,4 +1,5 @@
 import type { ToolsInput } from '@mastra/core/agent';
+import { isSafeObjectKey } from '@n8n/api-types';
 
 export class McpToolNameValidationError extends Error {
 	constructor(
@@ -14,7 +15,12 @@ export class McpToolNameValidationError extends Error {
 const MCP_TOOL_NAME_PATTERN = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 
 export function isSafeMcpIdentifierName(name: string): boolean {
-	return name.normalize('NFKC') === name && MCP_TOOL_NAME_PATTERN.test(name);
+	const normalizedName = name.normalize('NFKC');
+	return (
+		normalizedName === name &&
+		MCP_TOOL_NAME_PATTERN.test(name) &&
+		isSafeObjectKey(normalizedName.toLowerCase())
+	);
 }
 
 export function normalizeMcpToolName(name: string): string {

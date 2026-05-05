@@ -15,7 +15,7 @@ import {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalSubAgentRequest,
 } from '@n8n/api-types';
-import type { InstanceAiAgentNode } from '@n8n/api-types';
+import type { InstanceAiAgentNode, ToolCategory } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -51,8 +51,20 @@ import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
+type GatewayStateChangedData = {
+	connected: boolean;
+	directory: string | null;
+	hostIdentifier: string | null;
+	toolCategories: ToolCategory[];
+};
 
 const KEEP_ALIVE_INTERVAL_MS = 15_000;
+const DISCONNECTED_GATEWAY_STATE: GatewayStateChangedData = {
+	connected: false,
+	directory: null,
+	hostIdentifier: null,
+	toolCategories: [],
+};
 
 @RestController('/instance-ai')
 export class InstanceAiController {
@@ -101,6 +113,13 @@ export class InstanceAiController {
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
+	}
+
+	private notifyGatewayStateChanged(userIds: string[], data: GatewayStateChangedData): void {
+		const realUserIds = userIds.filter((userId) => userId !== ENV_GATEWAY_USER_ID);
+		if (realUserIds.length === 0) return;
+
+		this.push.sendToUsers({ type: 'instanceAiGatewayStateChanged', data }, realUserIds);
 	}
 
 	private requireInstanceAiEnabled(): void {
@@ -433,20 +452,7 @@ export class InstanceAiController {
 
 		if (payload.enabled === false || payload.localGatewayDisabled === true) {
 			const disconnectedUserIds = this.instanceAiService.disconnectAllGateways();
-			if (disconnectedUserIds.length > 0) {
-				this.push.sendToUsers(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: {
-							connected: false,
-							directory: null,
-							hostIdentifier: null,
-							toolCategories: [],
-						},
-					},
-					disconnectedUserIds,
-				);
-			}
+			this.notifyGatewayStateChanged(disconnectedUserIds, DISCONNECTED_GATEWAY_STATE);
 		}
 
 		return result;
@@ -475,13 +481,7 @@ export class InstanceAiController {
 			payload.localGatewayDisabled === true &&
 			this.instanceAiService.revokeGatewaySession(req.user.id)
 		) {
-			this.push.sendToUsers(
-				{
-					type: 'instanceAiGatewayStateChanged',
-					data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-				},
-				[req.user.id],
-			);
+			this.notifyGatewayStateChanged([req.user.id], DISCONNECTED_GATEWAY_STATE);
 		}
 		return result;
 	}
@@ -720,18 +720,7 @@ export class InstanceAiController {
 			if (!shouldStartDisconnectTimer) return;
 
 			this.instanceAiService.startDisconnectTimer(userId, () => {
-				this.push.sendToUsers(
-					{
-						type: 'instanceAiGatewayStateChanged',
-						data: {
-							connected: false,
-							directory: null,
-							hostIdentifier: null,
-							toolCategories: [],
-						},
-					},
-					[userId],
-				);
+				this.notifyGatewayStateChanged([userId], DISCONNECTED_GATEWAY_STATE);
 			});
 		};
 		req.once('close', cleanup);
@@ -754,18 +743,12 @@ export class InstanceAiController {
 
 		this.instanceAiService.initGateway(userId, payload);
 
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: {
-					connected: true,
-					directory: payload.rootPath,
-					hostIdentifier: payload.hostIdentifier ?? null,
-					toolCategories: payload.toolCategories ?? [],
-				},
-			},
-			[userId],
-		);
+		this.notifyGatewayStateChanged([userId], {
+			connected: true,
+			directory: payload.rootPath,
+			hostIdentifier: payload.hostIdentifier ?? null,
+			toolCategories: payload.toolCategories ?? [],
+		});
 
 		if (sessionKey) {
 			return { ok: true, sessionKey };
@@ -781,13 +764,7 @@ export class InstanceAiController {
 		this.instanceAiService.clearDisconnectTimer(userId);
 		this.instanceAiService.disconnectGateway(userId);
 		this.instanceAiService.clearActiveSessionKey(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-			},
-			[userId],
-		);
+		this.notifyGatewayStateChanged([userId], DISCONNECTED_GATEWAY_STATE);
 		return { ok: true };
 	}
 
@@ -832,13 +809,7 @@ export class InstanceAiController {
 		this.instanceAiService.clearDisconnectTimer(userId);
 		this.instanceAiService.disconnectGateway(userId);
 		this.instanceAiService.clearActiveSessionKey(userId);
-		this.push.sendToUsers(
-			{
-				type: 'instanceAiGatewayStateChanged',
-				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
-			},
-			[userId],
-		);
+		this.notifyGatewayStateChanged([userId], DISCONNECTED_GATEWAY_STATE);
 		return { ok: true };
 	}
 

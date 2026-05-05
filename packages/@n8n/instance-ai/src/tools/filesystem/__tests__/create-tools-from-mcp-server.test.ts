@@ -21,11 +21,28 @@ const CONFIRMATION_PAYLOAD = {
 	options: ['denyOnce', 'allowOnce', 'allowForSession'],
 };
 
+const CONFIRMATION_PAYLOAD_WITH_UNSUPPORTED_OPTION = {
+	...CONFIRMATION_PAYLOAD,
+	options: ['denyOnce', 'alwaysAllow', 'allowOnce'],
+};
+
 const PLAIN_CONFIRMATION_ERROR: McpToolCallResult = {
 	content: [
 		{
 			type: 'text',
 			text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(CONFIRMATION_PAYLOAD)}`,
+		},
+	],
+	isError: true,
+};
+
+const PLAIN_CONFIRMATION_ERROR_WITH_UNSUPPORTED_OPTION: McpToolCallResult = {
+	content: [
+		{
+			type: 'text',
+			text: `${GATEWAY_CONFIRMATION_REQUIRED_PREFIX}${JSON.stringify(
+				CONFIRMATION_PAYLOAD_WITH_UNSUPPORTED_OPTION,
+			)}`,
 		},
 	],
 	isError: true,
@@ -125,6 +142,26 @@ describe('createToolsFromLocalMcpServer', () => {
 				expect.objectContaining({
 					source: 'local gateway MCP',
 					toolName: 'bad tool',
+				}),
+			);
+		});
+
+		it('skips tools with unsafe object key names', () => {
+			const logger = { warn: jest.fn() };
+			const server = makeMockServer([
+				{ ...SAMPLE_TOOL, name: 'constructor' },
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(Object.prototype.hasOwnProperty.call(tools, 'constructor')).toBe(false);
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsafe name',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'constructor',
 				}),
 			);
 		});
@@ -254,6 +291,22 @@ describe('createToolsFromLocalMcpServer', () => {
 				resourceDecision: CONFIRMATION_PAYLOAD,
 				message: expect.stringContaining('write_file') as string,
 				requestId: expect.any(String) as string,
+			});
+		});
+
+		it('filters unsupported confirmation options after parsing the daemon payload', async () => {
+			const server = makeMockServer();
+			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR_WITH_UNSUPPORTED_OPTION);
+			const suspend = jest.fn().mockResolvedValue(undefined);
+			const execute = getExecute(server);
+
+			await execute({ filePath: 'test.ts' }, makeCtx({ suspend }));
+
+			expect(suspend).toHaveBeenCalledTimes(1);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			expect(suspend.mock.calls[0][0].resourceDecision).toMatchObject({
+				...CONFIRMATION_PAYLOAD,
+				options: ['denyOnce', 'allowOnce'],
 			});
 		});
 

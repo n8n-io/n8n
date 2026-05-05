@@ -1210,9 +1210,7 @@ export class InstanceAiService {
 	}
 
 	private findEffectiveLocalGateway(userId: string): LocalGateway | undefined {
-		const userGateway = this.gatewayRegistry.findGateway(userId);
-		if (userGateway?.isConnected) return userGateway;
-		return this.gatewayRegistry.findGateway(ENV_GATEWAY_USER_ID);
+		return this.gatewayRegistry.findGateway(userId);
 	}
 
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
@@ -1254,11 +1252,7 @@ export class InstanceAiService {
 		hostIdentifier: string | null;
 		toolCategories: ToolCategory[];
 	} {
-		const userStatus = this.gatewayRegistry.getGatewayStatus(userId);
-		if (userStatus.connected) return userStatus;
-
-		const envStatus = this.gatewayRegistry.getGatewayStatus(ENV_GATEWAY_USER_ID);
-		return envStatus.connected ? envStatus : userStatus;
+		return this.gatewayRegistry.getGatewayStatus(userId);
 	}
 
 	startDisconnectTimer(userId: string, onDisconnect: () => void): void {

@@ -190,8 +190,8 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		...(context.localMcpServer?.getToolsByCategory('browser').map((t) => t.name) ?? []),
 	]);
 
-	// Store ALL MCP tools (external + browser) on orchestrationContext for sub-agents
-	// (browser-credential-setup, delegate). NOT given to the orchestrator directly.
+	// Store ALL MCP tools (external + browser + local gateway) on orchestrationContext for
+	// sub-agents (browser-credential-setup, delegate). NOT given to the orchestrator directly.
 	const allMcpTools: ToolsInput = {};
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
 		context.logger?.warn('Skipped MCP tool with unsafe name', {
@@ -239,11 +239,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	// Anthropic guidance: "Keep your 3-5 most-used tools always loaded, defer the rest."
 	// Tool selection accuracy degrades past 10+ tools; tool search improves it significantly.
 	const rawLocalMcpTools = context.localMcpServer
-		? Object.fromEntries(
-				Object.entries(
-					createToolsFromLocalMcpServer(context.localMcpServer, context.logger),
-				).filter(([name]) => !browserToolNames.has(name)),
-			)
+		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
 		: {};
 	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
 		source: 'local gateway MCP',
@@ -251,12 +247,16 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
+
+	const orchestratorLocalMcpTools = Object.fromEntries(
+		Object.entries(rawLocalMcpTools).filter(([name]) => !browserToolNames.has(name)),
+	);
 	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
 		orchestrationContext.mcpTools = allMcpTools;
 	}
 
 	const safeLocalMcpTools: ToolsInput = {};
-	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
+	addSafeMcpTools(safeLocalMcpTools, orchestratorLocalMcpTools, {
 		source: 'local gateway MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		reservedSuffixToolNames,

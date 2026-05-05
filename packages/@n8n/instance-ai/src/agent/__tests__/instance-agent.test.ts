@@ -216,6 +216,46 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('keeps local browser tools available to delegates while excluding them from the orchestrator', async () => {
+		createToolsFromLocalMcpServer.mockReturnValue({
+			browser_snapshot: { id: 'local-browser-snapshot' },
+			read_file: { id: 'local-read-file' },
+		});
+		const orchestrationContext = {
+			runId: 'run-local-browser',
+			browserMcpConfig: undefined,
+		} as {
+			runId: string;
+			browserMcpConfig: undefined;
+			mcpTools?: Record<string, { id: string }>;
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-local-browser',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: {
+					getToolsByCategory: jest.fn((category: string) =>
+						category === 'browser' ? [{ name: 'browser_snapshot' }] : [],
+					),
+				},
+			},
+			orchestrationContext,
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const agentConfig = getLastAgentConfig();
+		expect(agentConfig.tools.browser_snapshot).toBeUndefined();
+		expect(agentConfig.tools.read_file).toEqual({ id: 'local-read-file' });
+		expect(orchestrationContext.mcpTools?.browser_snapshot).toEqual({
+			id: 'local-browser-snapshot',
+		});
+		expect(orchestrationContext.mcpTools?.read_file).toEqual({ id: 'local-read-file' });
+	});
+
 	it('rejects normalized lookalike names from external MCP tools', async () => {
 		MCPClient.mockImplementation(() => ({
 			listTools: jest.fn().mockResolvedValue({
@@ -261,6 +301,7 @@ describe('createInstanceAgent', () => {
 			listTools: jest.fn().mockResolvedValue({
 				custom_tool: { id: 'external-custom' },
 				'bad tool': { id: 'bad-tool' },
+				constructor: { id: 'bad-constructor' },
 			}),
 		}));
 		createToolsFromLocalMcpServer.mockReturnValue({
@@ -292,6 +333,7 @@ describe('createInstanceAgent', () => {
 		expect(agentConfig.tools.custom_tool).toEqual({ id: 'external-custom' });
 		expect(agentConfig.tools['custom-tool']).toBeUndefined();
 		expect(agentConfig.tools['bad tool']).toBeUndefined();
+		expect(Object.prototype.hasOwnProperty.call(agentConfig.tools, 'constructor')).toBe(false);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Skipped MCP tool with unsafe name',
 			expect.objectContaining({
@@ -304,6 +346,13 @@ describe('createInstanceAgent', () => {
 			expect.objectContaining({
 				source: 'local gateway MCP',
 				toolName: 'custom-tool',
+			}),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'external MCP',
+				toolName: 'constructor',
 			}),
 		);
 	});
@@ -447,7 +496,10 @@ describe('createInstanceAgent', () => {
 				runId: 'run-unsafe-server',
 				browserMcpConfig: undefined,
 			},
-			mcpServers: [{ name: 'bad server', command: 'test-command-unsafe-server' }],
+			mcpServers: [
+				{ name: 'bad server', command: 'test-command-unsafe-server' },
+				{ name: 'prototype', command: 'test-command-unsafe-server-key' },
+			],
 			memoryConfig,
 			disableDeferredTools: true,
 		} as never);
@@ -455,6 +507,10 @@ describe('createInstanceAgent', () => {
 		expect(MCPClient).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalledWith('Skipped MCP server with unsafe name', {
 			serverName: 'bad server',
+			source: 'external MCP',
+		});
+		expect(logger.warn).toHaveBeenCalledWith('Skipped MCP server with unsafe name', {
+			serverName: 'prototype',
 			source: 'external MCP',
 		});
 	});

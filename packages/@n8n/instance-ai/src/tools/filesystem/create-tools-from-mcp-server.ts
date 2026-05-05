@@ -40,6 +40,11 @@ const gatewayConfirmationSuspendSchema = z.object({
 
 const gatewayResourceDecisionSchema = z.enum(['denyOnce', 'allowOnce', 'allowForSession']);
 
+const gatewayConfirmationRequiredWirePayloadSchema =
+	gatewayConfirmationRequiredPayloadSchema.extend({
+		options: z.array(z.string()),
+	});
+
 const gatewayConfirmationResumeSchema = z.object({
 	approved: z.boolean(),
 	resourceDecision: gatewayResourceDecisionSchema.optional(),
@@ -48,6 +53,12 @@ const gatewayConfirmationResumeSchema = z.object({
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
+
+function isGatewayResourceDecision(
+	option: string,
+): option is z.infer<typeof gatewayResourceDecisionSchema> {
+	return gatewayResourceDecisionSchema.safeParse(option).success;
+}
 
 function tryParseGatewayConfirmationRequired(
 	result: McpToolCallResult,
@@ -79,12 +90,10 @@ function tryParseGatewayConfirmationRequired(
 		const json = JSON.parse(
 			candidate.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length),
 		) as unknown;
-		const parsed = gatewayConfirmationRequiredPayloadSchema.safeParse(json);
+		const parsed = gatewayConfirmationRequiredWirePayloadSchema.safeParse(json);
 		if (!parsed.success) return null;
 
-		const options = parsed.data.options.filter(
-			(option) => gatewayResourceDecisionSchema.safeParse(option).success,
-		);
+		const options = parsed.data.options.filter(isGatewayResourceDecision);
 		if (options.length === 0) return null;
 
 		return { ...parsed.data, options };
