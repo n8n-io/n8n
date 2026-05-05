@@ -45,6 +45,11 @@ describe('ObjectStoreService', () => {
 			authAutoDetect: false,
 		},
 		protocol: 'https',
+<<<<<<< HEAD
+=======
+		forcePathStyle: true,
+		maxAttempts: 3,
+>>>>>>> e2576ca25b (fix(core): Add configurable retries and error details to S3 (#28309))
 	});
 
 	let objectStoreService: ObjectStoreService;
@@ -74,9 +79,28 @@ describe('ObjectStoreService', () => {
 				forcePathStyle: true,
 				region: mockBucket.region,
 				credentials,
+				maxAttempts: 3,
 			});
 		});
 
+<<<<<<< HEAD
+=======
+		it('should return client config with forcePathStyle disabled when configured', () => {
+			s3Config.host = 'example.com';
+			s3Config.forcePathStyle = false;
+
+			const clientConfig = objectStoreService.getClientConfig();
+
+			expect(clientConfig).toEqual({
+				endpoint: 'https://example.com',
+				forcePathStyle: false,
+				region: mockBucket.region,
+				credentials,
+				maxAttempts: 3,
+			});
+		});
+
+>>>>>>> e2576ca25b (fix(core): Add configurable retries and error details to S3 (#28309))
 		it('should return client config without endpoint when host is not provided', () => {
 			s3Config.host = '';
 
@@ -85,6 +109,7 @@ describe('ObjectStoreService', () => {
 			expect(clientConfig).toEqual({
 				region: mockBucket.region,
 				credentials,
+				maxAttempts: 3,
 			});
 		});
 
@@ -95,6 +120,7 @@ describe('ObjectStoreService', () => {
 
 			expect(clientConfig).toEqual({
 				region: mockBucket.region,
+				maxAttempts: 3,
 			});
 		});
 	});
