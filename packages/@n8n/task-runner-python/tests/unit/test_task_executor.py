@@ -231,15 +231,31 @@ class TestFilterBuiltins:
     @pytest.mark.parametrize(
         "name,mutate,expected",
         [
-            ("item_assignment",   lambda r: r.__setitem__("len", None),                (TypeError, AttributeError)),
-            ("attribute_assignment", lambda r: setattr(r, "__import__", None),          AttributeError),
-            ("dict_class_setitem", lambda r: dict.__setitem__(r, "len", None),          TypeError),
-            ("dict_class_init",   lambda r: dict.__init__(r, {"pwned": True}),         TypeError),
-            ("dict_class_update", lambda r: dict.update(r, {"len": None}),             TypeError),
-            ("dict_class_clear",  lambda r: dict.clear(r),                              TypeError),
-            ("class_swap",        lambda r: setattr(r, "__class__", dict),              AttributeError),
-            ("vars_injection",    lambda r: vars(r),                                    TypeError),
-            ("object_setattr",    lambda r: object.__setattr__(r, "_x", {"pwned": True}), AttributeError),
+            (
+                "item_assignment",
+                lambda r: r.__setitem__("len", None),
+                (TypeError, AttributeError),
+            ),
+            (
+                "attribute_assignment",
+                lambda r: setattr(r, "__import__", None),
+                AttributeError,
+            ),
+            (
+                "dict_class_setitem",
+                lambda r: dict.__setitem__(r, "len", None),
+                TypeError,
+            ),
+            ("dict_class_init", lambda r: dict.__init__(r, {"pwned": True}), TypeError),
+            ("dict_class_update", lambda r: dict.update(r, {"len": None}), TypeError),
+            ("dict_class_clear", lambda r: dict.clear(r), TypeError),
+            ("class_swap", lambda r: setattr(r, "__class__", dict), AttributeError),
+            ("vars_injection", lambda r: vars(r), TypeError),
+            (
+                "object_setattr",
+                lambda r: object.__setattr__(r, "_x", {"pwned": True}),
+                AttributeError,
+            ),
         ],
     )
     def test_rejects_mutation(self, name, mutate, expected):
