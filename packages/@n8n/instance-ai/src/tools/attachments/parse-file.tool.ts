@@ -16,6 +16,7 @@ import { extractHtmlContent } from '../../parsers/html-parser';
 import { extractPdfText } from '../../parsers/pdf-parser';
 import {
 	detectFormat,
+	formatSizeLimitMessage,
 	parseStructuredFile,
 	MAX_DECODED_SIZE_BYTES,
 	MAX_RESULT_CHARS,
@@ -235,11 +236,7 @@ export function createParseFileTool(context: InstanceAiContext) {
 				// text / markdown — pass through after size check
 				const decoded = Buffer.from(attachment.data, 'base64');
 				if (decoded.length > MAX_DECODED_SIZE_BYTES) {
-					throw new Error(
-						`Attachment exceeds maximum size of ${MAX_DECODED_SIZE_BYTES / 1024} KB (got ${Math.round(
-							decoded.length / 1024,
-						)} KB)`,
-					);
+					throw new Error(formatSizeLimitMessage(decoded.length));
 				}
 				const text = decoded.toString('utf-8');
 				const truncated = text.length > MAX_RESULT_CHARS;

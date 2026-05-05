@@ -67,6 +67,10 @@ describe('isSupportedAttachmentMimeType', () => {
 });
 
 describe('validateAttachmentMimeTypes', () => {
+	it('returns silently for an empty attachment list', () => {
+		expect(() => validateAttachmentMimeTypes([])).not.toThrow();
+	});
+
 	it('returns silently when every attachment is supported', () => {
 		expect(() =>
 			validateAttachmentMimeTypes([

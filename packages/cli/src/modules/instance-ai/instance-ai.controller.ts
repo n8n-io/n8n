@@ -135,6 +135,9 @@ export class InstanceAiController {
 			throw new BadRequestError('Either message or attachments must be provided');
 		}
 
+		// Verify the requesting user owns this thread (or it's new)
+		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
+
 		if (payload.attachments && payload.attachments.length > 0) {
 			try {
 				validateAttachmentMimeTypes(payload.attachments);
@@ -149,9 +152,6 @@ export class InstanceAiController {
 				throw error;
 			}
 		}
-
-		// Verify the requesting user owns this thread (or it's new)
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 
 		// One active run per thread
 		if (this.instanceAiService.hasActiveRun(threadId)) {

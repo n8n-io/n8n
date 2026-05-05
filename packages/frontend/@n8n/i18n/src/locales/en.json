@@ -576,8 +576,6 @@
 	"chatHub.chat.prompt.button.attach": "Attach",
 	"chatHub.chat.prompt.button.attach.disabled": "File attachments are not supported by the selected model",
 	"chatHub.chat.attachments.unsupported.title": "Some files couldn't be uploaded",
-	"chatHub.chat.attachments.unsupported.message": "{fileName} ({mimeType}) isn't a supported file type.",
-	"chatHub.chat.attachments.unsupported.supportedHint": "Try CSV, JSON, PDF, DOCX, XLSX, HTML, plain text, markdown, or images.",
 	"chatHub.chat.attachments.unsupported.toast": "{fileName} isn't a supported file type and was not attached.",
 	"chatHub.chat.prompt.button.stopRecording": "Stop recording",
 	"chatHub.chat.prompt.button.voiceInput": "Voice input",
