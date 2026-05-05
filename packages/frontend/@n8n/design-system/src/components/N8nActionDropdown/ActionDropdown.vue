@@ -112,8 +112,8 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 		:class="['action-dropdown-container', $style.actionDropdownContainer]"
 	>
 		<N8nDropdownMenu
-			ref="dropdownRef"
 			:id="dropdownId"
+			ref="dropdownRef"
 			:items="items"
 			:data-test-id="dropdownTestId"
 			:content-test-id="dropdownTestId"
@@ -122,7 +122,7 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 			:disabled="disabled"
 			:teleported="teleported"
 			:modal="modal"
-			:extra-popper-class="`${$style.shadow}${hideArrow ? ` ${$style.hideArrow}` : ''} ${extraPopperClass ?? ''}`"
+			:extra-popper-class="`${extraPopperClass ?? ''}`"
 			:max-height="maxHeight"
 			@select="onSelect"
 			@update:model-value="onOpenChange"
@@ -186,16 +186,6 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 <style lang="scss" module>
 .actionDropdownContainer {
 	display: inline-block;
-}
-
-.shadow {
-	box-shadow: var(--shadow--light);
-}
-
-.hideArrow {
-	:global(.el-popper__arrow) {
-		display: none;
-	}
 }
 
 .activator {

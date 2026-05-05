@@ -389,11 +389,15 @@ defineExpose({ open, close });
 </template>
 
 <style module lang="scss">
+@use '../../css/mixins/motion';
+
 .content {
 	--n8n--dropdown--offset--slide-x: 0;
 	--n8n--dropdown--offset--slide-y: 0;
 	--n8n--dropdown--offset--origin-x: center;
 	--n8n--dropdown--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
+	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
 	--n8n--dropdown-menu-width: 24rem;
 
 	display: flex;
@@ -415,9 +419,7 @@ defineExpose({ open, close });
 	scrollbar-width: none;
 
 	&[data-state='open'] {
-		animation-duration: var(--duration--snappy);
-		animation-timing-function: var(--easing--ease-out);
-		animation-name: dropdownMenuIn;
+		@include motion.popover-in;
 	}
 
 	&[data-state='closed'] {
@@ -467,21 +469,6 @@ defineExpose({ open, close });
 .content[data-state='open'][data-side='right'][data-align='end'] {
 	--n8n--dropdown--offset--slide-y: 2px;
 	--n8n--dropdown--offset--origin-y: bottom;
-}
-
-@keyframes dropdownMenuIn {
-	from {
-		opacity: 0;
-		transform: translate(
-				var(--n8n--dropdown--offset--slide-x),
-				var(--n8n--dropdown--offset--slide-y)
-			)
-			scale(0.96);
-	}
-	to {
-		opacity: 1;
-		transform: translate(0, 0) scale(1);
-	}
 }
 
 .items-container {

@@ -177,11 +177,15 @@ watch(
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/motion';
+
 .popoverContent {
 	--popover--offset--slide-x: 0;
 	--popover--offset--slide-y: 0;
 	--popover--offset--origin-x: center;
 	--popover--offset--origin-y: center;
+	--animation--popover-in--translate-x: var(--popover--offset--slide-x);
+	--animation--popover-in--translate-y: var(--popover--offset--slide-y);
 
 	border-radius: var(--radius--xs);
 	background-color: var(--background--surface);
@@ -192,11 +196,8 @@ watch(
 	transform-origin: var(--popover--offset--origin-x) var(--popover--offset--origin-y);
 
 	&.enableSlideIn {
-		animation-duration: var(--duration--snappy);
-		animation-timing-function: var(--easing--ease-out);
-
 		&[data-state='open'] {
-			animation-name: popoverIn;
+			@include motion.popover-in;
 		}
 	}
 
@@ -247,18 +248,6 @@ watch(
 .popoverContent[data-state='open'][data-side='right'][data-align='end'] {
 	--popover--offset--slide-y: 2px;
 	--popover--offset--origin-y: bottom;
-}
-
-@keyframes popoverIn {
-	from {
-		opacity: 0;
-		transform: translate(var(--popover--offset--slide-x), var(--popover--offset--slide-y))
-			scale(0.96);
-	}
-	to {
-		opacity: 1;
-		transform: translate(0, 0) scale(1);
-	}
 }
 
 .popoverArrow {
