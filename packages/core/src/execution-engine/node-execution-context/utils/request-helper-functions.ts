@@ -729,6 +729,23 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 	});
 }
 
+function buildSigningToken(
+	client: ClientOAuth2,
+	tokenData: ClientOAuth2TokenData,
+	oAuth2Options?: IOAuth2Options,
+): ClientOAuth2Token {
+	const accessToken = get(tokenData, oAuth2Options?.property as string) || tokenData.accessToken;
+	const refreshToken = tokenData.refreshToken;
+	return client.createToken(
+		{
+			...tokenData,
+			...(accessToken ? { access_token: accessToken } : {}),
+			...(refreshToken ? { refresh_token: refreshToken } : {}),
+		},
+		oAuth2Options?.tokenType || tokenData.tokenType,
+	);
+}
+
 interface RefreshOAuth2TokenContext {
 	credentials: OAuth2CredentialData;
 	token: ClientOAuth2Token;
@@ -737,10 +754,31 @@ interface RefreshOAuth2TokenContext {
 	additionalData: IWorkflowExecuteAdditionalData;
 	oAuth2Options?: IOAuth2Options;
 	logger: WorkflowLogger;
+	helpers: IAllExecuteFunctions['helpers'];
+}
+
+async function decryptOAuth2TokenDataIfConfigured<T extends IDataObject | undefined>(
+	additionalData: IWorkflowExecuteAdditionalData,
+	tokenData: T,
+	jweEnabled: boolean,
+): Promise<T | IDataObject> {
+	if (!jweEnabled) return tokenData;
+	const proxy = additionalData['oauth-jwe']?.oauthJweProxyProvider;
+	if (!proxy || !tokenData) return tokenData;
+	return await proxy.decryptOAuth2TokenData(tokenData);
 }
 
 async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<ClientOAuth2Token> {
-	const { credentials, token, credentialsType, node, additionalData, oAuth2Options, logger } = ctx;
+	const {
+		credentials,
+		token,
+		credentialsType,
+		node,
+		additionalData,
+		oAuth2Options,
+		logger,
+		helpers,
+	} = ctx;
 	const tokenRefreshOptions: IDataObject = {};
 	if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 		const body: IDataObject = {
@@ -768,7 +806,33 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		`OAuth2 token for "${credentialsType}" used by node "${node.name}" has been renewed.`,
 	);
 
-	credentials.oauthTokenData = newToken.data;
+	const refreshedTokenData = await decryptOAuth2TokenDataIfConfigured(
+		additionalData,
+		newToken.data,
+		credentials.jweEnabled === true,
+	);
+
+	credentials.oauthTokenData = refreshedTokenData as typeof credentials.oauthTokenData;
+
+	// Apply preAuthentication so custom credential types extending oAuth2Api can transform
+	// refreshed token data (e.g. extracting a claim from a decrypted JWE/JWT) before signing.
+	// runPreAuthentication runs on every refresh without persisting — the transformed
+	// oauthTokenData is persisted by the updateCredentialsOauthTokenData call below.
+	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
+		{ helpers },
+		credentials as unknown as ICredentialDataDecryptedObject,
+		credentialsType,
+	);
+	let signingToken = newToken;
+	if (preAuthData) {
+		Object.assign(credentials, preAuthData);
+		signingToken = buildSigningToken(
+			token.client,
+			credentials.oauthTokenData as ClientOAuth2TokenData,
+			oAuth2Options,
+		);
+	}
+
 	if (!node.credentials?.[credentialsType]) {
 		throw new ApplicationError('Node does not have credential type', {
 			extra: { nodeName: node.name, credentialType: credentialsType },
@@ -783,7 +847,7 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		additionalData,
 	);
 
-	return newToken;
+	return signingToken;
 }
 
 function resolveTokenExpiredStatusCode(
@@ -843,7 +907,12 @@ export async function requestOAuth2(
 		}
 
 		const nodeCredentials = node.credentials[credentialsType];
-		credentials.oauthTokenData = data;
+		const initialTokenData = (await decryptOAuth2TokenDataIfConfigured(
+			additionalData,
+			data,
+			credentials.jweEnabled === true,
+		)) as ClientOAuth2TokenData;
+		credentials.oauthTokenData = initialTokenData;
 
 		// Save the refreshed token
 		await additionalData.credentialsHelper.updateCredentialsOauthTokenData(
@@ -853,20 +922,23 @@ export async function requestOAuth2(
 			additionalData,
 		);
 
-		oauthTokenData = data;
+		oauthTokenData = initialTokenData;
 	}
 
-	const accessToken =
-		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
-	const refreshToken = oauthTokenData.refreshToken;
-	const token = oAuthClient.createToken(
-		{
-			...oauthTokenData,
-			...(accessToken ? { access_token: accessToken } : {}),
-			...(refreshToken ? { refresh_token: refreshToken } : {}),
-		},
-		oAuth2Options?.tokenType || oauthTokenData.tokenType,
+	// Apply preAuthentication for custom OAuth2 credential types extending oAuth2Api.
+	// Enables transforming token data on every request (e.g. extracting a claim from a
+	// decrypted JWE/JWT) as a pure in-memory transform — no DB write per request.
+	const preAuthData = await additionalData.credentialsHelper.runPreAuthentication(
+		{ helpers: this.helpers },
+		credentials as unknown as ICredentialDataDecryptedObject,
+		credentialsType,
 	);
+	if (preAuthData) {
+		Object.assign(credentials, preAuthData);
+		oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
+	}
+
+	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 
 	(requestOptions as IRequestOptions).rejectUnauthorized = !credentials.ignoreSSLIssues;
 
@@ -894,6 +966,7 @@ export async function requestOAuth2(
 		additionalData,
 		oAuth2Options,
 		logger: this.logger,
+		helpers: this.helpers,
 	};
 
 	const retryWithNewToken = async (
@@ -1032,17 +1105,7 @@ export async function refreshOAuth2Token(
 
 	const oAuthClient = createOAuth2Client(credentials);
 	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
-	const accessToken =
-		get(oauthTokenData, oAuth2Options?.property as string) || oauthTokenData.accessToken;
-	const refreshToken = oauthTokenData.refreshToken;
-	const token = oAuthClient.createToken(
-		{
-			...oauthTokenData,
-			...(accessToken ? { access_token: accessToken } : {}),
-			...(refreshToken ? { refresh_token: refreshToken } : {}),
-		},
-		oAuth2Options?.tokenType || oauthTokenData.tokenType,
-	);
+	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 
 	const newToken = await refreshOrFetchToken({
 		credentials,
@@ -1052,6 +1115,7 @@ export async function refreshOAuth2Token(
 		additionalData,
 		oAuth2Options,
 		logger: this.logger,
+		helpers: this.helpers,
 	});
 
 	return newToken.data;

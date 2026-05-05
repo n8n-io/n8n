@@ -6,14 +6,18 @@ import {
 	shareWorkflowWithProjects,
 	testDb,
 } from '@n8n/backend-test-utils';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import {
 	ApiKeyRepository,
 	FolderRepository,
+	SettingsRepository,
 	WorkflowRepository,
 	type Project,
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+
+import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
 
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
@@ -180,6 +184,93 @@ describe('MCP API Key Security', () => {
 		}
 
 		expect(keys.size).toBe(5);
+	});
+});
+
+describe('PATCH /mcp/settings', () => {
+	const settingsKey = 'mcp.access.enabled';
+
+	afterEach(async () => {
+		await Container.get(SettingsRepository).delete({ key: settingsKey });
+		// Clear the in-memory cache so subsequent reads hit the DB.
+		await Container.get(McpSettingsService).setEnabled(false);
+		await Container.get(SettingsRepository).delete({ key: settingsKey });
+	});
+
+	test('owner can enable MCP access', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/settings')
+			.send({ mcpAccessEnabled: true });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual({ mcpAccessEnabled: true });
+
+		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
+		expect(stored?.value).toBe('true');
+	});
+
+	test('owner can disable MCP access', async () => {
+		await Container.get(McpSettingsService).setEnabled(true);
+
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/settings')
+			.send({ mcpAccessEnabled: false });
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data).toEqual({ mcpAccessEnabled: false });
+
+		const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
+		expect(stored?.value).toBe('false');
+	});
+
+	test('member without mcp:manage scope is forbidden', async () => {
+		const response = await testServer
+			.authAgentFor(member)
+			.patch('/mcp/settings')
+			.send({ mcpAccessEnabled: true });
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('rejects invalid payloads with 400', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch('/mcp/settings')
+			.send({ mcpAccessEnabled: 'yes' });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('requires authentication', async () => {
+		const response = await testServer.authlessAgent
+			.patch('/mcp/settings')
+			.send({ mcpAccessEnabled: true });
+
+		expect(response.statusCode).toBe(401);
+	});
+
+	describe('when MCP settings are managed by env', () => {
+		beforeAll(() => {
+			Container.get(InstanceSettingsLoaderConfig).mcpManagedByEnv = true;
+		});
+
+		afterAll(() => {
+			Container.get(InstanceSettingsLoaderConfig).mcpManagedByEnv = false;
+		});
+
+		test('owner cannot update settings (403)', async () => {
+			const response = await testServer
+				.authAgentFor(owner)
+				.patch('/mcp/settings')
+				.send({ mcpAccessEnabled: true });
+
+			expect(response.statusCode).toBe(403);
+
+			const stored = await Container.get(SettingsRepository).findByKey(settingsKey);
+			expect(stored).toBeNull();
+		});
 	});
 });
 
