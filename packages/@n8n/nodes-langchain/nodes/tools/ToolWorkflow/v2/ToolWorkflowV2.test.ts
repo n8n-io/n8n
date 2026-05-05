@@ -9,7 +9,7 @@ import type {
 } from 'n8n-workflow';
 
 import { WorkflowToolService } from './utils/WorkflowToolService';
-import { MockedFunction } from 'vitest';
+import type { MockedFunction } from 'vitest';
 
 // Mock the sleep functions
 vi.mock('n8n-workflow', async () => ({

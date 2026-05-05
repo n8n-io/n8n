@@ -7,7 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import * as tracing from '@utils/tracing';
 
 import { processItem } from '../processItem';
-import { Mocked } from 'vitest';
+import type { Mocked } from 'vitest';
 
 vi.mock('@utils/tracing', () => ({
 	getTracingConfig: vi.fn(() => ({})),

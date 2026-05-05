@@ -52,7 +52,7 @@ import { QdrantVectorStore } from '@langchain/qdrant';
 
 import { createQdrantClient } from './Qdrant.utils';
 import * as QdrantNode from './VectorStoreQdrant.node';
-import { MockedClass, MockedFunction } from 'vitest';
+import type { MockedClass, MockedFunction } from 'vitest';
 
 const MockCreateQdrantClient = createQdrantClient as MockedFunction<typeof createQdrantClient>;
 const MockQdrantVectorStore = QdrantVectorStore as MockedClass<typeof QdrantVectorStore>;

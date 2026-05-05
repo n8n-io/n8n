@@ -15,7 +15,7 @@ import {
 	MONGODB_COLLECTION_NAME,
 	VECTOR_INDEX_NAME,
 } from './VectorStoreMongoDBAtlas.node';
-import { MockedClass } from 'vitest';
+import type { MockedClass } from 'vitest';
 
 vi.mock('mongodb', () => ({
 	MongoClient: vi.fn(),

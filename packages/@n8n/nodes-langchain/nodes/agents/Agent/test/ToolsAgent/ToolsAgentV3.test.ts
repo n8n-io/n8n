@@ -11,7 +11,7 @@ import type { RequestResponseMetadata } from '@utils/agent-execution';
 
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V3/execute';
 import * as helpers from '../../agents/ToolsAgent/V3/helpers';
-import { MockedFunction } from 'vitest';
+import type { MockedFunction } from 'vitest';
 
 // Mock the helper modules
 vi.mock('../../agents/ToolsAgent/V3/helpers', () => ({

@@ -6,7 +6,7 @@ import * as create from '../../v2/actions/conversation/create.operation';
 import * as getOperation from '../../v2/actions/conversation/get.operation';
 import * as remove from '../../v2/actions/conversation/remove.operation';
 import * as update from '../../v2/actions/conversation/update.operation';
-import { MockedFunction } from 'vitest';
+import type { MockedFunction } from 'vitest';
 
 vi.mock('../../transport', () => ({
 	apiRequest: vi.fn(),

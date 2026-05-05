@@ -3,7 +3,7 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/generate.operation';
-import { Mocked } from 'vitest';
+import type { Mocked } from 'vitest';
 
 vi.mock('../../../../transport');
 

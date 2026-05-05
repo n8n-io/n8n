@@ -17,7 +17,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 import { getTools } from '../loadOptions';
 import { McpClientTool } from '../McpClientTool.node';
 import { buildMcpToolName } from '../utils';
-import { MockedFunction } from 'vitest';
+import type { MockedFunction } from 'vitest';
 
 vi.mock('@modelcontextprotocol/sdk/client/sse.js');
 vi.mock('@modelcontextprotocol/sdk/client/index.js');

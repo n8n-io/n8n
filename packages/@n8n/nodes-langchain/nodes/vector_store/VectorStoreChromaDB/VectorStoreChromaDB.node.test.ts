@@ -4,7 +4,7 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import * as ChromaNode from './VectorStoreChromaDB.node';
-import { MockedClass } from 'vitest';
+import type { MockedClass } from 'vitest';
 
 // Mock external modules
 vi.mock('chromadb', () => {
