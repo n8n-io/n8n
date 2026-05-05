@@ -62,32 +62,22 @@ function getGeneratedNodesPaths(nodeDefinitionDirs?: string[]): string[] {
 }
 
 /**
- * Synthetic suffixes appended to base node names when tool variants are generated at runtime.
- * Listed most-specific-first so "slackHitlTool" strips to "slack" rather than "slackHitl".
- *  - "HitlTool":  appended by createHitlTools() in @n8n/cli/src/tool-generation/hitl-tools.ts
- *  - "Tool":      appended by createAiTools() in @n8n/cli/src/tool-generation/ai-tools.ts
- */
-const TOOL_VARIANT_SUFFIXES = ['HitlTool', 'Tool'] as const;
-
-/**
  * Find the first nodes path that contains the given node directory.
  * Returns { nodesPath, nodeDir } or null if not found in any dir.
  *
- * For tool variants (no on-disk type files of their own), falls back to the base node's
- * directory by stripping known synthetic suffixes.
+ * Tool variants (e.g. "slackHitlTool", "httpRequestTool") have no on-disk type files;
+ * fall back to the base node by stripping the suffix. The regex tries "HitlTool" before
+ * "Tool" so "slackHitlTool" resolves to "slack", not "slackHitl".
  */
 function findNodeDir(
 	parsed: { packageName: string; nodeName: string },
 	nodesPaths: string[],
 ): { nodesPath: string; nodeDir: string } | null {
-	const candidateNames: string[] = [parsed.nodeName];
-	for (const suffix of TOOL_VARIANT_SUFFIXES) {
-		if (parsed.nodeName.endsWith(suffix)) {
-			candidateNames.push(parsed.nodeName.slice(0, -suffix.length));
-		}
-	}
+	const candidates = [parsed.nodeName];
+	const baseName = parsed.nodeName.replace(/(?:HitlTool|Tool)$/, '');
+	if (baseName !== parsed.nodeName) candidates.push(baseName);
 
-	for (const candidate of candidateNames) {
+	for (const candidate of candidates) {
 		for (const nodesPath of nodesPaths) {
 			const nodeDir = join(nodesPath, parsed.packageName, candidate);
 			if (existsSync(nodeDir)) {
@@ -365,12 +355,7 @@ function resolveModePath(
 /**
  * Get the file path for a node ID, optionally for a specific version and discriminators.
  * If no version specified, returns the latest version. If the node uses split structure,
- * discriminators are required.
- *
- * Tool variants share their base node's type definition. The suffix-to-base mapping lives
- * in findNodeDir, which strips known synthetic suffixes ("HitlTool", then "Tool") to reach
- * the base directory. Error messages always reference the original nodeId, never a stripped
- * intermediate name.
+ * discriminators are required. Tool-variant fallback is handled in findNodeDir.
  */
 function getNodeFilePath(
 	nodeId: string,

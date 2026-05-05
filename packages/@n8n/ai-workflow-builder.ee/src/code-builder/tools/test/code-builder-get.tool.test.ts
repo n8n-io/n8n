@@ -437,29 +437,16 @@ describe('CodeBuilderGetTool', () => {
 			expect(result).not.toContain('not found');
 		});
 
-		it('should report the original node ID in the error when no fallback resolves', async () => {
+		it.each([
+			['n8n-nodes-base.unknownThingHitlTool', 'n8n-nodes-base.unknownThing'],
+			['n8n-nodes-base.unknownThingTool', 'n8n-nodes-base.unknownThing'],
+		])('should report the original node ID in the error: %s', async (nodeId, strippedName) => {
 			const tool = createCodeBuilderGetTool({ nodeDefinitionDirs: [tempDir] });
 
-			const result = await tool.invoke({
-				nodeIds: ['n8n-nodes-base.unknownThingHitlTool'],
-			});
+			const result = await tool.invoke({ nodeIds: [nodeId] });
 
-			// The error should reference the original ID the caller asked about,
-			// not an intermediate stripped name like 'unknownThingHitl' or 'unknownThing'.
-			expect(result).toContain("'n8n-nodes-base.unknownThingHitlTool'");
-			expect(result).not.toContain("'n8n-nodes-base.unknownThingHitl'");
-			expect(result).not.toContain("'n8n-nodes-base.unknownThing'");
-		});
-
-		it('should report the original node ID in the error for plain Tool variants too', async () => {
-			const tool = createCodeBuilderGetTool({ nodeDefinitionDirs: [tempDir] });
-
-			const result = await tool.invoke({
-				nodeIds: ['n8n-nodes-base.unknownThingTool'],
-			});
-
-			expect(result).toContain("'n8n-nodes-base.unknownThingTool'");
-			expect(result).not.toContain("'n8n-nodes-base.unknownThing'");
+			expect(result).toContain(`'${nodeId}'`);
+			expect(result).not.toContain(`'${strippedName}'`);
 		});
 	});
 
