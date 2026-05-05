@@ -446,14 +446,10 @@ export function getQuery(options: IDataObject, sobject: string, returnAll: boole
 			);
 		}
 	} else {
-<<<<<<< HEAD
 		fields.push.apply(
 			fields,
-			((getDefaultFields(sobject) as string) || 'id,LastModifiedDate').split(','),
+			((getDefaultFields(validSobject) as string) || 'id,LastModifiedDate').split(','),
 		);
-=======
-		fields.push.apply(fields, ((getDefaultFields(validSobject) as string) || 'id').split(','));
->>>>>>> 0f7776e972c1d94d0f61d6d8855865802ef2a273
 	}
 	const conditions = getConditions(options);
 
