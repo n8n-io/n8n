@@ -4,10 +4,14 @@
   "description": "Browser automation MCP tools built on Playwright, WebDriver BiDi, and safaridriver",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "mcp-browser": "dist/server.js"
+  },
   "files": [
     "dist/**/*"
   ],
   "scripts": {
+    "preinstall": "node -e \"const fs=require('fs');fs.mkdirSync('dist',{recursive:true});if(!fs.existsSync('dist/server.js'))fs.writeFileSync('dist/server.js','#!/usr/bin/env node\\n');\"",
     "clean": "rimraf dist .turbo",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
