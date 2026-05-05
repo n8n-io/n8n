@@ -10,7 +10,11 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { formatTimestamp } from '../utils/format-timestamp';
-import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
+import {
+	setupSuspendSchema,
+	setupResumeSchema,
+	type SetupRequest,
+} from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
 	applyNodeChanges,
@@ -236,6 +240,13 @@ async function handleDelete(
 	return { success: true };
 }
 
+function isActionableSetupRequest(req: SetupRequest): boolean {
+	return (
+		req.needsAction === true &&
+		(req.credentialType !== undefined || (req.editableParameters?.length ?? 0) > 0)
+	);
+}
+
 async function handleSetup(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'setup' }>,
@@ -247,7 +258,9 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
-		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		const setupRequests = (await analyzeWorkflow(context, input.workflowId)).filter(
+			isActionableSetupRequest,
+		);
 
 		if (setupRequests.length === 0) {
 			return { success: true, reason: 'No nodes require setup.' };

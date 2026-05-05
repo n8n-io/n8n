@@ -40,6 +40,11 @@ const PARAMETER_ISSUE_WORKFLOW_NAME = 'B3 Workflow Setup Required Parameter';
 const PARAMETER_APPLY_WORKFLOW_NAME = 'B3 Full Wizard Apply';
 const PARAMETER_CREDENTIAL_NAME = 'B3 Parameter Header Auth';
 
+const GROUPING_WORKFLOW_NAME = 'B3 Workflow Setup Subnode Grouping';
+const GROUPING_OPENAI_CREDENTIAL_NAME = 'B3 Grouping OpenAI';
+const GROUPING_LINEAR_CREDENTIAL_NAME = 'B3 Grouping Linear';
+const GROUPING_TELEGRAM_CREDENTIAL_NAME = 'B3 Grouping Telegram';
+
 function createParameterOnlyWorkflow(name: string): Partial<IWorkflowBase> {
 	return {
 		name,
@@ -303,10 +308,7 @@ function createSlackWorkflow(name: string): Partial<IWorkflowBase> {
 	};
 }
 
-function createSlackTriggerWorkflow(
-	name: string,
-	credential: { id: string; name: string },
-): Partial<IWorkflowBase> {
+function createSlackTriggerWorkflow(name: string): Partial<IWorkflowBase> {
 	return {
 		name,
 		active: false,
@@ -327,12 +329,96 @@ function createSlackTriggerWorkflow(
 						value: 'C01234567',
 					},
 				},
-				credentials: {
-					slackApi: credential,
-				},
 			},
 		],
 		connections: {},
+		settings: {},
+	};
+}
+
+function createAgentWithSubnodesWorkflow(name: string): Partial<IWorkflowBase> {
+	return {
+		name,
+		active: false,
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'agent',
+				name: 'AI Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 3.1,
+				position: [220, 0],
+				parameters: { options: {} },
+			},
+			{
+				id: 'openai',
+				name: 'OpenAI Chat Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1.3,
+				position: [120, 220],
+				parameters: {
+					model: {
+						__rl: true,
+						mode: 'list',
+						value: 'gpt-4o-mini',
+						cachedResultName: 'gpt-4o-mini',
+					},
+					options: {},
+				},
+			},
+			{
+				id: 'linear-get',
+				name: 'Get an issue in Linear',
+				type: 'n8n-nodes-base.linearTool',
+				typeVersion: 1.1,
+				position: [280, 220],
+				parameters: { operation: 'get' },
+			},
+			{
+				id: 'linear-update',
+				name: 'Update an issue in Linear',
+				type: 'n8n-nodes-base.linearTool',
+				typeVersion: 1.1,
+				position: [440, 220],
+				parameters: { operation: 'update', updateFields: {} },
+			},
+			{
+				id: 'telegram',
+				name: 'Send a text message',
+				type: 'n8n-nodes-base.telegram',
+				typeVersion: 1.2,
+				position: [600, 0],
+				parameters: {
+					chatId: '5134203310',
+					text: '={{ $json.text }}',
+					additionalFields: {},
+				},
+			},
+		],
+		connections: {
+			'Manual Trigger': {
+				main: [[{ node: 'AI Agent', type: 'main', index: 0 }]],
+			},
+			'AI Agent': {
+				main: [[{ node: 'Send a text message', type: 'main', index: 0 }]],
+			},
+			'OpenAI Chat Model': {
+				ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+			},
+			'Get an issue in Linear': {
+				ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+			},
+			'Update an issue in Linear': {
+				ai_tool: [[{ node: 'AI Agent', type: 'ai_tool', index: 0 }]],
+			},
+		},
 		settings: {},
 	};
 }
@@ -796,26 +882,24 @@ test.describe(
 		test('should persist a manually selected existing credential from the dropdown', async ({
 			n8n,
 		}) => {
-			const initialCredential = await n8n.api.credentials.createCredential({
-				name: SELECT_EXISTING_INITIAL_CREDENTIAL_NAME,
-				type: 'slackApi',
-				data: {
-					accessToken: 'xoxb-initial-token-for-testing',
-				},
-			});
-			const targetCredential = await n8n.api.credentials.createCredential({
+			// creds are sorted by name, in the dropdown
+			const firstCrdentialInList = await n8n.api.credentials.createCredential({
 				name: SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
 				type: 'slackApi',
 				data: {
 					accessToken: 'xoxb-target-token-for-testing',
 				},
 			});
+			const secondCrdentialInList = await n8n.api.credentials.createCredential({
+				name: SELECT_EXISTING_INITIAL_CREDENTIAL_NAME,
+				type: 'slackApi',
+				data: {
+					accessToken: 'xoxb-initial-token-for-testing',
+				},
+			});
 
 			const workflow = await n8n.api.workflows.createWorkflow(
-				createSlackTriggerWorkflow(SELECT_EXISTING_WORKFLOW_NAME, {
-					id: initialCredential.id,
-					name: initialCredential.name,
-				}),
+				createSlackTriggerWorkflow(SELECT_EXISTING_WORKFLOW_NAME),
 			);
 
 			await n8n.navigate.toInstanceAi();
@@ -825,12 +909,12 @@ test.describe(
 
 			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
 			await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-				initialCredential.name,
+				firstCrdentialInList.name,
 			);
 
-			await n8n.instanceAi.workflowSetup.selectCredential(targetCredential.name);
+			await n8n.instanceAi.workflowSetup.selectCredential(secondCrdentialInList.name);
 			await expect(n8n.instanceAi.workflowSetup.getCredentialSelect()).toHaveValue(
-				targetCredential.name,
+				secondCrdentialInList.name,
 			);
 			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
 
@@ -842,8 +926,116 @@ test.describe(
 				persisted,
 				'Slack Trigger',
 				'slackApi',
-				SELECT_EXISTING_TARGET_CREDENTIAL_NAME,
+				secondCrdentialInList.name,
 			);
+		});
+
+		test('should render AI agent subnodes as one group step with separate sections', async ({
+			n8n,
+		}) => {
+			await n8n.api.credentials.createCredential({
+				name: GROUPING_OPENAI_CREDENTIAL_NAME,
+				type: 'openAiApi',
+				data: { apiKey: 'sk-grouping-test' },
+			});
+			await n8n.api.credentials.createCredential({
+				name: GROUPING_LINEAR_CREDENTIAL_NAME,
+				type: 'linearApi',
+				data: { apiKey: 'lin-grouping-test' },
+			});
+			await n8n.api.credentials.createCredential({
+				name: GROUPING_TELEGRAM_CREDENTIAL_NAME,
+				type: 'telegramApi',
+				data: { accessToken: 'tg-grouping-test' },
+			});
+
+			const workflow = await n8n.api.workflows.createWorkflow(
+				createAgentWithSubnodesWorkflow(GROUPING_WORKFLOW_NAME),
+			);
+
+			await n8n.navigate.toInstanceAi();
+			await n8n.instanceAi.sendMessage(`Set up the workflow named "${GROUPING_WORKFLOW_NAME}".`);
+
+			// === Step 1: AI Agent group step ===
+			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toContainText('AI Agent');
+
+			// All three subnode sections render separately because the Linear tools
+			// each have parameter issues, so they are not merged into a single
+			// credential-only section.
+			await expect(n8n.instanceAi.workflowSetup.getSection('OpenAI Chat Model')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getSection('Get an issue in Linear')).toBeVisible();
+			await expect(
+				n8n.instanceAi.workflowSetup.getSection('Update an issue in Linear'),
+			).toBeVisible();
+
+			await expect(n8n.instanceAi.workflowSetup.getGroupCheck()).toBeHidden();
+
+			// Fill each section independently — the per-section helpers expand the
+			// section if it isn't already open.
+			await n8n.instanceAi.workflowSetup.selectSectionCredential(
+				'OpenAI Chat Model',
+				GROUPING_OPENAI_CREDENTIAL_NAME,
+			);
+			await n8n.instanceAi.workflowSetup.selectSectionCredential(
+				'Get an issue in Linear',
+				GROUPING_LINEAR_CREDENTIAL_NAME,
+			);
+			await n8n.instanceAi.workflowSetup.fillSectionParameter(
+				'Get an issue in Linear',
+				'issueId',
+				'IS-123',
+			);
+			await n8n.instanceAi.workflowSetup.selectSectionCredential(
+				'Update an issue in Linear',
+				GROUPING_LINEAR_CREDENTIAL_NAME,
+			);
+			await n8n.instanceAi.workflowSetup.fillSectionParameter(
+				'Update an issue in Linear',
+				'issueId',
+				'IS-456',
+			);
+
+			await expect(n8n.instanceAi.workflowSetup.getGroupCheck()).toBeVisible();
+
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
+
+			// === Step 2: Telegram (single, non-grouped card) ===
+			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getGroupCard()).toBeHidden();
+			await n8n.instanceAi.workflowSetup.selectCredential(GROUPING_TELEGRAM_CREDENTIAL_NAME);
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
+			await n8n.instanceAi.waitForResponseComplete();
+
+			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
+			expectAssignedCredentialName(
+				persisted,
+				'OpenAI Chat Model',
+				'openAiApi',
+				GROUPING_OPENAI_CREDENTIAL_NAME,
+			);
+			expectAssignedCredentialName(
+				persisted,
+				'Get an issue in Linear',
+				'linearApi',
+				GROUPING_LINEAR_CREDENTIAL_NAME,
+			);
+			expectAssignedCredentialName(
+				persisted,
+				'Update an issue in Linear',
+				'linearApi',
+				GROUPING_LINEAR_CREDENTIAL_NAME,
+			);
+			expectAssignedCredentialName(
+				persisted,
+				'Send a text message',
+				'telegramApi',
+				GROUPING_TELEGRAM_CREDENTIAL_NAME,
+			);
+			expectNodeParameter(persisted, 'Get an issue in Linear', 'issueId', 'IS-123');
+			expectNodeParameter(persisted, 'Update an issue in Linear', 'issueId', 'IS-456');
 		});
 	},
 );

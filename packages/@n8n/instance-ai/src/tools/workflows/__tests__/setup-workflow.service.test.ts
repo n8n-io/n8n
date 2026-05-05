@@ -696,6 +696,257 @@ describe('analyzeWorkflow', () => {
 		const names = result.map((r) => r.node.name);
 		expect(names.indexOf('Webhook')).toBeLessThan(names.indexOf('Slack'));
 	});
+
+	describe('parentNode stamping for sub-nodes', () => {
+		it('stamps parentNode on every sub-node connected to an agent', async () => {
+			const agent = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+			const model = makeNode({
+				name: 'OpenAI Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'model-1',
+			});
+			const memory = makeNode({
+				name: 'Memory',
+				type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				typeVersion: 1,
+				id: 'memory-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([agent, model, memory], {
+					'OpenAI Model': {
+						ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]],
+					},
+					Memory: { ai_memory: [[{ node: 'Agent', type: 'ai_memory', index: 0 }]] },
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				if (type === '@n8n/n8n-nodes-langchain.memoryBufferWindow') {
+					return await Promise.resolve({ group: [], credentials: [] });
+				}
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const modelReq = result.find((r) => r.node.name === 'OpenAI Model');
+			expect(modelReq?.parentNode).toEqual({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+		});
+
+		it('stamps the topmost parent for transitively nested sub-agents', async () => {
+			const agent = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+			const tool = makeNode({
+				name: 'Tool',
+				type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				typeVersion: 1,
+				id: 'tool-1',
+			});
+			const subModel = makeNode({
+				name: 'Sub Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'sub-model-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([agent, tool, subModel], {
+					Tool: { ai_tool: [[{ node: 'Agent', type: 'ai_tool', index: 0 }]] },
+					'Sub Model': {
+						ai_languageModel: [[{ node: 'Tool', type: 'ai_languageModel', index: 0 }]],
+					},
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const subModelReq = result.find((r) => r.node.name === 'Sub Model');
+			expect(subModelReq?.parentNode?.name).toBe('Agent');
+		});
+
+		it('keeps parentNode metadata even when the parent itself produced no setup request', async () => {
+			const agent = makeNode({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+			const model = makeNode({
+				name: 'Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'model-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([agent, model], {
+					Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				// Agent itself returns no credentials → no setup request for it.
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			expect(result.find((r) => r.node.name === 'Agent')).toBeUndefined();
+			const modelReq = result.find((r) => r.node.name === 'Model');
+			expect(modelReq?.parentNode).toEqual({
+				name: 'Agent',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-1',
+			});
+		});
+
+		it('attaches a multi-parent sub-node to the first root parent in execution order', async () => {
+			const trigger = makeNode({
+				name: 'Trigger',
+				type: 'n8n-nodes-base.webhook',
+				id: 'trigger-1',
+				position: [0, 0] as [number, number],
+			});
+			const agentA = makeNode({
+				name: 'Agent A',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-a',
+				position: [200, 0] as [number, number],
+			});
+			const agentB = makeNode({
+				name: 'Agent B',
+				type: '@n8n/n8n-nodes-langchain.agent',
+				typeVersion: 1,
+				id: 'agent-b',
+				position: [400, 0] as [number, number],
+			});
+			const sharedModel = makeNode({
+				name: 'Shared Model',
+				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+				typeVersion: 1,
+				id: 'shared-1',
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([trigger, agentA, agentB, sharedModel], {
+					Trigger: {
+						main: [
+							[
+								{ node: 'Agent A', type: 'main', index: 0 },
+								{ node: 'Agent B', type: 'main', index: 0 },
+							],
+						],
+					},
+					'Shared Model': {
+						ai_languageModel: [
+							[
+								{ node: 'Agent A', type: 'ai_languageModel', index: 0 },
+								{ node: 'Agent B', type: 'ai_languageModel', index: 0 },
+							],
+						],
+					},
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return await Promise.resolve({
+						group: ['trigger'],
+						credentials: [],
+						webhooks: [{}],
+					});
+				}
+				if (type === '@n8n/n8n-nodes-langchain.lmChatOpenAi') {
+					return await Promise.resolve({
+						group: [],
+						credentials: [{ name: 'openAiApi' }],
+					});
+				}
+				return await Promise.resolve({ group: [], credentials: [] });
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const sharedReq = result.find((r) => r.node.name === 'Shared Model');
+			// Agent A executes first (left-most), so it claims the shared sub-node.
+			expect(sharedReq?.parentNode?.name).toBe('Agent A');
+		});
+
+		it('does not classify a sub-node by following a Main edge', async () => {
+			const trigger = makeNode({
+				name: 'Trigger',
+				type: 'n8n-nodes-base.webhook',
+				id: 'trigger-1',
+				position: [0, 0] as [number, number],
+			});
+			const httpAction = makeNode({
+				name: 'HTTP',
+				type: 'n8n-nodes-base.httpRequest',
+				id: 'http-1',
+				position: [200, 0] as [number, number],
+			});
+			(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(
+				makeWorkflowJSON([trigger, httpAction], {
+					Trigger: { main: [[{ node: 'HTTP', type: 'main', index: 0 }]] },
+				}),
+			);
+			(context.nodeService.getDescription as jest.Mock).mockImplementation(async (type: string) => {
+				if (type === 'n8n-nodes-base.webhook') {
+					return await Promise.resolve({
+						group: ['trigger'],
+						credentials: [],
+						webhooks: [{}],
+					});
+				}
+				return await Promise.resolve({
+					group: [],
+					credentials: [{ name: 'httpBasicAuth' }],
+				});
+			});
+			(context.credentialService.list as jest.Mock).mockResolvedValue([]);
+
+			const result = await analyzeWorkflow(context, 'wf-1');
+
+			const httpReq = result.find((r) => r.node.name === 'HTTP');
+			expect(httpReq?.parentNode).toBeUndefined();
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------

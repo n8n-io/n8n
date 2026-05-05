@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeSetupRequest } from '../__tests__/factories';
-import { useWorkflowSetupCards } from './useWorkflowSetupCards';
+import { useWorkflowSetupSections } from './useWorkflowSetupSections';
 
 const credentialsStore = vi.hoisted(() => ({
 	allCredentials: [] as Array<{ id: string; type: string; name: string }>,
@@ -19,7 +19,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => nodeTypesStore,
 }));
 
-describe('useWorkflowSetupCards', () => {
+describe('useWorkflowSetupSections', () => {
 	beforeEach(() => {
 		credentialsStore.allCredentials = [];
 		nodeTypesStore.getNodeType.mockReset();
@@ -32,13 +32,13 @@ describe('useWorkflowSetupCards', () => {
 			makeSetupRequest({ credentialType: 'httpBasicAuth' }),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0].credentialType).toBe('httpBasicAuth');
+		expect(sections.value).toHaveLength(1);
+		expect(sections.value[0].credentialType).toBe('httpBasicAuth');
 	});
 
-	it('creates cards for editable parameter-only setup requests', () => {
+	it('creates sections for editable parameter-only setup requests', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
 				credentialType: undefined,
@@ -47,17 +47,17 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0]).toMatchObject({
+		expect(sections.value).toHaveLength(1);
+		expect(sections.value[0]).toMatchObject({
 			id: 'HTTP Request:parameters',
 			parameterNames: ['url'],
 		});
-		expect(cards.value[0].credentialType).toBeUndefined();
+		expect(sections.value[0].credentialType).toBeUndefined();
 	});
 
-	it('does not create parameter-only cards for non-editable issues', () => {
+	it('does not create parameter-only sections for non-editable issues', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
 				credentialType: undefined,
@@ -65,9 +65,9 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(0);
+		expect(sections.value).toHaveLength(0);
 	});
 
 	it('resolves hidden parameter defaults from the node type', () => {
@@ -87,9 +87,9 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value[0].node.parameters).toMatchObject({ method: 'GET', url: '' });
+		expect(sections.value[0].node.parameters).toMatchObject({ method: 'GET', url: '' });
 	});
 
 	it('uses a stable node-name and credential-type id', () => {
@@ -100,9 +100,9 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value[0]).toMatchObject({
+		expect(sections.value[0]).toMatchObject({
 			id: 'Slack:slackApi',
 			credentialType: 'slackApi',
 			targetNodeName: 'Slack',
@@ -124,9 +124,9 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value[0].currentCredentialId).toBe('node-cred');
+		expect(sections.value[0].currentCredentialId).toBe('node-cred');
 	});
 
 	it('does not preselect unrelated store credentials', () => {
@@ -136,9 +136,9 @@ describe('useWorkflowSetupCards', () => {
 		];
 		const setupRequests = ref([makeSetupRequest({ credentialType: 'httpBasicAuth' })]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value[0].currentCredentialId).toBeNull();
+		expect(sections.value[0].currentCredentialId).toBeNull();
 	});
 
 	it('uses null when no assigned or matching store credential exists', () => {
@@ -147,37 +147,37 @@ describe('useWorkflowSetupCards', () => {
 		];
 		const setupRequests = ref([makeSetupRequest({ credentialType: 'httpBasicAuth' })]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value[0].currentCredentialId).toBeNull();
+		expect(sections.value[0].currentCredentialId).toBeNull();
 	});
 
 	it('updates when setup requests change', () => {
 		const setupRequests = ref([makeSetupRequest({ credentialType: 'httpBasicAuth' })]);
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		setupRequests.value = [
 			makeSetupRequest({ credentialType: 'slackApi', node: { name: 'Slack' } }),
 		];
 
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0]).toMatchObject({
+		expect(sections.value).toHaveLength(1);
+		expect(sections.value[0]).toMatchObject({
 			id: 'Slack:slackApi',
 			credentialType: 'slackApi',
 		});
 	});
 
-	it('groups cred-only requests with the same credential type into one primary card', () => {
+	it('groups cred-only requests with the same credential type into one primary section', () => {
 		const setupRequests = ref([
 			makeSetupRequest({ node: { id: 'first', name: 'First' } }),
 			makeSetupRequest({ node: { id: 'second', name: 'Second' } }),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0]).toMatchObject({ id: 'First:httpBasicAuth', targetNodeName: 'First' });
-		expect(cards.value[0].credentialTargetNodes).toEqual([
+		expect(sections.value).toHaveLength(1);
+		expect(sections.value[0]).toMatchObject({ id: 'First:httpBasicAuth', targetNodeName: 'First' });
+		expect(sections.value[0].credentialTargetNodes).toEqual([
 			{ id: 'first', name: 'First', type: 'n8n-nodes-base.httpRequest' },
 			{ id: 'second', name: 'Second', type: 'n8n-nodes-base.httpRequest' },
 		]);
@@ -190,18 +190,23 @@ describe('useWorkflowSetupCards', () => {
 			makeSetupRequest({ credentialType: 'httpBasicAuth', node: { id: 'third', name: 'Third' } }),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(2);
-		expect(cards.value.map((card) => card.credentialType)).toEqual(['httpBasicAuth', 'slackApi']);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+		expect(sections.value).toHaveLength(2);
+		expect(sections.value.map((section) => section.credentialType)).toEqual([
+			'httpBasicAuth',
+			'slackApi',
+		]);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'First',
 			'Third',
 		]);
-		expect(cards.value[1].credentialTargetNodes.map((target) => target.name)).toEqual(['Second']);
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
+			'Second',
+		]);
 	});
 
-	it('groups a cred-only follower into a primary card that has parameters', () => {
+	it('groups a cred-only follower into a primary section that has parameters', () => {
 		const setupRequests = ref([
 			makeSetupRequest({
 				node: { id: 'primary', name: 'Primary' },
@@ -210,11 +215,11 @@ describe('useWorkflowSetupCards', () => {
 			makeSetupRequest({ node: { id: 'follower', name: 'Follower' } }),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0].parameterNames).toEqual(['url']);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+		expect(sections.value).toHaveLength(1);
+		expect(sections.value[0].parameterNames).toEqual(['url']);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'Primary',
 			'Follower',
 		]);
@@ -229,12 +234,16 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(2);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual(['Primary']);
-		expect(cards.value[1].parameterNames).toEqual(['url']);
-		expect(cards.value[1].credentialTargetNodes.map((target) => target.name)).toEqual(['Follower']);
+		expect(sections.value).toHaveLength(2);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+			'Primary',
+		]);
+		expect(sections.value[1].parameterNames).toEqual(['url']);
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
+			'Follower',
+		]);
 	});
 
 	it('keeps params-bearing requests with the same credential type independent', () => {
@@ -249,11 +258,15 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(2);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual(['Primary']);
-		expect(cards.value[1].credentialTargetNodes.map((target) => target.name)).toEqual(['Follower']);
+		expect(sections.value).toHaveLength(2);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+			'Primary',
+		]);
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
+			'Follower',
+		]);
 	});
 
 	it('groups HTTP requests by the same literal URL and splits different URLs', () => {
@@ -269,14 +282,14 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(2);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+		expect(sections.value).toHaveLength(2);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'First',
 			'Second',
 		]);
-		expect(cards.value[1].credentialTargetNodes.map((target) => target.name)).toEqual(['Third']);
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual(['Third']);
 	});
 
 	it('splits HTTP expression URLs per node even when the expression string matches', () => {
@@ -289,11 +302,13 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(2);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual(['First']);
-		expect(cards.value[1].credentialTargetNodes.map((target) => target.name)).toEqual(['Second']);
+		expect(sections.value).toHaveLength(2);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual(['First']);
+		expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
+			'Second',
+		]);
 	});
 
 	it('groups HTTP requests with missing or non-string URLs', () => {
@@ -302,10 +317,10 @@ describe('useWorkflowSetupCards', () => {
 			makeSetupRequest({ node: { id: 'second', name: 'Second', parameters: { url: 123 } } }),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+		expect(sections.value).toHaveLength(1);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'First',
 			'Second',
 		]);
@@ -323,12 +338,85 @@ describe('useWorkflowSetupCards', () => {
 			}),
 		]);
 
-		const { cards } = useWorkflowSetupCards(setupRequests);
+		const { sections } = useWorkflowSetupSections(setupRequests);
 
-		expect(cards.value).toHaveLength(1);
-		expect(cards.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+		expect(sections.value).toHaveLength(1);
+		expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
 			'First',
 			'Second',
 		]);
+	});
+
+	describe('parent-aware credential merging', () => {
+		const agentA = { name: 'Agent A', type: 'agent', typeVersion: 1, id: 'a' };
+		const agentB = { name: 'Agent B', type: 'agent', typeVersion: 1, id: 'b' };
+
+		it('keeps two agents with HTTP-credential sub-nodes in separate sections', () => {
+			const setupRequests = ref([
+				makeSetupRequest({
+					parentNode: agentA,
+					node: { id: 'tool-a', name: 'Tool A', type: 'n8n-nodes-base.httpRequestTool' },
+				}),
+				makeSetupRequest({
+					parentNode: agentB,
+					node: { id: 'tool-b', name: 'Tool B', type: 'n8n-nodes-base.httpRequestTool' },
+				}),
+			]);
+
+			const { sections } = useWorkflowSetupSections(setupRequests);
+
+			expect(sections.value).toHaveLength(2);
+			expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+				'Tool A',
+			]);
+			expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
+				'Tool B',
+			]);
+		});
+
+		it('merges sub-nodes of the same agent that share a credential type', () => {
+			const setupRequests = ref([
+				makeSetupRequest({
+					parentNode: agentA,
+					node: { id: 'tool-1', name: 'Tool 1', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+				}),
+				makeSetupRequest({
+					parentNode: agentA,
+					node: { id: 'tool-2', name: 'Tool 2', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+				}),
+			]);
+
+			const { sections } = useWorkflowSetupSections(setupRequests);
+
+			expect(sections.value).toHaveLength(1);
+			expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+				'Tool 1',
+				'Tool 2',
+			]);
+		});
+
+		it('keeps a standalone HTTP node and an agent sub-node in separate sections', () => {
+			const setupRequests = ref([
+				makeSetupRequest({
+					node: { id: 'standalone', name: 'Standalone' },
+				}),
+				makeSetupRequest({
+					parentNode: agentA,
+					node: { id: 'tool-a', name: 'Tool A', type: 'n8n-nodes-base.httpRequestTool' },
+				}),
+			]);
+
+			const { sections } = useWorkflowSetupSections(setupRequests);
+
+			expect(sections.value).toHaveLength(2);
+			expect(sections.value[0].credentialTargetNodes.map((target) => target.name)).toEqual([
+				'Standalone',
+			]);
+			expect(sections.value[1].credentialTargetNodes.map((target) => target.name)).toEqual([
+				'Tool A',
+			]);
+		});
 	});
 });

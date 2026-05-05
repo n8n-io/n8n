@@ -1,5 +1,5 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
-import type { WorkflowSetupCard } from '../workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
 
 export function makeSetupRequest(
 	overrides: Omit<Partial<InstanceAiWorkflowSetupNode>, 'node'> & {
@@ -27,13 +27,12 @@ export function makeSetupRequest(
 		},
 	};
 }
-
-export function makeWorkflowSetupCard(
-	overrides: Omit<Partial<WorkflowSetupCard>, 'node'> & {
-		node?: Partial<WorkflowSetupCard['node']>;
+export function makeWorkflowSetupSection(
+	overrides: Omit<Partial<WorkflowSetupSection>, 'node'> & {
+		node?: Partial<WorkflowSetupSection['node']>;
 	} = {},
-): WorkflowSetupCard {
-	const node: WorkflowSetupCard['node'] = {
+): WorkflowSetupSection {
+	const node: WorkflowSetupSection['node'] = {
 		id: 'http-request',
 		name: 'HTTP Request',
 		type: 'n8n-nodes-base.httpRequest',

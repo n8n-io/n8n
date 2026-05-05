@@ -1,151 +1,53 @@
 <script lang="ts" setup>
-import { computed, provide, ref, watch } from 'vue';
-import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { computed } from 'vue';
+import { N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
-import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { createFrontendNodeTypes } from '@/app/utils/nodeTypes/createFrontendNodeTypes';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { Workflow, type IConnections, type INodeProperties } from 'n8n-workflow';
-import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
-import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
+import WorkflowSetupSectionBody from './WorkflowSetupSectionBody.vue';
+
+const props = defineProps<{
+	section: WorkflowSetupSection;
+}>();
 
 const ctx = useWorkflowSetupContext();
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const environmentsStore = useEnvironmentsStore();
-const frontendNodeTypes = createFrontendNodeTypes(nodeTypesStore);
 
-const card = computed(() => ctx.activeCard.value!);
-const credentialType = computed(() => card.value.credentialType);
+const credentialType = computed(() => props.section.credentialType);
 
-const selectedCredentialId = computed(() =>
-	credentialType.value
-		? (ctx.credentialSelections.value[card.value.targetNodeName]?.[credentialType.value] ?? null)
-		: null,
-);
-
-const targetNodeNames = computed(() => card.value.credentialTargetNodes.map((node) => node.name));
-const targetNodeNamesTooltip = computed(() => targetNodeNames.value.join(', '));
-const usedByNodesLabel = computed(() =>
-	i18n.baseText('instanceAi.workflowSetup.usedByNodes', {
-		adjustToNumber: targetNodeNames.value.length,
-		interpolate: { count: targetNodeNames.value.length },
-	}),
-);
-
-const isComplete = computed(() => ctx.isCardComplete(card.value));
-const isSkipped = computed(() => ctx.isCardSkipped(card.value));
+const isComplete = computed(() => ctx.isSectionComplete(props.section));
+const isSkipped = computed(() => ctx.isSectionSkipped(props.section));
 
 const nodeType = computed(() =>
-	nodeTypesStore.getNodeType(card.value.node.type, card.value.node.typeVersion),
+	nodeTypesStore.getNodeType(props.section.node.type, props.section.node.typeVersion),
 );
 
-const parameterDefinitions = computed<INodeProperties[]>(() => {
-	if (!nodeType.value || card.value.parameterNames.length === 0) return [];
-	const names = new Set(card.value.parameterNames);
-	return nodeType.value.properties.filter((property) => names.has(property.name));
-});
-
-const isCredentialOnlyCard = computed(
-	() => !!credentialType.value && card.value.parameterNames.length === 0,
+const isCredentialOnlySection = computed(
+	() => !!credentialType.value && props.section.parameterNames.length === 0,
 );
-
-const revealedIssues = ref(new Set<string>());
-
-watch(
-	() => card.value.id,
-	() => {
-		revealedIssues.value = new Set();
-	},
-);
-
-const hiddenIssuesInputs = computed(() =>
-	parameterDefinitions.value
-		.filter((param) => !revealedIssues.value.has(param.name))
-		.map((param) => param.name),
-);
-
-function revealParameterIssues(parameterName: string) {
-	revealedIssues.value.add(parameterName);
-}
-
-function getRootParameterName(parameterName: string) {
-	return parameterName.split(/[.[\]]/)[0] ?? parameterName;
-}
 
 const displayName = computed(() => {
 	const credentialTypeName = credentialType.value;
-	if (!isCredentialOnlyCard.value || !credentialTypeName) return card.value.node.name;
+	if (!isCredentialOnlySection.value || !credentialTypeName) return props.section.node.name;
 	const raw =
 		credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ?? credentialTypeName;
 	const appName = getAppNameFromCredType(raw);
 	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
 });
-
-const displayNode = computed<INodeUi>(() => {
-	const node = ctx.getDisplayNode(card.value);
-	if (!credentialType.value) return node;
-	const cred = selectedCredentialId.value
-		? credentialsStore.getCredentialById(selectedCredentialId.value)
-		: undefined;
-	return {
-		...node,
-		credentials: cred ? { [credentialType.value]: { id: cred.id, name: cred.name } } : {},
-	} as INodeUi;
-});
-
-const expressionContext = computed<ExpressionLocalResolveContext | undefined>(() => {
-	const node = displayNode.value;
-	const connections: IConnections = {};
-	const workflow = new Workflow({
-		id: 'instance-ai-workflow-setup',
-		name: 'Instance AI workflow setup',
-		nodes: [node],
-		connections,
-		active: false,
-		nodeTypes: frontendNodeTypes,
-	});
-
-	return {
-		localResolve: true,
-		envVars: environmentsStore.variablesAsObject,
-		workflow,
-		execution: null,
-		nodeName: node.name,
-		additionalKeys: {},
-		connections,
-	};
-});
-
-provide(ExpressionLocalResolveContextSymbol, expressionContext);
-
-function onCredentialSelected(update: INodeUpdatePropertiesInformation) {
-	if (!credentialType.value) return;
-	const data = update.properties.credentials?.[credentialType.value];
-	ctx.setCredential(card.value, data?.id ?? null);
-}
-
-function onParameterValueChanged(update: IUpdateInformation) {
-	const parameterName = update.name.replace(/^parameters\./, '');
-	ctx.setParameterValue(card.value, parameterName, update.value);
-	revealParameterIssues(getRootParameterName(parameterName));
-}
 </script>
 
 <template>
 	<div :class="$style.card" data-test-id="instance-ai-workflow-setup-card">
 		<header :class="$style.header">
 			<CredentialIcon
-				v-if="isCredentialOnlyCard"
+				v-if="isCredentialOnlySection"
 				:credential-type-name="credentialType ?? null"
 				:size="16"
 			/>
@@ -156,7 +58,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			<N8nText
 				v-if="isComplete"
 				data-test-id="instance-ai-workflow-setup-card-check"
-				:class="$style.completeLabel"
+				:class="$style.statusLabel"
 				size="medium"
 				color="success"
 			>
@@ -166,7 +68,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			<N8nText
 				v-else-if="isSkipped"
 				data-test-id="instance-ai-workflow-setup-card-skipped"
-				:class="$style.skippedLabel"
+				:class="$style.statusLabel"
 				size="medium"
 				color="text-light"
 			>
@@ -175,49 +77,8 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			</N8nText>
 		</header>
 
-		<div :class="$style.body">
-			<NodeCredentials
-				v-if="credentialType"
-				:node="displayNode"
-				:override-cred-type="credentialType"
-				:project-id="ctx.projectId.value"
-				standalone
-				hide-issues
-				@credential-selected="onCredentialSelected"
-			>
-				<template v-if="card.credentialTargetNodes.length > 1" #label-postfix>
-					<N8nTooltip placement="top">
-						<template #content>{{ targetNodeNamesTooltip }}</template>
-						<N8nText
-							size="small"
-							color="text-light"
-							data-test-id="instance-ai-workflow-setup-card-nodes-hint"
-						>
-							{{ usedByNodesLabel }}
-						</N8nText>
-					</N8nTooltip>
-				</template>
-			</NodeCredentials>
-
-			<div
-				v-if="parameterDefinitions.length > 0"
-				:class="$style.parameters"
-				data-test-id="instance-ai-workflow-setup-parameters"
-			>
-				<ParameterInputList
-					:parameters="parameterDefinitions"
-					:node-values="{ parameters: displayNode.parameters }"
-					:node="displayNode"
-					path="parameters"
-					:hide-delete="true"
-					:hidden-issues-inputs="hiddenIssuesInputs"
-					:remove-first-parameter-margin="true"
-					:remove-last-parameter-margin="true"
-					:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
-					@value-changed="onParameterValueChanged"
-					@parameter-blur="revealParameterIssues"
-				/>
-			</div>
+		<div :class="$style.bodyWrapper">
+			<WorkflowSetupSectionBody :section="section" />
 		</div>
 
 		<slot name="footer" />
@@ -246,33 +107,14 @@ function onParameterValueChanged(update: IUpdateInformation) {
 	flex: 1;
 }
 
-.completeLabel {
+.statusLabel {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
 	white-space: nowrap;
 }
 
-.skippedLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	white-space: nowrap;
-}
-
-.body {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
+.bodyWrapper {
 	padding: 0 var(--spacing--sm);
-
-	:global(.node-credentials) {
-		margin-top: 0;
-	}
-}
-
-.parameters {
-	display: flex;
-	flex-direction: column;
 }
 </style>

@@ -245,6 +245,17 @@ export const workflowSetupNodeSchema = z.object({
 			'Whether this node still requires user intervention. ' +
 				'False when credentials are set and valid, parameters are resolved, etc.',
 		),
+	parentNode: z
+		.object({
+			name: z.string(),
+			type: z.string(),
+			typeVersion: z.number(),
+			id: z.string(),
+		})
+		.optional()
+		.describe(
+			'Snapshot of the root parent node when this node is a sub-node connected via a non-Main port (e.g. ai_languageModel, ai_memory, ai_tool). Carries the metadata needed to render the parent header even when the parent itself has no setup request.',
+		),
 });
 export type InstanceAiWorkflowSetupNode = z.infer<typeof workflowSetupNodeSchema>;
 

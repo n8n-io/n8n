@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { INodeUi } from '@/Interface';
 import WorkflowSetupCard from './WorkflowSetupCard.vue';
-import { makeWorkflowSetupCard } from '../__tests__/factories';
+import { makeWorkflowSetupSection } from '../__tests__/factories';
 import type { WorkflowSetupContext } from '../composables/useWorkflowSetupContext';
-import type { WorkflowSetupCard as WorkflowSetupCardType } from '../workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
 
 const workflowSetupContext = vi.hoisted(() => ({
 	current: undefined as unknown as WorkflowSetupContext,
@@ -63,38 +63,22 @@ vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
 	},
 }));
 
-vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
+vi.mock('./WorkflowSetupSectionBody.vue', () => ({
 	default: {
-		props: ['node', 'overrideCredType', 'projectId', 'standalone', 'hideIssues'],
-		template: '<div data-test-id="node-credentials" />',
-	},
-}));
-
-vi.mock('@/features/ndv/parameters/components/ParameterInputList.vue', () => ({
-	default: {
-		props: [
-			'parameters',
-			'nodeValues',
-			'node',
-			'path',
-			'hideDelete',
-			'hiddenIssuesInputs',
-			'removeFirstParameterMargin',
-			'removeLastParameterMargin',
-			'optionsOverrides',
-		],
-		template: '<div data-test-id="parameter-input-list" />',
+		props: ['section'],
+		template: '<div data-test-id="workflow-setup-section-body" />',
 	},
 }));
 
 const renderComponent = createComponentRenderer(WorkflowSetupCard);
 
-function makeContext(card: WorkflowSetupCardType): WorkflowSetupContext {
+function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 	return {
-		cards: computed(() => [card]),
+		sections: computed(() => [section]),
+		steps: computed(() => [{ section }]),
 		currentStepIndex: ref(0),
-		activeCard: computed(() => card),
-		hasOtherUnhandledCards: computed(() => false),
+		activeStep: computed(() => ({ section })),
+		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({}),
 		terminalState: ref(null),
@@ -104,16 +88,19 @@ function makeContext(card: WorkflowSetupCardType): WorkflowSetupContext {
 		isActionPending: ref(false),
 		setCredential: vi.fn(),
 		setParameterValue: vi.fn(),
-		getDisplayNode: (setupCard) => setupCard.node as INodeUi,
-		isCardComplete: () => false,
+		getDisplayNode: (setupSection) => setupSection.node as INodeUi,
+		isSectionComplete: () => false,
 		isCredentialTestFailed: () => false,
-		isCardSkipped: () => false,
+		isSectionSkipped: () => false,
+		isStepComplete: () => false,
+		isStepSkipped: () => false,
+		isStepHandled: () => false,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
 		goToNextIncomplete: vi.fn(),
 		apply: vi.fn(async () => {}),
-		skipCurrentCard: vi.fn(async () => {}),
+		skipCurrentStep: vi.fn(async () => {}),
 	};
 }
 
@@ -128,14 +115,16 @@ describe('WorkflowSetupCard', () => {
 		});
 	});
 
-	it('shows the node name when the card includes parameters and credentials', () => {
-		const card = makeWorkflowSetupCard({
+	it('shows the node name when the section includes parameters and credentials', () => {
+		const section = makeWorkflowSetupSection({
 			credentialType: 'httpHeaderAuth',
 			parameterNames: ['url'],
 		});
-		workflowSetupContext.current = makeContext(card);
+		workflowSetupContext.current = makeContext(section);
 
-		const { getByText, getByTestId, queryByText, queryByTestId } = renderComponent();
+		const { getByText, getByTestId, queryByText, queryByTestId } = renderComponent({
+			props: { section },
+		});
 
 		expect(getByText('HTTP Request')).toBeInTheDocument();
 		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
@@ -143,13 +132,15 @@ describe('WorkflowSetupCard', () => {
 		expect(queryByTestId('credential-icon')).not.toBeInTheDocument();
 	});
 
-	it('shows the credential app name when the card only needs credentials', () => {
-		const card = makeWorkflowSetupCard({
+	it('shows the credential app name when the section only needs credentials', () => {
+		const section = makeWorkflowSetupSection({
 			credentialType: 'httpHeaderAuth',
 		});
-		workflowSetupContext.current = makeContext(card);
+		workflowSetupContext.current = makeContext(section);
 
-		const { getByText, getByTestId, queryByText, queryByTestId } = renderComponent();
+		const { getByText, getByTestId, queryByText, queryByTestId } = renderComponent({
+			props: { section },
+		});
 
 		expect(getByText('Set up Header Auth')).toBeInTheDocument();
 		expect(queryByText('HTTP Request')).not.toBeInTheDocument();

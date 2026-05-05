@@ -2,10 +2,10 @@ import { computed, ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import type { INodeUi } from '@/Interface';
-import WorkflowSetupCard from '../workflowSetup/components/WorkflowSetupCard.vue';
-import { makeWorkflowSetupCard } from '../workflowSetup/__tests__/factories';
+import WorkflowSetupSectionBody from '../workflowSetup/components/WorkflowSetupSectionBody.vue';
+import { makeWorkflowSetupSection } from '../workflowSetup/__tests__/factories';
 import type { WorkflowSetupContext } from '../workflowSetup/composables/useWorkflowSetupContext';
-import type { WorkflowSetupCard as WorkflowSetupCardType } from '../workflowSetup/workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup/workflowSetup.types';
 
 const workflowSetupContext = vi.hoisted(() => ({
 	current: undefined as unknown as WorkflowSetupContext,
@@ -13,14 +13,6 @@ const workflowSetupContext = vi.hoisted(() => ({
 
 vi.mock('../workflowSetup/composables/useWorkflowSetupContext', () => ({
 	useWorkflowSetupContext: () => workflowSetupContext.current,
-}));
-
-vi.mock('@/app/components/NodeIcon.vue', () => ({
-	default: { template: '<span />' },
-}));
-
-vi.mock('@/features/credentials/components/CredentialIcon.vue', () => ({
-	default: { template: '<span />' },
 }));
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
@@ -61,12 +53,13 @@ vi.mock('@/features/settings/environments.ee/environments.store', () => ({
 	default: () => ({ variablesAsObject: {} }),
 }));
 
-function makeContext(card: WorkflowSetupCardType): WorkflowSetupContext {
+function makeContext(): WorkflowSetupContext {
 	return {
-		cards: computed(() => [card]),
+		sections: computed(() => []),
+		steps: computed(() => []),
 		currentStepIndex: ref(0),
-		activeCard: computed(() => card),
-		hasOtherUnhandledCards: computed(() => false),
+		activeStep: computed(() => undefined),
+		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({}),
 		terminalState: ref(null),
@@ -76,26 +69,29 @@ function makeContext(card: WorkflowSetupCardType): WorkflowSetupContext {
 		isActionPending: ref(false),
 		setCredential: vi.fn(),
 		setParameterValue: vi.fn(),
-		getDisplayNode: (setupCard) => setupCard.node as INodeUi,
-		isCardComplete: () => false,
+		getDisplayNode: (section) => section.node as INodeUi,
+		isSectionComplete: () => false,
 		isCredentialTestFailed: () => false,
-		isCardSkipped: () => false,
+		isSectionSkipped: () => false,
+		isStepComplete: () => false,
+		isStepSkipped: () => false,
+		isStepHandled: () => false,
 		goToStep: vi.fn(),
 		goToNext: vi.fn(),
 		goToPrev: vi.fn(),
 		goToNextIncomplete: vi.fn(),
-		apply: vi.fn(),
-		skipCurrentCard: vi.fn(),
+		apply: vi.fn(async () => {}),
+		skipCurrentStep: vi.fn(async () => {}),
 	};
 }
 
-function renderComponent(card: WorkflowSetupCardType) {
-	workflowSetupContext.current = makeContext(card);
+function renderComponent(section: WorkflowSetupSection) {
+	workflowSetupContext.current = makeContext();
 
-	return mount(WorkflowSetupCard, {
+	return mount(WorkflowSetupSectionBody, {
+		props: { section },
 		global: {
 			stubs: {
-				N8nIcon: { template: '<span />' },
 				N8nText: { template: '<span><slot /></span>' },
 				N8nTooltip: {
 					template:
@@ -106,26 +102,26 @@ function renderComponent(card: WorkflowSetupCardType) {
 	});
 }
 
-describe('WorkflowSetupCard', () => {
-	it('hides the grouped nodes hint for single-target cards', () => {
-		const card = makeWorkflowSetupCard();
+describe('WorkflowSetupSectionBody', () => {
+	it('hides the grouped nodes hint for single-target sections', () => {
+		const section = makeWorkflowSetupSection();
 
-		const wrapper = renderComponent(card);
+		const wrapper = renderComponent(section);
 
 		expect(
 			wrapper.find('[data-test-id="instance-ai-workflow-setup-card-nodes-hint"]').exists(),
 		).toBe(false);
 	});
 
-	it('shows grouped nodes count and tooltip for multi-target cards', () => {
-		const card = makeWorkflowSetupCard({
+	it('shows grouped nodes count and tooltip for multi-target sections', () => {
+		const section = makeWorkflowSetupSection({
 			credentialTargetNodes: [
 				{ id: 'primary', name: 'Primary', type: 'n8n-nodes-base.httpRequest' },
 				{ id: 'follower', name: 'Follower', type: 'n8n-nodes-base.httpRequest' },
 			],
 		});
 
-		const wrapper = renderComponent(card);
+		const wrapper = renderComponent(section);
 
 		expect(wrapper.get('[data-test-id="instance-ai-workflow-setup-card-nodes-hint"]').text()).toBe(
 			'Used by 2 nodes',

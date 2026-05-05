@@ -8,6 +8,8 @@
 import { findPlaceholderDetails } from '@n8n/utils';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
+import type { IConnections } from 'n8n-workflow';
+import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import type { SetupRequest } from './setup-workflow.schema';
@@ -746,6 +748,85 @@ export function buildCompletedReport(
 	return result;
 }
 
+// ── Sub-node grouping ───────────────────────────────────────────────────────
+
+export interface RootParentNode {
+	name: string;
+	type: string;
+	typeVersion: number;
+	id: string;
+}
+
+export function buildSubnodeToRootParentMap(
+	nodes: NodeJSON[],
+	connections: IConnections,
+	executionOrder: string[],
+): Map<string, RootParentNode> {
+	const connectionsByDestination = mapConnectionsByDestination(connections);
+
+	const directSubnodesByParentName = new Map<string, string[]>();
+	for (const node of nodes) {
+		if (!node.name) continue;
+		// non main parents = direct sub-nodes
+		const subs = getParentNodes(connectionsByDestination, node.name, 'ALL_NON_MAIN', 1);
+		if (subs.length > 0) directSubnodesByParentName.set(node.name, subs);
+	}
+	if (directSubnodesByParentName.size === 0) return new Map();
+
+	const allSubnodeNames = new Set<string>();
+	for (const subs of directSubnodesByParentName.values()) {
+		for (const name of subs) allSubnodeNames.add(name);
+	}
+	const rootParentNames = [...directSubnodesByParentName.keys()].filter(
+		(n) => !allSubnodeNames.has(n),
+	);
+	if (rootParentNames.length === 0) return new Map();
+
+	const nodeByName = new Map<string, NodeJSON>();
+	for (const node of nodes) {
+		if (node.name) nodeByName.set(node.name, node);
+	}
+
+	// Sort root parents by execution order so the first to claim a sub-node
+	// is the deterministic "owner" when multi-parent ambiguity exists.
+	const orderIndex = new Map<string, number>();
+	for (let i = 0; i < executionOrder.length; i++) {
+		orderIndex.set(executionOrder[i], i);
+	}
+	const sortedRootParents = [...rootParentNames].sort(
+		(a, b) =>
+			(orderIndex.get(a) ?? Number.MAX_SAFE_INTEGER) -
+			(orderIndex.get(b) ?? Number.MAX_SAFE_INTEGER),
+	);
+
+	const subnodeToRootParent = new Map<string, RootParentNode>();
+
+	for (const rootParentName of sortedRootParents) {
+		const rootParentNode = nodeByName.get(rootParentName);
+		if (!rootParentNode) continue;
+
+		const rootParent: RootParentNode = {
+			name: rootParentName,
+			type: rootParentNode.type,
+			typeVersion: rootParentNode.typeVersion ?? 1,
+			id: rootParentNode.id ?? '',
+		};
+
+		const transitiveSubs = getParentNodes(
+			connectionsByDestination,
+			rootParentName,
+			'ALL_NON_MAIN',
+			-1,
+		);
+		for (const subName of transitiveSubs) {
+			if (subnodeToRootParent.has(subName)) continue;
+			subnodeToRootParent.set(subName, rootParent);
+		}
+	}
+
+	return subnodeToRootParent;
+}
+
 // ── Full workflow analysis ──────────────────────────────────────────────────
 
 /**
@@ -784,6 +865,24 @@ export async function analyzeWorkflow(
 		setupRequests,
 		workflowJson.connections as unknown as Record<string, unknown>,
 	);
+
+	// Stamp `parentNode` on every sub-node setup request so the frontend can
+	// render the parent header even when the parent has no setup request of
+	// its own. Sub-node membership is derived from the full workflow graph,
+	// not just the (filtered) setup requests.
+	const subnodeToRootParent = buildSubnodeToRootParentMap(
+		workflowJson.nodes,
+		workflowJson.connections as unknown as IConnections,
+		setupRequests.map((req) => req.node.name),
+	);
+	if (subnodeToRootParent.size > 0) {
+		for (const req of setupRequests) {
+			const parentNode = subnodeToRootParent.get(req.node.name);
+			if (parentNode) {
+				req.parentNode = parentNode;
+			}
+		}
+	}
 
 	return setupRequests;
 }

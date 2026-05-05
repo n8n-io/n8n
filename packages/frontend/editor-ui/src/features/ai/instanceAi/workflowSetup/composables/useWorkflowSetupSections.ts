@@ -1,22 +1,19 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { computed, type ComputedRef, type Ref } from 'vue';
-import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { isExpression } from '@/app/utils/expressions';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
-import type { WorkflowSetupCard } from '../workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
 
-const isHttpRequestNodeType = (type: string) =>
-	type === HTTP_REQUEST_NODE_TYPE || type === HTTP_REQUEST_TOOL_NODE_TYPE;
-
-export function useWorkflowSetupCards(
+export function useWorkflowSetupSections(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]> | ComputedRef<InstanceAiWorkflowSetupNode[]>,
-): { cards: ComputedRef<WorkflowSetupCard[]> } {
+): { sections: ComputedRef<WorkflowSetupSection[]> } {
 	const nodeTypesStore = useNodeTypesStore();
 
-	const cards = computed<WorkflowSetupCard[]>(() => {
-		const result: WorkflowSetupCard[] = [];
-		const primaryByGroupKey = new Map<string, WorkflowSetupCard>();
+	const sections = computed<WorkflowSetupSection[]>(() => {
+		const result: WorkflowSetupSection[] = [];
+		const primaryByGroupKey = new Map<string, WorkflowSetupSection>();
 
 		for (const req of setupRequests.value) {
 			const parameterNames = (req.editableParameters ?? []).map((parameter) => parameter.name);
@@ -24,7 +21,7 @@ export function useWorkflowSetupCards(
 
 			const credentialType = req.credentialType;
 			const hasParams = parameterNames.length > 0;
-			const groupKey = buildGroupKey(req.node, credentialType);
+			const groupKey = buildGroupKey(req, credentialType);
 			const existingPrimary = groupKey ? primaryByGroupKey.get(groupKey) : undefined;
 
 			if (existingPrimary && !hasParams) {
@@ -43,7 +40,7 @@ export function useWorkflowSetupCards(
 			const currentCredentialId =
 				credentialType === undefined ? null : (req.node.credentials?.[credentialType]?.id ?? null);
 
-			const card: WorkflowSetupCard = {
+			const section: WorkflowSetupSection = {
 				id: `${req.node.name}:${credentialType ?? 'parameters'}`,
 				...(credentialType ? { credentialType } : {}),
 				targetNodeName: req.node.name,
@@ -53,8 +50,8 @@ export function useWorkflowSetupCards(
 				credentialTargetNodes: [{ id: req.node.id, name: req.node.name, type: req.node.type }],
 			};
 
-			result.push(card);
-			if (groupKey && !existingPrimary) primaryByGroupKey.set(groupKey, card);
+			result.push(section);
+			if (groupKey && !existingPrimary) primaryByGroupKey.set(groupKey, section);
 		}
 
 		return result;
@@ -74,18 +71,32 @@ export function useWorkflowSetupCards(
 		) ?? node.parameters) as INodeParameters;
 	}
 
-	return { cards };
+	return { sections };
 }
 
+/**
+ * Build a merge key for credential-only sections.
+ *
+ * When the request is a sub-node (has `parentNode`), the parent's name is
+ * prepended so credential sections never merge across different parents —
+ * sub-nodes of two different agents stay separate even when they share a
+ * credential type. Standalone nodes (no parent) keep the original
+ * credentialType+URL merging behaviour to preserve the existing UX
+ * optimisation of configuring a shared credential once.
+ */
 function buildGroupKey(
-	node: InstanceAiWorkflowSetupNode['node'],
+	req: InstanceAiWorkflowSetupNode,
 	credentialType: string | undefined,
 ): string | null {
 	if (!credentialType) return null;
-	if (!isHttpRequestNodeType(node.type)) return credentialType;
 
-	const url = node.parameters?.url;
-	if (typeof url !== 'string') return `${credentialType}|http|none`;
-	if (isExpression(url)) return `${credentialType}|http|expr|${node.name}`;
-	return `${credentialType}|http|${url}`;
+	const parentPrefix = req.parentNode?.name ? `${req.parentNode.name}|` : '';
+	const baseKey = `${parentPrefix}${credentialType}`;
+
+	if (!isHttpRequestNodeType(req.node.type)) return baseKey;
+
+	const url = req.node.parameters?.url;
+	if (typeof url !== 'string') return `${baseKey}|http|none`;
+	if (isExpression(url)) return `${baseKey}|http|expr|${req.node.name}`;
+	return `${baseKey}|http|${url}`;
 }
