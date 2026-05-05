@@ -2,6 +2,7 @@ import type { AnyRuleModule } from '@typescript-eslint/utils/ts-eslint';
 
 import { AiNodePackageJsonRule } from './ai-node-package-json.js';
 import { CredClassFieldIconMissingRule } from './cred-class-field-icon-missing.js';
+import { CredClassNameSuffixRule } from './cred-class-name-suffix.js';
 import { CredentialDocumentationUrlRule } from './credential-documentation-url.js';
 import { CredentialPasswordFieldRule } from './credential-password-field.js';
 import { CredentialTestRequiredRule } from './credential-test-required.js';
@@ -50,6 +51,7 @@ export const rules = {
 	'credential-documentation-url': CredentialDocumentationUrlRule,
 	'node-class-description-icon-missing': NodeClassDescriptionIconMissingRule,
 	'cred-class-field-icon-missing': CredClassFieldIconMissingRule,
+	'cred-class-name-suffix': CredClassNameSuffixRule,
 	'node-connection-type-literal': NodeConnectionTypeLiteralRule,
 	'node-operation-error-itemindex': NodeOperationErrorItemIndexRule,
 	'missing-paired-item': MissingPairedItemRule,
