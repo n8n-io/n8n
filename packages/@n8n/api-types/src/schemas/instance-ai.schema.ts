@@ -302,7 +302,7 @@ export const instanceAiEvalMetricKindSchema = z.enum(['llm-judge', 'exact-match'
 export type InstanceAiEvalMetricKind = z.infer<typeof instanceAiEvalMetricKindSchema>;
 
 export const instanceAiEvalMetricProposalSchema = z.object({
-	id: z.string().describe('Stable slug used as key in the resume payload.'),
+	id: z.string().describe('Stable slug for the metric.'),
 	name: z.string(),
 	kind: instanceAiEvalMetricKindSchema,
 	description: z.string(),
@@ -314,18 +314,6 @@ export const instanceAiEvalMetricProposalSchema = z.object({
 	defaultEnabled: z.boolean(),
 });
 export type InstanceAiEvalMetricProposal = z.infer<typeof instanceAiEvalMetricProposalSchema>;
-
-/**
- * Renderable content of the eval-propose confirmation card.
- * Reused by both the confirmation envelope (`evalsPropose` field below) and
- * the suspend schema (`instanceAiEvalsProposeSuspendSchema` further down) so
- * the two surfaces cannot drift.
- */
-export const instanceAiEvalsProposeContentSchema = z.object({
-	detectedAiNodes: z.array(z.string()),
-	suggestedMetrics: z.array(instanceAiEvalMetricProposalSchema),
-});
-export type InstanceAiEvalsProposeContent = z.infer<typeof instanceAiEvalsProposeContentSchema>;
 
 export const confirmationRequestPayloadSchema = z.object({
 	requestId: z.string(),
@@ -388,9 +376,6 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
-	evalsPropose: instanceAiEvalsProposeContentSchema
-		.optional()
-		.describe('Eval-propose suspend payload — present when the `evals` tool suspends.'),
 });
 
 export const statusPayloadSchema = z.object({
@@ -660,8 +645,6 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
-	/** Eval-propose suspend payload — present when the `evals` tool suspends. */
-	evalsPropose?: InstanceAiEvalsProposeContent;
 }
 
 export interface InstanceAiToolCallState {
@@ -1081,28 +1064,3 @@ export interface InstanceAiEvalSubAgentResponse {
 	stopReason?: string;
 	error?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Evals proposal schemas (suspend/resume for `evals(action="propose")`)
-// ---------------------------------------------------------------------------
-
-// `instanceAiEvalMetricKindSchema`, `instanceAiEvalMetricProposalSchema`, and
-// `instanceAiEvalsProposeContentSchema` are defined earlier in this file so the
-// confirmation payload can reference them.
-
-export const instanceAiEvalsProposeSuspendSchema = instanceAiEvalsProposeContentSchema.extend({
-	requestId: z.string(),
-	message: z.string(),
-	severity: instanceAiConfirmationSeveritySchema,
-	workflowId: z.string(),
-	projectId: z.string().optional(),
-});
-export type InstanceAiEvalsProposeSuspend = z.infer<typeof instanceAiEvalsProposeSuspendSchema>;
-
-export const instanceAiEvalsProposeResumeSchema = z.object({
-	approved: z.boolean(),
-	datasetChoice: z.enum(['link-existing', 'later']).optional(),
-	existingDataTableId: z.string().optional(),
-	enabledMetricIds: z.array(z.string()).optional(),
-});
-export type InstanceAiEvalsProposeResume = z.infer<typeof instanceAiEvalsProposeResumeSchema>;

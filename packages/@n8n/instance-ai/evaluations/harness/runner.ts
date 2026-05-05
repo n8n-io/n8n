@@ -750,10 +750,6 @@ function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirmRequest
 		return { kind: 'domainAccessApprove', domainAccessAction: 'allow_all' };
 	}
 
-	if (getNestedRecord(payload, 'evalsPropose')) {
-		return { kind: 'evalsPropose', approved: true };
-	}
-
 	const resourceDecision = getNestedRecord(payload, 'resourceDecision');
 	if (resourceDecision) {
 		const options = Array.isArray(resourceDecision.options)

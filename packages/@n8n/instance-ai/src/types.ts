@@ -593,14 +593,6 @@ export interface InstanceAiContext {
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
-	 * IDs of *existing* workflows the user has consented to AI editing within
-	 * this run via a top-level confirmation card (e.g. the eval propose card).
-	 * Lets sub-agents that patch the workflow via `workflows(action="update")`
-	 * skip the per-update suspend — the consent gate already happened upstream.
-	 * Runtime-only, lazily initialized, scoped to the current run.
-	 */
-	consentedEditWorkflowIds?: Set<string>;
-	/**
 	 * Attachments from the current user message. Runtime-only — not persisted.
 	 * Used to register `parse-file` and supply data to the parser.
 	 */

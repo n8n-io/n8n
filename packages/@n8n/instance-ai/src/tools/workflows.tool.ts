@@ -627,14 +627,7 @@ async function handleUpdate(
 		return { success: false, denied: true, reason: 'Action blocked by admin' };
 	}
 
-	// Bypass the per-update suspend when the user has already consented to
-	// editing this workflow upstream (e.g. via the eval propose card). Without
-	// this, the eval-setup sub-agent would trigger a second confirmation for
-	// the same approval the user just gave.
-	const isConsentedEdit =
-		context.consentedEditWorkflowIds instanceof Set &&
-		context.consentedEditWorkflowIds.has(input.workflowId);
-	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow' && !isConsentedEdit;
+	const needsApproval = context.permissions?.updateWorkflow !== 'always_allow';
 
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
 		const workflowName = await resolveWorkflowName(context, input.workflowId);

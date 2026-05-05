@@ -203,7 +203,8 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('**Add-evals flow**');
-			expect(prompt).toContain('Call `evals(action="propose")` directly');
+			expect(prompt).toContain('Call `evals(action="propose")`');
+			expect(prompt).toContain('returns synchronously — no confirmation card');
 			expect(prompt).toContain('`shouldDelegateToEvalSetupAgent: true`');
 			expect(prompt).toContain('call `eval-setup-with-agent`');
 			expect(prompt).toContain('Do NOT call `build-workflow-with-agent` for this case');
