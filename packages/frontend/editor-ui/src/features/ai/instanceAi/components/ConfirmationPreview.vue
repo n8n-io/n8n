@@ -1,14 +1,18 @@
 <script lang="ts" setup>
-// `tool` renders as a monospace (non-bold) prefix at the start of the
-// preview box (e.g. "workflows.delete"); the slot content that follows
-// uses the default body font so the technical identifier stands out
-// against the human-readable description.
-defineProps<{ tool?: string }>();
+import { computed } from 'vue';
+
+const props = defineProps<{ tool?: string }>();
+
+const toolLabel = computed(() => {
+	if (!props.tool) return '';
+	const lastDot = props.tool.lastIndexOf('.');
+	return lastDot === -1 ? props.tool : props.tool.slice(lastDot + 1);
+});
 </script>
 
 <template>
 	<div :class="$style.preview">
-		<span v-if="tool" :class="$style.tool">{{ tool }}</span>
+		<span v-if="toolLabel" :class="$style.tool">{{ toolLabel }}</span>
 		<slot />
 	</div>
 </template>

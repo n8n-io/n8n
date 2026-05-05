@@ -304,7 +304,7 @@ function handlePlanRequestChanges(
 </script>
 
 <template>
-	<TransitionGroup name="confirmation-slide">
+	<TransitionGroup :name="kind === 'floating' ? 'confirmation-scale' : 'confirmation-slide'">
 		<template
 			v-for="chunk in chunks"
 			:key="
@@ -541,9 +541,10 @@ function handlePlanRequestChanges(
 }
 
 .root {
-	border: var(--border);
+	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
 	border-radius: var(--radius--xl);
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm);
 }
 
 .items {
@@ -649,5 +650,37 @@ function handlePlanRequestChanges(
 
 .confirmation-slide-leave-active {
 	transition: all var(--animation--duration--snappy) var(--easing--ease-in);
+}
+
+.confirmation-scale-enter-active {
+	animation: confirmation-scale-enter 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.confirmation-scale-leave-active {
+	animation: confirmation-scale-leave 125ms cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+}
+
+@keyframes confirmation-scale-enter {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes confirmation-scale-leave {
+	from {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	to {
+		opacity: 0;
+		transform: scale(0.95);
+	}
 }
 </style>

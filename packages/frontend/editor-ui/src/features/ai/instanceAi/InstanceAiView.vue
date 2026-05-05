@@ -311,8 +311,11 @@ watch(chatInputRef, (el) => {
 
 // --- Floating input dynamic padding ---
 const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
+const floatingOverlayRef = useTemplateRef<HTMLElement>('floatingOverlay');
 const inputAreaHeight = ref(120);
+const floatingOverlayHeight = ref(0);
 let resizeObserver: ResizeObserver | null = null;
+let floatingOverlayObserver: ResizeObserver | null = null;
 
 watch(
 	inputContainerRef,
@@ -330,9 +333,30 @@ watch(
 	{ immediate: true },
 );
 
+// Observed separately from `inputContainer` so the StatusBar/approval panel
+// growth feeds into messageList padding (lets the user scroll messages out
+// from behind the floating dialog) without coupling the input's measurement.
+watch(
+	floatingOverlayRef,
+	(el) => {
+		floatingOverlayObserver?.disconnect();
+		if (el) {
+			floatingOverlayObserver = new ResizeObserver((entries) => {
+				for (const entry of entries) {
+					floatingOverlayHeight.value =
+						entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
+				}
+			});
+			floatingOverlayObserver.observe(el);
+		}
+	},
+	{ immediate: true },
+);
+
 onUnmounted(() => {
 	contentResizeObserver?.disconnect();
 	resizeObserver?.disconnect();
+	floatingOverlayObserver?.disconnect();
 	executionTracking.cleanup();
 	store.closeSSE();
 	store.stopCreditsPushListener();
@@ -563,12 +587,20 @@ function handleStop() {
 									 to the floating input below instead. -->
 								<InstanceAiConfirmationPanel kind="inline" />
 							</div>
+							<!-- Spacer for the floating overlay (status bar + approval panel).
+								 Kept as a sibling of `messageList` so its dynamic height grows
+								 the scroll container (letting the user scroll dialog-obscured
+								 content into view) without triggering the messageList resize
+								 observer — that observer drives stream auto-scroll, and we
+								 don't want approvals appearing or disappearing to shift the
+								 visible content. -->
+							<div :style="{ height: `${floatingOverlayHeight}px`, flexShrink: 0 }" />
 						</N8nScrollArea>
 
 						<!-- Scroll to bottom button -->
 						<div
 							:class="$style.scrollButtonContainer"
-							:style="{ bottom: `${inputAreaHeight + 8}px` }"
+							:style="{ bottom: `${inputAreaHeight + floatingOverlayHeight + 8}px` }"
 						>
 							<Transition name="fade">
 								<N8nIconButton
@@ -584,13 +616,29 @@ function handleStop() {
 							</Transition>
 						</div>
 
-						<!-- Floating input (with confirmation panel pinned above it) -->
-						<div ref="inputContainer" :class="$style.inputContainer">
+						<!-- Floating overlay above the input: status bar (always shown
+							 when streaming) sits on top, the approval panel slides in
+							 underneath it when an approval is pending. Kept outside
+							 `inputContainer` so neither the status bar transition nor an
+							 approval appearing/disappearing reflows the scrolled chat. -->
+						<div
+							ref="floatingOverlay"
+							:class="$style.floatingOverlay"
+							:style="{ bottom: `${inputAreaHeight}px` }"
+						>
 							<div :class="$style.inputConstraint">
 								<InstanceAiStatusBar />
-								<div v-if="hasFloatingConfirmation" :class="$style.floatingConfirmation">
-									<InstanceAiConfirmationPanel kind="floating" />
-								</div>
+								<Transition name="floating-confirmation">
+									<div v-if="hasFloatingConfirmation" :class="$style.floatingConfirmation">
+										<InstanceAiConfirmationPanel kind="floating" />
+									</div>
+								</Transition>
+							</div>
+						</div>
+
+						<!-- Floating input -->
+						<div ref="inputContainer" :class="$style.inputContainer">
+							<div :class="$style.inputConstraint">
 								<CreditWarningBanner
 									v-if="showCreditBanner"
 									:credits-remaining="store.creditsRemaining"
@@ -870,8 +918,23 @@ function handleStop() {
 	margin: 0 auto;
 }
 
+.floatingOverlay {
+	position: absolute;
+	left: 0;
+	right: 0;
+	padding: 0 var(--spacing--lg);
+	pointer-events: none;
+	z-index: 2;
+
+	& > * {
+		pointer-events: auto;
+	}
+}
+
 .floatingConfirmation {
-	margin-bottom: 12px;
+	margin-top: var(--spacing--3xs);
+	// Pin a 12px gap between the approval dialog and the chat input below it.
+	margin-bottom: var(--spacing--xs);
 }
 
 .previewPanel {
@@ -904,5 +967,37 @@ function handleStop() {
 .fade-enter-active,
 .fade-leave-active {
 	transition: opacity 0.2s ease;
+}
+
+.floating-confirmation-enter-active {
+	animation: floating-confirmation-enter 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.floating-confirmation-leave-active {
+	animation: floating-confirmation-leave 125ms cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+}
+
+@keyframes floating-confirmation-enter {
+	from {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes floating-confirmation-leave {
+	from {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	to {
+		opacity: 0;
+		transform: scale(0.95);
+	}
 }
 </style>

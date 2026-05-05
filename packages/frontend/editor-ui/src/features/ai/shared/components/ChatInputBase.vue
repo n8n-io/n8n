@@ -200,8 +200,8 @@ defineExpose({
 	width: 100%;
 	border-radius: var(--radius--xl);
 	padding: var(--spacing--sm);
-	box-shadow: 0 10px 24px 0 color-mix(in srgb, var(--color--foreground--shade-2) 6%, transparent);
-	background-color: var(--color--background--light-2);
+	box-shadow: var(--shadow--sm);
+	background-color: var(--background--surface);
 	border: 1px solid light-dark(var(--color--black-alpha-200), var(--color--white-alpha-100));
 	display: flex;
 	flex-direction: column;
