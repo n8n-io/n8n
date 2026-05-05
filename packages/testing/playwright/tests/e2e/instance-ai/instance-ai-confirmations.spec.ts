@@ -93,31 +93,39 @@ test.describe(
 				deleteWorkflow: 'always_allow',
 			});
 
-			const workflow = await n8n.api.workflows.createWorkflow({
-				id: RESTORE_ARCHIVED_WORKFLOW_ID,
-				...seededEditableWorkflow(RESTORE_ARCHIVED_WORKFLOW_NAME),
-			});
-			expect(workflow.id).toBe(RESTORE_ARCHIVED_WORKFLOW_ID);
-			await n8n.api.workflows.archive(workflow.id);
+			try {
+				const workflow = await n8n.api.workflows.createWorkflow({
+					id: RESTORE_ARCHIVED_WORKFLOW_ID,
+					...seededEditableWorkflow(RESTORE_ARCHIVED_WORKFLOW_NAME),
+				});
+				expect(workflow.id).toBe(RESTORE_ARCHIVED_WORKFLOW_ID);
+				await n8n.api.workflows.archive(workflow.id);
 
-			await expect
-				.poll(async () => {
-					const archivedWorkflow = (await n8n.api.workflows.getWorkflow(
-						workflow.id,
-					)) as WorkflowWithArchiveState;
-					return archivedWorkflow.isArchived;
-				})
-				.toBe(true);
+				await expect
+					.poll(async () => {
+						const archivedWorkflow = (await n8n.api.workflows.getWorkflow(
+							workflow.id,
+						)) as WorkflowWithArchiveState;
+						return archivedWorkflow.isArchived;
+					})
+					.toBe(true);
 
-			const prompt = `Restore the archived workflow named "${RESTORE_ARCHIVED_WORKFLOW_NAME}".`;
+				const prompt = `Restore the archived workflow named "${RESTORE_ARCHIVED_WORKFLOW_NAME}".`;
 
-			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(prompt);
-			await n8n.instanceAi.waitForResponseComplete();
-			await expect(
-				n8n.instanceAi.getAssistantMessageText('Restored the archived workflow.'),
-			).toBeVisible();
-			await expect(n8n.instanceAi.getToolCallsButton('2 tool calls')).toBeVisible();
+				await n8n.navigate.toInstanceAi();
+				await n8n.instanceAi.sendMessage(prompt);
+				await n8n.instanceAi.waitForResponseComplete();
+				await expect(
+					n8n.instanceAi.getAssistantMessageText('Restored the archived workflow.'),
+				).toBeVisible();
+				await expect(n8n.instanceAi.getToolCallsButton('2 tool calls')).toBeVisible();
+			} finally {
+				// Settings are merged, not replaced — reset deleteWorkflow so the
+				// override does not leak into later tests in this describe block.
+				await api.setInstanceAiPermissions({
+					deleteWorkflow: 'require_approval',
+				});
+			}
 		});
 
 		test('should show approval panel and approve workflow execution', async ({ n8n }) => {
