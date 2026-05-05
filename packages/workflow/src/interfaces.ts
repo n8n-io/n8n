@@ -1065,6 +1065,10 @@ export type CredentialCheckProxyFunctions = {
 	): Promise<CredentialCheckResult>;
 };
 
+export type OauthJweProxyProvider = {
+	decryptOAuth2TokenData(tokenData: IDataObject): Promise<IDataObject>;
+};
+
 type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	continueOnFail(): boolean;
 	setMetadata(metadata: ITaskMetadata): void;

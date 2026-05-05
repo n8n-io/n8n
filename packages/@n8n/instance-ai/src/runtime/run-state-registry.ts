@@ -24,12 +24,16 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	checkpoint?: { isCheckpointFollowUp: true; checkpointTaskId: string };
 }
 
+/**
+ * Flat confirmation payload consumed by Mastra tool `resumeSchema`s and sub-agent HITL.
+ * The service layer constructs this from the typed `InstanceAiConfirmRequest` discriminated
+ * union sent by the frontend — only one subset of fields is populated per call, matching
+ * the confirmation kind that was originally requested.
+ */
 export interface ConfirmationData {
 	approved: boolean;
-	credentialId?: string;
 	credentials?: Record<string, string>;
 	nodeCredentials?: Record<string, Record<string, string>>;
-	autoSetup?: { credentialType: string };
 	userInput?: string;
 	domainAccessAction?: string;
 	action?: 'apply' | 'test-trigger';

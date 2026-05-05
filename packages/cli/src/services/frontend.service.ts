@@ -286,6 +286,7 @@ export class FrontendService {
 				},
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
+			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {
@@ -692,6 +693,28 @@ export class FrontendService {
 			// (overwrite is conditional on stored data; users should provide their own credentials)
 			if (skipTypes.includes(credential.name)) {
 				credential.__skipManagedCreation = true;
+			}
+
+			// JWE fields on `oAuth2Api` are baked into nodes-base's pre-rendered
+			// credentials.json by lazy loading, so feature gating and the
+			// instance-specific JWKS URI have to be applied here at runtime.
+			if (credential.name === 'oAuth2Api' && credential.properties) {
+				const isOAuth2JweEnabled = process.env.N8N_ENV_FEAT_OAUTH2_JWE === 'true';
+				if (!isOAuth2JweEnabled) {
+					credential.properties = credential.properties.filter(
+						(property) => property.name !== 'jweEnabled' && property.name !== 'jwksUriNotice',
+					);
+				} else {
+					const jwksUri = `${this.urlService.getInstanceBaseUrl()}/${this.globalConfig.endpoints.rest}/.well-known/jwks.json`;
+					credential.properties = credential.properties.map((property) =>
+						property.name === 'jwksUriNotice'
+							? {
+									...property,
+									displayName: `Provide this JWKS URI to your IdP so it can encrypt tokens to this instance's public key: \`${jwksUri}\``,
+								}
+							: property,
+					);
+				}
 			}
 		}
 	}

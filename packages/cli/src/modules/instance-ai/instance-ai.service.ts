@@ -3,6 +3,7 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildProxyHeaders,
 	type InstanceAiAttachment,
+	type InstanceAiConfirmRequest,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 	type InstanceAiGatewayCapabilities,
@@ -41,6 +42,7 @@ import {
 	PlannedTaskStorage,
 	applyPlannedTaskPermissions,
 	PLANNED_TASK_PERMISSION_OVERRIDES,
+	BuilderSandboxSessionRegistry,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
 	resumeAgentRun,
@@ -112,6 +114,68 @@ const ORCHESTRATOR_AGENT_ID = 'agent-001';
 const INSTANCE_AI_FEEDBACK_NAMESPACE = 'c5be4c87-5b6e-49ed-afe1-9c5c1f99a5c0';
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+function estimateTokens(text: string): number {
+	return Math.ceil(text.length / 4);
+}
+
+function stringifyForContextValue(value: unknown): string {
+	if (typeof value === 'string') return value;
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+
+const PLANNED_TASK_CONTEXT_VALUE_LIMIT = 1_500;
+
+function truncateContextValue(value: string): string {
+	if (value.length <= PLANNED_TASK_CONTEXT_VALUE_LIMIT) return value;
+	return `${value.slice(0, PLANNED_TASK_CONTEXT_VALUE_LIMIT)}...`;
+}
+
+function buildPlannedTaskConversationContext(
+	task: PlannedTaskRecord,
+	graph: PlannedTaskGraph | undefined,
+): string | undefined {
+	if (!graph) return undefined;
+
+	const parts: string[] = [
+		`Approved plan task: ${task.title}`,
+		`Task id: ${task.id}`,
+		`Task kind: ${task.kind}`,
+		`Plan run id: ${graph.planRunId}`,
+	];
+
+	if (task.workflowId) {
+		parts.push(`Target workflow id: ${task.workflowId}`);
+	}
+
+	const dependencies = graph.tasks.filter((candidate) => task.deps.includes(candidate.id));
+	if (dependencies.length > 0) {
+		parts.push('Completed dependency context:');
+		for (const dependency of dependencies) {
+			const dependencyParts = [
+				`- ${dependency.id} (${dependency.kind}, ${dependency.status}): ${dependency.title}`,
+			];
+			if (dependency.result) {
+				dependencyParts.push(`result=${truncateContextValue(dependency.result)}`);
+			}
+			if (dependency.error) {
+				dependencyParts.push(`error=${truncateContextValue(dependency.error)}`);
+			}
+			if (dependency.outcome) {
+				dependencyParts.push(
+					`outcome=${truncateContextValue(stringifyForContextValue(dependency.outcome))}`,
+				);
+			}
+			parts.push(dependencyParts.join(' '));
+		}
+	}
+
+	return parts.join('\n');
+}
+
 /**
  * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
  * return a fetch function that routes requests through the proxy. Node.js's
@@ -143,6 +207,45 @@ interface MessageTraceFinalization {
 	error?: string;
 }
 
+/** Collapse the frontend's typed confirmation union into the flat payload
+ *  consumed by Mastra tool resume schemas and sub-agent HITL. Only the fields
+ *  relevant to the submitted kind are populated — everything else stays undefined.
+ *
+ *  Most kinds carry implicit approval (you wouldn't be submitting answers,
+ *  selected credentials, or a setup action otherwise) — only `approval` and
+ *  `domainAccessDeny` actually carry a denial path. */
+function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
+	switch (request.kind) {
+		case 'approval':
+			return { approved: request.approved, userInput: request.userInput };
+		case 'domainAccessApprove':
+			return { approved: true, domainAccessAction: request.domainAccessAction };
+		case 'domainAccessDeny':
+			return { approved: false };
+		case 'questions':
+			return { approved: true, answers: request.answers };
+		case 'credentialSelection':
+			return { approved: true, credentials: request.credentials };
+		case 'resourceDecision':
+			return { approved: true, resourceDecision: request.resourceDecision };
+		case 'setupWorkflowApply':
+			return {
+				approved: true,
+				action: 'apply',
+				nodeCredentials: request.nodeCredentials,
+				nodeParameters: request.nodeParameters,
+			};
+		case 'setupWorkflowTestTrigger':
+			return {
+				approved: true,
+				action: 'test-trigger',
+				testTriggerNode: request.testTriggerNode,
+				nodeCredentials: request.nodeCredentials,
+				nodeParameters: request.nodeParameters,
+			};
+	}
+}
+
 @Service()
 export class InstanceAiService {
 	private readonly mcpClientManager = new McpClientManager();
@@ -158,6 +261,8 @@ export class InstanceAiService {
 	private readonly backgroundTasks = new BackgroundTaskManager(
 		MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD,
 	);
+
+	private readonly builderSandboxSessions: BuilderSandboxSessionRegistry;
 
 	/** Trace contexts keyed by the n8n run ID that started the orchestration turn. */
 	private readonly traceContextsByRunId = new Map<
@@ -234,6 +339,9 @@ export class InstanceAiService {
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
+		this.builderSandboxSessions = new BuilderSandboxSessionRegistry(
+			this.instanceAiConfig.builderSandboxTtlMs,
+		);
 		this.defaultTimeZone = globalConfig.generic.timezone;
 		const editorBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 		const restEndpoint = globalConfig.endpoints.rest;
@@ -1164,6 +1272,7 @@ export class InstanceAiService {
 		this.domainAccessTrackersByThread.delete(threadId);
 		this.threadPushRef.delete(threadId);
 		this.deleteTraceContextsForThread(threadId);
+		await this.builderSandboxSessions.cleanupThread(threadId, 'thread_cleared');
 		await this.destroySandbox(threadId);
 		await this.reapAiTemporaryForThreadCleanup(threadId);
 		this.eventBus.clearThread(threadId);
@@ -1211,7 +1320,10 @@ export class InstanceAiService {
 		const sandboxCleanups = [...this.sandboxes.keys()].map(
 			async (threadId) => await this.destroySandbox(threadId),
 		);
-		await Promise.allSettled(sandboxCleanups);
+		await Promise.allSettled([
+			...sandboxCleanups,
+			this.builderSandboxSessions.cleanupAll('service_shutdown'),
+		]);
 
 		this.domainAccessTrackersByThread.clear();
 		this.traceContextsByRunId.clear();
@@ -1479,6 +1591,9 @@ export class InstanceAiService {
 			subAgentMaxSteps: this.instanceAiConfig.subAgentMaxSteps,
 			eventBus: this.eventBus,
 			logger: this.logger,
+			trackTelemetry: (eventName, properties) => {
+				this.telemetry.track(eventName, properties);
+			},
 			domainTools,
 			abortSignal,
 			taskStorage,
@@ -1519,6 +1634,7 @@ export class InstanceAiService {
 			workflowTaskService: workflowTasks,
 			workspace: sandboxEntry?.workspace,
 			builderSandboxFactory: await this.createBuilderFactory(user),
+			builderSandboxSessionRegistry: this.builderSandboxSessions,
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 			tracingProxyConfig,
@@ -1542,10 +1658,12 @@ export class InstanceAiService {
 	private async dispatchPlannedTask(
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
+		graph?: PlannedTaskGraph,
 	): Promise<void> {
 		// Plan approval authorizes the task-family's non-destructive tools,
 		// so the sub-agent can execute without a redundant second confirmation.
 		const taskContext = this.createPlannedTaskContext(task.kind, context);
+		const conversationContext = buildPlannedTaskConversationContext(task, graph);
 
 		let started: { taskId: string; agentId: string; result: string } | null = null;
 
@@ -1555,12 +1673,14 @@ export class InstanceAiService {
 					task: task.spec,
 					workflowId: task.workflowId,
 					plannedTaskId: task.id,
+					conversationContext,
 				});
 				break;
 			case 'manage-data-tables':
 				started = await startDataTableAgentTask(taskContext, {
 					task: task.spec,
 					plannedTaskId: task.id,
+					conversationContext,
 				});
 				break;
 			case 'research':
@@ -1568,6 +1688,7 @@ export class InstanceAiService {
 					goal: task.title,
 					constraints: task.spec,
 					plannedTaskId: task.id,
+					conversationContext,
 				});
 				break;
 			case 'delegate':
@@ -1576,6 +1697,7 @@ export class InstanceAiService {
 					spec: task.spec,
 					tools: task.tools ?? [],
 					plannedTaskId: task.id,
+					conversationContext,
 				});
 				break;
 		}
@@ -1857,7 +1979,7 @@ export class InstanceAiService {
 		environment.orchestrationContext.tracing = this.getTraceContext(action.graph.planRunId);
 
 		for (const task of action.tasks) {
-			await this.dispatchPlannedTask(task, environment.orchestrationContext);
+			await this.dispatchPlannedTask(task, environment.orchestrationContext, action.graph);
 		}
 
 		await this.doSchedulePlannedTasks(user, threadId);
@@ -2016,6 +2138,30 @@ export class InstanceAiService {
 				timeZone: timeZone ?? this.defaultTimeZone,
 			});
 
+			const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
+			let nonStructuredAttachments: InstanceAiAttachment[] = [];
+			let attachmentManifest = '';
+			let hasParseableAttachment = false;
+
+			if (attachments && attachments.length > 0) {
+				const classifiedAttachments = classifyAttachments(attachments);
+				nonStructuredAttachments = attachments.filter(
+					(attachment) => !isStructuredAttachment(attachment),
+				);
+				hasParseableAttachment = classifiedAttachments.some(
+					(attachment: { parseable: boolean }) => attachment.parseable,
+				);
+				attachmentManifest = buildAttachmentManifest(classifiedAttachments);
+			}
+
+			const messageWithoutSummary =
+				!message && hasParseableAttachment
+					? `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${attachmentManifest}`
+					: attachmentManifest
+						? `${enrichedMessage}\n\n${attachmentManifest}`
+						: enrichedMessage;
+			const messageWithoutSummaryTokens = estimateTokens(messageWithoutSummary);
+
 			// Compact older conversation history into a summary (best-effort, non-blocking on failure)
 			this.eventBus.publish(threadId, {
 				type: 'status',
@@ -2031,6 +2177,7 @@ export class InstanceAiService {
 						inputs: {
 							threadId,
 							lastMessages: this.instanceAiConfig.lastMessages ?? 20,
+							currentInputTokens: messageWithoutSummaryTokens,
 						},
 					})
 				: undefined;
@@ -2041,12 +2188,18 @@ export class InstanceAiService {
 					memory,
 					modelId,
 					this.instanceAiConfig.lastMessages ?? 20,
+					0.8,
+					{
+						label: 'orchestrator-current-input',
+						text: messageWithoutSummary,
+					},
 				);
 				if (contextCompactionRun && tracing) {
 					await tracing.finishRun(contextCompactionRun, {
 						outputs: {
 							summarized: Boolean(conversationSummary),
 							summary: conversationSummary ?? '',
+							currentInputTokens: messageWithoutSummaryTokens,
 						},
 						metadata: { final_status: 'completed' },
 					});
@@ -2087,50 +2240,26 @@ export class InstanceAiService {
 						>;
 				  }>;
 			try {
-				const enrichedMessage = await this.buildMessageWithRunningTasks(threadId, message);
-
 				// Compose runtime input: conversation summary → background tasks → user message
-				let fullMessage = conversationSummary
-					? `${conversationSummary}\n\n${enrichedMessage}`
-					: enrichedMessage;
+				const fullMessage = conversationSummary
+					? `${conversationSummary}\n\n${messageWithoutSummary}`
+					: messageWithoutSummary;
 
-				// Classify attachments: structured (csv/tsv/json) go through parse-file,
-				// non-structured keep the existing multimodal file path.
-				if (attachments && attachments.length > 0) {
-					const classified = classifyAttachments(attachments);
-					const nonStructured = attachments.filter((a) => !isStructuredAttachment(a));
-					const hasParseable = classified.some((c: { parseable: boolean }) => c.parseable);
-
-					// Build compact manifest for structured attachments
-					const manifest = buildAttachmentManifest(classified);
-
-					// For attachment-only messages, synthesize a stub
-					if (!message && hasParseable) {
-						fullMessage = conversationSummary
-							? `${conversationSummary}\n\nThe user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`
-							: `The user attached file(s) without a message. Inspect the first parseable attachment with parse-file and provide a concise summary.\n\n${manifest}`;
-					} else {
-						fullMessage = `${fullMessage}\n\n${manifest}`;
-					}
-
-					// Only include non-structured attachments as raw multimodal content
-					if (nonStructured.length > 0) {
-						streamInput = [
-							{
-								role: 'user' as const,
-								content: [
-									{ type: 'text' as const, text: fullMessage },
-									...nonStructured.map((a) => ({
-										type: 'file' as const,
-										data: a.data,
-										mimeType: a.mimeType,
-									})),
-								],
-							},
-						];
-					} else {
-						streamInput = fullMessage;
-					}
+				// Only include non-structured attachments as raw multimodal content
+				if (nonStructuredAttachments.length > 0) {
+					streamInput = [
+						{
+							role: 'user' as const,
+							content: [
+								{ type: 'text' as const, text: fullMessage },
+								...nonStructuredAttachments.map((attachment) => ({
+									type: 'file' as const,
+									data: attachment.data,
+									mimeType: attachment.mimeType,
+								})),
+							],
+						},
+					];
 				} else {
 					streamInput = fullMessage;
 				}
@@ -2143,8 +2272,7 @@ export class InstanceAiService {
 							: {
 									fullMessage,
 									attachmentCount: attachments?.length ?? 0,
-									nonStructuredAttachmentCount:
-										attachments?.filter((a) => !isStructuredAttachment(a)).length ?? 0,
+									nonStructuredAttachmentCount: nonStructuredAttachments.length,
 								};
 					await tracing.finishRun(promptBuildRun, {
 						outputs: traceOutput,
@@ -2562,8 +2690,10 @@ export class InstanceAiService {
 	async resolveConfirmation(
 		requestingUserId: string,
 		requestId: string,
-		data: ConfirmationData,
+		request: InstanceAiConfirmRequest,
 	): Promise<boolean> {
+		const data = toConfirmationData(request);
+
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
@@ -2614,9 +2744,7 @@ export class InstanceAiService {
 		const credentialsPayload = data.nodeCredentials ?? data.credentials;
 		const resumeData = {
 			approved: data.approved,
-			...(data.credentialId ? { credentialId: data.credentialId } : {}),
 			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
-			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
 			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
 			...(data.action ? { action: data.action } : {}),
@@ -3112,6 +3240,15 @@ export class InstanceAiService {
 		user: User,
 		createdWorkflowIds: Set<string> | undefined,
 	): Promise<string[]> {
+		const runningTaskCount = this.backgroundTasks.getRunningTasks(threadId).length;
+		if (runningTaskCount > 0) {
+			this.logger.debug('Deferring AI-builder temporary workflow cleanup until tasks settle', {
+				threadId,
+				runningTaskCount,
+			});
+			return [];
+		}
+
 		let markedWorkflows: Array<{ workflowId: string }> = [];
 		try {
 			markedWorkflows = await this.aiBuilderTemporaryWorkflowRepository.findByThread(threadId);
