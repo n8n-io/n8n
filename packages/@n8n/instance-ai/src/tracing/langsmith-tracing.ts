@@ -102,6 +102,7 @@ const LANGSMITH_SPAN_KIND = 'langsmith.span.kind';
 const LANGSMITH_SPAN_TAGS = 'langsmith.span.tags';
 const GEN_AI_PROMPT = 'gen_ai.prompt';
 const GEN_AI_COMPLETION = 'gen_ai.completion';
+const LEGACY_RUNTREE_TRACING_ENV = 'N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING';
 
 interface ProductOtelTraceRuntime {
 	telemetry: BuiltTelemetry;
@@ -483,6 +484,10 @@ function isLangSmithTracingEnabled(proxyAvailable?: boolean): boolean {
 function ensureLangSmithTracingEnv(): void {
 	process.env.LANGCHAIN_TRACING_V2 ??= 'true';
 	process.env.LANGSMITH_TRACING ??= 'true';
+}
+
+function isLegacyRunTreeTracingEnabled(): boolean {
+	return process.env[LEGACY_RUNTREE_TRACING_ENV]?.toLowerCase() === 'true';
 }
 
 function normalizeErrorMessage(error: unknown): string {
@@ -997,6 +1002,10 @@ export async function submitLangsmithUserFeedback(
 }
 
 export function getTraceParentRun(): RunTree | undefined {
+	if (!isLegacyRunTreeTracingEnabled()) {
+		return undefined;
+	}
+
 	const overrideRun = traceParentOverrideStorage.getStore()?.current;
 	if (overrideRun) {
 		return overrideRun;
@@ -1010,6 +1019,10 @@ export function getTraceParentRun(): RunTree | undefined {
 }
 
 export function setTraceParentOverride(parentRun: RunTree | null | undefined): void {
+	if (!isLegacyRunTreeTracingEnabled()) {
+		return;
+	}
+
 	const store = traceParentOverrideStorage.getStore();
 	if (store) {
 		store.current = parentRun ?? null;
@@ -1105,6 +1118,10 @@ export async function withTraceParentContext<T>(
 	parentRun: RunTree | undefined,
 	fn: () => Promise<T>,
 ): Promise<T> {
+	if (!isLegacyRunTreeTracingEnabled()) {
+		return await fn();
+	}
+
 	// Always create a new nested ALS context. Mutating an existing store.current
 	// is not safe when concurrent background tasks inherit the same parent context.
 	return await traceParentOverrideStorage.run({ current: parentRun ?? null }, fn);
@@ -2044,6 +2061,7 @@ function createTelemetryFactory(options: {
 				metadata,
 				recordInputs: true,
 				recordOutputs: true,
+				runtimeRootSpanEnabled: false,
 			};
 		}
 
@@ -2051,7 +2069,8 @@ function createTelemetryFactory(options: {
 			.functionId(functionId)
 			.metadata(metadata)
 			.recordInputs(true)
-			.recordOutputs(true);
+			.recordOutputs(true)
+			.runtimeRootSpan(false);
 	};
 }
 

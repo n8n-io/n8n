@@ -2073,6 +2073,39 @@ describe('AgentRuntime — telemetry propagation', () => {
 		expect(span.end).toHaveBeenCalledTimes(1);
 	});
 
+	it('can suppress the generic runtime root span while keeping native telemetry enabled', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const tracer = {
+			startActiveSpan: jest.fn(),
+		};
+		const telemetry: BuiltTelemetry = {
+			...baseTelemetry,
+			runtimeRootSpanEnabled: false,
+			tracer,
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'telemetry-root-test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			eventBus: new AgentEventBus(),
+			telemetry,
+		});
+
+		await runtime.generate('hello');
+
+		expect(tracer.startActiveSpan).not.toHaveBeenCalled();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		expect(callArgs.experimental_telemetry).toEqual(
+			expect.objectContaining({
+				isEnabled: true,
+				functionId: 'test-agent',
+				tracer,
+			}),
+		);
+	});
+
 	it('adds a LangSmith tool catalog to telemetry root spans', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const span = {

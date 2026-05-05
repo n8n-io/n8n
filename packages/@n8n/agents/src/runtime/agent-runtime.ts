@@ -745,7 +745,7 @@ export class AgentRuntime {
 		fn: () => Promise<T>,
 	): Promise<T> {
 		const t = this.resolveTelemetry();
-		if (!t?.enabled || !isActiveSpanTracer(t.tracer)) {
+		if (!t?.enabled || t.runtimeRootSpanEnabled === false || !isActiveSpanTracer(t.tracer)) {
 			return await fn();
 		}
 

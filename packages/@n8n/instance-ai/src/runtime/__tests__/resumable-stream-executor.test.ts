@@ -317,8 +317,19 @@ interface PublishedEvent {
 }
 
 describe('executeResumableStream', () => {
+	const originalLegacyRunTreeTracing = process.env.N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING;
+
 	beforeEach(() => {
 		langsmithMock.reset();
+		process.env.N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING = 'true';
+	});
+
+	afterAll(() => {
+		if (originalLegacyRunTreeTracing === undefined) {
+			delete process.env.N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING;
+		} else {
+			process.env.N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING = originalLegacyRunTreeTracing;
+		}
 	});
 
 	it('buffers the confirmation event in manual mode', async () => {

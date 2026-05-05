@@ -1,14 +1,23 @@
-import type { Context } from '@opentelemetry/api';
+import type { Context, ContextManager } from '@opentelemetry/api';
 import { jsonParse } from 'n8n-workflow';
+import type * as AsyncHooks from 'node:async_hooks';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 
 jest.mock('@n8n/agents', () => {
 	const actual = jest.requireActual<Record<string, unknown>>('@n8n/agents');
-	const { context, trace } = jest.requireActual<{
+	const { AsyncLocalStorage } = jest.requireActual<typeof AsyncHooks>('node:async_hooks');
+	const { ROOT_CONTEXT, context, trace } = jest.requireActual<{
+		ROOT_CONTEXT: Context;
 		context: {
 			active(): Context;
-			with<T>(ctx: Context, fn: () => T): T;
+			with<T>(
+				ctx: Context,
+				fn: (...args: unknown[]) => T,
+				thisArg?: unknown,
+				...args: unknown[]
+			): T;
+			setGlobalContextManager(contextManager: ContextManager): boolean;
 		};
 		trace: {
 			getSpan(ctx: Context): unknown;
@@ -17,6 +26,16 @@ jest.mock('@n8n/agents', () => {
 	}>('@opentelemetry/api');
 
 	let spanCounter = 0;
+	const contextStorage = new AsyncLocalStorage<Context>();
+	const contextManager: ContextManager = {
+		active: () => contextStorage.getStore() ?? ROOT_CONTEXT,
+		with: (ctx, fn, thisArg, ...args) => contextStorage.run(ctx, () => fn.call(thisArg, ...args)),
+		bind: (_ctx, target) => target,
+		enable: () => contextManager,
+		disable: () => contextManager,
+	};
+	context.setGlobalContextManager(contextManager);
+
 	const spans: Array<{
 		id: string;
 		traceId: string;
@@ -100,6 +119,7 @@ jest.mock('@n8n/agents', () => {
 		private metadataValue?: Record<string, unknown>;
 		private recordInputsValue = true;
 		private recordOutputsValue = true;
+		private runtimeRootSpanEnabledValue = true;
 
 		functionId(value: string): this {
 			this.functionIdValue = value;
@@ -121,6 +141,11 @@ jest.mock('@n8n/agents', () => {
 			return this;
 		}
 
+		runtimeRootSpan(value: boolean): this {
+			this.runtimeRootSpanEnabledValue = value;
+			return this;
+		}
+
 		async build(): Promise<Record<string, unknown>> {
 			return await Promise.resolve({
 				enabled: true,
@@ -128,6 +153,7 @@ jest.mock('@n8n/agents', () => {
 				metadata: this.metadataValue,
 				recordInputs: this.recordInputsValue,
 				recordOutputs: this.recordOutputsValue,
+				runtimeRootSpanEnabled: this.runtimeRootSpanEnabledValue,
 				integrations: [],
 				tracer,
 				provider,
@@ -512,6 +538,7 @@ describe('createInstanceAiTraceContext', () => {
 		expect(telemetry.functionId).toBe('instance-ai.orchestrator');
 		expect(telemetry.recordInputs).toBe(true);
 		expect(telemetry.recordOutputs).toBe(true);
+		expect(telemetry.runtimeRootSpanEnabled).toBe(false);
 		expect(telemetry.metadata).toEqual(
 			expect.objectContaining({
 				thread_id: 'thread-1',
@@ -726,6 +753,16 @@ describe('createInstanceAiTraceContext', () => {
 				spawned_by_tool_call_id: 'toolu-1',
 			}),
 		);
+
+		const telemetryOrBuilder = tracing!.getTelemetry!({
+			agentRole: 'workflow-builder',
+			functionId: 'instance-ai.subagent.workflow-builder',
+			executionMode: 'detached_subagent',
+		});
+		const telemetry =
+			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
+
+		expect(telemetry.runtimeRootSpanEnabled).toBe(false);
 	});
 
 	it('attaches root agent config without duplicating it into llm steps', async () => {
@@ -1142,6 +1179,91 @@ describe('createInstanceAiTraceContext', () => {
 
 		const rootSpan = agentsMock.getSpans().find((span) => span.name === 'instance-ai.message_turn');
 		expect(rootSpan).toBeDefined();
+		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
+	});
+
+	it('keeps product, native provider, and local tool spans in one foreground OTel trace', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-local-exporter',
+			messageId: 'message-local-exporter',
+			runId: 'run-local-exporter',
+			userId: 'user-local-exporter',
+			input: { message: 'Build a workflow' },
+		});
+
+		expect(tracing).toBeDefined();
+
+		const wrappedTools = tracing!.wrapTools(
+			{
+				workspace_write_file: {
+					name: 'workspace_write_file',
+					description: 'Write a file in the workspace.',
+					handler: jest.fn(async () => await Promise.resolve({ written: true })),
+				} as never,
+			},
+			{ agentRole: 'workflow-builder' },
+		);
+		const workspaceWriteFile = wrappedTools.workspace_write_file;
+		if (!isExecutableTool(workspaceWriteFile)) {
+			throw new Error('Wrapped workspace_write_file tool is not executable');
+		}
+
+		await tracing!.withRunTree(tracing!.orchestratorRun, async () => {
+			const telemetryOrBuilder = tracing!.getTelemetry!({
+				agentRole: 'orchestrator',
+				functionId: 'instance-ai.orchestrator',
+			});
+			if ('build' in telemetryOrBuilder) {
+				throw new Error('Expected foreground tracing to reuse built OTel telemetry');
+			}
+
+			type NativeSpan = {
+				end(): void;
+				spanContext(): { traceId: string; spanId: string };
+			};
+			type NativeTracer = {
+				startSpan(name: string, options?: { attributes?: Record<string, unknown> }): NativeSpan;
+			};
+
+			const providerSpan = (telemetryOrBuilder.tracer as NativeTracer).startSpan(
+				'ai.streamText.doStream',
+				{
+					attributes: {
+						'ai.operationId': 'ai.streamText.doStream',
+						'langsmith.span.kind': 'llm',
+					},
+				},
+			);
+			providerSpan.end();
+
+			await workspaceWriteFile.handler(
+				{ path: 'workflow.json', content: '{}' },
+				{ toolCallId: 'toolu-write-file' },
+			);
+		});
+
+		await tracing!.finishRun(tracing!.orchestratorRun, { outputs: { status: 'done' } });
+		await tracing!.finishRun(tracing!.rootRun, { outputs: { status: 'done' } });
+
+		const spans = agentsMock.getSpans();
+		const rootSpan = spans.find((span) => span.name === 'instance-ai.message_turn');
+		const orchestratorSpan = spans.find((span) => span.name === 'instance-ai.orchestrator.stream');
+		const providerSpan = spans.find((span) => span.name === 'ai.streamText.doStream');
+		const localToolSpan = spans.find((span) => span.name === 'instance-ai.tool.workspace_edit');
+
+		expect(rootSpan).toBeDefined();
+		expect(orchestratorSpan).toBeDefined();
+		expect(providerSpan).toBeDefined();
+		expect(localToolSpan).toBeDefined();
+		expect(
+			new Set(
+				[rootSpan, orchestratorSpan, providerSpan, localToolSpan].map((span) => span?.traceId),
+			),
+		).toEqual(new Set([rootSpan?.traceId]));
+		expect(orchestratorSpan?.parentSpanId).toBe(rootSpan?.id);
+		expect(providerSpan?.parentSpanId).toBe(orchestratorSpan?.id);
+		expect(localToolSpan?.parentSpanId).toBe(orchestratorSpan?.id);
+		expect(localToolSpan?.attributes.tool_call_id).toBe('toolu-write-file');
 		expect(langsmithMock.getCreatedRunTrees()).toHaveLength(0);
 	});
 

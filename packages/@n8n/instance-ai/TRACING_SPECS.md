@@ -82,15 +82,21 @@ Implemented so far:
 - Normal foreground and detached trace creation no longer creates RunTree spans.
 - Agent tree snapshots persist OTel trace/span IDs alongside derived LangSmith
   IDs for feedback anchoring.
-
-Still wrong:
-
+- Instance AI disables the generic `@n8n/agents` runtime root span because the
+  product actor span already represents the agent loop; native provider and
+  `ai.toolCall` spans remain enabled and are parented directly under the
+  product actor span.
 - Live LangSmith validation has proved feedback against an OTel-only product
-  root; full provider-span validation with a real model turn is still pending.
-- Some fallback RunTree compatibility code remains for legacy/replay-only
-  paths and should be deleted after rollout validation.
+  root and full provider-span visibility with a real model turn.
 - Detached sub-agent linking captures spawning trace/span metadata and model
   tool-call IDs when a detached task is spawned from a local tool handler.
+
+Remaining follow-up:
+
+- Some fallback RunTree compatibility code remains for legacy/manual stream
+  trace debugging only. It is disabled by default behind
+  `N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING=true` and should be removed in the
+  post-rollout cleanup once no legacy stream-hook consumers remain.
 
 ## Hybrid Reference Notes
 
@@ -106,6 +112,31 @@ that shape, LangSmith can lose or separate provider spans, and the trace no
 longer shows the complete system/user/tool/provider turn under a single OTel
 context. Regression coverage now asserts normal Instance AI trace creation does
 not create RunTree spans.
+
+## Live Validation Notes
+
+Live validation with explicit credentials has covered two cases:
+
+- `instance-ai-tracing-validation` thread
+  `otel-validation-f97e5f00-589a-49fb-a536-d54d417c30eb` proved foreground
+  and detached roots are queryable by the same thread ID. The thread contained
+  `instance-ai.message_turn`, native `ai.generateText.doGenerate` spans with
+  tool definitions and token usage, a local tool span, and detached
+  `instance-ai.subagent.workflow-builder` metadata with spawning trace/span
+  IDs.
+- `instance-ai-tracing-validation` thread
+  `otel-runtime-root-validation-4c6d9b3c-ae3f-454a-bf97-d984be36a2be` proved
+  the generic `@n8n/agents` runtime root span can be suppressed for Instance
+  AI. The resulting foreground tree was
+  `instance-ai.message_turn -> instance-ai.orchestrator.stream ->
+  ai.generateText.doGenerate/add_numbers`, with no duplicate
+  `instance-ai.orchestrator.stream` wrapper.
+
+User-provided fresh run `81b3a657-c452-484f-ac3c-122836016094` confirmed the
+pre-suppression implementation had correct native provider/tool visibility,
+token usage, detached sub-agent roots, and spawning metadata, but still showed
+duplicate same-named agent wrapper spans. The runtime-root suppression is the
+follow-up fix for that shape issue.
 
 ## Target Architecture
 
@@ -330,6 +361,13 @@ The noisy AI SDK wrapper spans such as `ai.streamText` may be filtered from
 LangSmith export as long as provider request spans, tool spans, and product
 root spans remain correctly parented.
 
+For Instance AI, the generic `@n8n/agents` runtime root span around
+generate/stream loops is disabled. Generic agents may still use that span, but
+Instance AI already has explicit product actor spans such as
+`instance-ai.orchestrator.stream` and `instance-ai.subagent.<role>.stream`.
+Disabling the generic wrapper avoids duplicate same-named agent spans while
+preserving native provider and tool telemetry.
+
 ## Span Kinds and Inputs
 
 Use LangSmith-compatible span attributes:
@@ -462,7 +500,7 @@ must not require LangSmith to be available.
 - LangSmith OTLP tracer/provider construction
 - LangSmith OTel span filtering
 - mapping telemetry into AI SDK `experimental_telemetry`
-- runtime root spans around generate/stream loops
+- optional runtime root spans around generate/stream loops
 - AI-SDK-compatible local `ai.toolCall` spans
 - provider flush and shutdown hooks
 - generic telemetry integration hooks
@@ -476,6 +514,8 @@ must not require LangSmith to be available.
 - feedback snapshot persistence
 - service proxy request metadata and headers
 - detached sub-agent linking metadata
+- disabling generic runtime root spans when product actor spans are already
+  present
 - trace replay events
 
 `@n8n/ai-utilities` may own:
@@ -526,7 +566,11 @@ must not require LangSmith to be available.
      outside the foreground context.
    - [x] Add spawning metadata: trace ID, span ID, tool call ID, task ID, and
      agent role.
-   - [ ] Confirm thread queries show detached roots alongside foreground turns.
+   - [x] Confirm thread queries show detached roots alongside foreground turns.
+     Live validation in `instance-ai-tracing-validation` for thread
+     `otel-validation-f97e5f00-589a-49fb-a536-d54d417c30eb` returned 9 runs
+     across 2 traces, including `instance-ai.message_turn` and
+     `instance-ai.subagent.workflow-builder`.
 
 6. Rework feedback anchoring
 
@@ -539,15 +583,21 @@ must not require LangSmith to be available.
 
    - [x] Remove normal-path `RunTree` root creation.
    - [x] Remove normal-path manual RunTree tool wrappers.
-   - [ ] Keep only temporary compatibility code behind an explicit flag, if
+   - [x] Keep only temporary compatibility code behind an explicit flag, if
      needed for rollout.
-   - [ ] Delete compatibility code after validation.
+     The flag is `N8N_INSTANCE_AI_LEGACY_RUNTREE_TRACING=true`; it is disabled
+     by default.
+   - [x] ~~Delete compatibility code after validation.~~ Deferred to
+     post-rollout cleanup after legacy manual stream-hook consumers are proven
+     unused.
 
 8. Decouple replay from tracing
 
    - [x] Ensure replay records stable Instance AI events, not span IDs.
    - [x] Ensure replay tests pass with LangSmith disabled.
-   - [ ] Optionally emit replay-tagged OTel spans for debugging only.
+   - [x] ~~Optionally emit replay-tagged OTel spans for debugging only.~~ Not
+     implemented; replay remains LangSmith-independent and does not emit debug
+     traces by default.
 
 9. Add regression coverage
 
@@ -555,9 +605,12 @@ must not require LangSmith to be available.
    - [x] Unit test OTel product span parentage.
    - [x] Unit test feedback ID persistence.
    - [x] Unit test redaction preserving token usage.
-   - [ ] Local exporter test proving one foreground message turn contains
+   - [x] Local exporter test proving one foreground message turn contains
      product spans, native provider spans, and local tool spans.
-   - [ ] Live LangSmith validation behind explicit credentials.
+   - [x] Live LangSmith validation behind explicit credentials.
+     The validation showed native `ai.generateText.doGenerate` spans under the
+     foreground product trace with system/user messages, tool definitions,
+     tool choice, token usage, and a local tool span.
 
 ## Acceptance Criteria
 
