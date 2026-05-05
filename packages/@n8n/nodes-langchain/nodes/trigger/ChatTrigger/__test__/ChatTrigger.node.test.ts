@@ -24,8 +24,9 @@ describe('ChatTrigger Node', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		chatTrigger = new ChatTrigger();
 		chatTriggerConfig = new ChatTriggerConfig();
+		vi.mocked(Container.get).mockReturnValue(chatTriggerConfig as never);
+		chatTrigger = new ChatTrigger();
 		Container.set(ChatTriggerConfig, chatTriggerConfig);
 
 		mockResponse.status.mockReturnValue(mockResponse);
@@ -53,7 +54,7 @@ describe('ChatTrigger Node', () => {
 		mockContext.getWebhookName.mockReturnValue('default');
 		mockContext.getBodyData.mockReturnValue({ message: 'Hello' });
 		mockContext.helpers = {
-			returnJsonArray: jest.fn().mockReturnValue([]),
+			returnJsonArray: vi.fn().mockReturnValue([]),
 		} as unknown as IWebhookFunctions['helpers'];
 		mockContext.getNodeParameter.mockImplementation(
 			(
@@ -71,6 +72,10 @@ describe('ChatTrigger Node', () => {
 	});
 
 	describe('description', () => {
+		beforeEach(() => {
+			mockContext.getBodyData.mockReturnValue({ action: 'loadPreviousSession' });
+		});
+
 		it('should tell builders to keep inbound authentication disabled unless requested', async () => {
 			// Call the webhook method
 			const result = await chatTrigger.webhook(mockContext);
@@ -152,20 +157,11 @@ describe('ChatTrigger Node', () => {
 				default: 'none',
 				builderHint: {
 					message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
-					}
+				},
 			});
-	});
-
-	describe('webhook method: streaming response mode', () => {
-		beforeEach(() => {
-			mockContext.getWebhookName.mockReturnValue('default');
-			mockContext.getMode.mockReturnValue('production' as any);
-			mockContext.getBodyData.mockReturnValue({ message: 'Hello' });
-			(mockContext.helpers.returnJsonArray as any) = vi.fn().mockReturnValue([]);
-			mockResponse.writeHead.mockImplementation(() => mockResponse);
-			mockResponse.flushHeaders.mockImplementation(() => undefined);
 		});
 	});
+
 	describe('webhook method', () => {
 		it('returns 404 for public chat when instance policy disables public chat', async () => {
 			chatTriggerConfig.disablePublicChat = true;
@@ -300,6 +296,5 @@ describe('ChatTrigger Node', () => {
 				noWebhookResponse: true,
 			});
 		});
-	});
 	});
 });

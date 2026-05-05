@@ -1,26 +1,26 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, IBinaryData } from 'n8n-workflow';
 
-jest.mock('../transport', () => ({
-	apiRequest: jest.fn(),
-	pollVideoTask: jest.fn(),
-	getVideoDownloadUrl: jest.fn(),
+vi.mock('../transport', () => ({
+	apiRequest: vi.fn(),
+	pollVideoTask: vi.fn(),
+	getVideoDownloadUrl: vi.fn(),
 }));
 
-jest.mock('@utils/helpers', () => ({
-	getConnectedTools: jest.fn().mockResolvedValue([]),
+vi.mock('@utils/helpers', () => ({
+	getConnectedTools: vi.fn().mockResolvedValue([]),
 }));
 
-jest.mock('zod-to-json-schema', () => ({
+vi.mock('zod-to-json-schema', () => ({
 	__esModule: true,
-	default: jest.fn(),
+	default: vi.fn(),
 }));
 
-jest.mock('n8n-workflow', () => {
-	const actual = jest.requireActual('n8n-workflow');
+vi.mock('n8n-workflow', async () => {
+	const actual = await import('n8n-workflow');
 	return {
 		...actual,
-		accumulateTokenUsage: jest.fn(),
+		accumulateTokenUsage: vi.fn(),
 	};
 });
 
@@ -30,10 +30,11 @@ import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operat
 import { execute as videoI2VExecute } from '../actions/video/generate.i2v.operation';
 import { execute as audioTTSExecute } from '../actions/audio/tts.operation';
 import { apiRequest, pollVideoTask, getVideoDownloadUrl } from '../transport';
+import { Mock } from 'vitest';
 
-const mockApiRequest = apiRequest as jest.Mock;
-const mockPollVideoTask = pollVideoTask as jest.Mock;
-const mockGetVideoDownloadUrl = getVideoDownloadUrl as jest.Mock;
+const mockApiRequest = apiRequest as Mock;
+const mockPollVideoTask = pollVideoTask as Mock;
+const mockGetVideoDownloadUrl = getVideoDownloadUrl as Mock;
 
 describe('MiniMax Operations', () => {
 	let mockExecuteFunctions: ReturnType<typeof mock<IExecuteFunctions>>;
@@ -45,7 +46,7 @@ describe('MiniMax Operations', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Text: message', () => {

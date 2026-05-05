@@ -1,8 +1,8 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
-jest.mock('../transport', () => ({
-	apiRequest: jest.fn(),
+vi.mock('../transport', () => ({
+	apiRequest: vi.fn(),
 }));
 
 import {
@@ -13,8 +13,9 @@ import {
 	imageToVideoModelSearch,
 } from '../methods/listSearch';
 import { apiRequest } from '../transport';
+import { Mock } from 'vitest';
 
-const mockApiRequest = apiRequest as jest.Mock;
+const mockApiRequest = apiRequest as Mock;
 
 describe('AlibabaCloud listSearch', () => {
 	let mockLoadOptionsFunctions: ReturnType<typeof mock<ILoadOptionsFunctions>>;
@@ -24,7 +25,7 @@ describe('AlibabaCloud listSearch', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const setupMockModels = (models: string[]) => {

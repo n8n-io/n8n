@@ -23,9 +23,15 @@ vi.mock('@n8n/di', () => ({
 	Service: () => () => {},
 }));
 
-vi.mock('@n8n/config', () => {
+vi.mock('@n8n/config', async () => {
+	const actual = await vi.importActual<typeof import('@n8n/config')>('@n8n/config');
+
 	class AiConfig {
 		openAiDefaultHeaders: Record<string, string> = {};
 	}
-	return { AiConfig };
+
+	return {
+		...actual,
+		AiConfig,
+	};
 });
