@@ -5,11 +5,23 @@
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
   "main": "dist/cjs/index.js",
+  "typesVersions": {
+    "*": {
+      "text-editor": [
+        "dist/esm/utils/text-editor.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
+    },
+    "./text-editor": {
+      "types": "./dist/esm/utils/text-editor.d.ts",
+      "import": "./dist/esm/utils/text-editor.js",
+      "require": "./dist/cjs/utils/text-editor.js"
     },
     "./*": "./*"
   },

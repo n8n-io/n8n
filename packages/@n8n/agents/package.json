@@ -29,6 +29,7 @@
     "@ai-sdk/openai": "^3.0.41",
     "@ai-sdk/xai": "^3.0.67",
     "@ai-sdk/provider-utils": "^4.0.21",
+    "@n8n/ai-utilities": "workspace:*",
     "@modelcontextprotocol/sdk": "1.26.0",
     "ajv": "^8.18.0",
     "@libsql/client": "^0.17.0",

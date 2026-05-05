@@ -60,6 +60,7 @@
     "@langchain/openai": "catalog:",
     "@mozilla/readability": "0.6.0",
     "@n8n/api-types": "workspace:*",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
