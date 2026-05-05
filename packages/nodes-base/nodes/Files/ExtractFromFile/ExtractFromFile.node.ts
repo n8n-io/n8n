@@ -101,7 +101,7 @@ export class ExtractFromFile implements INodeType {
 					},
 					{
 						name: 'Move File to Base64 String',
-						value: 'binaryToPropery',
+						value: 'binaryToProperty',
 						action: 'Move file to base64 string',
 						description: 'Convert a file into a base64-encoded string',
 					},
@@ -126,7 +126,8 @@ export class ExtractFromFile implements INodeType {
 			});
 		}
 
-		if (['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {
+		// 'binaryToPropery' is the legacy misspelling kept for backward compatibility with persisted workflows
+		if (['binaryToProperty', 'binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'].includes(operation)) {
 			returnData = await moveTo.execute.call(this, items, operation);
 		}
 

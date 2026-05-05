@@ -96,7 +96,8 @@ export const properties: INodeProperties[] = [
 
 const displayOptions = {
 	show: {
-		operation: ['binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'],
+		// 'binaryToPropery' is the legacy misspelling kept for backward compatibility with persisted workflows
+		operation: ['binaryToProperty', 'binaryToPropery', 'fromJson', 'text', 'fromIcs', 'xml'],
 	},
 };
 
@@ -135,7 +136,7 @@ export async function execute(
 			}
 
 			let convertedValue: string | IDataObject;
-			if (operation !== 'binaryToPropery') {
+			if (operation !== 'binaryToProperty' && operation !== 'binaryToPropery') {
 				convertedValue = iconv.decode(buffer, encoding, {
 					stripBOM: options.stripBOM as boolean,
 				});
