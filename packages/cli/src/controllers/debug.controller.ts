@@ -16,8 +16,7 @@ export class DebugController {
 
 	@Get('/multi-main-setup', { skipAuth: true })
 	async getMultiMainSetupDetails() {
-		const leaderKeyResult = await this.multiMainSetup.fetchLeaderKey();
-		const leaderKey = leaderKeyResult.ok ? leaderKeyResult.result : null;
+		const leaderKey = await this.multiMainSetup.fetchLeaderKey();
 
 		const triggersAndPollers = await this.workflowRepository.findIn(
 			this.activeWorkflowManager.allActiveInMemory(),

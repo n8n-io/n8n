@@ -118,7 +118,16 @@ export class Publisher {
 
 	// #endregion
 
-	// #region Key-value utils (used by MCP session store)
+	// #region Key-value utils (used by MCP session store and legacy leader election)
+
+	async setIfNotExists(key: string, value: string, ttl: number) {
+		const result = await this.client.set(key, value, 'EX', ttl, 'NX');
+		return result === 'OK';
+	}
+
+	async setExpiration(key: string, ttl: number) {
+		await this.client.expire(key, ttl);
+	}
 
 	async set(key: string, value: string, ttl: number) {
 		await this.client.set(key, value, 'EX', ttl);
