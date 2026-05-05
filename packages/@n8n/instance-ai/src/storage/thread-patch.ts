@@ -2,9 +2,9 @@ export interface ThreadRecord {
 	id: string;
 	title?: string;
 	metadata?: Record<string, unknown>;
-	resourceId?: string;
-	createdAt?: Date;
-	updatedAt?: Date;
+	resourceId: string;
+	createdAt: Date;
+	updatedAt: Date;
 }
 
 export interface ThreadPatch {
@@ -13,19 +13,11 @@ export interface ThreadPatch {
 }
 
 export interface PatchableThreadMemory {
-	patchThread?: (args: {
-		threadId: string;
-		update: (current: ThreadRecord) => ThreadPatch | null | undefined;
-	}) => Promise<ThreadRecord | null>;
-	getThread?: (threadId: string) => Promise<ThreadRecord | null>;
-	saveThread?: (thread: ThreadRecord) => Promise<void>;
-	getThreadById?: (args: { threadId: string }) => Promise<ThreadRecord | null>;
-	updateThread?: (args: {
-		id: string;
-		title: string;
-		metadata: Record<string, unknown>;
-	}) => Promise<ThreadRecord | null>;
-	getMemoryStore?: () => Promise<unknown>;
+	patchThread?: unknown;
+	getThread?: unknown;
+	saveThread?: unknown;
+	getThreadById?: unknown;
+	updateThread?: unknown;
 }
 
 interface PatchableThreadStore {
@@ -39,8 +31,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isPatchableThreadMemory(memory: PatchableThreadMemory): memory is PatchableThreadMemory & {
-	patchThread: NonNullable<PatchableThreadMemory['patchThread']>;
+function isPatchableThreadMemory(memory: PatchableThreadMemory): memory is {
+	patchThread: (args: {
+		threadId: string;
+		update: (current: ThreadRecord) => ThreadPatch | null | undefined;
+	}) => Promise<ThreadRecord | null>;
 } {
 	return typeof memory.patchThread === 'function';
 }
@@ -51,16 +46,20 @@ function isPatchableThreadStore(store: unknown): store is PatchableThreadStore &
 	return isRecord(store) && typeof store.patchThread === 'function';
 }
 
-function hasNativeThreadMethods(memory: PatchableThreadMemory): memory is PatchableThreadMemory & {
-	getThread: NonNullable<PatchableThreadMemory['getThread']>;
-	saveThread: NonNullable<PatchableThreadMemory['saveThread']>;
+function hasNativeThreadMethods(memory: PatchableThreadMemory): memory is {
+	getThread: (threadId: string) => Promise<ThreadRecord | null>;
+	saveThread: (thread: ThreadRecord) => Promise<ThreadRecord | void>;
 } {
 	return typeof memory.getThread === 'function' && typeof memory.saveThread === 'function';
 }
 
-function hasLegacyThreadMethods(memory: PatchableThreadMemory): memory is PatchableThreadMemory & {
-	getThreadById: NonNullable<PatchableThreadMemory['getThreadById']>;
-	updateThread: NonNullable<PatchableThreadMemory['updateThread']>;
+function hasLegacyThreadMethods(memory: PatchableThreadMemory): memory is {
+	getThreadById: (args: { threadId: string }) => Promise<ThreadRecord | null>;
+	updateThread: (args: {
+		id: string;
+		title: string;
+		metadata: Record<string, unknown>;
+	}) => Promise<ThreadRecord | null>;
 } {
 	return typeof memory.getThreadById === 'function' && typeof memory.updateThread === 'function';
 }
@@ -85,11 +84,11 @@ export async function getThread(
 	memory: PatchableThreadMemory,
 	threadId: string,
 ): Promise<ThreadRecord | null> {
-	if (typeof memory.getThread === 'function') {
+	if (hasGetThread(memory)) {
 		return await memory.getThread(threadId);
 	}
 
-	if (typeof memory.getThreadById === 'function') {
+	if (hasGetThreadById(memory)) {
 		return await memory.getThreadById({ threadId });
 	}
 
@@ -107,7 +106,7 @@ export async function patchThread(
 		return await memory.patchThread(args);
 	}
 
-	if (typeof memory.getMemoryStore === 'function') {
+	if (hasGetMemoryStore(memory)) {
 		const memoryStore = await memory.getMemoryStore();
 		if (isPatchableThreadStore(memoryStore)) {
 			return await memoryStore.patchThread(args);
@@ -141,4 +140,22 @@ export async function patchThread(
 	}
 
 	throw new Error('Memory does not support patching threads');
+}
+
+function hasGetThread(memory: PatchableThreadMemory): memory is {
+	getThread: (threadId: string) => Promise<ThreadRecord | null>;
+} {
+	return typeof memory.getThread === 'function';
+}
+
+function hasGetThreadById(memory: PatchableThreadMemory): memory is {
+	getThreadById: (args: { threadId: string }) => Promise<ThreadRecord | null>;
+} {
+	return typeof memory.getThreadById === 'function';
+}
+
+function hasGetMemoryStore(memory: PatchableThreadMemory): memory is PatchableThreadMemory & {
+	getMemoryStore: () => Promise<unknown>;
+} {
+	return isRecord(memory) && typeof memory.getMemoryStore === 'function';
 }

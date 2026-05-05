@@ -456,8 +456,8 @@ pnpm typecheck
 - [ ] Rewrite all tools to native `Tool`.
 - [ ] Rewrite orchestration tools for native streaming and resume.
 - [ ] Rewrite stream runner and stream executor for native `StreamChunk`.
-- [ ] Rename internal `mastraRunId` to `agentRunId`.
-- [ ] Implement native chunk to Instance AI event mapper.
+- [x] Rename internal `mastraRunId` to `agentRunId`.
+- [x] Implement native chunk to Instance AI event mapper.
 - [x] Implement TypeORM `BuiltMemory`.
 - [x] Implement TypeORM `CheckpointStore`.
 - [ ] Add fresh DB migration for native Instance AI persistence.

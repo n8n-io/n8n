@@ -52,6 +52,7 @@ export {
 	MastraIterationLogStorage,
 	MastraTaskStorage,
 	PlannedTaskStorage,
+	getThread,
 	patchThread,
 	WorkflowLoopStorage,
 } from './storage';

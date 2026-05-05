@@ -14,7 +14,9 @@ const baseThread: ThreadRecord = {
 	updatedAt: new Date(),
 };
 
-function makeMemory(overrides: Partial<PatchableThreadMemory> = {}): PatchableThreadMemory {
+function makeMemory(
+	overrides: Partial<PatchableThreadMemory> & { getMemoryStore?: () => Promise<unknown> } = {},
+): PatchableThreadMemory & { getMemoryStore?: () => Promise<unknown> } {
 	return {
 		getThreadById: jest.fn().mockResolvedValue({ ...baseThread }),
 		updateThread: jest

@@ -4,7 +4,7 @@ export type { IterationEntry, IterationLog } from './iteration-log';
 export { MastraIterationLogStorage } from './mastra-iteration-log-storage';
 export { MastraTaskStorage } from './mastra-task-storage';
 export { PlannedTaskStorage } from './planned-task-storage';
-export { patchThread } from './thread-patch';
+export { getThread, patchThread } from './thread-patch';
 export type { PatchableThreadMemory, ThreadPatch } from './thread-patch';
 export { WorkflowLoopStorage } from './workflow-loop-storage';
 export type { WorkflowLoopWorkItemRecord } from './workflow-loop-storage';

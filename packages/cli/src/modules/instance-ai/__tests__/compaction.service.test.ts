@@ -2,10 +2,30 @@
 const mockGenerateCompactionSummary = jest.fn();
 jest.mock('@n8n/instance-ai', () => ({
 	generateCompactionSummary: (...args: unknown[]) => mockGenerateCompactionSummary(...args),
+	getThread: async (
+		memory: { getThreadById: (args: { threadId: string }) => Promise<unknown> },
+		threadId: string,
+	) => await memory.getThreadById({ threadId }),
 	// Inline the patchThread fallback path (getThreadById → update → updateThread)
 	patchThread: async (
-		memory: { getThreadById: Function; updateThread: Function },
-		args: { threadId: string; update: Function },
+		memory: {
+			getThreadById: (args: { threadId: string }) => Promise<{
+				title?: string;
+				metadata?: Record<string, unknown>;
+			} | null>;
+			updateThread: (args: {
+				id: string;
+				title: string;
+				metadata: Record<string, unknown>;
+			}) => Promise<unknown>;
+		},
+		args: {
+			threadId: string;
+			update: (thread: {
+				title?: string;
+				metadata?: Record<string, unknown>;
+			}) => { title?: string; metadata?: Record<string, unknown> } | null | undefined;
+		},
 	) => {
 		const thread = await memory.getThreadById({ threadId: args.threadId });
 		if (!thread) return null;
