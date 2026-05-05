@@ -7,6 +7,14 @@ import {
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
+	createExecutionDataId,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
@@ -19,6 +27,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { type IDataObject, type IWorkflowSettings } from 'n8n-workflow';
 import { inject } from 'vue';
 import { useDocumentTitle } from './useDocumentTitle';
+import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 
 export function useWorkflowState() {
 	const ws = useWorkflowsStore();
@@ -29,12 +38,30 @@ export function useWorkflowState() {
 	// Workflow editing state
 	////
 
+	function getStateStore() {
+		return useWorkflowExecutionStateStore(
+			createWorkflowExecutionStateId(ws.workflowId),
+		);
+	}
+
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
-		ws.setWorkflowExecutionData(workflowResultData);
+		const stateStore = getStateStore();
+		if (workflowResultData === null) {
+			stateStore.setPendingExecution(null);
+		} else if (workflowResultData.id === IN_PROGRESS_EXECUTION_ID) {
+			stateStore.setPendingExecution(workflowResultData);
+		} else {
+			useExecutionDataStore(createExecutionDataId(workflowResultData.id)).setExecution(
+				workflowResultData,
+			);
+			if (typeof stateStore.activeExecutionId !== 'string') {
+				stateStore.setDisplayedExecutionId(workflowResultData.id);
+			}
+		}
 	}
 
 	function setActiveExecutionId(id: string | null | undefined) {
-		ws.private.setActiveExecutionId(id);
+		getStateStore().setActiveExecutionId(id);
 	}
 
 	async function getNewWorkflowData(
@@ -72,41 +99,33 @@ export function useWorkflowState() {
 	const documentTitle = useDocumentTitle();
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
-		setActiveExecutionId(undefined);
+		const stateStore = getStateStore();
+		const aid = stateStore.activeExecutionId;
+
+		stateStore.setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
-		ws.setExecutionWaitingForWebhook(false);
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
+		stateStore.setExecutionWaitingForWebhook(false);
+
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(ws.workflowId),
+		);
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
-		ws.clearExecutionStartedData();
 
-		// TODO(ckolb): confirm this works across files?
+		if (typeof aid === 'string') {
+			const execStore = useExecutionDataStore(createExecutionDataId(aid));
+			execStore.clearExecutionStartedData();
+			execStore.markAsStopped(stopData);
+		}
+
 		clearPopupWindowState();
-
-		if (!ws.workflowExecutionData) {
-			return;
-		}
-
-		const runData = ws.workflowExecutionData.data?.resultData.runData ?? {};
-
-		for (const nodeName in runData) {
-			runData[nodeName] = runData[nodeName].filter(
-				({ executionStatus }) => executionStatus === 'success',
-			);
-		}
-
-		if (stopData) {
-			ws.workflowExecutionData.status = stopData.status;
-			ws.workflowExecutionData.startedAt = stopData.startedAt;
-			ws.workflowExecutionData.stoppedAt = stopData.stoppedAt;
-		}
 	}
 
 	function resetState() {
-		setWorkflowExecutionData(null);
-
-		setActiveExecutionId(undefined);
+		const stateStore = getStateStore();
+		stateStore.setPendingExecution(null);
+		stateStore.setActiveExecutionId(undefined);
+		stateStore.setExecutionWaitingForWebhook(false);
 		workflowStateStore.executingNode.executingNode.length = 0;
-		ws.setExecutionWaitingForWebhook(false);
 		useBuilderStore().resetManualExecutionStats();
 	}
 

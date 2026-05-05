@@ -12,6 +12,8 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { nextTick } from 'vue';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
 const { mockWorkflowDocumentStore } = vi.hoisted(() => ({
 	mockWorkflowDocumentStore: {
@@ -113,6 +115,7 @@ let projectsStore: MockedStore<typeof useProjectsStore>;
 describe('FromAiParametersModal', () => {
 	beforeEach(() => {
 		pinia = createTestingPinia({
+			stubActions: false,
 			initialState: {
 				[STORES.UI]: {
 					modalsById: {
@@ -127,10 +130,14 @@ describe('FromAiParametersModal', () => {
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: mockWorkflow,
-					workflowExecutionData: mockRunData,
 				},
 			},
 		});
+		useWorkflowsStore().setWorkflowExecutionData({
+			...mockRunData,
+			id: 'test-exec',
+		} as unknown as IExecutionResponse);
+
 		mockWorkflowDocumentStore.getNodeByName.mockImplementation((name: string) => {
 			switch (name) {
 				case 'Test Node':

@@ -90,15 +90,22 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 	createWorkflowDocumentId: (id: string) => `${id}@latest`,
 }));
 
-vi.mock('@/app/stores/workflows.store', () => {
-	const storeState: Partial<ReturnType<typeof useWorkflowsStore>> & {
-		activeExecutionId: string | null | undefined;
-	} = {
+vi.mock('@/app/stores/workflows.store', async () => {
+	const {
+		createWorkflowExecutionStateId,
+		useWorkflowExecutionStateStore,
+	} = await vi.importActual<
+		typeof import('@/app/stores/workflowExecutionState.store')
+	>('@/app/stores/workflowExecutionState.store');
+
+	function getStateStore() {
+		return useWorkflowExecutionStateStore(createWorkflowExecutionStateId('123'));
+	}
+
+	const storeState: Record<string, unknown> = {
 		runWorkflow: vi.fn(),
 		getWorkflowRunData: null,
 		workflowExecutionData: null,
-		activeExecutionId: undefined,
-		previousExecutionId: undefined,
 		executionWaitingForWebhook: false,
 		chatPartialExecutionDestinationNode: null,
 		workflow: {
@@ -118,22 +125,35 @@ vi.mock('@/app/stores/workflows.store', () => {
 			'123': true,
 		},
 		getExecution: vi.fn(),
-		setWorkflowExecutionData: vi.fn((execution) => {
+		setWorkflowExecutionData: vi.fn((execution: unknown) => {
 			storeState.workflowExecutionData = execution;
 		}),
-		setExecutionWaitingForWebhook: vi.fn((value) => {
+		setExecutionWaitingForWebhook: vi.fn((value: boolean) => {
 			storeState.executionWaitingForWebhook = value;
 		}),
-		setChatPartialExecutionDestinationNode: vi.fn((value) => {
+		setChatPartialExecutionDestinationNode: vi.fn((value: string | null) => {
 			storeState.chatPartialExecutionDestinationNode = value;
 		}),
 		clearExecutionStartedData: vi.fn(),
 		private: {
 			setActiveExecutionId: vi.fn((id: string | null | undefined) => {
-				storeState.activeExecutionId = id;
+				getStateStore().setActiveExecutionId(id);
 			}),
 		},
 	};
+
+	// Route activeExecutionId and previousExecutionId through the real state store
+	// so that writes via workflowState.setActiveExecutionId are visible here.
+	Object.defineProperty(storeState, 'activeExecutionId', {
+		get: () => getStateStore().activeExecutionId,
+		enumerable: true,
+		configurable: true,
+	});
+	Object.defineProperty(storeState, 'previousExecutionId', {
+		get: () => getStateStore().previousExecutionId,
+		enumerable: true,
+		configurable: true,
+	});
 
 	return {
 		useWorkflowsStore: vi.fn().mockReturnValue(storeState),

@@ -1,21 +1,62 @@
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { nodeExecuteAfterData } from './nodeExecuteAfterData';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { mockedStore } from '@/__tests__/utils';
 import type { NodeExecuteAfterData } from '@n8n/api-types/push/execution';
+import { createRunExecutionData } from 'n8n-workflow';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
+	createExecutionDataId,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 
 describe('nodeExecuteAfterData', () => {
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let execStore: ReturnType<typeof useExecutionDataStore>;
+
 	beforeEach(() => {
-		const pinia = createTestingPinia({
-			stubActions: true,
+		setActivePinia(createPinia());
+
+		workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-wf';
+
+		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+
+		execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		execStore.setExecution({
+			id: 'exec-1',
+			finished: false,
+			mode: 'manual',
+			status: 'running',
+			createdAt: new Date(),
+			startedAt: new Date(),
+			workflowData: { id: 'test-wf', name: 'Test', nodes: [], connections: {} } as never,
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						'Test Node': [
+							{
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									main: [[{ json: { placeholder: true } }]],
+								},
+							},
+						],
+					},
+				},
+			}),
 		});
-		setActivePinia(pinia);
+
+		stateStore.setActiveExecutionId('exec-1');
 	});
 
 	it('should update node execution data with incoming payload', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
 		const event: NodeExecuteAfterData = {
 			type: 'nodeExecuteAfterData',
 			data: {
@@ -36,7 +77,11 @@ describe('nodeExecuteAfterData', () => {
 
 		await nodeExecuteAfterData(event);
 
-		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledTimes(1);
-		expect(workflowsStore.updateNodeExecutionRunData).toHaveBeenCalledWith(event.data);
+		// The exec store's run data for 'Test Node' should now have the real data
+		const runData = execStore.execution?.data?.resultData.runData;
+		expect(runData?.['Test Node']).toHaveLength(1);
+		expect(runData?.['Test Node'][0].data).toEqual({
+			main: [[{ json: { foo: 'bar' } }]],
+		});
 	});
 });

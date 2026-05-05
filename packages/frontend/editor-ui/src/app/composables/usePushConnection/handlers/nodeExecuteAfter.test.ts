@@ -1,23 +1,54 @@
-import { createTestingPinia } from '@pinia/testing';
-import { setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { nodeExecuteAfter } from './nodeExecuteAfter';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { mockedStore } from '@/__tests__/utils';
 import type { NodeExecuteAfter } from '@n8n/api-types/push/execution';
-import { TRIMMED_TASK_DATA_CONNECTIONS_KEY } from 'n8n-workflow';
+import { TRIMMED_TASK_DATA_CONNECTIONS_KEY, createRunExecutionData } from 'n8n-workflow';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 import { mock } from 'vitest-mock-extended';
 import type { Mocked } from 'vitest';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
+	createExecutionDataId,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
+
+vi.mock('@/features/ai/assistant/assistant.store', () => ({
+	useAssistantStore: vi.fn().mockReturnValue({
+		onNodeExecution: vi.fn(),
+	}),
+}));
 
 describe('nodeExecuteAfter', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };
+	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let execStore: ReturnType<typeof useExecutionDataStore>;
+
 	beforeEach(() => {
-		const pinia = createTestingPinia({
-			stubActions: true,
+		setActivePinia(createPinia());
+
+		workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-wf';
+
+		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
+
+		execStore = useExecutionDataStore(createExecutionDataId('exec-1'));
+		execStore.setExecution({
+			id: 'exec-1',
+			finished: false,
+			mode: 'manual',
+			status: 'running',
+			createdAt: new Date(),
+			startedAt: new Date(),
+			workflowData: { id: 'test-wf', name: 'Test', nodes: [], connections: {} } as never,
+			data: createRunExecutionData(),
 		});
 
-		setActivePinia(pinia);
+		stateStore.setActiveExecutionId('exec-1');
 
 		mockOptions = {
 			workflowState: mock<WorkflowState>({
@@ -29,8 +60,7 @@ describe('nodeExecuteAfter', () => {
 	});
 
 	it('should update node execution data with placeholder and remove executing node', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-		const assistantStore = mockedStore(useAssistantStore);
+		const assistantStore = useAssistantStore();
 
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
@@ -49,7 +79,6 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		expect(workflowsStore.updateNodeExecutionStatus).toHaveBeenCalledTimes(1);
 		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
 		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith(
 			'Test Node',
@@ -57,9 +86,10 @@ describe('nodeExecuteAfter', () => {
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledTimes(1);
 		expect(assistantStore.onNodeExecution).toHaveBeenCalledWith(event.data);
 
-		// Verify the placeholder data structure
-		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
-		expect(updateCall.data.data).toEqual({
+		// Verify the placeholder data structure written to the execution data store
+		const runData = execStore.execution?.data?.resultData.runData;
+		expect(runData?.['Test Node']).toHaveLength(1);
+		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [
 				Array.from({ length: 2 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
 				Array.from({ length: 1 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
@@ -68,8 +98,6 @@ describe('nodeExecuteAfter', () => {
 	});
 
 	it('should handle multiple connection types', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
 			data: {
@@ -91,8 +119,8 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
-		expect(updateCall.data.data).toEqual({
+		const runData = execStore.execution?.data?.resultData.runData;
+		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [
 				Array.from({ length: 3 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
 			],
@@ -107,8 +135,6 @@ describe('nodeExecuteAfter', () => {
 	});
 
 	it('should handle empty itemCountByConnectionType', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
 			data: {
@@ -126,15 +152,13 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
-		expect(updateCall.data.data).toEqual({
+		const runData = execStore.execution?.data?.resultData.runData;
+		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [],
 		});
 	});
 
 	it('should preserve original data structure except for data property', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
 			data: {
@@ -152,16 +176,15 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
-		expect(updateCall.executionId).toBe('exec-1');
-		expect(updateCall.nodeName).toBe('Test Node');
-		expect(updateCall.data.executionTime).toBe(100);
-		expect(updateCall.data.startTime).toBe(1234567890);
-		expect(updateCall.data.executionIndex).toBe(0);
-		expect(updateCall.data.source).toEqual([null]);
+		const runData = execStore.execution?.data?.resultData.runData;
+		const taskData = runData?.['Test Node'][0];
+		expect(taskData?.executionTime).toBe(100);
+		expect(taskData?.startTime).toBe(1234567890);
+		expect(taskData?.executionIndex).toBe(0);
+		expect(taskData?.source).toEqual([null]);
 
 		// Only the data property should be replaced with placeholder
-		expect(updateCall.data.data).toEqual({
+		expect(taskData?.data).toEqual({
 			main: [
 				Array.from({ length: 1 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
 			],
@@ -169,8 +192,6 @@ describe('nodeExecuteAfter', () => {
 	});
 
 	it('should filter out invalid connection types', async () => {
-		const workflowsStore = mockedStore(useWorkflowsStore);
-
 		const event: NodeExecuteAfter = {
 			type: 'nodeExecuteAfter',
 			data: {
@@ -192,13 +213,13 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
-		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
+		const runData = execStore.execution?.data?.resultData.runData;
 		// Should only contain main connection, invalid_connection should be filtered out
-		expect(updateCall.data.data).toEqual({
+		expect(runData?.['Test Node'][0].data).toEqual({
 			main: [
 				Array.from({ length: 1 }).fill({ json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } }),
 			],
 		});
-		expect(updateCall.data.data?.invalid_connection).toBeUndefined();
+		expect(runData?.['Test Node'][0].data?.invalid_connection).toBeUndefined();
 	});
 });

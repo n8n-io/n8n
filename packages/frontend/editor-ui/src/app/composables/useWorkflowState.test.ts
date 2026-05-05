@@ -3,21 +3,40 @@ import { useWorkflowState, type WorkflowState } from './useWorkflowState';
 import { createPinia, setActivePinia } from 'pinia';
 import { createTestTaskData, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { createRunExecutionData } from 'n8n-workflow';
+import {
+	createWorkflowExecutionStateId,
+	useWorkflowExecutionStateStore,
+} from '@/app/stores/workflowExecutionState.store';
+import {
+	createExecutionDataId,
+	useExecutionDataStore,
+} from '@/app/stores/executionData.store';
 
 describe('useWorkflowState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let workflowState: WorkflowState;
+	let stateStore: ReturnType<typeof useWorkflowExecutionStateStore>;
+	let execStore: ReturnType<typeof useExecutionDataStore>;
+
 	beforeEach(() => {
 		setActivePinia(createPinia());
 
 		workflowsStore = useWorkflowsStore();
+		workflowsStore.workflow.id = 'test-wf';
 		workflowState = useWorkflowState();
+
+		stateStore = useWorkflowExecutionStateStore(createWorkflowExecutionStateId('test-wf'));
 	});
 
 	describe('markExecutionAsStopped', () => {
 		beforeEach(() => {
-			workflowsStore.setWorkflowExecutionData(
+			// Set up active execution in the facade stores
+			stateStore.setActiveExecutionId('test-exec-id');
+
+			execStore = useExecutionDataStore(createExecutionDataId('test-exec-id'));
+			execStore.setExecution(
 				createTestWorkflowExecutionResponse({
+					id: 'test-exec-id',
 					status: 'running',
 					startedAt: new Date('2023-01-01T09:00:00Z'),
 					stoppedAt: undefined,
@@ -43,7 +62,7 @@ describe('useWorkflowState', () => {
 		it('should remove non successful node runs', () => {
 			workflowState.markExecutionAsStopped();
 
-			const runData = workflowsStore.workflowExecutionData?.data?.resultData?.runData;
+			const runData = execStore.execution?.data?.resultData?.runData;
 			expect(runData?.node1).toHaveLength(1);
 			expect(runData?.node1[0].executionStatus).toBe('success');
 			expect(runData?.node2).toHaveLength(1);
@@ -58,23 +77,17 @@ describe('useWorkflowState', () => {
 				mode: 'manual',
 			});
 
-			expect(workflowsStore.workflowExecutionData?.status).toBe('canceled');
-			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
-				new Date('2023-01-01T10:00:00Z'),
-			);
-			expect(workflowsStore.workflowExecutionData?.stoppedAt).toEqual(
-				new Date('2023-01-01T10:05:00Z'),
-			);
+			expect(execStore.execution?.status).toBe('canceled');
+			expect(execStore.execution?.startedAt).toEqual(new Date('2023-01-01T10:00:00Z'));
+			expect(execStore.execution?.stoppedAt).toEqual(new Date('2023-01-01T10:05:00Z'));
 		});
 
 		it('should not update execution data when stopData is not provided', () => {
 			workflowState.markExecutionAsStopped();
 
-			expect(workflowsStore.workflowExecutionData?.status).toBe('running');
-			expect(workflowsStore.workflowExecutionData?.startedAt).toEqual(
-				new Date('2023-01-01T09:00:00Z'),
-			);
-			expect(workflowsStore.workflowExecutionData?.stoppedAt).toBeUndefined();
+			expect(execStore.execution?.status).toBe('running');
+			expect(execStore.execution?.startedAt).toEqual(new Date('2023-01-01T09:00:00Z'));
+			expect(execStore.execution?.stoppedAt).toBeUndefined();
 		});
 	});
 });

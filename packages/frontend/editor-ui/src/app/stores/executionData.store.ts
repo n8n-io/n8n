@@ -1,8 +1,8 @@
 import { defineStore, getActivePinia } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { computed, inject, readonly, ref } from 'vue';
+import { computed, inject, readonly, ref, triggerRef } from 'vue';
 import { createEventHook } from '@vueuse/core';
-import type { IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
+import type { ExecutionStatus, IRunData, IRunExecutionData, ITaskStartedData } from 'n8n-workflow';
 import type { PushPayload } from '@n8n/api-types';
 import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
@@ -279,6 +279,29 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			}
 
 			executionResultDataLastUpdate.value = Date.now();
+			triggerRef(execution);
+			fireChange(CHANGE_ACTION.UPDATE);
+		}
+
+		function markAsStopped(stopData?: {
+			status: ExecutionStatus;
+			startedAt: Date;
+			stoppedAt: Date;
+		}) {
+			if (!execution.value?.data) return;
+			const runData = execution.value.data.resultData.runData;
+			for (const nodeName in runData) {
+				runData[nodeName] = runData[nodeName].filter(
+					({ executionStatus }) => executionStatus === 'success',
+				);
+			}
+			if (stopData) {
+				execution.value.status = stopData.status;
+				execution.value.startedAt = stopData.startedAt;
+				execution.value.stoppedAt = stopData.stoppedAt;
+			}
+			executionResultDataLastUpdate.value = Date.now();
+			triggerRef(execution);
 			fireChange(CHANGE_ACTION.UPDATE);
 		}
 
@@ -309,6 +332,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			updateNodeExecutionRunData,
 			clearNodeExecutionData,
 			renameExecutionDataNode,
+			markAsStopped,
 			resetExecutionData,
 			// Events
 			onExecutionDataChange: onExecutionDataChange.on,
