@@ -16,16 +16,13 @@ type ActionToggleItem<T extends string> = {
 interface ActionToggleProps {
 	actions?: Array<ActionToggleItem<T>>;
 	placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end';
-	size?: 'mini' | 'small' | 'medium';
 	theme?: 'default' | 'dark';
-	iconSize?: 'small' | 'medium' | 'large' | 'xlarge';
 	iconOrientation?: 'horizontal' | 'vertical';
 	loading?: boolean;
 	loadingRowCount?: number;
 	disabled?: boolean;
 	popperClass?: string;
 	trigger?: 'click' | 'hover';
-	closeOnParentScroll?: boolean;
 }
 
 type ActionValue = T;
@@ -34,12 +31,12 @@ defineOptions({ name: 'N8nActionToggle' });
 const props = withDefaults(defineProps<ActionToggleProps>(), {
 	actions: () => [],
 	placement: 'bottom',
+	theme: 'default',
 	iconOrientation: 'vertical',
 	loading: false,
 	loadingRowCount: 3,
 	disabled: false,
 	trigger: 'click',
-	closeOnParentScroll: true,
 });
 
 const emit = defineEmits<{
@@ -121,6 +118,7 @@ defineExpose({
 				<slot>
 					<N8nIconButton
 						variant="ghost"
+						:class="$style[theme]"
 						:icon="iconOrientation === 'horizontal' ? 'ellipsis' : 'ellipsis-vertical'"
 						size="small"
 						:disabled="disabled"
@@ -159,6 +157,14 @@ defineExpose({
 	display: inline-flex;
 	&[aria-expanded='true'] button {
 		background-color: var(--background-active);
+	}
+}
+
+.dark {
+	color: var(--color--text--shade-1);
+
+	&:focus {
+		background-color: var(--color--background--light-3);
 	}
 }
 

@@ -24,7 +24,6 @@ interface ActionDropdownProps {
 	activatorSize?: ButtonSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
-	hideArrow?: boolean;
 	teleported?: boolean;
 	disabled?: boolean;
 	extraPopperClass?: string;
@@ -38,7 +37,6 @@ const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	activatorSize: 'medium',
 	iconSize: 'medium',
 	trigger: 'click',
-	hideArrow: false,
 	teleported: true,
 	disabled: false,
 	maxHeight: '',

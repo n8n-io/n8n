@@ -6,7 +6,7 @@ import {
 	DropdownMenuPortal,
 	DropdownMenuContent,
 } from 'reka-ui';
-import { computed, provide, ref, watch, useCssModule, nextTick, toRef } from 'vue';
+import { computed, provide, ref, watch, useCssModule, nextTick, toRef, onBeforeUnmount } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
 import N8nLoading from '@n8n/design-system/components/N8nLoading';
@@ -61,6 +61,7 @@ const internalOpen = ref(props.defaultOpen ?? false);
 const searchRef = ref<{ focus: () => void } | null>(null);
 const contentRef = ref<InstanceType<typeof DropdownMenuContent> | null>(null);
 const searchTerm = ref('');
+let hoverCloseTimer: ReturnType<typeof setTimeout> | undefined;
 
 // Track open sub-menu index
 const openSubMenuIndex = ref(-1);
@@ -186,15 +187,26 @@ const handleItemMouseUp = (item: DropdownMenuItemProps<T, D>) => {
 };
 
 // Hover trigger support
+const cancelHoverClose = () => {
+	if (hoverCloseTimer) {
+		clearTimeout(hoverCloseTimer);
+		hoverCloseTimer = undefined;
+	}
+};
+
 const triggerHoverEnter = () => {
 	if (props.trigger === 'hover') {
+		cancelHoverClose();
 		open();
 	}
 };
 
 const triggerHoverLeave = () => {
 	if (props.trigger === 'hover') {
-		// Don't close immediately - let the content handle it via mouseleave
+		cancelHoverClose();
+		hoverCloseTimer = setTimeout(() => {
+			close();
+		}, 100);
 	}
 };
 
@@ -230,6 +242,10 @@ watch(
 		navigation.reset();
 	},
 );
+
+onBeforeUnmount(() => {
+	cancelHoverClose();
+});
 
 // Custom dismiss for cross-window portals (e.g. pop-out chat window).
 // reka-ui's DismissableLayer captures ownerDocument during setup when the
@@ -313,6 +329,7 @@ defineExpose({ open, close });
 				:style="contentContainerStyle"
 				:prioritize-position="true"
 				@keydown="handleContentKeydown"
+				@mouseenter="cancelHoverClose"
 				@mouseleave="triggerHoverLeave"
 			>
 				<slot v-if="slots.content" name="content" />

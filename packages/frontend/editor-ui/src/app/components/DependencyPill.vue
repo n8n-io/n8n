@@ -240,9 +240,6 @@ async function onDropdownToggle(open: boolean) {
 </template>
 
 <style lang="scss" module>
-.trigger {
-	background-color: red;
-}
 .badge {
 	cursor: pointer;
 	border: var(--border);
