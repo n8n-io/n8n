@@ -1,5 +1,4 @@
 import moment from 'moment-timezone';
-import { deepCopy } from 'n8n-workflow';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
 
@@ -39,7 +38,7 @@ describe('NotionTrigger', () => {
 		jest.clearAllMocks();
 	});
 
-	describe('staticData serialization (NODE-4849)', () => {
+	describe('staticData serialization', () => {
 		it('should store lastTimeChecked as a string, not a moment object', async () => {
 			mockNotionApiRequest.mockResolvedValueOnce({ results: [] });
 
@@ -64,10 +63,10 @@ describe('NotionTrigger', () => {
 			const trigger = new NotionTrigger();
 			await trigger.poll.call(ctx as never);
 
-			const stored = staticData.lastTimeChecked as string;
-			const roundTripped = deepCopy(stored);
-			expect(roundTripped).toBe(stored);
-			expect(moment(roundTripped).isValid()).toBe(true);
+			const roundTripped = JSON.parse(JSON.stringify(staticData)) as typeof staticData;
+			expect(typeof roundTripped.lastTimeChecked).toBe('string');
+			expect(roundTripped.lastTimeChecked).toBe(staticData.lastTimeChecked);
+			expect(moment(roundTripped.lastTimeChecked as string).isValid()).toBe(true);
 		});
 
 		it('should correctly parse a stored ISO string on subsequent poll', async () => {
