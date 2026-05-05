@@ -649,16 +649,17 @@ describe('CommunityNodeTypesService', () => {
 			expect(result.find((n) => n.name === 'n8n-nodes-wcrm.wCRMTriggerTool')).toBeUndefined();
 		});
 
-		it('should not create AI tool version for nodes with "trigger" in the type name', async () => {
+		it('should create AI tool version for nodes with "trigger" in the name but not in the group', async () => {
+			// e.g. a node for the trigger.dev service — name contains "trigger" but it's not a trigger node
 			const mockNodeTypes = [
 				{
-					name: 'n8n-nodes-apify.apifyTrigger',
-					packageName: 'n8n-nodes-apify',
+					name: 'n8n-nodes-triggerdev.triggerDevAction',
+					packageName: 'n8n-nodes-triggerdev',
 					nodeDescription: {
-						name: 'n8n-nodes-apify.apifyTrigger',
-						displayName: 'Apify Trigger',
+						name: 'n8n-nodes-triggerdev.triggerDevAction',
+						displayName: 'Trigger.dev Action',
 						group: [],
-						inputs: [],
+						inputs: ['main'],
 						outputs: ['main'],
 						usableAsTool: true,
 					},
@@ -669,32 +670,10 @@ describe('CommunityNodeTypesService', () => {
 
 			const result = await service.getCommunityNodeTypes();
 
-			expect(result.length).toBe(1); // only original, no tool version
-			expect(result.find((n) => n.name === 'n8n-nodes-apify.apifyTriggerTool')).toBeUndefined();
-		});
-
-		it('should not create AI tool version for nodes with "Trigger" in the type name (case-insensitive)', async () => {
-			const mockNodeTypes = [
-				{
-					name: 'n8n-nodes-triggercmd.triggerCmd',
-					packageName: 'n8n-nodes-triggercmd',
-					nodeDescription: {
-						name: 'n8n-nodes-triggercmd.triggerCmd',
-						displayName: 'TriggerCMD',
-						group: [],
-						inputs: [],
-						outputs: ['main'],
-						usableAsTool: true,
-					},
-				},
-			];
-
-			(getCommunityNodeTypes as jest.Mock).mockResolvedValueOnce(mockNodeTypes);
-
-			const result = await service.getCommunityNodeTypes();
-
-			expect(result.length).toBe(1); // only original, no tool version
-			expect(result.find((n) => n.name === 'n8n-nodes-triggercmd.triggerCmdTool')).toBeUndefined();
+			expect(result.length).toBe(2); // original + tool version
+			expect(
+				result.find((n) => n.name === 'n8n-nodes-triggerdev.triggerDevActionTool'),
+			).toBeDefined();
 		});
 
 		it('should not mutate original node type when creating tool version', async () => {
