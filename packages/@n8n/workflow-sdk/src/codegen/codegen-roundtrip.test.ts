@@ -163,6 +163,60 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['Manual Trigger'].main[0]![0].node).toBe('HTTP Request');
 	});
 
+	it('should round-trip non-ASCII characters (em-dash, en-dash, curly quotes, ellipsis) in workflow name, node names, and string parameters', () => {
+		const originalJson: WorkflowJSON = {
+			id: 'unicode-test',
+			name: 'EM — DASH · EN – DASH … "curly"',
+			nodes: [
+				{
+					id: 'trigger-1',
+					name: 'Every Hour — Run',
+					type: 'n8n-nodes-base.scheduleTrigger',
+					typeVersion: 1.2,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: 'set-1',
+					name: 'Greeting — Hello',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [200, 0],
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'a',
+									name: 'msg',
+									type: 'string',
+									value: 'hello — world · café "quoted" …',
+								},
+							],
+						},
+					},
+				},
+			],
+			connections: {
+				'Every Hour — Run': {
+					main: [[{ node: 'Greeting — Hello', type: 'main', index: 0 }]],
+				},
+			},
+		};
+
+		const code = generateWorkflowCode(originalJson);
+		const parsedJson = parseWorkflowCode(code);
+
+		expect(parsedJson.name).toBe('EM — DASH · EN – DASH … "curly"');
+		const names = parsedJson.nodes.map((n) => n.name);
+		expect(names).toContain('Every Hour — Run');
+		expect(names).toContain('Greeting — Hello');
+		const setNode = parsedJson.nodes.find((n) => n.name === 'Greeting — Hello')!;
+		const value = (setNode.parameters as { assignments: { assignments: Array<{ value: string }> } })
+			.assignments.assignments[0].value;
+		expect(value).toBe('hello — world · café "quoted" …');
+		expect(parsedJson.connections['Every Hour — Run'].main[0]![0].node).toBe('Greeting — Hello');
+	});
+
 	it('should parse workflow with settings', () => {
 		const originalJson: WorkflowJSON = {
 			id: 'settings-test',

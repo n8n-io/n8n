@@ -52,15 +52,13 @@ const SDK_CODE_RULES = `## SDK Code Rules
 - Use \`expr('{{ $json.field }}')\` for n8n expressions. Variables MUST be inside \`{{ }}\`.
 - Do NOT use \`as const\` assertions — the workflow parser only supports JavaScript syntax, not TypeScript-only features. Just use plain string literals.
 - Use string values directly for discriminator fields like \`resource\` and \`operation\` (e.g., \`resource: 'message'\` not \`resource: 'message' as const\`).
-- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.
-- **No em-dash (\`—\`) or other special Unicode characters in node names or string values.** Use plain hyphen (\`-\`) instead. The SDK parser cannot handle em-dashes.`;
+- When editing a pre-loaded workflow, **remove \`position\` arrays** from node configs — they are auto-calculated.`;
 
 const NODE_CONFIGURATION_SAFETY_RULES = `## Node Configuration Safety Rules
 
 - Fetch \`nodes(action="type-definition")\` before configuring nodes. Generated definitions and \`@builderHint\` annotations are the source of truth.
-- Prefer generated definitions, \`@builderHint\`, \`@default\`, \`@searchListMethod\`, and \`@loadOptionsMethod\` over memory or examples in this prompt.
 - Use live \`nodes(action="explore-resources")\` for resource locator, list, and model fields when credentials are available.
-- Do not rely on static node-shape memory; if a configuration is unclear after reading definitions and hints, ask for clarification or use placeholders instead of guessing.`;
+- If a configuration is unclear after reading the definition, ask for clarification or use placeholders — do not guess.`;
 
 // The AI Agent subnode example below differs by mode:
 //   tool mode  → `newCredential('OpenAI')`
