@@ -56,21 +56,16 @@ describe('streamAgentRun', () => {
 	it('returns errored status when agent stream contains an error chunk', async () => {
 		jest.mocked(executeResumableStream).mockResolvedValue({
 			status: 'errored',
-			agentRunId: 'mastra-run-1',
+			agentRunId: 'agent-run-1',
 			workSummary: emptyWorkSummary,
 		});
 		const eventBus = createEventBus();
 		const agent = {
 			stream: jest.fn().mockResolvedValue({
-				runId: 'mastra-run-1',
+				runId: 'agent-run-1',
 				fullStream: fromChunks([
-					{ type: 'text-delta', payload: { text: 'Hello' } },
-					{
-						type: 'error',
-						runId: 'mastra-run-1',
-						from: 'AGENT',
-						payload: { error: new Error('Not Found') },
-					},
+					{ type: 'text-delta', delta: 'Hello' },
+					{ type: 'error', error: new Error('Not Found') },
 				]),
 			}),
 		};
@@ -90,20 +85,20 @@ describe('streamAgentRun', () => {
 		);
 
 		expect(result.status).toBe('errored');
-		expect(result.agentRunId).toBe('mastra-run-1');
+		expect(result.agentRunId).toBe('agent-run-1');
 	});
 
 	it('returns completed status for successful streams', async () => {
 		jest.mocked(executeResumableStream).mockResolvedValue({
 			status: 'completed',
-			agentRunId: 'mastra-run-1',
+			agentRunId: 'agent-run-1',
 			workSummary: emptyWorkSummary,
 		});
 		const eventBus = createEventBus();
 		const agent = {
 			stream: jest.fn().mockResolvedValue({
-				runId: 'mastra-run-1',
-				fullStream: fromChunks([{ type: 'text-delta', payload: { text: 'All good' } }]),
+				runId: 'agent-run-1',
+				fullStream: fromChunks([{ type: 'text-delta', delta: 'All good' }]),
 			}),
 		};
 
@@ -128,7 +123,7 @@ describe('streamAgentRun', () => {
 		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
 		const agent = {
 			stream: jest.fn().mockResolvedValue({
-				runId: 'mastra-run-1',
+				runId: 'agent-run-1',
 				fullStream: emptyStream(),
 			}),
 		};
@@ -136,7 +131,7 @@ describe('streamAgentRun', () => {
 
 		mockedExecuteResumableStream.mockResolvedValue({
 			status: 'suspended',
-			agentRunId: 'mastra-run-1',
+			agentRunId: 'agent-run-1',
 			workSummary: emptyWorkSummary,
 			suspension: {
 				requestId: 'request-1',
@@ -173,7 +168,7 @@ describe('streamAgentRun', () => {
 		);
 
 		expect(result.status).toBe('suspended');
-		expect(result.agentRunId).toBe('mastra-run-1');
+		expect(result.agentRunId).toBe('agent-run-1');
 		expect(result.suspension?.requestId).toBe('request-1');
 		expect(result.confirmationEvent?.type).toBe('confirmation-request');
 		expect(result.confirmationEvent?.payload.requestId).toBe('request-1');
@@ -184,10 +179,10 @@ describe('streamAgentRun', () => {
 		);
 	});
 
-	it('passes the full Mastra stream payload through to the resumable executor', async () => {
+	it('passes an already-normalized native stream source through to the resumable executor', async () => {
 		const mockedExecuteResumableStream = jest.mocked(executeResumableStream);
 		const streamResult = {
-			runId: 'mastra-run-2',
+			runId: 'agent-run-2',
 			fullStream: emptyStream(),
 			text: Promise.resolve('done'),
 			steps: Promise.resolve([{ text: 'done' }]),
@@ -201,7 +196,7 @@ describe('streamAgentRun', () => {
 
 		mockedExecuteResumableStream.mockResolvedValue({
 			status: 'completed',
-			agentRunId: 'mastra-run-2',
+			agentRunId: 'agent-run-2',
 			text: Promise.resolve('done'),
 			workSummary: emptyWorkSummary,
 		});
@@ -272,7 +267,6 @@ describe('streamAgentRun', () => {
 		expect(source).toEqual(
 			expect.objectContaining({
 				runId: 'agent-run-1',
-				streamFormat: 'agent',
 			}),
 		);
 		await expect(collectAsyncIterable(source.fullStream)).resolves.toEqual([nativeChunk]);

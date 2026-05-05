@@ -2,8 +2,8 @@
  * Write Sandbox File Tool
  *
  * Writes a file to the sandbox workspace. Uses command-based I/O so it works
- * with both Daytona and Local sandboxes (unlike Mastra's built-in write_file
- * which requires workspace.filesystem — absent on Daytona).
+ * with both Daytona and Local sandboxes, including environments where only
+ * command-based file I/O is available.
  */
 
 import { Tool } from '@n8n/agents';

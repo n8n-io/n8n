@@ -11,7 +11,7 @@ import {
 	type TraceStatus,
 } from './resumable-stream-executor';
 import { getTraceParentRun, withTraceParentContext } from '../tracing/langsmith-tracing';
-import { resumeStream } from '../utils/stream-helpers';
+import { resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 export interface StreamableAgent {
@@ -63,7 +63,7 @@ export async function resumeAgentRun(
 	const resumeTraceParent = getTraceParentRun();
 	return await withTraceParentContext(resumeTraceParent, async () => {
 		const llmStepTraceHooks = createLlmStepTraceHooks(resumeTraceParent);
-		const resumed = await resumeStream(agent, resumeData, {
+		const resumed = await resumeAgentStream(agent, resumeData, {
 			...resumeOptions,
 			...(llmStepTraceHooks?.executionOptions ?? {}),
 		});

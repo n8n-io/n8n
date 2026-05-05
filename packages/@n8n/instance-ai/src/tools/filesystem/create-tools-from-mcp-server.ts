@@ -181,7 +181,7 @@ export function createToolsFromLocalMcpServer(server: LocalMcpServer): Record<st
 					};
 				}
 
-				// Convert MCP 'image' → Mastra 'media' (Mastra translates to 'image-data' for the provider)
+				// Convert MCP image content into the native model-output media part.
 				const value = raw.content.map((item) => {
 					if (item.type === 'image') {
 						return {

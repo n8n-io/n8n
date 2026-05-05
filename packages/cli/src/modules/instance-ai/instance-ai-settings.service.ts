@@ -26,8 +26,8 @@ const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
 type UserInstanceAiPreferences = NonNullable<IUserSettings['instanceAi']>;
 
-/** Credential types we support and their Mastra provider mapping. */
-const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
+/** Credential types we support and their model provider mapping. */
+const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 	openAiApi: 'openai',
 	anthropicApi: 'anthropic',
 	googlePalmApi: 'google',
@@ -40,7 +40,7 @@ const CREDENTIAL_TO_MASTRA_PROVIDER: Record<string, string> = {
 	cohereApi: 'cohere',
 };
 
-const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MASTRA_PROVIDER);
+const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -274,7 +274,7 @@ export class InstanceAiSettingsService {
 				id: c.id,
 				name: c.name,
 				type: c.type,
-				provider: CREDENTIAL_TO_MASTRA_PROVIDER[c.type] ?? 'custom',
+				provider: CREDENTIAL_TO_MODEL_PROVIDER[c.type] ?? 'custom',
 			}));
 	}
 
@@ -434,7 +434,7 @@ export class InstanceAiSettingsService {
 			return this.envVarModelConfig();
 		}
 
-		const provider = CREDENTIAL_TO_MASTRA_PROVIDER[credential.type];
+		const provider = CREDENTIAL_TO_MODEL_PROVIDER[credential.type];
 		if (!provider) {
 			return this.envVarModelConfig();
 		}

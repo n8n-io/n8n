@@ -229,6 +229,73 @@ function readableFromChunks(chunks: unknown[]) {
 	});
 }
 
+function textChunk(text: string) {
+	return { type: 'text-delta', delta: text };
+}
+
+function errorChunk(error: unknown) {
+	return { type: 'error', error };
+}
+
+function suspensionChunk(input: {
+	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
+	input?: Record<string, unknown>;
+}) {
+	return {
+		type: 'tool-call-suspended',
+		toolCallId: input.toolCallId,
+		...(input.toolName ? { toolName: input.toolName } : {}),
+		...(input.input ? { input: input.input } : {}),
+		suspendPayload: input.suspendPayload ?? {},
+	};
+}
+
+function toolCallChunk(input: {
+	toolCallId: string;
+	toolName: string;
+	args?: Record<string, unknown>;
+}) {
+	return {
+		type: 'message',
+		message: {
+			role: 'tool',
+			content: [
+				{
+					type: 'tool-call',
+					toolCallId: input.toolCallId,
+					toolName: input.toolName,
+					input: input.args ?? {},
+				},
+			],
+		},
+	};
+}
+
+function toolResultChunk(input: {
+	toolCallId: string;
+	toolName: string;
+	result: unknown;
+	isError?: boolean;
+}) {
+	return {
+		type: 'message',
+		message: {
+			role: 'tool',
+			content: [
+				{
+					type: 'tool-result',
+					toolCallId: input.toolCallId,
+					toolName: input.toolName,
+					result: input.result,
+					...(input.isError ? { isError: true } : {}),
+				},
+			],
+		},
+	};
+}
+
 function createDeferred<T>() {
 	let resolve!: (value: T | PromiseLike<T>) => void;
 	let reject!: (reason?: unknown) => void;
@@ -260,20 +327,17 @@ describe('executeResumableStream', () => {
 		const result = await executeResumableStream({
 			agent: {},
 			stream: {
-				runId: 'mastra-run-1',
+				runId: 'agent-run-1',
 				fullStream: fromChunks([
-					{ type: 'text-delta', payload: { text: 'Working...' } },
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tool-call-1',
-							toolName: 'ask-user',
-							suspendPayload: {
-								requestId: 'request-1',
-								message: 'Need approval',
-							},
+					textChunk('Working...'),
+					suspensionChunk({
+						toolCallId: 'tool-call-1',
+						toolName: 'ask-user',
+						suspendPayload: {
+							requestId: 'request-1',
+							message: 'Need approval',
 						},
-					},
+					}),
 				]),
 			},
 			context: {
@@ -290,7 +354,7 @@ describe('executeResumableStream', () => {
 		expect(result).toEqual(
 			expect.objectContaining({
 				status: 'suspended',
-				agentRunId: 'mastra-run-1',
+				agentRunId: 'agent-run-1',
 				suspension: {
 					toolCallId: 'tool-call-1',
 					requestId: 'request-1',
@@ -319,19 +383,18 @@ describe('executeResumableStream', () => {
 			agent: {},
 			stream: {
 				runId: 'agent-run-1',
-				streamFormat: 'agent',
 				fullStream: fromChunks([
-					{ type: 'text-delta', delta: 'Working...' },
-					{
-						type: 'tool-call-suspended',
+					textChunk('Working...'),
+					suspensionChunk({
 						toolCallId: 'tool-call-1',
 						toolName: 'ask-user',
 						input: { prompt: 'Confirm?' },
 						suspendPayload: {
+							toolCallId: 'tool-call-1',
 							requestId: 'request-1',
 							message: 'Need approval',
 						},
-					},
+					}),
 				]),
 			},
 			context: {
@@ -386,16 +449,8 @@ describe('executeResumableStream', () => {
 		const result = await executeResumableStream({
 			agent: {},
 			stream: {
-				runId: 'mastra-run-1',
-				fullStream: fromChunks([
-					{ type: 'text-delta', payload: { text: 'Working...' } },
-					{
-						type: 'error',
-						runId: 'mastra-run-1',
-						from: 'AGENT',
-						payload: { error: new Error('Not Found') },
-					},
-				]),
+				runId: 'agent-run-1',
+				fullStream: fromChunks([textChunk('Working...'), errorChunk(new Error('Not Found'))]),
 			},
 			context: {
 				threadId: 'thread-1',
@@ -409,34 +464,30 @@ describe('executeResumableStream', () => {
 		});
 
 		expect(result.status).toBe('errored');
-		expect(result.agentRunId).toBe('mastra-run-1');
+		expect(result.agentRunId).toBe('agent-run-1');
 	});
 
 	it('auto-resumes suspended streams and surfaces queued corrections', async () => {
 		const eventBus = createEventBus();
-		const resumeStream = jest.fn().mockResolvedValue({
-			runId: 'mastra-run-2',
-			fullStream: fromChunks([{ type: 'text-delta', payload: { text: 'Done.' } }]),
-			text: Promise.resolve('Done.'),
+		const resume = jest.fn().mockResolvedValue({
+			runId: 'agent-run-2',
+			stream: readableFromChunks([textChunk('Done.')]),
 		});
 		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
 
 		const result = await executeResumableStream({
-			agent: { resumeStream },
+			agent: { resume },
 			stream: {
-				runId: 'mastra-run-1',
+				runId: 'agent-run-1',
 				fullStream: fromChunks([
-					{
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tool-call-1',
-							toolName: 'pause-for-user',
-							suspendPayload: {
-								requestId: 'request-1',
-								message: 'Please confirm',
-							},
+					suspensionChunk({
+						toolCallId: 'tool-call-1',
+						toolName: 'pause-for-user',
+						suspendPayload: {
+							requestId: 'request-1',
+							message: 'Please confirm',
 						},
-					},
+					}),
 				]),
 				text: Promise.resolve('Initial text'),
 			},
@@ -456,12 +507,13 @@ describe('executeResumableStream', () => {
 		});
 
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
-		expect(resumeStream).toHaveBeenCalledWith(
+		expect(resume).toHaveBeenCalledWith(
+			'stream',
 			{ approved: true },
-			{ runId: 'mastra-run-1', toolCallId: 'tool-call-1' },
+			{ runId: 'agent-run-1', toolCallId: 'tool-call-1' },
 		);
 		expect(result.status).toBe('completed');
-		expect(result.agentRunId).toBe('mastra-run-2');
+		expect(result.agentRunId).toBe('agent-run-2');
 		await expect(result.text ?? Promise.resolve('')).resolves.toBe('Done.');
 		expect(eventBus.publish).toHaveBeenCalledWith(
 			'thread-1',
@@ -485,7 +537,6 @@ describe('executeResumableStream', () => {
 			agent: { resume },
 			stream: {
 				runId: 'agent-run-1',
-				streamFormat: 'agent',
 				fullStream: fromChunks([
 					{
 						type: 'tool-call-suspended',
@@ -535,10 +586,9 @@ describe('executeResumableStream', () => {
 		const finishGate = createDeferred<undefined>();
 		const approval = createDeferred<Record<string, unknown>>();
 		const waitStarted = createDeferred<undefined>();
-		const resumeStream = jest.fn().mockResolvedValue({
-			runId: 'mastra-run-2',
-			fullStream: fromChunks([{ type: 'text-delta', payload: { text: 'Done.' } }]),
-			text: Promise.resolve('Done.'),
+		const resume = jest.fn().mockResolvedValue({
+			runId: 'agent-run-2',
+			stream: readableFromChunks([textChunk('Done.')]),
 		});
 		const waitForConfirmation = jest.fn().mockImplementation(async () => {
 			waitStarted.resolve(undefined);
@@ -546,21 +596,18 @@ describe('executeResumableStream', () => {
 		});
 
 		const execution = executeResumableStream({
-			agent: { resumeStream },
+			agent: { resume },
 			stream: {
-				runId: 'mastra-run-1',
+				runId: 'agent-run-1',
 				fullStream: (async function* () {
-					yield {
-						type: 'tool-call-suspended',
-						payload: {
-							toolCallId: 'tool-call-1',
-							toolName: 'pause-for-user',
-							suspendPayload: {
-								requestId: 'request-1',
-								message: 'Please confirm',
-							},
+					yield suspensionChunk({
+						toolCallId: 'tool-call-1',
+						toolName: 'pause-for-user',
+						suspendPayload: {
+							requestId: 'request-1',
+							message: 'Please confirm',
 						},
-					};
+					});
 					await finishGate.promise;
 					yield { type: 'finish', finishReason: 'tool-calls' };
 				})(),
@@ -583,7 +630,7 @@ describe('executeResumableStream', () => {
 		await waitStarted.promise;
 
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
-		expect(resumeStream).not.toHaveBeenCalled();
+		expect(resume).not.toHaveBeenCalled();
 		const publishCalls = eventBus.publish.mock.calls as Array<[string, PublishedEvent]>;
 		const confirmationEvent = publishCalls.find(
 			([, event]) => event.type === 'confirmation-request',
@@ -597,54 +644,48 @@ describe('executeResumableStream', () => {
 		await expect(execution).resolves.toEqual(
 			expect.objectContaining({
 				status: 'completed',
-				agentRunId: 'mastra-run-2',
+				agentRunId: 'agent-run-2',
 			}),
 		);
-		expect(resumeStream).toHaveBeenCalledWith(
+		expect(resume).toHaveBeenCalledWith(
+			'stream',
 			{ approved: true },
-			{ runId: 'mastra-run-1', toolCallId: 'tool-call-1' },
+			{ runId: 'agent-run-1', toolCallId: 'tool-call-1' },
 		);
 	});
 
 	it('surfaces only the first actionable suspension in a drain', async () => {
 		const eventBus = createEventBus();
 		const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-		const resumeStream = jest.fn().mockResolvedValue({
-			runId: 'mastra-run-2',
-			fullStream: fromChunks([{ type: 'text-delta', payload: { text: 'Done.' } }]),
-			text: Promise.resolve('Done.'),
+		const resume = jest.fn().mockResolvedValue({
+			runId: 'agent-run-2',
+			stream: readableFromChunks([textChunk('Done.')]),
 		});
 		const waitForConfirmation = jest.fn().mockResolvedValue({ approved: true });
 		const onSuspension = jest.fn((_: SuspensionInfo) => undefined);
 
 		try {
 			await executeResumableStream({
-				agent: { resumeStream },
+				agent: { resume },
 				stream: {
-					runId: 'mastra-run-1',
+					runId: 'agent-run-1',
 					fullStream: fromChunks([
-						{
-							type: 'tool-call-suspended',
-							payload: {
-								toolCallId: 'tool-call-1',
-								toolName: 'pause-for-user',
-								suspendPayload: {
-									requestId: 'request-1',
-									message: 'First confirmation',
-								},
+						suspensionChunk({
+							toolCallId: 'tool-call-1',
+							toolName: 'pause-for-user',
+							suspendPayload: {
+								requestId: 'request-1',
+								message: 'First confirmation',
 							},
-						},
-						{
-							type: 'tool-call-suspended',
-							payload: {
-								toolCallId: 'tool-call-2',
-								toolName: 'pause-for-user',
-								suspendPayload: {
-									requestId: 'request-2',
-									message: 'Second confirmation',
-								},
+						}),
+						suspensionChunk({
+							toolCallId: 'tool-call-2',
+							toolName: 'pause-for-user',
+							suspendPayload: {
+								requestId: 'request-2',
+								message: 'Second confirmation',
 							},
-						},
+						}),
 						{ type: 'finish', finishReason: 'tool-calls' },
 					]),
 					text: Promise.resolve('Initial text'),
@@ -675,9 +716,10 @@ describe('executeResumableStream', () => {
 		});
 		expect(waitForConfirmation).toHaveBeenCalledTimes(1);
 		expect(waitForConfirmation).toHaveBeenCalledWith('request-1');
-		expect(resumeStream).toHaveBeenCalledWith(
+		expect(resume).toHaveBeenCalledWith(
+			'stream',
 			{ approved: true },
-			{ runId: 'mastra-run-1', toolCallId: 'tool-call-1' },
+			{ runId: 'agent-run-1', toolCallId: 'tool-call-1' },
 		);
 
 		const confirmationEvents = (eventBus.publish.mock.calls as Array<[string, PublishedEvent]>)
@@ -704,7 +746,7 @@ describe('executeResumableStream', () => {
 			await executeResumableStream({
 				agent: {},
 				stream: {
-					runId: 'mastra-run-1',
+					runId: 'agent-run-1',
 					fullStream: fromChunks([
 						{
 							type: 'step-start',
@@ -718,7 +760,7 @@ describe('executeResumableStream', () => {
 								warnings: [],
 							},
 						},
-						{ type: 'text-delta', payload: { text: 'Let me check.' } },
+						textChunk('Let me check.'),
 						{
 							type: 'step-finish',
 							payload: {
@@ -842,7 +884,7 @@ describe('executeResumableStream', () => {
 				stepNumber: 0,
 				messages: [{ role: 'user', content: 'Build the workflow' }],
 			});
-			hooks?.onStreamChunk({ type: 'text-delta', payload: { text: 'Let me write it.' } });
+			hooks?.onStreamChunk(textChunk('Let me write it.'));
 
 			await hooks?.executionOptions.onStepFinish({
 				stepNumber: 0,
@@ -851,7 +893,7 @@ describe('executeResumableStream', () => {
 				toolCalls: [
 					{
 						toolCallId: 'native-1',
-						toolName: 'mastra_workspace_write_file',
+						toolName: 'workspace_write_file',
 						args: {
 							path: '/tmp/workflow.ts',
 							content: 'export default workflow',
@@ -861,7 +903,7 @@ describe('executeResumableStream', () => {
 				toolResults: [
 					{
 						toolCallId: 'native-1',
-						toolName: 'mastra_workspace_write_file',
+						toolName: 'workspace_write_file',
 						result: 'Wrote 23 bytes',
 					},
 				],
@@ -886,7 +928,7 @@ describe('executeResumableStream', () => {
 								{
 									type: 'tool-call',
 									toolCallId: 'native-1',
-									toolName: 'mastra_workspace_write_file',
+									toolName: 'workspace_write_file',
 									args: {
 										path: '/tmp/workflow.ts',
 										content: 'export default workflow',
@@ -907,13 +949,13 @@ describe('executeResumableStream', () => {
 		expect(llmRun?.outputs?.messages).toEqual([
 			{
 				role: 'assistant',
-				content: 'Let me write it.\n\n[Calling tools: mastra_workspace_write_file]',
+				content: 'Let me write it.\n\n[Calling tools: workspace_write_file]',
 			},
 		]);
 		expect(llmRun?.outputs?.requested_tools).toEqual([
 			{
 				toolCallId: 'native-1',
-				toolName: 'mastra_workspace_write_file',
+				toolName: 'workspace_write_file',
 			},
 		]);
 		expect(llmRun?.outputs).not.toHaveProperty('tool_results');
@@ -944,7 +986,7 @@ describe('executeResumableStream', () => {
 				stepNumber: 0,
 				messages: [{ role: 'user', content: 'Build the workflow' }],
 			});
-			hooks?.onStreamChunk({ type: 'text-delta', payload: { text: 'Let me write it.' } });
+			hooks?.onStreamChunk(textChunk('Let me write it.'));
 			hooks?.onStreamChunk({
 				type: 'step-finish',
 				payload: {
@@ -964,7 +1006,7 @@ describe('executeResumableStream', () => {
 						toolCalls: [
 							{
 								toolCallId: 'native-1',
-								toolName: 'mastra_workspace_write_file',
+								toolName: 'workspace_write_file',
 							},
 						],
 						toolResults: [],
@@ -996,7 +1038,7 @@ describe('executeResumableStream', () => {
 				toolCalls: [
 					{
 						toolCallId: 'native-1',
-						toolName: 'mastra_workspace_write_file',
+						toolName: 'workspace_write_file',
 						args: {
 							path: '/tmp/workflow.ts',
 							content: 'export default workflow',
@@ -1006,7 +1048,7 @@ describe('executeResumableStream', () => {
 				toolResults: [
 					{
 						toolCallId: 'native-1',
-						toolName: 'mastra_workspace_write_file',
+						toolName: 'workspace_write_file',
 						result: 'Wrote 23 bytes',
 					},
 				],
@@ -1026,7 +1068,7 @@ describe('executeResumableStream', () => {
 								{
 									type: 'tool-call',
 									toolCallId: 'native-1',
-									toolName: 'mastra_workspace_write_file',
+									toolName: 'workspace_write_file',
 									args: {
 										path: '/tmp/workflow.ts',
 										content: 'export default workflow',
@@ -1222,26 +1264,18 @@ describe('executeResumableStream', () => {
 			await executeResumableStream({
 				agent: {},
 				stream: {
-					runId: 'mastra-run-3',
+					runId: 'agent-run-3',
 					fullStream: fromChunks([
-						{
-							type: 'tool-call',
-							payload: {
-								toolCallId: 'native-tool-1',
-								toolName: 'mastra_workspace_execute_command',
-								args: {
-									command: 'echo hello',
-								},
-							},
-						},
-						{
-							type: 'tool-result',
-							payload: {
-								toolCallId: 'native-tool-1',
-								toolName: 'mastra_workspace_execute_command',
-								result: 'hello',
-							},
-						},
+						toolCallChunk({
+							toolCallId: 'native-tool-1',
+							toolName: 'workspace_execute_command',
+							args: { command: 'echo hello' },
+						}),
+						toolResultChunk({
+							toolCallId: 'native-tool-1',
+							toolName: 'workspace_execute_command',
+							result: 'hello',
+						}),
 						{ type: 'finish', finishReason: 'stop' },
 					]),
 				},
@@ -1259,12 +1293,12 @@ describe('executeResumableStream', () => {
 
 		const toolRun = langsmithMock
 			.getCreatedRuns()
-			.find((run) => run.name === 'tool:mastra_workspace_execute_command');
+			.find((run) => run.name === 'tool:workspace_execute_command');
 		expect(toolRun).toBeDefined();
 		expect(toolRun?.metadata).toEqual(
 			expect.objectContaining({
 				synthetic_tool_trace: true,
-				tool_name: 'mastra_workspace_execute_command',
+				tool_name: 'workspace_execute_command',
 			}),
 		);
 		expect(toolRun?.outputs).toEqual({
@@ -1299,22 +1333,16 @@ describe('executeResumableStream', () => {
 			});
 
 			async function* streamWithToolCall() {
-				yield {
-					type: 'tool-call',
-					payload: {
-						toolCallId: 'native-tool-turn-1',
-						toolName: 'mastra_workspace_execute_command',
-						args: { command: 'echo hello' },
-					},
-				};
-				yield {
-					type: 'tool-result',
-					payload: {
-						toolCallId: 'native-tool-turn-1',
-						toolName: 'mastra_workspace_execute_command',
-						result: 'hello',
-					},
-				};
+				yield toolCallChunk({
+					toolCallId: 'native-tool-turn-1',
+					toolName: 'workspace_execute_command',
+					args: { command: 'echo hello' },
+				});
+				yield toolResultChunk({
+					toolCallId: 'native-tool-turn-1',
+					toolName: 'workspace_execute_command',
+					result: 'hello',
+				});
 				await hooks?.executionOptions.onStepFinish({
 					stepNumber: 0,
 					text: 'Done.',
@@ -1322,13 +1350,13 @@ describe('executeResumableStream', () => {
 					toolCalls: [
 						{
 							toolCallId: 'native-tool-turn-1',
-							toolName: 'mastra_workspace_execute_command',
+							toolName: 'workspace_execute_command',
 						},
 					],
 					toolResults: [
 						{
 							toolCallId: 'native-tool-turn-1',
-							toolName: 'mastra_workspace_execute_command',
+							toolName: 'workspace_execute_command',
 							result: 'hello',
 						},
 					],
@@ -1355,7 +1383,7 @@ describe('executeResumableStream', () => {
 			await executeResumableStream({
 				agent: {},
 				stream: {
-					runId: 'mastra-run-turn-1',
+					runId: 'agent-run-turn-1',
 					fullStream: streamWithToolCall(),
 				},
 				context: {
@@ -1376,7 +1404,7 @@ describe('executeResumableStream', () => {
 			.find((run) => run.name === 'llm:anthropic/claude-sonnet-4-6');
 		const toolRun = langsmithMock
 			.getCreatedRuns()
-			.find((run) => run.name === 'tool:mastra_workspace_execute_command');
+			.find((run) => run.name === 'tool:workspace_execute_command');
 
 		expect(llmRun?.parent_run_id).toBe(parentRun.id);
 		expect(toolRun?.parent_run_id).toBe(llmRun?.id);
@@ -1398,9 +1426,9 @@ describe('executeResumableStream', () => {
 			await executeResumableStream({
 				agent: {},
 				stream: {
-					runId: 'mastra-run-2',
+					runId: 'agent-run-2',
 					fullStream: fromChunks([
-						{ type: 'text-delta', payload: { text: 'I found the matching tables.' } },
+						textChunk('I found the matching tables.'),
 						{ type: 'finish', finishReason: 'stop' },
 					]),
 					steps: Promise.resolve([
@@ -1489,7 +1517,7 @@ describe('executeResumableStream', () => {
 			await executeResumableStream({
 				agent: {},
 				stream: {
-					runId: 'mastra-run-5',
+					runId: 'agent-run-5',
 					fullStream: (async function* () {
 						await prepareStep?.({
 							stepNumber: 0,
@@ -1499,7 +1527,7 @@ describe('executeResumableStream', () => {
 							},
 							messages: [{ role: 'user', content: 'Build a weather workflow' }],
 						});
-						yield { type: 'text-delta', payload: { text: 'Done.' } };
+						yield textChunk('Done.');
 						await llmStepTraceHooks?.executionOptions.onStepFinish({
 							stepNumber: 0,
 							text: 'Done.',
@@ -1601,7 +1629,7 @@ describe('executeResumableStream', () => {
 			await executeResumableStream({
 				agent: {},
 				stream: {
-					runId: 'mastra-run-usage-v3',
+					runId: 'agent-run-usage-v3',
 					fullStream: fromChunks([
 						{
 							type: 'step-start',
@@ -1614,7 +1642,7 @@ describe('executeResumableStream', () => {
 								},
 							},
 						},
-						{ type: 'text-delta', payload: { text: 'Done.' } },
+						textChunk('Done.'),
 						{
 							type: 'step-finish',
 							payload: {
@@ -1724,7 +1752,7 @@ describe('executeResumableStream', () => {
 				},
 				messages: [{ role: 'user', content: 'Build the weather workflow' }],
 			});
-			hooks?.onStreamChunk({ type: 'text-delta', payload: { text: 'Done.' } });
+			hooks?.onStreamChunk(textChunk('Done.'));
 
 			await hooks?.executionOptions.onStepFinish({
 				stepNumber: 0,
@@ -1815,7 +1843,7 @@ describe('executeResumableStream', () => {
 			const result = await executeResumableStream({
 				agent: {},
 				stream: {
-					runId: 'mastra-run-suspended-usage',
+					runId: 'agent-run-suspended-usage',
 					fullStream: (async function* () {
 						await prepareStep?.({
 							stepNumber: 0,
@@ -1825,7 +1853,7 @@ describe('executeResumableStream', () => {
 							},
 							messages: [{ role: 'user', content: 'Ask me a question' }],
 						});
-						yield { type: 'text-delta', payload: { text: 'I need one detail first.' } };
+						yield textChunk('I need one detail first.');
 						await llmStepTraceHooks?.executionOptions.onStepFinish({
 							stepNumber: 0,
 							text: 'I need one detail first.',
@@ -1868,26 +1896,20 @@ describe('executeResumableStream', () => {
 							},
 							providerMetadata: undefined,
 						});
-						yield {
-							type: 'tool-call',
-							payload: {
-								toolCallId: 'ask-user-1',
-								toolName: 'ask-user',
-								args: {
-									questions: [{ id: 'q1', question: 'Which city?', type: 'text' }],
-								},
+						yield toolCallChunk({
+							toolCallId: 'ask-user-1',
+							toolName: 'ask-user',
+							args: {
+								questions: [{ id: 'q1', question: 'Which city?', type: 'text' }],
 							},
-						};
-						yield {
-							type: 'tool-call-suspended',
-							payload: {
-								toolCallId: 'ask-user-1',
-								toolName: 'ask-user',
-								suspendPayload: {
-									requestId: 'req-ask-user-1',
-								},
+						});
+						yield suspensionChunk({
+							toolCallId: 'ask-user-1',
+							toolName: 'ask-user',
+							suspendPayload: {
+								requestId: 'req-ask-user-1',
 							},
-						};
+						});
 					})(),
 					usage: Promise.resolve({
 						inputTokens: 120,

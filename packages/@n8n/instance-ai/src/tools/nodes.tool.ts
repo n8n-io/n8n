@@ -192,7 +192,7 @@ async function handleTypeDefinition(
 	context: InstanceAiContext,
 	input: Extract<FullInput, { action: 'type-definition' }>,
 ) {
-	// Mastra validates against the flattened top-level schema (required for
+	// Native tool validation uses the flattened top-level schema (required for
 	// Anthropic's `type: "object"` constraint), which makes every variant field
 	// optional. Re-assert the variant contract so missing/invalid inputs return
 	// a structured error the model can self-correct from, instead of crashing

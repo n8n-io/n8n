@@ -455,7 +455,7 @@ pnpm typecheck
 - [x] Delete Mastra registration logic.
 - [x] Rewrite all tools to native `Tool`.
 - [x] Rewrite orchestration tools for native streaming and resume.
-- [ ] Rewrite stream runner and stream executor for native `StreamChunk`.
+- [x] Rewrite stream runner and stream executor for native `StreamChunk`.
 - [x] Rename internal `mastraRunId` to `agentRunId`.
 - [x] Implement native chunk to Instance AI event mapper.
 - [x] Implement TypeORM `BuiltMemory`.
@@ -474,10 +474,6 @@ pnpm typecheck
 
 Current remaining cleanup:
 
-- Remove the Mastra-shaped stream fallback (`mapMastraChunkToEvent`,
-  `ResumableStreamFormat = 'mastra' | 'agent'`) now that runtime execution is
-  native-only.
-- Rename stale Mastra-only test fixture IDs/tool names and comments.
 - Update architecture/tooling docs that still describe the old Mastra runtime.
 
 ## Acceptance Criteria

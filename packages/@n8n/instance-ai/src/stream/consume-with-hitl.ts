@@ -23,7 +23,7 @@ export interface ConsumeWithHitlOptions {
 	 *  Used to unblock HITL suspensions when a correction arrives mid-confirmation. */
 	waitForCorrection?: () => Promise<void>;
 	llmStepTraceHooks?: LlmStepTraceHooks;
-	/** Max iterations for the agent — passed to resumeStream so resumed streams keep the same limit. */
+	/** Max iterations for the agent; passed to native stream resume so resumed streams keep the same limit. */
 	maxIterations?: number;
 	/** Additional options to preserve when resuming a suspended stream. */
 	resumeOptions?: Record<string, unknown>;

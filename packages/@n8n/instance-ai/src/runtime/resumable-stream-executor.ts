@@ -4,18 +4,16 @@ import type { RunTree } from 'langsmith';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
-import { mapAgentChunkToEvent, mapMastraChunkToEvent } from '../stream/map-chunk';
+import { mapAgentChunkToEvent } from '../stream/map-chunk';
 import { WorkSummaryAccumulator, type WorkSummary } from '../stream/work-summary-accumulator';
 import { getTraceParentRun, setTraceParentOverride } from '../tracing/langsmith-tracing';
-import { parseSuspension, resumeStream } from '../utils/stream-helpers';
+import { parseSuspension, resumeAgentStream } from '../utils/stream-helpers';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
 type ConfirmationRequestEvent = Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
-export type ResumableStreamFormat = 'mastra' | 'agent';
 
 export interface ResumableStreamSource {
 	runId?: string;
-	streamFormat?: ResumableStreamFormat;
 	fullStream: AsyncIterable<unknown>;
 	text?: Promise<string>;
 	steps?: Promise<unknown[]>;
@@ -168,6 +166,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
+function isUnknownArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
+}
+
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
 	return (
 		value !== null &&
@@ -257,14 +259,9 @@ async function* readableStreamToAsyncIterable(stream: ReadableStream<unknown>) {
 	}
 }
 
-export function normalizeStreamSource(
-	result: unknown,
-	options?: { streamFormat?: ResumableStreamFormat },
-): ResumableStreamSource {
+export function normalizeStreamSource(result: unknown): ResumableStreamSource {
 	if (isResumableStreamSource(result)) {
-		return options?.streamFormat && !result.streamFormat
-			? { ...result, streamFormat: options.streamFormat }
-			: result;
+		return result;
 	}
 
 	if (isNativeStreamResult(result)) {
@@ -272,7 +269,6 @@ export function normalizeStreamSource(
 
 		return {
 			runId: result.runId,
-			streamFormat: 'agent',
 			fullStream: readableStreamToAsyncIterable(eventStream),
 			text: collectNativeStreamText(textStream),
 		};
@@ -1131,6 +1127,47 @@ function getChunkPayload(chunk: unknown): Record<string, unknown> | undefined {
 	return isRecord(chunk.payload) ? chunk.payload : chunk;
 }
 
+function getNativeToolContent(chunk: unknown, type: 'tool-call' | 'tool-result') {
+	if (!isRecord(chunk) || chunk.type !== 'message' || !isRecord(chunk.message)) {
+		return undefined;
+	}
+
+	const message = chunk.message;
+	if (message.role !== 'tool' || !isUnknownArray(message.content)) {
+		return undefined;
+	}
+
+	return message.content.find((part) => isRecord(part) && part.type === type);
+}
+
+function getNativeToolCallPayload(chunk: unknown): Record<string, unknown> | undefined {
+	const toolCall = getNativeToolContent(chunk, 'tool-call');
+	if (!isRecord(toolCall)) {
+		return undefined;
+	}
+
+	return {
+		toolCallId: toolCall.toolCallId,
+		toolName: toolCall.toolName,
+		args: toolCall.input,
+		...(toolCall.providerExecuted === true ? { providerExecuted: true } : {}),
+	};
+}
+
+function getNativeToolResultPayload(chunk: unknown): Record<string, unknown> | undefined {
+	const toolResult = getNativeToolContent(chunk, 'tool-result');
+	if (!isRecord(toolResult)) {
+		return undefined;
+	}
+
+	return {
+		toolCallId: toolResult.toolCallId,
+		toolName: toolResult.toolName,
+		result: toolResult.result,
+		...(toolResult.isError === true ? { isError: true } : {}),
+	};
+}
+
 function buildSyntheticToolInputs(
 	toolCallId: string,
 	_toolName: string,
@@ -1145,7 +1182,7 @@ function buildSyntheticToolInputs(
 function shouldCreateSyntheticToolTrace(payload: Record<string, unknown>): boolean {
 	const toolName = typeof payload.toolName === 'string' ? payload.toolName : '';
 	return (
-		toolName.startsWith('mastra_') ||
+		toolName.startsWith('workspace_') ||
 		SYNTHETIC_TOOL_TRACE_NAMES.has(toolName) ||
 		payload.providerExecuted === true ||
 		payload.dynamic === true
@@ -1156,11 +1193,7 @@ async function startSyntheticToolTrace(
 	chunk: unknown,
 	records: Map<string, SyntheticToolTraceRecord>,
 ): Promise<void> {
-	if (!isRecord(chunk) || chunk.type !== 'tool-call') {
-		return;
-	}
-
-	const payload = getChunkPayload(chunk);
+	const payload = getNativeToolCallPayload(chunk);
 	if (!payload || !shouldCreateSyntheticToolTrace(payload)) {
 		return;
 	}
@@ -1182,7 +1215,7 @@ async function startSyntheticToolTrace(
 		tags: dedupeTags([
 			...(parentRun.tags ?? []),
 			'tool',
-			...(toolName.startsWith('mastra_') ? ['native-tool'] : []),
+			...(toolName.startsWith('workspace_') ? ['native-tool'] : []),
 		]),
 		metadata: {
 			...(parentRun.metadata ?? {}),
@@ -1207,11 +1240,7 @@ async function finishSyntheticToolTrace(
 	chunk: unknown,
 	records: Map<string, SyntheticToolTraceRecord>,
 ): Promise<void> {
-	if (!isRecord(chunk) || (chunk.type !== 'tool-result' && chunk.type !== 'tool-error')) {
-		return;
-	}
-
-	const payload = getChunkPayload(chunk);
+	const payload = getNativeToolResultPayload(chunk);
 	if (!payload) {
 		return;
 	}
@@ -1228,8 +1257,18 @@ async function finishSyntheticToolTrace(
 
 		await startSyntheticToolTrace(
 			{
-				type: 'tool-call',
-				payload,
+				type: 'message',
+				message: {
+					role: 'tool',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: payload.toolCallId,
+							toolName: payload.toolName,
+							input: {},
+						},
+					],
+				},
 			},
 			records,
 		);
@@ -1370,25 +1409,23 @@ function updateStepRecordFromChunk(
 		return undefined;
 	}
 
-	const payload = isRecord(chunk.payload) ? chunk.payload : chunk;
-	if ((chunk.type === 'text-delta' || chunk.type === 'text') && typeof payload.text === 'string') {
-		record.textParts.push(payload.text);
+	if (chunk.type === 'text-delta' && typeof chunk.delta === 'string') {
+		record.textParts.push(chunk.delta);
 		recordFirstTokenEvent(record);
 	}
 
-	if (
-		(chunk.type === 'reasoning-delta' || chunk.type === 'reasoning') &&
-		typeof payload.text === 'string'
-	) {
-		record.reasoningParts.push(payload.text);
+	if (chunk.type === 'reasoning-delta' && typeof chunk.delta === 'string') {
+		record.reasoningParts.push(chunk.delta);
 	}
 
-	if (chunk.type === 'tool-call' && isRecord(payload)) {
-		record.toolCalls.push(toTraceObject(payload));
+	const toolCallPayload = getNativeToolCallPayload(chunk);
+	if (toolCallPayload) {
+		record.toolCalls.push(toTraceObject(toolCallPayload));
 	}
 
-	if ((chunk.type === 'tool-result' || chunk.type === 'tool-error') && isRecord(payload)) {
-		record.toolResults.push(toTraceObject(payload));
+	const toolResultPayload = getNativeToolResultPayload(chunk);
+	if (toolResultPayload) {
+		record.toolResults.push(toTraceObject(toolResultPayload));
 	}
 
 	return record;
@@ -2033,20 +2070,12 @@ export async function executeResumableStream(
 				hasError = true;
 			}
 
-			const event =
-				activeSource.streamFormat === 'agent'
-					? mapAgentChunkToEvent(
-							options.context.runId,
-							options.context.agentId,
-							chunk,
-							currentResponseId,
-						)
-					: mapMastraChunkToEvent(
-							options.context.runId,
-							options.context.agentId,
-							chunk,
-							currentResponseId,
-						);
+			const event = mapAgentChunkToEvent(
+				options.context.runId,
+				options.context.agentId,
+				chunk,
+				currentResponseId,
+			);
 			if (event) {
 				workSummaryAccumulator.observe(event);
 				let shouldPublishEvent = true;
@@ -2138,13 +2167,11 @@ export async function executeResumableStream(
 			runId: activeAgentRunId,
 			toolCallId: suspension.toolCallId,
 		};
-		const resumed = await resumeStream(options.agent, resumeData, {
+		const resumed = await resumeAgentStream(options.agent, resumeData, {
 			...resumeOptions,
 			...(options.llmStepTraceHooks?.executionOptions ?? {}),
 		});
-		const resumedSource = normalizeStreamSource(resumed, {
-			streamFormat: activeSource.streamFormat,
-		});
+		const resumedSource = normalizeStreamSource(resumed);
 
 		activeAgentRunId =
 			(typeof resumedSource.runId === 'string' ? resumedSource.runId : '') || activeAgentRunId;

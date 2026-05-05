@@ -557,7 +557,7 @@ export class InstanceAiController {
 		}
 
 		// Exclude snapshots for active/suspended runs — they have no matching
-		// assistant message in Mastra memory yet and would misalign the
+		// assistant message in native memory yet and would misalign the
 		// positional snapshot-to-message matching in parseStoredMessages.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
 		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
