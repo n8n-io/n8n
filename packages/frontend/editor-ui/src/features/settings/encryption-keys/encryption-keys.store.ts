@@ -16,6 +16,11 @@ const DEFAULT_FILTERS: EncryptionKeyFilters = {
 	activatedTo: null,
 };
 
+// `en-CA` formats a Date as `YYYY-MM-DD` in the user's local time zone — same
+// shape as the date strings produced by the picker, enabling lexicographic
+// comparison without time-of-day or UTC-offset surprises.
+const localDateFormatter = new Intl.DateTimeFormat('en-CA');
+
 export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 	const rootStore = useRootStore();
 
@@ -44,10 +49,14 @@ export const useEncryptionKeysStore = defineStore('encryptionKeys', () => {
 
 	const matchesFilters = (key: EncryptionKey) => {
 		const { activatedFrom, activatedTo } = filters.value;
-		const activatedAt = new Date(key.createdAt).getTime();
+		if (!activatedFrom && !activatedTo) return true;
 
-		if (activatedFrom && activatedAt < new Date(activatedFrom).getTime()) return false;
-		if (activatedTo && activatedAt > new Date(activatedTo).getTime()) return false;
+		// Compare on the user's local calendar day so `from === to` includes keys
+		// activated at any time during that day.
+		const activatedDay = localDateFormatter.format(new Date(key.createdAt));
+
+		if (activatedFrom && activatedDay < activatedFrom) return false;
+		if (activatedTo && activatedDay > activatedTo) return false;
 
 		return true;
 	};

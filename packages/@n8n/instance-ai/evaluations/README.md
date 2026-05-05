@@ -2,7 +2,20 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-## How it works
+Three harnesses live here:
+
+- **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
+- **`eval:subagent`** — builder sub-agent against live n8n, scored by binary checks (drives a running n8n instance)
+- **`eval:pairwise`** — builder sub-agent in-process, scored by an LLM judge panel against do/don't lists (no n8n server). Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+
+Sections:
+
+- [Running e2e + sub-agent evals](#running-evals)
+- [Running pairwise evals](#pairwise-evals)
+- [How the e2e harness works](#how-the-e2e-harness-works)
+- [How the sub-agent harness works](#how-the-sub-agent-harness-works)
+
+## Running evals
 
 Each run:
 
@@ -142,9 +155,194 @@ Every run produces:
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 
-## Writing test cases
+## Pairwise evals
 
-Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI and LangSmith sync pick it up — no registration step.
+Pairwise evals score a built workflow against the dataset's `dos` / `donts`
+criteria using an LLM judge panel (3 judges by default, majority vote on
+`pairwise_primary`, mean fraction of criteria satisfied on
+`pairwise_diagnostic`). The point is **head-to-head comparison with
+`ai-workflow-builder.ee`** on the same dataset (default
+`notion-pairwise-workflows`), so the judge panel, defaults, and metric keys
+are imported from that package directly.
+
+Unlike the e2e and sub-agent harnesses, pairwise runs the **builder
+sub-agent in-process** — no n8n server, no Docker, no live workflow service.
+Stub services capture `createFromWorkflowJSON` calls; HITL suspensions are
+auto-approved.
+
+### Quick start
+
+```bash
+# From packages/@n8n/instance-ai/
+
+# 1. Local fixture (small smoke set, no LangSmith required)
+N8N_AI_ANTHROPIC_KEY="$ANTHROPIC_API_KEY" pnpm eval:pairwise --judges 1
+
+# 2. Full LangSmith dataset
+LANGSMITH_API_KEY=... N8N_AI_ANTHROPIC_KEY="$ANTHROPIC_API_KEY" \
+  pnpm eval:pairwise:langsmith --judges 3
+
+# 3. Rerun a specific subset (one example ID per line; #-prefixed lines ignored)
+pnpm eval:pairwise:langsmith \
+  --example-ids-file .output/pairwise/failed-ids.txt \
+  --output-dir .output/pairwise/rerun
+```
+
+### Sandbox
+
+Pairwise evals always run inside a sandbox — the same path production uses.
+The agent writes TypeScript to `~/workspace/src/workflow.ts` inside the
+sandbox, runs `tsc` to validate, and calls `submit-workflow` to save the
+parsed `WorkflowJSON`. This exercises the production builder agent
+end-to-end (sandbox prompt, file I/O, real type checking).
+
+Required env vars (Daytona provider — the default):
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...           # builder + judge LLM
+LANGSMITH_API_KEY=ls__...              # only for --backend langsmith
+DAYTONA_API_URL=https://app.daytona.io/api
+DAYTONA_API_KEY=dtn_...
+
+# Optional
+N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona      # default; set 'local' or 'n8n-sandbox' to switch
+N8N_INSTANCE_AI_SANDBOX_IMAGE=daytonaio/sandbox:0.5.0   # default
+N8N_INSTANCE_AI_SANDBOX_TIMEOUT=300000        # per-command timeout (ms)
+```
+
+The CLI fails fast at startup if the chosen provider is misconfigured (e.g.,
+Daytona selected without API URL/key). The chosen provider is recorded under
+`summary.json → sandbox.provider`.
+
+> **Daytona cold-start.** The very first sandbox creation triggers an image
+> build on Daytona's side (`npm install` for `@n8n/workflow-sdk`). That can
+> exceed the SDK's 5-minute create timeout and fail with `Sandbox failed to
+> become ready within the timeout period`. Once the image is cached, later
+> runs are fast. Workaround: pre-build the image via the Daytona dashboard
+> before kicking off a full eval run.
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--backend` | `local` | `local` reads `evaluations/data/pairwise/local.json`; `langsmith` pulls from the LangSmith dataset |
+| `--dataset` | `notion-pairwise-workflows` | LangSmith dataset name (langsmith backend only) |
+| `--judges` | `3` | Number of judges in the LLM panel |
+| `--judge-model` | `claude-sonnet-4-5-20250929` | LangChain model id for the judge LLM |
+| `--iterations` | `1` | Run each example N times — for measuring judge / build variance |
+| `--concurrency` | `5` | Parallel example workers (`p-limit`) |
+| `--max-examples` | — | Cap dataset to first N examples |
+| `--example-ids-file` | — | Path to a text file of LangSmith example IDs (one per line). Used for rerunning a subset |
+| `--timeout-ms` | `1200000` | Per-example build timeout |
+| `--output-dir` | `.output/pairwise/<iso>` | Where to write artifacts |
+| `--experiment-name` | `pairwise-evals-instance-ai` | LangSmith experiment label |
+| `--verbose` | `false` | Per-example log lines |
+
+### Outputs
+
+Each run writes a self-contained directory:
+
+```
+.output/pairwise/<run>/
+├── summary.json           # totals: pass rate, avg diagnostic, build failures by class, interactivity counters
+├── results.jsonl          # one line per example: prompt, dos/donts, captured workflow, build metadata, feedback rows
+├── workflows/<id>.json    # normalized workflow JSON (matches SimpleWorkflow shape from ai-workflow-builder.ee)
+└── chunks/<id>_<iter>.jsonl  # per-example agent trace: tool-calls, tool-results, suspensions, final text
+```
+
+The `chunks/*.jsonl` traces are the primary tool for root-causing build
+failures. Each line is one event: `tool-call`, `tool-result`, `suspension`,
+`auto-approve`, `text`, `stream-finish`, `captured-workflows`, `error`.
+
+When `LANGSMITH_API_KEY` is set, feedback is also posted to LangSmith with
+metric keys `pairwise_primary`, `pairwise_diagnostic`,
+`pairwise_judges_passed`, `pairwise_total_passes`, `pairwise_total_violations`,
+and per-judge `judge1..N`. Experiment metadata includes
+`builder: 'instance-ai'` so it can be queried alongside the
+`ai-workflow-builder.ee` baseline.
+
+### Build failure classes
+
+Build failures are tracked separately from judge scores:
+
+- **`build_timeout`** — exceeded `--timeout-ms`
+- **`no_workflow_built`** — agent finished without invoking `build-workflow` (no captured workflow)
+- **`agent_error`** — stream errored or the agent threw
+
+A failure produces a row with `workflow: null`, empty `feedback`, and the
+error class — it counts as a primary fail in the comparison report.
+
+### Interactivity gates
+
+The agent is stubbed for non-interactive use. The summary tracks divergence
+from this assumption — investigate any non-zero count:
+
+- `askUserCount` — `ask-user` tool was invoked (eval responds with `{ approved: false }`)
+- `planToolCount` — `plan` tool was invoked (single-prompt dataset shouldn't trigger planning)
+- `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data-tables` create); auto-approved
+- `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
+
+### Comparison report
+
+After running both `ai-workflow-builder.ee/evaluations/cli` (the baseline) and
+`eval:pairwise` against the same dataset, generate an HTML side-by-side
+report:
+
+```bash
+pnpm eval:pairwise:compare \
+  --ee-dir   ../ai-workflow-builder.ee/evaluations/.output/pairwise/<ts> \
+  --ia-dir   .output/pairwise/<ts> \
+  --out      .output/pairwise/comparison.html
+```
+
+The report shows headline metrics, per-prompt verdicts (TIE / IA-only /
+Code-only / both-pass / both-fail), and lazy-loaded workflow previews — rows
+collapse by default and only render the heavy `<n8n-demo>` preview when
+expanded.
+
+### When pairwise scores wobble
+
+Judge non-determinism + agent retry behavior mean a single run is not a
+reliable signal. Two specific things to know:
+
+- The agent will sometimes retry `build-workflow` after a parser rejection
+  (e.g., security violation) and sometimes give up. Whether a prompt
+  "fails to build" is non-deterministic across runs.
+- If you're comparing two builders to claim a regression or improvement,
+  bump `--iterations` to ≥3 for both sides.
+
+## How the e2e harness works
+
+1. **Build** — sends the test case prompt to Instance AI, which builds a workflow
+2. **Phase 1** — analyzes the workflow and generates consistent mock data hints (one Sonnet call per scenario)
+3. **Phase 2** — executes the workflow with all HTTP requests intercepted. Each request goes to an LLM that generates a realistic API response using the node's configuration and API documentation from Context7
+4. **Verify** — an LLM evaluates whether the scenario's success criteria were met and categorizes any failure by root cause (see Failure categories below)
+
+### What gets mocked
+
+- **Mocked nodes** — any node that makes HTTP requests (Gmail, Slack, Google Sheets, HTTP Request, Notion, etc.). The request is intercepted before it leaves the process. An LLM generates the response.
+- **Pinned nodes** — nodes that don't go through the HTTP layer: trigger/webhook nodes, LangChain/AI nodes (they use SDKs directly), database nodes. These receive LLM-generated data as pin data.
+- **Real nodes** — logic nodes (Code, Set, Merge, Filter, IF, Switch) execute their actual code on the mocked/pinned data.
+
+No real credentials or API connections are needed. ~95% of node types are covered; the main gaps are binary-data nodes (file attachments, image generation) and streaming nodes.
+
+## How the sub-agent harness works
+
+1. The CLI logs in to n8n with `N8N_EVAL_EMAIL` / `N8N_EVAL_PASSWORD`.
+2. For each test case it POSTs `/rest/instance-ai/eval/run-sub-agent`.
+3. The server builds a real `InstanceAiContext` via `InstanceAiAdapterService.createContext`, wraps the workflow service to record created IDs, resolves the `builder` (or other) role's system prompt, instantiates the sub-agent with the full `createAllTools(context)` tool surface, and runs it to completion.
+4. The server returns `{ text, toolCalls, toolResults, capturedWorkflowIds, ... }`.
+5. The CLI fetches each captured workflow via `GET /rest/workflows/:id` (this doubles as a round-trip check through the real importer), scores it with the binary-check suite, and archives+deletes it (unless `--keep-workflows`).
+
+No tools, services, or workflow imports are mocked. The server path exercised here is the same one the orchestrator takes when it spawns a builder sub-agent.
+
+## LangSmith integration
+
+When `LANGSMITH_API_KEY` is set, each run is recorded as a LangSmith experiment against the `instance-ai-workflow-evals` dataset (synced from the JSON files before each run). Experiments against the same dataset can be compared side-by-side to spot regressions.
+
+## Adding test cases
+
+Test cases live in `evaluations/data/workflows/*.json`. Drop a file in, the CLI and LangSmith sync picks it up — no registration step.
 
 ```json
 {
@@ -225,12 +423,13 @@ The job is **non-blocking**. Results are posted as a PR comment and uploaded as 
 ```
 evaluations/
 ├── index.ts              # Public API
-├── cli/                  # CLI entry point, arg parsing, CI metadata
+├── cli/                  # CLI entries: instance-ai, subagent, pairwise, compare-pairwise, report
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
-├── data/workflows/       # Test case JSON files
-├── harness/              # Runner: buildWorkflow, executeScenario, cleanupBuild
+├── data/workflows/       # e2e/sub-agent test case JSON files
+├── data/pairwise/        # Local pairwise fixture (small smoke set)
+├── harness/              # Runners: buildWorkflow + executeScenario (e2e), in-process-builder (pairwise)
 ├── langsmith/            # Dataset sync + experiment setup
 ├── outcome/              # SSE event parsing, workflow discovery
 ├── report/               # HTML report generator

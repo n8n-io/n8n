@@ -225,7 +225,12 @@ export class TestWebhooks implements IWebhookManager {
 
 		const workflow = this.toWorkflow(workflowEntity);
 
-		await this.deactivateWebhooks(workflow);
+		await workflow.expression.acquireIsolate();
+		try {
+			await this.deactivateWebhooks(workflow);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	clearTimeout(key: string) {
@@ -476,7 +481,14 @@ export class TestWebhooks implements IWebhookManager {
 
 			if (!foundWebhook) {
 				// As it removes all webhooks of the workflow execute only once
-				void this.deactivateWebhooks(workflow);
+				void (async () => {
+					await workflow.expression.acquireIsolate();
+					try {
+						await this.deactivateWebhooks(workflow);
+					} finally {
+						await workflow.expression.releaseIsolate();
+					}
+				})();
 			}
 
 			foundWebhook = true;

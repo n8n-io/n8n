@@ -1,6 +1,6 @@
 {
   "name": "n8n",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "description": "n8n Workflow Automation Tool",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -182,6 +182,7 @@
     "otpauth": "9.1.1",
     "p-cancelable": "2.1.1",
     "p-lazy": "3.1.0",
+    "p-limit": "^3.1.0",
     "pg": "catalog:",
     "picocolors": "catalog:",
     "pkce-challenge": "5.0.0",
