@@ -16,7 +16,12 @@ import { GlobalConfig } from '@n8n/config';
 import { ErrorReporter } from 'n8n-core';
 import { Time } from '@n8n/constants';
 import type { InstanceAiConfig } from '@n8n/config';
-import { AiBuilderTemporaryWorkflowRepository, UserRepository, type User } from '@n8n/db';
+import {
+	AiBuilderTemporaryWorkflowRepository,
+	InstanceAiPendingConfirmationRepository,
+	UserRepository,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UrlService } from '@/services/url.service';
 import {
@@ -246,6 +251,10 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 	}
 }
 
+/** Outcome of resolving a confirmation. The controller maps these to HTTP statuses:
+ *  resolved → 200, not-found → 404, interrupted → 410. */
+export type ResolveConfirmationOutcome = 'resolved' | 'not-found' | 'interrupted';
+
 @Service()
 export class InstanceAiService {
 	private readonly mcpClientManager = new McpClientManager();
@@ -336,6 +345,7 @@ export class InstanceAiService {
 		private readonly userRepository: UserRepository,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
+		private readonly pendingConfirmationRepository: InstanceAiPendingConfirmationRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -349,6 +359,90 @@ export class InstanceAiService {
 		this.webhookBaseUrl = `${this.urlService.getWebhookBaseUrl()}${globalConfig.endpoints.webhook}`;
 
 		this.startConfirmationTimeoutSweep();
+	}
+
+	/** TTL fence for persisted HITL confirmations. Keep the DB row alive a little
+	 *  longer than the in-memory timeout so the post-timeout cleanup path on the
+	 *  holding instance can still find and delete its own row.
+	 *  When `confirmationTimeout` is 0 the admin has explicitly disabled timeouts. */
+	private computeConfirmationExpiry(): Date {
+		const ttlMs = this.instanceAiConfig.confirmationTimeout;
+		if (ttlMs <= 0) return new Date('9999-12-31T23:59:59Z');
+		return new Date(Date.now() + ttlMs + Time.minutes.toMilliseconds);
+	}
+
+	private async persistSuspendedConfirmation(state: SuspendedRunState<User>): Promise<void> {
+		try {
+			await this.pendingConfirmationRepository.register({
+				requestId: state.requestId,
+				threadId: state.threadId,
+				userId: state.user.id,
+				kind: 'suspended',
+				runId: state.runId,
+				mastraRunId: state.mastraRunId,
+				toolCallId: state.toolCallId,
+				messageGroupId: state.messageGroupId ?? null,
+				checkpointTaskId: state.checkpoint?.checkpointTaskId ?? null,
+				expiresAt: this.computeConfirmationExpiry(),
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist suspended confirmation', {
+				requestId: state.requestId,
+				threadId: state.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async persistInlineConfirmation(args: {
+		requestId: string;
+		threadId: string;
+		userId: string;
+		runId: string;
+		messageGroupId?: string;
+	}): Promise<void> {
+		try {
+			await this.pendingConfirmationRepository.register({
+				requestId: args.requestId,
+				threadId: args.threadId,
+				userId: args.userId,
+				kind: 'inline',
+				runId: args.runId,
+				mastraRunId: null,
+				toolCallId: null,
+				messageGroupId: args.messageGroupId ?? null,
+				checkpointTaskId: null,
+				expiresAt: this.computeConfirmationExpiry(),
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist inline confirmation', {
+				requestId: args.requestId,
+				threadId: args.threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async deletePersistedConfirmation(requestId: string): Promise<void> {
+		try {
+			await this.pendingConfirmationRepository.deleteByRequestId(requestId);
+		} catch (error) {
+			this.logger.warn('Failed to delete persisted confirmation', {
+				requestId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private async deletePersistedConfirmationsForThread(threadId: string): Promise<void> {
+		try {
+			await this.pendingConfirmationRepository.deleteByThread(threadId);
+		} catch (error) {
+			this.logger.warn('Failed to delete persisted confirmations for thread', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
 	}
 
 	private startConfirmationTimeoutSweep(): void {
@@ -368,6 +462,7 @@ export class InstanceAiService {
 					requestId: reqId,
 				});
 				this.runState.rejectPendingConfirmation(reqId);
+				void this.deletePersistedConfirmation(reqId);
 			}
 		}, Time.minutes.toMilliseconds);
 	}
@@ -1076,6 +1171,7 @@ export class InstanceAiService {
 		void this.cancelAwaitingApprovalPlan(threadId);
 
 		const { active, suspended } = this.runState.cancelThread(threadId);
+		void this.deletePersistedConfirmationsForThread(threadId);
 		if (active) {
 			active.abortController.abort();
 			return;
@@ -1241,6 +1337,7 @@ export class InstanceAiService {
 		// Clear run-state registry entries (active/suspended runs, confirmations,
 		// user, research mode, and message-group mappings).
 		const { active, suspended } = this.runState.clearThread(threadId);
+		await this.deletePersistedConfirmationsForThread(threadId);
 		if (active) {
 			active.abortController.abort();
 			await this.finalizeRunTracing(active.runId, active.tracing, {
@@ -1612,6 +1709,15 @@ export class InstanceAiService {
 						threadId,
 						userId: user.id,
 						createdAt: Date.now(),
+					});
+					// Mirror to the durable side index so a confirmation arriving on a
+					// different process/instance can return a clear 410 instead of 404.
+					void this.persistInlineConfirmation({
+						requestId,
+						threadId,
+						userId: user.id,
+						runId,
+						messageGroupId,
 					});
 
 					// Inline HITL (planner questions / plan approval / sub-agent asks)
@@ -2345,7 +2451,7 @@ export class InstanceAiService {
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {
-					this.runState.suspendRun(threadId, {
+					const suspendedState: SuspendedRunState<User> = {
 						runId,
 						mastraRunId: result.mastraRunId,
 						agent,
@@ -2358,7 +2464,9 @@ export class InstanceAiService {
 						createdAt: Date.now(),
 						tracing,
 						checkpoint,
-					});
+					};
+					this.runState.suspendRun(threadId, suspendedState);
+					void this.persistSuspendedConfirmation(suspendedState);
 				}
 
 				// Track intermediate message (text streamed before suspension)
@@ -2699,7 +2807,7 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
-	): Promise<boolean> {
+	): Promise<ResolveConfirmationOutcome> {
 		const data = toConfirmationData(request);
 
 		if (this.runState.resolvePendingConfirmation(requestingUserId, requestId, data)) {
@@ -2707,15 +2815,36 @@ export class InstanceAiService {
 				requestId,
 				approved: data.approved,
 			});
-			return true;
+			void this.deletePersistedConfirmation(requestId);
+			return 'resolved';
 		}
 
-		this.logger.debug('Pending confirmation not found, trying suspended run resume', {
-			requestId,
-			approved: data.approved,
-		});
+		const localResume = await this.resumeSuspendedRun(requestingUserId, requestId, data);
+		if (localResume) return 'resolved';
 
-		return await this.resumeSuspendedRun(requestingUserId, requestId, data);
+		// Local maps were empty. Consult the durable side index — a row here means the
+		// confirmation was registered (possibly on a previous process or another main
+		// instance) but no live in-memory state exists to drive it forward in this
+		// process.
+		const row = await this.pendingConfirmationRepository
+			.findByRequestId(requestId)
+			.catch((error) => {
+				this.logger.warn('Failed to look up persisted confirmation', {
+					requestId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				return null;
+			});
+
+		if (!row) return 'not-found';
+		if (row.userId !== requestingUserId) return 'not-found';
+
+		this.logger.debug('Confirmation arrived for an unrecoverable run', {
+			requestId,
+			threadId: row.threadId,
+			kind: row.kind,
+		});
+		return 'interrupted';
 	}
 
 	private async resumeSuspendedRun(
@@ -2724,13 +2853,7 @@ export class InstanceAiService {
 		data: ConfirmationData,
 	): Promise<boolean> {
 		const suspended = this.runState.findSuspendedByRequestId(requestId);
-		if (!suspended) {
-			this.logger.warn('Confirmation target not found: no pending confirmation or suspended run', {
-				requestId,
-				approved: data.approved,
-			});
-			return false;
-		}
+		if (!suspended) return false;
 
 		const {
 			agent,
@@ -2746,6 +2869,7 @@ export class InstanceAiService {
 		if (user.id !== requestingUserId) return false;
 
 		this.runState.activateSuspendedRun(threadId);
+		void this.deletePersistedConfirmation(requestId);
 
 		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
 		// other tools use the flat credentials map. Prefer nodeCredentials when present.
@@ -2838,7 +2962,7 @@ export class InstanceAiService {
 
 			if (result.status === 'suspended') {
 				if (result.suspension) {
-					this.runState.suspendRun(opts.threadId, {
+					const suspendedState: SuspendedRunState<User> = {
 						runId: opts.runId,
 						mastraRunId: result.mastraRunId,
 						agent,
@@ -2851,7 +2975,9 @@ export class InstanceAiService {
 						createdAt: Date.now(),
 						tracing: opts.tracing,
 						checkpoint: opts.checkpoint,
-					});
+					};
+					this.runState.suspendRun(opts.threadId, suspendedState);
+					void this.persistSuspendedConfirmation(suspendedState);
 				}
 
 				// Track intermediate message (text streamed before suspension)

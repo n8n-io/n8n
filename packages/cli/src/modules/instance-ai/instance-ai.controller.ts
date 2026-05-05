@@ -46,6 +46,7 @@ import { InstanceAiService } from './instance-ai.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { GoneError } from '@/errors/response-errors/gone.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
@@ -335,15 +336,19 @@ export class InstanceAiController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
-		const resolved = await this.instanceAiService.resolveConfirmation(
+		const outcome = await this.instanceAiService.resolveConfirmation(
 			req.user.id,
 			requestId,
 			parseResult.data,
 		);
-		if (!resolved) {
-			throw new NotFoundError('Confirmation request not found or not authorized');
+		switch (outcome) {
+			case 'resolved':
+				return { ok: true };
+			case 'interrupted':
+				throw new GoneError('Conversation was interrupted. Refresh and start a new one.');
+			case 'not-found':
+				throw new NotFoundError('Confirmation request not found or not authorized');
 		}
-		return { ok: true };
 	}
 
 	@Post('/chat/:threadId/cancel')

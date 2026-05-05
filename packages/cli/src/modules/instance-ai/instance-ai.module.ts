@@ -35,6 +35,12 @@ export class InstanceAiModule implements ModuleInterface {
 		// Initialize snapshot pruning — lifecycle decorators handle multi-main start/stop
 		const { SnapshotPruningService } = await import('./snapshot-pruning.service');
 		Container.get(SnapshotPruningService).init();
+
+		// Initialize pending-confirmation pruning — TTL sweeper, leader-only.
+		const { PendingConfirmationPruningService } = await import(
+			'./pending-confirmation-pruning.service'
+		);
+		Container.get(PendingConfirmationPruningService).init();
 	}
 
 	async settings() {

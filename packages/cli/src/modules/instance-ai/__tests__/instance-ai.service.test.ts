@@ -298,3 +298,142 @@ describe('InstanceAiService — AI temporary workflow cleanup', () => {
 		expect(archiveIfAiTemporary).toHaveBeenNthCalledWith(2, 'wf-created');
 	});
 });
+
+// ---------------------------------------------------------------------------
+// Durable HITL pending confirmations — INS-198
+// ---------------------------------------------------------------------------
+
+type PersistedConfirmation = {
+	requestId: string;
+	threadId: string;
+	userId: string;
+	kind: 'suspended' | 'inline';
+};
+
+type ResolveConfirmationServiceInternals = {
+	resolveConfirmation: (
+		userId: string,
+		requestId: string,
+		request: { kind: 'approval'; approved: boolean },
+	) => Promise<'resolved' | 'not-found' | 'interrupted'>;
+	resumeSuspendedRun: jest.Mock;
+	runState: {
+		resolvePendingConfirmation: jest.Mock;
+		findSuspendedByRequestId: jest.Mock;
+	};
+	pendingConfirmationRepository: {
+		findByRequestId: jest.MockedFunction<
+			(requestId: string) => Promise<PersistedConfirmation | null>
+		>;
+		deleteByRequestId: jest.MockedFunction<(requestId: string) => Promise<void>>;
+	};
+	deletePersistedConfirmation: jest.Mock;
+	logger: { debug: jest.Mock; warn: jest.Mock; info: jest.Mock; error: jest.Mock };
+};
+
+function createResolveConfirmationService(): ResolveConfirmationServiceInternals {
+	const service = Object.create(
+		InstanceAiService.prototype,
+	) as unknown as ResolveConfirmationServiceInternals;
+
+	service.runState = {
+		resolvePendingConfirmation: jest.fn(() => false),
+		findSuspendedByRequestId: jest.fn(() => undefined),
+	};
+	service.resumeSuspendedRun = jest.fn(async () => false);
+	service.pendingConfirmationRepository = {
+		findByRequestId: jest.fn(async () => null),
+		deleteByRequestId: jest.fn(async () => undefined),
+	};
+	service.deletePersistedConfirmation = jest.fn(async () => undefined);
+	service.logger = {
+		debug: jest.fn(),
+		warn: jest.fn(),
+		info: jest.fn(),
+		error: jest.fn(),
+	};
+	return service;
+}
+
+describe('InstanceAiService — resolveConfirmation outcomes', () => {
+	const approvalRequest = { kind: 'approval' as const, approved: true };
+
+	it("returns 'resolved' on local sub-agent (inline) hit and deletes the persisted row", async () => {
+		const service = createResolveConfirmationService();
+		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+
+		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
+
+		expect(outcome).toBe('resolved');
+		expect(service.deletePersistedConfirmation).toHaveBeenCalledWith('req-1');
+		expect(service.resumeSuspendedRun).not.toHaveBeenCalled();
+		expect(service.pendingConfirmationRepository.findByRequestId).not.toHaveBeenCalled();
+	});
+
+	it("returns 'resolved' on local suspended-run hit", async () => {
+		const service = createResolveConfirmationService();
+		service.resumeSuspendedRun.mockResolvedValueOnce(true);
+
+		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
+
+		expect(outcome).toBe('resolved');
+		expect(service.resumeSuspendedRun).toHaveBeenCalledWith(
+			'user-1',
+			'req-1',
+			expect.objectContaining({ approved: true }),
+		);
+		expect(service.pendingConfirmationRepository.findByRequestId).not.toHaveBeenCalled();
+	});
+
+	it("returns 'interrupted' when the DB has the row but no local state can drive it", async () => {
+		const service = createResolveConfirmationService();
+		service.pendingConfirmationRepository.findByRequestId.mockResolvedValueOnce({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-1',
+			kind: 'suspended',
+		});
+
+		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
+
+		expect(outcome).toBe('interrupted');
+		expect(service.deletePersistedConfirmation).not.toHaveBeenCalled();
+	});
+
+	it("returns 'not-found' when neither local maps nor the DB have the request", async () => {
+		const service = createResolveConfirmationService();
+
+		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
+
+		expect(outcome).toBe('not-found');
+	});
+
+	it("returns 'not-found' when the DB row belongs to a different user", async () => {
+		const service = createResolveConfirmationService();
+		service.pendingConfirmationRepository.findByRequestId.mockResolvedValueOnce({
+			requestId: 'req-1',
+			threadId: 'thread-1',
+			userId: 'user-other',
+			kind: 'suspended',
+		});
+
+		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
+
+		expect(outcome).toBe('not-found');
+	});
+
+	it("returns 'not-found' when the DB lookup throws (does not leak as interrupted)", async () => {
+		const service = createResolveConfirmationService();
+		service.pendingConfirmationRepository.findByRequestId.mockRejectedValueOnce(
+			new Error('db down'),
+		);
+
+		const outcome = await service.resolveConfirmation('user-1', 'req-1', approvalRequest);
+
+		expect(outcome).toBe('not-found');
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to look up persisted confirmation',
+			expect.objectContaining({ requestId: 'req-1' }),
+		);
+	});
+});

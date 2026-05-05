@@ -53,6 +53,7 @@ import { mock } from 'jest-mock-extended';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { GoneError } from '@/errors/response-errors/gone.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Push } from '@/push';
 import type { UrlService } from '@/services/url.service';
@@ -496,7 +497,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should resolve confirmation', async () => {
-			instanceAiService.resolveConfirmation.mockResolvedValue(true);
+			instanceAiService.resolveConfirmation.mockResolvedValue('resolved');
 			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
@@ -507,7 +508,7 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should pass resourceDecision through to resolveConfirmation', async () => {
-			instanceAiService.resolveConfirmation.mockResolvedValue(true);
+			instanceAiService.resolveConfirmation.mockResolvedValue('resolved');
 			const body: InstanceAiConfirmRequest = {
 				kind: 'resourceDecision',
 				resourceDecision: 'allowOnce',
@@ -520,11 +521,19 @@ describe('InstanceAiController', () => {
 		});
 
 		it('should throw NotFoundError when confirmation not found', async () => {
-			instanceAiService.resolveConfirmation.mockResolvedValue(false);
+			instanceAiService.resolveConfirmation.mockResolvedValue('not-found');
 			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: false };
 			const reqWithBody = { ...req, body } as AuthenticatedRequest;
 
 			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(NotFoundError);
+		});
+
+		it('should throw GoneError when confirmation is interrupted', async () => {
+			instanceAiService.resolveConfirmation.mockResolvedValue('interrupted');
+			const body: InstanceAiConfirmRequest = { kind: 'approval', approved: true };
+			const reqWithBody = { ...req, body } as AuthenticatedRequest;
+
+			await expect(controller.confirm(reqWithBody, res, 'req-1')).rejects.toThrow(GoneError);
 		});
 	});
 

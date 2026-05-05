@@ -876,7 +876,20 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		try {
 			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
-		} catch {
+		} catch (error) {
+			// 410 Gone — the run was suspended or awaiting an inline answer on a process
+			// that is no longer alive (server restart, or different main instance in
+			// multi-main mode). The conversation cannot be resumed; the user needs to
+			// start a fresh one.
+			if (error instanceof ResponseError && error.httpStatusCode === 410) {
+				toast.showError(
+					new Error(
+						'This conversation was interrupted by a server restart. Refresh and start a new conversation.',
+					),
+					'Conversation interrupted',
+				);
+				return false;
+			}
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
 			return false;
 		}

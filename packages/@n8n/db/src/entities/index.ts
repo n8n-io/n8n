@@ -18,6 +18,10 @@ import type { ExecutionDataStorageLocation } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
+import {
+	InstanceAiPendingConfirmation,
+	type InstanceAiPendingConfirmationKind,
+} from './instance-ai-pending-confirmation';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -48,6 +52,8 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 export {
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
+	InstanceAiPendingConfirmation,
+	type InstanceAiPendingConfirmationKind,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -97,6 +103,7 @@ export {
 export const entities = {
 	InvalidAuthToken,
 	AiBuilderTemporaryWorkflow,
+	InstanceAiPendingConfirmation,
 	ProcessedData,
 	Settings,
 	Variables,
