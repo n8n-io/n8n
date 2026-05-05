@@ -12,6 +12,14 @@ import type { InsightsRequest } from '@/public-api/types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope } from '../../shared/middlewares/global.middleware';
 
+const handleError = (error: unknown) => {
+	if (error instanceof UserError) {
+		throw new ForbiddenError(error.message);
+	}
+
+	throw error;
+};
+
 const dateFilterValidationSchema = z
 	.object({
 		startDate: z.coerce.date().optional(),
@@ -55,11 +63,7 @@ const insightsHandlers: InsightsHandlers = {
 			try {
 				Container.get(InsightsService).validateDateFiltersLicense({ startDate, endDate });
 			} catch (error) {
-				if (error instanceof UserError) {
-					throw new ForbiddenError(error.message);
-				}
-
-				throw error;
+				return handleError(error);
 			}
 
 			const summary = await Container.get(InsightsService).getInsightsSummary({

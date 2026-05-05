@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { UserRequest } from '@/requests';
 import { UserService } from '@/services/user.service';
@@ -41,9 +43,7 @@ const usersHandlers: UsersHandlers = {
 			const user = await getUser({ withIdentifier: id, includeRole });
 
 			if (!user) {
-				return res.status(404).json({
-					message: `Could not find user with id: ${id}`,
-				});
+				throw new NotFoundError(`Could not find user with id: ${id}`);
 			}
 
 			Container.get(EventService).emit('user-retrieved-user', {
@@ -94,7 +94,7 @@ const usersHandlers: UsersHandlers = {
 		async (req, res) => {
 			const { data, error } = InviteUsersRequestDto.safeParse(req.body);
 			if (error) {
-				return res.status(400).json(error.errors[0]);
+				throw new BadRequestError(error.errors[0]?.message ?? 'Invalid request body');
 			}
 
 			const usersInvited = await Container.get(InvitationController).inviteUser(
@@ -119,9 +119,7 @@ const usersHandlers: UsersHandlers = {
 		async (req, res) => {
 			const validation = RoleChangeRequestDto.safeParse(req.body);
 			if (validation.error) {
-				return res.status(400).json({
-					message: validation.error.errors[0],
-				});
+				throw new BadRequestError(validation.error.errors[0]?.message ?? 'Invalid request body');
 			}
 
 			await Container.get(UsersController).changeGlobalRole(

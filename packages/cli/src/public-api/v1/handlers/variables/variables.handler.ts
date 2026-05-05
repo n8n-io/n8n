@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 
 import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { VariablesRequest } from '@/requests';
 
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
@@ -28,7 +29,7 @@ const variablesHandlers: VariablesHandlers = {
 		async (req, res) => {
 			const payload = CreateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}
 			await Container.get(VariablesController).createVariable(req, res, payload.data);
 
@@ -41,7 +42,7 @@ const variablesHandlers: VariablesHandlers = {
 		async (req, res) => {
 			const payload = UpdateVariableRequestDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				throw new BadRequestError(payload.error.errors[0]?.message ?? 'Invalid request body');
 			}
 			await Container.get(VariablesController).updateVariable(req, res, payload.data);
 

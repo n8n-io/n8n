@@ -11,6 +11,17 @@ import type { DataTableRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { projectScope, publicApiScope } from '../../shared/middlewares/global.middleware';
 
+const handleError = (error: unknown) => {
+	if (
+		error instanceof DataTableColumnNameConflictError ||
+		error instanceof DataTableSystemColumnNameConflictError
+	) {
+		throw new ConflictError(error.message);
+	}
+
+	throw error;
+};
+
 type DataTableColumnsHandlers = {
 	listDataTableColumns: PublicAPIEndpoint<DataTableRequest.ListColumns>;
 	createDataTableColumn: PublicAPIEndpoint<DataTableRequest.CreateColumn>;
@@ -48,13 +59,7 @@ const dataTableColumnsHandlers: DataTableColumnsHandlers = {
 				);
 				return res.status(201).json(column);
 			} catch (error) {
-				if (
-					error instanceof DataTableColumnNameConflictError ||
-					error instanceof DataTableSystemColumnNameConflictError
-				) {
-					throw new ConflictError(error.message);
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
@@ -96,13 +101,7 @@ const dataTableColumnsHandlers: DataTableColumnsHandlers = {
 				const updatedColumn = await service.getColumnById({ projectId, dataTableId, columnId });
 				return res.json(updatedColumn);
 			} catch (error) {
-				if (
-					error instanceof DataTableColumnNameConflictError ||
-					error instanceof DataTableSystemColumnNameConflictError
-				) {
-					throw new ConflictError(error.message);
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],

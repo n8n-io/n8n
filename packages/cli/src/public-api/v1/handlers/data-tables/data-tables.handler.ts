@@ -4,10 +4,11 @@ import {
 	UpdateDataTableDto,
 } from '@n8n/api-types';
 import { Container } from '@n8n/di';
-import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
@@ -25,22 +26,20 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
-const handleError = (error: unknown, res: Response): Response => {
-	if (error instanceof DataTableNotFoundError) {
-		return res.status(404).json({ message: error.message });
-	}
-	if (error instanceof DataTableNameConflictError) {
-		return res.status(409).json({ message: error.message });
-	}
+const handleError = (error: unknown) => {
 	if (error instanceof DataTableValidationError) {
-		return res.status(400).json({ message: error.message });
+		throw new BadRequestError(error.message);
+	}
+	if (error instanceof DataTableNotFoundError) {
+		throw new NotFoundError(error.message);
 	}
 	if (error instanceof ForbiddenError) {
-		return res.status(error.httpStatusCode).json({ message: error.message });
+		throw new ForbiddenError(error.message);
 	}
-	if (error instanceof Error) {
-		return res.status(400).json({ message: error.message });
+	if (error instanceof DataTableNameConflictError) {
+		throw new ConflictError(error.message);
 	}
+
 	throw error;
 };
 
@@ -74,9 +73,7 @@ const dataTableHandlers: DataTableHandlers = {
 			try {
 				const payload = PublicApiListDataTableQueryDto.safeParse(stringifyQuery(req.query));
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid query parameters',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid query parameters');
 				}
 
 				const { offset, limit, filter, sortBy } = payload.data;
@@ -120,7 +117,7 @@ const dataTableHandlers: DataTableHandlers = {
 					}),
 				});
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
@@ -144,7 +141,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.status(201).json(dataTable);
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
@@ -172,7 +169,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.json(dataTable);
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
@@ -186,9 +183,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				const payload = UpdateDataTableDto.safeParse(req.body);
 				if (!payload.success) {
-					return res.status(400).json({
-						message: payload.error.errors[0]?.message || 'Invalid request body',
-					});
+					throw new BadRequestError(payload.error.errors[0]?.message || 'Invalid request body');
 				}
 
 				const projectId =
@@ -209,7 +204,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.json(dataTable);
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],
@@ -228,7 +223,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				return res.status(204).send();
 			} catch (error) {
-				return handleError(error, res);
+				return handleError(error);
 			}
 		},
 	],

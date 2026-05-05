@@ -19,6 +19,18 @@ import {
 	isLicensed,
 } from '../../shared/middlewares/global.middleware';
 import { assertProjectScope } from '../../shared/services/utils.service';
+
+const handleError = (error: unknown) => {
+	if (error instanceof FolderNotFoundError) {
+		throw new NotFoundError(error.message);
+	}
+	if (error instanceof UserError) {
+		throw new BadRequestError(error.message);
+	}
+
+	throw error;
+};
+
 type FolderHandlers = {
 	createFolder: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
 	getFolders: PublicAPIEndpoint<AuthenticatedRequest<{ projectId: string }>>;
@@ -43,9 +55,8 @@ const folderHandlers: FolderHandlers = {
 			try {
 				const folder = await Container.get(FolderService).createFolder(payload.data, projectId);
 				return res.status(201).json(folder);
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],
@@ -83,10 +94,8 @@ const folderHandlers: FolderHandlers = {
 			try {
 				await Container.get(FolderService).deleteFolder(req.user, folderId, projectId, query.data);
 				return res.status(204).send();
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				if (e instanceof UserError) throw new BadRequestError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],
@@ -103,9 +112,8 @@ const folderHandlers: FolderHandlers = {
 				).findFolderWithContentCounts(req.params.folderId, projectId);
 
 				return res.json({ ...folder, totalSubFolders, totalWorkflows });
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],
@@ -128,10 +136,8 @@ const folderHandlers: FolderHandlers = {
 					payload.data,
 				);
 				return res.json(folder);
-			} catch (e) {
-				if (e instanceof FolderNotFoundError) throw new NotFoundError(e.message);
-				if (e instanceof UserError) throw new BadRequestError(e.message);
-				throw e;
+			} catch (error) {
+				return handleError(error);
 			}
 		},
 	],

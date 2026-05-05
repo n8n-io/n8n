@@ -1,6 +1,8 @@
 import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+
 import { buildDiscoverResponse } from './discover.service';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 
@@ -28,7 +30,7 @@ const discoverHandlers: DiscoverHandlers = {
 		async (req, res) => {
 			const apiKey = firstString(req.headers['x-n8n-api-key']);
 			if (!apiKey) {
-				return res.status(401).json({ message: 'Unauthorized' });
+				throw new UnauthenticatedError('Unauthorized');
 			}
 
 			const apiKeyRecord = await Container.get(ApiKeyRepository).findOne({
@@ -37,7 +39,7 @@ const discoverHandlers: DiscoverHandlers = {
 			});
 
 			if (!apiKeyRecord) {
-				return res.status(401).json({ message: 'Unauthorized' });
+				throw new UnauthenticatedError('Unauthorized');
 			}
 
 			const includeSchemas = req.query.include === 'schemas';

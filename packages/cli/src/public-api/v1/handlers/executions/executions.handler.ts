@@ -11,7 +11,8 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -25,6 +26,17 @@ import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import { publicApiScope, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
+
+const handleError = (error: unknown) => {
+	if (error instanceof QueuedExecutionRetryError || error instanceof AbortedExecutionRetryError) {
+		throw new ConflictError(error.message);
+	}
+	if (error instanceof MissingExecutionStopError) {
+		throw new NotFoundError(error.message);
+	}
+
+	throw error;
+};
 
 function isRedactableExecution(
 	execution: IExecutionBase,
@@ -52,7 +64,7 @@ const executionHandlers: ExecutionHandlers = {
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const { id } = req.params;
@@ -63,13 +75,11 @@ const executionHandlers: ExecutionHandlers = {
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			if (execution.status === 'running') {
-				return res.status(400).json({
-					message: 'Cannot delete a running execution',
-				});
+				throw new BadRequestError('Cannot delete a running execution');
 			}
 
 			if (execution.status === 'new') {
@@ -98,7 +108,7 @@ const executionHandlers: ExecutionHandlers = {
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const { id } = req.params;
@@ -110,7 +120,7 @@ const executionHandlers: ExecutionHandlers = {
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, includeData);
 
 			if (!execution) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			if (includeData && isRedactableExecution(execution)) {
@@ -119,24 +129,12 @@ const executionHandlers: ExecutionHandlers = {
 					? redactQuery.data.redactExecutionData
 					: undefined;
 
-				try {
-					await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
-						user: req.user,
-						redactExecutionData,
-						ipAddress: req.ip ?? '',
-						userAgent: req.headers['user-agent'] ?? '',
-					});
-				} catch (error) {
-					if (error instanceof ResponseError) {
-						return res.status(error.httpStatusCode).json({
-							code: error.httpStatusCode,
-							message: error.message,
-							hint: error.hint,
-							meta: 'meta' in error ? error.meta : undefined,
-						});
-					}
-					throw error;
-				}
+				await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
+					user: req.user,
+					redactExecutionData,
+					ipAddress: req.ip ?? '',
+					userAgent: req.headers['user-agent'] ?? '',
+				});
 			}
 
 			Container.get(EventService).emit('user-retrieved-execution', {
@@ -203,27 +201,15 @@ const executionHandlers: ExecutionHandlers = {
 					: undefined;
 
 				const redactableExecutions = executions.filter(isRedactableExecution);
-				try {
-					await Container.get(ExecutionRedactionServiceProxy).processExecutions(
-						redactableExecutions,
-						{
-							user: req.user,
-							redactExecutionData,
-							ipAddress: req.ip ?? '',
-							userAgent: req.headers['user-agent'] ?? '',
-						},
-					);
-				} catch (error) {
-					if (error instanceof ResponseError) {
-						return res.status(error.httpStatusCode).json({
-							code: error.httpStatusCode,
-							message: error.message,
-							hint: error.hint,
-							meta: 'meta' in error ? error.meta : undefined,
-						});
-					}
-					throw error;
-				}
+				await Container.get(ExecutionRedactionServiceProxy).processExecutions(
+					redactableExecutions,
+					{
+						user: req.user,
+						redactExecutionData,
+						ipAddress: req.ip ?? '',
+						userAgent: req.headers['user-agent'] ?? '',
+					},
+				);
 			}
 
 			Container.get(EventService).emit('user-retrieved-all-executions', {
@@ -249,7 +235,7 @@ const executionHandlers: ExecutionHandlers = {
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			try {
@@ -265,16 +251,7 @@ const executionHandlers: ExecutionHandlers = {
 
 				return res.json(replaceCircularReferences(retriedExecution));
 			} catch (error) {
-				if (
-					error instanceof QueuedExecutionRetryError ||
-					error instanceof AbortedExecutionRetryError
-				) {
-					return res.status(409).json({ message: error.message });
-				} else if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: error.message });
-				} else {
-					throw error;
-				}
+				return handleError(error);
 			}
 		},
 	],
@@ -285,7 +262,7 @@ const executionHandlers: ExecutionHandlers = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:read']);
 
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const execution = await Container.get(
@@ -293,7 +270,7 @@ const executionHandlers: ExecutionHandlers = {
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const tags = await getExecutionTags(id);
@@ -309,7 +286,7 @@ const executionHandlers: ExecutionHandlers = {
 			const sharedWorkflowsIds = await getSharedWorkflowIds(req.user, ['workflow:update']);
 
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const execution = await Container.get(
@@ -317,7 +294,7 @@ const executionHandlers: ExecutionHandlers = {
 			).getExecutionInWorkflowsForPublicApi(id, sharedWorkflowsIds, false);
 
 			if (!execution) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			try {
@@ -326,9 +303,9 @@ const executionHandlers: ExecutionHandlers = {
 				return res.json(tags);
 			} catch (error) {
 				if (error instanceof QueryFailedError) {
-					return res.status(404).json({ message: 'Some tags not found' });
+					throw new NotFoundError('Some tags not found');
 				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
@@ -340,7 +317,7 @@ const executionHandlers: ExecutionHandlers = {
 			// user does not have workflows hence no executions
 			// or the execution they are trying to access belongs to a workflow they do not own
 			if (!sharedWorkflowsIds.length) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const { id } = req.params;
@@ -350,13 +327,7 @@ const executionHandlers: ExecutionHandlers = {
 
 				return res.json(replaceCircularReferences(stopResult));
 			} catch (error) {
-				if (error instanceof MissingExecutionStopError) {
-					return res.status(404).json({ message: 'Not Found' });
-				} else if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: error.message });
-				} else {
-					throw error;
-				}
+				return handleError(error);
 			}
 		},
 	],
@@ -385,7 +356,7 @@ const executionHandlers: ExecutionHandlers = {
 
 			// If workflowId is provided, validate user has access to it
 			if (workflowId && workflowId !== 'all' && !sharedWorkflowsIds.includes(workflowId)) {
-				return res.status(404).json({ message: 'Workflow not found or not accessible' });
+				throw new NotFoundError('Workflow not found or not accessible');
 			}
 
 			const filter = {

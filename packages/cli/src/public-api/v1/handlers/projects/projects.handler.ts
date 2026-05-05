@@ -11,7 +11,7 @@ import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
 
 import { ProjectController } from '@/controllers/project.controller';
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PaginatedRequest } from '@/public-api/types';
 import { ProjectService } from '@/services/project.service.ee';
@@ -49,7 +49,7 @@ const projectHandlers: ProjectHandlers = {
 		async (req, res) => {
 			const payload = CreateProjectDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				throw new BadRequestError(payload.error.errors[0].message);
 			}
 
 			const project = await Container.get(ProjectController).createProject(req, res, payload.data);
@@ -63,7 +63,7 @@ const projectHandlers: ProjectHandlers = {
 		async (req, res) => {
 			const payload = UpdateProjectWithRelationsDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				throw new BadRequestError(payload.error.errors[0].message);
 			}
 
 			await Container.get(ProjectController).updateProject(
@@ -82,7 +82,7 @@ const projectHandlers: ProjectHandlers = {
 		async (req, res) => {
 			const query = DeleteProjectDto.safeParse(req.query);
 			if (query.error) {
-				return res.status(400).json(query.error.errors[0]);
+				throw new BadRequestError(query.error.errors[0].message);
 			}
 
 			await Container.get(ProjectController).deleteProject(
@@ -126,50 +126,43 @@ const projectHandlers: ProjectHandlers = {
 			const offset = Number(req.query.offset) || 0;
 			const limit = Number(req.query.limit) || 100;
 
-			try {
-				const projectService = Container.get(ProjectService);
-				const project = await projectService.getProjectWithScope(req.user, projectId, [
-					'project:list',
-				]);
-				if (!project) {
-					throw new NotFoundError(`Could not find project with ID "${projectId}"`);
-				}
-
-				const projectRelationRepository = Container.get(ProjectRelationRepository);
-				const [relations, count] = await projectRelationRepository.findAndCount({
-					where: { projectId },
-					relations: { user: true, role: true },
-					skip: offset,
-					take: limit,
-				});
-
-				const memberFields = [
-					'id',
-					'email',
-					'firstName',
-					'lastName',
-					'createdAt',
-					'updatedAt',
-				] as const;
-				const data = relations.map((relation) => ({
-					...pick(relation.user, memberFields),
-					role: relation.role?.slug ?? null,
-				}));
-
-				return res.json({
-					data,
-					nextCursor: encodeNextCursor({
-						offset,
-						limit,
-						numberOfTotalRecords: count,
-					}),
-				});
-			} catch (error) {
-				if (error instanceof ResponseError) {
-					return res.status(error.httpStatusCode).json({ message: error.message });
-				}
-				throw error;
+			const projectService = Container.get(ProjectService);
+			const project = await projectService.getProjectWithScope(req.user, projectId, [
+				'project:list',
+			]);
+			if (!project) {
+				throw new NotFoundError(`Could not find project with ID "${projectId}"`);
 			}
+
+			const projectRelationRepository = Container.get(ProjectRelationRepository);
+			const [relations, count] = await projectRelationRepository.findAndCount({
+				where: { projectId },
+				relations: { user: true, role: true },
+				skip: offset,
+				take: limit,
+			});
+
+			const memberFields = [
+				'id',
+				'email',
+				'firstName',
+				'lastName',
+				'createdAt',
+				'updatedAt',
+			] as const;
+			const data = relations.map((relation) => ({
+				...pick(relation.user, memberFields),
+				role: relation.role?.slug ?? null,
+			}));
+
+			return res.json({
+				data,
+				nextCursor: encodeNextCursor({
+					offset,
+					limit,
+					numberOfTotalRecords: count,
+				}),
+			});
 		},
 	],
 	addUsersToProject: [
@@ -178,20 +171,13 @@ const projectHandlers: ProjectHandlers = {
 		async (req, res) => {
 			const payload = AddUsersToProjectDto.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				throw new BadRequestError(payload.error.errors[0].message);
 			}
 
-			try {
-				await Container.get(ProjectService).addUsersToProject(
-					req.params.projectId,
-					payload.data.relations,
-				);
-			} catch (error) {
-				if (error instanceof ResponseError) {
-					return res.status(error.httpStatusCode).send({ message: error.message });
-				}
-				throw error;
-			}
+			await Container.get(ProjectService).addUsersToProject(
+				req.params.projectId,
+				payload.data.relations,
+			);
 
 			return res.status(201).send();
 		},
@@ -202,19 +188,12 @@ const projectHandlers: ProjectHandlers = {
 		async (req, res) => {
 			const payload = ChangeUserRoleInProject.safeParse(req.body);
 			if (payload.error) {
-				return res.status(400).json(payload.error.errors[0]);
+				throw new BadRequestError(payload.error.errors[0].message);
 			}
 
 			const { projectId, userId } = req.params;
 			const { role } = payload.data;
-			try {
-				await Container.get(ProjectService).changeUserRoleInProject(projectId, userId, role);
-			} catch (error) {
-				if (error instanceof ResponseError) {
-					return res.status(error.httpStatusCode).send({ message: error.message });
-				}
-				throw error;
-			}
+			await Container.get(ProjectService).changeUserRoleInProject(projectId, userId, role);
 
 			return res.status(204).send();
 		},
@@ -224,14 +203,9 @@ const projectHandlers: ProjectHandlers = {
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
 		async (req, res) => {
 			const { projectId, userId } = req.params;
-			try {
-				await Container.get(ProjectService).deleteUserFromProject(projectId, userId);
-			} catch (error) {
-				if (error instanceof ResponseError) {
-					return res.status(error.httpStatusCode).send({ message: error.message });
-				}
-				throw error;
-			}
+
+			await Container.get(ProjectService).deleteUserFromProject(projectId, userId);
+
 			return res.status(204).send();
 		},
 	],

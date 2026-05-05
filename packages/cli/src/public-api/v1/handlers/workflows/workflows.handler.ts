@@ -25,6 +25,16 @@ import {
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
+const handleError = (error: unknown) => {
+	if (error instanceof NotFoundError) {
+		throw error;
+	}
+	if (error instanceof Error) {
+		throw new BadRequestError(error.message);
+	}
+	throw error;
+};
+
 type WorkflowHandlers = {
 	createWorkflow: PublicAPIEndpoint<WorkflowRequest.Create>;
 	transferWorkflow: PublicAPIEndpoint<WorkflowRequest.Transfer>;
@@ -76,7 +86,7 @@ const workflowHandlers: WorkflowHandlers = {
 			if (!workflow) {
 				// user trying to access a workflow they do not own
 				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			return res.json(workflow);
@@ -103,7 +113,7 @@ const workflowHandlers: WorkflowHandlers = {
 				// user trying to access a workflow they do not own
 				// and was not shared to them
 				// Or does not exist.
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			if (excludePinnedData) {
@@ -140,8 +150,8 @@ const workflowHandlers: WorkflowHandlers = {
 				const { autosaved, ...versionWithoutInternalFields } = version;
 
 				return res.json(versionWithoutInternalFields);
-			} catch (error) {
-				return res.status(404).json({ message: 'Version not found' });
+			} catch {
+				throw new NotFoundError('Version not found');
 			}
 		},
 	],
@@ -305,13 +315,7 @@ const workflowHandlers: WorkflowHandlers = {
 
 				return res.json(updatedWorkflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Not Found' });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
@@ -332,13 +336,7 @@ const workflowHandlers: WorkflowHandlers = {
 
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Not Found' });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
@@ -355,13 +353,7 @@ const workflowHandlers: WorkflowHandlers = {
 
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Not Found' });
-				}
-				if (error instanceof Error) {
-					return res.status(400).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
@@ -372,7 +364,7 @@ const workflowHandlers: WorkflowHandlers = {
 			const { id } = req.params;
 
 			if (Container.get(GlobalConfig).tags.disabled) {
-				return res.status(400).json({ message: 'Workflow Tags Disabled' });
+				throw new BadRequestError('Workflow Tags Disabled');
 			}
 
 			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
@@ -384,7 +376,7 @@ const workflowHandlers: WorkflowHandlers = {
 			if (!workflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const tags = await getWorkflowTags(id);
@@ -400,7 +392,7 @@ const workflowHandlers: WorkflowHandlers = {
 			const newTags = req.body.map((newTag) => newTag.id);
 
 			if (Container.get(GlobalConfig).tags.disabled) {
-				return res.status(400).json({ message: 'Workflow Tags Disabled' });
+				throw new BadRequestError('Workflow Tags Disabled');
 			}
 
 			const sharedWorkflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
@@ -412,7 +404,7 @@ const workflowHandlers: WorkflowHandlers = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			let tags;
@@ -422,10 +414,10 @@ const workflowHandlers: WorkflowHandlers = {
 			} catch (error) {
 				// TODO: add a `ConstraintFailureError` in typeorm to handle when tags are missing here
 				if (error instanceof QueryFailedError) {
-					return res.status(404).json({ message: 'Some tags not found' });
-				} else {
-					throw error;
+					throw new NotFoundError('Some tags not found');
 				}
+
+				return handleError(error);
 			}
 
 			return res.json(tags);
@@ -443,10 +435,7 @@ const workflowHandlers: WorkflowHandlers = {
 				}
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Workflow Not Found' });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],
@@ -462,13 +451,7 @@ const workflowHandlers: WorkflowHandlers = {
 				}
 				return res.json(workflow);
 			} catch (error) {
-				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: 'Workflow Not Found' });
-				}
-				if (error instanceof BadRequestError) {
-					return res.status(error.httpStatusCode).json({ message: error.message });
-				}
-				throw error;
+				return handleError(error);
 			}
 		},
 	],

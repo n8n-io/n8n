@@ -1,9 +1,12 @@
 import type { TagEntity } from '@n8n/db';
 import { TagRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindManyOptions } from '@n8n/typeorm';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TagService } from '@/services/tag.service';
 
 import type { TagRequest } from '../../../types';
@@ -33,8 +36,8 @@ const tagHandlers: TagHandlers = {
 			try {
 				const createdTag = await Container.get(TagService).save(newTag, 'create');
 				return res.status(201).json(createdTag);
-			} catch (error) {
-				return res.status(409).json({ message: 'Tag already exists' });
+			} catch {
+				throw new ConflictError('Tag already exists');
 			}
 		},
 	],
@@ -47,7 +50,7 @@ const tagHandlers: TagHandlers = {
 			try {
 				await Container.get(TagService).getById(id);
 			} catch (error) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			const updateTag = Container.get(TagService).toEntity({ id, name: name.trim() });
@@ -55,8 +58,8 @@ const tagHandlers: TagHandlers = {
 			try {
 				const updatedTag = await Container.get(TagService).save(updateTag, 'update');
 				return res.json(updatedTag);
-			} catch (error) {
-				return res.status(409).json({ message: 'Tag already exists' });
+			} catch {
+				throw new ConflictError('Tag already exists');
 			}
 		},
 	],
@@ -69,7 +72,7 @@ const tagHandlers: TagHandlers = {
 			try {
 				tag = await Container.get(TagService).getById(id);
 			} catch (error) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 
 			await Container.get(TagService).delete(id);
@@ -108,7 +111,7 @@ const tagHandlers: TagHandlers = {
 				const tag = await Container.get(TagService).getById(id);
 				return res.json(tag);
 			} catch (error) {
-				return res.status(404).json({ message: 'Not Found' });
+				throw new NotFoundError('Not Found');
 			}
 		},
 	],
