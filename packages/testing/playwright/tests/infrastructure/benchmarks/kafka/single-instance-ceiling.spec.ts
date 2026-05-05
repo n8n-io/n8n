@@ -1,9 +1,9 @@
 import { test } from '../../../../fixtures/base';
-import { BENCHMARK_MAIN_RESOURCES, kafkaDirectConfig } from '../../../../playwright-projects';
+import { BENCHMARK_MAIN_RESOURCES, benchConfig } from '../../../../playwright-projects';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
 
-test.use({ capability: kafkaDirectConfig('single-instance-ceiling') });
+test.use({ capability: benchConfig('single-instance-ceiling', { kafka: true }) });
 
 test.describe(
 	'How much can we process on a single instance?',

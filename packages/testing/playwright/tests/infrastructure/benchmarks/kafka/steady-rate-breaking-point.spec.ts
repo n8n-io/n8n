@@ -1,5 +1,5 @@
 import { test } from '../../../../fixtures/base';
-import { STANDARD_WORKER_COUNT, kafkaQueueConfig } from '../../../../playwright-projects';
+import { benchConfig } from '../../../../playwright-projects';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import type { PublishStage } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
@@ -12,7 +12,7 @@ const STAGES: PublishStage[] = [
 	{ ratePerSecond: 700, durationSeconds: 60 },
 ];
 
-test.use({ capability: kafkaQueueConfig('steady-rate-breaking-point') });
+test.use({ capability: benchConfig('steady-rate-breaking-point', { kafka: true, workers: 3 }) });
 
 test.describe(
 	'At what input rate does the system fall behind?',
@@ -27,7 +27,7 @@ test.describe(
 		const minRate = Math.min(...STAGES.map((s) => s.ratePerSecond));
 		const maxRate = Math.max(...STAGES.map((s) => s.ratePerSecond));
 
-		test(`Kafka trigger + 30 noop, 10KB payload, ramp ${minRate}→${maxRate} msg/s × ${totalDuration}s (1 main + ${STANDARD_WORKER_COUNT} workers)`, async ({
+		test(`Kafka trigger + 30 noop, 10KB payload, ramp ${minRate}→${maxRate} msg/s × ${totalDuration}s (1 main + 3 workers)`, async ({
 			api,
 			services,
 		}, testInfo) => {

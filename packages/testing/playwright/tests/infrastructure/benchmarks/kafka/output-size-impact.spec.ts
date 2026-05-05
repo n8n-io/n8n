@@ -1,5 +1,5 @@
 import { test } from '../../../../fixtures/base';
-import { STANDARD_WORKER_COUNT, kafkaQueueConfig } from '../../../../playwright-projects';
+import { benchConfig } from '../../../../playwright-projects';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import type { NodeOutputSize } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
@@ -11,7 +11,7 @@ const SHAPES: ReadonlyArray<{ outputSize: NodeOutputSize }> = [
 ] as const;
 const MESSAGE_COUNT = 5_000;
 
-test.use({ capability: kafkaQueueConfig('output-size-impact') });
+test.use({ capability: benchConfig('output-size-impact', { kafka: true, workers: 3 }) });
 
 test.describe(
 	'What is the impact of node output size on throughput?',
@@ -22,7 +22,7 @@ test.describe(
 		],
 	},
 	() => {
-		test(`Kafka trigger + 10 nodes, 1KB payload, ramp output size ${SHAPES.map((s) => s.outputSize).join('→')} (1 main + ${STANDARD_WORKER_COUNT} workers)`, async ({
+		test(`Kafka trigger + 10 nodes, 1KB payload, ramp output size ${SHAPES.map((s) => s.outputSize).join('→')} (1 main + 3 workers)`, async ({
 			api,
 			services,
 		}, testInfo) => {

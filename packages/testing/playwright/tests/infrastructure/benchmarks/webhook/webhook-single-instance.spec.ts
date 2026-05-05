@@ -1,5 +1,5 @@
 import { test } from '../../../../fixtures/base';
-import { BENCHMARK_MAIN_RESOURCES, webhookDirectConfig } from '../../../../playwright-projects';
+import { BENCHMARK_MAIN_RESOURCES, benchConfig } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
@@ -12,7 +12,7 @@ const DURATION_SECONDS = 120;
 // same event loop. This is the canonical single-instance webhook baseline; the
 // multi-main scaling spec re-uses this number to verify near-linear ingestion
 // growth as mains are added.
-test.use({ capability: webhookDirectConfig('webhook-single-instance') });
+test.use({ capability: benchConfig('webhook-single-instance') });
 
 test.describe(
 	'What is the single-instance webhook ingestion ceiling?',

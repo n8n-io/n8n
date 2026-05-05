@@ -41,7 +41,7 @@ Aligned with internal n8n production defaults: `STANDARD_QUEUE_ENV` mirrors conn
 # Build n8n image first (skip if you only changed test code).
 pnpm build:docker
 
-# Full suite — all 9 specs sequentially (each spawns its own container).
+# Full suite — all 8 specs sequentially (each spawns its own container).
 pnpm --filter=n8n-playwright test:benchmark
 
 # One spec.
@@ -49,18 +49,16 @@ pnpm --filter=n8n-playwright test:benchmark single-instance-ceiling
 
 # By question.
 pnpm --filter=n8n-playwright test:benchmark --grep "single instance"
-
-# Sweep envs across runs (e.g. multi-main scaling).
-WEBHOOK_MAINS=1 pnpm --filter=n8n-playwright test:benchmark webhook-main-scaling
-WEBHOOK_MAINS=2 pnpm --filter=n8n-playwright test:benchmark webhook-main-scaling
-WEBHOOK_MAINS=3 pnpm --filter=n8n-playwright test:benchmark webhook-main-scaling
 ```
+
+Topology (mains/workers, kafka, custom env) is fixed per spec via
+`benchConfig(...)` in the spec file. To explore a different topology, edit the
+spec — there are no env overrides.
 
 ### Useful env overrides
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `WEBHOOK_MAINS` | 2 | Number of main pods for `webhook-main-scaling` — sweep across runs to gather a scaling curve |
 | `N8N_CONTAINERS_KEEPALIVE` | unset | Keep containers alive after the run for debugging |
 
 ## Reading the results
