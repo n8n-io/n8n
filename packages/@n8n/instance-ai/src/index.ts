@@ -1,5 +1,12 @@
 export { MAX_STEPS } from './constants/max-steps';
-export type { CheckpointStore, SerializableAgentState } from '@n8n/agents';
+export type {
+	AgentDbMessage,
+	AgentMessage,
+	BuiltMemory,
+	CheckpointStore,
+	SerializableAgentState,
+	Thread,
+} from '@n8n/agents';
 export { wrapUntrustedData } from './tools/web-research/sanitize-web-content';
 export type { Logger } from './logger';
 export { generateCompactionSummary } from './compaction';
