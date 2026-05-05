@@ -144,6 +144,8 @@ export class IdRemapper {
 				this.oldToNew.set(oldVal, newVal);
 			}
 		}
+
+		this.learnFromMatchingStrings(recordedOutput, actualOutput);
 	}
 
 	/** Replace old (recorded) IDs with new (current-run) IDs throughout an input object. */
@@ -195,6 +197,46 @@ export class IdRemapper {
 		return ids;
 	}
 
+	private learnFromMatchingStrings(recorded: unknown, actual: unknown): void {
+		if (typeof recorded === 'string' && typeof actual === 'string') {
+			this.learnStringIdPairs(recorded, actual);
+			return;
+		}
+
+		if (!recorded || !actual || typeof recorded !== 'object' || typeof actual !== 'object') return;
+
+		if (Array.isArray(recorded) && Array.isArray(actual)) {
+			for (let i = 0; i < Math.min(recorded.length, actual.length); i++) {
+				this.learnFromMatchingStrings(recorded[i] as unknown, actual[i] as unknown);
+			}
+			return;
+		}
+
+		if (Array.isArray(recorded) || Array.isArray(actual)) return;
+
+		for (const [key, recordedValue] of Object.entries(recorded as Record<string, unknown>)) {
+			if (Object.hasOwn(actual as Record<string, unknown>, key)) {
+				this.learnFromMatchingStrings(recordedValue, (actual as Record<string, unknown>)[key]);
+			}
+		}
+	}
+
+	private learnStringIdPairs(recorded: string, actual: string): void {
+		if (recorded === actual) return;
+
+		const recordedIds = extractLabeledStringIds(recorded);
+		const actualIds = extractLabeledStringIds(actual);
+		if (recordedIds.length === 0 || recordedIds.length !== actualIds.length) return;
+
+		for (let i = 0; i < recordedIds.length; i++) {
+			const recordedId = recordedIds[i];
+			const actualId = actualIds[i];
+			if (recordedId.label === actualId.label && recordedId.value !== actualId.value) {
+				this.oldToNew.set(recordedId.value, actualId.value);
+			}
+		}
+	}
+
 	private deepReplace(value: unknown): unknown {
 		if (value === null || value === undefined) return value;
 
@@ -232,6 +274,19 @@ export class IdRemapper {
 
 function isIdKey(key: string): boolean {
 	return key === 'id' || key.endsWith('Id');
+}
+
+function extractLabeledStringIds(value: string): Array<{ label: string; value: string }> {
+	const matches: Array<{ label: string; value: string }> = [];
+	const pattern =
+		/\b([A-Za-z][A-Za-z0-9]*Id|[Ww]orkflow ID|[Ee]xecution ID|[Cc]redential ID|ID|id)\b\s*(?::|=)?\s*["'`]?([A-Za-z0-9][A-Za-z0-9_-]{5,})["'`]?/g;
+
+	for (const match of value.matchAll(pattern)) {
+		const label = match[1].replace(/\s+/g, '').toLowerCase();
+		matches.push({ label, value: match[2] });
+	}
+
+	return matches;
 }
 
 // ── TraceWriter ─────────────────────────────────────────────────────────────

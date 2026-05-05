@@ -1,37 +1,37 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mocked, MockedFunction } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { getConnectedTools } from '@utils/helpers';
+
 import { pollUntilAvailable } from '../../../../helpers/polling';
+import { formatToOpenAIResponsesTool } from '../../../../helpers/utils';
 import * as transport from '../../../../transport';
 import * as helpers from '../../../../v2/actions/text/helpers/responses';
 import { execute } from '../../../../v2/actions/text/response.operation';
-import { formatToOpenAIResponsesTool } from '../../../../helpers/utils';
-import type { Tool } from '@langchain/classic/tools';
 
-jest.mock('../../../../transport');
-jest.mock('../../../../v2/actions/text/helpers/responses');
-jest.mock('@utils/helpers');
-jest.mock('../../../../helpers/polling');
-jest.mock('../../../../helpers/utils');
+vi.mock('../../../../transport');
+vi.mock('../../../../v2/actions/text/helpers/responses');
+vi.mock('@utils/helpers');
+vi.mock('../../../../helpers/polling');
+vi.mock('../../../../helpers/utils');
 
-const mockFormatToOpenAIResponsesTool = formatToOpenAIResponsesTool as jest.MockedFunction<
+const mockFormatToOpenAIResponsesTool = formatToOpenAIResponsesTool as MockedFunction<
 	typeof formatToOpenAIResponsesTool
 >;
-const mockApiRequest = transport.apiRequest as jest.MockedFunction<typeof transport.apiRequest>;
-const mockCreateRequest = helpers.createRequest as jest.MockedFunction<
-	typeof helpers.createRequest
->;
-const mockGetConnectedTools = getConnectedTools as jest.MockedFunction<typeof getConnectedTools>;
-const mockPollUntilAvailable = pollUntilAvailable as jest.MockedFunction<typeof pollUntilAvailable>;
+const mockApiRequest = transport.apiRequest as MockedFunction<typeof transport.apiRequest>;
+const mockCreateRequest = helpers.createRequest as MockedFunction<typeof helpers.createRequest>;
+const mockGetConnectedTools = getConnectedTools as MockedFunction<typeof getConnectedTools>;
+const mockPollUntilAvailable = pollUntilAvailable as MockedFunction<typeof pollUntilAvailable>;
 
 describe('OpenAI Response Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockNode: jest.Mocked<INode>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockNode: Mocked<INode>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 		mockNode = mock<INode>({
@@ -264,14 +264,14 @@ describe('OpenAI Response Operation', () => {
 		it('should execute tool calls with external tools', async () => {
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue('Tool response'),
+				invoke: vi.fn().mockResolvedValue('Tool response'),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
@@ -324,14 +324,14 @@ describe('OpenAI Response Operation', () => {
 		it('should handle tool call with object response', async () => {
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue({ result: 'success', data: 'test data' }),
+				invoke: vi.fn().mockResolvedValue({ result: 'success', data: 'test data' }),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
@@ -382,14 +382,14 @@ describe('OpenAI Response Operation', () => {
 
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue('Tool response'),
+				invoke: vi.fn().mockResolvedValue('Tool response'),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
@@ -428,14 +428,14 @@ describe('OpenAI Response Operation', () => {
 
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue('Tool response'),
+				invoke: vi.fn().mockResolvedValue('Tool response'),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
@@ -469,14 +469,14 @@ describe('OpenAI Response Operation', () => {
 		it('should handle reasoning models with reasoning items in tool calls', async () => {
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue('Tool response'),
+				invoke: vi.fn().mockResolvedValue('Tool response'),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
@@ -556,14 +556,14 @@ describe('OpenAI Response Operation', () => {
 		it('should not include function_call or reasoning items in the request if there is a conversation', async () => {
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue('Tool response'),
+				invoke: vi.fn().mockResolvedValue('Tool response'),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
@@ -799,14 +799,14 @@ describe('OpenAI Response Operation', () => {
 
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue('Tool response'),
+				invoke: vi.fn().mockResolvedValue('Tool response'),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
@@ -836,14 +836,14 @@ describe('OpenAI Response Operation', () => {
 		it('should use dynamic strict parameter calculation for tools', async () => {
 			const mockTool = {
 				name: 'test_tool',
-				invoke: jest.fn().mockResolvedValue('Tool response'),
+				invoke: vi.fn().mockResolvedValue('Tool response'),
 				schema: {
 					typeName: 'ZodObject',
 					_def: { typeName: 'ZodObject', shape: () => ({}) },
-					parse: jest.fn(),
-					safeParse: jest.fn(),
+					parse: vi.fn(),
+					safeParse: vi.fn(),
 				},
-				call: jest.fn(),
+				call: vi.fn(),
 				description: 'Test tool',
 				returnDirect: false,
 			} as any;
