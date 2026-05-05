@@ -14,7 +14,8 @@
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
-    "eval:subagent": "tsx evaluations/subagent/cli.ts"
+    "eval:subagent": "tsx evaluations/subagent/cli.ts",
+    "prompts:print": "tsx scripts/print-prompts.ts"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
