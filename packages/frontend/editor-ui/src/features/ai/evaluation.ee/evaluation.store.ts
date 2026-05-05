@@ -166,7 +166,12 @@ export const useEvaluationStore = defineStore(
 			);
 
 			testCaseExecutions.forEach((testCaseExecution) => {
-				testCaseExecutionsById.value[testCaseExecution.id] = testCaseExecution;
+				// API doesn't surface the FK; stamp it so callers can filter
+				// `testCaseExecutionsById` by run.
+				testCaseExecutionsById.value[testCaseExecution.id] = {
+					...testCaseExecution,
+					testRunId: params.runId,
+				};
 			});
 
 			return testCaseExecutions;
@@ -209,6 +214,25 @@ export const useEvaluationStore = defineStore(
 			return result;
 		};
 
+		const cancelTestCase = async (params: {
+			workflowId: string;
+			runId: string;
+			caseId: string;
+		}) => {
+			const result = await evaluationsApi.cancelTestCase(
+				rootStore.restApiContext,
+				params.workflowId,
+				params.runId,
+				params.caseId,
+			);
+			// Optimistically reflect the new status until the next poll arrives.
+			const cached = testCaseExecutionsById.value[params.caseId];
+			if (cached) {
+				testCaseExecutionsById.value[params.caseId] = { ...cached, status: 'cancelled' };
+			}
+			return result;
+		};
+
 		const deleteTestRun = async (params: { workflowId: string; runId: string }) => {
 			const result = await evaluationsApi.deleteTestRun(rootStore.restApiContext, params);
 			if (result.success) {
@@ -225,8 +249,14 @@ export const useEvaluationStore = defineStore(
 				try {
 					const run = await getTestRun({ workflowId, runId });
 					if (['running', 'new'].includes(run.status)) {
+						// Also refresh per-case rows so the run detail page can
+						// surface running / completed cases as they progress.
+						await fetchTestCaseExecutions({ workflowId, runId }).catch(() => {});
 						pollingTimeouts.value[runId] = setTimeout(poll, 1000);
 					} else {
+						// One last refresh so any cases that finished between
+						// polls (or just arrived as 'success'/'error') land.
+						await fetchTestCaseExecutions({ workflowId, runId }).catch(() => {});
 						delete pollingTimeouts.value[runId];
 					}
 				} catch (error) {
@@ -264,6 +294,7 @@ export const useEvaluationStore = defineStore(
 			getTestRun,
 			startTestRun,
 			cancelTestRun,
+			cancelTestCase,
 			deleteTestRun,
 			cleanupPolling,
 		};

@@ -27,7 +27,7 @@ import type {
 	GenericValue,
 } from 'n8n-workflow';
 import assert from 'node:assert';
-import type { JsonObject } from 'openid-client';
+import type { JsonObject } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
@@ -570,6 +570,14 @@ export class TestRunnerService {
 
 			this.logger.debug('Found test cases', { count: testCases.length });
 
+			// Seed one TestCaseExecution row per dataset entry so the FE can
+			// render placeholder cards while the run is in progress and the
+			// user can pre-emptively cancel pending cases (TRUST-70).
+			const seededCases = await this.testCaseExecutionRepository.createPendingBatch(
+				testRun.id,
+				testCases.length,
+			);
+
 			// Initialize object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics();
 
@@ -577,7 +585,9 @@ export class TestRunnerService {
 			// 2. Run over all the test cases
 			///
 
-			for (const testCase of testCases) {
+			for (let i = 0; i < testCases.length; i++) {
+				const testCase = testCases[i];
+				const seededCase = seededCases[i];
 				if (abortSignal.aborted) {
 					telemetryMeta.status = 'cancelled';
 					this.logger.debug('Test run was cancelled', {
@@ -600,6 +610,18 @@ export class TestRunnerService {
 					abortController.abort();
 					telemetryMeta.status = 'cancelled';
 					break;
+				}
+
+				// Atomic check-and-set: only proceed if this row is still 'new'.
+				// If the user pre-emptively cancelled, the row is now 'cancelled'
+				// and the update affects 0 rows — skip it.
+				const claimed = await this.testCaseExecutionRepository.tryMarkCaseAsRunning(seededCase.id);
+				if (!claimed) {
+					this.logger.debug('Test case skipped (cancelled before start)', {
+						testRunId: testRun.id,
+						caseId: seededCase.id,
+					});
+					continue;
 				}
 
 				this.logger.debug('Running test case');
@@ -630,15 +652,12 @@ export class TestRunnerService {
 					// In case of a permission check issue, the test case execution will be undefined.
 					// If that happens, or if the test case execution produced an error, mark the test case as failed.
 					if (!testCaseExecution || testCaseExecution.data.resultData.error) {
-						// Save the failed test case execution in DB
-						await this.testCaseExecutionRepository.createTestCaseExecution({
+						await this.testCaseExecutionRepository.update(seededCase.id, {
 							executionId: testCaseExecutionId,
-							testRun: {
-								id: testRun.id,
-							},
 							status: 'error',
 							errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
 							metrics: {},
+							completedAt: new Date(),
 						});
 						telemetryMeta.errored_test_case_count++;
 						continue;
@@ -657,11 +676,8 @@ export class TestRunnerService {
 					);
 
 					if (Object.keys(addedUserDefinedMetrics).length === 0) {
-						await this.testCaseExecutionRepository.createTestCaseExecution({
+						await this.testCaseExecutionRepository.update(seededCase.id, {
 							executionId: testCaseExecutionId,
-							testRun: {
-								id: testRun.id,
-							},
 							runAt,
 							completedAt,
 							status: 'error',
@@ -682,12 +698,8 @@ export class TestRunnerService {
 							addedUserDefinedMetrics,
 						);
 
-						// Create a new test case execution in DB
-						await this.testCaseExecutionRepository.createTestCaseExecution({
+						await this.testCaseExecutionRepository.update(seededCase.id, {
 							executionId: testCaseExecutionId,
-							testRun: {
-								id: testRun.id,
-							},
 							runAt,
 							completedAt,
 							status: 'success',
@@ -709,10 +721,7 @@ export class TestRunnerService {
 
 					// In case of an unexpected error save it as failed test case execution and continue with the next test case
 					if (e instanceof TestCaseExecutionError) {
-						await this.testCaseExecutionRepository.createTestCaseExecution({
-							testRun: {
-								id: testRun.id,
-							},
+						await this.testCaseExecutionRepository.update(seededCase.id, {
 							runAt,
 							completedAt,
 							status: 'error',
@@ -720,10 +729,7 @@ export class TestRunnerService {
 							errorDetails: e.extra as IDataObject,
 						});
 					} else {
-						await this.testCaseExecutionRepository.createTestCaseExecution({
-							testRun: {
-								id: testRun.id,
-							},
+						await this.testCaseExecutionRepository.update(seededCase.id, {
 							runAt,
 							completedAt,
 							status: 'error',

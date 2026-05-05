@@ -109,6 +109,29 @@ export class TestRunsController {
 		res.status(202).json({ success: true });
 	}
 
+	@Post('/:workflowId/test-runs/:id/test-cases/:caseId/cancel')
+	async cancelCase(req: TestRunsRequest.CancelCase) {
+		const { caseId } = req.params;
+
+		// Confirm the run exists + access first; this also surfaces 404 for an
+		// invalid runId before we touch the case row.
+		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
+
+		const cancelled = await this.testCaseExecutionRepository.cancelIfNew(caseId);
+		if (!cancelled) {
+			throw new ConflictError(
+				`Test case "${caseId}" cannot be cancelled — it is not in a pending state`,
+			);
+		}
+
+		this.telemetry.track('User cancelled a test case', {
+			run_id: req.params.id,
+			case_id: caseId,
+		});
+
+		return { success: true };
+	}
+
 	@Post('/:workflowId/test-runs/new')
 	async create(req: TestRunsRequest.Create, res: express.Response) {
 		const { workflowId } = req.params;

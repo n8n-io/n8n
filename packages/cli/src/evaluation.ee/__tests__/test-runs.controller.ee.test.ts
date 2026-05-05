@@ -1,5 +1,6 @@
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
 
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsController } from '@/evaluation.ee/test-runs.controller.ee';
@@ -35,6 +36,7 @@ describe('TestRunsController', () => {
 		mockTestCaseExecutionRepository = {
 			find: jest.fn(),
 			markAllPendingAsCancelled: jest.fn(),
+			cancelIfNew: jest.fn(),
 		} as unknown as jest.Mocked<TestCaseExecutionRepository>;
 
 		mockTestRunnerService = {
@@ -155,6 +157,43 @@ describe('TestRunsController', () => {
 			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
 				where: { id: mockTestRunId },
 			});
+		});
+	});
+
+	describe('cancelCase', () => {
+		const caseId = 'case-1';
+
+		const buildReq = () =>
+			({
+				params: { workflowId: mockWorkflowId, id: mockTestRunId, caseId },
+				user: mockUser,
+			}) as TestRunsRequest.CancelCase;
+
+		it('cancels a pending case via cancelIfNew and tracks telemetry', async () => {
+			mockTestCaseExecutionRepository.cancelIfNew.mockResolvedValue(true);
+
+			const result = await testRunsController.cancelCase(buildReq());
+
+			expect(mockTestCaseExecutionRepository.cancelIfNew).toHaveBeenCalledWith(caseId);
+			expect(mockTelemetry.track).toHaveBeenCalledWith('User cancelled a test case', {
+				run_id: mockTestRunId,
+				case_id: caseId,
+			});
+			expect(result).toEqual({ success: true });
+		});
+
+		it('throws ConflictError when the case is no longer pending', async () => {
+			mockTestCaseExecutionRepository.cancelIfNew.mockResolvedValue(false);
+
+			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(ConflictError);
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the workflow is not accessible', async () => {
+			mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(NotFoundError);
+			expect(mockTestCaseExecutionRepository.cancelIfNew).not.toHaveBeenCalled();
 		});
 	});
 });

@@ -161,6 +161,7 @@ import { AddTracingContextToExecution1777045000000 } from '../common/17770450000
 import { AddLangsmithIdsToInstanceAiRunSnapshots1777100000000 } from '../common/1777100000000-AddLangsmithIdsToInstanceAiRunSnapshots';
 import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/1777281990043-CreateAiBuilderTemporaryWorkflowTable';
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
+import { AddRunIndexToTestCaseExecution1778200000000 } from '../common/1778200000000-AddRunIndexToTestCaseExecution';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -325,6 +326,7 @@ const sqliteMigrations: Migration[] = [
 	AddJweKeyIndexesToDeploymentKey1777023444000,
 	AddLangsmithIdsToInstanceAiRunSnapshots1777100000000,
 	AddExecutionDeduplicationKey1778000000000,
+	AddRunIndexToTestCaseExecution1778200000000,
 	AddTracingContextToExecution1777045000000,
 	CreateAiBuilderTemporaryWorkflowTable1777281990043,
 ];

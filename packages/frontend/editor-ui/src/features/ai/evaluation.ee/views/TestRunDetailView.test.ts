@@ -75,7 +75,9 @@ const mockPreviousRun: TestRunRecord = {
 const mockTestCases = [
 	mock<TestCaseExecutionRecord>({
 		id: 'test-case-1',
-		status: 'completed',
+		testRunId: 'test-run-id',
+		runIndex: 0,
+		status: 'success',
 		runAt: '2023-10-02T10:00:00Z',
 		updatedAt: '2023-10-02T10:00:01Z',
 		executionId: 'execution-1',
@@ -87,6 +89,8 @@ const mockTestCases = [
 	}),
 	mock<TestCaseExecutionRecord>({
 		id: 'test-case-2',
+		testRunId: 'test-run-id',
+		runIndex: 1,
 		status: 'error',
 		runAt: '2023-10-02T10:01:00Z',
 		updatedAt: '2023-10-02T10:01:01Z',
@@ -136,7 +140,17 @@ describe('TestRunDetailView', () => {
 		evaluationStore = useEvaluationStore();
 
 		vi.mocked(evaluationStore.getTestRun).mockResolvedValue(mockTestRun);
-		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockResolvedValue(mockTestCases);
+		vi.spyOn(evaluationStore, 'fetchTestCaseExecutions').mockImplementation(async () => {
+			// Seed the store directly so `testCases` (now a computed) reads from it.
+			evaluationStore.testCaseExecutionsById = mockTestCases.reduce(
+				(acc, testCase) => {
+					acc[testCase.id] = testCase as TestCaseExecutionRecord;
+					return acc;
+				},
+				{} as Record<string, TestCaseExecutionRecord>,
+			);
+			return mockTestCases as TestCaseExecutionRecord[];
+		});
 
 		vi.clearAllMocks();
 	});

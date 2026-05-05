@@ -26,14 +26,25 @@ interface DeleteTestRunParams {
 	runId: string;
 }
 
+export type TestCaseExecutionStatus =
+	| 'new'
+	| 'running'
+	| 'evaluation_running'
+	| 'success'
+	| 'error'
+	| 'warning'
+	| 'cancelled';
+
 export interface TestCaseExecutionRecord {
 	id: string;
 	testRunId: string;
-	executionId: string;
-	status: 'running' | 'completed' | 'error';
+	executionId: string | null;
+	status: TestCaseExecutionStatus;
 	createdAt: string;
 	updatedAt: string;
-	runAt: string;
+	runAt: string | null;
+	// Pre-migration runs and old fixtures may not carry a runIndex.
+	runIndex?: number | null;
 	metrics?: Record<string, number>;
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
@@ -107,5 +118,19 @@ export const getTestCaseExecutions = async (
 		context,
 		'GET',
 		getRunExecutionsEndpoint(workflowId, runId),
+	);
+};
+
+// Pre-emptively cancel a single pending test case (status === 'new').
+export const cancelTestCase = async (
+	context: IRestApiContext,
+	workflowId: string,
+	runId: string,
+	caseId: string,
+) => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'POST',
+		`${getRunExecutionsEndpoint(workflowId, runId)}/${caseId}/cancel`,
 	);
 };

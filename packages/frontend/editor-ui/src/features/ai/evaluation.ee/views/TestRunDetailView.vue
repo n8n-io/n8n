@@ -29,8 +29,16 @@ const locale = useI18n();
 const telemetry = useTelemetry();
 
 const isLoading = ref(true);
-const testCases = ref<TestCaseExecutionRecord[]>([]);
-const hasFailedTestCases = ref<boolean>(false);
+
+// Reads from the store so polling updates flow into the view automatically.
+const testCases = computed<TestCaseExecutionRecord[]>(() =>
+	Object.values(evaluationStore.testCaseExecutionsById).filter(
+		(record) => record.testRunId === runId.value,
+	),
+);
+const hasFailedTestCases = computed(() =>
+	testCases.value.some((testCase) => testCase.status === 'error'),
+);
 
 const runId = computed(() => router.currentRoute.value.params.runId as string);
 const workflowId = useInjectWorkflowId();
@@ -61,7 +69,14 @@ const previousRun = computed<TestRunRecord | null>(() => {
 });
 
 const orderedTestCases = computed(() =>
-	orderBy(testCases.value, (record) => record.runAt, ['asc']),
+	orderBy(
+		testCases.value,
+		// Pre-created cases have no runAt yet, so prefer the deterministic
+		// runIndex set at seeding. Fall back to runAt for legacy rows that
+		// pre-date the runIndex column.
+		[(record) => record.runIndex ?? Number.MAX_SAFE_INTEGER, (record) => record.runAt ?? ''],
+		['asc', 'asc'],
+	),
 );
 
 const metricTones = computed<Record<string, DeltaTone>>(() => {
@@ -82,6 +97,19 @@ const caseValuesByKey = computed<Record<string, Array<number | boolean | undefin
 	}
 	return result;
 });
+
+const cancelPendingCase = async (testCase: TestCaseExecutionRecord) => {
+	if (!workflowId.value) return;
+	try {
+		await evaluationStore.cancelTestCase({
+			workflowId: workflowId.value,
+			runId: runId.value,
+			caseId: testCase.id,
+		});
+	} catch (error) {
+		toast.showError(error, locale.baseText('evaluation.runDetail.testCase.cancelError'));
+	}
+};
 
 const openRelatedExecution = (testCase: TestCaseExecutionRecord) => {
 	const executionId = testCase.executionId;
@@ -110,14 +138,10 @@ const fetchExecutionTestCases = async () => {
 			workflowId: workflowId.value,
 			runId: runId.value,
 		});
-		const testCaseEvaluationExecutions = await evaluationStore.fetchTestCaseExecutions({
+		await evaluationStore.fetchTestCaseExecutions({
 			workflowId: workflowId.value,
 			runId: testRun.id,
 		});
-		testCases.value = testCaseEvaluationExecutions ?? [];
-		hasFailedTestCases.value = testCaseEvaluationExecutions?.some(
-			(testCase) => testCase.status === 'error',
-		);
 		await evaluationStore.fetchTestRuns(run.value.workflowId);
 	} catch (error) {
 		toast.showError(error, locale.baseText('evaluation.listRuns.toast.error.fetchTestCases'));
@@ -206,6 +230,7 @@ onMounted(async () => {
 				:metric-tones="metricTones"
 				:metric-sources="metricSources"
 				@view="openRelatedExecution"
+				@cancel="cancelPendingCase"
 			/>
 		</div>
 	</div>
