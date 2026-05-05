@@ -53,6 +53,13 @@ export function createEvalsTool(context: InstanceAiContext) {
 						reason: 'Workflow already has an EvaluationTrigger or Evaluation node.',
 					};
 				}
+				if (detection.rootAgentReadsOtherNode) {
+					return {
+						skipped: true,
+						reason:
+							"A root AI agent reads JSON from another node directly (e.g. $('Some Node').item.json). Topology-only eval setup cannot isolate this target without modifying production node parameters or mocking those upstream nodes.",
+					};
+				}
 				const shape = await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE);
 				proposalCache.set(input.workflowId, shape);
 

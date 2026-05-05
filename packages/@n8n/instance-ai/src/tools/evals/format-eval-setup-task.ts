@@ -47,8 +47,10 @@ AI AGENT NODES IN WORKFLOW: ${input.detectedAiNodes.join(', ')}
 DATASET:
 ${datasetSection}
 
-INPUT COLUMNS (the shape bridge should read these from the EvaluationTrigger row):
+INPUT COLUMNS (the shape bridge MUST expose every one of these via \`={{ $json.<column> }}\` — even when the target agent uses a passthrough like \`$input.all()\` or its prompt looks hardcoded; the agent's connected sub-nodes / tools may read these columns at runtime, so include a passthrough assignment per input column even when in doubt):
 ${inputColumns}
+
+HARD RULE — DO NOT MODIFY TARGET AI AGENT PARAMETERS. Leave the target agent's \`text\`, \`promptType\`, \`options\`, \`systemMessage\`, tools, and every other field untouched. The shape bridge is the ONLY place where you adapt data; never rewrite the agent's prompt to match the dataset shape. If you cannot reshape the data via the Set node alone, stop and report — do not edit the agent.
 
 GROUND-TRUTH OUTPUT COLUMNS (already in the dataset — these hold the EXPECTED values per row):
 ${outputColumns}

@@ -142,6 +142,42 @@ describe('evalsTool — propose gate checks', () => {
 			reason: expect.stringMatching(/already/i) as unknown,
 		});
 	});
+
+	it('returns skipped when a root agent reads another node JSON directly', async () => {
+		const wf = {
+			name: 'Reads Trigger',
+			nodes: [
+				{
+					id: '1',
+					name: 'Telegram Trigger',
+					type: 'n8n-nodes-base.telegramTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				{
+					id: '2',
+					name: 'Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 1,
+					position: [200, 0],
+					parameters: { text: "={{ $('Telegram Trigger').item.json.message.text }}" },
+				},
+			],
+			connections: {},
+		} as unknown as WorkflowJSON;
+		const ctx = makeCtx(wf);
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: {},
+		} as never)) as Record<string, unknown>;
+
+		expect(result).toMatchObject({
+			skipped: true,
+			reason: expect.stringMatching(/topology-only/i) as unknown,
+		});
+	});
 });
 
 describe('evalsTool — phase 1 suspend', () => {

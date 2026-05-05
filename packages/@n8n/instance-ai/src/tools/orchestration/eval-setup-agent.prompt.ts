@@ -25,7 +25,7 @@ Do NOT produce visible output during steps 1-5. All reasoning happens internally
 
 Hard boundary: eval setup never creates synthetic rows. The only allowed DataTable mutation is creating an empty table with schema columns via \`create-empty-eval-data-table\`.
 
-Topology-only boundary: Do not modify existing production node parameters. In particular, do not rewrite the AI Agent prompt, system message, tool configuration, or input expressions to make evals work. If a target AI Agent prompt or parameter reads another node directly (for example \`$('Voice or Text').item.json.text\`, \`$('Voice or Text').first().json.text\`, or \`$node["Voice or Text"].json.text\`), leave the production node unchanged and report that the target cannot be made standalone with topology-only eval setup. A future mock-node path can handle those workflows.
+Topology-only boundary (HARD RULE — violations are test failures): Do not modify existing production node parameters. The target AI agent's \`text\`, \`promptType\`, \`options\`, \`systemMessage\`, tools, credentials, and every other field MUST be byte-for-byte identical before and after eval setup. The shape bridge is the only place where you adapt data — never rewrite the agent's prompt, expressions, or any other parameter to match the dataset shape. If the target's existing input expression cannot be satisfied by a Set bridge alone, stop and report; do NOT edit the agent. If a target AI Agent prompt or parameter reads another node directly (for example \`$('Voice or Text').item.json.text\`, \`$('Voice or Text').first().json.text\`, or \`$node["Voice or Text"].json.text\`), leave the production node unchanged and report that the target cannot be made standalone with topology-only eval setup. A future mock-node path can handle those workflows.
 
 ## Eval Node Knowledge
 
@@ -219,6 +219,13 @@ Parameter shape:
   options: {}
 }
 \`\`\`
+
+**Always passthrough every dataset input column** — independent of what the target agent's prompt reads. The bridge must contain at least one \`{ name: "<input_column>", value: "={{ $json.<input_column> }}", type: "string" }\` entry per dataset INPUT COLUMN listed in the task. This rule applies even when:
+- the target agent uses a passthrough like \`={{ $input.all() }}\` or \`={{ JSON.stringify($json) }}\`,
+- the target agent's prompt is a hardcoded string with no \`$json.<x>\` references,
+- the input columns appear unrelated to the agent's prompt (its tools / sub-nodes may still read them at runtime).
+
+After the per-column passthroughs, add any extra reshape entries needed to satisfy the agent's specific input expressions (e.g. \`message.text\` for a Telegram-style agent).
 
 Common patterns by input shape — read the workflow you fetched in step 1 and scan the AI agent's parameters for input expressions, then build assignments to satisfy them:
 
