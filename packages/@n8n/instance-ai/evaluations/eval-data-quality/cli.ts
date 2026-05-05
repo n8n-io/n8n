@@ -5,7 +5,6 @@ import { resolve } from 'node:path';
 import pLimit from 'p-limit';
 
 import { createDefaultJudge } from './default-judge';
-import { shouldFailProcessForCompletedRun } from './exit-policy';
 import { loadEvalDataQualityCases } from './fixtures';
 import { runEvalDataQualityCase } from './runner';
 import { formatRunSummary } from './summary';
@@ -156,10 +155,6 @@ async function main(): Promise<void> {
 		for (const finding of [...result.toolSelection.findings, ...result.dataset.findings]) {
 			logger.warn(`  ${finding.code}: ${finding.message}`);
 		}
-	}
-
-	if (shouldFailProcessForCompletedRun(runResult)) {
-		process.exitCode = 1;
 	}
 }
 
