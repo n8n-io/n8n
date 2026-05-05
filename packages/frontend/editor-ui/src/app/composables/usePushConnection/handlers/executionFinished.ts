@@ -519,6 +519,8 @@ export function setRunExecutionData(
 			runExecutionData.resultData.runData[lastNodeExecuted][0].data?.main[0]?.length ?? 0;
 	}
 
+	stateStore.setActiveExecutionId(undefined);
+
 	void useExternalHooks().run('pushConnection.executionFinished', {
 		itemsCount,
 		nodeName: runExecutionData.resultData.lastNodeExecuted,
