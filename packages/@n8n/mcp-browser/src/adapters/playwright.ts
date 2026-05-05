@@ -279,8 +279,8 @@ export class PlaywrightAdapter {
 	}
 
 	/** Return the session IDs of all currently tracked pages. */
-	listTabSessionIds(): string[] {
-		return Array.from(this.pageStates.keys());
+	async listTabSessionIds() {
+		return await Promise.resolve(Array.from(this.pageStates.keys()));
 	}
 
 	/** Return IDs of all known tabs (relay cache + local pages). */
@@ -290,7 +290,7 @@ export class PlaywrightAdapter {
 			log.debug(`listTabIds: relay returned ${tabs.length} tab(s)`);
 			return tabs.map((t) => t.id);
 		}
-		const ids = this.listTabSessionIds();
+		const ids = await this.listTabSessionIds();
 		log.debug(`listTabIds: fallback to pageStates, ${ids.length} page(s)`);
 		return ids;
 	}

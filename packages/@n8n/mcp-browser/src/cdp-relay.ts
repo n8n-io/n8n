@@ -298,9 +298,16 @@ export class CDPRelayServer {
 
 	private handlePlaywrightConnection(ws: WebSocket): void {
 		if (this.playwrightWs) {
-			log.debug('rejected duplicate Playwright connection');
-			ws.close(1000, 'Another CDP client already connected');
-			return;
+			// A new CDP client is connecting while one is already registered.
+			// This happens with agent-browser: the session daemon opens a fresh WS
+			// per command but never sends a close frame after completion, so the
+			// previous connection stays OPEN at TCP level.  Null out the reference
+			// first so the old socket's 'close' handler sees playwrightWs !== ws
+			// and skips tearing down the extension connection.
+			const stale = this.playwrightWs;
+			this.playwrightWs = null;
+			stale.terminate();
+			log.debug('replaced stale Playwright connection');
 		}
 
 		log.debug('Playwright connected');
@@ -319,6 +326,7 @@ export class CDPRelayServer {
 		});
 
 		ws.on('close', () => {
+			log.debug('Adapter WS closed', { equal: this.playwrightWs === ws });
 			if (this.playwrightWs !== ws) return;
 			log.debug('Playwright disconnected');
 			this.playwrightWs = null;
@@ -367,6 +375,11 @@ export class CDPRelayServer {
 			case 'Target.disposeBrowserContext':
 				return {};
 
+			case 'Target.setDiscoverTargets':
+				return {};
+
+			case 'Target.attachToTarget':
+				return await this.extensionConn?.send('attachTab', { id: (params as { id: string })?.id });
 			case 'Target.setAutoAttach': {
 				// Child session auto-attach: forward to extension so Chrome attaches to iframes
 				if (sessionId) {
