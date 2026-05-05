@@ -3,9 +3,8 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
-import { storeToRefs } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
@@ -79,13 +78,13 @@ const emit = defineEmits<{
 // Stores
 
 const workflowId = useInjectWorkflowId();
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const telemetry = useTelemetry();
 const i18n = useI18n();
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.activeNode ?? null);
 const { dirtinessByName } = useNodeDirtiness();
 const uiStore = useUIStore();
 
