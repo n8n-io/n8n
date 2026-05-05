@@ -37,7 +37,12 @@ function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICreden
 				name: 'serverUrl',
 				type: 'hidden',
 				default: remote.endpointUrl,
-				required: true,
+			},
+			{
+				displayName: 'Allowed HTTP Request Domains',
+				name: 'allowedHttpRequestDomains',
+				type: 'hidden',
+				default: 'none',
 			},
 		],
 	};
