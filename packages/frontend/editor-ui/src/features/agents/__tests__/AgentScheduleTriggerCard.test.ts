@@ -10,19 +10,12 @@ const deactivateScheduleIntegrationMock = vi.fn();
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({
 		restApiContext: {},
-		timezone: 'Europe/Berlin',
 	}),
 }));
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			if (key === 'agents.schedule.timezoneHelp') {
-				return `Runs in the instance timezone: ${options?.interpolate?.timezone ?? 'UTC'}`;
-			}
-
-			return key;
-		},
+		baseText: (key: string) => key,
 	}),
 }));
 
@@ -75,18 +68,22 @@ describe('AgentScheduleTriggerCard', () => {
 		getScheduleIntegrationMock.mockResolvedValue({
 			active: false,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		updateScheduleIntegrationMock.mockResolvedValue({
 			active: false,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		activateScheduleIntegrationMock.mockResolvedValue({
 			active: true,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		deactivateScheduleIntegrationMock.mockResolvedValue({
 			active: false,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 	});
 
@@ -113,6 +110,7 @@ describe('AgentScheduleTriggerCard', () => {
 		getScheduleIntegrationMock.mockResolvedValue({
 			active: true,
 			cronExpression: '*/5 * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 
 		const wrapper = await renderComponent();
@@ -128,6 +126,7 @@ describe('AgentScheduleTriggerCard', () => {
 		getScheduleIntegrationMock.mockResolvedValueOnce({
 			active: false,
 			cronExpression: '',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		const wrapper = await renderComponent();
 
@@ -138,6 +137,7 @@ describe('AgentScheduleTriggerCard', () => {
 
 		expect(updateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		expect(activateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(wrapper.emitted('trigger-added')).toBeTruthy();
@@ -163,6 +163,7 @@ describe('AgentScheduleTriggerCard', () => {
 		updateScheduleIntegrationMock.mockResolvedValueOnce({
 			active: false,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 
 		await wrapper.find('[data-testid="schedule-save-button"]').trigger('click');
@@ -175,6 +176,7 @@ describe('AgentScheduleTriggerCard', () => {
 		updateScheduleIntegrationMock.mockImplementation(async (_ctx, _projectId, _agentId, data) => ({
 			active: false,
 			cronExpression: data.cronExpression,
+			wakeUpPrompt: data.wakeUpPrompt,
 		}));
 		const wrapper = await renderComponent();
 
@@ -187,6 +189,7 @@ describe('AgentScheduleTriggerCard', () => {
 
 		expect(updateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
 			cronExpression: '*/10 * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 	});
 
@@ -213,6 +216,7 @@ describe('AgentScheduleTriggerCard', () => {
 		updateScheduleIntegrationMock.mockResolvedValueOnce({
 			active: false,
 			cronExpression: '*/15 * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		await wrapper.find('[data-testid="schedule-cron-input"]').setValue('*/15 * * * *');
 
@@ -231,10 +235,12 @@ describe('AgentScheduleTriggerCard', () => {
 		getScheduleIntegrationMock.mockResolvedValueOnce({
 			active: true,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		updateScheduleIntegrationMock.mockResolvedValueOnce({
 			active: false,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		const wrapper = await renderComponent();
 
@@ -250,11 +256,13 @@ describe('AgentScheduleTriggerCard', () => {
 		getScheduleIntegrationMock.mockResolvedValueOnce({
 			active: true,
 			cronExpression: '* * * * *',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		updateScheduleIntegrationMock.mockImplementationOnce(
 			async (_ctx, _projectId, _agentId, data) => ({
 				active: false,
 				cronExpression: data.cronExpression,
+				wakeUpPrompt: data.wakeUpPrompt,
 			}),
 		);
 		const wrapper = await renderComponent();
@@ -265,6 +273,7 @@ describe('AgentScheduleTriggerCard', () => {
 		expect(deactivateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
 		expect(updateScheduleIntegrationMock).toHaveBeenCalledWith({}, 'project-1', 'agent-1', {
 			cronExpression: '',
+			wakeUpPrompt: 'Automated message: you were triggered on schedule.',
 		});
 		expect(wrapper.emitted('status-change')?.at(-1)).toEqual([false]);
 		expect(wrapper.emitted('saved')).toBeTruthy();
