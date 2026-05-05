@@ -1,4 +1,5 @@
 import moment from 'moment-timezone';
+import { deepCopy } from 'n8n-workflow';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
 
@@ -63,7 +64,7 @@ describe('NotionTrigger', () => {
 			const trigger = new NotionTrigger();
 			await trigger.poll.call(ctx as never);
 
-			const roundTripped = JSON.parse(JSON.stringify(staticData)) as typeof staticData;
+			const roundTripped = deepCopy(staticData);
 			expect(typeof roundTripped.lastTimeChecked).toBe('string');
 			expect(roundTripped.lastTimeChecked).toBe(staticData.lastTimeChecked);
 			expect(moment(roundTripped.lastTimeChecked as string).isValid()).toBe(true);
