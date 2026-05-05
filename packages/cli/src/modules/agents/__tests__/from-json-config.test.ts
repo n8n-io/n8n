@@ -684,4 +684,41 @@ describe('AgentJsonConfigSchema', () => {
 		};
 		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
 	});
+
+	it('parses an integrations array containing schedule + chat triggers', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [
+				{
+					type: 'schedule',
+					active: false,
+					cronExpression: '0 0 * * *',
+					wakeUpPrompt: 'tick',
+				},
+				{ type: 'slack', credentialId: 'cred-1', credentialName: 'Acme Slack' },
+			],
+		};
+		const parsed = AgentJsonConfigSchema.parse(config);
+		expect(parsed.integrations).toHaveLength(2);
+		expect(parsed.integrations?.[0]).toMatchObject({ type: 'schedule', active: false });
+		expect(parsed.integrations?.[1]).toMatchObject({
+			type: 'slack',
+			credentialId: 'cred-1',
+			credentialName: 'Acme Slack',
+		});
+	});
+
+	it('rejects a chat integration missing credentialName at the schema level', () => {
+		const config = {
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			credential: 'my-key',
+			instructions: '',
+			integrations: [{ type: 'slack', credentialId: 'cred-1' }],
+		};
+		expect(() => AgentJsonConfigSchema.parse(config)).toThrow();
+	});
 });

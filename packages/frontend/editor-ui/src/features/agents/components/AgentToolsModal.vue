@@ -14,6 +14,7 @@ import { N8nHeading, N8nIcon, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useDebounceFn } from '@vueuse/core';
 import {
+	AI_VENDOR_NODE_TYPES,
 	NodeConnectionTypes,
 	type INode,
 	type INodeProperties,
@@ -129,17 +130,32 @@ function makeUniqueName(baseName: string, existingNames: string[]): string {
 	return `${baseName} (${counter})`;
 }
 
+const agentProviderNodeTypes = new Set<string>(AI_VENDOR_NODE_TYPES);
+
+function isAgentProviderNodeType(nodeType: INodeTypeDescription): boolean {
+	return agentProviderNodeTypes.has(nodeType.name);
+}
+
 /**
  * Node types eligible to appear in "Available tools": anything the node types
- * store exposes as outputting an AI Tool connection, minus nodes that also
- * take inputs (subagents — not simple tools).
+ * store exposes as outputting an AI Tool connection, plus provider nodes the
+ * agent builder/runtime can execute directly. Nodes that also take inputs are
+ * excluded (subagents — not simple tools), except for provider nodes whose
+ * dynamic inputs are optional runtime affordances.
  */
 const availableToolTypes = computed<INodeTypeDescription[]>(() => {
-	const names =
-		nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames[NodeConnectionTypes.AiTool] ?? [];
-	return names
+	const names = new Set([
+		...(nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames[NodeConnectionTypes.AiTool] ??
+			[]),
+		...AI_VENDOR_NODE_TYPES,
+	]);
+
+	return [...names]
 		.map((name) => nodeTypesStore.getNodeType(name))
-		.filter((nt): nt is INodeTypeDescription => nt !== null && !hasInputs(nt))
+		.filter(
+			(nt): nt is INodeTypeDescription =>
+				nt !== null && !nt.hidden && (isAgentProviderNodeType(nt) || !hasInputs(nt)),
+		)
 		.sort((a, b) => {
 			const popA = nodePopularityMap.get(a.name) ?? 0;
 			const popB = nodePopularityMap.get(b.name) ?? 0;

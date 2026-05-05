@@ -1,4 +1,8 @@
-import { isAgentCredentialIntegration, type AgentIntegrationStatusResponse } from '@n8n/api-types';
+import {
+	isAgentCredentialIntegration,
+	type AgentCredentialIntegration,
+	type AgentIntegrationStatusResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
@@ -16,6 +20,7 @@ import {
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
+import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
 // ---------------------------------------------------------------------------
@@ -191,6 +196,97 @@ export class ChatIntegrationService {
 			const keysToRemove = [...this.connections.keys()].filter((k) => k.startsWith(`${agentId}:`));
 			for (const k of keysToRemove) {
 				await this.disconnectOne(k);
+			}
+		}
+	}
+
+	/**
+	 * Diff the previous and next chat integrations of an agent and reconcile
+	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
+	 * after the builder writes a new integrations array, and by
+	 * `AgentsService.publishAgent` to wake up integrations that were persisted
+	 * while the agent was still a draft.
+	 *
+	 * Disconnects of removed integrations always run (so unpublishing-then-
+	 * editing works). Connects of newly-added integrations are gated on
+	 * `agent.publishedVersion` — matching the controller's connect endpoint,
+	 * which rejects unpublished agents, and `reconnectAll`, which only restores
+	 * published agents. The integration entry stays persisted on the entity so
+	 * it can be picked up later by `publishAgent` calling this method again.
+	 *
+	 * Connection failures are logged at the call site — this method propagates
+	 * errors from disconnect but swallows connect errors per integration so a
+	 * single bad credential doesn't block the others.
+	 */
+	async syncToConfig(
+		agent: Agent,
+		previous: AgentCredentialIntegration[],
+		next: AgentCredentialIntegration[],
+	): Promise<void> {
+		const key = (i: AgentCredentialIntegration) => `${i.type}:${i.credentialId}`;
+		const previousKeys = new Set(previous.map(key));
+		const nextKeys = new Set(next.map(key));
+
+		for (const integration of previous) {
+			if (!nextKeys.has(key(integration))) {
+				try {
+					await this.disconnect(agent.id, integration.type, integration.credentialId);
+				} catch (error) {
+					this.logger.warn('[ChatIntegrationService] Disconnect during sync failed', {
+						agentId: agent.id,
+						type: integration.type,
+						error,
+					});
+				}
+			}
+		}
+
+		const additions = next.filter((i) => !previousKeys.has(key(i)));
+
+		if (additions.length > 0 && !agent.publishedVersion) {
+			this.logger.debug(
+				'[ChatIntegrationService] Skipping connect for unpublished agent — entry persisted, will connect on publish',
+				{ agentId: agent.id, pendingTypes: additions.map((i) => i.type) },
+			);
+			return;
+		}
+
+		// TODO: AgentCredentialIntegration has no record of *who* connected the
+		// integration, so we have no anchor user identity to decrypt credentials
+		// with on reconnect / sync. We fall back to probing project members until
+		// one has `credential:read` on the integration credential.
+		// Replace with a proper solution (fetching credentials should not depend on any specific user)
+		const userIds = additions.length
+			? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(agent.projectId)
+			: [];
+
+		for (const integration of additions) {
+			let connected = false;
+			for (const userId of userIds) {
+				try {
+					await this.connect(
+						agent.id,
+						integration.credentialId,
+						integration.type,
+						userId,
+						agent.projectId,
+					);
+					connected = true;
+					break;
+				} catch (error) {
+					this.logger.debug('[ChatIntegrationService] Connect attempt failed during sync', {
+						agentId: agent.id,
+						userId,
+						type: integration.type,
+						error,
+					});
+				}
+			}
+			if (!connected) {
+				this.logger.warn(
+					'[ChatIntegrationService] Could not connect integration during sync — no project member had credential access',
+					{ agentId: agent.id, type: integration.type, credentialId: integration.credentialId },
+				);
 			}
 		}
 	}

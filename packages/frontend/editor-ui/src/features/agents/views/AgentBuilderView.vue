@@ -416,6 +416,12 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
+	// Refresh the connected-trigger list so chips reflect builder writes
+	// without waiting for a tab switch. Mirrors the initial baseline fetch.
+	const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+	const triggerTypes = [...integrations.map((i) => i.type), AGENT_SCHEDULE_TRIGGER_TYPE];
+	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
+	if (connected) connectedTriggers.value = connected;
 	builderTelemetry.trackToolsAdded();
 }
 

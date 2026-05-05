@@ -11,7 +11,7 @@ export class Agent extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 128 })
 	name: string;
 
-	@Column({ type: 'varchar', nullable: true })
+	@Column({ type: 'varchar', length: 512, nullable: true })
 	description: string | null;
 
 	@ManyToOne(() => Project, { onDelete: 'CASCADE' })

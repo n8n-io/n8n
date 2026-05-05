@@ -74,14 +74,16 @@ describe('AgentScheduleService', () => {
 	});
 
 	it('saveConfig upserts the schedule integration alongside credential-backed integrations', async () => {
-		const agent = makePublishedAgent([{ type: 'slack', credentialId: 'cred-1' }]);
+		const agent = makePublishedAgent([
+			{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack cred 1' },
+		]);
 
 		const result = await service.saveConfig(agent, '* * * * *');
 
 		expect(agentRepository.save).toHaveBeenCalledWith(
 			expect.objectContaining({
 				integrations: [
-					{ type: 'slack', credentialId: 'cred-1' },
+					{ type: 'slack', credentialId: 'cred-1', credentialName: 'Slack cred 1' },
 					{
 						type: 'schedule',
 						active: false,
