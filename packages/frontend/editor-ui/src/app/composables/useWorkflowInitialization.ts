@@ -151,6 +151,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 					new Error(i18n.baseText('nodeView.couldntLoadWorkflow.invalidWorkflowObject')),
 					i18n.baseText('nodeView.couldntImportWorkflow'),
 				);
+				await router.replace({ name: VIEWS.NEW_WORKFLOW });
 				return true;
 			}
 
