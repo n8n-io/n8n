@@ -37,7 +37,9 @@ export type TestCaseExecutionStatus =
 
 export interface TestCaseExecutionRecord {
 	id: string;
-	testRunId: string;
+	// API doesn't surface the FK directly; the store stamps this on
+	// records as they're fetched so callers can filter by run.
+	testRunId?: string;
 	executionId: string | null;
 	status: TestCaseExecutionStatus;
 	createdAt: string;

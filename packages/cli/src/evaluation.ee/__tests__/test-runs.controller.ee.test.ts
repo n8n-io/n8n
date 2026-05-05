@@ -169,12 +169,15 @@ describe('TestRunsController', () => {
 				user: mockUser,
 			}) as TestRunsRequest.CancelCase;
 
-		it('cancels a pending case via cancelIfNew and tracks telemetry', async () => {
+		it('cancels a pending case via cancelIfNew (scoped to run) and tracks telemetry', async () => {
 			mockTestCaseExecutionRepository.cancelIfNew.mockResolvedValue(true);
 
 			const result = await testRunsController.cancelCase(buildReq());
 
-			expect(mockTestCaseExecutionRepository.cancelIfNew).toHaveBeenCalledWith(caseId);
+			expect(mockTestCaseExecutionRepository.cancelIfNew).toHaveBeenCalledWith(
+				mockTestRunId,
+				caseId,
+			);
 			expect(mockTelemetry.track).toHaveBeenCalledWith('User cancelled a test case', {
 				run_id: mockTestRunId,
 				case_id: caseId,

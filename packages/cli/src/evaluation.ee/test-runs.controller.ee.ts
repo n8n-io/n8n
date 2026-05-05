@@ -117,7 +117,7 @@ export class TestRunsController {
 		// invalid runId before we touch the case row.
 		await this.getTestRun(req.params.id, req.params.workflowId, req.user);
 
-		const cancelled = await this.testCaseExecutionRepository.cancelIfNew(caseId);
+		const cancelled = await this.testCaseExecutionRepository.cancelIfNew(req.params.id, caseId);
 		if (!cancelled) {
 			throw new ConflictError(
 				`Test case "${caseId}" cannot be cancelled — it is not in a pending state`,

@@ -83,12 +83,14 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 
 	/**
 	 * Atomic pre-emptive cancel: flip a single row from `new` → `cancelled`.
-	 * Returns false (no-op) if the row is no longer `new` — caller should
-	 * surface a conflict.
+	 * Scoped by `testRunId` so a caller can't cancel a case belonging to a
+	 * different run (defense-in-depth even though the controller already
+	 * verifies workflow access). Returns false when the row is no longer
+	 * `new` (or doesn't belong to the run) — caller should surface a conflict.
 	 */
-	async cancelIfNew(id: string): Promise<boolean> {
+	async cancelIfNew(testRunId: string, id: string): Promise<boolean> {
 		const result = await this.update(
-			{ id, status: 'new' },
+			{ id, status: 'new', testRun: { id: testRunId } },
 			{ status: 'cancelled', completedAt: new Date() },
 		);
 		return (result.affected ?? 0) > 0;
