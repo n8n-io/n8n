@@ -142,6 +142,27 @@ describe('SqliteMemory — messages', () => {
 		expect(textOf(msgs[2])).toBe('third');
 	});
 
+	it('exposes monotonic seq on read and filters by sinceSeq', async () => {
+		const mem = makeMemory(dbPath);
+		await mem.saveMessages({ threadId: 't-1', messages: [makeMsg('user', 'one')] });
+		await mem.saveMessages({ threadId: 't-1', messages: [makeMsg('assistant', 'two')] });
+		await mem.saveMessages({ threadId: 't-1', messages: [makeMsg('user', 'three')] });
+
+		const all = await mem.getMessages('t-1');
+		expect(all.map((m) => m.seq)).toEqual([
+			expect.any(Number),
+			expect.any(Number),
+			expect.any(Number),
+		]);
+		const seqs = all.map((m) => m.seq!);
+		expect(seqs[0]).toBeLessThan(seqs[1]);
+		expect(seqs[1]).toBeLessThan(seqs[2]);
+
+		const tail = await mem.getMessages('t-1', { sinceSeq: seqs[0] });
+		expect(tail.map(textOf)).toEqual(['two', 'three']);
+		expect(await mem.getMessages('t-1', { sinceSeq: seqs[2] })).toEqual([]);
+	});
+
 	it('respects limit — returns last N messages', async () => {
 		const mem = makeMemory(dbPath);
 		// Save messages one at a time to guarantee distinct createdAt timestamps

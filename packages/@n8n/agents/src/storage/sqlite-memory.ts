@@ -164,42 +164,37 @@ export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> {
 
 	async getMessages(
 		threadId: string,
-		opts?: { limit?: number; before?: Date },
+		opts?: { limit?: number; before?: Date; sinceSeq?: number },
 	): Promise<AgentDbMessage[]> {
 		const db = await this.ensureInitialized();
 
-		let sql: string;
 		const args: Array<string | number> = [threadId];
+		const where: string[] = ['threadId = ?'];
+		if (opts?.before !== undefined) {
+			where.push('createdAt < ?');
+			args.push(opts.before.toISOString());
+		}
+		if (opts?.sinceSeq !== undefined) {
+			where.push('seq > ?');
+			args.push(opts.sinceSeq);
+		}
+		const whereClause = where.join(' AND ');
 
-		// Use seq (autoincrement) as tiebreaker for messages with identical createdAt timestamps
-		if (opts?.limit !== undefined && opts?.before !== undefined) {
+		// Use seq (autoincrement) as tiebreaker for messages with identical createdAt timestamps.
+		let sql: string;
+		if (opts?.limit !== undefined) {
 			sql = `SELECT * FROM (
 				SELECT id, threadId, role, content, createdAt, seq
 				FROM ${this.ns}messages
-				WHERE threadId = ? AND createdAt < ?
-				ORDER BY createdAt DESC, seq DESC
-				LIMIT ?
-			) ORDER BY createdAt ASC, seq ASC`;
-			args.push(opts.before.toISOString(), opts.limit);
-		} else if (opts?.limit !== undefined) {
-			sql = `SELECT * FROM (
-				SELECT id, threadId, role, content, createdAt, seq
-				FROM ${this.ns}messages
-				WHERE threadId = ?
+				WHERE ${whereClause}
 				ORDER BY createdAt DESC, seq DESC
 				LIMIT ?
 			) ORDER BY createdAt ASC, seq ASC`;
 			args.push(opts.limit);
-		} else if (opts?.before !== undefined) {
-			sql = `SELECT id, threadId, role, content, createdAt
-				FROM ${this.ns}messages
-				WHERE threadId = ? AND createdAt < ?
-				ORDER BY createdAt ASC, seq ASC`;
-			args.push(opts.before.toISOString());
 		} else {
-			sql = `SELECT id, threadId, role, content, createdAt
+			sql = `SELECT id, threadId, role, content, createdAt, seq
 				FROM ${this.ns}messages
-				WHERE threadId = ?
+				WHERE ${whereClause}
 				ORDER BY createdAt ASC, seq ASC`;
 		}
 
@@ -211,6 +206,7 @@ export class SqliteMemory extends BaseMemory<SqliteMemoryConfig> {
 				if (!msg) return undefined;
 				msg.id = row.id as string;
 				msg.createdAt = new Date(row.createdAt as string);
+				msg.seq = Number(row.seq);
 				return msg;
 			})
 			.filter((m): m is AgentDbMessage => m !== undefined);

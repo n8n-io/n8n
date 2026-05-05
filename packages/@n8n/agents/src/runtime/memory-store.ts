@@ -4,6 +4,7 @@ import type { AgentDbMessage } from '../types/sdk/message';
 interface StoredMessage {
 	message: AgentDbMessage;
 	createdAt: Date;
+	seq: number;
 }
 
 /**
@@ -17,6 +18,8 @@ export class InMemoryMemory implements BuiltMemory {
 	private threads = new Map<string, Thread>();
 
 	private messagesByThread = new Map<string, StoredMessage[]>();
+
+	private nextSeq = 1;
 
 	private workingMemoryByKey = new Map<string, string>();
 
@@ -64,15 +67,19 @@ export class InMemoryMemory implements BuiltMemory {
 	// eslint-disable-next-line @typescript-eslint/require-await
 	async getMessages(
 		threadId: string,
-		opts?: { limit?: number; before?: Date },
+		opts?: { limit?: number; before?: Date; sinceSeq?: number },
 	): Promise<AgentDbMessage[]> {
 		let stored = this.messagesByThread.get(threadId) ?? [];
 		if (opts?.before) {
 			const cutoff = opts.before.getTime();
 			stored = stored.filter((s) => s.createdAt.getTime() < cutoff);
 		}
+		if (opts?.sinceSeq !== undefined) {
+			const cursor = opts.sinceSeq;
+			stored = stored.filter((s) => s.seq > cursor);
+		}
 		if (opts?.limit) stored = stored.slice(-opts.limit);
-		return stored.map((s) => ({ ...s.message, createdAt: s.createdAt }));
+		return stored.map((s) => ({ ...s.message, createdAt: s.createdAt, seq: s.seq }));
 	}
 
 	/**
@@ -90,11 +97,16 @@ export class InMemoryMemory implements BuiltMemory {
 		const existing = this.messagesByThread.get(args.threadId) ?? [];
 		const byId = new Map(existing.map((s, i) => [s.message.id, i]));
 		for (const msg of args.messages) {
-			const entry: StoredMessage = { message: msg, createdAt: msg.createdAt };
 			const idx = byId.get(msg.id);
 			if (idx !== undefined) {
-				existing[idx] = entry;
+				// Upsert preserves the original seq so downstream cursors stay valid.
+				existing[idx] = { message: msg, createdAt: msg.createdAt, seq: existing[idx].seq };
 			} else {
+				const entry: StoredMessage = {
+					message: msg,
+					createdAt: msg.createdAt,
+					seq: this.nextSeq++,
+				};
 				byId.set(msg.id, existing.length);
 				existing.push(entry);
 			}

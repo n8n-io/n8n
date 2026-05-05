@@ -2,6 +2,7 @@ import type { z } from 'zod';
 
 import type { ModelConfig, SerializableAgentState } from './agent';
 import type { AgentDbMessage } from './message';
+import type { ObservationalMemoryConfig } from './observation';
 import type { JSONObject } from '../utils/json';
 
 /**
@@ -37,6 +38,8 @@ export interface BuiltMemory {
 		opts?: {
 			limit?: number; // last N messages
 			before?: Date; // pagination cursor
+			/** Return only messages with `seq > sinceSeq`, ordered ascending. */
+			sinceSeq?: number;
 		},
 	): Promise<AgentDbMessage[]>;
 	/**
@@ -140,6 +143,7 @@ export interface MemoryConfig {
 	};
 	semanticRecall?: SemanticRecallConfig;
 	titleGeneration?: TitleGenerationConfig;
+	observationalMemory?: ObservationalMemoryConfig;
 }
 
 /**

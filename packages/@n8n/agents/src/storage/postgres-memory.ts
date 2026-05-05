@@ -299,43 +299,37 @@ export class PostgresMemory extends BaseMemory<PostgresConstructorOptions> {
 
 	async getMessages(
 		threadId: string,
-		opts?: { limit?: number; before?: Date },
+		opts?: { limit?: number; before?: Date; sinceSeq?: number },
 	): Promise<AgentDbMessage[]> {
 		const pool = await this.ensureInitialized();
 
-		let sql: string;
 		const args: Array<string | number> = [threadId];
-		const paramIdx = 2;
-
-		// Use seq (serial) as tiebreaker for messages with identical createdAt timestamps
-		if (opts?.limit !== undefined && opts?.before !== undefined) {
-			sql = `SELECT * FROM (
-				SELECT id, "threadId", role, content, "createdAt", seq
-				FROM ${this.ns}messages
-				WHERE "threadId" = $1 AND "createdAt" < $${paramIdx}
-				ORDER BY "createdAt" DESC, seq DESC
-				LIMIT $${paramIdx + 1}
-			) sub ORDER BY "createdAt" ASC, seq ASC`;
-			args.push(opts.before.toISOString(), opts.limit);
-		} else if (opts?.limit !== undefined) {
-			sql = `SELECT * FROM (
-				SELECT id, "threadId", role, content, "createdAt", seq
-				FROM ${this.ns}messages
-				WHERE "threadId" = $1
-				ORDER BY "createdAt" DESC, seq DESC
-				LIMIT $${paramIdx}
-			) sub ORDER BY "createdAt" ASC, seq ASC`;
-			args.push(opts.limit);
-		} else if (opts?.before !== undefined) {
-			sql = `SELECT id, "threadId", role, content, "createdAt"
-				FROM ${this.ns}messages
-				WHERE "threadId" = $1 AND "createdAt" < $${paramIdx}
-				ORDER BY "createdAt" ASC, seq ASC`;
+		const where: string[] = ['"threadId" = $1'];
+		if (opts?.before !== undefined) {
 			args.push(opts.before.toISOString());
-		} else {
-			sql = `SELECT id, "threadId", role, content, "createdAt"
+			where.push(`"createdAt" < $${args.length}`);
+		}
+		if (opts?.sinceSeq !== undefined) {
+			args.push(opts.sinceSeq);
+			where.push(`seq > $${args.length}`);
+		}
+		const whereClause = where.join(' AND ');
+
+		// Use seq (serial) as tiebreaker for messages with identical createdAt timestamps.
+		let sql: string;
+		if (opts?.limit !== undefined) {
+			args.push(opts.limit);
+			sql = `SELECT * FROM (
+				SELECT id, "threadId", role, content, "createdAt", seq
 				FROM ${this.ns}messages
-				WHERE "threadId" = $1
+				WHERE ${whereClause}
+				ORDER BY "createdAt" DESC, seq DESC
+				LIMIT $${args.length}
+			) sub ORDER BY "createdAt" ASC, seq ASC`;
+		} else {
+			sql = `SELECT id, "threadId", role, content, "createdAt", seq
+				FROM ${this.ns}messages
+				WHERE ${whereClause}
 				ORDER BY "createdAt" ASC, seq ASC`;
 		}
 
@@ -347,9 +341,10 @@ export class PostgresMemory extends BaseMemory<PostgresConstructorOptions> {
 				// back as a string for any reason, parse it.
 				const content = typeof row.content === 'string' ? parseJsonSafe(row.content) : row.content;
 				if (!content || typeof content !== 'object') return undefined;
-				const msg = content as AgentMessage & { id?: string; createdAt?: Date };
+				const msg = content as AgentMessage & { id?: string; createdAt?: Date; seq?: number };
 				msg.id = row.id;
 				msg.createdAt = new Date(row.createdAt);
+				msg.seq = Number(row.seq);
 				return msg as AgentDbMessage;
 			})
 			.filter((m): m is AgentDbMessage => m !== undefined);

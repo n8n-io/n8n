@@ -191,6 +191,57 @@ describeWithDocker('PostgresMemory unit tests', () => {
 		await mem.close();
 	});
 
+	it('exposes monotonic seq on read and filters by sinceSeq', async () => {
+		const mem = makePostgresMemory('seq_test');
+		await mem.saveThread({ id: 't1', resourceId: 'u1' });
+
+		await mem.saveMessages({
+			threadId: 't1',
+			messages: [
+				{
+					id: 'm1',
+					createdAt: new Date(),
+					role: 'user' as const,
+					content: [{ type: 'text' as const, text: 'one' }],
+				},
+			],
+		});
+		await mem.saveMessages({
+			threadId: 't1',
+			messages: [
+				{
+					id: 'm2',
+					createdAt: new Date(),
+					role: 'assistant' as const,
+					content: [{ type: 'text' as const, text: 'two' }],
+				},
+			],
+		});
+		await mem.saveMessages({
+			threadId: 't1',
+			messages: [
+				{
+					id: 'm3',
+					createdAt: new Date(),
+					role: 'user' as const,
+					content: [{ type: 'text' as const, text: 'three' }],
+				},
+			],
+		});
+
+		const all = await mem.getMessages('t1');
+		const seqs = all.map((m) => m.seq!);
+		expect(seqs[0]).toBeLessThan(seqs[1]);
+		expect(seqs[1]).toBeLessThan(seqs[2]);
+
+		const tail = await mem.getMessages('t1', { sinceSeq: seqs[0] });
+		expect(tail.map((m) => m.id)).toEqual(['m2', 'm3']);
+
+		expect(await mem.getMessages('t1', { sinceSeq: seqs[2] })).toEqual([]);
+
+		await mem.close();
+	});
+
 	it('saves and retrieves working memory keyed by resourceId', async () => {
 		const mem = makePostgresMemory('wm_test');
 
