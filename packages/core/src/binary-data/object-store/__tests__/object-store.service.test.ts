@@ -9,6 +9,8 @@ import {
 	PutObjectCommand,
 	type S3Client,
 } from '@aws-sdk/client-s3';
+import type { Logger } from '@n8n/backend-common';
+import { NodeHttpHandler } from '@smithy/node-http-handler';
 import { captor, mock } from 'jest-mock-extended';
 import { PassThrough, Readable } from 'stream';
 
@@ -46,18 +48,33 @@ describe('ObjectStoreService', () => {
 		},
 		protocol: 'https',
 		forcePathStyle: true,
+		connectionTimeoutMs: 10_000,
 	});
 
 	let objectStoreService: ObjectStoreService;
+	const mockLogger = mock<Logger>();
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
 	jest.useFakeTimers({ now });
 
 	beforeEach(async () => {
-		objectStoreService = new ObjectStoreService(mock(), s3Config);
+		mockLogger.info.mockClear();
+		mockLogger.debug.mockClear();
+		objectStoreService = new ObjectStoreService(mockLogger, s3Config);
 		await objectStoreService.init();
 		mockS3Send.mockClear();
 		jest.restoreAllMocks();
+	});
+
+	describe('constructor', () => {
+		it('should log the resolved S3 endpoint on creation', () => {
+			mockLogger.info.mockClear();
+			new ObjectStoreService(mockLogger, s3Config);
+
+			expect(mockLogger.info).toHaveBeenCalledWith(
+				expect.stringContaining('S3 binary storage configured'),
+			);
+		});
 	});
 
 	describe('getClientConfig()', () => {
@@ -72,7 +89,7 @@ describe('ObjectStoreService', () => {
 
 			const clientConfig = objectStoreService.getClientConfig();
 
-			expect(clientConfig).toEqual({
+			expect(clientConfig).toMatchObject({
 				endpoint: 'https://example.com',
 				forcePathStyle: true,
 				region: mockBucket.region,
@@ -86,7 +103,7 @@ describe('ObjectStoreService', () => {
 
 			const clientConfig = objectStoreService.getClientConfig();
 
-			expect(clientConfig).toEqual({
+			expect(clientConfig).toMatchObject({
 				endpoint: 'https://example.com',
 				forcePathStyle: false,
 				region: mockBucket.region,
@@ -99,10 +116,11 @@ describe('ObjectStoreService', () => {
 
 			const clientConfig = objectStoreService.getClientConfig();
 
-			expect(clientConfig).toEqual({
+			expect(clientConfig).toMatchObject({
 				region: mockBucket.region,
 				credentials,
 			});
+			expect(clientConfig.endpoint).toBeUndefined();
 		});
 
 		it('should return client config without credentials when authAutoDetect is true', () => {
@@ -110,14 +128,21 @@ describe('ObjectStoreService', () => {
 
 			const clientConfig = objectStoreService.getClientConfig();
 
-			expect(clientConfig).toEqual({
+			expect(clientConfig).toMatchObject({
 				region: mockBucket.region,
 			});
+			expect(clientConfig.credentials).toBeUndefined();
+		});
+
+		it('should include a request handler with connection and request timeouts', () => {
+			const clientConfig = objectStoreService.getClientConfig();
+
+			expect(clientConfig.requestHandler).toBeInstanceOf(NodeHttpHandler);
 		});
 	});
 
 	describe('checkConnection()', () => {
-		it('should send a HEAD request to the correct bucket', async () => {
+		it('should send a HEAD request to the correct bucket with an abort signal', async () => {
 			mockS3Send.mockResolvedValueOnce({});
 
 			objectStoreService.setReady(false);
@@ -125,20 +150,25 @@ describe('ObjectStoreService', () => {
 			await objectStoreService.checkConnection();
 
 			const commandCaptor = captor<HeadObjectCommand>();
-			expect(mockS3Send).toHaveBeenCalledWith(commandCaptor);
+			expect(mockS3Send).toHaveBeenCalledWith(
+				commandCaptor,
+				expect.objectContaining({
+					abortSignal: expect.any(AbortSignal),
+				}),
+			);
 			const command = commandCaptor.value;
 			expect(command).toBeInstanceOf(HeadBucketCommand);
 			expect(command.input).toEqual({ Bucket: 'test-bucket' });
 		});
 
-		it('should throw an error on request failure', async () => {
+		it('should throw an error with endpoint details on request failure', async () => {
 			objectStoreService.setReady(false);
 
 			mockS3Send.mockRejectedValueOnce(mockError);
 
 			const promise = objectStoreService.checkConnection();
 
-			await expect(promise).rejects.toThrowError(FAILED_REQUEST_ERROR_MESSAGE);
+			await expect(promise).rejects.toThrowError(/Failed to connect to S3 at/);
 		});
 	});
 
