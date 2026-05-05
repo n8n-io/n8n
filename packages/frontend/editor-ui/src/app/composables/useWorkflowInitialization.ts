@@ -288,6 +288,7 @@ export function useWorkflowInitialization(workflowState: WorkflowState) {
 			currentWorkflowDocumentStore.value.setName(data.name);
 			currentWorkflowDocumentStore.value.setHomeProject(data.homeProject ?? null);
 			currentWorkflowDocumentStore.value.setScopes(data.scopes ?? []);
+			currentNDVStore.value = useNDVStore(workflowDocumentId);
 			return;
 		}
 
