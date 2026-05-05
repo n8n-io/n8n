@@ -12,6 +12,7 @@ import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimel
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { isActiveBuilderAgent } from '../builderAgents';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
@@ -137,7 +138,11 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	telemetry.track('User finished providing input', eventProps);
 
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+	void store.confirmAction(requestId, {
+		kind: 'approval',
+		approved,
+		...(feedback ? { userInput: feedback } : {}),
+	});
 }
 
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.
@@ -243,8 +248,17 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				</ToolCallStep>
 			</template>
 
-			<!-- Child agent — flat section -->
-			<template v-else-if="entry.type === 'child' && childrenById[entry.agentId]">
+			<!-- Child agent — flat section. Running builder sub-agents are
+				 extracted and rendered at the bottom of the conversation by
+				 InstanceAiView; once a builder finishes it reappears here in its
+				 chronological slot. -->
+			<template
+				v-else-if="
+					entry.type === 'child' &&
+					childrenById[entry.agentId] &&
+					!isActiveBuilderAgent(childrenById[entry.agentId])
+				"
+			>
 				<AgentSection :agent-node="childrenById[entry.agentId]" />
 
 				<!-- Planner child: render PlanReviewPanel below the agent section -->

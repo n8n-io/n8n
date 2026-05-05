@@ -13,7 +13,11 @@ import { z } from 'zod';
 
 import type { OrchestrationContext } from '../../types';
 import { formatWorkflowLoopGuidance } from '../../workflow-loop/guidance';
-import { verificationVerdictSchema } from '../../workflow-loop/workflow-loop-state';
+import { createRemediation, terminalRemediationFromState } from '../../workflow-loop/remediation';
+import {
+	type RemediationMetadata,
+	verificationVerdictSchema,
+} from '../../workflow-loop/workflow-loop-state';
 
 export const reportVerificationVerdictInputSchema = z.object({
 	workItemId: z.string().describe('The work item ID from the build task (wi_XXXXXXXX)'),
@@ -47,8 +51,52 @@ export const reportVerificationVerdictInputSchema = z.object({
 		.describe(
 			'Node parameter patch object for "needs_patch" verdict — the specific parameters to change on the failed node',
 		),
+	remediation: z
+		.object({
+			category: z.enum(['code_fixable', 'needs_setup', 'blocked']),
+			shouldEdit: z.boolean(),
+			guidance: z.string(),
+			reason: z.string().optional(),
+			remainingSubmitFixes: z.number().int().min(0).optional(),
+			attemptCount: z.number().int().min(0).optional(),
+		})
+		.optional()
+		.describe('Remediation metadata returned by verify-built-workflow, if available'),
 	summary: z.string().describe('One-sentence summary of the verification result'),
 });
+
+function defaultRemediationForVerdict(
+	input: z.infer<typeof reportVerificationVerdictInputSchema>,
+): RemediationMetadata | undefined {
+	switch (input.verdict) {
+		case 'needs_patch':
+		case 'needs_rebuild':
+			return createRemediation({
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'verification_code_fixable',
+				guidance:
+					input.diagnosis ??
+					'Verification found a workflow-code issue. Apply one batched repair if the guard allows it.',
+			});
+		case 'needs_user_input':
+			return createRemediation({
+				category: 'needs_setup',
+				shouldEdit: false,
+				reason: input.failureSignature ?? 'verification_needs_user_input',
+				guidance: input.diagnosis ?? input.summary,
+			});
+		case 'failed_terminal':
+			return createRemediation({
+				category: 'blocked',
+				shouldEdit: false,
+				reason: input.failureSignature ?? 'verification_terminal_failure',
+				guidance: input.diagnosis ?? input.summary,
+			});
+		default:
+			return undefined;
+	}
+}
 
 export function createReportVerificationVerdictTool(context: OrchestrationContext) {
 	return createTool({
@@ -66,17 +114,60 @@ export function createReportVerificationVerdictTool(context: OrchestrationContex
 				return { guidance: 'Error: verification verdict reporting not available.' };
 			}
 
+			const stateBefore = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
+			const terminalRemediation =
+				stateBefore?.lastRemediation && !stateBefore.lastRemediation.shouldEdit
+					? terminalRemediationFromState(stateBefore, context.runId)
+					: undefined;
+			if (terminalRemediation) {
+				return {
+					guidance: formatWorkflowLoopGuidance({
+						type: 'blocked',
+						reason: terminalRemediation.guidance,
+					}),
+				};
+			}
+
+			const remediation = input.remediation ?? defaultRemediationForVerdict(input);
+			const forcedTerminalVerdict =
+				remediation && !remediation.shouldEdit
+					? remediation.category === 'needs_setup'
+						? 'needs_user_input'
+						: 'failed_terminal'
+					: undefined;
+
 			const action = await context.workflowTaskService.reportVerificationVerdict({
 				workItemId: input.workItemId,
+				runId: context.runId,
 				workflowId: input.workflowId,
 				executionId: input.executionId,
-				verdict: input.verdict,
-				failureSignature: input.failureSignature,
-				failedNodeName: input.failedNodeName,
-				diagnosis: input.diagnosis,
-				patch: input.patch,
-				summary: input.summary,
+				verdict: forcedTerminalVerdict ?? input.verdict,
+				failureSignature: forcedTerminalVerdict
+					? (remediation?.reason ?? input.failureSignature)
+					: input.failureSignature,
+				failedNodeName: forcedTerminalVerdict ? undefined : input.failedNodeName,
+				diagnosis: forcedTerminalVerdict
+					? (remediation?.guidance ?? input.diagnosis)
+					: input.diagnosis,
+				patch: forcedTerminalVerdict ? undefined : input.patch,
+				remediation,
+				summary: forcedTerminalVerdict ? (remediation?.guidance ?? input.summary) : input.summary,
 			});
+
+			if (action.type === 'blocked') {
+				const state = await context.workflowTaskService.getWorkflowLoopState(input.workItemId);
+				if (state?.lastRemediation && !state.lastRemediation.shouldEdit) {
+					context.trackTelemetry?.('Builder remediation guard fired', {
+						thread_id: context.threadId,
+						run_id: context.runId,
+						work_item_id: input.workItemId,
+						workflow_id: input.workflowId,
+						category: state.lastRemediation.category,
+						attempt_count: state.lastRemediation.attemptCount,
+						reason: state.lastRemediation.reason,
+					});
+				}
+			}
 
 			return {
 				guidance: formatWorkflowLoopGuidance(action, { workItemId: input.workItemId }),

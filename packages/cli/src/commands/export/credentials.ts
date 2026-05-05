@@ -127,7 +127,7 @@ export class ExportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 				const { name, type, data } = credentials[i];
 				const id = credentials[i].id;
 				const credential = new Credentials({ id, name }, type, data);
-				const plainData = credential.getData();
+				const plainData = await credential.getData();
 				(credentials[i] as ICredentialsDecryptedDb).data = plainData;
 			}
 		}

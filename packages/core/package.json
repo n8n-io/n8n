@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.18.0",
+  "version": "2.19.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -41,7 +41,7 @@
     "zod": "catalog:"
   },
   "peerDependencies": {
-    "zod": "catalog:"
+    "zod": ">=3.25.0 <4"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",

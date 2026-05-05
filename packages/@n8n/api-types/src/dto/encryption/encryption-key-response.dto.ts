@@ -4,4 +4,5 @@ export type EncryptionKeyResponseDto = {
 	algorithm: string | null;
 	status: string;
 	createdAt: string;
+	updatedAt: string;
 };

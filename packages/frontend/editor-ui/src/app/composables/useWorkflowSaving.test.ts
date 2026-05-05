@@ -9,6 +9,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -1074,6 +1075,44 @@ describe('useWorkflowSaving', () => {
 			autoSaveWorkflow();
 
 			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
+
+		it('should not schedule autosave when autosave is disabled via environment variable', () => {
+			const autosaveStore = useWorkflowSaveStore();
+			const settingsStore = mockedStore(useSettingsStore);
+
+			// Mock isAutosaveEnabled to return false (simulating N8N_WORKFLOWS_AUTOSAVE_DISABLED=true)
+			settingsStore.isAutosaveEnabled = false;
+
+			autosaveStore.reset();
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Try to schedule autosave while disabled
+			autoSaveWorkflow();
+
+			// State should remain Idle, not Scheduled
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+		});
+
+		it('should schedule autosave when autosave is enabled via environment variable', () => {
+			const autosaveStore = useWorkflowSaveStore();
+			const settingsStore = mockedStore(useSettingsStore);
+
+			// Mock isAutosaveEnabled to return true (default behavior)
+			settingsStore.isAutosaveEnabled = true;
+
+			autosaveStore.reset();
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Idle);
+
+			const { autoSaveWorkflow } = useWorkflowSaving({ router });
+
+			// Schedule autosave
+			autoSaveWorkflow();
+
+			// State should be Scheduled
+			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
 		});
 	});
 });

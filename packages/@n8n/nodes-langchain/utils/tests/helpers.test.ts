@@ -485,6 +485,119 @@ describe('getSessionId', () => {
 		const sessionId = getSessionId(mockCtx, 0);
 		expect(sessionId).toBe('customSessionId');
 	});
+
+	it('should NOT scope sessionId when typeVersion is below the threshold for the node type', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.3,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc');
+	});
+
+	it('should scope sessionId with node name when typeVersion is at the threshold', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__Memory_1');
+	});
+
+	it('should scope sessionId with node name when node is not among the listed ones', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryDevNull',
+			typeVersion: 1,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__Memory_1');
+	});
+
+	it('should produce distinct sessionIds for two nodes with the same input sessionId', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+		const sessionId1 = getSessionId(mockCtx, 0);
+
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 2',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+		const sessionId2 = getSessionId(mockCtx, 0);
+
+		expect(sessionId1).toBe('abc__Memory_1');
+		expect(sessionId2).toBe('abc__Memory_2');
+	});
+
+	it('should sanitize node name characters unsafe for memory backends', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory (main)/v2',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__Memory__main__v2');
+		expect(sessionId).toMatch(/^[A-Za-z0-9_-]+$/);
+	});
+
+	it('should preserve safe characters (alphanumeric, underscore, hyphen) unchanged', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue('abc');
+		mockCtx.getNode.mockReturnValue({
+			name: 'memory_main-v2',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('abc__memory_main-v2');
+	});
+
+	it('should NOT scope when sessionIdType is customKey, even on new typeVersion', () => {
+		mockCtx.getNodeParameter.mockReturnValueOnce('customKey').mockReturnValueOnce('my-key');
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		const sessionId = getSessionId(mockCtx, 0);
+		expect(sessionId).toBe('my-key');
+	});
+
+	it('should still throw if sessionId is missing on new typeVersion', () => {
+		mockCtx.getNodeParameter.mockReturnValue('fromInput');
+		mockCtx.evaluateExpression.mockReturnValue(undefined);
+		mockCtx.getChatTrigger.mockReturnValue(undefined);
+		mockCtx.getNode.mockReturnValue({
+			name: 'Memory 1',
+			type: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+			typeVersion: 1.4,
+		});
+
+		expect(() => getSessionId(mockCtx, 0)).toThrow(NodeOperationError);
+	});
 });
 
 describe('mergeCustomHeaders', () => {

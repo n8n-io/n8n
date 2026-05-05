@@ -1,6 +1,8 @@
+import { EVAL_PARALLEL_EXECUTION_FLAG, StartTestRunRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import { TestCaseExecutionRepository, TestRunRepository } from '@n8n/db';
 import type { User } from '@n8n/db';
-import { Delete, Get, Post, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Post, RestController } from '@n8n/decorators';
 import express from 'express';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -9,6 +11,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TestRunnerService } from '@/evaluation.ee/test-runner/test-runner.service.ee';
 import { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import { listQueryMiddleware } from '@/middlewares';
+import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -20,7 +23,27 @@ export class TestRunsController {
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly testRunnerService: TestRunnerService,
 		private readonly telemetry: Telemetry,
+		private readonly postHogClient: PostHogClient,
+		private readonly logger: Logger,
 	) {}
+
+	/**
+	 * Resolves the parallel-execution rollout flag for a user, defaulting to
+	 * `false` (sequential) on any PostHog failure. Fail-open semantics: a
+	 * PostHog outage degrades the rollout cohort to the legacy sequential
+	 * behaviour rather than 500ing the test-run start.
+	 */
+	private async isParallelExecutionFlagEnabled(user: User): Promise<boolean> {
+		try {
+			const flags = await this.postHogClient.getFeatureFlags(user);
+			return flags?.[EVAL_PARALLEL_EXECUTION_FLAG] === true;
+		} catch (error) {
+			this.logger.warn('Failed to resolve eval parallel-execution flag', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return false;
+		}
+	}
 
 	private async assertUserHasAccessToWorkflow(workflowId: string, user: User) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
@@ -110,13 +133,27 @@ export class TestRunsController {
 	}
 
 	@Post('/:workflowId/test-runs/new')
-	async create(req: TestRunsRequest.Create, res: express.Response) {
+	async create(
+		req: TestRunsRequest.Create,
+		res: express.Response,
+		@Body payload: StartTestRunRequestDto,
+	) {
 		const { workflowId } = req.params;
 
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user);
 
+		// Resolve the rollout flag for this user. Cached 10 min by PostHogClient
+		// so the hot path is one outbound call per user per 10-min window at
+		// most. Flag-off users are silently coerced to sequential — no error,
+		// no flag-id in the response — so the cohort wall is invisible to
+		// direct API callers and stale tabs. Fail-open on PostHog errors.
+		const flagEnabledForUser = await this.isParallelExecutionFlagEnabled(req.user);
+
+		const requestedConcurrency = payload.concurrency ?? 1;
+		const concurrency = flagEnabledForUser ? requestedConcurrency : 1;
+
 		// We do not await for the test run to complete
-		void this.testRunnerService.runTest(req.user, workflowId);
+		void this.testRunnerService.runTest(req.user, workflowId, concurrency, flagEnabledForUser);
 
 		res.status(202).json({ success: true });
 	}
