@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
@@ -43,10 +44,12 @@ const webhook = mock<IWebhookData>({
 });
 
 describe('TestWebhooks', () => {
+	const logger = mock<Logger>();
 	const registrations = mock<TestWebhookRegistrationsService>();
 	const webhookService = mock<WebhookService>();
 
 	const testWebhooks = new TestWebhooks(
+		logger,
 		mock(),
 		mock(),
 		registrations,
@@ -470,6 +473,31 @@ describe('TestWebhooks', () => {
 			const [releaseOrder] = (expression.releaseIsolate as jest.Mock).mock.invocationCallOrder;
 			expect(acquireOrder).toBeLessThan(deactivateOrder);
 			expect(deactivateOrder).toBeLessThan(releaseOrder);
+		});
+
+		test('releases isolate and logs when deactivateWebhooks throws', async () => {
+			const expression = mock<WorkflowExpression>();
+			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
+
+			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			registrations.getAllKeys.mockResolvedValue(['key1']);
+			registrations.get.mockResolvedValue({
+				version: 1,
+				workflowEntity,
+				webhook,
+			} as TestWebhookRegistration);
+			const error = new Error('boom');
+			jest.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(error);
+
+			await testWebhooks.cancelWebhook(workflowEntity.id);
+			await flushMicrotasks();
+
+			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			expect(logger.error).toHaveBeenCalledWith(
+				'Failed to deactivate test webhooks on cancel',
+				expect.objectContaining({ error, workflowId: workflowEntity.id }),
+			);
 		});
 	});
 
