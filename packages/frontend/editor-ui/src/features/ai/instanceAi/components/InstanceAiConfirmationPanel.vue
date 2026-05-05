@@ -88,11 +88,11 @@ type ConfirmationChunk = ApprovalWrappedGroup | StandaloneChunk;
 function isApprovalWrapped(item: PendingConfirmationItem): boolean {
 	const conf = item.toolCall.confirmation;
 	if (conf.domainAccess) return true;
-	// Generic approval: no special fields and no inputType
+	// Generic approval: no special fields and no structured input UI
 	if (
 		!conf.credentialRequests?.length &&
 		!conf.setupRequests?.length &&
-		!conf.inputType &&
+		(!conf.inputType || conf.inputType === 'approval') &&
 		!conf.questions
 	) {
 		return true;
