@@ -31,17 +31,17 @@ gh pr view <number> --repo n8n-io/n8n \
 Fetch in parallel:
 
 ```bash
-# CLA commit status (primary signal)
-gh api "repos/n8n-io/n8n/commits/<headRefOid>/statuses" \
+# CLA commit status (primary signal) — statuses are newest-first; use the first returned entry
+gh api --paginate "repos/n8n-io/n8n/commits/<headRefOid>/statuses" \
   --jq '[.[] | select(.context == "license/cla") | {state, description}] | first'
 
-# CLAassistant issue comment (fallback when no commit status)
-gh api "repos/n8n-io/n8n/issues/<number>/comments" \
+# CLAassistant issue comment (fallback when no commit status) — use the last returned entry
+gh api --paginate "repos/n8n-io/n8n/issues/<number>/comments" \
   --jq '[.[] | select(.user.login == "CLAassistant") | .body] | last'
 
-# cubic-dev-ai PR review comments
-gh api "repos/n8n-io/n8n/pulls/<number>/comments" \
-  --jq '[.[] | select(.user.login == "cubic-dev-ai[bot]") | {body: .body, path: .path}]'
+# cubic-dev-ai PR review comments (streamed so results concatenate cleanly across pages)
+gh api --paginate "repos/n8n-io/n8n/pulls/<number>/comments" \
+  --jq '.[] | select(.user.login == "cubic-dev-ai[bot]") | {body: .body, path: .path}'
 ```
 
 ### 3. Run the five checks
@@ -113,7 +113,7 @@ Report:
 
 #### E. cubic-dev-ai issues
 
-Review the PR review comments fetched in step 2. `cubic-dev-ai[bot]` leaves comments for every issue it finds, prefixed with a priority (`P1:`, `P2:`, `P3:`).
+Review the PR review comments fetched in step 2. `cubic-dev-ai[bot]` leaves comments for every issue it finds.
 
 - No comments from `cubic-dev-ai[bot]`, or every comment explicitly states no issues were found → ✅
 - Any other comment → ❌ report the total count and priority breakdown (e.g. "3 issues: 1× P1, 1× P2, 1× P3")
