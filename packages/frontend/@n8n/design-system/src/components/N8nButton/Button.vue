@@ -127,6 +127,7 @@ const handleClick = (event: MouseEvent) => {
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+@use '../../css/mixins/motion';
 
 .button {
 	appearance: none;
@@ -149,7 +150,7 @@ const handleClick = (event: MouseEvent) => {
 	--button--color--background: transparent;
 	--button--color--background-hover: var(--background--hover);
 	--button--color--background-active: var(--background--active);
-	--button--color: light-dark(var(--color--neutral-900), var(--color--neutral-100));
+	--button--color: var(--text-color);
 	--button--shadow: 0 0 0 0 transparent;
 	--button--shadow--hover: 0 0 0 0 transparent;
 	--button--shadow--active: 0 0 0 0 transparent;
@@ -408,11 +409,7 @@ const handleClick = (event: MouseEvent) => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	animation: spin 1s linear infinite;
-
-	@media (prefers-reduced-motion: reduce) {
-		animation: none;
-	}
+	@include motion.spin;
 }
 
 /* TODO: Move to global animations css library */
@@ -437,15 +434,6 @@ const handleClick = (event: MouseEvent) => {
 	@media (prefers-reduced-motion: reduce) {
 		transform: none;
 		filter: none;
-	}
-}
-
-@keyframes spin {
-	from {
-		transform: rotate(0deg);
-	}
-	to {
-		transform: rotate(360deg);
 	}
 }
 </style>

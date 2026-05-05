@@ -69,6 +69,7 @@ describe('ImportService', () => {
 			mock(),
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
+			mock(),
 		);
 	});
 

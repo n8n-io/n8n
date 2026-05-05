@@ -396,7 +396,7 @@ describe('useChatState', () => {
 		});
 
 		it('should include destinationNode when set in workflowsStore', async () => {
-			workflowsStore.chatPartialExecutionDestinationNode = 'DestinationNode';
+			workflowsStore.setChatPartialExecutionDestinationNode('DestinationNode');
 
 			const chatState = useChatState(false);
 			await chatState.registerChatWebhook();
@@ -523,7 +523,7 @@ describe('useChatState', () => {
 		});
 
 		it('should clear partial execution destination node', () => {
-			workflowsStore.chatPartialExecutionDestinationNode = 'SomeNode';
+			workflowsStore.setChatPartialExecutionDestinationNode('SomeNode');
 
 			const chatState = useChatState(false);
 			chatState.refreshSession();

@@ -4,7 +4,7 @@ import type {
 	InstanceAiAttachment,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
-	InstanceAiConfirmResponse,
+	InstanceAiConfirmRequest,
 } from '@n8n/api-types';
 
 /**
@@ -89,50 +89,14 @@ export async function postCancelTask(
 
 /**
  * POST /instance-ai/confirm/:requestId -> 200 OK
- * Approve or deny a confirmation request (HITL).
+ * Resolve a confirmation request (HITL). The request body is a discriminated
+ * union on `kind`.
  */
 export async function postConfirmation(
 	context: IRestApiContext,
 	requestId: string,
-	approved: boolean,
-	credentialId?: string,
-	credentials?: Record<string, string>,
-	autoSetup?: { credentialType: string },
-	userInput?: string,
-	domainAccessAction?: string,
-	setupWorkflowData?: {
-		action?: 'apply' | 'test-trigger';
-		nodeCredentials?: Record<string, Record<string, string>>;
-		nodeParameters?: Record<string, Record<string, unknown>>;
-		testTriggerNode?: string;
-	},
-	answers?: InstanceAiConfirmResponse['answers'],
-	resourceDecision?: string,
+	payload: InstanceAiConfirmRequest,
 ): Promise<void> {
-	const payload: InstanceAiConfirmResponse = {
-		approved,
-		...(credentialId ? { credentialId } : {}),
-		...(credentials ? { credentials } : {}),
-		...(autoSetup ? { autoSetup } : {}),
-		...(userInput !== undefined ? { userInput } : {}),
-		...(domainAccessAction
-			? {
-					domainAccessAction: domainAccessAction as InstanceAiConfirmResponse['domainAccessAction'],
-				}
-			: {}),
-		...(setupWorkflowData?.action ? { action: setupWorkflowData.action } : {}),
-		...(setupWorkflowData?.nodeCredentials
-			? { nodeCredentials: setupWorkflowData.nodeCredentials }
-			: {}),
-		...(setupWorkflowData?.nodeParameters
-			? { nodeParameters: setupWorkflowData.nodeParameters }
-			: {}),
-		...(setupWorkflowData?.testTriggerNode
-			? { testTriggerNode: setupWorkflowData.testTriggerNode }
-			: {}),
-		...(answers ? { answers } : {}),
-		...(resourceDecision ? { resourceDecision } : {}),
-	};
 	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
 }
 

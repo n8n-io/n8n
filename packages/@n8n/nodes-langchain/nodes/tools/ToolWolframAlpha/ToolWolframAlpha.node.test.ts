@@ -1,18 +1,18 @@
 import { WolframAlphaTool } from '@langchain/community/tools/wolframalpha';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
 	INodeExecutionData,
 	ISupplyDataFunctions,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ToolWolframAlpha } from './ToolWolframAlpha.node';
 
 describe('ToolWolframAlpha', () => {
 	describe('supplyData', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should return WolframAlpha tool instance', async () => {
@@ -20,8 +20,8 @@ describe('ToolWolframAlpha', () => {
 
 			const supplyDataResult = await node.supplyData.call(
 				mock<ISupplyDataFunctions>({
-					getNode: jest.fn(() => mock<INode>({ name: 'test wolfram' })),
-					getCredentials: jest.fn().mockResolvedValue({ appId: 'test-app-id' }),
+					getNode: vi.fn(() => mock<INode>({ name: 'test wolfram' })),
+					getCredentials: vi.fn().mockResolvedValue({ appId: 'test-app-id' }),
 				}),
 			);
 
@@ -31,7 +31,7 @@ describe('ToolWolframAlpha', () => {
 
 	describe('execute', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should execute WolframAlpha query and return result', async () => {
@@ -43,14 +43,14 @@ describe('ToolWolframAlpha', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test wolfram' })),
-				getCredentials: jest.fn().mockResolvedValue({ appId: 'test-app-id' }),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wolfram' })),
+				getCredentials: vi.fn().mockResolvedValue({ appId: 'test-app-id' }),
 			});
 
 			// Mock the WolframAlphaTool.invoke method
 			const mockResult = '4';
-			WolframAlphaTool.prototype.invoke = jest.fn().mockResolvedValue(mockResult);
+			WolframAlphaTool.prototype.invoke = vi.fn().mockResolvedValue(mockResult);
 
 			const result = await node.execute.call(mockExecute);
 
@@ -81,13 +81,13 @@ describe('ToolWolframAlpha', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test wolfram' })),
-				getCredentials: jest.fn().mockResolvedValue({ appId: 'test-app-id' }),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wolfram' })),
+				getCredentials: vi.fn().mockResolvedValue({ appId: 'test-app-id' }),
 			});
 
 			// Mock the WolframAlphaTool.invoke method
-			WolframAlphaTool.prototype.invoke = jest
+			WolframAlphaTool.prototype.invoke = vi
 				.fn()
 				.mockResolvedValueOnce('15')
 				.mockResolvedValueOnce('4');
@@ -126,12 +126,12 @@ describe('ToolWolframAlpha', () => {
 			];
 
 			const mockExecute = mock<IExecuteFunctions>({
-				getInputData: jest.fn(() => inputData),
-				getNode: jest.fn(() => mock<INode>({ name: 'test wolfram' })),
-				getCredentials: jest.fn().mockResolvedValue({ appId: 'secret-app-id' }),
+				getInputData: vi.fn(() => inputData),
+				getNode: vi.fn(() => mock<INode>({ name: 'test wolfram' })),
+				getCredentials: vi.fn().mockResolvedValue({ appId: 'secret-app-id' }),
 			});
 
-			WolframAlphaTool.prototype.invoke = jest.fn().mockResolvedValue('test result');
+			WolframAlphaTool.prototype.invoke = vi.fn().mockResolvedValue('test result');
 
 			await node.execute.call(mockExecute);
 

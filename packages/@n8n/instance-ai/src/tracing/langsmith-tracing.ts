@@ -1013,7 +1013,7 @@ function replayWrapTool(
 		requestContextSchema: tool.requestContextSchema,
 		execute: async (input, context) => {
 			const event = traceIndex.nextMatching(agentRole, tool.id);
-			const remappedInput: unknown = event ? idRemapper.remapInput(input) : input;
+			const remappedInput: unknown = idRemapper.remapInput(input);
 			const realOutput = await tool.execute!(remappedInput, context);
 			if (event) {
 				idRemapper.learn(event.output, realOutput as Record<string, unknown>);
