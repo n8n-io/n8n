@@ -68,6 +68,7 @@ export async function createWorkflow(
 	return await Container.get(WorkflowCreationService).createWorkflow(user, workflow, {
 		projectId,
 		publicApi: true,
+		source: 'api',
 	});
 }
 

@@ -209,5 +209,23 @@ describe('ErrorReporter', () => {
 			errorReporter.error(error, { shouldBeLogged: false });
 			expect(logger.error).toHaveBeenCalledTimes(0);
 		});
+
+		it('should include stack trace for generic `Error`', () => {
+			const genericError = new Error('Something broke');
+			errorReporter.error(genericError);
+			expect(logger.error).toHaveBeenCalledWith(
+				`Something broke\n${genericError.stack}\n`,
+				undefined,
+			);
+		});
+
+		it('should include stack trace for generic error cause chain', () => {
+			const cause = new Error('root cause');
+			const outer = new Error('outer', { cause });
+			errorReporter.error(outer);
+			expect(logger.error).toHaveBeenCalledTimes(2);
+			expect(logger.error).toHaveBeenNthCalledWith(1, `outer\n${outer.stack}\n`, undefined);
+			expect(logger.error).toHaveBeenNthCalledWith(2, `root cause\n${cause.stack}\n`, undefined);
+		});
 	});
 });

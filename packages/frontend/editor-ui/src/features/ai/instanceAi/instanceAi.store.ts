@@ -10,7 +10,7 @@ import {
 	isSafeObjectKey,
 	UNLIMITED_CREDITS,
 	type InstanceAiConfirmation,
-	type InstanceAiConfirmResponse,
+	type InstanceAiConfirmRequest,
 } from '@n8n/api-types';
 import {
 	ensureThread,
@@ -18,6 +18,7 @@ import {
 	postCancel,
 	postCancelTask,
 	postConfirmation,
+	postFeedback,
 	getInstanceAiCredits,
 } from './instanceAi.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
@@ -134,6 +135,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const lastEventIdByThread = ref<Record<string, number>>({});
 	const activeRunId = ref<string | null>(null);
 	const messages = ref<InstanceAiMessage[]>([]);
+	const archivedWorkflowIds = ref<Set<string>>(new Set());
 	const latestTasks = ref<TaskList | null>(null);
 	const hydratingThreadId = ref<string | null>(null);
 	const pendingMessageCount = ref(0);
@@ -160,16 +162,26 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const gatewayDirectory = computed(() => instanceAiSettingsStore.gatewayDirectory);
 	const activeDirectory = computed(() => gatewayDirectory.value);
 
-	// Resource registry — maps known resource names to their types & IDs
+	// Resource registry — two collections derived from tool-call results:
+	//   * producedArtifacts: resources the agent built/created/mutated (panel).
+	//   * resourceNameIndex: every named resource seen, keyed by lowercased name
+	//     (markdown linking).
 	const workflowsListStore = useWorkflowsListStore();
-	const { registry: resourceRegistry } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
+		() => archivedWorkflowIds.value,
 	);
 
 	// Response feedback — rateability selector + submission
 	const { feedbackByResponseId, rateableResponseId, submitFeedback, resetFeedback } =
-		useResponseFeedback({ messages, currentThreadId, telemetry });
+		useResponseFeedback({
+			messages,
+			currentThreadId,
+			telemetry,
+			postFeedback: async (threadId, responseId, payload) =>
+				await postFeedback(rootStore.restApiContext, threadId, responseId, payload),
+		});
 
 	/** The latest task list, preferring explicit tasks-update events over tree snapshots. */
 	const currentTasks = computed(
@@ -275,6 +287,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return items;
 	});
 
+	/** True while the run is paused awaiting the user to resolve a confirmation (e.g. workflow setup wizard). */
+	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
+
 	function resolveConfirmation(
 		requestId: string,
 		action: 'approved' | 'denied' | 'deferred',
@@ -334,6 +349,15 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				const thread = threads.value.find((t) => t.id === currentThreadId.value);
 				if (thread) {
 					thread.title = parsed.data.payload.title;
+				}
+			}
+			if (parsed.data.type === 'run-finish') {
+				const ids = parsed.data.payload.archivedWorkflowIds;
+				if (ids && ids.length > 0) {
+					// Reassign instead of mutating: Set.add() on a ref doesn't trigger reactivity.
+					const next = new Set(archivedWorkflowIds.value);
+					for (const id of ids) next.add(id);
+					archivedWorkflowIds.value = next;
 				}
 			}
 			// Force Vue reactivity when streaming state changes (run-start can
@@ -501,6 +525,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	function resetThreadRuntimeState(nextHydratingThreadId: string | null): void {
 		hydratingThreadId.value = nextHydratingThreadId;
 		messages.value = [];
+		archivedWorkflowIds.value = new Set();
 		latestTasks.value = null;
 		activeRunId.value = null;
 		debugEvents.value = [];
@@ -536,17 +561,27 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	// --- Actions ---
 
+	/**
+	 * Reset the store to a blank "no active thread" state — used when the user
+	 * lands on the base `/instance-ai` route (fresh page, back button, or the
+	 * AI Assistant nav link). Without this, `currentThreadId` keeps pointing
+	 * at the last thread and the sidebar highlights it alongside the empty
+	 * main view, which is the AI-2408 visual mismatch.
+	 */
+	function clearCurrentThread(): void {
+		closeSSE();
+		resetThreadRuntimeState(null);
+		// Mirror the initial store state: a fresh UUID that doesn't match any
+		// real thread, so the sidebar highlights nothing and the next
+		// `sendMessage` creates a new thread with this id via `syncThread`.
+		currentThreadId.value = uuidv4();
+	}
+
 	function newThread(): string {
 		const newThreadId = uuidv4();
 		closeSSE();
 		resetThreadRuntimeState(null);
 		currentThreadId.value = newThreadId;
-
-		threads.value.unshift({
-			id: newThreadId,
-			title: NEW_CONVERSATION_TITLE,
-			createdAt: new Date().toISOString(),
-		});
 
 		connectSSE(newThreadId);
 		return newThreadId;
@@ -579,16 +614,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				// Switch to first remaining thread
 				switchThread(threads.value[0].id);
 			} else {
-				// No threads left — create a new one
+				// No threads left — prepare a fresh thread (added to sidebar on first message)
 				const freshId = uuidv4();
 				closeSSE();
 				resetThreadRuntimeState(null);
 				currentThreadId.value = freshId;
-				threads.value.push({
-					id: freshId,
-					title: NEW_CONVERSATION_TITLE,
-					createdAt: new Date().toISOString(),
-				});
 				connectSSE(freshId);
 			}
 		}
@@ -596,7 +626,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return { currentThreadId: currentThreadId.value, wasActive };
 	}
 
-	async function loadThreads(): Promise<void> {
+	async function loadThreads(): Promise<boolean> {
 		try {
 			const result = await fetchThreadsApi(rootStore.restApiContext);
 			for (const thread of result.threads) {
@@ -610,11 +640,14 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 				id: t.id,
 				title: t.title || NEW_CONVERSATION_TITLE,
 				createdAt: t.createdAt,
+				updatedAt: t.updatedAt,
 				metadata: t.metadata ?? undefined,
 			}));
 			threads.value = [...localOnly, ...serverThreads];
+			return true;
 		} catch {
 			// Silently ignore — threads will remain client-side only
+			return false;
 		}
 	}
 
@@ -627,6 +660,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		const existingThread = threads.value.find((thread) => thread.id === threadId);
 		if (existingThread) {
 			existingThread.createdAt = result.thread.createdAt;
+			existingThread.updatedAt = result.thread.updatedAt;
 			existingThread.title = result.thread.title || existingThread.title;
 			return;
 		}
@@ -635,6 +669,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			id: result.thread.id,
 			title: result.thread.title || NEW_CONVERSATION_TITLE,
 			createdAt: result.thread.createdAt,
+			updatedAt: result.thread.updatedAt,
 		});
 	}
 
@@ -836,35 +871,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	async function confirmAction(
 		requestId: string,
-		approved: boolean,
-		credentialId?: string,
-		credentials?: Record<string, string>,
-		autoSetup?: { credentialType: string },
-		userInput?: string,
-		domainAccessAction?: string,
-		setupWorkflowData?: {
-			action?: 'apply' | 'test-trigger';
-			nodeCredentials?: Record<string, Record<string, string>>;
-			nodeParameters?: Record<string, Record<string, unknown>>;
-			testTriggerNode?: string;
-		},
-		answers?: InstanceAiConfirmResponse['answers'],
-		resourceDecision?: string,
+		payload: InstanceAiConfirmRequest,
 	): Promise<boolean> {
 		try {
-			await postConfirmation(
-				rootStore.restApiContext,
-				requestId,
-				approved,
-				credentialId,
-				credentials,
-				autoSetup,
-				userInput,
-				domainAccessAction,
-				setupWorkflowData,
-				answers,
-				resourceDecision,
-			);
+			await postConfirmation(rootStore.restApiContext, requestId, payload);
 			return true;
 		} catch {
 			toast.showError(new Error('Failed to send confirmation. Try again.'), 'Confirmation failed');
@@ -874,18 +884,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 
 	async function confirmResourceDecision(requestId: string, decision: string): Promise<void> {
 		resolveConfirmation(requestId, 'approved');
-		await confirmAction(
-			requestId,
-			true,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			undefined,
-			decision,
-		);
+		await confirmAction(requestId, { kind: 'resourceDecision', resourceDecision: decision });
 	}
 
 	function toggleResearchMode(): void {
@@ -1036,14 +1035,17 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		activeDirectory,
 		contextualSuggestion,
 		currentTasks,
-		resourceRegistry,
+		producedArtifacts,
+		resourceNameIndex,
 		rateableResponseId,
 		creditsRemaining,
 		creditsPercentageRemaining,
 		isLowCredits,
 		pendingConfirmations,
+		isAwaitingConfirmation,
 		// Actions
 		newThread,
+		clearCurrentThread,
 		deleteThread,
 		renameThread,
 		getThreadMetadata,

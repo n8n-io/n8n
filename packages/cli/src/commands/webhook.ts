@@ -1,14 +1,17 @@
+import { DeploymentKeyRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { BinaryDataConfig } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { DeprecationService } from '@/deprecation/deprecation.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { JwtService } from '@/services/jwt.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
@@ -66,6 +69,10 @@ export class Webhook extends BaseCommand {
 
 		await super.init();
 		Container.get(DeprecationService).warn();
+
+		await this.instanceSettings.initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(JwtService).initialize(Container.get(DeploymentKeyRepository));
+		await Container.get(BinaryDataConfig).initialize(Container.get(DeploymentKeyRepository));
 
 		await this.initLicense();
 		this.logger.debug('License init complete');

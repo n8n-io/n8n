@@ -4,7 +4,6 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"baseUrl": ".",
 		"paths": {
 			"@utils/*": ["./utils/*"],
 			"@nodes-testing/*": ["../../core/nodes-testing/*"]

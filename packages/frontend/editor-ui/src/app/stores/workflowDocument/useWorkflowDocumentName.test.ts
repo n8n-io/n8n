@@ -1,8 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { useWorkflowDocumentName } from './useWorkflowDocumentName';
 
+vi.mock('../workflows.store', () => ({
+	useWorkflowsStore: vi.fn(() => ({
+		workflowObject: { name: '' },
+	})),
+}));
+
 function createName() {
-	return useWorkflowDocumentName();
+	return useWorkflowDocumentName({ syncWorkflowObject: vi.fn() });
 }
 
 describe('useWorkflowDocumentName', () => {

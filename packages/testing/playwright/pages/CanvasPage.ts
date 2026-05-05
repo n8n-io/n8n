@@ -163,12 +163,16 @@ export class CanvasPage extends BasePage {
 		await this.nodeDeleteButton(nodeName).click();
 	}
 
-	async waitForSaveWorkflowCompleted() {
+	/**
+	 * @param options - Configuration options for waiting for save workflow completion.
+	 * @param options.timeout - Timeout in milliseconds. Defaults to 2000ms to account for the 1500ms autosave debounce.
+	 */
+	async waitForSaveWorkflowCompleted({ timeout = 2000 }: { timeout?: number } = {}) {
 		return await this.page.waitForResponse(
 			(response) =>
 				response.url().includes('/rest/workflows') &&
 				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
-			{ timeout: 2000 }, // Wait longer than autosave debounce (1500ms)
+			{ timeout },
 		);
 	}
 
@@ -488,6 +492,10 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-item-name');
 	}
 
+	nodeCreatorNodeItem(name: string): Locator {
+		return this.nodeCreatorNodeItems().getByText(name, { exact: true });
+	}
+
 	nodeCreatorActionItems(): Locator {
 		return this.page.getByTestId('node-creator-action-item');
 	}
@@ -560,7 +568,9 @@ export class CanvasPage extends BasePage {
 
 	async executeNode(nodeName: string): Promise<void> {
 		await this.nodeByName(nodeName).hover();
-		await this.nodeExecuteButton(nodeName).click();
+		const button = this.nodeExecuteButton(nodeName);
+		await expect(button).toBeVisible();
+		await button.click();
 	}
 
 	async selectAll(): Promise<void> {
@@ -765,6 +775,18 @@ export class CanvasPage extends BasePage {
 	async closeManualChatModal(): Promise<void> {
 		// Same toggle button closes the chat
 		await this.page.getByTestId('workflow-chat-button').click();
+	}
+
+	getOpenChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Open chat' });
+	}
+
+	getHideChatButton(): Locator {
+		return this.page.getByRole('button', { name: 'Hide chat' });
+	}
+
+	getChatPanel(): Locator {
+		return this.page.getByTestId('canvas-chat');
 	}
 
 	// Input plus endpoints (to add supplemental nodes to parent inputs)

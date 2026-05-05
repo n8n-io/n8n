@@ -224,7 +224,7 @@ describe('custom BuiltMemory backend', () => {
 		expect(findLastTextContent(result.messages)?.toLowerCase()).not.toContain('aurora');
 
 		// Thread 2 working memory should be independent
-		expect(store.workingMemory.get(thread2)).not.toContain('aurora');
+		expect(store.workingMemory.get(thread2)).toBeFalsy();
 	});
 
 	it('thread-scoped working memory allows recall within the same thread when history is truncated', async () => {

@@ -6,6 +6,17 @@
 import { isTriggerNodeType } from '../utils/trigger-detection';
 
 /**
+ * Assert that input is a plain (non-null, non-array) object.
+ * Throws a descriptive TypeError when called with a string, number, null, or array.
+ */
+export function assertPlainObject(input: unknown, fnName: string, hint: string): void {
+	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+		const received = input === null ? 'null' : Array.isArray(input) ? 'an array' : typeof input;
+		throw new TypeError(`${fnName}() requires ${hint}, but received ${received}.`);
+	}
+}
+
+/**
  * Check if a value contains an n8n expression
  */
 export function containsExpression(value: unknown): boolean {

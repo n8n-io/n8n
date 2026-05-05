@@ -1,12 +1,18 @@
-import type { NodeProperty, NodeTypeDescription } from './generate-types';
+import {
+	narrowDisplayOptionsByDisabled,
+	type NodeProperty,
+	type NodeTypeDescription,
+} from './generate-types';
 import {
 	generateConditionalSchemaLine,
 	generateSingleVersionSchemaFile,
 	stripDiscriminatorKeysFromDisplayOptions,
 	generateDiscriminatorSchemaFile,
 	generateSubnodeConfigSchemaCode,
+	isPropertyOptional,
 	mapPropertyToZodSchema,
 	mergeDisplayOptions,
+	mergePropertiesByName,
 	extractDefaultsForDisplayOptions,
 } from './generate-zod-schemas';
 
@@ -82,6 +88,114 @@ describe('mapPropertyToZodSchema for resourceLocator', () => {
 		const schema = mapPropertyToZodSchema(prop);
 
 		expect(schema).toContain("z.union([z.literal('list'), z.literal('id')]");
+	});
+});
+
+describe('isPropertyOptional', () => {
+	// Regression: required: true + default: '' on a `string` field used to be
+	// treated as optional, because any defined default short-circuited the
+	// check. The runtime required-check (getNodeParametersIssues) rejects an
+	// empty string, so the generated schema must match.
+	it('treats required string with empty default as required', () => {
+		const prop: NodeProperty = {
+			name: 'fieldToSplitOut',
+			displayName: 'Fields To Split Out',
+			type: 'string',
+			required: true,
+			default: '',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(false);
+	});
+
+	it.each(['options', 'dateTime'] as const)(
+		'treats required %s with empty default as required',
+		(type) => {
+			const prop: NodeProperty = {
+				name: 'field',
+				displayName: 'Field',
+				type,
+				required: true,
+				default: '',
+			};
+
+			expect(isPropertyOptional(prop)).toBe(false);
+		},
+	);
+
+	it('treats required multiOptions with empty-array default as required', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'multiOptions',
+			required: true,
+			default: [],
+		};
+
+		expect(isPropertyOptional(prop)).toBe(false);
+	});
+
+	it('treats required string with meaningful default as optional', () => {
+		// Expression defaults like '={{ $json.chatInput }}' do satisfy required.
+		const prop: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			required: true,
+			default: '={{ $json.chatInput }}',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('treats required string with non-empty literal default as optional', () => {
+		const prop: NodeProperty = {
+			name: 'method',
+			displayName: 'Method',
+			type: 'string',
+			required: true,
+			default: 'GET',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('treats non-required string with empty default as optional', () => {
+		const prop: NodeProperty = {
+			name: 'note',
+			displayName: 'Note',
+			type: 'string',
+			default: '',
+		};
+
+		expect(isPropertyOptional(prop)).toBe(true);
+	});
+
+	it('emits a non-optional schema line for required string with empty default end-to-end', () => {
+		// End-to-end check: the generated .schema.js line for splitOut's
+		// fieldToSplitOut (required: true, default: '') must NOT be .optional().
+		const node: NodeTypeDescription = {
+			name: 'n8n-nodes-base.splitOut',
+			displayName: 'Split Out',
+			version: 1,
+			group: ['transform'],
+			inputs: ['main'],
+			outputs: ['main'],
+			properties: [
+				{
+					name: 'fieldToSplitOut',
+					displayName: 'Fields To Split Out',
+					type: 'string',
+					required: true,
+					default: '',
+				},
+			],
+		};
+
+		const code = generateSingleVersionSchemaFile(node, 1);
+
+		expect(code).toMatch(/fieldToSplitOut:\s*stringOrExpression\s*,/);
+		expect(code).not.toMatch(/fieldToSplitOut:\s*stringOrExpression\.optional\(\)/);
 	});
 });
 
@@ -373,6 +487,71 @@ describe('extractDefaultsForDisplayOptions', () => {
 	it('returns empty object for empty displayOptions', () => {
 		const defaults = extractDefaultsForDisplayOptions({}, []);
 		expect(defaults).toEqual({});
+	});
+});
+
+describe('mapPropertyToZodSchema for multipleValues', () => {
+	it('wraps repeatable string fields in an array schema', () => {
+		const prop: NodeProperty = {
+			name: 'attendees',
+			displayName: 'Attendees',
+			type: 'string',
+			default: '',
+			typeOptions: {
+				multipleValues: true,
+			},
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('z.array(stringOrExpression)');
+	});
+
+	it('applies noDataExpression to repeatable fields before wrapping the array schema', () => {
+		const prop: NodeProperty = {
+			name: 'resource',
+			displayName: 'Resource',
+			type: 'string',
+			default: '',
+			noDataExpression: true,
+			typeOptions: {
+				multipleValues: true,
+			},
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toBe('z.array(z.string())');
+	});
+
+	it('wraps nested repeatable string fields in an array schema', () => {
+		const prop: NodeProperty = {
+			name: 'attendeesUi',
+			displayName: 'Attendees',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'values',
+					displayName: 'Values',
+					values: [
+						{
+							name: 'attendees',
+							displayName: 'Attendees',
+							type: 'string',
+							default: '',
+							typeOptions: {
+								multipleValues: true,
+							},
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).toContain('attendees: z.array(stringOrExpression).optional()');
 	});
 });
 
@@ -1236,5 +1415,731 @@ describe('mapPropertyToZodSchema with noDataExpression', () => {
 		};
 		const schema = mapPropertyToZodSchema(prop);
 		expect(schema).toBe('stringOrExpression');
+	});
+});
+
+describe('narrowDisplayOptionsByDisabled', () => {
+	it('returns inputs unchanged when the property has no disabledOptions', () => {
+		const prop: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ show: { sessionIdType: ['customKey'] } });
+	});
+
+	it('flags the property as fully disabled when all visible states are disabled', () => {
+		const prop: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(true);
+		expect(result.displayOptions).toBeUndefined();
+	});
+
+	it('removes only the disabled values and keeps the remaining visible states', () => {
+		const prop: NodeProperty = {
+			name: 'text',
+			displayName: 'Text',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { promptType: ['auto', 'define', 'guardrails'] } },
+			disabledOptions: { show: { promptType: ['auto', 'guardrails'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ show: { promptType: ['define'] } });
+	});
+
+	it('converts disabledOptions on keys absent from displayOptions.show into hide constraints', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { mode: ['a'] } },
+			disabledOptions: { show: { otherField: ['x'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({
+			show: { mode: ['a'] },
+			hide: { otherField: ['x'] },
+		});
+	});
+
+	it('converts disabledOptions into hide when the property has no displayOptions.show', () => {
+		const prop: NodeProperty = {
+			name: 'inputType',
+			displayName: 'Input Type',
+			type: 'options',
+			default: 'binary',
+			disabledOptions: { show: { 'options.batch': [true] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { 'options.batch': [true] } });
+	});
+
+	it('merges disabledOptions into an existing displayOptions.hide for the same key', () => {
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: { mode: ['x'] } },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		const result = narrowDisplayOptionsByDisabled(prop);
+
+		expect(result.fullyDisabled).toBe(false);
+		expect(result.displayOptions).toEqual({ hide: { mode: ['x', 'y'] } });
+	});
+
+	it('does not mutate the original displayOptions.hide when merging', () => {
+		const originalHide = { mode: ['x'] };
+		const prop: NodeProperty = {
+			name: 'field',
+			displayName: 'Field',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: originalHide },
+			disabledOptions: { show: { mode: ['y'] } },
+		};
+
+		narrowDisplayOptionsByDisabled(prop);
+
+		expect(originalHide).toEqual({ mode: ['x'] });
+	});
+});
+
+describe('mergePropertiesByName with disabledOptions', () => {
+	it('drops the fully-disabled sessionKey variant so only the editable one survives', () => {
+		const expressionSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key From Previous Node',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+		const editableSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const merged = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
+
+		const variants = merged.get('sessionKey');
+		expect(variants).toBeDefined();
+		expect(variants).toHaveLength(1);
+		expect(variants?.[0].displayOptions).toEqual({ show: { sessionIdType: ['customKey'] } });
+	});
+
+	it('produces the same narrowed result regardless of property ordering', () => {
+		const expressionSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key From Previous Node',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+		const editableSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const mergedA = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
+		const mergedB = mergePropertiesByName([editableSessionKey, expressionSessionKey]);
+
+		expect(mergedA.get('sessionKey')).toHaveLength(1);
+		expect(mergedA.get('sessionKey')?.[0].displayOptions).toEqual({
+			show: { sessionIdType: ['customKey'] },
+		});
+		expect(mergedB.get('sessionKey')).toHaveLength(1);
+		expect(mergedB.get('sessionKey')?.[0].displayOptions).toEqual({
+			show: { sessionIdType: ['customKey'] },
+		});
+	});
+
+	it('drops a property entirely when every duplicate is fully disabled', () => {
+		const first: NodeProperty = {
+			name: 'lockedField',
+			displayName: 'Locked Field',
+			type: 'string',
+			default: 'A',
+			displayOptions: { show: { mode: ['a'] } },
+			disabledOptions: { show: { mode: ['a'] } },
+		};
+		const second: NodeProperty = {
+			name: 'lockedField',
+			displayName: 'Locked Field',
+			type: 'string',
+			default: 'B',
+			displayOptions: { show: { mode: ['b'] } },
+			disabledOptions: { show: { mode: ['b'] } },
+		};
+
+		const merged = mergePropertiesByName([first, second]);
+
+		expect(merged.has('lockedField')).toBe(false);
+	});
+
+	it('keeps the merged schema emitting only settable states when generating code', () => {
+		const expressionSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Session Key From Previous Node',
+			type: 'string',
+			default: '={{ $json.sessionId }}',
+			displayOptions: { show: { sessionIdType: ['fromInput'] } },
+			disabledOptions: { show: { sessionIdType: ['fromInput'] } },
+		};
+		const editableSessionKey: NodeProperty = {
+			name: 'sessionKey',
+			displayName: 'Key',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { sessionIdType: ['customKey'] } },
+		};
+
+		const merged = mergePropertiesByName([expressionSessionKey, editableSessionKey]);
+		const line = generateConditionalSchemaLine(merged.get('sessionKey')![0], [
+			{
+				name: 'sessionIdType',
+				displayName: 'Session ID',
+				type: 'options',
+				default: 'fromInput',
+			},
+		]);
+
+		expect(line).toContain('displayOptions: {"show":{"sessionIdType":["customKey"]}}');
+		expect(line).not.toMatch(/"show":\{[^}]*"fromInput"/);
+	});
+});
+
+describe('mergePropertiesByName with UX-fork variants', () => {
+	it('keeps two BigQuery-shaped sqlQuery declarations as separate variants', () => {
+		const sqlQueryStandard: NodeProperty = {
+			name: 'sqlQuery',
+			displayName: 'Query',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: { '/options.useLegacySql': [true] } },
+		};
+		const sqlQueryLegacy: NodeProperty = {
+			name: 'sqlQuery',
+			displayName: 'Legacy SQL Query',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { '/options.useLegacySql': [true] } },
+		};
+
+		const merged = mergePropertiesByName([sqlQueryStandard, sqlQueryLegacy]);
+		const variants = merged.get('sqlQuery');
+		expect(variants).toHaveLength(2);
+		expect(variants?.[0].displayOptions).toEqual({
+			hide: { '/options.useLegacySql': [true] },
+		});
+		expect(variants?.[1].displayOptions).toEqual({
+			show: { '/options.useLegacySql': [true] },
+		});
+	});
+
+	it('collapses true duplicates (deep-equal displayOptions) into one variant with merged options', () => {
+		const collectionA: NodeProperty = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			displayOptions: { show: { mode: ['x'] } },
+			options: [{ name: 'optA', displayName: 'A' }],
+		};
+		const collectionB: NodeProperty = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			displayOptions: { show: { mode: ['x'] } },
+			options: [{ name: 'optB', displayName: 'B' }],
+		};
+
+		const merged = mergePropertiesByName([collectionA, collectionB]);
+		const variants = merged.get('options');
+		expect(variants).toHaveLength(1);
+		const optionNames = (variants?.[0].options ?? []).map((o) => o.name);
+		expect(optionNames).toEqual(['optA', 'optB']);
+	});
+});
+
+describe('generateOneOfSchemaLine + generateParameterEntryLine', () => {
+	it('emits resolveOneOfSchemas for a BigQuery-shaped sqlQuery fork', () => {
+		const sqlQueryStandard: NodeProperty = {
+			name: 'sqlQuery',
+			displayName: 'Query',
+			type: 'string',
+			default: '',
+			displayOptions: { hide: { '/options.useLegacySql': [true] } },
+		};
+		const sqlQueryLegacy: NodeProperty = {
+			name: 'sqlQuery',
+			displayName: 'Legacy SQL Query',
+			type: 'string',
+			default: '',
+			displayOptions: { show: { '/options.useLegacySql': [true] } },
+		};
+		const useLegacySql: NodeProperty = {
+			name: 'useLegacySql',
+			displayName: 'Use Legacy SQL',
+			type: 'boolean',
+			default: false,
+		};
+
+		const merged = mergePropertiesByName([sqlQueryStandard, sqlQueryLegacy, useLegacySql]);
+		const allFlat = Array.from(merged.values()).flat();
+		// The relevant entry is sqlQuery (multi-variant)
+		const sqlVariants = merged.get('sqlQuery')!;
+		// Use the public emit path to confirm a oneOf line is produced
+		const file = generateSingleVersionSchemaFile(
+			{
+				name: 'bigQuery',
+				displayName: 'BigQuery',
+				group: ['transform'],
+				version: 1,
+				inputs: ['main'],
+				outputs: ['main'],
+				properties: [sqlQueryStandard, sqlQueryLegacy, useLegacySql],
+			},
+			1,
+		);
+
+		expect(file).toContain('resolveOneOfSchemas');
+		// Both variants serialized into the variants array
+		expect(file).toMatch(/"hide":\{"\/options\.useLegacySql":\[true\]\}/);
+		expect(file).toMatch(/"show":\{"\/options\.useLegacySql":\[true\]\}/);
+		// And the helper is registered
+		expect(file).toMatch(/function getSchema\(\{[^}]*resolveOneOfSchemas[^}]*\}\)/);
+
+		// Also exercise the merged map directly
+		expect(sqlVariants).toHaveLength(2);
+		expect(allFlat).toHaveLength(3);
+	});
+});
+
+describe('mapPropertyToZodSchema for fixedCollection with field-count constraints', () => {
+	const buildFilters = (typeOptions: NodeProperty['typeOptions']): NodeProperty => ({
+		name: 'filters',
+		displayName: 'Filters',
+		type: 'fixedCollection',
+		default: {},
+		typeOptions,
+		options: [
+			{
+				name: 'conditions',
+				displayName: 'Conditions',
+				values: [{ name: 'keyName', displayName: 'Key', type: 'string', default: '' }],
+			},
+		],
+	});
+
+	it('applies .min() to the array when multipleValues and minRequiredFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1 }),
+		);
+		expect(schema).toContain('conditions: z.array(');
+		expect(schema).toContain(').min(1)');
+	});
+
+	it('applies .max() to the array when multipleValues and maxAllowedFields are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, maxAllowedFields: 3 }),
+		);
+		expect(schema).toContain(').max(3)');
+	});
+
+	it('combines .min() and .max() when both constraints are set', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 1, maxAllowedFields: 5 }),
+		);
+		expect(schema).toContain('.min(1).max(5)');
+	});
+
+	it('omits .min() when minRequiredFields is 0', () => {
+		const schema = mapPropertyToZodSchema(
+			buildFilters({ multipleValues: true, minRequiredFields: 0 }),
+		);
+		expect(schema).not.toContain('.min(');
+	});
+
+	it('does not apply .min() when multipleValues is false', () => {
+		const schema = mapPropertyToZodSchema(buildFilters({ minRequiredFields: 1 }));
+		expect(schema).not.toContain('z.array(');
+		expect(schema).not.toContain('.min(');
+	});
+});
+
+describe('mapPropertyToZodSchema recursion for nested collection/fixedCollection', () => {
+	const stringLeaf: NodeProperty = {
+		name: 'leaf',
+		displayName: 'Leaf',
+		type: 'string',
+		default: '',
+	};
+
+	const typeOptionsField: NodeProperty = {
+		name: 'type',
+		displayName: 'Type',
+		type: 'options',
+		default: 'qs',
+		options: [
+			{ name: 'Body', value: 'body' },
+			{ name: 'Header', value: 'headers' },
+			{ name: 'Query', value: 'qs' },
+		],
+	};
+
+	it('walks into a fixedCollection nested inside another fixedCollection', () => {
+		const prop: NodeProperty = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'inner',
+							displayName: 'Inner',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'innerGroup',
+									displayName: 'Inner Group',
+									values: [stringLeaf],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('inner: z.object({');
+		expect(schema).toContain('innerGroup: z.object({');
+		expect(schema).toContain('leaf: stringOrExpression.optional()');
+	});
+
+	it('walks into a fixedCollection nested inside a collection (HTTP pagination shape)', () => {
+		const nestedPagination: NodeProperty = {
+			name: 'pagination',
+			displayName: 'Pagination',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'pagination',
+					displayName: 'Pagination',
+					values: [
+						{
+							name: 'parameters',
+							displayName: 'Parameters',
+							type: 'fixedCollection',
+							default: {},
+							typeOptions: { multipleValues: true },
+							options: [
+								{
+									name: 'parameters',
+									displayName: 'Parameter',
+									values: [typeOptionsField],
+								},
+							],
+						},
+					],
+				},
+			],
+		};
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [nestedPagination],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('body')");
+		expect(schema).toContain("z.literal('headers')");
+		expect(schema).toContain("z.literal('qs')");
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('walks into a collection nested inside a fixedCollection', () => {
+		const prop: NodeProperty = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'inner',
+							displayName: 'Inner',
+							type: 'collection',
+							default: {},
+							options: [stringLeaf],
+						},
+					],
+				},
+			],
+		};
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('inner: z.object({');
+		expect(schema).toContain('leaf: stringOrExpression.optional()');
+	});
+});
+
+describe('mapPropertyToZodSchema for display-only callout property', () => {
+	it('returns empty string for top-level callout property', () => {
+		const prop = {
+			name: 'info',
+			displayName: 'Info',
+			type: 'callout',
+			default: '',
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('');
+	});
+
+	it('skips callout properties nested inside a fixedCollection', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'info',
+							displayName: 'Info',
+							type: 'callout',
+							default: '',
+						},
+						{
+							name: 'keep',
+							displayName: 'Keep',
+							type: 'string',
+							default: '',
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+
+	it('skips callout properties nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'info',
+					displayName: 'Info',
+					type: 'callout',
+					default: '',
+				},
+				{
+					name: 'keep',
+					displayName: 'Keep',
+					type: 'string',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).not.toContain('info');
+		expect(schema).toContain('keep: stringOrExpression.optional()');
+	});
+});
+
+describe('mapPropertyToZodSchema for data-carrying button and icon types', () => {
+	it('maps a top-level button property to stringOrExpression (covers AiTransform instructions)', () => {
+		const prop = {
+			name: 'instructions',
+			displayName: 'Instructions',
+			type: 'button',
+			default: '',
+			typeOptions: { buttonConfig: { hasInputField: true } },
+		} as unknown as NodeProperty;
+
+		expect(mapPropertyToZodSchema(prop)).toBe('stringOrExpression');
+	});
+
+	it('maps a button nested inside a collection to stringOrExpression', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'instructions',
+					displayName: 'Instructions',
+					type: 'button',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('instructions: stringOrExpression.optional()');
+	});
+
+	it('maps a top-level icon property to a { type, value } object schema (covers ChatTrigger)', () => {
+		const prop = {
+			name: 'agentIcon',
+			displayName: 'Agent Icon',
+			type: 'icon',
+			default: { type: 'icon', value: 'bot' },
+			noDataExpression: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+
+	it('maps an icon nested inside a fixedCollection to a { type, value } object schema', () => {
+		const prop = {
+			name: 'outer',
+			displayName: 'Outer',
+			type: 'fixedCollection',
+			default: {},
+			options: [
+				{
+					name: 'group',
+					displayName: 'Group',
+					values: [
+						{
+							name: 'icon',
+							displayName: 'Icon',
+							type: 'icon',
+							default: { type: 'icon', value: 'comment' },
+						},
+					],
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain("z.literal('icon')");
+		expect(schema).toContain("z.literal('emoji')");
+		expect(schema).toContain('value: z.string()');
+	});
+});
+
+describe('mapPropertyToZodSchema for workflowSelector', () => {
+	it('emits a resource-locator-shaped union with list/id modes for a top-level property', () => {
+		const prop = {
+			name: 'workflowId',
+			displayName: 'Workflow',
+			type: 'workflowSelector',
+			default: '',
+			required: true,
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
+		expect(schema).toContain('value: z.union([z.string(), z.number()])');
+		expect(schema).toContain('cachedResultName: z.string().optional()');
+		expect(schema).toContain('expressionSchema');
+	});
+
+	it('emits the same schema for a workflowSelector nested inside a collection', () => {
+		const prop = {
+			name: 'options',
+			displayName: 'Options',
+			type: 'collection',
+			default: {},
+			options: [
+				{
+					name: 'workflowId',
+					displayName: 'Workflow',
+					type: 'workflowSelector',
+					default: '',
+				},
+			],
+		} as unknown as NodeProperty;
+
+		const schema = mapPropertyToZodSchema(prop);
+
+		expect(schema).not.toContain('z.unknown()');
+		expect(schema).toContain('__rl: z.literal(true)');
+		expect(schema).toContain("z.literal('list')");
+		expect(schema).toContain("z.literal('id')");
 	});
 });

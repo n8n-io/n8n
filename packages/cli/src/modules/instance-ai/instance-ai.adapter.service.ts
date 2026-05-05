@@ -39,7 +39,7 @@ import { wrapUntrustedData } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { User, WorkflowEntity, ExecutionSummaries } from '@n8n/db';
+import type { User, ExecutionSummaries } from '@n8n/db';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import {
@@ -55,9 +55,11 @@ import {
 	LRUCache,
 } from './web-research';
 import {
+	AiBuilderTemporaryWorkflowRepository,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
+	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
@@ -70,6 +72,10 @@ import {
 	type IDataObject,
 	type INode,
 	type INodeParameters,
+	type INodeProperties,
+	type INodePropertyCollection,
+	type INodePropertyMode,
+	type INodePropertyOptions,
 	type INodeTypeDescription,
 	type IConnections,
 	type IWorkflowSettings,
@@ -79,6 +85,7 @@ import {
 	type DataTableRow,
 	type DataTableRows,
 	type WorkflowExecuteMode,
+	type ExecutionError,
 	NodeHelpers,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -86,6 +93,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	UnexpectedError,
 	jsonParse,
 } from 'n8n-workflow';
 
@@ -98,6 +106,7 @@ import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
@@ -106,6 +115,7 @@ import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TagService } from '@/services/tag.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -163,6 +173,7 @@ export class InstanceAiAdapterService {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
+		private readonly nodeTypes: NodeTypes,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableRepository: DataTableRepository,
@@ -179,6 +190,8 @@ export class InstanceAiAdapterService {
 		private readonly eventService: EventService,
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
+		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -203,6 +216,8 @@ export class InstanceAiAdapterService {
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			licenseHints: this.buildLicenseHints(),
+			logger: this.logger,
+			nodeTypesProvider: this.nodeTypes,
 		};
 	}
 
@@ -262,6 +277,7 @@ export class InstanceAiAdapterService {
 			workflowFinderService,
 			workflowRepository,
 			sharedWorkflowRepository,
+			aiBuilderTemporaryWorkflowRepository,
 			workflowHistoryService,
 			enterpriseWorkflowService,
 			license,
@@ -318,6 +334,36 @@ export class InstanceAiAdapterService {
 				await workflowService.delete(user, workflowId);
 			},
 
+			async clearAiTemporary(workflowId: string) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) return;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
+
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+			},
+
+			async archiveIfAiTemporary(workflowId: string) {
+				assertNotReadOnly();
+				const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:update',
+				]);
+				if (!workflow) return false;
+				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) {
+					return false;
+				}
+				if (workflow.isArchived) {
+					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+					return false;
+				}
+
+				await workflowService.archive(user, workflowId, { skipArchived: true });
+				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				return true;
+			},
+
 			async publish(
 				workflowId: string,
 				options?: { versionId?: string; name?: string; description?: string },
@@ -326,6 +372,7 @@ export class InstanceAiAdapterService {
 					versionId: options?.versionId,
 					name: options?.name,
 					description: options?.description,
+					source: 'n8n-ai',
 				});
 				if (!wf.activeVersionId) {
 					throw new Error(`Workflow ${workflowId} was not activated — no active version set`);
@@ -342,7 +389,9 @@ export class InstanceAiAdapterService {
 			},
 
 			async unpublish(workflowId: string) {
-				await workflowService.deactivateWorkflow(user, workflowId);
+				await workflowService.deactivateWorkflow(user, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
 			async getAsWorkflowJSON(workflowId: string) {
@@ -353,7 +402,10 @@ export class InstanceAiAdapterService {
 				return toWorkflowJSON(wf, { redactParameters });
 			},
 
-			async createFromWorkflowJSON(json: WorkflowJSON, options?: { projectId?: string }) {
+			async createFromWorkflowJSON(
+				json: WorkflowJSON,
+				options?: { projectId?: string; markAsAiTemporary?: boolean },
+			) {
 				assertNotReadOnly();
 				const projectId = await resolveProjectId(['workflow:create'], options?.projectId);
 
@@ -385,15 +437,23 @@ export class InstanceAiAdapterService {
 					versionId: randomUUID(),
 				} as Partial<WorkflowEntity>);
 
-				const saved = await workflowRepository.save(newWorkflow);
-
-				await sharedWorkflowRepository.save(
-					sharedWorkflowRepository.create({
-						role: 'workflow:owner',
-						projectId,
-						workflow: saved,
-					}),
-				);
+				const saved = await workflowRepository.manager.transaction(async (transactionManager) => {
+					const workflow = await transactionManager.save(WorkflowEntity, newWorkflow);
+					await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
+					if (options?.markAsAiTemporary) {
+						if (!threadId) {
+							throw new UnexpectedError(
+								'Cannot mark AI-builder temporary workflow without a thread ID',
+							);
+						}
+						await aiBuilderTemporaryWorkflowRepository.mark(
+							workflow.id,
+							threadId,
+							transactionManager,
+						);
+					}
+					return workflow;
+				});
 
 				// Now update with actual nodes — this creates the WorkflowHistory entry
 				// needed for activation and publishing.
@@ -411,7 +471,9 @@ export class InstanceAiAdapterService {
 					updateData = await enterpriseWorkflowService.preventTampering(updateData, saved.id, user);
 				}
 
-				const updated = await workflowService.update(user, updateData, saved.id);
+				const updated = await workflowService.update(user, updateData, saved.id, {
+					source: 'n8n-ai',
+				});
 
 				if (threadId) {
 					telemetry.track('Builder created workflow', {
@@ -462,7 +524,9 @@ export class InstanceAiAdapterService {
 					);
 				}
 
-				const updated = await workflowService.update(user, updateData, workflowId);
+				const updated = await workflowService.update(user, updateData, workflowId, {
+					source: 'n8n-ai',
+				});
 
 				if (threadId) {
 					telemetry.track('Builder modified workflow', {
@@ -539,7 +603,9 @@ export class InstanceAiAdapterService {
 					connections: version.connections,
 				} as Partial<WorkflowEntity>);
 
-				await workflowService.update(user, updateData, workflowId);
+				await workflowService.update(user, updateData, workflowId, {
+					source: 'n8n-ai',
+				});
 			},
 
 			...(this.license.isLicensed('feat:namedVersions')
@@ -674,11 +740,24 @@ export class InstanceAiAdapterService {
 					? (nodes.find((n) => n.name === options.triggerNodeName) ?? findTriggerNode(nodes))
 					: findTriggerNode(nodes);
 
+				// Force-save AI-initiated executions so that follow-up
+				// `executions(list/get/debug)` calls can read the result, regardless of
+				// instance-wide or per-workflow save settings. Manual mode is gated by
+				// `saveManualExecutions`; trigger modes (webhook, chat, trigger) are
+				// gated by the success/error settings — override all three.
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: triggerNode
 						? getExecutionModeForTrigger(triggerNode)
 						: ('manual' as WorkflowExecuteMode),
-					workflowData: workflow,
+					workflowData: {
+						...workflow,
+						settings: {
+							...workflow.settings,
+							saveManualExecutions: true,
+							saveDataSuccessExecution: 'all',
+							saveDataErrorExecution: 'all',
+						},
+					},
 					userId: user.id,
 					pushRef,
 				};
@@ -912,7 +991,7 @@ export class InstanceAiAdapterService {
 					id: credential.id,
 					name: credential.name,
 					type: credential.type,
-					data: credentialsService.decrypt(credential, true),
+					data: await credentialsService.decrypt(credential, true),
 				};
 
 				const result = await credentialsService.test(user.id, credentialsToTest);
@@ -1076,7 +1155,7 @@ export class InstanceAiAdapterService {
 					// Use redacted decryption first — accountIdentifier is not a
 					// password field so it survives redaction. This avoids exposing
 					// the full secret payload (tokens, keys) in memory.
-					const redacted = credentialsService.decrypt(credential, false);
+					const redacted = await credentialsService.decrypt(credential, false);
 
 					if (typeof redacted.accountIdentifier === 'string' && redacted.accountIdentifier) {
 						return { accountIdentifier: mask(redacted.accountIdentifier) };
@@ -1091,7 +1170,7 @@ export class InstanceAiAdapterService {
 
 					// Fallback for legacy credentials: oauthTokenData is blanked by
 					// redaction, so we need unredacted access here only.
-					const raw = credentialsService.decrypt(credential, true);
+					const raw = await credentialsService.decrypt(credential, true);
 					const tokenData = raw.oauthTokenData;
 					if (tokenData && typeof tokenData === 'object') {
 						const { OauthService } = await import('@/oauth/oauth.service');
@@ -1117,24 +1196,65 @@ export class InstanceAiAdapterService {
 
 		const { resolveProjectId } = this.createProjectScopeHelpers(user);
 
-		// Check scope for a data table and return its projectId for downstream service calls
-		const resolveProjectIdForTable = async (scopes: Scope[], dataTableId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
-			if (!allowed) {
+		const logger = this.logger;
+
+		/**
+		 * Resolve a data-table identifier (UUID or name) to a concrete row the
+		 * caller can access. Returns the resolved `id`, `name`, and `projectId`.
+		 * Throws on not-found, ambiguous-name (when multiple accessible projects
+		 * share the name and no `projectId` disambiguator was given), or
+		 * UUID+projectId mismatch (when both are provided but the UUID's actual
+		 * project differs from the one passed).
+		 */
+		const resolveAccessibleTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		): Promise<DataTableRecord> => {
+			const projectIdFilter = disambiguator?.projectId;
+			const result = await resolveDataTableByIdOrName(dataTableRepository, logger, dataTableId, {
+				projectIdFilter,
+				accessFilter: async (id) => await userHasScopes(user, scopes, false, { dataTableId: id }),
+			});
+			if (result.kind === 'miss') {
 				throw new Error(`Data table "${dataTableId}" not found`);
 			}
-			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
-			return table.projectId;
+			if (result.kind === 'ambiguous') {
+				const projectIds = result.candidates.map((c) => c.projectId).join(', ');
+				throw new Error(
+					`Data table name "${dataTableId}" is ambiguous across accessible projects ` +
+						`(${projectIds}); pass the UUID or include a \`projectId\` to disambiguate.`,
+				);
+			}
+			// UUID + projectId mismatch: the id hit resolved, but the caller's
+			// disambiguator points at a different project. Never silently drop
+			// the projectId — return mismatch so the caller fixes the call.
+			if (projectIdFilter && result.table.projectId !== projectIdFilter) {
+				throw new Error(
+					`Data table "${dataTableId}" does not belong to project "${projectIdFilter}".`,
+				);
+			}
+			return result.table;
 		};
 
-		// Like resolveProjectIdForTable but also returns the table name for artifact display
-		const resolveTableMeta = async (scopes: Scope[], dataTableId: string) => {
-			const allowed = await userHasScopes(user, scopes, false, { dataTableId });
-			if (!allowed) {
-				throw new Error(`Data table "${dataTableId}" not found`);
-			}
-			const table = await dataTableRepository.findOneByOrFail({ id: dataTableId });
-			return { projectId: table.projectId, tableName: table.name };
+		// Check scope and return projectId + resolved UUID for downstream service calls
+		const resolveProjectIdForTable = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
+			return { projectId: table.projectId, resolvedId: table.id };
+		};
+
+		// Like resolveProjectIdForTable but also returns the table name
+		const resolveTableMeta = async (
+			scopes: Scope[],
+			dataTableId: string,
+			disambiguator?: { projectId?: string },
+		) => {
+			const table = await resolveAccessibleTable(scopes, dataTableId, disambiguator);
+			return { projectId: table.projectId, tableName: table.name, resolvedId: table.id };
 		};
 
 		return {
@@ -1171,15 +1291,23 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async delete(dataTableId) {
+			async delete(dataTableId, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:delete'], dataTableId);
-				await dataTableService.deleteDataTable(dataTableId, projectId);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:delete'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteDataTable(resolvedId, projectId);
 			},
 
-			async getSchema(dataTableId) {
-				const projectId = await resolveProjectIdForTable(['dataTable:read'], dataTableId);
-				const columns = await dataTableService.getColumns(dataTableId, projectId);
+			async getSchema(dataTableId, options) {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:read'],
+					dataTableId,
+					options,
+				);
+				const columns = await dataTableService.getColumns(resolvedId, projectId);
 				return columns.map(
 					(c, index): DataTableColumnInfo => ({
 						id: c.id,
@@ -1190,10 +1318,14 @@ export class InstanceAiAdapterService {
 				);
 			},
 
-			async addColumn(dataTableId, column) {
+			async addColumn(dataTableId, column, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				const result = await dataTableService.addColumn(dataTableId, projectId, column);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				const result = await dataTableService.addColumn(resolvedId, projectId, column);
 				return {
 					id: result.id,
 					name: result.name,
@@ -1202,84 +1334,99 @@ export class InstanceAiAdapterService {
 				};
 			},
 
-			async deleteColumn(dataTableId, columnId) {
+			async deleteColumn(dataTableId, columnId, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.deleteColumn(dataTableId, projectId, columnId);
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.deleteColumn(resolvedId, projectId, columnId);
 			},
 
-			async renameColumn(dataTableId, columnId, newName) {
+			async renameColumn(dataTableId, columnId, newName, options) {
 				assertNotReadOnly();
-				const projectId = await resolveProjectIdForTable(['dataTable:update'], dataTableId);
-				await dataTableService.renameColumn(dataTableId, projectId, columnId, {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:update'],
+					dataTableId,
+					options,
+				);
+				await dataTableService.renameColumn(resolvedId, projectId, columnId, {
 					name: newName,
 				});
 			},
 
 			async queryRows(dataTableId, options) {
-				const projectId = await resolveProjectIdForTable(['dataTable:readRow'], dataTableId);
-				return await dataTableService.getManyRowsAndCount(dataTableId, projectId, {
+				const { projectId, resolvedId } = await resolveProjectIdForTable(
+					['dataTable:readRow'],
+					dataTableId,
+					options,
+				);
+				return await dataTableService.getManyRowsAndCount(resolvedId, projectId, {
 					take: options?.limit ?? 50,
 					skip: options?.offset ?? 0,
 					filter: options?.filter as DataTableFilter | undefined,
 				});
 			},
 
-			async insertRows(dataTableId, rows) {
+			async insertRows(dataTableId, rows, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.insertRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					rows as DataTableRows,
 					'count',
 				);
 				return {
 					insertedCount: typeof result === 'number' ? result : rows.length,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
 			},
 
-			async updateRows(dataTableId, filter, data) {
+			async updateRows(dataTableId, filter, data, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.updateRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter, data: data as DataTableRow },
 					true,
 				);
 				return {
 					updatedCount: Array.isArray(result) ? result.length : 0,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
 			},
 
-			async deleteRows(dataTableId, filter) {
+			async deleteRows(dataTableId, filter, options) {
 				assertNotReadOnly();
-				const { projectId, tableName } = await resolveTableMeta(
+				const { projectId, tableName, resolvedId } = await resolveTableMeta(
 					['dataTable:writeRow'],
 					dataTableId,
+					options,
 				);
 				const result = await dataTableService.deleteRows(
-					dataTableId,
+					resolvedId,
 					projectId,
 					{ filter: filter as DataTableFilter },
 					true,
 				);
 				return {
 					deletedCount: Array.isArray(result) ? result.length : 0,
-					dataTableId,
+					dataTableId: resolvedId,
 					tableName,
 					projectId,
 				};
@@ -1306,6 +1453,7 @@ export class InstanceAiAdapterService {
 		const fetchCache = this.webResearchCache;
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
+		const ssrf = this.ssrfProtectionService;
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -1364,6 +1512,7 @@ export class InstanceAiAdapterService {
 					maxResponseBytes: options?.maxResponseBytes,
 					timeoutMs: options?.timeoutMs,
 					authorizeUrl: options?.authorizeUrl,
+					ssrf,
 				});
 
 				// Attempt summarization (truncation fallback — no model injection yet)
@@ -1545,6 +1694,21 @@ export class InstanceAiAdapterService {
 							}
 							result.builderHint.inputs = inputs;
 						}
+						if (n.builderHint.outputs) {
+							const outputs: Record<
+								string,
+								{ required?: boolean; displayOptions?: Record<string, unknown> }
+							> = {};
+							for (const [key, config] of Object.entries(n.builderHint.outputs)) {
+								outputs[key] = {
+									...(config.required !== undefined ? { required: config.required } : {}),
+									...(config.displayOptions
+										? { displayOptions: config.displayOptions as Record<string, unknown> }
+										: {}),
+								};
+							}
+							result.builderHint.outputs = outputs;
+						}
 					}
 					return result;
 				});
@@ -1597,6 +1761,9 @@ export class InstanceAiAdapterService {
 					credentials: desc.credentials?.map((c) => ({
 						name: c.name,
 						required: c.required,
+						...(c.displayOptions
+							? { displayOptions: c.displayOptions as Record<string, unknown> }
+							: {}),
 					})),
 					inputs: Array.isArray(desc.inputs) ? desc.inputs.map(String) : [],
 					outputs: Array.isArray(desc.outputs) ? desc.outputs.map(String) : [],
@@ -1689,7 +1856,7 @@ export class InstanceAiAdapterService {
 				return filteredIssues;
 			},
 
-			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, existingCredentials) => {
+			getNodeCredentialTypes: async (nodeType, typeVersion, parameters, _existingCredentials) => {
 				const nodes = await getNodes();
 				const desc = findNodeByVersion(nodes, nodeType, typeVersion);
 				if (!desc) return [];
@@ -1767,13 +1934,6 @@ export class InstanceAiAdapterService {
 					credentialTypes.add(parameters.nodeCredentialType as string);
 				}
 
-				// 4. Already-assigned credentials
-				if (existingCredentials) {
-					for (const credType of Object.keys(existingCredentials)) {
-						credentialTypes.add(credType);
-					}
-				}
-
 				return Array.from(credentialTypes);
 			},
 
@@ -1834,6 +1994,18 @@ export class InstanceAiAdapterService {
 					projectId: personalProject.id,
 					currentNodeParameters,
 				});
+				// Look up the property's builderHint so the agent sees selection guidance
+				// alongside the raw list. This makes the hint reachable even when the
+				// agent jumps straight to explore-resources without reading type-definition.
+				let builderHint: string | undefined;
+				{
+					const nodes = await getNodes();
+					const nodeDesc = nodes.find((n) => n.name === params.nodeType);
+					if (nodeDesc) {
+						builderHint = findBuilderHintForMethod(nodeDesc, params.methodName, params.methodType);
+					}
+				}
+
 				try {
 					if (params.methodType === 'listSearch') {
 						const result = await dynamicNodeParametersService.getResourceLocatorResults(
@@ -1853,6 +2025,7 @@ export class InstanceAiAdapterService {
 								url: r.url,
 							})),
 							paginationToken: result.paginationToken,
+							...(builderHint ? { builderHint } : {}),
 						};
 					}
 
@@ -1870,6 +2043,7 @@ export class InstanceAiAdapterService {
 							value: o.value,
 							description: o.description,
 						})),
+						...(builderHint ? { builderHint } : {}),
 					};
 				} catch (error) {
 					this.logger.error('Failed to load options for explore-resources', {
@@ -1965,6 +2139,7 @@ export class InstanceAiAdapterService {
 							}
 							await workflowService.update(user, workflow, workflowId, {
 								parentFolderId: folderId,
+								source: 'n8n-ai',
 							});
 						},
 					}
@@ -2001,7 +2176,7 @@ export class InstanceAiAdapterService {
 					}
 				}
 
-				await workflowService.update(user, workflow, workflowId, { tagIds });
+				await workflowService.update(user, workflow, workflowId, { tagIds, source: 'n8n-ai' });
 				return tagNames;
 			},
 
@@ -2086,6 +2261,139 @@ const MAX_RESULT_CHARS = 20_000;
 
 /** Maximum characters for a single node's output preview when truncating. */
 const MAX_NODE_OUTPUT_CHARS = 1_000;
+
+/**
+ * Minimal DataTable shape the resolver needs. Kept narrow so tests can mock
+ * the repository without depending on the full TypeORM entity.
+ */
+interface DataTableRecord {
+	id: string;
+	name: string;
+	projectId: string;
+}
+
+interface DataTableIdOrNameRepository {
+	findOneBy: (where: { id: string }) => Promise<DataTableRecord | null>;
+	findBy: (where: { name: string; projectId?: string }) => Promise<DataTableRecord[]>;
+}
+
+interface DataTableResolverLogger {
+	warn: (message: string, meta?: Record<string, unknown>) => void;
+}
+
+export type ResolveDataTableResult =
+	| { kind: 'hit'; table: DataTableRecord }
+	| { kind: 'miss' }
+	| { kind: 'ambiguous'; candidates: DataTableRecord[] };
+
+/**
+ * Look up a data table by the orchestrator-supplied identifier. Tries `id`
+ * first; if that misses, tries `name`. The name fallback exists because the
+ * orchestrator occasionally passes the human-readable table name it saw in a
+ * `data-tables list` response instead of the numeric id.
+ *
+ * When the caller provides an `accessFilter`, candidates the user cannot
+ * access are filtered out BEFORE the ambiguity check — so a collision across
+ * projects the caller can't see still resolves cleanly to the one they can.
+ * `projectIdFilter` narrows the name lookup at the database level when the
+ * caller already knows the target project (table names are unique per
+ * project).
+ */
+export async function resolveDataTableByIdOrName(
+	repository: DataTableIdOrNameRepository,
+	logger: DataTableResolverLogger,
+	idOrName: string,
+	options?: {
+		projectIdFilter?: string;
+		accessFilter?: (id: string) => Promise<boolean>;
+	},
+): Promise<ResolveDataTableResult> {
+	const byId = await repository.findOneBy({ id: idOrName });
+	if (byId) {
+		if (options?.accessFilter && !(await options.accessFilter(byId.id))) {
+			return { kind: 'miss' };
+		}
+		return { kind: 'hit', table: byId };
+	}
+
+	const candidates = await repository.findBy({
+		name: idOrName,
+		...(options?.projectIdFilter ? { projectId: options.projectIdFilter } : {}),
+	});
+	let filtered = candidates;
+	if (options?.accessFilter) {
+		filtered = [];
+		for (const c of candidates) {
+			if (await options.accessFilter(c.id)) filtered.push(c);
+		}
+	}
+	if (filtered.length === 0) return { kind: 'miss' };
+	if (filtered.length > 1) return { kind: 'ambiguous', candidates: filtered };
+
+	const hit = filtered[0];
+	logger.warn('data-tables tool called with table name instead of id — resolved by name fallback', {
+		passedValue: idOrName,
+		resolvedId: hit.id,
+		projectId: hit.projectId,
+	});
+	return { kind: 'hit', table: hit };
+}
+
+/**
+ * Find the `builderHint.message` of the property that references a given
+ * method name via `@searchListMethod` (RLC list modes) or `@loadOptionsMethod`.
+ * Returns undefined if no matching property is found.
+ *
+ * Used to surface a node's per-parameter hint alongside explore-resources
+ * results so agents that skip `type-definition` still see selection guidance.
+ */
+function findBuilderHintForMethod(
+	nodeDesc: INodeTypeDescription,
+	methodName: string,
+	methodType: 'listSearch' | 'loadOptions',
+): string | undefined {
+	const referencesMethod = (prop: INodeProperties): boolean => {
+		switch (methodType) {
+			case 'loadOptions':
+				return prop.typeOptions?.loadOptionsMethod === methodName;
+			case 'listSearch': {
+				const modes: INodePropertyMode[] = prop.modes ?? [];
+				return modes.some((mode) => mode.typeOptions?.searchListMethod === methodName);
+			}
+		}
+	};
+
+	// `options` on INodeProperties is a three-way union: enum values (no nested
+	// params), INodeProperties (nested params), or INodePropertyCollection
+	// (nested params under `.values`). Discriminate instead of blind-casting.
+	const isCollection = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodePropertyCollection => 'values' in item;
+	const isProperty = (
+		item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
+	): item is INodeProperties => 'type' in item;
+
+	const searchProps = (
+		items?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
+	): string | undefined => {
+		for (const item of items ?? []) {
+			if (isCollection(item)) {
+				const nested = searchProps(item.values);
+				if (nested) return nested;
+				continue;
+			}
+			if (!isProperty(item)) continue; // plain enum value — skip
+			if (referencesMethod(item) && item.builderHint?.message) {
+				return item.builderHint.message;
+			}
+			const nested = searchProps(item.options);
+			if (nested) return nested;
+		}
+		return undefined;
+	};
+
+	return searchProps(nodeDesc.properties);
+}
 
 /**
  * Truncate execution result data to stay within context budget.
@@ -2178,7 +2486,8 @@ export async function extractExecutionResult(
 	}
 
 	// Extract error if present
-	const errorMessage = execution.data?.resultData?.error?.message;
+	const error = execution.data?.resultData?.error;
+	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
 
 	return {
 		executionId,
@@ -2191,6 +2500,48 @@ export async function extractExecutionResult(
 		startedAt: execution.startedAt?.toISOString(),
 		finishedAt: execution.stoppedAt?.toISOString(),
 	};
+}
+
+/**
+ * NodeApiError.messages can hold large API response bodies; cap formatted
+ * errors so a single failure doesn't blow up the agent's context window.
+ */
+const MAX_ERROR_CHARS = 4_000;
+
+/**
+ * `.description` and `.messages[]` carry upstream API response content, so
+ * they're gated behind the AI privacy setting. `.message` stays — it's
+ * sanitized (STATUS_CODE_MESSAGES) and lets the LLM recognize the failure.
+ *
+ * Accesses fields structurally: persisted errors lose their prototype on
+ * `unflattenData`, so `instanceof Error` is false in production.
+ */
+export function formatExecutionError(
+	error: ExecutionError,
+	includeUpstreamDetails: boolean,
+): string {
+	const parts: string[] = [];
+	if (error.message) parts.push(error.message);
+
+	if (includeUpstreamDetails) {
+		if (error.description && error.description !== error.message) {
+			parts.push(error.description);
+		}
+		if ('messages' in error && error.messages.length > 0) {
+			parts.push(`Details: ${error.messages.join(' | ')}`);
+		}
+	} else {
+		const hasDescription = !!error.description && error.description !== error.message;
+		const hasMessages = 'messages' in error && error.messages.length > 0;
+		if (hasDescription || hasMessages) {
+			parts.push(
+				'(upstream error details suppressed by the instance AI privacy setting; ask the user to share the node error from the UI)',
+			);
+		}
+	}
+
+	const combined = parts.join(' — ') || 'Unknown error';
+	return combined.length > MAX_ERROR_CHARS ? `${combined.slice(0, MAX_ERROR_CHARS)}…` : combined;
 }
 
 /**
@@ -2336,8 +2687,39 @@ function getExecutionModeForTrigger(node: INode): WorkflowExecuteMode {
 	}
 }
 
+/**
+ * Validate that `inputData` matches the shape the caller of `verify-built-workflow`
+ * is expected to pass for this trigger. Throws a descriptive error when the shape
+ * is wrong — this is surfaced to the orchestrator via the execution result and
+ * prevents the common "null downstream values" misdiagnosis where the orchestrator
+ * would otherwise patch the workflow's expressions (breaking it in production).
+ */
+function validateInputDataShape(node: INode, inputData: Record<string, unknown>): void {
+	if (node.type === FORM_TRIGGER_NODE_TYPE) {
+		// Production Form Trigger emits field values FLAT on `json` alongside
+		// `submittedAt` and `formMode`. Callers that place fields under `formFields`
+		// (whether pure-wrap `{formFields: {...}}` or mixed-key `{formFields: {...},
+		// other: ...}`) produce pin data where `$json.<field>` resolves to null and
+		// downstream expressions look broken. Any top-level `formFields` object is
+		// treated as a mistake — real Form Trigger fields are scalars and would not
+		// surface as a nested object here.
+		const formFieldsValue = inputData.formFields;
+		const looksWrapped = typeof formFieldsValue === 'object' && formFieldsValue !== null;
+		if (looksWrapped) {
+			throw new Error(
+				'verify-built-workflow: inputData for a Form Trigger must be a flat field map ' +
+					'(e.g. {name: "Alice", email: "a@b.c"}), NOT wrapped in `formFields`. ' +
+					'The production Form Trigger emits fields directly on $json, so downstream ' +
+					'expressions like $json.name are correct. Re-run with the flat shape.',
+			);
+		}
+	}
+}
+
 /** Construct proper pin data per trigger type. */
 function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): IPinData {
+	validateInputDataShape(node, inputData);
+
 	switch (node.type) {
 		case CHAT_TRIGGER_NODE_TYPE:
 			return {
@@ -2368,18 +2750,39 @@ function getPinDataForTrigger(node: INode, inputData: Record<string, unknown>): 
 				],
 			};
 
-		case WEBHOOK_NODE_TYPE:
+		case WEBHOOK_NODE_TYPE: {
+			// Allow callers that already wrap the payload as an envelope
+			// (`{body, headers?, query?}`) — unwrap once so the adapter's outer
+			// `body: inputData` wrapper doesn't create double nesting. But only
+			// treat `inputData` as an envelope when ALL top-level keys look like
+			// envelope fields; otherwise a flat payload that happens to contain a
+			// `body` field (e.g. `{event: 'signup', body: {...}}`) would have its
+			// sibling fields silently dropped, producing the same "null downstream
+			// values" failure the Form Trigger validator exists to prevent.
+			const envelopeKeys = new Set(['body', 'headers', 'query']);
+			const inputKeys = Object.keys(inputData);
+			const looksLikeEnvelope =
+				inputKeys.length > 0 &&
+				inputKeys.every((k) => envelopeKeys.has(k)) &&
+				typeof inputData.body === 'object' &&
+				inputData.body !== null;
+			const body = looksLikeEnvelope ? (inputData.body as Record<string, unknown>) : inputData;
+			const headers =
+				looksLikeEnvelope && typeof inputData.headers === 'object' && inputData.headers !== null
+					? (inputData.headers as Record<string, unknown>)
+					: {};
+			const query =
+				looksLikeEnvelope && typeof inputData.query === 'object' && inputData.query !== null
+					? (inputData.query as Record<string, unknown>)
+					: {};
 			return {
 				[node.name]: [
 					{
-						json: {
-							headers: {},
-							query: {},
-							body: inputData,
-						},
+						json: { headers, query, body },
 					},
 				],
 			};
+		}
 
 		case SCHEDULE_TRIGGER_NODE_TYPE: {
 			const now = new Date();
@@ -2447,13 +2850,12 @@ export async function extractExecutionDebugInfo(
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (!lastRun) continue;
 
-			const hasError = lastRun.error !== undefined;
 			const nodeType = nodeTypeMap.get(nodeName) ?? 'unknown';
 
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: hasError ? 'error' : 'success',
+				status: lastRun.error !== undefined ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:
@@ -2463,14 +2865,11 @@ export async function extractExecutionDebugInfo(
 			});
 
 			// Capture the first failed node with its error and input data
-			if (hasError && !failedNode) {
+			if (lastRun.error !== undefined && !failedNode) {
 				failedNode = {
 					name: nodeName,
 					type: nodeType,
-					error:
-						lastRun.error instanceof Error
-							? lastRun.error.message
-							: String(lastRun.error ?? 'Unknown error'),
+					error: formatExecutionError(lastRun.error, includeOutputData),
 					inputData: includeOutputData
 						? (() => {
 								const inputItems = lastRun.data?.main

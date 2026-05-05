@@ -88,7 +88,7 @@ export class DynamicCredentialsController {
 
 		if (resolver.deleteSecret) {
 			// Decrypt and parse resolver configuration
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			await resolver.deleteSecret(credential.id, credentialContext, {
@@ -125,7 +125,7 @@ export class DynamicCredentialsController {
 
 		if (resolver.validateIdentity) {
 			// Decrypt and parse resolver configuration
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const resolverConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			await resolver.validateIdentity(credentialContext, {

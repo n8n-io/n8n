@@ -21,7 +21,6 @@ import type {
 	INodeOutputConfiguration,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
-	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
@@ -34,6 +33,7 @@ import { computed, ref } from 'vue';
 import { useActionsGenerator } from '@/features/shared/nodeCreator/composables/useActionsGeneration';
 import { removePreviewToken } from '@/features/shared/nodeCreator/nodeCreator.utils';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import type { WorkflowObjectAccessors } from '../types';
 
 export type NodeTypesStore = ReturnType<typeof useNodeTypesStore>;
 
@@ -155,8 +155,8 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 	});
 
 	const isConfigNode = computed(() => {
-		return (workflow: Workflow, node: INode, nodeTypeName: string): boolean => {
-			if (!workflow.nodes[node.name]) {
+		return (workflow: WorkflowObjectAccessors, node: INode, nodeTypeName: string): boolean => {
+			if (!workflow.getNode(node.name)) {
 				return false;
 			}
 			const nodeType =
@@ -299,7 +299,7 @@ export const useNodeTypesStore = defineStore(STORES.NODE_TYPES, () => {
 
 	const isConfigurableNode = computed(() => {
 		return (
-			workflow: Workflow,
+			workflow: WorkflowObjectAccessors,
 			node: INode,
 			nodeTypeName: string,
 			nodeTypeVersion?: number,

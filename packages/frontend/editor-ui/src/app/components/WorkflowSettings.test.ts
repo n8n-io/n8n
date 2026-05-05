@@ -37,7 +37,7 @@ vi.mock('vue-router', async () => ({
 	useRoute: () =>
 		reactive({
 			params: {
-				name: '1',
+				workflowId: '1',
 			},
 			query: {},
 		}),

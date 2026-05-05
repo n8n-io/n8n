@@ -28,6 +28,7 @@ import {
 } from './tools/data-table';
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
+import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
 import { createSearchFoldersTool } from './tools/search-folders.tool';
@@ -47,6 +48,7 @@ import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validat
 import { WorkflowBuilderToolsService } from './tools/workflow-builder/workflow-builder-tools.service';
 
 import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
@@ -102,6 +104,7 @@ export class McpService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
 		private readonly dataTableProxyService: DataTableProxyService,
+		private readonly collaborationService: CollaborationService,
 	) {}
 
 	async getServer(user: User) {
@@ -150,6 +153,18 @@ export class McpService {
 		);
 		server.registerTool(getExecutionTool.name, getExecutionTool.config, getExecutionTool.handler);
 
+		const searchExecutionsTool = createSearchExecutionsTool(
+			user,
+			this.executionService,
+			this.workflowFinderService,
+			this.telemetry,
+		);
+		server.registerTool(
+			searchExecutionsTool.name,
+			searchExecutionsTool.config,
+			searchExecutionsTool.handler,
+		);
+
 		const workflowDetailsTool = createWorkflowDetailsTool(
 			user,
 			this.urlService.getWebhookBaseUrl(),
@@ -174,6 +189,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.workflowService,
 			this.telemetry,
+			this.collaborationService,
 		);
 		server.registerTool(
 			publishWorkflowTool.name,
@@ -186,6 +202,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.workflowService,
 			this.telemetry,
+			this.collaborationService,
 		);
 		server.registerTool(
 			unpublishWorkflowTool.name,
@@ -320,6 +337,7 @@ export class McpService {
 		const createTool = createCreateWorkflowFromCodeTool(
 			user,
 			this.workflowCreationService,
+			this.workflowFinderService,
 			this.urlService,
 			this.telemetry,
 			this.nodeTypes,
@@ -351,7 +369,13 @@ export class McpService {
 			searchFoldersTool.handler,
 		);
 
-		const archiveTool = createArchiveWorkflowTool(user, this.workflowService, this.telemetry);
+		const archiveTool = createArchiveWorkflowTool(
+			user,
+			this.workflowFinderService,
+			this.workflowService,
+			this.telemetry,
+			this.collaborationService,
+		);
 		server.registerTool(archiveTool.name, archiveTool.config, archiveTool.handler);
 
 		const updateTool = createUpdateWorkflowTool(
@@ -363,6 +387,7 @@ export class McpService {
 			this.nodeTypes,
 			this.credentialsService,
 			this.sharedWorkflowRepository,
+			this.collaborationService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
 

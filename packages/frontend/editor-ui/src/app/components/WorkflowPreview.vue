@@ -22,6 +22,8 @@ const props = withDefaults(
 		focusOnLoad?: boolean;
 		hideControls?: boolean;
 		suppressNotifications?: boolean;
+		allowErrorNotifications?: boolean;
+		canExecute?: boolean;
 	}>(),
 	{
 		loading: false,
@@ -36,6 +38,8 @@ const props = withDefaults(
 		focusOnLoad: true,
 		hideControls: false,
 		suppressNotifications: false,
+		allowErrorNotifications: false,
+		canExecute: false,
 	},
 );
 
@@ -58,10 +62,15 @@ const scrollY = ref(0);
 
 const iframeSrc = computed(() => {
 	const basePath = `${window.BASE_PATH ?? '/'}workflows/demo`;
+	const params = new URLSearchParams();
 	if (props.hideControls) {
-		return `${basePath}?hideControls=true`;
+		params.set('hideControls', 'true');
 	}
-	return basePath;
+	if (props.canExecute) {
+		params.set('canExecute', 'true');
+	}
+	const qs = params.toString();
+	return qs ? `${basePath}?${qs}` : basePath;
 });
 
 const showPreview = computed(() => {
@@ -88,16 +97,15 @@ const loadWorkflow = () => {
 				canOpenNDV: props.canOpenNDV,
 				hideNodeIssues: props.hideNodeIssues,
 				suppressNotifications: props.suppressNotifications,
+				allowErrorNotifications: props.allowErrorNotifications,
 				projectId: projectsStore.currentProjectId,
 			}),
 			'*',
 		);
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.showError.previewError.message'),
+		});
 	}
 };
 
@@ -128,11 +136,9 @@ const loadExecution = () => {
 			);
 		}
 	} catch (error) {
-		toast.showError(
-			error,
-			i18n.baseText('workflowPreview.showError.previewError.title'),
-			i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
-		);
+		toast.showError(error, i18n.baseText('workflowPreview.showError.previewError.title'), {
+			message: i18n.baseText('workflowPreview.executionMode.showError.previewError.message'),
+		});
 	}
 };
 
@@ -220,6 +226,19 @@ watch(
 );
 
 watch(
+	() => props.mode,
+	() => {
+		if (showPreview.value) {
+			if (props.mode === 'workflow') {
+				loadWorkflow();
+			} else if (props.mode === 'execution') {
+				loadExecution();
+			}
+		}
+	},
+);
+
+watch(
 	() => props.executionId,
 	() => {
 		if (props.mode === 'execution' && props.executionId) {
@@ -237,7 +256,7 @@ watch(
 	},
 );
 
-defineExpose({ iframeRef });
+defineExpose({ iframeRef, reloadExecution: loadExecution });
 </script>
 
 <template>
@@ -257,6 +276,7 @@ defineExpose({ iframeRef });
 				[$style.show]: showPreview,
 			}"
 			:src="iframeSrc"
+			:data-ndv-open="nodeViewDetailsOpened || undefined"
 			data-test-id="workflow-preview-iframe"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"

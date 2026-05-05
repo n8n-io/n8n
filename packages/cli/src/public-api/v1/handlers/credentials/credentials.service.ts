@@ -1,4 +1,4 @@
-import { publicApiCreatedCredentialSchema } from '@n8n/api-types';
+import type { PublicApiCredentialResponse } from '@n8n/api-types';
 import type { User, ICredentialsDb, SharedCredentials } from '@n8n/db';
 import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,7 +10,6 @@ import {
 	type IDataObject,
 	type INodeProperties,
 	type INodePropertyOptions,
-	UnexpectedError,
 } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -23,9 +22,19 @@ import { ExternalHooks } from '@/external-hooks';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 
+import { toPublicApiCredentialResponse } from './credentials.mapper';
 import type { IDependency, IJsonSchema } from '../../../types';
 
 export class CredentialsIsNotUpdatableError extends BaseError {}
+
+function isNodePropertyOptions(options: unknown): options is INodePropertyOptions[] {
+	return (
+		Array.isArray(options) &&
+		options.every(
+			(item) => typeof item === 'object' && item !== null && 'value' in item && 'name' in item,
+		)
+	);
+}
 
 /**
  * Shared entry for credential list: project id/name plus sharing role and timestamps.
@@ -58,7 +67,7 @@ export function buildSharedForCredential(
 		}));
 }
 
-export async function getCredential(credentialId: string): Promise<ICredentialsDb | null> {
+export async function getCredential(credentialId: string): Promise<CredentialsEntity | null> {
 	return await Container.get(CredentialsRepository).findOne({
 		where: { id: credentialId },
 		relations: ['shared', 'shared.project'],
@@ -89,7 +98,7 @@ export async function getSharedCredentials(
 export async function saveCredential(
 	payload: { type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
 	user: User,
-): Promise<CredentialsEntity> {
+): Promise<PublicApiCredentialResponse> {
 	const { scopes: _scopes, ...credential } = await Container.get(
 		CredentialsService,
 	).createUnmanagedCredential({ ...payload, projectId: payload.projectId ?? undefined }, user);
@@ -121,12 +130,7 @@ export async function saveCredential(
 		updatedAt: credential.updatedAt,
 	};
 
-	const parsed = publicApiCreatedCredentialSchema.safeParse(credentialForApi);
-	if (!parsed.success) {
-		throw new UnexpectedError('Credential create response failed validation');
-	}
-
-	return Object.assign(new CredentialsEntity(), parsed.data, { shared: [] });
+	return toPublicApiCredentialResponse(credentialForApi);
 }
 
 export async function updateCredential(
@@ -163,7 +167,10 @@ export async function updateCredential(
 		const credentialsService = Container.get(CredentialsService);
 
 		// Decrypt existing data to access oauthTokenData
-		const decryptedData = credentialsService.decrypt(existingCredential as CredentialsEntity, true);
+		const decryptedData = await credentialsService.decrypt(
+			existingCredential as CredentialsEntity,
+			true,
+		);
 
 		// eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain -- credential will always have an owner
 		const projectOwningCredential = existingCredential.shared?.find(
@@ -250,7 +257,7 @@ export async function encryptCredential(credential: CredentialsEntity): Promise<
 	const coreCredential = new Credentials({ id: null, name: credential.name }, credential.type);
 
 	// @ts-ignore
-	coreCredential.setData(credential.data);
+	await coreCredential.setData(credential.data);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
 }
@@ -299,7 +306,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		.filter((property) => property.type === 'options')
 		.forEach((property) => {
 			Object.assign(optionsValues, {
-				[property.name]: property.options?.map((option: INodePropertyOptions) => option.value),
+				[property.name]: isNodePropertyOptions(property.options)
+					? property.options.map((option) => option.value)
+					: undefined,
 			});
 		});
 
@@ -322,7 +331,9 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 			Object.assign(jsonSchema.properties, {
 				[property.name]: {
 					type: 'string',
-					enum: property.options?.map((data: INodePropertyOptions) => data.value),
+					enum: isNodePropertyOptions(property.options)
+						? property.options.map((data) => data.value)
+						: undefined,
 				},
 			});
 		} else {

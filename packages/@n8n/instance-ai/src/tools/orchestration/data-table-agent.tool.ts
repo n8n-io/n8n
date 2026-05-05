@@ -21,6 +21,7 @@ import {
 } from './tracing-utils';
 import { registerWithMastra } from '../../agent/register-with-mastra';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
+import { MAX_STEPS } from '../../constants/max-steps';
 import { createLlmStepTraceHooks } from '../../runtime/resumable-stream-executor';
 import { consumeStreamWithHitl } from '../../stream/consume-with-hitl';
 import {
@@ -31,22 +32,7 @@ import {
 } from '../../tracing/langsmith-tracing';
 import type { OrchestrationContext } from '../../types';
 
-const DATA_TABLE_MAX_STEPS = 35;
-
-const DATA_TABLE_TOOL_NAMES = [
-	'list-data-tables',
-	'create-data-table',
-	'delete-data-table',
-	'get-data-table-schema',
-	'add-data-table-column',
-	'delete-data-table-column',
-	'rename-data-table-column',
-	'query-data-table-rows',
-	'insert-data-table-rows',
-	'update-data-table-rows',
-	'delete-data-table-rows',
-	'parse-file',
-];
+const DATA_TABLE_TOOL_NAME = 'data-tables';
 
 export interface StartDataTableAgentInput {
 	task: string;
@@ -66,16 +52,17 @@ export async function startDataTableAgentTask(
 	context: OrchestrationContext,
 	input: StartDataTableAgentInput,
 ): Promise<StartedBackgroundAgentTask> {
-	// Collect data table tools from the domain tools
+	// Grab the consolidated data-tables tool (and parse-file if available) from domain tools
 	const dataTableTools: ToolsInput = {};
-	for (const name of DATA_TABLE_TOOL_NAMES) {
-		if (name in context.domainTools) {
-			dataTableTools[name] = context.domainTools[name];
-		}
+	if (DATA_TABLE_TOOL_NAME in context.domainTools) {
+		dataTableTools[DATA_TABLE_TOOL_NAME] = context.domainTools[DATA_TABLE_TOOL_NAME];
+	}
+	if ('parse-file' in context.domainTools) {
+		dataTableTools['parse-file'] = context.domainTools['parse-file'];
 	}
 
-	if (Object.keys(dataTableTools).length === 0) {
-		return { result: 'Error: no data table tools available.', taskId: '', agentId: '' };
+	if (!(DATA_TABLE_TOOL_NAME in dataTableTools)) {
+		return { result: 'Error: data-tables tool not available.', taskId: '', agentId: '' };
 	}
 
 	if (!context.spawnBackgroundTask) {
@@ -85,22 +72,6 @@ export async function startDataTableAgentTask(
 	const subAgentId = input.agentId ?? `agent-datatable-${nanoid(6)}`;
 	const taskId = input.taskId ?? `datatable-${nanoid(8)}`;
 
-	context.eventBus.publish(context.threadId, {
-		type: 'agent-spawned',
-		runId: context.runId,
-		agentId: subAgentId,
-		payload: {
-			parentId: context.orchestratorAgentId,
-			role: 'data-table-manager',
-			tools: Object.keys(dataTableTools),
-			taskId,
-			kind: 'data-table',
-			title: 'Managing data table',
-			subtitle: truncateLabel(input.task),
-			goal: input.task,
-			targetResource: { type: 'data-table' as const },
-		},
-	});
 	const traceContext = await createDetachedSubAgentTracing(context, {
 		agentId: subAgentId,
 		role: 'data-table-manager',
@@ -114,13 +85,16 @@ export async function startDataTableAgentTask(
 	});
 	const tracedDataTableTools = traceSubAgentTools(context, dataTableTools, 'data-table-manager');
 
-	context.spawnBackgroundTask({
+	const spawnOutcome = context.spawnBackgroundTask({
 		taskId,
 		threadId: context.threadId,
 		agentId: subAgentId,
 		role: 'data-table-manager',
 		traceContext,
 		plannedTaskId: input.plannedTaskId,
+		dedupeKey: { role: 'data-table-manager', plannedTaskId: input.plannedTaskId },
+		parentCheckpointId:
+			context.isCheckpointFollowUp === true ? context.checkpointTaskId : undefined,
 		run: async (signal, _drainCorrections, _waitForCorrection) => {
 			return await withTraceContextActor(traceContext, async () => {
 				const subAgent = new Agent({
@@ -157,7 +131,7 @@ export async function startDataTableAgentTask(
 				return await withTraceParentContext(traceParent, async () => {
 					const llmStepTraceHooks = createLlmStepTraceHooks(traceParent);
 					const stream = await subAgent.stream(briefing, {
-						maxSteps: DATA_TABLE_MAX_STEPS,
+						maxSteps: MAX_STEPS.DATA_TABLE,
 						abortSignal: signal,
 						providerOptions: {
 							anthropic: { cacheControl: { type: 'ephemeral' } },
@@ -188,8 +162,43 @@ export async function startDataTableAgentTask(
 		},
 	});
 
+	if (spawnOutcome.status === 'duplicate') {
+		return {
+			result: `Data table operation already in progress (task: ${spawnOutcome.existing.taskId}). Wait for the planned-task-follow-up — do not dispatch again.`,
+			taskId: spawnOutcome.existing.taskId,
+			agentId: spawnOutcome.existing.agentId,
+		};
+	}
+	if (spawnOutcome.status === 'limit-reached') {
+		return {
+			result:
+				'Could not start data table operation: concurrent background-task limit reached. Wait for an existing task to finish and try again.',
+			taskId: '',
+			agentId: '',
+		};
+	}
+
+	// Spawn confirmed — publish the UI event now so duplicate/limit-reached
+	// rejections above don't leave a phantom card on the chat surface.
+	context.eventBus.publish(context.threadId, {
+		type: 'agent-spawned',
+		runId: context.runId,
+		agentId: subAgentId,
+		payload: {
+			parentId: context.orchestratorAgentId,
+			role: 'data-table-manager',
+			tools: Object.keys(dataTableTools),
+			taskId,
+			kind: 'data-table',
+			title: 'Managing data table',
+			subtitle: truncateLabel(input.task),
+			goal: input.task,
+			targetResource: { type: 'data-table' as const },
+		},
+	});
+
 	return {
-		result: `Data table operation started (task: ${taskId}). Reply with one short sentence. Do NOT summarize the plan or list details.`,
+		result: `Data table operation started (task: ${taskId}). Do NOT summarize the plan or list details.`,
 		taskId,
 		agentId: subAgentId,
 	};

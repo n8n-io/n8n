@@ -112,6 +112,13 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/**
+	 * Workflow IDs the run-finish reap soft-deleted — intermediate
+	 * stepping-stones the agent created but never promoted to the main
+	 * deliverable. Surfaced to the UI so the artifacts panel can dim these
+	 * entries and label them as archived.
+	 */
+	archivedWorkflowIds: z.array(z.string()).optional(),
 });
 
 export const agentSpawnedTargetResourceSchema = z.object({
@@ -431,13 +438,13 @@ export const toolCategorySchema = z.object({
 });
 export type ToolCategory = z.infer<typeof toolCategorySchema>;
 
-export const instanceAiGatewayCapabilitiesSchema = z.object({
+export class InstanceAiGatewayCapabilitiesDto extends Z.class({
 	rootPath: z.string(),
 	tools: z.array(mcpToolSchema).default([]),
 	hostIdentifier: z.string().optional(),
 	toolCategories: z.array(toolCategorySchema).default([]),
-});
-export type InstanceAiGatewayCapabilities = z.infer<typeof instanceAiGatewayCapabilitiesSchema>;
+}) {}
+export type InstanceAiGatewayCapabilities = InstanceType<typeof InstanceAiGatewayCapabilitiesDto>;
 
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
@@ -448,10 +455,10 @@ export const filesystemRequestPayloadSchema = z.object({
 	toolCall: mcpToolCallRequestSchema,
 });
 
-export const instanceAiFilesystemResponseSchema = z.object({
+export class InstanceAiFilesystemResponseDto extends Z.class({
 	result: mcpToolCallResultSchema.optional(),
 	error: z.string().optional(),
-});
+}) {}
 
 export const tasksUpdatePayloadSchema = z.object({
 	tasks: taskListSchema,
@@ -544,7 +551,7 @@ export type InstanceAiThreadTitleUpdatedEvent = Extract<
 	{ type: 'thread-title-updated' }
 >;
 
-export type InstanceAiFilesystemResponse = z.infer<typeof instanceAiFilesystemResponseSchema>;
+export type InstanceAiFilesystemResponse = InstanceType<typeof InstanceAiFilesystemResponseDto>;
 
 // ---------------------------------------------------------------------------
 // API types
@@ -592,28 +599,6 @@ export class InstanceAiThreadMessagesQuery extends Z.class({
 
 export interface InstanceAiSendMessageResponse {
 	runId: string;
-}
-
-export interface InstanceAiConfirmResponse {
-	approved: boolean;
-	credentialId?: string;
-	credentials?: Record<string, string>;
-	/** Per-node credential assignments: `{ nodeName: { credType: credId } }`.
-	 *  Preferred over `credentials` when present — enables card-scoped selection. */
-	nodeCredentials?: Record<string, Record<string, string>>;
-	autoSetup?: { credentialType: string };
-	userInput?: string;
-	domainAccessAction?: DomainAccessAction;
-	resourceDecision?: string;
-	action?: 'apply' | 'test-trigger';
-	nodeParameters?: Record<string, Record<string, unknown>>;
-	testTriggerNode?: string;
-	answers?: Array<{
-		questionId: string;
-		selectedOptions: string[];
-		customText?: string;
-		skipped?: boolean;
-	}>;
 }
 
 // ---------------------------------------------------------------------------
@@ -728,6 +713,7 @@ export interface InstanceAiThreadSummary {
 	id: string;
 	title: string;
 	createdAt: string;
+	updatedAt: string;
 	metadata?: Record<string, unknown>;
 }
 
@@ -965,7 +951,7 @@ const RESEARCH_RENDER_HINT_TOOLS = new Set(['research-with-agent']);
 const PLANNER_RENDER_HINT_TOOLS = new Set(['plan']);
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
-	if (toolName === 'update-tasks') return 'tasks';
+	if (toolName === 'task-control') return 'tasks';
 	if (toolName === 'delegate') return 'delegate';
 	if (BUILDER_RENDER_HINT_TOOLS.has(toolName)) return 'builder';
 	if (DATA_TABLE_RENDER_HINT_TOOLS.has(toolName)) return 'data-table';
@@ -992,6 +978,8 @@ export interface InstanceAiEvalInterceptedRequest {
 
 export interface InstanceAiEvalNodeResult {
 	output: unknown;
+	/** Full count of output items (`output` is truncated for artifact size) */
+	outputCount?: number;
 	interceptedRequests: InstanceAiEvalInterceptedRequest[];
 	executionMode: InstanceAiEvalNodeExecutionMode;
 	/** Missing required parameters detected before execution (empty = fully configured) */
@@ -1020,3 +1008,41 @@ export interface InstanceAiEvalExecutionResult {
 export class InstanceAiEvalExecutionRequest extends Z.class({
 	scenarioHints: z.string().max(2000).optional(),
 }) {}
+
+// ---------------------------------------------------------------------------
+// Sub-agent evaluation endpoint
+// ---------------------------------------------------------------------------
+
+export class InstanceAiEvalSubAgentRequest extends Z.class({
+	/** Role name from the server's sub-agent registry (currently: "builder"). */
+	role: z.string().min(1).max(64),
+	/** The task the sub-agent should perform. */
+	prompt: z.string().min(1).max(10_000),
+	/** Optional model override. Defaults to the server's configured Instance AI model. */
+	modelId: z.string().min(1).optional(),
+	/** Max agent steps. Defaults to 40. */
+	maxSteps: z.number().int().positive().max(200).optional(),
+	/** Per-run timeout in ms. Defaults to 120_000. Max: 600_000. */
+	timeoutMs: z.number().int().positive().max(600_000).optional(),
+}) {}
+
+export interface InstanceAiEvalToolCall {
+	toolName: string;
+	args: unknown;
+}
+
+export interface InstanceAiEvalToolResult {
+	toolName: string;
+	result: unknown;
+	isError: boolean;
+}
+
+export interface InstanceAiEvalSubAgentResponse {
+	text: string;
+	toolCalls: InstanceAiEvalToolCall[];
+	toolResults: InstanceAiEvalToolResult[];
+	capturedWorkflowIds: string[];
+	durationMs: number;
+	stopReason?: string;
+	error?: string;
+}

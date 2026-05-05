@@ -11,6 +11,7 @@ import {
 	type StickyNoteConfig,
 	type PlaceholderValue,
 	type NewCredentialValue,
+	type CredentialReference,
 	type DeclaredConnection,
 	type NodeChain,
 	type InputTarget,
@@ -26,6 +27,7 @@ import {
 	isSplitInBatchesBuilder,
 	extractSplitInBatchesBuilder,
 } from '../type-guards';
+import { assertPlainObject } from '../validation-helpers';
 
 /**
  * Type guard to check if a value is an InputTarget
@@ -98,6 +100,35 @@ function generateNodeName(type: string): string {
 }
 
 /**
+ * Collapse `placeholder('hint')` markers inside a credentials map into
+ * `newCredential('hint')`. The two have identical intent in this slot —
+ * "a credential is required, no real one is bound yet" — so we normalize at
+ * config ingest. Downstream code (resolveCredentials, hasNewCredential, the
+ * `__newCredential` toJSON path) only ever sees `__newCredential` markers in
+ * credential slots, never `__placeholder` ones.
+ *
+ * Returns a new config object when any normalization happens; otherwise a
+ * shallow copy (matching the previous `{ ...config }` semantics).
+ */
+export function normalizeNodeConfig(config: NodeConfig): NodeConfig {
+	const creds = config?.credentials;
+	if (!creds) return { ...config };
+
+	let normalizedCreds:
+		| Record<string, CredentialReference | NewCredentialValue | PlaceholderValue>
+		| undefined;
+	for (const [key, value] of Object.entries(creds)) {
+		if (value && typeof value === 'object' && '__placeholder' in value) {
+			normalizedCreds ??= { ...creds };
+			normalizedCreds[key] = new NewCredentialImpl(value.hint);
+		}
+	}
+
+	if (!normalizedCreds) return { ...config };
+	return { ...config, credentials: normalizedCreds };
+}
+
+/**
  * Internal node instance implementation
  */
 class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = unknown>
@@ -121,9 +152,9 @@ class NodeInstanceImpl<TType extends string, TVersion extends string, TOutput = 
 	) {
 		this.type = type;
 		this.version = version;
-		this.config = { ...config };
+		this.config = normalizeNodeConfig(config);
 		this.id = id ?? uuid();
-		this.name = name ?? config.name ?? generateNodeName(type);
+		this.name = name ?? config?.name ?? generateNodeName(type);
 		this._connections = connections ?? [];
 	}
 
@@ -580,6 +611,27 @@ function extractNodesFromTarget(target: unknown): Array<NodeInstance<string, str
 		return nodes;
 	}
 
+	// Handle SplitInBatchesBuilder (fluent API) - the sibNode plus any recorded
+	// done/each branch targets. Recurses so nested builders inside either branch
+	// are collected too.
+	if (isSplitInBatchesBuilder(target)) {
+		const builder = extractSplitInBatchesBuilder(target);
+		const nodes: Array<NodeInstance<string, string, unknown>> = [builder.sibNode];
+		for (const doneTarget of builder._doneBatches) {
+			nodes.push(...extractNodesFromTarget(doneTarget));
+		}
+		for (const eachTarget of builder._eachBatches) {
+			nodes.push(...extractNodesFromTarget(eachTarget));
+		}
+		if (builder._doneTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._doneTarget));
+		}
+		if (builder._eachTarget !== undefined) {
+			nodes.push(...extractNodesFromTarget(builder._eachTarget));
+		}
+		return nodes;
+	}
+
 	// Check if it's a node-like object with type, version, config
 	if (
 		target !== null &&
@@ -763,6 +815,11 @@ class SwitchCaseBuilderImpl<TOutput = unknown> implements SwitchCaseBuilder<TOut
 export function node<TNode extends NodeInput>(
 	input: TNode,
 ): NodeInstance<TNode['type'], `${TNode['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'node',
+		"a configuration object { type, version, config }. Example: node({ type: 'n8n-nodes-base.httpRequest', version: 4.2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TNode['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -802,6 +859,7 @@ export interface IfElseFactoryConfig {
 export function ifElse<TOutput = unknown>(
 	input: IfElseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.if', string, TOutput> {
+	assertPlainObject(input, 'ifElse', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.if',
 		version: input.version,
@@ -837,6 +895,7 @@ export interface MergeFactoryConfig {
 export function merge<TOutput = unknown>(
 	input: MergeFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.merge', string, TOutput> {
+	assertPlainObject(input, 'merge', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.merge',
 		version: input.version,
@@ -872,6 +931,7 @@ export interface SwitchCaseFactoryConfig {
 export function switchCase<TOutput = unknown>(
 	input: SwitchCaseFactoryConfig,
 ): NodeInstance<'n8n-nodes-base.switch', string, TOutput> {
+	assertPlainObject(input, 'switchCase', 'a config object { version, config }');
 	return node({
 		type: 'n8n-nodes-base.switch',
 		version: input.version,
@@ -897,6 +957,11 @@ export function switchCase<TOutput = unknown>(
 export function trigger<TTrigger extends TriggerInput>(
 	input: TTrigger,
 ): TriggerInstance<TTrigger['type'], `${TTrigger['version']}`, unknown> {
+	assertPlainObject(
+		input,
+		'trigger',
+		"a configuration object { type, version, config }. Example: trigger({ type: 'n8n-nodes-base.webhook', version: 2, config: { parameters: {} } })",
+	);
 	const versionStr = String(input.version) as `${TTrigger['version']}`;
 	// Copy top-level output into config if present
 	const config: NodeConfig = input.output
@@ -1110,6 +1175,11 @@ class PlaceholderImpl implements PlaceholderValue {
  *
  * Placeholders are used to mark values that need to be filled in
  * when a workflow template is instantiated.
+ *
+ * Inside a node's `credentials` slot, `placeholder(hint)` is normalized to
+ * `newCredential(hint)` at config ingest — the two have identical intent
+ * there ("a credential is required, no real one bound yet"). Outside the
+ * credentials slot the original placeholder semantics are unchanged.
  *
  * @param hint - Description shown to users (e.g., 'Enter Channel')
  * @returns A placeholder value that serializes to the placeholder format

@@ -86,7 +86,13 @@ export function useEventRelay({
 
 				const isFinished = entry.status !== 'running';
 
-				if (isFinished && prev === 'running' && isActive) {
+				// When Vue coalesces multiple ref updates, the watcher may fire for the
+				// first time with the execution already finished (prev is undefined).
+				// Treat undefined the same as 'running' — the entry only exists because
+				// an executionStarted was captured, so it was running at some point.
+				const wasRunning = prev === 'running' || prev === undefined;
+
+				if (isFinished && wasRunning && isActive) {
 					// Active workflow transitioned running → finished.
 					// All pending events were relayed above. Clear the log and send a
 					// synthetic executionFinished so the iframe clears its executing

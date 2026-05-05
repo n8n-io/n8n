@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue';
+import { watch, computed } from 'vue';
 import { N8nActionPill } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useAiGateway } from '@/app/composables/useAiGateway';
@@ -23,18 +23,20 @@ const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const telemetry = useTelemetry();
 
-const { creditsRemaining, fetchCredits } = useAiGateway();
+const { balance, fetchWallet } = useAiGateway();
+
+const isBalanceDepleted = computed(() => balance.value !== undefined && balance.value <= 0);
 
 // Fetch when enabled (on mount if already enabled, or when toggled on)
 watch(
 	() => props.aiGatewayEnabled,
 	(enabled) => {
-		if (enabled) void fetchCredits();
+		if (enabled) void fetchWallet();
 	},
 	{ immediate: true },
 );
 
-// Refresh after each execution completes so the badge reflects consumed credits.
+// Refresh after each execution completes so the badge reflects consumed balance.
 watch(
 	() => workflowsStore.workflowExecutionData,
 	(executionData) => {
@@ -42,7 +44,7 @@ watch(
 			(executionData?.finished || executionData?.stoppedAt !== undefined) &&
 			props.aiGatewayEnabled
 		) {
-			void fetchCredits();
+			void fetchWallet();
 		}
 	},
 );
@@ -101,13 +103,16 @@ function onBadgeClick(event: MouseEvent): void {
 					</span>
 				</span>
 				<N8nActionPill
-					v-if="aiGatewayEnabled && creditsRemaining !== undefined"
+					v-if="aiGatewayEnabled && balance !== undefined"
 					:clickable="!readonly"
+					:type="isBalanceDepleted ? 'danger' : 'default'"
 					size="small"
 					:text="
-						i18n.baseText('aiGateway.credentialMode.creditsShort', {
-							interpolate: { count: String(creditsRemaining) },
-						})
+						isBalanceDepleted
+							? i18n.baseText('aiGateway.wallet.noCredits')
+							: i18n.baseText('aiGateway.wallet.balanceRemaining', {
+									interpolate: { balance: `$${Number(balance).toFixed(2)}` },
+								})
 					"
 					:hover-text="!readonly ? i18n.baseText('aiGateway.toggle.topUp') : undefined"
 					@click="onBadgeClick"
