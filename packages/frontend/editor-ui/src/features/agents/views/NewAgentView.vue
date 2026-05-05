@@ -12,6 +12,8 @@ import { useToast } from '@/app/composables/useToast';
 import { createAgent } from '../composables/useAgentApi';
 import { AGENT_BUILDER_VIEW } from '../constants';
 import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
+import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 
@@ -21,6 +23,7 @@ const rootStore = useRootStore();
 const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const telemetry = useTelemetry();
+const agentTelemetry = useAgentTelemetry();
 const i18n = useI18n();
 const { showError } = useToast();
 const { isBuilderConfigured, fetchStatus } = useAgentBuilderStatus();
@@ -222,6 +225,21 @@ async function submitDescription() {
 			agent_id: agent.id,
 			source: 'description_prompt',
 		});
+		// Mirror the build-chat submission event: the description prompt IS the
+		// first build-mode message for this agent, just routed through the
+		// progress overlay instead of AgentChatPanel. Fingerprint reflects the
+		// fresh empty config (no instructions/tools/triggers/memory/model yet).
+		try {
+			const fingerprint = await buildAgentConfigFingerprint(null, []);
+			agentTelemetry.trackSubmittedMessage({
+				agentId: agent.id,
+				mode: 'build',
+				status: 'draft',
+				agentConfig: fingerprint,
+			});
+		} catch {
+			// Swallow — telemetry is best-effort and must not block the build.
+		}
 		// Hand off to the progress overlay; it streams `/build` and fires `done`
 		// once the agent is ready, at which point we route into the builder.
 		building.value = { agentId: agent.id, message };

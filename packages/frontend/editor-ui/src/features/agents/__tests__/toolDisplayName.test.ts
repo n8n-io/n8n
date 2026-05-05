@@ -7,6 +7,7 @@ describe('formatToolNameForDisplay', () => {
 		expect(formatToolNameForDisplay('create_skill')).toBe('Create skill');
 		expect(formatToolNameForDisplay('ask_llm')).toBe('Ask LLM');
 		expect(formatToolNameForDisplay('build_custom_tool')).toBe('Build custom tool');
+		expect(formatToolNameForDisplay('update_memory')).toBe('Update memory');
 	});
 
 	it('also handles hyphenated names and extra whitespace', () => {
@@ -17,5 +18,9 @@ describe('formatToolNameForDisplay', () => {
 	it('returns an empty string for missing or blank names', () => {
 		expect(formatToolNameForDisplay(undefined)).toBe('');
 		expect(formatToolNameForDisplay('   ')).toBe('');
+	});
+
+	it('collapses known memory tool names to a single "Update memory" label', () => {
+		expect(formatToolNameForDisplay('update_working_memory')).toBe('Update memory');
 	});
 });

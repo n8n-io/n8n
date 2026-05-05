@@ -37,14 +37,12 @@ export function useAgentTelemetry() {
 
 	function trackSubmittedMessage(params: {
 		agentId: string;
-		message: string;
 		mode: AgentChatMode;
 		status: AgentTelemetryStatus;
 		agentConfig: AgentConfigFingerprint;
 	}) {
 		safeTrack('User submitted message to agent', {
 			agent_id: params.agentId,
-			message: params.message,
 			mode: params.mode,
 			status: params.status,
 			agent_config: params.agentConfig,
@@ -101,6 +99,23 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackAddedSkills(params: {
+		agentId: string;
+		skillAdded: string;
+		skills: string[];
+		configVersion: string;
+		status: AgentTelemetryStatus;
+	}) {
+		safeTrack('User added skills to agent', {
+			agent_id: params.agentId,
+			skill_added: params.skillAdded,
+			skills: params.skills,
+			config_version: params.configVersion,
+			status: params.status,
+			...common(),
+		});
+	}
+
 	function trackPublishedAgent(params: { agentId: string; configVersion: string }) {
 		safeTrack('User published agent', {
 			agent_id: params.agentId,
@@ -124,6 +139,7 @@ export function useAgentTelemetry() {
 		trackEditedConfig,
 		trackAddedTrigger,
 		trackAddedTools,
+		trackAddedSkills,
 		trackPublishedAgent,
 		trackUnpublishedAgent,
 	};

@@ -1689,7 +1689,7 @@ export class AgentRuntime {
 	}
 
 	/**
-	 * Build the updateWorkingMemory BuiltTool for the current run.
+	 * Build the update_working_memory BuiltTool for the current run.
 	 * Returns undefined when working memory is not configured or persistence is unavailable.
 	 */
 	private buildWorkingMemoryToolForRun(persistence: AgentPersistenceOptions | undefined) {

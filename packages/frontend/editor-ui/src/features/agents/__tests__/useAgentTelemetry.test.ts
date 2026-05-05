@@ -24,7 +24,7 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
-	it('trackSubmittedMessage includes message, mode, status, agent_config', () => {
+	it('trackSubmittedMessage includes mode, status, agent_config (no raw message)', () => {
 		const fingerprint = {
 			instructions: 'hello',
 			tools: ['a'],
@@ -36,14 +36,12 @@ describe('useAgentTelemetry', () => {
 		};
 		useAgentTelemetry().trackSubmittedMessage({
 			agentId: 'ag-1',
-			message: 'hi',
 			mode: 'test',
 			status: 'draft',
 			agentConfig: fingerprint,
 		});
 		expect(trackMock).toHaveBeenCalledWith('User submitted message to agent', {
 			agent_id: 'ag-1',
-			message: 'hi',
 			mode: 'test',
 			status: 'draft',
 			agent_config: fingerprint,
@@ -99,6 +97,24 @@ describe('useAgentTelemetry', () => {
 			tools: ['search', 'summarize'],
 			config_version: 'v5',
 			status: 'draft',
+			session_id: 'session-xyz',
+		});
+	});
+
+	it('trackAddedSkills fires with skill_added, skills list, config_version and status', () => {
+		useAgentTelemetry().trackAddedSkills({
+			agentId: 'ag-1',
+			skillAdded: 'triage',
+			skills: ['outreach', 'triage'],
+			configVersion: 'v6',
+			status: 'production',
+		});
+		expect(trackMock).toHaveBeenCalledWith('User added skills to agent', {
+			agent_id: 'ag-1',
+			skill_added: 'triage',
+			skills: ['outreach', 'triage'],
+			config_version: 'v6',
+			status: 'production',
 			session_id: 'session-xyz',
 		});
 	});
