@@ -353,13 +353,15 @@ function onCreateCredential(integration: ChatIntegrationDescriptor) {
 	const existing = credentialsByType.value[integration.type] ?? [];
 	credentialIdsBeforeNew.value[integration.type] = new Set(existing.map((c) => c.id));
 	pendingNewCredentialType.value = integration.type;
-	uiStore.openNewCredential(primaryCredentialType);
+	uiStore.openNewCredential(primaryCredentialType, false, false, undefined, undefined, undefined, {
+		hideAskAssistant: true,
+	});
 }
 
 function onEditCredential(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (credId) {
-		uiStore.openExistingCredential(credId);
+		uiStore.openExistingCredential(credId, { hideAskAssistant: true });
 	}
 }
 

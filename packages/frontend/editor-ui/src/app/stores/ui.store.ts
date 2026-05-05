@@ -535,12 +535,13 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(DELETE_USER_MODAL_KEY);
 	};
 
-	const openExistingCredential = (id: string) => {
+	const openExistingCredential = (id: string, options: { hideAskAssistant?: boolean } = {}) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			projectId: undefined,
+			hideAskAssistant: options.hideAskAssistant,
 		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -552,6 +553,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		projectId?: string,
 		suggestedName?: string,
 		nodeName?: string,
+		options: { hideAskAssistant?: boolean } = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
@@ -561,6 +563,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			projectId,
 			suggestedName,
 			nodeName,
+			hideAskAssistant: options.hideAskAssistant,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
