@@ -11,6 +11,36 @@ import { formatEvalSetupTask } from './format-eval-setup-task';
 import { DEFAULT_EVAL_SHAPE, inferEvalShape, type EvalShape } from './infer-eval-shape.service';
 import type { InstanceAiContext } from '../../types';
 
+const ACTUAL_COLUMN_PREFIX_REGEX = /^actual[_-]/i;
+const EXPECTED_COLUMN_PREFIX_REGEX = /^(expected[_-]|ground[_-]?truth)/i;
+
+async function deriveShapeFromDataTable(
+	context: InstanceAiContext,
+	dataTableId: string,
+	projectId: string | undefined,
+	fallback: EvalShape,
+): Promise<EvalShape> {
+	try {
+		const columns = await context.dataTableService.getSchema(dataTableId, { projectId });
+		const names = columns.map((c) => c.name);
+		const expectedColumns = names.filter((n) => EXPECTED_COLUMN_PREFIX_REGEX.test(n));
+		const inputColumns = names.filter(
+			(n) => !ACTUAL_COLUMN_PREFIX_REGEX.test(n) && !EXPECTED_COLUMN_PREFIX_REGEX.test(n),
+		);
+
+		if (inputColumns.length === 0) return fallback;
+
+		return {
+			suggestedInputColumns: inputColumns,
+			suggestedOutputColumns:
+				expectedColumns.length > 0 ? expectedColumns : fallback.suggestedOutputColumns,
+			suggestedMetrics: fallback.suggestedMetrics,
+		};
+	} catch {
+		return fallback;
+	}
+}
+
 const inputSchema = z.object({
 	action: z.literal('propose').describe('Propose an evaluation setup for an AI workflow'),
 	workflowId: z.string().describe('ID of the workflow'),
@@ -86,10 +116,24 @@ export function createEvalsTool(context: InstanceAiContext) {
 			const detection = detectAiNodes(wf);
 
 			// Reuse cached shape so metric IDs match the user's selection.
-			const shape =
+			const cachedShape =
 				proposalCache.get(input.workflowId) ??
 				(await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE));
 			proposalCache.delete(input.workflowId);
+
+			// When linking an existing DataTable, the table's actual columns are
+			// authoritative — the LLM-inferred shape is only a guess. Override the
+			// suggested input/output columns with the real schema so the eval-setup
+			// agent's shape bridge references columns that actually exist.
+			const shape: EvalShape =
+				resumeData.datasetChoice === 'link-existing' && resumeData.existingDataTableId
+					? await deriveShapeFromDataTable(
+							context,
+							resumeData.existingDataTableId,
+							input.projectId,
+							cachedShape,
+						)
+					: cachedShape;
 
 			// Filter metrics by user selection, falling back to defaults if none selected.
 			const selectedMetricIds =

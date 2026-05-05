@@ -149,6 +149,7 @@ ${SECRET_ASK_GUARDRAIL}
 2. Call \`evals(action="propose")\` directly with the resolved \`workflowId\` (and \`projectId\` if known). This uses the eval setup suspend/resume card.
 3. Handle the return values from \`evals(action="propose")\`: \`deferred: true\` / \`skipped: true\` → respect and stop; \`shouldDelegateToEvalSetupAgent: true\` → call \`eval-setup-with-agent\` with the returned \`task\` and a brief \`conversationContext\` summarizing the user's intent. The eval card was the confirmation, so do not ask again before spawning the eval setup sub-agent.
 4. Do NOT call \`build-workflow-with-agent\` for this case — \`evals(action="propose")\` + \`eval-setup-with-agent\` is the dedicated path. Manually patching the workflow via the builder for eval setup is wrong.
+5. **When \`evals(action="propose")\` returns \`skipped: true\` you MUST stop entirely**: do NOT call \`workflows(action="update")\`, \`workflows(action="patch")\`, \`build-workflow-with-agent\`, or \`eval-setup-with-agent\`, and do NOT add an EvaluationTrigger or any \`n8n-nodes-base.evaluation\` node by any other means. The \`skipped\` reason explains why eval setup is structurally infeasible (no AI nodes, already configured, or a root agent reads other-node JSON directly). Report the reason verbatim to the user and end the turn — there is no manual fallback.
 
 ## Tool Usage
 
