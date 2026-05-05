@@ -363,6 +363,64 @@ describe('parseStoredMessages', () => {
 			});
 		});
 
+		it('should place leading orphan snapshots before later assistant messages', () => {
+			const orphanTree = makeSnapshotTree('The run was cancelled before I could send a response.');
+			const secondTree = makeSnapshotTree('Second assistant response');
+			const messages: MastraDBMessage[] = [
+				{
+					id: 'msg-u1',
+					role: 'user',
+					content: 'Cancel this run',
+					createdAt: makeDate(),
+				},
+				{
+					id: 'msg-u2',
+					role: 'user',
+					content: 'Now answer normally',
+					createdAt: makeDate(2),
+				},
+				{
+					id: 'msg-a2',
+					role: 'assistant',
+					content: { format: 2, content: 'Second assistant response' },
+					createdAt: makeDate(3),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: orphanTree,
+					runId: 'run_cancelled',
+					messageGroupId: 'mg_cancelled',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+				{
+					tree: secondTree,
+					runId: 'run_second',
+					messageGroupId: 'mg_second',
+					createdAt: makeDate(4),
+					updatedAt: makeDate(4),
+				},
+			]);
+
+			expect(result).toHaveLength(4);
+			expect(result[1]).toMatchObject({
+				role: 'assistant',
+				runId: 'run_cancelled',
+				messageGroupId: 'mg_cancelled',
+				content: orphanTree.textContent,
+				agentTree: orphanTree,
+			});
+			expect(result[3]).toMatchObject({
+				role: 'assistant',
+				runId: 'run_second',
+				messageGroupId: 'mg_second',
+				content: 'Second assistant response',
+				agentTree: secondTree,
+			});
+		});
+
 		it('should apply renderHint correctly for known tool names', () => {
 			const messages: MastraDBMessage[] = [
 				{

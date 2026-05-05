@@ -398,7 +398,6 @@ export function isDisplayableConfirmationRequest(
 	if (hasItems(payload.setupRequests)) return true;
 	if (hasItems(payload.credentialRequests)) return true;
 	if (payload.domainAccess) return true;
-	if (payload.credentialFlow) return true;
 
 	const inputType = payload.inputType ?? 'approval';
 	switch (inputType) {

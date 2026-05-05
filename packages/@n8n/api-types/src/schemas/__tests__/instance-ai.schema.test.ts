@@ -166,6 +166,9 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+	});
+
+	it('does not treat credential flow metadata as displayable on its own', () => {
 		expect(
 			isDisplayableConfirmationRequest(
 				makeConfirmation({
@@ -173,7 +176,7 @@ describe('isDisplayableConfirmationRequest', () => {
 					credentialFlow: { stage: 'finalize' },
 				}),
 			),
-		).toBe(true);
+		).toBe(false);
 	});
 
 	it('does not treat lightweight task lists as displayable plan reviews', () => {
