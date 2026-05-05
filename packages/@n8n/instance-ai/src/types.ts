@@ -1,8 +1,8 @@
 import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type { ToolsInput } from '@mastra/core/agent';
 import type { MastraCompositeStore } from '@mastra/core/storage';
-import type { Workspace } from '@mastra/core/workspace';
 import type { Memory } from '@mastra/memory';
+import type { Workspace } from '@n8n/agents';
 import type {
 	TaskList,
 	InstanceAiAttachment,

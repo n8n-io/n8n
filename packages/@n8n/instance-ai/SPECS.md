@@ -465,7 +465,7 @@ pnpm typecheck
 - [ ] Remove `TypeORMWorkflowsStorage` from the active runtime path.
 - [ ] Remove observational memory runtime usage.
 - [ ] Keep or replace compaction as the operational long-context mechanism.
-- [ ] Rewrite workspace providers against native agents workspace interfaces.
+- [x] Rewrite workspace providers against native agents workspace interfaces.
 - [ ] Replace Mastra MCP usage with native MCP or native dynamic tools.
 - [ ] Update LangSmith tracing to native telemetry/events where possible.
 - [ ] Update docs that mention Mastra runtime behavior.

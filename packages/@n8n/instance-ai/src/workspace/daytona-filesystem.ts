@@ -20,7 +20,8 @@ import type {
 	ProviderStatus,
 } from '@n8n/agents';
 import { BaseFilesystem } from '@n8n/agents';
-import type { DaytonaSandbox } from '@mastra/daytona';
+
+import type { DaytonaSandbox } from './daytona-sandbox';
 
 /**
  * A native agents filesystem implementation that delegates to the Daytona SDK's

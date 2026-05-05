@@ -38,7 +38,7 @@ export interface N8nSandboxFileEntry {
 	modTime: string;
 }
 
-/** File stat payload mapped into Mastra-friendly shape. */
+/** File stat payload mapped into the native workspace shape. */
 export interface N8nSandboxFileStat {
 	name: string;
 	path: string;
