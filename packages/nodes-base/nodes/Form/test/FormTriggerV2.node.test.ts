@@ -4,11 +4,37 @@ import { NodeOperationError, type INode } from 'n8n-workflow';
 
 import { testVersionedWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
 
+import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import { FormTrigger } from '../FormTrigger.node';
+import { FormTriggerV2 } from '../v2/FormTriggerV2.node';
+
+const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
+	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
 
 describe('FormTrigger', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	it('should tell builders to keep inbound authentication disabled unless requested', () => {
+		const formTriggerV2 = new FormTriggerV2({
+			displayName: 'n8n Form Trigger',
+			name: 'formTrigger',
+			group: ['trigger'],
+			description: 'Generate webforms in n8n and pass their responses to the workflow',
+			defaultVersion: 2.5,
+		});
+
+		const authParam = formTriggerV2.description.properties.find(
+			(property) => property.name === FORM_TRIGGER_AUTHENTICATION_PROPERTY,
+		);
+
+		expect(authParam).toMatchObject({
+			default: 'none',
+			builderHint: {
+				message: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+			},
+		});
 	});
 
 	it('should render a form template with correct fields', async () => {

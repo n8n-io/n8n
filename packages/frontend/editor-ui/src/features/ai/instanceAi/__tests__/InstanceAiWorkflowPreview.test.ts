@@ -21,7 +21,6 @@ const renderComponent = createComponentRenderer(InstanceAiWorkflowPreview, {
 				props: [
 					'mode',
 					'workflow',
-					'executionId',
 					'canOpenNdv',
 					'canExecute',
 					'hideControls',
@@ -54,7 +53,7 @@ describe('InstanceAiWorkflowPreview', () => {
 	it('should render without throwing', () => {
 		expect(() =>
 			renderComponent({
-				props: { workflowId: null, executionId: null },
+				props: { workflowId: null },
 			}),
 		).not.toThrow();
 	});
@@ -63,7 +62,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		mockFetchWorkflow.mockRejectedValue(new Error('Not found'));
 
 		const { getByText } = renderComponent({
-			props: { workflowId: 'wf-deleted', executionId: null },
+			props: { workflowId: 'wf-deleted' },
 		});
 
 		await waitFor(() => {
@@ -71,11 +70,11 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
-	it('should render WorkflowPreview in workflow mode by default', async () => {
+	it('should render WorkflowPreview', async () => {
 		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
 
 		const { getByTestId } = renderComponent({
-			props: { workflowId: 'wf-123', executionId: null },
+			props: { workflowId: 'wf-123' },
 		});
 
 		await waitFor(() => {
@@ -88,7 +87,7 @@ describe('InstanceAiWorkflowPreview', () => {
 		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
 
 		const { getByTestId } = renderComponent({
-			props: { workflowId: 'wf-123', executionId: null },
+			props: { workflowId: 'wf-123' },
 		});
 
 		await waitFor(() => {
@@ -101,7 +100,7 @@ describe('InstanceAiWorkflowPreview', () => {
 
 	it('should emit iframe-ready on n8nReady postMessage', async () => {
 		const { emitted } = renderComponent({
-			props: { workflowId: null, executionId: null },
+			props: { workflowId: null },
 		});
 
 		window.dispatchEvent(
@@ -118,9 +117,35 @@ describe('InstanceAiWorkflowPreview', () => {
 		});
 	});
 
+	it('should emit workflow-loaded after fetch resolves', async () => {
+		mockFetchWorkflow.mockResolvedValue(fakeWorkflow);
+
+		const { emitted } = renderComponent({
+			props: { workflowId: 'wf-123' },
+		});
+
+		await waitFor(() => {
+			expect(emitted('workflow-loaded')).toBeTruthy();
+		});
+		expect(emitted('workflow-loaded')).toEqual([['wf-123']]);
+	});
+
+	it('should not emit workflow-loaded when fetch fails', async () => {
+		mockFetchWorkflow.mockRejectedValue(new Error('boom'));
+
+		const { emitted, getByText } = renderComponent({
+			props: { workflowId: 'wf-broken' },
+		});
+
+		await waitFor(() => {
+			expect(getByText('Could not load workflow')).toBeInTheDocument();
+		});
+		expect(emitted('workflow-loaded')).toBeUndefined();
+	});
+
 	it('should emit iframe-ready even when n8nReady has no pushRef', async () => {
 		const { emitted } = renderComponent({
-			props: { workflowId: null, executionId: null },
+			props: { workflowId: null },
 		});
 
 		window.dispatchEvent(

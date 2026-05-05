@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { EncryptionKeyProxy, InstanceSettings } from 'n8n-core';
 
 import { KeyManagerService } from './key-manager.service';
 
@@ -9,6 +9,7 @@ export class EncryptionBootstrapService {
 	constructor(
 		private readonly keyManager: KeyManagerService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly encryptionKeyProxy: EncryptionKeyProxy,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('encryption-key-manager');
@@ -17,6 +18,7 @@ export class EncryptionBootstrapService {
 	async run(): Promise<void> {
 		await this.keyManager.bootstrapLegacyCbcKey(this.instanceSettings.encryptionKey);
 		await this.keyManager.bootstrapGcmKey();
+		this.encryptionKeyProxy.setProvider(this.keyManager);
 		this.logger.debug('Encryption key bootstrap complete');
 	}
 }
