@@ -84,16 +84,21 @@ export function useCredentialOAuth() {
 		}
 
 		const overwrittenProperties = credentialType.__overwrittenProperties ?? [];
-		if (overwrittenProperties.length === 0) {
-			return false;
-		}
-
 		const visibleProperties = credentialType.properties.filter(
 			(prop) =>
 				prop.type !== 'hidden' &&
 				prop.type !== 'notice' &&
 				!overwrittenProperties.includes(prop.name),
 		);
+
+		// TODO: extract this case out of this func?
+		if (visibleProperties.length === 0) {
+			return true;
+		}
+
+		if (overwrittenProperties.length === 0) {
+			return false;
+		}
 
 		return visibleProperties.every(
 			(prop) => prop.required !== true || (prop.type !== 'string' && prop.type !== 'number'),
