@@ -439,7 +439,9 @@ describe('ExportService', () => {
 			expect(result.totalRows).toBe(501);
 			// First file appended once for first page; second page rolls into a new file
 			expect(appendFile).toHaveBeenCalledTimes(2);
-			void queryCount;
+			// 1 list-tables + 1 list-columns + 2 page queries — second page has < pageSize
+			// rows, so the loop short-circuits without a terminator query.
+			expect(queryCount).toBe(4);
 		});
 
 		it('should handle a missing dynamic table gracefully without aborting', async () => {
