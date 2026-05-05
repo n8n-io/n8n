@@ -1,7 +1,11 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { mock } from 'jest-mock-extended';
 
-import type { OrchestrationContext, SpawnBackgroundTaskOptions } from '../../../types';
+import type {
+	OrchestrationContext,
+	SpawnBackgroundTaskOptions,
+	SpawnBackgroundTaskResult,
+} from '../../../types';
 import { generateSampleRows } from '../../evals/generate-sample-rows.service';
 import { createEvalDataAgentTool } from '../eval-data-agent.tool';
 
@@ -107,6 +111,13 @@ function makeContext(workflow: WorkflowJSON) {
 		},
 	};
 	const context = mock<OrchestrationContext>();
+	const spawnBackgroundTask = jest.fn<SpawnBackgroundTaskResult, [SpawnBackgroundTaskOptions]>(
+		() => ({
+			status: 'started',
+			taskId: 'evaldata-1',
+			agentId: 'agent-evaldata-1',
+		}),
+	);
 	context.threadId = 'thread-1';
 	context.runId = 'run-1';
 	context.userId = 'user-1';
@@ -115,12 +126,8 @@ function makeContext(workflow: WorkflowJSON) {
 	context.domainTools = {};
 	context.tracing = undefined;
 	context.eventBus.publish = jest.fn();
-	context.spawnBackgroundTask = jest.fn(() => ({
-		status: 'started' as const,
-		taskId: 'evaldata-1',
-		agentId: 'agent-evaldata-1',
-	}));
-	return { context, domainContext };
+	context.spawnBackgroundTask = spawnBackgroundTask;
+	return { context, domainContext, spawnBackgroundTask };
 }
 
 describe('createEvalDataAgentTool', () => {
@@ -134,14 +141,17 @@ describe('createEvalDataAgentTool', () => {
 
 	it('suspends with a generic true/false approval before generating rows', async () => {
 		const { context } = makeContext(workflowWithEvalDataTable());
-		const suspend = jest.fn().mockImplementation(async () => await new Promise(() => {}));
+		const suspend = jest
+			.fn<Promise<never>, [unknown]>()
+			.mockImplementation(async () => await new Promise(() => {}));
 		const tool = createEvalDataAgentTool(context);
 
 		void tool.execute!({ workflowId: 'w1', projectId: 'p1' }, { agent: { suspend } } as never);
 
 		await new Promise(process.nextTick);
 		expect(suspend).toHaveBeenCalledTimes(1);
-		expect(suspend.mock.calls[0][0]).toMatchObject({
+		const [suspendPayload] = suspend.mock.calls[0];
+		expect(suspendPayload).toMatchObject({
 			severity: 'info',
 			workflowId: 'w1',
 			dataTableId: 'dt-1',
@@ -163,7 +173,9 @@ describe('createEvalDataAgentTool', () => {
 	});
 
 	it('starts an eval-data background agent and inserts generated rows in its run', async () => {
-		const { context, domainContext } = makeContext(workflowWithEvalDataTable());
+		const { context, domainContext, spawnBackgroundTask } = makeContext(
+			workflowWithEvalDataTable(),
+		);
 		const tool = createEvalDataAgentTool(context);
 
 		const result = (await tool.execute!({ workflowId: 'w1', projectId: 'p1', rowCount: 2 }, {
@@ -175,9 +187,8 @@ describe('createEvalDataAgentTool', () => {
 			shouldWaitForEvalDataAgent: true,
 			taskId: expect.stringMatching(/^evaldata-/) as unknown,
 		});
-		expect(context.spawnBackgroundTask).toHaveBeenCalledTimes(1);
-		const spawnOptions = (context.spawnBackgroundTask as jest.Mock).mock
-			.calls[0][0] as SpawnBackgroundTaskOptions;
+		expect(spawnBackgroundTask).toHaveBeenCalledTimes(1);
+		const [spawnOptions] = spawnBackgroundTask.mock.calls[0];
 		expect(spawnOptions.role).toBe('eval-data');
 		expect(spawnOptions.dedupeKey).toMatchObject({
 			role: 'eval-data',
@@ -190,8 +201,9 @@ describe('createEvalDataAgentTool', () => {
 			async () => {},
 		);
 
-		expect(mockGenerateSampleRows).toHaveBeenCalledWith({
-			workflow: expect.objectContaining({ name: 'Support Writer' }),
+		const generatedRowsInput = mockGenerateSampleRows.mock.calls[0][0];
+		expect(generatedRowsInput.workflow.name).toBe('Support Writer');
+		expect(generatedRowsInput).toMatchObject({
 			columns: ['user_message', 'expected_response'],
 			rowCount: 2,
 			targetAgentNodeName: 'Writer Agent',
@@ -204,13 +216,13 @@ describe('createEvalDataAgentTool', () => {
 			],
 			{ projectId: 'p1' },
 		);
-		expect(output).toMatchObject({
-			text: expect.stringContaining('2 rows inserted'),
-			outcome: {
-				workflowId: 'w1',
-				dataTableId: 'dt-1',
-				insertedCount: 2,
-			},
+		expect(output).not.toEqual(expect.any(String));
+		if (typeof output === 'string') throw new Error('Expected a structured background task result');
+		expect(output.text).toContain('2 rows inserted');
+		expect(output.outcome).toMatchObject({
+			workflowId: 'w1',
+			dataTableId: 'dt-1',
+			insertedCount: 2,
 		});
 	});
 });

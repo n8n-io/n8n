@@ -59,21 +59,12 @@ export interface ExecutionDetail {
 	data: string;
 }
 
-export interface WorkflowTag {
-	id: string;
-	name: string;
-}
-
 /** Subset of fields accepted by POST /rest/workflows. */
 export interface WorkflowCreatePayload {
 	name: string;
 	nodes: Array<WorkflowNodeResponse & Record<string, unknown>>;
 	connections: Record<string, unknown>;
-	settings?: Record<string, unknown> | null;
-	staticData?: Record<string, unknown> | null;
-	meta?: Record<string, unknown> | null;
 	pinData?: Record<string, unknown> | null;
-	tags?: string[] | WorkflowTag[];
 	projectId?: string;
 }
 
@@ -92,8 +83,6 @@ export interface DataTableResponse {
 	name: string;
 	columns?: Array<{ id?: string; name: string; type: string }>;
 }
-
-export type DataTableRowInput = Record<string, string | number | boolean | null>;
 
 export type DataTableRowOutput = Record<string, unknown>;
 
@@ -443,21 +432,6 @@ export class N8nClient {
 			body: payload,
 		})) as { data: DataTableResponse };
 		return result.data;
-	}
-
-	/**
-	 * Insert rows into a data table.
-	 * POST /rest/projects/:projectId/data-tables/:dataTableId/insert
-	 */
-	async insertDataTableRows(
-		projectId: string,
-		dataTableId: string,
-		rows: DataTableRowInput[],
-	): Promise<void> {
-		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}/insert`, {
-			method: 'POST',
-			body: { data: rows, returnType: 'count' },
-		});
 	}
 
 	/**

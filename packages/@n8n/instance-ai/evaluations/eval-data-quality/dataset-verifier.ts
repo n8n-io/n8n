@@ -1,6 +1,5 @@
 import type {
 	DatasetFinding,
-	DatasetSidecar,
 	DatasetVerifierInput,
 	DatasetVerifierOptions,
 	DatasetVerifierResult,
@@ -182,8 +181,4 @@ function isEmptyCell(value: unknown): boolean {
 	if (value === null || value === undefined) return true;
 	if (typeof value === 'string' && value.trim().length === 0) return true;
 	return false;
-}
-
-export function describeRequiredColumns(sidecar: DatasetSidecar): string[] {
-	return [...new Set([...sidecar.inputColumns, ...sidecar.expectedOutputColumns])];
 }
