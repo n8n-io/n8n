@@ -80,6 +80,7 @@ import type * as Undici from 'undici';
 import { v5 as uuidv5 } from 'uuid';
 
 import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { AiService } from '@/services/ai.service';
 import { Push } from '@/push';
@@ -275,6 +276,7 @@ export class InstanceAiService {
 		private readonly errorReporter: ErrorReporter,
 		ssrfProtectionConfig: SsrfProtectionConfig,
 		ssrfProtectionService: SsrfProtectionService,
+		private readonly eventService: EventService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -287,6 +289,21 @@ export class InstanceAiService {
 		this.mcpClientManager = new McpClientManager(
 			ssrfProtectionConfig.enabled ? ssrfProtectionService : undefined,
 		);
+
+		// When the admin changes MCP settings, tear down existing clients so the
+		// next agent run rebuilds them against the new config. In-flight tool
+		// calls on disconnected clients will fail — that's accepted: the
+		// alternative is leaking clients keyed by stale config until shutdown.
+		// We only listen for the MCP-changed flag so unrelated settings saves
+		// don't churn live MCP connections.
+		this.eventService.on('instance-ai-settings-updated', ({ mcpSettingsChanged }) => {
+			if (!mcpSettingsChanged) return;
+			this.mcpClientManager.disconnect().catch((error: unknown) => {
+				this.logger.warn('Failed to disconnect MCP clients after settings change', {
+					error: getErrorMessage(error),
+				});
+			});
+		});
 
 		this.startConfirmationTimeoutSweep();
 	}
