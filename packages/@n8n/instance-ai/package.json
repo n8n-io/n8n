@@ -34,6 +34,7 @@
     "@daytonaio/sdk": "0.149.0",
     "@joplin/turndown-plugin-gfm": "^1.0.12",
     "langsmith": "catalog:",
+    "@opentelemetry/api": "^1.9.0",
     "@mozilla/readability": "^0.6.0",
     "@n8n/api-types": "workspace:*",
     "@n8n/utils": "workspace:*",

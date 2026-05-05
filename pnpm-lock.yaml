@@ -1615,6 +1615,9 @@ importers:
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../workflow-sdk
+      '@opentelemetry/api':
+        specifier: ^1.9.0
+        version: 1.9.0
       csv-parse:
         specifier: 5.5.0
         version: 5.5.0

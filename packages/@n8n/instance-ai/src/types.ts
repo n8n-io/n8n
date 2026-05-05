@@ -1,6 +1,7 @@
 import type { LanguageModelV2 } from '@ai-sdk/provider-v5';
 import type {
 	AttributeValue,
+	BuiltTelemetry,
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
@@ -803,6 +804,8 @@ export interface InstanceAiTraceRun {
 	startTime: number;
 	endTime?: number;
 	traceId: string;
+	otelTraceId?: string;
+	otelSpanId?: string;
 	dottedOrder: string;
 	executionOrder: number;
 	childExecutionOrder: number;
@@ -868,7 +871,7 @@ export interface InstanceAiTraceContext {
 		tools: InstanceAiToolRegistry,
 		options?: InstanceAiToolTraceOptions,
 	) => InstanceAiToolRegistry;
-	getTelemetry?: (options: InstanceAiTelemetryOptions) => Telemetry;
+	getTelemetry?: (options: InstanceAiTelemetryOptions) => Telemetry | BuiltTelemetry;
 	/** Trace replay mode: 'record' captures tool I/O, 'replay' remaps IDs, 'off' disables. */
 	replayMode: TraceReplayMode;
 	/** Shared ID remapper instance — available in 'replay' mode. */

@@ -327,12 +327,14 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(tracing?.getTelemetry).toBeDefined();
 
-		const telemetry = await tracing!.getTelemetry!({
+		const telemetryOrBuilder = tracing!.getTelemetry!({
 			agentRole: 'orchestrator',
 			functionId: 'instance-ai.orchestrator',
 			executionMode: 'foreground',
 			metadata: { custom_flag: true },
-		}).build();
+		});
+		const telemetry =
+			'build' in telemetryOrBuilder ? await telemetryOrBuilder.build() : telemetryOrBuilder;
 
 		expect(telemetry.functionId).toBe('instance-ai.orchestrator');
 		expect(telemetry.recordInputs).toBe(true);
