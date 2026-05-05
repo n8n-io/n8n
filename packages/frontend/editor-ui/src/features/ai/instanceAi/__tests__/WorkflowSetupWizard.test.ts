@@ -5,6 +5,7 @@ import WorkflowSetupWizard from '../workflowSetup/components/WorkflowSetupWizard
 import type { WorkflowSetupContext } from '../workflowSetup/composables/useWorkflowSetupContext';
 import { makeWorkflowSetupCard } from '../workflowSetup/__tests__/factories';
 import type { WorkflowSetupCard } from '../workflowSetup/workflowSetup.types';
+import type { INodeUi } from '@/Interface';
 
 const workflowSetupContext = vi.hoisted(() => ({
 	current: undefined as unknown as WorkflowSetupContext,
@@ -94,6 +95,8 @@ function makeContext(isComplete: Ref<boolean>, options: ContextOptions = {}): Wo
 		credentialFlow: computed(() => undefined),
 		isActionPending: options.isActionPending ?? ref(false),
 		setSelection: vi.fn(),
+		setParameterValue: vi.fn(),
+		getDisplayNode: (setupCard) => setupCard.node as INodeUi,
 		isCardComplete: () => isComplete.value,
 		isCredentialTestFailed: () => options.isCredentialTestFailed?.value ?? false,
 		isCardSkipped: () => options.isSkipped?.value ?? false,

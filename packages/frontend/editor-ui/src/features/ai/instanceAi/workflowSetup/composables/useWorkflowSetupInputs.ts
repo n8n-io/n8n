@@ -1,33 +1,43 @@
-import { ref, watch, onBeforeUnmount, type ComputedRef, type Ref } from 'vue';
+import { computed, ref, watch, onBeforeUnmount, type ComputedRef, type Ref } from 'vue';
+import type { INodeUi } from '@/Interface';
+import { deepCopy, type INodeParameters } from 'n8n-workflow';
+import { setParameterValue as setParameterValueByPath } from '@/app/utils/parameterUtils';
 import {
 	listenForCredentialChanges,
 	useCredentialsStore,
 } from '@/features/credentials/credentials.store';
 import { useCredentialTestInBackground } from '@/features/credentials/composables/useCredentialTestInBackground';
-import type { WorkflowSetupCard } from '../workflowSetup.types';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { WorkflowSetupApplyPayload, WorkflowSetupCard } from '../workflowSetup.types';
+import { getWorkflowSetupParameterIssues } from '../workflowSetupParameterIssues';
 
-type SelectionsMap = Record<string, Record<string, string>>;
+type CredentialSelectionsMap = Record<string, Record<string, string>>;
+type ParameterValuesMap = Record<string, INodeParameters>;
 
-export function useWorkflowSetupSelections(deps: {
+export function useWorkflowSetupInputs(deps: {
 	cards: ComputedRef<WorkflowSetupCard[]>;
 	activeCard: ComputedRef<WorkflowSetupCard | undefined>;
 }): {
-	selections: Ref<SelectionsMap>;
+	selections: Ref<CredentialSelectionsMap>;
+	parameterValues: Ref<ParameterValuesMap>;
 	skippedCardIds: Ref<Set<string>>;
 	setSelection: (nodeName: string, credType: string, credId: string | null) => void;
+	setParameterValue: (card: WorkflowSetupCard, parameterName: string, value: unknown) => void;
+	getDisplayNode: (card: WorkflowSetupCard) => INodeUi;
 	isCardComplete: (card: WorkflowSetupCard) => boolean;
 	isCredentialTestFailed: (card: WorkflowSetupCard) => boolean;
 	isCardSkipped: (card: WorkflowSetupCard) => boolean;
 	markCardSkipped: (card: WorkflowSetupCard) => void;
 	clearCardSkipped: (card: WorkflowSetupCard) => void;
 	allCardsComplete: () => boolean;
-	buildNodeCredentials: () => Record<string, Record<string, string>>;
-	buildCompletedNodeCredentials: () => Record<string, Record<string, string>>;
+	buildCompletedSetupPayload: () => WorkflowSetupApplyPayload;
 } {
 	const credentialsStore = useCredentialsStore();
+	const nodeTypesStore = useNodeTypesStore();
 	const { isCredentialTypeTestable, testCredentialInBackground } = useCredentialTestInBackground();
 
-	const selections = ref<SelectionsMap>({});
+	const selections = ref<CredentialSelectionsMap>({});
+	const parameterValues = ref<ParameterValuesMap>({});
 	const skippedCardIds = ref<Set<string>>(new Set());
 
 	function findCardByNodeAndType(
@@ -62,32 +72,72 @@ export function useWorkflowSetupSelections(deps: {
 		};
 	}
 
+	function setParameterValue(card: WorkflowSetupCard, parameterName: string, value: unknown) {
+		const current = parameterValues.value[card.targetNodeName] ?? card.node.parameters;
+		const next = deepCopy(current) as INodeParameters;
+		setParameterValueByPath(next, parameterName, value);
+		parameterValues.value = {
+			...parameterValues.value,
+			[card.targetNodeName]: next,
+		};
+		clearCardSkipped(card);
+	}
+
 	function isCardSkipped(card: WorkflowSetupCard): boolean {
 		return skippedCardIds.value.has(card.id);
 	}
 
 	function markCardSkipped(card: WorkflowSetupCard): void {
-		if (skippedCardIds.value.has(card.id)) return;
-		const next = new Set(skippedCardIds.value);
-		next.add(card.id);
-		skippedCardIds.value = next;
+		skippedCardIds.value.add(card.id);
 	}
 
 	function clearCardSkipped(card: WorkflowSetupCard): void {
-		if (!skippedCardIds.value.has(card.id)) return;
-		const next = new Set(skippedCardIds.value);
-		next.delete(card.id);
-		skippedCardIds.value = next;
+		skippedCardIds.value.delete(card.id);
 	}
 
-	function isCardComplete(card: WorkflowSetupCard): boolean {
+	function getDisplayNode(card: WorkflowSetupCard): INodeUi {
+		return {
+			...card.node,
+			parameters: parameterValues.value[card.targetNodeName] ?? card.node.parameters,
+		} as INodeUi;
+	}
+
+	const parameterIssuesByCardId = computed(() => {
+		const result = new Map<string, Record<string, string[]>>();
+		for (const card of deps.cards.value) {
+			if (card.parameterNames.length === 0) {
+				result.set(card.id, {});
+				continue;
+			}
+			const node = getDisplayNode(card);
+			const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+			result.set(card.id, getWorkflowSetupParameterIssues(node, nodeType, card.parameterNames));
+		}
+		return result;
+	});
+
+	function getParameterIssues(card: WorkflowSetupCard): Record<string, string[]> {
+		return parameterIssuesByCardId.value.get(card.id) ?? {};
+	}
+
+	function isCredentialComplete(card: WorkflowSetupCard): boolean {
+		if (!card.credentialType) return true;
 		const selectedCredentialId = selections.value[card.targetNodeName]?.[card.credentialType];
 		if (!selectedCredentialId) return false;
 		if (!isCredentialTypeTestable(card.credentialType)) return true;
 		return credentialsStore.isCredentialTestedOk(selectedCredentialId);
 	}
 
+	function areParametersComplete(card: WorkflowSetupCard): boolean {
+		return Object.keys(getParameterIssues(card)).length === 0;
+	}
+
+	function isCardComplete(card: WorkflowSetupCard): boolean {
+		return isCredentialComplete(card) && areParametersComplete(card);
+	}
+
 	function isCredentialTestFailed(card: WorkflowSetupCard): boolean {
+		if (!card.credentialType) return false;
 		const selectedCredentialId = selections.value[card.targetNodeName]?.[card.credentialType];
 		if (!selectedCredentialId || !isCredentialTypeTestable(card.credentialType)) return false;
 		return credentialsStore.credentialTestResults.get(selectedCredentialId) === 'error';
@@ -97,24 +147,19 @@ export function useWorkflowSetupSelections(deps: {
 		return deps.cards.value.every(isCardComplete);
 	}
 
-	function buildNodeCredentials(): Record<string, Record<string, string>> {
-		const out: Record<string, Record<string, string>> = {};
-		for (const [nodeName, perType] of Object.entries(selections.value)) {
-			const filtered: Record<string, string> = {};
-			for (const [credType, credId] of Object.entries(perType)) {
-				if (credId) filtered[credType] = credId;
-			}
-			if (Object.keys(filtered).length > 0) {
-				out[nodeName] = filtered;
-			}
-		}
-		return out;
+	function buildCompletedSetupPayload(): WorkflowSetupApplyPayload {
+		return prunePayload({
+			nodeCredentials: buildNodeCredentials(isCredentialComplete),
+			nodeParameters: buildNodeParameters(areParametersComplete),
+		});
 	}
 
-	function buildCompletedNodeCredentials(): Record<string, Record<string, string>> {
+	function buildNodeCredentials(
+		shouldInclude: (card: WorkflowSetupCard) => boolean,
+	): Record<string, Record<string, string>> {
 		const out: Record<string, Record<string, string>> = {};
 		for (const card of deps.cards.value) {
-			if (!isCardComplete(card)) continue;
+			if (!card.credentialType || !shouldInclude(card)) continue;
 			const credId = selections.value[card.targetNodeName]?.[card.credentialType];
 			if (!credId) continue;
 			const perType = out[card.targetNodeName] ?? {};
@@ -124,60 +169,70 @@ export function useWorkflowSetupSelections(deps: {
 		return out;
 	}
 
+	function buildNodeParameters(
+		shouldInclude: (card: WorkflowSetupCard) => boolean,
+	): Record<string, INodeParameters> {
+		const out: Record<string, INodeParameters> = {};
+		for (const card of deps.cards.value) {
+			if (card.parameterNames.length === 0 || !shouldInclude(card)) continue;
+			const values = parameterValues.value[card.targetNodeName] ?? card.node.parameters;
+			const params: INodeParameters = {};
+			for (const name of card.parameterNames) {
+				if (values[name] !== undefined) params[name] = values[name];
+			}
+			if (Object.keys(params).length > 0) out[card.targetNodeName] = params;
+		}
+		return out;
+	}
+
 	watch(
 		deps.cards,
 		(cards) => {
-			let next: SelectionsMap | null = null;
+			let nextSelections: CredentialSelectionsMap | null = null;
+			let nextParameters: ParameterValuesMap | null = null;
 			const credentialsToTest: Array<{ id: string; type: string }> = [];
 			for (const card of cards) {
+				if (!parameterValues.value[card.targetNodeName]) {
+					nextParameters ??= { ...parameterValues.value };
+					nextParameters[card.targetNodeName] = card.node.parameters as INodeParameters;
+				}
+
+				if (!card.credentialType) continue;
 				const current = selections.value[card.targetNodeName]?.[card.credentialType];
 				if (current !== undefined) continue;
 				if (!card.currentCredentialId) continue;
-				next ??= { ...selections.value };
-				next[card.targetNodeName] = {
-					...(next[card.targetNodeName] ?? {}),
+				nextSelections ??= { ...selections.value };
+				nextSelections[card.targetNodeName] = {
+					...(nextSelections[card.targetNodeName] ?? {}),
 					[card.credentialType]: card.currentCredentialId,
 				};
 				credentialsToTest.push({ id: card.currentCredentialId, type: card.credentialType });
 			}
-			if (next) selections.value = next;
+			if (nextSelections) selections.value = nextSelections;
+			if (nextParameters) parameterValues.value = nextParameters;
 			for (const credential of credentialsToTest) {
 				testSelectedCredential(credential.id, credential.type);
 			}
 
-			// Prune skipped IDs that no longer correspond to any card.
 			if (skippedCardIds.value.size > 0) {
 				const knownIds = new Set(cards.map((c) => c.id));
-				let changed = false;
-				const pruned = new Set<string>();
 				for (const id of skippedCardIds.value) {
-					if (knownIds.has(id)) {
-						pruned.add(id);
-					} else {
-						changed = true;
-					}
+					if (!knownIds.has(id)) skippedCardIds.value.delete(id);
 				}
-				if (changed) skippedCardIds.value = pruned;
 			}
 		},
 		{ immediate: true },
 	);
 
-	// When a skipped card transitions to complete (e.g. async credential test
-	// succeeds), drop the skip flag so the card is treated as handled.
 	watch(
 		() =>
 			deps.cards.value
 				.filter((card) => skippedCardIds.value.has(card.id) && isCardComplete(card))
 				.map((c) => c.id),
 		(completedSkippedIds) => {
-			if (completedSkippedIds.length === 0) return;
-			const next = new Set(skippedCardIds.value);
-			let changed = false;
 			for (const id of completedSkippedIds) {
-				if (next.delete(id)) changed = true;
+				skippedCardIds.value.delete(id);
 			}
-			if (changed) skippedCardIds.value = next;
 		},
 	);
 
@@ -185,7 +240,7 @@ export function useWorkflowSetupSelections(deps: {
 		store: credentialsStore,
 		onCredentialCreated: (cred) => {
 			const active = deps.activeCard.value;
-			if (!active) return;
+			if (!active?.credentialType) return;
 			if (cred.type !== active.credentialType) return;
 			setSelection(active.targetNodeName, active.credentialType, cred.id);
 		},
@@ -215,15 +270,26 @@ export function useWorkflowSetupSelections(deps: {
 
 	return {
 		selections,
+		parameterValues,
 		skippedCardIds,
 		setSelection,
+		setParameterValue,
+		getDisplayNode,
 		isCardComplete,
 		isCredentialTestFailed,
 		isCardSkipped,
 		markCardSkipped,
 		clearCardSkipped,
 		allCardsComplete,
-		buildNodeCredentials,
-		buildCompletedNodeCredentials,
+		buildCompletedSetupPayload,
 	};
+}
+
+function prunePayload(payload: WorkflowSetupApplyPayload): WorkflowSetupApplyPayload {
+	const result: WorkflowSetupApplyPayload = {};
+	if (payload.nodeCredentials && Object.keys(payload.nodeCredentials).length > 0)
+		result.nodeCredentials = payload.nodeCredentials;
+	if (payload.nodeParameters && Object.keys(payload.nodeParameters).length > 0)
+		result.nodeParameters = payload.nodeParameters;
+	return result;
 }

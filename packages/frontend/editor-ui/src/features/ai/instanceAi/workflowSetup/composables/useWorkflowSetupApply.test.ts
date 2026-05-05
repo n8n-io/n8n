@@ -85,7 +85,7 @@ describe('useWorkflowSetupApply', () => {
 		const h = setupHarness({ success: true });
 		const nodeCredentials = { 'HTTP Request': { httpBasicAuth: 'cred-1' } };
 
-		await h.applyMachine.apply(nodeCredentials);
+		await h.applyMachine.apply({ nodeCredentials });
 
 		expect(h.store.confirmAction).toHaveBeenCalledWith(
 			'req-1',
@@ -98,6 +98,27 @@ describe('useWorkflowSetupApply', () => {
 			{
 				action: 'apply',
 				nodeCredentials,
+			},
+		);
+	});
+
+	it('posts apply confirmation with node parameters', async () => {
+		const h = setupHarness({ success: true });
+		const nodeParameters = { 'HTTP Request': { url: 'https://example.com/api' } };
+
+		await h.applyMachine.apply({ nodeParameters });
+
+		expect(h.store.confirmAction).toHaveBeenCalledWith(
+			'req-1',
+			true,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			{
+				action: 'apply',
+				nodeParameters,
 			},
 		);
 	});

@@ -29,7 +29,7 @@ interface Harness {
 	apply: ReturnType<typeof vi.fn>;
 	defer: ReturnType<typeof vi.fn>;
 	markCardSkipped: ReturnType<typeof vi.fn>;
-	buildCompletedNodeCredentials: ReturnType<typeof vi.fn>;
+	buildCompletedSetupPayload: ReturnType<typeof vi.fn>;
 	store: { currentThreadId: string; findToolCallByRequestId: ReturnType<typeof vi.fn> };
 	actions: ReturnType<typeof useWorkflowSetupActions>;
 }
@@ -65,17 +65,17 @@ function setupHarness(): Harness {
 		skippedSet.add(card.id);
 		skippedCardIds.value = new Set(skippedSet);
 	});
-	const buildCompletedNodeCredentials = vi.fn(() => {
+	const buildCompletedSetupPayload = vi.fn(() => {
 		const out: Record<string, Record<string, string>> = {};
 		for (const card of cards.value) {
-			if (completedSet.has(card.id)) {
+			if (completedSet.has(card.id) && card.credentialType) {
 				out[card.targetNodeName] = {
 					...(out[card.targetNodeName] ?? {}),
 					[card.credentialType]: 'cred-id',
 				};
 			}
 		}
-		return out;
+		return { nodeCredentials: out };
 	});
 
 	const store = {
@@ -97,7 +97,7 @@ function setupHarness(): Harness {
 			isCardComplete: (card) => completedSet.has(card.id),
 			isCardSkipped: (card) => skippedSet.has(card.id),
 			markCardSkipped,
-			buildCompletedNodeCredentials,
+			buildCompletedSetupPayload,
 		},
 		applyMachine: { apply, defer },
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,7 +118,7 @@ function setupHarness(): Harness {
 		apply,
 		defer,
 		markCardSkipped,
-		buildCompletedNodeCredentials,
+		buildCompletedSetupPayload,
 		store,
 		actions,
 	};
@@ -153,7 +153,7 @@ describe('useWorkflowSetupActions', () => {
 		await h.actions.skipCurrentCard();
 
 		expect(h.markCardSkipped).toHaveBeenCalledWith(h.cardB);
-		expect(h.apply).toHaveBeenCalledWith({ A: { typeA: 'cred-id' } });
+		expect(h.apply).toHaveBeenCalledWith({ nodeCredentials: { A: { typeA: 'cred-id' } } });
 		expect(h.defer).not.toHaveBeenCalled();
 		expect(telemetryTrack).toHaveBeenCalledTimes(1);
 		expect(telemetryTrack).toHaveBeenCalledWith(
@@ -256,7 +256,7 @@ describe('useWorkflowSetupActions', () => {
 
 		await h.actions.apply();
 
-		expect(h.apply).toHaveBeenCalledWith({ A: { typeA: 'cred-id' } });
+		expect(h.apply).toHaveBeenCalledWith({ nodeCredentials: { A: { typeA: 'cred-id' } } });
 		expect(telemetryTrack).toHaveBeenCalledTimes(1);
 	});
 });

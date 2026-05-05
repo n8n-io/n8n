@@ -132,25 +132,6 @@ intentionally non-functional after this PR.
 **Working after this PR:** workflows whose setup is purely credential
 selection on single-node cards.
 
-### PR 2.5 — Error + retry UI
-
-Split out of PR 2 to keep the initial credentials-only PR small and
-reviewable. Re-introduces explicit error recovery UX on top of the toast-only
-fallback shipped in PR 2:
-
-- Add `error` to `TerminalState`.
-- Re-add `applyError` ref, `lastApplyMode` ref, and `retry()` to
-  `useWorkflowSetupApply`; apply/defer failure paths set `terminalState =
-  'error'` + populate `applyError` instead of resetting to `null`.
-- `WorkflowSetupStatus` gains an `error` branch: danger icon + error message
-  + "Try again" button that emits `@retry`.
-- Shell handles `@retry` via `handleRetry`, routing between
-  `bootstrap.bootstrap()` (on bootstrap failure) and `applyMachine.retry()`
-  (which re-fires the no-card auto-apply when `lastApplyMode === 'no-card'`,
-  or just clears state so the wizard re-renders with selections preserved).
-- Re-introduce i18n keys `instanceAi.workflowSetup.applyFailed` and
-  `instanceAi.workflowSetup.tryAgain`.
-- Unit tests for the error/retry paths.
 
 ### PR 3 — Parameters
 
@@ -205,3 +186,26 @@ it, but recommended since CI had e2e coverage before the rewrite.
 - The existing ~3,050 LOC of unit tests is deleted in PR 1 — accepted
   coverage gap while the rewrite is in progress.
 - E2E coverage rebuilt in PR 6.
+
+### PR 7 — Error + retry UI
+
+Split out of PR 2 to keep the initial credentials-only PR small and
+reviewable. Re-introduces explicit error recovery UX on top of the toast-only
+fallback shipped in PR 2:
+
+- Add `error` to `TerminalState`.
+- Re-add `applyError` ref, `lastApplyMode` ref, and `retry()` to
+  `useWorkflowSetupApply`; apply/defer failure paths set `terminalState =
+  'error'` + populate `applyError` instead of resetting to `null`.
+- `WorkflowSetupStatus` gains an `error` branch: danger icon + error message
+  + "Try again" button that emits `@retry`.
+- Shell handles `@retry` via `handleRetry`, routing between
+  `bootstrap.bootstrap()` (on bootstrap failure) and `applyMachine.retry()`
+  (which re-fires the no-card auto-apply when `lastApplyMode === 'no-card'`,
+  or just clears state so the wizard re-renders with selections preserved).
+- Re-introduce i18n keys `instanceAi.workflowSetup.applyFailed` and
+  `instanceAi.workflowSetup.tryAgain`.
+- Unit tests for the error/retry paths.
+
+
+TODOS: handle autoApplied credentials. Rn those are sent to the FE with needsWork: true and are shown in the wizard but they're shown as completed initially which is weird. Either show them as not completed initially or make the primary action button to be continue unless the user is on the last card so that the user also goes through those autoApplied nodes

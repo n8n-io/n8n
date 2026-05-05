@@ -18,16 +18,65 @@ const SKIP_BADGE_BASIC_CREDENTIAL_NAME = 'B3 Skip Badge Basic Auth';
 
 const ROUTE_BACK_WORKFLOW_NAME = 'B3 Workflow Setup Route Back To Earlier Card';
 
-const AUTO_APPLY_WORKFLOW_NAME = 'B3 Workflow Setup Auto Apply Header Auth';
-const AUTO_APPLY_OLDER_CREDENTIAL_NAME = 'B3 Auto Apply Header Older';
-const AUTO_APPLY_NEWER_CREDENTIAL_NAME = 'B3 Auto Apply Header Newer';
-
 const SLACK_WORKFLOW_NAME = 'B3 Workflow Setup Slack Credential Test';
 const SLACK_CREDENTIAL_NAME = 'B3 Slack Credential Test';
 
 const SELECT_EXISTING_WORKFLOW_NAME = 'B3 Workflow Setup Select Existing Credential';
 const SELECT_EXISTING_INITIAL_CREDENTIAL_NAME = 'B3 Slack Trigger Initial Credential';
 const SELECT_EXISTING_TARGET_CREDENTIAL_NAME = 'B3 Slack Trigger Target Credential';
+
+const PARAMETER_ISSUE_WORKFLOW_NAME = 'B3 Workflow Setup Required Parameter';
+const PARAMETER_APPLY_WORKFLOW_NAME = 'B3 Full Wizard Apply';
+const PARAMETER_CREDENTIAL_NAME = 'B3 Parameter Header Auth';
+
+function createParameterOnlyWorkflow(name: string): Partial<IWorkflowBase> {
+	return {
+		name,
+		active: false,
+		nodes: [
+			{
+				id: 'trigger',
+				name: 'Manual Trigger',
+				type: 'n8n-nodes-base.manualTrigger',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			},
+			{
+				id: 'http',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [220, 0],
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'none',
+				},
+			},
+		],
+		connections: {
+			'Manual Trigger': {
+				main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
+			},
+		},
+		settings: {},
+	};
+}
+
+function createParameterAndCredentialWorkflow(name: string): Partial<IWorkflowBase> {
+	const workflow = createParameterOnlyWorkflow(name);
+	const httpNode = workflow.nodes?.find((node) => node.name === 'HTTP Request');
+	if (httpNode) {
+		httpNode.parameters = {
+			method: 'GET',
+			url: '',
+			authentication: 'genericCredentialType',
+			genericAuthType: 'httpHeaderAuth',
+		};
+	}
+	return workflow;
+}
 
 function createTwoCardWorkflow(name: string): Partial<IWorkflowBase> {
 	return {
@@ -74,42 +123,6 @@ function createTwoCardWorkflow(name: string): Partial<IWorkflowBase> {
 				main: [[{ node: 'HTTP Request Basic', type: 'main', index: 0 }]],
 			},
 			'HTTP Request Basic': {
-				main: [[{ node: 'HTTP Request Header', type: 'main', index: 0 }]],
-			},
-		},
-		settings: {},
-	};
-}
-
-function createSingleCardAutoApplyWorkflow(name: string): Partial<IWorkflowBase> {
-	return {
-		name,
-		active: false,
-		nodes: [
-			{
-				id: 'trigger',
-				name: 'Manual Trigger',
-				type: 'n8n-nodes-base.manualTrigger',
-				typeVersion: 1,
-				position: [0, 0],
-				parameters: {},
-			},
-			{
-				id: 'header',
-				name: 'HTTP Request Header',
-				type: 'n8n-nodes-base.httpRequest',
-				typeVersion: 4.2,
-				position: [220, 0],
-				parameters: {
-					method: 'GET',
-					url: 'https://example.com/header',
-					authentication: 'genericCredentialType',
-					genericAuthType: 'httpHeaderAuth',
-				},
-			},
-		],
-		connections: {
-			'Manual Trigger': {
 				main: [[{ node: 'HTTP Request Header', type: 'main', index: 0 }]],
 			},
 		},
@@ -213,6 +226,16 @@ function expectAssignedCredentialName(
 	);
 }
 
+function expectNodeParameter(
+	workflow: IWorkflowBase,
+	nodeName: string,
+	parameterName: string,
+	value: unknown,
+) {
+	const node = getNode(workflow, nodeName);
+	expect(node?.parameters?.[parameterName]).toEqual(value);
+}
+
 test.describe(
 	'Instance AI workflow setup @capability:proxy @db:reset',
 	{
@@ -266,6 +289,8 @@ test.describe(
 				{ name: APPLY_BASIC_CREDENTIAL_NAME },
 			);
 
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
 			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
 
 			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
@@ -351,7 +376,9 @@ test.describe(
 				{ name: PARTIAL_BASIC_CREDENTIAL_NAME },
 			);
 
-			// Card 1 is now complete; wizard auto-advances to card 2.
+			// Card 1 is now complete; continue explicitly to card 2.
+			await expect(n8n.instanceAi.workflowSetup.getStepText('1 of 2')).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
 			await expect(n8n.instanceAi.workflowSetup.getStepText('2 of 2')).toBeVisible();
 
 			// Skip card 2 — terminal action with one completion → partial apply.
@@ -429,41 +456,70 @@ test.describe(
 			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible();
 		});
 
-		test('should auto-apply a matching existing credential when setup starts complete', async ({
+		test('should clear required parameter issue indicator when the field is filled', async ({
 			n8n,
 		}) => {
-			await n8n.api.credentials.createCredential({
-				name: AUTO_APPLY_OLDER_CREDENTIAL_NAME,
-				type: 'httpHeaderAuth',
-				data: {
-					name: 'x-auto-older',
-					value: 'older-header-value',
-				},
-			});
-			await n8n.api.credentials.createCredential({
-				name: AUTO_APPLY_NEWER_CREDENTIAL_NAME,
-				type: 'httpHeaderAuth',
-				data: {
-					name: 'x-auto-newer',
-					value: 'newer-header-value',
-				},
-			});
-
-			const workflow = await n8n.api.workflows.createWorkflow(
-				createSingleCardAutoApplyWorkflow(AUTO_APPLY_WORKFLOW_NAME),
+			await n8n.api.workflows.createWorkflow(
+				createParameterOnlyWorkflow(PARAMETER_ISSUE_WORKFLOW_NAME),
 			);
 
 			await n8n.navigate.toInstanceAi();
-			await n8n.instanceAi.sendMessage(`Set up the workflow named "${AUTO_APPLY_WORKFLOW_NAME}".`);
+			await n8n.instanceAi.sendMessage(
+				`Set up the workflow named "${PARAMETER_ISSUE_WORKFLOW_NAME}".`,
+			);
 
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+			await expect(n8n.instanceAi.workflowSetup.getApplyButton()).toBeDisabled();
+			await expect(n8n.instanceAi.workflowSetup.getParameterIssues('url')).toBeHidden();
+
+			await n8n.instanceAi.workflowSetup.getParameterInput('url').click();
+			await n8n.instanceAi.workflowSetup.getParameterInput('url').blur();
+
+			await expect(n8n.instanceAi.workflowSetup.getParameterIssues('url')).toBeVisible();
+
+			await n8n.instanceAi.workflowSetup.fillParameter('url', 'https://example.com/api');
+
+			await expect(n8n.instanceAi.workflowSetup.getParameterIssues('url')).toBeHidden();
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+			await expect(n8n.instanceAi.workflowSetup.getApplyButton()).toBeEnabled();
+		});
+
+		test('should apply parameter and credential edits and persist them to the workflow', async ({
+			n8n,
+		}) => {
+			const workflow = await n8n.api.workflows.createWorkflow(
+				createParameterAndCredentialWorkflow(PARAMETER_APPLY_WORKFLOW_NAME),
+			);
+
+			await n8n.navigate.toInstanceAi();
+			await n8n.instanceAi.sendMessage(
+				`Set up the workflow named "${PARAMETER_APPLY_WORKFLOW_NAME}".`,
+			);
+
+			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 120_000 });
+
+			await n8n.instanceAi.workflowSetup.fillParameter('url', 'https://example.com/api');
+			await n8n.instanceAi.workflowSetup.getSetupCredentialButton().click();
+			await n8n.instanceAi.credentialModal.waitForModal();
+			await n8n.instanceAi.credentialModal.addCredential(
+				{
+					name: 'x-parameter-token',
+					value: 'parameter-header-value',
+				},
+				{ name: PARAMETER_CREDENTIAL_NAME },
+			);
+
+			await expect(n8n.instanceAi.workflowSetup.getCardCheck()).toBeVisible();
+			await n8n.instanceAi.workflowSetup.getApplyButton().click();
 			await n8n.instanceAi.waitForResponseComplete();
-			await expect(n8n.instanceAi.workflowSetup.getCard()).toBeHidden();
 
 			const persisted = await n8n.api.workflows.getWorkflow(workflow.id);
-			const assignedCredentialName = getNode(persisted, 'HTTP Request Header')?.credentials
-				?.httpHeaderAuth?.name;
-			expect([AUTO_APPLY_OLDER_CREDENTIAL_NAME, AUTO_APPLY_NEWER_CREDENTIAL_NAME]).toContain(
-				assignedCredentialName,
+			expectNodeParameter(persisted, 'HTTP Request', 'url', 'https://example.com/api');
+			expectAssignedCredentialName(
+				persisted,
+				'HTTP Request',
+				'httpHeaderAuth',
+				PARAMETER_CREDENTIAL_NAME,
 			);
 		});
 

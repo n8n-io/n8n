@@ -42,12 +42,12 @@ export function makeWorkflowSetupCard(
 		parameters: {},
 	};
 
-	const credentialType = overrides.credentialType ?? 'httpBasicAuth';
+	const credentialType = 'credentialType' in overrides ? overrides.credentialType : 'httpBasicAuth';
 	const targetNodeName = overrides.targetNodeName ?? overrides.node?.name ?? node.name;
 
 	return {
-		id: overrides.id ?? `${targetNodeName}:${credentialType}`,
-		credentialType,
+		id: overrides.id ?? `${targetNodeName}:${credentialType ?? 'parameters'}`,
+		...(credentialType ? { credentialType } : {}),
 		targetNodeName,
 		node: {
 			...node,
@@ -55,5 +55,6 @@ export function makeWorkflowSetupCard(
 			...overrides.node,
 		},
 		currentCredentialId: overrides.currentCredentialId ?? null,
+		parameterNames: overrides.parameterNames ?? [],
 	};
 }
