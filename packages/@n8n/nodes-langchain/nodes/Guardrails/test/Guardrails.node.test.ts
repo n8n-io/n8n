@@ -6,11 +6,12 @@ import { NodeOperationError } from 'n8n-workflow';
 import * as ProcessActions from '../actions/process';
 import * as ModelHelpers from '../helpers/model';
 import { execute } from '../actions/execute';
+import { Mocked } from 'vitest';
 
 describe('Guardrails', () => {
-	let mockExecuteFunctions: vi.Mocked<IExecuteFunctions>;
-	let mockNode: vi.Mocked<INode>;
-	let mockModel: vi.Mocked<BaseChatModel>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockNode: Mocked<INode>;
+	let mockModel: Mocked<BaseChatModel>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();

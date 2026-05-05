@@ -9,6 +9,7 @@ import * as outputParserModule from '../../../../../utils/output_parsers/N8nOutp
 import * as tracing from '../../../../../utils/tracing';
 import * as commonModule from '../../agents/ToolsAgent/common';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V2/execute';
+import { Mock } from 'vitest';
 
 vi.mock('../../../../../utils/output_parsers/N8nOutputParser', () => ({
 	getOptionalOutputParser: vi.fn(),
@@ -23,7 +24,7 @@ vi.mock('../../agents/ToolsAgent/common', async () => ({
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 const ensureWithConfig = <T extends object>(executor: T) => {
-	(executor as { withConfig: vi.Mock }).withConfig = vi.fn().mockReturnValue(executor);
+	(executor as { withConfig: Mock }).withConfig = vi.fn().mockReturnValue(executor);
 	return executor;
 };
 

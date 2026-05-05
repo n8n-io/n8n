@@ -7,6 +7,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAlibabaCloud } from '../LmChatAlibabaCloud.node';
+import { Mocked } from 'vitest';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -32,7 +33,7 @@ describe('LmChatAlibabaCloud', () => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			nodeDef,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		ctx.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-dashscope-key',

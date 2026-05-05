@@ -17,7 +17,7 @@ import {
 	buildMessagesFromSteps,
 } from '../memoryManagement';
 import type { ToolCallData } from '../types';
-import { Mocked } from 'vitest';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('@langchain/core/messages', async () => ({
 	...(await vi.importActual('@langchain/core/messages')),
@@ -181,7 +181,7 @@ describe('memoryManagement', () => {
 			];
 
 			mockMemory.loadMemoryVariables.mockResolvedValue({ chat_history: chatHistory });
-			(trimMessages as vi.Mock).mockResolvedValue(trimmedHistory);
+			(trimMessages as Mock).mockResolvedValue(trimmedHistory);
 
 			const result = await loadMemory(mockMemory, mockModel, 2000);
 

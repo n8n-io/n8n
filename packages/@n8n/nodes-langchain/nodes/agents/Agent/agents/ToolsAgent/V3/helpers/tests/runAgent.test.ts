@@ -10,6 +10,7 @@ import * as tracing from '@utils/tracing';
 
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
+import { Mock } from 'vitest';
 
 vi.mock('@utils/agent-execution', async () => {
 	const originalModule = await vi.importActual('@utils/agent-execution');
@@ -39,7 +40,7 @@ beforeEach(() => {
 	mockContext.getNode.mockReturnValue(mockNode);
 	mockNode.typeVersion = 3;
 	mockContext.getExecuteData = vi.fn() as any;
-	(tracing.getTracingConfig as vi.Mock).mockReturnValue({
+	(tracing.getTracingConfig as Mock).mockReturnValue({
 		runName: '[Test Workflow] Test Node',
 		metadata: { execution_id: 'test-123', workflow: {}, node: 'Test Node' },
 	});
@@ -322,12 +323,12 @@ describe('runAgent - tracing configuration', () => {
 		// Use real implementations instead of mocks
 		const { getTracingConfig: realGetTracingConfig } =
 			await vi.importActual<typeof tracing>('@utils/tracing');
-		(tracing.getTracingConfig as vi.Mock).mockImplementation(realGetTracingConfig);
+		(tracing.getTracingConfig as Mock).mockImplementation(realGetTracingConfig);
 
 		const { loadMemory: realLoadMemory, saveToMemory: realSaveToMemory } =
 			await vi.importActual<typeof agentExecution>('@utils/agent-execution');
-		(agentExecution.loadMemory as vi.Mock).mockImplementation(realLoadMemory);
-		(agentExecution.saveToMemory as vi.Mock).mockImplementation(realSaveToMemory);
+		(agentExecution.loadMemory as Mock).mockImplementation(realLoadMemory);
+		(agentExecution.saveToMemory as Mock).mockImplementation(realSaveToMemory);
 
 		const mockInvoke = vi.fn().mockResolvedValue({
 			returnValues: { output: 'Final answer' },

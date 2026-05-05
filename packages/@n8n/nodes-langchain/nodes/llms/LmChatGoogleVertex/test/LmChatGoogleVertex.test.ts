@@ -4,6 +4,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatGoogleVertex } from '../LmChatGoogleVertex.node';
+import { Mocked } from 'vitest';
 
 vi.mock('@langchain/google-vertexai');
 vi.mock('@n8n/ai-utilities');
@@ -16,7 +17,7 @@ const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHa
 
 describe('LmChatGoogleVertex - Thinking Budget', () => {
 	let lmChatGoogleVertex: LmChatGoogleVertex;
-	let mockContext: vi.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -31,7 +32,7 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			mockNode,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		mockContext.getCredentials = vi.fn().mockResolvedValue({
 			privateKey: 'test-private-key',

@@ -7,6 +7,7 @@ import * as image from './image';
 import * as prompt from './prompt';
 import { router } from './router';
 import * as text from './text';
+import { Mock } from 'vitest';
 
 describe('Anthropic router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -36,7 +37,7 @@ describe('Anthropic router', () => {
 				json: {},
 			},
 		]);
-		(mock as vi.Mock).mockResolvedValue([
+		(mock as Mock).mockResolvedValue([
 			{
 				json: {
 					foo: 'bar',

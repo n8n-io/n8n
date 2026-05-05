@@ -7,6 +7,7 @@ import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow'
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { MemoryManager } from '../MemoryManager.node';
+import { Mock } from 'vitest';
 
 /**
  * These tests verify that the Memory Manager resolves sub-node expressions
@@ -17,9 +18,9 @@ import { MemoryManager } from '../MemoryManager.node';
 
 interface MockMemory {
 	memory: BaseChatMemory;
-	getMessages: vi.Mock;
-	addMessage: vi.Mock;
-	clear: vi.Mock;
+	getMessages: Mock;
+	addMessage: Mock;
+	clear: Mock;
 }
 
 function createMockMemory(messages: BaseMessage[] = []): MockMemory {

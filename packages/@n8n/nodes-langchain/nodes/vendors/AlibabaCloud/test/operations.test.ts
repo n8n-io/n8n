@@ -29,9 +29,10 @@ import { execute as imageGenerateExecute } from '../actions/image/generate.opera
 import { execute as videoT2VExecute } from '../actions/video/generate.t2v.operation';
 import { execute as videoI2VExecute } from '../actions/video/generate.i2v.operation';
 import { apiRequest, pollTaskResult } from '../transport';
+import { Mock } from 'vitest';
 
-const mockApiRequest = apiRequest as vi.Mock;
-const mockPollTaskResult = pollTaskResult as vi.Mock;
+const mockApiRequest = apiRequest as Mock;
+const mockPollTaskResult = pollTaskResult as Mock;
 
 describe('AlicloudModelStudio Operations', () => {
 	let mockExecuteFunctions: ReturnType<typeof mock<IExecuteFunctions>>;

@@ -1,10 +1,11 @@
 import { createMockServer, createMockTransport, createMockTool } from '../../__tests__/helpers';
 import { SessionManager } from '../SessionManager';
 import type { SessionStore } from '../SessionStore';
+import { Mocked } from 'vitest';
 
 describe('SessionManager', () => {
 	let manager: SessionManager;
-	let mockStore: vi.Mocked<SessionStore>;
+	let mockStore: Mocked<SessionStore>;
 
 	beforeEach(() => {
 		mockStore = {
@@ -174,7 +175,7 @@ describe('SessionManager', () => {
 
 	describe('store management', () => {
 		it('should allow swapping session store', () => {
-			const newStore = { ...mockStore } as vi.Mocked<SessionStore>;
+			const newStore = { ...mockStore } as Mocked<SessionStore>;
 			manager.setStore(newStore);
 			expect(manager.getStore()).toBe(newStore);
 		});

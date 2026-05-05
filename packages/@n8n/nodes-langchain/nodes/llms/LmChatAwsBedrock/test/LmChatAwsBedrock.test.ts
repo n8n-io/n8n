@@ -5,6 +5,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAwsBedrock } from '../LmChatAwsBedrock.node';
+import { Mocked } from 'vitest';
 
 vi.mock('@langchain/aws', () => ({
 	ChatBedrockConverse: vi.fn(),
@@ -28,7 +29,7 @@ const mockedGetNodeProxyAgent = vi.mocked(getNodeProxyAgent);
 
 describe('LmChatAwsBedrock', () => {
 	let node: LmChatAwsBedrock;
-	let mockContext: vi.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -50,7 +51,7 @@ describe('LmChatAwsBedrock', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			mockNode,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		mockContext.getCredentials = vi
 			.fn()

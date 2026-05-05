@@ -8,6 +8,7 @@ import type { INode, INodeProperties, ISupplyDataFunctions } from 'n8n-workflow'
 import { NodeOperationError } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LmChatAnthropic.node';
+import { Mocked } from 'vitest';
 
 vi.mock('@langchain/anthropic', () => ({
 	ChatAnthropic: vi.fn(),
@@ -28,7 +29,7 @@ const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 
 describe('LmChatAnthropic', () => {
 	let lmChatAnthropic: LmChatAnthropic;
-	let mockContext: vi.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -44,7 +45,7 @@ describe('LmChatAnthropic', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
 		mockContext.getCredentials = vi.fn().mockResolvedValue({

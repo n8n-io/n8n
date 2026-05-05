@@ -5,7 +5,7 @@ import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { logWrapper } from '@n8n/ai-utilities';
 
 import { RerankerCohere } from '../RerankerCohere.node';
-import { Mocked, MockedClass } from 'vitest';
+import { Mock, Mocked, MockedClass } from 'vitest';
 
 // Mock the CohereRerank class
 vi.mock('@langchain/cohere', () => ({
@@ -56,10 +56,10 @@ describe('RerankerCohere', () => {
 	it('should create CohereRerank with default model and return wrapped instance', async () => {
 		// Setup mocks
 		const mockCredentials = { apiKey: 'test-api-key' };
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-v3.5') // modelName
 			.mockReturnValueOnce(3); // topN (default)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
+		(mockSupplyDataFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
 
 		// Execute
 		const result = await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 0);
@@ -83,10 +83,10 @@ describe('RerankerCohere', () => {
 	it('should create CohereRerank with custom model', async () => {
 		// Setup mocks
 		const mockCredentials = { apiKey: 'custom-api-key' };
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-multilingual-v3.0') // modelName
 			.mockReturnValueOnce(3); // topN (default)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
+		(mockSupplyDataFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
 
 		// Execute
 		await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 0);
@@ -102,10 +102,10 @@ describe('RerankerCohere', () => {
 	it('should handle different item indices', async () => {
 		// Setup mocks
 		const mockCredentials = { apiKey: 'test-api-key' };
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-english-v3.0') // modelName
 			.mockReturnValueOnce(3); // topN (default)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
+		(mockSupplyDataFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
 
 		// Execute with different item index
 		await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 2);
@@ -121,10 +121,10 @@ describe('RerankerCohere', () => {
 
 	it('should throw error when credentials are missing', async () => {
 		// Setup mocks
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-v3.5') // modelName
 			.mockReturnValueOnce(3); // topN (default)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockRejectedValue(
+		(mockSupplyDataFunctions.getCredentials as Mock).mockRejectedValue(
 			new Error('Missing credentials'),
 		);
 
@@ -137,10 +137,10 @@ describe('RerankerCohere', () => {
 	it('should use fallback model when parameter is not provided', async () => {
 		// Setup mocks - getNodeParameter returns the fallback value
 		const mockCredentials = { apiKey: 'test-api-key' };
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-v3.5') // modelName (fallback value)
 			.mockReturnValueOnce(3); // topN (fallback value)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
+		(mockSupplyDataFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
 
 		// Execute
 		await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 0);
@@ -156,10 +156,10 @@ describe('RerankerCohere', () => {
 	it('should create CohereRerank with custom topN value', async () => {
 		// Setup mocks
 		const mockCredentials = { apiKey: 'test-api-key' };
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-v3.5') // modelName
 			.mockReturnValueOnce(10); // topN (custom value)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
+		(mockSupplyDataFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
 
 		// Execute
 		await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 0);
@@ -176,10 +176,10 @@ describe('RerankerCohere', () => {
 	it('should create CohereRerank with topN value of 1', async () => {
 		// Setup mocks
 		const mockCredentials = { apiKey: 'test-api-key' };
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-english-v3.0') // modelName
 			.mockReturnValueOnce(1); // topN (edge case value)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
+		(mockSupplyDataFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
 
 		// Execute
 		await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 0);
@@ -195,10 +195,10 @@ describe('RerankerCohere', () => {
 	it('should create CohereRerank with large topN value', async () => {
 		// Setup mocks
 		const mockCredentials = { apiKey: 'test-api-key' };
-		(mockSupplyDataFunctions.getNodeParameter as vi.Mock)
+		(mockSupplyDataFunctions.getNodeParameter as Mock)
 			.mockReturnValueOnce('rerank-multilingual-v3.0') // modelName
 			.mockReturnValueOnce(100); // topN (large value)
-		(mockSupplyDataFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
+		(mockSupplyDataFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
 
 		// Execute
 		await rerankerCohere.supplyData.call(mockSupplyDataFunctions, 0);

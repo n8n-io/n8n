@@ -5,6 +5,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { EmbeddingsAzureOpenAi } from '../EmbeddingsAzureOpenAi/EmbeddingsAzureOpenAi.node';
+import { Mocked } from 'vitest';
 
 vi.mock('@langchain/openai');
 
@@ -23,7 +24,7 @@ const MockedAzureOpenAIEmbeddings = vi.mocked(AzureOpenAIEmbeddings);
 
 describe('AzureOpenAIEmbeddings', () => {
 	let embeddingsAzureOpenAi: EmbeddingsAzureOpenAi;
-	let mockContext: vi.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -39,7 +40,7 @@ describe('AzureOpenAIEmbeddings', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
 		mockContext.getCredentials = vi.fn().mockResolvedValue({

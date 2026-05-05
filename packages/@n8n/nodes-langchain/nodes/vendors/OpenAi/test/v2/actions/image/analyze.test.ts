@@ -5,12 +5,13 @@ import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import type { ChatResponse } from '../../../../helpers/interfaces';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/analyze.operation';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('../../../../helpers/binary-data');
 vi.mock('../../../../transport');
 
 describe('Image Analyze Operation', () => {
-	let mockExecuteFunctions: vi.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
 	const getBinaryDataFileSpy = vi.spyOn(binaryDataHelpers, 'getBinaryDataFile');
@@ -317,7 +318,7 @@ describe('Image Analyze Operation', () => {
 			} as ChatResponse;
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockResponse);
@@ -400,7 +401,7 @@ describe('Image Analyze Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockResponse);
@@ -482,7 +483,7 @@ describe('Image Analyze Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockResponse);

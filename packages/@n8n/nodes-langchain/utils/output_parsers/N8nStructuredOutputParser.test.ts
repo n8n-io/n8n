@@ -4,9 +4,10 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
+import { Mocked } from 'vitest';
 
 describe('N8nStructuredOutputParser', () => {
-	let mockContext: vi.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	beforeEach(() => {
 		mockContext = mock<ISupplyDataFunctions>();

@@ -2,16 +2,17 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import * as transport from '../../transport';
 import { imageGenerateModelSearch, imageModelSearch, modelSearch } from '../listSearch';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('../../transport');
 
 describe('modelSearch', () => {
-	let mockContext: vi.Mocked<ILoadOptionsFunctions>;
+	let mockContext: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockContext = {
 			getCredentials: vi.fn(),
-		} as unknown as vi.Mocked<ILoadOptionsFunctions>;
+		} as unknown as Mocked<ILoadOptionsFunctions>;
 
 		vi.clearAllMocks();
 	});
@@ -22,7 +23,7 @@ describe('modelSearch', () => {
 				url: 'https://api.openai.com/v1',
 			});
 
-			(transport.apiRequest as vi.Mock).mockResolvedValue({
+			(transport.apiRequest as Mock).mockResolvedValue({
 				data: [
 					{ id: 'gpt-4' },
 					{ id: 'gpt-3.5-turbo' },
@@ -46,7 +47,7 @@ describe('modelSearch', () => {
 				url: 'https://ai-assistant.n8n.io/v1',
 			});
 
-			(transport.apiRequest as vi.Mock).mockResolvedValue({
+			(transport.apiRequest as Mock).mockResolvedValue({
 				data: [{ id: 'gpt-4' }, { id: 'whisper-1' }, { id: 'dall-e-2' }],
 			});
 
@@ -62,7 +63,7 @@ describe('modelSearch', () => {
 				url: 'https://custom-llm-provider.com/v1',
 			});
 
-			(transport.apiRequest as vi.Mock).mockResolvedValue({
+			(transport.apiRequest as Mock).mockResolvedValue({
 				data: [
 					{ id: 'llama-3-70b' },
 					{ id: 'mistral-large' },

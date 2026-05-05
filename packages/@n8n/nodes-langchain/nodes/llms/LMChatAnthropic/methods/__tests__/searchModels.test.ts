@@ -1,9 +1,10 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { searchModels, type AnthropicModel } from '../searchModels';
+import { Mocked } from 'vitest';
 
 describe('searchModels', () => {
-	let mockContext: vi.Mocked<ILoadOptionsFunctions>;
+	let mockContext: Mocked<ILoadOptionsFunctions>;
 
 	const mockModels: AnthropicModel[] = [
 		{
@@ -46,7 +47,7 @@ describe('searchModels', () => {
 					data: mockModels,
 				}),
 			},
-		} as unknown as vi.Mocked<ILoadOptionsFunctions>;
+		} as unknown as Mocked<ILoadOptionsFunctions>;
 	});
 
 	afterEach(() => {

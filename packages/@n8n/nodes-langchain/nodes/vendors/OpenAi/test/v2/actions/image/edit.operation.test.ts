@@ -4,7 +4,7 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import * as binaryDataHelpers from '../../../../helpers/binary-data';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/image/edit.operation';
-import { Mocked } from 'vitest';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('../../../../helpers/binary-data');
 vi.mock('../../../../transport');
@@ -163,11 +163,11 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -221,7 +221,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -270,7 +270,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValueOnce(mockImageFile).mockResolvedValueOnce(mockMaskFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockImageFile.fileContent)
 				.mockResolvedValueOnce(mockMaskFile.fileContent);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -353,11 +353,11 @@ describe('Image Edit Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -432,11 +432,11 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -540,7 +540,7 @@ describe('Image Edit Operation', () => {
 			const mockApiResponse = {};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -585,11 +585,11 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -623,7 +623,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -663,7 +663,7 @@ describe('Image Edit Operation', () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
@@ -725,11 +725,11 @@ describe('Image Edit Operation', () => {
 			getBinaryDataFileSpy
 				.mockResolvedValueOnce(mockBinaryFile1)
 				.mockResolvedValueOnce(mockBinaryFile2);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock)
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock)
 				.mockResolvedValueOnce(mockBinaryFile1.fileContent)
 				.mockResolvedValueOnce(mockBinaryFile2.fileContent);
 			apiRequestSpy.mockResolvedValue(mockApiResponse);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			await execute.call(mockExecuteFunctions, 0);
 

@@ -9,6 +9,7 @@ import * as image from './image';
 import { router } from './router';
 import * as text from './text';
 import * as video from './video';
+import { Mock } from 'vitest';
 
 describe('Google Gemini router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -48,7 +49,7 @@ describe('Google Gemini router', () => {
 				json: {},
 			},
 		]);
-		(mock as vi.Mock).mockResolvedValue([
+		(mock as Mock).mockResolvedValue([
 			{
 				json: {
 					foo: 'bar',

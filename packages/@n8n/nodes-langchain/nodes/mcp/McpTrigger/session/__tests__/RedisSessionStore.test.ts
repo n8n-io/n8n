@@ -2,10 +2,11 @@ import type { Tool } from '@langchain/core/tools';
 import { mock } from 'vitest-mock-extended';
 
 import { RedisSessionStore, type RedisPublisher } from '../RedisSessionStore';
+import { Mocked } from 'vitest';
 
 describe('RedisSessionStore', () => {
 	let store: RedisSessionStore;
-	let mockPublisher: vi.Mocked<RedisPublisher>;
+	let mockPublisher: Mocked<RedisPublisher>;
 	const getSessionKey = (sessionId: string) => `mcp-session:${sessionId}`;
 	const ttl = 3600;
 

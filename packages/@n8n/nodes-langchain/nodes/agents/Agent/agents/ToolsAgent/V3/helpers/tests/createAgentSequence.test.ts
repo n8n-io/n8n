@@ -7,6 +7,7 @@ import type { Tool } from '@langchain/classic/tools';
 
 import * as commonHelpers from '../../../common';
 import { createAgentSequence } from '../createAgentSequence';
+import { Mock } from 'vitest';
 
 vi.mock('@langchain/classic/agents', () => ({
 	createToolCallingAgent: vi.fn(),
@@ -37,8 +38,8 @@ describe('createAgentSequence', () => {
 		const mockRunnableSequence = mock<any>();
 		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		(createToolCallingAgent as Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as Mock).mockReturnValue(mockRunnableSequence);
 		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
@@ -71,10 +72,10 @@ describe('createAgentSequence', () => {
 
 		mockAgent.withFallbacks = vi.fn().mockReturnValue(mockAgentWithFallback);
 
-		(createToolCallingAgent as vi.Mock)
+		(createToolCallingAgent as Mock)
 			.mockReturnValueOnce(mockAgent)
 			.mockReturnValueOnce(mockFallbackAgent);
-		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		(RunnableSequence.from as Mock).mockReturnValue(mockRunnableSequence);
 		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
@@ -117,8 +118,8 @@ describe('createAgentSequence', () => {
 		const mockOutputParser = mock<any>();
 		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		(createToolCallingAgent as Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as Mock).mockReturnValue(mockRunnableSequence);
 		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
@@ -133,8 +134,8 @@ describe('createAgentSequence', () => {
 		const mockMemory = mock<any>();
 		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		(createToolCallingAgent as Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as Mock).mockReturnValue(mockRunnableSequence);
 		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
@@ -148,8 +149,8 @@ describe('createAgentSequence', () => {
 		const mockRunnableSequence = mock<any>();
 		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		(createToolCallingAgent as Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as Mock).mockReturnValue(mockRunnableSequence);
 		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
@@ -167,8 +168,8 @@ describe('createAgentSequence', () => {
 		const mockRunnableSequence = mock<any>();
 		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		(createToolCallingAgent as Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as Mock).mockReturnValue(mockRunnableSequence);
 		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };
@@ -189,8 +190,8 @@ describe('createAgentSequence', () => {
 		const mockTool2 = mock<Tool>();
 		const mockStepsParser = vi.fn();
 
-		(createToolCallingAgent as vi.Mock).mockReturnValue(mockAgent);
-		(RunnableSequence.from as vi.Mock).mockReturnValue(mockRunnableSequence);
+		(createToolCallingAgent as Mock).mockReturnValue(mockAgent);
+		(RunnableSequence.from as Mock).mockReturnValue(mockRunnableSequence);
 		vi.spyOn(commonHelpers, 'getAgentStepsParser').mockReturnValue(mockStepsParser);
 
 		const options = { maxIterations: 10, returnIntermediateSteps: false };

@@ -5,7 +5,7 @@ import type { VideoJob } from '../../../../helpers/interfaces';
 import * as pollingHelpers from '../../../../helpers/polling';
 import * as transport from '../../../../transport';
 import { execute } from '../../../../v2/actions/video/generate.operation';
-import { Mocked } from 'vitest';
+import { Mock, Mocked } from 'vitest';
 
 const { mockFormDataAppend, mockFormDataGetHeaders } = vi.hoisted(() => ({
 	mockFormDataAppend: vi.fn(),
@@ -98,7 +98,7 @@ describe('Video Generate Operation', async () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockCompletedJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -179,7 +179,7 @@ describe('Video Generate Operation', async () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -242,12 +242,12 @@ describe('Video Generate Operation', async () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -302,7 +302,7 @@ describe('Video Generate Operation', async () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			await execute.call(mockExecuteFunctions, 0);
 
@@ -355,12 +355,12 @@ describe('Video Generate Operation', async () => {
 			};
 
 			getBinaryDataFileSpy.mockResolvedValue(mockBinaryFile);
-			(mockExecuteFunctions.helpers.binaryToBuffer as vi.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				mockBinaryFile.fileContent,
 			);
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			await execute.call(mockExecuteFunctions, 0);
 
@@ -412,7 +412,7 @@ describe('Video Generate Operation', async () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 
@@ -461,7 +461,7 @@ describe('Video Generate Operation', async () => {
 			apiRequestSpy.mockResolvedValueOnce(mockVideoJob).mockResolvedValueOnce(mockContentResponse);
 
 			pollUntilAvailableSpy.mockResolvedValue(mockVideoJob);
-			(mockExecuteFunctions.helpers.prepareBinaryData as vi.Mock).mockResolvedValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.prepareBinaryData as Mock).mockResolvedValue(mockBinaryData);
 
 			const result = await execute.call(mockExecuteFunctions, 0);
 

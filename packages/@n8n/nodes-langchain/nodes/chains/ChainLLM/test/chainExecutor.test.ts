@@ -11,7 +11,7 @@ import * as tracing from '@utils/tracing';
 import { executeChain, NaiveJsonOutputParser } from '../methods/chainExecutor';
 import * as chainExecutor from '../methods/chainExecutor';
 import * as promptUtils from '../methods/promptUtils';
-import { Mocked } from 'vitest';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('@utils/tracing', () => ({
 	getTracingConfig: vi.fn(() => ({})),
@@ -240,7 +240,7 @@ describe('chainExecutor', () => {
 			mockPromptTemplate.pipe = pipeMock;
 			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -291,7 +291,7 @@ describe('chainExecutor', () => {
 			mockPromptTemplate.pipe = pipeMock;
 			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -340,7 +340,7 @@ describe('chainExecutor', () => {
 			mockPromptTemplate.pipe = pipeMock;
 			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -378,7 +378,7 @@ describe('chainExecutor', () => {
 			mockPromptTemplate.pipe = pipeMock;
 			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -413,7 +413,7 @@ describe('chainExecutor', () => {
 			mockChatPromptTemplate.pipe = pipeMock;
 			fakeChatModel.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockChatPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockChatPromptTemplate);
 
 			const result = await executeChain({
 				context: mockContext,
@@ -451,7 +451,7 @@ describe('chainExecutor', () => {
 				pipe: pipeOutputParserMock,
 			});
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -485,7 +485,7 @@ describe('chainExecutor', () => {
 				pipe: pipeOutputParserMock,
 			});
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -514,7 +514,7 @@ describe('chainExecutor', () => {
 			});
 
 			const mockAgentStepsParser = vi.fn().mockResolvedValue({ result: 'parsed' });
-			(promptUtils.getAgentStepsParser as vi.Mock).mockReturnValue(mockAgentStepsParser);
+			(promptUtils.getAgentStepsParser as Mock).mockReturnValue(mockAgentStepsParser);
 
 			const mockChain = {
 				invoke: vi.fn().mockResolvedValue({ result: 'parsed' }),
@@ -530,7 +530,7 @@ describe('chainExecutor', () => {
 			mockPromptTemplate.pipe = pipeMock;
 			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -575,7 +575,7 @@ describe('chainExecutor', () => {
 			mockPromptTemplate.pipe = pipeMock;
 			fakeLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,
@@ -614,7 +614,7 @@ describe('chainExecutor', () => {
 			fakeLLM.withFallbacks = vi.fn().mockReturnValue(fakeLLM);
 			fakeFallbackLLM.pipe = vi.fn();
 
-			(promptUtils.createPromptTemplate as vi.Mock).mockResolvedValue(mockPromptTemplate);
+			(promptUtils.createPromptTemplate as Mock).mockResolvedValue(mockPromptTemplate);
 
 			await executeChain({
 				context: mockContext,

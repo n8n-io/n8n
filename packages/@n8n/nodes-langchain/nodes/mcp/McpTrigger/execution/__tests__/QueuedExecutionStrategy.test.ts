@@ -1,10 +1,11 @@
 import { createMockTool } from '../../__tests__/helpers';
 import type { PendingCallsManager } from '../PendingCallsManager';
 import { QueuedExecutionStrategy } from '../QueuedExecutionStrategy';
+import { Mocked } from 'vitest';
 
 describe('QueuedExecutionStrategy', () => {
 	let strategy: QueuedExecutionStrategy;
-	let mockPendingCalls: vi.Mocked<PendingCallsManager>;
+	let mockPendingCalls: Mocked<PendingCallsManager>;
 
 	beforeEach(() => {
 		mockPendingCalls = {
@@ -15,7 +16,7 @@ describe('QueuedExecutionStrategy', () => {
 			has: vi.fn(),
 			remove: vi.fn(),
 			cleanupBySessionId: vi.fn(),
-		} as unknown as vi.Mocked<PendingCallsManager>;
+		} as unknown as Mocked<PendingCallsManager>;
 
 		strategy = new QueuedExecutionStrategy(mockPendingCalls);
 	});

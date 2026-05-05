@@ -7,11 +7,12 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import * as helpers from '../../../../../utils/helpers';
 import * as tracing from '../../../../../utils/tracing';
 import { toolsAgentExecute } from '../../agents/ToolsAgent/V1/execute';
+import { Mock } from 'vitest';
 
 const mockHelpers = mock<IExecuteFunctions['helpers']>();
 const mockContext = mock<IExecuteFunctions>({ helpers: mockHelpers });
 const ensureWithConfig = <T extends object>(executor: T) => {
-	(executor as { withConfig: vi.Mock }).withConfig = vi.fn().mockReturnValue(executor);
+	(executor as { withConfig: Mock }).withConfig = vi.fn().mockReturnValue(executor);
 	return executor;
 };
 

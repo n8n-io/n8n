@@ -14,9 +14,10 @@ import {
 	uploadToFileSearchStore,
 } from './utils';
 import * as transport from '../transport';
+import { Mocked } from 'vitest';
 
 vi.mock('axios');
-const mockedAxios = axios as vi.Mocked<typeof axios>;
+const mockedAxios = axios as Mocked<typeof axios>;
 
 describe('GoogleGemini -> utils', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();

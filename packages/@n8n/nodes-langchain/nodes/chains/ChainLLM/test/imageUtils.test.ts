@@ -11,6 +11,7 @@ import {
 	UnsupportedMimeTypeError,
 } from '../methods/imageUtils';
 import type { MessageTemplate } from '../methods/types';
+import { Mock, Mocked } from 'vitest';
 
 // Mock ChatGoogleGenerativeAI and ChatOllama
 vi.mock('@langchain/google-genai', () => ({
@@ -53,9 +54,9 @@ describe('imageUtils', () => {
 	});
 
 	describe('createImageMessage', () => {
-		let mockContext: vi.Mocked<IExecuteFunctions>;
+		let mockContext: Mocked<IExecuteFunctions>;
 		let mockBuffer: Buffer;
-		let mockBinaryData: vi.Mocked<IBinaryData>;
+		let mockBinaryData: Mocked<IBinaryData>;
 
 		beforeEach(() => {
 			mockContext = createMockExecuteFunctions();
@@ -64,7 +65,7 @@ describe('imageUtils', () => {
 
 			// Mock required methods
 			mockContext.getInputData.mockReturnValue([{ binary: { data: mockBinaryData }, json: {} }]);
-			(mockContext.helpers.getBinaryDataBuffer as vi.Mock).mockResolvedValue(mockBuffer);
+			(mockContext.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(mockBuffer);
 			mockContext.getInputConnectionData.mockResolvedValue({});
 			mockContext.getNode.mockReturnValue({ name: 'TestNode' } as INode);
 		});

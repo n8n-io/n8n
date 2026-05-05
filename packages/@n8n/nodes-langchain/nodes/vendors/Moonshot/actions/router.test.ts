@@ -4,6 +4,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import * as image from './image';
 import { router } from './router';
 import * as text from './text';
+import { Mock } from 'vitest';
 
 describe('Moonshot router', () => {
 	const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
@@ -23,7 +24,7 @@ describe('Moonshot router', () => {
 			parameter === 'resource' ? resource : operation,
 		);
 		mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		(mock as vi.Mock).mockResolvedValue([{ json: { foo: 'bar' } }]);
+		(mock as Mock).mockResolvedValue([{ json: { foo: 'bar' } }]);
 
 		const result = await router.call(mockExecuteFunctions);
 

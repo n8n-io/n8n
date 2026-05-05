@@ -1,5 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
 import { z } from 'zod';
+import { Mocked } from 'vitest';
 
 /**
  * Creates a mock Tool for testing
@@ -12,7 +13,7 @@ export function createMockTool(
 		invokeError?: Error;
 		metadata?: Record<string, unknown>;
 	} = {},
-): vi.Mocked<Tool> {
+): Mocked<Tool> {
 	const {
 		description = `Mock tool: ${toolName}`,
 		invokeReturn = { result: 'success' },
@@ -34,12 +35,12 @@ export function createMockTool(
 		schema: z.object({}),
 		invoke,
 		metadata,
-	} as unknown as vi.Mocked<Tool>;
+	} as unknown as Mocked<Tool>;
 }
 
 /**
  * Creates multiple mock tools
  */
-export function createMockTools(toolNames: string[]): Array<vi.Mocked<Tool>> {
+export function createMockTools(toolNames: string[]): Array<Mocked<Tool>> {
 	return toolNames.map((n) => createMockTool(n));
 }

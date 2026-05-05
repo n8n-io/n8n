@@ -1,6 +1,7 @@
 import type { Request } from 'express';
 
 import type { CompressionResponse } from '../../transport/Transport';
+import { Mocked } from 'vitest';
 
 /** MCP session ID header name */
 export const MCP_SESSION_ID_HEADER = 'mcp-session-id';
@@ -8,7 +9,7 @@ export const MCP_SESSION_ID_HEADER = 'mcp-session-id';
 /**
  * Creates a mock Express Response with compression support
  */
-export function createMockResponse(): vi.Mocked<CompressionResponse> {
+export function createMockResponse(): Mocked<CompressionResponse> {
 	const response = {
 		status: vi.fn().mockReturnThis(),
 		send: vi.fn().mockReturnThis(),
@@ -24,7 +25,7 @@ export function createMockResponse(): vi.Mocked<CompressionResponse> {
 		removeListener: vi.fn().mockReturnThis(),
 		emit: vi.fn().mockReturnValue(true),
 		headersSent: false,
-	} as unknown as vi.Mocked<CompressionResponse>;
+	} as unknown as Mocked<CompressionResponse>;
 
 	return response;
 }
@@ -42,7 +43,7 @@ export function createMockRequest(
 		method?: string;
 		path?: string;
 	} = {},
-): vi.Mocked<Request> & { rawBody: Buffer } {
+): Mocked<Request> & { rawBody: Buffer } {
 	const {
 		sessionId,
 		body = {},
@@ -72,7 +73,7 @@ export function createMockRequest(
 		url: path,
 		path,
 		get: vi.fn((name: string) => finalHeaders[name.toLowerCase()]),
-	} as unknown as vi.Mocked<Request> & { rawBody: Buffer };
+	} as unknown as Mocked<Request> & { rawBody: Buffer };
 }
 
 /**
@@ -81,7 +82,7 @@ export function createMockRequest(
 export function createMockRequestWithSessionId(
 	sessionId: string,
 	rawBody: string,
-): vi.Mocked<Request> & { rawBody: Buffer } {
+): Mocked<Request> & { rawBody: Buffer } {
 	return createMockRequest({
 		sessionId,
 		rawBody,
@@ -125,7 +126,7 @@ export function createListToolsMessage(id: string | number = 1): string {
 export function createMockRequestWithHeaderSessionId(
 	sessionId: string,
 	rawBody: string = '{}',
-): vi.Mocked<Request> & { rawBody: Buffer } {
+): Mocked<Request> & { rawBody: Buffer } {
 	return createMockRequest({
 		rawBody,
 		headers: { [MCP_SESSION_ID_HEADER]: sessionId },

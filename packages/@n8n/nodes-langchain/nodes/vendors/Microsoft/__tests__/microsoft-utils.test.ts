@@ -109,6 +109,7 @@ import { invokeAgent } from '../langchain-utils';
 import { connectMcpClient, getAllTools } from '../../../mcp/shared/utils';
 import { createCallTool, mcpToolToDynamicTool } from '../../../mcp/McpClientTool/utils';
 import { McpToolServerConfigurationService } from '@microsoft/agents-a365-tooling';
+import { Mock } from 'vitest';
 
 describe('microsoft-utils', () => {
 	beforeAll(async () => {
@@ -232,7 +233,7 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome to the agent!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -264,8 +265,8 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Test agent response');
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(invokeAgent as Mock).mockResolvedValue('Test agent response');
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -301,7 +302,7 @@ describe('microsoft-utils', () => {
 			const mockError = new Error('Agent run failed');
 			agent.run = vi.fn().mockRejectedValue(mockError);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -331,8 +332,8 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(invokeAgent as Mock).mockResolvedValue('Test response');
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -369,8 +370,8 @@ describe('microsoft-utils', () => {
 				turnState: { set: vi.fn() },
 			};
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(invokeAgent as Mock).mockResolvedValue('Test response');
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -414,8 +415,8 @@ describe('microsoft-utils', () => {
 				turnState: { set: vi.fn() },
 			};
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(invokeAgent as Mock).mockResolvedValue('Test response');
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -464,8 +465,8 @@ describe('microsoft-utils', () => {
 				.mockResolvedValueOnce({ token: 'observability-token' })
 				.mockRejectedValueOnce(new Error('Token exchange failed'));
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(invokeAgent as Mock).mockResolvedValue('Test response');
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -497,7 +498,7 @@ describe('microsoft-utils', () => {
 				turnState: { set: vi.fn() },
 			};
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Hello!';
 				if (param === 'systemPrompt') return 'Test prompt';
 				return undefined;
@@ -532,8 +533,8 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Agent response');
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(invokeAgent as Mock).mockResolvedValue('Agent response');
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -569,8 +570,8 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Test response');
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(invokeAgent as Mock).mockResolvedValue('Test response');
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Welcome!';
 				if (param === 'systemPrompt') return 'Test agent';
 				return undefined;
@@ -614,7 +615,7 @@ describe('microsoft-utils', () => {
 			mockConfigService = {
 				listToolServers: vi.fn().mockResolvedValue([]),
 			};
-			(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+			(McpToolServerConfigurationService as Mock).mockImplementation(function () {
 				return mockConfigService;
 			});
 		});
@@ -642,19 +643,19 @@ describe('microsoft-utils', () => {
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
 			const mockClient = { close: vi.fn() };
-			(connectMcpClient as vi.Mock).mockResolvedValue({
+			(connectMcpClient as Mock).mockResolvedValue({
 				ok: true,
 				result: mockClient,
 			});
 
 			const mockTool = { name: 'test-tool', description: 'Test tool' };
-			(getAllTools as vi.Mock).mockResolvedValue([mockTool]);
+			(getAllTools as Mock).mockResolvedValue([mockTool]);
 
 			const mockCallTool = vi.fn();
-			(createCallTool as vi.Mock).mockReturnValue(mockCallTool);
+			(createCallTool as Mock).mockReturnValue(mockCallTool);
 
 			const mockDynamicTool = { name: 'test-tool' };
-			(mcpToolToDynamicTool as vi.Mock).mockReturnValue(mockDynamicTool);
+			(mcpToolToDynamicTool as Mock).mockReturnValue(mockDynamicTool);
 
 			const selectedTools = ['mcp_CalendarTools', 'mcp_TeamsServer'];
 
@@ -675,12 +676,12 @@ describe('microsoft-utils', () => {
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
 			const mockClient = { close: vi.fn() };
-			(connectMcpClient as vi.Mock).mockResolvedValue({
+			(connectMcpClient as Mock).mockResolvedValue({
 				ok: true,
 				result: mockClient,
 			});
 
-			(getAllTools as vi.Mock).mockResolvedValue([]);
+			(getAllTools as Mock).mockResolvedValue([]);
 
 			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
 
@@ -704,7 +705,7 @@ describe('microsoft-utils', () => {
 
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
-			(connectMcpClient as vi.Mock)
+			(connectMcpClient as Mock)
 				.mockResolvedValueOnce({
 					ok: false,
 					error: 'Connection failed',
@@ -714,7 +715,7 @@ describe('microsoft-utils', () => {
 					result: { close: vi.fn() },
 				});
 
-			(getAllTools as vi.Mock).mockResolvedValue([]);
+			(getAllTools as Mock).mockResolvedValue([]);
 
 			const consoleSpy = vi.spyOn(console, 'error').mockImplementation();
 
@@ -736,7 +737,7 @@ describe('microsoft-utils', () => {
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
 			const mockClient = { close: vi.fn() };
-			(connectMcpClient as vi.Mock).mockResolvedValue({
+			(connectMcpClient as Mock).mockResolvedValue({
 				ok: true,
 				result: mockClient,
 			});
@@ -745,9 +746,9 @@ describe('microsoft-utils', () => {
 				{ name: 'create_event', description: 'Create calendar event' },
 				{ name: 'list_events', description: 'List calendar events' },
 			];
-			(getAllTools as vi.Mock).mockResolvedValue(mockTools);
+			(getAllTools as Mock).mockResolvedValue(mockTools);
 
-			(mcpToolToDynamicTool as vi.Mock)
+			(mcpToolToDynamicTool as Mock)
 				.mockReturnValueOnce({ name: 'mcp_CalendarTools_create_event' })
 				.mockReturnValueOnce({ name: 'mcp_CalendarTools_list_events' });
 
@@ -780,12 +781,12 @@ describe('microsoft-utils', () => {
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
 			const mockClient = { close: vi.fn() };
-			(connectMcpClient as vi.Mock).mockResolvedValue({
+			(connectMcpClient as Mock).mockResolvedValue({
 				ok: true,
 				result: mockClient,
 			});
 
-			(getAllTools as vi.Mock).mockResolvedValue([]);
+			(getAllTools as Mock).mockResolvedValue([]);
 
 			const result = await getMicrosoftMcpTools(
 				mockTurnContext,
@@ -807,18 +808,18 @@ describe('microsoft-utils', () => {
 
 			const mockClient1 = { close: vi.fn() };
 			const mockClient2 = { close: vi.fn() };
-			(connectMcpClient as vi.Mock)
+			(connectMcpClient as Mock)
 				.mockResolvedValueOnce({ ok: true, result: mockClient1 })
 				.mockResolvedValueOnce({ ok: true, result: mockClient2 });
 
 			const mockTool = { name: 'test-tool', description: 'Test tool' };
-			(getAllTools as vi.Mock).mockResolvedValue([mockTool]);
+			(getAllTools as Mock).mockResolvedValue([mockTool]);
 
 			const mockCallTool = vi.fn();
-			(createCallTool as vi.Mock).mockReturnValue(mockCallTool);
+			(createCallTool as Mock).mockReturnValue(mockCallTool);
 
 			const mockDynamicTool = { name: 'test-tool' };
-			(mcpToolToDynamicTool as vi.Mock).mockReturnValue(mockDynamicTool);
+			(mcpToolToDynamicTool as Mock).mockReturnValue(mockDynamicTool);
 
 			const result = await getMicrosoftMcpTools(
 				mockTurnContext,
@@ -846,12 +847,12 @@ describe('microsoft-utils', () => {
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
 			const mockClient = { close: vi.fn() };
-			(connectMcpClient as vi.Mock).mockResolvedValue({
+			(connectMcpClient as Mock).mockResolvedValue({
 				ok: true,
 				result: mockClient,
 			});
 
-			(getAllTools as vi.Mock).mockResolvedValue([]);
+			(getAllTools as Mock).mockResolvedValue([]);
 
 			await getMicrosoftMcpTools(
 				contextWithChannelData as any,
@@ -879,17 +880,17 @@ describe('microsoft-utils', () => {
 
 			const mockClient1 = { close: vi.fn() };
 			const mockClient2 = { close: vi.fn() };
-			(connectMcpClient as vi.Mock)
+			(connectMcpClient as Mock)
 				.mockResolvedValueOnce({ ok: true, result: mockClient1 })
 				.mockResolvedValueOnce({ ok: true, result: mockClient2 });
 
-			(getAllTools as vi.Mock)
+			(getAllTools as Mock)
 				.mockResolvedValueOnce([{ name: 'create_event', description: 'Create event' }])
 				.mockResolvedValueOnce([{ name: 'send_email', description: 'Send email' }]);
 
 			const mockCallTool = vi.fn();
-			(createCallTool as vi.Mock).mockReturnValue(mockCallTool);
-			(mcpToolToDynamicTool as vi.Mock)
+			(createCallTool as Mock).mockReturnValue(mockCallTool);
+			(mcpToolToDynamicTool as Mock)
 				.mockReturnValueOnce({ name: 'mcp_CalendarTools_create_event' })
 				.mockReturnValueOnce({ name: 'mcp_MailTools_send_email' });
 
@@ -913,12 +914,12 @@ describe('microsoft-utils', () => {
 
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
-			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
+			(connectMcpClient as Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
 
 			// Both servers expose a tool called 'search'
-			(getAllTools as vi.Mock).mockResolvedValue([{ name: 'search', description: 'Search' }]);
+			(getAllTools as Mock).mockResolvedValue([{ name: 'search', description: 'Search' }]);
 
-			(mcpToolToDynamicTool as vi.Mock)
+			(mcpToolToDynamicTool as Mock)
 				.mockReturnValueOnce({ name: 'mcp_CalendarTools_search' })
 				.mockReturnValueOnce({ name: 'mcp_MailTools_search' });
 
@@ -950,13 +951,13 @@ describe('microsoft-utils', () => {
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
 
 			const mockClient = { close: vi.fn() };
-			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: mockClient });
+			(connectMcpClient as Mock).mockResolvedValue({ ok: true, result: mockClient });
 
-			(getAllTools as vi.Mock).mockResolvedValue([
+			(getAllTools as Mock).mockResolvedValue([
 				{ name: 'create_event', description: 'Create event' },
 			]);
 
-			(mcpToolToDynamicTool as vi.Mock).mockReturnValue({
+			(mcpToolToDynamicTool as Mock).mockReturnValue({
 				name: 'mcp_Calendar_Tools__v2__create_event',
 			});
 
@@ -976,16 +977,16 @@ describe('microsoft-utils', () => {
 			const mockServers = [{ mcpServerName: longServerName, url: 'http://long-server' }];
 
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
-			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
-			(getAllTools as vi.Mock).mockResolvedValue([{ name: toolName, description: 'Tool' }]);
+			(connectMcpClient as Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
+			(getAllTools as Mock).mockResolvedValue([{ name: toolName, description: 'Tool' }]);
 
 			const mockCallTool = vi.fn();
-			(createCallTool as vi.Mock).mockReturnValue(mockCallTool);
-			(mcpToolToDynamicTool as vi.Mock).mockReturnValue({ name: 'trimmed' });
+			(createCallTool as Mock).mockReturnValue(mockCallTool);
+			(mcpToolToDynamicTool as Mock).mockReturnValue({ name: 'trimmed' });
 
 			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
 
-			const calledWith = (mcpToolToDynamicTool as vi.Mock).mock.calls[0][0];
+			const calledWith = (mcpToolToDynamicTool as Mock).mock.calls[0][0];
 			// Tool name is always preserved; only the prefix is trimmed
 			expect(calledWith.name).toHaveLength(64);
 			expect(calledWith.name).toContain(`_${toolName}`);
@@ -998,10 +999,10 @@ describe('microsoft-utils', () => {
 			const mockServers = [{ mcpServerName: 'mcp_SomeServer', url: 'http://some-server' }];
 
 			mockConfigService.listToolServers.mockResolvedValue(mockServers);
-			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
-			(getAllTools as vi.Mock).mockResolvedValue([{ name: toolName, description: 'Tool' }]);
+			(connectMcpClient as Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
+			(getAllTools as Mock).mockResolvedValue([{ name: toolName, description: 'Tool' }]);
 
-			(mcpToolToDynamicTool as vi.Mock).mockReturnValue({ name: toolName });
+			(mcpToolToDynamicTool as Mock).mockReturnValue({ name: toolName });
 
 			await getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined);
 
@@ -1034,22 +1035,22 @@ describe('microsoft-utils', () => {
 							{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
 						]),
 				};
-				(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+				(McpToolServerConfigurationService as Mock).mockImplementation(function () {
 					return mockConfigServiceLogging;
 				});
 
-				(connectMcpClient as vi.Mock).mockResolvedValue({
+				(connectMcpClient as Mock).mockResolvedValue({
 					ok: true,
 					result: { close: vi.fn() },
 				});
 
-				(getAllTools as vi.Mock).mockResolvedValue([
+				(getAllTools as Mock).mockResolvedValue([
 					{ name: 'list_events', description: 'List calendar events' },
 				]);
 			});
 
 			test('should return an empty logs array when no tools have been called', async () => {
-				(mcpToolToDynamicTool as vi.Mock).mockReturnValue({
+				(mcpToolToDynamicTool as Mock).mockReturnValue({
 					name: 'mcp_CalendarTools_list_events',
 				});
 
@@ -1067,14 +1068,14 @@ describe('microsoft-utils', () => {
 
 			test('should log a successful tool call with correct metadata', async () => {
 				let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
-				(mcpToolToDynamicTool as vi.Mock).mockImplementation(
+				(mcpToolToDynamicTool as Mock).mockImplementation(
 					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
 						capturedToolFunc = func;
 						return { name: 'mcp_CalendarTools_list_events' };
 					},
 				);
 
-				(createCallTool as vi.Mock).mockImplementation(() =>
+				(createCallTool as Mock).mockImplementation(() =>
 					vi.fn().mockResolvedValue([{ id: '1', title: 'Team meeting' }]),
 				);
 
@@ -1101,14 +1102,14 @@ describe('microsoft-utils', () => {
 
 			test('should log a failed tool call with isError set to true', async () => {
 				let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
-				(mcpToolToDynamicTool as vi.Mock).mockImplementation(
+				(mcpToolToDynamicTool as Mock).mockImplementation(
 					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
 						capturedToolFunc = func;
 						return { name: 'mcp_CalendarTools_list_events' };
 					},
 				);
 
-				(createCallTool as vi.Mock).mockImplementation(
+				(createCallTool as Mock).mockImplementation(
 					(_name: string, _client: unknown, _timeout: number, onError: (msg: string) => void) =>
 						vi.fn().mockImplementation(async () => {
 							onError('Calendar API unavailable');
@@ -1132,7 +1133,7 @@ describe('microsoft-utils', () => {
 
 			test('should use original tool name (not prefixed) when calling createCallTool', async () => {
 				let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
-				(mcpToolToDynamicTool as vi.Mock).mockImplementation(
+				(mcpToolToDynamicTool as Mock).mockImplementation(
 					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
 						capturedToolFunc = func;
 						return { name: 'mcp_CalendarTools_list_events' };
@@ -1140,7 +1141,7 @@ describe('microsoft-utils', () => {
 				);
 
 				const mockCallTool = vi.fn().mockResolvedValue('result');
-				(createCallTool as vi.Mock).mockReturnValue(mockCallTool);
+				(createCallTool as Mock).mockReturnValue(mockCallTool);
 
 				await getMicrosoftMcpTools(
 					mockTurnContextLogging,
@@ -1165,17 +1166,17 @@ describe('microsoft-utils', () => {
 
 			test('should accumulate logs across multiple tool invocations', async () => {
 				const capturedFuncs: Array<(args: Record<string, unknown>) => Promise<unknown>> = [];
-				(getAllTools as vi.Mock).mockResolvedValue([
+				(getAllTools as Mock).mockResolvedValue([
 					{ name: 'list_events', description: 'List events' },
 					{ name: 'create_event', description: 'Create event' },
 				]);
-				(mcpToolToDynamicTool as vi.Mock).mockImplementation(
+				(mcpToolToDynamicTool as Mock).mockImplementation(
 					(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
 						capturedFuncs.push(func);
 						return { name: 'some-tool' };
 					},
 				);
-				(createCallTool as vi.Mock).mockImplementation(() => vi.fn().mockResolvedValue('ok'));
+				(createCallTool as Mock).mockImplementation(() => vi.fn().mockResolvedValue('ok'));
 
 				const result = await getMicrosoftMcpTools(
 					mockTurnContextLogging,
@@ -1234,13 +1235,13 @@ describe('microsoft-utils', () => {
 		});
 
 		test('should invoke agent with input text and system prompt', async () => {
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'systemPrompt') return 'You are a helpful assistant';
 				if (param === 'useMcpTools') return false;
 				return undefined;
 			});
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Agent response');
+			(invokeAgent as Mock).mockResolvedValue('Agent response');
 
 			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
@@ -1270,13 +1271,13 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'systemPrompt') return 'Test prompt';
 				if (param === 'useMcpTools') return false;
 				return undefined;
 			});
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Response');
+			(invokeAgent as Mock).mockResolvedValue('Response');
 
 			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
@@ -1300,12 +1301,12 @@ describe('microsoft-utils', () => {
 		test('should not use MCP tools when token is not available', async () => {
 			const noTokenRef = { token: undefined };
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'systemPrompt') return 'Test prompt';
 				return undefined;
 			});
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Response');
+			(invokeAgent as Mock).mockResolvedValue('Response');
 
 			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
@@ -1327,13 +1328,13 @@ describe('microsoft-utils', () => {
 		});
 
 		test('should send agent response to turn context', async () => {
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'systemPrompt') return 'Test prompt';
 				if (param === 'useMcpTools') return false;
 				return undefined;
 			});
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Test agent response');
+			(invokeAgent as Mock).mockResolvedValue('Test agent response');
 
 			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
@@ -1356,25 +1357,25 @@ describe('microsoft-utils', () => {
 						{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
 					]),
 			};
-			(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+			(McpToolServerConfigurationService as Mock).mockImplementation(function () {
 				return mockConfigSvc;
 			});
-			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
-			(getAllTools as vi.Mock).mockResolvedValue([
+			(connectMcpClient as Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
+			(getAllTools as Mock).mockResolvedValue([
 				{ name: 'list_events', description: 'List events' },
 			]);
-			(mcpToolToDynamicTool as vi.Mock).mockReturnValue({
+			(mcpToolToDynamicTool as Mock).mockReturnValue({
 				name: 'mcp_CalendarTools_list_events',
 			});
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'systemPrompt') return 'Test prompt';
 				if (param === 'useMcpTools') return true;
 				if (param === 'include') return 'all';
 				return undefined;
 			});
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Response');
+			(invokeAgent as Mock).mockResolvedValue('Response');
 
 			const activityCapture: ActivityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
@@ -1399,32 +1400,32 @@ describe('microsoft-utils', () => {
 						{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
 					]),
 			};
-			(McpToolServerConfigurationService as vi.Mock).mockImplementation(function () {
+			(McpToolServerConfigurationService as Mock).mockImplementation(function () {
 				return mockConfigSvc;
 			});
-			(connectMcpClient as vi.Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
-			(getAllTools as vi.Mock).mockResolvedValue([
+			(connectMcpClient as Mock).mockResolvedValue({ ok: true, result: { close: vi.fn() } });
+			(getAllTools as Mock).mockResolvedValue([
 				{ name: 'list_events', description: 'List events' },
 			]);
 
 			let capturedToolFunc: ((args: Record<string, unknown>) => Promise<unknown>) | undefined;
-			(mcpToolToDynamicTool as vi.Mock).mockImplementation(
+			(mcpToolToDynamicTool as Mock).mockImplementation(
 				(_tool: unknown, func: (args: Record<string, unknown>) => Promise<unknown>) => {
 					capturedToolFunc = func;
 					return { name: 'mcp_CalendarTools_list_events' };
 				},
 			);
-			(createCallTool as vi.Mock).mockImplementation(() =>
+			(createCallTool as Mock).mockImplementation(() =>
 				vi.fn().mockResolvedValue('event list result'),
 			);
 
 			// Simulate agent invoking a tool before the LLM call fails
-			(invokeAgent as vi.Mock).mockImplementation(async () => {
+			(invokeAgent as Mock).mockImplementation(async () => {
 				await capturedToolFunc!({ query: 'today' });
 				throw new Error('LLM API timeout');
 			});
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'systemPrompt') return 'Test prompt';
 				if (param === 'useMcpTools') return true;
 				if (param === 'include') return 'all';
@@ -1462,13 +1463,13 @@ describe('microsoft-utils', () => {
 				sendActivity: vi.fn().mockResolvedValue({}),
 			};
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'systemPrompt') return 'Test prompt';
 				if (param === 'useMcpTools') return false;
 				return undefined;
 			});
 
-			(invokeAgent as vi.Mock).mockResolvedValue('Response');
+			(invokeAgent as Mock).mockResolvedValue('Response');
 
 			const activityCapture = { input: '', output: [], activity: {} };
 			const callback = configureActivityCallback(
@@ -1492,7 +1493,7 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Hello! Welcome!';
 				if (param === 'systemPrompt') return 'Test prompt';
 				return undefined;
@@ -1521,7 +1522,7 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return '';
 				if (param === 'systemPrompt') return 'Test prompt';
 				return undefined;
@@ -1550,7 +1551,7 @@ describe('microsoft-utils', () => {
 				},
 			};
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'options.welcomeMessage') return 'Hi there!';
 				if (param === 'systemPrompt') return 'Test prompt';
 				return undefined;
@@ -1743,8 +1744,8 @@ describe('microsoft-utils', () => {
 	});
 
 	describe('disposeActivityResources', () => {
-		let mockInvokeAgentScope: { dispose: vi.Mock };
-		let mockMcpClient: { close: vi.Mock };
+		let mockInvokeAgentScope: { dispose: Mock };
+		let mockMcpClient: { close: Mock };
 		let consoleErrorSpy: vi.SpyInstance;
 
 		beforeEach(() => {

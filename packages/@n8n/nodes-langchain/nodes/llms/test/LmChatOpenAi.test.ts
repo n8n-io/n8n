@@ -9,6 +9,7 @@ import type { IDataObject, INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import * as common from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
+import { Mocked } from 'vitest';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -23,7 +24,7 @@ const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('LmChatOpenAi', () => {
 	let lmChatOpenAi: LmChatOpenAi;
-	let mockContext: vi.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -39,7 +40,7 @@ describe('LmChatOpenAi', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
 		mockContext.getCredentials = vi.fn().mockResolvedValue({

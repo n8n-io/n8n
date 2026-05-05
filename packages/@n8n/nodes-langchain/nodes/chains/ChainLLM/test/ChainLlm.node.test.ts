@@ -11,6 +11,7 @@ import * as outputParserModule from '@utils/output_parsers/N8nOutputParser';
 import { ChainLlm } from '../ChainLlm.node';
 import * as executeChainModule from '../methods/chainExecutor';
 import * as responseFormatterModule from '../methods/responseFormatter';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('@utils/helpers', () => ({
 	getPromptInputByType: vi.fn(),
@@ -35,7 +36,7 @@ vi.mock('../methods/responseFormatter', () => ({
 
 describe('ChainLlm Node', () => {
 	let node: ChainLlm;
-	let mockExecuteFunction: vi.Mocked<IExecuteFunctions>;
+	let mockExecuteFunction: Mocked<IExecuteFunctions>;
 	let needsFallback: boolean;
 
 	beforeEach(() => {
@@ -88,11 +89,11 @@ describe('ChainLlm Node', () => {
 
 	describe('execute', () => {
 		it('should execute the chain with the correct parameters', async () => {
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
 
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue(['Test response']);
+			(executeChainModule.executeChain as Mock).mockResolvedValue(['Test response']);
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -117,13 +118,13 @@ describe('ChainLlm Node', () => {
 				{ json: { item: 2 } },
 			]);
 
-			(helperModule.getPromptInputByType as vi.Mock)
+			(helperModule.getPromptInputByType as Mock)
 				.mockReturnValueOnce('Test prompt 1')
 				.mockReturnValueOnce('Test prompt 2');
 
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
-			(executeChainModule.executeChain as vi.Mock)
+			(executeChainModule.executeChain as Mock)
 				.mockResolvedValueOnce(['Response 1'])
 				.mockResolvedValueOnce(['Response 2']);
 
@@ -146,9 +147,9 @@ describe('ChainLlm Node', () => {
 				return defaultValue;
 			});
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue(['Test response']);
+			(executeChainModule.executeChain as Mock).mockResolvedValue(['Test response']);
 
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
 			await node.execute.call(mockExecuteFunction);
 
@@ -164,9 +165,9 @@ describe('ChainLlm Node', () => {
 		});
 
 		it('should throw an error if prompt is empty', async () => {
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue(undefined);
+			(helperModule.getPromptInputByType as Mock).mockReturnValue(undefined);
 
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
 			mockExecuteFunction.getNode.mockReturnValue({ name: 'Test Node' } as INode);
 
@@ -174,10 +175,10 @@ describe('ChainLlm Node', () => {
 		});
 
 		it('should continue on failure when configured', async () => {
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
 
 			const error = new Error('Test error');
-			(executeChainModule.executeChain as vi.Mock).mockRejectedValue(error);
+			(executeChainModule.executeChain as Mock).mockRejectedValue(error);
 
 			mockExecuteFunction.continueOnFail.mockReturnValue(true);
 
@@ -187,11 +188,11 @@ describe('ChainLlm Node', () => {
 		});
 
 		it('should handle multiple response items from executeChain', async () => {
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
 
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue(['Response 1', 'Response 2']);
+			(executeChainModule.executeChain as Mock).mockResolvedValue(['Response 1', 'Response 2']);
 
 			const result = await node.execute.call(mockExecuteFunction);
 
@@ -221,12 +222,12 @@ describe('ChainLlm Node', () => {
 					},
 				);
 
-				(helperModule.getPromptInputByType as vi.Mock)
+				(helperModule.getPromptInputByType as Mock)
 					.mockReturnValueOnce('Test prompt 1')
 					.mockReturnValueOnce('Test prompt 2')
 					.mockReturnValueOnce('Test prompt 3');
 
-				(executeChainModule.executeChain as vi.Mock)
+				(executeChainModule.executeChain as Mock)
 					.mockResolvedValueOnce(['Response 1'])
 					.mockResolvedValueOnce(['Response 2'])
 					.mockResolvedValueOnce(['Response 3']);
@@ -254,13 +255,13 @@ describe('ChainLlm Node', () => {
 					},
 				);
 
-				(helperModule.getPromptInputByType as vi.Mock)
+				(helperModule.getPromptInputByType as Mock)
 					.mockReturnValueOnce('Test prompt 1')
 					.mockReturnValueOnce('Test prompt 2')
 					.mockReturnValueOnce('Test prompt 3')
 					.mockReturnValueOnce('Test prompt 4');
 
-				(executeChainModule.executeChain as vi.Mock)
+				(executeChainModule.executeChain as Mock)
 					.mockResolvedValueOnce(['Response 1'])
 					.mockResolvedValueOnce(['Response 2'])
 					.mockResolvedValueOnce(['Response 3'])
@@ -289,11 +290,11 @@ describe('ChainLlm Node', () => {
 
 				mockExecuteFunction.continueOnFail.mockReturnValue(true);
 
-				(helperModule.getPromptInputByType as vi.Mock)
+				(helperModule.getPromptInputByType as Mock)
 					.mockReturnValueOnce('Test prompt 1')
 					.mockReturnValueOnce('Test prompt 2');
 
-				(executeChainModule.executeChain as vi.Mock)
+				(executeChainModule.executeChain as Mock)
 					.mockResolvedValueOnce(['Response 1'])
 					.mockRejectedValueOnce(new Error('Test error'));
 
@@ -320,7 +321,7 @@ describe('ChainLlm Node', () => {
 
 				mockExecuteFunction.continueOnFail.mockReturnValue(true);
 
-				(helperModule.getPromptInputByType as vi.Mock)
+				(helperModule.getPromptInputByType as Mock)
 					.mockReturnValueOnce('Test prompt 1')
 					.mockReturnValueOnce('Test prompt 2');
 
@@ -329,7 +330,7 @@ describe('ChainLlm Node', () => {
 					cause: { error: { code: 'rate_limit_exceeded' } },
 				});
 
-				(executeChainModule.executeChain as vi.Mock)
+				(executeChainModule.executeChain as Mock)
 					.mockResolvedValueOnce(['Response 1'])
 					.mockRejectedValueOnce(openAiError);
 
@@ -347,8 +348,8 @@ describe('ChainLlm Node', () => {
 				parameters: {},
 			} as INode);
 
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
 			const structuredResponse = {
 				person: { name: 'John', age: 30 },
@@ -356,7 +357,7 @@ describe('ChainLlm Node', () => {
 				active: true,
 			};
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue([structuredResponse]);
+			(executeChainModule.executeChain as Mock).mockResolvedValue([structuredResponse]);
 
 			const formatResponseSpy = vi.spyOn(responseFormatterModule, 'formatResponse');
 
@@ -372,9 +373,9 @@ describe('ChainLlm Node', () => {
 				parameters: {},
 			} as INode);
 
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
 
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(
 				mock<outputParserModule.N8nOutputParser>(),
 			);
 
@@ -383,7 +384,7 @@ describe('ChainLlm Node', () => {
 				data: { key: 'value' },
 			};
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue([structuredResponse]);
+			(executeChainModule.executeChain as Mock).mockResolvedValue([structuredResponse]);
 
 			const formatResponseSpy = vi.spyOn(responseFormatterModule, 'formatResponse');
 
@@ -399,15 +400,15 @@ describe('ChainLlm Node', () => {
 				parameters: {},
 			} as INode);
 
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
 			const structuredResponse = {
 				person: { name: 'John', age: 30 },
 				items: ['item1', 'item2'],
 			};
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue([structuredResponse]);
+			(executeChainModule.executeChain as Mock).mockResolvedValue([structuredResponse]);
 
 			const formatResponseSpy = vi.spyOn(responseFormatterModule, 'formatResponse');
 
@@ -423,14 +424,14 @@ describe('ChainLlm Node', () => {
 				parameters: {},
 			} as INode);
 
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
 			const mixedResponses = ['Text response', { structured: 'object' }, ['array', 'response']];
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue(mixedResponses);
+			(executeChainModule.executeChain as Mock).mockResolvedValue(mixedResponses);
 
-			(responseFormatterModule.formatResponse as vi.Mock).mockClear();
+			(responseFormatterModule.formatResponse as Mock).mockClear();
 
 			await node.execute.call(mockExecuteFunction);
 
@@ -459,10 +460,10 @@ describe('ChainLlm Node', () => {
 				parameters: {},
 			} as INode);
 
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue(
+			(helperModule.getPromptInputByType as Mock).mockReturnValue(
 				'Generate markdown documentation',
 			);
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
 			const markdownResponse = {
 				title: 'API Documentation',
@@ -484,9 +485,9 @@ describe('ChainLlm Node', () => {
 				},
 			};
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue([markdownResponse]);
+			(executeChainModule.executeChain as Mock).mockResolvedValue([markdownResponse]);
 
-			(responseFormatterModule.formatResponse as vi.Mock).mockImplementation(
+			(responseFormatterModule.formatResponse as Mock).mockImplementation(
 				(response, shouldUnwrap) => {
 					if (shouldUnwrap && typeof response === 'object') {
 						return response;
@@ -510,11 +511,11 @@ describe('ChainLlm Node', () => {
 
 		it('should use fallback llm if enabled', async () => {
 			needsFallback = true;
-			(helperModule.getPromptInputByType as vi.Mock).mockReturnValue('Test prompt');
+			(helperModule.getPromptInputByType as Mock).mockReturnValue('Test prompt');
 
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockResolvedValue(undefined);
+			(outputParserModule.getOptionalOutputParser as Mock).mockResolvedValue(undefined);
 
-			(executeChainModule.executeChain as vi.Mock).mockResolvedValue(['Test response']);
+			(executeChainModule.executeChain as Mock).mockResolvedValue(['Test response']);
 
 			const fakeLLM = new FakeChatModel({});
 			const fakeFallbackLLM = new FakeChatModel({});
@@ -539,7 +540,7 @@ describe('ChainLlm Node', () => {
 
 		it('should pass correct itemIndex to getOptionalOutputParser', async () => {
 			// Clear any previous calls to the mock
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockClear();
+			(outputParserModule.getOptionalOutputParser as Mock).mockClear();
 
 			mockExecuteFunction.getInputData.mockReturnValue([
 				{ json: { item: 1 } },
@@ -547,7 +548,7 @@ describe('ChainLlm Node', () => {
 				{ json: { item: 3 } },
 			]);
 
-			(helperModule.getPromptInputByType as vi.Mock)
+			(helperModule.getPromptInputByType as Mock)
 				.mockReturnValueOnce('Test prompt 1')
 				.mockReturnValueOnce('Test prompt 2')
 				.mockReturnValueOnce('Test prompt 3');
@@ -558,13 +559,13 @@ describe('ChainLlm Node', () => {
 
 			// Use the already mocked function instead of creating a spy
 			// First call is for the initial check in execute(), then one per item
-			(outputParserModule.getOptionalOutputParser as vi.Mock)
+			(outputParserModule.getOptionalOutputParser as Mock)
 				.mockResolvedValueOnce(undefined) // Initial call in execute()
 				.mockResolvedValueOnce(mockParser1)
 				.mockResolvedValueOnce(mockParser2)
 				.mockResolvedValueOnce(mockParser3);
 
-			(executeChainModule.executeChain as vi.Mock)
+			(executeChainModule.executeChain as Mock)
 				.mockResolvedValueOnce(['Response 1'])
 				.mockResolvedValueOnce(['Response 2'])
 				.mockResolvedValueOnce(['Response 3']);
@@ -636,19 +637,19 @@ describe('ChainLlm Node', () => {
 				{ json: { item: 2 } },
 			]);
 
-			(helperModule.getPromptInputByType as vi.Mock)
+			(helperModule.getPromptInputByType as Mock)
 				.mockReturnValueOnce('Test prompt 1')
 				.mockReturnValueOnce('Test prompt 2');
 
 			// First item has no parser, second has a parser
-			(outputParserModule.getOptionalOutputParser as vi.Mock)
+			(outputParserModule.getOptionalOutputParser as Mock)
 				.mockResolvedValueOnce(undefined)
 				.mockResolvedValueOnce(mock<outputParserModule.N8nOutputParser>());
 
 			const response1 = { text: 'plain response' };
 			const response2 = { structured: 'response' };
 
-			(executeChainModule.executeChain as vi.Mock)
+			(executeChainModule.executeChain as Mock)
 				.mockResolvedValueOnce([response1])
 				.mockResolvedValueOnce([response2]);
 
@@ -665,7 +666,7 @@ describe('ChainLlm Node', () => {
 
 		it('should maintain parser consistency across batch processing', async () => {
 			// Clear any previous calls to the mock
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockClear();
+			(outputParserModule.getOptionalOutputParser as Mock).mockClear();
 
 			mockExecuteFunction.getNode.mockReturnValue({
 				name: 'Chain LLM',
@@ -687,7 +688,7 @@ describe('ChainLlm Node', () => {
 				return defaultValue;
 			});
 
-			(helperModule.getPromptInputByType as vi.Mock)
+			(helperModule.getPromptInputByType as Mock)
 				.mockReturnValueOnce('Test prompt 1')
 				.mockReturnValueOnce('Test prompt 2')
 				.mockReturnValueOnce('Test prompt 3')
@@ -702,14 +703,14 @@ describe('ChainLlm Node', () => {
 
 			// Use the already mocked function instead of creating a spy
 			// Account for initial call without index
-			(outputParserModule.getOptionalOutputParser as vi.Mock).mockImplementation(
+			(outputParserModule.getOptionalOutputParser as Mock).mockImplementation(
 				async (_ctx, index) => {
 					if (index === undefined) return undefined; // Initial call
 					return mockParsers[index];
 				},
 			);
 
-			(executeChainModule.executeChain as vi.Mock)
+			(executeChainModule.executeChain as Mock)
 				.mockResolvedValueOnce(['Response 1'])
 				.mockResolvedValueOnce(['Response 2'])
 				.mockResolvedValueOnce(['Response 3'])

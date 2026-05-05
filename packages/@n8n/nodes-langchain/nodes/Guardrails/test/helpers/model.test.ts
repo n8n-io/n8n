@@ -4,6 +4,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { GuardrailError } from '../../actions/types';
 import { getChatModel, runLLMValidation } from '../../helpers/model';
+import { Mock } from 'vitest';
 
 const {
 	MockChatPromptTemplate,
@@ -89,7 +90,7 @@ describe('model helper', () => {
 
 	describe('getChatModel', () => {
 		it('should return model when getInputConnectionData returns a single model', async () => {
-			(mockExecuteFunctions.getInputConnectionData as vi.Mock).mockResolvedValue(mockModel);
+			(mockExecuteFunctions.getInputConnectionData as Mock).mockResolvedValue(mockModel);
 
 			const result = await getChatModel.call(mockExecuteFunctions);
 
@@ -102,7 +103,7 @@ describe('model helper', () => {
 
 		it('should return first model when getInputConnectionData returns an array', async () => {
 			const models = [mockModel, {} as BaseChatModel];
-			(mockExecuteFunctions.getInputConnectionData as vi.Mock).mockResolvedValue(models);
+			(mockExecuteFunctions.getInputConnectionData as Mock).mockResolvedValue(models);
 
 			const result = await getChatModel.call(mockExecuteFunctions);
 
@@ -114,7 +115,7 @@ describe('model helper', () => {
 		});
 
 		it('should handle empty array from getInputConnectionData', async () => {
-			(mockExecuteFunctions.getInputConnectionData as vi.Mock).mockResolvedValue([]);
+			(mockExecuteFunctions.getInputConnectionData as Mock).mockResolvedValue([]);
 
 			const result = await getChatModel.call(mockExecuteFunctions);
 

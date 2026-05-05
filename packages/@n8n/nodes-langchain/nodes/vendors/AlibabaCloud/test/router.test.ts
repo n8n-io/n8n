@@ -20,6 +20,7 @@ import { router } from '../actions/router';
 import * as text from '../actions/text';
 import * as image from '../actions/image';
 import * as video from '../actions/video';
+import { Mock } from 'vitest';
 
 describe('AlicloudModelStudio Router', () => {
 	let mockExecuteFunctions: ReturnType<typeof mock<IExecuteFunctions>>;
@@ -46,7 +47,7 @@ describe('AlicloudModelStudio Router', () => {
 
 	it('should route text/message to text.message.execute', async () => {
 		const expectedResult: INodeExecutionData = { json: { text: 'hello' }, pairedItem: 0 };
-		(text.message.execute as vi.Mock).mockResolvedValue(expectedResult);
+		(text.message.execute as Mock).mockResolvedValue(expectedResult);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'text';
 			if (param === 'operation') return 'message';
@@ -64,7 +65,7 @@ describe('AlicloudModelStudio Router', () => {
 			json: { image: 'https://example.com/img.png' },
 			pairedItem: 0,
 		};
-		(image.generate.execute as vi.Mock).mockResolvedValue(expectedResult);
+		(image.generate.execute as Mock).mockResolvedValue(expectedResult);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'image';
 			if (param === 'operation') return 'generate';
@@ -82,7 +83,7 @@ describe('AlicloudModelStudio Router', () => {
 			json: { videoUrl: 'https://example.com/video.mp4' },
 			pairedItem: 0,
 		};
-		(video.textToVideo.execute as vi.Mock).mockResolvedValue(expectedResult);
+		(video.textToVideo.execute as Mock).mockResolvedValue(expectedResult);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'video';
 			if (param === 'operation') return 'textToVideo';
@@ -106,7 +107,7 @@ describe('AlicloudModelStudio Router', () => {
 	});
 
 	it('should return error in json when continueOnFail is enabled and operation throws', async () => {
-		(text.message.execute as vi.Mock).mockRejectedValue(new Error('API limit reached'));
+		(text.message.execute as Mock).mockRejectedValue(new Error('API limit reached'));
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 		mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) => {
 			if (param === 'resource') return 'text';

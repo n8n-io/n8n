@@ -17,10 +17,11 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { ToolExecutor } from '../ToolExecutor.node';
+import { Mocked } from 'vitest';
 
 describe('ToolExecutor Node', async () => {
 	let node: ToolExecutor;
-	let mockExecuteFunction: vi.Mocked<IExecuteFunctions>;
+	let mockExecuteFunction: Mocked<IExecuteFunctions>;
 
 	const { processHitlResponses, buildResponseMetadata } = vi.mocked(
 		await import('@utils/agent-execution'),

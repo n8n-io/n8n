@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
+import { Mock } from 'vitest';
 import {
 	getOutputParserSchema,
 	extractBinaryMessages,
@@ -31,13 +32,13 @@ import {
 
 function getFakeOutputParser(returnSchema?: ZodType): N8nOutputParser {
 	const fakeOutputParser = mock<N8nOutputParser>();
-	(fakeOutputParser.getSchema as vi.Mock).mockReturnValue(returnSchema);
+	(fakeOutputParser.getSchema as Mock).mockReturnValue(returnSchema);
 	return fakeOutputParser;
 }
 
 function createMockOutputParser(parseReturnValue?: Record<string, unknown>): N8nOutputParser {
 	const mockParser = mock<N8nOutputParser>();
-	(mockParser.parse as vi.Mock).mockResolvedValue(parseReturnValue);
+	(mockParser.parse as Mock).mockResolvedValue(parseReturnValue);
 
 	return mockParser;
 }

@@ -4,6 +4,7 @@ import type { INode, IWebhookFunctions, ICredentialDataDecryptedObject } from 'n
 import { createMockLogger, createMockRequest, createMockResponse } from './helpers';
 import { McpTrigger } from '../McpTrigger.node';
 import { McpServer } from '../McpServer';
+import { Mock, Mocked } from 'vitest';
 
 const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
 	"Default to 'none'. n8n exposes inbound trigger URLs publicly by design. Only select an authentication method when the user explicitly asks to authenticate inbound traffic.";
@@ -32,8 +33,8 @@ vi.mock('@utils/helpers', () => ({
 
 describe('McpTrigger', () => {
 	let mcpTrigger: McpTrigger;
-	let mockMcpServer: vi.Mocked<McpServer>;
-	let mockContext: vi.Mocked<IWebhookFunctions>;
+	let mockMcpServer: Mocked<McpServer>;
+	let mockContext: Mocked<IWebhookFunctions>;
 	let mockLogger: ReturnType<typeof createMockLogger>;
 
 	beforeEach(() => {
@@ -52,9 +53,9 @@ describe('McpTrigger', () => {
 			handleDeleteRequest: vi.fn().mockResolvedValue(undefined),
 			handleStreamableHttpSetup: vi.fn().mockResolvedValue(undefined),
 			getSessionId: vi.fn().mockReturnValue(undefined),
-		} as unknown as vi.Mocked<McpServer>;
+		} as unknown as Mocked<McpServer>;
 
-		(McpServer.instance as vi.Mock).mockReturnValue(mockMcpServer);
+		(McpServer.instance as Mock).mockReturnValue(mockMcpServer);
 
 		mockContext = mock<IWebhookFunctions>({
 			getWebhookName: vi.fn().mockReturnValue('setup'),

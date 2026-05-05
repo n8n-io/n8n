@@ -6,6 +6,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatAnthropic } from '../LMChatAnthropic/LmChatAnthropic.node';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('@langchain/anthropic', () => ({
 	ChatAnthropic: vi.fn(),
@@ -19,7 +20,7 @@ const mockedGetProxyAgent = vi.mocked(getProxyAgent);
 
 describe('LmChatAnthropic', () => {
 	let lmChatAnthropic: LmChatAnthropic;
-	let mockContext: vi.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	const mockNode: INode = {
 		id: '1',
@@ -35,7 +36,7 @@ describe('LmChatAnthropic', () => {
 		mockContext = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			node,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		// Setup default mocks
 		mockContext.getCredentials = vi.fn().mockResolvedValue({
@@ -411,8 +412,8 @@ describe('LmChatAnthropic', () => {
 	describe('methods', () => {
 		describe('searchModels', () => {
 			let mockLoadContext: ILoadOptionsFunctions;
-			let mockGetCredentials: vi.Mock;
-			let mockHttpRequest: vi.Mock;
+			let mockGetCredentials: Mock;
+			let mockHttpRequest: Mock;
 
 			beforeEach(() => {
 				mockGetCredentials = vi.fn();

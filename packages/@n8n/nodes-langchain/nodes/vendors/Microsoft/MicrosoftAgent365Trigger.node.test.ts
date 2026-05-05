@@ -2,6 +2,7 @@ import type { INodeType, IWebhookFunctions, IWebhookResponseData } from 'n8n-wor
 import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 import { MicrosoftAgent365Trigger } from './MicrosoftAgent365Trigger.node';
+import { Mock } from 'vitest';
 import {
 	createMicrosoftAgentApplication,
 	configureAdapterProcessCallback,
@@ -147,13 +148,13 @@ describe('MicrosoftAgent365Trigger', () => {
 					adapter: mockAdapter,
 				};
 
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as vi.Mock).mockReturnValue(mockAgent);
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
 			});
 
 			test('should process POST request successfully', async () => {
 				const mockCallback = vi.fn();
-				(configureAdapterProcessCallback as vi.Mock).mockReturnValue(mockCallback);
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
 				const result = await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
@@ -194,7 +195,7 @@ describe('MicrosoftAgent365Trigger', () => {
 
 			test('should capture activity data in workflowData', async () => {
 				const mockCallback = vi.fn();
-				(configureAdapterProcessCallback as vi.Mock).mockReturnValue(mockCallback);
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
 				const result = (await microsoftAgent365Trigger.webhook!.call(
 					mockWebhookFunctions,
@@ -223,7 +224,7 @@ describe('MicrosoftAgent365Trigger', () => {
 				});
 
 				// Populate activityCapture when configureAdapterProcessCallback is called
-				(configureAdapterProcessCallback as vi.Mock).mockImplementation(
+				(configureAdapterProcessCallback as Mock).mockImplementation(
 					(_nodeCtx, _agent, _creds, activityCapture) => {
 						activityCapture.input = 'Hello agent';
 						activityCapture.output = ['Hi there!'];
@@ -254,15 +255,14 @@ describe('MicrosoftAgent365Trigger', () => {
 				);
 
 				// conversationId must NOT appear at the top level
-				const calledWith = (mockWebhookFunctions.helpers!.returnJsonArray as vi.Mock).mock
-					.calls[0][0];
+				const calledWith = (mockWebhookFunctions.helpers!.returnJsonArray as Mock).mock.calls[0][0];
 				expect(calledWith).not.toHaveProperty('conversationId');
 				expect(calledWith).not.toHaveProperty('activity');
 			});
 
 			test('should set request user properties correctly', async () => {
 				const mockCallback = vi.fn();
-				(configureAdapterProcessCallback as vi.Mock).mockReturnValue(mockCallback);
+				(configureAdapterProcessCallback as Mock).mockReturnValue(mockCallback);
 
 				await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
 
@@ -276,7 +276,7 @@ describe('MicrosoftAgent365Trigger', () => {
 		describe('Error handling', () => {
 			test('should throw NodeOperationError when credentials retrieval fails', async () => {
 				const error = new Error('Credentials not found');
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockRejectedValue(error);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(error);
 
 				await expect(microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions)).rejects.toThrow(
 					NodeOperationError,
@@ -293,7 +293,7 @@ describe('MicrosoftAgent365Trigger', () => {
 					},
 				};
 
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockRejectedValue(errorResponse);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(errorResponse);
 
 				await expect(microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions)).rejects.toThrow(
 					'Error: invalid_client',
@@ -311,7 +311,7 @@ describe('MicrosoftAgent365Trigger', () => {
 					message: 'Authentication failed',
 				};
 
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockRejectedValue(errorResponse);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(errorResponse);
 
 				try {
 					await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
@@ -326,7 +326,7 @@ describe('MicrosoftAgent365Trigger', () => {
 
 			test('should throw NodeOperationError with message when no error object in response', async () => {
 				const error = new Error('Network error');
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockRejectedValue(error);
+				(mockWebhookFunctions.getCredentials as Mock).mockRejectedValue(error);
 
 				try {
 					await microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions);
@@ -344,8 +344,8 @@ describe('MicrosoftAgent365Trigger', () => {
 					clientSecret: 'test-client-secret',
 				};
 
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as vi.Mock).mockImplementation(() => {
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockImplementation(() => {
 					throw new Error('Failed to create agent application');
 				});
 
@@ -367,8 +367,8 @@ describe('MicrosoftAgent365Trigger', () => {
 					},
 				};
 
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as vi.Mock).mockReturnValue(mockAgent);
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
 
 				await expect(microsoftAgent365Trigger.webhook!.call(mockWebhookFunctions)).rejects.toThrow(
 					NodeOperationError,
@@ -391,9 +391,9 @@ describe('MicrosoftAgent365Trigger', () => {
 				let capturedActivityCapture: ActivityCapture | undefined;
 				const mockCallback = vi.fn();
 
-				(mockWebhookFunctions.getCredentials as vi.Mock).mockResolvedValue(mockCredentials);
-				(createMicrosoftAgentApplication as vi.Mock).mockReturnValue(mockAgent);
-				(configureAdapterProcessCallback as vi.Mock).mockImplementation(
+				(mockWebhookFunctions.getCredentials as Mock).mockResolvedValue(mockCredentials);
+				(createMicrosoftAgentApplication as Mock).mockReturnValue(mockAgent);
+				(configureAdapterProcessCallback as Mock).mockImplementation(
 					(_ctx, _agent, _creds, activityCapture) => {
 						capturedActivityCapture = activityCapture;
 						return mockCallback;

@@ -1,18 +1,19 @@
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 
 import type { McpTransport, TransportType } from '../../transport/Transport';
+import { Mocked } from 'vitest';
 
 /**
  * Creates a mock MCP Server
  */
-export function createMockServer(): vi.Mocked<Server> {
+export function createMockServer(): Mocked<Server> {
 	return {
 		connect: vi.fn().mockResolvedValue(undefined),
 		close: vi.fn().mockResolvedValue(undefined),
 		setRequestHandler: vi.fn(),
 		onclose: undefined,
 		onerror: undefined,
-	} as unknown as vi.Mocked<Server>;
+	} as unknown as Mocked<Server>;
 }
 
 /**
@@ -21,7 +22,7 @@ export function createMockServer(): vi.Mocked<Server> {
 export function createMockTransport(
 	sessionId: string,
 	transportType: TransportType = 'sse',
-): vi.Mocked<McpTransport> {
+): Mocked<McpTransport> {
 	return {
 		transportType,
 		sessionId,
@@ -29,5 +30,5 @@ export function createMockTransport(
 		handleRequest: vi.fn().mockResolvedValue(undefined),
 		close: vi.fn().mockResolvedValue(undefined),
 		onclose: undefined,
-	} as unknown as vi.Mocked<McpTransport>;
+	} as unknown as Mocked<McpTransport>;
 }

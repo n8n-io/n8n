@@ -9,6 +9,7 @@ import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 
 import { LmChatOpenRouter } from '../LmChatOpenRouter.node';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
@@ -34,7 +35,7 @@ describe('LmChatOpenRouter', () => {
 		const ctx = createMockExecuteFunction<ISupplyDataFunctions>(
 			{},
 			nodeDef,
-		) as vi.Mocked<ISupplyDataFunctions>;
+		) as Mocked<ISupplyDataFunctions>;
 
 		ctx.getCredentials = vi.fn().mockResolvedValue({
 			apiKey: 'test-key',
@@ -186,7 +187,7 @@ describe('LmChatOpenRouter', () => {
 		 * Sets up a mock fetch, calls supplyData to capture it in the wrapper,
 		 * and returns the wrapper function from the ChatOpenAI constructor args.
 		 */
-		async function setupFetchWrapper(mockFetch: vi.Mock): Promise<typeof globalThis.fetch> {
+		async function setupFetchWrapper(mockFetch: Mock): Promise<typeof globalThis.fetch> {
 			globalThis.fetch = mockFetch;
 			const ctx = setupMockContext();
 			await node.supplyData.call(ctx, 0);

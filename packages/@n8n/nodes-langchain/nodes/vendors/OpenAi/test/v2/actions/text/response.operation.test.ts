@@ -9,6 +9,7 @@ import * as helpers from '../../../../v2/actions/text/helpers/responses';
 import { execute } from '../../../../v2/actions/text/response.operation';
 import { formatToOpenAIResponsesTool } from '../../../../helpers/utils';
 import type { Tool } from '@langchain/classic/tools';
+import { Mocked } from 'vitest';
 
 vi.mock('../../../../transport');
 vi.mock('../../../../v2/actions/text/helpers/responses');
@@ -25,8 +26,8 @@ const mockGetConnectedTools = getConnectedTools as vi.MockedFunction<typeof getC
 const mockPollUntilAvailable = pollUntilAvailable as vi.MockedFunction<typeof pollUntilAvailable>;
 
 describe('OpenAI Response Operation', () => {
-	let mockExecuteFunctions: vi.Mocked<IExecuteFunctions>;
-	let mockNode: vi.Mocked<INode>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockNode: Mocked<INode>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();

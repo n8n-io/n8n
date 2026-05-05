@@ -1,9 +1,10 @@
 import type { Logger } from 'n8n-workflow';
+import { Mocked } from 'vitest';
 
 /**
  * Creates a mock Logger for testing
  */
-export function createMockLogger(): vi.Mocked<Logger> {
+export function createMockLogger(): Mocked<Logger> {
 	return {
 		debug: vi.fn(),
 		info: vi.fn(),
@@ -13,5 +14,5 @@ export function createMockLogger(): vi.Mocked<Logger> {
 		log: vi.fn(),
 		verbose: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
-	} as unknown as vi.Mocked<Logger>;
+	} as unknown as Mocked<Logger>;
 }

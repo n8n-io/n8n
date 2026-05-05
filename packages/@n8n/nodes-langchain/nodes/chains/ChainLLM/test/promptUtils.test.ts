@@ -11,6 +11,7 @@ import type { N8nStructuredOutputParser } from '@utils/output_parsers/N8nOutputP
 import * as imageUtils from '../methods/imageUtils';
 import { createPromptTemplate, getAgentStepsParser } from '../methods/promptUtils';
 import type { MessageTemplate } from '../methods/types';
+import { Mock, Mocked } from 'vitest';
 
 vi.mock('../methods/imageUtils', () => ({
 	createImageMessage: vi.fn(),
@@ -18,7 +19,7 @@ vi.mock('../methods/imageUtils', () => ({
 
 describe('promptUtils', () => {
 	describe('createPromptTemplate', () => {
-		let mockContext: vi.Mocked<IExecuteFunctions>;
+		let mockContext: Mocked<IExecuteFunctions>;
 
 		beforeEach(() => {
 			mockContext = mock<IExecuteFunctions>();
@@ -142,7 +143,7 @@ describe('promptUtils', () => {
 			const mockHumanMessage = new HumanMessage({
 				content: [{ type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }],
 			});
-			(imageUtils.createImageMessage as vi.Mock).mockResolvedValue(mockHumanMessage);
+			(imageUtils.createImageMessage as Mock).mockResolvedValue(mockHumanMessage);
 
 			await createPromptTemplate({
 				context: mockContext,
@@ -187,7 +188,7 @@ describe('promptUtils', () => {
 			const mockHumanMessage = new HumanMessage({
 				content: [{ type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }],
 			});
-			(imageUtils.createImageMessage as vi.Mock).mockResolvedValue(mockHumanMessage);
+			(imageUtils.createImageMessage as Mock).mockResolvedValue(mockHumanMessage);
 
 			const imageMessage: MessageTemplate = {
 				type: 'HumanMessagePromptTemplate',
@@ -220,7 +221,7 @@ describe('promptUtils', () => {
 	});
 
 	describe('getAgentStepsParser', () => {
-		let mockOutputParser: vi.Mocked<N8nStructuredOutputParser>;
+		let mockOutputParser: Mocked<N8nStructuredOutputParser>;
 
 		beforeEach(() => {
 			mockOutputParser = mock<N8nStructuredOutputParser>({

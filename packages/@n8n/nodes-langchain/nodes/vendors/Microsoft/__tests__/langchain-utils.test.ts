@@ -12,6 +12,7 @@ import {
 } from '../../../agents/Agent/agents/ToolsAgent/common';
 import { createAgentExecutor } from '../../../agents/Agent/agents/ToolsAgent/V2/execute';
 import { getOptionalOutputParser } from '../../../../utils/output_parsers/N8nOutputParser';
+import { Mock } from 'vitest';
 
 vi.mock('../../../agents/Agent/agents/ToolsAgent/common', () => ({
 	getChatModel: vi.fn(),
@@ -42,9 +43,9 @@ describe('langchain-utils', () => {
 		});
 
 		test('should throw error if no model is connected', async () => {
-			(getChatModel as vi.Mock).mockResolvedValue(null);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(null);
-			(nodeContext.getNodeParameter as vi.Mock).mockReturnValue(false);
+			(getChatModel as Mock).mockResolvedValue(null);
+			(getOptionalMemory as Mock).mockResolvedValue(null);
+			(nodeContext.getNodeParameter as Mock).mockReturnValue(false);
 
 			await expect(invokeAgent(nodeContext, 'test input')).rejects.toThrow(
 				'Please connect a model to the Chat Model input',
@@ -53,10 +54,10 @@ describe('langchain-utils', () => {
 
 		test('should throw NodeOperationError if fallback is needed but fallback model is not connected', async () => {
 			const mockModel = { name: 'primary-model' };
-			(getChatModel as vi.Mock).mockResolvedValueOnce(mockModel).mockResolvedValueOnce(null);
+			(getChatModel as Mock).mockResolvedValueOnce(mockModel).mockResolvedValueOnce(null);
 
-			(getOptionalMemory as vi.Mock).mockResolvedValue(null);
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(getOptionalMemory as Mock).mockResolvedValue(null);
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return true;
 				if (param === 'options') return {};
 				return false;
@@ -78,14 +79,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -122,14 +123,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -158,14 +159,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -194,16 +195,16 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock)
+			(getChatModel as Mock)
 				.mockResolvedValueOnce(mockModel)
 				.mockResolvedValueOnce(mockFallbackModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return true;
 				if (param === 'options') return {};
 				return false;
@@ -232,14 +233,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return { maxIterations: 20 };
 				return false;
@@ -269,14 +270,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ status: 'rejected', reason: mockError }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -295,14 +296,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: '{"output": {"result": "parsed response"}}' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(mockOutputParser);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(mockOutputParser);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -322,14 +323,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'raw output response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -351,14 +352,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -386,14 +387,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;
@@ -422,14 +423,14 @@ describe('langchain-utils', () => {
 				invoke: vi.fn().mockResolvedValue({ output: 'test response' }),
 			};
 
-			(getChatModel as vi.Mock).mockResolvedValue(mockModel);
-			(getOptionalMemory as vi.Mock).mockResolvedValue(mockMemory);
-			(getTools as vi.Mock).mockResolvedValue(mockTools);
-			(getOptionalOutputParser as vi.Mock).mockResolvedValue(null);
-			(preparePrompt as vi.Mock).mockReturnValue(mockPrompt);
-			(createAgentExecutor as vi.Mock).mockReturnValue(mockExecutor);
+			(getChatModel as Mock).mockResolvedValue(mockModel);
+			(getOptionalMemory as Mock).mockResolvedValue(mockMemory);
+			(getTools as Mock).mockResolvedValue(mockTools);
+			(getOptionalOutputParser as Mock).mockResolvedValue(null);
+			(preparePrompt as Mock).mockReturnValue(mockPrompt);
+			(createAgentExecutor as Mock).mockReturnValue(mockExecutor);
 
-			(nodeContext.getNodeParameter as vi.Mock).mockImplementation((param: string) => {
+			(nodeContext.getNodeParameter as Mock).mockImplementation((param: string) => {
 				if (param === 'needsFallback') return false;
 				if (param === 'options') return {};
 				return false;

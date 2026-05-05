@@ -11,7 +11,7 @@
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"types": ["vitest/globals"],
+		"types": ["node", "vitest/globals"],
 
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
