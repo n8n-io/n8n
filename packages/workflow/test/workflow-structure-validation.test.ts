@@ -54,7 +54,7 @@ describe('workflow-structure-validation', () => {
 		expect(result.success).toBe(true);
 	});
 
-	test('accepts null connection buckets (sparse output indices)', () => {
+	test('accepts null connection buckets (unused output slots)', () => {
 		const result = safeValidateWorkflowStructure({
 			...validWorkflow,
 			connections: {

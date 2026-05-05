@@ -48,9 +48,8 @@ const connectionEntrySchema = z
 	})
 	.passthrough();
 
-// Buckets can legitimately be null when connections have sparse output indices
-// (e.g. output 0 is null, output 1 has connections). Matches NodeInputConnections
-// type: Array<IConnection[] | null>. See N8N-7880.
+// Buckets can be null when a multi-output node has unused output slots.
+// Matches NodeInputConnections type.
 const connectionBucketSchema = z.array(connectionEntrySchema).nullable().optional();
 
 const workflowConnectionsStructureSchema = z.record(
