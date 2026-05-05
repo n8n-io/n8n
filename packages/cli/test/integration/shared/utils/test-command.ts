@@ -30,7 +30,7 @@ export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 
 	const run = async (argv: string[] = []) => {
 		const command = new Command();
-		const rawFlags = argvParser(argv);
+		const rawFlags = argvParser(argv, { string: ['id'] });
 		const entry = Container.get(CommandMetadata)
 			.getEntries()
 			.find(([, e]) => e.class === Command)?.[1];
