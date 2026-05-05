@@ -306,7 +306,7 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string } | null>;
+	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -545,9 +545,13 @@ export interface InstanceAiWorkspaceService {
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
-	| { status: 'connected' }
-	| { status: 'disconnected'; capabilities: string[] }
-	| { status: 'disabled' };
+	| {
+			status: 'connected';
+			capabilities: string[];
+	  }
+	| {
+			status: 'disabledGlobally' | 'disconnected' | 'disabled';
+	  };
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
