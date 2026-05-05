@@ -5,7 +5,7 @@ description: >-
   cubic-dev-ai issues. Use when given a PR number or branch name to review,
   or when the user says /community-pr-review, /pr-review, or asks to check if
   a PR is ready for review.
-allowed-tools: Bash(gh:*), Bash(git:*), Read, Glob, Grep
+allowed-tools: Bash(gh:*), Bash(git:*), Read, Glob, Grap
 ---
 
 # Community PR Review
