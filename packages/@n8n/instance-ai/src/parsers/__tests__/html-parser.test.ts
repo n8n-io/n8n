@@ -1,4 +1,5 @@
 import { extractHtmlContent } from '../html-parser';
+import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 
 function toBase64(content: string): string {
 	return Buffer.from(content, 'utf-8').toString('base64');
@@ -30,7 +31,7 @@ describe('extractHtmlContent', () => {
 	});
 
 	it('throws on attachments larger than the size cap', async () => {
-		const huge = '<p>' + 'a'.repeat(600 * 1024) + '</p>';
+		const huge = '<p>' + 'a'.repeat(MAX_DECODED_SIZE_BYTES + 1) + '</p>';
 		await expect(extractHtmlContent(makeHtmlAttachment(huge))).rejects.toThrow(
 			/exceeds maximum size/,
 		);

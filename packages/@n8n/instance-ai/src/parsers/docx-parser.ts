@@ -1,6 +1,7 @@
 import {
 	MAX_DECODED_SIZE_BYTES,
 	MAX_RESULT_CHARS,
+	formatSizeLimitMessage,
 	type AttachmentInfo,
 } from './structured-file-parser';
 
@@ -15,11 +16,7 @@ export interface DocxExtractionResult {
 export async function extractDocxText(attachment: AttachmentInfo): Promise<DocxExtractionResult> {
 	const decoded = Buffer.from(attachment.data, 'base64');
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
-		throw new Error(
-			`Attachment exceeds maximum size of ${MAX_DECODED_SIZE_BYTES / 1024} KB (got ${Math.round(
-				decoded.length / 1024,
-			)} KB)`,
-		);
+		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
 
 	const mammoth = await import('mammoth');

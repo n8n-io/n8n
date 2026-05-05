@@ -826,7 +826,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 					'Cannot send message',
 				);
 			} else if (status === 400) {
-				toast.showError(new Error('Message cannot be empty'), 'Invalid message');
+				const serverMessage = error instanceof ResponseError && error.message ? error.message : '';
+				toast.showError(
+					new Error(serverMessage || 'Message cannot be empty'),
+					'Could not send message',
+				);
 			} else {
 				toast.showError(new Error('Failed to send message. Try again.'), 'Send failed');
 			}

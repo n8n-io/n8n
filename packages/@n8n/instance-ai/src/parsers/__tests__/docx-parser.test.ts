@@ -1,4 +1,5 @@
 import { extractDocxText } from '../docx-parser';
+import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 
 const mockExtractRawText = jest.fn<Promise<{ value: string; messages: unknown[] }>, [unknown]>();
 
@@ -37,7 +38,7 @@ describe('extractDocxText', () => {
 	});
 
 	it('throws when the decoded buffer exceeds the size cap', async () => {
-		const huge = Buffer.alloc(600 * 1024, 0x41);
+		const huge = Buffer.alloc(MAX_DECODED_SIZE_BYTES + 1, 0x41);
 		await expect(
 			extractDocxText({
 				data: toBase64(huge),

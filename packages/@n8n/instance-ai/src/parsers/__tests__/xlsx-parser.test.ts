@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 
+import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 import { extractXlsxAsRows } from '../xlsx-parser';
 
 function makeXlsxAttachment(
@@ -82,8 +83,7 @@ describe('extractXlsxAsRows', () => {
 	});
 
 	it('rejects oversized attachments before parsing', async () => {
-		// Pretend payload (not actually xlsx) bigger than MAX_DECODED_SIZE_BYTES
-		const huge = Buffer.alloc(600 * 1024).toString('base64');
+		const huge = Buffer.alloc(MAX_DECODED_SIZE_BYTES + 1).toString('base64');
 		await expect(
 			extractXlsxAsRows(
 				{

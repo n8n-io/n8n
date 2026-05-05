@@ -1,5 +1,6 @@
 import {
 	MAX_DECODED_SIZE_BYTES,
+	formatSizeLimitMessage,
 	parseStructuredFile,
 	type AttachmentInfo,
 	type ParseFileInput,
@@ -20,11 +21,7 @@ export async function extractXlsxAsRows(
 ): Promise<ParseFileOutput> {
 	const decoded = Buffer.from(attachment.data, 'base64');
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
-		throw new Error(
-			`Attachment exceeds maximum size of ${MAX_DECODED_SIZE_BYTES / 1024} KB (got ${Math.round(
-				decoded.length / 1024,
-			)} KB)`,
-		);
+		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
 
 	const XLSX = await import('xlsx');

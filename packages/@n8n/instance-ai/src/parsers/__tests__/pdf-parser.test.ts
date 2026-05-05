@@ -1,4 +1,5 @@
 import { extractPdfText } from '../pdf-parser';
+import { MAX_DECODED_SIZE_BYTES } from '../structured-file-parser';
 
 const mockPdfParse = jest.fn<Promise<{ text: string; numpages: number }>, [Buffer]>();
 
@@ -35,7 +36,7 @@ describe('extractPdfText', () => {
 	});
 
 	it('throws when the decoded buffer exceeds the size cap', async () => {
-		const huge = Buffer.alloc(600 * 1024, 0x41); // 600 KB > MAX_DECODED_SIZE_BYTES (512 KB)
+		const huge = Buffer.alloc(MAX_DECODED_SIZE_BYTES + 1, 0x41);
 		await expect(
 			extractPdfText({
 				data: toBase64(huge),

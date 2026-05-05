@@ -15,7 +15,18 @@ import { parse as csvParse } from 'csv-parse/sync';
 
 // ── Limits ──────────────────────────────────────────────────────────────────
 
-export const MAX_DECODED_SIZE_BYTES = 512 * 1024; // 512 KB
+export const MAX_DECODED_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function formatMB(bytes: number): string {
+	return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatSizeLimitMessage(
+	actualBytes: number,
+	label: string = 'maximum size',
+): string {
+	return `Attachment exceeds ${label} of ${formatMB(MAX_DECODED_SIZE_BYTES)} (got ${formatMB(actualBytes)})`;
+}
 export const MAX_COLUMNS = 50;
 export const MAX_ROWS_PER_CALL = 100;
 export const DEFAULT_MAX_ROWS = 20;
@@ -351,9 +362,7 @@ export function parseStructuredFile(
 	}
 
 	if (decoded.length > MAX_DECODED_SIZE_BYTES) {
-		throw new Error(
-			`Attachment exceeds maximum size of ${MAX_DECODED_SIZE_BYTES / 1024} KB (got ${Math.round(decoded.length / 1024)} KB)`,
-		);
+		throw new Error(formatSizeLimitMessage(decoded.length));
 	}
 
 	const content = decoded.toString('utf-8');
@@ -516,7 +525,7 @@ export function classifyAttachments(attachments: AttachmentInfo[]): ClassifiedAt
 				index,
 				parseable: false,
 				format,
-				unavailableReason: `File exceeds ${MAX_DECODED_SIZE_BYTES / 1024} KB limit (${Math.round(estimatedDecodedSize / 1024)} KB)`,
+				unavailableReason: formatSizeLimitMessage(estimatedDecodedSize, 'limit'),
 			};
 		}
 
