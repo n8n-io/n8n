@@ -81,24 +81,46 @@ describe('ExecutionRecorder', () => {
 	});
 
 	describe('working memory capture', () => {
-		it('captures working-memory-update as a timeline event', () => {
+		it('captures the working-memory tool call as a timeline event', () => {
 			const recorder = new ExecutionRecorder();
 
 			recorder.record({ type: 'text-delta', id: 't1', delta: 'Hello' });
-			recorder.record({ type: 'working-memory-update', content: '# Name: Alice' });
+			recorder.record({
+				type: 'tool-call',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+				input: { memory: '# Name: Alice' },
+			} as StreamChunk);
+			recorder.record({
+				type: 'tool-result',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+				output: { success: true },
+			} as StreamChunk);
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();
 
 			expect(record.workingMemory).toBe('# Name: Alice');
+			expect(record.toolCalls).toEqual([]);
 			expect(record.timeline.some((e) => e.type === 'working-memory')).toBe(true);
 		});
 
 		it('keeps last working memory when multiple updates occur', () => {
 			const recorder = new ExecutionRecorder();
 
-			recorder.record({ type: 'working-memory-update', content: 'first' });
-			recorder.record({ type: 'working-memory-update', content: 'second' });
+			recorder.record({
+				type: 'tool-call',
+				toolCallId: 'wm-1',
+				toolName: 'update_working_memory',
+				input: { memory: 'first' },
+			} as StreamChunk);
+			recorder.record({
+				type: 'tool-call',
+				toolCallId: 'wm-2',
+				toolName: 'update_working_memory',
+				input: { memory: 'second' },
+			} as StreamChunk);
 			recorder.record({ type: 'finish', finishReason: 'stop' } as StreamChunk);
 
 			const record = recorder.getMessageRecord();

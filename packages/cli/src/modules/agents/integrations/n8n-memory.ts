@@ -7,7 +7,7 @@ import type {
 } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import type { FindOptionsWhere } from '@n8n/typeorm';
-import { LessThan } from '@n8n/typeorm';
+import { LessThan, Like } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 
 import type { AgentMessageEntity } from '../entities/agent-message.entity';
@@ -41,13 +41,10 @@ export class N8nMemory implements BuiltMemory {
 		const existing = await this.threadRepository.findOneBy({ id: thread.id });
 
 		if (existing) {
-			// `resourceId` is treated as immutable on existing threads. Some
-			// threads (e.g. the shared test-chat thread keyed by agentId) are
-			// written to by multiple users; overwriting the column on each save
-			// would make "who owns this thread" depend on the last writer and
-			// break any future read-side authorization that keys off it.
-			// Per-user scoping is enforced at the message level via
-			// AgentMessageEntity.resourceId instead.
+			// `resourceId` is treated as immutable on existing threads. Some thread
+			// IDs can receive messages from more than one resource; overwriting the
+			// column on each save would make ownership depend on the last writer.
+			// Per-user scoping is enforced at the message level via resourceId.
 			if (thread.title !== undefined) existing.title = thread.title;
 			if (thread.metadata !== undefined) {
 				existing.metadata = thread.metadata ? JSON.stringify(thread.metadata) : null;
@@ -79,16 +76,20 @@ export class N8nMemory implements BuiltMemory {
 		await this.threadRepository.delete({ id: threadId });
 	}
 
+	async deleteThreadsByPrefix(threadIdPrefix: string): Promise<void> {
+		await this.threadRepository.delete({ id: Like(`${threadIdPrefix}%`) });
+	}
+
 	// ── Message persistence ──────────────────────────────────────────────
 
 	async getMessages(
 		threadId: string,
 		opts?: { limit?: number; before?: Date; resourceId?: string },
 	): Promise<AgentDbMessage[]> {
-		// `resourceId` is the per-user scope for shared threads (e.g. the test-chat
-		// thread is keyed by agentId but each message carries the originating user's
-		// id). Use an explicit `!== undefined` check — a falsy (empty-string) value
-		// would otherwise drop the filter and leak other users' messages.
+		// `resourceId` is the per-user scope for any thread that carries messages
+		// for more than one resource. Use an explicit `!== undefined` check — a
+		// falsy (empty-string) value would otherwise drop the filter and leak other
+		// users' messages.
 		const where: FindOptionsWhere<AgentMessageEntity> = {
 			threadId,
 			...(opts?.before && { createdAt: LessThan(opts.before) }),
@@ -97,9 +98,12 @@ export class N8nMemory implements BuiltMemory {
 
 		const entities = await this.messageRepository.find({
 			where,
-			order: { createdAt: 'ASC' },
+			order: { createdAt: opts?.limit !== undefined ? 'DESC' : 'ASC' },
 			...(opts?.limit !== undefined && { take: opts.limit }),
 		});
+		if (opts?.limit !== undefined) {
+			entities.reverse();
+		}
 
 		return entities.map((e) => {
 			const msg = e.content as AgentMessage & { id?: string };
@@ -176,7 +180,7 @@ export class N8nMemory implements BuiltMemory {
 		if (params.scope === 'resource') {
 			await this.upsertResourceMetadata(params.resourceId, content);
 		} else {
-			await this.upsertThreadMetadata(params.threadId, content);
+			await this.upsertThreadMetadata(params.threadId, params.resourceId, content);
 		}
 	}
 
@@ -245,10 +249,26 @@ export class N8nMemory implements BuiltMemory {
 		}
 	}
 
-	private async upsertThreadMetadata(threadId: string, content: string): Promise<void> {
+	private async upsertThreadMetadata(
+		threadId: string,
+		resourceId: string,
+		content: string,
+	): Promise<void> {
 		const existing = await this.threadRepository.findOneBy({ id: threadId });
-		if (!existing) return;
-		existing.metadata = this.mergeWorkingMemory(existing.metadata, content);
-		await this.threadRepository.save(existing);
+		if (existing) {
+			existing.metadata = this.mergeWorkingMemory(existing.metadata, content);
+			await this.threadRepository.save(existing);
+			return;
+		}
+
+		await this.ensureResource(resourceId);
+		await this.threadRepository.save(
+			this.threadRepository.create({
+				id: threadId,
+				resourceId,
+				title: null,
+				metadata: this.mergeWorkingMemory(null, content),
+			}),
+		);
 	}
 }
