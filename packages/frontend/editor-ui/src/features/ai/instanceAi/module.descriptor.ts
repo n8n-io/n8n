@@ -54,7 +54,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			path: '/instance-ai-permissions-gallery',
 			component: InstanceAiPermissionsGalleryView,
 			meta: {
-				middleware: ['authenticated'],
+				middleware: ['authenticated', 'custom'],
 			},
 		},
 		{

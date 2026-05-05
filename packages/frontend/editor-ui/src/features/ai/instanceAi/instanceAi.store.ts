@@ -927,6 +927,14 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// --- Session "Always allow" ---
 
 	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+		// `submit-workflow` maps to two backend permission keys (`createWorkflow` /
+		// `updateWorkflow`) discriminated by whether `workflowId` is set, not by an
+		// `action` arg. Without this branch, an "Always allow" for a create would
+		// silently auto-approve later updates on the same thread.
+		if (toolName === 'submit-workflow') {
+			const isUpdate = typeof args.workflowId === 'string' && args.workflowId.length > 0;
+			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
+		}
 		const action = typeof args.action === 'string' ? args.action : '';
 		return `${toolName}:${action}`;
 	}
