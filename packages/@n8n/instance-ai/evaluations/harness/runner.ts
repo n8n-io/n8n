@@ -6,7 +6,7 @@
 // LLM-mocked HTTP, checklist verification, and result aggregation.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiEvalExecutionResult } from '@n8n/api-types';
+import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import crypto from 'node:crypto';
 
 import { type EvalLogger } from './logger';
@@ -727,9 +727,7 @@ async function processConfirmationRequests(config: WaitConfig): Promise<void> {
 		}
 
 		try {
-			// Always offer mock credentials — the eval runner doesn't have real
-			// credentials for most services, so tell Instance AI to use mock data
-			await config.client.confirmAction(requestId, true, { mockCredentials: true });
+			await config.client.confirmAction(requestId, buildAutoApprovePayload(event));
 			config.approvedRequests.add(requestId);
 			confirmationRetries.delete(requestId);
 		} catch (error: unknown) {
@@ -740,6 +738,40 @@ async function processConfirmationRequests(config: WaitConfig): Promise<void> {
 			);
 		}
 	}
+}
+
+/** Map a confirmation-request event to the most-permissive approval payload of the
+ *  matching kind. The eval runner has no real credentials and no human in the loop —
+ *  we just need a structurally-valid payload that lets the agent proceed. */
+function buildAutoApprovePayload(event: CapturedEvent): InstanceAiConfirmRequest {
+	const payload = getNestedRecord(event.data, 'payload') ?? {};
+
+	if (getNestedRecord(payload, 'domainAccess')) {
+		return { kind: 'domainAccessApprove', domainAccessAction: 'allow_all' };
+	}
+
+	const resourceDecision = getNestedRecord(payload, 'resourceDecision');
+	if (resourceDecision) {
+		const options = Array.isArray(resourceDecision.options)
+			? (resourceDecision.options as unknown[]).filter((o): o is string => typeof o === 'string')
+			: [];
+		const allowOption = options.find((o) => o.toLowerCase().includes('allow')) ?? options[0];
+		return { kind: 'resourceDecision', resourceDecision: allowOption ?? 'allowOnce' };
+	}
+
+	if (Array.isArray(payload.setupRequests)) {
+		return { kind: 'setupWorkflowApply' };
+	}
+
+	if (Array.isArray(payload.credentialRequests)) {
+		return { kind: 'credentialSelection', credentials: {} };
+	}
+
+	if (payload.inputType === 'questions') {
+		return { kind: 'questions', answers: [] };
+	}
+
+	return { kind: 'approval', approved: true };
 }
 
 // ---------------------------------------------------------------------------

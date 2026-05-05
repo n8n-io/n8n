@@ -1673,6 +1673,15 @@ importers:
       '@ai-sdk/anthropic':
         specifier: 2.0.61
         version: 2.0.61(zod@3.25.67)
+      '@langchain/anthropic':
+        specifier: 'catalog:'
+        version: 1.3.27(@langchain/core@1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
+      '@langchain/core':
+        specifier: 'catalog:'
+        version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.213.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.6.0(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+      '@n8n/ai-workflow-builder':
+        specifier: workspace:*
+        version: link:../ai-workflow-builder.ee
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -2728,6 +2737,9 @@ importers:
         version: 2.1.1
       p-lazy:
         specifier: 3.1.0
+        version: 3.1.0
+      p-limit:
+        specifier: ^3.1.0
         version: 3.1.0
       pg:
         specifier: 'catalog:'
@@ -21574,6 +21586,7 @@ packages:
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@9.0.1:

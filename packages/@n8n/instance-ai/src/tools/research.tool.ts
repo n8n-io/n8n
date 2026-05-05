@@ -12,7 +12,7 @@ import {
 	domainGatingResumeSchema,
 } from '../domain-access';
 import type { InstanceAiContext } from '../types';
-import { sanitizeWebContent, wrapInBoundaryTags } from './web-research/sanitize-web-content';
+import { sanitizeWebContent, wrapUntrustedData } from './web-research/sanitize-web-content';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -68,8 +68,12 @@ async function handleWebSearch(
 		maxResults: input.maxResults ?? undefined,
 		includeDomains: input.includeDomains ?? undefined,
 	});
+	// Snippets come from arbitrary third-party pages — sanitize against hidden
+	// payloads, then wrap so the LLM treats the content as data, not instructions.
+	// The wrapper also escapes any closing boundary tag in the snippet to
+	// prevent breakout into the surrounding prompt context.
 	for (const r of result.results) {
-		r.snippet = sanitizeWebContent(r.snippet);
+		r.snippet = wrapUntrustedData(sanitizeWebContent(r.snippet), r.url, r.title);
 	}
 	return result;
 }
@@ -174,7 +178,7 @@ async function handleFetchUrl(
 		maxContentLength: input.maxContentLength ?? undefined,
 		authorizeUrl,
 	});
-	result.content = wrapInBoundaryTags(sanitizeWebContent(result.content), result.finalUrl);
+	result.content = wrapUntrustedData(sanitizeWebContent(result.content), result.finalUrl);
 	return result;
 }
 
