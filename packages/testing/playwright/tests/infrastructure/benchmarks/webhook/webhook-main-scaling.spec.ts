@@ -2,46 +2,40 @@ import type { N8NConfig } from 'n8n-containers/stack';
 
 import { test } from '../../../../fixtures/base';
 import {
-	BENCHMARK_BASE_CONFIG,
 	BENCHMARK_MAIN_RESOURCES,
 	BENCHMARK_WORKER_RESOURCES,
-	STANDARD_QUEUE_ENV,
+	webhookQueueConfig,
 } from '../../../../playwright-projects';
 import { setupWebhook } from '../../../../utils/benchmark/webhook-driver';
 import { runWebhookThroughputTest } from '../harness/webhook-throughput-harness';
 
-// Multi-main scaling can't be done as a single-test in-spec ramp because
-// `mains` is part of `containerConfig`, which is worker-scoped and fixed at
-// spec load. To gather a scaling curve, run this spec multiple times with
-// different `WEBHOOK_MAINS` values and compare the resulting numbers:
+// Defaults are 2 mains + 2 workers — fits within the CI runner's CPU budget
+// while still exercising multi-main HA. Pair with `webhook-single-instance.spec.ts`
+// (1 main, no workers) to read the scaling factor: 2m+2w should hit ~2× the
+// single-instance ingestion rate if HA distribution is clean.
 //
+// To gather a wider scaling curve locally, override mains via env:
 //   WEBHOOK_MAINS=1 pnpm --filter=n8n-playwright test:benchmark --grep "main scaling"
-//   WEBHOOK_MAINS=2 pnpm --filter=n8n-playwright test:benchmark --grep "main scaling"
 //   WEBHOOK_MAINS=3 pnpm --filter=n8n-playwright test:benchmark --grep "main scaling"
 //
-// Multi-main HA requires N8N_MULTI_MAIN_SETUP_ENABLED and a license cert.
-// The license is picked up from N8N_LICENSE_ACTIVATION_KEY / N8N_LICENSE_CERT
-// in the host environment by the container fixture.
+// Multi-main HA requires N8N_MULTI_MAIN_SETUP_ENABLED and a license cert
+// (picked up from N8N_LICENSE_ACTIVATION_KEY / N8N_LICENSE_CERT in the host env).
 
-const MAINS = parseInt(process.env.WEBHOOK_MAINS ?? '3', 10);
+const MAINS = parseInt(process.env.WEBHOOK_MAINS ?? '2', 10);
 const WORKERS = 2;
 const CONNECTIONS = 200;
 const DURATION_SECONDS = 180;
 
-const queueConfig: N8NConfig = {
-	...BENCHMARK_BASE_CONFIG,
+// TEST_ISOLATION includes mains so each value gets its own container.
+const baseConfig = webhookQueueConfig(`webhook-main-scaling-${MAINS}`);
+const config: N8NConfig = {
+	...baseConfig,
 	mains: MAINS,
 	workers: WORKERS,
-	env: {
-		...BENCHMARK_BASE_CONFIG.env,
-		...STANDARD_QUEUE_ENV,
-		N8N_MULTI_MAIN_SETUP_ENABLED: MAINS > 1 ? 'true' : 'false',
-		// TEST_ISOLATION includes mains so each value gets its own container.
-		TEST_ISOLATION: `q-webhook-main-scaling-${MAINS}`,
-	},
+	env: { ...baseConfig.env, N8N_MULTI_MAIN_SETUP_ENABLED: MAINS > 1 ? 'true' : 'false' },
 };
 
-test.use({ capability: queueConfig });
+test.use({ capability: config });
 
 test.describe(
 	'Does webhook ingestion scale linearly with main count?',
@@ -54,9 +48,8 @@ test.describe(
 	() => {
 		// Async webhook so HTTP req/s = ingestion ACK rate (independent of worker drain).
 		// At 1 main: baseline ingestion ceiling.
-		// At N mains: should be N× baseline if load distributes evenly (per-main pod
-		// is independently handling HTTP). Sub-linear means LB or shared resource
-		// contention; super-linear is impossible (would indicate measurement bug).
+		// At N mains: should be N× baseline if load distributes evenly. Sub-linear
+		// means LB or shared resource contention; super-linear is impossible.
 		test(`Async webhook + 1 noop, 1KB payload, ${CONNECTIONS} connections × ${DURATION_SECONDS}s (${MAINS} main${MAINS === 1 ? '' : 's'} + ${WORKERS} workers)`, async ({
 			api,
 			services,

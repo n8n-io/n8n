@@ -109,6 +109,43 @@ export const STANDARD_DIRECT_ENV = {
 	NODE_OPTIONS: '--max-old-space-size=3072',
 } as const;
 
+/**
+ * Factories for the four benchmark topologies. Each spec calls one of these
+ * with a unique isolation slug; the slug becomes part of `TEST_ISOLATION` so
+ * each spec gets its own container.
+ */
+export function kafkaQueueConfig(isolation: string): N8NConfig {
+	return {
+		...BENCHMARK_BASE_CONFIG,
+		services: [...(BENCHMARK_BASE_CONFIG.services ?? []), 'kafka'],
+		workers: STANDARD_WORKER_COUNT,
+		env: { ...BENCHMARK_BASE_CONFIG.env, ...STANDARD_QUEUE_ENV, TEST_ISOLATION: `q-${isolation}` },
+	};
+}
+
+export function kafkaDirectConfig(isolation: string): N8NConfig {
+	return {
+		...BENCHMARK_BASE_CONFIG,
+		services: [...(BENCHMARK_BASE_CONFIG.services ?? []), 'kafka'],
+		env: { ...BENCHMARK_BASE_CONFIG.env, ...STANDARD_DIRECT_ENV, TEST_ISOLATION: `q-${isolation}` },
+	};
+}
+
+export function webhookQueueConfig(isolation: string): N8NConfig {
+	return {
+		...BENCHMARK_BASE_CONFIG,
+		workers: STANDARD_WORKER_COUNT,
+		env: { ...BENCHMARK_BASE_CONFIG.env, ...STANDARD_QUEUE_ENV, TEST_ISOLATION: `q-${isolation}` },
+	};
+}
+
+export function webhookDirectConfig(isolation: string): N8NConfig {
+	return {
+		...BENCHMARK_BASE_CONFIG,
+		env: { ...BENCHMARK_BASE_CONFIG.env, ...STANDARD_DIRECT_ENV, TEST_ISOLATION: `q-${isolation}` },
+	};
+}
+
 type BenchmarkProfile = { name: string; config: N8NConfig };
 
 // Single benchmarking project. Each spec declares its own `containerConfig`

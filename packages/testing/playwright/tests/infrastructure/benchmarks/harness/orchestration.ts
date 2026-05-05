@@ -1,10 +1,9 @@
 /**
- * Shared orchestration helpers used by all benchmark harnesses.
+ * Shared orchestration helpers used by every benchmark harness.
  *
- * Each harness (load, throughput, webhook-throughput) does the same
- * preamble (create workflow, wait for VictoriaMetrics, baseline, activate)
- * and the same epilogue (collect diagnostics, attach, log). Pulled here so
- * those phases stay consistent across harnesses without copy-paste.
+ * Both harnesses (load, webhook-throughput) share the same preamble (create →
+ * activate → optional warm-up → baseline) and epilogue (collect + attach +
+ * log diagnostics). Pulled here so those phases stay consistent.
  */
 import type { TestInfo } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
@@ -23,7 +22,7 @@ import type { BenchmarkDimensions } from '../../../../utils/benchmark';
 /**
  * Minimal handle shape used by setup. Both `TriggerHandle` (Kafka) and the
  * webhook driver's lightweight handle satisfy this; `waitForReady` is optional
- * because webhook readiness is a warm-up POST done by the caller post-setup.
+ * because some triggers don't have a readiness signal.
  */
 export interface BenchmarkHandle {
 	workflow: Partial<IWorkflowBase>;
@@ -45,6 +44,12 @@ export interface SetupContext {
 	metricQuery?: string;
 	/** Forwarded to `createWorkflowFromDefinition`. `makeUnique` defaults to true. */
 	createOptions?: CreateWorkflowOptions;
+	/**
+	 * Optional warm-up step (e.g. a webhook probe) that runs after activation
+	 * and before the baseline counter is captured. Anything the warm-up
+	 * triggers won't pollute the measurement window.
+	 */
+	warmUp?: (setup: { workflowId: string; webhookPath?: string }) => Promise<void>;
 }
 
 export interface SetupResult {
@@ -59,8 +64,12 @@ export interface SetupResult {
 }
 
 /**
- * Creates the workflow, waits for metrics to be ready, captures the baseline
- * counter, and activates the workflow. All harnesses share this preamble.
+ * Shared preamble for every benchmark: create workflow, activate, run an
+ * optional warm-up, then capture the baseline counter and reset pg_stat_statements.
+ *
+ * Order matters — baseline is captured AFTER warm-up so probe requests don't
+ * count against the measurement window. The pg_stat_statements reset is also
+ * post-warm-up so the per-query breakdown reflects only measured load.
  */
 export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult> {
 	const metricQuery = ctx.metricQuery ?? resolveMetricQuery(ctx.testInfo);
@@ -69,9 +78,7 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 	const { workflowId, createdWorkflow, webhookPath } =
 		await ctx.api.workflows.createWorkflowFromDefinition(ctx.handle.workflow, {
 			makeUnique: ctx.createOptions?.makeUnique ?? true,
-			...(ctx.createOptions?.webhookPrefix !== undefined && {
-				webhookPrefix: ctx.createOptions.webhookPrefix,
-			}),
+			webhookPrefix: ctx.createOptions?.webhookPrefix,
 		});
 
 	// VictoriaMetrics needs at least one scrape before queries return data.
@@ -80,22 +87,24 @@ export async function setupBenchmarkRun(ctx: SetupContext): Promise<SetupResult>
 		intervalMs: 2000,
 		predicate: (results: unknown[]) => results.length > 0,
 	});
-	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery);
 
 	const activationStart = Date.now();
 	await ctx.api.workflows.activate(workflowId, createdWorkflow.versionId!);
 	if (ctx.handle.waitForReady) {
 		await ctx.handle.waitForReady({ timeoutMs: 30_000 });
 	}
+	if (ctx.warmUp) {
+		await ctx.warmUp({ workflowId, webhookPath });
+	}
 
-	// Reset pg_stat_statements so the post-run breakdown reflects only the
-	// measurement window — not the workflow-creation + activation queries.
-	// Best-effort: the postgres helper may not be wired or the extension may
-	// be unavailable on a custom postgres image; we skip silently in that case.
+	const baselineCounter = await getBaselineCounter(obs.metrics, metricQuery);
+
+	// Best-effort: the postgres helper may not be wired or pg_stat_statements
+	// may not be available on a custom postgres image.
 	try {
 		await ctx.services.postgres?.resetStatStatements();
 	} catch {
-		// non-fatal
+		/* non-fatal */
 	}
 
 	return {
@@ -139,11 +148,8 @@ export async function reportDiagnostics(ctx: ReportDiagnosticsContext) {
 /**
  * Logs the top-N queries by call count from `pg_stat_statements`.
  * Lets benchmarks attribute total tx/s to specific queries (n8n vs autovacuum
- * vs postgres-exporter scrapes vs ORM overhead).
- *
- * Requires `pg_stat_statements` extension — enabled in the postgres testcontainer.
- * Caller is responsible for calling `services.postgres.resetStatStatements()`
- * before the measurement window starts; otherwise stats include startup queries.
+ * vs postgres-exporter scrapes vs ORM overhead). `setupBenchmarkRun` resets
+ * the stat counters post-warm-up, so the breakdown reflects measured load only.
  */
 export async function reportPgQueryBreakdown(ctx: {
 	services: ServiceHelpers;

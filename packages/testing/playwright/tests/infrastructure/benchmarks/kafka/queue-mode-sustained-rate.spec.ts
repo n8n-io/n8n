@@ -1,33 +1,16 @@
-import type { N8NConfig } from 'n8n-containers/stack';
-
 import { test } from '../../../../fixtures/base';
-import {
-	BENCHMARK_BASE_CONFIG,
-	STANDARD_QUEUE_ENV,
-	STANDARD_WORKER_COUNT,
-} from '../../../../playwright-projects';
+import { STANDARD_WORKER_COUNT, kafkaQueueConfig } from '../../../../playwright-projects';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
 
-const queueConfig: N8NConfig = {
-	...BENCHMARK_BASE_CONFIG,
-	services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-	workers: STANDARD_WORKER_COUNT,
-	env: {
-		...BENCHMARK_BASE_CONFIG.env,
-		...STANDARD_QUEUE_ENV,
-		TEST_ISOLATION: 'q-queue-mode-overhead',
-	},
-};
-
-test.use({ capability: queueConfig });
+test.use({ capability: kafkaQueueConfig('queue-mode-sustained-rate') });
 
 test.describe(
-	'What is the impact of queue mode on throughput?',
+	'Can queue mode sustain 250 msg/s steady?',
 	{
 		annotation: [
 			{ type: 'owner', description: 'Catalysts' },
-			{ type: 'question', description: 'queue-mode-throughput-overhead' },
+			{ type: 'question', description: 'queue-mode-sustained-rate' },
 		],
 	},
 	() => {

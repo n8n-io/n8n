@@ -237,13 +237,8 @@ function calculateThroughput(
 	// last ACTIVE sample (rather than the last poll) avoids inflating the
 	// denominator when the counter stalls or the run bails out early.
 	const firstActiveIndex = samples.findIndex((s) => s.delta > 0);
-	let lastActiveIndex = samples.length - 1;
-	for (let i = samples.length - 1; i >= 0; i--) {
-		if (samples[i].delta > 0) {
-			lastActiveIndex = i;
-			break;
-		}
-	}
+	const lastActiveFromEnd = samples.findLastIndex((s) => s.delta > 0);
+	const lastActiveIndex = lastActiveFromEnd === -1 ? samples.length - 1 : lastActiveFromEnd;
 
 	const firstActiveSample = firstActiveIndex >= 0 ? samples[firstActiveIndex] : samples[0];
 	const lastActiveSample = samples[lastActiveIndex];
@@ -326,18 +321,12 @@ function calculateThroughput(
 		const inputSamples = samples.filter((s) => s.timestamp <= publishEndAt);
 		const drainSamples = samples.filter((s) => s.timestamp > publishEndAt);
 
-		// Use the LAST ACTIVE sample (last with delta > 0) to bound each phase —
-		// otherwise post-completion stall padding dilutes the rate. Same trick the
-		// tail-rate calculation above uses.
-		const findLastActive = (s: ThroughputSample[]) => {
-			for (let i = s.length - 1; i >= 0; i--) {
-				if (s[i].delta > 0) return s[i];
-			}
-			return undefined;
-		};
+		// Bound each phase by its LAST ACTIVE sample so post-completion stall
+		// padding doesn't dilute the rate (same trick the tail-rate calc above uses).
+		const lastActiveOf = (s: ThroughputSample[]) => s.findLast((x) => x.delta > 0);
 
 		if (inputSamples.length > 0) {
-			const lastActive = findLastActive(inputSamples) ?? inputSamples[inputSamples.length - 1];
+			const lastActive = lastActiveOf(inputSamples) ?? inputSamples[inputSamples.length - 1];
 			inputPhaseCompleted = lastActive.completed;
 			inputPhaseDurationMs = lastActive.timestamp - startTime;
 			inputPhaseExecPerSec =
@@ -345,7 +334,7 @@ function calculateThroughput(
 		}
 
 		if (drainSamples.length > 0) {
-			const lastActive = findLastActive(drainSamples);
+			const lastActive = lastActiveOf(drainSamples);
 			const drainStart = inputSamples[inputSamples.length - 1] ?? { completed: 0 };
 			if (lastActive !== undefined) {
 				drainPhaseCompleted = lastActive.completed - drainStart.completed;

@@ -1,11 +1,5 @@
-import type { N8NConfig } from 'n8n-containers/stack';
-
 import { test } from '../../../../fixtures/base';
-import {
-	BENCHMARK_BASE_CONFIG,
-	STANDARD_QUEUE_ENV,
-	STANDARD_WORKER_COUNT,
-} from '../../../../playwright-projects';
+import { STANDARD_WORKER_COUNT, kafkaQueueConfig } from '../../../../playwright-projects';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import type { PublishStage } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
@@ -18,18 +12,7 @@ const STAGES: PublishStage[] = [
 	{ ratePerSecond: 700, durationSeconds: 60 },
 ];
 
-const queueConfig: N8NConfig = {
-	...BENCHMARK_BASE_CONFIG,
-	services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-	workers: STANDARD_WORKER_COUNT,
-	env: {
-		...BENCHMARK_BASE_CONFIG.env,
-		...STANDARD_QUEUE_ENV,
-		TEST_ISOLATION: 'q-steady-rate-breaking-point',
-	},
-};
-
-test.use({ capability: queueConfig });
+test.use({ capability: kafkaQueueConfig('steady-rate-breaking-point') });
 
 test.describe(
 	'At what input rate does the system fall behind?',
@@ -51,12 +34,7 @@ test.describe(
 			const handle = await kafkaDriver.setup({
 				api,
 				services,
-				scenario: {
-					nodeCount: 30,
-					payloadSize: '10KB',
-					nodeOutputSize: 'noop',
-					partitions: 3,
-				},
+				scenario: { nodeCount: 30, payloadSize: '10KB', nodeOutputSize: 'noop', partitions: 3 },
 			});
 			await runLoadTest({
 				handle,

@@ -1,11 +1,5 @@
-import type { N8NConfig } from 'n8n-containers/stack';
-
 import { test } from '../../../../fixtures/base';
-import {
-	BENCHMARK_BASE_CONFIG,
-	STANDARD_QUEUE_ENV,
-	STANDARD_WORKER_COUNT,
-} from '../../../../playwright-projects';
+import { STANDARD_WORKER_COUNT, kafkaQueueConfig } from '../../../../playwright-projects';
 import { kafkaDriver } from '../../../../utils/benchmark';
 import type { NodeOutputSize } from '../../../../utils/benchmark';
 import { runLoadTest } from '../harness/load-harness';
@@ -15,19 +9,9 @@ const SHAPES: ReadonlyArray<{ outputSize: NodeOutputSize }> = [
 	{ outputSize: '10KB' },
 	{ outputSize: '100KB' },
 ] as const;
+const MESSAGE_COUNT = 5_000;
 
-const queueConfig: N8NConfig = {
-	...BENCHMARK_BASE_CONFIG,
-	services: [...BENCHMARK_BASE_CONFIG.services!, 'kafka'],
-	workers: STANDARD_WORKER_COUNT,
-	env: {
-		...BENCHMARK_BASE_CONFIG.env,
-		...STANDARD_QUEUE_ENV,
-		TEST_ISOLATION: 'q-output-size-impact',
-	},
-};
-
-test.use({ capability: queueConfig });
+test.use({ capability: kafkaQueueConfig('output-size-impact') });
 
 test.describe(
 	'What is the impact of node output size on throughput?',
@@ -38,8 +22,6 @@ test.describe(
 		],
 	},
 	() => {
-		const messageCount = 5_000;
-
 		test(`Kafka trigger + 10 nodes, 1KB payload, ramp output size ${SHAPES.map((s) => s.outputSize).join('→')} (1 main + ${STANDARD_WORKER_COUNT} workers)`, async ({
 			api,
 			services,
@@ -47,21 +29,19 @@ test.describe(
 			const results: Array<{
 				outputSize: NodeOutputSize;
 				throughputPerSecond: number;
-				totalCompleted: number;
 				durationMs: number;
-				avgDurationMs: number;
 				p99DurationMs: number;
 			}> = [];
 
-			for (const shape of SHAPES) {
-				console.log(`\n[RAMP] Stage: output size = ${shape.outputSize}`);
+			for (const { outputSize } of SHAPES) {
+				console.log(`\n[RAMP] Stage: output size = ${outputSize}`);
 				const handle = await kafkaDriver.setup({
 					api,
 					services,
 					scenario: {
 						nodeCount: 10,
 						payloadSize: '1KB',
-						nodeOutputSize: shape.outputSize,
+						nodeOutputSize: outputSize,
 						partitions: 3,
 					},
 				});
@@ -70,21 +50,19 @@ test.describe(
 					api,
 					services,
 					testInfo,
-					load: { type: 'preloaded', count: messageCount },
+					load: { type: 'preloaded', count: MESSAGE_COUNT },
 					trigger: 'kafka',
 					timeoutMs: 600_000,
+					variant: `${outputSize} output`,
 				});
 				results.push({
-					outputSize: shape.outputSize,
+					outputSize,
 					throughputPerSecond: metrics.throughputPerSecond,
-					totalCompleted: metrics.totalCompleted,
 					durationMs: metrics.durationMs,
-					avgDurationMs: metrics.avgDurationMs,
 					p99DurationMs: metrics.p99DurationMs,
 				});
 			}
 
-			// Comparative summary across the ramp.
 			const baseline = results[0];
 			const lines = results.map((r) => {
 				const pctOfBaseline = (r.throughputPerSecond / baseline.throughputPerSecond) * 100;

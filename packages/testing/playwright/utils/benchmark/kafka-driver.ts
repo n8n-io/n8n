@@ -128,7 +128,6 @@ async function waitForConsumerGroupDrain(
 		}
 
 		if (lagInfo.totalLag === 0) {
-			// All messages consumed — wait briefly for last execution to finish
 			await new Promise((resolve) => setTimeout(resolve, LAST_EXECUTION_SETTLE_MS));
 			return { drained: true, consumed: expectedCount, durationMs: Date.now() - startTime };
 		}

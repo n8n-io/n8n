@@ -11,7 +11,7 @@ Each spec self-declares its container topology via `test.use({ capability })` an
 | Spec | Question |
 |------|----------|
 | `single-instance-ceiling.spec.ts` | How much can we process on a single instance? |
-| `queue-mode-overhead.spec.ts` | What is the impact of queue mode on throughput? |
+| `queue-mode-sustained-rate.spec.ts` | Can queue mode sustain 250 msg/s steady? |
 | `node-count-scaling.spec.ts` | How does throughput scale with workflow complexity? |
 | `output-size-impact.spec.ts` | What is the impact of node output size on throughput? |
 | `steady-rate-breaking-point.spec.ts` | At what input rate does the system fall behind? |
@@ -21,8 +21,7 @@ Each spec self-declares its container topology via `test.use({ capability })` an
 
 | Spec | Question |
 |------|----------|
-| `webhook-direct-mode-ceiling.spec.ts` | What is the maximum webhook ingestion rate in direct mode? |
-| `webhook-ingestion-ceiling.spec.ts` | What is the maximum webhook ingestion rate? (queue mode) |
+| `webhook-single-instance.spec.ts` | What is the single-instance webhook ingestion ceiling? |
 | `webhook-main-scaling.spec.ts` | Does webhook ingestion scale linearly with main count? |
 
 ## Standard topology
@@ -31,7 +30,7 @@ Specs default to one of two shapes (both defined in `playwright-projects.ts`):
 
 | Shape | Mains | Workers | Per-pod resources | Used by |
 |-------|-------|---------|-------------------|---------|
-| **Direct** | 1 | 0 | 4GB / 2 vCPU | `single-instance-ceiling`, `webhook-direct-mode-ceiling` |
+| **Direct** | 1 | 0 | 4GB / 2 vCPU | `single-instance-ceiling`, `webhook-single-instance` |
 | **Queue** | 1 | 3 | main 4GB/2 vCPU, worker 2GB/1 vCPU | All other specs |
 
 Aligned with internal n8n production defaults: `STANDARD_QUEUE_ENV` mirrors connection-pool, lock-duration, and Bull/Redis tuning from real deployments.
@@ -61,7 +60,7 @@ WEBHOOK_MAINS=3 pnpm --filter=n8n-playwright test:benchmark webhook-main-scaling
 
 | Variable | Default | Effect |
 |----------|---------|--------|
-| `WEBHOOK_MAINS` | 3 | Number of main pods for `webhook-main-scaling` — sweep across runs to gather a scaling curve |
+| `WEBHOOK_MAINS` | 2 | Number of main pods for `webhook-main-scaling` — sweep across runs to gather a scaling curve |
 | `N8N_CONTAINERS_KEEPALIVE` | unset | Keep containers alive after the run for debugging |
 
 ## Reading the results
