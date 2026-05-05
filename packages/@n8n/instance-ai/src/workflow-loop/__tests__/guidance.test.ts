@@ -157,6 +157,20 @@ describe('formatWorkflowLoopGuidance', () => {
 		});
 	});
 
+	// ── continue_building ─────────────────────────────────────────────────────
+
+	describe('action type "continue_building"', () => {
+		it('should instruct the builder to fix code and submit again', () => {
+			const action: WorkflowLoopAction = {
+				type: 'continue_building',
+				reason: 'Validation failed',
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('SUBMIT FAILED');
+			expect(result).toContain('submit-workflow');
+		});
+	});
+
 	// ── blocked ────────────────────────────────────────────────────────────────
 
 	describe('action type "blocked"', () => {
@@ -287,7 +301,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('wf-xyz');
 		});
 
-		it('should not affect blocked or rebuild actions', () => {
+		it('should not affect blocked actions and should bind repair actions', () => {
 			const blocked = formatWorkflowLoopGuidance(
 				{ type: 'blocked', reason: 'No access' },
 				{ workItemId: 'wi-ignored' },
@@ -298,7 +312,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				{ type: 'rebuild', workflowId: 'wf-1', failureDetails: 'broken' },
 				{ workItemId: 'wi-ignored' },
 			);
-			expect(rebuild).not.toContain('wi-ignored');
+			expect(rebuild).toContain('wi-ignored');
 		});
 	});
 });

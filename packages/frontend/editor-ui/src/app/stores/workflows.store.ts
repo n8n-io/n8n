@@ -64,6 +64,7 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { DEFAULT_SETTINGS } from '@/app/stores/workflowDocument/useWorkflowDocumentSettings';
+import { getPairedItemsMapping } from '@/app/utils/pairedItemUtils';
 
 const createEmptyWorkflow = (): IWorkflowDb => ({
 	id: '',
@@ -522,6 +523,46 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowExecutionResultDataLastUpdate.value = Date.now();
 			workflowExecutionStartedData.value = undefined;
 		}
+	}
+
+	function setWorkflowExecutionData(execution: IExecutionResponse | null): void {
+		if (execution?.data?.waitTill) {
+			delete execution.data.resultData.runData[
+				execution.data.resultData.lastNodeExecuted as string
+			];
+		}
+		workflowExecutionData.value = execution;
+		workflowExecutionPairedItemMappings.value = getPairedItemsMapping(execution);
+		workflowExecutionResultDataLastUpdate.value = Date.now();
+		workflowExecutionStartedData.value = undefined;
+	}
+
+	function clearExecutionStartedData(): void {
+		workflowExecutionStartedData.value = undefined;
+	}
+
+	function setExecutionWaitingForWebhook(value: boolean): void {
+		executionWaitingForWebhook.value = value;
+	}
+
+	function setIsInDebugMode(value: boolean): void {
+		isInDebugMode.value = value;
+	}
+
+	function setChatPartialExecutionDestinationNode(value: string | null): void {
+		chatPartialExecutionDestinationNode.value = value;
+	}
+
+	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
+		lastSuccessfulExecution.value = execution;
+	}
+
+	function clearCurrentWorkflowExecutions(): void {
+		currentWorkflowExecutions.value = [];
+	}
+
+	function setCurrentWorkflowExecutions(executions: ExecutionSummary[]): void {
+		currentWorkflowExecutions.value = executions;
 	}
 
 	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
@@ -1090,6 +1131,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
+		setWorkflowExecutionData,
+		clearExecutionStartedData,
+		setExecutionWaitingForWebhook,
+		setIsInDebugMode,
+		setChatPartialExecutionDestinationNode,
+		setLastSuccessfulExecution,
+		clearCurrentWorkflowExecutions,
+		setCurrentWorkflowExecutions,
 		renameNodeSelectedAndExecution,
 		updateNodeExecutionRunData,
 		updateNodeExecutionStatus,
