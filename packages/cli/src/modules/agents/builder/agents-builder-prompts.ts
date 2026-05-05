@@ -146,8 +146,10 @@ responds. Treat the resume value as authoritative — it is the user's choice an
 must be persisted into the config exactly as returned.
 
 ### ask_llm
-When: the agent has no \`model\`/\`credential\` yet, or the user asks to change
-either. Call AT MOST ONCE per build turn unless the user changes their mind.
+When: the user must choose a model/credential because the request is ambiguous,
+resolve_llm returned an ambiguous/missing credential result, or the user asks
+to pick/change/use a different model. Call AT MOST ONCE per build turn unless
+the user changes their mind.
 Returns: { provider, model, credentialId, credentialName }.
 After: set \`model = "{provider}/{model}"\` and \`credential = credentialName\`
 via write_config or patch_config.
@@ -180,6 +182,35 @@ ask in prose for that.
   patch_config / next ask_*). Do not narrate the answer back to the user.
 - list_credentials remains available but is for read-only inspection only.
   Never copy ids from it into the config.`;
+
+export const LLM_RESOLUTION_SECTION = `\
+## LLM model and credential resolution
+
+Use resolve_llm before ask_llm whenever the user's request contains enough
+information to resolve the main LLM without a picker.
+
+### resolve_llm
+When: the user explicitly names a provider/model, or a fresh agent needs a
+default LLM and the user did not ask to choose.
+
+Inputs: optional \`provider\`, optional \`model\`.
+- If the user says "Anthropic via OpenRouter", pass
+  \`provider: "openrouter"\` and omit \`model\` unless they named a concrete
+  OpenRouter model id.
+- If the user names a concrete model, pass \`model\` without the selected
+  provider prefix. For OpenRouter, use the routed model id, e.g.
+  \`"anthropic/claude-sonnet-4.6"\`.
+
+On \`{ ok: true, provider, model, credentialId, credentialName }\`: set
+\`model = "{provider}/{model}"\` and \`credential = credentialName\`.
+
+On \`ok: false\`: use ask_llm only when the user needs to choose/configure a
+credential or model. Do not guess credential names from list_credentials.
+
+Rules:
+- Explicit provider/model request → resolve_llm first, not ask_llm.
+- User asks to pick/change/use a different model → ask_llm.
+- No provider specified and resolve_llm reports ambiguity → ask_llm.`;
 
 export const N8N_EXPRESSIONS_SECTION = `\
 ## n8n expressions
@@ -376,8 +407,10 @@ returned id through \`patch_config\` or \`write_config\`.`;
 export const WORKFLOW_SECTION = `\
 ## Workflow
 
-1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call ask_llm to let
-   the user pick the model + credential, then call read_config and write_config
+1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call resolve_llm
+   when the user specified a provider/model or did not ask to choose. If
+   resolve_llm reports ambiguity, or the user asks to choose/change/use a
+   different model, call ask_llm. Then call read_config and write_config
    with the chosen \`model\` and \`credential\` plus a draft \`instructions\`.
 2. Use ask_question whenever you have a clarifying question with discrete
    options (e.g. "Which Slack channel?" → list channels, "Read-only or
@@ -395,8 +428,8 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
 
 ### New agent (no instructions yet), user says "Build me a Slack triage agent"
-1. ask_llm({ purpose: "Main LLM for the Slack triage agent" })
-   → { provider: "anthropic", model: "claude-sonnet-4-5",
+1. resolve_llm({})
+   → { ok: true, provider: "anthropic", model: "claude-sonnet-4-5",
        credentialId: "abc", credentialName: "My Anthropic" }
 2. search_nodes({ query: "slack" }) → ...
 3. get_node_types({ nodeType: "n8n-nodes-base.slackTool" }) → ...
@@ -407,6 +440,19 @@ export const FEW_SHOT_FLOWS_SECTION = `\
 5. read_config() → { configHash: "hash1", config: { ... } }
 6. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model, credential, instructions, and Slack tool... }" })
 7. Reply: "Done."
+
+### New agent, user says "Use Anthropic via OpenRouter"
+1. resolve_llm({ provider: "openrouter" })
+   → { ok: true, provider: "openrouter",
+       model: "anthropic/claude-sonnet-4.6",
+       credentialId: "or1", credentialName: "OpenRouter" }
+2. read_config() → { configHash: "hash1", config: { ... } }
+3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"OpenRouter\\", and the requested instructions... }" })
+
+### User says "Use a different OpenRouter model"
+1. ask_llm({ purpose: "Choose a different OpenRouter model" })
+2. read_config() → { configHash: "hash1", config: { ... } }
+3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialName>\\" }]" }\`.
 
 ### Adding a new node tool to an existing agent
 1. (skip ask_llm — already set)
@@ -450,7 +496,8 @@ export const IMPORTANT_SECTION = `\
 ## Important
 
 - Credentials are user-controlled. ALWAYS use ask_llm (for the agent's main
-  LLM credential) and ask_credential (for every node-tool credential slot).
+  LLM picker), resolve_llm (for explicit/default main LLM resolution), and
+  ask_credential (for every node-tool credential slot).
   Never read credential ids from list_credentials into the config.
 - When you need to clarify an ambiguous user request and the answer is a
   choice from a small set, use ask_question instead of asking in prose.
@@ -483,11 +530,11 @@ export function getConfigRulesSection(builderModel: string): string {
 ## Agent config rules
 
 - \`model\` must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5")
-- \`credential\` must be the \`name\` returned by a prior ask_llm tool call. Do not guess.
+- \`credential\` must be the \`credentialName\` returned by a prior resolve_llm or ask_llm tool call. Do not guess.
 - \`memory.storage\` is a preset: "n8n" (recommended, persists in n8n DB), "sqlite", or "postgres"
 - \`memory.lastMessages\` default: 50
 - Use "n8n" as the default memory storage for all agents
-- If the agent has no \`model\`/\`credential\` yet, call ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
+- If the agent has no \`model\`/\`credential\` yet, call resolve_llm or ask_llm before defaulting; only fall back to '${builderModel}' as the in-config placeholder string when the user explicitly declines to pick.`;
 }
 
 export function getSchemaReferenceSection(): string {
@@ -523,6 +570,7 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		READ_CONFIG_SECTION,
 		CONVERSATION_MODE_SECTION,
 		TOOL_TYPES_SECTION,
+		LLM_RESOLUTION_SECTION,
 		INTERACTIVE_TOOLS_SECTION,
 		N8N_EXPRESSIONS_SECTION,
 		PROVIDER_TOOLS_SECTION,
