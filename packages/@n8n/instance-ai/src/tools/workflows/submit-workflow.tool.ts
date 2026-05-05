@@ -7,7 +7,6 @@
  */
 
 import { createTool } from '@mastra/core/tools';
-import type { Workspace } from '@mastra/core/workspace';
 import { hasPlaceholderDeep } from '@n8n/utils';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { validateWorkflow, layoutWorkflowJSON } from '@n8n/workflow-sdk';
@@ -21,7 +20,12 @@ import type { ValidationWarning } from '../../workflow-builder';
 import { partitionWarnings } from '../../workflow-builder';
 import { createRemediation } from '../../workflow-loop/remediation';
 import type { RemediationMetadata } from '../../workflow-loop/workflow-loop-state';
-import { escapeSingleQuotes, readFileViaSandbox, runInSandbox } from '../../workspace/sandbox-fs';
+import {
+	escapeSingleQuotes,
+	readFileViaSandbox,
+	runInSandbox,
+	type SandboxWorkspace,
+} from '../../workspace/sandbox-fs';
 import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 export interface SubmitWorkflowAttempt {
@@ -271,7 +275,7 @@ export function classifySubmitFailure(
 
 export function createSubmitWorkflowTool(
 	context: InstanceAiContext,
-	workspace: Workspace,
+	workspace: SandboxWorkspace,
 	credentialMap: CredentialMap = new Map(),
 	onAttempt?: (attempt: SubmitWorkflowAttempt) => void | Promise<void>,
 ) {
