@@ -22,6 +22,7 @@ import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
+	serverToCredentialDescription,
 	serverToNodeDescription,
 } from './node-description-transform';
 import type { McpRegistryService } from './registry/mcp-registry.service';
@@ -62,14 +63,15 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
 
 		for (const server of this.registry.getAll()) {
-			const description = serverToNodeDescription(server, baseDescription);
-			if (!description) continue;
+			const nodeDescription = serverToNodeDescription(server, baseDescription);
+			const credentialDescription = serverToCredentialDescription(server);
+			if (!nodeDescription) continue;
 
 			const bareName = camelCase(server.slug);
 
-			this.types.nodes.push(description);
+			this.types.nodes.push(nodeDescription);
 			const syntheticNode: INodeType = Object.create(baseNode, {
-				description: { value: description, enumerable: true },
+				description: { value: nodeDescription, enumerable: true },
 			});
 			this.nodeTypes[bareName] = { type: syntheticNode, sourcePath };
 			this.known.nodes[bareName] = {
@@ -77,6 +79,20 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				sourcePath,
 			};
 			this.loadedNodes.push({ name: bareName, version: 1 });
+
+			if (credentialDescription) {
+				this.types.credentials.push(credentialDescription);
+				this.credentialTypes[credentialDescription.name] = {
+					type: credentialDescription,
+					sourcePath: '',
+				};
+				this.known.credentials[credentialDescription.name] = {
+					className: 'McpRegistryApi',
+					sourcePath: '',
+					extends: credentialDescription.extends,
+					supportedNodes: [bareName],
+				};
+			}
 		}
 	}
 
@@ -87,13 +103,16 @@ export class McpRegistryNodeLoader implements NodeLoader {
 	}
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {
-		throw new UnrecognizedCredentialTypeError(credentialType);
+		const entry = this.credentialTypes[credentialType];
+		if (!entry) throw new UnrecognizedCredentialTypeError(credentialType);
+		return entry;
 	}
 
 	reset() {
 		this.known = { nodes: {}, credentials: {} };
 		this.types = { nodes: [], credentials: [] };
 		this.nodeTypes = {};
+		this.credentialTypes = {};
 		this.loadedNodes = [];
 		this.typesReleased = true;
 	}
