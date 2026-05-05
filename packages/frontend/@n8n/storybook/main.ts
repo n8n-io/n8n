@@ -1,5 +1,6 @@
 import type { StorybookConfig } from '@storybook/vue3-vite';
 
+console.log('Triggering ci');
 export const sharedConfig: StorybookConfig = {
 	stories: ['../src/**/*.stories.ts'],
 	addons: [

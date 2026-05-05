@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import assert from 'assert';
 
 const exec = promisify(child_process.exec);
+console.log("Update here to trigger ci")
 
 /**
  * @param {string | semver.SemVer} currentVersion

@@ -4,6 +4,8 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
+console.log('Triggering ci');
+
 describe('Migration Test Helpers', () => {
 	let dataSource: DataSource;
 
