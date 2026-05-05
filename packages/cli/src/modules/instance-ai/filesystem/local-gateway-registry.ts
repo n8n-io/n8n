@@ -88,6 +88,17 @@ export class LocalGatewayRegistry {
 		return sessionKey;
 	}
 
+	private disconnectExistingGatewayForSessionReplacement(
+		userId: string,
+		state: UserGatewayState,
+	): void {
+		if (!state.activeSession && !state.gateway.getStatus().connected) return;
+
+		this.clearDisconnectTimer(userId);
+		state.reconnectCount = 0;
+		state.gateway.disconnect();
+	}
+
 	/** Resolve an API key (pairing token or session key) back to the owning userId. */
 	getUserIdForApiKey(key: string): string | undefined {
 		const userId = this.apiKeyToUserId.get(key);
@@ -170,6 +181,7 @@ export class LocalGatewayRegistry {
 		if (!state || !valid || valid !== token) return null;
 
 		this.clearPairingToken(state); // Consumed — cannot be reused
+		this.disconnectExistingGatewayForSessionReplacement(userId, state);
 		return this.createSession(userId, state);
 	}
 

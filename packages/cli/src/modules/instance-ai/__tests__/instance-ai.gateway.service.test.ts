@@ -97,6 +97,34 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 			expect(registry.getUserIdForApiKey(sessionKey)).toBeUndefined();
 			expect(registry.getUserIdForApiKey(nextSessionKey!)).toBe('user-a');
 		});
+
+		it('disconnects existing gateway listeners when a new pairing token is consumed', async () => {
+			const pairingToken = registry.generatePairingToken('user-a');
+			const sessionKey = registry.consumePairingToken('user-a', pairingToken)!;
+			registry.initGateway('user-a', CAPABILITIES);
+			const gateway = registry.getGateway('user-a');
+			const disconnectEvents: unknown[] = [];
+			gateway.onDisconnect((event) => disconnectEvents.push(event));
+			const staleRequestListener = jest.fn();
+			gateway.onRequest(staleRequestListener);
+			const nextPairingToken = registry.generatePairingToken('user-a');
+
+			const nextSessionKey = registry.consumePairingToken('user-a', nextPairingToken);
+
+			expect(nextSessionKey).toMatch(/^sess_/);
+			expect(nextSessionKey).not.toBe(sessionKey);
+			expect(disconnectEvents).toEqual([{ type: 'gateway-disconnect' }]);
+			expect(registry.getGatewayStatus('user-a').connected).toBe(false);
+
+			registry.initGateway('user-a', CAPABILITIES);
+			gateway.onRequest((event) => {
+				gateway.resolveRequest(event.payload.requestId, { content: [] });
+			});
+			await expect(gateway.callTool({ name: 'read_file', arguments: {} })).resolves.toEqual({
+				content: [],
+			});
+			expect(staleRequestListener).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('clearActiveSessionKey', () => {

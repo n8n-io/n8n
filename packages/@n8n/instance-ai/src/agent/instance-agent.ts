@@ -206,33 +206,32 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		? createOrchestrationTools(orchestrationContext)
 		: {};
 
-	const mcpContextToolNames = createClaimedToolNames([
+	// Keep MCP tools from shadowing domain or orchestration tools during object composition.
+	const reservedToolNames = new Set([
 		...Object.keys(domainTools),
 		...Object.keys(orchestrationTools),
 	]);
+	const reservedSuffixToolNames = createClaimedToolNames(reservedToolNames);
+	const mcpContextToolNames = createClaimedToolNames(reservedToolNames);
 	addSafeMcpTools(allMcpTools, mcpTools, {
 		source: 'external MCP',
 		claimedToolNames: mcpContextToolNames,
+		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
 	addSafeMcpTools(allMcpTools, browserMcpTools, {
 		source: 'browser MCP',
 		claimedToolNames: mcpContextToolNames,
+		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
 
-	// Prevent MCP tools from shadowing domain or orchestration tools.
-	// A malicious/misconfigured MCP server could register a tool named "run-workflow"
-	// which would silently replace the real domain tool via object spread.
-	const reservedToolNames = new Set([
-		...Object.keys(domainTools),
-		...Object.keys(orchestrationTools),
-	]);
 	const safeMcpTools: ToolsInput = {};
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	addSafeMcpTools(safeMcpTools, mcpTools, {
 		source: 'external MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
+		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
 
@@ -249,6 +248,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	addSafeMcpTools(allMcpTools, rawLocalMcpTools, {
 		source: 'local gateway MCP',
 		claimedToolNames: mcpContextToolNames,
+		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
 	if (orchestrationContext && Object.keys(allMcpTools).length > 0) {
@@ -259,6 +259,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
 		source: 'local gateway MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
+		reservedSuffixToolNames,
 		warn: warnSkippedMcpTool,
 	});
 

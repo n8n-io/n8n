@@ -35,12 +35,15 @@ function validateMcpToolName(name: string, source: string): string {
 	return normalizeMcpToolName(name);
 }
 
-function findReservedSuffix(name: string, claimedToolNames: Map<string, string>): string | null {
+function findReservedSuffix(name: string, reservedToolNames: Map<string, string>): string | null {
 	const lowerName = name.toLowerCase();
-	for (const claimedName of claimedToolNames.values()) {
-		const lowerClaimedName = claimedName.toLowerCase();
-		if (lowerName.endsWith(`_${lowerClaimedName}`) || lowerName.endsWith(`-${lowerClaimedName}`)) {
-			return claimedName;
+	for (const reservedName of reservedToolNames.values()) {
+		const lowerReservedName = reservedName.toLowerCase();
+		if (
+			lowerName.endsWith(`_${lowerReservedName}`) ||
+			lowerName.endsWith(`-${lowerReservedName}`)
+		) {
+			return reservedName;
 		}
 	}
 	return null;
@@ -60,6 +63,7 @@ export function addSafeMcpTools(
 	options: {
 		source: string;
 		claimedToolNames: Map<string, string>;
+		reservedSuffixToolNames?: Map<string, string>;
 		warn?: (error: McpToolNameValidationError) => void;
 	},
 ): void {
@@ -74,7 +78,9 @@ export function addSafeMcpTools(
 					options.source,
 				);
 			}
-			const reservedSuffix = findReservedSuffix(name, options.claimedToolNames);
+			const reservedSuffix = options.reservedSuffixToolNames
+				? findReservedSuffix(name, options.reservedSuffixToolNames)
+				: null;
 			if (reservedSuffix) {
 				throw new McpToolNameValidationError(
 					`MCP tool "${name}" from ${options.source} uses reserved suffix "${reservedSuffix}"`,

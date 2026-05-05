@@ -347,6 +347,43 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('keeps later MCP tools when earlier tools only look like their suffix', async () => {
+		MCPClient.mockImplementation(() => ({
+			listTools: jest.fn().mockResolvedValue({
+				file: { id: 'external-file' },
+			}),
+		}));
+		createToolsFromLocalMcpServer.mockReturnValue({
+			read_file: { id: 'local-read-file' },
+		});
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-non-reserved-suffix',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				logger,
+				localMcpServer: {
+					getToolsByCategory: jest.fn().mockReturnValue([]),
+				},
+			},
+			orchestrationContext: {
+				runId: 'run-non-reserved-suffix',
+				browserMcpConfig: undefined,
+			},
+			mcpServers: [{ name: 'test-server', command: 'test-command-non-reserved-suffix' }],
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const agentConfig = getLastAgentConfig();
+		expect(agentConfig.tools.file).toEqual({ id: 'external-file' });
+		expect(agentConfig.tools.read_file).toEqual({ id: 'local-read-file' });
+		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
 	it('skips MCP servers with unsafe names', async () => {
 		const logger = { warn: jest.fn() };
 

@@ -938,7 +938,14 @@ describe('InstanceAiController', () => {
 
 		it('should return sessionKey when pairing token is consumed', async () => {
 			instanceAiService.getUserIdForApiKey.mockReturnValue(USER_ID);
-			instanceAiService.consumePairingToken.mockReturnValue('new-session-key');
+			const calls: string[] = [];
+			instanceAiService.consumePairingToken.mockImplementation(() => {
+				calls.push('consume');
+				return 'new-session-key';
+			});
+			instanceAiService.initGateway.mockImplementation(() => {
+				calls.push('init');
+			});
 			const gatewayReq = makeGatewayReq('pairing-token', { rootPath: '/tmp' });
 
 			const result = await controller.gatewayInit(gatewayReq, res, {
@@ -948,6 +955,7 @@ describe('InstanceAiController', () => {
 			});
 
 			expect(result).toEqual({ ok: true, sessionKey: 'new-session-key' });
+			expect(calls).toEqual(['consume', 'init']);
 		});
 
 		it('should return rotated session key on reconnect past rotation age', async () => {
@@ -1110,6 +1118,28 @@ describe('InstanceAiController', () => {
 				},
 				[USER_ID],
 			);
+		});
+
+		it('should not start a disconnect timer when a stale session SSE closes', async () => {
+			instanceAiService.getUserIdForApiKey
+				.mockReturnValueOnce(USER_ID)
+				.mockReturnValueOnce(undefined);
+			const gateway = mock<LocalGateway>({ isConnected: true });
+			gateway.onRequest.mockReturnValue(() => {});
+			gateway.onDisconnect.mockReturnValue(() => {});
+			instanceAiService.getLocalGateway.mockReturnValue(gateway);
+			let finishHandler: (() => void) | undefined;
+			const flushableRes = makeFlushableRes();
+			const resMock = flushableRes as unknown as { once: jest.Mock };
+			resMock.once.mockImplementation((event: string, handler: () => void) => {
+				if (event === 'finish') finishHandler = handler;
+				return flushableRes;
+			});
+
+			await controller.gatewayEvents(makeGatewayReq('stale-session-key'), flushableRes);
+			finishHandler?.();
+
+			expect(instanceAiService.startDisconnectTimer).not.toHaveBeenCalled();
 		});
 	});
 

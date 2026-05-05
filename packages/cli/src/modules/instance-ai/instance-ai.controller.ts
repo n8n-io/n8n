@@ -715,6 +715,11 @@ export class InstanceAiController {
 			unsubscribeDisconnect();
 			clearInterval(keepAlive);
 			if (sessionRotationTimer) clearTimeout(sessionRotationTimer);
+			const shouldStartDisconnectTimer =
+				userId === ENV_GATEWAY_USER_ID ||
+				(key !== undefined && this.instanceAiService.getUserIdForApiKey(key) === userId);
+			if (!shouldStartDisconnectTimer) return;
+
 			this.instanceAiService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
 					{
@@ -740,6 +745,14 @@ export class InstanceAiController {
 		const userId = this.validateGatewayApiKey(key);
 		await this.assertGatewayEnabled(userId);
 
+		// Upgrade or rotate the key before initializing so replacing a session
+		// disconnects any prior transport before the fresh daemon attaches.
+		const sessionKey =
+			key && userId !== ENV_GATEWAY_USER_ID
+				? (this.instanceAiService.consumePairingToken(userId, key) ??
+					this.instanceAiService.rotateSessionKeyIfNeeded(userId, key))
+				: null;
+
 		this.instanceAiService.initGateway(userId, payload);
 
 		this.push.sendToUsers(
@@ -755,12 +768,6 @@ export class InstanceAiController {
 			[userId],
 		);
 
-		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey =
-			key && userId !== ENV_GATEWAY_USER_ID
-				? (this.instanceAiService.consumePairingToken(userId, key) ??
-					this.instanceAiService.rotateSessionKeyIfNeeded(userId, key))
-				: null;
 		if (sessionKey) {
 			return { ok: true, sessionKey };
 		}
