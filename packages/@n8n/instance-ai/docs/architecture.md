@@ -7,7 +7,7 @@ natural language interface to workflows, executions, credentials, and nodes — 
 the goal that most users never need to interact with workflows directly.
 
 The system follows the **deep agent architecture** — an orchestrator with explicit
-planning, dynamic sub-agent delegation, observational memory, and structured
+planning, dynamic sub-agent delegation, rolling context compaction, and structured
 prompts. The LLM controls the execution loop; the architecture provides the
 primitives.
 

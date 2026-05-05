@@ -241,12 +241,12 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 
 ### Memory usage
 
-The memory system is thread-scoped. Writing observations from a sub-agent
-corrupts the orchestrator's context, and manually summarizing tool results
-fights with the Observer doing the same thing.
+The memory system is thread-scoped. Writing conversation state from a sub-agent
+corrupts the orchestrator's context, and ad hoc summaries fight the rolling
+compaction service.
 
 - Never read/write memory from sub-agents — they're stateless by design
-- Let observational memory handle compression — don't manually summarize
+- Let the compaction service handle compression — don't manually summarize
 
 ### Agent creation
 

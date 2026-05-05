@@ -66,21 +66,11 @@ When no search provider is available, `web-search` and `research-with-agent` too
 
 Sandbox workspaces persist per thread — the same container is reused across messages in a conversation. Workspaces are destroyed on server shutdown.
 
-### Observational Memory
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OBSERVER_MODEL` | string | `google/gemini-2.5-flash` | LLM for Observer/Reflector compression agents |
-| `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | `30000` | Token threshold for Observer to trigger compression |
-| `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | `40000` | Token threshold for Reflector to condense observations |
-
 ### Lifecycle & Housekeeping
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_THREAD_TTL_DAYS` | number | `90` | Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. |
-| `N8N_INSTANCE_AI_SNAPSHOT_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between snapshot pruning runs. 0 = disabled. |
-| `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `600000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
 
 ## Enabling / Disabling
@@ -193,14 +183,14 @@ N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 N8N_INSTANCE_AI_MODEL=custom/llama-3.1-70b
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
-# Full configuration with observational memory tuning
+# Full configuration
 N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-6
 N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse"
+N8N_INSTANCE_AI_LAST_MESSAGES=20
 N8N_INSTANCE_AI_EMBEDDER_MODEL=openai/text-embedding-3-small
-N8N_INSTANCE_AI_MAX_STEPS=50
-N8N_INSTANCE_AI_MAX_LOOP_ITERATIONS=10
-N8N_INSTANCE_AI_OBSERVER_MODEL=google/gemini-2.5-flash
-N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000
+N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K=5
+N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS=100
+N8N_INSTANCE_AI_THREAD_TTL_DAYS=90
 ```
 
 ## SearXNG Setup (Docker Compose)

@@ -2,121 +2,98 @@
 
 ## Overview
 
-The memory system serves two purposes:
+The memory system serves three purposes:
 
-- **Operational context management** — observational memory that compresses
-  the agent's operational history during long autonomous loops to prevent
-  context degradation (thread-scoped)
-- **Conversation history** — recent messages and semantic recall for the
-  current thread (thread-scoped)
+- **Native agent persistence** — thread and message storage through the
+  `@n8n/agents` `BuiltMemory` interface.
+- **Operational context management** — rolling compaction of older messages into
+  a thread metadata summary when the conversation approaches the model context
+  window.
+- **Conversation continuity** — recent messages, optional semantic recall, plan
+  state, retry history, checkpoints, and UI run snapshots for the current
+  thread.
 
-Sub-agents are stateless — context is passed via the briefing only.
+Sub-agents are stateless. Context is passed through the briefing, and retry
+history is appended from thread-scoped iteration logs.
 
 ## Tiers
 
-### Tier 1: Storage Backend
+### Tier 1: Native Storage
 
-The persistence layer. Stores all messages, observational memory, plan state,
-event history, and vector embeddings.
+Instance AI uses n8n's application database for native agent storage.
 
-| Backend | When Used | Connection |
-|---------|-----------|------------|
-| PostgreSQL | n8n is configured with `postgresdb` | Built from n8n's DB config |
-| LibSQL/SQLite | All other cases (default) | `file:instance-ai-memory.db` |
+| Store | Tables |
+|-------|--------|
+| `TypeORMAgentMemory` | `instance_ai_threads`, `instance_ai_messages`, `instance_ai_resources` |
+| `TypeORMAgentCheckpointStore` | `instance_ai_checkpoints` |
+| UI run snapshots | `instance_ai_run_snapshots` |
+| Iteration logs | `instance_ai_iteration_logs` |
+| Temporary workflow mapping | `ai_builder_temporary_workflow` |
 
-The storage backend is selected automatically based on n8n's database
-configuration — no separate config needed.
+The obsolete workflow snapshot and observational memory tables are dropped by
+the native agents reset migration. Existing Instance AI runtime data may be
+cleared during that migration.
 
 ### Tier 2: Recent Messages
 
-A sliding window of the most recent N messages in the conversation, sent as
-context to the LLM on every request.
+A sliding window of the most recent N messages is sent as context to the LLM on
+every request.
 
 - **Default**: 20 messages
 - **Config**: `N8N_INSTANCE_AI_LAST_MESSAGES`
 
-### Tier 3: Observational Memory
+### Tier 3: Rolling Compaction
 
-Automatic context compression for long-running autonomous loops. Two background
-agents manage the orchestrator's context size:
+`InstanceAiCompactionService` estimates thread token usage. When a conversation
+exceeds the configured context threshold, older messages outside the recent
+tail are summarized by a native compaction agent.
 
-- **Observer** — when message tokens exceed a threshold (default: 30K), compresses
-  old messages into dense observations
-- **Reflector** — when observations exceed their threshold (default: 40K),
-  condenses observations into higher-level patterns
-
-```
-Context window layout during autonomous loop:
-
-┌──────────────────────────────────────────┐
-│ Observation Block (≤40K tokens)          │  ← compressed history
-│ "Built wf-123 with Schedule→HTTP→Slack.  │     (append-only, cacheable)
-│  Exec failed: 401 on HTTP node.          │
-│  Debugger identified missing API key.    │
-│  Rebuilt workflow, re-executed, passed."  │
-├──────────────────────────────────────────┤
-│ Raw Message Block (≤30K tokens)          │  ← recent tool calls & results
-│ [current step's tool calls and results]  │     (rotated as new messages arrive)
-└──────────────────────────────────────────┘
-```
-
-**Why this matters for the autonomous loop**:
-
-- Tool-heavy workloads (workflow definitions, execution results, node
-  descriptions) get **5–40x compression** — a 50-step loop that would blow
-  out the context window stays manageable
-- The observation block is **append-only** until reflection runs, enabling
-  high prompt cache hit rates (4–10x cost reduction)
-- **Async buffering** pre-computes observations in the background — no
-  user-visible pause when the threshold is hit
-- Uses a secondary LLM (default: `google/gemini-2.5-flash`) for compression —
-  cheap and has a 1M token context window for the Reflector
-
-Observational memory is **thread-scoped** — it tracks the operational history
-of the current task.
+Compaction state is stored in thread metadata under
+`instanceAiConversationSummary`. Raw messages remain in the database for UI and
+debugging; compaction only changes the model input.
 
 ### Tier 4: Semantic Recall (Optional)
 
-Vector-based retrieval of relevant past messages. When enabled, the system
-embeds each message and retrieves semantically similar past messages to include
-as context.
+When configured and supported by the active memory backend, the native agents
+runtime can retrieve semantically related past messages and inject them into
+context.
 
-- **Requires**: `N8N_INSTANCE_AI_EMBEDDER_MODEL` to be set
+- **Config**: `N8N_INSTANCE_AI_EMBEDDER_MODEL`
 - **Config**: `N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K` (default: 5)
-- **Message range**: 2 messages before and 1 after each match
 
-Disabled by default. When the embedder model is not set, only tiers 1–3 are
-active.
+Disabled by default.
 
-### Tier 5: Plan Storage
+### Tier 5: Plan And Retry State
 
-The `plan` tool stores execution plans in thread-scoped storage. Plans are
-structured data (goal, current phase, iteration count, step statuses) that
-persist across reconnects within a conversation. See the [tools](./tools.md)
-documentation for the plan tool schema.
+The `plan` tool stores execution plans in thread metadata. Workflow loop
+attempts are stored in `instance_ai_iteration_logs` and appended to sub-agent
+briefings on retry.
+
+### Tier 6: Checkpoints And Run Snapshots
+
+Native checkpoints persist suspended agent state for human-in-the-loop resume.
+Run snapshots persist the UI agent tree used to reconstruct visible progress
+after reconnects.
 
 ## Scoping Model
 
-All memory is thread-scoped (isolated per conversation):
+All memory is thread-scoped unless a native memory call explicitly requests a
+resource-scoped working-memory key.
 
-- **Recent messages** — the sliding window of N messages
-- **Observational memory** — compressed operational history
-- **Semantic recall** — vector retrieval of relevant past messages
-- **Plan** — the current execution plan
+- **Recent messages** — current conversation history.
+- **Compaction summary** — older context summarized for the same thread.
+- **Plan and iteration logs** — current task state and retry history.
+- **Checkpoints** — suspended native agent state keyed by run.
 
-### Sub-agent memory
+### Sub-Agent Memory
 
-Sub-agents are fully stateless — context is passed via the briefing and
-`conversationContext` fields in the `delegate` and `build-workflow-with-agent`
-tools.
+Sub-agents do not read or write persistent memory directly. The orchestrator
+builds their briefing from the current request, relevant task state, and retry
+history.
 
-Past failed attempts are tracked via the `IterationLog` (stored in thread
-metadata) and appended to sub-agent briefings on retry, providing cross-attempt
-context without persistent memory.
+### Cross-User Isolation
 
-### Cross-user isolation
-
-Each user's memory is fully independent. The agent cannot see other users'
+Each user's memory is independent. The agent cannot see other users'
 conversations or semantic history.
 
 ## Configuration
@@ -124,8 +101,5 @@ conversations or semantic history.
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_LAST_MESSAGES` | number | 20 | Recent message window |
-| `N8N_INSTANCE_AI_EMBEDDER_MODEL` | string | `''` | Embedder model (empty = disabled) |
+| `N8N_INSTANCE_AI_EMBEDDER_MODEL` | string | `''` | Embedder model for semantic recall (empty = disabled) |
 | `N8N_INSTANCE_AI_SEMANTIC_RECALL_TOP_K` | number | 5 | Number of semantic matches |
-| `N8N_INSTANCE_AI_OBSERVER_MODEL` | string | `google/gemini-2.5-flash` | LLM for Observer/Reflector |
-| `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | number | 30000 | Observer trigger threshold |
-| `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | number | 40000 | Reflector trigger threshold |

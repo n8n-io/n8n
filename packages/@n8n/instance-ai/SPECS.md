@@ -460,7 +460,7 @@ pnpm typecheck
 - [x] Implement native chunk to Instance AI event mapper.
 - [x] Implement TypeORM `BuiltMemory`.
 - [x] Implement TypeORM `CheckpointStore`.
-- [ ] Add fresh DB migration for native Instance AI persistence.
+- [x] Add fresh DB migration for native Instance AI persistence.
 - [x] Remove `TypeORMCompositeStore` from the active runtime path.
 - [x] Remove `TypeORMWorkflowsStorage` from the active runtime path.
 - [x] Remove observational memory runtime usage.
@@ -474,7 +474,6 @@ pnpm typecheck
 
 Current remaining implementation gaps:
 
-- Add the destructive/fresh native persistence migration.
 - Decide whether LangSmith should move further onto native telemetry/events or
   keep the current product-level spans.
 

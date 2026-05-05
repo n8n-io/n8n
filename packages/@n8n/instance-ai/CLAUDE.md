@@ -68,4 +68,4 @@ See `docs/e2e-tests.md` for the full recording/replay architecture.
 - **Run lifecycle**: `run-start` (first) → events → `run-finish` (last, carries status)
 - **Planned tasks**: `plan` tool for multi-step work; tasks run detached as background agents
 - **Sub-agents**: stateless, native domain tools only, no MCP, no recursive delegation
-- **Memory**: observational memory = thread-scoped, working memory is disabled
+- **Memory**: native thread messages plus rolling compaction; sub-agents are stateless
