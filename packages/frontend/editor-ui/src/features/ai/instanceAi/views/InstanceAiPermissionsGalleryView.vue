@@ -888,7 +888,7 @@ function logPlanRequestChanges(feedback: string) {
 // the same as a real wrapped approval.
 .confirmationCard {
 	border: var(--border);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius--xl);
 	background-color: var(--color--background--light-3);
 	overflow: hidden;
 }
@@ -922,7 +922,7 @@ function logPlanRequestChanges(feedback: string) {
 }
 
 .commentary {
-	color: var(--color--text--shade-1);
+	color: var(--text-color--subtle);
 }
 
 .approveGroup {

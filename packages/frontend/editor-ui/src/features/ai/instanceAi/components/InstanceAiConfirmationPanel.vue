@@ -542,7 +542,7 @@ function handlePlanRequestChanges(
 
 .root {
 	border: var(--border);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius--xl);
 	background-color: var(--color--background--light-3);
 }
 
@@ -604,7 +604,7 @@ function handlePlanRequestChanges(
 }
 
 .commentary {
-	color: var(--color--text--shade-1);
+	color: var(--text-color--subtle);
 }
 
 .approveGroup {
