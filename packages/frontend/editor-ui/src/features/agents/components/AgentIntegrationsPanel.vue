@@ -236,8 +236,8 @@ async function fetchStatus() {
 	emitConnectedTriggers();
 }
 
-function onScheduleStatusChange(active: boolean) {
-	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = active ? 'connected' : 'disconnected';
+function onScheduleStatusChange(configured: boolean) {
+	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = configured ? 'connected' : 'disconnected';
 	connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
 	emitConnectedTriggers();
 }
@@ -294,14 +294,24 @@ async function onDisconnect(type: string) {
 function onCreateCredential(type: string) {
 	const config = integrationConfigs.find((c) => c.type === type);
 	if (config) {
-		uiStore.openNewCredential(config.credentialTypes[0]);
+		uiStore.openNewCredential(
+			config.credentialTypes[0],
+			false,
+			false,
+			undefined,
+			undefined,
+			undefined,
+			{
+				hideAskAssistant: true,
+			},
+		);
 	}
 }
 
 function onEditCredential(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (credId) {
-		uiStore.openExistingCredential(credId);
+		uiStore.openExistingCredential(credId, { hideAskAssistant: true });
 	}
 }
 
