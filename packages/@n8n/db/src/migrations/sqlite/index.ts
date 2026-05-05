@@ -163,6 +163,7 @@ import { CreateAiBuilderTemporaryWorkflowTable1777281990043 } from '../common/17
 import { AddExecutionDeduplicationKey1778000000000 } from '../common/1778000000000-AddExecutionDeduplicationKey';
 import { CreateAgentTables1783000000000 } from '../common/1783000000000-CreateAgentTables';
 import { CreateExecutionThreads1783000000001 } from '../common/1783000000001-CreateExecutionThreads';
+import { CreateAgentObservationTables1784000000000 } from '../common/1784000000000-CreateAgentObservationTables';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -331,6 +332,7 @@ const sqliteMigrations: Migration[] = [
 	AddExecutionDeduplicationKey1778000000000,
 	CreateAgentTables1783000000000,
 	CreateExecutionThreads1783000000001,
+	CreateAgentObservationTables1784000000000,
 ];
 
 export { sqliteMigrations };
