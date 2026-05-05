@@ -18,11 +18,12 @@ export interface LlmProviderDefault {
 
 export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	anthropicApi: { provider: 'anthropic', defaultModel: 'claude-sonnet-4-6' },
-	openAiApi: { provider: 'openai', defaultModel: 'gpt-4o' },
-	googlePalmApi: { provider: 'google', defaultModel: 'gemini-1.5-pro' },
-	xAiApi: { provider: 'xai', defaultModel: 'grok-2' },
+	openAiApi: { provider: 'openai', defaultModel: 'gpt-5' },
+	googlePalmApi: { provider: 'google', defaultModel: 'gemini-2.5-pro' },
+	xAiApi: { provider: 'xai', defaultModel: 'grok-4' },
 	groqApi: { provider: 'groq', defaultModel: 'llama-3.1-70b-versatile' },
 	mistralCloudApi: { provider: 'mistral', defaultModel: 'mistral-large-latest' },
 	deepSeekApi: { provider: 'deepseek', defaultModel: 'deepseek-chat' },
 	cohereApi: { provider: 'cohere', defaultModel: 'command-r-plus' },
+	openRouterApi: { provider: 'openrouter', defaultModel: 'anthropic/claude-sonnet-4.6' },
 };
