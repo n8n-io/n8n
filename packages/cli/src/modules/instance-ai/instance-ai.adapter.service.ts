@@ -290,12 +290,14 @@ export class InstanceAiAdapterService {
 
 		return {
 			async list(options) {
+				const filter = {
+					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
+					...(options?.query ? { query: options.query } : {}),
+				};
+
 				const { workflows } = await workflowService.getMany(user, {
 					take: options?.limit ?? 50,
-					filter: {
-						isArchived: false,
-						...(options?.query ? { query: options.query } : {}),
-					},
+					filter,
 				});
 
 				return workflows
@@ -306,6 +308,7 @@ export class InstanceAiAdapterService {
 							name: wf.name,
 							versionId: wf.versionId,
 							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
 							createdAt: wf.createdAt.toISOString(),
 							updatedAt: wf.updatedAt.toISOString(),
 						}),
@@ -329,9 +332,9 @@ export class InstanceAiAdapterService {
 				await workflowService.archive(user, workflowId, { skipArchived: true });
 			},
 
-			async delete(workflowId: string) {
+			async unarchive(workflowId: string) {
 				assertNotReadOnly();
-				await workflowService.delete(user, workflowId);
+				await workflowService.unarchive(user, workflowId);
 			},
 
 			async clearAiTemporary(workflowId: string) {
@@ -2972,6 +2975,7 @@ function toWorkflowDetail(
 		name: workflow.name,
 		versionId: workflow.versionId,
 		activeVersionId: workflow.activeVersionId ?? null,
+		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt.toISOString(),
 		updatedAt: workflow.updatedAt.toISOString(),
 		nodes: (workflow.nodes ?? []).map(
