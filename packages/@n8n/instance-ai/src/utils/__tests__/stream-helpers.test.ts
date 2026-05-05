@@ -53,6 +53,23 @@ describe('parseSuspension', () => {
 		});
 	});
 
+	it('parses native agent suspension chunks', () => {
+		const chunk = {
+			type: 'tool-call-suspended',
+			toolCallId: 'tc-1',
+			toolName: 'setup-credentials',
+			suspendPayload: {
+				requestId: 'req-1',
+			},
+		};
+
+		expect(parseSuspension(chunk)).toEqual({
+			toolCallId: 'tc-1',
+			requestId: 'req-1',
+			toolName: 'setup-credentials',
+		});
+	});
+
 	it('falls back to toolCallId when requestId is missing', () => {
 		const chunk = {
 			type: 'tool-call-suspended',

@@ -15,14 +15,11 @@ export interface SuspensionInfo {
 	toolName?: string;
 }
 
-/**
- * Extract suspension info from a Mastra stream chunk.
- * Returns null if the chunk is not a suspension.
- */
+/** Extract suspension info from a stream chunk. */
 export function parseSuspension(chunk: unknown): SuspensionInfo | null {
 	if (!isRecord(chunk) || chunk.type !== 'tool-call-suspended') return null;
 
-	const sp = isRecord(chunk.payload) ? chunk.payload : {};
+	const sp = isRecord(chunk.payload) ? chunk.payload : chunk;
 	const suspPayload = isRecord(sp.suspendPayload) ? sp.suspendPayload : {};
 	const tcId = typeof sp.toolCallId === 'string' ? sp.toolCallId : '';
 	const reqId =
