@@ -123,13 +123,20 @@ const multiStepQuestions: QuestionItem[] = [
 // Per-action examples — one card per InstanceAiPermissions key, showing the
 // approval surface the user actually sees when the agent attempts the action.
 // Mirrors the keys in SettingsInstanceAiView.vue#permissionKeys.
+//
+// `toolLabel` reproduces what `useToolLabel().getToolLabel(toolName, args)`
+// returns for the matching backend tool — that's the bold header in
+// production. `message` mirrors the literal string the backend tool emits
+// (kept in sync with the templates in
+// `packages/@n8n/instance-ai/src/tools/*.tool.ts`); the splitter cuts it at
+// the first "?" to produce the preview headline + small commentary.
 // ---------------------------------------------------------------------------
 
 interface ActionExample {
 	key: string;
-	actionLabel: string;
-	title: string;
-	message: string;
+	caption: string; // section caption — short noun phrase
+	toolLabel: string; // bold header (matches getToolLabel output)
+	message: string; // backend confirmation message (split at "?")
 	severity?: 'destructive';
 	specialisedVariant?: string;
 }
@@ -137,116 +144,139 @@ interface ActionExample {
 const actionExamples: ActionExample[] = [
 	{
 		key: 'createWorkflow',
-		actionLabel: 'Create workflow',
-		title: 'Create workflow “GitHub issue notifier”',
+		caption: 'Create workflow',
+		toolLabel: 'Submitting workflow',
 		message:
-			'Build a workflow that listens for new issues in a GitHub repo and posts a summary to a Slack channel.',
+			'Create workflow "GitHub issue notifier"? Builds a workflow that listens for new issues in a GitHub repo and posts a summary to a Slack channel.',
 	},
 	{
 		key: 'updateWorkflow',
-		actionLabel: 'Update workflow',
-		title: 'Update workflow “Lead enrichment”',
-		message: 'Add a Set node before the HTTP Request to coerce email to lower case.',
+		caption: 'Update workflow',
+		toolLabel: 'Submitting workflow',
+		message:
+			'Update workflow "Lead enrichment" (ID: gfQpXk3yL2)? Adds a Set node before the HTTP Request to coerce email to lower case.',
 	},
 	{
 		key: 'runWorkflow',
-		actionLabel: 'Run workflow',
-		title: 'Run workflow “Lead enrichment”',
-		message: 'Trigger one execution with the sample input I prepared earlier.',
+		caption: 'Run workflow',
+		toolLabel: 'Running workflow',
+		message: 'Execute workflow "Lead enrichment" (ID: gfQpXk3yL2)?',
 	},
 	{
 		key: 'publishWorkflow',
-		actionLabel: 'Activate workflow',
-		title: 'Activate workflow “Daily digest”',
-		message: 'Turn the workflow on so its cron trigger starts firing every morning at 09:00 UTC.',
+		caption: 'Publish workflow',
+		toolLabel: 'Publishing workflow',
+		message: 'Publish workflow "Daily digest" (ID: 7nB2sR4pQ8)?',
 	},
 	{
 		key: 'deleteWorkflow',
-		actionLabel: 'Delete workflow',
-		title: 'Delete workflow “Old onboarding flow”',
-		message: 'This workflow has 12 prior executions. Deleting it cannot be undone.',
+		caption: 'Archive workflow',
+		toolLabel: 'Archiving workflow',
+		message:
+			'Archive workflow "Old onboarding flow" (ID: 4hT8vM2kJ1)? This will deactivate it if needed and can be undone later.',
 		severity: 'destructive',
 	},
 	{
 		key: 'deleteCredential',
-		actionLabel: 'Delete credential',
-		title: 'Delete credential “Stale Slack token”',
-		message: '5 workflows reference this credential — they will fail until reconfigured.',
+		caption: 'Delete credential',
+		toolLabel: 'Deleting credential',
+		message: 'Delete credential "Stale Slack token"? This cannot be undone.',
 		severity: 'destructive',
 	},
 	{
 		key: 'createFolder',
-		actionLabel: 'Create folder',
-		title: 'Create folder “Marketing”',
-		message: 'Add a new folder under the Personal project for grouping marketing workflows.',
+		caption: 'Create folder',
+		toolLabel: 'Creating folder',
+		message: 'Create folder "Marketing" in project "personal-tuukka"?',
 	},
 	{
 		key: 'deleteFolder',
-		actionLabel: 'Delete folder',
-		title: 'Delete folder “Archived”',
-		message: 'The folder contains 4 workflows. They will be moved to the project root.',
+		caption: 'Delete folder',
+		toolLabel: 'Deleting folder',
+		message: 'Delete folder "Archived"? Its 4 workflows will be moved to the project root.',
 		severity: 'destructive',
 	},
 	{
 		key: 'moveWorkflowToFolder',
-		actionLabel: 'Move workflow to folder',
-		title: 'Move workflow “Lead enrichment” to folder “Marketing”',
-		message: 'From: Inbox · To: Marketing',
+		caption: 'Move workflow to folder',
+		toolLabel: 'Moving workflow to folder',
+		message: 'Move workflow "Lead enrichment" to folder "Marketing"?',
 	},
 	{
 		key: 'tagWorkflow',
-		actionLabel: 'Tag workflow',
-		title: 'Tag workflow “Lead enrichment”',
-		message: 'Add tags: production, customer-data.',
+		caption: 'Tag workflow',
+		toolLabel: 'Tagging workflow',
+		message: 'Tag workflow "Lead enrichment" (ID: gfQpXk3yL2) with [production, customer-data]?',
 	},
 	{
 		key: 'createDataTable',
-		actionLabel: 'Create data table',
-		title: 'Create data table “leads”',
-		message: 'Columns: email (string), source (string), score (number), created_at (datetime).',
+		caption: 'Create data table',
+		toolLabel: 'Creating data table',
+		message:
+			'Create data table "leads"? Columns: email (string), source (string), score (number), created_at (datetime).',
 	},
 	{
 		key: 'mutateDataTableSchema',
-		actionLabel: 'Modify data table schema',
-		title: 'Modify schema of data table “leads”',
-		message: 'Add column “enriched_at” (datetime, nullable).',
+		caption: 'Modify data table schema',
+		toolLabel: 'Adding table column',
+		message: 'Add column "enriched_at" (datetime) to data table "leads"?',
 	},
 	{
 		key: 'mutateDataTableRows',
-		actionLabel: 'Modify data table rows',
-		title: 'Update 47 rows in data table “leads”',
-		message: "Set status = 'archived' where created_at < 2025-01-01.",
+		caption: 'Modify data table rows',
+		toolLabel: 'Updating rows',
+		message:
+			'Update rows in data table "leads"? Set status = "archived" where created_at < 2025-01-01.',
 	},
 	{
 		key: 'cleanupTestExecutions',
-		actionLabel: 'Clean up test executions',
-		title: 'Delete 14 test executions for workflow “Lead enrichment”',
-		message: 'Remove all manual test executions older than 7 days.',
+		caption: 'Clean up test executions',
+		toolLabel: 'Cleaning up test executions',
+		message: 'Delete test executions for workflow "Lead enrichment" older than 168 hour(s)?',
 		severity: 'destructive',
 	},
 	{
 		key: 'readFilesystem',
-		actionLabel: 'Read filesystem',
-		title: 'Read file “/Users/tuukka/Documents/leads.csv”',
-		message: 'Open the file to extract a contact list for the workflow.',
+		caption: 'Read filesystem',
+		toolLabel: 'Reading file',
+		message:
+			'Read file "/Users/tuukka/Documents/leads.csv"? Opens the file to extract a contact list for the workflow.',
 		specialisedVariant: 'GatewayResourceDecision',
 	},
 	{
 		key: 'fetchUrl',
-		actionLabel: 'Fetch URL',
-		title: 'Fetch https://api.openweathermap.org/data/2.5/weather?q=London',
-		message: 'Make a GET request to fetch current weather data for London.',
+		caption: 'Fetch URL',
+		toolLabel: 'Fetching page',
+		// Real fetchUrl flows actually surface as DomainAccessApproval (see
+		// the section below). The generic-approval shape shown here is for
+		// illustration only — pick a URL with no query string so the
+		// "split-at-first-?" preview rule doesn't bite.
+		message:
+			'Fetch https://api.openweathermap.org/data/2.5/london? Makes a GET request to retrieve current weather data for London.',
 		specialisedVariant: 'DomainAccessApproval',
 	},
 	{
 		key: 'restoreWorkflowVersion',
-		actionLabel: 'Restore workflow version',
-		title: 'Restore workflow “Lead enrichment” to version from 2026-04-15',
-		message:
-			'Overwrites the current state with the version saved 2 weeks ago. Recent edits will be lost.',
+		caption: 'Restore workflow version',
+		toolLabel: 'Restoring workflow version',
+		message: 'Restore workflow to version 2026-04-15? This will overwrite the current draft.',
 		severity: 'destructive',
 	},
 ];
+
+/**
+ * Mirrors `splitConfirmationMessage` in InstanceAiConfirmationPanel.vue.
+ * Splits a message at the first "?" into preview headline + small commentary.
+ */
+function splitMessage(message: string): { headline: string; commentary: string } {
+	const trimmed = message.trim();
+	const qIdx = trimmed.indexOf('?');
+	if (qIdx === -1) return { headline: trimmed, commentary: '' };
+	return {
+		headline: trimmed.slice(0, qIdx).trim(),
+		commentary: trimmed.slice(qIdx + 1).trim(),
+	};
+}
 
 // ---------------------------------------------------------------------------
 // Inline ask-user (text input) — replicated from InstanceAiConfirmationPanel
@@ -298,9 +328,10 @@ function logPlanRequestChanges(feedback: string) {
 			<div :class="$style.sectionHeader">
 				<N8nHeading size="large" bold>Generic approval</N8nHeading>
 				<N8nText color="text-light" tag="p">
-					Used when a sub-agent wants to call a tool that mutates state. Wrapped in the "approval"
-					container; multiple pending items collapse into a single card with an "Allow all"
-					shortcut.
+					Used when a sub-agent wants to call a tool that mutates state. The bold header is the
+					tool's "-ing" label; the monospace box shows the headline of the backend message and any
+					trailing commentary appears below. Non-destructive actions get an "Always allow" option;
+					destructive ones don't.
 				</N8nText>
 			</div>
 
@@ -312,10 +343,12 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nText size="large" bold>Update workflow “Lead enrichment”</N8nText>
-							<ConfirmationPreview>Update workflow “Lead enrichment”</ConfirmationPreview>
+							<N8nText size="large" bold>Submitting workflow</N8nText>
+							<ConfirmationPreview
+								>Update workflow "Lead enrichment" (ID: gfQpXk3yL2)</ConfirmationPreview
+							>
 							<N8nText :class="$style.commentary" size="small">
-								Add a Set node before the HTTP Request to coerce email to lower case.
+								Adds a Set node before the HTTP Request to coerce email to lower case.
 							</N8nText>
 						</div>
 						<ConfirmationFooter layout="row-between">
@@ -343,10 +376,12 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nText size="large" bold>Delete workflow “Old onboarding flow”</N8nText>
-							<ConfirmationPreview>Delete workflow “Old onboarding flow”</ConfirmationPreview>
+							<N8nText size="large" bold>Archiving workflow</N8nText>
+							<ConfirmationPreview
+								>Archive workflow "Old onboarding flow" (ID: 4hT8vM2kJ1)</ConfirmationPreview
+							>
 							<N8nText :class="$style.commentary" size="small">
-								This workflow has 12 prior executions. Deleting it cannot be undone.
+								This will deactivate it if needed and can be undone later.
 							</N8nText>
 						</div>
 						<ConfirmationFooter layout="row-between">
@@ -361,22 +396,24 @@ function logPlanRequestChanges(feedback: string) {
 				</div>
 			</div>
 
-			<!-- Multiple items · stacked cards (only top fully shown, peek below) -->
+			<!-- Multiple items · stacked cards (only top fully shown, peek above) -->
 			<div :class="$style.demo">
 				<N8nText size="small" color="text-light" :class="$style.caption">
-					Multiple items · stacked cards · only top fully shown
+					Multiple items · stacked cards · top peeks above
 				</N8nText>
-				<div :class="$style.stack" :style="{ '--stack-size': 2 }">
+				<div :class="$style.stack" :style="{ '--stack-size': 3 }">
 					<div :class="$style.items">
 						<div
 							:class="[$style.confirmationCard, $style.stackedItem]"
-							:style="{ '--stack-depth': 0, zIndex: 2 }"
+							:style="{ '--stack-depth': 0, zIndex: 3 }"
 						>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nText size="large" bold>Tag workflow “Lead enrichment”</N8nText>
-									<ConfirmationPreview>Tag workflow “Lead enrichment”</ConfirmationPreview>
-									<N8nText :class="$style.commentary" size="small"> Add tag: production </N8nText>
+									<N8nText size="large" bold>Tagging workflow</N8nText>
+									<ConfirmationPreview
+										>Tag workflow "Lead enrichment" (ID: gfQpXk3yL2) with [production,
+										customer-data]</ConfirmationPreview
+									>
 								</div>
 								<ConfirmationFooter layout="row-between">
 									<N8nButton variant="outline" size="medium">{{
@@ -395,31 +432,28 @@ function logPlanRequestChanges(feedback: string) {
 						</div>
 						<div
 							:class="[$style.confirmationCard, $style.stackedItem]"
-							:style="{ '--stack-depth': 1, zIndex: 1 }"
+							:style="{ '--stack-depth': 1, zIndex: 2 }"
 						>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
-									<N8nText size="large" bold>Move workflow to folder “Marketing”</N8nText>
+									<N8nText size="large" bold>Moving workflow to folder</N8nText>
 									<ConfirmationPreview
-										>Move workflow “Lead enrichment” to folder “Marketing”</ConfirmationPreview
+										>Move workflow "Lead enrichment" to folder "Marketing"</ConfirmationPreview
 									>
-									<N8nText :class="$style.commentary" size="small">
-										From: Inbox · To: Marketing
-									</N8nText>
 								</div>
-								<ConfirmationFooter layout="row-between">
-									<N8nButton variant="outline" size="medium">{{
-										i18n.baseText('instanceAi.confirmation.deny')
-									}}</N8nButton>
-									<div :class="$style.approveGroup">
-										<N8nButton variant="outline" size="medium">{{
-											i18n.baseText('instanceAi.confirmation.alwaysAllow')
-										}}</N8nButton>
-										<N8nButton variant="solid" size="medium">{{
-											i18n.baseText('instanceAi.confirmation.approve')
-										}}</N8nButton>
-									</div>
-								</ConfirmationFooter>
+							</div>
+						</div>
+						<div
+							:class="[$style.confirmationCard, $style.stackedItem]"
+							:style="{ '--stack-depth': 2, zIndex: 1 }"
+						>
+							<div :class="$style.approvalRow">
+								<div :class="$style.approvalRowBody">
+									<N8nText size="large" bold>Publishing workflow</N8nText>
+									<ConfirmationPreview
+										>Publish workflow "Lead enrichment" (ID: gfQpXk3yL2)</ConfirmationPreview
+									>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -444,7 +478,7 @@ function logPlanRequestChanges(feedback: string) {
 			<div v-for="example in actionExamples" :key="example.key" :class="$style.demo">
 				<div :class="$style.actionCaptionRow">
 					<N8nText size="small" color="text-light" :class="$style.caption">
-						{{ example.actionLabel }}
+						{{ example.caption }} · <code>{{ example.key }}</code>
 					</N8nText>
 					<N8nText
 						v-if="example.specialisedVariant"
@@ -458,10 +492,16 @@ function logPlanRequestChanges(feedback: string) {
 				<div :class="$style.confirmationCard">
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
-							<N8nText size="large" bold>{{ example.title }}</N8nText>
-							<ConfirmationPreview>{{ example.title }}</ConfirmationPreview>
-							<N8nText :class="$style.commentary" size="small">
-								{{ example.message }}
+							<N8nText size="large" bold>{{ example.toolLabel }}</N8nText>
+							<ConfirmationPreview>{{
+								splitMessage(example.message).headline
+							}}</ConfirmationPreview>
+							<N8nText
+								v-if="splitMessage(example.message).commentary"
+								:class="$style.commentary"
+								size="small"
+							>
+								{{ splitMessage(example.message).commentary }}
 							</N8nText>
 						</div>
 						<ConfirmationFooter layout="row-between">
@@ -869,9 +909,12 @@ function logPlanRequestChanges(feedback: string) {
 }
 
 // --- Stacked-card layout for grouped approvals ---
+// Top card (idx=0) sits at the bottom of the reserved space; behind cards
+// peek out *above* its top edge, each shifted slightly inset on the sides
+// (so behind cards look "smaller") and translated up by depth × 8px.
 .stack {
 	position: relative;
-	padding-bottom: calc((var(--stack-size, 1) - 1) * 8px);
+	padding-top: calc((var(--stack-size, 1) - 1) * 8px);
 }
 
 .stack .items {
@@ -886,7 +929,7 @@ function logPlanRequestChanges(feedback: string) {
 		top: 0;
 		left: calc(var(--stack-depth, 0) * 4px);
 		right: calc(var(--stack-depth, 0) * 4px);
-		transform: translateY(calc(var(--stack-depth, 0) * 8px));
+		transform: translateY(calc(var(--stack-depth, 0) * -8px));
 	}
 }
 

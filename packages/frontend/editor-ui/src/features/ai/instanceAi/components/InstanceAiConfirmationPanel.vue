@@ -548,13 +548,13 @@ function handlePlanRequestChanges(
 }
 
 // --- Stacked-card layout for grouped approvals ---
-// Top item (idx=0) sits in front; subsequent items shift down behind it,
-// each slightly inset on the sides, so only their bottom edge peeks out
-// below the front card.
+// Top item (idx=0) sits in front; subsequent items shift up behind it,
+// each slightly inset on the sides, so only their top edge peeks out
+// above the front card.
 .stack {
 	position: relative;
-	// Reserve space for the peek of cards behind the top one (8px each).
-	padding-bottom: calc((var(--stack-size, 1) - 1) * 8px);
+	// Reserve space at the top for cards peeking out above the front (8px each).
+	padding-top: calc((var(--stack-size, 1) - 1) * 8px);
 }
 
 .stack .items {
@@ -571,8 +571,8 @@ function handlePlanRequestChanges(
 		// without using transform: scale (which complicates positioning).
 		left: calc(var(--stack-depth, 0) * 4px);
 		right: calc(var(--stack-depth, 0) * 4px);
-		// Each behind card shifts down 8px per depth so the bottom edge peeks.
-		transform: translateY(calc(var(--stack-depth, 0) * 8px));
+		// Each behind card shifts up 8px per depth so its top edge peeks.
+		transform: translateY(calc(var(--stack-depth, 0) * -8px));
 	}
 }
 
