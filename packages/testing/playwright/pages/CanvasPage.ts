@@ -819,12 +819,18 @@ export class CanvasPage extends BasePage {
 			closeNDV = false,
 			exactMatch = false,
 			subcategory,
-		}: { closeNDV?: boolean; exactMatch?: boolean; subcategory?: string } = {},
+			exactSubcategory = false,
+		}: {
+			closeNDV?: boolean;
+			exactMatch?: boolean;
+			subcategory?: string;
+			exactSubcategory?: boolean;
+		} = {},
 	): Promise<void> {
 		await this.getInputPlusEndpointByType(parentNodeName, endpointType).click();
 
 		if (subcategory) {
-			await this.nodeCreator.navigateToSubcategory(subcategory);
+			await this.nodeCreator.navigateToSubcategory(subcategory, { exact: exactSubcategory });
 		}
 
 		if (exactMatch) {

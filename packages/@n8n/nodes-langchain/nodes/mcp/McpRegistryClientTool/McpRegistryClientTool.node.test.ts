@@ -135,6 +135,7 @@ describe('McpRegistryClientTool', () => {
 			const ctx = createSupplyDataCtx({
 				serverTransport: 'httpStreamable',
 				endpointUrl: 'https://mcp.notion.com/mcp',
+				include: 'all',
 			});
 			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
 
