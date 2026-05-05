@@ -118,7 +118,6 @@ export const defaultSettings: FrontendSettings = {
 	nodeJsVersion: '',
 	nodeEnv: '',
 	concurrency: -1,
-	evaluationConcurrencyLimit: -1,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',

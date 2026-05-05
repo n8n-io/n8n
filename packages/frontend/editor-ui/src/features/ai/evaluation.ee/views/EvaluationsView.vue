@@ -128,7 +128,7 @@ watch(runningTestRun, (run) => {
 					<ConcurrencySlider
 						v-model="concurrencyModel"
 						:min="1"
-						:max="parallelEvalStore.maxConcurrency"
+						:max="10"
 						:step="1"
 						show-stops
 						:class="$style.concurrencySlider"
