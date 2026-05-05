@@ -59,6 +59,7 @@ import '@/events/events.controller';
 import '@/executions/executions.controller';
 import '@/license/license.controller';
 import '@/evaluation.ee/test-runs.controller.ee';
+import '@/evaluation.ee/evaluation-config.controller';
 import '@/workflows/workflow-history/workflow-history.controller';
 import '@/workflows/workflows.controller';
 import '@/modules/workflow-index/workflow-dependency.controller';
