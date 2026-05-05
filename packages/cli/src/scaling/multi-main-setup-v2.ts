@@ -28,7 +28,7 @@ export class MultiMainSetupV2 implements MultiMainStrategy {
 			this.logRedisCommandFailure('Failed to set leader key in Redis during init', result.error);
 			this.instanceSettings.markAsFollower();
 		} else if (result.result) {
-			this.becomeLeader();
+			this.takeOverAsLeader();
 		} else {
 			this.instanceSettings.markAsFollower();
 		}
@@ -38,6 +38,8 @@ export class MultiMainSetupV2 implements MultiMainStrategy {
 		const { isLeader } = this.instanceSettings;
 
 		if (isLeader) {
+			// TODO: We should guard here that we only remove the key the key in Redis matches
+			// our host ID.
 			const result = await this.client.clearLeader();
 			if (!result.ok) {
 				this.logger.warn('Failed to clear leader key from Redis', { error: result.error });
@@ -65,12 +67,18 @@ export class MultiMainSetupV2 implements MultiMainStrategy {
 		}
 	}
 
+	/** Renew our leadership lease. If we've lost the lease, step down to follower. */
 	private async checkAreWeStillLeader() {
 		assert(this.instanceSettings.isLeader);
 
 		const renewTtlResult = await this.client.tryRenewLeaderTtl();
 		if (!renewTtlResult.ok) {
 			this.logRedisCommandFailure('Failed to renew leader TTL', renewTtlResult.error);
+			// There's a decision to be made here: Do we step down or not? Redis might
+			// be unavailable for all clients or only for us. We could also track the TTL
+			// locally, but this would make the implementation more complex and error-prone.
+			// For now we accept that this might cause some inconsistencies in a network
+			// partition scenario, but eventually the system will recover once Redis is available again.
 			return;
 		}
 
@@ -86,20 +94,25 @@ export class MultiMainSetupV2 implements MultiMainStrategy {
 			this.logger.debug(
 				`[Instance ID ${this.hostId}] Leader is other instance "${renewalResult.currentLeaderId}"`,
 			);
-			this.becomeFollower();
+			this.stepDownToFollower();
 			return;
 		}
+
+		// The only remaining case is 'key-missing', which means we lost leadership
+		// (e.g. due to Redis unavailability or a network partition). In this case
+		// we try to become leader and step down if that fails.
+		assert(renewalResult.id === 'key-missing');
 
 		const result = await this.client.setLeaderIfNotExists();
 		if (!result.ok) {
 			this.logRedisCommandFailure('Failed to set leader key in Redis', result.error);
-			this.becomeFollower();
+			this.stepDownToFollower();
 			return;
 		}
 
 		const wasSet = result.result;
 		if (!wasSet) {
-			this.becomeFollower();
+			this.stepDownToFollower();
 		}
 	}
 
@@ -122,7 +135,7 @@ export class MultiMainSetupV2 implements MultiMainStrategy {
 				},
 			);
 
-			this.becomeLeader();
+			this.takeOverAsLeader();
 			return;
 		}
 
@@ -143,11 +156,11 @@ export class MultiMainSetupV2 implements MultiMainStrategy {
 
 		const wasSet = result.result;
 		if (wasSet) {
-			this.becomeLeader();
+			this.takeOverAsLeader();
 		}
 	}
 
-	private becomeLeader() {
+	private takeOverAsLeader() {
 		assert(!this.instanceSettings.isLeader);
 
 		this.logger.info(`[Instance ID ${this.hostId}] Leader is now this instance`);
@@ -157,7 +170,7 @@ export class MultiMainSetupV2 implements MultiMainStrategy {
 		this.emit('leader-takeover');
 	}
 
-	private becomeFollower() {
+	private stepDownToFollower() {
 		assert(this.instanceSettings.isLeader);
 
 		this.logger.info(`[Instance ID ${this.hostId}] This is now a follower instance`);
