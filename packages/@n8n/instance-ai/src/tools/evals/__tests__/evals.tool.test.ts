@@ -271,6 +271,34 @@ describe('evalsTool — phase 2 resume (v3: delegate to eval-setup-agent)', () =
 		expect(task).toContain('do not modify its rows or schema');
 	});
 
+	it('approved + link-existing: derives input columns from the existing DataTable schema', async () => {
+		const ctx = makeCtx(aiWf());
+		mockInfer.mockResolvedValue(DEFAULT_EVAL_SHAPE);
+		ctx.dataTableService.getSchema = jest.fn().mockResolvedValue([
+			{ id: 'c1', name: 'targetUrl', type: 'string', index: 0 },
+			{ id: 'c2', name: 'priceThresholdDollars', type: 'number', index: 1 },
+			{ id: 'c3', name: 'expected_output', type: 'string', index: 2 },
+		]);
+		const tool = createEvalsTool(ctx);
+
+		const result = (await tool.execute!({ action: 'propose', workflowId: 'w1' }, {
+			agent: {
+				resumeData: {
+					approved: true,
+					datasetChoice: 'link-existing',
+					existingDataTableId: 'dt-real',
+					enabledMetricIds: ['correctness'],
+				},
+			},
+		} as never)) as Record<string, unknown>;
+
+		const task = result.task as string;
+		expect(task).toContain('- targetUrl');
+		expect(task).toContain('- priceThresholdDollars');
+		expect(task).toContain('- expected_output');
+		expect(task).not.toMatch(/^- input$/m);
+	});
+
 	it('filters metrics in the task by enabledMetricIds', async () => {
 		const ctx = makeCtx(aiWf());
 		mockInfer.mockResolvedValue({
