@@ -91,10 +91,7 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 }));
 
 vi.mock('@/app/stores/workflows.store', async () => {
-	const {
-		createWorkflowExecutionStateId,
-		useWorkflowExecutionStateStore,
-	} = await vi.importActual<
+	const { createWorkflowExecutionStateId, useWorkflowExecutionStateStore } = await vi.importActual<
 		typeof import('@/app/stores/workflowExecutionState.store')
 	>('@/app/stores/workflowExecutionState.store');
 

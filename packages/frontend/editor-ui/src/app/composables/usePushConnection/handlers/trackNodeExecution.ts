@@ -18,9 +18,7 @@ export async function trackNodeExecution(
 		const telemetry = useTelemetry();
 		const workflowHelpers = useWorkflowHelpers();
 		const settingsStore = useSettingsStore();
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowId),
-		);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		const node = workflowDocumentStore.getNodeByName(nodeName);
 		telemetry.track('Manual exec errored', {
 			error_title: pushData.data.error.message,

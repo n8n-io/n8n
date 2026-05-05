@@ -13,10 +13,7 @@ import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import {
-	createExecutionDataId,
-	useExecutionDataStore,
-} from '@/app/stores/executionData.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 describe('executionStarted', () => {
 	let mockOptions: { workflowState: Mocked<WorkflowState> };

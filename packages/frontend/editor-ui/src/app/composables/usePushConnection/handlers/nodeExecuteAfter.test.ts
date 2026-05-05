@@ -11,10 +11,7 @@ import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import {
-	createExecutionDataId,
-	useExecutionDataStore,
-} from '@/app/stores/executionData.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 
 vi.mock('@/features/ai/assistant/assistant.store', () => ({
 	useAssistantStore: vi.fn().mockReturnValue({

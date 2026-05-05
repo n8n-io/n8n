@@ -11,10 +11,7 @@ import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import {
-	createExecutionDataId,
-	useExecutionDataStore,
-} from '@/app/stores/executionData.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import type {
@@ -39,9 +36,7 @@ export function useWorkflowState() {
 	////
 
 	function getStateStore() {
-		return useWorkflowExecutionStateStore(
-			createWorkflowExecutionStateId(ws.workflowId),
-		);
+		return useWorkflowExecutionStateStore(createWorkflowExecutionStateId(ws.workflowId));
 	}
 
 	function setWorkflowExecutionData(workflowResultData: IExecutionResponse | null) {
@@ -106,9 +101,7 @@ export function useWorkflowState() {
 		workflowStateStore.executingNode.clearNodeExecutionQueue();
 		stateStore.setExecutionWaitingForWebhook(false);
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(ws.workflowId),
-		);
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(ws.workflowId));
 		documentTitle.setDocumentTitle(workflowDocumentStore.name, 'IDLE');
 
 		if (typeof aid === 'string') {

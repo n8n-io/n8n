@@ -67,10 +67,7 @@ import {
 	createWorkflowExecutionStateId,
 	useWorkflowExecutionStateStore,
 } from '@/app/stores/workflowExecutionState.store';
-import {
-	createExecutionDataId,
-	useExecutionDataStore,
-} from '@/app/stores/executionData.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants/placeholders';
 import { trackNodeExecution } from '@/app/composables/usePushConnection/handlers/trackNodeExecution';
 
@@ -153,8 +150,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowExecutionPairedItemMappings = computed(() => {
 		const eid = resolveActiveExecId();
 		if (!eid) return {} as Record<string, Set<string>>;
-		return useExecutionDataStore(createExecutionDataId(eid))
-			.executionPairedItemMappings as Record<string, Set<string>>;
+		return useExecutionDataStore(createExecutionDataId(eid)).executionPairedItemMappings as Record<
+			string,
+			Set<string>
+		>;
 	});
 
 	const executionWaitingForWebhook = computed<boolean>({
@@ -397,10 +396,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 
 			currentState.value.setLastSuccessfulExecution(
-				await workflowsApi.getLastSuccessfulExecution(
-					rootStore.restApiContext,
-					workflowId.value,
-				),
+				await workflowsApi.getLastSuccessfulExecution(rootStore.restApiContext, workflowId.value),
 			);
 		} catch (e: unknown) {
 			// no need to do anything if fails
