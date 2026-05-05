@@ -15,6 +15,6 @@ export class MultiMainSetupConfig {
 	interval: number = 3;
 
 	/** Whether to use the new leader election implementation (Lua-script based). */
-	@Env('N8N_NEW_LEADER_ELECTION_IMPLEMENTION')
+	@Env('N8N_NEW_LEADER_ELECTION_IMPLEMENTATION')
 	newLeaderElection: boolean = false;
 }
