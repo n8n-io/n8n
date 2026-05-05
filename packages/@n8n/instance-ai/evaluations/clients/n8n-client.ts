@@ -71,13 +71,32 @@ export interface WorkflowResponse {
 	pinData?: Record<string, unknown>;
 }
 
+interface WorkflowListItem {
+	id: string;
+	name: string;
+	active: boolean;
+	nodes: WorkflowNodeResponse[];
+}
+
+interface ExecutionListItem {
+	id: string;
+	workflowId: string;
+	status: string;
+}
+
+export interface ExecutionDetail {
+	id: string;
+	workflowId: string;
+	status: string;
+	/** Flatted-serialized execution data (contains error details, run data per node) */
+	data: string;
+}
+
+/** Subset of fields accepted by POST /rest/workflows. */
 export interface WorkflowCreatePayload {
 	name: string;
 	nodes: Array<WorkflowNodeResponse & Record<string, unknown>>;
 	connections: Record<string, unknown>;
-	settings?: Record<string, unknown> | null;
-	staticData?: Record<string, unknown> | null;
-	meta?: Record<string, unknown> | null;
 	pinData?: Record<string, unknown> | null;
 	projectId?: string;
 }
@@ -98,27 +117,11 @@ export interface DataTableResponse {
 	columns?: Array<{ id?: string; name: string; type: string }>;
 }
 
-export type DataTableRowInput = Record<string, string | number | boolean | null>;
+export type DataTableRowOutput = Record<string, unknown>;
 
-interface WorkflowListItem {
-	id: string;
-	name: string;
-	active: boolean;
-	nodes: WorkflowNodeResponse[];
-}
-
-interface ExecutionListItem {
-	id: string;
-	workflowId: string;
-	status: string;
-}
-
-export interface ExecutionDetail {
-	id: string;
-	workflowId: string;
-	status: string;
-	/** Flatted-serialized execution data (contains error details, run data per node) */
-	data: string;
+export interface DataTableRowsResponse {
+	count: number;
+	data: DataTableRowOutput[];
 }
 
 // -- Thread types ------------------------------------------------------------
@@ -325,7 +328,7 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a workflow from an imported fixture.
+	 * Create a workflow from a fixture or generated payload.
 	 * POST /rest/workflows
 	 */
 	async createWorkflow(workflow: WorkflowCreatePayload): Promise<WorkflowResponse> {
@@ -561,18 +564,21 @@ export class N8nClient {
 	}
 
 	/**
-	 * Insert rows into a data table.
-	 * POST /rest/projects/:projectId/data-tables/:dataTableId/insert
+	 * Fetch rows from a data table.
+	 * GET /rest/projects/:projectId/data-tables/:dataTableId/rows
 	 */
-	async insertDataTableRows(
+	async getDataTableRows(
 		projectId: string,
 		dataTableId: string,
-		rows: DataTableRowInput[],
-	): Promise<void> {
-		await this.fetch(`/rest/projects/${projectId}/data-tables/${dataTableId}/insert`, {
-			method: 'POST',
-			body: { data: rows, returnType: 'count' },
-		});
+		options: { take?: number; skip?: number } = {},
+	): Promise<DataTableRowsResponse> {
+		const params = new URLSearchParams();
+		if (options.take !== undefined) params.set('take', String(options.take));
+		if (options.skip !== undefined) params.set('skip', String(options.skip));
+		const query = params.toString();
+		const path = `/rest/projects/${projectId}/data-tables/${dataTableId}/rows${query ? `?${query}` : ''}`;
+		const result = (await this.fetch(path)) as { data: DataTableRowsResponse };
+		return result.data;
 	}
 
 	/**

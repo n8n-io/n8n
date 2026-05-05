@@ -20,50 +20,24 @@ function wf(
 }
 
 describe('detectAiNodes', () => {
-	it('returns isAiWorkflow=true when workflow contains a langchain node', () => {
+	it('returns langchain node names when workflow contains AI nodes', () => {
 		const result = detectAiNodes(
 			wf([
 				{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' },
 				{ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' },
 			]),
 		);
-		expect(result.isAiWorkflow).toBe(true);
 		expect(result.aiNodeNames).toEqual(['Agent']);
-		expect(result.alreadyConfigured).toBe(false);
 	});
 
-	it('returns isAiWorkflow=false when no langchain nodes are present', () => {
+	it('returns an empty list when no langchain nodes are present', () => {
 		const result = detectAiNodes(
 			wf([
 				{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' },
 				{ name: 'HTTP', type: 'n8n-nodes-base.httpRequest' },
 			]),
 		);
-		expect(result.isAiWorkflow).toBe(false);
 		expect(result.aiNodeNames).toEqual([]);
-		expect(result.alreadyConfigured).toBe(false);
-	});
-
-	it('returns alreadyConfigured=true when EvaluationTrigger is already in the workflow', () => {
-		const result = detectAiNodes(
-			wf([
-				{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' },
-				{ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' },
-				{ name: 'EvalTrigger', type: 'n8n-nodes-base.evaluationTrigger' },
-			]),
-		);
-		expect(result.alreadyConfigured).toBe(true);
-	});
-
-	it('returns alreadyConfigured=true when Evaluation node is already in the workflow', () => {
-		const result = detectAiNodes(
-			wf([
-				{ name: 'Start', type: 'n8n-nodes-base.manualTrigger' },
-				{ name: 'Agent', type: '@n8n/n8n-nodes-langchain.agent' },
-				{ name: 'Eval', type: 'n8n-nodes-base.evaluation' },
-			]),
-		);
-		expect(result.alreadyConfigured).toBe(true);
 	});
 
 	it('collects all langchain node names', () => {

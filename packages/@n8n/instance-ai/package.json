@@ -19,6 +19,7 @@
     "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",
     "eval:eval-setup-topology": "tsx evaluations/eval-setup-topology/cli.ts",
+    "eval:data-quality": "tsx evaluations/eval-data-quality/cli.ts",
     "prompts:print": "tsx scripts/print-prompts.ts"
   },
   "main": "dist/index.js",
