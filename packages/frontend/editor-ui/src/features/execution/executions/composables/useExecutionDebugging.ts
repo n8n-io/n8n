@@ -175,7 +175,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			event.stopPropagation();
 			return;
 		}
-		workflowsStore.isInDebugMode = false;
+		workflowsStore.setIsInDebugMode(false);
 	};
 
 	return {
