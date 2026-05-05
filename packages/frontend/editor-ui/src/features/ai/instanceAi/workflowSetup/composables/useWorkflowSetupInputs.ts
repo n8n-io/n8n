@@ -149,10 +149,13 @@ export function useWorkflowSetupInputs(deps: {
 		const includeParams = (section: WorkflowSetupSection) =>
 			!isSectionSkipped(section) && areParametersComplete(section);
 
-		return prunePayload({
-			nodeCredentials: buildNodeCredentials(includeCredential),
-			nodeParameters: buildNodeParameters(includeParams),
-		});
+		const nodeCredentials = buildNodeCredentials(includeCredential);
+		const nodeParameters = buildNodeParameters(includeParams);
+
+		return {
+			...(Object.keys(nodeCredentials).length > 0 ? { nodeCredentials } : {}),
+			...(Object.keys(nodeParameters).length > 0 ? { nodeParameters } : {}),
+		};
 	}
 
 	function buildNodeCredentials(
@@ -186,16 +189,6 @@ export function useWorkflowSetupInputs(deps: {
 			if (Object.keys(params).length > 0) out[section.targetNodeName] = params;
 		}
 		return out;
-	}
-
-	function seedParameterValuesForNewSections(sections: WorkflowSetupSection[]) {
-		let nextParameters: ParameterValuesMap | null = null;
-		for (const section of sections) {
-			if (parameterValues.value[section.targetNodeName]) continue;
-			nextParameters ??= { ...parameterValues.value };
-			nextParameters[section.targetNodeName] = section.node.parameters as INodeParameters;
-		}
-		if (nextParameters) parameterValues.value = nextParameters;
 	}
 
 	function seedCredentialSelectionsForNewSections(
@@ -235,7 +228,6 @@ export function useWorkflowSetupInputs(deps: {
 			const previousSectionIds = new Set(oldSections?.map((section) => section.id) ?? []);
 			const newSections = sections.filter((section) => !previousSectionIds.has(section.id));
 
-			seedParameterValuesForNewSections(newSections);
 			const credentialsToTest = seedCredentialSelectionsForNewSections(newSections);
 			for (const credential of credentialsToTest) {
 				testCredential(credential.id, credential.type);
@@ -287,13 +279,4 @@ function setCredentialSelectionForTargetNames(
 	}
 
 	return nextCredentialSelections;
-}
-
-function prunePayload(payload: WorkflowSetupApplyPayload): WorkflowSetupApplyPayload {
-	const result: WorkflowSetupApplyPayload = {};
-	if (payload.nodeCredentials && Object.keys(payload.nodeCredentials).length > 0)
-		result.nodeCredentials = payload.nodeCredentials;
-	if (payload.nodeParameters && Object.keys(payload.nodeParameters).length > 0)
-		result.nodeParameters = payload.nodeParameters;
-	return result;
 }

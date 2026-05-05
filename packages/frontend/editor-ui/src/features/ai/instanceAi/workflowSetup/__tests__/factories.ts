@@ -1,5 +1,6 @@
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
+import { buildSectionId } from '../workflowSetup.helpers';
 
 export function makeSetupRequest(
 	overrides: Omit<Partial<InstanceAiWorkflowSetupNode>, 'node'> & {
@@ -50,7 +51,7 @@ export function makeWorkflowSetupSection(
 	};
 
 	return {
-		id: overrides.id ?? `${targetNodeName}:${credentialType ?? 'parameters'}`,
+		id: overrides.id ?? buildSectionId(targetNodeName, credentialType),
 		...(credentialType ? { credentialType } : {}),
 		targetNodeName,
 		node: finalNode,

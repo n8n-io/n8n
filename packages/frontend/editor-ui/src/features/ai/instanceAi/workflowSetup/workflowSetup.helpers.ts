@@ -1,9 +1,13 @@
-import {
-	isWorkflowSetupGroupStep,
-	type WorkflowSetupGroup,
-	type WorkflowSetupSection,
-	type WorkflowSetupStep,
+import type {
+	WorkflowSetupGroup,
+	WorkflowSetupSection,
+	WorkflowSetupStep,
 } from './workflowSetup.types';
+
+/** Stable section identity used as the key everywhere section state is tracked. */
+export function buildSectionId(targetNodeName: string, credentialType?: string): string {
+	return `${targetNodeName}:${credentialType ?? 'parameters'}`;
+}
 
 /**
  * Returns the parent + sub-node sections in display order. Centralizes the
@@ -17,8 +21,5 @@ export function getGroupSections(group: WorkflowSetupGroup): WorkflowSetupSectio
 
 /** Returns every section a step represents (one for section steps, parent+subnodes for group steps). */
 export function getStepSections(step: WorkflowSetupStep): WorkflowSetupSection[] {
-	if (isWorkflowSetupGroupStep(step)) {
-		return getGroupSections(step.group);
-	}
-	return step.section ? [step.section] : [];
+	return step.kind === 'group' ? getGroupSections(step.group) : [step.section];
 }

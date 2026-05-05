@@ -5,6 +5,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
+import { buildSectionId } from '../workflowSetup.helpers';
 
 export function useWorkflowSetupSections(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]> | ComputedRef<InstanceAiWorkflowSetupNode[]>,
@@ -41,7 +42,7 @@ export function useWorkflowSetupSections(
 				credentialType === undefined ? null : (req.node.credentials?.[credentialType]?.id ?? null);
 
 			const section: WorkflowSetupSection = {
-				id: `${req.node.name}:${credentialType ?? 'parameters'}`,
+				id: buildSectionId(req.node.name, credentialType),
 				...(credentialType ? { credentialType } : {}),
 				targetNodeName: req.node.name,
 				node,

@@ -75,9 +75,9 @@ const renderComponent = createComponentRenderer(WorkflowSetupCard);
 function makeContext(section: WorkflowSetupSection): WorkflowSetupContext {
 	return {
 		sections: computed(() => [section]),
-		steps: computed(() => [{ section }]),
+		steps: computed(() => [{ kind: 'section', section }]),
 		currentStepIndex: ref(0),
-		activeStep: computed(() => ({ section })),
+		activeStep: computed(() => ({ kind: 'section', section })),
 		hasOtherUnhandledSteps: computed(() => false),
 		canAdvanceToNextIncomplete: computed(() => false),
 		credentialSelections: ref({}),

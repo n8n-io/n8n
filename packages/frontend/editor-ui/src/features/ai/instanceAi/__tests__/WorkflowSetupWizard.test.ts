@@ -85,11 +85,12 @@ interface ContextOptions {
 function makeContext(isComplete: Ref<boolean>, options: ContextOptions = {}): WorkflowSetupContext {
 	const sections = options.sections ?? [sectionA];
 	const currentStepIndex = options.currentStepIndex ?? ref(0);
-	const steps = computed<WorkflowSetupStep[]>(() => sections.map((section) => ({ section })));
+	const steps = computed<WorkflowSetupStep[]>(() =>
+		sections.map((section) => ({ kind: 'section', section })),
+	);
 
 	const isStepHandled = (step: WorkflowSetupStep): boolean => {
-		const sec = step.section;
-		if (!sec) return false;
+		if (step.kind !== 'section') return false;
 		return isComplete.value || (options.isSkipped?.value ?? false);
 	};
 

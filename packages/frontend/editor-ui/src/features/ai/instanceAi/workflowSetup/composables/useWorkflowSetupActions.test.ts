@@ -47,7 +47,10 @@ function setupHarness(): Harness {
 		credentialType: 'typeB',
 	});
 	const sections = computed(() => [sectionA, sectionB]);
-	const steps = computed<WorkflowSetupStep[]>(() => [{ section: sectionA }, { section: sectionB }]);
+	const steps = computed<WorkflowSetupStep[]>(() => [
+		{ kind: 'section', section: sectionA },
+		{ kind: 'section', section: sectionB },
+	]);
 	const currentStepIndex = ref(0);
 	const activeStep = computed<WorkflowSetupStep | undefined>(
 		() => steps.value[currentStepIndex.value],
@@ -278,6 +281,7 @@ describe('useWorkflowSetupActions', () => {
 			const sections = computed(() => [sectionA, sectionB]);
 			const steps = computed<WorkflowSetupStep[]>(() => [
 				{
+					kind: 'group',
 					group: {
 						parentNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
 						subnodeSections: [sectionA, sectionB],
@@ -353,6 +357,7 @@ describe('useWorkflowSetupActions', () => {
 			const sections = computed(() => [sectionA, sectionB]);
 			const steps = computed<WorkflowSetupStep[]>(() => [
 				{
+					kind: 'group',
 					group: {
 						parentNode: { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' },
 						subnodeSections: [sectionA, sectionB],

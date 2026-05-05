@@ -4,19 +4,16 @@ import WorkflowSetupCard from './WorkflowSetupCard.vue';
 import WorkflowSetupGroupCard from './WorkflowSetupGroupCard.vue';
 import WorkflowSetupWizardFooter from './WorkflowSetupWizardFooter.vue';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
-import { isWorkflowSetupGroupStep } from '../workflowSetup.types';
 
 const ctx = useWorkflowSetupContext();
 
-const activeGroup = computed(() => {
-	const step = ctx.activeStep.value;
-	return step && isWorkflowSetupGroupStep(step) ? step.group : undefined;
-});
+const activeGroup = computed(() =>
+	ctx.activeStep.value?.kind === 'group' ? ctx.activeStep.value.group : undefined,
+);
 
-const activeSection = computed(() => {
-	const step = ctx.activeStep.value;
-	return step && !isWorkflowSetupGroupStep(step) ? step.section : undefined;
-});
+const activeSection = computed(() =>
+	ctx.activeStep.value?.kind === 'section' ? ctx.activeStep.value.section : undefined,
+);
 
 const groupKey = computed(() => {
 	return activeGroup.value ? `group:${activeGroup.value.parentNode.name}` : undefined;

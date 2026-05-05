@@ -33,12 +33,8 @@ export interface WorkflowSetupGroup {
  * What the wizard navigates: either a single section or a grouped step.
  */
 export type WorkflowSetupStep =
-	| { section: WorkflowSetupSection; group?: undefined }
-	| { group: WorkflowSetupGroup; section?: undefined };
-
-export const isWorkflowSetupGroupStep = (
-	step: WorkflowSetupStep,
-): step is { group: WorkflowSetupGroup } => !!step.group;
+	| { kind: 'section'; section: WorkflowSetupSection }
+	| { kind: 'group'; group: WorkflowSetupGroup };
 
 export interface WorkflowSetupApplyPayload {
 	nodeCredentials?: Record<string, Record<string, string>>;

@@ -2,7 +2,7 @@ import { computed, ref } from 'vue';
 import { describe, expect, it } from 'vitest';
 import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import { makeSetupRequest, makeWorkflowSetupSection } from '../__tests__/factories';
-import { isWorkflowSetupGroupStep, type WorkflowSetupSection } from '../workflowSetup.types';
+import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupSteps } from './useWorkflowSetupSteps';
 
 const agent = { name: 'Agent', type: 'agent', typeVersion: 1, id: 'agent-1' };
@@ -32,7 +32,7 @@ describe('useWorkflowSetupSteps', () => {
 		const { steps } = harness(sections, requests);
 
 		expect(steps.value).toHaveLength(2);
-		expect(steps.value.every((s) => !!s.section)).toBe(true);
+		expect(steps.value.every((s) => s.kind === 'section')).toBe(true);
 	});
 
 	it('inserts the group at the first sub-node position when the parent comes after the sub-nodes', () => {
@@ -50,13 +50,14 @@ describe('useWorkflowSetupSteps', () => {
 		const { steps } = harness(sections, requests);
 
 		expect(steps.value).toHaveLength(2);
-		expect(isWorkflowSetupGroupStep(steps.value[0])).toBe(true);
 		const groupStep = steps.value[0];
-		if (!groupStep.group) throw new Error('expected group step');
+		if (groupStep.kind !== 'group') throw new Error('expected group step');
 		expect(groupStep.group.parentNode.name).toBe('Agent');
 		expect(groupStep.group.subnodeSections.map((s) => s.id)).toEqual(['Model:openAiApi']);
 		expect(groupStep.group.parentSection?.id).toBe('Agent:foo');
-		expect(steps.value[1].section?.targetNodeName).toBe('Standalone');
+		const sectionStep = steps.value[1];
+		if (sectionStep.kind !== 'section') throw new Error('expected section step');
+		expect(sectionStep.section.targetNodeName).toBe('Standalone');
 	});
 
 	it('inserts the group at the parent position when the parent comes before its sub-nodes', () => {
@@ -74,8 +75,10 @@ describe('useWorkflowSetupSteps', () => {
 		const { steps } = harness(sections, requests);
 
 		expect(steps.value).toHaveLength(2);
-		expect(isWorkflowSetupGroupStep(steps.value[0])).toBe(true);
-		expect(steps.value[1].section?.targetNodeName).toBe('Standalone');
+		expect(steps.value[0].kind).toBe('group');
+		const sectionStep = steps.value[1];
+		if (sectionStep.kind !== 'section') throw new Error('expected section step');
+		expect(sectionStep.section.targetNodeName).toBe('Standalone');
 	});
 
 	it('emits a group with no parentSection when the parent has no setup request', () => {
@@ -86,7 +89,7 @@ describe('useWorkflowSetupSteps', () => {
 
 		expect(steps.value).toHaveLength(1);
 		const step = steps.value[0];
-		if (!step.group) throw new Error('expected group');
+		if (step.kind !== 'group') throw new Error('expected group');
 		expect(step.group.parentSection).toBeUndefined();
 		expect(step.group.subnodeSections.map((s) => s.id)).toEqual(['Model:openAiApi']);
 		expect(step.group.parentNode).toEqual(agent);
@@ -116,7 +119,7 @@ describe('useWorkflowSetupSteps', () => {
 
 		expect(steps.value).toHaveLength(1);
 		const step = steps.value[0];
-		if (!step.group) throw new Error('expected group');
+		if (step.kind !== 'group') throw new Error('expected group');
 		expect(step.group.subnodeSections.map((s) => s.id)).toEqual([
 			'Model:openAiApi',
 			'Model:parameters',
@@ -137,7 +140,9 @@ describe('useWorkflowSetupSteps', () => {
 		const { steps } = harness(sections, requests);
 
 		expect(steps.value).toHaveLength(2);
-		expect(steps.value[0].group?.parentNode.name).toBe('Agent');
-		expect(steps.value[1].group?.parentNode.name).toBe('Agent B');
+		const [first, second] = steps.value;
+		if (first.kind !== 'group' || second.kind !== 'group') throw new Error('expected groups');
+		expect(first.group.parentNode.name).toBe('Agent');
+		expect(second.group.parentNode.name).toBe('Agent B');
 	});
 });

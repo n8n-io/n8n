@@ -137,9 +137,8 @@ export function useWorkflowSetupActions(deps: {
 
 		isActionPending.value = true;
 		try {
-			// Skip only the incomplete sections in the active step. Already-complete
-			// sections keep their input and continue to contribute to the apply
-			// payload.
+			// Skipping the active step only marks its incomplete sections — already-
+			// complete sections still contribute to the apply payload.
 			const stepSections = getStepSections(step);
 			for (const section of stepSections) {
 				if (!deps.inputs.isSectionComplete(section)) {
@@ -147,14 +146,12 @@ export function useWorkflowSetupActions(deps: {
 				}
 			}
 
-			// Non-terminal: more steps still need handling — advance & wait.
 			const next = nextUnhandledIndex.value;
 			if (next >= 0) {
 				deps.goToStep(next);
 				return;
 			}
 
-			// Terminal: every step is now complete or skipped.
 			trackSetupInput();
 			const completedPayload = deps.inputs.buildCompletedSetupPayload();
 			const hasAnyCompleted =
