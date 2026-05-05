@@ -616,6 +616,63 @@ describe('Zammad Node', () => {
 			});
 		});
 
+		it('should include to and cc for email articles', async () => {
+			const mockTicket = { id: 2, title: 'Email Ticket' };
+			const mockArticles = [{ id: 2, body: 'Email body' }];
+
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName, _itemIndex) => {
+					switch (paramName) {
+						case 'resource':
+							return 'ticket';
+						case 'operation':
+							return 'create';
+						case 'title':
+							return 'Email Ticket';
+						case 'group':
+							return 'Support';
+						case 'customer':
+							return 'customer@example.com';
+						case 'article':
+							return {
+								articleDetails: {
+									subject: 'Hello',
+									body: 'Email body',
+									type: 'email',
+									visibility: 'external',
+									to: 'recipient@example.com',
+									cc: 'other@example.com',
+								},
+							};
+						case 'additionalFields':
+							return {};
+						default:
+							return null;
+					}
+				},
+			);
+
+			(GenericFunctions.zammadApiRequest as jest.Mock)
+				.mockResolvedValueOnce(mockTicket)
+				.mockResolvedValueOnce(mockArticles);
+
+			await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
+
+			expect(GenericFunctions.zammadApiRequest).toHaveBeenCalledWith('POST', '/tickets', {
+				article: {
+					subject: 'Hello',
+					body: 'Email body',
+					type: 'email',
+					internal: false,
+					to: 'recipient@example.com',
+					cc: 'other@example.com',
+				},
+				title: 'Email Ticket',
+				group: 'Support',
+				customer: 'customer@example.com',
+			});
+		});
+
 		it('should throw error when creating ticket without article', async () => {
 			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
 				(paramName, _itemIndex) => {

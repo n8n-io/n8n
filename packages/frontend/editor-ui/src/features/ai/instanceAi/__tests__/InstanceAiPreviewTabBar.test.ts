@@ -1,9 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { defineComponent, h } from 'vue';
+import { fireEvent } from '@testing-library/vue';
+import { TabsRoot } from 'reka-ui';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
-const renderComponent = createComponentRenderer(InstanceAiPreviewTabBar);
+vi.mock('@/app/composables/useClipboard', () => ({
+	useClipboard: () => ({ copy: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showMessage: vi.fn() }),
+}));
 
 const workflowTab: ArtifactTab = {
 	id: 'wf-1',
@@ -20,7 +29,39 @@ const dataTableTab: ArtifactTab = {
 	projectId: 'proj-1',
 };
 
+// TabsList/Trigger rely on reka-ui's Tabs context, so the harness wraps the
+// bar in a TabsRoot. We also forward `activeTabId` through to the component
+// so the scroll-into-view watcher is actually exercised.
+const Wrapper = defineComponent({
+	props: {
+		tabs: { type: Array as () => ArtifactTab[], required: true },
+		activeTabId: { type: String, default: undefined },
+	},
+	emits: ['close'],
+	setup(props, { emit }) {
+		return () =>
+			h(TabsRoot, { modelValue: props.activeTabId }, () =>
+				h(InstanceAiPreviewTabBar, {
+					tabs: props.tabs,
+					activeTabId: props.activeTabId,
+					onClose: () => emit('close'),
+				}),
+			);
+	},
+});
+
+const renderComponent = createComponentRenderer(Wrapper);
+
 describe('InstanceAiPreviewTabBar', () => {
+	it('renders a trigger with data-tab-id for each tab', () => {
+		const { container } = renderComponent({
+			props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
+		});
+
+		expect(container.querySelector('[data-tab-id="wf-1"]')).not.toBeNull();
+		expect(container.querySelector('[data-tab-id="dt-1"]')).not.toBeNull();
+	});
+
 	it('renders tab labels from props', () => {
 		const { getByText } = renderComponent({
 			props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
@@ -30,65 +71,29 @@ describe('InstanceAiPreviewTabBar', () => {
 		expect(getByText('My Table')).toBeInTheDocument();
 	});
 
-	it('renders external link for active workflow tab', () => {
+	it('marks the active tab with data-state=active', () => {
 		const { container } = renderComponent({
-			props: { tabs: [workflowTab], activeTabId: 'wf-1' },
-		});
-
-		const link = container.querySelector('a[href="/workflow/wf-1"]');
-		expect(link).toBeInTheDocument();
-		expect(link?.getAttribute('target')).toBe('_blank');
-	});
-
-	it('renders external link for active data table tab', () => {
-		const { container } = renderComponent({
-			props: { tabs: [dataTableTab], activeTabId: 'dt-1' },
-		});
-
-		const link = container.querySelector('a[href="/projects/proj-1/datatables/dt-1"]');
-		expect(link).toBeInTheDocument();
-	});
-
-	it('renders fallback link for data table without projectId', () => {
-		const tabWithoutProject: ArtifactTab = { ...dataTableTab, projectId: undefined };
-		const { container } = renderComponent({
-			props: { tabs: [tabWithoutProject], activeTabId: 'dt-1' },
-		});
-
-		const link = container.querySelector('a[href="/home/datatables"]');
-		expect(link).toBeInTheDocument();
-	});
-
-	it('emits update:activeTabId when a tab is clicked', async () => {
-		const { getByText, emitted } = renderComponent({
 			props: { tabs: [workflowTab, dataTableTab], activeTabId: 'wf-1' },
 		});
 
-		getByText('My Table').click();
+		const active = container.querySelector('[data-tab-id="wf-1"]');
+		const inactive = container.querySelector('[data-tab-id="dt-1"]');
 
-		expect(emitted()['update:activeTabId']).toBeTruthy();
-		expect(emitted()['update:activeTabId'][0]).toEqual(['dt-1']);
+		expect(active?.getAttribute('data-state')).toBe('active');
+		expect(inactive?.getAttribute('data-state')).toBe('inactive');
 	});
 
-	it('emits close when close button is clicked', async () => {
+	it('emits close when the collapse button is clicked', async () => {
 		const { container, emitted } = renderComponent({
 			props: { tabs: [workflowTab], activeTabId: 'wf-1' },
 		});
 
-		// The close button is the last button in the actions area (icon="x")
-		const buttons = container.querySelectorAll('button');
-		const closeButton = buttons[buttons.length - 1];
-		closeButton.click();
+		const collapseButton = container.querySelector<HTMLButtonElement>(
+			'[data-test-id="instance-ai-preview-close"]',
+		);
+		expect(collapseButton).not.toBeNull();
+		await fireEvent.click(collapseButton!);
 
 		expect(emitted().close).toBeTruthy();
-	});
-
-	it('hides external link when no tab is active', () => {
-		const { container } = renderComponent({
-			props: { tabs: [workflowTab], activeTabId: null },
-		});
-
-		const links = container.querySelectorAll('a[target="_blank"]');
-		expect(links).toHaveLength(0);
 	});
 });

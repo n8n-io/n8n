@@ -54,7 +54,8 @@ export const BENCHMARK_WORKER_RESOURCES = { memory: 4, cpu: 2 };
 export const OBSERVABILITY_SERVICES = ['victoriaLogs', 'victoriaMetrics', 'vector'] as const;
 
 const BENCHMARK_BASE_CONFIG: N8NConfig = {
-	services: [...OBSERVABILITY_SERVICES],
+	// Postgres exporter scrapes DB internals into VictoriaMetrics — only meaningful for benchmarks.
+	services: [...OBSERVABILITY_SERVICES, 'postgresExporter'],
 	postgres: true,
 	resourceQuota: BENCHMARK_MAIN_RESOURCES,
 	workerResourceQuota: BENCHMARK_WORKER_RESOURCES,
@@ -63,7 +64,11 @@ const BENCHMARK_BASE_CONFIG: N8NConfig = {
 	},
 };
 
-const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
+type BenchmarkProfile = { name: string; config: N8NConfig };
+
+// Benchmark profiles exercised in CI (see `test-e2e-infrastructure-reusable.yml`).
+// They scan `tests/infrastructure/benchmarks/`.
+const CI_BENCHMARK_PROFILES: BenchmarkProfile[] = [
 	{
 		name: 'direct',
 		config: {
@@ -106,6 +111,55 @@ const BENCHMARK_PROFILES: Array<{ name: string; config: N8NConfig }> = [
 	},
 ];
 
+// Benchmark profiles that host local-only tests (model API keys, long runtimes,
+// reserved metric names). They scan `tests/infrastructure/benchmarks-local/` and
+// are intentionally left out of the CI matrix.
+const LOCAL_ONLY_BENCHMARK_PROFILES: BenchmarkProfile[] = [
+	{
+		name: 'memory-instanceai',
+		config: {
+			...BENCHMARK_BASE_CONFIG,
+			services: [...OBSERVABILITY_SERVICES],
+			env: {
+				...BENCHMARK_BASE_CONFIG.env,
+				// Instance-AI module & model config
+				N8N_ENABLED_MODULES: 'instance-ai',
+				N8N_INSTANCE_AI_MODEL: process.env.N8N_INSTANCE_AI_MODEL ?? 'openai/gpt-5.4-nano',
+				// Forward API keys to the container
+				...(process.env.N8N_AI_OPENAI_API_KEY && {
+					N8N_AI_OPENAI_API_KEY: process.env.N8N_AI_OPENAI_API_KEY,
+					OPENAI_API_KEY: process.env.N8N_AI_OPENAI_API_KEY,
+				}),
+				...(process.env.LANGSMITH_API_KEY && {
+					LANGSMITH_API_KEY: process.env.LANGSMITH_API_KEY,
+				}),
+				...(process.env.ANTHROPIC_API_KEY && {
+					ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+				}),
+				...(process.env.OPENROUTER_API_KEY && {
+					OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
+				}),
+				...(process.env.CEREBRAS_API_KEY && {
+					CEREBRAS_API_KEY: process.env.CEREBRAS_API_KEY,
+				}),
+				// Sandbox config — forwarded from host env if present
+				...(process.env.N8N_INSTANCE_AI_SANDBOX_ENABLED && {
+					N8N_INSTANCE_AI_SANDBOX_ENABLED: process.env.N8N_INSTANCE_AI_SANDBOX_ENABLED,
+					N8N_INSTANCE_AI_SANDBOX_PROVIDER:
+						process.env.N8N_INSTANCE_AI_SANDBOX_PROVIDER ?? 'daytona',
+					N8N_INSTANCE_AI_SANDBOX_IMAGE: process.env.N8N_INSTANCE_AI_SANDBOX_IMAGE ?? '',
+				}),
+				...(process.env.DAYTONA_API_URL && {
+					DAYTONA_API_URL: process.env.DAYTONA_API_URL,
+				}),
+				...(process.env.DAYTONA_API_KEY && {
+					DAYTONA_API_KEY: process.env.DAYTONA_API_KEY,
+				}),
+			},
+		},
+	},
+];
+
 export function getProjects(): Project[] {
 	const isLocal = !!getBackendUrl();
 	const projects: Project[] = [];
@@ -139,10 +193,21 @@ export function getProjects(): Project[] {
 			);
 		}
 
-		for (const { name, config } of BENCHMARK_PROFILES) {
+		for (const { name, config } of CI_BENCHMARK_PROFILES) {
 			projects.push({
 				name: `benchmark-${name}:infrastructure`,
 				testDir: './tests/infrastructure/benchmarks',
+				workers: 1,
+				timeout: 600_000,
+				retries: 0,
+				use: { containerConfig: config },
+			});
+		}
+
+		for (const { name, config } of LOCAL_ONLY_BENCHMARK_PROFILES) {
+			projects.push({
+				name: `benchmark-${name}:infrastructure`,
+				testDir: './tests/infrastructure/benchmarks-local',
 				workers: 1,
 				timeout: 600_000,
 				retries: 0,

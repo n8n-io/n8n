@@ -1,11 +1,11 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { NodeOperationError, type ILoadOptionsFunctions } from 'n8n-workflow';
 
 // Mock external modules that are not needed for these unit tests
-jest.mock('@langchain/redis', () => {
+vi.mock('@langchain/redis', () => {
 	const state: any = { ctorArgs: undefined };
 	class RedisVectorStore {
-		static fromDocuments = jest.fn();
+		static fromDocuments = vi.fn();
 		constructor(...args: any[]) {
 			state.ctorArgs = args;
 		}
@@ -13,10 +13,10 @@ jest.mock('@langchain/redis', () => {
 	return { RedisVectorStore, __state: state };
 });
 
-jest.mock('@n8n/ai-utilities', () => ({
+vi.mock('@n8n/ai-utilities', () => ({
 	metadataFilterField: {},
-	getMetadataFiltersValues: jest.fn(),
-	logAiEvent: jest.fn(),
+	getMetadataFiltersValues: vi.fn(),
+	logAiEvent: vi.fn(),
 	N8nBinaryLoader: class {},
 	N8nJsonLoader: class {},
 	logWrapper: (fn: any) => fn,
@@ -31,23 +31,24 @@ jest.mock('@n8n/ai-utilities', () => ({
 		},
 }));
 
-jest.mock('redis', () => ({ createClient: jest.fn() }));
+vi.mock('redis', () => ({ createClient: vi.fn() }));
 
 import { createClient } from 'redis';
 
 import * as RedisNode from './VectorStoreRedis.node';
+import type { MockedFunction } from 'vitest';
 
-const MockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const MockCreateClient = createClient as MockedFunction<typeof createClient>;
 
 describe('VectorStoreRedis.node', () => {
 	const helpers = mock<ILoadOptionsFunctions['helpers']>();
 	const loadOptionsFunctions = mock<ILoadOptionsFunctions>({ helpers });
 	loadOptionsFunctions.logger = {
-		info: jest.fn(),
-		debug: jest.fn(),
-		error: jest.fn(),
-		warn: jest.fn(),
-		verbose: jest.fn(),
+		info: vi.fn(),
+		debug: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		verbose: vi.fn(),
 	} as any;
 
 	const baseCredentials = {
@@ -60,7 +61,7 @@ describe('VectorStoreRedis.node', () => {
 	} as any;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		// Reset cached client
 		RedisNode.redisConfig.client = null as any;
 		RedisNode.redisConfig.connectionString = '';
@@ -69,16 +70,16 @@ describe('VectorStoreRedis.node', () => {
 	describe('getRedisClient', () => {
 		it('creates and reuses client for same configuration', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn().mockResolvedValue(undefined),
-				quit: jest.fn().mockResolvedValue(undefined),
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn().mockResolvedValue(undefined),
+				quit: vi.fn().mockResolvedValue(undefined),
 			} as any;
 
 			MockCreateClient.mockReturnValue(mockClient);
 
 			const context = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 			} as any;
 
 			const client1 = await RedisNode.getRedisClient(context);
@@ -93,16 +94,16 @@ describe('VectorStoreRedis.node', () => {
 
 		it('disconnects previous client and creates a new one when configuration changes', async () => {
 			const mockClient1 = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn().mockResolvedValue(undefined),
-				quit: jest.fn().mockResolvedValue(undefined),
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn().mockResolvedValue(undefined),
+				quit: vi.fn().mockResolvedValue(undefined),
 			} as any;
 			const mockClient2 = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn().mockResolvedValue(undefined),
-				quit: jest.fn().mockResolvedValue(undefined),
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn().mockResolvedValue(undefined),
+				quit: vi.fn().mockResolvedValue(undefined),
 			} as any;
 
 			MockCreateClient.mockImplementationOnce(() => mockClient1).mockImplementationOnce(
@@ -110,7 +111,7 @@ describe('VectorStoreRedis.node', () => {
 			);
 
 			const context = {
-				getCredentials: jest
+				getCredentials: vi
 					.fn()
 					.mockResolvedValueOnce(baseCredentials)
 					.mockResolvedValueOnce({ ...baseCredentials, port: 6380 }),
@@ -130,16 +131,16 @@ describe('VectorStoreRedis.node', () => {
 	describe('listIndexes', () => {
 		it('returns mapped indexes when FT._LIST succeeds', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { _list: jest.fn().mockResolvedValue(['Idx1', 'Idx2']) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { _list: vi.fn().mockResolvedValue(['Idx1', 'Idx2']) },
 			} as any;
 
 			MockCreateClient.mockReturnValue(mockClient);
 
-			(loadOptionsFunctions as any).getCredentials = jest.fn().mockResolvedValue(baseCredentials);
+			(loadOptionsFunctions as any).getCredentials = vi.fn().mockResolvedValue(baseCredentials);
 
 			const results = await (RedisNode.listIndexes as any).call(loadOptionsFunctions as any);
 
@@ -154,19 +155,17 @@ describe('VectorStoreRedis.node', () => {
 
 		it('returns empty results when FT._LIST fails', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { _list: jest.fn().mockRejectedValue(new Error('no module')) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { _list: vi.fn().mockRejectedValue(new Error('no module')) },
 			} as any;
 
 			MockCreateClient.mockReturnValue(mockClient);
 
 			const failureCredentials = { ...baseCredentials, port: 6380 };
-			(loadOptionsFunctions as any).getCredentials = jest
-				.fn()
-				.mockResolvedValue(failureCredentials);
+			(loadOptionsFunctions as any).getCredentials = vi.fn().mockResolvedValue(failureCredentials);
 
 			const results = await (RedisNode.listIndexes as any).call(loadOptionsFunctions as any);
 
@@ -175,16 +174,16 @@ describe('VectorStoreRedis.node', () => {
 
 		it('returns empty results when FT._LIST returns unexpected data type', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { _list: jest.fn().mockResolvedValue({ unexpected: 'object' }) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { _list: vi.fn().mockResolvedValue({ unexpected: 'object' }) },
 			} as any;
 
 			MockCreateClient.mockReturnValue(mockClient);
 
-			(loadOptionsFunctions as any).getCredentials = jest.fn().mockResolvedValue(baseCredentials);
+			(loadOptionsFunctions as any).getCredentials = vi.fn().mockResolvedValue(baseCredentials);
 
 			const results = await (RedisNode.listIndexes as any).call(loadOptionsFunctions as any);
 
@@ -198,11 +197,11 @@ describe('VectorStoreRedis.node', () => {
 	describe('getVectorStoreClient', () => {
 		it('constructs ExtendedRedisVectorSearch with correct options and passes filter tokens', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				sendCommand: jest
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				sendCommand: vi
 					.fn()
 					.mockImplementation(async ([cmd]) =>
 						cmd === 'FT.INFO' ? await Promise.resolve(undefined) : await Promise.resolve([]),
@@ -210,18 +209,18 @@ describe('VectorStoreRedis.node', () => {
 			} as any;
 
 			// Adapt to new client.ft.info usage
-			mockClient.ft = { ...(mockClient.ft || {}), info: jest.fn().mockResolvedValue(undefined) };
+			mockClient.ft = { ...(mockClient.ft || {}), info: vi.fn().mockResolvedValue(undefined) };
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
 			// Provide a base class method that ExtendedRedisVectorSearch will call via super
-			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = jest
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
 
 			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => {
 					const map: Record<string, any> = {
 						redisIndex: 'myIndex',
@@ -270,22 +269,22 @@ describe('VectorStoreRedis.node', () => {
 
 		it('trims and removes empty metadata filter tokens', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { info: jest.fn().mockResolvedValue(undefined) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { info: vi.fn().mockResolvedValue(undefined) },
 			} as any;
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = jest
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
 
 			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => {
 					const map: Record<string, any> = {
 						redisIndex: 'idx2',
@@ -310,22 +309,22 @@ describe('VectorStoreRedis.node', () => {
 
 		it('omits optional keys when empty/whitespace and handles empty filter as null', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { info: jest.fn().mockResolvedValue(undefined) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { info: vi.fn().mockResolvedValue(undefined) },
 			} as any;
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = jest
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
 
 			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => {
 					const map: Record<string, any> = {
 						redisIndex: 'myIndex',
@@ -362,22 +361,22 @@ describe('VectorStoreRedis.node', () => {
 
 		it('returns undefined filter when filter string contains only whitespace and commas', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { info: jest.fn().mockResolvedValue(undefined) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { info: vi.fn().mockResolvedValue(undefined) },
 			} as any;
 
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
-			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = jest
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			RedisVectorStoreMod.RedisVectorStore.prototype.similaritySearchVectorWithScore = vi
 				.fn()
 				.mockResolvedValue('ok');
 
 			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => {
 					const map: Record<string, any> = {
 						redisIndex: 'myIndex',
@@ -402,46 +401,45 @@ describe('VectorStoreRedis.node', () => {
 
 		it('throws NodeOperationError when index is missing', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { info: jest.fn().mockRejectedValue(new Error('no such index')) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { info: vi.fn().mockRejectedValue(new Error('no such index')) },
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
 			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'idx' : ''),
 				getNode: () => ({ name: 'VectorStoreRedis' }),
 			};
 
 			const node = new RedisNode.VectorStoreRedis();
-			await expect((node as any).getVectorStoreClient(context, undefined, {}, 0)).rejects.toEqual(
-				new NodeOperationError(context.getNode(), 'Index idx not found', {
-					itemIndex: 0,
-					description: 'Please check that the index exists in your Redis instance',
-				}),
-			);
+
+			const execution = (node as any).getVectorStoreClient(context, undefined, {}, 0);
+
+			await expect(execution).rejects.toThrow(NodeOperationError);
+			await expect(execution).rejects.toThrow('Index idx not found');
 		});
 	});
 
 	describe('populateVectorStore', () => {
 		it('drops index and deletes the documents when overwrite is true; passes TTL and batch size', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				ft: { dropIndex: jest.fn().mockResolvedValue(undefined) },
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				ft: { dropIndex: vi.fn().mockResolvedValue(undefined) },
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
-			RedisVectorStoreMod.RedisVectorStore.fromDocuments = jest.fn().mockResolvedValue(undefined);
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			RedisVectorStoreMod.RedisVectorStore.fromDocuments = vi.fn().mockResolvedValue(undefined);
 
 			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => {
 					const map: Record<string, any> = {
 						redisIndex: 'myIndex',
@@ -486,21 +484,21 @@ describe('VectorStoreRedis.node', () => {
 
 		it('logs and throws NodeOperationError on failure', async () => {
 			const mockClient = {
-				on: jest.fn(),
-				connect: jest.fn().mockResolvedValue(undefined),
-				disconnect: jest.fn(),
-				quit: jest.fn(),
-				sendCommand: jest.fn().mockResolvedValue(undefined),
+				on: vi.fn(),
+				connect: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(),
+				quit: vi.fn(),
+				sendCommand: vi.fn().mockResolvedValue(undefined),
 			} as any;
 			(MockCreateClient as any).mockReturnValue(mockClient);
 
-			const RedisVectorStoreMod: any = jest.requireMock('@langchain/redis');
-			RedisVectorStoreMod.RedisVectorStore.fromDocuments = jest
+			const RedisVectorStoreMod: any = vi.mocked(await import('@langchain/redis'));
+			RedisVectorStoreMod.RedisVectorStore.fromDocuments = vi
 				.fn()
 				.mockRejectedValue(new Error('fail'));
 
 			const context: any = {
-				getCredentials: jest.fn().mockResolvedValue(baseCredentials),
+				getCredentials: vi.fn().mockResolvedValue(baseCredentials),
 				getNodeParameter: (name: string) => (name === 'redisIndex' ? 'idx' : ''),
 				getNode: () => ({ name: 'VectorStoreRedis' }),
 				logger: loadOptionsFunctions.logger,
