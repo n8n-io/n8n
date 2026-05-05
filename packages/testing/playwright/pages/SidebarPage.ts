@@ -55,28 +55,14 @@ export class SidebarPage {
 
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
-		// "New workflow" only has a submenu when team projects exist; otherwise it's
-		// a direct route to the personal project.
-		const submenu = this.getVisibleNavigationSubmenu('New workflow');
-		if ((await submenu.count()) > 0) {
-			await submenu.hover();
-			await this.getVisibleNavigationLink(projectName, '/workflow/new').click();
-		} else {
-			await this.visibleNavigationMenu.getByText('New workflow').click();
-		}
+		await this.getVisibleNavigationSubmenu('New workflow').hover();
+		await this.getVisibleNavigationLink(projectName, '/workflow/new').click();
 	}
 
 	async openNewCredentialDialogForProject(projectName: string) {
 		await this.universalAdd();
-		// "New credential" only has a submenu when team projects exist; otherwise it's
-		// a direct route to create the credential in the personal project.
-		const submenu = this.getVisibleNavigationSubmenu('New credential');
-		if ((await submenu.count()) > 0) {
-			await submenu.hover();
-			await this.getVisibleNavigationLink(projectName, '/credentials/create').click();
-		} else {
-			await this.visibleNavigationMenu.getByText('New credential', { exact: true }).click();
-		}
+		await this.getVisibleNavigationSubmenu('New credential').hover();
+		await this.getVisibleNavigationLink(projectName, '/credentials/create').click();
 	}
 
 	getProjectMenuItems(): Locator {
