@@ -3,6 +3,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'agents' })
 export class AgentsModule implements ModuleInterface {
@@ -47,22 +48,31 @@ export class AgentsModule implements ModuleInterface {
 		const { NodeCatalogService } = await import('@/node-catalog');
 		await Container.get(NodeCatalogService).initialize();
 
-		// Register Chat integration service and reconnect active integrations
+		// Register Chat and Schedule services. Reconnect active integrations and
+		// schedules only on the leader main — followers wait for @OnLeaderTakeover
+		// (in multi-main mode). Importing the services here also registers any
+		// @OnLeaderTakeover/@OnLeaderStepdown decorators with MultiMainMetadata
+		// before start.ts:295 wires up the listeners.
 		const { AgentScheduleService } = await import('./integrations/agent-schedule.service');
 		const { ChatIntegrationService } = await import('./integrations/chat-integration.service');
 		const scheduleService = Container.get(AgentScheduleService);
 		const chatService = Container.get(ChatIntegrationService);
 		const logger = Container.get(Logger);
-		void chatService.reconnectAll().catch((error) => {
-			logger.error('[Agents] Failed to reconnect integrations on startup', {
-				error: error instanceof Error ? error.message : String(error),
+		const instanceSettings = Container.get(InstanceSettings);
+		if (instanceSettings.isLeader) {
+			void chatService.reconnectAll().catch((error) => {
+				logger.error('[Agents] Failed to reconnect integrations on startup', {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			});
-		});
-		void scheduleService.reconnectAll().catch((error) => {
-			logger.error('[Agents] Failed to reconnect schedules on startup', {
-				error: error instanceof Error ? error.message : String(error),
+			void scheduleService.reconnectAll().catch((error) => {
+				logger.error('[Agents] Failed to reconnect schedules on startup', {
+					error: error instanceof Error ? error.message : String(error),
+				});
 			});
-		});
+		} else {
+			logger.debug('[Agents] Skipping integration and schedule reconnect on startup — not leader');
+		}
 	}
 
 	// eslint-disable-next-line @typescript-eslint/require-await -- module contract requires async
