@@ -19,6 +19,28 @@ import type {
 	PostgresNodeOptions,
 } from '../v2/helpers/interfaces';
 
+// dataTypeIDs for bigint (int8) and numeric types in PostgreSQL
+const BIGINT_TYPE_ID = 20;
+const NUMERIC_TYPE_ID = 1700;
+
+export function applyLargeNumbersReceive(e: {
+	data: Array<Record<string, unknown>>;
+	result?: { fields: Array<{ name: string; dataTypeID: number }> };
+}) {
+	if (!e.result) return;
+	for (const field of e.result.fields) {
+		if (field.dataTypeID !== BIGINT_TYPE_ID && field.dataTypeID !== NUMERIC_TYPE_ID) continue;
+		const isInt = field.dataTypeID === BIGINT_TYPE_ID;
+		for (const row of e.data) {
+			if (typeof row[field.name] === 'string') {
+				row[field.name] = isInt
+					? parseInt(row[field.name] as string, 10)
+					: parseFloat(row[field.name] as string);
+			}
+		}
+	}
+}
+
 const getPostgresConfig = (
 	credentials: PostgresNodeCredentials,
 	options: PostgresNodeOptions = {},
@@ -92,18 +114,8 @@ export async function configurePostgres(
 			// Use per-instance receive event instead of pgp.pg.types.setTypeParser, which mutates
 			// global pg state and would affect all pools regardless of their largeNumbersOutput setting
 			receive(e) {
-				if (options.largeNumbersOutput !== 'numbers' || !e.result) return;
-				for (const field of e.result.fields) {
-					if (field.dataTypeID !== 20 && field.dataTypeID !== 1700) continue;
-					const isInt = field.dataTypeID === 20;
-					for (const row of e.data as Array<Record<string, unknown>>) {
-						if (typeof row[field.name] === 'string') {
-							row[field.name] = isInt
-								? parseInt(row[field.name] as string, 10)
-								: parseFloat(row[field.name] as string);
-						}
-					}
-				}
+				if (options.largeNumbersOutput !== 'numbers') return;
+				applyLargeNumbersReceive(e as Parameters<typeof applyLargeNumbersReceive>[0]);
 			},
 		});
 
