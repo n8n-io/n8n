@@ -3,7 +3,12 @@ import type { TestInfo } from '@playwright/test';
 import autocannon from 'autocannon';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
-import { reportDiagnostics, reportPgQueryBreakdown, setupBenchmarkRun } from './orchestration';
+import {
+	reportDiagnostics,
+	reportJaegerTraces,
+	reportPgQueryBreakdown,
+	setupBenchmarkRun,
+} from './orchestration';
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
 	attachThroughputResults,
@@ -143,6 +148,7 @@ export async function runWebhookThroughputTest(options: WebhookThroughputOptions
 		dimensions,
 	});
 	await reportPgQueryBreakdown({ services, durationMs: throughputResult.durationMs });
+	await reportJaegerTraces({ testInfo, services, since: setup.activationStart });
 
 	const verdict =
 		errorRatePct > 1

@@ -94,6 +94,12 @@ export interface BenchOptions {
 	mains?: number;
 	/** Number of worker pods. Default: 0 (direct mode). */
 	workers?: number;
+	/**
+	 * Adds the `tracing` service (Jaeger + n8n-tracer) and turns on OTEL emission.
+	 * Adds ~5-10% per-request overhead — opt in only when measuring OTEL cost or
+	 * collecting flamegraph data, not for clean ceiling numbers.
+	 */
+	tracing?: boolean;
 	/** Additional env vars to merge over the base. */
 	env?: Record<string, string>;
 }
@@ -116,9 +122,16 @@ export interface BenchOptions {
 export function benchConfig(isolation: string, opts: BenchOptions = {}): N8NConfig {
 	const services = [...(BENCHMARK_CONFIG.services ?? [])];
 	if (opts.kafka) services.push('kafka');
+	if (opts.tracing) services.push('tracing');
 
 	const env: Record<string, string> = {
 		...BENCHMARK_CONFIG.env,
+		...(opts.tracing && {
+			N8N_OTEL_ENABLED: 'true',
+			N8N_OTEL_EXPORTER_OTLP_ENDPOINT: 'http://jaeger:4318',
+			N8N_OTEL_EXPORTER_SERVICE_NAME: `n8n-bench-${isolation}`,
+			N8N_OTEL_TRACES_INCLUDE_NODE_SPANS: 'true',
+		}),
 		...opts.env,
 		TEST_ISOLATION: `bench-${isolation}`,
 	};

@@ -37,6 +37,16 @@ HA distribution check. Does doubling capacity ~double the actual baseline?
 |---------|------|----------|
 | webhook | `webhook-main-scaling.spec.ts` | Does webhook ingestion scale linearly with main count? |
 
+### Cost — feature toggles on the actual baseline
+
+What does turning on configuration X cost vs the baseline?
+
+| Trigger | Spec | Question |
+|---------|------|----------|
+| webhook | `webhook-otel-overhead.spec.ts` | What is the runtime cost of enabling OTEL? |
+
+Cost specs run the same workload as a baseline spec with one config knob flipped. Compare the `exec/s`/`p50` of a Cost spec against its baseline from the same CI run to read the cost. OTEL specs also attach `jaeger-traces.json` as a test artifact — replay locally for flamegraph inspection.
+
 ## Standard topology
 
 | Tier | Mains | Workers | Per-pod resources |
@@ -44,6 +54,7 @@ HA distribution check. Does doubling capacity ~double the actual baseline?
 | **Peak** | 1 | 0 | 4GB / 2 vCPU |
 | **Actual** | 1 | 1 | main 4GB/2 vCPU, worker 2GB/1 vCPU |
 | **Scaling** | 2 | 2 | main 4GB/2 vCPU, worker 2GB/1 vCPU |
+| **Cost** | matches the baseline | matches the baseline | matches the baseline |
 
 All specs share a single env profile aligned with internal n8n production defaults — connection-pool, lock-duration, and Bull/Redis tuning from real deployments. See `BENCHMARK_CONFIG` in `playwright-projects.ts`.
 
@@ -53,7 +64,7 @@ All specs share a single env profile aligned with internal n8n production defaul
 # Build n8n image first (skip if you only changed test code).
 pnpm build:docker
 
-# Full suite — all 8 specs sequentially (each spawns its own container).
+# Full suite — all 9 specs sequentially (each spawns its own container).
 pnpm --filter=n8n-playwright test:benchmark
 
 # One spec.

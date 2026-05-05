@@ -188,3 +188,48 @@ export async function reportPgQueryBreakdown(ctx: {
 	console.log(`[PG QUERIES] Top ${rows.length} by call count (over ${elapsedSec.toFixed(1)}s):`);
 	for (const line of lines) console.log(line);
 }
+
+/**
+ * Fetches OTEL traces from Jaeger for the test's active window and attaches
+ * them as a JSON artifact (`jaeger-traces.json`). No-op if the tracing
+ * service isn't enabled for this spec — callers can invoke unconditionally.
+ *
+ * Re-import locally with `scripts/import-jaeger-traces.mjs` (TODO) or by
+ * POSTing the JSON to a local Jaeger's `/api/traces` endpoint.
+ */
+export async function reportJaegerTraces(ctx: {
+	testInfo: TestInfo;
+	services: ServiceHelpers;
+	since: Date | number;
+}): Promise<void> {
+	let tracing;
+	try {
+		tracing = ctx.services.tracing;
+	} catch {
+		return; // tracing service not part of this spec's stack
+	}
+	if (!tracing) return;
+
+	const since = ctx.since instanceof Date ? ctx.since : new Date(ctx.since);
+
+	try {
+		const traces = await tracing.fetchTraces({ since });
+		if (traces.length === 0) {
+			console.log('[OTEL] No traces returned — Jaeger may have evicted them or n8n emitted none.');
+			return;
+		}
+
+		await ctx.testInfo.attach('jaeger-traces.json', {
+			body: JSON.stringify(traces),
+			contentType: 'application/json',
+		});
+
+		console.log(
+			`[OTEL] Attached ${traces.length} traces from Jaeger to test artifacts (jaeger-traces.json).`,
+		);
+	} catch (error) {
+		console.warn(
+			`[OTEL] Failed to fetch traces from Jaeger: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+}

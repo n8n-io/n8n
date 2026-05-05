@@ -2,7 +2,12 @@ import { expect } from '@playwright/test';
 import type { TestInfo } from '@playwright/test';
 import type { ServiceHelpers } from 'n8n-containers/services/types';
 
-import { reportDiagnostics, reportPgQueryBreakdown, setupBenchmarkRun } from './orchestration';
+import {
+	reportDiagnostics,
+	reportJaegerTraces,
+	reportPgQueryBreakdown,
+	setupBenchmarkRun,
+} from './orchestration';
 import type { ApiHelpers } from '../../../../services/api-helper';
 import {
 	attachLoadTestResults,
@@ -119,6 +124,7 @@ export async function runLoadTest(options: LoadTestOptions): Promise<ExecutionMe
 		dimensions: diagnosticsDimensions,
 	});
 	await reportPgQueryBreakdown({ services, durationMs: totalDurationMs });
+	await reportJaegerTraces({ testInfo, services, since: setup.activationStart });
 
 	logLoadResult(testInfo, metrics, exec, load, resourceSummary);
 
