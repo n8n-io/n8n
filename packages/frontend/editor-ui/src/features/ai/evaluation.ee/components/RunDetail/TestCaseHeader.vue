@@ -126,6 +126,11 @@ const cyclingVerb = useCyclingVerb(isRunning);
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	min-height: 28px;
+	// N8nCard's header slot wraps us in another flex container, so we must
+	// span its full width for justify-content: space-between to actually
+	// push leftGroup and rightGroup to opposite edges.
+	flex: 1 1 auto;
+	width: 100%;
 }
 
 .leftGroup {
@@ -139,6 +144,7 @@ const cyclingVerb = useCyclingVerb(isRunning);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+	flex: 0 0 auto;
 }
 
 .meta {
@@ -161,12 +167,11 @@ const cyclingVerb = useCyclingVerb(isRunning);
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--3xs);
+	padding: 0;
 	border: none;
 	background: none;
 	color: var(--color--text--tint-1);
 	cursor: pointer;
-	border-radius: var(--radius--sm);
 	transition: color 0.1s ease-in-out;
 
 	&:hover {

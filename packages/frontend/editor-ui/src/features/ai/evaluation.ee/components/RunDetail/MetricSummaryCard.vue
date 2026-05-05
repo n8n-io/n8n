@@ -9,7 +9,6 @@ import {
 	type DeltaTone,
 	type MetricCategory,
 } from '../../evaluation.utils';
-import MetricCategoryBadge from './MetricCategoryBadge.vue';
 import TrendDeltaBadge from './TrendDeltaBadge.vue';
 
 const props = defineProps<{
@@ -19,9 +18,8 @@ const props = defineProps<{
 	category?: MetricCategory;
 	sourceNodeName?: string;
 	/**
-	 * Per-test-case raw values for this metric. Used to render the
-	 * "x1+x2+x3 / y1+y2+y3" sum form for AI-based metrics — hidden for
-	 * normalized 0–1 metrics where the percentage already conveys the score.
+	 * Per-test-case raw values for this metric. The sum form (e.g. "13/15")
+	 * is surfaced on hover only — it would otherwise crowd the inline card.
 	 */
 	caseValues?: Array<number | boolean | undefined>;
 }>();
@@ -34,6 +32,9 @@ const formattedLabel = computed(() => formatMetricLabel(props.name));
 const formattedSumScore = computed(() =>
 	formatMetricRawScoreSum(props.caseValues ?? [], { category: props.category }),
 );
+const valueTooltip = computed(() =>
+	formattedSumScore.value ? `${formattedValue.value} • ${formattedSumScore.value}` : '',
+);
 </script>
 
 <template>
@@ -42,11 +43,12 @@ const formattedSumScore = computed(() =>
 			<N8nTooltip :content="sourceNodeName ? `${name} · ${sourceNodeName}` : name" placement="top">
 				<N8nText size="small" :class="$style.title">{{ formattedLabel }}</N8nText>
 			</N8nTooltip>
-			<MetricCategoryBadge v-if="category" :category="category" />
 		</div>
 		<div :class="$style.valueRow">
-			<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
-			<span v-if="formattedSumScore" :class="$style.sumScore">{{ formattedSumScore }}</span>
+			<N8nTooltip v-if="valueTooltip" :content="valueTooltip" placement="top" :show-after="0">
+				<span :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
+			</N8nTooltip>
+			<span v-else :class="[$style.value, $style[`tone-${tone}`]]">{{ formattedValue }}</span>
 			<TrendDeltaBadge :delta="delta" :category="category" />
 		</div>
 	</div>
@@ -95,14 +97,6 @@ const formattedSumScore = computed(() =>
 	line-height: 1;
 	font-weight: var(--font-weight--bold);
 	letter-spacing: var(--letter-spacing--tight);
-}
-
-.sumScore {
-	font-size: var(--font-size--md);
-	line-height: 1;
-	color: var(--color--text--tint-1);
-	font-variant-numeric: tabular-nums;
-	font-weight: var(--font-weight--regular);
 }
 
 .tone-default {

@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
@@ -31,11 +30,6 @@ const formattedRawScore = computed(() =>
 const tooltipContent = computed(() =>
 	formattedRawScore.value ? `${formattedPercent.value} • ${formattedRawScore.value}` : '',
 );
-const categoryLabel = computed(() =>
-	props.category
-		? locale.baseText(`evaluation.runDetail.metricCategory.${props.category}` as BaseTextKey)
-		: '',
-);
 </script>
 
 <template>
@@ -50,10 +44,6 @@ const categoryLabel = computed(() =>
 			<N8nText v-if="sourceNodeName" size="small" :class="$style.subtitle">
 				{{ sourceNodeName }}
 			</N8nText>
-			<N8nText v-if="categoryLabel" size="small" :class="$style.dot">·</N8nText>
-			<N8nText v-if="categoryLabel" size="small" :class="$style.subtitle">{{
-				categoryLabel
-			}}</N8nText>
 		</div>
 		<div :class="$style.trailing">
 			<N8nText v-if="errored" size="small" :class="$style.errorMessage">
@@ -110,13 +100,10 @@ const categoryLabel = computed(() =>
 	color: var(--color--text--tint-1);
 }
 
-.dot {
-	color: var(--color--text--tint-1);
-}
-
 .value {
 	font-variant-numeric: tabular-nums;
 	color: var(--color--text);
+	font-weight: var(--font-weight--medium);
 }
 
 .errorMessage {
