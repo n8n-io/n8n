@@ -103,6 +103,24 @@ describe('useAgentTelemetry', () => {
 		});
 	});
 
+	it('trackAddedSkills fires with skill_added, skills list, config_version and status', () => {
+		useAgentTelemetry().trackAddedSkills({
+			agentId: 'ag-1',
+			skillAdded: 'triage',
+			skills: ['outreach', 'triage'],
+			configVersion: 'v6',
+			status: 'production',
+		});
+		expect(trackMock).toHaveBeenCalledWith('User added skills to agent', {
+			agent_id: 'ag-1',
+			skill_added: 'triage',
+			skills: ['outreach', 'triage'],
+			config_version: 'v6',
+			status: 'production',
+			session_id: 'session-xyz',
+		});
+	});
+
 	it('trackPublishedAgent fires with config_version and status=production', () => {
 		useAgentTelemetry().trackPublishedAgent({ agentId: 'ag-1', configVersion: 'v3' });
 		expect(trackMock).toHaveBeenCalledWith('User published agent', {

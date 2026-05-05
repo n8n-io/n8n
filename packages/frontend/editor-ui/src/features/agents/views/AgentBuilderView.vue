@@ -229,6 +229,7 @@ async function onReverted(updated: AgentResource) {
 	agentName.value = updated.name;
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
+	builderTelemetry.captureSkillsBaseline();
 }
 
 /**
@@ -359,10 +360,11 @@ const configAutosave = useAgentConfigAutosave<ConfigAutosaveSnapshot>({
 	onSaved: () => {
 		telemetry.track('User saved agent settings', { agent_id: agentId.value });
 		builderTelemetry.flushConfigEdits();
-		// Diff the saved tool list against the last baseline. No-op when nothing
-		// new landed, so calling on every save also handles the build-chat path
-		// (which has already advanced the baseline via `onConfigUpdated`).
+		// Diff the saved tool/skill lists against the last baseline. No-op when
+		// nothing new landed, so calling on every save also handles the build-chat
+		// path (which has already advanced both baselines via `onConfigUpdated`).
 		builderTelemetry.trackToolsAdded();
+		builderTelemetry.trackSkillsAdded();
 	},
 	onError: (error: unknown) => {
 		// Intentionally keep pending parts: `localConfig` still holds the
@@ -431,6 +433,7 @@ async function onConfigUpdated() {
 	const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
 	if (connected) connectedTriggers.value = connected;
 	builderTelemetry.trackToolsAdded();
+	builderTelemetry.trackSkillsAdded();
 }
 
 const headerActions = [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }];
@@ -521,6 +524,7 @@ async function initialize() {
 	await fetchAgent();
 	await fetchConfig(projectId.value, agentId.value);
 	builderTelemetry.captureToolsBaseline();
+	builderTelemetry.captureSkillsBaseline();
 	// Fire-and-forget: the interactive ask_credential tool card reads these
 	// stores. Failures are non-fatal — the cards stay disabled until data lands.
 	void credentialsStore.fetchAllCredentials({ projectId: projectId.value }).catch(() => undefined);

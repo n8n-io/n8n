@@ -8,6 +8,7 @@ import {
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
+	skillIdentifiersFromConfig,
 	toolIdentifiersFromConfig,
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
@@ -117,6 +118,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	// Snapshot of tool identifiers at last observed config state. Used by
 	// `trackToolsAdded` to compute the diff against the new config.
 	let previousTools: string[] = [];
+
+	// Same idea, parallel for skills.
+	let previousSkills: string[] = [];
 
 	function snapshot(): EditSnapshot {
 		return {
@@ -234,6 +238,29 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		});
 	}
 
+	function captureSkillsBaseline() {
+		previousSkills = skillIdentifiersFromConfig(deps.savedConfig.value);
+	}
+
+	function trackSkillsAdded() {
+		const current = skillIdentifiersFromConfig(deps.savedConfig.value);
+		const added = current.filter((s) => !previousSkills.includes(s));
+		previousSkills = current;
+		if (added.length === 0) return;
+		const s = snapshot();
+		withFingerprint(s.config, s.connectedTriggers, (configVersion) => {
+			for (const skillAdded of added) {
+				agentTelemetry.trackAddedSkills({
+					agentId: s.agentId,
+					skillAdded,
+					skills: current,
+					configVersion,
+					status: s.status,
+				});
+			}
+		});
+	}
+
 	/**
 	 * Eagerly derive connected trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
@@ -263,6 +290,7 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		pendingEditedConfigParts.clear();
 		triggersBaseline.value = [];
 		previousTools = [];
+		previousSkills = [];
 	}
 
 	return {
@@ -271,7 +299,9 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 		trackTriggerListChanged,
 		trackTriggerAdded,
 		trackToolsAdded,
+		trackSkillsAdded,
 		captureToolsBaseline,
+		captureSkillsBaseline,
 		fetchInitialTriggersBaseline,
 		resetForAgentSwitch,
 	};
