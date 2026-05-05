@@ -354,6 +354,21 @@ before being registered as native tools.
 Use native agents telemetry and lifecycle events as the default integration
 point.
 
+Decision for this rewrite: keep the existing Instance AI LangSmith integration
+as product-level tracing. `@n8n/agents` exposes generic OTel/LangSmith telemetry
+for model and tool spans, but Instance AI still needs trace structure that is
+specific to the product surface:
+
+- service-proxy auth and direct/proxy client selection
+- feedback anchoring to persisted run snapshots
+- deterministic trace replay for e2e recording
+- detached sub-agent roots linked to the parent product trace
+- background task and workflow build-loop spans
+- ad-hoc child spans under the active Instance AI run tree
+
+Revisit native agents telemetry when it can accept or inherit these product
+trace anchors without creating duplicate LangSmith traces.
+
 Keep Instance AI product-level LangSmith spans only where native telemetry does
 not expose enough structure for:
 
@@ -438,7 +453,8 @@ pnpm typecheck
 5. Native workspace, MCP, and tracing
    - Rewrite workspace providers.
    - Replace Mastra MCP usage.
-   - Move tracing to native telemetry/events where possible.
+   - Evaluate tracing against native telemetry/events and keep product-level
+     spans where native telemetry lacks Instance AI anchors.
 
 6. Cleanup and verification
    - Delete retired Mastra storage and registration files.
@@ -467,15 +483,14 @@ pnpm typecheck
 - [x] Keep or replace compaction as the operational long-context mechanism.
 - [x] Rewrite workspace providers against native agents workspace interfaces.
 - [x] Replace Mastra MCP usage with native MCP or native dynamic tools.
-- [ ] Update LangSmith tracing to native telemetry/events where possible.
+- [x] Decide LangSmith tracing scope against native telemetry/events.
 - [x] Update docs that mention Mastra runtime behavior.
 - [x] Add tests for the native runtime path.
 - [x] Verify no `@mastra/*` imports remain.
 
 Current remaining implementation gaps:
 
-- Decide whether LangSmith should move further onto native telemetry/events or
-  keep the current product-level spans.
+- None known in the native agents rewrite scope.
 
 ## Acceptance Criteria
 
