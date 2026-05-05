@@ -1,5 +1,5 @@
 import type { Logger } from 'n8n-workflow';
-import { Mocked } from 'vitest';
+import type { Mocked } from 'vitest';
 
 /**
  * Creates a mock Logger for testing

@@ -1,6 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
+import type { Mocked } from 'vitest';
 import { z } from 'zod';
-import { Mocked } from 'vitest';
 
 /**
  * Creates a mock Tool for testing

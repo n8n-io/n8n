@@ -1,7 +1,7 @@
 import type { Request } from 'express';
+import type { Mocked } from 'vitest';
 
 import type { CompressionResponse } from '../../transport/Transport';
-import { Mocked } from 'vitest';
 
 /** MCP session ID header name */
 export const MCP_SESSION_ID_HEADER = 'mcp-session-id';

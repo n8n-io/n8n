@@ -1,7 +1,7 @@
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import type { Mocked } from 'vitest';
 
 import type { McpTransport, TransportType } from '../../transport/Transport';
-import { Mocked } from 'vitest';
 
 /**
  * Creates a mock MCP Server
