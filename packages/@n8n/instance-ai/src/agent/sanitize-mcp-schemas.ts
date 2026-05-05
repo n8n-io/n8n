@@ -72,6 +72,137 @@ interface SanitizeZodTypeOptions {
 	budget?: SanitizeBudget;
 }
 
+interface ValidateJsonSchemaOptions {
+	maxDepth?: number;
+	maxNodes?: number;
+	maxObjectProperties?: number;
+	maxUnionOptions?: number;
+	toolName?: string;
+}
+
+interface JsonSchemaValidationContext {
+	toolName?: string;
+	maxDepth: number;
+	maxNodes: number;
+	maxObjectProperties: number;
+	maxUnionOptions: number;
+	budget: SanitizeBudget;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function throwJsonSchemaLimitError(
+	context: JsonSchemaValidationContext,
+	path: string,
+	depth: number,
+	message: string,
+	limitType: McpSchemaLimitType,
+	limit: number,
+	count?: number,
+): never {
+	throw new McpSchemaSanitizationError(message, {
+		toolName: context.toolName,
+		path,
+		depth,
+		maxDepth: context.maxDepth,
+		limit,
+		limitType,
+		count,
+	});
+}
+
+function validateJsonSchemaNode(
+	value: unknown,
+	path: string,
+	depth: number,
+	context: JsonSchemaValidationContext,
+): void {
+	if (depth > context.maxDepth) {
+		throwJsonSchemaLimitError(
+			context,
+			path,
+			depth,
+			`MCP schema exceeds maximum depth of ${context.maxDepth}`,
+			'depth',
+			context.maxDepth,
+			depth,
+		);
+	}
+
+	context.budget.nodes++;
+	if (context.budget.nodes > context.maxNodes) {
+		throwJsonSchemaLimitError(
+			context,
+			path,
+			depth,
+			`MCP schema exceeds maximum node count of ${context.maxNodes}`,
+			'nodes',
+			context.maxNodes,
+			context.budget.nodes,
+		);
+	}
+
+	if (Array.isArray(value)) {
+		for (const [index, item] of value.entries()) {
+			validateJsonSchemaNode(item, `${path}[${index}]`, depth + 1, context);
+		}
+		return;
+	}
+
+	if (!isRecord(value)) return;
+
+	const properties = value.properties;
+	if (isRecord(properties)) {
+		const propertyCount = Object.keys(properties).length;
+		if (propertyCount > context.maxObjectProperties) {
+			throwJsonSchemaLimitError(
+				context,
+				`${path}.properties`,
+				depth + 1,
+				`MCP schema object exceeds maximum property count of ${context.maxObjectProperties}`,
+				'objectProperties',
+				context.maxObjectProperties,
+				propertyCount,
+			);
+		}
+	}
+
+	for (const unionKey of ['anyOf', 'oneOf', 'allOf']) {
+		const unionOptions = value[unionKey];
+		if (Array.isArray(unionOptions) && unionOptions.length > context.maxUnionOptions) {
+			throwJsonSchemaLimitError(
+				context,
+				`${path}.${unionKey}`,
+				depth + 1,
+				`MCP schema union exceeds maximum option count of ${context.maxUnionOptions}`,
+				'unionOptions',
+				context.maxUnionOptions,
+				unionOptions.length,
+			);
+		}
+	}
+
+	for (const [key, child] of Object.entries(value)) {
+		validateJsonSchemaNode(child, `${path}.${key}`, depth + 1, context);
+	}
+}
+
+export function assertMcpJsonSchemaWithinLimits(
+	schema: unknown,
+	options: ValidateJsonSchemaOptions = {},
+): void {
+	validateJsonSchemaNode(schema, '$.inputSchema', 0, {
+		toolName: options.toolName,
+		maxDepth: options.maxDepth ?? MCP_SCHEMA_MAX_DEPTH,
+		maxNodes: options.maxNodes ?? MCP_SCHEMA_MAX_NODES,
+		maxObjectProperties: options.maxObjectProperties ?? MCP_SCHEMA_MAX_OBJECT_PROPERTIES,
+		maxUnionOptions: options.maxUnionOptions ?? MCP_SCHEMA_MAX_UNION_OPTIONS,
+		budget: { nodes: 0 },
+	});
+}
+
 /**
  * Recursively walk a Zod schema tree and replace Anthropic-incompatible types.
  *

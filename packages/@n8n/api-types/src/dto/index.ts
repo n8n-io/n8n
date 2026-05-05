@@ -29,6 +29,7 @@ export {
 	InstanceAiConfirmRequestDto,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmRequestKind,
+	type InstanceAiResourceDecision,
 } from './instance-ai/instance-ai-confirm-request.dto';
 export { InstanceAiFeedbackRequestDto } from './instance-ai/instance-ai-feedback-request.dto';
 export { InstanceAiRenameThreadRequestDto } from './instance-ai/instance-ai-rename-thread-request.dto';

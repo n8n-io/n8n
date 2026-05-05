@@ -11,11 +11,13 @@ import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
 
+type InstanceGatewayResourceDecision = 'denyOnce' | 'allowOnce' | 'allowForSession';
+
 const props = defineProps<{
 	requestId: string;
 	resource: string;
 	description: string;
-	options: string[];
+	options: InstanceGatewayResourceDecision[];
 }>();
 
 const i18n = useI18n();
@@ -24,23 +26,21 @@ const rootStore = useRootStore();
 const store = useInstanceAiStore();
 
 interface OptionEntry {
-	decision: string;
+	decision: InstanceGatewayResourceDecision;
 	label: string;
 }
 
-const DECISION_LABELS: Record<string, string> = {
+const DECISION_LABELS: Record<InstanceGatewayResourceDecision, string> = {
 	allowOnce: i18n.baseText('instanceAi.gatewayConfirmation.allowOnce'),
 	allowForSession: i18n.baseText('instanceAi.gatewayConfirmation.allowForSession'),
 	denyOnce: i18n.baseText('instanceAi.gatewayConfirmation.denyOnce'),
 };
 
-const KNOWN_DECISIONS = new Set(['allowOnce', 'allowForSession', 'denyOnce']);
-
-function getDecisionLabel(decision: string): string {
-	return DECISION_LABELS[decision] ?? decision;
+function getDecisionLabel(decision: InstanceGatewayResourceDecision): string {
+	return DECISION_LABELS[decision];
 }
 
-function optionEntry(decision: string): OptionEntry {
+function optionEntry(decision: InstanceGatewayResourceDecision): OptionEntry {
 	return { decision, label: getDecisionLabel(decision) };
 }
 
@@ -53,17 +53,13 @@ const approvePrimary = computed(() =>
 );
 
 const approveDropdownItems = computed(() => {
-	const items: Array<ActionDropdownItem<string>> = [];
+	const items: Array<ActionDropdownItem<InstanceGatewayResourceDecision>> = [];
 	if (props.options.includes('allowForSession'))
 		items.push({ id: 'allowForSession', label: getDecisionLabel('allowForSession') });
 	return items;
 });
 
-const otherOptions = computed<OptionEntry[]>(() =>
-	props.options.filter((d) => !KNOWN_DECISIONS.has(d)).map(optionEntry),
-);
-
-async function confirm(decision: string) {
+async function confirm(decision: InstanceGatewayResourceDecision) {
 	const tc = store.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const eventProps = {
@@ -93,16 +89,6 @@ async function confirm(decision: string) {
 		</div>
 
 		<ConfirmationFooter>
-			<!-- Unknown options not in the standard set -->
-			<N8nButton
-				v-for="opt in otherOptions"
-				:key="opt.decision"
-				variant="outline"
-				size="medium"
-				:label="opt.label"
-				@click="confirm(opt.decision)"
-			/>
-
 			<!-- Deny side -->
 			<N8nButton
 				v-if="denyPrimary"

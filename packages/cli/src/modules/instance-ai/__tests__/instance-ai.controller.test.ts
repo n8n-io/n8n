@@ -115,6 +115,7 @@ describe('InstanceAiController', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
+		settingsService.isLocalGatewayDisabled.mockReturnValue(false);
 		settingsService.isLocalGatewayDisabledForUser.mockResolvedValue(false);
 		instanceAiService.isGatewaySessionRotationDue.mockReturnValue(false);
 		instanceAiService.getGatewaySessionRotateAfter.mockReturnValue(null);
@@ -989,6 +990,23 @@ describe('InstanceAiController', () => {
 
 			expect(result).toEqual({ ok: true });
 			expect(instanceAiService.initGateway).toHaveBeenCalledWith('env-gateway', expect.anything());
+			expect(settingsService.isLocalGatewayDisabled).toHaveBeenCalled();
+			expect(settingsService.isLocalGatewayDisabledForUser).not.toHaveBeenCalledWith('env-gateway');
+		});
+
+		it('should reject static env var key when gateway is globally disabled', async () => {
+			settingsService.isLocalGatewayDisabled.mockReturnValue(true);
+			const gatewayReq = makeGatewayReq('static-key', { rootPath: '/tmp' });
+
+			await expect(
+				controller.gatewayInit(gatewayReq, res, {
+					rootPath: '/tmp',
+					tools: [],
+					toolCategories: [],
+				}),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(instanceAiService.initGateway).not.toHaveBeenCalled();
 		});
 
 		it('should throw ForbiddenError with missing API key', async () => {

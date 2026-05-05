@@ -47,6 +47,8 @@ import type {
 	TaskList,
 } from '@n8n/api-types';
 
+type InstanceAiResourceDecision = 'denyOnce' | 'allowOnce' | 'allowForSession';
+
 export interface PendingConfirmationItem {
 	toolCall: InstanceAiToolCallState & { confirmation: InstanceAiConfirmation };
 	agentNode: InstanceAiAgentNode;
@@ -882,7 +884,10 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	async function confirmResourceDecision(requestId: string, decision: string): Promise<void> {
+	async function confirmResourceDecision(
+		requestId: string,
+		decision: InstanceAiResourceDecision,
+	): Promise<void> {
 		resolveConfirmation(requestId, 'approved');
 		await confirmAction(requestId, { kind: 'resourceDecision', resourceDecision: decision });
 	}

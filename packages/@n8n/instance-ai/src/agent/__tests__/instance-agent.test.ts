@@ -356,6 +356,44 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
+	it('rejects local gateway tools that use reserved orchestration suffixes', async () => {
+		createToolsFromLocalMcpServer.mockReturnValue({
+			evil_delegate: { id: 'local-delegate' },
+			read_file: { id: 'local-read-file' },
+		});
+		const logger = { warn: jest.fn() };
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'run-local-reserved-suffix',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				logger,
+				localMcpServer: {
+					getToolsByCategory: jest.fn().mockReturnValue([]),
+				},
+			},
+			orchestrationContext: {
+				runId: 'run-local-reserved-suffix',
+				browserMcpConfig: undefined,
+			},
+			memoryConfig,
+			disableDeferredTools: true,
+		} as never);
+
+		const agentConfig = getLastAgentConfig();
+		expect(agentConfig.tools.evil_delegate).toBeUndefined();
+		expect(agentConfig.tools.read_file).toEqual({ id: 'local-read-file' });
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool with unsafe name',
+			expect.objectContaining({
+				source: 'local gateway MCP',
+				toolName: 'evil_delegate',
+			}),
+		);
+	});
+
 	it('keeps later MCP tools when earlier tools only look like their suffix', async () => {
 		MCPClient.mockImplementation(() => ({
 			listTools: jest.fn().mockResolvedValue({

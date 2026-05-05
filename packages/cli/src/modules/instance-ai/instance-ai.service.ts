@@ -98,6 +98,8 @@ import { ProxyTokenManager } from './proxy-token-manager';
 import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 import { TraceReplayState } from './trace-replay-state';
 
+export const ENV_GATEWAY_USER_ID = 'env-gateway';
+
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
@@ -1207,6 +1209,12 @@ export class InstanceAiService {
 		return this.gatewayRegistry.getGateway(userId);
 	}
 
+	private findEffectiveLocalGateway(userId: string): LocalGateway | undefined {
+		const userGateway = this.gatewayRegistry.findGateway(userId);
+		if (userGateway?.isConnected) return userGateway;
+		return this.gatewayRegistry.findGateway(ENV_GATEWAY_USER_ID);
+	}
+
 	initGateway(userId: string, data: InstanceAiGatewayCapabilities): void {
 		this.gatewayRegistry.initGateway(userId, data);
 		this.telemetry.track('User connected to Computer Use', {
@@ -1246,7 +1254,11 @@ export class InstanceAiService {
 		hostIdentifier: string | null;
 		toolCategories: ToolCategory[];
 	} {
-		return this.gatewayRegistry.getGatewayStatus(userId);
+		const userStatus = this.gatewayRegistry.getGatewayStatus(userId);
+		if (userStatus.connected) return userStatus;
+
+		const envStatus = this.gatewayRegistry.getGatewayStatus(ENV_GATEWAY_USER_ID);
+		return envStatus.connected ? envStatus : userStatus;
 	}
 
 	startDisconnectTimer(userId: string, onDisconnect: () => void): void {
@@ -1510,7 +1522,7 @@ export class InstanceAiService {
 		pushRef?: string,
 	) {
 		const localGatewayDisabled = await this.settingsService.isLocalGatewayDisabledForUser(user.id);
-		const userGateway = this.gatewayRegistry.findGateway(user.id);
+		const localGateway = this.findEffectiveLocalGateway(user.id);
 
 		// When the proxy is enabled, create a single ProxyTokenManager and
 		// AiAssistantClient that are shared across model, search, and tracing
@@ -1552,8 +1564,8 @@ export class InstanceAiService {
 			pushRef,
 			threadId,
 		});
-		if (!localGatewayDisabled && userGateway?.isConnected) {
-			context.localMcpServer = userGateway;
+		if (!localGatewayDisabled && localGateway?.isConnected) {
+			context.localMcpServer = localGateway;
 		}
 		context.permissions = this.settingsService.getPermissions();
 		if (this.sourceControlPreferencesService.getPreferences().branchReadOnly) {
@@ -1572,7 +1584,7 @@ export class InstanceAiService {
 		// Compute gateway status for the system prompt
 		if (localGatewayDisabled) {
 			context.localGatewayStatus = { status: 'disabled' };
-		} else if (userGateway?.isConnected) {
+		} else if (localGateway?.isConnected) {
 			context.localGatewayStatus = { status: 'connected' };
 		} else {
 			context.localGatewayStatus = {

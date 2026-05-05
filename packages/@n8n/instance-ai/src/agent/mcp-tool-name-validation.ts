@@ -24,7 +24,7 @@ export function normalizeMcpToolName(name: string): string {
 		.replace(/[^a-z0-9]/g, '');
 }
 
-function validateMcpToolName(name: string, source: string): string {
+export function validateMcpToolName(name: string, source: string): string {
 	if (!isSafeMcpIdentifierName(name)) {
 		throw new McpToolNameValidationError(
 			`MCP tool "${name}" from ${source} has an invalid name`,

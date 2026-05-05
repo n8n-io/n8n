@@ -1,9 +1,5 @@
-import type { ToolsInput } from '@mastra/core/agent';
-import type { McpTool } from '@n8n/api-types';
-
 import { createAllTools, createOrchestratorDomainTools } from '..';
-import type { InstanceAiContext, LocalMcpServer } from '../../types';
-import { createToolsFromLocalMcpServer } from '../filesystem/create-tools-from-mcp-server';
+import type { InstanceAiContext } from '../../types';
 
 jest.mock('../../parsers/structured-file-parser', () => ({
 	isStructuredAttachment: jest.fn(() => false),
@@ -25,10 +21,6 @@ jest.mock('../data-tables.tool', () => ({
 
 jest.mock('../executions.tool', () => ({
 	createExecutionsTool: jest.fn(() => ({ id: 'executions' })),
-}));
-
-jest.mock('../filesystem/create-tools-from-mcp-server', () => ({
-	createToolsFromLocalMcpServer: jest.fn(),
 }));
 
 jest.mock('../nodes.tool', () => ({
@@ -99,99 +91,50 @@ jest.mock('../workspace.tool', () => ({
 	createWorkspaceTool: jest.fn(() => ({ id: 'workspace' })),
 }));
 
-const mockedCreateToolsFromLocalMcpServer = jest.mocked(createToolsFromLocalMcpServer);
-
-const TOOL_SCHEMA: McpTool['inputSchema'] = { type: 'object', properties: {} };
-
-function makeTool(name: string): McpTool {
-	return {
-		name,
-		description: name,
-		inputSchema: TOOL_SCHEMA,
-	};
-}
-
-function makeServer(browserToolNames: string[] = []): jest.Mocked<LocalMcpServer> {
-	return {
-		getAvailableTools: jest.fn().mockReturnValue([]),
-		getToolsByCategory: jest.fn((category: string) =>
-			category === 'browser' ? browserToolNames.map(makeTool) : [],
-		),
-		callTool: jest.fn(),
-	};
-}
-
-function makeContext(server: LocalMcpServer): InstanceAiContext {
+function makeContext(): InstanceAiContext {
 	return {
 		userId: 'user-a',
-		localMcpServer: server,
 		logger: { warn: jest.fn() },
 	} as unknown as InstanceAiContext;
-}
-
-function tools(input: Record<string, unknown>): ToolsInput {
-	return input as ToolsInput;
 }
 
 describe('domain tool construction', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockedCreateToolsFromLocalMcpServer.mockReturnValue({});
 	});
 
-	it('adds safe local gateway tools to the full domain tool map', () => {
-		const server = makeServer(['browser_navigate']);
-		const context = makeContext(server);
-		mockedCreateToolsFromLocalMcpServer.mockReturnValue(
-			tools({
-				read_file: { id: 'read_file' },
-				browser_navigate: { id: 'browser_navigate' },
-			}),
-		);
+	it('creates the native full domain tool map', () => {
+		const context = makeContext();
 
 		const domainTools = createAllTools(context);
 
-		expect(domainTools.read_file).toEqual({ id: 'read_file' });
-		expect(domainTools.browser_navigate).toEqual({ id: 'browser_navigate' });
-		expect(mockedCreateToolsFromLocalMcpServer).toHaveBeenCalledWith(server, context.logger);
+		expect(domainTools).toMatchObject({
+			workflows: { id: 'workflows' },
+			executions: { id: 'executions' },
+			credentials: { id: 'credentials' },
+			'data-tables': { id: 'data-tables' },
+			workspace: { id: 'workspace' },
+			research: { id: 'research' },
+			nodes: { id: 'nodes' },
+			'ask-user': { id: 'ask-user' },
+			'build-workflow': { id: 'build-workflow' },
+		});
 	});
 
-	it('keeps browser-category gateway tools out of the orchestrator domain map', () => {
-		const server = makeServer(['browser_navigate']);
-		const context = makeContext(server);
-		mockedCreateToolsFromLocalMcpServer.mockReturnValue(
-			tools({
-				read_file: { id: 'read_file' },
-				browser_navigate: { id: 'browser_navigate' },
-			}),
-		);
+	it('creates the native orchestrator domain tool map', () => {
+		const context = makeContext();
 
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
-		expect(orchestratorTools.read_file).toEqual({ id: 'read_file' });
-		expect(orchestratorTools.browser_navigate).toBeUndefined();
-	});
-
-	it('skips local gateway tools that collide with native tool names', () => {
-		const server = makeServer();
-		const context = makeContext(server);
-		mockedCreateToolsFromLocalMcpServer.mockReturnValue(
-			tools({
-				workflows: { id: 'local-workflows' },
-				read_file: { id: 'read_file' },
-			}),
-		);
-
-		const domainTools = createAllTools(context);
-
-		expect(domainTools.workflows).toEqual({ id: 'workflows' });
-		expect(domainTools.read_file).toEqual({ id: 'read_file' });
-		expect(context.logger?.warn).toHaveBeenCalledWith(
-			'Skipped MCP tool with unsafe name',
-			expect.objectContaining({
-				source: 'local gateway MCP',
-				toolName: 'workflows',
-			}),
-		);
+		expect(orchestratorTools).toMatchObject({
+			workflows: { id: 'workflows-orchestrator' },
+			executions: { id: 'executions' },
+			credentials: { id: 'credentials' },
+			'data-tables': { id: 'data-tables-orchestrator' },
+			workspace: { id: 'workspace' },
+			research: { id: 'research' },
+			nodes: { id: 'nodes-orchestrator' },
+			'ask-user': { id: 'ask-user' },
+		});
 	});
 });

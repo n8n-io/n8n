@@ -41,7 +41,7 @@ import { SubAgentEvalService } from './eval/sub-agent-eval.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
-import { InstanceAiService } from './instance-ai.service';
+import { ENV_GATEWAY_USER_ID, InstanceAiService } from './instance-ai.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -53,7 +53,6 @@ import { UrlService } from '@/services/url.service';
 type FlushableResponse = Response & { flush?: () => void };
 
 const KEEP_ALIVE_INTERVAL_MS = 15_000;
-const ENV_GATEWAY_USER_ID = 'env-gateway';
 
 @RestController('/instance-ai')
 export class InstanceAiController {
@@ -865,6 +864,15 @@ export class InstanceAiController {
 
 	/** Throw if the local gateway is disabled globally or for this user. */
 	private async assertGatewayEnabled(userId: string): Promise<void> {
+		if (userId === ENV_GATEWAY_USER_ID) {
+			if (
+				!this.settingsService.isInstanceAiEnabled() ||
+				this.settingsService.isLocalGatewayDisabled()
+			) {
+				throw new ForbiddenError('Local gateway is disabled');
+			}
+			return;
+		}
 		if (await this.settingsService.isLocalGatewayDisabledForUser(userId)) {
 			throw new ForbiddenError('Local gateway is disabled');
 		}

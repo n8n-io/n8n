@@ -168,6 +168,34 @@ describe('createToolsFromLocalMcpServer', () => {
 				}),
 			);
 		});
+
+		it('skips oversized raw schemas before tool construction', () => {
+			const logger = { warn: jest.fn() };
+			const properties = Object.fromEntries(
+				Array.from({ length: 251 }, (_, index) => [`field_${index}`, { type: 'string' }]),
+			);
+			const server = makeMockServer([
+				{
+					...SAMPLE_TOOL,
+					name: 'huge_tool',
+					inputSchema: { type: 'object', properties },
+				},
+				{ ...SAMPLE_TOOL, name: 'read_file' },
+			]);
+
+			const tools = createToolsFromLocalMcpServer(server, logger as never);
+
+			expect(tools.huge_tool).toBeUndefined();
+			expect(tools.read_file).toBeDefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped local gateway MCP tool with unsupported schema',
+				expect.objectContaining({
+					source: 'local gateway MCP',
+					toolName: 'huge_tool',
+					limitType: 'objectProperties',
+				}),
+			);
+		});
 	});
 
 	describe('execute — first-call path', () => {
