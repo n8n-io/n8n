@@ -205,10 +205,10 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
-	it('does not render a partial-failure callout — failures are surfaced per-card via RunStatusPill', async () => {
+	it('does not render a partial-failure callout (the redesign drops it)', async () => {
 		const { container, queryByText } = renderComponent();
 		await waitFor(() => {
-			expect(container.querySelector('[data-test-id="run-status-pill"]')).toBeTruthy();
+			expect(container.querySelector('[data-test-id="test-definition-run-detail"]')).toBeTruthy();
 		});
 		expect(queryByText('Finished with errors')).toBeNull();
 	});

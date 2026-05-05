@@ -611,14 +611,6 @@ export class TestRunnerService {
 
 			this.logger.debug('Found test cases', { count: testCases.length });
 
-			// Seed one TestCaseExecution row per dataset entry so the FE can
-			// render placeholder cards while the run is in progress and the
-			// user can pre-emptively cancel pending cases (TRUST-70).
-			const seededCases = await this.testCaseExecutionRepository.createPendingBatch(
-				testRun.id,
-				testCases.length,
-			);
-
 			// Initialize object to collect the results of the evaluation workflow executions
 			const metrics = new EvaluationMetrics();
 
@@ -653,24 +645,6 @@ export class TestRunnerService {
 					async (testCase, caseIndex) =>
 						await limit(async (): Promise<MetricContribution[]> => {
 							if (abortSignal.aborted) {
-								return [];
-							}
-
-							// Atomic check-and-set against the pre-seeded row: only
-							// proceed if it's still 'new'. If the user pre-emptively
-							// cancelled, the row is now 'cancelled' and the update
-							// affects 0 rows — bail before queuing for throttle
-							// capacity so cancelled cases don't take up slots that
-							// could be used by sibling runs.
-							const seededCase = seededCases[caseIndex];
-							const claimed = await this.testCaseExecutionRepository.tryMarkCaseAsRunning(
-								seededCase.id,
-							);
-							if (!claimed) {
-								this.logger.debug('Test case skipped (cancelled before start)', {
-									testRunId: testRun.id,
-									caseId: seededCase.id,
-								});
 								return [];
 							}
 
@@ -813,12 +787,12 @@ export class TestRunnerService {
 									this.logger.debug('Test case execution finished');
 
 									if (!testCaseExecution || testCaseExecution.data.resultData.error) {
-										await this.testCaseExecutionRepository.update(seededCase.id, {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
 											executionId: testCaseExecutionId,
+											testRun: { id: testRun.id },
 											status: 'error',
 											errorCode: 'FAILED_TO_EXECUTE_WORKFLOW',
 											metrics: {},
-											completedAt: new Date(),
 										});
 										telemetryMeta.errored_test_case_count++;
 										return [];
@@ -838,8 +812,9 @@ export class TestRunnerService {
 									);
 
 									if (Object.keys(userDefinedContribution.addedMetrics).length === 0) {
-										await this.testCaseExecutionRepository.update(seededCase.id, {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
 											executionId: testCaseExecutionId,
+											testRun: { id: testRun.id },
 											runAt,
 											completedAt,
 											status: 'error',
@@ -863,8 +838,9 @@ export class TestRunnerService {
 										userDefinedContribution.addedMetrics,
 									);
 
-									await this.testCaseExecutionRepository.update(seededCase.id, {
+									await this.testCaseExecutionRepository.createTestCaseExecution({
 										executionId: testCaseExecutionId,
+										testRun: { id: testRun.id },
 										runAt,
 										completedAt,
 										status: 'success',
@@ -888,7 +864,8 @@ export class TestRunnerService {
 									telemetryMeta.errored_test_case_count++;
 
 									if (e instanceof TestCaseExecutionError) {
-										await this.testCaseExecutionRepository.update(seededCase.id, {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
+											testRun: { id: testRun.id },
 											runAt,
 											completedAt,
 											status: 'error',
@@ -896,7 +873,8 @@ export class TestRunnerService {
 											errorDetails: e.extra as IDataObject,
 										});
 									} else {
-										await this.testCaseExecutionRepository.update(seededCase.id, {
+										await this.testCaseExecutionRepository.createTestCaseExecution({
+											testRun: { id: testRun.id },
 											runAt,
 											completedAt,
 											status: 'error',

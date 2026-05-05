@@ -135,17 +135,3 @@ export const getTestCaseExecutions = async (
 		getRunExecutionsEndpoint(workflowId, runId),
 	);
 };
-
-// Pre-emptively cancel a single pending test case (status === 'new').
-export const cancelTestCase = async (
-	context: IRestApiContext,
-	workflowId: string,
-	runId: string,
-	caseId: string,
-) => {
-	return await makeRestApiRequest<{ success: boolean }>(
-		context,
-		'POST',
-		`${getRunExecutionsEndpoint(workflowId, runId)}/${caseId}/cancel`,
-	);
-};
