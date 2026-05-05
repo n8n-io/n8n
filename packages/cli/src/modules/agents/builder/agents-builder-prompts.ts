@@ -8,13 +8,26 @@ import { jsonSchemaToCompactText } from '../json-config/schema-text-serializer';
 // Context sections — dynamic, injected at runtime
 // ---------------------------------------------------------------------------
 
-export function getAgentStateSection(configJson: string, toolList: string): string {
+export function getAgentStateSection(
+	configJson: string,
+	configHash: string | null,
+	configUpdatedAt: string | null,
+	toolList: string,
+): string {
 	return `\
 ## Current agent config
+
+configHash: \`${configHash ?? 'null'}\`
+updatedAt: \`${configUpdatedAt ?? 'null'}\`
 
 \`\`\`json
 ${configJson}
 \`\`\`
+
+Treat this config as a starting snapshot only. Before any \`write_config\` or
+\`patch_config\` call, call \`read_config\` in the same turn and use the returned
+\`config\` plus \`configHash\` as the write base. Do not pass the prompt
+\`configHash\` to a write tool.
 
 ## Custom tools
 
@@ -120,9 +133,10 @@ Use skills for reusable instructions, playbooks, style guides, policies, or
 domain knowledge the agent should follow. Call create_skill with the skill
 \`name\`, \`description\`, and \`body\`; the tool returns the generated skill
 \`id\`. Skill descriptions should describe the task/situation that should
-trigger loading the skill. create_skill stores the skill body and attaches
-\`{ "type": "skill", "id": "<returned id>" }\` to the agent config in one
-operation, so do not add a second skill ref afterwards.`;
+trigger loading the skill. create_skill stores the skill body only; it does not
+attach the skill to the agent config. After create_skill, call read_config and
+use patch_config (or write_config) to add
+\`{ "type": "skill", "id": "<returned id>" }\` to \`skills\`.`;
 
 export const INTERACTIVE_TOOLS_SECTION = `\
 ## Interactive tools (user-facing)
@@ -307,21 +321,29 @@ Never invent credential IDs or names. Always go through \`ask_credential\`.`;
 export const WRITE_CONFIG_SECTION = `\
 ## write_config — full replace
 
-Call write_config with the complete agent configuration as a JSON string:
+Before calling write_config, call \`read_config\` and build the full replacement
+from the returned \`config\`. Call write_config with the complete agent
+configuration as a JSON string and the \`baseConfigHash\` from that same
+\`read_config\` result:
 \`\`\`json
 {
-  "name": "My Agent",
-  "model": "anthropic/claude-sonnet-4-5",
-  "credential": "My Anthropic Key",
-  "instructions": "You are a helpful assistant.",
-  "memory": { "enabled": true, "storage": "n8n", "lastMessages": 50 }
+  "baseConfigHash": "<configHash from read_config>",
+  "json": "{ \\"name\\": \\"My Agent\\", \\"model\\": \\"anthropic/claude-sonnet-4-5\\", \\"credential\\": \\"My Anthropic Key\\", \\"instructions\\": \\"You are a helpful assistant.\\", \\"memory\\": { \\"enabled\\": true, \\"storage\\": \\"n8n\\", \\"lastMessages\\": 50 } }"
 }
-\`\`\``;
+\`\`\`
+
+Do not use the prompt's config snapshot or your remembered state as the base
+for write_config. The only retry exception is when write_config returns
+\`stage: "stale"\`; in that case, use the returned \`config\` and \`configHash\`
+to retry once. Do not retry from memory.`;
 
 export const PATCH_CONFIG_SECTION = `\
 ## patch_config — RFC 6902 JSON Patch
 
-Send an array of RFC 6902 patch operations as a JSON string. Each operation targets a field by its JSON Pointer path.
+Before calling patch_config, call \`read_config\` and derive the patch from the
+returned \`config\`. Send an array of RFC 6902 patch operations as a JSON string
+plus the \`baseConfigHash\` from that same \`read_config\` result. Each operation
+targets a field by its JSON Pointer path.
 
 | op      | description                              |
 |---------|------------------------------------------|
@@ -334,25 +356,53 @@ Send an array of RFC 6902 patch operations as a JSON string. Each operation targ
 
 Examples:
 \`\`\`json
-[
-  { "op": "replace", "path": "/model", "value": "anthropic/claude-sonnet-4-5" }
-]
+{
+  "baseConfigHash": "<configHash from read_config>",
+  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"anthropic/claude-sonnet-4-5\\" }]"
+}
 \`\`\`
 \`\`\`json
-[
-  { "op": "replace", "path": "/memory/lastMessages", "value": 50 },
-  { "op": "add", "path": "/tools/-", "value": { "type": "workflow", "workflow": "Send Email" } }
-]
+{
+  "baseConfigHash": "<configHash from read_config>",
+  "operations": "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/memory/lastMessages\\", \\"value\\": 50 }, { \\"op\\": \\"add\\", \\"path\\": \\"/tools/-\\", \\"value\\": { \\"type\\": \\"workflow\\", \\"workflow\\": \\"Send Email\\" } }]"
+}
 \`\`\`
 \`\`\`json
-[
-  { "op": "remove", "path": "/description" }
-]
+{
+  "baseConfigHash": "<configHash from read_config>",
+  "operations": "[{ \\"op\\": \\"remove\\", \\"path\\": \\"/description\\" }]"
+}
 \`\`\`
 
 Path syntax: \`/field\` for top-level fields, \`/nested/field\` for nested, \`/array/0\` for index, \`/array/-\` to append.
 
-On error, the response includes a \`stage\` field: "parse" (invalid JSON), "patch" (operation failed), or "schema" (config fails validation).`;
+When attaching a skill, append to \`/skills/-\` if \`skills\` exists; otherwise
+add \`/skills\` with an array containing the skill ref.
+
+If patch_config returns \`stage: "stale"\`, use the returned \`config\` and
+\`configHash\` to retry once. Do not retry from memory.
+
+On error, the response includes a \`stage\` field: "parse" (invalid JSON), "stale" (config changed), "patch" (operation failed), or "schema" (config fails validation).`;
+
+export const READ_CONFIG_SECTION = `\
+## read_config — mandatory freshness check
+
+Call \`read_config\` before every \`write_config\` or \`patch_config\` call. Call
+it after any interactive tool returns and immediately before composing the
+write or patch payload.
+
+Use the returned \`config\` as the only source of truth and pass the returned
+\`configHash\` as \`baseConfigHash\`. Do not patch from memory, the conversation,
+or the prompt snapshot. Do not skip this just because the prompt already
+contains a \`configHash\`.
+
+If a write_config or patch_config call returns \`stage: "stale"\`, retry once
+from the returned \`config\` and \`configHash\`. For any later independent config
+change, call \`read_config\` again.
+
+\`create_skill\` stores a skill body but does not attach it. To make the agent
+use the skill, call \`read_config\` after create_skill and then attach the
+returned id through \`patch_config\` or \`write_config\`.`;
 
 export const WORKFLOW_SECTION = `\
 ## Workflow
@@ -360,16 +410,19 @@ export const WORKFLOW_SECTION = `\
 1. If the agent has no \`instructions\` and \`credential\` yet (fresh agent), FIRST call resolve_llm
    when the user specified a provider/model or did not ask to choose. If
    resolve_llm reports ambiguity, or the user asks to choose/change/use a
-   different model, call ask_llm. Then write_config with the chosen \`model\`
-   and \`credential\` plus a draft \`instructions\`.
+   different model, call ask_llm. Then call read_config and write_config
+   with the chosen \`model\` and \`credential\` plus a draft \`instructions\`.
 2. Use ask_question whenever you have a clarifying question with discrete
    options (e.g. "Which Slack channel?" → list channels, "Read-only or
    read-write?"). Never put the question in plain text if options are known.
 3. Before adding any node tool that needs credentials, call ask_credential for
    each slot.
 4. PREFER attaching existing workflows or nodes as tools over custom tools.
-5. Use create_skill for reusable instruction bundles; it attaches the returned skill id to \`skills\`.
-6. Use patch_config for targeted changes; write_config to replace the full config.`;
+5. Use create_skill for reusable instruction bundles, then read_config and
+   patch_config to add the returned skill id to \`skills\`.
+6. Before every write_config or patch_config, call read_config in the same turn
+   and use the returned configHash as baseConfigHash.
+7. Use patch_config for targeted changes; write_config to replace the full config.`;
 
 export const FEW_SHOT_FLOWS_SECTION = `\
 ## Example flows
@@ -384,32 +437,29 @@ export const FEW_SHOT_FLOWS_SECTION = `\
        nodeType: "n8n-nodes-base.slackTool", credentialType: "slackApi",
        slot: "slackApi" })
    → { credentialId: "xyz", credentialName: "Acme Slack" }
-5. write_config({ ...
-     model: "anthropic/claude-sonnet-4-5",
-     credential: "My Anthropic",
-     tools: [{ type: "node", name: "slack_post", node: { ...,
-       credentials: { slackApi: { id: "xyz", name: "Acme Slack" } } } }]
-   })
-6. Reply: "Done."
+5. read_config() → { configHash: "hash1", config: { ... } }
+6. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model, credential, instructions, and Slack tool... }" })
+7. Reply: "Done."
 
 ### New agent, user says "Use Anthropic via OpenRouter"
 1. resolve_llm({ provider: "openrouter" })
    → { ok: true, provider: "openrouter",
        model: "anthropic/claude-sonnet-4.6",
        credentialId: "or1", credentialName: "OpenRouter" }
-2. write_config with \`model: "openrouter/anthropic/claude-sonnet-4.6"\`,
-   \`credential: "OpenRouter"\`, and the requested instructions.
+2. read_config() → { configHash: "hash1", config: { ... } }
+3. write_config({ baseConfigHash: "hash1", json: "{ ...complete config with model: \\"openrouter/anthropic/claude-sonnet-4.6\\", credential: \\"OpenRouter\\", and the requested instructions... }" })
 
 ### User says "Use a different OpenRouter model"
 1. ask_llm({ purpose: "Choose a different OpenRouter model" })
-2. patch_config with the returned \`model: "{provider}/{model}"\` and
-   \`credential: credentialName\`.
+2. read_config() → { configHash: "hash1", config: { ... } }
+3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"replace\\", \\"path\\": \\"/model\\", \\"value\\": \\"{provider}/{model}\\" }, { \\"op\\": \\"replace\\", \\"path\\": \\"/credential\\", \\"value\\": \\"<credentialName>\\" }]" }\`.
 
 ### Adding a new node tool to an existing agent
 1. (skip ask_llm — already set)
 2. search_nodes / get_node_types
 3. ask_credential per required slot
-4. patch_config with \`{ op: "add", path: "/tools/-", value: { ... credentials: {...} } }\`
+4. read_config() → { configHash: "hash1", config: { ... } }
+5. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ op: \\"add\\", path: \\"/tools/-\\", value: { ... credentials: {...} } }]" }\`
 
 ### Adding a node tool when credential setup is skipped
 1. search_nodes / get_node_types
@@ -417,19 +467,22 @@ export const FEW_SHOT_FLOWS_SECTION = `\
      nodeType: "n8n-nodes-base.salesforceTool", credentialType: "salesforceOAuth2Api",
      slot: "salesforceOAuth2Api" })
    → { skipped: true }
-3. patch_config with \`{ op: "add", path: "/tools/-", value: { type: "node",
+3. read_config() → { configHash: "hash1", config: { ... } }
+4. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ op: \\"add\\", path: \\"/tools/-\\", value: { type: \\"node\\",
    name: "salesforce_create_lead", description: "...", node: {
    nodeType: "n8n-nodes-base.salesforceTool", nodeTypeVersion: 1,
-   nodeParameters: { ... } } } }\`
+   nodeParameters: { ... } } } }]" }\`
    IMPORTANT: omit \`node.credentials\` or omit only the skipped credential slot.
    Do not stop. Do not say you will not add the tool.
-4. Reply: "Done. I added the Salesforce tool without credentials; configure
+5. Reply: "Done. I added the Salesforce tool without credentials; configure
    the credential later before using it."
 
 ### Adding a skill to an existing agent
 1. create_skill({ name: "Summarize Meetings", description: "Use when summarizing meeting notes or transcripts", body: "Extract decisions, risks, and action items." })
    → { id: "skill_0Ab9ZkLm3Pq7Xy2N", ... }
-2. Reply: "Done. I added the skill."
+2. read_config() → { configHash: "hash1", config: { ... } }
+3. patch_config with \`{ baseConfigHash: "hash1", operations: "[{ \\"op\\": \\"add\\", \\"path\\": \\"/skills/-\\", \\"value\\": { \\"type\\": \\"skill\\", \\"id\\": \\"skill_0Ab9ZkLm3Pq7Xy2N\\" } }]" }\`
+4. Reply: "Done. I added the skill."
 
 ### Ambiguous request: "Make it post somewhere"
 1. ask_question({ question: "Where should the agent post?",
@@ -437,7 +490,7 @@ export const FEW_SHOT_FLOWS_SECTION = `\
        { label: "Slack", value: "slack" },
        { label: "Discord", value: "discord" },
        { label: "Email", value: "email" } ] })
-2. Continue with the chosen branch (search_nodes → ask_credential → patch_config).`;
+2. Continue with the chosen branch (search_nodes → ask_credential → read_config → patch_config).`;
 
 export const IMPORTANT_SECTION = `\
 ## Important
@@ -452,7 +505,7 @@ export const IMPORTANT_SECTION = `\
 - Prefer workflow tools and node tools over custom tools for real-world interactions
 - Memory with storage "n8n" is the default -- always enable it unless told otherwise
 - \`build_custom_tool\` generates an opaque custom tool id, then compiles and stores the tool code. Register the returned id in the config separately by adding a \`{ type: "custom", id }\` entry to \`tools\` via write_config or patch_config
-- \`create_skill\` creates the skill and attaches a \`{ type: "skill", id }\` entry to \`skills\` in one operation`;
+- \`create_skill\` stores the skill body only. It is not active until you add a \`{ type: "skill", id }\` entry to \`skills\` via read_config and patch_config/write_config.`;
 
 export const RESPONSE_STYLE_SECTION = `\
 ## Response style
@@ -502,16 +555,19 @@ ${jsonSchemaText}
 
 export interface BuilderPromptContext {
 	configJson: string;
+	configHash: string | null;
+	configUpdatedAt: string | null;
 	toolList: string;
 	builderModel: string;
 }
 
 export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
-	const { configJson, toolList, builderModel } = ctx;
+	const { configJson, configHash, configUpdatedAt, toolList, builderModel } = ctx;
 
 	return [
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
-		getAgentStateSection(configJson, toolList),
+		getAgentStateSection(configJson, configHash, configUpdatedAt, toolList),
+		READ_CONFIG_SECTION,
 		CONVERSATION_MODE_SECTION,
 		TOOL_TYPES_SECTION,
 		LLM_RESOLUTION_SECTION,

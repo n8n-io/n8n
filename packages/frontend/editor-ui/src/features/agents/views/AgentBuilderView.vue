@@ -395,6 +395,10 @@ async function settleAutosave() {
 	await Promise.all([configAutosave.settleAutosave(), skillAutosave.settleAutosave()]);
 }
 
+async function flushAutosave() {
+	await Promise.all([configAutosave.flushAutosave(), skillAutosave.flushAutosave()]);
+}
+
 function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	if (!localConfig.value) return;
 	// Record BEFORE assigning so the composable can diff against the pre-update state.
@@ -851,6 +855,7 @@ function onSwitchAgent(nextAgentId: string) {
 					:is-builder-configured="isBuilderConfigured"
 					:is-build-chat-streaming="isBuildChatStreaming"
 					:is-published="Boolean(agent?.publishedVersion)"
+					:before-build-send="flushAutosave"
 					@session-select="onSessionPick"
 					@new-chat="onNewChat"
 					@config-updated="onConfigUpdated"

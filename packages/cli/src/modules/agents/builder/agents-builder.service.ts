@@ -17,7 +17,7 @@ import { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '../json-config/agent-json-config';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { buildBuilderPrompt } from './agents-builder-prompts';
-import { AgentsBuilderToolsService } from './agents-builder-tools.service';
+import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
@@ -162,6 +162,8 @@ export class AgentsBuilderService {
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
 		const instructions = buildBuilderPrompt({
 			configJson,
+			configHash: getAgentConfigHash(currentConfig),
+			configUpdatedAt: agent.updatedAt.toISOString(),
 			toolList,
 			builderModel: BUILDER_MODEL,
 		});
