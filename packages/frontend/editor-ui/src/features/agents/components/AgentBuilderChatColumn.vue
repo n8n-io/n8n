@@ -32,6 +32,7 @@ const props = defineProps<{
 	isBuilderConfigured: boolean;
 	isBuildChatStreaming: boolean;
 	isPublished: boolean;
+	beforeBuildSend?: () => Promise<void> | void;
 }>();
 
 const emit = defineEmits<{
@@ -149,6 +150,7 @@ const sessionMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
 				:agent-config="localConfig"
 				:agent-status="deriveAgentStatus(agent)"
 				:connected-triggers="connectedTriggers"
+				:before-send="beforeBuildSend"
 				@config-updated="emit('config-updated')"
 				@update:streaming="emit('update:streaming', $event)"
 			>

@@ -42,25 +42,37 @@ export class AgentSkillsService {
 	): Promise<AgentSkillMutationResponse> {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
-		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
 
 		this.validateSkill(skill);
 
-		const skillId = generateAgentResourceId('skill', Object.keys(entity.skills ?? {}));
-
-		entity.skills = {
-			...(entity.skills ?? {}),
-			[skillId]: skill,
-		};
-		entity.schema.skills = [
-			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
-			{ type: 'skill', id: skillId },
-		];
+		const skillId = this.addSkill(entity, skill);
 
 		markAgentDraftDirty(entity);
 		const saved = await this.agentRepository.save(entity);
 
 		this.logger.debug('Created agent skill', { agentId, projectId, skillId });
+
+		return { id: skillId, skill, versionId: saved.versionId };
+	}
+
+	async createAndAttachSkill(
+		agentId: string,
+		projectId: string,
+		skill: AgentSkill,
+	): Promise<AgentSkillMutationResponse> {
+		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+		if (!entity) throw new NotFoundError('Agent not found');
+		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
+
+		this.validateSkill(skill);
+
+		const skillId = this.addSkill(entity, skill);
+		this.attachSkillRef(entity, skillId);
+
+		markAgentDraftDirty(entity);
+		const saved = await this.agentRepository.save(entity);
+
+		this.logger.debug('Created and attached agent skill', { agentId, projectId, skillId });
 
 		return { id: skillId, skill, versionId: saved.versionId };
 	}
@@ -166,5 +178,25 @@ export class AgentSkillsService {
 				`Invalid agent skill: ${result.error.issues[0]?.message ?? 'Invalid skill'}`,
 			);
 		}
+	}
+
+	private addSkill(entity: Agent, skill: AgentSkill): string {
+		const skillId = generateAgentResourceId('skill', Object.keys(entity.skills ?? {}));
+
+		entity.skills = {
+			...(entity.skills ?? {}),
+			[skillId]: skill,
+		};
+
+		return skillId;
+	}
+
+	private attachSkillRef(entity: Agent, skillId: string): void {
+		if (!entity.schema) throw new UserError('Agent has no JSON config yet.');
+
+		entity.schema.skills = [
+			...(entity.schema.skills ?? []).filter((ref) => ref.id !== skillId),
+			{ type: 'skill', id: skillId },
+		];
 	}
 }

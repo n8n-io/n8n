@@ -1,13 +1,17 @@
 import { ref, type Ref } from 'vue';
 import isEqual from 'lodash/isEqual';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { getIntegrationStatus } from './useAgentApi';
+import {
+	isAgentCredentialIntegration,
+	isAgentScheduleIntegration,
+	type AgentIntegrationStatusEntry,
+} from '@n8n/api-types';
 import {
 	buildAgentConfigFingerprint,
 	deriveAgentStatus,
 	toolIdentifiersFromConfig,
 	type AgentTelemetryStatus,
 } from './agentTelemetry.utils';
+import { syncAgentIntegrationStatusCache } from './useAgentIntegrationStatus';
 import { useAgentTelemetry, type AgentConfigPart } from './useAgentTelemetry';
 import type { AgentResource, AgentJsonConfig } from '../types';
 
@@ -70,8 +74,32 @@ function deriveChangedParts(
 	return Array.from(parts);
 }
 
+function integrationStatusEntriesFromConfig(
+	config: AgentJsonConfig | null,
+	knownTriggerTypes: readonly string[],
+): AgentIntegrationStatusEntry[] {
+	const knownTypes = new Set(knownTriggerTypes);
+	const entries: AgentIntegrationStatusEntry[] = [];
+
+	for (const integration of config?.integrations ?? []) {
+		if (!knownTypes.has(integration.type)) continue;
+
+		if (isAgentScheduleIntegration(integration)) {
+			if (integration.cronExpression.trim() !== '') {
+				entries.push({ type: integration.type });
+			}
+			continue;
+		}
+
+		if (isAgentCredentialIntegration(integration)) {
+			entries.push({ type: integration.type, credentialId: integration.credentialId });
+		}
+	}
+
+	return entries;
+}
+
 export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
-	const rootStore = useRootStore();
 	const agentTelemetry = useAgentTelemetry();
 
 	// Parts accumulated between autosave flushes. `recordConfigEdit` adds to
@@ -231,30 +259,27 @@ export function useAgentBuilderTelemetry(deps: AgentBuilderTelemetryDeps) {
 	}
 
 	/**
-	 * Eagerly fetch connected trigger types so telemetry fingerprints are
+	 * Eagerly derive connected trigger types so telemetry fingerprints are
 	 * accurate even if the user never opens the Triggers section of the
-	 * settings sidebar. Returns the fetched list (or `null` on failure) so the
-	 * view can sync its own `connectedTriggers` ref — the list is also used as
-	 * a prop for the chat panels.
+	 * settings sidebar. Integrations are already part of the fetched agent
+	 * config, so this does not need a separate integration-status request.
 	 */
 	async function fetchInitialTriggersBaseline(
 		knownTriggerTypes: readonly string[],
 	): Promise<string[] | null> {
-		try {
-			const result = await getIntegrationStatus(
-				rootStore.restApiContext,
-				deps.projectId.value,
-				deps.agentId.value,
-			);
-			const connected = (result.integrations ?? [])
-				.map((i) => i.type)
-				.filter((t) => knownTriggerTypes.includes(t))
-				.sort();
-			triggersBaseline.value = connected;
-			return connected;
-		} catch {
-			return null;
-		}
+		const integrations = integrationStatusEntriesFromConfig(
+			deps.localConfig.value,
+			knownTriggerTypes,
+		);
+		const connected = integrations.map((integration) => integration.type).sort();
+		syncAgentIntegrationStatusCache(
+			deps.projectId.value,
+			deps.agentId.value,
+			knownTriggerTypes,
+			integrations,
+		);
+		triggersBaseline.value = connected;
+		return connected;
 	}
 
 	/** Reset all per-agent telemetry state when switching agents. */

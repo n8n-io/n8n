@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
+import type { AgentScheduleConfig } from '@n8n/api-types';
+import { N8nButton, N8nCard, N8nIcon, N8nInput, N8nSwitch2, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useDebounceFn } from '@vueuse/core';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 import {
 	activateScheduleIntegration,
@@ -23,30 +23,39 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{
-	'status-change': [active: boolean];
+	'status-change': [configured: boolean];
 	'trigger-added': [];
+	saved: [];
 }>();
 
 const locale = useI18n();
 const rootStore = useRootStore();
 
 const active = ref(false);
+const lastSavedActive = ref(false);
 const cronExpression = ref('');
+const wakeUpPrompt = ref('');
 const loading = ref(false);
 const saving = ref(false);
-const hydrating = ref(true);
 const cronErrorMessage = ref('');
 const generalErrorMessage = ref('');
 const lastSavedCronExpression = ref('');
+const lastSavedWakeUpPrompt = ref('');
 
-const timezone = computed(() => rootStore.timezone || 'UTC');
-const activateDisabled = computed(
+const isDirty = computed(
 	() =>
-		!props.isPublished ||
-		cronExpression.value.trim() === '' ||
-		loading.value ||
-		saving.value ||
-		cronErrorMessage.value !== '',
+		active.value !== lastSavedActive.value ||
+		cronExpression.value !== lastSavedCronExpression.value ||
+		wakeUpPrompt.value !== lastSavedWakeUpPrompt.value,
+);
+const isConfigured = computed(() => lastSavedCronExpression.value.trim() !== '');
+const canSave = computed(
+	() =>
+		isDirty.value &&
+		!loading.value &&
+		!saving.value &&
+		cronErrorMessage.value === '' &&
+		(!active.value || (props.isPublished && cronExpression.value.trim() !== '')),
 );
 
 type ScheduleErrorKey =
@@ -55,11 +64,14 @@ type ScheduleErrorKey =
 	| 'agents.schedule.activateError'
 	| 'agents.schedule.deactivateError';
 
-function applyConfig(config: { active: boolean; cronExpression: string }) {
+function applyConfig(config: AgentScheduleConfig) {
 	active.value = config.active;
+	lastSavedActive.value = config.active;
 	cronExpression.value = config.cronExpression;
 	lastSavedCronExpression.value = config.cronExpression;
-	emit('status-change', config.active);
+	wakeUpPrompt.value = config.wakeUpPrompt;
+	lastSavedWakeUpPrompt.value = config.wakeUpPrompt;
+	emit('status-change', config.cronExpression.trim() !== '');
 }
 
 function toErrorMessage(error: unknown, fallbackKey: ScheduleErrorKey): string {
@@ -85,10 +97,14 @@ function setSaveError(error: unknown, fallbackKey: ScheduleErrorKey) {
 	generalErrorMessage.value = message;
 }
 
-async function loadConfig() {
-	loading.value = true;
+function clearErrors() {
 	cronErrorMessage.value = '';
 	generalErrorMessage.value = '';
+}
+
+async function loadConfig() {
+	loading.value = true;
+	clearErrors();
 
 	try {
 		const config = await getScheduleIntegration(
@@ -101,99 +117,115 @@ async function loadConfig() {
 		generalErrorMessage.value = toErrorMessage(error, 'agents.schedule.loadError');
 	} finally {
 		loading.value = false;
-		hydrating.value = false;
 	}
 }
 
-async function saveConfig(force = false): Promise<boolean> {
-	if (!force && cronExpression.value === lastSavedCronExpression.value) {
-		return true;
-	}
-
-	saving.value = true;
-	cronErrorMessage.value = '';
-	generalErrorMessage.value = '';
-
+async function saveCronConfig(overrides?: {
+	cronExpression?: string;
+	wakeUpPrompt?: string;
+}): Promise<AgentScheduleConfig | null> {
 	try {
-		const config = await updateScheduleIntegration(
+		return await updateScheduleIntegration(
 			rootStore.restApiContext,
 			props.projectId,
 			props.agentId,
 			{
-				cronExpression: cronExpression.value,
+				cronExpression: overrides?.cronExpression ?? cronExpression.value,
+				wakeUpPrompt: overrides?.wakeUpPrompt ?? wakeUpPrompt.value,
 			},
 		);
-		applyConfig(config);
-		return true;
 	} catch (error) {
 		setSaveError(error, 'agents.schedule.saveError');
-		return false;
+		return null;
+	}
+}
+
+async function onDisconnect() {
+	if (!isConfigured.value || loading.value || saving.value) return;
+	saving.value = true;
+	clearErrors();
+
+	try {
+		await deactivateScheduleIntegration(rootStore.restApiContext, props.projectId, props.agentId);
+		const config = await saveCronConfig({
+			cronExpression: '',
+			wakeUpPrompt: lastSavedWakeUpPrompt.value,
+		});
+		if (!config) return;
+		applyConfig({ ...config, active: false, cronExpression: '' });
+		emit('saved');
+	} catch (error) {
+		setSaveError(error, 'agents.schedule.deactivateError');
 	} finally {
 		saving.value = false;
 	}
 }
 
-const debouncedSave = useDebounceFn(() => {
-	void saveConfig();
-}, 500);
-
-watch(cronExpression, () => {
-	if (hydrating.value) {
-		return;
-	}
-
-	cronErrorMessage.value = '';
-	generalErrorMessage.value = '';
-
-	void debouncedSave();
-});
-
-async function onActivate() {
-	loading.value = true;
-	cronErrorMessage.value = '';
-	generalErrorMessage.value = '';
+async function onSave() {
+	if (!canSave.value) return;
+	const wasConfigured = lastSavedCronExpression.value.trim() !== '';
+	saving.value = true;
+	clearErrors();
 
 	try {
-		const saved = await saveConfig(true);
-		if (!saved) {
-			return;
+		let config: AgentScheduleConfig | null;
+		if (active.value) {
+			config = await saveCronConfig();
+			if (!config) return;
+			if (!config.active) {
+				config = await activateScheduleIntegration(
+					rootStore.restApiContext,
+					props.projectId,
+					props.agentId,
+				);
+			}
+		} else {
+			if (lastSavedActive.value) {
+				config = await deactivateScheduleIntegration(
+					rootStore.restApiContext,
+					props.projectId,
+					props.agentId,
+				);
+			}
+			config = await saveCronConfig();
+			if (!config) return;
 		}
 
-		const config = await activateScheduleIntegration(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
-		const wasActive = active.value;
 		applyConfig(config);
-
-		if (!wasActive && config.active) {
+		if (!wasConfigured && config.cronExpression.trim() !== '') {
 			emit('trigger-added');
 		}
+		emit('saved');
 	} catch (error) {
-		setSaveError(error, 'agents.schedule.activateError');
+		setSaveError(
+			error,
+			active.value ? 'agents.schedule.activateError' : 'agents.schedule.deactivateError',
+		);
 	} finally {
-		loading.value = false;
+		saving.value = false;
 	}
 }
 
-async function onDeactivate() {
-	loading.value = true;
-	cronErrorMessage.value = '';
-	generalErrorMessage.value = '';
+function onCancel() {
+	active.value = lastSavedActive.value;
+	cronExpression.value = lastSavedCronExpression.value;
+	wakeUpPrompt.value = lastSavedWakeUpPrompt.value;
+	clearErrors();
+}
 
-	try {
-		const config = await deactivateScheduleIntegration(
-			rootStore.restApiContext,
-			props.projectId,
-			props.agentId,
-		);
-		applyConfig(config);
-	} catch (error) {
-		generalErrorMessage.value = toErrorMessage(error, 'agents.schedule.deactivateError');
-	} finally {
-		loading.value = false;
-	}
+function onCronExpressionInput(value: string) {
+	cronExpression.value = value;
+	clearErrors();
+}
+
+function onWakeUpPromptInput(value: string) {
+	wakeUpPrompt.value = value;
+	clearErrors();
+}
+
+function onActiveInput(value: boolean) {
+	active.value = value;
+	clearErrors();
 }
 
 onMounted(() => {
@@ -226,13 +258,26 @@ onMounted(() => {
 				{{ locale.baseText('agents.schedule.description') }}
 			</N8nText>
 
+			<div :class="$style.toggleRow">
+				<N8nText size="small" bold>
+					{{ locale.baseText('agents.schedule.status.active') }}
+				</N8nText>
+				<N8nSwitch2
+					:model-value="active"
+					:disabled="loading || saving"
+					data-testid="schedule-active-toggle"
+					@update:model-value="(value) => onActiveInput(Boolean(value))"
+				/>
+			</div>
+
 			<div :class="$style.field">
 				<N8nText size="small" bold>{{ locale.baseText('agents.schedule.cron') }}</N8nText>
 				<N8nInput
-					v-model="cronExpression"
-					:disabled="loading"
+					:model-value="cronExpression"
+					:disabled="loading || saving"
 					:placeholder="locale.baseText('agents.schedule.cron.placeholder')"
 					data-testid="schedule-cron-input"
+					@update:model-value="onCronExpressionInput"
 				/>
 				<N8nText
 					v-if="cronErrorMessage"
@@ -244,15 +289,25 @@ onMounted(() => {
 				</N8nText>
 			</div>
 
-			<N8nText :class="$style.helpText" size="small">
-				{{
-					locale.baseText('agents.schedule.timezoneHelp', {
-						interpolate: { timezone },
-					})
-				}}
-			</N8nText>
+			<div :class="$style.field">
+				<N8nText size="small" bold>
+					{{ locale.baseText('agents.schedule.wakeUpPrompt') }}
+				</N8nText>
+				<N8nInput
+					:model-value="wakeUpPrompt"
+					type="textarea"
+					:rows="3"
+					:disabled="loading || saving"
+					:placeholder="locale.baseText('agents.schedule.wakeUpPrompt.placeholder')"
+					data-testid="schedule-wake-up-prompt-input"
+					@update:model-value="onWakeUpPromptInput"
+				/>
+				<N8nText :class="$style.helpText" size="small">
+					{{ locale.baseText('agents.schedule.wakeUpPrompt.help') }}
+				</N8nText>
+			</div>
 
-			<N8nText v-if="!isPublished" :class="$style.helpText" size="small">
+			<N8nText v-if="active && !isPublished" :class="$style.helpText" size="small">
 				{{ locale.baseText('agents.schedule.publishRequired') }}
 			</N8nText>
 
@@ -262,23 +317,29 @@ onMounted(() => {
 
 			<div :class="$style.actions">
 				<N8nButton
-					v-if="!active"
-					:disabled="activateDisabled"
-					:loading="loading || saving"
-					data-testid="schedule-activate-button"
-					@click="onActivate"
-				>
-					{{ locale.baseText('agents.schedule.activate') }}
-				</N8nButton>
-				<N8nButton
-					v-else
+					v-if="isConfigured"
 					variant="destructive"
-					:loading="loading || saving"
-					data-testid="schedule-deactivate-button"
-					@click="onDeactivate"
+					:disabled="loading || saving"
+					data-testid="schedule-disconnect-button"
+					@click="onDisconnect"
 				>
-					{{ locale.baseText('agents.schedule.deactivate') }}
+					<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
+					{{ locale.baseText('agents.builder.addTrigger.disconnect') }}
 				</N8nButton>
+				<div :class="$style.saveActions">
+					<N8nButton variant="subtle" data-testid="schedule-cancel-button" @click="onCancel">
+						{{ locale.baseText('generic.cancel') }}
+					</N8nButton>
+					<N8nButton
+						variant="solid"
+						:disabled="!canSave"
+						:loading="saving"
+						data-testid="schedule-save-button"
+						@click="onSave"
+					>
+						{{ locale.baseText('generic.save') }}
+					</N8nButton>
+				</div>
 			</div>
 		</div>
 	</component>
@@ -342,10 +403,25 @@ onMounted(() => {
 	gap: var(--spacing--2xs);
 }
 
+.toggleRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+}
+
 .actions {
 	display: flex;
 	align-items: center;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
+}
+
+.saveActions {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .errorText {
