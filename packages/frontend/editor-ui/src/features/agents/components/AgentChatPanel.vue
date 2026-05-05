@@ -22,6 +22,7 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
+		beforeSend?: () => Promise<void> | void;
 	}>(),
 	{
 		visible: true,
@@ -29,6 +30,7 @@ const props = withDefaults(
 		endpoint: 'chat',
 		initialMessage: undefined,
 		continueSessionId: undefined,
+		beforeSend: undefined,
 	},
 );
 
@@ -47,6 +49,7 @@ const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 
 const inputText = ref('');
+const isPreparingToSend = ref(false);
 
 const {
 	messages,
@@ -100,22 +103,39 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value) return;
-	inputText.value = '';
+	if (!text || isStreaming.value || isPreparingToSend.value) return;
 
-	const fingerprint = await buildAgentConfigFingerprint(props.agentConfig, props.connectedTriggers);
-	// Raw `message` is sent intentionally — matches the text-to-workflow
-	// builder's `User submitted builder message` event, which also sends the
-	// raw prompt. Revisit if the product-wide privacy posture tightens.
-	agentTelemetry.trackSubmittedMessage({
-		agentId: props.agentId,
-		message: text,
-		mode: props.endpoint === 'build' ? 'build' : 'test',
-		status: props.agentStatus,
-		agentConfig: fingerprint,
-	});
+	isPreparingToSend.value = true;
+	try {
+		await props.beforeSend?.();
+	} catch {
+		// Autosave errors are surfaced by the caller that owns the flush.
+		isPreparingToSend.value = false;
+		return;
+	}
 
-	await sendMessage(text);
+	try {
+		inputText.value = '';
+
+		const fingerprint = await buildAgentConfigFingerprint(
+			props.agentConfig,
+			props.connectedTriggers,
+		);
+		// Raw `message` is sent intentionally — matches the text-to-workflow
+		// builder's `User submitted builder message` event, which also sends the
+		// raw prompt. Revisit if the product-wide privacy posture tightens.
+		agentTelemetry.trackSubmittedMessage({
+			agentId: props.agentId,
+			message: text,
+			mode: props.endpoint === 'build' ? 'build' : 'test',
+			status: props.agentStatus,
+			agentConfig: fingerprint,
+		});
+
+		await sendMessage(text);
+	} finally {
+		isPreparingToSend.value = false;
+	}
 }
 
 function sendMessageFromOutside(message: string) {
@@ -139,8 +159,19 @@ const seedMessage = props.initialMessage;
 // before any await, so calling it here runs the sync prefix (push + set
 // `isStreaming = true` inside streamFromEndpoint) before setup returns. The
 // fetch itself continues to run async in the background.
+async function sendSeedMessage(message: string): Promise<void> {
+	try {
+		await props.beforeSend?.();
+		const sending = sendMessage(message);
+		emit('initial-consumed');
+		await sending;
+	} catch {
+		// Autosave errors are surfaced by the caller that owns the flush.
+	}
+}
+
 if (seedMessage) {
-	void sendMessage(seedMessage);
+	void sendSeedMessage(seedMessage);
 }
 
 onMounted(() => {
@@ -148,11 +179,8 @@ onMounted(() => {
 	// and wants us to seed it with the first message — there's no thread to
 	// load yet, and hitting the history endpoint would 404. The seed was
 	// already sent synchronously during setup (see the `seedMessage` block
-	// above) — here we just emit `initial-consumed` so the parent can clear
-	// its source ref. This guards against re-sending on HMR / any re-mount
-	// where the parent's prompt ref is still populated.
+	// above).
 	if (seedMessage) {
-		emit('initial-consumed');
 		return;
 	}
 	void loadHistory();
@@ -222,8 +250,8 @@ onBeforeUnmount(() => {
 				v-model="inputText"
 				placeholder="Type a message..."
 				:is-streaming="messagingState === 'receiving'"
-				:can-submit="!isStreaming && inputText.trim().length > 0"
-				:disabled="isStreaming && messagingState !== 'receiving'"
+				:can-submit="!isStreaming && !isPreparingToSend && inputText.trim().length > 0"
+				:disabled="isPreparingToSend || (isStreaming && messagingState !== 'receiving')"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

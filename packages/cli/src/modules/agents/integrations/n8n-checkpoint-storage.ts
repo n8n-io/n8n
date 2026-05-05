@@ -10,6 +10,16 @@ import { strict } from 'node:assert';
 
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 
+type CheckpointStatus =
+	| {
+			status: 'expired';
+	  }
+	| { status: 'not-found' }
+	| {
+			status: 'active';
+			checkpoint: SerializableAgentState;
+	  };
+
 @Service()
 export class N8NCheckpointStorage {
 	private pruneTimeout: NodeJS.Timeout | undefined;
@@ -77,11 +87,11 @@ export class N8NCheckpointStorage {
 		return jsonParse<SerializableAgentState>(checkpoint.state);
 	}
 
-	async getStatus(key: string): Promise<'expired' | 'active' | 'not-found'> {
+	async getStatus(key: string): Promise<CheckpointStatus> {
 		const checkpoint = await this.agentCheckpointRepository.findOneBy({ runId: key });
-		if (!checkpoint) return 'not-found';
-		if (checkpoint.expired || checkpoint.state === null) return 'expired';
-		return 'active';
+		if (!checkpoint) return { status: 'not-found' };
+		if (checkpoint.expired || checkpoint.state === null) return { status: 'expired' };
+		return { status: 'active', checkpoint: jsonParse<SerializableAgentState>(checkpoint.state) };
 	}
 
 	async delete(key: string): Promise<void> {

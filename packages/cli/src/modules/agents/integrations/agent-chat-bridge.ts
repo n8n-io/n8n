@@ -1,89 +1,33 @@
-import type { AgentMessage, CredentialProvider, StreamChunk } from '@n8n/agents';
+import type { AgentMessage, StreamChunk } from '@n8n/agents';
 import { Container } from '@n8n/di';
+import type { ActionEvent, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
 
 import type { AgentsService } from '../agents.service';
 import type { RichSuspendPayload } from '../types';
+import type { AgentChatIntegration } from './agent-chat-integration';
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { CallbackStore } from './callback-store';
 import type { ComponentMapper } from './component-mapper';
+import { type TextEndFn, type TextYieldFn, type InternalThread, toInternalThreadId } from './types';
 
-/**
- * Subset of `AgentsService` consumed by the bridge.
- * Defined as an interface to avoid circular imports and simplify testing.
- */
 interface AgentExecutor {
-	executeForChat(
-		agentId: string,
-		message: string,
-		threadId: string,
-		userId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		integrationType?: string,
-	): AsyncGenerator<StreamChunk>;
+	executeForChatPublished(config: {
+		agentId: string;
+		projectId: string;
+		message: string;
+		memory: { threadId: InternalThread; resourceId: string };
+		integrationType?: string;
+	}): AsyncGenerator<StreamChunk>;
 
-	executeForChatPublished(
-		agentId: string,
-		message: string,
-		threadId: string,
-		userId: string,
-		projectId: string,
-		credentialProvider: CredentialProvider,
-		integrationType?: string,
-	): AsyncGenerator<StreamChunk>;
-
-	resumeForChat(
-		agentId: string,
-		runId: string,
-		toolCallId: string,
-		resumeData: unknown,
-		threadId?: string,
-		userId?: string,
-		projectId?: string,
-	): AsyncGenerator<StreamChunk>;
+	resumeForChat(config: {
+		agentId: string;
+		projectId: string;
+		runId: string;
+		toolCallId: string;
+		resumeData: unknown;
+	}): AsyncGenerator<StreamChunk>;
 }
-
-// ---------------------------------------------------------------------------
-// Chat SDK local interfaces
-//
-// The `chat` package is ESM-only so we cannot use top-level imports.
-// These interfaces mirror the subset of the Chat SDK API we consume.
-// ---------------------------------------------------------------------------
-
-interface ChatBot {
-	onNewMention: (handler: (thread: ChatThread, message: ChatMessage) => Promise<void>) => void;
-	onSubscribedMessage: (
-		handler: (thread: ChatThread, message: ChatMessage) => Promise<void>,
-	) => void;
-	onAction: (handler: (event: ChatActionEvent) => Promise<void>) => void;
-}
-
-interface ChatThread {
-	id: string;
-	subscribe: () => Promise<void>;
-	post: (content: unknown) => Promise<unknown>;
-}
-
-interface ChatMessage {
-	text: string;
-	author: { userId: string };
-}
-
-interface ChatActionEvent {
-	actionId: string;
-	value: string;
-	thread: ChatThread;
-	threadId: string;
-	messageId: string;
-	adapter: { deleteMessage(threadId: string, messageId: string): Promise<void> };
-	userId: string;
-}
-
-/** Callback that pushes a text fragment into the streaming iterable. */
-type TextYieldFn = (text: string) => void;
-/** Callback that signals the end of the streaming iterable. */
-type TextEndFn = () => void;
 
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
@@ -115,6 +59,9 @@ export class AgentChatBridge {
 	/** When true, buffer deltas and post as a single message (see integration flag). */
 	private readonly disableStreaming: boolean;
 
+	/** Resolved integration for this platform (may be undefined for unknown types). */
+	private readonly integration: AgentChatIntegration | undefined;
+
 	/**
 	 * In-flight `rich_interaction` tool inputs keyed by toolCallId. Populated on
 	 * the `tool-call` chunk; consumed on the matching `tool-result` chunk when
@@ -130,47 +77,55 @@ export class AgentChatBridge {
 	private readonly richInteractionInputs = new Map<string, unknown>();
 
 	constructor(
-		private readonly bot: ChatBot,
+		private readonly chat: Chat,
 		private readonly agentId: string,
 		private readonly agentService: AgentExecutor,
-		private readonly credentialProvider: CredentialProvider,
 		private readonly componentMapper: ComponentMapper,
 		private readonly logger: Logger,
-		private readonly n8nUserId: string,
 		private readonly n8nProjectId: string,
 		private readonly integrationType: string,
 	) {
-		const integration = Container.get(ChatIntegrationRegistry).get(integrationType);
-		if (integration?.needsShortCallbackData) {
+		this.integration = Container.get(ChatIntegrationRegistry).get(integrationType);
+		if (this.integration?.needsShortCallbackData) {
 			this.callbackStore = new CallbackStore();
 		}
-		this.disableStreaming = integration?.disableStreaming ?? false;
+		this.disableStreaming = this.integration?.disableStreaming ?? false;
 		this.registerHandlers();
 	}
 
 	// ---------------------------------------------------------------------------
-	// Static factory — validates that the bot has expected handler methods
+	// Static factory
 	// ---------------------------------------------------------------------------
 
 	static create(
-		bot: unknown,
+		chat: Chat,
 		agentId: string,
 		agentService: AgentsService,
-		credentialProvider: CredentialProvider,
 		componentMapper: ComponentMapper,
 		logger: Logger,
-		n8nUserId: string,
 		n8nProjectId: string,
 		integrationType: string,
 	): AgentChatBridge {
+		const agentExecutor: AgentExecutor = {
+			async *executeForChatPublished({ memory, agentId: aid, message, integrationType }) {
+				yield* agentService.executeForChatPublished({
+					agentId: aid,
+					projectId: n8nProjectId,
+					message,
+					memory: { threadId: memory.threadId.id, resourceId: memory.resourceId },
+					integrationType,
+				});
+			},
+			async *resumeForChat(config) {
+				yield* agentService.resumeForChat(config);
+			},
+		};
 		return new AgentChatBridge(
-			bot as ChatBot,
+			chat,
 			agentId,
-			agentService,
-			credentialProvider,
+			agentExecutor,
 			componentMapper,
 			logger,
-			n8nUserId,
 			n8nProjectId,
 			integrationType,
 		);
@@ -181,7 +136,7 @@ export class AgentChatBridge {
 	// ---------------------------------------------------------------------------
 
 	private registerHandlers(): void {
-		this.bot.onNewMention(async (thread, message) => {
+		this.chat.onNewMention(async (thread, message) => {
 			try {
 				await thread.subscribe();
 				await this.executeAndStream(thread, message);
@@ -190,7 +145,7 @@ export class AgentChatBridge {
 			}
 		});
 
-		this.bot.onSubscribedMessage(async (thread, message) => {
+		this.chat.onSubscribedMessage(async (thread, message) => {
 			try {
 				await this.executeAndStream(thread, message);
 			} catch (error) {
@@ -198,7 +153,7 @@ export class AgentChatBridge {
 			}
 		});
 
-		this.bot.onAction(async (event) => {
+		this.chat.onAction(async (event) => {
 			try {
 				await this.handleAction(event);
 			} catch (error) {
@@ -210,6 +165,24 @@ export class AgentChatBridge {
 	/** Release long-lived resources (callback store timer). */
 	dispose(): void {
 		this.callbackStore?.dispose();
+	}
+
+	// ---------------------------------------------------------------------------
+	// Thread ID resolution — single place to apply per-platform formatting
+	// ---------------------------------------------------------------------------
+
+	/**
+	 * Resolve the thread ID to pass to the agents service.
+	 *
+	 * Delegates to `integration.formatThreadId.fromSdk` when the platform
+	 * provides one (e.g. Slack encodes channel + ts), otherwise falls back
+	 * to the raw Chat SDK `thread.id`.
+	 *
+	 * Every call site that hands a threadId to `AgentExecutor` MUST use this
+	 * helper so platform-specific formatting is never accidentally skipped.
+	 */
+	private resolveThreadId(thread: Thread<unknown, unknown>) {
+		return toInternalThreadId(this.integration?.formatThreadId?.fromSdk(thread) ?? thread.id);
 	}
 
 	/**
@@ -231,22 +204,22 @@ export class AgentChatBridge {
 	// Core execution pipeline
 	// ---------------------------------------------------------------------------
 
-	private async executeAndStream(thread: ChatThread, message: ChatMessage): Promise<void> {
+	private async executeAndStream(thread: Thread, message: Message): Promise<void> {
 		const text = message.text?.trim();
 		if (!text) return;
 
-		// Use the n8n user ID (who connected the integration) for agent compilation
-		// and RBAC, and the platform user ID for memory/thread context.
+		const threadId = this.resolveThreadId(thread);
+		// threadId.id already encodes platform + user identity (e.g. Telegram:
+		// "chat:botId-userId") so it serves as a per-chat-user resourceId that
+		// scopes memory correctly without leaking the n8n user identity.
 		// Always run the published snapshot — integrations are production traffic.
-		const stream = this.agentService.executeForChatPublished(
-			this.agentId,
-			text,
-			thread.id,
-			this.n8nUserId,
-			this.n8nProjectId,
-			this.credentialProvider,
-			this.integrationType,
-		);
+		const stream = this.agentService.executeForChatPublished({
+			agentId: this.agentId,
+			projectId: this.n8nProjectId,
+			message: text,
+			memory: { threadId, resourceId: message.author.userId },
+			integrationType: this.integrationType,
+		});
 
 		await this.consumeStream(stream, thread);
 	}
@@ -267,10 +240,7 @@ export class AgentChatBridge {
 	 * In both strategies, non-text chunks (`tool-call-suspended`, `message`,
 	 * `error`) flush any pending text first, then get handled in order.
 	 */
-	private async consumeStream(
-		stream: AsyncGenerator<StreamChunk>,
-		thread: ChatThread,
-	): Promise<void> {
+	private async consumeStream(stream: AsyncGenerator<StreamChunk>, thread: Thread): Promise<void> {
 		if (this.disableStreaming) {
 			await this.consumeStreamBuffered(stream, thread);
 			return;
@@ -412,7 +382,7 @@ export class AgentChatBridge {
 	 */
 	private async consumeStreamBuffered(
 		stream: AsyncGenerator<StreamChunk>,
-		thread: ChatThread,
+		thread: Thread,
 	): Promise<void> {
 		let buffer = '';
 
@@ -428,6 +398,7 @@ export class AgentChatBridge {
 				// shape the streaming path uses under the hood.
 				await thread.post({ markdown: text });
 			} catch (postError: unknown) {
+				await this.postErrorToThread(thread, postError);
 				this.logger.error('[AgentChatBridge] Buffered post failed', {
 					error: postError instanceof Error ? postError.message : String(postError),
 				});
@@ -480,7 +451,7 @@ export class AgentChatBridge {
 
 	private async handleSuspension(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
-		thread: ChatThread,
+		thread: Thread,
 	): Promise<void> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
@@ -552,7 +523,7 @@ export class AgentChatBridge {
 
 	private async handleRichInteraction(
 		chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
-		thread: ChatThread,
+		thread: Thread,
 	): Promise<void> {
 		const { runId, toolCallId, suspendPayload } = chunk;
 
@@ -590,7 +561,7 @@ export class AgentChatBridge {
 				this.getShortenCallback(),
 				this.integrationType,
 			);
-			await thread.post({ card });
+			await thread.post(card);
 		} catch (error) {
 			this.logger.error('[AgentChatBridge] Failed to post rich interaction card', {
 				error: error instanceof Error ? error.message : String(error),
@@ -634,7 +605,7 @@ export class AgentChatBridge {
 	 */
 	private async handleDisplayOnly(
 		chunk: Extract<StreamChunk, { type: 'tool-result' }>,
-		thread: ChatThread,
+		thread: Thread,
 	): Promise<void> {
 		const { toolCallId } = chunk;
 		const input = this.richInteractionInputs.get(toolCallId);
@@ -685,7 +656,7 @@ export class AgentChatBridge {
 
 	private async handleMessage(
 		chunk: Extract<StreamChunk, { type: 'message' }>,
-		thread: ChatThread,
+		thread: Thread,
 	): Promise<void> {
 		const agentMessage: AgentMessage = chunk.message;
 
@@ -719,146 +690,192 @@ export class AgentChatBridge {
 	// Button interaction handling (HITL resume)
 	// ---------------------------------------------------------------------------
 
+	/** Parsed result from an action ID. */
+	private parseActionId(
+		actionId: string,
+		value: string | undefined,
+	): { runId: string; toolCallId: string; resumeData: unknown } | null {
+		if (actionId.startsWith('ri-btn:')) {
+			const parts = actionId.split(':');
+			if (parts.length < 4) {
+				this.logger.warn('[AgentChatBridge] Malformed ri-btn action ID', { actionId });
+				return null;
+			}
+			let resumeData: unknown;
+			try {
+				resumeData = JSON.parse(value ?? '');
+			} catch {
+				resumeData = { type: 'button', value };
+			}
+			return { runId: parts[1], toolCallId: parts.slice(2, -1).join(':'), resumeData };
+		}
+
+		if (actionId.startsWith('ri-sel:')) {
+			const parts = actionId.split(':');
+			if (parts.length < 4) {
+				this.logger.warn('[AgentChatBridge] Malformed ri-sel action ID', { actionId });
+				return null;
+			}
+			return {
+				runId: parts[2],
+				toolCallId: parts.slice(3).join(':'),
+				resumeData: { type: 'select', id: parts[1], value },
+			};
+		}
+
+		if (actionId.startsWith('resume:')) {
+			const parts = actionId.split(':');
+			if (parts.length < 4) {
+				this.logger.warn('[AgentChatBridge] Malformed action ID', { actionId });
+				return null;
+			}
+			let resumeData: unknown;
+			try {
+				resumeData = JSON.parse(value ?? '');
+			} catch {
+				resumeData = { value };
+			}
+			return { runId: parts[1], toolCallId: parts.slice(2, -1).join(':'), resumeData };
+		}
+
+		return null;
+	}
+
+	/**
+	 * Resolve short callback keys when the platform uses them (e.g. Telegram).
+	 * Returns the resolved `{ actionId, value }` or `null` if expired/missing.
+	 */
+	private async resolveCallbackData(
+		actionId: string,
+		value: string | undefined,
+		thread: Thread<unknown, unknown>,
+	): Promise<{ actionId: string; value: string | undefined } | null> {
+		if (!this.callbackStore) return { actionId, value };
+
+		const resolved = await this.callbackStore.resolve(actionId);
+		if (!resolved) {
+			this.logger.warn('[AgentChatBridge] Callback key not found or expired', { actionId });
+			await thread.post(
+				'This action is no longer available. The link may have expired or already been used.',
+			);
+			return null;
+		}
+		return { actionId: resolved.actionId, value: resolved.value };
+	}
+
+	/**
+	 * Delete the card message and apply platform-specific workarounds before
+	 * resuming the agent.
+	 */
+	private async cleanUpBeforeResume(event: ActionEvent): Promise<void> {
+		try {
+			await event.adapter.deleteMessage(event.threadId, event.messageId);
+		} catch (deleteError) {
+			this.logger.warn('[AgentChatBridge] Failed to delete card message', {
+				error: deleteError instanceof Error ? deleteError.message : String(deleteError),
+			});
+		}
+
+		// TODO(chat-sdk-bug): Remove when Chat SDK normalises Slack interaction
+		// payloads. Slack sends `team: { id: "T..." }` (object) but Chat SDK's
+		// streaming path expects `team_id: "T..."` (string) on the raw message.
+		interface ThreadWithRaw {
+			_currentMessage?: { raw?: Record<string, unknown> };
+		}
+		const threadInternal = event.thread as unknown as ThreadWithRaw;
+		if (threadInternal?._currentMessage?.raw) {
+			const raw = threadInternal._currentMessage.raw;
+			if (raw.team && typeof raw.team === 'object' && !raw.team_id) {
+				raw.team_id = (raw.team as Record<string, string>).id;
+			}
+		}
+	}
+
+	/**
+	 * Guard against double resumption, then resume the agent and stream the
+	 * response back into the thread.
+	 */
+	private async executeResume(
+		thread: Thread<unknown, unknown>,
+		runId: string,
+		toolCallId: string,
+		resumeData: unknown,
+	): Promise<void> {
+		if (this.activeResumedRuns.has(runId)) {
+			this.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
+			await thread.post('This action has already been handled');
+			return;
+		}
+
+		this.activeResumedRuns.add(runId);
+		try {
+			const stream = this.agentService.resumeForChat({
+				agentId: this.agentId,
+				projectId: this.n8nProjectId,
+				runId,
+				toolCallId,
+				resumeData,
+			});
+			await this.consumeStream(stream, thread as Thread);
+		} finally {
+			this.activeResumedRuns.delete(runId);
+		}
+	}
+
 	/**
 	 * Handle a button/select action. Action IDs use one of three prefixes:
 	 * - `ri-btn:{runId}:{toolCallId}:{index}` — rich interaction button
 	 * - `ri-sel:{selectId}:{runId}:{toolCallId}` — rich interaction select
 	 * - `resume:{runId}:{toolCallId}:{index}` — generic per-tool resume button
 	 */
-	private async handleAction(event: ChatActionEvent): Promise<void> {
-		let { actionId, value } = event;
+	private async handleAction(event: ActionEvent): Promise<void> {
 		const { thread } = event;
 
-		// Resolve short callback keys back to full action data. If the key is
-		// missing the action was already handled or the entry expired — let the
-		// user know rather than silently swallowing the click.
-		if (this.callbackStore) {
-			const resolved = await this.callbackStore.resolve(actionId);
-			if (!resolved) {
-				this.logger.warn('[AgentChatBridge] Callback key not found or expired', {
-					actionId,
-				});
-				await thread.post(
-					'This action is no longer available. The link may have expired or already been used.',
-				);
-				return;
-			}
-			actionId = resolved.actionId;
-			value = resolved.value;
-		}
-
-		let runId: string;
-		let toolCallId: string;
-		let resumeData: unknown;
-
-		if (actionId.startsWith('ri-btn:')) {
-			// Rich interaction button: ri-btn:{runId}:{toolCallId}:{index}
-			const parts = actionId.split(':');
-			if (parts.length < 4) {
-				this.logger.warn('[AgentChatBridge] Malformed ri-btn action ID', { actionId });
-				return;
-			}
-			runId = parts[1];
-			toolCallId = parts.slice(2, -1).join(':');
-			try {
-				resumeData = JSON.parse(value);
-			} catch {
-				resumeData = { type: 'button', value };
-			}
-		} else if (actionId.startsWith('ri-sel:')) {
-			// Rich interaction select: ri-sel:{selectId}:{runId}:{toolCallId}
-			const parts = actionId.split(':');
-			if (parts.length < 4) {
-				this.logger.warn('[AgentChatBridge] Malformed ri-sel action ID', { actionId });
-				return;
-			}
-			const selectId = parts[1];
-			runId = parts[2];
-			toolCallId = parts.slice(3).join(':');
-			resumeData = { type: 'select', id: selectId, value };
-		} else if (actionId.startsWith('resume:')) {
-			// Existing per-tool resume: resume:{runId}:{toolCallId}:{index}
-			const parts = actionId.split(':');
-			if (parts.length < 4) {
-				this.logger.warn('[AgentChatBridge] Malformed action ID', { actionId });
-				return;
-			}
-			runId = parts[1];
-			toolCallId = parts.slice(2, -1).join(':');
-			try {
-				resumeData = JSON.parse(value);
-			} catch {
-				resumeData = { value };
-			}
-		} else {
+		if (!thread) {
+			this.logger.warn('[AgentChatBridge] Thread is not set for event', {
+				threadId: event.threadId,
+				actionId: event.actionId,
+			});
 			return;
 		}
 
-		// --- Everything below is the same for all prefixes ---
+		const callbackData = await this.resolveCallbackData(event.actionId, event.value, thread);
+		if (!callbackData) return;
 
-		const isRunActive = this.activeResumedRuns.has(runId);
+		const parsed = this.parseActionId(callbackData.actionId, callbackData.value);
+		if (!parsed) return;
 
-		if (isRunActive) {
-			this.logger.warn('[AgentChatBridge] Run is already active', { runId, toolCallId });
-			await thread.post('This action has already been handled');
-			return;
-		}
-		this.activeResumedRuns.add(runId);
-		try {
-			// Delete the card message
-			try {
-				await event.adapter.deleteMessage(event.threadId, event.messageId);
-			} catch (deleteError) {
-				this.logger.warn('[AgentChatBridge] Failed to delete card message', {
-					error: deleteError instanceof Error ? deleteError.message : String(deleteError),
-				});
-			}
-
-			// TODO(chat-sdk-bug): Remove when Chat SDK normalises Slack interaction
-			// payloads. Slack sends `team: { id: "T..." }` (object) but Chat SDK's
-			// streaming path expects `team_id: "T..."` (string) on the raw message.
-			// We patch the thread's internal `_currentMessage.raw` to bridge this.
-			interface ThreadWithRaw {
-				_currentMessage?: { raw?: Record<string, unknown> };
-			}
-			const threadInternal = thread as unknown as ThreadWithRaw;
-			if (threadInternal._currentMessage?.raw) {
-				const raw = threadInternal._currentMessage.raw;
-				if (raw.team && typeof raw.team === 'object' && !raw.team_id) {
-					raw.team_id = (raw.team as Record<string, string>).id;
-				}
-			}
-
-			// Resume the agent and stream the response
-			const stream = this.agentService.resumeForChat(
-				this.agentId,
-				runId,
-				toolCallId,
-				resumeData,
-				thread.id,
-				this.n8nUserId,
-				this.n8nProjectId,
-			);
-			await this.consumeStream(stream, thread);
-		} finally {
-			this.activeResumedRuns.delete(runId);
-		}
+		await this.cleanUpBeforeResume(event);
+		await this.executeResume(thread, parsed.runId, parsed.toolCallId, parsed.resumeData);
 	}
 
 	// ---------------------------------------------------------------------------
 	// Error posting
 	// ---------------------------------------------------------------------------
 
-	private async postErrorToThread(thread: ChatThread, error: unknown): Promise<void> {
+	private async postErrorToThread(
+		thread: Thread<unknown, unknown> | null,
+		error: unknown,
+	): Promise<void> {
 		const message = error instanceof Error ? error.message : 'An unexpected error occurred';
 
 		this.logger.error('[AgentChatBridge] Error in handler', {
 			agentId: this.agentId,
-			threadId: thread.id,
+			threadId: thread?.id,
 			error: message,
 		});
 
 		try {
+			if (!thread) {
+				this.logger.warn(
+					"[AgentChatBridge] Couldn't post error message because thread is not set",
+					{
+						agentId: this.agentId,
+						error: message,
+					},
+				);
+				return;
+			}
 			await thread.post('⚠️ Something went wrong while processing your request. Please try again.');
 		} catch (postError) {
 			this.logger.error('[AgentChatBridge] Failed to post error message', {

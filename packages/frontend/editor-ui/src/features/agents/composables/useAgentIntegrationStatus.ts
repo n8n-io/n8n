@@ -1,4 +1,5 @@
 import { ref, type Ref } from 'vue';
+import type { AgentIntegrationStatusEntry } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -45,6 +46,31 @@ export function clearAgentIntegrationStatusCache(projectId: string, agentId: str
 	cache.delete(`${projectId}:${agentId}`);
 }
 
+function applyStatus(
+	state: AgentIntegrationStatusState,
+	integrationTypes: readonly string[],
+	integrations: AgentIntegrationStatusEntry[],
+): void {
+	for (const type of integrationTypes) {
+		state.statuses.value[type] = 'disconnected';
+		state.connectedCredentials.value[type] = '';
+	}
+	for (const integration of integrations) {
+		state.statuses.value[integration.type] = 'connected';
+		state.connectedCredentials.value[integration.type] =
+			typeof integration.credentialId === 'string' ? integration.credentialId : '';
+	}
+}
+
+export function syncAgentIntegrationStatusCache(
+	projectId: string,
+	agentId: string,
+	integrationTypes: readonly string[],
+	integrations: AgentIntegrationStatusEntry[],
+): void {
+	applyStatus(getOrCreate(projectId, agentId), integrationTypes, integrations);
+}
+
 export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 	const rootStore = useRootStore();
 	const state = getOrCreate(projectId, agentId);
@@ -59,15 +85,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		state.fetchInFlight = (async () => {
 			try {
 				const result = await getIntegrationStatus(rootStore.restApiContext, projectId, agentId);
-				for (const type of integrationTypes) {
-					state.statuses.value[type] = 'disconnected';
-					state.connectedCredentials.value[type] = '';
-				}
-				for (const integration of result.integrations ?? []) {
-					state.statuses.value[integration.type] = 'connected';
-					state.connectedCredentials.value[integration.type] =
-						typeof integration.credentialId === 'string' ? integration.credentialId : '';
-				}
+				applyStatus(state, integrationTypes, result.integrations ?? []);
 			} catch {
 				// Mark only types we don't already have a confirmed answer for as
 				// `unknown` — a transient network/API failure shouldn't claim that

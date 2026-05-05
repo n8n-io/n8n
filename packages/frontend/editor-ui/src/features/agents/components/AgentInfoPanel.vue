@@ -74,6 +74,12 @@ const selectedAgent = computed<ChatModelDto | null>(() => {
 	if (!parsed) return null;
 	const chatHubProvider = CATALOG_TO_CHATHUB[parsed.provider];
 	if (!chatHubProvider) return null;
+
+	const registryEntry = filteredAgents.value[chatHubProvider]?.models.find(
+		(m) => isLlmProviderModel(m.model) && m.model.model === parsed.name,
+	);
+	if (registryEntry) return registryEntry;
+
 	return {
 		model: { provider: chatHubProvider, model: parsed.name } as ChatHubConversationModel,
 		name: parsed.name,

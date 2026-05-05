@@ -20,7 +20,6 @@ import {
 } from './agent-chat-integration';
 import { ComponentMapper } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
-import { AgentsCredentialProvider } from '../adapters/agents-credential-provider';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -98,9 +97,6 @@ export class ChatIntegrationService {
 
 		const user = await this.resolveUser(userId);
 
-		// Create credential provider scoped to this agent's project
-		const credentialProvider = new AgentsCredentialProvider(this.credentialsService, projectId);
-
 		// Decrypt the integration credential to get platform tokens
 		const decryptedData = await this.decryptCredential(credentialId, user);
 
@@ -146,10 +142,8 @@ export class ChatIntegrationService {
 			chat,
 			agentId,
 			agentService,
-			credentialProvider,
 			componentMapper,
 			this.logger,
-			userId,
 			projectId,
 			integrationType,
 		);

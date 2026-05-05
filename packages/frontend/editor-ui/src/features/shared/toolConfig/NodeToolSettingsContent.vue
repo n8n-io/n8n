@@ -43,6 +43,7 @@ import useEnvironmentsStore from '@/features/settings/environments.ee/environmen
 const props = defineProps<{
 	initialNode: INode;
 	existingToolNames?: string[];
+	hideAskAssistant?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -396,6 +397,7 @@ defineExpose({ node, isValid, nodeTypeDescription, handleChangeName });
 						:readonly="false"
 						:show-all="true"
 						:hide-issues="false"
+						:hide-ask-assistant="props.hideAskAssistant"
 						@credential-selected="handleChangeCredential"
 						@value-changed="handleChangeParameter"
 					/>

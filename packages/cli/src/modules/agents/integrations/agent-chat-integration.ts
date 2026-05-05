@@ -1,4 +1,5 @@
 import { Service } from '@n8n/di';
+import type { Thread } from 'chat';
 
 import type { SuspendComponent } from './component-mapper';
 
@@ -79,6 +80,15 @@ export abstract class AgentChatIntegration {
 	 * turns select options into individual buttons.
 	 */
 	normalizeComponents?(components: SuspendComponent[]): SuspendComponent[];
+
+	/**
+	 * Optional per-platform thread ID formatting.
+	 * Used to convert between the Chat SDK thread and our format.
+	 */
+	formatThreadId?: {
+		fromSdk: (thread: Thread<unknown, unknown>) => string;
+		toSdk: (threadId: string) => string;
+	};
 }
 
 /**

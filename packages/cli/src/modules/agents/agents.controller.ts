@@ -190,7 +190,7 @@ export class AgentsController {
 			instructions: payload.instructions,
 		};
 
-		return await this.agentsService.createSkill(agentId, projectId, skill);
+		return await this.agentsService.createAndAttachSkill(agentId, projectId, skill);
 	}
 
 	@Patch('/:agentId/skills/:skillId')
@@ -436,15 +436,13 @@ export class AgentsController {
 
 		try {
 			await pumpChunks(
-				this.agentsService.executeForChat(
+				this.agentsService.executeForChat({
 					agentId,
-					message,
-					threadId,
-					req.user.id,
 					projectId,
-					credentialProvider,
-					'chat',
-				),
+					message,
+					userId: req.user.id,
+					memory: { threadId, resourceId: req.user.id },
+				}),
 				send,
 			);
 			send({ type: 'done', sessionId: threadId });

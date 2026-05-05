@@ -220,6 +220,7 @@ function handleNodeNameUpdate(name: string) {
 							ref="nodeContentRef"
 							:initial-node="initialNode"
 							:existing-tool-names="data.existingToolNames"
+							:hide-ask-assistant="true"
 							@update:valid="handleValidUpdate"
 							@update:node-name="handleNodeNameUpdate"
 						/>

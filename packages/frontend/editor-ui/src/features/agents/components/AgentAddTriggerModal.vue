@@ -261,11 +261,15 @@ async function fetchStatus() {
 		...integrations.value.map((integration) => integration.type),
 		AGENT_SCHEDULE_TRIGGER_TYPE,
 	]);
+	if (props.data.connectedTriggers.includes(AGENT_SCHEDULE_TRIGGER_TYPE)) {
+		statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = 'connected';
+		connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
+	}
 	emitConnectedTriggers();
 }
 
-function onScheduleStatusChange(active: boolean) {
-	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = active ? 'connected' : 'disconnected';
+function onScheduleStatusChange(configured: boolean) {
+	statuses.value[AGENT_SCHEDULE_TRIGGER_TYPE] = configured ? 'connected' : 'disconnected';
 	connectedCredentials.value[AGENT_SCHEDULE_TRIGGER_TYPE] = '';
 	emitConnectedTriggers();
 }
@@ -275,6 +279,10 @@ function onScheduleTriggerAdded() {
 		triggerType: AGENT_SCHEDULE_TRIGGER_TYPE,
 		triggers: computeConnectedTriggers(),
 	});
+}
+
+function closeModal() {
+	uiStore.closeModal(props.modalName);
 }
 
 async function fetchCredentials() {
@@ -345,13 +353,15 @@ function onCreateCredential(integration: ChatIntegrationDescriptor) {
 	const existing = credentialsByType.value[integration.type] ?? [];
 	credentialIdsBeforeNew.value[integration.type] = new Set(existing.map((c) => c.id));
 	pendingNewCredentialType.value = integration.type;
-	uiStore.openNewCredential(primaryCredentialType);
+	uiStore.openNewCredential(primaryCredentialType, false, false, undefined, undefined, undefined, {
+		hideAskAssistant: true,
+	});
 }
 
 function onEditCredential(type: string) {
 	const credId = selectedCredentials.value[type];
 	if (credId) {
-		uiStore.openExistingCredential(credId);
+		uiStore.openExistingCredential(credId, { hideAskAssistant: true });
 	}
 }
 
@@ -461,6 +471,7 @@ onMounted(async () => {
 					:flat="true"
 					@status-change="onScheduleStatusChange"
 					@trigger-added="onScheduleTriggerAdded"
+					@saved="closeModal"
 				/>
 
 				<div v-else-if="currentIntegration" :class="$style.integrationConfig">
@@ -542,53 +553,16 @@ onMounted(async () => {
 								>{{ i18n.baseText('agents.builder.addTrigger.editCredential') }}</a
 							>
 						</N8nText>
-
-						<div :class="$style.actions">
-							<N8nButton
-								:disabled="
-									!selectedCredentials[currentIntegration.type] ||
-									isLoading(currentIntegration.type) ||
-									publishing
-								"
-								:loading="isLoading(currentIntegration.type) || publishing"
-								size="small"
-								:data-testid="`${currentIntegration.type}-connect-button`"
-								@click="onConnect(currentIntegration.type)"
-							>
-								<template #prefix><N8nIcon icon="plug" size="xsmall" /></template>
-								{{ i18n.baseText('agents.builder.addTrigger.connect') }}
-							</N8nButton>
-							<N8nButton
-								variant="outline"
-								size="small"
-								:data-testid="`${currentIntegration.type}-create-another-credential`"
-								@click="onCreateCredential(currentIntegration)"
-							>
-								<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
-								{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
-							</N8nButton>
-						</div>
 					</div>
 
 					<div v-else :class="$style.connectedSection">
 						<N8nText size="small">
 							{{ integrationConnectedText(currentIntegration.type) }}
 						</N8nText>
-						<N8nButton
-							:class="$style.actionButton"
-							:loading="isLoading(currentIntegration.type)"
-							size="small"
-							:data-testid="`${currentIntegration.type}-disconnect-button`"
-							@click="onDisconnect(currentIntegration.type)"
-						>
-							<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
-							{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
-						</N8nButton>
 					</div>
 
-					<!-- Slack manifest — placed after the credential so the primary
-						 (connect) action is the first thing the user sees, with the
-						 manifest reference material grouped at the bottom. -->
+					<!-- Slack manifest reference material. Integration actions live
+						 in the modal footer so they stay aligned with other modals. -->
 					<div v-if="currentIntegration.type === 'slack'" :class="$style.manifestSection">
 						<N8nText size="small" bold>
 							{{ i18n.baseText('agents.builder.addTrigger.slack.manifestTitle') }}
@@ -616,6 +590,50 @@ onMounted(async () => {
 							<pre :class="$style.manifestCode">{{ slackAppManifest }}</pre>
 						</div>
 					</div>
+				</div>
+			</div>
+		</template>
+
+		<template v-if="currentIntegration" #footer>
+			<div :class="$style.footer">
+				<div :class="$style.footerActions">
+					<template v-if="!isConnected(currentIntegration.type)">
+						<N8nButton
+							variant="outline"
+							size="small"
+							:data-testid="`${currentIntegration.type}-create-another-credential`"
+							@click="onCreateCredential(currentIntegration)"
+						>
+							<template #prefix><N8nIcon icon="plus" size="xsmall" /></template>
+							{{ i18n.baseText('agents.builder.addTrigger.newCredential') }}
+						</N8nButton>
+						<N8nButton
+							variant="solid"
+							:disabled="
+								!selectedCredentials[currentIntegration.type] ||
+								isLoading(currentIntegration.type) ||
+								publishing
+							"
+							:loading="isLoading(currentIntegration.type) || publishing"
+							size="small"
+							:data-testid="`${currentIntegration.type}-connect-button`"
+							@click="onConnect(currentIntegration.type)"
+						>
+							<template #prefix><N8nIcon icon="plug" size="xsmall" /></template>
+							{{ i18n.baseText('agents.builder.addTrigger.connect') }}
+						</N8nButton>
+					</template>
+					<N8nButton
+						v-else
+						variant="destructive"
+						:loading="isLoading(currentIntegration.type)"
+						size="small"
+						:data-testid="`${currentIntegration.type}-disconnect-button`"
+						@click="onDisconnect(currentIntegration.type)"
+					>
+						<template #prefix><N8nIcon icon="unlink" size="xsmall" /></template>
+						{{ i18n.baseText('agents.builder.addTrigger.disconnect') }}
+					</N8nButton>
 				</div>
 			</div>
 		</template>
@@ -706,10 +724,16 @@ onMounted(async () => {
 	min-width: 0;
 }
 
-.actions {
+.footer {
 	display: flex;
-	align-items: center;
 	gap: var(--spacing--2xs);
+	justify-content: space-between;
+}
+
+.footerActions {
+	display: flex;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 }
 
 .connectedSection {
@@ -769,10 +793,6 @@ onMounted(async () => {
 	text-decoration: underline;
 	cursor: pointer;
 	margin-left: var(--spacing--4xs);
-}
-
-.actionButton {
-	align-self: flex-start;
 }
 
 .webhookRow {
