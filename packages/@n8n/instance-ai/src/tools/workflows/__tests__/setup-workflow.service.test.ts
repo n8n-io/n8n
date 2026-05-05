@@ -1113,7 +1113,9 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		const wfJson = makeWorkflowJSON([slack, github]);
 		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
 		(context.credentialService.get as jest.Mock).mockImplementation(async (credId: string) => {
-			if (credId === 'cred-mine') return { id: 'cred-mine', name: 'My Slack', type: 'slackApi' };
+			if (credId === 'cred-mine') {
+				return await Promise.resolve({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+			}
 			throw new Error(`Credential with ID "${credId}" could not be found.`);
 		});
 
@@ -1134,7 +1136,9 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		const wfJson = makeWorkflowJSON([node]);
 		(context.workflowService.getAsWorkflowJSON as jest.Mock).mockResolvedValue(wfJson);
 		(context.credentialService.get as jest.Mock).mockImplementation(async (credId: string) => {
-			if (credId === 'cred-mine') return { id: 'cred-mine', name: 'Auth', type: 'httpHeaderAuth' };
+			if (credId === 'cred-mine') {
+				return await Promise.resolve({ id: 'cred-mine', name: 'Auth', type: 'httpHeaderAuth' });
+			}
 			throw new Error(`Credential with ID "${credId}" could not be found.`);
 		});
 
