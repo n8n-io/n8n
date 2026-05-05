@@ -441,8 +441,8 @@ describe('WorkflowCompilerService', () => {
 			const compiled = compiler.compile(wf, baseConfig());
 			const endMain = compiled.connections.Agent.main;
 			expect(endMain).toBeDefined();
-			expect(endMain!.length).toBe(2);
-			for (const bucket of endMain!) {
+			expect(endMain.length).toBe(2);
+			for (const bucket of endMain) {
 				expect(bucket?.map((e) => e?.node)).toEqual(['__eval_metric_m-expr']);
 			}
 		});
@@ -450,8 +450,8 @@ describe('WorkflowCompilerService', () => {
 		it('falls through to single-bucket fan-out when the end node had no outgoing main edges', () => {
 			const compiled = compiler.compile(baseWorkflow(), baseConfig());
 			const endMain = compiled.connections.Agent.main;
-			expect(endMain!.length).toBe(1);
-			expect(endMain![0]?.[0]?.node).toBe('__eval_metric_m-expr');
+			expect(endMain.length).toBe(1);
+			expect(endMain[0]?.[0]?.node).toBe('__eval_metric_m-expr');
 		});
 	});
 });

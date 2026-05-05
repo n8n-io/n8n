@@ -1,7 +1,6 @@
 import type { EvaluationMetric } from '@n8n/api-types';
 import type { EvaluationConfig } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { nanoid } from 'nanoid';
 import {
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
@@ -16,6 +15,7 @@ import type {
 	INodeParameters,
 	IWorkflowBase,
 } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import { isCoercibleBooleanExpression } from '../evaluation-config-validator';
 import { LlmJudgeProviderRegistry } from '../llm-judge-provider-registry';
@@ -63,7 +63,7 @@ export class WorkflowCompilerService {
 		// existing nodes in the execution view. Vertical spacing per row depends on the
 		// metric type: LLM judges have a sub-node directly below and need extra clearance.
 		const rightmostX = workflow.nodes.reduce(
-			(max, n) => Math.max(max, (n.position as [number, number])?.[0] ?? 0),
+			(max, n) => Math.max(max, n.position?.[0] ?? 0),
 			endPos[0],
 		);
 		const metricColumnX = rightmostX + METRIC_COLUMN_GAP;
@@ -185,7 +185,7 @@ export class WorkflowCompilerService {
 
 	private positionOf(workflow: IWorkflowBase, nodeName: string): [number, number] | undefined {
 		const node = workflow.nodes.find((n) => n.name === nodeName);
-		return node?.position as [number, number] | undefined;
+		return node?.position;
 	}
 
 	private buildEvaluationTriggerNode(config: EvaluationConfig, entryPos: [number, number]): INode {
