@@ -26,7 +26,7 @@ import {
 	schemaTypeField,
 } from '@utils/descriptions';
 import { convertJsonSchemaToZod, generateSchemaFromExample } from '@utils/schemaParsing';
-import { getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import { getConnectionHintNoticeField, logAiEvent } from '@n8n/ai-utilities';
 
 import type { DynamicZodObject } from '../../../types/zod.types';
 
@@ -119,6 +119,7 @@ function getTool(
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, executionError);
 		} else if (log) {
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
+			logAiEvent(ctx, 'ai-tool-called', { query, response });
 		}
 
 		return response;

@@ -17,6 +17,8 @@ import type {
 import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { logAiEvent } from '@n8n/ai-utilities';
+
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -784,6 +786,7 @@ export const configureToolFunction = (
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, executionError as ExecutionError);
 		} else {
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
+			logAiEvent(ctx, 'ai-tool-called', { query, response });
 		}
 
 		return response;

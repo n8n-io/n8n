@@ -27,7 +27,7 @@ import {
 	sleepWithAbort,
 } from 'n8n-workflow';
 
-import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
+import { createZodSchemaFromArgs, extractFromAIParameters, logAiEvent } from '@n8n/ai-utilities';
 
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
 	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
@@ -168,6 +168,7 @@ export class WorkflowToolService {
 							metadata,
 						);
 
+						logAiEvent(context, 'ai-tool-called', { query, response: processedResponse });
 						return processedResponse;
 					}
 					// If manualLogging is false we've been called by the engine and need

@@ -8,6 +8,8 @@ import type {
 	INode,
 } from 'n8n-workflow';
 
+import { logAiEvent } from '@n8n/ai-utilities';
+
 import { WorkflowToolService } from './utils/WorkflowToolService';
 
 // Mock the sleep functions
@@ -15,6 +17,11 @@ jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
 	sleep: jest.fn().mockResolvedValue(undefined),
 	sleepWithAbort: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@n8n/ai-utilities', () => ({
+	...jest.requireActual('@n8n/ai-utilities'),
+	logAiEvent: jest.fn(),
 }));
 
 function createMockClonedContext(
@@ -969,6 +976,73 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe(JSON.stringify({ result: 'success' }, null, 2));
 			expect(sleepWithAbort).toHaveBeenCalledWith(100, undefined);
+		});
+	});
+
+	describe('logAiEvent emission', () => {
+		const mockLogAiEvent = logAiEvent as jest.MockedFunction<typeof logAiEvent>;
+
+		beforeEach(() => {
+			mockLogAiEvent.mockClear();
+		});
+
+		it('should emit ai-tool-called event on successful execution with manualLogging enabled', async () => {
+			const TEST_RESPONSE = { msg: 'test response' };
+			const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE }]],
+				executionId: 'test-execution',
+			};
+
+			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+			jest.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			jest.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			jest.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			jest.spyOn(context, 'cloneWith').mockReturnValue(context);
+
+			const tool = await service.createTool({
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+
+			await tool.func('test query');
+
+			expect(mockLogAiEvent).toHaveBeenCalledWith(
+				expect.anything(),
+				'ai-tool-called',
+				expect.objectContaining({ query: 'test query' }),
+			);
+		});
+
+		it('should not emit ai-tool-called event when manualLogging is disabled', async () => {
+			const TEST_RESPONSE = { msg: 'test response' };
+			const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE }]],
+				executionId: 'test-execution',
+			};
+
+			jest.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+			jest.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			jest.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+
+			const tool = await service.createTool({
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+				manualLogging: false,
+			});
+
+			await tool.func('test query');
+
+			expect(mockLogAiEvent).not.toHaveBeenCalled();
 		});
 	});
 });
