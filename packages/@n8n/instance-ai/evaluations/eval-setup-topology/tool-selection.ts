@@ -5,9 +5,7 @@ import type { ToolSelectionResult } from './types';
 
 const EVALS_TOOL_NAME = 'evals';
 const EVAL_SETUP_TOOL_NAME = 'eval-setup-with-agent';
-const EVAL_SETUP_AGENT_NAME = 'eval-setup';
-const EVAL_SETUP_AGENT_NAMES = new Set([EVAL_SETUP_AGENT_NAME, EVAL_SETUP_TOOL_NAME]);
-const TOOL_CALL_EVENT_TYPES = new Set(['tool-call']);
+const EVAL_SETUP_AGENT_NAMES = new Set(['eval-setup', EVAL_SETUP_TOOL_NAME]);
 const TOOL_NAME_KEYS = ['toolName', 'tool', 'name'] as const;
 const AGENT_NAME_KEYS = ['role', 'kind', 'name'] as const;
 const IGNORED_EVENT_TRAVERSAL_KEYS = new Set([
@@ -166,7 +164,7 @@ function visitEventRecords(
 	predicate: (record: Record<string, unknown>, context: EventRecordContext) => boolean,
 ): boolean {
 	const eventType = event.type.toLowerCase();
-	const isToolEvent = TOOL_CALL_EVENT_TYPES.has(eventType);
+	const isToolEvent = eventType === 'tool-call';
 	const isAgentEvent = eventType.includes('agent') || eventType.includes('task');
 	const seenObjects = new WeakSet<object>();
 	const valuesToInspect: Array<{

@@ -2,11 +2,10 @@ import { z } from 'zod';
 
 import type { WorkflowResponse } from '../clients/n8n-client';
 
-export type JsonObject = Record<string, unknown>;
 export type DatasetRow = Record<string, string | number | boolean | null>;
 
-export const DATA_TABLE_COLUMN_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*$/;
-export const DATA_TABLE_COLUMN_NAME_MAX_LENGTH = 63;
+const DATA_TABLE_COLUMN_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*$/;
+const DATA_TABLE_COLUMN_NAME_MAX_LENGTH = 63;
 
 const dataTableColumnNameSchema = z
 	.string()
@@ -15,9 +14,9 @@ const dataTableColumnNameSchema = z
 
 const datasetCellValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
-export const datasetRowSchema = z.record(dataTableColumnNameSchema, datasetCellValueSchema);
+const datasetRowSchema = z.record(dataTableColumnNameSchema, datasetCellValueSchema);
 export const datasetRowsSchema = z.array(datasetRowSchema).nonempty();
-export const expectedShapeSchema = z.record(z.string(), dataTableColumnNameSchema);
+const expectedShapeSchema = z.record(z.string(), dataTableColumnNameSchema);
 
 const metricSchema = z.enum([
 	'correctness',
@@ -28,7 +27,7 @@ const metricSchema = z.enum([
 	'customMetrics',
 ]);
 
-export const topologyTargetExpectationSchema = z.object({
+const topologyTargetExpectationSchema = z.object({
 	nodeName: z.string(),
 	mode: z.enum(['required', 'optional']).default('required'),
 	inputColumns: z.array(dataTableColumnNameSchema).default([]),

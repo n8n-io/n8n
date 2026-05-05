@@ -1,10 +1,8 @@
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 const LANGCHAIN_TYPE_PREFIX = '@n8n/n8n-nodes-langchain.';
-const EVALUATION_TYPES = new Set<string>([
-	'n8n-nodes-base.evaluation',
-	'n8n-nodes-base.evaluationTrigger',
-]);
+const EVALUATION_TYPES = new Set<string>([EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE]);
 
 const NON_ROOT_TYPE_PARTS = ['trigger', 'lm', 'model', 'embedding', 'memory', 'tool'];
 

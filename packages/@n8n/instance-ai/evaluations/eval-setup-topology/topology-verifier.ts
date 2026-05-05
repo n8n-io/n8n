@@ -1,3 +1,5 @@
+import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+
 import type { WorkflowNodeResponse, WorkflowResponse } from '../clients/n8n-client';
 import type {
 	TopologyFinding,
@@ -10,8 +12,6 @@ import type {
 } from './types';
 import { toWorkflowConnections } from './types';
 
-const EVAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.evaluationTrigger';
-const EVALUATION_NODE_TYPE = 'n8n-nodes-base.evaluation';
 const SET_NODE_TYPE = 'n8n-nodes-base.set';
 
 const LANGUAGE_MODEL_CONNECTION_TYPE = 'ai_languageModel';
@@ -399,7 +399,7 @@ function verifyGlobalTopology(
 	}
 
 	const evalTriggers = input.updatedWorkflow.nodes.filter(
-		(node) => node.type === EVAL_TRIGGER_NODE_TYPE,
+		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 	);
 
 	if (evalTriggers.length !== 1) {
@@ -468,7 +468,7 @@ function verifyNoEvalNodesTopology(
 			continue;
 		}
 
-		if (node.type === EVAL_TRIGGER_NODE_TYPE) {
+		if (node.type === EVALUATION_TRIGGER_NODE_TYPE) {
 			findings.push(
 				finding('unexpected_eval_node', 'No Eval Trigger node should be added.', node.name),
 			);
@@ -1054,7 +1054,7 @@ export function verifyEvalSetupTopology(input: TopologyVerifierInput): TopologyV
 
 	const globalFindings = verifyGlobalTopology(input, targetNodeNames);
 	const evalTrigger = input.updatedWorkflow.nodes.find(
-		(node) => node.type === EVAL_TRIGGER_NODE_TYPE,
+		(node) => node.type === EVALUATION_TRIGGER_NODE_TYPE,
 	);
 	const targetResults = targetNodeNames.map((targetNodeName) =>
 		verifyTargetTopology(input, targetNodeName, evalTrigger),

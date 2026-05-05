@@ -89,10 +89,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 
 			const inferred = await inferEvalShape(wf).catch(() => DEFAULT_EVAL_SHAPE);
 
-			// When linking an existing DataTable, the table's actual columns are
-			// authoritative — the LLM-inferred shape is only a guess. Override the
-			// suggested input/output columns with the real schema so the eval-setup
-			// agent's shape bridge references columns that actually exist.
+			// For link-existing, the table's real columns override the LLM guess.
 			const shape: EvalShape =
 				input.datasetChoice === 'link-existing' && input.existingDataTableId
 					? await deriveShapeFromDataTable(

@@ -1,15 +1,3 @@
-/**
- * Preconfigured Eval Setup Agent Tool
- *
- * Creates a specialized sub-agent that reads an n8n workflow, optionally creates
- * an empty eval DataTable, and patches the workflow with EvaluationTrigger +
- * Evaluation nodes + a checkIfEvaluating gate to isolate side-effect nodes
- * during eval runs.
- *
- * Pattern mirrors data-table-agent.tool.ts. No HITL - the eval card already
- * captured the user's approval; this sub-agent operates post-approval.
- */
-
 import { Agent } from '@mastra/core/agent';
 import type { ToolsInput } from '@mastra/core/agent';
 import { createTool } from '@mastra/core/tools';
@@ -113,7 +101,6 @@ export async function startEvalSetupAgentTask(
 	context: OrchestrationContext,
 	input: StartEvalSetupAgentInput,
 ): Promise<StartedEvalSetupAgentTask> {
-	// Extract the restricted tool set from domain tools
 	const evalSetupTools: ToolsInput = {};
 	for (const name of EVAL_SETUP_TOOL_NAMES) {
 		if (name in context.domainTools) {

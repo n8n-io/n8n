@@ -38,7 +38,9 @@ export function formatEvalSetupTask(input: FormatEvalSetupTaskInput): string {
 	const inputColumns = input.suggestedInputColumns.map((c) => `- ${c}`).join('\n');
 	const metrics = input.enabledMetrics.map(formatMetric).join('\n\n');
 	const datasetSection = formatDatasetSection(input);
-	const setOutputsDataTableId = input.existingDataTableId ?? '<same as EvaluationTrigger>';
+	const setOutputsDataTableHint = input.existingDataTableId
+		? `\`{ mode: 'id', value: '${input.existingDataTableId}' }\``
+		: 'the same id you wire into the EvaluationTrigger';
 
 	return `Set up evaluations for workflow "${input.workflowName}" (id: ${input.workflowId}).
 
@@ -57,7 +59,7 @@ ${outputColumns}
 
 For setOutputs, write the agent's actual output to NEW columns derived from these ground-truth column names — convention: prefix with \`actual_\` (e.g. ground-truth \`expected_output\` → setOutputs writes to \`actual_output\`; ground-truth \`expected_response\` → setOutputs writes to \`actual_response\`). Never overwrite the ground-truth column itself. The Evaluation node auto-adds the new column on first eval run.
 
-The setOutputs node MUST have \`source: 'dataTable'\` and \`dataTableId: { mode: 'id', value: '${setOutputsDataTableId}' }\` set explicitly (the node default for older typeVersions is googleSheets — that's a silent failure mode). Use \`typeVersion: 4.8\` for the Evaluation node.
+The setOutputs node MUST have \`source: 'dataTable'\` and \`dataTableId\` set to ${setOutputsDataTableHint} (the node default for older typeVersions is googleSheets — that's a silent failure mode). Use \`typeVersion: 4.8\` for the Evaluation node.
 
 METRICS TO CONFIGURE (on setMetrics):
 ${metrics}
