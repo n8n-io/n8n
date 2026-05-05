@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed, triggerRef } from 'vue';
+import { ref, computed, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
@@ -149,6 +149,9 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const creditsQuota = ref<number | undefined>(undefined);
 	const creditsClaimed = ref<number | undefined>(undefined);
 	const resolvedConfirmationIds = ref<Map<string, 'approved' | 'denied' | 'deferred'>>(new Map());
+	// "Always allow" grants for the current thread/session. Cleared on thread switch / new thread.
+	// Key: `${toolName}:${args.action ?? ''}`. Only applied when severity !== 'destructive'.
+	const sessionAlwaysAllowKeys = ref<Set<string>>(new Set());
 	const MAX_DEBUG_EVENTS = 1000;
 	let hydrationRequestSequence = 0;
 	let activeHydrationRequestToken: number | null = null;
@@ -531,6 +534,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		debugEvents.value = [];
 		resetFeedback();
 		resolvedConfirmationIds.value = new Map();
+		sessionAlwaysAllowKeys.value = new Set();
 		runStateByGroupId = {};
 		groupIdByRunId = {};
 		activeHydrationRequestToken = null;
@@ -920,6 +924,63 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		);
 	}
 
+	// --- Session "Always allow" ---
+
+	function buildAlwaysAllowKey(toolName: string, args: Record<string, unknown>): string {
+		const action = typeof args.action === 'string' ? args.action : '';
+		return `${toolName}:${action}`;
+	}
+
+	function addAlwaysAllowKey(toolName: string, args: Record<string, unknown>): void {
+		const next = new Set(sessionAlwaysAllowKeys.value);
+		next.add(buildAlwaysAllowKey(toolName, args));
+		sessionAlwaysAllowKeys.value = next;
+	}
+
+	function isGenericApprovalEligible(item: PendingConfirmationItem): boolean {
+		const conf = item.toolCall.confirmation;
+		if (conf.severity === 'destructive') return false;
+		if (conf.domainAccess) return false;
+		if (conf.inputType) return false;
+		if (conf.setupRequests?.length) return false;
+		if (conf.credentialRequests?.length) return false;
+		if (conf.questions?.length) return false;
+		return true;
+	}
+
+	watch(
+		pendingConfirmations,
+		(items) => {
+			if (sessionAlwaysAllowKeys.value.size === 0) return;
+			for (const item of items) {
+				const conf = item.toolCall.confirmation;
+				if (resolvedConfirmationIds.value.has(conf.requestId)) continue;
+				if (!isGenericApprovalEligible(item)) continue;
+				const key = buildAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+				if (!sessionAlwaysAllowKeys.value.has(key)) continue;
+
+				resolveConfirmation(conf.requestId, 'approved');
+				void confirmAction(conf.requestId, true);
+				telemetry.track('User finished providing input', {
+					thread_id: currentThreadId.value,
+					input_thread_id: conf.inputThreadId ?? '',
+					instance_id: rootStore.instanceId,
+					type: 'approval',
+					provided_inputs: [
+						{
+							label: conf.message,
+							options: ['approve', 'deny', 'approve_always'],
+							option_chosen: 'approve_auto',
+						},
+					],
+					skipped_inputs: [],
+					auto_resolved: true,
+				});
+			}
+		},
+		{ flush: 'post' },
+	);
+
 	function toggleResearchMode(): void {
 		researchMode.value = !researchMode.value;
 		localStorage.setItem('instanceAi.researchMode', String(researchMode.value));
@@ -1058,6 +1119,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		creditsQuota,
 		creditsClaimed,
 		resolvedConfirmationIds,
+		sessionAlwaysAllowKeys,
 		// Computed
 		isStreaming,
 		isSendingMessage,
@@ -1095,6 +1157,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		confirmAction,
 		confirmResourceDecision,
 		resolveConfirmation,
+		addAlwaysAllowKey,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

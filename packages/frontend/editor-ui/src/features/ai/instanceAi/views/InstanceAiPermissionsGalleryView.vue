@@ -15,6 +15,7 @@
  */
 import { onMounted, ref } from 'vue';
 import { N8nButton, N8nCallout, N8nCard, N8nHeading, N8nInput, N8nText } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ConfirmationFooter from '../components/ConfirmationFooter.vue';
 import ConfirmationPreview from '../components/ConfirmationPreview.vue';
@@ -25,6 +26,8 @@ import InstanceAiQuestions, {
 	type QuestionAnswer,
 	type QuestionItem,
 } from '../components/InstanceAiQuestions.vue';
+
+const i18n = useI18n();
 
 const documentTitle = useDocumentTitle();
 
@@ -310,13 +313,23 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>Update workflow “Lead enrichment”</N8nText>
-							<ConfirmationPreview>
+							<ConfirmationPreview>Update workflow “Lead enrichment”</ConfirmationPreview>
+							<N8nText :class="$style.commentary" size="small">
 								Add a Set node before the HTTP Request to coerce email to lower case.
-							</ConfirmationPreview>
+							</N8nText>
 						</div>
-						<ConfirmationFooter>
-							<N8nButton variant="outline" size="medium">Deny</N8nButton>
-							<N8nButton variant="solid" size="medium">Allow</N8nButton>
+						<ConfirmationFooter layout="row-between">
+							<N8nButton variant="outline" size="medium">{{
+								i18n.baseText('instanceAi.confirmation.deny')
+							}}</N8nButton>
+							<div :class="$style.approveGroup">
+								<N8nButton variant="outline" size="medium">{{
+									i18n.baseText('instanceAi.confirmation.alwaysAllow')
+								}}</N8nButton>
+								<N8nButton variant="solid" size="medium">{{
+									i18n.baseText('instanceAi.confirmation.approve')
+								}}</N8nButton>
+							</div>
 						</ConfirmationFooter>
 					</div>
 				</div>
@@ -331,50 +344,81 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>Delete workflow “Old onboarding flow”</N8nText>
-							<ConfirmationPreview>
+							<ConfirmationPreview>Delete workflow “Old onboarding flow”</ConfirmationPreview>
+							<N8nText :class="$style.commentary" size="small">
 								This workflow has 12 prior executions. Deleting it cannot be undone.
-							</ConfirmationPreview>
+							</N8nText>
 						</div>
-						<ConfirmationFooter>
-							<N8nButton variant="outline" size="medium">Deny</N8nButton>
-							<N8nButton variant="destructive" size="medium">Allow</N8nButton>
+						<ConfirmationFooter layout="row-between">
+							<N8nButton variant="outline" size="medium">{{
+								i18n.baseText('instanceAi.confirmation.deny')
+							}}</N8nButton>
+							<N8nButton variant="destructive" size="medium">{{
+								i18n.baseText('instanceAi.confirmation.approve')
+							}}</N8nButton>
 						</ConfirmationFooter>
 					</div>
 				</div>
 			</div>
 
-			<!-- Group with "Allow all" -->
+			<!-- Multiple items · stacked cards (only top fully shown, peek below) -->
 			<div :class="$style.demo">
 				<N8nText size="small" color="text-light" :class="$style.caption">
-					Multiple items · same agent · "Allow all" shortcut
+					Multiple items · stacked cards · only top fully shown
 				</N8nText>
-				<div :class="$style.confirmationCard">
-					<div :class="$style.generic">
-						<N8nText>Workflow Builder needs your approval</N8nText>
-						<N8nButton size="medium" variant="subtle">Allow all</N8nButton>
-					</div>
+				<div :class="$style.stack" :style="{ '--stack-size': 2 }">
 					<div :class="$style.items">
-						<div :class="[$style.item, $style.itemBordered]">
+						<div
+							:class="[$style.confirmationCard, $style.stackedItem]"
+							:style="{ '--stack-depth': 0, zIndex: 2 }"
+						>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>Tag workflow “Lead enrichment”</N8nText>
-									<ConfirmationPreview>Add tag: production</ConfirmationPreview>
+									<ConfirmationPreview>Tag workflow “Lead enrichment”</ConfirmationPreview>
+									<N8nText :class="$style.commentary" size="small"> Add tag: production </N8nText>
 								</div>
-								<ConfirmationFooter>
-									<N8nButton variant="outline" size="medium">Deny</N8nButton>
-									<N8nButton variant="solid" size="medium">Allow</N8nButton>
+								<ConfirmationFooter layout="row-between">
+									<N8nButton variant="outline" size="medium">{{
+										i18n.baseText('instanceAi.confirmation.deny')
+									}}</N8nButton>
+									<div :class="$style.approveGroup">
+										<N8nButton variant="outline" size="medium">{{
+											i18n.baseText('instanceAi.confirmation.alwaysAllow')
+										}}</N8nButton>
+										<N8nButton variant="solid" size="medium">{{
+											i18n.baseText('instanceAi.confirmation.approve')
+										}}</N8nButton>
+									</div>
 								</ConfirmationFooter>
 							</div>
 						</div>
-						<div :class="[$style.item, $style.itemBordered]">
+						<div
+							:class="[$style.confirmationCard, $style.stackedItem]"
+							:style="{ '--stack-depth': 1, zIndex: 1 }"
+						>
 							<div :class="$style.approvalRow">
 								<div :class="$style.approvalRowBody">
 									<N8nText size="large" bold>Move workflow to folder “Marketing”</N8nText>
-									<ConfirmationPreview>From: Inbox · To: Marketing</ConfirmationPreview>
+									<ConfirmationPreview
+										>Move workflow “Lead enrichment” to folder “Marketing”</ConfirmationPreview
+									>
+									<N8nText :class="$style.commentary" size="small">
+										From: Inbox · To: Marketing
+									</N8nText>
 								</div>
-								<ConfirmationFooter>
-									<N8nButton variant="outline" size="medium">Deny</N8nButton>
-									<N8nButton variant="solid" size="medium">Allow</N8nButton>
+								<ConfirmationFooter layout="row-between">
+									<N8nButton variant="outline" size="medium">{{
+										i18n.baseText('instanceAi.confirmation.deny')
+									}}</N8nButton>
+									<div :class="$style.approveGroup">
+										<N8nButton variant="outline" size="medium">{{
+											i18n.baseText('instanceAi.confirmation.alwaysAllow')
+										}}</N8nButton>
+										<N8nButton variant="solid" size="medium">{{
+											i18n.baseText('instanceAi.confirmation.approve')
+										}}</N8nButton>
+									</div>
 								</ConfirmationFooter>
 							</div>
 						</div>
@@ -415,16 +459,30 @@ function logPlanRequestChanges(feedback: string) {
 					<div :class="$style.approvalRow">
 						<div :class="$style.approvalRowBody">
 							<N8nText size="large" bold>{{ example.title }}</N8nText>
-							<ConfirmationPreview>{{ example.message }}</ConfirmationPreview>
+							<ConfirmationPreview>{{ example.title }}</ConfirmationPreview>
+							<N8nText :class="$style.commentary" size="small">
+								{{ example.message }}
+							</N8nText>
 						</div>
-						<ConfirmationFooter>
-							<N8nButton variant="outline" size="medium">Deny</N8nButton>
-							<N8nButton
-								:variant="example.severity === 'destructive' ? 'destructive' : 'solid'"
-								size="medium"
-							>
-								Allow
-							</N8nButton>
+						<ConfirmationFooter layout="row-between">
+							<N8nButton variant="outline" size="medium">{{
+								i18n.baseText('instanceAi.confirmation.deny')
+							}}</N8nButton>
+							<div :class="$style.approveGroup">
+								<N8nButton
+									v-if="example.severity !== 'destructive'"
+									variant="outline"
+									size="medium"
+								>
+									{{ i18n.baseText('instanceAi.confirmation.alwaysAllow') }}
+								</N8nButton>
+								<N8nButton
+									:variant="example.severity === 'destructive' ? 'destructive' : 'solid'"
+									size="medium"
+								>
+									{{ i18n.baseText('instanceAi.confirmation.approve') }}
+								</N8nButton>
+							</div>
 						</ConfirmationFooter>
 					</div>
 				</div>
@@ -799,6 +857,37 @@ function logPlanRequestChanges(feedback: string) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.commentary {
+	color: var(--color--text--shade-1);
+}
+
+.approveGroup {
+	display: flex;
+	gap: var(--spacing--2xs);
+}
+
+// --- Stacked-card layout for grouped approvals ---
+.stack {
+	position: relative;
+	padding-bottom: calc((var(--stack-size, 1) - 1) * 8px);
+}
+
+.stack .items {
+	position: relative;
+}
+
+.stackedItem {
+	transition: transform 200ms ease;
+
+	&:not(:first-child) {
+		position: absolute;
+		top: 0;
+		left: calc(var(--stack-depth, 0) * 4px);
+		right: calc(var(--stack-depth, 0) * 4px);
+		transform: translateY(calc(var(--stack-depth, 0) * 8px));
+	}
 }
 
 .generic {

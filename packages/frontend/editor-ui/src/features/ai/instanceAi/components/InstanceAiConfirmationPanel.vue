@@ -6,7 +6,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useInstanceAiStore, type PendingConfirmationItem } from '../instanceAi.store';
-import { useToolLabel } from '../toolLabels';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
@@ -16,6 +15,9 @@ import InstanceAiQuestions from './InstanceAiQuestions.vue';
 import InstanceAiWorkflowSetup from './InstanceAiWorkflowSetup.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import PlanReviewPanel, { type PlannedTaskArg } from './PlanReviewPanel.vue';
+import { useToolLabel } from '../toolLabels';
+
+type ApprovalAction = 'allow_once' | 'always_allow';
 
 const store = useInstanceAiStore();
 const i18n = useI18n();
@@ -59,17 +61,6 @@ function trackInputCompleted(
 	telemetry.track('User finished providing input', eventProps);
 }
 
-const ROLE_LABELS: Record<string, string> = {
-	orchestrator: 'Agent',
-	'workflow-builder': 'Workflow Builder',
-	'data-table-manager': 'Data Table Manager',
-	researcher: 'Researcher',
-};
-
-function getRoleLabel(role: string): string {
-	return ROLE_LABELS[role] ?? role;
-}
-
 interface ApprovalWrappedGroup {
 	type: 'approvalWrapped';
 	agentId: string;
@@ -100,6 +91,22 @@ function isApprovalWrapped(item: PendingConfirmationItem): boolean {
 	return false;
 }
 
+/**
+ * Filter mode:
+ *  - 'all' (default): render every chunk
+ *  - 'floating': only approval-wrapped chunks (generic approvals + domain access).
+ *    Used by the floating panel docked above the chat input.
+ *  - 'inline': only standalone chunks (questions, plan-review, text input,
+ *    setup, credential setup, gateway resource decision). Rendered in the
+ *    regular message flow.
+ */
+const props = withDefaults(
+	defineProps<{
+		kind?: 'all' | 'floating' | 'inline';
+	}>(),
+	{ kind: 'all' },
+);
+
 /** Split confirmations into standalone items and approval-wrapped groups. */
 const chunks = computed((): ConfirmationChunk[] => {
 	const result: ConfirmationChunk[] = [];
@@ -107,6 +114,7 @@ const chunks = computed((): ConfirmationChunk[] => {
 
 	for (const item of store.pendingConfirmations) {
 		if (isApprovalWrapped(item)) {
+			if (props.kind === 'inline') continue;
 			const key = item.agentNode.agentId;
 			let group = wrappedByAgent.get(key);
 			if (!group) {
@@ -115,6 +123,7 @@ const chunks = computed((): ConfirmationChunk[] => {
 			}
 			group.items.push(item);
 		} else {
+			if (props.kind === 'floating') continue;
 			result.push({ type: 'standalone', item });
 		}
 	}
@@ -137,7 +146,7 @@ function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		[
 			{
 				label: conf.message,
-				options: ['approve', 'deny'],
+				options: ['approve', 'deny', 'approve_always'],
 				option_chosen: approved ? 'approve' : 'deny',
 			},
 		],
@@ -147,18 +156,42 @@ function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 	void store.confirmAction(conf.requestId, approved);
 }
 
-function handleApproveAll(items: PendingConfirmationItem[]) {
-	for (const item of items) {
-		const conf = item.toolCall.confirmation;
-		if (store.resolvedConfirmationIds.has(conf.requestId)) continue;
-		trackInputCompleted(
-			conf,
-			[{ label: conf.message, options: ['approve', 'deny'], option_chosen: 'approve' }],
-			[],
-		);
-		store.resolveConfirmation(conf.requestId, 'approved');
-		void store.confirmAction(conf.requestId, true);
+function handleApprove(item: PendingConfirmationItem, action: ApprovalAction) {
+	const conf = item.toolCall.confirmation;
+	if (store.resolvedConfirmationIds.has(conf.requestId)) return;
+	if (action === 'always_allow') {
+		store.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
 	}
+	trackInputCompleted(
+		conf,
+		[
+			{
+				label: conf.message,
+				options: ['approve', 'deny', 'approve_always'],
+				option_chosen: action === 'always_allow' ? 'approve_always' : 'approve',
+			},
+		],
+		[],
+	);
+	store.resolveConfirmation(conf.requestId, 'approved');
+	void store.confirmAction(conf.requestId, true);
+}
+
+/**
+ * Split a confirmation message into the action+artifact part (shown in the
+ * monospace preview box) and any trailing commentary (shown as plain text
+ * below the box). The split happens at the first "?" — the prevailing
+ * convention in tool-emitted messages, e.g.
+ *   `Delete data table "X"? This will permanently remove the table…`
+ */
+function splitConfirmationMessage(message: string): { headline: string; commentary: string } {
+	const trimmed = message.trim();
+	const qIdx = trimmed.indexOf('?');
+	if (qIdx === -1) return { headline: trimmed, commentary: '' };
+	return {
+		headline: trimmed.slice(0, qIdx).trim(),
+		commentary: trimmed.slice(qIdx + 1).trim(),
+	};
 }
 
 function handleTextSubmit(conf: InstanceAiConfirmation) {
@@ -267,11 +300,6 @@ function handlePlanRequestChanges(
 	);
 	store.resolveConfirmation(conf.requestId, 'denied');
 	void store.confirmAction(conf.requestId, false, undefined, undefined, undefined, feedback);
-}
-
-/** True when every item in the group is a generic approval (not domain/cred/text). */
-function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
-	return items.every((item) => !item.toolCall.confirmation.domainAccess);
 }
 </script>
 
@@ -409,36 +437,18 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 			<div
 				v-else
 				:key="'group-' + chunk.agentId"
-				:class="[$style.root, $style.confirmation]"
+				:class="[$style.confirmation, $style.stack]"
+				:style="{ '--stack-size': chunk.items.length }"
 				data-test-id="instance-ai-confirmation-panel"
 			>
-				<!-- Group header -->
-				<template v-if="isAllGenericApproval(chunk.items) && chunk.items.length > 1">
-					<div :class="$style.generic">
-						<N8nText>
-							{{
-								i18n.baseText('instanceAi.confirmation.agentContext', {
-									interpolate: { agent: getRoleLabel(chunk.role) },
-								})
-							}}
-						</N8nText>
-						<N8nButton
-							data-test-id="instance-ai-panel-confirm-approve-all"
-							size="medium"
-							variant="subtle"
-							@click="handleApproveAll(chunk.items)"
-						>
-							{{ i18n.baseText('instanceAi.confirmation.approveAll') }}
-						</N8nButton>
-					</div>
-				</template>
-
-				<!-- Items -->
+				<!-- Items render as a stack: only the top one is fully visible;
+					 subsequent items peek out from below. -->
 				<div :class="$style.items">
 					<div
-						v-for="item in chunk.items"
+						v-for="(item, idx) in chunk.items"
 						:key="item.toolCall.confirmation.requestId"
-						:class="[$style.item, chunk.items.length > 1 ? $style.itemBordered : '']"
+						:class="[$style.item, $style.root, $style.stackedItem]"
+						:style="{ '--stack-depth': idx, zIndex: chunk.items.length - idx }"
 					>
 						<!-- Domain access -->
 						<DomainAccessApproval
@@ -457,11 +467,18 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 										{{ getToolLabel(item.toolCall.toolName, item.toolCall.args) }}
 									</N8nText>
 									<ConfirmationPreview>{{
-										item.toolCall.confirmation!.message
+										splitConfirmationMessage(item.toolCall.confirmation!.message).headline
 									}}</ConfirmationPreview>
+									<N8nText
+										v-if="splitConfirmationMessage(item.toolCall.confirmation!.message).commentary"
+										:class="$style.commentary"
+										size="small"
+									>
+										{{ splitConfirmationMessage(item.toolCall.confirmation!.message).commentary }}
+									</N8nText>
 								</div>
 
-								<ConfirmationFooter>
+								<ConfirmationFooter layout="row-between">
 									<N8nButton
 										data-test-id="instance-ai-panel-confirm-deny"
 										size="medium"
@@ -470,18 +487,29 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 									>
 										{{ i18n.baseText('instanceAi.confirmation.deny') }}
 									</N8nButton>
-									<N8nButton
-										:variant="
-											item.toolCall.confirmation.severity === 'destructive'
-												? 'destructive'
-												: 'solid'
-										"
-										data-test-id="instance-ai-panel-confirm-approve"
-										size="medium"
-										@click="handleConfirm(item, true)"
-									>
-										{{ i18n.baseText('instanceAi.confirmation.approve') }}
-									</N8nButton>
+									<div :class="$style.approveGroup">
+										<N8nButton
+											v-if="item.toolCall.confirmation.severity !== 'destructive'"
+											variant="outline"
+											size="medium"
+											data-test-id="instance-ai-panel-confirm-always-allow"
+											@click="handleApprove(item, 'always_allow')"
+										>
+											{{ i18n.baseText('instanceAi.confirmation.alwaysAllow') }}
+										</N8nButton>
+										<N8nButton
+											:variant="
+												item.toolCall.confirmation.severity === 'destructive'
+													? 'destructive'
+													: 'solid'
+											"
+											data-test-id="instance-ai-panel-confirm-approve"
+											size="medium"
+											@click="handleApprove(item, 'allow_once')"
+										>
+											{{ i18n.baseText('instanceAi.confirmation.approve') }}
+										</N8nButton>
+									</div>
 								</ConfirmationFooter>
 							</div>
 						</div>
@@ -519,6 +547,35 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	// Only applies when there are multiple items — visual grouping
 }
 
+// --- Stacked-card layout for grouped approvals ---
+// Top item (idx=0) sits in front; subsequent items shift down behind it,
+// each slightly inset on the sides, so only their bottom edge peeks out
+// below the front card.
+.stack {
+	position: relative;
+	// Reserve space for the peek of cards behind the top one (8px each).
+	padding-bottom: calc((var(--stack-size, 1) - 1) * 8px);
+}
+
+.stack .items {
+	position: relative;
+}
+
+.stackedItem {
+	transition: transform 200ms ease;
+
+	&:not(:first-child) {
+		position: absolute;
+		top: 0;
+		// Inset the behind cards by 4px per depth so they look "smaller"
+		// without using transform: scale (which complicates positioning).
+		left: calc(var(--stack-depth, 0) * 4px);
+		right: calc(var(--stack-depth, 0) * 4px);
+		// Each behind card shifts down 8px per depth so the bottom edge peeks.
+		transform: translateY(calc(var(--stack-depth, 0) * 8px));
+	}
+}
+
 .approvalRow {
 	display: flex;
 	flex-direction: column;
@@ -529,6 +586,15 @@ function isAllGenericApproval(items: PendingConfirmationItem[]): boolean {
 	padding: var(--spacing--sm) var(--spacing--sm) 0;
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.commentary {
+	color: var(--color--text--shade-1);
+}
+
+.approveGroup {
+	display: flex;
 	gap: var(--spacing--2xs);
 }
 

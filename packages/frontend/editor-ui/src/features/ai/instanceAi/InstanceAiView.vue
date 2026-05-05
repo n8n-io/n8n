@@ -81,6 +81,23 @@ documentTitle.set(i18n.baseText('instanceAi.view.title'));
 // it in its natural chronological slot.
 const builderAgents = computed(() => collectActiveBuilderAgents(store.messages));
 
+// True when at least one pending confirmation belongs to the floating
+// approval-wrapped group (generic approvals + domain access). Other types
+// (questions, plan review, text input, setup, gateway resource) render
+// inline in the chat flow and don't trigger the floating panel.
+const hasFloatingConfirmation = computed(() =>
+	store.pendingConfirmations.some((item) => {
+		const conf = item.toolCall.confirmation;
+		if (conf.domainAccess) return true;
+		return (
+			!conf.credentialRequests?.length &&
+			!conf.setupRequests?.length &&
+			!conf.inputType &&
+			!conf.questions?.length
+		);
+	}),
+);
+
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
@@ -540,7 +557,11 @@ function handleStop() {
 										:agent-node="builder"
 									/>
 								</div>
-								<InstanceAiConfirmationPanel />
+								<!-- Inline confirmation surfaces (questions, plan review, text
+									 input, setup, credential setup, gateway resource decision)
+									 render in the chat flow. Approval-wrapped items are pinned
+									 to the floating input below instead. -->
+								<InstanceAiConfirmationPanel kind="inline" />
 							</div>
 						</N8nScrollArea>
 
@@ -563,9 +584,14 @@ function handleStop() {
 							</Transition>
 						</div>
 
-						<!-- Floating input -->
+						<!-- Floating input (with confirmation panel pinned above it) -->
 						<div ref="inputContainer" :class="$style.inputContainer">
 							<div :class="$style.inputConstraint">
+								<InstanceAiConfirmationPanel
+									v-if="hasFloatingConfirmation"
+									:class="$style.floatingConfirmation"
+									kind="floating"
+								/>
 								<InstanceAiStatusBar />
 								<CreditWarningBanner
 									v-if="showCreditBanner"
@@ -844,6 +870,10 @@ function handleStop() {
 .inputConstraint {
 	max-width: 750px;
 	margin: 0 auto;
+}
+
+.floatingConfirmation {
+	margin-bottom: 12px;
 }
 
 .previewPanel {
