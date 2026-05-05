@@ -188,8 +188,7 @@ export class NotionTrigger implements INodeType {
 			? moment(webhookData.lastTimeChecked as string)
 			: moment().set({ second: 0, millisecond: 0 }); // Notion timestamp accuracy is only down to the minute
 
-		// update lastTimeChecked to now
-		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 });
+		const now = moment().set({ second: 0, millisecond: 0 });
 
 		// because Notion timestamp accuracy is only down to the minute some duplicates can be fetch
 		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) ?? [];
@@ -276,18 +275,25 @@ export class NotionTrigger implements INodeType {
 			);
 
 			// Save the time of the most recent record processed
-			if (records[0]) {
+			if (records.length > 0) {
 				const latestTimestamp = moment(records[0][sortProperty] as string);
 
 				// Save record ids with the same timestamp as the latest processed records
-				webhookData.possibleDuplicates = records
+				const newDuplicates = records
 					.filter((record: IDataObject) =>
 						moment(record[sortProperty] as string).isSame(latestTimestamp),
 					)
-					.map((record: IDataObject) => record.id);
-			} else {
-				webhookData.possibleDuplicates = undefined;
+					.map((record: IDataObject) => record.id as string);
+
+				if (latestTimestamp.isSame(lastTimeChecked, 'minute')) {
+					webhookData.possibleDuplicates = [...new Set([...possibleDuplicates, ...newDuplicates])];
+				} else {
+					webhookData.possibleDuplicates = newDuplicates;
+				}
 			}
+
+			// update lastTimeChecked to now
+			webhookData.lastTimeChecked = now.toISOString();
 
 			if (simple) {
 				records = simplifyObjects(records, false, 1);
@@ -296,6 +302,9 @@ export class NotionTrigger implements INodeType {
 			if (Array.isArray(records) && records.length) {
 				return [this.helpers.returnJsonArray(records)];
 			}
+		} else {
+			// update lastTimeChecked to now even if no records found
+			webhookData.lastTimeChecked = now.toISOString();
 		}
 
 		return null;
