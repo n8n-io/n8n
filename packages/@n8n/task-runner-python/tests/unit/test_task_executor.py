@@ -1,6 +1,5 @@
 import pytest
 import json
-from collections.abc import Mapping
 from unittest.mock import MagicMock, patch
 
 from src.task_executor import TaskExecutor
@@ -222,10 +221,9 @@ class TestFilterBuiltins:
         assert result.__import__ is not None
         assert result.len is len
 
-    def test_is_a_mapping(self):
+    def test_is_not_a_dict(self):
         result = TaskExecutor._filter_builtins(self._make_security_config())
 
-        assert isinstance(result, Mapping)
         assert not isinstance(result, dict)
 
     @pytest.mark.parametrize(

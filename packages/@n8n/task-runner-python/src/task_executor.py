@@ -6,7 +6,6 @@ import io
 import os
 import sys
 import logging
-from collections.abc import Mapping
 from typing import cast
 
 from src.errors import (
@@ -477,8 +476,6 @@ class TaskExecutor:
 
             def __repr__(self):
                 return f"ImmutableBuiltins({len(filtered)} keys)"
-
-        Mapping.register(_ImmutableBuiltins)
 
         return _ImmutableBuiltins()
 
