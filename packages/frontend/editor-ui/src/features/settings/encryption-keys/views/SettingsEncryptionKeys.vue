@@ -186,13 +186,22 @@ const refetch = async () => {
 
 const onUpdateOptions = async (next: TableOptions) => {
 	tableOptions.value = next;
-	store.setItemsPerPage(next.itemsPerPage);
-	store.setPage(next.page);
+	// Only forward sort/page-size changes when they actually changed, otherwise
+	// the store's reset-to-page-0 side effects would silently override an
+	// in-flight page change.
+	if (store.itemsPerPage !== next.itemsPerPage) {
+		store.setItemsPerPage(next.itemsPerPage);
+	}
 	if (next.sortBy.length > 0) {
 		const first = next.sortBy[0];
 		const field = isSortField(first.id) ? first.id : 'createdAt';
-		store.setSort({ field, direction: first.desc ? 'desc' : 'asc' });
+		const direction = first.desc ? 'desc' : 'asc';
+		if (store.sort.field !== field || store.sort.direction !== direction) {
+			store.setSort({ field, direction });
+		}
 	}
+	// Apply page last so the user's selected page wins over any reset side effect.
+	store.setPage(next.page);
 	await refetch();
 };
 
