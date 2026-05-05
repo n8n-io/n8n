@@ -251,6 +251,61 @@ describe('TestRunDetailView', () => {
 		});
 	});
 
+	it('skips non-completed runs when picking the previous run for delta comparison', async () => {
+		// Three runs ordered by runAt: completed → cancelled (in between) →
+		// current (completed). The cancelled run sits at index-1 but has no
+		// usable metrics. The delta should still compare against the earlier
+		// completed run instead of falling back to "no previous run" or the
+		// cancelled one. The test asserts both badges still render — they
+		// would disappear if `previousRun` resolved to null or to the
+		// cancelled record.
+		const cancelledRunBetween: TestRunRecord = {
+			id: 'cancelled-between',
+			workflowId: 'test-workflow-id',
+			status: 'cancelled',
+			createdAt: '2023-10-01T11:00:00Z',
+			updatedAt: '2023-10-01T11:00:00Z',
+			completedAt: '2023-10-01T11:00:01Z',
+			runAt: '2023-10-01T11:00:00Z',
+			metrics: null,
+			finalResult: 'error',
+		};
+
+		const { container } = renderComponent({
+			pinia: createTestingPinia({
+				initialState: {
+					evaluation: {
+						testRunsById: {
+							'previous-run-id': mockPreviousRun,
+							'cancelled-between': cancelledRunBetween,
+							'test-run-id': {
+								...mockTestRun,
+								// Bump the current run's runAt past the cancelled one so
+								// the chronological order is: previous → cancelled → current.
+								runAt: '2023-10-01T12:00:00Z',
+							},
+						},
+					},
+					workflows: {
+						workflowsById: { 'test-workflow-id': mockWorkflow },
+					},
+				},
+				stubActions: false,
+			}),
+			global: {
+				provide: { [WorkflowIdKey]: computed(() => 'test-workflow-id') },
+			},
+		});
+
+		await waitFor(() => {
+			const badges = container.querySelectorAll('[data-test-id="trend-delta-badge"]');
+			// Same two badges as the happy-path test — proves the cancelled
+			// run between us and the previous completed run did not displace
+			// the comparison.
+			expect(badges.length).toBe(2);
+		});
+	});
+
 	it('fires "User viewed run detail" telemetry on mount', async () => {
 		renderComponent();
 		await waitFor(() => {

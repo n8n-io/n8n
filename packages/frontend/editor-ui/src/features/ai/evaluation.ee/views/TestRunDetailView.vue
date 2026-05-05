@@ -49,10 +49,19 @@ const testRunIndex = computed(() =>
 	orderedRuns.value.findIndex((record) => record.id === runId.value),
 );
 
+// Pick the most recent *completed* run that ran before this one for delta
+// comparison. Skipping error/cancelled/new/running prevents the metric strip
+// from comparing against partial or absent metrics; the displayed run index
+// (`testRunIndex`) intentionally still reflects chronological position
+// across all runs.
 const previousRun = computed<TestRunRecord | null>(() => {
 	const index = testRunIndex.value;
 	if (index <= 0) return null;
-	return orderedRuns.value[index - 1] ?? null;
+	for (let i = index - 1; i >= 0; i--) {
+		const candidate = orderedRuns.value[i];
+		if (candidate?.status === 'completed') return candidate;
+	}
+	return null;
 });
 
 const orderedTestCases = computed(() =>

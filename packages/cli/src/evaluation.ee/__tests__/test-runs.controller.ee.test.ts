@@ -147,7 +147,7 @@ describe('TestRunsController', () => {
 				['workflow:read'],
 			);
 			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
-				where: { id: mockTestRunId },
+				where: { id: mockTestRunId, workflow: { id: mockWorkflowId } },
 			});
 			expect(result).toEqual(mockTestRun);
 		});
@@ -173,7 +173,7 @@ describe('TestRunsController', () => {
 				['workflow:read'],
 			);
 			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
-				where: { id: mockTestRunId },
+				where: { id: mockTestRunId, workflow: { id: mockWorkflowId } },
 			});
 		});
 	});
@@ -215,6 +215,20 @@ describe('TestRunsController', () => {
 
 			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(NotFoundError);
 			expect(mockTestCaseExecutionRepository.cancelIfNew).not.toHaveBeenCalled();
+		});
+
+		it('throws NotFoundError when the run id belongs to a different workflow', async () => {
+			// User has access to the route's workflow but supplies a run id from
+			// another workflow. The scoped lookup returns null and we surface a
+			// 404 — the cancel must never reach `cancelIfNew`.
+			mockTestRunRepository.findOne.mockResolvedValue(null);
+
+			await expect(testRunsController.cancelCase(buildReq())).rejects.toThrow(NotFoundError);
+			expect(mockTestRunRepository.findOne).toHaveBeenCalledWith({
+				where: { id: mockTestRunId, workflow: { id: mockWorkflowId } },
+			});
+			expect(mockTestCaseExecutionRepository.cancelIfNew).not.toHaveBeenCalled();
+			expect(mockTelemetry.track).not.toHaveBeenCalled();
 		});
 	});
 

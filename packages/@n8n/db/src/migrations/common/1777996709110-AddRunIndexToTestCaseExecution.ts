@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddRunIndexToTestCaseExecution1778200000000 implements ReversibleMigration {
+export class AddRunIndexToTestCaseExecution1777996709110 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName('test_case_execution');
 		const columnName = escape.columnName('runIndex');
