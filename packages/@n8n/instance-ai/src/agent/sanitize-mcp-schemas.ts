@@ -2,9 +2,8 @@
  * Sanitizes MCP tool Zod schemas for Anthropic compatibility.
  *
  * Problem: Chrome DevTools MCP (and potentially other MCP servers) return JSON
- * schemas with `type: ["string", "null"]`. Mastra converts these to
- * `z.union([z.string(), z.null()])`. Anthropic's API rejects `ZodNull` —
- * `@mastra/schema-compat` throws "does not support zod type: ZodNull".
+ * schemas with `type: ["string", "null"]`. Some tool adapters convert these
+ * to `z.union([z.string(), z.null()])`, and Anthropic's API rejects `ZodNull`.
  *
  * Solution: Walk the Zod schema tree and replace ZodNull unions with optional
  * non-null alternatives. For example:
@@ -12,8 +11,11 @@
  *   z.nullable(z.string())           →  z.string().optional()
  */
 
-import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
 
 /**
  * Recursively walk a Zod schema tree and replace Anthropic-incompatible types.
@@ -232,9 +234,8 @@ export function ensureTopLevelObject(schema: z.ZodTypeAny): z.ZodTypeAny {
 
 /**
  * Sanitize a single Zod input schema for Anthropic compatibility.
- * Must be called BEFORE passing to `createTool()`, because Mastra captures
- * the schema in a closure at construction time — post-creation mutation
- * does not affect the JSON Schema sent to the API.
+ * Must be called before registering a tool with the agent runtime, because
+ * tool builders/adapters can capture the schema during construction.
  *
  * Uses strict mode: throws on description conflicts in discriminated unions
  * to prevent silently degraded schemas. Harmonize field descriptions at the
@@ -259,14 +260,20 @@ export function sanitizeInputSchema<T extends z.ZodTypeAny>(schema: T): T {
  * action context (e.g. 'For "create": ... For "delete": ...') rather than
  * throwing.
  */
-export function sanitizeMcpToolSchemas(tools: ToolsInput): ToolsInput {
+export function sanitizeMcpToolSchemas<TTools extends Record<string, unknown>>(
+	tools: TTools,
+): TTools {
 	for (const tool of Object.values(tools)) {
-		const t = tool as { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny };
-		if (t.inputSchema) {
-			t.inputSchema = ensureTopLevelObject(sanitizeZodType(t.inputSchema));
+		if (!isRecord(tool)) continue;
+
+		const inputSchema = tool.inputSchema;
+		if (inputSchema instanceof z.ZodType) {
+			tool.inputSchema = ensureTopLevelObject(sanitizeZodType(inputSchema));
 		}
-		if (t.outputSchema) {
-			t.outputSchema = sanitizeZodType(t.outputSchema);
+
+		const outputSchema = tool.outputSchema;
+		if (outputSchema instanceof z.ZodType) {
+			tool.outputSchema = sanitizeZodType(outputSchema);
 		}
 	}
 
