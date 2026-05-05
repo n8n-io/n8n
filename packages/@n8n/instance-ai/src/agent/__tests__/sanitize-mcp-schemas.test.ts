@@ -1,11 +1,12 @@
-import type { ToolsInput } from '@mastra/core/agent';
 import { z } from 'zod';
 
 import { sanitizeMcpToolSchemas, sanitizeZodType } from '../sanitize-mcp-schemas';
 
+type TestTools = Record<string, { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny }>;
+
 function makeTools(
 	schemas: Record<string, { input?: z.ZodTypeAny; output?: z.ZodTypeAny }>,
-): ToolsInput {
+): TestTools {
 	const tools: Record<string, { inputSchema?: z.ZodTypeAny; outputSchema?: z.ZodTypeAny }> = {};
 	for (const [name, { input, output }] of Object.entries(schemas)) {
 		tools[name] = {
@@ -13,12 +14,12 @@ function makeTools(
 			...(output ? { outputSchema: output } : {}),
 		};
 	}
-	return tools as ToolsInput;
+	return tools;
 }
 
 describe('sanitizeMcpToolSchemas', () => {
 	it('should return empty tools input unchanged', () => {
-		const tools = {} as ToolsInput;
+		const tools: TestTools = {};
 
 		const result = sanitizeMcpToolSchemas(tools);
 

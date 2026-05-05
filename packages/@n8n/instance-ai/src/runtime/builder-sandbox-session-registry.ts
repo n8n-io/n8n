@@ -1,7 +1,8 @@
-import type { Workspace } from '@mastra/core/workspace';
 import { nanoid } from 'nanoid';
 
 import type { BuilderWorkspace } from '../workspace/builder-sandbox-factory';
+
+type Workspace = BuilderWorkspace['workspace'];
 
 interface BuilderSandboxSessionInternal {
 	sessionId: string;
