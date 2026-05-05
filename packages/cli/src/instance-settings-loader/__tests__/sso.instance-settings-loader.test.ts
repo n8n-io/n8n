@@ -225,6 +225,7 @@ describe('SsoInstanceSettingsLoader', () => {
 					value: JSON.stringify({
 						scopesProvisionInstanceRole: false,
 						scopesProvisionProjectRoles: false,
+						scopesUseExpressionMapping: false,
 					}),
 				}),
 				{ conflictPaths: ['key'] },
@@ -242,6 +243,7 @@ describe('SsoInstanceSettingsLoader', () => {
 					value: JSON.stringify({
 						scopesProvisionInstanceRole: true,
 						scopesProvisionProjectRoles: false,
+						scopesUseExpressionMapping: false,
 					}),
 				}),
 				{ conflictPaths: ['key'] },
@@ -262,6 +264,7 @@ describe('SsoInstanceSettingsLoader', () => {
 					value: JSON.stringify({
 						scopesProvisionInstanceRole: true,
 						scopesProvisionProjectRoles: true,
+						scopesUseExpressionMapping: false,
 					}),
 				}),
 				{ conflictPaths: ['key'] },

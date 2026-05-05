@@ -1,9 +1,12 @@
 {
   "name": "@n8n/scan-community-package",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Static code analyser for n8n community packages",
   "license": "none",
   "bin": "scanner/cli.mjs",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
   "files": [
     "scanner"
   ],

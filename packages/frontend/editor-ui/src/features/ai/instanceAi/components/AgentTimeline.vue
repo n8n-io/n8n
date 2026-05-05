@@ -138,7 +138,11 @@ function handlePlanConfirm(tc: InstanceAiToolCallState, approved: boolean, feedb
 	telemetry.track('User finished providing input', eventProps);
 
 	store.resolveConfirmation(requestId, approved ? 'approved' : 'denied');
-	void store.confirmAction(requestId, approved, undefined, undefined, undefined, feedback);
+	void store.confirmAction(requestId, {
+		kind: 'approval',
+		approved,
+		...(feedback ? { userInput: feedback } : {}),
+	});
 }
 
 /** Find the latest plan-review confirmation from a planner child's submit-plan tool call.

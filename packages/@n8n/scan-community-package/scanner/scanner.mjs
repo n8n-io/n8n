@@ -11,6 +11,8 @@ import glob from 'fast-glob';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'eslint/config';
 
+import { checkPackageProvenance } from './provenance.mjs';
+
 const { stdout } = process;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
@@ -164,10 +166,12 @@ const analyzePackage = async (packageDir) => {
 export const analyzePackageByName = async (packageName, version) => {
 	try {
 		let exactVersion = version;
+		let packageMetadata;
 
 		// If version is a range, get the latest matching version
 		if (version && semver.validRange(version) && !semver.valid(version)) {
 			const { data } = await axios.get(`${registry}/${packageName}`);
+			packageMetadata = data;
 			const versions = Object.keys(data.versions);
 			exactVersion = semver.maxSatisfying(versions, version);
 
@@ -179,10 +183,32 @@ export const analyzePackageByName = async (packageName, version) => {
 		// If no version specified, get the latest
 		if (!exactVersion) {
 			const { data } = await axios.get(`${registry}/${packageName}`);
+			packageMetadata = data;
 			exactVersion = data['dist-tags'].latest;
 		}
 
+		packageMetadata ??= (await axios.get(`${registry}/${packageName}`)).data;
+		exactVersion = packageMetadata['dist-tags']?.[exactVersion] ?? exactVersion;
 		const label = `${packageName}@${exactVersion}`;
+
+		stdout.write(`Checking provenance for ${label}...`);
+		const provenanceResult = checkPackageProvenance(packageMetadata, exactVersion);
+		if (stdout.TTY) {
+			stdout.clearLine(0);
+			stdout.cursorTo(0);
+		}
+
+		if (!provenanceResult.passed) {
+			stdout.write(`❌ Provenance check failed for ${label} \n`);
+
+			return {
+				packageName,
+				version: exactVersion,
+				...provenanceResult,
+			};
+		}
+
+		stdout.write(`✅ Provenance check passed for ${label} \n`);
 
 		stdout.write(`Downloading ${label}...`);
 		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
