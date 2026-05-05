@@ -2,6 +2,7 @@ import type { AxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
+
 import { formatPrivateKey } from '@utils/utilities';
 import type {
 	ICredentialDataDecryptedObject,
@@ -63,6 +64,15 @@ export class SalesforceJwtApi implements ICredentialType {
 			description:
 				'Use the multiline editor. Make sure it is in standard PEM key format:<br />-----BEGIN PRIVATE KEY-----<br />KEY DATA GOES HERE<br />-----END PRIVATE KEY-----',
 		},
+		{
+			displayName: 'My Domain URL',
+			name: 'myDomainUrl',
+			type: 'string',
+			default: '',
+			placeholder: 'https://mycompany.my.salesforce.com',
+			description:
+				"Your org's My Domain URL (e.g. <code>https://mycompany.my.salesforce.com</code>). Required for Spring '26 and later orgs; leave blank to keep the default audience used by earlier orgs.",
+		},
 	];
 
 	async authenticate(
@@ -70,10 +80,7 @@ export class SalesforceJwtApi implements ICredentialType {
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
 		const now = moment().unix();
-		const authUrl =
-			credentials.environment === 'sandbox'
-				? 'https://test.salesforce.com'
-				: 'https://login.salesforce.com';
+		const authUrl = resolveAuthUrl(credentials);
 		const privateKey = formatPrivateKey(credentials.privateKey as string);
 		const signature = jwt.sign(
 			{
@@ -118,9 +125,19 @@ export class SalesforceJwtApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
-				'={{$credentials?.environment === "sandbox" ? "https://test.salesforce.com" : "https://login.salesforce.com"}}',
+				'={{$credentials?.myDomainUrl ? $credentials.myDomainUrl.replace(/\\/$/, "") : ($credentials?.environment === "sandbox" ? "https://test.salesforce.com" : "https://login.salesforce.com")}}',
 			url: '/services/oauth2/userinfo',
 			method: 'GET',
 		},
 	};
+}
+
+export function resolveAuthUrl(credentials: ICredentialDataDecryptedObject): string {
+	const myDomainUrl = ((credentials.myDomainUrl as string | undefined) ?? '').replace(/\/$/, '');
+	if (myDomainUrl) {
+		return myDomainUrl;
+	}
+	return credentials.environment === 'sandbox'
+		? 'https://test.salesforce.com'
+		: 'https://login.salesforce.com';
 }

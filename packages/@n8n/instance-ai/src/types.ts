@@ -12,7 +12,7 @@ import type {
 	McpToolCallResult,
 } from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import type { INodeTypes } from 'n8n-workflow';
+import type { GenericValue, INodeTypes } from 'n8n-workflow';
 
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
@@ -21,12 +21,15 @@ import type { PlannedHandoff, PlannedHandoffKind, SubAgentOutcome } from './agen
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
+import type { McpClientManager } from './mcp/mcp-client-manager';
+import type { BuilderSandboxSessionRegistry } from './runtime/builder-sandbox-session-registry';
 import type { IterationLog } from './storage/iteration-log';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
+	WorkflowLoopState,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderSandboxFactory } from './workspace/builder-sandbox-factory';
 
@@ -305,7 +308,7 @@ export interface InstanceAiNodeService {
 			operation?: string;
 			mode?: string;
 		},
-	): Promise<{ content: string; version?: string; error?: string } | null>;
+	): Promise<{ content: string; version?: string; error?: string; builderHint?: string } | null>;
 	/** List available resource/operation discriminators for a node. Null for flat nodes. */
 	listDiscriminators?(
 		nodeType: string,
@@ -544,9 +547,13 @@ export interface InstanceAiWorkspaceService {
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
-	| { status: 'connected' }
-	| { status: 'disconnected'; capabilities: string[] }
-	| { status: 'disabled' };
+	| {
+			status: 'connected';
+			capabilities: string[];
+	  }
+	| {
+			status: 'disabledGlobally' | 'disconnected' | 'disabled';
+	  };
 
 // ── Context bundle ───────────────────────────────────────────────────────────
 
@@ -942,6 +949,7 @@ export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
 
@@ -958,6 +966,7 @@ export interface OrchestrationContext {
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	domainTools: ToolsInput;
 	abortSignal: AbortSignal;
 	taskStorage: TaskStorage;
@@ -1000,6 +1009,8 @@ export interface OrchestrationContext {
 	workspace?: Workspace;
 	/** Factory for creating per-builder ephemeral sandboxes from a pre-warmed snapshot */
 	builderSandboxFactory?: BuilderSandboxFactory;
+	/** Process-local registry for retaining recently finished builder sandboxes. */
+	builderSandboxSessionRegistry?: BuilderSandboxSessionRegistry;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Mastra memory instance — used to retrieve thread message history for sub-agents */
@@ -1047,6 +1058,8 @@ export interface CreateInstanceAgentOptions {
 	context: InstanceAiContext;
 	orchestrationContext?: OrchestrationContext;
 	mcpServers?: McpServerConfig[];
+	/** Owns MCP client connections + tool listing caches; the service passes its singleton in. */
+	mcpManager: McpClientManager;
 	memoryConfig: InstanceAiMemoryConfig;
 	/** Pre-built Memory instance. When provided, `memoryConfig` is ignored for memory creation. */
 	memory?: Memory;

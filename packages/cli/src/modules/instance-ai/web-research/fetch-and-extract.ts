@@ -1,10 +1,10 @@
-import { Readability } from '@mozilla/readability';
-import { parseHTML } from 'linkedom';
-import TurndownService from 'turndown';
 import { gfm } from '@joplin/turndown-plugin-gfm';
-
+import { Readability } from '@mozilla/readability';
 import type { FetchedPage } from '@n8n/instance-ai';
-import { assertPublicUrl } from './ssrf-guard';
+import { parseHTML } from 'linkedom';
+import type { SsrfBridge } from 'n8n-core';
+import TurndownService from 'turndown';
+import { Agent } from 'undici';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
@@ -21,6 +21,11 @@ export interface FetchAndExtractOptions {
 	 * Throw to abort the fetch (e.g. for HITL domain approval).
 	 */
 	authorizeUrl?: (url: string) => Promise<void>;
+	/**
+	 * SSRF guard. The same secure lookup function pins DNS for the actual
+	 * connect, so the IP that passes validation is the one fetch connects to.
+	 */
+	ssrf: SsrfBridge;
 }
 
 /**
@@ -32,13 +37,13 @@ export interface FetchAndExtractOptions {
  */
 export async function fetchAndExtract(
 	url: string,
-	options?: FetchAndExtractOptions,
+	options: FetchAndExtractOptions,
 ): Promise<FetchedPage> {
-	const maxContentLength = options?.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH;
-	const maxResponseBytes = options?.maxResponseBytes ?? MAX_RESPONSE_BYTES;
-	const timeoutMs = Math.min(options?.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
+	const maxContentLength = options.maxContentLength ?? DEFAULT_MAX_CONTENT_LENGTH;
+	const maxResponseBytes = options.maxResponseBytes ?? MAX_RESPONSE_BYTES;
+	const timeoutMs = Math.min(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-	const authorizeUrl = options?.authorizeUrl;
+	const { authorizeUrl, ssrf } = options;
 
 	// Manual redirect handling — validate every hop against SSRF guard
 	let currentUrl = url;
@@ -46,8 +51,10 @@ export async function fetchAndExtract(
 	let redirectCount = 0;
 
 	while (redirectCount <= MAX_REDIRECTS) {
-		await assertPublicUrl(currentUrl);
+		const validation = await ssrf.validateUrl(currentUrl);
+		if (!validation.ok) throw validation.error;
 
+		const dispatcher = new Agent({ connect: { lookup: ssrf.createSecureLookup() } });
 		const controller = new AbortController();
 		const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -60,9 +67,12 @@ export async function fetchAndExtract(
 						'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
 				},
 				redirect: 'manual',
+				// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
+				dispatcher,
 			});
 		} finally {
 			clearTimeout(timeout);
+			await dispatcher.close();
 		}
 
 		// Follow redirects manually so each hop is SSRF-checked
@@ -78,19 +88,16 @@ export async function fetchAndExtract(
 			// Resolve relative redirect URLs against the current URL
 			currentUrl = new URL(location, currentUrl).href;
 
+			// Direct-IP redirect targets are caught here; hostnames are caught by
+			// validateUrl on the next loop iteration before the dispatcher connects.
+			ssrf.validateRedirectSync(currentUrl);
+
 			// Domain-access authorization for the redirect target
 			if (authorizeUrl) {
 				await authorizeUrl(currentUrl);
 			}
 
 			continue;
-		}
-
-		// Defense-in-depth: if the runtime followed a redirect despite manual mode,
-		// validate the actual response URL against the SSRF guard.
-		if (response.url && response.url !== currentUrl) {
-			await assertPublicUrl(response.url);
-			currentUrl = response.url;
 		}
 
 		break;

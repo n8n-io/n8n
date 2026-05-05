@@ -1,12 +1,13 @@
-import { mock } from 'jest-mock-extended';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { N8nStructuredOutputParser } from './N8nStructuredOutputParser';
 
 describe('N8nStructuredOutputParser', () => {
-	let mockContext: jest.Mocked<ISupplyDataFunctions>;
+	let mockContext: Mocked<ISupplyDataFunctions>;
 
 	beforeEach(() => {
 		mockContext = mock<ISupplyDataFunctions>();

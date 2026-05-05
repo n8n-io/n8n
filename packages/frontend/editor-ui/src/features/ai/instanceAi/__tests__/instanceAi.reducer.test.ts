@@ -226,6 +226,14 @@ describe('instanceAi.reducer', () => {
 			expect(state.messages[0].agentTree!.status).toBe('completed');
 		});
 
+		test('run-finish alone is lifecycle-only and does not create visible text', () => {
+			const state = stateWithRun('run-1', 'agent-root');
+			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'completed'));
+
+			expect(state.messages[0].content).toBe('');
+			expect(state.messages[0].agentTree!.textContent).toBe('');
+		});
+
 		test('run-finish(cancelled) sets agentTree status to cancelled', () => {
 			const state = stateWithRun('run-1', 'agent-root');
 			handleEvent(state, makeRunFinishEvent('run-1', 'agent-root', 'cancelled'));
