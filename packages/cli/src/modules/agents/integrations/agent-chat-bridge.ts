@@ -26,6 +26,7 @@ interface AgentExecutor {
 		runId: string;
 		toolCallId: string;
 		resumeData: unknown;
+		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
 }
 
@@ -815,6 +816,7 @@ export class AgentChatBridge {
 				runId,
 				toolCallId,
 				resumeData,
+				integrationType: this.integrationType,
 			});
 			await this.consumeStream(stream, thread as Thread);
 		} finally {
