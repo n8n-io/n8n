@@ -6,7 +6,6 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentJsonConfig } from '../types';
 
 type MemoryConfig = NonNullable<AgentJsonConfig['memory']>;
-type StorageType = MemoryConfig['storage'];
 
 const RECENT_MESSAGE_OPTIONS = [5, 10, 25, 50, 100] as const;
 type RecentMessageOption = (typeof RECENT_MESSAGE_OPTIONS)[number];
@@ -24,16 +23,6 @@ const i18n = useI18n();
 const memory = computed(() => (props.config?.memory?.enabled ? props.config.memory : null));
 
 /** Persistent storage types that support semantic recall. */
-const PERSISTENT_STORAGES: StorageType[] = ['sqlite', 'postgres'];
-
-const isPersistentStorage = computed(
-	() => memory.value !== null && PERSISTENT_STORAGES.includes(memory.value.storage),
-);
-
-const semanticRecallEnabled = computed(
-	() => memory.value?.semanticRecall !== undefined && memory.value.semanticRecall !== null,
-);
-
 function patchMemory(patch: Partial<MemoryConfig>) {
 	if (!memory.value) return;
 	emit('update:config', { memory: { ...memory.value, ...patch } });
@@ -66,55 +55,6 @@ function onMemoryToggle(enabled: boolean) {
 	} else {
 		onDisableMemory();
 	}
-}
-
-function onSemanticRecallToggle(enabled: boolean) {
-	if (!memory.value) return;
-	if (enabled) {
-		patchMemory({
-			semanticRecall: {
-				topK: 10,
-				messageRange: { before: 2, after: 2 },
-			},
-		});
-	} else {
-		patchMemory({ semanticRecall: undefined });
-	}
-}
-
-function onTopKChange(event: Event) {
-	if (!memory.value?.semanticRecall) return;
-	const value = Number((event.target as HTMLInputElement).value);
-	if (!Number.isFinite(value) || value < 1) return;
-	patchMemory({
-		semanticRecall: { ...memory.value.semanticRecall, topK: value },
-	});
-}
-
-function onRangeBeforeChange(event: Event) {
-	if (!memory.value?.semanticRecall) return;
-	const value = Number((event.target as HTMLInputElement).value);
-	if (!Number.isFinite(value) || value < 0) return;
-	const after = memory.value.semanticRecall.messageRange?.after ?? 2;
-	patchMemory({
-		semanticRecall: {
-			...memory.value.semanticRecall,
-			messageRange: { before: value, after },
-		},
-	});
-}
-
-function onRangeAfterChange(event: Event) {
-	if (!memory.value?.semanticRecall) return;
-	const value = Number((event.target as HTMLInputElement).value);
-	if (!Number.isFinite(value) || value < 0) return;
-	const before = memory.value.semanticRecall.messageRange?.before ?? 2;
-	patchMemory({
-		semanticRecall: {
-			...memory.value.semanticRecall,
-			messageRange: { before, after: value },
-		},
-	});
 }
 </script>
 
@@ -154,61 +94,6 @@ function onRangeAfterChange(event: Event) {
 					/>
 				</N8nSelect>
 			</div>
-
-			<!-- Semantic recall — only for persistent storage -->
-			<template v-if="isPersistentStorage">
-				<hr :class="$style.divider" />
-
-				<div :class="$style.row">
-					<N8nText size="small" :bold="true">{{
-						i18n.baseText('agents.builder.memory.semanticRecall.label')
-					}}</N8nText>
-					<N8nSwitch
-						:model-value="semanticRecallEnabled"
-						data-testid="agent-semantic-recall-toggle"
-						@update:model-value="onSemanticRecallToggle"
-					/>
-				</div>
-
-				<template v-if="semanticRecallEnabled && memory.semanticRecall">
-					<div :class="$style.row">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.memory.semanticRecall.topK')
-						}}</N8nText>
-						<input
-							type="number"
-							:value="memory.semanticRecall.topK"
-							min="1"
-							:class="$style.inlineInput"
-							@change="onTopKChange"
-						/>
-					</div>
-					<div :class="$style.row">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.memory.semanticRecall.rangeBefore')
-						}}</N8nText>
-						<input
-							type="number"
-							:value="memory.semanticRecall.messageRange?.before ?? 2"
-							min="0"
-							:class="$style.inlineInput"
-							@change="onRangeBeforeChange"
-						/>
-					</div>
-					<div :class="$style.row">
-						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.memory.semanticRecall.rangeAfter')
-						}}</N8nText>
-						<input
-							type="number"
-							:value="memory.semanticRecall.messageRange?.after ?? 2"
-							min="0"
-							:class="$style.inlineInput"
-							@change="onRangeAfterChange"
-						/>
-					</div>
-				</template>
-			</template>
 		</template>
 	</div>
 </template>
